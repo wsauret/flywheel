@@ -3,6 +3,7 @@ name: lint
 description: "Use this agent when you need to run linting and code quality checks before pushing to origin."
 model: haiku
 color: yellow
+tools: [Read, Bash]
 ---
 
 Your workflow process:

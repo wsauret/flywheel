@@ -7,8 +7,8 @@ AI-powered development tools that get smarter with every use. Make each unit of 
 | Component | Count |
 |-----------|-------|
 | Agents | 16 |
-| Commands | 9 |
-| Skills | 3 |
+| Commands | 8 |
+| Skills | 8 |
 
 ## Agents
 
@@ -49,20 +49,19 @@ Agents are organized into categories for easier discovery.
 
 ### Workflow Commands
 
-Core workflow commands use `workflows:` prefix to avoid collisions with built-in commands:
+Core workflow commands use `fly:` prefix:
 
 | Command | Description |
 |---------|-------------|
-| `/workflows:brainstorm` | Conversational exploration of ideas before planning. One question at a time, explores approaches, validates design incrementally. |
-| `/workflows:plan` | Create implementation plans. Works best after brainstorm or accepts design docs as input. |
-| `/workflows:review_plan` | Deepen and review a plan in a single orchestrated workflow |
-| `/workflows:work` | Execute work items systematically |
-| `/workflows:review_work` | Run comprehensive code reviews on PRs |
-| `/workflows:compound` | Document solved problems to compound team knowledge |
+| `/fly:brainstorm` | Conversational exploration of ideas. One question at a time, explores 2-3 approaches, validates design incrementally. |
+| `/fly:plan` | Create or refine implementation plans with research persistence. Handles design docs, feature descriptions, or existing plans. |
+| `/fly:work` | Execute work plans efficiently. Loads context files, follows patterns, tests continuously. |
+| `/fly:review` | Perform exhaustive code reviews using multi-agent analysis. Creates todo files for findings. |
+| `/fly:compound` | Document solved problems using parallel subagents. Captures solutions while context is fresh. |
 
 **Recommended Workflow:**
 ```
-/workflows:brainstorm → /workflows:plan → /workflows:review_plan → /workflows:work → /workflows:review_work
+/fly:brainstorm → /fly:plan → /fly:work → /fly:review → /fly:compound
 ```
 
 ### Utility Commands
@@ -74,6 +73,18 @@ Core workflow commands use `workflows:` prefix to avoid collisions with built-in
 | `/triage` | Triage and prioritize issues |
 
 ## Skills
+
+### Workflow Skills
+
+| Skill | Description |
+|-------|-------------|
+| `brainstorming` | Conversational exploration of ideas before planning |
+| `planning` | Create implementation plans with research persistence |
+| `executing-work` | Execute plans following patterns, testing continuously |
+| `reviewing` | Multi-agent code reviews with todo file creation |
+| `compounding` | Coordinate parallel subagents to document solutions |
+
+### Utility Skills
 
 | Skill | Description |
 |-------|-------------|
