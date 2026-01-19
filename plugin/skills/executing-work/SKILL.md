@@ -15,142 +15,163 @@ allowed-tools:
 
 # Executing-Work Skill
 
-Execute plans systematically. Focus on **shipping complete features** by understanding requirements quickly, following existing patterns, and maintaining quality throughout.
+Execute plans using **probe-dispatch-checkpoint** pattern. Orchestrator stays lean, dispatches subagents per phase, persists state for recovery.
 
 ## Input
 
-The plan path is provided via `$ARGUMENTS`. Can be a plan, specification, or todo file.
+Plan path via `$ARGUMENTS`. Can be a plan, specification, or todo file.
 
 ---
 
-## Phase 1: Quick Start
+## Phase 1: Load & Resume
 
-### Load Plan & Context
+### Check for Existing State
 
-1. **Read the plan completely**
+```bash
+STATE_FILE="${PLAN_PATH%.md}.state.md"
+if [ -f "$STATE_FILE" ]; then
+  echo "✅ Found execution state - resuming"
+fi
+```
 
-2. **Check for companion context file:**
-   ```bash
-   CONTEXT_FILE="${PLAN_PATH%.md}.context.md"
-   if [ -f "$CONTEXT_FILE" ]; then
-     echo "✅ Found research context: $CONTEXT_FILE"
-   fi
+**If state file exists:**
+1. Read state file to find last checkpoint
+2. Identify first unchecked phase
+3. Load key decisions and code context
+4. Resume from that phase
+
+**If no state file:** Create initial state file from plan.
+
+### Load Context
+
+```bash
+CONTEXT_FILE="${PLAN_PATH%.md}.context.md"
+```
+
+Load from context file:
+- **File References** - key files to understand
+- **Gotchas & Warnings** - prevent common mistakes
+- **Naming Conventions** - follow exactly
+
+### Create State File
+
+**File:** `plans/<plan-name>.state.md`
+
+```markdown
+---
+plan: <plan-name>.md
+status: in_progress
+schema_version: 1
+---
+
+# Execution State: <Plan Name>
+
+## Progress
+- [ ] Phase 1: <description>
+- [ ] Phase 2: <description>
+- [ ] Phase 3: <description>
+
+## Key Decisions
+<!-- Append decisions as they are made -->
+
+## Code Context
+<!-- Track files modified/created -->
+```
+
+### Get Approval
+
+Ask: "Ready to execute plan. Work on current branch or create worktree?"
+
+---
+
+## Phase 2: Execute (Per-Phase Loop)
+
+For each unchecked phase in Progress:
+
+### 2.1 Probe Phase Files
+
+Quick check of files referenced in phase:
+- Count files and estimate total lines
+- If > 500 lines total: warn user, consider splitting
+- Note any missing files
+
+### 2.2 Dispatch Subagent
+
+```
+Task general-purpose: "
+## Task
+Execute Phase N: <phase description>
+
+## Plan Excerpt
+<paste full phase content from plan>
+
+## Context
+- Key decisions so far: <from state file>
+- Files to reference: <from context file>
+- Patterns to follow: <from context file>
+
+## Constraints
+- Follow existing patterns exactly
+- Run tests after changes
+- Report: files modified, decisions made, any blockers
+"
+```
+
+**Key rules:**
+- Provide plan text directly (don't make subagent read file)
+- One phase at a time (sequential, not parallel)
+- Include decisions from previous phases
+
+### 2.3 Checkpoint
+
+After subagent completes:
+
+1. **Mark phase complete** in state file:
+   ```markdown
+   - [x] Phase 1: <description>
    ```
 
-3. **If context file exists, use it:**
-   - Load "File References" section - these are key files to understand
-   - Note "Gotchas & Warnings" - these prevent common mistakes
-   - Reference "Naming Conventions" - follow exactly
-   - Check "External Research" for documentation links
+2. **Append key decisions:**
+   ```markdown
+   ## Key Decisions
+   - Phase 1: Using repository pattern for data access
+   - Phase 1: Tests in `__tests__/` directory
+   ```
 
-4. **Ask clarifying questions now** - better to ask than build wrong thing
+3. **Update code context:**
+   ```markdown
+   ## Code Context
+   - Created: `src/services/auth.ts`
+   - Modified: `src/routes/index.ts`
+   ```
 
-5. **Get user approval to proceed**
+4. **Run tests** - fail fast if broken
 
-### Setup Environment
+### 2.4 Loop
 
-Ask user: "Work in parallel with worktree or on current branch?"
-
-**Worktree** (recommended for parallel development):
-```
-skill: git-worktree
-```
-
-**Live branch**:
-```bash
-git checkout main && git pull origin main
-git checkout -b feature-branch-name
-```
-
-### Create Todo List
-
-Use TodoWrite to break plan into actionable tasks:
-- Include dependencies between tasks
-- Prioritize by order needed
-- Include testing and quality check tasks
-- Keep tasks specific and completable
-
----
-
-## Phase 2: Execute
-
-### Task Execution Loop
-
-```
-while (tasks remain):
-  - Mark task as in_progress in TodoWrite
-  - Read any referenced files from plan
-  - Look for similar patterns in codebase
-  - Implement following existing conventions
-  - Write tests for new functionality
-  - Run tests after changes
-  - Mark task as completed
-```
-
-### Follow Existing Patterns
-
-**If context file exists:**
-- Load files from "File References" first
-- Follow "Naming Conventions" - don't guess
-- Check "Gotchas & Warnings" before major changes
-- Reference "Similar Implementations"
-
-**Always:**
-- Read plan-referenced code first
-- Match naming conventions exactly
-- Reuse existing components
-- Follow project coding standards (CLAUDE.md)
-
-### Test Continuously
-
-- Run relevant tests after each significant change
-- Don't wait until the end
-- Fix failures immediately
-- Add new tests for new functionality
-
-### Track Progress
-
-- Keep TodoWrite updated
-- Note blockers or unexpected discoveries
-- Create new tasks if scope expands
-- Inform user of major milestones
+Continue to next unchecked phase. If all phases complete, proceed to Quality Check.
 
 ---
 
 ## Phase 3: Quality Check
 
-### Core Quality Checks
+### Run Tests
 
 ```bash
-# Run test suite (auto-detect project type)
-npm test        # Node.js/TypeScript
-pytest          # Python
-cargo test      # Rust
-go test ./...   # Go
-
-# Run linting (per CLAUDE.md)
+# Auto-detect project type
+npm test || pytest || cargo test || go test ./...
 ```
 
-### Reviewer Agents (Optional)
+### Optional Reviewers
 
-Use only for complex, risky, or large changes:
+For complex changes (10+ files or security-sensitive):
 
 ```
-Task code-simplicity-reviewer: "Review changes for simplicity"
-Task architecture-strategist: "Check architectural patterns"
-Task performance-oracle: "Check for performance issues"
-Task security-sentinel: "Scan for vulnerabilities"
+Task code-simplicity-reviewer: "Review changes"
+Task security-sentinel: "Check for vulnerabilities"
 ```
 
-Run reviewers in parallel. Present findings to user.
-
-### Final Validation
-
-- [ ] All TodoWrite tasks completed
-- [ ] All tests pass
-- [ ] Linting passes
-- [ ] Code follows existing patterns
-- [ ] No console errors or warnings
+Run reviewers in parallel. Present findings.
 
 ---
 
@@ -160,117 +181,81 @@ Run reviewers in parallel. Present findings to user.
 
 ```bash
 git add .
-git status  # Review what's being committed
-git diff --staged  # Check changes
+git status
+git diff --staged
 
 git commit -m "$(cat <<'EOF'
-feat(scope): description of what and why
-
-Brief explanation if needed.
+feat(scope): description
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 ```
 
-### Screenshots (UI Changes)
-
-For any design changes, capture before/after screenshots:
-1. Start dev server
-2. Capture at appropriate viewport sizes
-3. Include URLs in PR description
-
-### Create Pull Request
+### Create PR
 
 ```bash
-git push -u origin feature-branch-name
-
-gh pr create --title "feat: [Description]" --body "$(cat <<'EOF'
-## Summary
-- What was built
-- Why it was needed
-
-## Testing
-- Tests added/modified
-- Manual testing performed
-
-## Screenshots
-| Before | After |
-|--------|-------|
-| ![before](URL) | ![after](URL) |
-
----
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-EOF
-)"
+git push -u origin feature-branch
+gh pr create --title "feat: [Description]" --body "..."
 ```
 
-### Notify User
+### Update State
 
-- Summarize what was completed
-- Link to PR
-- Note any follow-up work
-- Suggest next steps (e.g., `/fly:review`)
+Mark state file as completed:
+
+```markdown
+---
+status: completed
+---
+```
 
 ---
 
-## Key Principles
+## Recovery
 
-### Start Fast, Execute Faster
-- Get clarification once at start, then execute
-- The goal is to **finish the feature**
+If orchestrator compacts mid-execution:
 
-### The Plan is Your Guide
-- Check for `.context.md` file - pre-researched references
-- Load those references and follow them
-- Don't reinvent - match what exists
+1. State file contains full progress
+2. New instance reads state file
+3. Finds first unchecked phase
+4. Loads key decisions for context
+5. Resumes execution
 
-### Test As You Go
-- Run tests after each change, not at the end
-- Continuous testing prevents big surprises
-
-### Ship Complete Features
-- Mark all tasks completed before moving on
-- Don't leave features 80% done
-- A finished feature that ships beats a perfect feature that doesn't
-
----
-
-## When to Use Reviewer Agents
-
-**Don't use by default.** Use only when:
-- Large refactor (10+ files)
-- Security-sensitive changes
-- Performance-critical code
-- Complex algorithms
-- User explicitly requests
-
-For most features: tests + linting + following patterns is sufficient.
+**No work is lost.**
 
 ---
 
 ## Error Handling
 
+### Subagent Failures
+- Log failure with phase and error
+- Ask user: retry, skip, or abort?
+- Don't checkpoint failed phases
+
 ### Test Failures
-- Fix failures immediately before moving on
-- If blocked, note in TodoWrite and ask user
-- Don't accumulate failing tests
+- Fix immediately before checkpointing
+- If blocked, note in state file and ask user
 
-### Build Failures
-- Check error messages carefully
-- Reference context file for common gotchas
-- Ask user if pattern is unclear
+### Missing Files
+- Warn during probe phase
+- Ask user to clarify before dispatching
 
-### Agent Failures
-- Log failure with agent name and error
-- Continue without reviewer feedback if agents fail
-- Reviewer agents are optional enhancements
+---
+
+## Key Principles
+
+- **Checkpoint after each phase** - enables recovery
+- **State file is source of truth** - not conversation memory
+- **Sequential execution** - one phase at a time
+- **Provide context to subagents** - they start fresh
+- **Ship complete features** - finish what you start
+
+---
 
 ## Anti-Patterns
 
-- **Analysis paralysis** - Read the plan and execute
-- **Skipping clarifying questions** - Ask now, not after building wrong thing
-- **Ignoring plan references** - The plan has links for a reason
-- **Testing at the end** - Test continuously
-- **Forgetting TodoWrite** - Track progress
-- **80% done syndrome** - Finish the feature
+- **Skipping checkpoints** - lose recovery capability
+- **Parallel implementation** - causes file conflicts
+- **Making subagent read plan** - provide text directly
+- **Ignoring test failures** - fix before checkpoint
+- **Complex state files** - keep them simple (checkboxes)

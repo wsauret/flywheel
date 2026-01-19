@@ -26,15 +26,22 @@ The feature idea or problem to explore is provided via `$ARGUMENTS`.
 
 Run research agents to understand context. **DO NOT present findings to user** - use them to ask smarter questions.
 
-**Run in parallel:**
+**Run in parallel (all three):**
 - Task repo-research-analyst(feature_idea)
 - Task framework-docs-researcher(feature_idea)
+- Task best-practices-researcher(feature_idea)
+
+**Timeout policy:**
+- repo-research-analyst: Required (local, fast)
+- framework-docs-researcher: Required (local, fast)
+- best-practices-researcher: **15s timeout** - continue without if slow
 
 **Extract for internal use:**
 - Relevant existing patterns (to reference when exploring approaches)
 - Technical constraints (to inform feasibility questions)
 - Similar implementations (to suggest as approaches)
 - Naming conventions (to use in design)
+- Best practices from external sources (to validate approaches)
 
 ---
 
@@ -67,6 +74,11 @@ Ask questions **one at a time** to refine the idea. Prefer multiple choice.
 ## Phase 3: Explore Approaches
 
 **ALWAYS present 2-3 approaches** - even for "obvious" solutions.
+
+**Use best practices research** to inform approaches:
+- Reference industry patterns discovered
+- Note when an approach aligns with best practices
+- Flag when an approach deviates (and why it might still be valid)
 
 **Format each approach:**
 ```
@@ -105,9 +117,7 @@ Handle feedback immediately - don't move to next section until current one is va
 
 ---
 
-## Phase 5: Persist Research & Create Design Document
-
-### Step 1: Create Design Document
+## Phase 5: Create Design Document
 
 **File path:** `plans/<topic>-design.md` (kebab-case topic)
 
@@ -168,7 +178,7 @@ brainstorm_session: true
 [Any unresolved questions]
 ```
 
-### Step 2: Announce & Offer Handoff
+### Announce & Offer Handoff
 
 ```
 ✅ Design document saved: plans/<topic>-design.md
@@ -206,6 +216,7 @@ Options:
 - Log failure with agent name and error
 - Continue without research context if agents fail
 - Proceed to questioning phase - research enhances but isn't required
+- **best-practices-researcher timeout (15s)**: Continue with partial results
 
 ### User Abandonment
 - If user stops responding, save partial progress to draft file
