@@ -1,0 +1,24 @@
+{
+  "name": "Flywheel",
+  "description": "A Claude Code plugin that removes the need for handholding",
+  "version": "1.0.0",
+  "author": {
+    "name": "Wesley Sauret"
+  },
+  "homepage": "https://github.com/wsauret/flywheel-plugin",
+  "repository": "https://github.com/wsauret/flywheel-plugin",
+  "license": "MIT",
+  "keywords": [
+    "workflows",
+    "planning",
+    "review",
+    "agents",
+    "skills"
+  ],
+  "mcpServers": {
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
+    }
+  }
+}

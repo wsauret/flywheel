@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(workflows:work)",
+      "Bash(tree:*)",
+      "Skill(deepen-plan)",
+      "Bash(xargs:*)",
+      "WebFetch(domain:danielmiessler.com)",
+      "WebFetch(domain:www.youngleaders.tech)",
+      "WebFetch(domain:alexop.dev)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:www-cdn.anthropic.com)",
+      "WebFetch(domain:jpcaparas.medium.com)",
+      "WebFetch(domain:leehanchung.github.io)",
+      "Bash(wc:*)"
+    ]
+  }
+}
