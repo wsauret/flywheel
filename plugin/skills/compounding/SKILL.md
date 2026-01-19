@@ -85,8 +85,8 @@ Based on problem type, invoke applicable agents:
 
 | Problem Type | Agents |
 |-------------|--------|
-| performance_issue | performance-oracle |
-| security_issue | security-sentinel |
+| performance_issue | performance-analyst |
+| security_issue | security-reviewer |
 | database_issue | data-integrity-guardian |
 | Code-heavy issues | code-simplicity-reviewer, architecture-strategist |
 

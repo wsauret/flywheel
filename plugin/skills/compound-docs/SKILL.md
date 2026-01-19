@@ -38,7 +38,7 @@ This skill captures problem solutions immediately after confirmation, creating s
 - "problem solved"
 - "that did it"
 
-**OR manual:** `/doc-fix` command
+**OR manual:** `/fly:compound` command
 
 **Non-trivial problems only:**
 
@@ -326,7 +326,9 @@ User selects this when the solution represents the start of a new learning domai
 
 Action:
 1. Prompt: "What should the new skill be called? (e.g., stripe-billing, email-processing)"
-2. Run `python3 .claude/skills/skill-creator/scripts/init_skill.py [skill-name]`
+2. Create skill directory structure manually:
+   - `mkdir -p plugin/skills/[skill-name]`
+   - Create `SKILL.md` with skill template
 3. Create initial reference files with this solution as first example
 4. Confirm: "✓ Created new [skill-name] skill with this solution as first example"
 
@@ -348,7 +350,7 @@ Action:
 ## Integration Points
 
 **Invoked by:**
-- /compound command (primary interface)
+- /fly:compound command (primary interface)
 - Manual invocation in conversation after solution confirmed
 - Can be triggered by detecting confirmation phrases like "that worked", "it's fixed", etc.
 

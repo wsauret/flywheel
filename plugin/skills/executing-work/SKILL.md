@@ -168,7 +168,7 @@ For complex changes (10+ files or security-sensitive):
 
 ```
 Task code-simplicity-reviewer: "Review changes"
-Task security-sentinel: "Check for vulnerabilities"
+Task security-reviewer: "Check for vulnerabilities"
 ```
 
 Run reviewers in parallel. Present findings.

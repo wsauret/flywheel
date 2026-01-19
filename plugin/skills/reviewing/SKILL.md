@@ -59,13 +59,12 @@ Run ALL applicable agents simultaneously:
 ```
 Task typescript-reviewer(PR content)   # TypeScript/JavaScript
 Task python-reviewer(PR content)       # Python
-Task git-history-analyzer(PR content)  # History context
+Task git-history-analyst(PR content)   # History context
 Task pattern-recognition-specialist(PR content)
 Task architecture-strategist(PR content)
-Task security-sentinel(PR content)
-Task performance-oracle(PR content)
+Task security-reviewer(PR content)
+Task performance-analyst(PR content)
 Task code-simplicity-reviewer(PR content)
-Task agent-native-reviewer(PR content) # Agent accessibility
 ```
 
 ### Conditional Agents
@@ -159,8 +158,8 @@ Each todo must include:
 
 ### Next Steps:
 1. Address P1 findings before merge
-2. Run `/triage` for interactive approval
-3. Run `/resolve-file-todos` to fix approved items
+2. Review todo files in `todos/` directory
+3. Update todo status as items are resolved
 ```
 
 ---
