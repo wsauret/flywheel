@@ -2,16 +2,19 @@
 name: compound-docs
 description: Capture solved problems as categorized documentation with YAML frontmatter for fast lookup
 allowed-tools:
-  - Read # Parse conversation context
-  - Write # Create resolution docs
-  - Bash # Create directories
-  - Grep # Search existing docs
-preconditions:
-  - Problem has been solved (not in-progress)
-  - Solution has been verified working
+  - Read
+  - Write
+  - Bash
+  - Grep
 ---
 
 # compound-docs Skill
+
+## Preconditions
+
+Before invoking this skill:
+- Problem has been solved (not in-progress)
+- Solution has been verified working
 
 **Purpose:** Automatically document solved problems to build searchable institutional knowledge with category-based organization (enum-validated problem types).
 

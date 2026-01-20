@@ -2,6 +2,34 @@
 
 AI-powered development tools that get smarter with every use. Make each unit of engineering work easier than the last.
 
+## Installation
+
+### Claude Code
+
+```bash
+# Create plugins directory if it doesn't exist
+mkdir -p ~/.claude/plugins
+
+# Symlink the plugin
+ln -s $(pwd)/plugin ~/.claude/plugins/flywheel
+```
+
+### OpenCode
+
+OpenCode natively reads from Claude Code paths. Use the same installation:
+
+```bash
+ln -s $(pwd)/plugin ~/.claude/plugins/flywheel
+```
+
+Or copy directly to OpenCode paths:
+
+```bash
+cp -r plugin/skills/* ~/.config/opencode/skills/
+cp -r plugin/commands/* ~/.config/opencode/commands/
+cp -r plugin/agents/* ~/.config/opencode/agents/
+```
+
 ## Components
 
 | Component | Count |
