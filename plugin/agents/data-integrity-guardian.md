@@ -68,4 +68,42 @@ Always prioritize:
 4. Compliance with privacy regulations
 5. Performance impact on production databases
 
+## Migration-Specific Expertise
+
+When reviewing data migrations, apply additional scrutiny:
+
+6. **Mapping Verification Against Production Data**:
+   - Verify field mappings with REAL production data samples
+   - Don't trust documentation alone - data lies
+   - Check for edge cases: NULL values, empty strings, special characters
+   - Validate data types match expectations at runtime
+   - Sample multiple time periods (data formats change over time)
+
+7. **Swapped Value Detection** (Most Dangerous Migration Bug):
+   - Explicitly verify each field maps to correct destination
+   - Watch for copy-paste errors in column mappings
+   - Check for fields with similar names but different meanings
+   - Example: `created_at` vs `created_date`, `user_id` vs `account_id`
+   - **Red flag:** Fields in same type family (dates, IDs, names)
+
+8. **Blast Radius Assessment**:
+   - How many rows affected?
+   - What downstream systems depend on this data?
+   - Can affected data be identified for targeted rollback?
+   - What is the data's criticality (billing, auth, audit)?
+   - Who needs to be notified if migration fails?
+
+9. **Reversibility Analysis**:
+   - Can this migration be undone?
+   - Is there a point-of-no-return?
+   - What data is destroyed vs transformed?
+   - Backup strategy: snapshot before, verify after
+   - Rollback procedure: documented and tested?
+
+When analyzing migrations:
+- Assume Murphy's Law applies - if a mapping CAN be wrong, verify it
+- Production data is messier than test data - always
+- Silent data corruption is worse than a failed migration
+- If you can't explain exactly what happens to each field, the migration isn't ready
+
 Remember: In production, data integrity issues can be catastrophic. Be thorough, be cautious, and always consider the worst-case scenario.
