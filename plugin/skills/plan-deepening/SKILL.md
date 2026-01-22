@@ -545,19 +545,133 @@ At the TOP of the plan, add a comprehensive summary section:
 
 ---
 
-## Phase 8: Post-Enhancement Options
+## Phase 8: Materialize Enhanced Plan to Disk
 
-### Write Enhanced Plan to Disk
+**CRITICAL:** You MUST write the enhanced plan back to THE SAME ORIGINAL PLAN FILE before presenting options or completing this skill. The research findings are worthless if not persisted to the plan file.
 
-**CRITICAL:** Write the enhanced plan to disk BEFORE presenting options to user.
+**Target file:** The SAME `[plan_path]` that was provided as input to this skill (e.g., `plans/feat-user-auth.md`).
+
+### Step 1: Create Backup
 
 ```bash
-# Write to original file (preserving backup)
 cp [plan_path] [plan_path].backup
-# Write enhanced content
 ```
 
-### Present Options to User
+### Step 2: Construct the Enhanced Plan
+
+Build the complete enhanced plan by modifying the original file structure:
+1. **Enhancement Summary** (from Phase 7) - INSERT at the TOP of the file, right after the title
+2. **Original plan sections** - preserved exactly as-is
+3. **Research Insights** subsections - INSERT AFTER each original section (from Phase 6)
+
+The enhanced file structure:
+
+```markdown
+# [Original Plan Title]
+
+## Enhancement Summary
+[Content from Phase 7 - deepened date, research coverage, key improvements, conflicts, applied learnings]
+
+---
+
+## [Original Section 1]
+[Original content - unchanged]
+
+### Research Insights
+[Best practices, performance considerations, security considerations, implementation details, edge cases, anti-patterns, learnings, references - from Phase 6]
+
+## [Original Section 2]
+[Original content - unchanged]
+
+### Research Insights
+[Research findings for this section]
+
+... continue for all sections ...
+```
+
+### Step 3: Write Back to the ORIGINAL Plan File
+
+Use the **Write tool** to overwrite the original plan file with the enhanced content:
+
+```
+Write: [plan_path]   <-- SAME FILE that was input
+Content: [The complete enhanced plan markdown constructed in Step 2]
+```
+
+**DO NOT create a new file.** Write to the SAME path that was provided as input.
+
+**This step is NON-OPTIONAL.** If you skip this, all research is lost.
+
+### Step 4: Verify Write Success
+
+```bash
+# Verify file was updated with new content
+wc -l [plan_path]
+# Should show more lines than original due to Enhancement Summary + Research Insights sections
+```
+
+---
+
+## Phase 9: Update Context File
+
+Update the context file with deepening metadata. This serves as an audit trail of what research was performed.
+
+### Step 1: Determine Context File Path
+
+The context file path is derived from the plan path:
+- Plan: `plans/feat-user-auth.md`
+- Context: `plans/feat-user-auth.context.md`
+
+```bash
+# Check if context file exists
+CONTEXT_PATH="${plan_path%.md}.context.md"
+test -f "$CONTEXT_PATH" && echo "Context file exists"
+```
+
+### Step 2: Append Deepening Metadata
+
+Read the existing context file and append the deepening record:
+
+```markdown
+## Deepening [YYYY-MM-DD HH:MM]
+
+### Research Coverage
+- **Skills discovered:** [count] (from [n] sources)
+- **Skills applied:** [count] ([list of skill names])
+- **Learnings checked:** [count] total, [count] relevant
+- **Research agents:** [count]
+- **Context7 queries:** [count]
+- **Web searches:** [count]
+
+### Sections Enhanced
+- [Section 1 title]
+- [Section 2 title]
+- ...
+
+### Key Findings
+- [Most important finding 1]
+- [Most important finding 2]
+- [Most important finding 3]
+
+### Conflicts Identified
+- [Conflict 1 brief description, if any]
+- None
+
+### Agent Failures
+- [Failed agent: reason, if any]
+- None
+```
+
+### Step 3: Write Updated Context File
+
+```
+Write: [CONTEXT_PATH]
+Content: [Original context content + Deepening metadata section]
+```
+
+---
+
+## Phase 10: Present Options to User
 
 After writing the enhanced plan, present these options:
 

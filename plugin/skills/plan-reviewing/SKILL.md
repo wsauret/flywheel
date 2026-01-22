@@ -145,9 +145,26 @@ Scan findings for contradictions:
 
 ---
 
-## Phase 5: Write Review Summary
+## Phase 5: Materialize Review Summary to the Plan File
+
+**CRITICAL:** You MUST append the review summary to THE SAME ORIGINAL PLAN FILE before presenting options or completing this skill. Review findings are worthless if not persisted to the plan.
+
+**Target file:** The SAME `[plan_path]` that was provided as input to this skill (e.g., `plans/feat-user-auth.md`).
+
+### Step 1: Read Current Plan Content
+
+```bash
+cat [plan_path]
+```
+
+### Step 2: Construct Review Summary Section
+
+Create the review summary section to append:
 
 ```markdown
+
+---
+
 # Plan Review Summary
 
 **Plan:** [plan_path]
@@ -179,6 +196,27 @@ Scan findings for contradictions:
 **Failed:** [agent]: [error]
 ```
 
+### Step 3: Write Back to the ORIGINAL Plan File
+
+Use the **Write tool** to write the plan file with the review summary APPENDED at the end:
+
+```
+Write: [plan_path]   <-- SAME FILE that was input
+Content: [Original plan content + "---" separator + Review Summary section]
+```
+
+**DO NOT create a separate review file.** Append to the SAME plan file that was provided as input.
+
+**This step is NON-OPTIONAL.** If you skip this, all review findings are lost.
+
+### Step 4: Verify Write Success
+
+```bash
+# Verify file was updated with review section
+grep -c "Plan Review Summary" [plan_path]
+# Should return 1
+```
+
 ### Priority Classification
 
 - **P1 (Critical)**: BLOCKS approval - security vulnerabilities, data corruption risks, fundamental design flaws
@@ -187,21 +225,60 @@ Scan findings for contradictions:
 
 ---
 
-## Phase 6: Update Context File (Optional)
+## Phase 6: Update Context File
 
-If context file exists for the plan:
+Update the context file with review metadata. This serves as an audit trail of what review was performed.
+
+### Step 1: Determine Context File Path
+
+The context file path is derived from the plan path:
+- Plan: `plans/feat-user-auth.md`
+- Context: `plans/feat-user-auth.context.md`
 
 ```bash
-ls plans/.context/[plan-name].md 2>/dev/null
+# Check if context file exists
+CONTEXT_PATH="${plan_path%.md}.context.md"
+test -f "$CONTEXT_PATH" && echo "Context file exists"
 ```
 
-Append review details:
+### Step 2: Append Review Metadata
+
+Read the existing context file and append the review record:
+
 ```markdown
-## Review [date]
-**Agents:** [count] run, [count] responded
-**Findings:** P1: [n], P2: [n], P3: [n]
-**Conflicts:** [count]
-**Status:** [Pending P1 resolution / Ready for implementation]
+## Review [YYYY-MM-DD HH:MM]
+
+### Agent Coverage
+- **Agents discovered:** [count]
+- **Agents run:** [count]
+- **Agents responded:** [count]
+- **Agents failed:** [count]
+
+### Findings Summary
+| Priority | Count | Status |
+|----------|-------|--------|
+| P1 (Critical) | [n] | [BLOCKS APPROVAL / None] |
+| P2 (Important) | [n] | [Should address / None] |
+| P3 (Nice-to-have) | [n] | [Optional / None] |
+
+### Conflicts Detected
+- [Conflict 1: brief description]
+- None
+
+### P1 Details (if any)
+- [P1 finding 1: brief description]
+- None
+
+### Review Status
+- **Approval status:** [Blocked by P1s / Ready for implementation]
+- **Recommended next step:** [Address P1 findings / Proceed to consolidation]
+```
+
+### Step 3: Write Updated Context File
+
+```
+Write: [CONTEXT_PATH]
+Content: [Original context content + Review metadata section]
 ```
 
 ---
