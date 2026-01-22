@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transform plugin/ markdown files to plugin-opencode/ format."""
+"""Transform plugin/ markdown files to ~/.config/opencode/ format."""
 
 from __future__ import annotations
 
@@ -159,12 +159,12 @@ def get_transform_type(rel_path: Path) -> str | None:
 
 
 def main() -> int:
-    """Transform plugin/ directory to plugin-opencode/ format."""
+    """Transform plugin/ directory to ~/.config/opencode/ format."""
     parser = argparse.ArgumentParser(
-        description="Transform plugin/ to plugin-opencode/ format"
+        description="Transform plugin/ to ~/.config/opencode/ format"
     )
     parser.add_argument("--source", type=Path, default=Path("plugin"))
-    parser.add_argument("--output", type=Path, default=Path("plugin-opencode"))
+    parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
     args = parser.parse_args()
 
@@ -172,8 +172,11 @@ def main() -> int:
         print(f"Error: Source '{args.source}' not found", file=sys.stderr)
         return 1
 
-    # Use temp directory for atomic swap
-    temp_output = args.output.with_suffix(".tmp") if not args.dry_run else None
+    # Subdirectories we manage (only these will be replaced)
+    managed_subdirs = {"agents", "commands", "skills"}
+
+    # Use temp directory for atomic swap of each subdir
+    temp_base = args.output.parent / f".{args.output.name}.tmp" if not args.dry_run else None
 
     counts = {"commands": 0, "agents": 0, "skills": 0, "copied": 0, "skipped": 0}
 
@@ -198,7 +201,7 @@ def main() -> int:
         else:
             dest_rel = rel
 
-        dest = (temp_output or args.output) / dest_rel
+        dest = (temp_base or args.output) / dest_rel
 
         if args.dry_run:
             action = "copy" if transform_type == "copy" else f"transform ({transform_type})"
@@ -212,11 +215,19 @@ def main() -> int:
                 transform_file(src, dest, transform_type)
                 counts[transform_type] += 1
 
-    if not args.dry_run and temp_output:
-        # Atomic swap
-        if args.output.exists():
-            shutil.rmtree(args.output)
-        temp_output.rename(args.output)
+    if not args.dry_run and temp_base:
+        # Atomic swap of only the managed subdirectories
+        args.output.mkdir(parents=True, exist_ok=True)
+        for subdir in managed_subdirs:
+            temp_subdir = temp_base / subdir
+            final_subdir = args.output / subdir
+            if temp_subdir.exists():
+                if final_subdir.exists():
+                    shutil.rmtree(final_subdir)
+                temp_subdir.rename(final_subdir)
+        # Clean up temp directory
+        if temp_base.exists():
+            shutil.rmtree(temp_base)
 
     print(f"Done: {counts['commands']} commands, {counts['agents']} agents, "
           f"{counts['skills']} skills, {counts['copied']} copied, {counts['skipped']} skipped")
