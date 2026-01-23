@@ -526,6 +526,32 @@ If the user selects **Other** (free text), accept the input for rework or specif
 
 ---
 
+## CRITICAL: No Code Changes
+
+**DO NOT WRITE OR EDIT ANY CODE DURING PLAN CREATION!**
+
+This skill is for research and planning only. Implementation happens in `/fly:work`.
+
+### Allowed Actions
+
+- ✅ Read source files to understand patterns
+- ✅ Search codebase with Grep/Glob
+- ✅ Query documentation via Context7 or WebSearch
+- ✅ Write markdown files to `plans/` directory
+- ✅ Create `.context.md` files for research findings
+
+### Prohibited Actions
+
+- ❌ Do NOT create or edit source code files (`.ts`, `.py`, `.rb`, etc.)
+- ❌ Do NOT create or edit test files
+- ❌ Do NOT modify configuration files
+- ❌ Do NOT implement any features or fixes
+- ❌ Do NOT "helpfully" start coding while researching
+
+**If you feel tempted to write code, STOP and add it to the plan instead.**
+
+---
+
 ## Anti-Patterns
 
 - **Don't skip research** - Even "simple" features benefit from context gathering
@@ -534,7 +560,6 @@ If the user selects **Other** (free text), accept the input for rework or specif
 - **Don't forget file references** - Always include specific paths with line numbers
 - **Don't ignore team conventions** - Check CLAUDE.md and existing patterns
 - **Don't create plans without context files** - Context enables downstream phases
-- **Don't start coding** - This skill is research and planning only
 - **Don't skip the AskUserQuestion** - User must choose next step
 
 ---

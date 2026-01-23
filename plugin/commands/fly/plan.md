@@ -1,6 +1,6 @@
 ---
 name: fly:plan
-description: Full planning workflow - create, deepen, and review. Orchestrates three independent skills.
+description: Full planning workflow - create, deepen, review, and consolidate. Orchestrates four independent skills.
 argument-hint: "[feature description OR path to *-design.md OR path to existing plan]"
 ---
 
@@ -10,13 +10,30 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 
 <input> #$ARGUMENTS </input>
 
-This orchestrator coordinates the full planning workflow by calling three independent skills in sequence, then consolidating:
+This orchestrator coordinates the full planning workflow by calling four independent skills in sequence:
 1. **plan-creation** - Research and create the initial plan
 2. **plan-deepening** - Enhance with skills, learnings, and research agents (writes to plan file)
 3. **plan-reviewing** - Run all reviewer agents and synthesize findings (writes to plan file)
-4. **consolidation** - Restructure into a single, actionable plan ready for `/fly:work`
+4. **plan-consolidation** - Restructure into a single, actionable plan ready for `/fly:work`
 
 Each skill can also be invoked independently. All outputs are materialized to the same plan file.
+
+---
+
+## IMPORTANT: Planning Mode Only
+
+**DO NOT WRITE OR EDIT ANY CODE DURING PLANNING!**
+
+This entire workflow is for research and planning only. Implementation happens later in `/fly:work`.
+
+- ✅ Research the codebase (read files, search patterns)
+- ✅ Query documentation and best practices
+- ✅ Write and edit markdown plan files in `plans/`
+- ✅ Create context files for downstream phases
+- ❌ Do NOT create or edit source code files
+- ❌ Do NOT implement any features or fixes
+- ❌ Do NOT modify application code, tests, or configs
+- ❌ That's for `/fly:work` after the plan is approved
 
 ---
 
@@ -129,150 +146,36 @@ This phase:
 
 ## Phase 4: Consolidate into Final Actionable Plan
 
-After deepening and reviewing, the plan file contains:
+After deepening and reviewing, the plan file contains scattered content:
 - Original plan content
 - Enhancement Summary (from deepening)
 - Research Insights subsections (from deepening)
 - Plan Review Summary (from reviewing)
 
-**This phase consolidates everything into a clean, work-ready format.**
+**This phase consolidates everything into a clean, work-ready format using the plan-consolidation skill.**
 
-### Step 1: Read the Current Plan
-
-```bash
-cat [PLAN_PATH]
-```
-
-### Step 2: Restructure into Actionable Format
-
-Reorganize the plan into this final structure:
-
-```markdown
-# [Plan Title]
-
-## Status
-- **Created:** [date]
-- **Deepened:** [date]
-- **Reviewed:** [date]
-- **Ready for:** /fly:work
-
-## Executive Summary
-[1-2 paragraph synthesis of what this plan accomplishes]
-
-## Critical Items Before Implementation
-[Extract P1 findings that MUST be addressed - if any]
-[Extract unresolved conflicts - if any]
-
-## Implementation Checklist
-
-### Phase 1: [Name]
-- [ ] Step 1.1: [Concrete action]
-  - **Research insight:** [Relevant finding from deepening]
-  - **Review note:** [Relevant finding from review, if any]
-- [ ] Step 1.2: [Concrete action]
-  ...
-
-### Phase 2: [Name]
-- [ ] Step 2.1: [Concrete action]
-  ...
-
-[Continue for all phases]
-
-## Technical Reference
-
-### Best Practices to Follow
-[Consolidated from Research Insights - deduplicated]
-
-### Anti-Patterns to Avoid
-[Consolidated from Research Insights + Review findings]
-
-### Code Examples
-[Key code snippets from Research Insights, organized by topic]
-
-### Security Considerations
-[Consolidated security items from deepening + review]
-
-### Performance Considerations
-[Consolidated performance items from deepening + review]
-
-## Review Findings Summary
-
-### Addressed in Plan
-[P1/P2 items that have been incorporated into the implementation checklist above]
-
-### Deferred Items
-[P3 items that are nice-to-have but not blocking]
-
-### Resolved Conflicts
-[How each conflict was resolved, if any]
-
----
-## Appendix: Raw Research & Review Data
-<details>
-<summary>Original Enhancement Summary</summary>
-[The Enhancement Summary section from deepening]
-</details>
-
-<details>
-<summary>Original Review Summary</summary>
-[The Plan Review Summary section from reviewing]
-</details>
-```
-
-### Step 3: Write Consolidated Plan
-
-Use the **Write tool** to overwrite the plan file with the consolidated version:
+### Invoke the Consolidation Skill
 
 ```
-Write: [PLAN_PATH]
-Content: [The consolidated plan markdown]
+skill: plan-consolidation
+arguments: [PLAN_PATH]
 ```
 
-### Step 4: Verify Consolidation
+This skill:
+- Extracts all research insights, review findings, and implementation steps
+- Synthesizes into a single actionable document with checklists
+- Integrates insights directly into relevant implementation steps
+- Handles P1 findings and conflicts appropriately
+- Preserves raw data in collapsible Appendix sections
+- Updates the context file with consolidation metadata
 
-```bash
-# Verify the plan has the new structure
-grep -c "Implementation Checklist" [PLAN_PATH]
-# Should return 1
-```
+**Capture output:**
+- `CHECKLIST_ITEMS` = Count of checklist items created
+- `PHASES_COUNT` = Number of implementation phases
+- `P1_STATUS` = "all addressed" or "N blocking"
+- `CONFLICTS_STATUS` = "all resolved" or "N pending"
 
-### Step 5: Update Context File
-
-Update the context file with consolidation metadata to complete the audit trail.
-
-**Context file path:** `[PLAN_PATH with .md replaced by .context.md]`
-- Plan: `plans/feat-user-auth.md`
-- Context: `plans/feat-user-auth.context.md`
-
-Append the consolidation record:
-
-```markdown
-## Consolidation [YYYY-MM-DD HH:MM]
-
-### Actions Performed
-- Restructured into actionable checklist format
-- Integrated research insights into implementation steps
-- Consolidated review findings
-- Created Technical Reference section
-
-### Plan Status
-- **P1 findings:** [count] ([addressed/blocking])
-- **P2 findings:** [count] (incorporated)
-- **P3 findings:** [count] (deferred)
-- **Conflicts:** [count] ([resolved/pending])
-
-### Ready for Implementation
-- **Status:** [Ready for /fly:work | Blocked by P1 findings]
-- **Checklist items:** [count]
-- **Implementation phases:** [count]
-```
-
-Write the updated context file:
-
-```
-Write: [CONTEXT_PATH]
-Content: [Original context content + Consolidation metadata section]
-```
+**If plan-consolidation presents post-consolidation options, select "Start /fly:work" to continue OR address blocking items first if any P1 findings remain unresolved.**
 
 **Result:** The plan file is now a single, coherent, actionable document ready for `/fly:work`. The context file contains a complete audit trail of all phases.
 
@@ -344,6 +247,7 @@ The orchestrator maintains state between phases:
        v                       |
 [Phase 2: Deepen] <------------+
        |                       |
+       | (skill: plan-deepening)
        | (writes Enhancement Summary + Research Insights TO PLAN FILE)
        v                       |
    SKILLS_APPLIED              |
@@ -352,6 +256,7 @@ The orchestrator maintains state between phases:
        v                       |
 [Phase 3: Review] <------------+
        |
+       | (skill: plan-reviewing)
        | (writes Review Summary TO PLAN FILE)
        v
    REVIEWERS_RUN
@@ -361,9 +266,13 @@ The orchestrator maintains state between phases:
        v
 [Phase 4: Consolidate]
        |
-       | (restructures plan into actionable format)
+       | (skill: plan-consolidation)
+       | (restructures entire plan into actionable format)
        v
-   PLAN_PATH (now contains consolidated, work-ready content)
+   CHECKLIST_ITEMS
+   PHASES_COUNT
+   P1_STATUS
+   CONFLICTS_STATUS
        |
        v
 [Phase 5: Present]
@@ -376,6 +285,8 @@ The orchestrator maintains state between phases:
 - Implementation checklist with concrete steps
 - Research insights integrated into relevant steps
 - Review findings addressed or deferred
+- Technical reference section with best practices and code examples
+- Raw data preserved in collapsible Appendix
 - Ready for `/fly:work`
 
 ---
@@ -387,14 +298,15 @@ The orchestrator maintains state between phases:
 - **plan-creation fails**: Report error, do not proceed to deepening
 - **plan-deepening fails**: Report error, still run review on original plan
 - **plan-reviewing fails**: Report error, still run consolidation on what we have
-- **consolidation fails**: Report error, present the un-consolidated plan (still has all content, just not restructured)
+- **plan-consolidation fails**: Report error, present the un-consolidated plan (still has all content, just not restructured)
 
 ### Recovery
 
-- Each phase writes to disk before completing (deepening and reviewing both write to the plan file)
+- Each phase writes to disk before completing (deepening, reviewing, and consolidation all write to the plan file)
 - Re-running `/fly:plan` with an existing plan path skips creation
 - Context file tracks which phases completed
 - If consolidation fails, the plan file still contains all research and review content (just not reorganized)
+- Consolidation creates a `.pre-consolidation.backup` file that can be restored
 
 ---
 
@@ -406,7 +318,7 @@ The orchestrator maintains state between phases:
 /fly:plan Add user authentication with OAuth2 support
 ```
 
-Runs: plan-creation -> plan-deepening -> plan-reviewing
+Runs: plan-creation -> plan-deepening -> plan-reviewing -> plan-consolidation
 
 ### Design Mode (Design Doc)
 
@@ -414,7 +326,7 @@ Runs: plan-creation -> plan-deepening -> plan-reviewing
 /fly:plan plans/oauth2-authentication-design.md
 ```
 
-Runs: plan-creation (uses design) -> plan-deepening -> plan-reviewing
+Runs: plan-creation (uses design) -> plan-deepening -> plan-reviewing -> plan-consolidation
 
 ### Review Mode (Existing Plan)
 
@@ -422,7 +334,15 @@ Runs: plan-creation (uses design) -> plan-deepening -> plan-reviewing
 /fly:plan plans/feat-user-authentication.md
 ```
 
-Runs: plan-deepening -> plan-reviewing (skips creation)
+Runs: plan-deepening -> plan-reviewing -> plan-consolidation (skips creation)
+
+### Consolidation Only Mode
+
+```
+/fly:consolidate plans/feat-user-authentication.md
+```
+
+Runs: plan-consolidation only (for plans already deepened and reviewed)
 
 ---
 
@@ -435,5 +355,9 @@ Runs: plan-deepening -> plan-reviewing (skips creation)
 - **State handoff** - Plan path captured from Phase 1 flows to all subsequent phases
 - **Graceful degradation** - Partial failures still produce useful output
 - **User control** - Post-execution options let user choose next action
-- **Independent skills** - Each skill can also be invoked directly
+- **Independent skills** - Each skill can also be invoked directly:
+  - `skill: plan-creation` - Create a plan
+  - `skill: plan-deepening` - Add research insights
+  - `skill: plan-reviewing` - Run reviewer agents
+  - `skill: plan-consolidation` - Restructure for work
 - **Work-ready output** - After consolidation, the plan is ready for `/fly:work` with actionable checklists
