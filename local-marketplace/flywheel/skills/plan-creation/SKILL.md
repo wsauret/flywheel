@@ -37,16 +37,34 @@ Launch three research agents simultaneously to understand the project landscape.
 ```
 Task repo-research-analyst: "Analyze codebase for patterns related to: <feature_description>.
 Find: existing implementations, file structure, naming conventions, relevant services.
-Return: file paths with line numbers (e.g., src/services/auth.ts:42)"
+Return: file paths with line numbers (e.g., src/services/auth.ts:42)
+
+IMPORTANT: Flag any OPEN QUESTIONS you encounter:
+- Ambiguities in how existing code handles similar cases
+- Multiple valid approaches you see in the codebase
+- Areas where you're uncertain which pattern to follow
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
 
 Task best-practices-researcher: "Research best practices for: <feature_description>.
 Find: industry standards, common patterns, anti-patterns to avoid.
-Use WebSearch for current (2026) best practices if applicable."
+Use WebSearch for current (2026) best practices if applicable.
+
+IMPORTANT: Flag any OPEN QUESTIONS you encounter:
+- Trade-offs between competing best practices
+- Context-dependent recommendations
+- Areas where industry guidance is split
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
 
 Task framework-docs-researcher: "Research framework documentation for: <feature_description>.
 Use mcp__plugin_Flywheel_context7__resolve-library-id to find library IDs.
 Use mcp__plugin_Flywheel_context7__query-docs to query specific documentation.
-Return: relevant code examples, configuration patterns, version-specific guidance."
+Return: relevant code examples, configuration patterns, version-specific guidance.
+
+IMPORTANT: Flag any OPEN QUESTIONS you encounter:
+- Multiple valid approaches in the documentation
+- Configuration choices that depend on use case
+- Version-specific considerations
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
 ```
 
 ### Framework Documentation Lookup
@@ -72,6 +90,7 @@ After agents complete, consolidate:
 - [ ] Include URLs to external documentation and best practices guides
 - [ ] Create reference list of similar issues or PRs (e.g., `#123`, `#456`)
 - [ ] Note team conventions discovered in `CLAUDE.md` or team documentation
+- [ ] **Collect all OPEN QUESTIONS** flagged by research agents for inclusion in the plan
 
 ---
 
@@ -217,6 +236,12 @@ end
 
 [What could block or complicate this]
 
+## Open Questions
+
+[Questions from research needing resolution - remove section if none]
+
+- **[Question]**: Option A vs Option B (Source: [agent])
+
 ## References & Research
 
 - Similar implementations: [file_path:line_number]
@@ -325,6 +350,15 @@ end
 ## Documentation Plan
 
 [What docs need updating]
+
+## Open Questions
+
+[Questions identified during research that need resolution before implementation]
+
+| Question | Options | Source |
+|----------|---------|--------|
+| [Question from research] | A: [option], B: [option] | [which agent flagged it] |
+| [Trade-off identified] | A: [approach], B: [approach] | [source] |
 
 ## References & Research
 
@@ -462,6 +496,13 @@ researchers:
 ## Gotchas & Warnings
 
 - [Warning about patterns or pitfalls]
+
+## Open Questions from Research
+
+[Questions flagged by research agents that need user decision]
+
+- **[Question]**: [Options if applicable] (Source: [agent])
+- **[Question]**: [Options] (Source: [agent])
 
 ## Research Quality
 

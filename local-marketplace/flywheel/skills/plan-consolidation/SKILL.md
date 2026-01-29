@@ -8,6 +8,7 @@ allowed-tools:
   - Grep
   - Glob
   - Bash
+  - AskUserQuestion
 ---
 
 # Plan Consolidation Skill
@@ -158,7 +159,128 @@ For each implementation step, identify relevant:
 
 ---
 
-## Phase 3: Synthesize into Actionable Format
+## Phase 3: Resolve Open Questions
+
+Before consolidating, identify and resolve any open questions, alternatives, or unresolved decisions from the deepening and review phases. **The user must weigh in on these before we can create a work-ready plan.**
+
+### Step 1: Scan for Open Questions
+
+Search the plan content for:
+
+**Structured Open Questions (from deepening and reviewing phases):**
+- `### Open Questions (Requires User Decision)` section in Enhancement Summary
+- `## Open Questions (Requires User Decision)` section in Plan Review Summary
+- Tables with columns: `| # | Question | Options | Source(s) |`
+- `OPEN QUESTION:` markers flagged by individual agents
+
+**Explicit markers:**
+- "Open Questions" sections or headings
+- "TODO", "TBD", "to be decided", "to be determined"
+- "?" in headings or bullet points
+- "Decision needed" or "requires decision"
+
+**Implicit alternatives:**
+- "Option A vs Option B" language
+- "Consider X or Y" phrasing
+- "Either... or..." constructions
+- "Alternatively," followed by different approach
+
+**Reviewer conflicts (already converted to Open Questions by reviewing skill):**
+- `### Open Question: [Topic]` sections with Perspective A/B
+- Conflicts listed in "Conflicts Between Reviewers" section
+- Any remaining conflicts not yet converted to questions
+
+### Step 2: Build Question List
+
+Create a structured list of all questions found:
+
+```markdown
+OPEN_QUESTIONS:
+1. [Topic]: [Question or decision needed]
+   - Context: [Where this came from - which section/agent]
+   - Options: [A, B, C if clear alternatives exist]
+
+2. [Topic]: [Question or decision needed]
+   - Context: [Where this came from]
+   - Options: [If applicable]
+```
+
+### Step 3: Resolve Each Question Interactively
+
+**For each open question, use AskUserQuestion:**
+
+**Rules (same as brainstorming):**
+1. **One question at a time** - Never ask multiple questions at once
+2. **Prefer multiple choice** - Use AskUserQuestion with 2-4 options
+3. **Lead with recommendation** - State your opinion and explain why
+4. **Include "You decide" option** - Let user delegate to you
+
+**Question format:**
+
+```
+Question: "[Topic]: [The question]"
+
+Context: [Brief explanation of where this came from and why it matters]
+
+My recommendation: [Your preferred option and why]
+
+Options:
+1. [Option A] (Recommended) - [Brief description]
+2. [Option B] - [Brief description]
+3. [Option C if applicable] - [Brief description]
+4. "You pick what's best" - Let me decide based on the research
+```
+
+**Handle responses:**
+
+| Response | Action |
+|----------|--------|
+| User picks an option | Record decision with rationale |
+| User picks "You decide" | Apply your recommendation, note that user delegated |
+| User provides custom answer | Record their custom direction |
+| User wants more context | Provide deeper explanation, then re-ask |
+
+### Step 4: Record All Decisions
+
+Build a decisions record to incorporate into the consolidated plan:
+
+```markdown
+RESOLVED_QUESTIONS:
+1. [Topic]: [Decision made]
+   - Chosen: [Option selected]
+   - Rationale: [Why - user preference or delegated recommendation]
+   - Impact: [What this affects in the implementation]
+
+2. [Topic]: [Decision made]
+   - Chosen: [Option selected]
+   - Rationale: [Why]
+   - Impact: [What this affects]
+```
+
+### Step 5: No Questions Found
+
+If the plan has no open questions:
+- State: "No open questions found in the plan. All decisions appear resolved."
+- Proceed directly to Phase 4 (Synthesize)
+
+### Step 6: Summary Before Proceeding
+
+After all questions are resolved, summarize:
+
+```
+Questions Resolved: [count]
+
+Decisions made:
+- [Topic 1]: [Decision] (user choice / delegated)
+- [Topic 2]: [Decision] (user choice / delegated)
+- [Topic 3]: [Decision] (user choice / delegated)
+
+Proceeding with consolidation...
+```
+
+---
+
+## Phase 4: Synthesize into Actionable Format
 
 ### Synthesis Principles
 
@@ -185,7 +307,7 @@ P1 findings are CRITICAL and MUST be addressed before implementation:
 
 ---
 
-## Phase 4: Generate Consolidated Plan
+## Phase 5: Generate Consolidated Plan
 
 Write the consolidated plan using this structure:
 
@@ -202,6 +324,15 @@ Write the consolidated plan using this structure:
 ## Executive Summary
 
 [1-2 paragraph synthesis of what this plan accomplishes. Pull from original plan overview, enhanced with key insights from deepening.]
+
+## Decisions Made
+
+[Questions resolved during consolidation - only include if questions were asked]
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| [Topic 1] | [Option chosen] | [User preference / Delegated to assistant] |
+| [Topic 2] | [Option chosen] | [Rationale] |
 
 ## Critical Items Before Implementation
 
@@ -340,7 +471,7 @@ Write the consolidated plan using this structure:
 
 ---
 
-## Phase 5: Write Consolidated Plan
+## Phase 6: Write Consolidated Plan
 
 ### Step 1: Create Backup
 
@@ -377,7 +508,7 @@ grep -c "^\- \[ \]" [plan_path]
 
 ---
 
-## Phase 6: Update Context File
+## Phase 7: Update Context File
 
 Update the context file with consolidation metadata to complete the audit trail.
 
@@ -399,11 +530,17 @@ cat [CONTEXT_PATH]
 ## Consolidation [YYYY-MM-DD HH:MM]
 
 ### Actions Performed
+- Resolved [N] open questions with user input
 - Restructured into actionable checklist format
 - Integrated [X] research insights into implementation steps
 - Incorporated [Y] review findings
 - Created Technical Reference section
 - Preserved raw data in Appendix
+
+### Decisions Made
+[List each decision from Phase 3]
+- [Topic 1]: [Choice] ([user choice / delegated])
+- [Topic 2]: [Choice] ([user choice / delegated])
 
 ### Synthesis Statistics
 - **Total checklist items:** [count]
@@ -432,7 +569,7 @@ Content: [Original context content + Consolidation metadata section]
 
 ---
 
-## Phase 7: Present Results
+## Phase 8: Present Results
 
 Display comprehensive summary to the user:
 
@@ -461,7 +598,7 @@ The plan is now structured as an actionable checklist with:
 
 ---
 
-## Phase 8: Post-Consolidation Options
+## Phase 9: Post-Consolidation Options
 
 Use **AskUserQuestion** to present next steps:
 
@@ -512,6 +649,14 @@ Use **AskUserQuestion** to present next steps:
 
 ## Anti-Patterns
 
+### Don't Skip Question Resolution
+- **Wrong:** Consolidate with "TBD" or unresolved alternatives still in the plan
+- **Right:** Ask user about each open question before consolidating
+
+### Don't Ask Multiple Questions at Once
+- **Wrong:** "Should we use A or B? Also, what about X vs Y? And do you prefer..."
+- **Right:** One question at a time, wait for response, then next question
+
 ### Don't Just Append
 - **Wrong:** Slap a "Consolidated Summary" at the top
 - **Right:** Restructure entire document into new format
@@ -553,6 +698,8 @@ This skill activates on:
 
 Before finalizing consolidation:
 
+- [ ] All open questions have been resolved with user input
+- [ ] Decisions are recorded in the "Decisions Made" section
 - [ ] All P1 findings are either addressed or flagged as blocking
 - [ ] All conflicts are either resolved or flagged as pending
 - [ ] Every implementation step has a concrete action
@@ -566,10 +713,12 @@ Before finalizing consolidation:
 
 ## Key Principles Summary
 
-1. **RESTRUCTURE, NOT APPEND** - Transform the document, don't just add to it
-2. **INTEGRATE INSIGHTS** - Research findings belong IN the checklist steps
-3. **PRESERVE RAW DATA** - Appendix keeps full context available
-4. **ADDRESS OR BLOCK** - P1 findings must be resolved or flag implementation
-5. **CONCRETE ACTIONS** - Every checklist item is executable
-6. **MAINTAIN TRACEABILITY** - Know where each recommendation came from
-7. **READY FOR WORK** - Output should feed directly into executing-work skill
+1. **RESOLVE QUESTIONS FIRST** - Get user input on open questions before consolidating
+2. **ONE QUESTION AT A TIME** - Never overwhelm with multiple questions at once
+3. **RESTRUCTURE, NOT APPEND** - Transform the document, don't just add to it
+4. **INTEGRATE INSIGHTS** - Research findings belong IN the checklist steps
+5. **PRESERVE RAW DATA** - Appendix keeps full context available
+6. **ADDRESS OR BLOCK** - P1 findings must be resolved or flag implementation
+7. **CONCRETE ACTIONS** - Every checklist item is executable
+8. **MAINTAIN TRACEABILITY** - Know where each recommendation came from
+9. **READY FOR WORK** - Output should feed directly into executing-work skill

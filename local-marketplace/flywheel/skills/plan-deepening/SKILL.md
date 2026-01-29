@@ -141,7 +141,13 @@ YOUR JOB: Use this skill on the plan.
 
 4. Return the skill's full output
 
-The skill tells you what to do - follow it. Execute the skill completely."
+The skill tells you what to do - follow it. Execute the skill completely.
+
+IMPORTANT: Flag any OPEN QUESTIONS you encounter while applying this skill:
+- Trade-offs where multiple valid approaches exist
+- Decisions that depend on user preference or context
+- Areas where the skill's guidance conflicts with what you see in the codebase
+Format each as: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
 ```
 
 **Spawn ALL skill sub-agents in PARALLEL:**
@@ -270,6 +276,11 @@ If relevant:
 
 If NOT relevant after deeper analysis:
 - Say 'Not applicable: [reason]'
+
+IMPORTANT: Flag any OPEN QUESTIONS this learning raises:
+- Does the plan's approach conflict with this learning?
+- Are there trade-offs between following this learning vs the current plan?
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'
 "
 ```
 
@@ -316,7 +327,13 @@ Find:
 - Documentation and tutorials
 - Real-world implementation examples
 
-Return concrete, actionable recommendations with code examples where possible."
+Return concrete, actionable recommendations with code examples where possible.
+
+IMPORTANT: Flag any OPEN QUESTIONS you encounter:
+- Trade-offs between competing approaches
+- Context-dependent recommendations where user preference matters
+- Areas where best practices conflict or are evolving
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
 ```
 
 ### Context7 MCP Integration
@@ -385,6 +402,7 @@ For each agent's output, extract:
 - [ ] Documentation links (references)
 - [ ] Skill-specific patterns (from matched skills)
 - [ ] Relevant learnings (past solutions that apply)
+- [ ] **OPEN QUESTIONS** flagged by the agent (collect ALL of these)
 
 ### Deduplication Algorithm
 
@@ -403,10 +421,11 @@ For each agent's output, extract:
 - Cross-reference each other
 
 **Conflicting findings:** Contradictory recommendations
-- Mark clearly as CONFLICT
+- **DO NOT RESOLVE** - Convert to OPEN QUESTION
 - Present both sides with reasoning
 - Note which agents support each side
-- Let user decide resolution
+- Format as: `OPEN QUESTION: [topic] - Agent A recommends X because [reason], Agent B recommends Y because [reason]. (Options: A: [X], B: [Y])`
+- The consolidation phase will ask the user to decide
 
 ### Prioritize by Impact
 
@@ -531,10 +550,15 @@ At the TOP of the plan, add a comprehensive summary section:
 - [Important finding 1 that wasn't in original plan]
 - [Important finding 2 that wasn't in original plan]
 
-### Conflicts Requiring Resolution
-- **[Topic]:** [Brief description of conflict]
-  - Side A ([agents]): [Position]
-  - Side B ([agents]): [Position]
+### Open Questions (Requires User Decision)
+
+**Questions flagged by research agents and conflicts between agents. These MUST be resolved during consolidation before implementation.**
+
+| # | Question | Options | Source(s) |
+|---|----------|---------|-----------|
+| 1 | [Question or conflict topic] | A: [option], B: [option] | [agent names] |
+| 2 | [Trade-off identified] | A: [approach], B: [approach] | [agent names] |
+| 3 | [Context-dependent decision] | A: [choice], B: [choice] | [agent name] |
 
 ### Applied Learnings
 - [Learning 1]: Applied to [section]
@@ -653,8 +677,13 @@ Read the existing context file and append the deepening record:
 - [Most important finding 2]
 - [Most important finding 3]
 
-### Conflicts Identified
-- [Conflict 1 brief description, if any]
+### Open Questions Generated
+- [Question 1]: [Options] (from [agents])
+- [Question 2]: [Options] (from [agents])
+- Total: [count] questions for consolidation to resolve
+
+### Conflicts Identified (converted to Open Questions)
+- [Conflict 1]: Converted to Open Question #[n]
 - None
 
 ### Agent Failures
@@ -759,9 +788,11 @@ Based on selection:
 - **Wrong:** Run skill agents, then learnings, then research
 - **Right:** Launch ALL agents in parallel
 
-### Don't Ignore Conflicts
+### Don't Resolve Conflicts
 - **Wrong:** Pick one recommendation and ignore the other
-- **Right:** Mark conflicts clearly for user resolution
+- **Wrong:** Decide which agent is "right"
+- **Right:** Convert ALL conflicts to Open Questions with both sides presented
+- **Right:** Let consolidation ask the user to decide
 
 ### Don't Skip Learnings
 - **Wrong:** "No time for learnings, just use skills"
@@ -875,7 +906,8 @@ Before finalizing:
 - [ ] Research insights clearly marked and attributed
 - [ ] Code examples are syntactically correct
 - [ ] Links are valid and relevant
-- [ ] No contradictions between sections (or marked as conflicts)
+- [ ] **All OPEN QUESTIONS from agents collected** in Enhancement Summary
+- [ ] **Conflicts converted to Open Questions** (not resolved by this skill)
 - [ ] Enhancement summary accurately reflects changes
 - [ ] All discovered skills were spawned as sub-agents
 - [ ] Learnings were checked and relevant ones applied
@@ -891,6 +923,8 @@ Before finalizing:
 4. **CONCRETE EXAMPLES** - Code snippets with file paths, not vague advice
 5. **CHECK ALL 5 SOURCES** - Project, user, plugin skills + learnings + research
 6. **NO SUB-AGENT LIMITS** - 20, 30, 40 skill sub-agents is fine
-7. **DEDUPLICATE INTELLIGENTLY** - Merge similar, flag conflicts, prioritize by impact
-8. **WRITE BEFORE OPTIONS** - Save enhanced plan to disk before asking user what's next
-9. **INSTITUTIONAL KNOWLEDGE** - Learnings prevent repeating past mistakes
+7. **COLLECT OPEN QUESTIONS** - Every agent flags questions; collect them all
+8. **DON'T RESOLVE CONFLICTS** - Convert conflicts to Open Questions for user decision
+9. **DEDUPLICATE INTELLIGENTLY** - Merge similar findings, prioritize by impact
+10. **WRITE BEFORE OPTIONS** - Save enhanced plan to disk before asking user what's next
+11. **INSTITUTIONAL KNOWLEDGE** - Learnings prevent repeating past mistakes

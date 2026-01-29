@@ -15,6 +15,8 @@ allowed-tools:
 
 Run ALL available reviewer agents in parallel against a plan file. Maximizes coverage by discovering and running every available reviewer, then synthesizes findings with deduplication and conflict detection.
 
+**Philosophy:** Each reviewer agent represents a different stakeholder perspective (security, performance, simplicity, architecture). These perspectives legitimately conflict - a security-focused approach may sacrifice performance, a simple approach may sacrifice flexibility. **This skill does NOT resolve conflicts.** It surfaces them as Open Questions for the user to decide during consolidation. The user knows their priorities; we just present the trade-offs clearly.
+
 ## Input
 
 The plan to review is provided via `$ARGUMENTS`. Can be:
@@ -59,13 +61,25 @@ Launch a Task for EVERY discovered agent:
 ```
 Task architecture-strategist: "Review this plan for architectural concerns.
 PLAN: [full plan content]
-Provide findings with priority (P1/P2/P3) and specific locations."
+Provide findings with priority (P1/P2/P3) and specific locations.
+
+IMPORTANT: Also flag any OPEN QUESTIONS from your perspective:
+- Trade-offs where you see multiple valid architectural approaches
+- Decisions that depend on priorities you don't know (e.g., optimize for X vs Y)
+- Areas where you'd want clarification before implementation
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
 
 Task security-reviewer: "Review this plan for security concerns.
 PLAN: [full plan content]
-Provide findings with priority (P1/P2/P3) and specific locations."
+Provide findings with priority (P1/P2/P3) and specific locations.
 
-# ... continue for ALL discovered agents
+IMPORTANT: Also flag any OPEN QUESTIONS from your perspective:
+- Security vs usability trade-offs where user preference matters
+- Multiple valid security approaches with different costs
+- Areas where threat model assumptions affect the recommendation
+Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
+
+# ... continue for ALL discovered agents, each with the OPEN QUESTION instruction
 ```
 
 **Rules:**
@@ -115,33 +129,53 @@ Provide findings with priority (P1/P2/P3) and specific locations."
 
 ---
 
-## Phase 4: Detect Conflicts
+## Phase 4: Detect Conflicts and Convert to Open Questions
+
+**CRITICAL: Do NOT resolve conflicts. Different reviewers have different valid perspectives. Convert ALL conflicts to Open Questions for the user to decide during consolidation.**
 
 Scan findings for contradictions:
 - Agent A recommends X, Agent B recommends opposite Y
 - Agent A marks P1, Agent B marks same issue P3
 - Agent A: "pattern appropriate" vs Agent B: "anti-pattern"
 
-### Conflict Format
+### Why We Don't Resolve Conflicts
+
+Each reviewer agent represents a different stakeholder perspective:
+- **Security reviewer**: Prioritizes safety, may recommend more restrictive approaches
+- **Performance analyst**: Prioritizes speed, may recommend caching/optimization
+- **Code simplicity reviewer**: Prioritizes maintainability, may recommend simpler approaches
+- **Architecture strategist**: Prioritizes long-term flexibility
+
+These perspectives legitimately conflict. The USER must decide which priority matters more for their specific context.
+
+### Convert Each Conflict to Open Question
 
 ```markdown
-## CONFLICT: [Topic]
+### Open Question: [Topic]
 
-**Side A** (architecture-strategist, performance-analyst):
-> [Recommendation]
+**Context:** [Brief description of what the plan proposes]
 
-**Side B** (code-simplicity-reviewer):
-> [Opposing recommendation]
+**Perspective A** (security-reviewer):
+> [Their recommendation and reasoning]
 
-**Suggested resolution:** [If obvious winner based on context]
-**Requires human decision:** [If genuinely ambiguous]
+**Perspective B** (performance-analyst):
+> [Their opposing recommendation and reasoning]
+
+**Trade-off:** [What you gain/lose with each option]
+
+**Options:**
+- A: [Follow security-reviewer's recommendation]
+- B: [Follow performance-analyst's recommendation]
+- C: [Hybrid approach if applicable]
 ```
 
-### Resolution Hints
+### Conflict Metadata (for context file)
 
-- 3 agents vs 1 agent: "Majority recommendation: [X]"
-- P1 vs P3 assessment: "Conservative approach: treat as P1"
-- Context-dependent: "Depends on [factor] - recommend discussing"
+Track conflicts found but do NOT pick winners:
+- **Topic**: [what the conflict is about]
+- **Agents disagreeing**: [list]
+- **Converted to Open Question**: Yes
+- **Resolution**: Pending user decision in consolidation
 
 ---
 
@@ -179,7 +213,24 @@ Create the review summary section to append:
 | P2 (Important) | [n] | Should address |
 | P3 (Nice-to-have) | [n] | Optional |
 
-## Conflicts Detected: [count]
+## Open Questions (Requires User Decision)
+
+**Questions flagged by reviewers and conflicts between reviewers. These MUST be resolved during consolidation before implementation.**
+
+| # | Question | Options | Source(s) |
+|---|----------|---------|-----------|
+| 1 | [Question from reviewer] | A: [option], B: [option] | [agent name] |
+| 2 | [Conflict between agents] | A: [agent A view], B: [agent B view] | [both agents] |
+| 3 | [Trade-off identified] | A: [choice], B: [choice] | [agent name] |
+
+**Total Open Questions:** [count from individual agents] + [count from conflicts] = [total]
+
+## Conflicts Between Reviewers (Converted to Open Questions Above)
+
+[List each conflict briefly - full details are in the Open Questions section]
+
+- **[Topic]**: [Agent A] vs [Agent B] → Open Question #[n]
+- **[Topic]**: [Agent A] vs [Agent B] → Open Question #[n]
 
 ## P1 Findings (BLOCKS APPROVAL)
 [List each with full details]
@@ -261,8 +312,13 @@ Read the existing context file and append the review record:
 | P2 (Important) | [n] | [Should address / None] |
 | P3 (Nice-to-have) | [n] | [Optional / None] |
 
-### Conflicts Detected
-- [Conflict 1: brief description]
+### Open Questions Generated
+- [Question 1]: [Options] (from [agent])
+- [Question 2]: [Options] (from conflict between [agents])
+- Total: [count] questions for consolidation to resolve
+
+### Conflicts Detected (Converted to Open Questions)
+- [Conflict 1]: [Agent A] vs [Agent B] → Open Question #[n]
 - None
 
 ### P1 Details (if any)
@@ -270,8 +326,9 @@ Read the existing context file and append the review record:
 - None
 
 ### Review Status
-- **Approval status:** [Blocked by P1s / Ready for implementation]
-- **Recommended next step:** [Address P1 findings / Proceed to consolidation]
+- **Approval status:** [Blocked by P1s / Ready for consolidation]
+- **Open questions:** [count] requiring user decision
+- **Recommended next step:** [Address P1 findings / Proceed to consolidation to resolve open questions]
 ```
 
 ### Step 3: Write Updated Context File
@@ -303,11 +360,13 @@ Content: [Original context content + Review metadata section]
 
 ## Anti-Patterns
 
-- Don't filter agents - Run them ALL
-- Don't skip deduplication - Raw output overwhelms
-- Don't hide conflicts - Contradictions need human attention
-- Don't downgrade P1s - Critical issues must block
-- Don't present one-by-one - Synthesize first
+- **Don't filter agents** - Run them ALL
+- **Don't skip deduplication** - Raw output overwhelms
+- **Don't resolve conflicts** - Each reviewer has a valid perspective; convert to Open Questions
+- **Don't pick winners** - User decides which priority matters in their context
+- **Don't hide conflicts** - They represent real trade-offs that need human attention
+- **Don't downgrade P1s** - Critical issues must block
+- **Don't present one-by-one** - Synthesize first
 
 ---
 
