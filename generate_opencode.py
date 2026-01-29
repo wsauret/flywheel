@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transform plugin/ markdown files to ~/.config/opencode/ format."""
+"""Transform marketplace/flywheel/ markdown files to ~/.config/opencode/ format."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ BODY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"#\$ARGUMENTS"), "$ARGUMENTS"),
     (re.compile(r"/fly:(\w+)"), r"/\1"),
     (re.compile(r"^skill:\s*([\w-]+)\s*$", re.MULTILINE), r'skill({ name: "\1" })'),
-    (re.compile(r"^See `plugin/skills/.*$\n?", re.MULTILINE), ""),
+    (re.compile(r"^See `marketplace/flywheel/skills/.*$\n?", re.MULTILINE), ""),
 ]
 
 SKIP_PATHS = {".claude-plugin", "README.md"}
@@ -159,11 +159,11 @@ def get_transform_type(rel_path: Path) -> str | None:
 
 
 def main() -> int:
-    """Transform plugin/ directory to ~/.config/opencode/ format."""
+    """Transform marketplace/flywheel/ directory to ~/.config/opencode/ format."""
     parser = argparse.ArgumentParser(
-        description="Transform plugin/ to ~/.config/opencode/ format"
+        description="Transform marketplace/flywheel/ to ~/.config/opencode/ format"
     )
-    parser.add_argument("--source", type=Path, default=Path("plugin"))
+    parser.add_argument("--source", type=Path, default=Path("marketplace/flywheel"))
     parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
     args = parser.parse_args()

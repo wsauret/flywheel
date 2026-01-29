@@ -1,0 +1,13 @@
+{
+  "name": "local-marketplace",
+  "owner": {
+    "name": "Crexi"
+  },
+  "plugins": [
+    {
+      "name": "flywheel",
+      "source": "./flywheel",
+      "description": "A Claude Code plugin that removes the need for handholding"
+    }
+  ]
+}

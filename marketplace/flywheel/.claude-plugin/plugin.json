@@ -5,9 +5,7 @@
   "author": {
     "name": "Wesley Sauret"
   },
-  "homepage": "https://github.com/wsauret/flywheel-plugin",
   "repository": "https://github.com/wsauret/flywheel-plugin",
-  "license": "MIT",
   "keywords": [
     "workflows",
     "planning",
