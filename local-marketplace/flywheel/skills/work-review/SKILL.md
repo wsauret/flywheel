@@ -57,8 +57,7 @@ Ensure code is ready for analysis before proceeding.
 Run ALL applicable agents simultaneously:
 
 ```
-Task typescript-reviewer(PR content)   # TypeScript/JavaScript
-Task python-reviewer(PR content)       # Python
+Task code-quality-reviewer(PR content)    # Code quality (Python/TypeScript)
 Task git-history-researcher(PR content)   # History context
 Task pattern-reviewer(PR content)
 Task architecture-reviewer(PR content)

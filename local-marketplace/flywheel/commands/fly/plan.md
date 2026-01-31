@@ -337,8 +337,11 @@ Runs: plan-verification -> plan-review -> plan-consolidation (skips creation)
 
 ### Consolidation Only Mode
 
+To run only consolidation on an already deepened and reviewed plan, invoke the skill directly:
+
 ```
-/fly:consolidate plans/feat-user-authentication.md
+skill: plan-consolidation
+arguments: plans/feat-user-authentication.md
 ```
 
 Runs: plan-consolidation only (for plans already deepened and reviewed)

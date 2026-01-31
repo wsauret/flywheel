@@ -28,8 +28,7 @@ Run research agents to understand context. **DO NOT present findings to user** -
 
 **Run in parallel:**
 - Task repo-researcher(feature_idea)
-- Task framework-docs-researcher(feature_idea)
-- Task best-practices-researcher(feature_idea) [15s timeout]
+- Task web-researcher(feature_idea) [15s timeout]
 
 **Extract for internal use:**
 - Relevant existing patterns
@@ -179,7 +178,7 @@ Present completion summary and handoff options per reference template.
 ## Error Handling
 
 - **Agent failures**: Continue without research context
-- **best-practices timeout (15s)**: Continue with partial results
+- **web-researcher timeout (15s)**: Continue with partial results
 - **User abandonment**: Save partial progress to draft
 
 ---

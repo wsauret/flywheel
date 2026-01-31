@@ -214,8 +214,8 @@ created: <date>
 feature: "<feature description>"
 researchers:
   - repo-researcher
-  - best-practices-researcher
-  - framework-docs-researcher
+  - web-researcher
+  - git-history-researcher
 ---
 
 # Research Context: <Feature Name>
