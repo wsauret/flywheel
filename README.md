@@ -31,7 +31,7 @@ Brainstorm → Plan → Work → Review → Compound → Repeat
 | Command | Purpose |
 |---------|---------|
 | `/fly:brainstorm` | Explore ideas conversationally before detailed planning |
-| `/fly:plan` | Create, deepen, review, and consolidate implementation plans |
+| `/fly:plan` | Create, verify, review, and consolidate implementation plans |
 | `/fly:work` | Execute plans with continuous testing and quality checks |
 | `/fly:review` | Multi-agent code review with structured todo tracking |
 | `/fly:compound` | Document solved problems for future reference |
@@ -45,10 +45,10 @@ Conversational exploration of ideas before detailed planning. Asks one question 
 
 ### `/fly:plan`
 Full planning workflow that orchestrates four phases:
-1. **Create** - Research codebase and create initial plan
-2. **Deepen** - Enhance with skills, learnings, and research agents (20-40 parallel sub-agents)
-3. **Review** - Run all reviewer agents and synthesize findings
-4. **Consolidate** - Resolve open questions with user, create actionable checklists
+1. **Create** - Draft initial plan based on codebase patterns (creative/generative)
+2. **Verify** - Validate assumptions against docs, check claims aren't hallucinated (fact-checking)
+3. **Review** - Critique from multiple perspectives via reviewer agents (security, performance, architecture)
+4. **Consolidate** - Resolve open questions with user, synthesize into actionable checklists
 
 Each phase writes to the same plan file. Open questions and conflicts between agents are surfaced for user decision during consolidation.
 
@@ -65,10 +65,10 @@ Document solved problems using parallel subagents while context is fresh. Create
 
 Core workflow skills (invoked by commands):
 - **brainstorming** - Collaborative dialogue to explore and validate designs
-- **plan-creation** - Research-backed plan generation
-- **plan-verification** - Validate claims against docs, check for hallucinations
-- **plan-reviewing** - All reviewers run in parallel, conflicts become open questions
-- **plan-consolidation** - Resolve questions with user, create actionable checklists
+- **plan-creation** - Draft plans based on codebase patterns; flags claims for verification
+- **plan-verification** - Validate assumptions are real, not hallucinated; check framework compatibility
+- **plan-reviewing** - Critique from multiple perspectives; conflicts become open questions
+- **plan-consolidation** - Resolve questions with user input; create actionable checklists
 - **executing-work** - Probe-dispatch-checkpoint execution
 - **reviewing** - Multi-agent code review
 - **compounding** - Coordinate documentation capture
