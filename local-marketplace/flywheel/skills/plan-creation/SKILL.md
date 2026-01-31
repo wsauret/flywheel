@@ -94,6 +94,62 @@ After agents complete, consolidate:
 
 ---
 
+## Phase 1.5: Research Validation Gate
+
+**BLOCKING:** Do not proceed to planning until validation passes.
+
+### Validation Checklist
+
+Before writing any plan content, verify research quality:
+
+1. **Completeness**: Did all research agents return findings?
+2. **Accuracy**: Do referenced file paths actually exist? (Spot-check 3-5 paths)
+3. **Coverage**: Are there obvious gaps in research? (e.g., no API patterns found for API feature)
+4. **Conflicts**: Any contradictions between researcher findings?
+5. **Assumptions**: Any unverified assumptions that need flagging?
+
+### Validation Output
+
+```
+Research Validation
+-------------------
+✓ Completeness: [X]/3 agents returned findings
+✓ Accuracy: Verified [N] file paths exist
+✓ Coverage: [assessment]
+✓ Conflicts: [none | list any contradictions]
+✓ Assumptions: [none | list assumptions to verify]
+
+Result: PASS | NEEDS_WORK
+```
+
+### If NEEDS_WORK
+
+List gaps as simple bullet points:
+
+```
+Gaps Found:
+- [Missing file path for X]
+- [Contradiction between A and B]
+- [No patterns found for Y - expected in this codebase]
+
+Recommendations:
+- [Specific action to address gap]
+```
+
+**After listing gaps:**
+1. If gaps are minor (1-2 items): Note in Open Questions and proceed
+2. If gaps are significant: Ask user whether to re-run research or proceed with caveats
+3. Maximum 2 re-research attempts before escalating to user
+
+### Greenfield Projects
+
+For new projects without existing patterns:
+- Allow "no existing implementation found" as valid finding
+- Rely more heavily on best-practices-researcher and framework-docs-researcher
+- Flag external dependencies as Open Questions
+
+---
+
 ## Phase 2: Issue Planning & Structure
 
 ### Title & Categorization
@@ -509,6 +565,56 @@ researchers:
 - **Confidence**: High/Medium/Low
 - **Last verified**: <date>
 ```
+
+---
+
+## Phase 6.5: Plan Review (HIGH LEVERAGE)
+
+**⚡ HIGH LEVERAGE REVIEW POINT**
+A bad plan line leads to hundreds of lines of incorrect code. Reviewing the plan now saves significant rework later.
+
+**Present plan summary to user:**
+
+```
+---
+**Plan Summary for: [Plan Title]**
+
+**Scope:**
+- [3-5 bullet points of what will be implemented]
+
+**Key Decisions:**
+- [Decision 1]: [rationale]
+- [Decision 2]: [rationale]
+
+**Implementation Approach:**
+- [High-level approach in 2-3 sentences]
+
+**Phases:** [N] phases
+**Estimated Files:** [N] files to modify/create
+
+**Open Questions:** [N] questions requiring resolution
+---
+```
+
+**Use AskUserQuestion:**
+
+```
+Question: "Does this plan align with your expectations? (High leverage review - plan errors compound into code)"
+Header: "Plan Review"
+Options:
+1. Approve plan - Looks good, proceed
+2. Adjust scope - Need to add or remove items
+3. Change approach - Different implementation strategy needed
+4. Add constraints - Missing requirements or limitations
+```
+
+**Based on response:**
+- **Approve**: Proceed to Phase 7 options
+- **Adjust scope**: Modify plan sections, re-present summary
+- **Change approach**: Revisit technical approach, update plan
+- **Add constraints**: Add constraints section, update affected phases
+
+**Maximum 2 revision cycles** before proceeding.
 
 ---
 

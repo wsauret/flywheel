@@ -27,6 +27,70 @@ The plan file path is provided via `$ARGUMENTS`. If empty:
 
 Do not proceed until you have a valid plan file path.
 
+**Subagent Dispatch:** Follow subagent dispatch guidelines in `CLAUDE.md` - never send file contents, always request compaction format output.
+
+---
+
+## Phase 0: Discover Relevant Learnings
+
+Before spawning research agents, check if `docs/solutions/` exists and search for relevant past solutions.
+
+### Learning Discovery
+
+```bash
+# Check if solutions directory exists
+ls docs/solutions/ 2>/dev/null
+```
+
+**If exists:**
+
+1. **Extract keywords from plan:**
+   - Component names (e.g., "UserService", "PaymentController")
+   - Technologies (e.g., "Rails", "PostgreSQL", "React")
+   - Problem patterns (e.g., "N+1", "authentication", "caching")
+
+2. **Search by YAML frontmatter:**
+   ```bash
+   # Search by module
+   grep -l "module: UserService" docs/solutions/**/*.md
+
+   # Search by component
+   grep -l "component: api" docs/solutions/**/*.md
+
+   # Search by tags
+   grep -l "authentication\|auth" docs/solutions/**/*.md
+   ```
+
+3. **Score relevance (fast heuristic):**
+   - Tag overlap (x3 weight)
+   - Module match (x5 weight)
+   - Category + keyword match (x4 weight)
+
+4. **Present top matches (max 5):**
+   ```
+   Relevant Past Solutions Found:
+   1. docs/solutions/performance-issues/user-service-n-plus-one.md
+      - Symptom: N+1 query on user loading
+      - Solution: Added eager loading
+      - Relevance: Module match (UserService) + tag match (performance)
+
+   2. docs/solutions/api-issues/authentication-timeout.md
+      - Symptom: API timeout on auth endpoint
+      - Solution: Added caching
+      - Relevance: Tag match (authentication, api)
+   ```
+
+5. **Ask user to confirm relevance:**
+   ```
+   Question: "Found [N] potentially relevant past solutions. Include any in research context?"
+   Options:
+   1. Include all - Apply all matched learnings
+   2. Select specific - Let me choose which ones
+   3. Skip learnings - Proceed without past solutions
+   ```
+
+**If no matches or directory doesn't exist:** Proceed directly to Phase 1.
+
 ---
 
 ## Phase 1: Parse and Analyze Plan Structure

@@ -109,3 +109,34 @@ Always provide specific code examples for recommended optimizations. Include ben
 - Provide migration strategies for optimizing existing code
 
 Your analysis should be actionable, with clear steps for implementing each optimization. Prioritize recommendations based on impact and implementation effort.
+
+---
+
+## Output Format
+
+Return findings using this structure:
+
+### End Goal
+[1-2 sentences: What we're trying to achieve]
+
+### Approach Chosen
+[1-2 sentences: The strategy selected and why]
+
+### Completed Steps
+- [Completed action 1]
+- [Completed action 2]
+(max 10 items)
+
+### Current Status
+[What's done, what's blocked, what's next - 1 paragraph max]
+
+### Key Findings
+- [Finding 1]
+- [Finding 2]
+(max 15 items - if more, write overflow to `plans/context/overflow-{task-id}.md`)
+
+### Files Identified
+- `path/to/file.ts` - [brief description]
+(paths only, max 20 files - if more, write overflow to file)
+
+**Output Validation:** Before returning, verify ALL sections are present. If any would be empty, write "None".

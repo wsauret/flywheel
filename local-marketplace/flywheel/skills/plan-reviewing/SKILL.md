@@ -23,6 +23,8 @@ The plan to review is provided via `$ARGUMENTS`. Can be:
 - Path to plan file: `plans/my-feature.md`
 - Empty: Check for recent plans in `plans/` directory
 
+**Subagent Dispatch:** Follow subagent dispatch guidelines in `CLAUDE.md` - never send file contents, always request compaction format output.
+
 ---
 
 ## Phase 1: Discover ALL Reviewer Agents

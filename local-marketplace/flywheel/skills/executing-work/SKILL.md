@@ -80,7 +80,33 @@ schema_version: 1
 
 ### Get Approval
 
-Ask: "Ready to execute plan. Work on current branch or create worktree?"
+Assess the plan and recommend worktree if ANY of these apply:
+
+**Recommend Worktree When:**
+- Plan modifies >10 files
+- Plan has >3 implementation phases
+- Plan touches critical paths (auth, payments, migrations, core data models)
+- Plan involves experimental or high-risk changes
+
+**Use AskUserQuestion:**
+
+```
+Question: "Ready to execute plan. [Worktree recommended due to: X] How would you like to work?"
+Header: "Work env"
+Options:
+1. Current branch - Work directly on current branch
+2. Create worktree (Recommended) - Isolated branch via worktree-manager.sh
+```
+
+**If worktree selected:**
+```bash
+# Use the worktree-manager script (never raw git commands)
+bash .claude/flywheel/skills/git-worktree/scripts/worktree-manager.sh create <branch-name> main
+```
+
+After worktree creation, remind user:
+- "Worktree created. Dependencies may need installation in the new worktree."
+- "Run /init in the worktree to orient Claude Code."
 
 ---
 
@@ -259,6 +285,27 @@ Mark state file as completed:
 ---
 status: completed
 ---
+```
+
+### Worktree Cleanup (If Applicable)
+
+If work was done in a worktree, offer cleanup:
+
+```
+Question: "PR created successfully. Would you like to clean up the worktree?"
+Header: "Cleanup"
+Options:
+1. Clean up worktree - Remove worktree and switch back to main
+2. Keep worktree - Preserve for additional work or fixes
+```
+
+**If cleanup selected:**
+```bash
+# Return to main repo first
+cd <original-repo-path>
+
+# Clean up the worktree
+bash .claude/flywheel/skills/git-worktree/scripts/worktree-manager.sh cleanup
 ```
 
 ---

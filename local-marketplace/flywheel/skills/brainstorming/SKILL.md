@@ -20,6 +20,8 @@ The feature idea or problem to explore is provided via `$ARGUMENTS`.
 
 **If empty:** Ask "What would you like to explore? Describe the feature, improvement, or problem you're thinking about."
 
+**Subagent Dispatch:** Follow subagent dispatch guidelines in `CLAUDE.md` - never send file contents, always request compaction format output.
+
 ---
 
 ## Phase 1: Silent Research
@@ -42,6 +44,52 @@ Run research agents to understand context. **DO NOT present findings to user** -
 - Similar implementations (to suggest as approaches)
 - Naming conventions (to use in design)
 - Best practices from external sources (to validate approaches)
+
+---
+
+## Phase 1.5: Research Review (HIGH LEVERAGE)
+
+**⚡ HIGH LEVERAGE REVIEW POINT**
+Bad research leads to thousands of lines of incorrect code. 10 minutes here saves 10 hours later.
+
+**Present research summary to user (NOT raw findings):**
+
+```
+---
+**Research Summary for: [Feature/Idea Name]**
+
+**Scope Identified:**
+- [3-5 bullet points of what the research found]
+
+**Key Files:**
+- `path/to/file.ts` - [purpose]
+- `path/to/other.ts` - [purpose]
+
+**Patterns Discovered:**
+- [Pattern]: [brief description]
+
+**Potential Concerns:**
+- [Any risks, complexities, or uncertainties identified]
+---
+```
+
+**Use AskUserQuestion:**
+
+```
+Question: "Does this research scope look correct? (High leverage review - catching errors here saves significant time)"
+Header: "Research"
+Options:
+1. Approve and proceed - Research covers the right areas
+2. Add focus area - Need to investigate additional areas
+3. Redirect research - Wrong direction, let me clarify
+```
+
+**Based on response:**
+- **Approve**: Proceed to Phase 2
+- **Add focus area**: Run additional targeted research, then re-present summary
+- **Redirect**: Ask for clarification, restart Phase 1 with new direction
+
+**Maximum 2 re-research cycles** before proceeding with best available context.
 
 ---
 
@@ -68,6 +116,48 @@ Ask questions **one at a time** to refine the idea. Prefer multiple choice.
 - [ ] What success looks like
 - [ ] What's explicitly out of scope
 - [ ] Key constraints
+
+---
+
+## Phase 2.5: Surface Relevant Learnings
+
+Before presenting approaches, check if `docs/solutions/` has relevant past solutions.
+
+### Quick Learning Search
+
+```bash
+# Extract keywords from understood problem
+# Search docs/solutions/ by tags, module, component
+
+grep -l "<keyword>" docs/solutions/**/*.md 2>/dev/null
+```
+
+**If matches found (max 3-5):**
+
+Present relevant learnings that might inform approach selection:
+
+```
+💡 Relevant Past Solutions:
+
+1. **[Title from file]** (docs/solutions/.../file.md)
+   - Symptom: [symptom from frontmatter]
+   - Solution: [brief solution summary]
+   - Why relevant: [how it connects to current problem]
+
+2. **[Title]** (path)
+   - ...
+```
+
+**Ask user:**
+```
+Question: "Found past solutions that may be relevant. Apply any of these learnings?"
+Options:
+1. Yes, consider these - Factor into approach recommendations
+2. Show me more details - Read specific files before deciding
+3. Not relevant - Proceed without these learnings
+```
+
+**If no matches:** Proceed silently to Phase 3.
 
 ---
 

@@ -20,6 +20,8 @@ Coordinate parallel subagents to document recently solved problems. Creates stru
 
 Optional context hint via `$ARGUMENTS`. If empty, extract from conversation history.
 
+**Subagent Dispatch:** Follow subagent dispatch guidelines in `CLAUDE.md` - never send file contents, always request compaction format output.
+
 ---
 
 ## Preconditions
