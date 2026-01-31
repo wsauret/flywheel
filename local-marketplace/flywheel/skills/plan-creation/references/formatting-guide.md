@@ -40,11 +40,9 @@ Conventions for well-structured plan files.
 - Include file path references in comments
 
 ````markdown
-```ruby
-# app/services/user_service.rb:42
-def process_user(user)
+```python
+def process_user(user):
   # Implementation here
-end
 ```
 ````
 
@@ -84,7 +82,7 @@ Every criterion must be:
 ### File References
 Always include specific paths with line numbers:
 - `src/services/auth.ts:42`
-- `app/models/user.rb:15-30`
+- `src/models/user.py:15-30`
 
 ### Open Questions
 Format from research that needs user decision:

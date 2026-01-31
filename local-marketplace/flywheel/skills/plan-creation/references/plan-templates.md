@@ -20,15 +20,7 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 ## MVP
 
-### test.rb
-
-```ruby
-class Test
-  def initialize
-    @name = "test"
-  end
-end
-```
+### test.py
 
 ## References
 

@@ -100,7 +100,7 @@ required_fields:
       - workflow_improvement # Improved development workflow or process
       - documentation_update # Added or updated documentation
       - tooling_addition     # Added helper script or automation
-      - seed_data_update     # Updated db/seeds.rb or fixtures
+      - seed_data_update     # Updated seed data or fixtures
     description: "Type of fix applied"
 
   severity:
