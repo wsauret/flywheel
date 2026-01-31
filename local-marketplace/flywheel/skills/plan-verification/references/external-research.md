@@ -1,6 +1,6 @@
 # External Research Reference
 
-Detailed guidance for external research during plan deepening.
+Detailed guidance for external research during plan verification.
 
 ## Framework Documentation Validation
 

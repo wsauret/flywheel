@@ -15,11 +15,11 @@ allowed-tools:
 
 Transform plans with Research Insights and Review Summary into a single, coherent, work-ready document with integrated checklists.
 
-**Philosophy:** Deepening and reviewing add valuable content but scatter it. Consolidation restructures everything into actionable format.
+**Philosophy:** Verification and reviewing add valuable content but scatter it. Consolidation restructures everything into actionable format.
 
 ## Input
 
-Plan path via `$ARGUMENTS`. Should already have Enhancement Summary (from deepening) and Review Summary (from reviewing).
+Plan path via `$ARGUMENTS`. Should already have Verification Summary (from plan-verification) and Review Summary (from plan-reviewing).
 
 ---
 
@@ -214,7 +214,7 @@ Before finalizing:
 - [ ] All P1 findings addressed or flagged as blocking
 - [ ] Every implementation step has concrete action
 - [ ] Research insights integrated into relevant steps
-- [ ] Appendix contains raw deepening/review data
+- [ ] Appendix contains raw verification/review data
 - [ ] Plan genuinely ready for `/fly:work`
 
 ---

@@ -14,7 +14,7 @@ Use this structure for the final consolidated output.
 
 ## Executive Summary
 
-[1-2 paragraph synthesis of what this plan accomplishes. Pull from original plan overview, enhanced with key insights from deepening.]
+[1-2 paragraph synthesis of what this plan accomplishes. Pull from original plan overview, enhanced with key insights from verification.]
 
 ## Decisions Made
 
@@ -128,7 +128,7 @@ Use this structure for the final consolidated output.
 <details>
 <summary>Original Enhancement Summary</summary>
 
-[Copy the Enhancement Summary section from deepening verbatim]
+[Copy the Enhancement Summary section from verification verbatim]
 
 </details>
 

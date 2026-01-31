@@ -145,11 +145,11 @@ This phase:
 
 ## Phase 4: Consolidate into Final Actionable Plan
 
-After deepening and reviewing, the plan file contains scattered content:
+After verification and reviewing, the plan file contains scattered content:
 - Original plan content
-- Enhancement Summary (from deepening)
-- Research Insights subsections (from deepening)
-- Plan Review Summary (from reviewing)
+- Verification Summary (from plan-verification)
+- Research Validation subsections (from plan-verification)
+- Plan Review Summary (from plan-reviewing)
 
 **This phase consolidates everything into a clean, work-ready format using the plan-consolidation skill.**
 
@@ -301,7 +301,7 @@ The orchestrator maintains state between phases:
 
 ### Recovery
 
-- Each phase writes to disk before completing (deepening, reviewing, and consolidation all write to the plan file)
+- Each phase writes to disk before completing (verification, reviewing, and consolidation all write to the plan file)
 - Re-running `/fly:plan` with an existing plan path skips creation
 - Context file tracks which phases completed
 - If consolidation fails, the plan file still contains all research and review content (just not reorganized)
@@ -349,7 +349,7 @@ Runs: plan-consolidation only (for plans already deepened and reviewed)
 
 - **Orchestration only** - This file coordinates skills, does not implement them
 - **Sequential phases** - Each phase completes before the next begins
-- **Single plan file** - All phases write to the SAME plan file (deepening adds insights, reviewing adds summary, consolidation restructures)
+- **Single plan file** - All phases write to the SAME plan file (verification adds validation, reviewing adds summary, consolidation restructures)
 - **Materialize before proceeding** - Each skill MUST write its outputs to the plan file before completing
 - **State handoff** - Plan path captured from Phase 1 flows to all subsequent phases
 - **Graceful degradation** - Partial failures still produce useful output

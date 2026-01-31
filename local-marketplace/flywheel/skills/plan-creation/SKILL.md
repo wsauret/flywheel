@@ -1,6 +1,6 @@
 ---
 name: plan-creation
-description: Research codebase and create implementation plans. Triggers on "create plan", "plan for", "write a plan".
+description: Draft initial implementation plans based on codebase patterns. Creative/generative phase - validation happens in plan-verification. Triggers on "create plan", "plan for", "write a plan".
 allowed-tools:
   - Read
   - Write
@@ -14,7 +14,9 @@ allowed-tools:
 
 # Plan Creation Skill
 
-Transform feature descriptions into well-structured markdown plan files. Can run standalone or be orchestrated by `/fly:plan`.
+Draft implementation plans based on user intent and existing codebase patterns. This is the **creative/generative** phase - external validation happens later in plan-verification.
+
+**Philosophy:** Focus on WHAT to build based on HOW things are already built. Don't validate external claims yet - flag them for verification.
 
 **Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
 
@@ -24,49 +26,50 @@ Feature description via `$ARGUMENTS`. If empty, ask user.
 
 ---
 
-## Phase 1: Research (Parallel Agents)
+## Phase 1: Understand Codebase Context
 
-Launch three research agents simultaneously:
+Research the codebase to understand existing patterns. This informs HOW to structure the plan.
 
 ```
 Task repo-researcher: "Analyze codebase for patterns related to: <feature>.
-Find: existing implementations, file structure, naming conventions.
+
+Find:
+1. Existing implementations of similar features
+2. File structure and naming conventions
+3. Architectural patterns used
+4. Testing patterns for similar components
+
 Return: file paths with line numbers (e.g., src/services/auth.ts:42)
 Flag OPEN QUESTIONS for ambiguities or multiple valid approaches."
-
-Task best-practices-researcher: "Research best practices for: <feature>.
-Find: industry standards, common patterns, anti-patterns.
-Use WebSearch for current (2026) best practices.
-Flag OPEN QUESTIONS for trade-offs or context-dependent recommendations."
-
-Task framework-docs-researcher: "Research framework docs for: <feature>.
-Use mcp__plugin_Flywheel_context7__resolve-library-id then query-docs.
-Return: code examples, configuration patterns.
-Flag OPEN QUESTIONS for configuration choices or version considerations."
 ```
 
-After agents complete, consolidate:
+Also check:
+- `CLAUDE.md` for team conventions
+- Recent similar features for precedent
+
+After research completes, consolidate:
 - File paths with line numbers
-- External documentation URLs
-- Team conventions from CLAUDE.md
-- All OPEN QUESTIONS flagged by agents
+- Existing patterns to follow
+- Team conventions
+- OPEN QUESTIONS about approach
+
+**NOTE:** External validation (framework docs, best practices) happens in plan-verification. Here we draft based on what we know.
 
 ---
 
 ## Phase 1.5: Research Validation Gate
 
-**BLOCKING:** Verify research quality before planning.
+**BLOCKING:** Verify codebase research quality before drafting.
 
 ### Checklist
 
-1. **Completeness**: Did all agents return findings?
-2. **Accuracy**: Do 3-5 file paths actually exist?
-3. **Coverage**: Any obvious gaps for this feature?
-4. **Conflicts**: Any contradictions between agents?
+1. **File paths exist**: Spot-check 3-5 referenced paths
+2. **Patterns identified**: Found relevant existing implementations?
+3. **Conventions clear**: Know how this codebase handles similar features?
 
 ### If validation fails
 
-List gaps as bullet points. For minor gaps (1-2 items): note in Open Questions and proceed. For significant gaps: ask user whether to re-run or proceed with caveats. Maximum 2 re-research attempts.
+For minor gaps: note in Open Questions and proceed. For significant gaps (no similar patterns found): ask user for guidance. Maximum 2 re-research attempts.
 
 ---
 
@@ -94,11 +97,27 @@ Select template from `references/plan-templates.md`:
 ## Phase 3: Write Plan
 
 Using chosen template:
-1. Fill all sections with research findings
+1. Fill all sections based on codebase research
 2. Include specific file paths with line numbers
-3. Add code examples with syntax highlighting
+3. Follow existing patterns identified in Phase 1
 4. Ensure acceptance criteria are testable
 5. Include Open Questions from research
+
+### Flag Claims for Verification
+
+As you draft, identify assumptions that need external validation:
+
+```markdown
+## Claims to Verify
+
+The following assumptions should be validated in plan-verification:
+
+- [ ] "React Query supports offline persistence" - verify in docs
+- [ ] "Redis pub/sub handles 10k connections" - verify performance claims
+- [ ] "Next.js 14 has stable server actions" - verify version compatibility
+```
+
+**Don't validate these yourself** - flag them clearly for the verification phase.
 
 Write to: `plans/<filename>.md`
 
@@ -146,18 +165,20 @@ Maximum 2 revision cycles.
 
 | Option | Action |
 |--------|--------|
-| Deepen plan | Invoke `skill: plan-verification` |
-| Review plan | Invoke `skill: reviewing` |
+| Verify plan (Recommended) | Invoke `skill: plan-verification` |
+| Review plan | Invoke `skill: plan-reviewing` |
 | Start work | Invoke `skill: executing-work` |
 | Done for now | Display path and exit |
+
+**Recommended flow:** Verify → Review → Consolidate → Work
 
 ---
 
 ## Error Handling
 
-- **Agent failure:** Log and continue; require 50% success minimum
+- **Agent failure:** Log and continue with available findings
 - **Missing CLAUDE.md:** Note conventions may be incomplete
-- **Context7 failure:** Fall back to WebSearch
+- **No similar patterns found:** Ask user for guidance on approach
 - **Write failure:** Create `plans/` with `mkdir -p`, report errors
 
 ---
@@ -169,7 +190,6 @@ This skill is research and planning ONLY.
 **Allowed:**
 - Read source files
 - Search codebase
-- Query documentation
 - Write markdown to `plans/`
 
 **Prohibited:**
@@ -177,18 +197,22 @@ This skill is research and planning ONLY.
 - Create/edit test files
 - Modify configuration
 - "Helpfully" start coding
+- Validate external claims (that's plan-verification)
 
 **If tempted to write code, STOP and add it to the plan instead.**
+**If tempted to research framework docs, STOP and flag it for verification instead.**
 
 ---
 
 ## Anti-Patterns
 
-- Skip research (even "simple" features benefit)
-- Over-engineer simple issues (use MINIMAL)
-- Vague acceptance criteria (must be testable)
-- Omit file references (include paths with line numbers)
-- Skip AskUserQuestion (user must choose next step)
+- **Skip codebase research** - Even "simple" features benefit from understanding patterns
+- **Over-engineer simple issues** - Use MINIMAL template
+- **Vague acceptance criteria** - Must be testable
+- **Omit file references** - Include paths with line numbers
+- **Skip AskUserQuestion** - User must choose next step
+- **Validate external claims** - Flag for verification, don't research yourself
+- **Assume library capabilities** - If you're not 100% sure, flag it
 
 ---
 

@@ -81,7 +81,7 @@ IMPLEMENTATION_PHASES:
 
 Search plan content for:
 
-**Structured (from deepening/reviewing):**
+**Structured (from verification/reviewing):**
 - `### Open Questions` sections
 - Tables with `| # | Question | Options | Source(s) |`
 - `OPEN QUESTION:` markers

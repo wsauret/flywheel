@@ -1,6 +1,6 @@
 # Internal Research Reference
 
-Detailed guidance for codebase research during plan deepening.
+Detailed guidance for codebase research during plan verification.
 
 ## Existing Solutions Check
 
