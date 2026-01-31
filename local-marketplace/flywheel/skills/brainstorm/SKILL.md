@@ -1,5 +1,5 @@
 ---
-name: brainstorming
+name: brainstorm
 description: Conversational exploration of ideas before detailed planning. One question at a time, 2-3 approaches, incremental validation. Triggers on "explore", "brainstorm", "think about".
 allowed-tools:
   - Read

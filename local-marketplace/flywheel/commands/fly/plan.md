@@ -13,7 +13,7 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 This orchestrator coordinates the full planning workflow by calling four independent skills in sequence:
 1. **plan-creation** - Research and create the initial plan
 2. **plan-verification** - Verify assumptions are real, validate against docs, check compatibility (writes to plan file)
-3. **plan-reviewing** - Run all reviewer agents and synthesize findings (writes to plan file)
+3. **plan-review** - Run all reviewer agents and synthesize findings (writes to plan file)
 4. **plan-consolidation** - Restructure into a single, actionable plan ready for `/fly:work`
 
 Each skill can also be invoked independently. All outputs are materialized to the same plan file.
@@ -47,16 +47,16 @@ This entire workflow is for research and planning only. Implementation happens l
 If input ends with "-design.md" AND file exists:
   -> DESIGN MODE
   -> Read design doc for context
-  -> Run: plan-creation (uses design as input) -> plan-verification -> plan-reviewing
+  -> Run: plan-creation (uses design as input) -> plan-verification -> plan-review
 
 If input is ".md" file in plans/ AND file exists:
   -> REVIEW MODE
   -> Skip creation, use existing plan
-  -> Run: plan-verification -> plan-reviewing
+  -> Run: plan-verification -> plan-review
 
 Otherwise:
   -> FULL MODE
-  -> Run: plan-creation -> plan-verification -> plan-reviewing
+  -> Run: plan-creation -> plan-verification -> plan-review
 ```
 
 ### Determine Mode
@@ -122,10 +122,10 @@ This phase:
 
 ## Phase 3: Review Plan
 
-Invoke the plan-reviewing skill with the enhanced plan:
+Invoke the plan-review skill with the enhanced plan:
 
 ```
-skill: plan-reviewing
+skill: plan-review
 arguments: [PLAN_PATH]
 ```
 
@@ -149,7 +149,7 @@ After verification and reviewing, the plan file contains scattered content:
 - Original plan content
 - Verification Summary (from plan-verification)
 - Research Validation subsections (from plan-verification)
-- Plan Review Summary (from plan-reviewing)
+- Plan Review Summary (from plan-review)
 
 **This phase consolidates everything into a clean, work-ready format using the plan-consolidation skill.**
 
@@ -222,7 +222,7 @@ Use **AskUserQuestion** to present next steps:
 
 | Selection | Action |
 |-----------|--------|
-| Start /fly:work | Invoke `skill: executing-work` with `PLAN_PATH` |
+| Start /fly:work | Invoke `skill: work-implementation` with `PLAN_PATH` |
 | View detailed findings | Display full review summary from Phase 3 |
 | Address conflicts | List each conflict, gather user resolution, update plan |
 | Address P1 findings | List P1s, discuss resolution for each, update plan |
@@ -255,7 +255,7 @@ The orchestrator maintains state between phases:
        v                       |
 [Phase 3: Review] <------------+
        |
-       | (skill: plan-reviewing)
+       | (skill: plan-review)
        | (writes Review Summary TO PLAN FILE)
        v
    REVIEWERS_RUN
@@ -296,7 +296,7 @@ The orchestrator maintains state between phases:
 
 - **plan-creation fails**: Report error, do not proceed to verification
 - **plan-verification fails**: Report error, still run review on original plan
-- **plan-reviewing fails**: Report error, still run consolidation on what we have
+- **plan-review fails**: Report error, still run consolidation on what we have
 - **plan-consolidation fails**: Report error, present the un-consolidated plan (still has all content, just not restructured)
 
 ### Recovery
@@ -317,7 +317,7 @@ The orchestrator maintains state between phases:
 /fly:plan Add user authentication with OAuth2 support
 ```
 
-Runs: plan-creation -> plan-verification -> plan-reviewing -> plan-consolidation
+Runs: plan-creation -> plan-verification -> plan-review -> plan-consolidation
 
 ### Design Mode (Design Doc)
 
@@ -325,7 +325,7 @@ Runs: plan-creation -> plan-verification -> plan-reviewing -> plan-consolidation
 /fly:plan plans/oauth2-authentication-design.md
 ```
 
-Runs: plan-creation (uses design) -> plan-verification -> plan-reviewing -> plan-consolidation
+Runs: plan-creation (uses design) -> plan-verification -> plan-review -> plan-consolidation
 
 ### Review Mode (Existing Plan)
 
@@ -333,7 +333,7 @@ Runs: plan-creation (uses design) -> plan-verification -> plan-reviewing -> plan
 /fly:plan plans/feat-user-authentication.md
 ```
 
-Runs: plan-verification -> plan-reviewing -> plan-consolidation (skips creation)
+Runs: plan-verification -> plan-review -> plan-consolidation (skips creation)
 
 ### Consolidation Only Mode
 
@@ -357,6 +357,6 @@ Runs: plan-consolidation only (for plans already deepened and reviewed)
 - **Independent skills** - Each skill can also be invoked directly:
   - `skill: plan-creation` - Create a plan
   - `skill: plan-verification` - Validate assumptions and claims
-  - `skill: plan-reviewing` - Run reviewer agents
+  - `skill: plan-review` - Run reviewer agents
   - `skill: plan-consolidation` - Restructure for work
 - **Work-ready output** - After consolidation, the plan is ready for `/fly:work` with actionable checklists

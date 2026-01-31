@@ -19,7 +19,7 @@ Transform plans with Research Insights and Review Summary into a single, coheren
 
 ## Input
 
-Plan path via `$ARGUMENTS`. Should already have Verification Summary (from plan-verification) and Review Summary (from plan-reviewing).
+Plan path via `$ARGUMENTS`. Should already have Verification Summary (from plan-verification) and Review Summary (from plan-review).
 
 ---
 
@@ -31,7 +31,7 @@ Check for:
 - Original content (Technical Approach, Implementation, etc.)
 - Enhancement Summary (added by plan-verification)
 - Research Insights (subsections under original sections)
-- Plan Review Summary (appended by plan-reviewing)
+- Plan Review Summary (appended by plan-review)
 
 See `references/extraction-patterns.md` for detection details.
 
@@ -178,7 +178,7 @@ Status:
 
 | Option | Action |
 |--------|--------|
-| Start /fly:work (Recommended) | Invoke `skill: executing-work` |
+| Start /fly:work (Recommended) | Invoke `skill: work-implementation` |
 | View plan | Open or display content |
 | Address blocking items | List P1s/conflicts, discuss resolution |
 | Re-run specific phase | Ask which, invoke corresponding skill |

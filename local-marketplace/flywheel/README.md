@@ -127,13 +127,13 @@ Core workflow commands use `fly:` prefix:
 
 | Skill | Description |
 |-------|-------------|
-| `brainstorming` | Conversational exploration of ideas before planning |
+| `brainstorm` | Conversational exploration of ideas before planning |
 | `plan-creation` | Draft plans based on codebase patterns (creative); flags claims for verification |
 | `plan-verification` | Validate assumptions are real, not hallucinated (fact-checking) |
-| `plan-reviewing` | Critique from multiple reviewer perspectives (security, perf, arch) |
+| `plan-review` | Critique from multiple reviewer perspectives (security, perf, arch) |
 | `plan-consolidation` | Resolve open questions with user; create actionable checklists |
-| `executing-work` | Execute plans following patterns, testing continuously |
-| `reviewing` | Multi-agent code reviews with todo file creation |
+| `work-implementation` | Execute plans following patterns, testing continuously |
+| `work-review` | Multi-agent code reviews with todo file creation |
 
 ### Utility Skills
 

@@ -8,10 +8,10 @@ argument-hint: "[plan file path] (optional - will resume active session if omitt
 
 <input_document> #$ARGUMENTS </input_document>
 
-**Invoke the executing-work skill:**
+**Invoke the work-implementation skill:**
 
 ```
-skill: executing-work
+skill: work-implementation
 ```
 
 ## Session Recovery
@@ -22,7 +22,7 @@ After clearing context mid-work, say **"carry on"** or run `/fly:work` with no a
 
 ## Features
 
-The executing-work skill handles:
+The work-implementation skill handles:
 - **Session tracking** - `.flywheel/session.md` enables "carry on" resume
 - Loading plan and companion `.context.md` file
 - Environment setup (branch vs worktree)
@@ -33,4 +33,4 @@ The executing-work skill handles:
 - Commit and PR creation
 - Handoff to `/fly:review`
 
-See `plugin/skills/executing-work/SKILL.md` for full procedural details.
+See `plugin/skills/work-implementation/SKILL.md` for full procedural details.

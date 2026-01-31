@@ -1,5 +1,5 @@
 ---
-name: reviewing
+name: work-review
 description: Perform exhaustive code reviews using multi-agent analysis. Reviews PRs, branches, or current changes. Creates todo files for findings. Triggers on "review", "code review", "check PR".
 allowed-tools:
   - Read

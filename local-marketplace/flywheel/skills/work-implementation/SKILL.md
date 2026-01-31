@@ -1,5 +1,5 @@
 ---
-name: executing-work
+name: work-implementation
 description: Execute work plans using probe-dispatch-checkpoint pattern. Orchestrator stays lean, dispatches subagents per phase. Triggers on "work on", "implement", "execute plan", "carry on", "continue".
 allowed-tools:
   - Read
@@ -95,7 +95,7 @@ Write session file per `references/session-file-template.md`:
 
 ```markdown
 ---
-active_skill: executing-work
+active_skill: work-implementation
 plan_path: [PLAN_PATH]
 state_path: [STATE_FILE]
 context_path: [CONTEXT_FILE]

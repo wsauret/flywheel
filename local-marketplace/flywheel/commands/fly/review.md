@@ -8,13 +8,13 @@ argument-hint: "[PR number, GitHub URL, branch name, or empty for current branch
 
 <review_target> #$ARGUMENTS </review_target>
 
-**Invoke the reviewing skill:**
+**Invoke the work-review skill:**
 
 ```
-skill: reviewing
+skill: work-review
 ```
 
-The reviewing skill handles:
+The work-review skill handles:
 - Review target detection (PR, URL, branch, current)
 - Environment setup (worktree option)
 - Parallel reviewer agents (security, performance, architecture, etc.)
@@ -22,4 +22,4 @@ The reviewing skill handles:
 - Finding tracking using built-in tasks
 - Summary report with next steps
 
-See `plugin/skills/reviewing/SKILL.md` for full procedural details.
+See `plugin/skills/work-review/SKILL.md` for full procedural details.

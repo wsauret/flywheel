@@ -16,7 +16,7 @@ Single file in project root. Only one active session at a time.
 
 ```markdown
 ---
-active_skill: executing-work
+active_skill: work-implementation
 plan_path: plans/feat-user-auth.md
 state_path: plans/feat-user-auth.state.md
 context_path: plans/feat-user-auth.context.md
@@ -59,7 +59,7 @@ After clearing context, say **"carry on"** or run:
 
 ### On Work Start
 
-When `executing-work` skill starts:
+When `work-implementation` skill starts:
 
 ```bash
 mkdir -p .flywheel
@@ -97,7 +97,7 @@ status: completed
 When `/fly:work` called with no arguments:
 
 1. Check for `.flywheel/session.md`
-2. If exists and `active_skill: executing-work`:
+2. If exists and `active_skill: work-implementation`:
    - Read plan_path, state_path, context_path
    - Offer to resume: "Found active session for [plan]. Resume?"
 3. If not exists or completed:

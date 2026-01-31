@@ -168,8 +168,8 @@ Maximum 2 revision cycles.
 | Option | Action |
 |--------|--------|
 | Verify plan (Recommended) | Invoke `skill: plan-verification` |
-| Review plan | Invoke `skill: plan-reviewing` |
-| Start work | Invoke `skill: executing-work` |
+| Review plan | Invoke `skill: plan-review` |
+| Start work | Invoke `skill: work-implementation` |
 | Done for now | Display path and exit |
 
 **Recommended flow:** Verify → Review → Consolidate → Work

@@ -1,5 +1,5 @@
 ---
-name: plan-reviewing
+name: plan-review
 description: Run ALL reviewer agents in parallel against a plan. Deduplicates findings and converts conflicts to Open Questions. Triggers on "review plan", "check plan".
 allowed-tools:
   - Read

@@ -10,13 +10,13 @@ argument-hint: "[feature idea or problem to explore]"
 
 <feature_idea> #$ARGUMENTS </feature_idea>
 
-**Invoke the brainstorming skill:**
+**Invoke the brainstorm skill:**
 
 ```
-skill: brainstorming
+skill: brainstorm
 ```
 
-The brainstorming skill handles:
+The brainstorm skill handles:
 - Silent research (agents run but don't dump output)
 - Conversational questioning (one question at a time)
 - Approach exploration (always 2-3 options)
@@ -24,4 +24,4 @@ The brainstorming skill handles:
 - Design document creation (`plans/<topic>-design.md`)
 - Handoff to `/fly:plan`
 
-See `plugin/skills/brainstorming/SKILL.md` for full procedural details.
+See `plugin/skills/brainstorm/SKILL.md` for full procedural details.
