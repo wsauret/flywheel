@@ -75,7 +75,6 @@ Core workflow skills (invoked by commands):
 
 Utility skills:
 - **compound-docs** - Structured problem documentation with YAML validation
-- **file-todos** - File-based todo tracking for review findings
 - **git-worktree** - Isolated parallel development with worktrees
 - **test-first-methodology** - TDD and systematic debugging
 

@@ -96,17 +96,19 @@ Tag each finding: Small / Medium / Large
 
 ---
 
-## Phase 4: Create Todo Files
+## Phase 4: Track Findings
 
-Use file-todos skill for structured todo management:
+Use the built-in task system for structured tracking:
 
 ```
-skill: file-todos
+TaskCreate for each finding with:
+- subject: Brief description
+- description: Full details including file:line references
 ```
 
-### File Creation
+### Task Creation
 
-For each finding, create todo file:
+For each finding, create a task:
 
 **Naming:** `{issue_id}-pending-{priority}-{description}.md`
 
@@ -178,9 +180,9 @@ Speed matters. Launch all applicable agents simultaneously.
 
 Don't present findings one-by-one for approval. Create all todo files, then summarize.
 
-### Use file-todos Skill
+### Use Built-in Tasks
 
-Structured todo management ensures findings are tracked and actionable.
+The built-in task system ensures findings are tracked and actionable.
 
 ---
 

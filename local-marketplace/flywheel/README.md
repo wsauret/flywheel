@@ -36,7 +36,7 @@ cp -r plugin/agents/* ~/.config/opencode/agents/
 |-----------|-------|
 | Agents | 10 |
 | Commands | 5 |
-| Skills | 10 |
+| Skills | 9 |
 
 ## Agents
 
@@ -81,14 +81,6 @@ Core workflow commands use `fly:` prefix:
 /fly:brainstorm → /fly:plan → /fly:work → /fly:review → /fly:compound
 ```
 
-### Utility Commands
-
-| Command | Description |
-|---------|-------------|
-| `/resolve-pr-comments` | Resolve PR review comments in parallel |
-| `/resolve-file-todos` | Resolve items in `/todos/` directory in parallel |
-| `/triage` | Triage and prioritize issues |
-
 ## Skills
 
 ### Workflow Skills
@@ -96,15 +88,16 @@ Core workflow commands use `fly:` prefix:
 | Skill | Description |
 |-------|-------------|
 | `brainstorming` | Conversational exploration of ideas before planning |
-| `planning` | Create implementation plans with research persistence |
+| `plan-creation` | Create implementation plans with research persistence |
+| `plan-deepening` | Enhance plans with skills, learnings, and research agents |
+| `plan-reviewing` | Run reviewer agents against plans to validate approach |
+| `plan-consolidation` | Restructure plans into actionable work-ready documents |
 | `executing-work` | Execute plans following patterns, testing continuously |
 | `reviewing` | Multi-agent code reviews with todo file creation |
-| `compounding` | Coordinate parallel subagents to document solutions |
 
 ### Utility Skills
 
 | Skill | Description |
 |-------|-------------|
 | `compound-docs` | Capture solved problems as categorized documentation |
-| `file-todos` | File-based todo tracking system |
 | `git-worktree` | Manage Git worktrees for parallel development |

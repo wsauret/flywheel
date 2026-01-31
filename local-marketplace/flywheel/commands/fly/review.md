@@ -19,7 +19,7 @@ The reviewing skill handles:
 - Environment setup (worktree option)
 - Parallel reviewer agents (security, performance, architecture, etc.)
 - Finding synthesis and severity assignment
-- Todo file creation using file-todos skill
+- Finding tracking using built-in tasks
 - Summary report with next steps
 
 See `plugin/skills/reviewing/SKILL.md` for full procedural details.
