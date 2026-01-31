@@ -1,6 +1,6 @@
 ---
 name: fly:plan
-description: Full planning workflow - create, deepen, review, and consolidate. Orchestrates four independent skills.
+description: Full planning workflow - create, verify, review, and consolidate. Orchestrates four independent skills.
 argument-hint: "[feature description OR path to *-design.md OR path to existing plan]"
 ---
 
@@ -12,7 +12,7 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 
 This orchestrator coordinates the full planning workflow by calling four independent skills in sequence:
 1. **plan-creation** - Research and create the initial plan
-2. **plan-deepening** - Enhance with skills, learnings, and research agents (writes to plan file)
+2. **plan-verification** - Verify assumptions are real, validate against docs, check compatibility (writes to plan file)
 3. **plan-reviewing** - Run all reviewer agents and synthesize findings (writes to plan file)
 4. **plan-consolidation** - Restructure into a single, actionable plan ready for `/fly:work`
 
@@ -47,16 +47,16 @@ This entire workflow is for research and planning only. Implementation happens l
 If input ends with "-design.md" AND file exists:
   -> DESIGN MODE
   -> Read design doc for context
-  -> Run: plan-creation (uses design as input) -> plan-deepening -> plan-reviewing
+  -> Run: plan-creation (uses design as input) -> plan-verification -> plan-reviewing
 
 If input is ".md" file in plans/ AND file exists:
   -> REVIEW MODE
   -> Skip creation, use existing plan
-  -> Run: plan-deepening -> plan-reviewing
+  -> Run: plan-verification -> plan-reviewing
 
 Otherwise:
   -> FULL MODE
-  -> Run: plan-creation -> plan-deepening -> plan-reviewing
+  -> Run: plan-creation -> plan-verification -> plan-reviewing
 ```
 
 ### Determine Mode
@@ -96,28 +96,27 @@ arguments: [input - either feature description or design doc path]
 
 ---
 
-## Phase 2: Deepen Plan
+## Phase 2: Verify Plan
 
-Invoke the plan-deepening skill with the plan path:
+Invoke the plan-verification skill with the plan path:
 
 ```
-skill: plan-deepening
+skill: plan-verification
 arguments: [PLAN_PATH]
 ```
 
 This phase:
-- Discovers and applies ALL available skills from all 5 sources
-- Checks documented learnings from `docs/solutions/`
-- Launches per-section research agents
-- Queries Context7 for framework documentation
-- Synthesizes and deduplicates findings
-- Adds "Research Insights" subsections to each plan section
+- Validates technical claims against framework documentation
+- Checks for DRY violations and existing solutions in codebase
+- Verifies version compatibility
+- Confirms proposed APIs/features actually exist
+- Adds "Research Validation" subsections to each plan section
 
 **Capture output:**
-- `SKILLS_APPLIED` = Count of skills used
-- `LEARNINGS_APPLIED` = Count of relevant learnings incorporated
+- `CLAIMS_VALIDATED` = Count of claims verified
+- `ISSUES_FOUND` = Blockers, warnings, and enhancements identified
 
-**If plan-deepening presents post-enhancement options, select "Run plan review" to continue the flow.**
+**If plan-verification presents post-verification options, select "Run plan review" to continue the flow.**
 
 ---
 
@@ -193,7 +192,7 @@ Context: [CONTEXT_PATH]
 
 Phases:
 - Create: [completed | skipped (existing plan)]
-- Deepen: [SKILLS_APPLIED] skills, [LEARNINGS_APPLIED] learnings applied
+- Verify: [CLAIMS_VALIDATED] claims validated, [ISSUES_FOUND] issues found
 - Review: [REVIEWERS_RUN] reviewers, [FINDINGS_COUNT] findings (P1: [n], P2: [n], P3: [n])
 - Consolidate: Restructured into actionable checklist format
 
@@ -245,13 +244,13 @@ The orchestrator maintains state between phases:
 [Phase 1: Create] -----> PLAN_PATH, CONTEXT_PATH
        |                       |
        v                       |
-[Phase 2: Deepen] <------------+
+[Phase 2: Verify] <------------+
        |                       |
-       | (skill: plan-deepening)
-       | (writes Enhancement Summary + Research Insights TO PLAN FILE)
+       | (skill: plan-verification)
+       | (writes Verification Summary + Research Validation TO PLAN FILE)
        v                       |
-   SKILLS_APPLIED              |
-   LEARNINGS_APPLIED           |
+   CLAIMS_VALIDATED            |
+   ISSUES_FOUND                |
        |                       |
        v                       |
 [Phase 3: Review] <------------+
@@ -295,8 +294,8 @@ The orchestrator maintains state between phases:
 
 ### Phase Failures
 
-- **plan-creation fails**: Report error, do not proceed to deepening
-- **plan-deepening fails**: Report error, still run review on original plan
+- **plan-creation fails**: Report error, do not proceed to verification
+- **plan-verification fails**: Report error, still run review on original plan
 - **plan-reviewing fails**: Report error, still run consolidation on what we have
 - **plan-consolidation fails**: Report error, present the un-consolidated plan (still has all content, just not restructured)
 
@@ -318,7 +317,7 @@ The orchestrator maintains state between phases:
 /fly:plan Add user authentication with OAuth2 support
 ```
 
-Runs: plan-creation -> plan-deepening -> plan-reviewing -> plan-consolidation
+Runs: plan-creation -> plan-verification -> plan-reviewing -> plan-consolidation
 
 ### Design Mode (Design Doc)
 
@@ -326,7 +325,7 @@ Runs: plan-creation -> plan-deepening -> plan-reviewing -> plan-consolidation
 /fly:plan plans/oauth2-authentication-design.md
 ```
 
-Runs: plan-creation (uses design) -> plan-deepening -> plan-reviewing -> plan-consolidation
+Runs: plan-creation (uses design) -> plan-verification -> plan-reviewing -> plan-consolidation
 
 ### Review Mode (Existing Plan)
 
@@ -334,7 +333,7 @@ Runs: plan-creation (uses design) -> plan-deepening -> plan-reviewing -> plan-co
 /fly:plan plans/feat-user-authentication.md
 ```
 
-Runs: plan-deepening -> plan-reviewing -> plan-consolidation (skips creation)
+Runs: plan-verification -> plan-reviewing -> plan-consolidation (skips creation)
 
 ### Consolidation Only Mode
 
@@ -357,7 +356,7 @@ Runs: plan-consolidation only (for plans already deepened and reviewed)
 - **User control** - Post-execution options let user choose next action
 - **Independent skills** - Each skill can also be invoked directly:
   - `skill: plan-creation` - Create a plan
-  - `skill: plan-deepening` - Add research insights
+  - `skill: plan-verification` - Validate assumptions and claims
   - `skill: plan-reviewing` - Run reviewer agents
   - `skill: plan-consolidation` - Restructure for work
 - **Work-ready output** - After consolidation, the plan is ready for `/fly:work` with actionable checklists

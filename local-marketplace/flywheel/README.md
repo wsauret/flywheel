@@ -89,7 +89,7 @@ Core workflow commands use `fly:` prefix:
 |-------|-------------|
 | `brainstorming` | Conversational exploration of ideas before planning |
 | `plan-creation` | Create implementation plans with research persistence |
-| `plan-deepening` | Enhance plans with skills, learnings, and research agents |
+| `plan-verification` | Verify plan assumptions against docs, check compatibility |
 | `plan-reviewing` | Run reviewer agents against plans to validate approach |
 | `plan-consolidation` | Restructure plans into actionable work-ready documents |
 | `executing-work` | Execute plans following patterns, testing continuously |

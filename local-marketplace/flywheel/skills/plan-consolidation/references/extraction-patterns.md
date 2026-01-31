@@ -9,8 +9,8 @@ Verify the plan contains:
 | Section | Source | Required |
 |---------|--------|----------|
 | Original content | plan-creation | Yes |
-| Enhancement Summary | plan-deepening | Yes (warn if missing) |
-| Research Insights | plan-deepening | Yes (warn if missing) |
+| Enhancement Summary | plan-verification | Yes (warn if missing) |
+| Research Insights | plan-verification | Yes (warn if missing) |
 | Plan Review Summary | plan-reviewing | Yes (warn if missing) |
 
 ---

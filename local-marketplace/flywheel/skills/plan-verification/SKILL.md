@@ -1,6 +1,6 @@
 ---
-name: plan-deepening
-description: Enhance plans with internal and external research. Validates claims, checks for DRY violations, and adds best practices. Triggers on "deepen plan", "enhance plan", "research plan".
+name: plan-verification
+description: Verify plan assumptions are real, not hallucinated. Validates claims against framework docs, checks for DRY violations, confirms compatibility. Triggers on "verify plan", "validate plan", "check plan assumptions".
 allowed-tools:
   - Read
   - Write
@@ -11,9 +11,9 @@ allowed-tools:
   - Skill
 ---
 
-# Plan Deepening Skill
+# Plan Verification Skill
 
-Enhance implementation plans through systematic research. Two modes:
+Verify implementation plans are grounded in reality. Two modes:
 - **Internal Research** - Does this already exist? DRY violations? Fits existing patterns?
 - **External Research** - Do claimed features exist? Best practices? Framework docs?
 
@@ -298,12 +298,12 @@ Append to `[plan_path].context.md`:
 ### Present Options
 
 ```
-Question: "Plan deepened. What next?"
+Question: "Plan verified. What next?"
 Options:
 1. View diff - Show what changed
 2. Run review - Get reviewer feedback
 3. Start work - Begin implementation
-4. Deepen more - Additional research on specific sections
+4. Verify more - Additional validation on specific sections
 ```
 
 ---

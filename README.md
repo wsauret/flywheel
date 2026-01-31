@@ -66,7 +66,7 @@ Document solved problems using parallel subagents while context is fresh. Create
 Core workflow skills (invoked by commands):
 - **brainstorming** - Collaborative dialogue to explore and validate designs
 - **plan-creation** - Research-backed plan generation
-- **plan-deepening** - Parallel research agents enhance plans
+- **plan-verification** - Validate claims against docs, check for hallucinations
 - **plan-reviewing** - All reviewers run in parallel, conflicts become open questions
 - **plan-consolidation** - Resolve questions with user, create actionable checklists
 - **executing-work** - Probe-dispatch-checkpoint execution
@@ -90,7 +90,7 @@ Review agents (run in parallel during plan-reviewing and reviewing):
 - **python-reviewer** - Python-specific conventions
 - **typescript-reviewer** - TypeScript-specific conventions
 
-Research agents (run in parallel during plan-deepening):
+Research agents (run in parallel during plan-verification):
 - **best-practices-researcher** - External docs and examples
 - **framework-docs-researcher** - Library documentation via Context7
 - **repo-research-analyst** - Repository patterns and conventions

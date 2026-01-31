@@ -146,7 +146,7 @@ Maximum 2 revision cycles.
 
 | Option | Action |
 |--------|--------|
-| Deepen plan | Invoke `skill: plan-deepening` |
+| Deepen plan | Invoke `skill: plan-verification` |
 | Review plan | Invoke `skill: reviewing` |
 | Start work | Invoke `skill: executing-work` |
 | Done for now | Display path and exit |

@@ -29,7 +29,7 @@ Plan path via `$ARGUMENTS`. Should already have Enhancement Summary (from deepen
 
 Check for:
 - Original content (Technical Approach, Implementation, etc.)
-- Enhancement Summary (added by plan-deepening)
+- Enhancement Summary (added by plan-verification)
 - Research Insights (subsections under original sections)
 - Plan Review Summary (appended by plan-reviewing)
 
