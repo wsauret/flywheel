@@ -1,6 +1,6 @@
 # YAML Frontmatter Schema
 
-**See `.claude/skills/codify-docs/schema.yaml` for the complete schema specification.**
+Schema for compound-docs solution files. All solution documentation uses this frontmatter format.
 
 ## Required Fields
 
