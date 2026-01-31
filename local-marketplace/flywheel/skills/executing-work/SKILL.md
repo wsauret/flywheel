@@ -1,6 +1,6 @@
 ---
 name: executing-work
-description: Execute work plans efficiently while shipping complete features. Loads context files, follows patterns, tests continuously. Triggers on "work on", "implement", "build", "execute plan".
+description: Execute work plans using probe-dispatch-checkpoint pattern. Orchestrator stays lean, dispatches subagents per phase. Triggers on "work on", "implement", "execute plan".
 allowed-tools:
   - Read
   - Write
@@ -17,6 +17,8 @@ allowed-tools:
 
 Execute plans using **probe-dispatch-checkpoint** pattern. Orchestrator stays lean, dispatches subagents per phase, persists state for recovery.
 
+**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
+
 ## Input
 
 Plan path via `$ARGUMENTS`. Can be a plan, specification, or todo file.
@@ -29,283 +31,163 @@ Plan path via `$ARGUMENTS`. Can be a plan, specification, or todo file.
 
 ```bash
 STATE_FILE="${PLAN_PATH%.md}.state.md"
-if [ -f "$STATE_FILE" ]; then
-  echo "✅ Found execution state - resuming"
-fi
+test -f "$STATE_FILE" && echo "Found execution state - resuming"
 ```
 
-**If state file exists:**
-1. Read state file to find last checkpoint
-2. Identify first unchecked phase
-3. Load key decisions and code context
-4. Resume from that phase
+**If state file exists:** Resume from first unchecked phase, load key decisions.
 
-**If no state file:** Create initial state file from plan.
+**If no state file:** Create initial state using `references/state-file-template.md`.
 
 ### Load Context
 
-```bash
-CONTEXT_FILE="${PLAN_PATH%.md}.context.md"
-```
+From `[plan_path].context.md`:
+- File References
+- Gotchas & Warnings
+- Naming Conventions
 
-Load from context file:
-- **File References** - key files to understand
-- **Gotchas & Warnings** - prevent common mistakes
-- **Naming Conventions** - follow exactly
+### Worktree Assessment
 
-### Create State File
-
-**File:** `plans/<plan-name>.state.md`
-
-```markdown
----
-plan: <plan-name>.md
-status: in_progress
-schema_version: 1
----
-
-# Execution State: <Plan Name>
-
-## Progress
-- [ ] Phase 1: <description>
-- [ ] Phase 2: <description>
-- [ ] Phase 3: <description>
-
-## Key Decisions
-<!-- Append decisions as they are made -->
-
-## Code Context
-<!-- Track files modified/created -->
-```
-
-### Get Approval
-
-Assess the plan and recommend worktree if ANY of these apply:
-
-**Recommend Worktree When:**
+**Recommend worktree when:**
 - Plan modifies >10 files
-- Plan has >3 implementation phases
-- Plan touches critical paths (auth, payments, migrations, core data models)
-- Plan involves experimental or high-risk changes
+- Plan has >3 phases
+- Plan touches critical paths (auth, payments, migrations)
 
-**Use AskUserQuestion:**
-
+**AskUserQuestion:**
 ```
-Question: "Ready to execute plan. [Worktree recommended due to: X] How would you like to work?"
-Header: "Work env"
+Question: "Ready to execute. [Worktree recommended due to: X] How to work?"
 Options:
-1. Current branch - Work directly on current branch
-2. Create worktree (Recommended) - Isolated branch via worktree-manager.sh
+1. Current branch
+2. Create worktree (Recommended)
 ```
 
-**If worktree selected:**
-```bash
-# Use the worktree-manager script (never raw git commands)
-bash .claude/flywheel/skills/git-worktree/scripts/worktree-manager.sh create <branch-name> main
-```
-
-After worktree creation, remind user:
-- "Worktree created. Dependencies may need installation in the new worktree."
-- "Run /init in the worktree to orient Claude Code."
+**If worktree:** Use `worktree-manager.sh create <branch> main`, remind about deps and /init.
 
 ---
 
 ## Phase 2: Execute (Per-Phase Loop)
 
-For each unchecked phase in Progress:
+For each unchecked phase:
 
 ### 2.1 Probe Phase Files
 
-Quick check of files referenced in phase:
-- Count files and estimate total lines
-- If > 500 lines total: warn user, consider splitting
-- Note any missing files
+Quick check of referenced files:
+- Count files and estimate lines
+- If >500 lines: warn, consider splitting
+- Note missing files
 
 ### 2.2 Dispatch Subagent
 
 ```
 Task general-purpose: "
 ## Task
-Execute Phase N: <phase description>
+Execute Phase N: <description>
 
 ## Plan Excerpt
-<paste full phase content from plan>
+<paste full phase content>
 
 ## Context
-- Key decisions so far: <from state file>
+- Key decisions: <from state file>
 - Files to reference: <from context file>
 - Patterns to follow: <from context file>
 
 ## Constraints
 - Follow existing patterns exactly
 - Run tests after changes
-- Report: files modified, decisions made, any blockers
+- Report: files modified, decisions made, blockers
 "
 ```
 
 **Key rules:**
 - Provide plan text directly (don't make subagent read file)
-- One phase at a time (sequential, not parallel)
+- One phase at a time (sequential)
 - Include decisions from previous phases
+
+### 2.2a TDD Cycle (Per Implementation Task)
+
+For each implementation task:
+
+1. **RED:** Write failing test first
+   - One test, one behavior
+   - Run tests - confirm FAILS for expected reason (not syntax error)
+   - If passes immediately: test is wrong, rewrite
+
+2. **GREEN:** Implement minimal code
+   - Simplest code to pass the test
+   - No extras, no optimization
+   - Run tests - confirm PASSES
+
+3. **REFACTOR:** Clean up (optional)
+   - Remove duplication, improve names
+   - Run tests after each change
+
+**Skip TDD when:** Pure refactoring (tests already exist), config-only changes, documentation
 
 ### 2.3 Checkpoint
 
 After subagent completes:
 
-1. **Mark phase complete** in state file:
-   ```markdown
-   - [x] Phase 1: <description>
-   ```
-
-2. **Append key decisions:**
-   ```markdown
-   ## Key Decisions
-   - Phase 1: Using repository pattern for data access
-   - Phase 1: Tests in `__tests__/` directory
-   ```
-
-3. **Update code context:**
-   ```markdown
-   ## Code Context
-   - Created: `src/services/auth.ts`
-   - Modified: `src/routes/index.ts`
-   ```
-
-4. **Run tests** - fail fast if broken
+1. Mark phase complete: `- [x] Phase N`
+2. Append key decisions
+3. **Verify TDD evidence:** Tests created/modified, suite passing
+4. Update code context (files modified/created)
+5. Run tests - fail fast if broken
 
 ### 2.4 Loop
 
-Continue to next unchecked phase. If all phases complete, proceed to Quality Check.
+Continue to next unchecked phase. All complete → Quality Check.
 
 ---
 
 ## Phase 3: Quality Check
 
-### Run Tests
+### Verification Gate
 
-```bash
-# Auto-detect project type
-npm test || pytest || cargo test || go test ./...
-```
+Before claiming completion, follow protocol in `references/verification-gates.md`:
 
-### Optional Reviewers
+1. IDENTIFY the proving command
+2. RUN it fresh
+3. READ full output, check exit code
+4. VERIFY output confirms claim
+5. ONLY THEN make claim with evidence
 
-For complex changes (10+ files or security-sensitive):
+### Two-Stage Review
 
-```
-Task code-simplicity-reviewer: "Review changes"
-Task security-reviewer: "Check for vulnerabilities"
-```
+Per `references/verification-gates.md`:
+1. **Stage 1: Spec Compliance** - Built what was requested?
+2. **Stage 2: Code Quality** - Code clean and tested?
 
-Run reviewers in parallel. Present findings.
-
----
-
-## Verification Gate (Required Before Completion)
-
-Before claiming any phase complete or expressing satisfaction:
-
-1. **IDENTIFY**: What command proves this claim?
-2. **RUN**: Execute FULL command fresh (not cached)
-3. **READ**: Full output, check exit code, count failures
-4. **VERIFY**: Does output confirm the claim?
-5. **ONLY THEN**: Make the claim with evidence
-
-**Banned Before Verification:**
-- "Done", "Fixed", "Complete", "Passing", "Working"
-- "Should work", "Probably", "Seems to"
-- "Great!", "Perfect!", "Looks good!"
-
-**Evidence Required:**
-
-| Claim | Proof |
-|-------|-------|
-| Tests pass | Test output: 0 failures |
-| Build works | Exit code 0 |
-| Bug fixed | Red-green cycle verified |
-| Phase complete | All acceptance criteria checked |
-
----
-
-## Two-Stage Review (Per Phase)
-
-After implementation, before marking complete:
-
-### Stage 1: Spec Compliance
-
-- Did we build what was requested?
-- Any missing requirements?
-- Any extra/unneeded work?
-- Verify by reading code, not trusting reports
-
-**If Stage 1 fails:** Fix spec gaps first. Do not proceed to Stage 2.
-
-### Stage 2: Code Quality
-
-Only after Stage 1 passes:
-
-- Is the code clean?
-- Are there tests?
-- Does it follow patterns?
-- Any security concerns?
-
-**If Stage 2 fails:** Fix quality issues. Re-run Stage 2.
+Never proceed to Stage 2 if Stage 1 fails.
 
 ---
 
 ## Phase 4: Ship It
 
-### Create Commit
+### Commit & PR
 
 ```bash
 git add .
-git status
-git diff --staged
+git status && git diff --staged
+git commit -m "feat(scope): description
 
-git commit -m "$(cat <<'EOF'
-feat(scope): description
+Co-Authored-By: Claude <noreply@anthropic.com>"
 
-Co-Authored-By: Claude <noreply@anthropic.com>
-EOF
-)"
-```
-
-### Create PR
-
-```bash
 git push -u origin feature-branch
 gh pr create --title "feat: [Description]" --body "..."
 ```
 
 ### Update State
 
-Mark state file as completed:
+Mark state file: `status: completed`
 
-```markdown
----
-status: completed
----
-```
+### Worktree Cleanup
 
-### Worktree Cleanup (If Applicable)
-
-If work was done in a worktree, offer cleanup:
+If in worktree, offer cleanup:
 
 ```
-Question: "PR created successfully. Would you like to clean up the worktree?"
-Header: "Cleanup"
+Question: "PR created. Clean up worktree?"
 Options:
-1. Clean up worktree - Remove worktree and switch back to main
-2. Keep worktree - Preserve for additional work or fixes
-```
-
-**If cleanup selected:**
-```bash
-# Return to main repo first
-cd <original-repo-path>
-
-# Clean up the worktree
-bash .claude/flywheel/skills/git-worktree/scripts/worktree-manager.sh cleanup
+1. Clean up - Remove worktree, switch to main
+2. Keep - Preserve for fixes
 ```
 
 ---
@@ -317,7 +199,7 @@ If orchestrator compacts mid-execution:
 1. State file contains full progress
 2. New instance reads state file
 3. Finds first unchecked phase
-4. Loads key decisions for context
+4. Loads key decisions
 5. Resumes execution
 
 **No work is lost.**
@@ -326,18 +208,9 @@ If orchestrator compacts mid-execution:
 
 ## Error Handling
 
-### Subagent Failures
-- Log failure with phase and error
-- Ask user: retry, skip, or abort?
-- Don't checkpoint failed phases
-
-### Test Failures
-- Fix immediately before checkpointing
-- If blocked, note in state file and ask user
-
-### Missing Files
-- Warn during probe phase
-- Ask user to clarify before dispatching
+- **Subagent failures**: Log, ask user: retry/skip/abort
+- **Test failures**: Fix before checkpointing
+- **Missing files**: Warn during probe, clarify before dispatch
 
 ---
 
@@ -353,8 +226,14 @@ If orchestrator compacts mid-execution:
 
 ## Anti-Patterns
 
-- **Skipping checkpoints** - lose recovery capability
+- **Skip checkpoints** - lose recovery capability
 - **Parallel implementation** - causes file conflicts
-- **Making subagent read plan** - provide text directly
-- **Ignoring test failures** - fix before checkpoint
-- **Complex state files** - keep them simple (checkboxes)
+- **Make subagent read plan** - provide text directly
+- **Ignore test failures** - fix before checkpoint
+
+---
+
+## Detailed References
+
+- `references/state-file-template.md` - State file structure, recovery process
+- `references/verification-gates.md` - Verification protocol, two-stage review

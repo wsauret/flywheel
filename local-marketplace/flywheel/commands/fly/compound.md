@@ -1,6 +1,6 @@
 ---
 name: fly:compound
-description: Document a recently solved problem to compound your team's knowledge. Uses parallel subagents for efficient capture.
+description: Document a recently solved problem to compound your team's knowledge.
 argument-hint: "[optional: brief context about the fix]"
 ---
 
@@ -8,17 +8,16 @@ argument-hint: "[optional: brief context about the fix]"
 
 <context_hint> #$ARGUMENTS </context_hint>
 
-**Invoke the compounding skill:**
+**Invoke the compound-docs skill:**
 
 ```
-skill: compounding
+skill: compound-docs
 ```
 
-The compounding skill handles:
-- Parallel subagent coordination (context, solution, prevention, etc.)
-- Delegation to compound-docs skill for file creation
-- Optional specialized review (performance, security, etc.)
-- Cross-referencing with existing documentation
+The compound-docs skill handles:
+- Gathering context from conversation
+- YAML validation and file creation
+- Cross-referencing with existing docs
+- Optional specialized review for complex issues
 
-See `plugin/skills/compounding/SKILL.md` for full procedural details.
-See `plugin/skills/compound-docs/SKILL.md` for documentation capture details.
+See `skills/compound-docs/SKILL.md` for details.

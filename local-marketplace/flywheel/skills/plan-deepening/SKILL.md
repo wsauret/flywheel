@@ -1,6 +1,6 @@
 ---
 name: plan-deepening
-description: Enhance existing plans with skills, learnings, and research agents. Spawns parallel sub-agents for maximum coverage. Triggers on "deepen plan", "enhance plan", "research plan".
+description: Enhance plans with internal and external research. Validates claims, checks for DRY violations, and adds best practices. Triggers on "deepen plan", "enhance plan", "research plan".
 allowed-tools:
   - Read
   - Write
@@ -13,982 +13,344 @@ allowed-tools:
 
 # Plan Deepening Skill
 
-Enhance existing implementation plans with parallel research agents, skills, and documented learnings. Each major section gets dedicated research sub-agents to find best practices, performance optimizations, edge cases, and real-world implementation examples.
+Enhance implementation plans through systematic research. Two modes:
+- **Internal Research** - Does this already exist? DRY violations? Fits existing patterns?
+- **External Research** - Do claimed features exist? Best practices? Framework docs?
 
-**Philosophy:** 20, 30, 40 skill sub-agents is fine - no limit. Use everything available. The goal is MAXIMUM coverage, not efficiency.
-
-**Note: The current year is 2026.** Use this when searching for recent documentation and best practices.
+**Philosophy:** Validate before implementing. Bad assumptions in plans become bad code.
 
 ## Input
 
-The plan file path is provided via `$ARGUMENTS`. If empty:
-1. Check for recent plans: `ls -la plans/`
-2. Ask the user: "Which plan would you like to deepen? Please provide the path (e.g., `plans/my-feature.md`)."
+Plan path via `$ARGUMENTS`. If empty, ask user.
 
-Do not proceed until you have a valid plan file path.
-
-**Subagent Dispatch:** Follow subagent dispatch guidelines in `CLAUDE.md` - never send file contents, always request compaction format output.
+**Subagent Dispatch:** Follow guidelines in `CLAUDE.md` - never send file contents, request compaction format.
 
 ---
 
 ## Phase 0: Discover Relevant Learnings
 
-Before spawning research agents, check if `docs/solutions/` exists and search for relevant past solutions.
-
-### Learning Discovery
+Before research, check `docs/solutions/` for relevant past solutions.
 
 ```bash
-# Check if solutions directory exists
 ls docs/solutions/ 2>/dev/null
 ```
 
-**If exists:**
-
-1. **Extract keywords from plan:**
-   - Component names (e.g., "UserService", "PaymentController")
-   - Technologies (e.g., "Rails", "PostgreSQL", "React")
-   - Problem patterns (e.g., "N+1", "authentication", "caching")
-
-2. **Search by YAML frontmatter:**
-   ```bash
-   # Search by module
-   grep -l "module: UserService" docs/solutions/**/*.md
-
-   # Search by component
-   grep -l "component: api" docs/solutions/**/*.md
-
-   # Search by tags
-   grep -l "authentication\|auth" docs/solutions/**/*.md
-   ```
-
-3. **Score relevance (fast heuristic):**
-   - Tag overlap (x3 weight)
-   - Module match (x5 weight)
-   - Category + keyword match (x4 weight)
-
-4. **Present top matches (max 5):**
-   ```
-   Relevant Past Solutions Found:
-   1. docs/solutions/performance-issues/user-service-n-plus-one.md
-      - Symptom: N+1 query on user loading
-      - Solution: Added eager loading
-      - Relevance: Module match (UserService) + tag match (performance)
-
-   2. docs/solutions/api-issues/authentication-timeout.md
-      - Symptom: API timeout on auth endpoint
-      - Solution: Added caching
-      - Relevance: Tag match (authentication, api)
-   ```
-
-5. **Ask user to confirm relevance:**
-   ```
-   Question: "Found [N] potentially relevant past solutions. Include any in research context?"
-   Options:
-   1. Include all - Apply all matched learnings
-   2. Select specific - Let me choose which ones
-   3. Skip learnings - Proceed without past solutions
-   ```
-
-**If no matches or directory doesn't exist:** Proceed directly to Phase 1.
+**If exists:** Search by keywords from plan (module names, technologies, patterns). Present top 3-5 matches and ask user which to include.
 
 ---
 
-## Phase 1: Parse and Analyze Plan Structure
+## Phase 1: Parse Plan and Extract Claims
 
-Read the plan file and extract all major sections that can be enhanced with research.
+Read plan and identify:
 
-### Extract Plan Components
+### Technical Claims (require validation)
+- "Use [library] for [feature]" - Does the library support this?
+- "Implement [pattern]" - Is this the right pattern for this case?
+- "[Framework] provides [capability]" - Verify in docs
 
-Identify and document:
-- [ ] Overview/Problem Statement
-- [ ] Proposed Solution sections
-- [ ] Technical Approach/Architecture
-- [ ] Implementation phases/steps
-- [ ] Code examples and file references
-- [ ] Acceptance criteria
-- [ ] Any UI/UX components mentioned
-- [ ] Technologies/frameworks mentioned (Rails, React, Python, TypeScript, etc.)
-- [ ] Domain areas (data models, APIs, UI, security, performance, etc.)
+### Implementation Scope
+- Technologies/frameworks mentioned
+- Components to build or modify
+- File paths referenced
 
-### Create Section Manifest
-
-Build a manifest of sections to enhance:
-
-```
-Section 1: [Title] - [Brief description of what to research]
-Section 2: [Title] - [Brief description of what to research]
-Section 3: [Title] - [Brief description of what to research]
-...
-```
-
-### Identify Technologies
-
-Extract all technologies mentioned for targeted research:
-- Programming languages (Python, TypeScript, Ruby, Go, etc.)
-- Frameworks (React, Rails, Django, FastAPI, etc.)
-- Libraries (React Query, SQLAlchemy, Prisma, etc.)
-- Infrastructure (AWS, Docker, Kubernetes, etc.)
-- Databases (PostgreSQL, Redis, MongoDB, etc.)
+### Research Questions
+Convert claims into specific questions:
+- "Does React Query support offline persistence?" (external)
+- "Do we already have a caching layer?" (internal)
+- "What's the recommended pattern for X in our codebase?" (internal)
 
 ---
 
-## Phase 2: Discover and Apply Available Skills (ALL 5 Sources)
+## Phase 2: Internal Research (Codebase)
 
-**CRITICAL:** Dynamically discover all available skills from ALL sources and match them to plan sections. Don't assume what skills exist - discover them at runtime.
+**Goal:** Prevent reinventing wheels and breaking patterns.
 
-### Step 1: Discover ALL Available Skills
-
-```bash
-# 1. Project-local skills (highest priority - project-specific)
-ls .claude/skills/ 2>/dev/null
-
-# 2. User's global skills (~/.claude/)
-ls ~/.claude/skills/ 2>/dev/null
-
-# 3. Flywheel plugin skills
-ls ~/.claude/plugins/cache/*/Flywheel/*/skills/ 2>/dev/null
-# Also check compound-engineering variant
-ls ~/.claude/plugins/cache/*/compound-engineering/*/skills/ 2>/dev/null
-
-# 4. ALL other installed plugins - check every plugin for skills
-find ~/.claude/plugins/cache -type d -name "skills" 2>/dev/null
-
-# 5. Also check installed_plugins.json for all plugin locations
-cat ~/.claude/plugins/installed_plugins.json 2>/dev/null
-```
-
-**Important:** Check EVERY source. Don't assume any plugin is the only source. Use skills from ANY installed plugin that's relevant.
-
-### Step 2: Read Each Skill's Documentation
-
-For each discovered skill directory, read its SKILL.md to understand capabilities:
-
-```bash
-# For each skill directory found, read its documentation
-cat [skill-path]/SKILL.md
-```
-
-Build a skill catalog:
-```
-Skill: [name]
-Path: [full path to skill directory]
-Description: [from SKILL.md]
-Matches plan sections: [list of relevant sections]
-```
-
-### Step 3: Match Skills to Plan Content
-
-For each skill discovered:
-- Read its SKILL.md description
-- Check if any plan sections match the skill's domain
-- If there's ANY possible match, include it for sub-agent spawning
-
-**Be inclusive, not exclusive.** If a skill might apply, include it.
-
-### Step 4: Spawn Sub-Agent for EVERY Matched Skill
-
-**CRITICAL: For EACH skill that matches, spawn a separate sub-agent and instruct it to USE that skill.**
-
-For each matched skill:
-```
-Task general-purpose: "You have the [skill-name] skill available at [skill-path].
-
-YOUR JOB: Use this skill on the plan.
-
-1. Read the skill: cat [skill-path]/SKILL.md
-2. Follow the skill's instructions exactly
-3. Apply the skill to this content:
-
----
-[relevant plan section or full plan]
----
-
-4. Return the skill's full output
-
-The skill tells you what to do - follow it. Execute the skill completely.
-
-IMPORTANT: Flag any OPEN QUESTIONS you encounter while applying this skill:
-- Trade-offs where multiple valid approaches exist
-- Decisions that depend on user preference or context
-- Areas where the skill's guidance conflicts with what you see in the codebase
-Format each as: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
-```
-
-**Spawn ALL skill sub-agents in PARALLEL:**
-- 1 sub-agent per matched skill
-- Each sub-agent reads and uses its assigned skill
-- All run simultaneously
-- **20, 30, 40 skill sub-agents is fine - NO LIMIT**
-
-**Each sub-agent:**
-1. Reads its skill's SKILL.md
-2. Follows the skill's workflow/instructions
-3. Applies the skill to the plan
-4. Returns whatever the skill produces (code, recommendations, patterns, reviews, etc.)
-
-**Example spawns:**
-```
-Task general-purpose: "Use the dhh-rails-style skill at ~/.claude/plugins/.../dhh-rails-style. Read SKILL.md and apply it to: [Rails sections of plan]"
-
-Task general-purpose: "Use the frontend-design skill at ~/.claude/plugins/.../frontend-design. Read SKILL.md and apply it to: [UI sections of plan]"
-
-Task general-purpose: "Use the agent-native-architecture skill at ~/.claude/plugins/.../agent-native-architecture. Read SKILL.md and apply it to: [agent/tool sections of plan]"
-
-Task general-purpose: "Use the security-patterns skill at ~/.claude/skills/security-patterns. Read SKILL.md and apply it to: [full plan]"
-
-Task general-purpose: "Use the performance-optimization skill at [path]. Read SKILL.md and apply it to: [performance-critical sections]"
-```
-
-**No limit on skill sub-agents. Spawn one for every skill that could possibly be relevant.**
-
----
-
-## Phase 3: Discover and Apply Learnings/Solutions
-
-Check for documented learnings from the /compound workflow. These are solved problems stored as markdown files. Apply institutional knowledge to prevent repeating past mistakes.
-
-### Learnings Location - Check These Exact Folders
+### 2.1 Existing Solutions Check
 
 ```
-docs/solutions/           <-- PRIMARY: Project-level learnings
-├── performance-issues/
-│   └── *.md
-├── debugging-patterns/
-│   └── *.md
-├── configuration-fixes/
-│   └── *.md
-├── integration-issues/
-│   └── *.md
-├── deployment-issues/
-│   └── *.md
-└── [other-categories]/
-    └── *.md
-```
+Task repo-research-analyst: "
+Search codebase for existing implementations related to: [feature/capability]
 
-### Step 1: Find ALL Learning Markdown Files
+Questions:
+1. Does something similar already exist?
+2. Can we extend existing code instead of creating new?
+3. Are there shared utilities we should use?
 
-```bash
-# PRIMARY LOCATION - Project learnings
-find docs/solutions -name "*.md" -type f 2>/dev/null
-
-# If docs/solutions doesn't exist, check alternate locations:
-find .claude/docs -name "*.md" -type f 2>/dev/null
-find ~/.claude/docs -name "*.md" -type f 2>/dev/null
-```
-
-### Step 2: Read Frontmatter of Each Learning to Filter
-
-Each learning file has YAML frontmatter with metadata. Read the first ~20 lines of each file to get filtering information:
-
-```yaml
----
-title: "N+1 Query Fix for Briefs"
-category: performance-issues
-tags: [activerecord, n-plus-one, includes, eager-loading]
-module: Briefs
-symptom: "Slow page load, multiple queries in logs"
-root_cause: "Missing includes on association"
----
-```
-
-**For each .md file, quickly scan its frontmatter:**
-
-```bash
-# Read first 20 lines of each learning (frontmatter + summary)
-head -20 docs/solutions/**/*.md 2>/dev/null
-```
-
-### Step 3: Filter - Only Spawn Sub-Agents for LIKELY Relevant Learnings
-
-Compare each learning's frontmatter against the plan:
-- `tags:` - Do any tags match technologies/patterns in the plan?
-- `category:` - Is this category relevant? (e.g., skip deployment-issues if plan is UI-only)
-- `module:` - Does the plan touch this module?
-- `symptom:` / `root_cause:` - Could this problem occur with the plan?
-
-**SKIP learnings that are clearly not applicable:**
-- Plan is frontend-only -> skip `database-migrations/` learnings
-- Plan is Python -> skip `rails-specific/` learnings
-- Plan has no auth -> skip `authentication-issues/` learnings
-
-**SPAWN sub-agents for learnings that MIGHT apply:**
-- Any tag overlap with plan technologies
-- Same category as plan domain
-- Similar patterns or concerns
-
-### Step 4: Spawn Sub-Agents for Filtered Learnings
-
-For each learning that passes the filter:
-
-```
-Task general-purpose: "
-LEARNING FILE: [full path to .md file]
-
-1. Read this learning file completely
-2. This learning documents a previously solved problem
-
-Check if this learning applies to this plan:
-
----
-[full plan content]
----
-
-If relevant:
-- Explain specifically how it applies
-- Quote the key insight or solution
-- Suggest where/how to incorporate it
-
-If NOT relevant after deeper analysis:
-- Say 'Not applicable: [reason]'
-
-IMPORTANT: Flag any OPEN QUESTIONS this learning raises:
-- Does the plan's approach conflict with this learning?
-- Are there trade-offs between following this learning vs the current plan?
-Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'
+Flag: EXISTING_SOLUTION if found, with path and assessment of reusability.
 "
 ```
 
-**Example filtering:**
+### 2.2 Pattern Consistency Check
+
 ```
-# Found 15 learning files, plan is about "Rails API caching"
+Task repo-research-analyst: "
+Analyze codebase patterns for: [domain area from plan]
 
-# SPAWN (likely relevant):
-docs/solutions/performance-issues/n-plus-one-queries.md      # tags: [activerecord]
-docs/solutions/performance-issues/redis-cache-stampede.md    # tags: [caching, redis]
-docs/solutions/configuration-fixes/redis-connection-pool.md  # tags: [redis]
+Questions:
+1. How do we currently handle [similar concern]?
+2. What naming conventions exist for [component type]?
+3. Does the proposed approach fit or conflict with existing patterns?
 
-# SKIP (clearly not applicable):
-docs/solutions/deployment-issues/heroku-memory-quota.md      # not about caching
-docs/solutions/frontend-issues/stimulus-race-condition.md    # plan is API, not frontend
-docs/solutions/authentication-issues/jwt-expiry.md           # plan has no auth
+Flag: PATTERN_CONFLICT if plan deviates from established patterns.
+"
 ```
 
-**Spawn sub-agents in PARALLEL for all filtered learnings.**
+### 2.3 DRY Violation Check
 
-**These learnings are institutional knowledge - applying them prevents repeating past mistakes.**
+```
+Task repo-research-analyst: "
+Check for potential DRY violations in plan:
+
+Plan proposes: [list proposed new code/modules]
+
+Questions:
+1. Does any proposed code duplicate existing functionality?
+2. Should this be extracted to a shared location?
+3. Are there existing abstractions this should use?
+
+Flag: DRY_VIOLATION with specific file paths if found.
+"
+```
+
+### 2.4 Integration Impact Check
+
+```
+Task repo-research-analyst: "
+Assess integration impact of plan:
+
+Components affected: [list from plan]
+
+Questions:
+1. What else touches these files/modules?
+2. Are there tests that will need updating?
+3. Any potential breaking changes to existing consumers?
+
+Flag: INTEGRATION_RISK with details.
+"
+```
+
+**Run all internal research in parallel.**
 
 ---
 
-## Phase 4: Launch Per-Section Research Agents
+## Phase 3: External Research (Documentation & Best Practices)
 
-For each major section in the plan, spawn dedicated sub-agents to research improvements using the Task Explore capability.
+**Goal:** Validate claims and add best practices.
 
-### Per-Section Research
+### 3.1 Framework Documentation Validation
 
-For each identified section, launch parallel research:
-
-```
-Task Explore: "Research best practices, patterns, and real-world examples for: [section topic].
-
-Technologies involved: [list from plan]
-
-Find:
-- Industry standards and conventions
-- Performance considerations and optimizations
-- Common pitfalls and how to avoid them
-- Security considerations if applicable
-- Edge cases and error handling patterns
-- Documentation and tutorials
-- Real-world implementation examples
-
-Return concrete, actionable recommendations with code examples where possible.
-
-IMPORTANT: Flag any OPEN QUESTIONS you encounter:
-- Trade-offs between competing approaches
-- Context-dependent recommendations where user preference matters
-- Areas where best practices conflict or are evolving
-Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
-```
-
-### Context7 MCP Integration
-
-For any technologies/frameworks mentioned in the plan, query Context7 for official documentation:
-
-**Step 1: Resolve Library ID**
-```
-mcp__plugin_Flywheel_context7__resolve-library-id: {
-  "libraryName": "[framework name]",
-  "query": "[what you need to know about this framework for the plan]"
-}
-```
-
-**Step 2: Query Documentation**
-```
-mcp__plugin_Flywheel_context7__query-docs: {
-  "libraryId": "[resolved library ID]",
-  "query": "[specific question about patterns, APIs, best practices]"
-}
-```
-
-**Example Context7 queries:**
-- React Query: "optimistic updates and cache invalidation patterns"
-- Prisma: "transaction handling and error recovery"
-- FastAPI: "dependency injection and middleware patterns"
-- SQLAlchemy: "async session management and connection pooling"
-
-### Web Search for Current Best Practices
-
-Use WebSearch for recent (2025-2026) articles, blog posts, and documentation on topics in the plan:
+For each framework/library claim in the plan:
 
 ```
-WebSearch: "[technology] best practices 2026"
-WebSearch: "[pattern] implementation examples"
-WebSearch: "[framework] performance optimization guide"
+# Resolve library ID
+mcp__plugin_Flywheel_context7__resolve-library-id:
+  libraryName: "[library name]"
+  query: "[specific capability claimed]"
+
+# Query docs to validate
+mcp__plugin_Flywheel_context7__query-docs:
+  libraryId: "[resolved ID]"
+  query: "Does [library] support [claimed feature]? Show API and examples."
 ```
 
-### Launch ALL Research Agents in Parallel
+**Flag:** `CLAIM_INVALID` if documented capability doesn't match claim.
 
-**Do NOT serialize research. Launch ALL section researchers, Context7 queries, and web searches simultaneously.**
+### 3.2 Best Practices Research
+
+```
+Task research-specialist: "
+Research best practices for: [technical approach in plan]
+
+Focus on:
+1. Is this the recommended approach for [use case]?
+2. Common pitfalls to avoid
+3. Performance considerations
+4. Security implications
+
+Return: Concrete recommendations with code examples.
+"
+```
+
+### 3.3 Version Compatibility Check
+
+```
+Task research-specialist: "
+Check version compatibility for: [technology stack from plan]
+
+Questions:
+1. Do the proposed versions work together?
+2. Any deprecation warnings for planned approaches?
+3. Breaking changes in recent versions?
+
+Flag: VERSION_ISSUE if incompatibilities found.
+"
+```
+
+### 3.4 Alternative Approaches Research
+
+```
+Task research-specialist: "
+Research alternative approaches for: [core technical decision in plan]
+
+Questions:
+1. What are the main alternatives?
+2. Trade-offs between approaches?
+3. When is each approach recommended?
+
+Return: Comparison table with recommendations.
+"
+```
+
+**Run all external research in parallel.**
 
 ---
 
-## Phase 5: Synthesize and Deduplicate Findings
+## Phase 4: Synthesize Findings
 
-Wait for ALL parallel agents to complete - skills, research agents, learnings, everything. Then synthesize all findings into a comprehensive enhancement.
+Wait for all research agents. Then:
 
-### Collect Outputs from ALL Sources
+### Categorize Findings
 
-1. **Skill-based sub-agents** - Each skill's full output (code examples, patterns, recommendations)
-2. **Learnings/Solutions sub-agents** - Relevant documented learnings from /compound
-3. **Research agents** - Best practices, documentation, real-world examples
-4. **Context7 queries** - Framework documentation and patterns
-5. **Web searches** - Current best practices and articles
+**Blockers (must resolve before implementation):**
+- `CLAIM_INVALID` - Plan relies on non-existent features
+- `VERSION_ISSUE` - Incompatible technology versions
 
-### Extract from Each Agent's Findings
+**Warnings (should address):**
+- `DRY_VIOLATION` - Code duplication identified
+- `PATTERN_CONFLICT` - Deviates from codebase patterns
+- `INTEGRATION_RISK` - May break existing functionality
 
-For each agent's output, extract:
-- [ ] Concrete recommendations (actionable items)
-- [ ] Code patterns and examples (copy-paste ready)
-- [ ] Anti-patterns to avoid (warnings)
-- [ ] Performance considerations (metrics, benchmarks)
-- [ ] Security considerations (vulnerabilities, mitigations)
-- [ ] Edge cases discovered (handling strategies)
-- [ ] Documentation links (references)
-- [ ] Skill-specific patterns (from matched skills)
-- [ ] Relevant learnings (past solutions that apply)
-- [ ] **OPEN QUESTIONS** flagged by the agent (collect ALL of these)
+**Enhancements (incorporate into plan):**
+- Best practices from external research
+- Code examples from documentation
+- Security/performance recommendations
 
-### Deduplication Algorithm
+### Generate Open Questions
 
-**Identical findings:** Same recommendation from multiple sources
-- Merge into single finding
-- Note source count: "Recommended by 4 agents"
-- Higher confidence when multiple sources agree
+Convert conflicts and decisions into questions:
 
-**Similar findings:** Same topic, different wording
-- Group under common theme
-- Preserve unique details from each
-- Create consolidated recommendation
+| Question | Options | Source |
+|----------|---------|--------|
+| [Decision point] | A: [option], B: [option] | [agent] |
 
-**Complementary findings:** Different aspects of same topic
-- Keep both, organize as related
-- Cross-reference each other
+### Deduplicate
 
-**Conflicting findings:** Contradictory recommendations
-- **DO NOT RESOLVE** - Convert to OPEN QUESTION
-- Present both sides with reasoning
-- Note which agents support each side
-- Format as: `OPEN QUESTION: [topic] - Agent A recommends X because [reason], Agent B recommends Y because [reason]. (Options: A: [X], B: [Y])`
-- The consolidation phase will ask the user to decide
-
-### Prioritize by Impact
-
-**High Impact:**
-- Security vulnerabilities or mitigations
-- Performance improvements with measurable gains
-- Architecture decisions with long-term consequences
-- Patterns from multiple agreeing sources
-
-**Medium Impact:**
-- Best practices with clear benefits
-- Edge case handling
-- Code quality improvements
-- Documentation requirements
-
-**Lower Impact:**
-- Minor optimizations
-- Style preferences
-- Nice-to-have enhancements
-
-### Group by Plan Section
-
-Organize all findings by which section they enhance:
-```
-Section: Technical Approach
-- Finding 1 (from skills: dhh-rails-style, security-patterns)
-- Finding 2 (from research: Context7, web search)
-- Finding 3 (from learning: redis-cache-stampede.md)
-
-Section: Implementation Phase 2
-- Finding 4 (from skill: performance-optimization)
-- Finding 5 (from research: Task Explore)
-...
-```
+- Same finding from multiple sources → Higher confidence, note source count
+- Conflicting findings → Convert to Open Question
 
 ---
 
-## Phase 6: Enhance Plan Sections
+## Phase 5: Enhance Plan Sections
 
-Merge research findings back into the plan, adding depth without changing the original structure.
-
-### Enhancement Format for Each Section
+For each section in the original plan, add research insights:
 
 ```markdown
-## [Original Section Title]
+## [Original Section - UNCHANGED]
 
-[Original content preserved - DO NOT MODIFY]
+### Research Validation
 
-### Research Insights
+**Claims Validated:**
+- [Claim]: Confirmed via [source]
 
-**Best Practices:**
-- [Concrete recommendation 1] (Source: [agent/skill])
-- [Concrete recommendation 2] (Source: [agent/skill])
+**Issues Found:**
+- [BLOCKER/WARNING]: [Description] - [Recommendation]
 
-**Performance Considerations:**
-- [Optimization opportunity with expected impact]
-- [Benchmark or metric to target]
+### Best Practices Added
 
-**Security Considerations:**
-- [Security pattern to follow]
-- [Vulnerability to avoid]
+- [Practice]: [Why and how] (Source: [agent])
 
-**Implementation Details:**
+### Code Examples
+
 ```[language]
-// Concrete code example from research
-// Include file path where this would go
+// [path/to/file]
+[concrete implementation example]
 ```
 
-**Edge Cases:**
-- [Edge case 1]: [How to handle]
-- [Edge case 2]: [How to handle]
+### References
 
-**Anti-Patterns to Avoid:**
-- [Anti-pattern]: [Why it's problematic]
-
-**From Documented Learnings:**
-- [Learning title]: [Key insight that applies]
-
-**References:**
-- [Documentation URL 1]
-- [Documentation URL 2]
+- [Documentation URL]
 ```
 
-### Preserve Original Content
-
-**CRITICAL:** Never modify the original plan content. Only ADD the "Research Insights" subsection after each section. The original author's intent must be preserved.
-
-### Code Examples Must Be Concrete
-
-Every code example should:
-- Be syntactically correct for the target language
-- Include comments explaining the pattern
-- Reference specific file paths where it applies
-- Be copy-paste ready for implementation
+**CRITICAL:** Never modify original content. Only add research sections.
 
 ---
 
-## Phase 7: Add Enhancement Summary
+## Phase 6: Write and Present
 
-At the TOP of the plan, add a comprehensive summary section:
-
-```markdown
-## Enhancement Summary
-
-**Deepened on:** [Date]
-**Plan file:** [path]
-**Sections enhanced:** [Count]
-
-### Research Coverage
-- **Skills applied:** [Count] ([list])
-- **Learnings checked:** [Count] relevant of [Total] found
-- **Research agents:** [Count]
-- **Context7 queries:** [Count]
-- **Web searches:** [Count]
-
-### Key Improvements
-1. [Major improvement 1 - brief description]
-2. [Major improvement 2 - brief description]
-3. [Major improvement 3 - brief description]
-
-### New Considerations Discovered
-- [Important finding 1 that wasn't in original plan]
-- [Important finding 2 that wasn't in original plan]
-
-### Open Questions (Requires User Decision)
-
-**Questions flagged by research agents and conflicts between agents. These MUST be resolved during consolidation before implementation.**
-
-| # | Question | Options | Source(s) |
-|---|----------|---------|-----------|
-| 1 | [Question or conflict topic] | A: [option], B: [option] | [agent names] |
-| 2 | [Trade-off identified] | A: [approach], B: [approach] | [agent names] |
-| 3 | [Context-dependent decision] | A: [choice], B: [choice] | [agent name] |
-
-### Applied Learnings
-- [Learning 1]: Applied to [section]
-- [Learning 2]: Applied to [section]
-
----
-```
-
----
-
-## Phase 8: Materialize Enhanced Plan to Disk
-
-**CRITICAL:** You MUST write the enhanced plan back to THE SAME ORIGINAL PLAN FILE before presenting options or completing this skill. The research findings are worthless if not persisted to the plan file.
-
-**Target file:** The SAME `[plan_path]` that was provided as input to this skill (e.g., `plans/feat-user-auth.md`).
-
-### Step 1: Create Backup
+### Write Enhanced Plan
 
 ```bash
 cp [plan_path] [plan_path].backup
 ```
 
-### Step 2: Construct the Enhanced Plan
+Write enhanced plan back to SAME file with:
+1. Enhancement Summary at top (findings, open questions, coverage)
+2. Original sections preserved
+3. Research Validation subsections added
 
-Build the complete enhanced plan by modifying the original file structure:
-1. **Enhancement Summary** (from Phase 7) - INSERT at the TOP of the file, right after the title
-2. **Original plan sections** - preserved exactly as-is
-3. **Research Insights** subsections - INSERT AFTER each original section (from Phase 6)
+### Update Context File
 
-The enhanced file structure:
+Append to `[plan_path].context.md`:
+- Research coverage statistics
+- Key findings summary
+- Open questions generated
 
-```markdown
-# [Original Plan Title]
-
-## Enhancement Summary
-[Content from Phase 7 - deepened date, research coverage, key improvements, conflicts, applied learnings]
-
----
-
-## [Original Section 1]
-[Original content - unchanged]
-
-### Research Insights
-[Best practices, performance considerations, security considerations, implementation details, edge cases, anti-patterns, learnings, references - from Phase 6]
-
-## [Original Section 2]
-[Original content - unchanged]
-
-### Research Insights
-[Research findings for this section]
-
-... continue for all sections ...
-```
-
-### Step 3: Write Back to the ORIGINAL Plan File
-
-Use the **Write tool** to overwrite the original plan file with the enhanced content:
+### Present Options
 
 ```
-Write: [plan_path]   <-- SAME FILE that was input
-Content: [The complete enhanced plan markdown constructed in Step 2]
-```
-
-**DO NOT create a new file.** Write to the SAME path that was provided as input.
-
-**This step is NON-OPTIONAL.** If you skip this, all research is lost.
-
-### Step 4: Verify Write Success
-
-```bash
-# Verify file was updated with new content
-wc -l [plan_path]
-# Should show more lines than original due to Enhancement Summary + Research Insights sections
+Question: "Plan deepened. What next?"
+Options:
+1. View diff - Show what changed
+2. Run review - Get reviewer feedback
+3. Start work - Begin implementation
+4. Deepen more - Additional research on specific sections
 ```
 
 ---
 
-## Phase 9: Update Context File
+## Internal Research Checklist
 
-Update the context file with deepening metadata. This serves as an audit trail of what research was performed.
+Before spawning external research, verify internal research answered:
 
-### Step 1: Determine Context File Path
-
-The context file path is derived from the plan path:
-- Plan: `plans/feat-user-auth.md`
-- Context: `plans/feat-user-auth.context.md`
-
-```bash
-# Check if context file exists
-CONTEXT_PATH="${plan_path%.md}.context.md"
-test -f "$CONTEXT_PATH" && echo "Context file exists"
-```
-
-### Step 2: Append Deepening Metadata
-
-Read the existing context file and append the deepening record:
-
-```markdown
-## Deepening [YYYY-MM-DD HH:MM]
-
-### Research Coverage
-- **Skills discovered:** [count] (from [n] sources)
-- **Skills applied:** [count] ([list of skill names])
-- **Learnings checked:** [count] total, [count] relevant
-- **Research agents:** [count]
-- **Context7 queries:** [count]
-- **Web searches:** [count]
-
-### Sections Enhanced
-- [Section 1 title]
-- [Section 2 title]
-- ...
-
-### Key Findings
-- [Most important finding 1]
-- [Most important finding 2]
-- [Most important finding 3]
-
-### Open Questions Generated
-- [Question 1]: [Options] (from [agents])
-- [Question 2]: [Options] (from [agents])
-- Total: [count] questions for consolidation to resolve
-
-### Conflicts Identified (converted to Open Questions)
-- [Conflict 1]: Converted to Open Question #[n]
-- None
-
-### Agent Failures
-- [Failed agent: reason, if any]
-- None
-```
-
-### Step 3: Write Updated Context File
-
-```
-Write: [CONTEXT_PATH]
-Content: [Original context content + Deepening metadata section]
-```
+- [ ] Does similar functionality exist in our codebase?
+- [ ] Does the approach fit our established patterns?
+- [ ] Will this create code duplication?
+- [ ] What integration risks exist?
 
 ---
 
-## Phase 10: Present Options to User
+## External Research Checklist
 
-After writing the enhanced plan, present these options:
+Before synthesizing, verify external research answered:
 
-**Question:** "Plan deepened at `[plan_path]`. What would you like to do next?"
-
-**Options:**
-1. **View diff** - Show what was added/changed
-2. **Run plan review** - Get feedback from reviewers on enhanced plan
-3. **Start work** - Begin implementing this enhanced plan
-4. **Deepen further** - Run another round of research on specific sections
-5. **Revert** - Restore original plan from backup
-
-### Handle Selection
-
-Based on selection:
-
-- **View diff** -> Run `git diff [plan_path]` or compare with backup
-- **Run plan review** -> Invoke reviewing skill with enhanced plan
-- **Start work** -> Invoke executing-work skill with enhanced plan
-- **Deepen further** -> Ask which sections need more research, then re-run those agents
-- **Revert** -> Restore from `.backup` file
+- [ ] Do claimed library features actually exist?
+- [ ] Are we using recommended patterns?
+- [ ] Are technology versions compatible?
+- [ ] What are the alternatives and trade-offs?
 
 ---
 
 ## Error Handling
 
-### Agent Failures
-
-- Log failure with agent name and error
-- Continue with remaining agents
-- Report failures in Enhancement Summary
-- Minimum 30% agent success to produce useful output
-
-### Skill Discovery Failures
-
-- If no skills found, proceed with learnings and research agents
-- Log which skill sources were checked
-- Skill enhancement is valuable but not required
-
-### Learnings Discovery Failures
-
-- If docs/solutions/ doesn't exist, skip learnings phase
-- Log that no learnings were found
-- Proceed with skills and research agents
-
-### Context7 Failures
-
-- If library ID resolution fails, skip that library
-- Fall back to web search for documentation
-- Log which libraries couldn't be resolved
-
-### Plan File Issues
-
-- If plan file doesn't exist, ask user for correct path
-- If plan file is malformed, report specific parsing errors
-- If plan file is empty, ask user to provide content or different file
-
-### Write Failures
-
-- If can't write enhanced plan, display content to user
-- Suggest alternative save locations
-- Never lose enhancement work due to write failure
+- **Agent failure:** Log and continue; require 50% success minimum
+- **Context7 failure:** Fall back to WebSearch
+- **No docs/solutions:** Skip learnings phase
+- **Write failure:** Display content, suggest alternative save
 
 ---
 
 ## Anti-Patterns
 
-### Don't Limit Sub-Agents
-- **Wrong:** "Only spawn 5 skill sub-agents to save resources"
-- **Right:** Spawn one for EVERY matched skill - 20, 30, 40 is fine
-
-### Don't Filter Prematurely
-- **Wrong:** Skip skills that "probably don't apply"
-- **Right:** Let each sub-agent determine relevance
-
-### Don't Modify Original Content
-- **Wrong:** Rewrite the original plan sections
-- **Right:** Add "Research Insights" subsections, preserve original
-
-### Don't Skip Sources
-- **Wrong:** Only check project-local skills
-- **Right:** Check ALL 5 skill sources
-
-### Don't Serialize Research
-- **Wrong:** Run skill agents, then learnings, then research
-- **Right:** Launch ALL agents in parallel
-
-### Don't Resolve Conflicts
-- **Wrong:** Pick one recommendation and ignore the other
-- **Wrong:** Decide which agent is "right"
-- **Right:** Convert ALL conflicts to Open Questions with both sides presented
-- **Right:** Let consolidation ask the user to decide
-
-### Don't Skip Learnings
-- **Wrong:** "No time for learnings, just use skills"
-- **Right:** Learnings are institutional knowledge - always check
-
-### Don't Provide Vague Enhancements
-- **Wrong:** "Consider performance implications"
-- **Right:** Concrete code examples with file paths and metrics
+- **Skipping internal research** - External best practices mean nothing if we already have a solution
+- **Not validating claims** - "Library X supports Y" must be verified in docs
+- **Modifying original content** - Only ADD research sections
+- **Resolving conflicts yourself** - Convert to Open Questions for user
 
 ---
 
-## Auto-Triggers
+## Detailed References
 
-This skill activates on:
-- "deepen plan"
-- "enhance plan"
-- "research plan"
-- "add research to plan"
-- "enrich plan"
-- "deep dive on plan"
-- "improve plan with research"
-
----
-
-## Example Enhancement
-
-### Before (from planning skill):
-```markdown
-## Technical Approach
-
-Use React Query for data fetching with optimistic updates.
-```
-
-### After (from plan-deepening skill):
-```markdown
-## Technical Approach
-
-Use React Query for data fetching with optimistic updates.
-
-### Research Insights
-
-**Best Practices:**
-- Configure `staleTime` and `cacheTime` based on data freshness requirements (Source: Context7)
-- Use `queryKey` factories for consistent cache invalidation (Source: TkDodo blog)
-- Implement error boundaries around query-dependent components (Source: React docs)
-
-**Performance Considerations:**
-- Enable `refetchOnWindowFocus: false` for stable data to reduce unnecessary requests
-- Use `select` option to transform and memoize data at query level
-- Consider `placeholderData` for instant perceived loading
-- Target: < 100ms for cached data, < 500ms for fresh fetches
-
-**Security Considerations:**
-- Sanitize user input in query keys to prevent cache poisoning
-- Never cache sensitive data without encryption consideration
-
-**Implementation Details:**
-```typescript
-// src/lib/queryClient.ts
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 2,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-// src/hooks/useOptimisticUpdate.ts
-const mutation = useMutation({
-  mutationFn: updateTodo,
-  onMutate: async (newTodo) => {
-    await queryClient.cancelQueries({ queryKey: ['todos'] });
-    const previous = queryClient.getQueryData(['todos']);
-    queryClient.setQueryData(['todos'], (old) => [...old, newTodo]);
-    return { previous };
-  },
-  onError: (err, newTodo, context) => {
-    queryClient.setQueryData(['todos'], context.previous);
-  },
-});
-```
-
-**Edge Cases:**
-- Handle race conditions with `cancelQueries` on component unmount
-- Implement retry logic for transient network failures
-- Consider offline support with `persistQueryClient`
-- Handle stale-while-revalidate for slow network conditions
-
-**Anti-Patterns to Avoid:**
-- Don't use `refetchOnMount: 'always'` for expensive queries
-- Don't forget to handle loading and error states
-- Don't put sensitive data in query keys (they're logged)
-
-**From Documented Learnings:**
-- `redis-cache-stampede.md`: Apply similar debouncing pattern for concurrent cache misses
-
-**References:**
-- https://tanstack.com/query/latest/docs/react/guides/optimistic-updates
-- https://tkdodo.eu/blog/practical-react-query
-- https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
-```
-
----
-
-## Quality Checks
-
-Before finalizing:
-- [ ] All original content preserved unchanged
-- [ ] Research insights clearly marked and attributed
-- [ ] Code examples are syntactically correct
-- [ ] Links are valid and relevant
-- [ ] **All OPEN QUESTIONS from agents collected** in Enhancement Summary
-- [ ] **Conflicts converted to Open Questions** (not resolved by this skill)
-- [ ] Enhancement summary accurately reflects changes
-- [ ] All discovered skills were spawned as sub-agents
-- [ ] Learnings were checked and relevant ones applied
-- [ ] Plan file written to disk before presenting options
-
----
-
-## Key Principles Summary
-
-1. **MAXIMUM COVERAGE** - Run every skill, every relevant learning, every research agent
-2. **PARALLEL EXECUTION** - Never serialize what can be parallelized
-3. **PRESERVE ORIGINAL** - Add enhancements, don't modify original content
-4. **CONCRETE EXAMPLES** - Code snippets with file paths, not vague advice
-5. **CHECK ALL 5 SOURCES** - Project, user, plugin skills + learnings + research
-6. **NO SUB-AGENT LIMITS** - 20, 30, 40 skill sub-agents is fine
-7. **COLLECT OPEN QUESTIONS** - Every agent flags questions; collect them all
-8. **DON'T RESOLVE CONFLICTS** - Convert conflicts to Open Questions for user decision
-9. **DEDUPLICATE INTELLIGENTLY** - Merge similar findings, prioritize by impact
-10. **WRITE BEFORE OPTIONS** - Save enhanced plan to disk before asking user what's next
-11. **INSTITUTIONAL KNOWLEDGE** - Learnings prevent repeating past mistakes
+For verbose guidance, templates, and examples:
+- `references/internal-research.md` - Detailed codebase research patterns
+- `references/external-research.md` - Framework docs and best practices research
+- `references/enhancement-format.md` - Templates for research insights sections

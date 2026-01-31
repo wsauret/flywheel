@@ -58,6 +58,22 @@ Max response: 500 words / 1,500 tokens
 
 ---
 
+## Test-First Development
+
+Default methodology for implementation:
+
+1. **Write test first** - Define behavior before code
+2. **Watch it fail** - Confirm test fails for right reason
+3. **Implement minimally** - Just enough to pass
+4. **Watch it pass** - Confirm fix works
+5. **Refactor safely** - Clean up with test safety net
+
+Skip TDD for: pure refactoring, config changes, documentation.
+
+For debugging: Find root cause first, then write regression test, then fix.
+
+---
+
 ## Context Budget Advisory
 
 At phase boundaries, assess context usage:

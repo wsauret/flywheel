@@ -1,6 +1,6 @@
 ---
 name: plan-creation
-description: Research codebase and create implementation plans. Use alone for quick plans, or as part of full /fly:plan flow. Triggers on "create plan", "plan for", "write a plan".
+description: Research codebase and create implementation plans. Triggers on "create plan", "plan for", "write a plan".
 allowed-tools:
   - Read
   - Write
@@ -14,709 +14,186 @@ allowed-tools:
 
 # Plan Creation Skill
 
-Transform feature descriptions, bug reports, or improvement ideas into well-structured markdown plan files. This skill can run standalone for quick plans or be orchestrated by `/fly:plan` for the full workflow (research + deepen + review).
+Transform feature descriptions into well-structured markdown plan files. Can run standalone or be orchestrated by `/fly:plan`.
 
-**Note: The current year is 2026.** Use this when dating plans and searching for recent documentation.
+**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
 
 ## Input
 
-The feature description is provided via `$ARGUMENTS`.
-
-**If empty:** Ask the user: "What would you like to plan? Please describe the feature, bug fix, or improvement you have in mind."
-
-Do not proceed until you have a clear feature description.
+Feature description via `$ARGUMENTS`. If empty, ask user.
 
 ---
 
-## Phase 1: Research & Context Gathering (Parallel Agents)
+## Phase 1: Research (Parallel Agents)
 
-Launch three research agents simultaneously to understand the project landscape.
-
-### Run ALL Agents in Parallel
+Launch three research agents simultaneously:
 
 ```
-Task repo-research-analyst: "Analyze codebase for patterns related to: <feature_description>.
-Find: existing implementations, file structure, naming conventions, relevant services.
+Task repo-research-analyst: "Analyze codebase for patterns related to: <feature>.
+Find: existing implementations, file structure, naming conventions.
 Return: file paths with line numbers (e.g., src/services/auth.ts:42)
+Flag OPEN QUESTIONS for ambiguities or multiple valid approaches."
 
-IMPORTANT: Flag any OPEN QUESTIONS you encounter:
-- Ambiguities in how existing code handles similar cases
-- Multiple valid approaches you see in the codebase
-- Areas where you're uncertain which pattern to follow
-Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
+Task best-practices-researcher: "Research best practices for: <feature>.
+Find: industry standards, common patterns, anti-patterns.
+Use WebSearch for current (2026) best practices.
+Flag OPEN QUESTIONS for trade-offs or context-dependent recommendations."
 
-Task best-practices-researcher: "Research best practices for: <feature_description>.
-Find: industry standards, common patterns, anti-patterns to avoid.
-Use WebSearch for current (2026) best practices if applicable.
-
-IMPORTANT: Flag any OPEN QUESTIONS you encounter:
-- Trade-offs between competing best practices
-- Context-dependent recommendations
-- Areas where industry guidance is split
-Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
-
-Task framework-docs-researcher: "Research framework documentation for: <feature_description>.
-Use mcp__plugin_Flywheel_context7__resolve-library-id to find library IDs.
-Use mcp__plugin_Flywheel_context7__query-docs to query specific documentation.
-Return: relevant code examples, configuration patterns, version-specific guidance.
-
-IMPORTANT: Flag any OPEN QUESTIONS you encounter:
-- Multiple valid approaches in the documentation
-- Configuration choices that depend on use case
-- Version-specific considerations
-Format: 'OPEN QUESTION: [question] (Options: A, B, C if applicable)'"
+Task framework-docs-researcher: "Research framework docs for: <feature>.
+Use mcp__plugin_Flywheel_context7__resolve-library-id then query-docs.
+Return: code examples, configuration patterns.
+Flag OPEN QUESTIONS for configuration choices or version considerations."
 ```
-
-### Framework Documentation Lookup
-
-For detected frameworks/libraries, query Context7:
-
-```
-# Step 1: Resolve library ID
-mcp__plugin_Flywheel_context7__resolve-library-id
-  query: "<what you need to accomplish>"
-  libraryName: "<framework name>"
-
-# Step 2: Query documentation
-mcp__plugin_Flywheel_context7__query-docs
-  libraryId: "<resolved library ID>"
-  query: "<specific question or feature>"
-```
-
-### Reference Collection
 
 After agents complete, consolidate:
-- [ ] Document findings with specific file paths (e.g., `app/services/example_service.rb:42`)
-- [ ] Include URLs to external documentation and best practices guides
-- [ ] Create reference list of similar issues or PRs (e.g., `#123`, `#456`)
-- [ ] Note team conventions discovered in `CLAUDE.md` or team documentation
-- [ ] **Collect all OPEN QUESTIONS** flagged by research agents for inclusion in the plan
+- File paths with line numbers
+- External documentation URLs
+- Team conventions from CLAUDE.md
+- All OPEN QUESTIONS flagged by agents
 
 ---
 
 ## Phase 1.5: Research Validation Gate
 
-**BLOCKING:** Do not proceed to planning until validation passes.
+**BLOCKING:** Verify research quality before planning.
 
-### Validation Checklist
+### Checklist
 
-Before writing any plan content, verify research quality:
+1. **Completeness**: Did all agents return findings?
+2. **Accuracy**: Do 3-5 file paths actually exist?
+3. **Coverage**: Any obvious gaps for this feature?
+4. **Conflicts**: Any contradictions between agents?
 
-1. **Completeness**: Did all research agents return findings?
-2. **Accuracy**: Do referenced file paths actually exist? (Spot-check 3-5 paths)
-3. **Coverage**: Are there obvious gaps in research? (e.g., no API patterns found for API feature)
-4. **Conflicts**: Any contradictions between researcher findings?
-5. **Assumptions**: Any unverified assumptions that need flagging?
+### If validation fails
 
-### Validation Output
-
-```
-Research Validation
--------------------
-✓ Completeness: [X]/3 agents returned findings
-✓ Accuracy: Verified [N] file paths exist
-✓ Coverage: [assessment]
-✓ Conflicts: [none | list any contradictions]
-✓ Assumptions: [none | list assumptions to verify]
-
-Result: PASS | NEEDS_WORK
-```
-
-### If NEEDS_WORK
-
-List gaps as simple bullet points:
-
-```
-Gaps Found:
-- [Missing file path for X]
-- [Contradiction between A and B]
-- [No patterns found for Y - expected in this codebase]
-
-Recommendations:
-- [Specific action to address gap]
-```
-
-**After listing gaps:**
-1. If gaps are minor (1-2 items): Note in Open Questions and proceed
-2. If gaps are significant: Ask user whether to re-run research or proceed with caveats
-3. Maximum 2 re-research attempts before escalating to user
-
-### Greenfield Projects
-
-For new projects without existing patterns:
-- Allow "no existing implementation found" as valid finding
-- Rely more heavily on best-practices-researcher and framework-docs-researcher
-- Flag external dependencies as Open Questions
+List gaps as bullet points. For minor gaps (1-2 items): note in Open Questions and proceed. For significant gaps: ask user whether to re-run or proceed with caveats. Maximum 2 re-research attempts.
 
 ---
 
-## Phase 2: Issue Planning & Structure
+## Phase 2: Structure
 
-### Title & Categorization
+### Title & Filename
 
-**Draft clear, searchable issue title** using conventional format:
-- `feat: Add user authentication`
-- `fix: Cart total calculation`
-- `refactor: Extract API client`
+Draft clear title: `feat: Add user authentication`
 
-**Convert title to kebab-case filename:**
-- Strip prefix colon
-- Lowercase all words
-- Replace spaces with hyphens
-- Keep it descriptive (3-5 words after prefix) so plans are findable by context
+Convert to kebab-case filename per `references/formatting-guide.md`:
+- `feat: Add User Auth` → `feat-add-user-auth.md`
 
-**Examples:**
-- `feat: Add User Authentication` -> `feat-add-user-authentication.md`
-- `fix: Checkout Race Condition` -> `fix-checkout-race-condition.md`
-- `refactor: API Client Extraction` -> `refactor-api-client-extraction.md`
+### Choose Detail Level
 
-**Invalid filenames (avoid):**
-- `plan-1.md` (not descriptive)
-- `new-feature.md` (too vague)
-- `feat: user auth.md` (invalid characters)
+Select template from `references/plan-templates.md`:
 
-### Stakeholder Analysis
-
-- [ ] Identify who will be affected (end users, developers, operations)
-- [ ] Consider implementation complexity and required expertise
-- [ ] Determine appropriate detail level based on complexity
+| Level | Use For |
+|-------|---------|
+| MINIMAL | Simple bugs, small improvements |
+| MORE | Most features, complex bugs |
+| A LOT | Major features, architectural changes |
 
 ---
 
-## Phase 3: Acceptance Criteria Analysis (Optional)
+## Phase 3: Write Plan
 
-For features with complex user interactions, manually analyze for Gherkin-style scenarios:
+Using chosen template:
+1. Fill all sections with research findings
+2. Include specific file paths with line numbers
+3. Add code examples with syntax highlighting
+4. Ensure acceptance criteria are testable
+5. Include Open Questions from research
 
-**Consider these aspects:**
-- User journeys and flows
-- Edge cases and error states
-- Acceptance criteria gaps
-
-**Incorporate analysis:**
-- [ ] Identify key user scenarios
-- [ ] Add identified gaps or edge cases to the plan
-- [ ] Update acceptance criteria based on findings
+Write to: `plans/<filename>.md`
 
 ---
 
-## Phase 4: Choose Detail Level
+## Phase 4: Create Context File
 
-Select how comprehensive the plan should be. Simpler is mostly better.
+Persist research for downstream phases.
 
-### MINIMAL (Quick Issue)
+Write to: `plans/<filename>.context.md`
 
-**Best for:** Simple bugs, small improvements, clear features
-
-**Includes:**
-- Problem statement or feature description
-- Basic acceptance criteria
-- Essential context only
-
-**Template:**
-
-````markdown
-[Brief problem/feature description]
-
-## Acceptance Criteria
-
-- [ ] Core requirement 1
-- [ ] Core requirement 2
-
-## Context
-
-[Any critical information]
-
-## MVP
-
-### test.rb
-
-```ruby
-class Test
-  def initialize
-    @name = "test"
-  end
-end
-```
-
-## References
-
-- Related issue: #[issue_number]
-- Documentation: [relevant_docs_url]
-````
+Use template from `references/plan-templates.md` (Context File Template section).
 
 ---
 
-### MORE (Standard Issue)
+## Phase 5: Plan Review (HIGH LEVERAGE)
 
-**Best for:** Most features, complex bugs, team collaboration
+**Bad plan lines lead to hundreds of incorrect code lines.**
 
-**Includes everything from MINIMAL plus:**
-- Detailed background and motivation
-- Technical considerations
-- Success metrics
-- Dependencies and risks
-- Basic implementation suggestions
-
-**Template:**
-
-```markdown
-## Overview
-
-[Comprehensive description]
-
-## Problem Statement / Motivation
-
-[Why this matters]
-
-## Proposed Solution
-
-[High-level approach]
-
-## Technical Considerations
-
-- Architecture impacts
-- Performance implications
-- Security considerations
-
-## Acceptance Criteria
-
-- [ ] Detailed requirement 1
-- [ ] Detailed requirement 2
-- [ ] Testing requirements
-
-## Success Metrics
-
-[How we measure success]
-
-## Dependencies & Risks
-
-[What could block or complicate this]
-
-## Open Questions
-
-[Questions from research needing resolution - remove section if none]
-
-- **[Question]**: Option A vs Option B (Source: [agent])
-
-## References & Research
-
-- Similar implementations: [file_path:line_number]
-- Best practices: [documentation_url]
-- Related PRs: #[pr_number]
-```
-
----
-
-### A LOT (Comprehensive Issue)
-
-**Best for:** Major features, architectural changes, complex integrations
-
-**Includes everything from MORE plus:**
-- Detailed implementation plan with phases
-- Alternative approaches considered
-- Extensive technical specifications
-- Resource requirements and timeline
-- Future considerations and extensibility
-- Risk mitigation strategies
-- Documentation requirements
-
-**Template:**
-
-```markdown
-## Overview
-
-[Executive summary]
-
-## Problem Statement
-
-[Detailed problem analysis]
-
-## Proposed Solution
-
-[Comprehensive solution design]
-
-## Technical Approach
-
-### Architecture
-
-[Detailed technical design]
-
-### Implementation Phases
-
-#### Phase 1: [Foundation]
-
-- Tasks and deliverables
-- Success criteria
-- Estimated effort
-
-#### Phase 2: [Core Implementation]
-
-- Tasks and deliverables
-- Success criteria
-- Estimated effort
-
-#### Phase 3: [Polish & Optimization]
-
-- Tasks and deliverables
-- Success criteria
-- Estimated effort
-
-## Alternative Approaches Considered
-
-[Other solutions evaluated and why rejected]
-
-## Acceptance Criteria
-
-### Functional Requirements
-
-- [ ] Detailed functional criteria
-
-### Non-Functional Requirements
-
-- [ ] Performance targets
-- [ ] Security requirements
-- [ ] Accessibility standards
-
-### Quality Gates
-
-- [ ] Test coverage requirements
-- [ ] Documentation completeness
-- [ ] Code review approval
-
-## Success Metrics
-
-[Detailed KPIs and measurement methods]
-
-## Dependencies & Prerequisites
-
-[Detailed dependency analysis]
-
-## Risk Analysis & Mitigation
-
-[Comprehensive risk assessment]
-
-## Resource Requirements
-
-[Team, time, infrastructure needs]
-
-## Future Considerations
-
-[Extensibility and long-term vision]
-
-## Documentation Plan
-
-[What docs need updating]
-
-## Open Questions
-
-[Questions identified during research that need resolution before implementation]
-
-| Question | Options | Source |
-|----------|---------|--------|
-| [Question from research] | A: [option], B: [option] | [which agent flagged it] |
-| [Trade-off identified] | A: [approach], B: [approach] | [source] |
-
-## References & Research
-
-### Internal References
-
-- Architecture decisions: [file_path:line_number]
-- Similar features: [file_path:line_number]
-- Configuration: [file_path:line_number]
-
-### External References
-
-- Framework documentation: [url]
-- Best practices guide: [url]
-- Industry standards: [url]
-
-### Related Work
-
-- Previous PRs: #[pr_numbers]
-- Related issues: #[issue_numbers]
-- Design documents: [links]
-```
-
----
-
-## Phase 5: Write Plan File
-
-### Content Formatting
-
-- [ ] Use clear, descriptive headings with proper hierarchy (##, ###)
-- [ ] Include code examples in triple backticks with language syntax highlighting
-- [ ] Add screenshots/mockups if UI-related
-- [ ] Use task lists (`- [ ]`) for trackable items
-- [ ] Add collapsible sections for lengthy logs using `<details>` tags
-- [ ] Apply appropriate emoji for visual scanning (bug, feature, docs, refactor)
-
-### Cross-Referencing Conventions
-
-- [ ] Link to related issues/PRs using `#number` format
-- [ ] Reference specific commits with SHA hashes when relevant
-- [ ] Link to code using GitHub's permalink feature (press 'y' for permanent link)
-- [ ] Mention relevant team members with `@username` if needed
-- [ ] Add links to external resources with descriptive text
-
-### Code & Examples
-
-````markdown
-# Good example with syntax highlighting and line references
-
-```ruby
-# app/services/user_service.rb:42
-def process_user(user)
-  # Implementation here
-end
-```
-
-# Collapsible error logs
-
-<details>
-<summary>Full error stacktrace</summary>
-
-`Error details here...`
-
-</details>
-````
-
-### AI-Era Considerations
-
-- [ ] Account for accelerated development with AI pair programming
-- [ ] Include prompts or instructions that worked well during research
-- [ ] Note which AI tools were used for initial exploration
-- [ ] Emphasize comprehensive testing given rapid implementation
-- [ ] Document any AI-generated code that needs human review
-
-### Pre-Write Checklist
-
-- [ ] Title is searchable and descriptive
-- [ ] All template sections are complete
-- [ ] Links and references are working
-- [ ] Acceptance criteria are measurable
-- [ ] File names in pseudo code examples and todo lists
-- [ ] ERD mermaid diagram if applicable for new model changes
-
-### Output Location
+Present summary:
 
 ```
-plans/<type>-<descriptive-name>.md
+Plan Summary for: [Title]
+
+Scope: [3-5 bullet points]
+Key Decisions: [Decision]: [rationale]
+Phases: [N] phases
+Files: [N] files to modify
+Open Questions: [N] requiring resolution
 ```
 
-**Examples:**
-- `plans/feat-user-authentication-flow.md`
-- `plans/fix-checkout-race-condition.md`
-- `plans/refactor-api-client-extraction.md`
+**AskUserQuestion:**
+- Approve plan - Looks good
+- Adjust scope - Add or remove items
+- Change approach - Different strategy
+- Add constraints - Missing requirements
+
+Maximum 2 revision cycles.
 
 ---
 
-## Phase 6: Create Context File
+## Phase 6: Post-Creation Options
 
-Persist research findings for downstream reuse (deepening, review, work phases).
+**AskUserQuestion:** "Plan ready at `plans/<name>.md`. What next?"
 
-**File:** `plans/<plan-name>.context.md`
-
-**Structure:**
-
-```markdown
----
-plan: <plan-filename>.md
-created: <date>
-feature: "<feature description>"
-researchers:
-  - repo-research-analyst
-  - best-practices-researcher
-  - framework-docs-researcher
----
-
-# Research Context: <Feature Name>
-
-## File References
-
-<list of specific file paths, one per line>
-
-## Naming Conventions
-
-- [Convention type]: [pattern observed]
-
-## External Research
-
-### Framework Documentation
-
-- [URL with description]
-
-### Best Practices
-
-- [Best practice with source]
-
-## Gotchas & Warnings
-
-- [Warning about patterns or pitfalls]
-
-## Open Questions from Research
-
-[Questions flagged by research agents that need user decision]
-
-- **[Question]**: [Options if applicable] (Source: [agent])
-- **[Question]**: [Options] (Source: [agent])
-
-## Research Quality
-
-- **Confidence**: High/Medium/Low
-- **Last verified**: <date>
-```
-
----
-
-## Phase 6.5: Plan Review (HIGH LEVERAGE)
-
-**⚡ HIGH LEVERAGE REVIEW POINT**
-A bad plan line leads to hundreds of lines of incorrect code. Reviewing the plan now saves significant rework later.
-
-**Present plan summary to user:**
-
-```
----
-**Plan Summary for: [Plan Title]**
-
-**Scope:**
-- [3-5 bullet points of what will be implemented]
-
-**Key Decisions:**
-- [Decision 1]: [rationale]
-- [Decision 2]: [rationale]
-
-**Implementation Approach:**
-- [High-level approach in 2-3 sentences]
-
-**Phases:** [N] phases
-**Estimated Files:** [N] files to modify/create
-
-**Open Questions:** [N] questions requiring resolution
----
-```
-
-**Use AskUserQuestion:**
-
-```
-Question: "Does this plan align with your expectations? (High leverage review - plan errors compound into code)"
-Header: "Plan Review"
-Options:
-1. Approve plan - Looks good, proceed
-2. Adjust scope - Need to add or remove items
-3. Change approach - Different implementation strategy needed
-4. Add constraints - Missing requirements or limitations
-```
-
-**Based on response:**
-- **Approve**: Proceed to Phase 7 options
-- **Adjust scope**: Modify plan sections, re-present summary
-- **Change approach**: Revisit technical approach, update plan
-- **Add constraints**: Add constraints section, update affected phases
-
-**Maximum 2 revision cycles** before proceeding.
-
----
-
-## Phase 7: Post-Creation Options
-
-After writing both files, use **AskUserQuestion** to present next steps:
-
-**Question:** "Plan ready at `plans/<plan-name>.md`. What would you like to do next?"
-
-**Options:**
-
-1. **Deepen plan** - Enhance with parallel research agents (skills, learnings, best practices)
-2. **Review plan** - Get feedback from reviewer agents (architecture, security, performance)
-3. **Start work** - Begin implementing this plan with `/fly:work`
-4. **Done for now** - Exit and review plan manually
-
-### Based on Selection
-
-| Selection | Action |
-|-----------|--------|
-| Deepen plan | Invoke `skill: plan-deepening` with the plan file |
-| Review plan | Invoke `skill: reviewing` with the plan file |
-| Start work | Invoke `skill: executing-work` with plan path |
-| Done for now | Display plan path and exit |
-
-If the user selects **Other** (free text), accept the input for rework or specific changes, then loop back to options.
+| Option | Action |
+|--------|--------|
+| Deepen plan | Invoke `skill: plan-deepening` |
+| Review plan | Invoke `skill: reviewing` |
+| Start work | Invoke `skill: executing-work` |
+| Done for now | Display path and exit |
 
 ---
 
 ## Error Handling
 
-### Agent Failures
-
-- Log failure with agent name and error
-- Continue with remaining agents
-- Report failures in output
-- Minimum 50% agent success to produce useful output
-
-### Missing Context
-
-- If CLAUDE.md doesn't exist, note conventions may be incomplete
-- If similar implementations not found, rely more on best practices research
-- If Context7 lookup fails, use WebSearch as fallback
-
-### File Write Failures
-
-- If `plans/` directory doesn't exist, create it with `mkdir -p`
-- If file write fails, report error with path and permission details
-- Save partial results to temp location rather than losing all work
-
-### Recovery
-
-- Context file tracks research progress
-- Re-running with same feature description can skip completed research
-- Plan can be regenerated from context file if needed
+- **Agent failure:** Log and continue; require 50% success minimum
+- **Missing CLAUDE.md:** Note conventions may be incomplete
+- **Context7 failure:** Fall back to WebSearch
+- **Write failure:** Create `plans/` with `mkdir -p`, report errors
 
 ---
 
 ## CRITICAL: No Code Changes
 
-**DO NOT WRITE OR EDIT ANY CODE DURING PLAN CREATION!**
+This skill is research and planning ONLY.
 
-This skill is for research and planning only. Implementation happens in `/fly:work`.
+**Allowed:**
+- Read source files
+- Search codebase
+- Query documentation
+- Write markdown to `plans/`
 
-### Allowed Actions
+**Prohibited:**
+- Create/edit source code
+- Create/edit test files
+- Modify configuration
+- "Helpfully" start coding
 
-- ✅ Read source files to understand patterns
-- ✅ Search codebase with Grep/Glob
-- ✅ Query documentation via Context7 or WebSearch
-- ✅ Write markdown files to `plans/` directory
-- ✅ Create `.context.md` files for research findings
-
-### Prohibited Actions
-
-- ❌ Do NOT create or edit source code files (`.ts`, `.py`, `.rb`, etc.)
-- ❌ Do NOT create or edit test files
-- ❌ Do NOT modify configuration files
-- ❌ Do NOT implement any features or fixes
-- ❌ Do NOT "helpfully" start coding while researching
-
-**If you feel tempted to write code, STOP and add it to the plan instead.**
+**If tempted to write code, STOP and add it to the plan instead.**
 
 ---
 
 ## Anti-Patterns
 
-- **Don't skip research** - Even "simple" features benefit from context gathering
-- **Don't over-engineer simple issues** - Use MINIMAL for straightforward tasks
-- **Don't write vague acceptance criteria** - Each criterion must be testable
-- **Don't forget file references** - Always include specific paths with line numbers
-- **Don't ignore team conventions** - Check CLAUDE.md and existing patterns
-- **Don't create plans without context files** - Context enables downstream phases
-- **Don't skip the AskUserQuestion** - User must choose next step
+- Skip research (even "simple" features benefit)
+- Over-engineer simple issues (use MINIMAL)
+- Vague acceptance criteria (must be testable)
+- Omit file references (include paths with line numbers)
+- Skip AskUserQuestion (user must choose next step)
 
 ---
 
-## Auto-Triggers
+## Detailed References
 
-This skill activates on:
-- "create plan"
-- "plan for"
-- "write a plan"
-- "planning for"
-- "make a plan"
-- "draft a plan"
+For templates and formatting conventions:
+- `references/plan-templates.md` - MINIMAL/MORE/A LOT templates, context file template
+- `references/formatting-guide.md` - Filename conventions, content formatting

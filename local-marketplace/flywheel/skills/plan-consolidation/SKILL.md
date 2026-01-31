@@ -1,6 +1,6 @@
 ---
 name: plan-consolidation
-description: Restructure a deepened and reviewed plan into a single, actionable document ready for /work. Synthesizes research insights, review findings, and original content into a clean checklist format. Triggers on "consolidate plan", "finalize plan", "make plan work-ready".
+description: Restructure deepened and reviewed plans into actionable checklists for /work. Triggers on "consolidate plan", "finalize plan".
 allowed-tools:
   - Read
   - Write
@@ -13,565 +13,145 @@ allowed-tools:
 
 # Plan Consolidation Skill
 
-Transform a plan that has been deepened (with Research Insights) and reviewed (with Review Summary) into a single, coherent, actionable document optimized for the `/work` skill.
+Transform plans with Research Insights and Review Summary into a single, coherent, work-ready document with integrated checklists.
 
-**Philosophy:** The deepening and reviewing phases add valuable content, but scatter it throughout the document. Consolidation restructures everything into a work-ready format with checklists, integrated insights, and clear action items.
-
-**Note: The current year is 2026.**
-
----
+**Philosophy:** Deepening and reviewing add valuable content but scatter it. Consolidation restructures everything into actionable format.
 
 ## Input
 
-The plan file path is provided via `$ARGUMENTS`. This should be a plan that has already been:
-1. Created (by plan-creation skill)
-2. Deepened (by plan-deepening skill) - contains "Research Insights" subsections
-3. Reviewed (by plan-reviewing skill) - contains "Plan Review Summary" section
-
-If the plan is missing these sections, warn the user and ask whether to proceed anyway.
+Plan path via `$ARGUMENTS`. Should already have Enhancement Summary (from deepening) and Review Summary (from reviewing).
 
 ---
 
-## Phase 1: Analyze Current Plan Structure
+## Phase 1: Analyze Plan Structure
 
-### Step 1: Read the Plan File
+### Verify Required Sections
 
-```bash
-cat [plan_path]
-```
+Check for:
+- Original content (Technical Approach, Implementation, etc.)
+- Enhancement Summary (added by plan-deepening)
+- Research Insights (subsections under original sections)
+- Plan Review Summary (appended by plan-reviewing)
 
-### Step 2: Detect Required Sections
+See `references/extraction-patterns.md` for detection details.
 
-Verify the plan contains:
-- [ ] **Original content** - The plan's core sections (Technical Approach, Implementation, etc.)
-- [ ] **Enhancement Summary** - Added by plan-deepening at the top
-- [ ] **Research Insights** - Subsections under each original section
-- [ ] **Plan Review Summary** - Appended by plan-reviewing at the bottom
+### Handle Missing Sections
 
-### Step 3: Catalog All Content
-
-Create an inventory:
-
-```
-ORIGINAL SECTIONS:
-- [Section 1 title]
-- [Section 2 title]
-- [Section 3 title]
-
-RESEARCH INSIGHTS FOUND:
-- Section 1: [count] insights
-- Section 2: [count] insights
-- Section 3: [count] insights
-
-REVIEW FINDINGS:
-- P1 (Critical): [count]
-- P2 (Important): [count]
-- P3 (Nice-to-have): [count]
-- Conflicts: [count]
-```
-
-### Step 4: Handle Missing Sections
-
-**If Enhancement Summary missing:**
-- Warn: "Plan has not been deepened. Research insights may be limited."
-- Ask: "Continue with consolidation anyway?"
-
-**If Plan Review Summary missing:**
-- Warn: "Plan has not been reviewed. No findings to incorporate."
-- Ask: "Continue with consolidation anyway?"
-
-**If both missing:**
-- Error: "This plan has not been processed. Run `/fly:plan` first or deepen/review manually."
+- **No Enhancement Summary:** Warn and ask to continue
+- **No Review Summary:** Warn and ask to continue
+- **Both missing:** Error - plan hasn't been processed
 
 ---
 
-## Phase 2: Extract and Organize Content
+## Phase 2: Extract Content
 
-### Step 1: Extract Review Findings
+Using patterns from `references/extraction-patterns.md`:
 
-From the "Plan Review Summary" section, extract all findings into structured format:
-
-```markdown
-P1_FINDINGS:
-- [Finding 1]: [Description] (Source: [agent])
-- [Finding 2]: [Description] (Source: [agent])
-
-P2_FINDINGS:
-- [Finding 1]: [Description] (Source: [agent])
-
-P3_FINDINGS:
-- [Finding 1]: [Description] (Source: [agent])
-
-CONFLICTS:
-- [Topic]: Side A vs Side B (Resolution: [if provided])
-```
-
-### Step 2: Extract Research Insights
-
-For each "Research Insights" subsection, extract into categories:
-
-```markdown
-BEST_PRACTICES:
-- [Practice 1] (Section: [X], Source: [Y])
-- [Practice 2] (Section: [X], Source: [Y])
-
-ANTI_PATTERNS:
-- [Anti-pattern 1] (Section: [X])
-- [Anti-pattern 2] (Section: [X])
-
-CODE_EXAMPLES:
-- [Example 1 description] (Section: [X], Language: [Y])
-  ```code```
-- [Example 2 description] (Section: [X], Language: [Y])
-  ```code```
-
-SECURITY_ITEMS:
-- [Item 1] (Section: [X])
-
-PERFORMANCE_ITEMS:
-- [Item 1] (Section: [X])
-
-EDGE_CASES:
-- [Edge case 1]: [Handling strategy] (Section: [X])
-```
-
-### Step 3: Extract Implementation Steps
-
-Parse the original plan content to identify implementation phases/steps:
-
-```markdown
-IMPLEMENTATION_PHASES:
-- Phase 1: [Name]
-  - Step 1.1: [Action]
-  - Step 1.2: [Action]
-- Phase 2: [Name]
-  - Step 2.1: [Action]
-  - Step 2.2: [Action]
-```
-
-### Step 4: Map Insights to Implementation Steps
-
-For each implementation step, identify relevant:
-- Research insights that apply
-- Review findings that affect it
-- Code examples to use
-- Anti-patterns to avoid
+1. **Extract review findings** into P1/P2/P3 categories
+2. **Extract research insights** into best practices, anti-patterns, code examples, security, performance, edge cases
+3. **Extract implementation steps** into phases
+4. **Map insights to steps** for integrated checklists
 
 ---
 
 ## Phase 3: Resolve Open Questions
 
-Before consolidating, identify and resolve any open questions, alternatives, or unresolved decisions from the deepening and review phases. **The user must weigh in on these before we can create a work-ready plan.**
+**The user must weigh in before we can create a work-ready plan.**
 
-### Step 1: Scan for Open Questions
+### Scan for Questions
 
-Search the plan content for:
+Search for:
+- Structured Open Questions sections/tables
+- `OPEN QUESTION:` markers
+- TODO/TBD markers
+- Option A vs Option B language
+- Reviewer conflicts
 
-**Structured Open Questions (from deepening and reviewing phases):**
-- `### Open Questions (Requires User Decision)` section in Enhancement Summary
-- `## Open Questions (Requires User Decision)` section in Plan Review Summary
-- Tables with columns: `| # | Question | Options | Source(s) |`
-- `OPEN QUESTION:` markers flagged by individual agents
+### Resolve Each Question
 
-**Explicit markers:**
-- "Open Questions" sections or headings
-- "TODO", "TBD", "to be decided", "to be determined"
-- "?" in headings or bullet points
-- "Decision needed" or "requires decision"
-
-**Implicit alternatives:**
-- "Option A vs Option B" language
-- "Consider X or Y" phrasing
-- "Either... or..." constructions
-- "Alternatively," followed by different approach
-
-**Reviewer conflicts (already converted to Open Questions by reviewing skill):**
-- `### Open Question: [Topic]` sections with Perspective A/B
-- Conflicts listed in "Conflicts Between Reviewers" section
-- Any remaining conflicts not yet converted to questions
-
-### Step 2: Build Question List
-
-Create a structured list of all questions found:
-
-```markdown
-OPEN_QUESTIONS:
-1. [Topic]: [Question or decision needed]
-   - Context: [Where this came from - which section/agent]
-   - Options: [A, B, C if clear alternatives exist]
-
-2. [Topic]: [Question or decision needed]
-   - Context: [Where this came from]
-   - Options: [If applicable]
-```
-
-### Step 3: Resolve Each Question Interactively
-
-**For each open question, use AskUserQuestion:**
-
-**Rules (same as brainstorming):**
-1. **One question at a time** - Never ask multiple questions at once
-2. **Prefer multiple choice** - Use AskUserQuestion with 2-4 options
-3. **Lead with recommendation** - State your opinion and explain why
-4. **Include "You decide" option** - Let user delegate to you
-
-**Question format:**
+**One question at a time:**
 
 ```
 Question: "[Topic]: [The question]"
 
-Context: [Brief explanation of where this came from and why it matters]
+Context: [Brief explanation]
 
-My recommendation: [Your preferred option and why]
+My recommendation: [Preferred option and why]
 
 Options:
 1. [Option A] (Recommended) - [Brief description]
 2. [Option B] - [Brief description]
-3. [Option C if applicable] - [Brief description]
-4. "You pick what's best" - Let me decide based on the research
+3. "You pick what's best" - Let me decide
 ```
 
 **Handle responses:**
+- User picks option → Record decision
+- User picks "You decide" → Apply recommendation
+- User provides custom answer → Record their direction
 
-| Response | Action |
-|----------|--------|
-| User picks an option | Record decision with rationale |
-| User picks "You decide" | Apply your recommendation, note that user delegated |
-| User provides custom answer | Record their custom direction |
-| User wants more context | Provide deeper explanation, then re-ask |
-
-### Step 4: Record All Decisions
-
-Build a decisions record to incorporate into the consolidated plan:
-
-```markdown
-RESOLVED_QUESTIONS:
-1. [Topic]: [Decision made]
-   - Chosen: [Option selected]
-   - Rationale: [Why - user preference or delegated recommendation]
-   - Impact: [What this affects in the implementation]
-
-2. [Topic]: [Decision made]
-   - Chosen: [Option selected]
-   - Rationale: [Why]
-   - Impact: [What this affects]
-```
-
-### Step 5: No Questions Found
-
-If the plan has no open questions:
-- State: "No open questions found in the plan. All decisions appear resolved."
-- Proceed directly to Phase 4 (Synthesize)
-
-### Step 6: Summary Before Proceeding
-
-After all questions are resolved, summarize:
-
-```
-Questions Resolved: [count]
-
-Decisions made:
-- [Topic 1]: [Decision] (user choice / delegated)
-- [Topic 2]: [Decision] (user choice / delegated)
-- [Topic 3]: [Decision] (user choice / delegated)
-
-Proceeding with consolidation...
-```
+Record all decisions for inclusion in consolidated plan.
 
 ---
 
-## Phase 4: Synthesize into Actionable Format
+## Phase 4: Synthesize
 
-### Synthesis Principles
+### Principles
 
-1. **Deduplicate ruthlessly** - Same insight mentioned in multiple places -> one entry
-2. **Prioritize by impact** - P1 findings before P2, high-impact insights first
-3. **Integrate, don't append** - Insights belong IN the checklist, not after it
-4. **Preserve source attribution** - Know where recommendations came from
-5. **Make it executable** - Every item should be a concrete action
-
-### Handle Conflicts
-
-For each conflict detected:
-1. **If resolution was provided in review:** Apply it, note the decision
-2. **If both sides have merit:** Present both with recommendation
-3. **If genuinely ambiguous:** Flag for user decision before implementation
+1. **Deduplicate** - Same insight from multiple sources → one entry
+2. **Prioritize** - P1 before P2, high-impact first
+3. **Integrate** - Insights IN checklist items, not floating
+4. **Preserve attribution** - Track where recommendations came from
+5. **Make executable** - Every item is a concrete action
 
 ### Handle P1 Findings
 
-P1 findings are CRITICAL and MUST be addressed before implementation:
-- If P1s exist, add "Critical Items Before Implementation" section at the top
-- Each P1 must be either:
-  - Resolved with a specific action in the checklist, OR
-  - Flagged as blocking (implementation cannot proceed)
+P1s are CRITICAL - must be either:
+- Resolved with specific action in checklist, OR
+- Flagged as BLOCKING (implementation cannot proceed)
+
+### Handle Conflicts
+
+- If resolution provided in review: Apply it
+- If both sides have merit: Present with recommendation
+- If ambiguous: Flag for user decision
 
 ---
 
 ## Phase 5: Generate Consolidated Plan
 
-Write the consolidated plan using this structure:
+Write using template from `references/consolidated-plan-template.md`.
 
-```markdown
-# [Plan Title]
-
-## Status
-- **Created:** [date from original plan]
-- **Deepened:** [date from Enhancement Summary]
-- **Reviewed:** [date from Review Summary]
-- **Consolidated:** [today's date]
-- **Ready for:** /fly:work
-
-## Executive Summary
-
-[1-2 paragraph synthesis of what this plan accomplishes. Pull from original plan overview, enhanced with key insights from deepening.]
-
-## Decisions Made
-
-[Questions resolved during consolidation - only include if questions were asked]
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| [Topic 1] | [Option chosen] | [User preference / Delegated to assistant] |
-| [Topic 2] | [Option chosen] | [Rationale] |
-
-## Critical Items Before Implementation
-
-[Only include this section if P1 findings or unresolved conflicts exist]
-
-### P1 Findings (MUST Address)
-- **[Finding title]** (Source: [agent])
-  - Issue: [Description]
-  - Resolution: [How it's addressed in the checklist below, OR "BLOCKS IMPLEMENTATION"]
-
-### Unresolved Conflicts
-- **[Topic]**
-  - Option A: [Description] (Supported by: [agents])
-  - Option B: [Description] (Supported by: [agents])
-  - **Decision needed before:** [Which phase this blocks]
-
-## Implementation Checklist
-
-### Phase 1: [Name]
-
-- [ ] **Step 1.1: [Concrete action]**
-  - Research insight: [Relevant finding - be specific]
-  - Review note: [If any finding applies to this step]
-  - Code reference: [If a code example applies]
-  
-- [ ] **Step 1.2: [Concrete action]**
-  - Anti-pattern to avoid: [Specific warning]
-  - Edge case: [What to handle]
-
-### Phase 2: [Name]
-
-- [ ] **Step 2.1: [Concrete action]**
-  [Continue pattern...]
-
-### Phase N: [Final Phase]
-
-- [ ] **Step N.1: [Final action]**
-- [ ] **Verification: Run tests and confirm all acceptance criteria**
-
-## Technical Reference
-
-### Best Practices to Follow
-
-[Consolidated from all Research Insights - deduplicated, organized by topic]
-
-1. **[Topic 1]**
-   - [Practice] (Source: [agent/section])
-   
-2. **[Topic 2]**
-   - [Practice] (Source: [agent/section])
-
-### Anti-Patterns to Avoid
-
-[Consolidated from Research Insights + Review findings]
-
-1. **[Anti-pattern]**: [Why it's problematic]
-2. **[Anti-pattern]**: [Why it's problematic]
-
-### Code Examples
-
-[Key code snippets from Research Insights, organized by topic. Only include examples that are directly useful for implementation.]
-
-**[Topic/Purpose]:**
-```[language]
-// [File path where this would go]
-[code example]
-```
-
-**[Topic/Purpose]:**
-```[language]
-[code example]
-```
-
-### Security Considerations
-
-[Consolidated security items from deepening + review]
-
-- [ ] [Security item 1]
-- [ ] [Security item 2]
-
-### Performance Considerations
-
-[Consolidated performance items from deepening + review]
-
-- [ ] [Performance item 1]
-- [ ] [Performance item 2]
-
-## Review Findings Summary
-
-### Addressed in Plan
-
-[P1/P2 items that have been incorporated into the implementation checklist above]
-
-| Finding | Priority | Resolution | Checklist Location |
-|---------|----------|------------|-------------------|
-| [Finding] | P1 | [How addressed] | Phase X, Step Y |
-| [Finding] | P2 | [How addressed] | Phase X, Step Y |
-
-### Deferred Items
-
-[P3 items that are nice-to-have but not blocking]
-
-- **[P3 Finding]**: [Why deferred] - Consider for future iteration
-
-### Resolved Conflicts
-
-[How each conflict was resolved, if any]
-
-- **[Topic]**: Chose [Option X] because [rationale]
+Structure:
+1. Status section with dates
+2. Executive Summary
+3. Decisions Made (if questions were resolved)
+4. Critical Items (if P1s or conflicts exist)
+5. Implementation Checklist (integrated insights per step)
+6. Technical Reference (best practices, anti-patterns, code examples)
+7. Review Findings Summary
+8. Appendix (raw data in collapsible sections)
 
 ---
 
-## Appendix: Raw Research & Review Data
+## Phase 6: Write Files
 
-<details>
-<summary>Original Enhancement Summary</summary>
-
-[Copy the Enhancement Summary section from deepening verbatim]
-
-</details>
-
-<details>
-<summary>Original Review Summary</summary>
-
-[Copy the Plan Review Summary section from reviewing verbatim]
-
-</details>
-
-<details>
-<summary>Full Research Insights by Section</summary>
-
-[Copy all Research Insights subsections verbatim, preserving structure]
-
-</details>
-```
-
----
-
-## Phase 6: Write Consolidated Plan
-
-### Step 1: Create Backup
+### Backup Original
 
 ```bash
 cp [plan_path] [plan_path].pre-consolidation.backup
 ```
 
-### Step 2: Write Consolidated Content
+### Write Consolidated Plan
 
-Use the **Write tool** to overwrite the plan file with the consolidated version:
+Overwrite plan file with consolidated version. Original content preserved in Appendix.
 
-```
-Write: [plan_path]
-Content: [The consolidated plan markdown from Phase 4]
-```
+### Update Context File
 
-**This overwrites the plan file.** The original content with deepening and review data is preserved in the Appendix collapsible sections.
-
-### Step 3: Verify Consolidation
-
-```bash
-# Verify the plan has the new structure
-grep -c "Implementation Checklist" [plan_path]
-# Should return 1
-
-# Verify appendix contains raw data
-grep -c "Raw Research & Review Data" [plan_path]
-# Should return 1
-
-# Count checklist items
-grep -c "^\- \[ \]" [plan_path]
-# Should match expected implementation steps
-```
+Append consolidation metadata using template from `references/consolidated-plan-template.md`.
 
 ---
 
-## Phase 7: Update Context File
-
-Update the context file with consolidation metadata to complete the audit trail.
-
-### Step 1: Determine Context File Path
-
-```bash
-CONTEXT_PATH="${plan_path%.md}.context.md"
-```
-
-### Step 2: Read Existing Context
-
-```bash
-cat [CONTEXT_PATH]
-```
-
-### Step 3: Append Consolidation Record
-
-```markdown
-## Consolidation [YYYY-MM-DD HH:MM]
-
-### Actions Performed
-- Resolved [N] open questions with user input
-- Restructured into actionable checklist format
-- Integrated [X] research insights into implementation steps
-- Incorporated [Y] review findings
-- Created Technical Reference section
-- Preserved raw data in Appendix
-
-### Decisions Made
-[List each decision from Phase 3]
-- [Topic 1]: [Choice] ([user choice / delegated])
-- [Topic 2]: [Choice] ([user choice / delegated])
-
-### Synthesis Statistics
-- **Total checklist items:** [count]
-- **Implementation phases:** [count]
-- **Best practices consolidated:** [count]
-- **Anti-patterns documented:** [count]
-- **Code examples preserved:** [count]
-
-### Plan Status
-- **P1 findings:** [count] ([all addressed / N blocking])
-- **P2 findings:** [count] (incorporated)
-- **P3 findings:** [count] (deferred)
-- **Conflicts:** [count] ([all resolved / N pending])
-
-### Ready for Implementation
-- **Status:** [Ready for /fly:work | Blocked by P1 findings | Blocked by unresolved conflicts]
-- **Recommended next step:** [/fly:work [plan_path] | Address blocking items first]
-```
-
-### Step 4: Write Updated Context File
-
-```
-Write: [CONTEXT_PATH]
-Content: [Original context content + Consolidation metadata section]
-```
-
----
-
-## Phase 8: Present Results
-
-Display comprehensive summary to the user:
+## Phase 7: Present Results
 
 ```
 Plan Consolidated
@@ -579,146 +159,67 @@ Plan Consolidated
 Plan: [plan_path]
 Context: [context_path]
 
-Consolidation Summary:
-- Implementation phases: [count]
+Summary:
+- Phases: [count]
 - Checklist items: [count]
 - Research insights integrated: [count]
 - Review findings addressed: [count]
 
 Status:
 - P1 findings: [count] ([status])
-- Conflicts: [count] ([status])
-- Ready for: [/fly:work OR "Blocked - see Critical Items section"]
-
-The plan is now structured as an actionable checklist with:
-- Integrated research insights per step
-- Technical reference section
-- Raw data preserved in Appendix
+- Ready for: [/fly:work OR "Blocked - see Critical Items"]
 ```
 
 ---
 
-## Phase 9: Post-Consolidation Options
+## Phase 8: Post-Consolidation Options
 
-Use **AskUserQuestion** to present next steps:
+**AskUserQuestion:** "Plan consolidated. What next?"
 
-**Question:** "Plan consolidated at `[plan_path]`. What would you like to do?"
-
-**Options:**
-
-1. **Start /fly:work (Recommended)** - Begin implementation with the consolidated plan
-2. **View the consolidated plan** - Open plan in editor to review
-3. **Address blocking items** - Work through P1 findings or conflicts
-4. **Re-run specific phase** - Deepen or review again before proceeding
-5. **Revert to pre-consolidation** - Restore from backup
-
-### Handle Selection
-
-| Selection | Action |
-|-----------|--------|
-| Start /fly:work | Invoke `skill: executing-work` with `[plan_path]` |
-| View plan | Run `open [plan_path]` or display content |
-| Address blocking items | List each P1/conflict, discuss resolution, update plan |
-| Re-run specific phase | Ask which phase, invoke corresponding skill |
-| Revert | Run `cp [plan_path].pre-consolidation.backup [plan_path]` |
+| Option | Action |
+|--------|--------|
+| Start /fly:work (Recommended) | Invoke `skill: executing-work` |
+| View plan | Open or display content |
+| Address blocking items | List P1s/conflicts, discuss resolution |
+| Re-run specific phase | Ask which, invoke corresponding skill |
+| Revert | Restore from backup |
 
 ---
 
 ## Error Handling
 
-### Missing Required Content
-
-- **No original plan content:** Error - file may be corrupted
-- **No Enhancement Summary:** Warn and continue (plan wasn't deepened)
-- **No Review Summary:** Warn and continue (plan wasn't reviewed)
-- **No implementation steps found:** Ask user to identify phases manually
-
-### Write Failures
-
-- If Write fails, display consolidated content to user
-- Suggest saving to alternative path
-- Never lose consolidation work due to write failure
-
-### Malformed Input
-
-- If plan structure is unexpected, attempt best-effort consolidation
-- Note sections that couldn't be parsed
-- Ask user to verify output
+- **Missing content:** Warn and continue, or error if critical
+- **Write failure:** Display content, suggest alternative path
+- **Malformed input:** Best-effort consolidation, note unparsed sections
 
 ---
 
 ## Anti-Patterns
 
-### Don't Skip Question Resolution
-- **Wrong:** Consolidate with "TBD" or unresolved alternatives still in the plan
-- **Right:** Ask user about each open question before consolidating
-
-### Don't Ask Multiple Questions at Once
-- **Wrong:** "Should we use A or B? Also, what about X vs Y? And do you prefer..."
-- **Right:** One question at a time, wait for response, then next question
-
-### Don't Just Append
-- **Wrong:** Slap a "Consolidated Summary" at the top
-- **Right:** Restructure entire document into new format
-
-### Don't Lose Raw Data
-- **Wrong:** Delete the Enhancement Summary and Review findings
-- **Right:** Preserve in Appendix collapsible sections
-
-### Don't Leave Insights Floating
-- **Wrong:** "Technical Reference" section disconnected from checklist
-- **Right:** Link insights directly to relevant checklist items
-
-### Don't Ignore P1 Findings
-- **Wrong:** Move P1s to "Findings Summary" and proceed
-- **Right:** Either resolve them in checklist OR block implementation
-
-### Don't Create Vague Checklists
-- **Wrong:** "- [ ] Implement authentication"
-- **Right:** "- [ ] Step 2.1: Create JWT token generation in `src/auth/tokens.ts`"
-
-### Don't Over-Consolidate
-- **Wrong:** Remove all nuance from conflicting recommendations
-- **Right:** Preserve important context, note when judgment is required
-
----
-
-## Auto-Triggers
-
-This skill activates on:
-- "consolidate plan"
-- "finalize plan"
-- "make plan work-ready"
-- "restructure plan for work"
-- "prepare plan for implementation"
+- **Skip question resolution** - Don't consolidate with TBD items
+- **Multiple questions at once** - One at a time
+- **Just append** - Restructure, don't slap summary on top
+- **Lose raw data** - Preserve in Appendix
+- **Floating insights** - Integrate into checklist items
+- **Ignore P1s** - Must resolve or block
+- **Vague checklists** - "Implement auth" → "Step 2.1: Create JWT in `src/auth/tokens.ts`"
 
 ---
 
 ## Quality Checks
 
-Before finalizing consolidation:
-
-- [ ] All open questions have been resolved with user input
-- [ ] Decisions are recorded in the "Decisions Made" section
-- [ ] All P1 findings are either addressed or flagged as blocking
-- [ ] All conflicts are either resolved or flagged as pending
-- [ ] Every implementation step has a concrete action
-- [ ] Research insights are integrated into relevant steps (not just listed)
-- [ ] Code examples have file paths and are syntactically correct
-- [ ] Appendix contains all original deepening/review data
-- [ ] Context file updated with consolidation metadata
-- [ ] Plan is genuinely ready for `/fly:work`
+Before finalizing:
+- [ ] All open questions resolved with user input
+- [ ] Decisions recorded in "Decisions Made" section
+- [ ] All P1 findings addressed or flagged as blocking
+- [ ] Every implementation step has concrete action
+- [ ] Research insights integrated into relevant steps
+- [ ] Appendix contains raw deepening/review data
+- [ ] Plan genuinely ready for `/fly:work`
 
 ---
 
-## Key Principles Summary
+## Detailed References
 
-1. **RESOLVE QUESTIONS FIRST** - Get user input on open questions before consolidating
-2. **ONE QUESTION AT A TIME** - Never overwhelm with multiple questions at once
-3. **RESTRUCTURE, NOT APPEND** - Transform the document, don't just add to it
-4. **INTEGRATE INSIGHTS** - Research findings belong IN the checklist steps
-5. **PRESERVE RAW DATA** - Appendix keeps full context available
-6. **ADDRESS OR BLOCK** - P1 findings must be resolved or flag implementation
-7. **CONCRETE ACTIONS** - Every checklist item is executable
-8. **MAINTAIN TRACEABILITY** - Know where each recommendation came from
-9. **READY FOR WORK** - Output should feed directly into executing-work skill
+- `references/consolidated-plan-template.md` - Output structure, context file update template
+- `references/extraction-patterns.md` - How to extract and categorize content

@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Conversational exploration of ideas before detailed planning. One question at a time, explores 2-3 approaches, validates design incrementally. Triggers on "explore", "brainstorm", "think about", "let's discuss".
+description: Conversational exploration of ideas before detailed planning. One question at a time, 2-3 approaches, incremental validation. Triggers on "explore", "brainstorm", "think about".
 allowed-tools:
   - Read
   - Write
@@ -12,15 +12,13 @@ allowed-tools:
 
 # Brainstorming Skill
 
-Transform ideas into validated designs through natural collaborative dialogue. Output is a design document that the planning skill can consume.
+Transform ideas into validated designs through natural collaborative dialogue. Output is a design document for the planning skill.
+
+**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
 
 ## Input
 
-The feature idea or problem to explore is provided via `$ARGUMENTS`.
-
-**If empty:** Ask "What would you like to explore? Describe the feature, improvement, or problem you're thinking about."
-
-**Subagent Dispatch:** Follow subagent dispatch guidelines in `CLAUDE.md` - never send file contents, always request compaction format output.
+Feature idea via `$ARGUMENTS`. If empty, ask: "What would you like to explore?"
 
 ---
 
@@ -28,136 +26,91 @@ The feature idea or problem to explore is provided via `$ARGUMENTS`.
 
 Run research agents to understand context. **DO NOT present findings to user** - use them to ask smarter questions.
 
-**Run in parallel (all three):**
+**Run in parallel:**
 - Task repo-research-analyst(feature_idea)
 - Task framework-docs-researcher(feature_idea)
-- Task best-practices-researcher(feature_idea)
-
-**Timeout policy:**
-- repo-research-analyst: Required (local, fast)
-- framework-docs-researcher: Required (local, fast)
-- best-practices-researcher: **15s timeout** - continue without if slow
+- Task best-practices-researcher(feature_idea) [15s timeout]
 
 **Extract for internal use:**
-- Relevant existing patterns (to reference when exploring approaches)
-- Technical constraints (to inform feasibility questions)
-- Similar implementations (to suggest as approaches)
-- Naming conventions (to use in design)
-- Best practices from external sources (to validate approaches)
+- Relevant existing patterns
+- Technical constraints
+- Similar implementations
+- Naming conventions
+- Best practices
 
 ---
 
 ## Phase 1.5: Research Review (HIGH LEVERAGE)
 
-**⚡ HIGH LEVERAGE REVIEW POINT**
-Bad research leads to thousands of lines of incorrect code. 10 minutes here saves 10 hours later.
+**Bad research leads to thousands of lines of incorrect code.**
 
-**Present research summary to user (NOT raw findings):**
-
-```
----
-**Research Summary for: [Feature/Idea Name]**
-
-**Scope Identified:**
-- [3-5 bullet points of what the research found]
-
-**Key Files:**
-- `path/to/file.ts` - [purpose]
-- `path/to/other.ts` - [purpose]
-
-**Patterns Discovered:**
-- [Pattern]: [brief description]
-
-**Potential Concerns:**
-- [Any risks, complexities, or uncertainties identified]
----
-```
-
-**Use AskUserQuestion:**
+Present summary (NOT raw findings):
 
 ```
-Question: "Does this research scope look correct? (High leverage review - catching errors here saves significant time)"
-Header: "Research"
-Options:
-1. Approve and proceed - Research covers the right areas
-2. Add focus area - Need to investigate additional areas
-3. Redirect research - Wrong direction, let me clarify
+Research Summary for: [Feature]
+
+Scope Identified: [3-5 bullets]
+Key Files: [paths with purpose]
+Patterns Discovered: [pattern: description]
+Potential Concerns: [risks]
 ```
 
-**Based on response:**
-- **Approve**: Proceed to Phase 2
-- **Add focus area**: Run additional targeted research, then re-present summary
-- **Redirect**: Ask for clarification, restart Phase 1 with new direction
+**AskUserQuestion:**
+- Approve and proceed
+- Add focus area - Need more investigation
+- Redirect research - Wrong direction
 
-**Maximum 2 re-research cycles** before proceeding with best available context.
+Maximum 2 re-research cycles.
 
 ---
 
 ## Phase 2: Understand the Idea
 
-Ask questions **one at a time** to refine the idea. Prefer multiple choice.
+Ask questions **one at a time** to refine the idea.
 
 **Rules:**
-1. **One question per message** - Never ask multiple questions at once
-2. **Prefer multiple choice** - Use AskUserQuestion with 2-4 options
-3. **Lead with recommendation** - State your opinion and explain why
+1. **One question per message**
+2. **Prefer multiple choice** (AskUserQuestion with 2-4 options)
+3. **Lead with recommendation**
 4. **YAGNI ruthlessly** - Challenge scope creep
 
-**Question sequence (adapt as needed):**
-1. Clarify the core problem
-2. Understand the user/audience
+**Question sequence:**
+1. Clarify core problem
+2. Understand user/audience
 3. Define success criteria
 4. Identify constraints
-5. Scope check - "Is [X] part of this, or separate?"
+5. Scope check - "Is X part of this?"
 
 **Continue until you understand:**
-- [ ] The core problem being solved
-- [ ] Who benefits and how
-- [ ] What success looks like
-- [ ] What's explicitly out of scope
-- [ ] Key constraints
+- Core problem being solved
+- Who benefits and how
+- What success looks like
+- What's out of scope
+- Key constraints
 
 ---
 
 ## Phase 2.5: Surface Relevant Learnings
 
-Before presenting approaches, check if `docs/solutions/` has relevant past solutions.
-
-### Quick Learning Search
+Check `docs/solutions/` for relevant past solutions.
 
 ```bash
-# Extract keywords from understood problem
-# Search docs/solutions/ by tags, module, component
-
 grep -l "<keyword>" docs/solutions/**/*.md 2>/dev/null
 ```
 
 **If matches found (max 3-5):**
 
-Present relevant learnings that might inform approach selection:
-
 ```
 💡 Relevant Past Solutions:
 
-1. **[Title from file]** (docs/solutions/.../file.md)
-   - Symptom: [symptom from frontmatter]
-   - Solution: [brief solution summary]
-   - Why relevant: [how it connects to current problem]
-
-2. **[Title]** (path)
-   - ...
+1. **[Title]** (path)
+   - Symptom: [from frontmatter]
+   - Why relevant: [connection to problem]
 ```
 
-**Ask user:**
-```
-Question: "Found past solutions that may be relevant. Apply any of these learnings?"
-Options:
-1. Yes, consider these - Factor into approach recommendations
-2. Show me more details - Read specific files before deciding
-3. Not relevant - Proceed without these learnings
-```
+Ask if learnings should inform approach selection.
 
-**If no matches:** Proceed silently to Phase 3.
+**If no matches:** Proceed silently.
 
 ---
 
@@ -165,157 +118,82 @@ Options:
 
 **ALWAYS present 2-3 approaches** - even for "obvious" solutions.
 
-**Use best practices research** to inform approaches:
-- Reference industry patterns discovered
-- Note when an approach aligns with best practices
-- Flag when an approach deviates (and why it might still be valid)
+Use best practices research to inform approaches. Note when approach aligns or deviates.
 
-**Format each approach:**
-```
-### Approach A: [Name] (Recommended)
+**Format each approach per `references/design-document-template.md`:**
+- Name (mark Recommended)
+- 2-3 sentence summary
+- Pros/Cons
+- Effort: S/M/L
+- Why recommended (if applicable)
 
-[2-3 sentence summary]
+Ask user to select using AskUserQuestion.
 
-**Pros:** [bullet list]
-**Cons:** [bullet list]
-**Effort:** S / M / L
-
-**Why recommended:** [1 sentence]
-```
-
-**Then ask user to select** using AskUserQuestion with approach options.
-
-If user wants to combine/modify: Clarify what aspects, present hybrid as new approach, confirm.
+If user wants to combine: clarify aspects, present hybrid, confirm.
 
 ---
 
 ## Phase 4: Validate Design Incrementally
 
-Present design in **small chunks (200-300 words each)**. After each chunk, ask if it looks right.
+Present design in **small chunks (200-300 words each)**.
 
 **Section order:**
-1. Overview (what we're building, why)
-2. User flows (step-by-step from user perspective)
-3. Architecture (components, how they connect)
+1. Overview
+2. User flows
+3. Architecture
 4. Data model (if applicable)
-5. Error handling (what can go wrong)
-6. Success criteria (how we'll verify it works)
+5. Error handling
+6. Success criteria
 
-**After EACH section:** "Does this look right so far? Anything to adjust?"
+**After EACH section:** "Does this look right so far?"
 
-Handle feedback immediately - don't move to next section until current one is validated.
+Handle feedback immediately before moving to next section.
 
 ---
 
 ## Phase 5: Create Design Document
 
-**File path:** `plans/<topic>-design.md` (kebab-case topic)
+Write to `plans/<topic>-design.md` using template from `references/design-document-template.md`.
 
-**Structure:**
-```markdown
----
-created: <date>
-status: validated
-type: design
-brainstorm_session: true
----
+**Include:**
+- ALL explored approaches (not just selected)
+- Validated sections
+- Selection rationale
+- Open questions
 
-# Design: [Feature Name]
-
-## Overview
-[What we're building and why]
-
-## Context & Requirements
-
-### Problem Statement
-[Core problem being solved]
-
-### Success Criteria
-[How we'll know it works]
-
-### Constraints
-[Technical, business, user constraints]
-
-### Out of Scope
-[What's explicitly NOT included]
-
-## All Explored Approaches
-
-### Approach A: [Name] ✓ SELECTED
-[Full details with pros/cons/effort]
-
-### Approach B: [Name]
-[Full details with pros/cons/effort]
-
-### Selection Rationale
-[Why selected approach was chosen]
-
-## Selected Approach Details
-
-### User Flows
-[From Phase 4]
-
-### Architecture
-[From Phase 4]
-
-### Data Model
-[If applicable]
-
-### Error Handling
-[From Phase 4]
-
-## Open Questions
-[Any unresolved questions]
-```
-
-### Announce & Offer Handoff
-
-```
-✅ Design document saved: plans/<topic>-design.md
-
-Summary:
-- Selected approach: [Approach name]
-- [N] alternative approaches documented
-- [N] sections validated
-```
-
-**Use AskUserQuestion:**
-```
-Question: "Design validated and saved. What would you like to do next?"
-Options:
-1. Start /fly:plan (Recommended) - Create detailed implementation plan
-2. Review the design document - Open and review what was created
-3. Continue refining - Revisit specific sections
-4. Done for now - Save and come back later
-```
+Present completion summary and handoff options per reference template.
 
 ---
 
 ## Key Principles
 
-- **One question at a time** - Never overwhelm with multiple questions
-- **Multiple choice preferred** - Faster to pick than generate
-- **Lead with recommendations** - "I recommend X because Y"
-- **YAGNI ruthlessly** - "Do we really need this for v1?"
-- **Incremental validation** - Don't build up to big reveals
-- **Preserve all approaches** - Document ALL approaches, not just selected
+- **One question at a time**
+- **Multiple choice preferred**
+- **Lead with recommendations**
+- **YAGNI ruthlessly**
+- **Incremental validation**
+- **Preserve all approaches**
+
+---
 
 ## Error Handling
 
-### Agent Failures
-- Log failure with agent name and error
-- Continue without research context if agents fail
-- Proceed to questioning phase - research enhances but isn't required
-- **best-practices-researcher timeout (15s)**: Continue with partial results
+- **Agent failures**: Continue without research context
+- **best-practices timeout (15s)**: Continue with partial results
+- **User abandonment**: Save partial progress to draft
 
-### User Abandonment
-- If user stops responding, save partial progress to draft file
-- Note where conversation ended for resume
+---
 
 ## Anti-Patterns
 
-- Don't dump research findings on user
-- Don't ask multiple questions at once
-- Don't skip approach exploration
-- Don't present big design documents all at once
-- Don't only document the selected approach
+- Dump research findings on user
+- Ask multiple questions at once
+- Skip approach exploration
+- Present big documents all at once
+- Only document selected approach
+
+---
+
+## Detailed References
+
+- `references/design-document-template.md` - Output format, approach format, validation sections
