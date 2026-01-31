@@ -14,8 +14,6 @@ allowed-tools:
 
 Transform ideas into validated designs through natural collaborative dialogue. Output is a design document for the planning skill.
 
-**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
-
 ## Input
 
 Feature idea via `$ARGUMENTS`. If empty, ask: "What would you like to explore?"

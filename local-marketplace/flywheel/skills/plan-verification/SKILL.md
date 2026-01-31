@@ -23,8 +23,6 @@ Verify implementation plans are grounded in reality. Two modes:
 
 Plan path via `$ARGUMENTS`. If empty, ask user.
 
-**Subagent Dispatch:** Follow guidelines in `CLAUDE.md` - never send file contents, request compaction format.
-
 ---
 
 ## Phase 0: Discover Relevant Learnings

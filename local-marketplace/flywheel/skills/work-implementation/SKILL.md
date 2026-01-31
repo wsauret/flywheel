@@ -19,8 +19,6 @@ Execute plans using **probe-dispatch-checkpoint** pattern. Orchestrator stays le
 
 **Context Compaction:** This skill manages context via `.state.md` files (progress checkpoints) and `.context.md` files (research findings). If context is lost mid-work, these files enable seamless recovery. See README for philosophy.
 
-**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
-
 ## Input
 
 Plan path via `$ARGUMENTS`. Can be a plan, specification, or todo file.

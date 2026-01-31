@@ -20,8 +20,6 @@ Draft implementation plans based on user intent and existing codebase patterns. 
 
 **Context Compaction:** This skill creates `.context.md` files to persist research findings. This enables recovery if context is lost and provides downstream phases with key file paths and patterns without re-reading.
 
-**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
-
 ## Input
 
 Feature description via `$ARGUMENTS`. If empty, ask user.

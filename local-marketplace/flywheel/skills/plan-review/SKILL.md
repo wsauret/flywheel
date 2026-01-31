@@ -17,8 +17,6 @@ Run ALL available reviewer agents in parallel, then synthesize findings with ded
 
 **Philosophy:** Each reviewer represents a different stakeholder perspective. These perspectives legitimately conflict. We do NOT resolve conflicts—we surface them as Open Questions for the user to decide.
 
-**Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
-
 ## Input
 
 Plan path via `$ARGUMENTS`. If empty, check for recent plans in `plans/`.
