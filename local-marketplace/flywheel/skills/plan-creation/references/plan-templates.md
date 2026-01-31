@@ -221,7 +221,7 @@ plan: <plan-filename>.md
 created: <date>
 feature: "<feature description>"
 researchers:
-  - repo-research-analyst
+  - repo-researcher
   - best-practices-researcher
   - framework-docs-researcher
 ---

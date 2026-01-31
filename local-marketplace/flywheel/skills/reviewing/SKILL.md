@@ -59,18 +59,18 @@ Run ALL applicable agents simultaneously:
 ```
 Task typescript-reviewer(PR content)   # TypeScript/JavaScript
 Task python-reviewer(PR content)       # Python
-Task git-history-analyst(PR content)   # History context
-Task pattern-recognition-specialist(PR content)
-Task architecture-strategist(PR content)
+Task git-history-researcher(PR content)   # History context
+Task pattern-reviewer(PR content)
+Task architecture-reviewer(PR content)
 Task security-reviewer(PR content)
-Task performance-analyst(PR content)
+Task performance-reviewer(PR content)
 Task code-simplicity-reviewer(PR content)
 ```
 
 ### Conditional Agents
 
 **If PR contains database migrations:**
-- Task data-integrity-guardian(PR content)
+- Task data-integrity-reviewer(PR content)
 
 Check files matching: `**/migrations/**`, `alembic/`, `prisma/migrations/`
 

@@ -27,7 +27,7 @@ Feature idea via `$ARGUMENTS`. If empty, ask: "What would you like to explore?"
 Run research agents to understand context. **DO NOT present findings to user** - use them to ask smarter questions.
 
 **Run in parallel:**
-- Task repo-research-analyst(feature_idea)
+- Task repo-researcher(feature_idea)
 - Task framework-docs-researcher(feature_idea)
 - Task best-practices-researcher(feature_idea) [15s timeout]
 

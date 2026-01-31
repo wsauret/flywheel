@@ -1,5 +1,5 @@
 ---
-name: research-specialist
+name: web-researcher
 description: "Use this agent for external research: best practices, framework documentation, community patterns, and industry standards. Handles both general best practices research (coding standards, workflows, conventions) and framework-specific documentation (official docs, version constraints, source code analysis). Always checks available skills first before online research."
 model: inherit
 tools: [Read, Grep, Glob, WebFetch, WebSearch]

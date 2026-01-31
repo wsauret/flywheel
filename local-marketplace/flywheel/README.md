@@ -34,44 +34,33 @@ cp -r plugin/agents/* ~/.config/opencode/agents/
 
 | Component | Count |
 |-----------|-------|
-| Agents | 16 |
-| Commands | 8 |
-| Skills | 8 |
+| Agents | 10 |
+| Commands | 5 |
+| Skills | 10 |
 
 ## Agents
 
 Agents are organized into categories for easier discovery.
 
-### Review (9)
+### Reviewers (7)
 
 | Agent | Description |
 |-------|-------------|
-| `agent-native-reviewer` | Verify features are agent-native (action + context parity) |
-| `architecture-strategist` | Analyze architectural decisions and compliance |
+| `architecture-reviewer` | Analyze architectural decisions and compliance |
+| `code-quality-reviewer` | Python/TypeScript review with high quality bar |
 | `code-simplicity-reviewer` | Final pass for simplicity and minimalism |
-| `data-integrity-guardian` | Database migrations and data integrity |
-| `pattern-recognition-specialist` | Analyze code for patterns and anti-patterns |
-| `performance-oracle` | Performance analysis and optimization |
-| `python-reviewer` | Python code review with strict conventions |
-| `security-sentinel` | Security audits and vulnerability assessments |
-| `typescript-reviewer` | TypeScript code review with strict conventions |
+| `data-integrity-reviewer` | Database migrations and data integrity |
+| `pattern-reviewer` | Analyze code for patterns and anti-patterns |
+| `performance-reviewer` | Performance analysis and optimization |
+| `security-reviewer` | Security audits and vulnerability assessments |
 
-### Research (4)
+### Researchers (3)
 
 | Agent | Description |
 |-------|-------------|
-| `best-practices-researcher` | Gather external best practices and examples |
-| `framework-docs-researcher` | Research framework documentation and best practices |
-| `git-history-analyzer` | Analyze git history and code evolution |
-| `repo-research-analyst` | Research repository structure and conventions |
-
-### Workflow (3)
-
-| Agent | Description |
-|-------|-------------|
-| `lint` | Run linting and code quality checks |
-| `pr-comment-resolver` | Address PR comments and implement fixes |
-| `spec-flow-analyzer` | Analyze user flows and identify gaps in specifications |
+| `git-history-researcher` | Analyze git history and code evolution |
+| `repo-researcher` | Research repository structure and conventions |
+| `web-researcher` | External research: best practices, docs, community patterns |
 
 ## Commands
 

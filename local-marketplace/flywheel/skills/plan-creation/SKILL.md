@@ -29,7 +29,7 @@ Feature description via `$ARGUMENTS`. If empty, ask user.
 Launch three research agents simultaneously:
 
 ```
-Task repo-research-analyst: "Analyze codebase for patterns related to: <feature>.
+Task repo-researcher: "Analyze codebase for patterns related to: <feature>.
 Find: existing implementations, file structure, naming conventions.
 Return: file paths with line numbers (e.g., src/services/auth.ts:42)
 Flag OPEN QUESTIONS for ambiguities or multiple valid approaches."

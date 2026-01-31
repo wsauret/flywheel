@@ -50,14 +50,14 @@ For each conflict:
 **Perspective A** (security-reviewer):
 > [Their recommendation and reasoning]
 
-**Perspective B** (performance-analyst):
+**Perspective B** (performance-reviewer):
 > [Their opposing recommendation and reasoning]
 
 **Trade-off:** [What you gain/lose with each option]
 
 **Options:**
 - A: [Follow security-reviewer's recommendation]
-- B: [Follow performance-analyst's recommendation]
+- B: [Follow performance-reviewer's recommendation]
 - C: [Hybrid approach if applicable]
 ```
 

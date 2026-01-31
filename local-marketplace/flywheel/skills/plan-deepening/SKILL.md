@@ -68,7 +68,7 @@ Convert claims into specific questions:
 ### 2.1 Existing Solutions Check
 
 ```
-Task repo-research-analyst: "
+Task repo-researcher: "
 Search codebase for existing implementations related to: [feature/capability]
 
 Questions:
@@ -83,7 +83,7 @@ Flag: EXISTING_SOLUTION if found, with path and assessment of reusability.
 ### 2.2 Pattern Consistency Check
 
 ```
-Task repo-research-analyst: "
+Task repo-researcher: "
 Analyze codebase patterns for: [domain area from plan]
 
 Questions:
@@ -98,7 +98,7 @@ Flag: PATTERN_CONFLICT if plan deviates from established patterns.
 ### 2.3 DRY Violation Check
 
 ```
-Task repo-research-analyst: "
+Task repo-researcher: "
 Check for potential DRY violations in plan:
 
 Plan proposes: [list proposed new code/modules]
@@ -115,7 +115,7 @@ Flag: DRY_VIOLATION with specific file paths if found.
 ### 2.4 Integration Impact Check
 
 ```
-Task repo-research-analyst: "
+Task repo-researcher: "
 Assess integration impact of plan:
 
 Components affected: [list from plan]
@@ -158,7 +158,7 @@ mcp__plugin_Flywheel_context7__query-docs:
 ### 3.2 Best Practices Research
 
 ```
-Task research-specialist: "
+Task web-researcher: "
 Research best practices for: [technical approach in plan]
 
 Focus on:
@@ -174,7 +174,7 @@ Return: Concrete recommendations with code examples.
 ### 3.3 Version Compatibility Check
 
 ```
-Task research-specialist: "
+Task web-researcher: "
 Check version compatibility for: [technology stack from plan]
 
 Questions:
@@ -189,7 +189,7 @@ Flag: VERSION_ISSUE if incompatibilities found.
 ### 3.4 Alternative Approaches Research
 
 ```
-Task research-specialist: "
+Task web-researcher: "
 Research alternative approaches for: [core technical decision in plan]
 
 Questions:

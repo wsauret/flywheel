@@ -96,9 +96,9 @@ For complex issues, invoke relevant reviewer:
 
 | Problem Type | Reviewer |
 |-------------|----------|
-| performance_issue | performance-analyst |
+| performance_issue | performance-reviewer |
 | security_issue | security-reviewer |
-| database_issue | data-integrity-guardian |
+| database_issue | data-integrity-reviewer |
 
 **Only if** the problem was particularly tricky or affects critical systems.
 

@@ -40,7 +40,7 @@ find ~/.claude/agents -name "*.md" 2>/dev/null
 find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
 ```
 
-**Baseline reviewers:** architecture-strategist, code-simplicity-reviewer, pattern-recognition-specialist, security-reviewer, performance-analyst, data-integrity-guardian
+**Baseline reviewers:** architecture-reviewer, code-simplicity-reviewer, pattern-reviewer, security-reviewer, performance-reviewer, data-integrity-reviewer
 
 ---
 
@@ -49,7 +49,7 @@ find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
 Launch Task for EVERY discovered agent in a SINGLE message:
 
 ```
-Task architecture-strategist: "Review this plan for architectural concerns.
+Task architecture-reviewer: "Review this plan for architectural concerns.
 PLAN: [full plan content]
 Provide findings with priority (P1/P2/P3) and specific locations.
 Flag OPEN QUESTIONS for trade-offs or decisions needing user input."

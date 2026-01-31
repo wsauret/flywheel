@@ -76,7 +76,7 @@ Same section + same issue + same action:
 ```markdown
 ### Finding 1: [Title]
 **Priority:** P1 (Critical)
-**Sources:** architecture-strategist, security-reviewer (2 agents)
+**Sources:** architecture-reviewer, security-reviewer (2 agents)
 **Location:** Section 3 - Database Schema
 [Merged description]
 ```
@@ -86,8 +86,8 @@ Related topic, different specifics:
 
 ```markdown
 ### Theme: Performance Concerns
-1. **Query optimization** (performance-analyst): [Concern]
-2. **Caching strategy** (architecture-strategist): [Related concern]
+1. **Query optimization** (performance-reviewer): [Concern]
+2. **Caching strategy** (architecture-reviewer): [Related concern]
 ```
 
 ### Unique Findings
