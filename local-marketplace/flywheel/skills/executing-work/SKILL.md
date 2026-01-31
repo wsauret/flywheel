@@ -1,6 +1,6 @@
 ---
 name: executing-work
-description: Execute work plans using probe-dispatch-checkpoint pattern. Orchestrator stays lean, dispatches subagents per phase. Triggers on "work on", "implement", "execute plan".
+description: Execute work plans using probe-dispatch-checkpoint pattern. Orchestrator stays lean, dispatches subagents per phase. Triggers on "work on", "implement", "execute plan", "carry on", "continue".
 allowed-tools:
   - Read
   - Write
@@ -17,11 +17,58 @@ allowed-tools:
 
 Execute plans using **probe-dispatch-checkpoint** pattern. Orchestrator stays lean, dispatches subagents per phase, persists state for recovery.
 
+**Context Compaction:** This skill manages context via `.state.md` files (progress checkpoints) and `.context.md` files (research findings). If context is lost mid-work, these files enable seamless recovery. See README for philosophy.
+
 **Subagent Dispatch:** Follow guidelines in `CLAUDE.md`.
 
 ## Input
 
 Plan path via `$ARGUMENTS`. Can be a plan, specification, or todo file.
+
+**If no arguments provided:** Check for active session (see Phase 0).
+
+---
+
+## Phase 0: Session Detection
+
+**Run this phase FIRST, before anything else.**
+
+### Check for Active Session
+
+```bash
+test -f .flywheel/session.md && echo "Active session found"
+```
+
+### If Session Exists AND No Arguments Provided
+
+Read session file frontmatter:
+
+```bash
+head -20 .flywheel/session.md
+```
+
+**AskUserQuestion:**
+```
+Question: "Found active session for [plan_path]. Resume where you left off?"
+Options:
+1. Resume (Recommended) - Continue from Phase [N]
+2. Start fresh - Abandon session, ask for new plan
+3. View status - Show current progress first
+```
+
+- **Resume:** Set `PLAN_PATH` from session, continue to Phase 1
+- **Start fresh:** Delete session file, ask for plan path
+- **View status:** Display session details, ask again
+
+### If Session Exists AND Arguments Provided
+
+Compare session `plan_path` with provided argument:
+- **Same plan:** Resume session
+- **Different plan:** Ask whether to switch or continue existing
+
+### If No Session
+
+Proceed normally - require plan path from arguments or ask user.
 
 ---
 
@@ -37,6 +84,39 @@ test -f "$STATE_FILE" && echo "Found execution state - resuming"
 **If state file exists:** Resume from first unchecked phase, load key decisions.
 
 **If no state file:** Create initial state using `references/state-file-template.md`.
+
+### Create/Update Session File
+
+```bash
+mkdir -p .flywheel
+```
+
+Write session file per `references/session-file-template.md`:
+
+```markdown
+---
+active_skill: executing-work
+plan_path: [PLAN_PATH]
+state_path: [STATE_FILE]
+context_path: [CONTEXT_FILE]
+started: [timestamp]
+last_checkpoint: [timestamp]
+current_phase: 1
+total_phases: [N]
+---
+
+# Active Flywheel Session
+
+## Quick Resume
+
+After clearing context, say **"carry on"** or run:
+/fly:work [PLAN_PATH]
+
+## Current Status
+
+- **Plan:** [plan name]
+- **Phase:** 1 of [N] - [description]
+```
 
 ### Load Context
 
@@ -126,11 +206,16 @@ For each implementation task:
 
 After subagent completes:
 
-1. Mark phase complete: `- [x] Phase N`
-2. Append key decisions
+1. Mark phase complete in state file: `- [x] Phase N`
+2. Append key decisions to state file
 3. **Verify TDD evidence:** Tests created/modified, suite passing
 4. Update code context (files modified/created)
 5. Run tests - fail fast if broken
+6. **Update session file:**
+   - `last_checkpoint: [timestamp]`
+   - `current_phase: [N+1]`
+   - Update "Current Status" section
+   - Append key decisions to session for quick reference
 
 ### 2.4 Loop
 
@@ -179,6 +264,14 @@ gh pr create --title "feat: [Description]" --body "..."
 
 Mark state file: `status: completed`
 
+### Clear Session
+
+Work is complete - clear the active session:
+
+```bash
+rm .flywheel/session.md
+```
+
 ### Worktree Cleanup
 
 If in worktree, offer cleanup:
@@ -194,15 +287,16 @@ Options:
 
 ## Recovery
 
-If orchestrator compacts mid-execution:
+If user clears context mid-execution (or context is lost):
 
-1. State file contains full progress
-2. New instance reads state file
-3. Finds first unchecked phase
-4. Loads key decisions
-5. Resumes execution
+1. User says "carry on" or runs `/fly:work` with no arguments
+2. Session file (`.flywheel/session.md`) identifies active plan
+3. State file contains full progress
+4. New instance finds first unchecked phase
+5. Loads key decisions from state file
+6. Resumes execution
 
-**No work is lost.**
+**No work is lost.** The session file enables seamless "carry on" recovery.
 
 ---
 
@@ -236,4 +330,5 @@ If orchestrator compacts mid-execution:
 ## Detailed References
 
 - `references/state-file-template.md` - State file structure, recovery process
+- `references/session-file-template.md` - Session file for "carry on" resume
 - `references/verification-gates.md` - Verification protocol, two-stage review

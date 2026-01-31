@@ -2,6 +2,22 @@
 
 Shared guidelines for all Flywheel skills and agents.
 
+## Human Leverage Hierarchy
+
+Focus human review effort on highest-leverage artifacts:
+
+| Review Target | Prevents |
+|---------------|----------|
+| **Research** | Thousands of bad lines of code |
+| **Plans** | Hundreds of bad lines of code |
+| **Code** | Individual mistakes |
+
+Bad research (misunderstanding codebase architecture, wrong file locations) compounds into a fundamentally flawed plan. A flawed plan generates code that solves the wrong problem or breaks existing patterns.
+
+**This is why Flywheel requires human approval at research and plan boundaries** - catching errors early has exponentially more leverage than catching them in code review.
+
+---
+
 ## Subagent Dispatch Guidelines
 
 When invoking subagents via the Task tool, follow these patterns:

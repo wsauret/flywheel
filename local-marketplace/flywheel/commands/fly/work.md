@@ -1,7 +1,7 @@
 ---
 name: fly:work
-description: Execute work plans efficiently while maintaining quality and finishing features. Loads context files, follows patterns, tests continuously.
-argument-hint: "[plan file, specification, or todo file path]"
+description: Execute work plans efficiently while maintaining quality and finishing features. Loads context files, follows patterns, tests continuously. Supports "carry on" resume after clearing context.
+argument-hint: "[plan file path] (optional - will resume active session if omitted)"
 ---
 
 # Execute Work Plan
@@ -14,7 +14,16 @@ argument-hint: "[plan file, specification, or todo file path]"
 skill: executing-work
 ```
 
+## Session Recovery
+
+If no arguments provided, the skill checks for an active session at `.flywheel/session.md`.
+
+After clearing context mid-work, say **"carry on"** or run `/fly:work` with no arguments to resume.
+
+## Features
+
 The executing-work skill handles:
+- **Session tracking** - `.flywheel/session.md` enables "carry on" resume
 - Loading plan and companion `.context.md` file
 - Environment setup (branch vs worktree)
 - Task breakdown with TodoWrite

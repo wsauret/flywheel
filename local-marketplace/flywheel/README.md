@@ -2,6 +2,46 @@
 
 AI-powered development tools that get smarter with every use. Make each unit of engineering work easier than the last.
 
+## Philosophy
+
+Flywheel implements two complementary strategies for AI-assisted development:
+
+### Context Compaction (During Work)
+
+AI coding agents struggle with large codebases because context windows fill up with search results, file contents, and tool outputs. Flywheel manages this through:
+
+- **Research → Plan → Implement workflow** - Each phase produces compact artifacts, not sprawling chat
+- **`.context.md` files** - Persist research findings across sessions
+- **`.state.md` files** - Enable recovery if context is lost mid-work
+- **`.flywheel/session.md`** - Tracks active work for "carry on" resume
+- **Subagent dispatch** - Fresh context for research tasks, compact results returned
+
+This keeps context utilization under 40% for optimal performance.
+
+**Session Recovery:** If you need to clear context mid-work (`/clear`), just say "carry on" or run `/fly:work` with no arguments. The session file remembers where you left off.
+
+### Knowledge Compounding (After Work)
+
+Each solved problem should make future problems easier. Flywheel captures lessons via:
+
+- **`/fly:compound`** - Document solutions while context is fresh
+- **`docs/solutions/`** - Searchable knowledge base of past solutions
+- **Automatic discovery** - Planning skills surface relevant past solutions
+
+Like compound interest, each captured lesson accumulates value over time.
+
+### Human Leverage
+
+Focus review effort where it matters most:
+
+| Review Target | Prevents |
+|---------------|----------|
+| Research | Thousands of bad lines |
+| Plans | Hundreds of bad lines |
+| Code | Individual mistakes |
+
+This is why Flywheel requires human approval at research and plan boundaries.
+
 ## Installation
 
 ### Claude Code

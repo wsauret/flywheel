@@ -14,7 +14,11 @@ allowed-tools:
 
 Document solved problems to build searchable institutional knowledge.
 
-**Why "compound"?** Each documented solution compounds your team's knowledge. First time solving a problem takes research. Document it, and the next occurrence takes minutes.
+**Why "compound"?** Each documented solution compounds your team's knowledge like compound interest. First time solving a problem takes research. Document it, and the next occurrence takes minutes.
+
+**Compounding vs Compaction:** Flywheel uses two strategies (see README):
+- **Compaction** = Reduce context mid-work (`.context.md`, `.state.md` files)
+- **Compounding** = Accumulate knowledge post-work (this skill)
 
 **Preconditions:**
 - Problem has been solved (not in-progress)
