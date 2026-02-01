@@ -436,8 +436,16 @@ If user clears context mid-execution (or context is lost):
 
 ## Error Handling
 
-- **Subagent failures**: Log, ask user: retry/skip/abort
-- **Test failures**: Fix before checkpointing
+Follow the **3-Strike Error Protocol** from `flywheel-conventions`:
+
+1. **Attempt 1**: Diagnose & fix
+2. **Attempt 2**: Alternative approach (never repeat same failing action)
+3. **Attempt 3**: Broader rethink, question assumptions
+4. **After 3 failures**: Log to state file Error Log, escalate to user
+
+**Specific cases:**
+- **Subagent failures**: Apply 3-Strike, then ask user: retry/skip/abort
+- **Test failures**: Fix before checkpointing (3-Strike applies)
 - **Missing files**: Warn during probe, clarify before dispatch
 
 ---

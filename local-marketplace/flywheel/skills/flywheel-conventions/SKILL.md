@@ -94,3 +94,36 @@ This two-pass approach reduces context usage by 40-60%.
 | pattern-analyzer | sonnet | Read, Grep, Glob | Extract code examples |
 | docs-analyzer | sonnet | Read, Grep, Glob | Extract doc insights |
 | web-analyzer | sonnet | WebFetch, Read | Deep web content analysis |
+
+---
+
+## 3-Strike Error Protocol
+
+When a subagent or operation fails:
+
+**Attempt 1: Diagnose & Fix**
+- Read error message carefully
+- Identify root cause
+- Apply targeted fix
+
+**Attempt 2: Alternative Approach**
+- If same error recurs, try different method/tool/approach
+- NEVER repeat the exact same failing action
+
+**Attempt 3: Broader Rethink**
+- Question assumptions
+- Search for solutions
+- Consider whether the plan needs updating
+
+**After 3 Failures: Escalate**
+- Log all attempts in state file Error Log
+- Explain what was tried to user
+- Ask for guidance
+
+### Error Log Table Format
+
+Track errors in state file:
+
+| Error | Attempt | Approach | Outcome |
+|-------|---------|----------|---------|
+| [error message] | 1 | [what you tried] | [result] |

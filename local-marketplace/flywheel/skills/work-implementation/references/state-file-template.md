@@ -5,10 +5,10 @@ The state file enables recovery if orchestrator compacts mid-execution.
 ## File Location
 
 ```
-plans/<plan-name>.state.md
+docs/plans/<plan-name>.state.md
 ```
 
-Derived from plan path: `plans/feat-user-auth.md` → `plans/feat-user-auth.state.md`
+Derived from plan path: `docs/plans/feat-user-auth.md` → `docs/plans/feat-user-auth.state.md`
 
 ---
 
@@ -18,7 +18,7 @@ Derived from plan path: `plans/feat-user-auth.md` → `plans/feat-user-auth.stat
 ---
 plan: <plan-name>.md
 status: in_progress
-schema_version: 2
+schema_version: 3
 ---
 
 # Execution State: <Plan Name>
@@ -39,6 +39,12 @@ schema_version: 2
 
 ## Blockers (if any)
 <!-- Issues preventing completion of current phase -->
+
+## Error Log
+<!-- Track errors per 3-Strike Protocol (see flywheel-conventions) -->
+
+| Error | Attempt | Approach | Outcome |
+|-------|---------|----------|---------|
 ```
 
 ### Progress Markers
@@ -82,7 +88,7 @@ Update progress checkbox and append context:
 ---
 plan: <plan-name>.md
 status: completed
-schema_version: 2
+schema_version: 3
 ---
 ```
 
@@ -94,8 +100,9 @@ schema_version: 2
 |---------|---------|
 | 1 | Initial: Progress, Key Decisions, Code Context |
 | 2 | Added: Learnings, Blockers, `[~]` marker for awaiting manual |
+| 3 | Added: Error Log table for 3-Strike tracking |
 
-**Migration:** v1 → v2 is backward compatible. Missing sections are treated as empty.
+**Migration:** v2 → v3 is backward compatible. Missing Error Log section treated as empty.
 
 ---
 
@@ -114,7 +121,7 @@ If orchestrator compacts mid-execution:
 
 ## Context File
 
-Separate from state file. Located at: `plans/<plan-name>.context.md`
+Separate from state file. Located at: `docs/plans/<plan-name>.context.md`
 
 Load from context file:
 - **File References** - key files to understand

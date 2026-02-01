@@ -292,6 +292,20 @@ This skill is context-heavy. Monitor usage:
 
 ---
 
+## 2-Action Rule for Visual Content
+
+After ANY 2 of these operations:
+- WebFetch
+- Browser tool use
+- Image viewing
+- Search results review
+
+**IMMEDIATELY** persist findings to the research document as text.
+
+Visual/multimodal content doesn't persist well in context. Capture it as text before it's lost.
+
+---
+
 ## Anti-Patterns
 
 - **Skip locator phase** - Don't go straight to analyzers
