@@ -174,15 +174,12 @@ Status:
 
 ## Phase 8: Post-Consolidation Options
 
-**AskUserQuestion:** "Plan consolidated. What next?"
+**AskUserQuestion:** "Plan consolidated and ready. What next?"
 
 | Option | Action |
 |--------|--------|
 | Start /fly:work (Recommended) | Invoke `skill: work-implementation` |
-| View plan | Open or display content |
-| Address blocking items | List P1s/conflicts, discuss resolution |
-| Re-run specific phase | Ask which, invoke corresponding skill |
-| Revert | Restore from backup |
+| Done for now | Display path and exit |
 
 ---
 

@@ -334,14 +334,12 @@ Append to `[plan_path].context.md`:
 
 ### Present Options
 
-```
-Question: "Plan verified. What next?"
-Options:
-1. View diff - Show what changed
-2. Run review - Get reviewer feedback
-3. Start work - Begin implementation
-4. Verify more - Additional validation on specific sections
-```
+**AskUserQuestion:** "Verification data added to plan. What next?"
+
+| Option | Action |
+|--------|--------|
+| Run review (Recommended) | Invoke `skill: plan-review` |
+| Done for now | Display path and exit |
 
 ---
 

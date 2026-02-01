@@ -194,16 +194,12 @@ Maximum 2 revision cycles.
 
 ## Phase 6: Post-Creation Options
 
-**AskUserQuestion:** "Plan ready at `docs/plans/<name>.md`. What next?"
+**AskUserQuestion:** "Plan draft ready at `docs/plans/<name>.md`. What next?"
 
 | Option | Action |
 |--------|--------|
-| Verify plan (Recommended) | Invoke `skill: plan-verification` |
-| Review plan | Invoke `skill: plan-review` |
-| Start work | Invoke `skill: work-implementation` |
+| Run verification (Recommended) | Invoke `skill: plan-verification` |
 | Done for now | Display path and exit |
-
-**Recommended flow:** Verify → Review → Consolidate → Work
 
 ---
 

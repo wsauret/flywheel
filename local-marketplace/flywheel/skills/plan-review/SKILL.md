@@ -122,11 +122,9 @@ Use template from `references/review-summary-template.md` (Context File Update s
 
 ## Phase 7: Post-Review Options
 
-1. **Address P1 findings** - Must resolve before proceeding
-2. **Update plan** - Incorporate feedback
-3. **Run specific agent deeper** - Get more detail
-4. **Proceed anyway** - Accept risks (explicit ack for P1s)
-5. **Start implementation** - If no P1 findings
+1. **Run consolidation (Recommended)** - Proceed to consolidation phase
+2. **Run specific agent deeper** - Get more detail on specific concerns
+3. **Done for now** - Exit and review findings manually
 
 ---
 

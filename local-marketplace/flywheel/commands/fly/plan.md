@@ -92,7 +92,7 @@ arguments: [input - either feature description or design doc path]
 - `PLAN_PATH` = Path to created plan file (e.g., `plans/feat-user-authentication.md`)
 - `CONTEXT_PATH` = Path to context file (e.g., `plans/feat-user-authentication.context.md`)
 
-**If plan-creation presents post-creation options, select "Deepen plan" to continue the flow.**
+**If plan-creation presents post-creation options, select "Run verification" to continue the flow.**
 
 ---
 
@@ -116,7 +116,7 @@ This phase:
 - `CLAIMS_VALIDATED` = Count of claims verified
 - `ISSUES_FOUND` = Blockers, warnings, and enhancements identified
 
-**If plan-verification presents post-verification options, select "Run plan review" to continue the flow.**
+**If plan-verification presents post-verification options, select "Run review" to continue the flow.**
 
 ---
 
@@ -140,6 +140,8 @@ This phase:
 - `REVIEWERS_RUN` = Count of reviewer agents executed
 - `FINDINGS_COUNT` = Total findings (P1, P2, P3)
 - `CONFLICTS_COUNT` = Number of conflicts detected
+
+**If plan-review presents post-review options, select "Run consolidation" to continue the flow.**
 
 ---
 
