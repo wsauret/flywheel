@@ -2,6 +2,23 @@
 
 Required checks before claiming completion.
 
+## Pre-Flight Check
+
+Before starting implementation, quick sanity check (prevents wrong-direction work):
+
+- [ ] Problem understood? (Can explain in one sentence)
+- [ ] Approach fits existing patterns? (Not inventing new abstractions)
+- [ ] No obvious duplicates? (Searched for similar solutions)
+- [ ] Security implications considered? (Auth, input handling, data persistence)
+
+**Decision:** Ready to proceed? → Yes or Clarify with user.
+
+**If any "No":** Pause and clarify before proceeding. This 30-second check prevents hours of wrong-direction work.
+
+**If unsure:** Skip check and note in state file. This is advisory, not blocking.
+
+---
+
 ## Verification Protocol
 
 Before claiming any phase complete or expressing satisfaction:

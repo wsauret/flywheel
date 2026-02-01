@@ -97,6 +97,26 @@ This two-pass approach reduces context usage by 40-60%.
 
 ---
 
+## Scope Discipline
+
+Build only what's asked. These principles are defined in specific skills - this section consolidates references:
+
+- **YAGNI ruthlessly**: `brainstorm/SKILL.md` (defer until needed)
+- **No extras**: `work-implementation/SKILL.md` (don't add features beyond request)
+- **Code simplicity**: `code-simplicity-reviewer` agent (post-implementation review)
+
+When in doubt, do less. Premature abstraction costs more than duplication.
+
+---
+
+## Pre-Implementation Readiness
+
+Before starting implementation, confirm readiness. See Pre-Flight Check in `work-implementation/references/verification-gates.md`.
+
+Quick self-check: Problem understood? Approach fits patterns? No obvious duplicates?
+
+---
+
 ## 3-Strike Error Protocol
 
 When a subagent or operation fails:

@@ -6,7 +6,7 @@ Schema for compound-docs solution files. All solution documentation uses this fr
 
 - **module** (string): Module name (e.g., "UserService") or "System" for system-wide issues
 - **date** (string): ISO 8601 date (YYYY-MM-DD)
-- **problem_type** (enum): One of [build_error, test_failure, runtime_error, performance_issue, database_issue, security_issue, ui_bug, integration_issue, logic_error, developer_experience, workflow_issue, best_practice, documentation_gap]
+- **problem_type** (enum): One of [build_error, test_failure, runtime_error, performance_issue, database_issue, security_issue, ui_bug, integration_issue, logic_error, developer_experience, workflow_issue, best_practice, documentation_gap, pattern, mistake]
 - **component** (enum): One of [model, controller, view, service, background_job, database, frontend, api, authentication, payments, development_workflow, testing_framework, documentation, tooling]
 - **symptoms** (array): 1-5 specific observable symptoms
 - **root_cause** (enum): One of [missing_association, missing_eager_load, missing_index, wrong_api, scope_issue, thread_violation, async_timing, memory_leak, config_error, logic_error, test_isolation, missing_validation, missing_permission, missing_workflow_step, inadequate_documentation, missing_tooling, incomplete_setup]
@@ -63,3 +63,5 @@ Based on `problem_type`, documentation is filed in:
 - **workflow_issue** → `docs/solutions/workflow-issues/`
 - **best_practice** → `docs/solutions/best-practices/`
 - **documentation_gap** → `docs/solutions/documentation-gaps/`
+- **pattern** → `docs/solutions/patterns/`
+- **mistake** → `docs/solutions/mistakes/`

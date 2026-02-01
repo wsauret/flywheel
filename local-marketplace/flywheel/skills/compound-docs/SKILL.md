@@ -41,6 +41,23 @@ Document solved problems to build searchable institutional knowledge.
 
 **Skip:** Simple typos, obvious syntax errors, trivial fixes.
 
+**Additional categories:**
+- `pattern` = Successful approach worth reusing → `docs/solutions/patterns/`
+- `mistake` = Failed approach with prevention guidance → `docs/solutions/mistakes/`
+
+---
+
+## Step 1.5: 3-Strike Integration
+
+**When invoked after 3-Strike escalation** (error resolved with user help), capture:
+
+- **What failed**: All 3 attempts (sanitized - remove credentials, API keys, PII, internal URLs)
+- **Why it failed**: Root cause analysis
+- **What worked**: User-provided solution
+- **How to prevent**: Future guidance
+
+This creates institutional memory from hard-won debugging sessions.
+
 ---
 
 ## Step 2: Gather Context
@@ -77,9 +94,15 @@ grep -r "exact error phrase" docs/solutions/
 
 ---
 
-## Step 4: Validate YAML & Create File
+## Step 4: Sanitize & Validate
 
-Validate against `references/yaml-schema.md`:
+**Before documenting, sanitize sensitive data:**
+- Remove credentials, API keys, secrets
+- Remove PII (names, emails, IDs)
+- Replace internal URLs with `[internal-url]`
+- Generalize environment-specific paths
+
+Then validate against `references/yaml-schema.md`:
 - All required fields present
 - Enum values match exactly
 - symptoms is array (1-5 items)
