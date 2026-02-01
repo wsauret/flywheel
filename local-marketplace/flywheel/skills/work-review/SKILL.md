@@ -33,7 +33,7 @@ The review target is provided via `$ARGUMENTS`. Can be:
 
 ```bash
 # Look for state file that indicates this was planned work
-ls plans/*.state.md 2>/dev/null | head -5
+ls docs/plans/*.state.md 2>/dev/null | head -5
 ```
 
 If state file exists, proceed with compliance check. Otherwise, skip to Phase 1.5.

@@ -261,7 +261,7 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 ## Context File Template
 
-File: `plans/<plan-name>.context.md`
+File: `docs/plans/<plan-name>.context.md`
 
 ```markdown
 ---

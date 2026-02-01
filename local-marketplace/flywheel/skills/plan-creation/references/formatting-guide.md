@@ -98,8 +98,8 @@ Format from research that needs user decision:
 ## Output Location
 
 ```
-plans/<type>-<descriptive-name>.md
-plans/<type>-<descriptive-name>.context.md
+docs/plans/<type>-<descriptive-name>.md
+docs/plans/<type>-<descriptive-name>.context.md
 ```
 
-Ensure `plans/` directory exists: `mkdir -p plans`
+Ensure `docs/plans/` directory exists: `mkdir -p docs/plans`

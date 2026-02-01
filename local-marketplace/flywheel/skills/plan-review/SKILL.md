@@ -19,7 +19,7 @@ Run ALL available reviewer agents in parallel, then synthesize findings with ded
 
 ## Input
 
-Plan path via `$ARGUMENTS`. If empty, check for recent plans in `plans/`.
+Plan path via `$ARGUMENTS`. If empty, check for recent plans in `docs/plans/`.
 
 ---
 

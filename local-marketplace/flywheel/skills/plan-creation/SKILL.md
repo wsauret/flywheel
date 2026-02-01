@@ -152,7 +152,7 @@ The following assumptions should be validated in plan-verification:
 
 **Don't validate these yourself** - flag them clearly for the verification phase.
 
-Write to: `plans/<filename>.md`
+Write to: `docs/plans/<filename>.md`
 
 ---
 
@@ -160,7 +160,7 @@ Write to: `plans/<filename>.md`
 
 Persist research for downstream phases.
 
-Write to: `plans/<filename>.context.md`
+Write to: `docs/plans/<filename>.context.md`
 
 Use template from `references/plan-templates.md` (Context File Template section).
 
@@ -194,7 +194,7 @@ Maximum 2 revision cycles.
 
 ## Phase 6: Post-Creation Options
 
-**AskUserQuestion:** "Plan ready at `plans/<name>.md`. What next?"
+**AskUserQuestion:** "Plan ready at `docs/plans/<name>.md`. What next?"
 
 | Option | Action |
 |--------|--------|
@@ -212,7 +212,7 @@ Maximum 2 revision cycles.
 - **Agent failure:** Log and continue with available findings
 - **Missing CLAUDE.md:** Note conventions may be incomplete
 - **No similar patterns found:** Ask user for guidance on approach
-- **Write failure:** Create `plans/` with `mkdir -p`, report errors
+- **Write failure:** Create `docs/plans/` with `mkdir -p`, report errors
 
 ---
 
@@ -223,7 +223,7 @@ This skill is research and planning ONLY.
 **Allowed:**
 - Read source files
 - Search codebase
-- Write markdown to `plans/`
+- Write markdown to `docs/plans/`
 
 **Prohibited:**
 - Create/edit source code

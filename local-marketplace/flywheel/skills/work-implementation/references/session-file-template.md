@@ -17,9 +17,9 @@ Single file in project root. Only one active session at a time.
 ```markdown
 ---
 active_skill: work-implementation
-plan_path: plans/feat-user-auth.md
-state_path: plans/feat-user-auth.state.md
-context_path: plans/feat-user-auth.context.md
+plan_path: docs/plans/feat-user-auth.md
+state_path: docs/plans/feat-user-auth.state.md
+context_path: docs/plans/feat-user-auth.context.md
 started: 2024-01-15T10:00:00
 last_checkpoint: 2024-01-15T10:30:00
 current_phase: 2
@@ -34,7 +34,7 @@ skip_manual_pauses: false
 After clearing context, say **"carry on"** or run:
 
 ```
-/fly:work plans/feat-user-auth.md
+/fly:work docs/plans/feat-user-auth.md
 ```
 
 ## Current Status

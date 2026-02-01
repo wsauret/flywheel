@@ -221,7 +221,7 @@ Handle feedback immediately before moving to next section.
 
 ## Phase 5: Create Design Document
 
-Write to `plans/<topic>-design.md` using template from `references/design-document-template.md`.
+Write to `docs/plans/<topic>-design.md` using template from `references/design-document-template.md`.
 
 **Include:**
 - ALL explored approaches (not just selected)
@@ -280,7 +280,7 @@ Does this align with your intent?
 When design is validated, present:
 
 ```
-Design complete: `plans/[topic]-design.md`
+Design complete: `docs/plans/[topic]-design.md`
 
 The design documents:
 - **Problem:** [1 sentence]
@@ -289,7 +289,7 @@ The design documents:
 
 **Next steps:**
 
-1. **Create implementation plan:** `/fly:plan plans/[topic]-design.md`
+1. **Create implementation plan:** `/fly:plan docs/plans/[topic]-design.md`
    - Creates a phase-by-phase implementation plan
 
 2. **Start implementing directly:** `/fly:work`

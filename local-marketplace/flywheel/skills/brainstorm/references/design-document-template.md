@@ -5,7 +5,7 @@ Output format for validated designs.
 ## File Location
 
 ```
-plans/<topic>-design.md
+docs/plans/<topic>-design.md
 ```
 
 Use kebab-case for topic.
@@ -118,7 +118,7 @@ After EACH section: "Does this look right so far?"
 ## Completion Summary
 
 ```
-✅ Design document saved: plans/<topic>-design.md
+✅ Design document saved: docs/plans/<topic>-design.md
 
 Summary:
 - Selected approach: [Approach name]
@@ -133,7 +133,7 @@ Summary:
 Present explicit next steps:
 
 ```markdown
-Design complete: `plans/[topic]-design.md`
+Design complete: `docs/plans/[topic]-design.md`
 
 The design documents:
 - **Problem:** [1 sentence summary]
@@ -142,7 +142,7 @@ The design documents:
 
 **Next steps:**
 
-1. **Create implementation plan:** `/fly:plan plans/[topic]-design.md`
+1. **Create implementation plan:** `/fly:plan docs/plans/[topic]-design.md`
    - Creates a phase-by-phase implementation plan from this design
 
 2. **Start implementing directly:** `/fly:work`
