@@ -63,9 +63,7 @@ temp/
 # Project-specific
 .claude/
 .opencode/
-plans/
+.flywheel/
+.worktrees/
+docs/
 inspiration/
-claude_migration_playbook.md
-flywheel.v1.zip
-.worktrees
-.flywheel
