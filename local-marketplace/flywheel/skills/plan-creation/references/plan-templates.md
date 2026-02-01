@@ -213,9 +213,12 @@ plan: <plan-filename>.md
 created: <date>
 feature: "<feature description>"
 researchers:
-  - repo-researcher
-  - web-researcher
-  - git-history-researcher
+  - codebase-locator
+  - codebase-analyzer
+  - pattern-locator
+  - pattern-analyzer
+  - docs-locator
+  - docs-analyzer
 ---
 
 # Research Context: <Feature Name>

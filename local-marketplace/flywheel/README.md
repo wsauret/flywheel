@@ -74,9 +74,9 @@ cp -r plugin/agents/* ~/.config/opencode/agents/
 
 | Component | Count |
 |-----------|-------|
-| Agents | 10 |
-| Commands | 5 |
-| Skills | 9 |
+| Agents | 16 |
+| Commands | 6 |
+| Skills | 11 |
 
 ## Agents
 
@@ -94,13 +94,33 @@ Agents are organized into categories for easier discovery.
 | `performance-reviewer` | Performance analysis and optimization |
 | `security-reviewer` | Security audits and vulnerability assessments |
 
-### Researchers (3)
+### Research Locators (4) - Cheap, Parallel
+
+Find WHERE things are without reading full contents. Use haiku model.
+
+| Agent | Tools | Description |
+|-------|-------|-------------|
+| `codebase-locator` | Grep, Glob | Find WHERE files and components live |
+| `pattern-locator` | Grep, Glob | Find WHERE patterns exist (file:line refs) |
+| `docs-locator` | Grep, Glob | Find WHERE documentation lives |
+| `web-searcher` | WebSearch | Find relevant URLs (no fetching) |
+
+### Research Analyzers (4) - Expensive, Targeted
+
+Understand HOW things work by reading files. Use sonnet model. Documentarian mode - no suggestions.
+
+| Agent | Tools | Description |
+|-------|-------|-------------|
+| `codebase-analyzer` | Read, Grep, Glob | Understand HOW code works |
+| `pattern-analyzer` | Read, Grep, Glob | Extract code examples with context |
+| `docs-analyzer` | Read, Grep, Glob | Extract insights from documentation |
+| `web-analyzer` | WebFetch, Read | Fetch and analyze web content deeply |
+
+### Other Researchers (1)
 
 | Agent | Description |
 |-------|-------------|
-| `git-history-researcher` | Analyze git history and code evolution |
-| `repo-researcher` | Research repository structure and conventions |
-| `web-researcher` | External research: best practices, docs, community patterns |
+| `git-history-reviewer` | Analyze git history and code evolution (for PR reviews)
 
 ## Commands
 
@@ -111,6 +131,7 @@ Core workflow commands use `fly:` prefix:
 | Command | Description |
 |---------|-------------|
 | `/fly:brainstorm` | Conversational exploration of ideas. One question at a time, explores 2-3 approaches, validates design incrementally. |
+| `/fly:research` | Comprehensive codebase research using locate→analyze pattern. Creates persistent research documents. |
 | `/fly:plan` | Create or refine implementation plans with research persistence. Handles design docs, feature descriptions, or existing plans. |
 | `/fly:work` | Execute work plans efficiently. Loads context files, follows patterns, tests continuously. |
 | `/fly:review` | Perform exhaustive code reviews using multi-agent analysis. Creates todo files for findings. |
@@ -118,7 +139,7 @@ Core workflow commands use `fly:` prefix:
 
 **Recommended Workflow:**
 ```
-/fly:brainstorm → /fly:plan → /fly:work → /fly:review → /fly:compound
+/fly:brainstorm → /fly:research (optional) → /fly:plan → /fly:work → /fly:review → /fly:compound
 ```
 
 ## Skills
@@ -128,6 +149,7 @@ Core workflow commands use `fly:` prefix:
 | Skill | Description |
 |-------|-------------|
 | `brainstorm` | Conversational exploration of ideas before planning |
+| `codebase-research` | Comprehensive research using locate→analyze pattern |
 | `plan-creation` | Draft plans based on codebase patterns (creative); flags claims for verification |
 | `plan-verification` | Validate assumptions are real, not hallucinated (fact-checking) |
 | `plan-review` | Critique from multiple reviewer perspectives (security, perf, arch) |
@@ -141,3 +163,18 @@ Core workflow commands use `fly:` prefix:
 |-------|-------------|
 | `compound-docs` | Capture solved problems as categorized documentation |
 | `git-worktree` | Manage Git worktrees for parallel development |
+
+## Research Pattern
+
+Flywheel uses a two-phase locate→analyze pattern for research:
+
+1. **Locators (cheap, parallel)**: Find WHERE things are using haiku model
+   - No Read tool - paths and file:line references only
+   - Run all locators in parallel
+
+2. **Analyzers (expensive, targeted)**: Understand HOW things work using sonnet model
+   - Only analyze top 15 findings from locators
+   - Documentarian mode: document what IS, not what SHOULD BE
+   - Full file reads (no partial reads)
+
+This reduces context usage by 40-60% compared to all-in-one research agents.

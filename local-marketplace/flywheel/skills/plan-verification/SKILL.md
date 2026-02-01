@@ -63,42 +63,55 @@ Convert claims into specific questions:
 
 **Goal:** Prevent reinventing wheels and breaking patterns.
 
-### 2.1 Existing Solutions Check
+### 2.1 Locate Existing Solutions (Phase 1: Cheap)
+
+First, run locators in parallel to find WHERE relevant code lives:
 
 ```
-Task repo-researcher: "
-Search codebase for existing implementations related to: [feature/capability]
+Task codebase-locator: "
+Find files related to: [feature/capability]
+Looking for: existing implementations, shared utilities, similar features.
+Return paths only - categorize by: implementation, tests, config.
+"
+
+Task pattern-locator: "
+Find patterns related to: [domain area from plan]
+Looking for: naming conventions, architectural patterns, error handling.
+Return file:line references only.
+"
+```
+
+### 2.2 Analyze Findings (Phase 2: Targeted)
+
+Then, analyze top findings from locators:
+
+```
+Task codebase-analyzer: "
+Analyze these files (from locator results):
+- [path1]
+- [path2]
+- [path3]
 
 Questions:
 1. Does something similar already exist?
 2. Can we extend existing code instead of creating new?
 3. Are there shared utilities we should use?
+4. Does the proposed approach fit or conflict with existing patterns?
 
-Flag: EXISTING_SOLUTION if found, with path and assessment of reusability.
-"
-```
-
-### 2.2 Pattern Consistency Check
-
-```
-Task repo-researcher: "
-Analyze codebase patterns for: [domain area from plan]
-
-Questions:
-1. How do we currently handle [similar concern]?
-2. What naming conventions exist for [component type]?
-3. Does the proposed approach fit or conflict with existing patterns?
-
-Flag: PATTERN_CONFLICT if plan deviates from established patterns.
+Flag: EXISTING_SOLUTION if found, PATTERN_CONFLICT if plan deviates.
+Documentarian mode - document what exists, no suggestions.
 "
 ```
 
 ### 2.3 DRY Violation Check
 
 ```
-Task repo-researcher: "
-Check for potential DRY violations in plan:
+Task pattern-analyzer: "
+Analyze these pattern locations (from locator results):
+- [file:line1]
+- [file:line2]
 
+Check for potential DRY violations in plan:
 Plan proposes: [list proposed new code/modules]
 
 Questions:
@@ -113,8 +126,9 @@ Flag: DRY_VIOLATION with specific file paths if found.
 ### 2.4 Integration Impact Check
 
 ```
-Task repo-researcher: "
-Assess integration impact of plan:
+Task codebase-analyzer: "
+Assess integration impact using these files:
+- [files that would be modified]
 
 Components affected: [list from plan]
 
@@ -153,13 +167,28 @@ mcp__plugin_Flywheel_context7__query-docs:
 
 **Flag:** `CLAIM_INVALID` if documented capability doesn't match claim.
 
-### 3.2 Best Practices Research
+### 3.2 Best Practices Research (Locate then Analyze)
+
+First, find relevant URLs:
 
 ```
-Task web-researcher: "
-Research best practices for: [technical approach in plan]
+Task web-searcher: "
+Find documentation and best practices for: [technical approach in plan]
+Search: official docs, tutorials, community patterns.
+Return URLs with descriptions only - do not fetch.
+"
+```
 
-Focus on:
+Then analyze top results:
+
+```
+Task web-analyzer: "
+Fetch and analyze these URLs (from web-searcher):
+- [url1]
+- [url2]
+- [url3]
+
+Extract for: [technical approach in plan]
 1. Is this the recommended approach for [use case]?
 2. Common pitfalls to avoid
 3. Performance considerations
@@ -172,8 +201,10 @@ Return: Concrete recommendations with code examples.
 ### 3.3 Version Compatibility Check
 
 ```
-Task web-researcher: "
-Check version compatibility for: [technology stack from plan]
+Task web-analyzer: "
+Fetch and analyze version compatibility docs:
+- [framework docs URL]
+- [changelog URL]
 
 Questions:
 1. Do the proposed versions work together?
@@ -187,10 +218,18 @@ Flag: VERSION_ISSUE if incompatibilities found.
 ### 3.4 Alternative Approaches Research
 
 ```
-Task web-researcher: "
-Research alternative approaches for: [core technical decision in plan]
+Task web-searcher: "
+Find alternative approaches for: [core technical decision in plan]
+Search: comparison articles, framework docs, community discussions.
+Return top 5 URLs with descriptions.
+"
 
-Questions:
+Task web-analyzer: "
+Analyze these URLs (from web-searcher):
+- [url1]
+- [url2]
+
+Extract:
 1. What are the main alternatives?
 2. Trade-offs between approaches?
 3. When is each approach recommended?

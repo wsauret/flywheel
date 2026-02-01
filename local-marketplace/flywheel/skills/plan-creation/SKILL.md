@@ -28,19 +28,52 @@ Feature description via `$ARGUMENTS`. If empty, ask user.
 
 ## Phase 1: Understand Codebase Context
 
-Research the codebase to understand existing patterns. This informs HOW to structure the plan.
+Research the codebase to understand existing patterns using locate→analyze approach.
+
+### 1.1 Locate (Parallel, Cheap)
+
+Run locators in parallel to find WHERE relevant code lives:
 
 ```
-Task repo-researcher: "Analyze codebase for patterns related to: <feature>.
+Task codebase-locator: "
+Find files related to: <feature>
+Looking for: similar features, shared utilities, configuration.
+Categorize by: implementation, tests, config, types.
+Return paths only.
+"
 
-Find:
+Task pattern-locator: "
+Find patterns related to: <feature>
+Looking for: naming conventions, architectural patterns, testing patterns.
+Return file:line references only.
+"
+
+Task docs-locator: "
+Find documentation about: <feature>
+Search: README, CLAUDE.md, docs/, inline comments.
+Return paths only.
+"
+```
+
+### 1.2 Analyze (Targeted)
+
+Analyze top findings from locators:
+
+```
+Task codebase-analyzer: "
+Analyze these files (from locator results):
+- [top 10-15 paths]
+
+Document:
 1. Existing implementations of similar features
 2. File structure and naming conventions
 3. Architectural patterns used
 4. Testing patterns for similar components
 
 Return: file paths with line numbers (e.g., src/services/auth.ts:42)
-Flag OPEN QUESTIONS for ambiguities or multiple valid approaches."
+Flag OPEN QUESTIONS for ambiguities or multiple valid approaches.
+Documentarian mode - document what exists, no suggestions.
+"
 ```
 
 Also check:

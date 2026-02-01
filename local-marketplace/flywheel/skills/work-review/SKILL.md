@@ -58,7 +58,7 @@ Run ALL applicable agents simultaneously:
 
 ```
 Task code-quality-reviewer(PR content)    # Code quality (Python/TypeScript)
-Task git-history-researcher(PR content)   # History context
+Task git-history-reviewer(PR content)     # History context
 Task pattern-reviewer(PR content)
 Task architecture-reviewer(PR content)
 Task security-reviewer(PR content)

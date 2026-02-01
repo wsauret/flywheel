@@ -24,9 +24,25 @@ Feature idea via `$ARGUMENTS`. If empty, ask: "What would you like to explore?"
 
 Run research agents to understand context. **DO NOT present findings to user** - use them to ask smarter questions.
 
-**Run in parallel:**
-- Task repo-researcher(feature_idea)
-- Task web-researcher(feature_idea) [15s timeout]
+### 1.1 Locate (Parallel, Cheap)
+
+Run locators in parallel:
+
+```
+Task codebase-locator: "Find files related to: <feature_idea>. Return paths only."
+Task pattern-locator: "Find patterns related to: <feature_idea>. Return file:line refs."
+Task docs-locator: "Find docs about: <feature_idea>. Return paths only."
+Task web-searcher: "Find best practices for: <feature_idea>. Return URLs only." [15s timeout]
+```
+
+### 1.2 Analyze Top Findings (Targeted)
+
+```
+Task codebase-analyzer: "
+Analyze top 10 files from locators for: <feature_idea>
+Document existing patterns, constraints, naming conventions.
+"
+```
 
 **Extract for internal use:**
 - Relevant existing patterns
@@ -176,7 +192,7 @@ Present completion summary and handoff options per reference template.
 ## Error Handling
 
 - **Agent failures**: Continue without research context
-- **web-researcher timeout (15s)**: Continue with partial results
+- **web-searcher timeout (15s)**: Continue with partial results
 - **User abandonment**: Save partial progress to draft
 
 ---
