@@ -44,31 +44,32 @@ This is why Flywheel requires human approval at research and plan boundaries.
 
 ## Installation
 
-### Claude Code
+### Claude Code (Recommended)
+
+Use the install script from the repository root:
 
 ```bash
-# Create plugins directory if it doesn't exist
-mkdir -p ~/.claude/plugins
-
-# Symlink the plugin
-ln -s $(pwd)/plugin ~/.claude/plugins/flywheel
+./install.sh
 ```
+
+The install script will:
+1. Add the local marketplace to Claude Code
+2. Install the Flywheel plugin
+3. Optionally configure Context7 with your API key (get one free at https://context7.com/dashboard)
 
 ### OpenCode
 
-OpenCode natively reads from Claude Code paths. Use the same installation:
+Use the `generate_opencode.py` script to transform and copy files to OpenCode paths:
 
 ```bash
-ln -s $(pwd)/plugin ~/.claude/plugins/flywheel
+# Preview what will be transformed
+python generate_opencode.py --dry-run
+
+# Install to ~/.config/opencode/
+python generate_opencode.py
 ```
 
-Or copy directly to OpenCode paths:
-
-```bash
-cp -r plugin/skills/* ~/.config/opencode/skills/
-cp -r plugin/commands/* ~/.config/opencode/commands/
-cp -r plugin/agents/* ~/.config/opencode/agents/
-```
+The script transforms Claude Code plugin format to OpenCode format, handling frontmatter differences and path structures.
 
 ## Components
 
@@ -82,7 +83,7 @@ cp -r plugin/agents/* ~/.config/opencode/agents/
 
 Agents are organized into categories for easier discovery.
 
-### Reviewers (7)
+### Reviewers (8)
 
 | Agent | Description |
 |-------|-------------|
@@ -90,6 +91,7 @@ Agents are organized into categories for easier discovery.
 | `code-quality-reviewer` | Python/TypeScript review with high quality bar |
 | `code-simplicity-reviewer` | Final pass for simplicity and minimalism |
 | `data-integrity-reviewer` | Database migrations and data integrity |
+| `git-history-reviewer` | Analyze git history and code evolution |
 | `pattern-reviewer` | Analyze code for patterns and anti-patterns |
 | `performance-reviewer` | Performance analysis and optimization |
 | `security-reviewer` | Security audits and vulnerability assessments |
@@ -115,12 +117,6 @@ Understand HOW things work by reading files. Use sonnet model. Documentarian mod
 | `pattern-analyzer` | Read, Grep, Glob | Extract code examples with context |
 | `docs-analyzer` | Read, Grep, Glob | Extract insights from documentation |
 | `web-analyzer` | WebFetch, Read | Fetch and analyze web content deeply |
-
-### Other Researchers (1)
-
-| Agent | Description |
-|-------|-------------|
-| `git-history-reviewer` | Analyze git history and code evolution (for PR reviews)
 
 ## Commands
 

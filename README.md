@@ -31,6 +31,7 @@ Brainstorm → Plan → Work → Review → Compound → Repeat
 | Command | Purpose |
 |---------|---------|
 | `/fly:brainstorm` | Explore ideas conversationally before detailed planning |
+| `/fly:research` | Comprehensive codebase research using locate→analyze pattern |
 | `/fly:plan` | Create, verify, review, and consolidate implementation plans |
 | `/fly:work` | Execute plans with continuous testing and quality checks |
 | `/fly:review` | Multi-agent code review with structured todo tracking |
@@ -42,6 +43,9 @@ Each cycle compounds: plans inform future plans, reviews catch more issues, patt
 
 ### `/fly:brainstorm`
 Conversational exploration of ideas before detailed planning. Asks one question at a time, explores 2-3 approaches, validates design incrementally. Creates a design document that feeds into planning.
+
+### `/fly:research`
+Comprehensive codebase research using a two-phase locate→analyze pattern. Spawns locator agents in parallel (cheap, haiku) to find WHERE things are, then analyzer agents (expensive, sonnet) to understand HOW they work. Creates persistent research documents in `docs/research/`.
 
 ### `/fly:plan`
 Full planning workflow that orchestrates four phases:
@@ -64,37 +68,46 @@ Document solved problems using parallel subagents while context is fresh. Create
 ## Skills
 
 Core workflow skills (invoked by commands):
-- **brainstorming** - Collaborative dialogue to explore and validate designs
+- **brainstorm** - Conversational exploration of ideas before planning
+- **codebase-research** - Comprehensive research using locate→analyze pattern
 - **plan-creation** - Draft plans based on codebase patterns; flags claims for verification
 - **plan-verification** - Validate assumptions are real, not hallucinated; check framework compatibility
-- **plan-reviewing** - Critique from multiple perspectives; conflicts become open questions
+- **plan-review** - Critique from multiple perspectives; conflicts become open questions
 - **plan-consolidation** - Resolve questions with user input; create actionable checklists
-- **executing-work** - Probe-dispatch-checkpoint execution
-- **reviewing** - Multi-agent code review
-- **compounding** - Coordinate documentation capture
+- **work-implementation** - Execute plans following patterns, testing continuously
+- **work-review** - Multi-agent code review with todo file creation
 
 Utility skills:
 - **compound-docs** - Structured problem documentation with YAML validation
 - **git-worktree** - Isolated parallel development with worktrees
-- **test-first-methodology** - TDD and systematic debugging
+- **flywheel-conventions** - Shared conventions for subagents (internal)
 
 ## Agents
 
-Review agents (run in parallel during plan-reviewing and reviewing):
-- **architecture-strategist** - System design and architectural patterns
+### Reviewers (8)
+Run in parallel during plan-review and work-review:
+- **architecture-reviewer** - System design and architectural patterns
+- **code-quality-reviewer** - Python/TypeScript review with high quality bar
 - **code-simplicity-reviewer** - YAGNI, complexity reduction
-- **pattern-recognition-specialist** - Patterns and anti-patterns
+- **pattern-reviewer** - Patterns and anti-patterns detection
 - **security-reviewer** - Vulnerabilities, OWASP compliance
-- **performance-analyst** - Bottlenecks, optimization opportunities
-- **data-integrity-guardian** - Migrations, transactions, referential integrity
-- **python-reviewer** - Python-specific conventions
-- **typescript-reviewer** - TypeScript-specific conventions
+- **performance-reviewer** - Bottlenecks, optimization opportunities
+- **data-integrity-reviewer** - Migrations, transactions, referential integrity
+- **git-history-reviewer** - Code evolution and contributor patterns
 
-Research agents (run in parallel during plan-verification):
-- **best-practices-researcher** - External docs and examples
-- **framework-docs-researcher** - Library documentation via Context7
-- **repo-research-analyst** - Repository patterns and conventions
-- **git-history-analyst** - Code evolution and contributor patterns
+### Research Locators (4)
+Find WHERE things are (cheap, parallel, haiku model):
+- **codebase-locator** - Find file paths and components
+- **pattern-locator** - Find pattern locations (file:line refs)
+- **docs-locator** - Find documentation files
+- **web-searcher** - Find relevant URLs (no fetching)
+
+### Research Analyzers (4)
+Understand HOW things work (expensive, targeted, sonnet model):
+- **codebase-analyzer** - Document implementation details
+- **pattern-analyzer** - Extract code examples with context
+- **docs-analyzer** - Extract insights from documentation
+- **web-analyzer** - Fetch and analyze web content
 
 ## Key Features
 
@@ -119,17 +132,45 @@ Framework documentation queries via MCP:
 
 ## Philosophy
 
+### Compound Engineering
+
 **Each unit of engineering work should make subsequent units easier—not harder.**
 
-Traditional development accumulates technical debt. Every feature adds complexity. The codebase becomes harder to work with over time.
+In traditional engineering, you expect each feature to make the next feature harder to build—more code means more edge cases, more interdependencies, more issues. In compound engineering, you expect each feature to make the next feature *easier* to build.
 
-Compound engineering inverts this. 80% is in planning and review, 20% is in execution:
-- Plan thoroughly before writing code
-- Review to catch issues and capture learnings
-- Codify knowledge so it's reusable
-- Keep quality high so future changes are easy
+This happens because compound engineering creates a learning loop: each bug, failed test, or problem-solving insight gets documented and used by future agents. The complexity of your codebase still grows, but so does the AI's knowledge of it.
 
-## Learn More
+The loop is: **Plan → Work → Review → Compound → Repeat**
 
-- [Compound engineering: how Every codes with agents](https://every.to/chain-of-thought/compound-engineering-how-every-codes-with-agents)
-- [The story behind compounding engineering](https://every.to/source-code/my-ai-had-already-fixed-the-code-before-i-saw-it)
+Roughly 80% of compound engineering is in planning and review, 20% is in work and compounding. The "compound" step is where the magic happens—you take what you learned and record it so the agent uses it next time. These learnings are automatically distributed to your team because they live in your codebase.
+
+### Human Leverage
+
+AI coding tools struggle with complex codebases, but you can succeed if you focus human attention at the highest-leverage points:
+
+| Review Target | Prevents |
+|---------------|----------|
+| Research | Thousands of bad lines |
+| Plans | Hundreds of bad lines |
+| Code | Individual mistakes |
+
+A bad line of research—a misunderstanding of how the codebase works—leads to thousands of bad lines of code. A bad line in a plan leads to hundreds. Flywheel requires human approval at research and plan boundaries because that's where your attention has the most impact.
+
+### Frequent Intentional Compaction
+
+Context windows fill up with search results, file contents, and tool outputs. Flywheel manages this through deliberate compaction at each phase:
+
+- **Research** produces compact `.context.md` files, not sprawling chat
+- **Plans** distill research into actionable checklists
+- **Subagents** get fresh context for tasks, return compact results
+- **Session files** enable recovery without re-reading everything
+
+This keeps context utilization in the 40-60% range where models perform best.
+
+## Inspiration
+
+This project is heavily inspired by two excellent projects:
+
+- **[Compound Engineering Plugin](https://github.com/EveryInc/compound-engineering-plugin)** by Every - The original implementation of compound engineering workflows for Claude Code, demonstrating how to make each unit of work easier than the last.
+
+- **[HumanLayer Claude Config](https://github.com/humanlayer/humanlayer/tree/main/.claude)** by HumanLayer - Patterns for human-in-the-loop AI development, including approval workflows and structured agent interactions.
