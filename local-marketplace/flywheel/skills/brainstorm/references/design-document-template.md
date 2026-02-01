@@ -74,19 +74,29 @@ brainstorm_session: true
 
 ## Approach Format
 
-Present 2-3 approaches for each decision:
+Present 2-3 approaches with explicit tradeoffs:
 
 ```markdown
 ### Approach A: [Name] (Recommended)
 
-[2-3 sentence summary]
+**Summary:** [2-3 sentences explaining the approach]
 
-**Pros:** [bullet list]
-**Cons:** [bullet list]
+**Tradeoffs:**
+| Pro | Con |
+|-----|-----|
+| [Benefit 1] | [Drawback 1] |
+| [Benefit 2] | [Drawback 2] |
+| [Benefit 3] | [Drawback 3] |
+
+**When to choose this:** [Scenario where this is the best choice]
+**When NOT to choose this:** [Scenario where this approach fails]
+
 **Effort:** S / M / L
 
-**Why recommended:** [1 sentence]
+**Why recommended:** [1 sentence if this is the recommended approach]
 ```
+
+**Key:** Forcing tradeoffs ensures we think about failure modes, not just benefits.
 
 ---
 
@@ -120,11 +130,38 @@ Summary:
 
 ## Handoff Options
 
+Present explicit next steps:
+
+```markdown
+Design complete: `plans/[topic]-design.md`
+
+The design documents:
+- **Problem:** [1 sentence summary]
+- **Selected approach:** [approach name]
+- **Key decisions:** [3-5 bullet points]
+
+**Next steps:**
+
+1. **Create implementation plan:** `/fly:plan plans/[topic]-design.md`
+   - Creates a phase-by-phase implementation plan from this design
+
+2. **Start implementing directly:** `/fly:work`
+   - Only if design is simple enough (S effort)
+
+3. **Explore more:** Continue brainstorming
+   - If new questions emerged during design
+
+4. **Done for now:** Save and come back later
+
+Which would you like to do?
+```
+
+**AskUserQuestion format:**
 ```
 Question: "Design validated and saved. What next?"
 Options:
-1. Start /fly:plan (Recommended) - Create detailed implementation plan
-2. Review the design document - Open and review
+1. Create implementation plan (Recommended) - /fly:plan
+2. Start implementing directly - /fly:work (S effort only)
 3. Continue refining - Revisit specific sections
 4. Done for now - Save and come back later
 ```

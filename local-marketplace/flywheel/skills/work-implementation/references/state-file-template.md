@@ -18,7 +18,7 @@ Derived from plan path: `plans/feat-user-auth.md` → `plans/feat-user-auth.stat
 ---
 plan: <plan-name>.md
 status: in_progress
-schema_version: 1
+schema_version: 2
 ---
 
 # Execution State: <Plan Name>
@@ -31,9 +31,23 @@ schema_version: 1
 ## Key Decisions
 <!-- Append decisions as they are made -->
 
+## Learnings
+<!-- Discoveries that would help a future agent -->
+
 ## Code Context
 <!-- Track files modified/created -->
+
+## Blockers (if any)
+<!-- Issues preventing completion of current phase -->
 ```
+
+### Progress Markers
+
+| Marker | Meaning |
+|--------|---------|
+| `[ ]` | Not started |
+| `[x]` | Complete |
+| `[~]` | Awaiting manual verification |
 
 ---
 
@@ -44,12 +58,16 @@ Update progress checkbox and append context:
 ```markdown
 ## Progress
 - [x] Phase 1: Foundation setup
-- [ ] Phase 2: Core implementation
+- [~] Phase 2: Core implementation (awaiting manual verification)
 - [ ] Phase 3: Integration
 
 ## Key Decisions
 - Phase 1: Using repository pattern for data access
 - Phase 1: Tests in `__tests__/` directory
+
+## Learnings
+- Phase 1: Existing auth uses middleware pattern in `src/middleware/auth.ts`
+- Phase 1: Tests expect mock database in `__mocks__/db.ts`
 
 ## Code Context
 - Created: `src/services/auth.ts`
@@ -64,9 +82,20 @@ Update progress checkbox and append context:
 ---
 plan: <plan-name>.md
 status: completed
-schema_version: 1
+schema_version: 2
 ---
 ```
+
+---
+
+## Schema Version History
+
+| Version | Changes |
+|---------|---------|
+| 1 | Initial: Progress, Key Decisions, Code Context |
+| 2 | Added: Learnings, Blockers, `[~]` marker for awaiting manual |
+
+**Migration:** v1 → v2 is backward compatible. Missing sections are treated as empty.
 
 ---
 

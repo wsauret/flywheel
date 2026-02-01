@@ -45,18 +45,57 @@ Read session file frontmatter:
 head -20 .flywheel/session.md
 ```
 
+#### Resume Validation
+
+Before offering to resume, **validate the session state**:
+
+1. **Read state file fully** (not via subagent - critical context)
+2. **Verify files in "Code Context" still exist:**
+   ```bash
+   # For each file in state's Code Context
+   test -f "$FILE" && echo "exists" || echo "missing"
+   ```
+3. **Check for unexpected changes since last_checkpoint:**
+   ```bash
+   # Get modified files since checkpoint
+   git diff --name-only --since="$LAST_CHECKPOINT"
+   ```
+4. **Check context file staleness:**
+   - If context file >7 days old: Note warning
+   - If codebase >50 commits since research: Note warning
+
+Present validation summary:
+
+```
+Resuming: [plan name]
+Phase: [N] of [M]
+Last checkpoint: [timestamp] ([X hours/days] ago)
+
+Validation:
+- Files: [N] exist, [M] missing
+- Changes since checkpoint: [none / list of files]
+- Context staleness: [fresh / ⚠️ X days old / ⚠️ Y commits since research]
+
+Continue? [Yes / Show details / Start fresh]
+```
+
+**If validation shows issues:**
+- Missing files → Ask user to confirm (files may have been intentionally deleted)
+- Unexpected changes → Show which files, ask if intentional
+- Stale context → Warn but allow proceeding
+
 **AskUserQuestion:**
 ```
-Question: "Found active session for [plan_path]. Resume where you left off?"
+Question: "Found active session for [plan_path]. [Validation summary]"
 Options:
 1. Resume (Recommended) - Continue from Phase [N]
-2. Start fresh - Abandon session, ask for new plan
-3. View status - Show current progress first
+2. Show details - View full validation report
+3. Start fresh - Abandon session, ask for new plan
 ```
 
 - **Resume:** Set `PLAN_PATH` from session, continue to Phase 1
+- **Show details:** Display full state file and validation, ask again
 - **Start fresh:** Delete session file, ask for plan path
-- **View status:** Display session details, ask again
 
 ### If Session Exists AND Arguments Provided
 
@@ -82,6 +121,21 @@ test -f "$STATE_FILE" && echo "Found execution state - resuming"
 **If state file exists:** Resume from first unchecked phase, load key decisions.
 
 **If no state file:** Create initial state using `references/state-file-template.md`.
+
+### Create Baseline Plan Snapshot
+
+**For plan compliance checking:** Copy the plan to a baseline file that won't change during execution:
+
+```bash
+BASELINE_FILE="${PLAN_PATH%.md}.baseline.md"
+if [ ! -f "$BASELINE_FILE" ]; then
+  cp "$PLAN_PATH" "$BASELINE_FILE"
+fi
+```
+
+This baseline is what we committed to. The compliance check in `work-review` compares against this, not the potentially-evolved current plan.
+
+**Cleanup:** Delete baseline when work completes successfully.
 
 ### Create/Update Session File
 
@@ -122,6 +176,36 @@ From `[plan_path].context.md`:
 - File References
 - Gotchas & Warnings
 - Naming Conventions
+
+#### Format Validation
+
+When loading plan, state, and context files, validate expected structure:
+
+**Plan file must have:**
+- [ ] Frontmatter (if consolidated plan)
+- [ ] At least one phase/checklist
+- [ ] Success criteria section (warn if missing)
+
+**State file must have (if exists):**
+- [ ] Frontmatter with `schema_version`
+- [ ] Progress section with checkboxes
+- [ ] Key Decisions section
+
+**Context file should have (warn if missing):**
+- [ ] File References
+- [ ] Gotchas & Warnings
+- [ ] research_date and codebase_version (staleness check)
+
+**If validation fails:**
+```
+⚠️ Validation warnings:
+- Plan missing Success Criteria section
+- Context file missing research_date (can't check staleness)
+
+Proceeding with best effort. Consider updating files for better tracking.
+```
+
+Log warnings in state file under "Validation Warnings" section (append if exists).
 
 ### Worktree Assessment
 
@@ -206,16 +290,67 @@ After subagent completes:
 
 1. Mark phase complete in state file: `- [x] Phase N`
 2. Append key decisions to state file
-3. **Verify TDD evidence:** Tests created/modified, suite passing
-4. Update code context (files modified/created)
-5. Run tests - fail fast if broken
-6. **Update session file:**
+3. Append learnings to state file (patterns, gotchas discovered)
+4. **Verify TDD evidence:** Tests created/modified, suite passing
+5. Update code context (files modified/created)
+6. Run tests - fail fast if broken
+7. **Update session file:**
    - `last_checkpoint: [timestamp]`
    - `current_phase: [N+1]`
    - Update "Current Status" section
    - Append key decisions to session for quick reference
 
-### 2.4 Loop
+### 2.3a Manual Verification Pause
+
+**After automated verification passes, check if plan has Manual Verification criteria.**
+
+If plan includes a "Manual Verification" section in Success Criteria:
+
+1. Mark phase as awaiting manual: `- [~] Phase N (awaiting manual verification)`
+2. **AskUserQuestion:**
+   ```
+   Question: "Phase [N] Complete - Ready for Manual Verification"
+   Header: "Manual Check"
+   Options:
+   1. Continue to next phase (Recommended) - I've verified manually
+   2. Continue all remaining - Skip future manual pauses
+   3. Stop here - I have feedback
+   ```
+
+   Present context:
+   ```
+   Automated verification passed:
+   - [list from state file - tests, lint, etc.]
+
+   Please verify manually:
+   - [list from plan's Manual Verification section]
+   ```
+
+3. **Handle response:**
+   - **Continue:** Update marker to `[x]`, proceed to 2.4
+   - **Continue all:** Set `skip_manual_pauses: true` in session file, proceed
+   - **Stop here:** Keep `[~]` marker, wait for user feedback
+
+**Skip this step if:**
+- Plan has no Manual Verification section
+- Session has `skip_manual_pauses: true`
+- Phase is documentation-only or config-only
+
+### 2.4 Ralph Mode Check
+
+**After manual verification (if applicable), check Ralph trigger conditions.**
+
+Check if Ralph mode should activate:
+- Plan has >5 phases? → Ralph mode
+- User invoked with `--ralph`? → Ralph mode
+- Context >50% and >2 phases remain? → Ralph mode
+
+**If Ralph mode active:**
+1. Ensure state file has complete "Current Working State" section
+2. Present Ralph checkpoint message (see Ralph Mode section)
+3. If user clears context, they say "carry on" to resume
+
+### 2.5 Loop
 
 Continue to next unchecked phase. All complete → Quality Check.
 
@@ -262,12 +397,13 @@ gh pr create --title "feat: [Description]" --body "..."
 
 Mark state file: `status: completed`
 
-### Clear Session
+### Clear Session and Baseline
 
-Work is complete - clear the active session:
+Work is complete - clear the active session and baseline plan:
 
 ```bash
 rm .flywheel/session.md
+rm "${PLAN_PATH%.md}.baseline.md" 2>/dev/null || true
 ```
 
 ### Worktree Cleanup
@@ -306,6 +442,81 @@ If user clears context mid-execution (or context is lost):
 
 ---
 
+## Ralph Mode: Stateless Agent Loops
+
+**Philosophy:** Agent as stateless function. Fresh context each phase. State files are THE source of truth.
+
+Named after [Ralph Wiggum](https://ghuntley.com/ralph/) - a "hilariously dumb" but effective solution to context window limits.
+
+### When Ralph Mode Activates
+
+Ralph mode is triggered when ANY of these conditions are true:
+
+1. **Plan has >5 phases** - Long tasks benefit from periodic context refresh
+2. **User invokes with `--ralph` flag** - Explicit request for stateless execution
+3. **Context exceeds 50% and >2 phases remain** - Proactive compaction
+
+### Ralph Checkpoint
+
+After each phase checkpoint in Ralph mode:
+
+1. **Write detailed state** - Ensure state file has everything for cold resume:
+   - Current phase number
+   - All completed phases with summaries
+   - Key decisions (exhaustive)
+   - Learnings (patterns, gotchas)
+   - Code context (all files modified/created)
+   - Any blockers or decisions deferred
+
+2. **Suggest context clear:**
+   ```
+   Phase [N] complete. Context is [X]% full with [M] phases remaining.
+
+   Recommend clearing context and saying "carry on" for optimal performance.
+
+   Your progress is saved in:
+   - State: [state_path]
+   - Session: .flywheel/session.md
+
+   Options:
+   1. Clear context now (Recommended) - Say "carry on" to resume
+   2. Continue without clearing - May degrade quality on later phases
+   ```
+
+3. **If user clears:** New instance loads fresh, reads state, continues seamlessly
+
+### State File Completeness for Ralph
+
+In Ralph mode, state file MUST contain:
+
+```markdown
+## Progress
+- [x] Phase 1: [description] - [key outcome]
+- [x] Phase 2: [description] - [key outcome]
+- [ ] Phase 3: [description]
+
+## Key Decisions
+- Phase 1: [decision 1 with rationale]
+- Phase 1: [decision 2]
+- Phase 2: [decision 3]
+
+## Learnings
+- Phase 1: [pattern discovered - file:line]
+- Phase 2: [gotcha found - explanation]
+
+## Code Context
+- Created: [file1], [file2]
+- Modified: [file3], [file4]
+
+## Current Working State
+<!-- For Ralph resume - what was the agent working on? -->
+- Last action: [what was just completed]
+- Next action: [what should happen next]
+- Open questions: [any pending decisions]
+```
+
+---
+
 ## Key Principles
 
 - **Checkpoint after each phase** - enables recovery
@@ -313,6 +524,7 @@ If user clears context mid-execution (or context is lost):
 - **Sequential execution** - one phase at a time
 - **Provide context to subagents** - they start fresh
 - **Ship complete features** - finish what you start
+- **Ralph mode for long tasks** - context clear is a feature, not a bug
 
 ---
 

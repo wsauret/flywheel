@@ -39,9 +39,26 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 [Comprehensive description]
 
+## Desired End State
+
+[Specification of what "done" looks like + how to verify it]
+
+**Example:**
+> When complete, users can reset their password via email. Verification: Run
+> `make test` and manually test the "Forgot Password" flow in staging.
+
 ## Problem Statement / Motivation
 
 [Why this matters]
+
+## What We're NOT Doing
+
+[Explicit out-of-scope items to prevent scope creep]
+
+**Example:**
+> - Not implementing social login (separate feature)
+> - Not changing existing login flow
+> - Not adding 2FA (future enhancement)
 
 ## Proposed Solution
 
@@ -53,11 +70,19 @@ Templates for different levels of plan detail. Choose based on complexity.
 - Performance implications
 - Security considerations
 
-## Acceptance Criteria
+## Success Criteria
 
-- [ ] Detailed requirement 1
-- [ ] Detailed requirement 2
-- [ ] Testing requirements
+### Automated Verification
+
+- [ ] Tests pass: `make test`
+- [ ] Linting passes: `make lint`
+- [ ] Type checking passes: `make typecheck`
+
+### Manual Verification (Acceptance Criteria)
+
+- [ ] Feature works as expected in UI
+- [ ] Performance acceptable under load
+- [ ] Edge cases handled gracefully
 
 ## Success Metrics
 
@@ -91,9 +116,29 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 [Executive summary]
 
+## Desired End State
+
+[Specification of what "done" looks like + how to verify it]
+
+**What complete looks like:**
+- [Observable outcome 1]
+- [Observable outcome 2]
+
+**How to verify:**
+- Automated: `make test && make lint`
+- Manual: [Specific test scenarios]
+
 ## Problem Statement
 
 [Detailed problem analysis]
+
+## What We're NOT Doing
+
+[Explicit out-of-scope items to prevent scope creep and set clear boundaries]
+
+- [Out-of-scope item 1] - [brief reason]
+- [Out-of-scope item 2] - [brief reason]
+- [Future enhancement] - [why deferred]
 
 ## Proposed Solution
 
@@ -129,17 +174,28 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 [Other solutions evaluated and why rejected]
 
-## Acceptance Criteria
+## Success Criteria
 
-### Functional Requirements
+### Automated Verification
+
+- [ ] Unit tests pass: `make test`
+- [ ] Integration tests pass: `make test-integration`
+- [ ] Linting passes: `make lint`
+- [ ] Type checking passes: `make typecheck`
+- [ ] Coverage meets threshold: `make coverage`
+
+### Manual Verification (Acceptance Criteria)
+
+#### Functional Requirements
 
 - [ ] Detailed functional criteria
+- [ ] User flow works end-to-end
 
-### Non-Functional Requirements
+#### Non-Functional Requirements
 
-- [ ] Performance targets
-- [ ] Security requirements
-- [ ] Accessibility standards
+- [ ] Performance targets met under load
+- [ ] Security requirements verified
+- [ ] Accessibility standards met
 
 ### Quality Gates
 
@@ -212,6 +268,8 @@ File: `plans/<plan-name>.context.md`
 plan: <plan-filename>.md
 created: <date>
 feature: "<feature description>"
+research_date: <date>
+codebase_version: <git commit hash when research was done>
 researchers:
   - codebase-locator
   - codebase-analyzer

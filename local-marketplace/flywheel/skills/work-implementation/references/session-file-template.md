@@ -24,6 +24,7 @@ started: 2024-01-15T10:00:00
 last_checkpoint: 2024-01-15T10:30:00
 current_phase: 2
 total_phases: 4
+skip_manual_pauses: false
 ---
 
 # Active Flywheel Session
@@ -47,11 +48,43 @@ After clearing context, say **"carry on"** or run:
 - Using repository pattern for data access
 - Tests in `__tests__/` directory
 
+## Key Learnings (carried forward)
+
+- Existing auth uses middleware pattern in `src/middleware/auth.ts`
+- Tests expect mock database in `__mocks__/db.ts`
+
 ## Recent Files Modified
 
 - `src/services/auth.ts` (created)
 - `src/routes/index.ts` (modified)
+
+## Handoff Summary
+
+<!-- Everything a context-less agent needs to continue -->
+
+### What We're Building
+
+[1-2 sentence goal from plan's Desired End State]
+
+### Where We Are
+
+Phase 2 of 4: Core implementation
+Last completed: Phase 1 - Foundation setup
+
+### What We Learned
+
+[Top 3 learnings from state.md, abbreviated]
+
+### What's Next
+
+[Immediate next action from current phase]
 ```
+
+### Frontmatter Fields
+
+| Field | Purpose |
+|-------|---------|
+| `skip_manual_pauses` | If true, skip manual verification prompts (user opted out) |
 
 ---
 

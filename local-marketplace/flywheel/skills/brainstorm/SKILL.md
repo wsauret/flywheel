@@ -14,6 +14,32 @@ allowed-tools:
 
 Transform ideas into validated designs through natural collaborative dialogue. Output is a design document for the planning skill.
 
+---
+
+## Core Philosophy: Interactive Design
+
+**Never write the full design in one shot.** This skill transforms ideas into validated designs through iterative dialogue, not monologue.
+
+Human attention is precious. We invest it at the highest-leverage points:
+
+| Checkpoint | Prevents |
+|------------|----------|
+| Research validation | Building on wrong assumptions |
+| Understanding confirmation | Solving wrong problem |
+| Approach selection | Pursuing suboptimal path |
+| Design validation | Shipping wrong design |
+
+> "A bad line of research could lead to thousands of bad lines of code."
+
+**Anti-patterns:**
+- Dumping research findings on user (present insights, not data)
+- Asking multiple questions at once (one at a time)
+- Skipping approach exploration (always present 2-3 options)
+- Presenting design without incremental validation
+- Writing full design then asking "does this look good?"
+
+---
+
 ## Input
 
 Feature idea via `$ARGUMENTS`. If empty, ask: "What would you like to explore?"
@@ -53,9 +79,9 @@ Document existing patterns, constraints, naming conventions.
 
 ---
 
-## Phase 1.5: Research Review (HIGH LEVERAGE)
+## Phase 1.5: Research Review 🔍→👤 CHECKPOINT
 
-**Bad research leads to thousands of lines of incorrect code.**
+**HIGH LEVERAGE checkpoint. Bad research → bad design → thousands of bad lines of code.**
 
 Present summary (NOT raw findings):
 
@@ -101,6 +127,21 @@ Ask questions **one at a time** to refine the idea.
 - What's out of scope
 - Key constraints
 
+### 👤 CHECKPOINT: Understanding Confirmation
+
+Before exploring approaches, confirm understanding:
+
+```
+I understand we're solving:
+
+**Problem:** [1-2 sentences]
+**For:** [audience]
+**Success looks like:** [outcome]
+**Out of scope:** [explicit boundaries]
+
+Is this accurate?
+```
+
 ---
 
 ## Phase 2.5: Surface Relevant Learnings
@@ -127,18 +168,32 @@ Ask if learnings should inform approach selection.
 
 ---
 
-## Phase 3: Explore Approaches
+## Phase 3: Explore Approaches 🔍→👤 CHECKPOINT
 
 **ALWAYS present 2-3 approaches** - even for "obvious" solutions.
 
 Use best practices research to inform approaches. Note when approach aligns or deviates.
 
-**Format each approach per `references/design-document-template.md`:**
-- Name (mark Recommended)
-- 2-3 sentence summary
-- Pros/Cons
-- Effort: S/M/L
-- Why recommended (if applicable)
+**Format each approach with explicit tradeoffs:**
+
+```markdown
+## Approach: [Name] (Recommended)
+
+**Summary:** [2-3 sentences]
+
+**Tradeoffs:**
+| Pro | Con |
+|-----|-----|
+| [Benefit 1] | [Drawback 1] |
+| [Benefit 2] | [Drawback 2] |
+
+**When to choose this:** [Scenario where this is best]
+**When NOT to choose this:** [Scenario where this fails]
+
+**Effort:** S/M/L
+```
+
+This forces thinking about failure modes, not just benefits.
 
 Ask user to select using AskUserQuestion.
 
@@ -146,7 +201,7 @@ If user wants to combine: clarify aspects, present hybrid, confirm.
 
 ---
 
-## Phase 4: Validate Design Incrementally
+## Phase 4: Validate Design Incrementally 🔍→👤 CHECKPOINT (per section)
 
 Present design in **small chunks (200-300 words each)**.
 
@@ -174,7 +229,98 @@ Write to `plans/<topic>-design.md` using template from `references/design-docume
 - Selection rationale
 - Open questions
 
-Present completion summary and handoff options per reference template.
+---
+
+## Phase 5b: Design Iteration (if needed)
+
+If user has feedback on the design after Phase 5:
+
+### 1. Confirm Understanding
+
+```
+Based on your feedback, I understand you want to:
+- [Change 1 with specific detail]
+- [Change 2 with specific detail]
+
+Is this correct?
+```
+
+### 2. Research If Needed
+
+- If changes require new technical understanding: spawn locator/analyzer
+- If changes are scope adjustments: skip research
+
+### 3. Present Proposed Changes
+
+```
+I plan to update the design by:
+- [Modification 1]
+- [Modification 2]
+
+Does this align with your intent?
+```
+
+### 4. Apply Changes Surgically
+
+- Edit specific sections, don't rewrite whole document
+- Preserve what's working
+- Use Edit tool for precision
+
+### 5. Re-validate Modified Sections
+
+- Only validate the parts that changed
+- "Here's the updated [section]. Does this look right?"
+
+**Max 3 iteration cycles.** If still not converged, suggest stepping back to re-examine the core problem (Phase 2).
+
+---
+
+## Handoff to Plan Creation
+
+When design is validated, present:
+
+```
+Design complete: `plans/[topic]-design.md`
+
+The design documents:
+- **Problem:** [1 sentence]
+- **Selected approach:** [approach name]
+- **Key decisions:** [list of 3-5]
+
+**Next steps:**
+
+1. **Create implementation plan:** `/fly:plan plans/[topic]-design.md`
+   - Creates a phase-by-phase implementation plan
+
+2. **Start implementing directly:** `/fly:work`
+   - Only if design is simple enough (S effort)
+
+3. **Explore more:** Continue brainstorming
+   - If new questions emerged during design
+
+Which would you like to do?
+```
+
+---
+
+## Context Management
+
+Brainstorm sessions can run long. Watch for:
+
+**Warning signs:**
+- >3 research cycles in Phase 1.5
+- >5 questions in Phase 2
+- >3 design iteration cycles in Phase 5b
+
+**Compaction actions:**
+- After Phase 1.5: Write research summary to context file
+- After Phase 3: Archive non-selected approaches to design doc
+- After each Phase 4 section: Reference design doc path, not content
+
+**If context >40%:**
+1. Write current state to design document
+2. Present: "We've explored a lot. Let me save progress and we can continue fresh."
+3. AskUserQuestion: Continue now / Clear context and resume / Stop here
 
 ---
 
