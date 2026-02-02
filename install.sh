@@ -14,20 +14,17 @@ echo ""
 
 # Step 1: Add the local marketplace
 echo "Step 1: Adding marketplace..."
-claude plugin marketplace remove local-marketplace 2>/dev/null || true
-claude plugin marketplace add "$SCRIPT_DIR/local-marketplace"
+claude plugin marketplace remove local-marketplace > /dev/null 2>&1 || true
+claude plugin marketplace add "$SCRIPT_DIR/local-marketplace" > /dev/null
 echo "  ✓ Marketplace added"
 
 # Step 2: Install the plugin
-echo ""
 echo "Step 2: Installing plugin..."
-claude plugin install flywheel@local-marketplace
+claude plugin install flywheel@local-marketplace > /dev/null
 echo "  ✓ Plugin installed"
 
 # Step 3: Configure Context7 API key
-echo ""
-echo "Step 3: Configure Context7 (optional but recommended)"
-echo ""
+echo "Step 3: Configuring Context7..."
 
 # Determine shell profile file
 get_shell_profile() {
@@ -46,34 +43,29 @@ get_shell_profile() {
 
 # Check if CONTEXT7_API_KEY env var is already set
 if [ -n "$CONTEXT7_API_KEY" ]; then
-    echo "Found CONTEXT7_API_KEY in environment, using it..."
+    echo "  * Found CONTEXT7_API_KEY in environment, using it..."
     API_KEY="$CONTEXT7_API_KEY"
     SAVE_TO_PROFILE=false
 else
-    echo "Context7 provides up-to-date framework documentation for the planning workflow."
-    echo "Get a free API key at: https://context7.com/dashboard"
-    echo ""
-    read -p "Enter your Context7 API key (or press Enter to skip): " API_KEY
+    echo "  * Context7 provides up-to-date framework documentation for the planning workflow."
+    read -p "  * Enter your Context7 API key (or press Enter to skip): " API_KEY
     SAVE_TO_PROFILE=true
 fi
 
 if [ -n "$API_KEY" ]; then
-    echo ""
-    echo "Configuring Context7 MCP server..."
 
     # Remove existing context7 config if present
-    claude mcp remove context7 2>/dev/null || true
+    claude mcp remove context7 > /dev/null 2>&1 || true
 
     # Add with the API key header
-    claude mcp add --header "CONTEXT7_API_KEY: $API_KEY" --transport http context7 https://mcp.context7.com/mcp
+    claude mcp add --header "CONTEXT7_API_KEY: $API_KEY" --transport http context7 https://mcp.context7.com/mcp > /dev/null
 
     echo "  ✓ Context7 configured with your API key"
 
     # Offer to save API key to shell profile for future installs
     if [ "$SAVE_TO_PROFILE" = true ]; then
         PROFILE_FILE=$(get_shell_profile)
-        echo ""
-        read -p "Save API key to $PROFILE_FILE for future installs? [Y/n]: " SAVE_CHOICE
+        read -p "  * Save API key to $PROFILE_FILE for future installs? [Y/n]: " SAVE_CHOICE
         SAVE_CHOICE=${SAVE_CHOICE:-Y}
 
         if [[ "$SAVE_CHOICE" =~ ^[Yy]$ ]]; then
@@ -90,20 +82,11 @@ if [ -n "$API_KEY" ]; then
                 echo "export CONTEXT7_API_KEY=\"$API_KEY\"" >> "$PROFILE_FILE"
                 echo "  ✓ Added CONTEXT7_API_KEY to $PROFILE_FILE"
             fi
-            echo "  → Run 'source $PROFILE_FILE' or restart your terminal to use it"
+            echo "  * Restart your terminal to use this variable in future sessions."
         fi
     fi
 else
-    echo ""
-    echo "  → Skipped Context7 configuration"
-    echo "  → You can add it later with:"
-    echo "    claude mcp add --header \"CONTEXT7_API_KEY: YOUR_KEY\" --transport http context7 https://mcp.context7.com/mcp"
+    echo "  * Skipped Context7 configuration"
 fi
 
-echo ""
-echo "================================"
-echo "  Installation Complete!"
-echo "================================"
-echo ""
-echo "Get started with /fly:brainstorm or /fly:research to explore your feature idea"
-echo ""
+echo "Installation Complete!"
