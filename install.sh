@@ -28,10 +28,17 @@ echo "  ✓ Plugin installed"
 echo ""
 echo "Step 3: Configure Context7 (optional but recommended)"
 echo ""
-echo "Context7 provides up-to-date framework documentation for the planning workflow."
-echo "Get a free API key at: https://context7.com/dashboard"
-echo ""
-read -p "Enter your Context7 API key (or press Enter to skip): " API_KEY
+
+# Check if CONTEXT7_API_KEY env var is already set
+if [ -n "$CONTEXT7_API_KEY" ]; then
+    echo "Found CONTEXT7_API_KEY in environment, using it..."
+    API_KEY="$CONTEXT7_API_KEY"
+else
+    echo "Context7 provides up-to-date framework documentation for the planning workflow."
+    echo "Get a free API key at: https://context7.com/dashboard"
+    echo ""
+    read -p "Enter your Context7 API key (or press Enter to skip): " API_KEY
+fi
 
 if [ -n "$API_KEY" ]; then
     echo ""
