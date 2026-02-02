@@ -1,6 +1,6 @@
 ---
 name: fly:plan
-description: Full planning workflow - create, verify, review, and consolidate. Orchestrates four independent skills.
+description: Full planning workflow - create, enrich (verify + add research insights), review, and consolidate. Orchestrates four independent skills.
 argument-hint: "[feature description OR path to *-design.md OR path to existing plan]"
 ---
 
@@ -12,7 +12,7 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 
 This orchestrator coordinates the full planning workflow by calling four independent skills in sequence:
 1. **plan-creation** - Research and create the initial plan
-2. **plan-verification** - Verify assumptions are real, validate against docs, check compatibility (writes to plan file)
+2. **plan-enrich** - Single-pass verification AND enrichment: validate assumptions, add research insights, check compatibility (writes to plan file)
 3. **plan-review** - Run all reviewer agents and synthesize findings (writes to plan file)
 4. **plan-consolidation** - Restructure into a single, actionable plan ready for `/fly:work`
 
@@ -47,16 +47,16 @@ This entire workflow is for research and planning only. Implementation happens l
 If input ends with "-design.md" AND file exists:
   -> DESIGN MODE
   -> Read design doc for context
-  -> Run: plan-creation (uses design as input) -> plan-verification -> plan-review
+  -> Run: plan-creation (uses design as input) -> plan-enrich -> plan-review
 
 If input is ".md" file in plans/ AND file exists:
   -> REVIEW MODE
   -> Skip creation, use existing plan
-  -> Run: plan-verification -> plan-review
+  -> Run: plan-enrich -> plan-review
 
 Otherwise:
   -> FULL MODE
-  -> Run: plan-creation -> plan-verification -> plan-review
+  -> Run: plan-creation -> plan-enrich -> plan-review
 ```
 
 ### Determine Mode
@@ -96,27 +96,39 @@ arguments: [input - either feature description or design doc path]
 
 ---
 
-## Phase 2: Verify Plan
+## Phase 2: Enrich Plan (Verify + Research)
 
-Invoke the plan-verification skill with the plan path:
+Invoke the plan-enrich skill with the plan path:
 
 ```
-skill: plan-verification
+skill: plan-enrich
 arguments: [PLAN_PATH]
 ```
 
-This phase:
+This phase performs **verification AND enrichment** in a single pass:
+
+**Verification:**
 - Validates technical claims against framework documentation
 - Checks for DRY violations and existing solutions in codebase
 - Verifies version compatibility
 - Confirms proposed APIs/features actually exist
-- Adds "Research Validation" subsections to each plan section
+
+**Enrichment:**
+- Auto-integrates top 5 learnings from `docs/solutions/`
+- Runs per-section research via subagents (max 5 major sections)
+- Adds research insights: best practices, code examples, edge cases
+- Quarantines external research for human review
+
+**Research Decision Heuristic:**
+- High-risk topics (security, payments, crypto, migrations, PII) → external research
+- Other topics → local codebase research sufficient
 
 **Capture output:**
 - `CLAIMS_VALIDATED` = Count of claims verified
 - `ISSUES_FOUND` = Blockers, warnings, and enhancements identified
+- `LEARNINGS_APPLIED` = Count of `docs/solutions/` matches integrated
 
-**If plan-verification presents post-verification options, select "Run review" to continue the flow.**
+**If plan-enrich presents post-enrichment options, select "Run review" to continue the flow.**
 
 ---
 
@@ -149,8 +161,8 @@ This phase:
 
 After verification and reviewing, the plan file contains scattered content:
 - Original plan content
-- Verification Summary (from plan-verification)
-- Research Validation subsections (from plan-verification)
+- Verification Summary (from plan-enrich)
+- Research Validation subsections (from plan-enrich)
 - Plan Review Summary (from plan-review)
 
 **This phase consolidates everything into a clean, work-ready format using the plan-consolidation skill.**
@@ -248,7 +260,7 @@ The orchestrator maintains state between phases:
        v                       |
 [Phase 2: Verify] <------------+
        |                       |
-       | (skill: plan-verification)
+       | (skill: plan-enrich)
        | (writes Verification Summary + Research Validation TO PLAN FILE)
        v                       |
    CLAIMS_VALIDATED            |
@@ -297,7 +309,7 @@ The orchestrator maintains state between phases:
 ### Phase Failures
 
 - **plan-creation fails**: Report error, do not proceed to verification
-- **plan-verification fails**: Report error, still run review on original plan
+- **plan-enrich fails**: Report error, still run review on original plan
 - **plan-review fails**: Report error, still run consolidation on what we have
 - **plan-consolidation fails**: Report error, present the un-consolidated plan (still has all content, just not restructured)
 
@@ -319,7 +331,7 @@ The orchestrator maintains state between phases:
 /fly:plan Add user authentication with OAuth2 support
 ```
 
-Runs: plan-creation -> plan-verification -> plan-review -> plan-consolidation
+Runs: plan-creation -> plan-enrich -> plan-review -> plan-consolidation
 
 ### Design Mode (Design Doc)
 
@@ -327,7 +339,7 @@ Runs: plan-creation -> plan-verification -> plan-review -> plan-consolidation
 /fly:plan plans/oauth2-authentication-design.md
 ```
 
-Runs: plan-creation (uses design) -> plan-verification -> plan-review -> plan-consolidation
+Runs: plan-creation (uses design) -> plan-enrich -> plan-review -> plan-consolidation
 
 ### Review Mode (Existing Plan)
 
@@ -335,7 +347,7 @@ Runs: plan-creation (uses design) -> plan-verification -> plan-review -> plan-co
 /fly:plan plans/feat-user-authentication.md
 ```
 
-Runs: plan-verification -> plan-review -> plan-consolidation (skips creation)
+Runs: plan-enrich -> plan-review -> plan-consolidation (skips creation)
 
 ### Consolidation Only Mode
 
@@ -361,7 +373,7 @@ Runs: plan-consolidation only (for plans already deepened and reviewed)
 - **User control** - Post-execution options let user choose next action
 - **Independent skills** - Each skill can also be invoked directly:
   - `skill: plan-creation` - Create a plan
-  - `skill: plan-verification` - Validate assumptions and claims
+  - `skill: plan-enrich` - Validate assumptions and claims
   - `skill: plan-review` - Run reviewer agents
   - `skill: plan-consolidation` - Restructure for work
 - **Work-ready output** - After consolidation, the plan is ready for `/fly:work` with actionable checklists

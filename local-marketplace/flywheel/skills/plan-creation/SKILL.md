@@ -1,6 +1,6 @@
 ---
 name: plan-creation
-description: Draft initial implementation plans based on codebase patterns. Creative/generative phase - validation happens in plan-verification. Triggers on "create plan", "plan for", "write a plan".
+description: Draft initial implementation plans based on codebase patterns. Creative/generative phase - validation happens in plan-enrich. Triggers on "create plan", "plan for", "write a plan".
 allowed-tools:
   - Read
   - Write
@@ -14,7 +14,7 @@ allowed-tools:
 
 # Plan Creation Skill
 
-Draft implementation plans based on user intent and existing codebase patterns. This is the **creative/generative** phase - external validation happens later in plan-verification.
+Draft implementation plans based on user intent and existing codebase patterns. This is the **creative/generative** phase - external validation happens later in plan-enrich.
 
 **Philosophy:** Focus on WHAT to build based on HOW things are already built. Don't validate external claims yet - flag them for verification.
 
@@ -86,7 +86,7 @@ After research completes, consolidate:
 - Team conventions
 - OPEN QUESTIONS about approach
 
-**NOTE:** External validation (framework docs, best practices) happens in plan-verification. Here we draft based on what we know.
+**NOTE:** External validation (framework docs, best practices) happens in plan-enrich. Here we draft based on what we know.
 
 ---
 
@@ -143,7 +143,7 @@ As you draft, identify assumptions that need external validation:
 ```markdown
 ## Claims to Verify
 
-The following assumptions should be validated in plan-verification:
+The following assumptions should be validated in plan-enrich:
 
 - [ ] "React Query supports offline persistence" - verify in docs
 - [ ] "Redis pub/sub handles 10k connections" - verify performance claims
@@ -198,7 +198,7 @@ Maximum 2 revision cycles.
 
 | Option | Action |
 |--------|--------|
-| Run verification (Recommended) | Invoke `skill: plan-verification` |
+| Run verification (Recommended) | Invoke `skill: plan-enrich` |
 | Done for now | Display path and exit |
 
 ---
@@ -226,7 +226,7 @@ This skill is research and planning ONLY.
 - Create/edit test files
 - Modify configuration
 - "Helpfully" start coding
-- Validate external claims (that's plan-verification)
+- Validate external claims (that's plan-enrich)
 
 **If tempted to write code, STOP and add it to the plan instead.**
 **If tempted to research framework docs, STOP and flag it for verification instead.**

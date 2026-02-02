@@ -38,7 +38,7 @@ find ~/.claude/agents -name "*.md" 2>/dev/null
 find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
 ```
 
-**Baseline reviewers:** architecture-reviewer, code-simplicity-reviewer, pattern-reviewer, security-reviewer, performance-reviewer, data-integrity-reviewer
+**Baseline reviewers:** architecture-reviewer, code-simplicity-reviewer, pattern-reviewer, security-reviewer, performance-reviewer, data-integrity-reviewer, agent-native-reviewer
 
 ---
 

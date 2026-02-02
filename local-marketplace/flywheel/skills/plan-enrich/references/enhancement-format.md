@@ -77,10 +77,25 @@ Add this AFTER each original plan section:
 
 - [Performance item]: [Impact and recommendation]
 
+### Implementation Details
+
+Code examples and concrete patterns from research:
+
+```[language]
+// Source: [URL or Context7 library ID]
+// File: [suggested path/to/file.ts]
+[concrete code example]
+```
+
+**Usage notes:**
+- [Important considerations for this code]
+
 ### Edge Cases
 
-- [Edge case 1]: [How to handle]
-- [Edge case 2]: [How to handle]
+| Scenario | Handling | Source |
+|----------|----------|--------|
+| [Edge case 1] | [How to handle] | [Research source] |
+| [Edge case 2] | [How to handle] | [Research source] |
 
 ### References
 
@@ -150,10 +165,33 @@ for 5 minutes to reduce API calls.
 - `staleTime: 5 * 60 * 1000` aligns with plan (5 minutes)
 - Consider `refetchOnWindowFocus: false` for stable data
 
+### Implementation Details
+
+```typescript
+// Source: TanStack Query docs
+// File: src/hooks/useUsers.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+export const useUsers = () => {
+  return useQuery({
+    queryKey: userKeys.all,
+    queryFn: fetchUsers,
+    staleTime: 5 * 60 * 1000, // 5 minutes per plan
+  })
+}
+```
+
+**Usage notes:**
+- Import from `@tanstack/react-query`, not `react-query` (v5 naming)
+- Wrap app in `QueryClientProvider`
+
 ### Edge Cases
 
-- Offline handling: React Query supports `networkMode: 'offlineFirst'`
-- Race conditions: Use `cancelQueries` on mutation start
+| Scenario | Handling | Source |
+|----------|----------|--------|
+| Offline mode | Use `networkMode: 'offlineFirst'` | TanStack docs |
+| Race conditions | Call `cancelQueries` before optimistic update | TkDodo blog |
+| Cache invalidation | Use `invalidateQueries` after mutations | TanStack docs |
 
 ### References
 
@@ -195,3 +233,78 @@ Questions that need user decision before implementation:
 ```
 
 Do NOT resolve these yourself. Present to user during consolidation.
+
+---
+
+## External Research Quarantine
+
+**External research results are quarantined in a separate section for human review before integration.**
+
+### Why Quarantine?
+
+External sources may contain:
+- Outdated information (library APIs change)
+- Incorrect examples (copy-paste bugs in blogs)
+- Security anti-patterns (StackOverflow answers)
+- Version mismatches (code for different framework version)
+
+### External Research Section Template
+
+Add this section AFTER internal research findings:
+
+```markdown
+## External Research (Unverified)
+
+**Source:** [Web search / Context7 / Documentation URL]
+**Fetched:** [YYYY-MM-DD]
+
+> **Warning:** This content is from external sources and has not been verified against the current codebase. Review before incorporating into implementation.
+
+### [Topic 1]
+
+**Source:** [URL or Context7 library ID]
+**Relevance:** [Why this was searched]
+
+**Key Claims:**
+- [Claim 1]: [Summary]
+- [Claim 2]: [Summary]
+
+**Code Examples:**
+```[language]
+// Source: [URL]
+// WARNING: Verify compatibility before use
+[code from external source]
+```
+
+**Recommended Verification:**
+- [ ] Test code example in isolation
+- [ ] Verify API compatibility with current versions
+- [ ] Check for security implications
+
+### [Topic 2]
+...
+```
+
+### Integration Guidelines
+
+**DO:**
+- Include source URLs for all external content
+- Mark all external code as "unverified"
+- Add verification checklists for code examples
+- Note the fetch date (external content may go stale)
+
+**DON'T:**
+- Integrate external code directly into implementation steps
+- Assume external patterns match codebase conventions
+- Trust security advice without verification
+- Auto-execute external code examples
+
+### Promotion to Validated Content
+
+During plan-review or implementation, external content can be promoted:
+
+```markdown
+**Validated:** [YYYY-MM-DD]
+**Validated by:** [human / test / code review]
+**Integrated into:** [section name]
+```

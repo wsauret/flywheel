@@ -1,6 +1,6 @@
 ---
-name: plan-verification
-description: Verify plan assumptions are real, not hallucinated. Validates claims against framework docs, checks for DRY violations, confirms compatibility. Triggers on "verify plan", "validate plan", "check plan assumptions".
+name: plan-enrich
+description: Single-pass verification AND enrichment of implementation plans. Validates claims against framework docs, checks for DRY violations, confirms compatibility, and adds research insights. Triggers on "enrich plan", "verify plan", "validate plan", "deepen plan".
 allowed-tools:
   - Read
   - Write
@@ -11,13 +11,13 @@ allowed-tools:
   - Skill
 ---
 
-# Plan Verification Skill
+# Plan Enrich Skill
 
-Verify implementation plans are grounded in reality. Two modes:
+Verify AND enrich implementation plans in a single pass. Two modes:
 - **Internal Research** - Does this already exist? DRY violations? Fits existing patterns?
 - **External Research** - Do claimed features exist? Best practices? Framework docs?
 
-**Philosophy:** Validate before implementing. Bad assumptions in plans become bad code.
+**Philosophy:** Validate before implementing. Bad assumptions in plans become bad code. Enrich with research insights to improve implementation quality.
 
 ## Input
 
@@ -33,7 +33,33 @@ Before research, check `docs/solutions/` for relevant past solutions.
 ls docs/solutions/ 2>/dev/null
 ```
 
-**If exists:** Search by keywords from plan (module names, technologies, patterns). Present top 3-5 matches and ask user which to include.
+**If docs/solutions/ exists and contains files:**
+
+1. Extract keywords from plan (module names, technologies, patterns)
+2. Search solution files by keywords
+3. **Auto-integrate top 5 matches** (no user selection required)
+
+For each matched solution file (up to 5), spawn a subagent:
+
+```
+Task codebase-analyzer: "Extract applicable insights from [solution_file]
+for implementing [plan_topic]. Return: problem addressed, solution pattern,
+applicable sections. MAX 200 words."
+```
+
+**Key insight:** Subagent contains full context, orchestrator only receives summary. This prevents context explosion.
+
+Integrate returned insights into a "Learnings Applied" section:
+
+```markdown
+### Learnings Applied
+
+| Solution | Pattern | Applicable To |
+|----------|---------|---------------|
+| [solution_file] | [pattern summary] | [plan section] |
+```
+
+**If no docs/solutions/:** Skip this phase.
 
 ---
 
@@ -149,6 +175,48 @@ Flag: INTEGRATION_RISK with details.
 
 **Goal:** Validate claims and add best practices.
 
+### 3.0 Research Decision Heuristic
+
+**Before running external research, determine if it's needed.**
+
+#### High-Risk Topics (ALWAYS require external research)
+
+Scan plan for these keywords - if found, external research is REQUIRED:
+
+- **Security:** authentication, authorization, auth, OAuth, JWT, CORS, XSS, CSRF, SQL injection, encryption, hashing, passwords, secrets, API keys
+- **Payments:** payment, billing, stripe, checkout, subscription, PCI
+- **Crypto:** cryptography, signing, certificates, TLS, SSL
+- **Migrations:** database migration, data migration, schema change, breaking change
+- **Privacy:** PII, GDPR, CCPA, personal data, user data, privacy
+
+#### Research Decision Logic
+
+```
+IF any high-risk topic detected:
+  → RUN external research (all 3.1-3.4 subsections)
+  → Log decision: "High-risk topic detected: [topic]. Running external research."
+
+ELSE:
+  → SKIP external research
+  → Log decision: "No high-risk topics. Local research sufficient."
+```
+
+**Rationale:** High-risk topics have evolving best practices and security considerations that change frequently. Local codebase patterns may be outdated.
+
+#### Log Research Decision
+
+Add to plan output:
+
+```markdown
+## Research Decision
+- **Topic risk level:** [HIGH/LOW]
+- **High-risk topics found:** [list or "None"]
+- **Decision:** [Run external research / Skip external research]
+- **Rationale:** [Brief reason]
+```
+
+---
+
 ### 3.1 Framework Documentation Validation
 
 For each framework/library claim in the plan:
@@ -240,9 +308,78 @@ Return: Comparison table with recommendations.
 
 **Run all external research in parallel.**
 
+### 3.5 Quarantine External Results
+
+**CRITICAL:** External research results go in a separate "External Research (Unverified)" section.
+
+See `references/enhancement-format.md` for quarantine template.
+
+**Why quarantine?**
+- External sources may be outdated
+- Code examples may have security issues
+- Patterns may not match codebase conventions
+
+**Do NOT:**
+- Integrate external code directly into implementation steps
+- Auto-execute external code examples
+- Trust security advice without verification
+
 ---
 
-## Phase 4: Synthesize Findings
+## Phase 4: Per-Section Research
+
+**Goal:** Deep-dive research for each major plan section using isolated subagents.
+
+### 4.1 Identify Major Sections
+
+Extract major sections from plan headings. **Include:**
+- Technical Approach
+- Implementation phases
+- Architecture sections
+
+**Exclude:**
+- Status
+- References
+- Open Questions
+- Metadata sections
+
+**Performance cap:** Maximum ~5 sections per plan to avoid context overflow.
+
+### 4.2 Spawn Per-Section Subagents
+
+For EACH major section (up to 5):
+
+```
+Task Explore: "Research codebase patterns for: [section topic].
+
+Context: This is for plan section '[section name]' which covers [brief description].
+
+Questions:
+1. What existing code patterns relate to this section?
+2. Are there relevant utilities or shared components?
+3. What testing patterns should we follow?
+
+Return: relevant patterns, files, code examples. MAX 300 words summary."
+```
+
+**Key insight:** Context explosion avoided because subagent holds full research context, orchestrator only receives summary.
+
+### 4.3 Integrate Section Research
+
+Collect summaries from all subagents and organize by section:
+
+```markdown
+### Per-Section Research
+
+#### [Section Name]
+- **Patterns found:** [list]
+- **Relevant files:** [paths with line numbers]
+- **Testing approach:** [summary]
+```
+
+---
+
+## Phase 5: Synthesize Findings
 
 Wait for all research agents. Then:
 
@@ -277,7 +414,7 @@ Convert conflicts and decisions into questions:
 
 ---
 
-## Phase 5: Enhance Plan Sections
+## Phase 6: Enhance Plan Sections
 
 For each section in the original plan, add research insights:
 
@@ -312,7 +449,7 @@ For each section in the original plan, add research insights:
 
 ---
 
-## Phase 6: Write and Present
+## Phase 7: Write and Present
 
 ### Write Enhanced Plan
 

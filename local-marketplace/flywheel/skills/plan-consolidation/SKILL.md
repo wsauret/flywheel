@@ -19,7 +19,7 @@ Transform plans with Research Insights and Review Summary into a single, coheren
 
 ## Input
 
-Plan path via `$ARGUMENTS`. Should already have Verification Summary (from plan-verification) and Review Summary (from plan-review).
+Plan path via `$ARGUMENTS`. Should already have Enhancement Summary (from plan-enrich) and Review Summary (from plan-review).
 
 ---
 
@@ -29,7 +29,7 @@ Plan path via `$ARGUMENTS`. Should already have Verification Summary (from plan-
 
 Check for:
 - Original content (Technical Approach, Implementation, etc.)
-- Enhancement Summary (added by plan-verification)
+- Enhancement Summary (added by plan-enrich)
 - Research Insights (subsections under original sections)
 - Plan Review Summary (appended by plan-review)
 

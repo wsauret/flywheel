@@ -147,7 +147,7 @@ Core workflow commands use `fly:` prefix:
 | `brainstorm` | Conversational exploration of ideas before planning |
 | `codebase-research` | Comprehensive research using locate→analyze pattern |
 | `plan-creation` | Draft plans based on codebase patterns (creative); flags claims for verification |
-| `plan-verification` | Validate assumptions are real, not hallucinated (fact-checking) |
+| `plan-enrich` | Single-pass verification AND enrichment - validate assumptions, add research insights |
 | `plan-review` | Critique from multiple reviewer perspectives (security, perf, arch) |
 | `plan-consolidation` | Resolve open questions with user; create actionable checklists |
 | `work-implementation` | Execute plans following patterns, testing continuously |

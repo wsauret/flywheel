@@ -9,7 +9,9 @@ allowed-tools:
   - Glob
   - Bash
   - Task
-  - TodoWrite
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
   - AskUserQuestion
 ---
 
@@ -207,6 +209,35 @@ Proceeding with best effort. Consider updating files for better tracking.
 
 Log warnings in state file under "Validation Warnings" section (append if exists).
 
+### Create Tasks for Each Phase
+
+**After loading plan, create native Tasks for progress tracking.**
+
+For each phase in the plan's implementation checklist:
+
+```
+TaskCreate:
+  subject: "Phase N: [description from plan]"
+  description: "[full phase content including checklist items]"
+  activeForm: "Implementing Phase N"
+```
+
+**Example:**
+```
+TaskCreate:
+  subject: "Phase 1: Rename plan-verification to plan-enrich"
+  description: "Rename skill directory, update triggers, search-replace all references..."
+  activeForm: "Renaming plan-verification to plan-enrich"
+```
+
+**Benefits:**
+- Tasks survive terminal restarts (stored in `~/.claude/tasks`)
+- Visual progress tracking in Claude Code UI
+- Recovery via `TaskList` to find uncompleted phases
+- Shared task lists via `CLAUDE_CODE_TASK_LIST_ID`
+
+**Note:** We use dual-write (Tasks + state file) for redundancy. State file remains source of truth for Ralph mode recovery.
+
 ### Worktree Assessment
 
 **Recommend worktree when:**
@@ -286,13 +317,36 @@ For each implementation task:
 
 ### 2.3 Checkpoint
 
-After subagent completes:
+After subagent completes, use **dual-write approach** for redundancy:
 
-1. Mark phase complete in state file: `- [x] Phase N`
+#### 2.3.1 Update Native Tasks (Primary)
+
+```
+TaskUpdate:
+  taskId: [task ID for this phase]
+  status: completed
+```
+
+**Why Tasks are primary:**
+- Survive terminal restarts
+- Visual progress in Claude Code UI
+- Stored in `~/.claude/tasks`
+
+#### 2.3.2 Update State File (Backup)
+
+1. Mark phase complete: `- [x] Phase N`
 2. Append key decisions to state file
-3. Append learnings to state file (patterns, gotchas discovered)
-4. **Verify TDD evidence:** Tests created/modified, suite passing
-5. Update code context (files modified/created)
+3. Append learnings (patterns, gotchas discovered)
+4. Update code context (files modified/created)
+
+**Why state file is backup:**
+- Ralph mode recovery relies on state file
+- Cross-session recovery (Tasks don't persist across sessions by default)
+- Full context for cold resume
+
+#### 2.3.3 Verify & Continue
+
+5. **Verify TDD evidence:** Tests created/modified, suite passing
 6. Run tests - fail fast if broken
 7. **Update session file:**
    - `last_checkpoint: [timestamp]`
@@ -425,12 +479,18 @@ If user clears context mid-execution (or context is lost):
 
 1. User says "carry on" or runs `/fly:work` with no arguments
 2. Session file (`.flywheel/session.md`) identifies active plan
-3. State file contains full progress
-4. New instance finds first unchecked phase
+3. **Check both sources:**
+   - `TaskList` - Shows native task progress (survives terminal restarts)
+   - State file - Contains full progress and key decisions
+4. New instance finds first uncompleted phase (sync Tasks with state file if mismatch)
 5. Loads key decisions from state file
 6. Resumes execution
 
-**No work is lost.** The session file enables seamless "carry on" recovery.
+**No work is lost.** Dual-write (Tasks + state file) provides redundancy:
+- **Tasks:** Survive terminal restarts, visual UI progress
+- **State file:** Full context for Ralph mode, cross-session recovery
+
+**Task persistence note:** Tasks are stored in `~/.claude/tasks` and survive terminal restarts. For shared task lists across team members, use `CLAUDE_CODE_TASK_LIST_ID` environment variable.
 
 ---
 
