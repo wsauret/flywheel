@@ -29,6 +29,16 @@ cd flywheel
 ./install.sh
 ```
 
+### Auto-Update
+
+To receive updates automatically, enable auto-update for the marketplace:
+
+```
+/plugins
+```
+
+Then toggle auto-update on for `flywheel-marketplace`.
+
 ### Upgrading from local-marketplace
 
 If you previously installed via the old local-marketplace pattern:
