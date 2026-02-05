@@ -163,7 +163,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Transform marketplace/flywheel/ to ~/.config/opencode/ format"
     )
-    parser.add_argument("--source", type=Path, default=Path("local-marketplace/flywheel"))
+    parser.add_argument("--source", type=Path, default=Path("flywheel"))
     parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
     args = parser.parse_args()

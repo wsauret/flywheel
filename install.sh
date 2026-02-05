@@ -12,15 +12,16 @@ echo "  Flywheel Plugin Installer"
 echo "================================"
 echo ""
 
-# Step 1: Add the local marketplace
+# Step 1: Add marketplace from repo root
 echo "Step 1: Adding marketplace..."
+claude plugin marketplace remove flywheel-marketplace > /dev/null 2>&1 || true
 claude plugin marketplace remove local-marketplace > /dev/null 2>&1 || true
-claude plugin marketplace add "$SCRIPT_DIR/local-marketplace" > /dev/null
+claude plugin marketplace add "$SCRIPT_DIR" > /dev/null
 echo "  ✓ Marketplace added"
 
 # Step 2: Install the plugin
 echo "Step 2: Installing plugin..."
-claude plugin install flywheel@local-marketplace > /dev/null
+claude plugin install flywheel@flywheel-marketplace > /dev/null
 echo "  ✓ Plugin installed"
 
 # Step 3: Configure Context7 API key

@@ -4,23 +4,45 @@ A Claude Code plugin that makes each unit of engineering work easier than the la
 
 ## Install
 
+In Claude Code, run:
+
+```
+/plugin marketplace add wsauret/flywheel
+/plugin install flywheel@flywheel-marketplace
+```
+
+### Optional: Context7 Setup
+
+Context7 provides up-to-date framework documentation for the planning workflow.
+Get a free API key at https://context7.com/dashboard, then run:
+
 ```bash
-# Unzip and run the install script
-unzip flywheel.zip
+claude mcp add --header "CONTEXT7_API_KEY: your-key-here" \
+  --transport http context7 https://mcp.context7.com/mcp
+```
+
+### Local Install (for contributors)
+
+```bash
+git clone https://github.com/wsauret/flywheel.git
 cd flywheel
 ./install.sh
 ```
 
 The install script will:
-1. Add the local marketplace to Claude Code
+1. Add the marketplace to Claude Code
 2. Install the Flywheel plugin
-3. Optionally configure Context7 with your API key (get one free at https://context7.com/dashboard)
+3. Optionally configure Context7 with your API key
 
-<!-- When public:
-git clone https://github.com/wsauret/flywheel-plugin.git
-cd flywheel-plugin
-./install.sh
--->
+### Upgrading from local-marketplace
+
+If you previously installed via the old local-marketplace pattern:
+
+```bash
+claude plugin marketplace remove local-marketplace
+```
+
+Then follow the standard install instructions above.
 
 ## Workflow
 
