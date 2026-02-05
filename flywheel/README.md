@@ -1,38 +1,35 @@
-# Compounding Engineering Plugin
+# Flywheel Plugin
 
-AI-powered development tools that get smarter with every use. Make each unit of engineering work easier than the last.
+A Claude Code plugin that turns development cycles into momentum.
 
-## Philosophy
+## What Problems Does This Solve?
 
-Flywheel implements two complementary strategies for AI-assisted development:
+### Context windows fill up too fast
 
-### Context Compaction (During Work)
-
-AI coding agents struggle with large codebases because context windows fill up with search results, file contents, and tool outputs. Flywheel manages this through:
+AI agents struggle with large codebases because context windows fill with search results, file contents, and tool outputs. Flywheel manages this through deliberate compaction at each phase:
 
 - **Research → Plan → Implement workflow** - Each phase produces compact artifacts, not sprawling chat
 - **`.context.md` files** - Persist research findings across sessions
 - **`.state.md` files** - Enable recovery if context is lost mid-work
-- **`.flywheel/session.md`** - Tracks active work for "carry on" resume
 - **Subagent dispatch** - Fresh context for research tasks, compact results returned
 
-This keeps context utilization under 40% for optimal performance.
+This keeps context utilization in the 40-60% range where models perform best.
 
-**Session Recovery:** If you need to clear context mid-work (`/clear`), just say "carry on" or run `/fly:work` with no arguments. The session file remembers where you left off.
+**Session Recovery:** If you need to clear context mid-work (`/clear`), just run `/fly:work` with no arguments. The session file remembers where you left off.
 
-### Knowledge Compounding (After Work)
+### Knowledge walks out the door
 
-Each solved problem should make future problems easier. Flywheel captures lessons via:
+When an agent solves a problem, the solution lives in chat history and disappears. Flywheel captures lessons so they persist:
 
 - **`/fly:compound`** - Document solutions while context is fresh
-- **`docs/solutions/`** - Searchable knowledge base of past solutions
+- **`docs/solutions/`** - Searchable knowledge base with YAML frontmatter
 - **Automatic discovery** - Planning skills surface relevant past solutions
 
-Like compound interest, each captured lesson accumulates value over time.
+These learnings live in your codebase, so they're automatically shared with your team.
 
-### Human Leverage
+### Human attention is spent on the wrong things
 
-Focus review effort where it matters most:
+Reviewing code line-by-line catches individual mistakes. Reviewing research and plans catches structural problems before they become code:
 
 | Review Target | Prevents |
 |---------------|----------|
@@ -40,42 +37,24 @@ Focus review effort where it matters most:
 | Plans | Hundreds of bad lines |
 | Code | Individual mistakes |
 
-This is why Flywheel requires human approval at research and plan boundaries.
+Flywheel requires human approval at research and plan boundaries because that's where your attention has the most impact.
 
 ## Installation
 
-### Claude Code (Recommended)
+In Claude Code, run:
 
-Use the install script from the repository root:
-
-```bash
-./install.sh
+```
+/plugin marketplace add wsauret/flywheel
+/plugin install flywheel@flywheel-marketplace
 ```
 
-The install script will:
-1. Add the local marketplace to Claude Code
-2. Install the Flywheel plugin
-3. Optionally configure Context7 with your API key (get one free at https://context7.com/dashboard)
-
-### OpenCode
-
-Use the `generate_opencode.py` script to transform and copy files to OpenCode paths:
-
-```bash
-# Preview what will be transformed
-python generate_opencode.py --dry-run
-
-# Install to ~/.config/opencode/
-python generate_opencode.py
-```
-
-The script transforms Claude Code plugin format to OpenCode format, handling frontmatter differences and path structures.
+For local development or OpenCode, see the [repository README](https://github.com/wsauret/flywheel).
 
 ## Components
 
 | Component | Count |
 |-----------|-------|
-| Agents | 16 |
+| Agents | 17 |
 | Commands | 6 |
 | Skills | 11 |
 
@@ -83,10 +62,11 @@ The script transforms Claude Code plugin format to OpenCode format, handling fro
 
 Agents are organized into categories for easier discovery.
 
-### Reviewers (8)
+### Reviewers (9)
 
 | Agent | Description |
 |-------|-------------|
+| `agent-native-reviewer` | Agent parity and tool accessibility review |
 | `architecture-reviewer` | Analyze architectural decisions and compliance |
 | `code-quality-reviewer` | Python/TypeScript review with high quality bar |
 | `code-simplicity-reviewer` | Final pass for simplicity and minimalism |
@@ -173,4 +153,4 @@ Flywheel uses a two-phase locate→analyze pattern for research:
    - Documentarian mode: document what IS, not what SHOULD BE
    - Full file reads (no partial reads)
 
-This reduces context usage by 40-60% compared to all-in-one research agents.
+This reduces context usage significantly compared to all-in-one research agents.

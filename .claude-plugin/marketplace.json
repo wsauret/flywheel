@@ -1,8 +1,7 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "flywheel-marketplace",
   "version": "1.0.0",
-  "description": "Flywheel - a Claude Code plugin that makes each unit of engineering work easier than the last",
+  "description": "Flywheel - A Claude Code plugin that turns development cycles into momentum",
   "owner": {
     "name": "Wesley Sauret"
   },
@@ -10,14 +9,14 @@
     {
       "name": "flywheel",
       "source": "./flywheel",
-      "description": "A Claude Code plugin that makes each unit of engineering work easier than the last",
+      "description": "A Claude Code plugin that turns development cycles into momentum",
       "version": "1.0.0",
       "author": {
         "name": "Wesley Sauret"
       },
       "homepage": "https://github.com/wsauret/flywheel",
       "license": "MIT",
-      "keywords": ["workflows", "planning", "review", "agents", "skills", "compound-engineering"],
+      "keywords": ["workflows", "planning", "review", "agents", "skills"],
       "category": "development"
     }
   ]
