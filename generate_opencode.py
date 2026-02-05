@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transform marketplace/flywheel/ markdown files to ~/.config/opencode/ format."""
+"""Transform flywheel/ markdown files to ~/.config/opencode/ format."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ BODY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"#\$ARGUMENTS"), "$ARGUMENTS"),
     (re.compile(r"/fly:(\w+)"), r"/\1"),
     (re.compile(r"^skill:\s*([\w-]+)\s*$", re.MULTILINE), r'skill({ name: "\1" })'),
-    (re.compile(r"^See `marketplace/flywheel/skills/.*$\n?", re.MULTILINE), ""),
+    (re.compile(r"^See `flywheel/skills/.*$\n?", re.MULTILINE), ""),
 ]
 
 SKIP_PATHS = {".claude-plugin", "README.md"}
@@ -159,9 +159,9 @@ def get_transform_type(rel_path: Path) -> str | None:
 
 
 def main() -> int:
-    """Transform marketplace/flywheel/ directory to ~/.config/opencode/ format."""
+    """Transform flywheel/ directory to ~/.config/opencode/ format."""
     parser = argparse.ArgumentParser(
-        description="Transform marketplace/flywheel/ to ~/.config/opencode/ format"
+        description="Transform flywheel/ to ~/.config/opencode/ format"
     )
     parser.add_argument("--source", type=Path, default=Path("flywheel"))
     parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
