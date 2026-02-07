@@ -131,6 +131,25 @@ For complex issues, invoke relevant reviewer:
 
 ---
 
+## Step 5.5: Standards Inference
+
+After documenting the solution, check if this pattern generalizes:
+
+```bash
+# Search for solutions with similar tags or problem types
+grep -rl "<root-cause-keyword>" docs/solutions/ | head -5
+```
+
+If 2+ solutions share the same root cause type or pattern (e.g., same type of fix in the same component area), suggest creating a standard:
+
+**AskUserQuestion:** "This pattern appears in [N] solutions ([list filenames]). Capture as a reusable standard?"
+- **Yes** — Draft standard from the shared pattern, write to `docs/standards/<pattern-name>.md` per the format in `docs/standards/README.md`, user confirms content
+- **Skip (Recommended)** — Continue without creating a standard
+
+Only suggest when the pattern is clearly reusable, not when solutions happen to touch the same file.
+
+---
+
 ## Step 6: Present Results
 
 Per `references/decision-menu.md`:

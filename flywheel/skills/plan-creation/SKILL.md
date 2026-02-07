@@ -26,65 +26,32 @@ Feature description via `$ARGUMENTS`. If empty, ask user.
 
 ---
 
+## Phase 0: Check for Existing Knowledge
+
+Before starting codebase research, check for relevant existing knowledge:
+
+1. **Standards** (`docs/standards/`) — Search by tags for reusable patterns. Load matching standards as context for plan drafting.
+2. **Research** (`docs/research/`) — Check for recent research (within 30 days):
+   ```bash
+   find docs/research -name "*<topic-keywords>*" -mtime -30 2>/dev/null | head -3
+   ```
+
+If relevant knowledge found, use it as a starting point for Phase 1 (avoids re-researching). Note findings in the context file.
+
+If no matches, proceed normally to Phase 1.
+
+---
+
 ## Phase 1: Understand Codebase Context
 
-Research the codebase to understand existing patterns using locate→analyze approach.
+Research the codebase using a **locate then analyze** pattern:
 
-### 1.1 Locate (Parallel, Cheap)
+1. **Locate (parallel, cheap):** Run codebase-locator, pattern-locator, and docs-locator Tasks simultaneously to find WHERE relevant code lives. Return paths only.
+2. **Analyze (targeted):** Feed top 10-15 paths into a codebase-analyzer Task. Document existing implementations, conventions, and architectural patterns. Flag OPEN QUESTIONS.
+3. **Also check:** `CLAUDE.md` for team conventions; recent similar features for precedent.
+4. **Consolidate:** File paths with line numbers, existing patterns, team conventions, open questions.
 
-Run locators in parallel to find WHERE relevant code lives:
-
-```
-Task codebase-locator: "
-Find files related to: <feature>
-Looking for: similar features, shared utilities, configuration.
-Categorize by: implementation, tests, config, types.
-Return paths only.
-"
-
-Task pattern-locator: "
-Find patterns related to: <feature>
-Looking for: naming conventions, architectural patterns, testing patterns.
-Return file:line references only.
-"
-
-Task docs-locator: "
-Find documentation about: <feature>
-Search: README, CLAUDE.md, docs/, inline comments.
-Return paths only.
-"
-```
-
-### 1.2 Analyze (Targeted)
-
-Analyze top findings from locators:
-
-```
-Task codebase-analyzer: "
-Analyze these files (from locator results):
-- [top 10-15 paths]
-
-Document:
-1. Existing implementations of similar features
-2. File structure and naming conventions
-3. Architectural patterns used
-4. Testing patterns for similar components
-
-Return: file paths with line numbers (e.g., src/services/auth.ts:42)
-Flag OPEN QUESTIONS for ambiguities or multiple valid approaches.
-Documentarian mode - document what exists, no suggestions.
-"
-```
-
-Also check:
-- `CLAUDE.md` for team conventions
-- Recent similar features for precedent
-
-After research completes, consolidate:
-- File paths with line numbers
-- Existing patterns to follow
-- Team conventions
-- OPEN QUESTIONS about approach
+Read `references/research-dispatch.md` before proceeding — it contains the full Task dispatch templates for each locator and the analyzer.
 
 **NOTE:** External validation (framework docs, best practices) happens in plan-enrich. Here we draft based on what we know.
 
@@ -113,7 +80,7 @@ For minor gaps: note in Open Questions and proceed. For significant gaps (no sim
 Draft clear title: `feat: Add user authentication`
 
 Convert to kebab-case filename per `references/formatting-guide.md`:
-- `feat: Add User Auth` → `feat-add-user-auth.md`
+- `feat: Add User Auth` -> `feat-add-user-auth.md`
 
 ### Choose Detail Level
 
@@ -136,21 +103,7 @@ Using chosen template:
 4. Ensure acceptance criteria are testable
 5. Include Open Questions from research
 
-### Flag Claims for Verification
-
-As you draft, identify assumptions that need external validation:
-
-```markdown
-## Claims to Verify
-
-The following assumptions should be validated in plan-enrich:
-
-- [ ] "React Query supports offline persistence" - verify in docs
-- [ ] "Redis pub/sub handles 10k connections" - verify performance claims
-- [ ] "Next.js 14 has stable server actions" - verify version compatibility
-```
-
-**Don't validate these yourself** - flag them clearly for the verification phase.
+Read `references/verification-claims.md` before proceeding — it contains the template and guidelines for flagging assumptions that need external validation in plan-enrich. **Do not validate external claims yourself.**
 
 Write to: `docs/plans/<filename>.md`
 
@@ -212,41 +165,21 @@ Maximum 2 revision cycles.
 
 ---
 
-## CRITICAL: No Code Changes
-
-This skill is research and planning ONLY.
-
-**Allowed:**
-- Read source files
-- Search codebase
-- Write markdown to `docs/plans/`
-
-**Prohibited:**
-- Create/edit source code
-- Create/edit test files
-- Modify configuration
-- "Helpfully" start coding
-- Validate external claims (that's plan-enrich)
-
-**If tempted to write code, STOP and add it to the plan instead.**
-**If tempted to research framework docs, STOP and flag it for verification instead.**
-
----
-
 ## Anti-Patterns
 
-- **Skip codebase research** - Even "simple" features benefit from understanding patterns
-- **Over-engineer simple issues** - Use MINIMAL template
-- **Vague acceptance criteria** - Must be testable
-- **Omit file references** - Include paths with line numbers
-- **Skip AskUserQuestion** - User must choose next step
-- **Validate external claims** - Flag for verification, don't research yourself
-- **Assume library capabilities** - If you're not 100% sure, flag it
+- **Write code** — This skill is research and planning ONLY. If tempted to code, add it to the plan instead
+- **Validate external claims** — Flag for verification in plan-enrich, don't research yourself
+- **Skip codebase research** — Even "simple" features benefit from understanding patterns
+- **Over-engineer simple issues** — Use MINIMAL template
+- **Vague acceptance criteria** — Must be testable
+- **Omit file references** — Include paths with line numbers
+- **Skip AskUserQuestion** — User must choose next step
 
 ---
 
 ## Detailed References
 
-For templates and formatting conventions:
+- `references/research-dispatch.md` - Full Task dispatch templates for Phase 1 locate/analyze pattern
+- `references/verification-claims.md` - Template and guidelines for flagging external claims
 - `references/plan-templates.md` - MINIMAL/MORE/A LOT templates, context file template
 - `references/formatting-guide.md` - Filename conventions, content formatting

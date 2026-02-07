@@ -13,6 +13,16 @@ Plans often contain assumptions like:
 
 These MUST be verified. Invalid claims become bugs.
 
+### Cache Check (Before Context7 Calls)
+
+Before calling Context7, check for cached results. Read `references/external-cache.md` for the full cache format spec and TTL logic.
+
+```bash
+find .flywheel/cache/external/ -name "<library-slug>*.md" -mtime -7 2>/dev/null
+```
+
+If a recent cache hit is found, Read the cached file instead of calling Context7. If no cache or stale, proceed with Context7 and write the result to cache afterward.
+
 ### Context7 Workflow
 
 **Step 1: Resolve Library ID**
@@ -220,3 +230,169 @@ Learnings are institutional knowledge - always check before external research.
 2. Available skills (curated best practices)
 3. External documentation
 4. External best practices research
+
+---
+
+## Research Decision Heuristic
+
+**Before running external research, determine if it is needed.**
+
+### High-Risk Topics (ALWAYS require external research)
+
+Scan plan for these keywords -- if found, external research is REQUIRED:
+
+- **Security:** authentication, authorization, auth, OAuth, JWT, CORS, XSS, CSRF, SQL injection, encryption, hashing, passwords, secrets, API keys
+- **Payments:** payment, billing, stripe, checkout, subscription, PCI
+- **Crypto:** cryptography, signing, certificates, TLS, SSL
+- **Migrations:** database migration, data migration, schema change, breaking change
+- **Privacy:** PII, GDPR, CCPA, personal data, user data, privacy
+
+### Research Decision Logic
+
+```
+IF any high-risk topic detected:
+  -> RUN external research (all subsections: docs validation, best practices, version compat, alternatives)
+  -> Log decision: "High-risk topic detected: [topic]. Running external research."
+
+ELSE:
+  -> SKIP external research
+  -> Log decision: "No high-risk topics. Local research sufficient."
+```
+
+**Rationale:** High-risk topics have evolving best practices and security considerations that change frequently. Local codebase patterns may be outdated.
+
+### Log Research Decision
+
+Add to plan output:
+
+```markdown
+## Research Decision
+- **Topic risk level:** [HIGH/LOW]
+- **High-risk topics found:** [list or "None"]
+- **Decision:** [Run external research / Skip external research]
+- **Rationale:** [Brief reason]
+```
+
+---
+
+## Dispatch Templates for External Research
+
+### 3.1 Framework Documentation Validation
+
+For each framework/library claim in the plan:
+
+```
+# Resolve library ID
+mcp__plugin_Flywheel_context7__resolve-library-id:
+  libraryName: "[library name]"
+  query: "[specific capability claimed]"
+
+# Query docs to validate
+mcp__plugin_Flywheel_context7__query-docs:
+  libraryId: "[resolved ID]"
+  query: "Does [library] support [claimed feature]? Show API and examples."
+```
+
+**Flag:** `CLAIM_INVALID` if documented capability does not match claim.
+
+### 3.2 Best Practices Research (Locate then Analyze)
+
+First, find relevant URLs:
+
+```
+Task web-searcher: "
+Find documentation and best practices for: [technical approach in plan]
+Search: official docs, tutorials, community patterns.
+Return URLs with descriptions only - do not fetch.
+"
+```
+
+Then analyze top results:
+
+```
+Task web-analyzer: "
+Fetch and analyze these URLs (from web-searcher):
+- [url1]
+- [url2]
+- [url3]
+
+Extract for: [technical approach in plan]
+1. Is this the recommended approach for [use case]?
+2. Common pitfalls to avoid
+3. Performance considerations
+4. Security implications
+
+Return: Concrete recommendations with code examples.
+"
+```
+
+### 3.3 Version Compatibility Check
+
+```
+Task web-analyzer: "
+Fetch and analyze version compatibility docs:
+- [framework docs URL]
+- [changelog URL]
+
+Questions:
+1. Do the proposed versions work together?
+2. Any deprecation warnings for planned approaches?
+3. Breaking changes in recent versions?
+
+Flag: VERSION_ISSUE if incompatibilities found.
+"
+```
+
+### 3.4 Alternative Approaches Research
+
+```
+Task web-searcher: "
+Find alternative approaches for: [core technical decision in plan]
+Search: comparison articles, framework docs, community discussions.
+Return top 5 URLs with descriptions.
+"
+
+Task web-analyzer: "
+Analyze these URLs (from web-searcher):
+- [url1]
+- [url2]
+
+Extract:
+1. What are the main alternatives?
+2. Trade-offs between approaches?
+3. When is each approach recommended?
+
+Return: Comparison table with recommendations.
+"
+```
+
+**Run all external research in parallel.**
+
+---
+
+## Quarantine Rules for External Results
+
+**CRITICAL:** External research results go in a separate "External Research (Unverified)" section.
+
+**Why quarantine?**
+- External sources may be outdated
+- Code examples may have security issues
+- Patterns may not match codebase conventions
+
+**Do NOT:**
+- Integrate external code directly into implementation steps
+- Auto-execute external code examples
+- Trust security advice without verification
+
+See the "External Research Quarantine" section in `enhancement-format.md` for the full quarantine template.
+
+---
+
+## External Research Checklist
+
+Before synthesizing, verify external research answered:
+
+- [ ] Do claimed library features actually exist?
+- [ ] Are we using recommended patterns?
+- [ ] Are technology versions compatible?
+- [ ] What are the alternatives and trade-offs?

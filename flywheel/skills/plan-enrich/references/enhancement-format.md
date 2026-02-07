@@ -308,3 +308,104 @@ During plan-review or implementation, external content can be promoted:
 **Validated by:** [human / test / code review]
 **Integrated into:** [section name]
 ```
+
+---
+
+## Phase 5: Synthesize Findings (Detailed)
+
+Wait for all research agents. Then categorize, generate open questions, and deduplicate.
+
+### Finding Categorization
+
+**Blockers (must resolve before implementation):**
+- `CLAIM_INVALID` - Plan relies on non-existent features
+- `VERSION_ISSUE` - Incompatible technology versions
+
+**Warnings (should address):**
+- `DRY_VIOLATION` - Code duplication identified
+- `PATTERN_CONFLICT` - Deviates from codebase patterns
+- `INTEGRATION_RISK` - May break existing functionality
+
+**Enhancements (incorporate into plan):**
+- Best practices from external research
+- Code examples from documentation
+- Security/performance recommendations
+
+### Generate Open Questions
+
+Convert conflicts and decisions into questions:
+
+| Question | Options | Source |
+|----------|---------|--------|
+| [Decision point] | A: [option], B: [option] | [agent] |
+
+### Deduplication Rules
+
+- Same finding from multiple sources -> Higher confidence, note source count
+- Conflicting findings -> Convert to Open Question
+
+---
+
+## Phase 6: Per-Section Enhancement Format
+
+For each section in the original plan, add research insights using this template:
+
+```markdown
+## [Original Section - UNCHANGED]
+
+### Research Validation
+
+**Claims Validated:**
+- [Claim]: Confirmed via [source]
+
+**Issues Found:**
+- [BLOCKER/WARNING]: [Description] - [Recommendation]
+
+### Best Practices Added
+
+- [Practice]: [Why and how] (Source: [agent])
+
+### Code Examples
+
+```[language]
+// [path/to/file]
+[concrete implementation example]
+```
+
+### References
+
+- [Documentation URL]
+```
+
+**CRITICAL:** Never modify original content. Only add research sections.
+
+---
+
+## Phase 7: Write and Present (Detailed)
+
+### Write Enhanced Plan
+
+```bash
+cp [plan_path] [plan_path].backup
+```
+
+Write enhanced plan back to SAME file with:
+1. Enhancement Summary at top (findings, open questions, coverage)
+2. Original sections preserved
+3. Research Validation subsections added
+
+### Update Context File
+
+Append to `[plan_path].context.md`:
+- Research coverage statistics
+- Key findings summary
+- Open questions generated
+
+### Present Options
+
+**AskUserQuestion:** "Verification data added to plan. What next?"
+
+| Option | Action |
+|--------|--------|
+| Run review (Recommended) | Invoke `skill: plan-review` |
+| Done for now | Display path and exit |

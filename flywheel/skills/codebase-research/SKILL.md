@@ -15,7 +15,7 @@ allowed-tools:
 
 # Codebase Research Skill
 
-Conduct comprehensive research using a two-phase locate→analyze approach that reduces context usage by 40-60%.
+Conduct comprehensive research using a two-phase locate-then-analyze approach that reduces context usage by 40-60%.
 
 ## Philosophy: Documentarian Mode
 
@@ -32,253 +32,78 @@ Research question via `$ARGUMENTS`. If empty, ask user.
 
 ---
 
+## Phase 0: Check for Existing Research
+
+Before starting new research, check if recent research already covers this topic:
+
+```bash
+find docs/research -name "*<topic-slug>*" -mtime -14 2>/dev/null | head -3
+```
+
+If matches found, read the YAML frontmatter (`topic`, `tags`) to assess relevance. If a strong match exists:
+
+**AskUserQuestion:** "Found recent research: `[filename]` ([N] days old). Reuse, refresh, or start new?"
+- **Reuse (Recommended)** — Read existing doc, skip to Phase 4 (present)
+- **Refresh** — Use existing doc as starting point, re-run locate/analyze to update
+- **Start new** — Proceed normally
+
+If no matches or no `docs/research/` directory, proceed to Phase 1.
+
+---
+
 ## Phase 1: Locate (Parallel, Cheap)
 
-Spawn locator agents in parallel using haiku model:
+Spawn locator agents in parallel (haiku model) to find files, patterns, and docs related to the topic. Each returns paths/references only — no file contents. Optionally spawn a web-searcher for external library topics.
 
-```
-Task codebase-locator: "
-Find files related to: <topic>
-Return paths only - no file contents.
-Categorize by: implementation, tests, config, types, docs.
-Max 30 paths.
-"
+Locators: `codebase-locator`, `pattern-locator`, `docs-locator`, `web-searcher` (optional).
 
-Task pattern-locator: "
-Find patterns related to: <topic>
-Return file:line references only.
-Group by pattern type.
-Max 30 locations.
-"
+Read `references/locate-analyze-dispatch.md` before proceeding — it contains the full dispatch templates with parameters and constraints for all locators.
 
-Task docs-locator: "
-Find documentation about: <topic>
-Search: README, CLAUDE.md, docs/, inline comments.
-Return paths only.
-Max 20 paths.
-"
-```
-
-**Optional** (if user requests external research or topic is about external library):
-
-```
-Task web-searcher: "
-Find documentation/articles about: <topic>
-Return URLs with descriptions only - do not fetch.
-Categorize: official docs, tutorials, community.
-Max 10 URLs per category.
-"
-```
-
-**IMPORTANT**: Run all locators in parallel (single message, multiple Task calls).
-
-**Wait for all locators to complete.**
+**IMPORTANT**: Run all locators in parallel (single message, multiple Task calls). Wait for all to complete.
 
 ---
 
 ## Phase 1b: Synthesize Locator Results
 
-Combine locator outputs:
+Deduplicate paths across locators, rank by relevance (multi-locator hits rank higher), and select the top findings for deep analysis. Skip analyzer phase if total findings < 10.
 
-1. **Deduplicate paths** - Same file from multiple locators = 1 entry
-2. **Rank by relevance**:
-   - Mentioned by multiple locators = higher relevance
-   - Closer path match to topic = higher relevance
-   - Implementation files > test files (usually)
-3. **Select for deep analysis**:
-   - Top 15 file paths for codebase-analyzer
-   - Top 10 pattern locations for pattern-analyzer
-   - Top 5 documentation paths for docs-analyzer
-   - Top 5 URLs for web-analyzer (if applicable)
-
-If total findings < 10, may skip analyzer phase for simple topics.
+Read `references/locate-analyze-dispatch.md` before proceeding — the "Ranking & Selection" section specifies exact selection counts per analyzer.
 
 ---
 
 ## Phase 2: Analyze (Targeted, Expensive)
 
-Spawn analyzer agents on TOP FINDINGS ONLY using sonnet model:
+Spawn analyzer agents (sonnet model) on TOP FINDINGS ONLY from Phase 1b. Each analyzer reads the actual files/URLs and extracts structured findings in documentarian mode.
 
-```
-Task codebase-analyzer: "
-Analyze these files (from locator results):
-- path/to/file1.ts
-- path/to/file2.ts
-- path/to/file3.ts
-[... up to 15 files]
+Analyzers: `codebase-analyzer`, `pattern-analyzer`, `docs-analyzer`, `web-analyzer` (optional).
 
-Research topic: <topic>
+Read `references/locate-analyze-dispatch.md` before proceeding — it contains the full dispatch templates with parameters and constraints for all analyzers.
 
-Document: what exists, how it works, how components interact.
-DO NOT suggest improvements - documentarian mode only.
-Return file:line references for all findings.
-"
-```
-
-```
-Task pattern-analyzer: "
-Analyze these patterns (from locator results):
-- pattern at file.ts:42
-- pattern at other.ts:89
-[... up to 10 locations]
-
-Research topic: <topic>
-
-Extract code examples with context.
-DO NOT suggest alternative patterns - document what exists.
-"
-```
-
-```
-Task docs-analyzer: "
-Analyze this documentation (from locator results):
-- docs/feature.md
-- README.md section
-[... up to 5 docs]
-
-Research topic: <topic>
-
-Extract: decisions, constraints, setup instructions, warnings.
-Filter aggressively - skip tangential mentions.
-"
-```
-
-**Optional** (if web-searcher was used):
-
-```
-Task web-analyzer: "
-Fetch and analyze these URLs (from web-searcher):
-- https://docs.example.com/...
-- https://github.com/...
-[... up to 5 URLs]
-
-Research topic: <topic>
-
-Extract: code examples, configuration, version constraints, warnings.
-"
-```
-
-**IMPORTANT**: Run analyzers in parallel where possible.
-
-**Wait for all analyzers to complete.**
+**IMPORTANT**: Run analyzers in parallel where possible. Wait for all to complete.
 
 ---
 
 ## Phase 3: Synthesize & Persist
 
-### Create Research Document
+Write findings to `docs/research/YYYY-MM-DD-<topic-slug>.md`. Optionally git-commit the research document.
 
-Determine output path:
-- If `docs/research/` exists, use it
-- Otherwise, create `docs/research/` directory
-
-Write to: `docs/research/YYYY-MM-DD-<topic-slug>.md`
-
-```markdown
----
-date: [ISO timestamp]
-topic: "[Research Question]"
-status: complete
-git_commit: [current HEAD hash]
-git_branch: [current branch]
-tags: [research, <relevant-tags>]
----
-
-# Research: [Topic]
-
-## Research Question
-
-[Original user query]
-
-## Summary
-
-[High-level findings - 3-5 sentences synthesizing all agent outputs]
-
-## Detailed Findings
-
-### [Component/Area 1]
-
-[Findings with file:line references from codebase-analyzer]
-
-### [Component/Area 2]
-
-[Findings from pattern-analyzer]
-
-### [Additional Areas...]
-
-## Code References
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `path/to/file.ts` | 42-67 | [what it does] |
-| `path/to/other.ts` | 15-30 | [what it does] |
-
-## Patterns Identified
-
-- **[Pattern Name]**: `file.ts:42-67` - [description]
-- **[Pattern Name]**: `other.ts:89-120` - [description]
-
-## External References (if applicable)
-
-- [Source Title](URL) - [key takeaway]
-
-## Open Questions
-
-- [Question needing further investigation]
-- [Uncertainty about scope or behavior]
-```
-
-### Git Commit (Optional)
-
-If significant research was conducted:
-
-```bash
-git add docs/research/
-git commit -m "research: [topic]
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
+Read `references/research-document-template.md` before proceeding — it contains the full output document format with YAML frontmatter, all required sections, and the git commit template.
 
 ---
 
 ## Phase 4: Present & Offer Next Steps
 
-Display summary to user (not full document).
+Display a summary to the user (not the full document). Offer three options: create a plan from the research, continue researching, or exit.
 
-**AskUserQuestion:**
-
-```
-Question: "Research complete and saved to docs/research/[filename]. What next?"
-Options:
-1. Create plan from research (Recommended) - Invoke plan-creation with research path
-2. Continue researching - Ask follow-up question, append to document
-3. Done for now - Exit
-```
-
-| Option | Action |
-|--------|--------|
-| Create plan | `Skill: plan-creation` with research document path |
-| Continue | Ask follow-up, re-run locate→analyze, append to document |
-| Done | Exit skill |
+Read `references/research-document-template.md` before proceeding — the "Present & Offer Next Steps" section contains the AskUserQuestion format and option-action mapping.
 
 ---
 
 ## Integration: Called by Other Skills
 
-Other skills can invoke or check for research:
+Other skills can check for recent research before starting work, and invoke this skill if none exists.
 
-```bash
-# Check for recent research on topic
-RESEARCH=$(find docs/research -name "*<feature>*" -mtime -7 2>/dev/null | head -1)
-
-if [ -n "$RESEARCH" ]; then
-  # Use existing research
-  Read "$RESEARCH"
-else
-  # Offer to run research
-  AskUserQuestion: "No recent research found. Run research first?"
-fi
-```
+Read `references/research-document-template.md` before proceeding — the "Integration" section contains the bash lookup pattern for finding existing research.
 
 ---
 
@@ -308,9 +133,9 @@ Visual/multimodal content doesn't persist well in context. Capture it as text be
 
 ## Anti-Patterns
 
-- **Skip locator phase** - Don't go straight to analyzers
-- **Analyze everything** - Only analyze top findings from locators
-- **Make suggestions** - This is documentation, not consultation
-- **Return file contents** - Paths and references only
-- **Forget to persist** - Always write research document
-- **Hold in context** - Write to file, reference by path
+- **Skip locator phase** — Don't go straight to analyzers
+- **Analyze everything** — Only analyze top findings from locators
+- **Make suggestions** — This is documentation, not consultation
+- **Return file contents** — Paths and references only
+- **Forget to persist** — Always write research document
+- **Hold in context** — Write to file, reference by path

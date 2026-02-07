@@ -117,6 +117,36 @@ Quick self-check: Problem understood? Approach fits patterns? No obvious duplica
 
 ---
 
+## Input Context Discipline
+
+When dispatching to subagents, minimize input tokens:
+
+- **Agents WITH Read tool** (analyzers, reviewers): Pass file paths, not content. The agent can Read files itself.
+- **Agents WITHOUT Read tool** (locators): Pass content inline — they cannot read files.
+- **Plan excerpts in dispatch**: Paste only the current phase, not the entire plan.
+- **Keep dispatched context under 100 lines** where possible.
+
+**Exception:** `work-implementation` explicitly passes plan content (not paths) to subagents — this is correct because subagents start with fresh context and need the plan text.
+
+---
+
+## Token Efficiency: Input + Output
+
+Flywheel controls token usage from both sides:
+
+**Output controls** (existing):
+- Word limits per agent tier: Locators 500, Analyzers 750, Reviewers 1000
+
+**Input controls** (new):
+- Skill core SKILL.md files kept under 200 lines; detail in `references/`
+- Pass paths (not content) for Read-capable agents
+- Phase-only excerpts in dispatch, not full plans
+- Lazy-load references via "Read `references/X.md` before proceeding" directives
+
+**Target**: 40-60% context utilization with both input and output contributing to efficiency.
+
+---
+
 ## 3-Strike Error Protocol
 
 When a subagent or operation fails:

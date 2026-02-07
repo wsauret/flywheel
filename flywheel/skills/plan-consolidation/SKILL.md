@@ -58,38 +58,9 @@ Using patterns from `references/extraction-patterns.md`:
 
 **The user must weigh in before we can create a work-ready plan.**
 
-### Scan for Questions
+Read `references/question-resolution.md` before proceeding -- it contains the scan patterns, question presentation format, and response handling procedure.
 
-Search for:
-- Structured Open Questions sections/tables
-- `OPEN QUESTION:` markers
-- TODO/TBD markers
-- Option A vs Option B language
-- Reviewer conflicts
-
-### Resolve Each Question
-
-**One question at a time:**
-
-```
-Question: "[Topic]: [The question]"
-
-Context: [Brief explanation]
-
-My recommendation: [Preferred option and why]
-
-Options:
-1. [Option A] (Recommended) - [Brief description]
-2. [Option B] - [Brief description]
-3. "You pick what's best" - Let me decide
-```
-
-**Handle responses:**
-- User picks option → Record decision
-- User picks "You decide" → Apply recommendation
-- User provides custom answer → Record their direction
-
-Record all decisions for inclusion in consolidated plan.
+Scan for all open questions, TODOs, TBDs, option-vs-option language, and reviewer conflicts. Present each question **one at a time** with context, a recommendation, and options (including "You pick what's best"). Record all decisions for inclusion in the consolidated plan.
 
 ---
 
@@ -97,23 +68,13 @@ Record all decisions for inclusion in consolidated plan.
 
 ### Principles
 
-1. **Deduplicate** - Same insight from multiple sources → one entry
+1. **Deduplicate** - Same insight from multiple sources -> one entry
 2. **Prioritize** - P1 before P2, high-impact first
 3. **Integrate** - Insights IN checklist items, not floating
 4. **Preserve attribution** - Track where recommendations came from
 5. **Make executable** - Every item is a concrete action
 
-### Handle P1 Findings
-
-P1s are CRITICAL - must be either:
-- Resolved with specific action in checklist, OR
-- Flagged as BLOCKING (implementation cannot proceed)
-
-### Handle Conflicts
-
-- If resolution provided in review: Apply it
-- If both sides have merit: Present with recommendation
-- If ambiguous: Flag for user decision
+P1 findings are CRITICAL: resolve with a specific checklist action, or flag as BLOCKING. For conflicts, apply the review resolution if provided; otherwise present with recommendation or flag for user decision.
 
 ---
 
@@ -151,35 +112,11 @@ Append consolidation metadata using template from `references/consolidated-plan-
 
 ---
 
-## Phase 7: Present Results
+## Phase 7: Present Results and Next Steps
 
-```
-Plan Consolidated
+Read `references/results-presentation.md` before proceeding -- it contains the summary output template and post-consolidation option menu.
 
-Plan: [plan_path]
-Context: [context_path]
-
-Summary:
-- Phases: [count]
-- Checklist items: [count]
-- Research insights integrated: [count]
-- Review findings addressed: [count]
-
-Status:
-- P1 findings: [count] ([status])
-- Ready for: [/fly:work OR "Blocked - see Critical Items"]
-```
-
----
-
-## Phase 8: Post-Consolidation Options
-
-**AskUserQuestion:** "Plan consolidated and ready. What next?"
-
-| Option | Action |
-|--------|--------|
-| Start /fly:work (Recommended) | Invoke `skill: work-implementation` |
-| Done for now | Display path and exit |
+Present a summary of phases, checklist items, insights integrated, findings addressed, and P1 status. Then ask the user whether to start `/fly:work` or stop here.
 
 ---
 
@@ -199,7 +136,7 @@ Status:
 - **Lose raw data** - Preserve in Appendix
 - **Floating insights** - Integrate into checklist items
 - **Ignore P1s** - Must resolve or block
-- **Vague checklists** - "Implement auth" → "Step 2.1: Create JWT in `src/auth/tokens.ts`"
+- **Vague checklists** - "Implement auth" -> "Step 2.1: Create JWT in `src/auth/tokens.ts`"
 
 ---
 
@@ -220,3 +157,6 @@ Before finalizing:
 
 - `references/consolidated-plan-template.md` - Output structure, context file update template
 - `references/extraction-patterns.md` - How to extract and categorize content
+- `references/question-resolution.md` - Question scan patterns, presentation format, response handling
+- `references/results-presentation.md` - Summary output template, post-consolidation options
+

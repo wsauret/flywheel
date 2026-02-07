@@ -29,86 +29,11 @@ The review target is provided via `$ARGUMENTS`. Can be:
 
 **Run this phase FIRST when reviewing work from a `/fly:work` execution.**
 
-### Check for Associated Plan
+Check for `docs/plans/*.state.md`. If a state file exists, this was planned work -- run a compliance check comparing implementation against the baseline plan. If no state file exists, skip to Phase 1.5.
 
-```bash
-# Look for state file that indicates this was planned work
-ls docs/plans/*.state.md 2>/dev/null | head -5
-```
+Read `references/plan-compliance.md` before proceeding -- it contains the full compliance report template, baseline plan logic, and the four compliance checks to run.
 
-If state file exists, proceed with compliance check. Otherwise, skip to Phase 1.5.
-
-### Load Plan and State
-
-1. Read the plan file (or `.baseline.md` if it exists - see below)
-2. Read the state file
-3. Extract:
-   - All phases from plan
-   - Progress markers from state file
-   - Acceptance criteria from plan
-   - Key decisions from state file
-
-### Baseline Plan Snapshot
-
-**When work-implementation starts**, it should copy plan to `[plan].baseline.md`.
-
-The compliance check compares against the **baseline** (what was committed to) not the current plan (which may have evolved). If no baseline exists, use the current plan.
-
-### Generate Compliance Report
-
-```markdown
-## Plan Compliance Check
-
-### Plan: [plan name]
-
-### Implementation Status
-
-| Phase | Plan | State | Status |
-|-------|------|-------|--------|
-| Phase 1 | [description] | [x] | ✓ Implemented |
-| Phase 2 | [description] | [x] | ✓ Implemented |
-| Phase 3 | [description] | [ ] | ⚠️ Not started |
-
-### Acceptance Criteria
-
-#### Automated Verification (from plan)
-- [x] Tests pass: [evidence from state]
-- [x] Linting passes: [evidence]
-
-#### Manual Verification (from plan)
-- [~] Feature works in UI: [status from state]
-- [ ] Performance acceptable: [status]
-
-### Deviations from Plan
-
-| Item | Planned | Actual | Type |
-|------|---------|--------|------|
-| [Item] | [Expected] | [What happened] | Intentional/Accidental |
-
-### Key Decisions Made (from state)
-
-- [Decision 1]
-- [Decision 2]
-
-### Compliance Summary
-
-**Status:** ✓ Compliant / ⚠️ Partial / ✗ Non-compliant
-
-[Brief assessment of whether implementation matches plan spec]
-```
-
-### Compliance Checks
-
-1. **Phase Completion:** Are all phases in plan marked complete in state?
-2. **Acceptance Criteria:** Are all criteria addressed? (Use state file evidence)
-3. **Scope Adherence:** Did implementation stay within "What We're NOT Doing"?
-4. **Deviations:** Any intentional deviations documented? Any accidental ones?
-
-### Output
-
-Include compliance report as **first section** of the review output.
-
-If compliance check reveals significant deviations (P1), flag them prominently.
+Include the compliance report as the **first section** of review output. Flag significant deviations (P1) prominently.
 
 ---
 
@@ -117,21 +42,16 @@ If compliance check reveals significant deviations (P1), flag them prominently.
 ### Determine Review Target
 
 ```bash
-# Check current branch
 git branch --show-current
-
 # If PR number, fetch metadata
 gh pr view <PR_NUM> --json title,body,files
 ```
 
 ### Setup Environment
 
-**If already on target branch:** Proceed with analysis
+**If already on target branch:** Proceed with analysis.
 
-**If different branch:** Offer worktree option
-```
-skill: git-worktree
-```
+**If different branch:** Offer worktree option via `skill: git-worktree`.
 
 Ensure code is ready for analysis before proceeding.
 
@@ -155,10 +75,8 @@ Task code-simplicity-reviewer(PR content)
 
 ### Conditional Agents
 
-**If PR contains database migrations:**
+**If PR contains database migrations** (files matching `**/migrations/**`, `alembic/`, `prisma/migrations/`):
 - Task data-integrity-reviewer(PR content)
-
-Check files matching: `**/migrations/**`, `alembic/`, `prisma/migrations/`
 
 ---
 
@@ -172,7 +90,7 @@ Check files matching: `**/migrations/**`, `alembic/`, `prisma/migrations/`
 
 ### Assign Severity
 
-- **P1 (Critical)**: Security vulnerabilities, data corruption risks, breaking changes - BLOCKS MERGE
+- **P1 (Critical)**: Security vulnerabilities, data corruption risks, breaking changes -- BLOCKS MERGE
 - **P2 (Important)**: Performance issues, architectural concerns, reliability issues
 - **P3 (Nice-to-have)**: Minor improvements, cleanup, documentation
 
@@ -184,118 +102,43 @@ Tag each finding: Small / Medium / Large
 
 ## Phase 4: Track Findings
 
-Use the built-in task system for structured tracking:
+Create a todo file for each finding using the built-in task system.
 
-```
-TaskCreate for each finding with:
-- subject: Brief description
-- description: Full details including file:line references
-```
+Read `references/todo-format.md` before proceeding -- it contains the file naming convention, required YAML frontmatter structure, and all required sections (problem statement, findings, proposed solutions, acceptance criteria, work log).
 
-### Task Creation
-
-For each finding, create a task:
-
-**Naming:** `{issue_id}-pending-{priority}-{description}.md`
-
-**Examples:**
-```
-001-pending-p1-path-traversal-vulnerability.md
-002-pending-p2-concurrency-limit.md
-003-pending-p3-unused-parameter.md
-```
-
-### Todo Structure
-
-Each todo must include:
-- **YAML frontmatter**: status, priority, issue_id, tags, dependencies
-- **Problem Statement**: What's broken/missing, why it matters
-- **Findings**: Discoveries with evidence/location
-- **Proposed Solutions**: 2-3 options with pros/cons/effort
-- **Acceptance Criteria**: Testable checklist items
-- **Work Log**: Initial entry with review date
-
-**Always tag:** `code-review` plus relevant: `security`, `performance`, `architecture`, `quality`
+Always tag findings with `code-review` plus relevant tags: `security`, `performance`, `architecture`, `quality`.
 
 ---
 
 ## Phase 5: Summary Report
 
-```markdown
-## ✅ Code Review Complete
+Present a summary report showing finding counts by severity, created todo files grouped by priority, and next steps.
 
-**Review Target:** PR #XXX - [Title]
-**Branch:** [branch-name]
-
-### Findings Summary:
-- **Total:** [X]
-- **🔴 CRITICAL (P1):** [count] - BLOCKS MERGE
-- **🟡 IMPORTANT (P2):** [count] - Should Fix
-- **🔵 NICE-TO-HAVE (P3):** [count] - Enhancements
-
-### Created Todo Files:
-
-**P1 - Critical:**
-- `001-pending-p1-{finding}.md`
-
-**P2 - Important:**
-- `002-pending-p2-{finding}.md`
-
-**P3 - Nice-to-Have:**
-- `003-pending-p3-{finding}.md`
-
-### Next Steps:
-1. Address P1 findings before merge
-2. Review todo files in `todos/` directory
-3. Update todo status as items are resolved
-```
+Read `references/summary-report-template.md` before proceeding -- it contains the full report template with all required sections.
 
 ---
 
 ## Key Principles
 
-### P1 Findings Block Merge
-
-Any **🔴 P1 (CRITICAL)** findings must be addressed before merging. Present these prominently.
-
-### Run Agents in Parallel
-
-Speed matters. Launch all applicable agents simultaneously.
-
-### Create Todos Immediately
-
-Don't present findings one-by-one for approval. Create all todo files, then summarize.
-
-### Use Built-in Tasks
-
-The built-in task system ensures findings are tracked and actionable.
+- **P1 findings block merge.** Present critical findings prominently.
+- **Run agents in parallel.** Launch all applicable agents simultaneously.
+- **Create todos immediately.** Don't present findings one-by-one for approval. Create all todo files, then summarize.
+- **Use built-in tasks.** Ensures findings are tracked and actionable.
 
 ---
 
 ## Error Handling
 
-### Agent Failures
-- Log failure with agent name and error
-- Continue with remaining agents
-- Report failures in summary
-- Minimum 50% agent success to produce useful output
-
-### Git/GitHub Failures
-- If PR not found, ask user to verify PR number
-- If branch not accessible, suggest worktree or manual checkout
-- If gh CLI not authenticated, provide setup instructions
-
-### Todo File Creation Failures
-- If todos directory doesn't exist, create it
-- If file write fails, report error and continue with others
-- Save partial results rather than losing all findings
+- **Agent failures:** Log failure, continue with remaining agents, report in summary. Minimum 50% agent success required.
+- **Git/GitHub failures:** If PR not found, verify number. If branch inaccessible, suggest worktree. If gh CLI not authenticated, provide setup instructions.
+- **Todo file failures:** Create `todos/` directory if missing. If write fails, report and continue. Save partial results rather than losing all findings.
 
 ---
 
 ## Anti-Patterns
 
 - Don't present findings one-by-one asking for approval
-- Don't skip agents to save time - parallel execution is fast
+- Don't skip agents to save time -- parallel execution is fast
 - Don't create vague findings without specific file:line references
 - Don't mark P1 findings as P2/P3 to avoid blocking merge
 - Don't forget to run conditional agents when criteria match
