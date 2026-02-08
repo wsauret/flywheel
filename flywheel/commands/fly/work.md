@@ -6,13 +6,15 @@ argument-hint: "[plan file path] (optional - will resume active session if omitt
 
 # Execute Work Plan
 
-<input_document> #$ARGUMENTS </input_document>
+**MANDATORY FIRST ACTION — You MUST use the Skill tool to invoke the skill below BEFORE doing anything else. Do NOT read files, search code, or respond to the user first.**
 
 **Invoke the work-implementation skill:**
 
 ```
 skill: work-implementation
 ```
+
+<input_document> #$ARGUMENTS </input_document>
 
 ## Session Recovery
 

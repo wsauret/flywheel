@@ -6,13 +6,15 @@ argument-hint: "[PR number, GitHub URL, branch name, or empty for current branch
 
 # Code Review
 
-<review_target> #$ARGUMENTS </review_target>
+**MANDATORY FIRST ACTION — You MUST use the Skill tool to invoke the skill below BEFORE doing anything else. Do NOT read files, search code, or respond to the user first.**
 
 **Invoke the work-review skill:**
 
 ```
 skill: work-review
 ```
+
+<review_target> #$ARGUMENTS </review_target>
 
 The work-review skill handles:
 - Review target detection (PR, URL, branch, current)

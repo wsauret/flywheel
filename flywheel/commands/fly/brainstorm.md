@@ -6,15 +6,17 @@ argument-hint: "[feature idea or problem to explore]"
 
 # Brainstorm Ideas Into Designs
 
-**Note: The current year is 2026.**
-
-<feature_idea> #$ARGUMENTS </feature_idea>
+**MANDATORY FIRST ACTION — You MUST use the Skill tool to invoke the skill below BEFORE doing anything else. Do NOT read files, search code, or respond to the user first.**
 
 **Invoke the brainstorm skill:**
 
 ```
 skill: brainstorm
 ```
+
+**Note: The current year is 2026.**
+
+<feature_idea> #$ARGUMENTS </feature_idea>
 
 The brainstorm skill handles:
 - Silent research (agents run but don't dump output)

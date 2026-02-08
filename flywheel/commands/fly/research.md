@@ -6,7 +6,7 @@ argument-hint: "[research question or topic]"
 
 # Codebase Research Command
 
-<input> #$ARGUMENTS </input>
+**MANDATORY FIRST ACTION — You MUST use the Skill tool to invoke the skill below BEFORE doing anything else. Do NOT read files, search code, or respond to the user first.**
 
 **Invoke the codebase-research skill:**
 
@@ -14,6 +14,8 @@ argument-hint: "[research question or topic]"
 skill: codebase-research
 arguments: $ARGUMENTS
 ```
+
+<input> #$ARGUMENTS </input>
 
 ## Quick Reference
 
