@@ -6,19 +6,28 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 
 # Full Planning Workflow
 
-**MANDATORY FIRST ACTION — You MUST follow the orchestration instructions below, starting with Input Detection. Do NOT read files, search code, or respond to the user first.**
+**MANDATORY FIRST ACTION — You MUST use the Skill tool to invoke the correct skill below BEFORE doing anything else. Do NOT read files, search code, or respond to the user first.**
 
-**Note: The current year is 2026.**
+**Determine which skill to invoke first based on the input:**
+
+- If the input is a path to an **existing `.md` file in `plans/`** (NOT ending in `-design.md`): invoke `plan-enrich` (skip creation)
+- **Otherwise** (feature description OR `-design.md` path): invoke `plan-creation`
+
+**Invoke the first skill NOW using the Skill tool:**
+
+```
+skill: plan-creation
+```
+
+OR if the input is an existing plan file in `plans/`:
+
+```
+skill: plan-enrich
+```
 
 <input> #$ARGUMENTS </input>
 
-This orchestrator coordinates four independent skills in sequence:
-1. **plan-creation** - Research and create the initial plan
-2. **plan-enrich** - Verify assumptions AND add research insights
-3. **plan-review** - Run all reviewer agents in parallel
-4. **plan-consolidation** - Restructure into actionable checklist for `/fly:work`
-
-Each skill can also be invoked independently. All outputs are materialized to the same plan file.
+**Note: The current year is 2026.**
 
 ---
 
@@ -28,84 +37,39 @@ Each skill can also be invoked independently. All outputs are materialized to th
 
 This workflow is for research and planning only. Implementation happens in `/fly:work`.
 
-- Research the codebase (read files, search patterns)
-- Query documentation and best practices
-- Write and edit markdown plan files in `plans/`
-- Do NOT create or edit source code, tests, or configs
-
 ---
 
-## Input Detection
+## After the First Skill Completes
 
-**Check the input type to determine which phases to run:**
+This orchestrator runs four skills in sequence. After each skill completes, immediately invoke the next one using the Skill tool. **Do NOT stop between phases** — select "continue" options when presented and invoke the next skill.
 
-```
-If input ends with "-design.md" AND file exists:
-  -> DESIGN MODE
-  -> Run: plan-creation (uses design as input) -> plan-enrich -> plan-review -> plan-consolidation
+### Full sequence:
 
-If input is ".md" file in plans/ AND file exists:
-  -> REVIEW MODE
-  -> Skip creation, use existing plan
-  -> Run: plan-enrich -> plan-review -> plan-consolidation
+1. **plan-creation** → produces `PLAN_PATH` and `CONTEXT_PATH`
+2. **plan-enrich** → invoke with `PLAN_PATH` from step 1
+3. **plan-review** → invoke with `PLAN_PATH`
+4. **plan-consolidation** → invoke with `PLAN_PATH`
 
-Otherwise:
-  -> FULL MODE
-  -> Run: plan-creation -> plan-enrich -> plan-review -> plan-consolidation
-```
+If you started with `plan-enrich` (review mode), continue with steps 3-4.
 
-### Determine Mode
+### Invoking each subsequent skill:
 
-1. **Check if input ends with `-design.md`:**
-   ```bash
-   test -f "[input]" && echo "Design doc exists"
-   ```
-   If exists: Set `MODE=design`, `DESIGN_PATH=[input]`
-
-2. **Check if input is existing plan in `plans/`:**
-   ```bash
-   test -f "[input]" && [[ "[input]" == plans/*.md ]] && echo "Existing plan"
-   ```
-   If exists: Set `MODE=review`, `PLAN_PATH=[input]`
-
-3. **Otherwise:** Set `MODE=full`, `FEATURE_DESCRIPTION=[input]`
-
----
-
-## Phase Sequence
-
-### Phase 1: Create Plan (skip if MODE=review)
-
-```
-skill: plan-creation
-arguments: [input - feature description or design doc path]
-```
-
-Capture `PLAN_PATH` and `CONTEXT_PATH` from output. If post-creation options appear, select "Run verification".
-
-### Phase 2: Enrich Plan
-
+After plan-creation completes, invoke:
 ```
 skill: plan-enrich
-arguments: [PLAN_PATH]
+args: [PLAN_PATH from creation output]
 ```
 
-If post-enrichment options appear, select "Run review".
-
-### Phase 3: Review Plan
-
+After plan-enrich completes, invoke:
 ```
 skill: plan-review
-arguments: [PLAN_PATH]
+args: [PLAN_PATH]
 ```
 
-If post-review options appear, select "Run consolidation".
-
-### Phase 4: Consolidate
-
+After plan-review completes, invoke:
 ```
 skill: plan-consolidation
-arguments: [PLAN_PATH]
+args: [PLAN_PATH]
 ```
 
 ### Phase 5: Present Results
@@ -121,15 +85,13 @@ Display summary: plan path, context path, phases completed, findings count, and 
 - **plan-review fails**: Report error, still run consolidation on what we have
 - **plan-consolidation fails**: Report error, present un-consolidated plan (still usable)
 
-Each phase writes to disk before completing. Re-running `/fly:plan` with an existing plan path skips creation.
-
 ---
 
 ## Examples
 
 - `/fly:plan Add user authentication with OAuth2` — Full mode (all 4 phases)
-- `/fly:plan plans/oauth2-design.md` — Design mode (uses design doc as input)
-- `/fly:plan plans/feat-user-auth.md` — Review mode (skips creation)
+- `/fly:plan plans/oauth2-design.md` — Design mode (creation uses design doc as input)
+- `/fly:plan plans/feat-user-auth.md` — Review mode (skips creation, starts at enrich)
 
 ---
 
