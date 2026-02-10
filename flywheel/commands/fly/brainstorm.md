@@ -23,7 +23,7 @@ The brainstorm skill handles:
 - Conversational questioning (one question at a time)
 - Approach exploration (always 2-3 options)
 - Incremental design validation (200-300 word chunks)
-- Design document creation (`plans/<topic>-design.md`)
+- Design document creation (`docs/plans/<topic>-design.md`)
 - Handoff to `/fly:plan`
 
 See `plugin/skills/brainstorm/SKILL.md` for full procedural details.

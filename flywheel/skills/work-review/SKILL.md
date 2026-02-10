@@ -131,7 +131,7 @@ Read `references/summary-report-template.md` before proceeding -- it contains th
 
 - **Agent failures:** Log failure, continue with remaining agents, report in summary. Minimum 50% agent success required.
 - **Git/GitHub failures:** If PR not found, verify number. If branch inaccessible, suggest worktree. If gh CLI not authenticated, provide setup instructions.
-- **Todo file failures:** Create `todos/` directory if missing. If write fails, report and continue. Save partial results rather than losing all findings.
+- **Todo file failures:** Create `docs/todos/` directory if missing. If write fails, report and continue. Save partial results rather than losing all findings.
 
 ---
 

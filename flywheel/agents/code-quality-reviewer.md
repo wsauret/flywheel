@@ -112,7 +112,7 @@ Extract to a separate module when you see: complex business rules, multiple conc
 ### Key Findings
 - [Finding 1]
 - [Finding 2]
-(max 15 items - if more, write overflow to `plans/context/overflow-{task-id}.md`)
+(max 15 items - if more, write overflow to `docs/plans/context/overflow-{task-id}.md`)
 
 ### Files Identified
 - `path/to/file.ts` - [brief description]

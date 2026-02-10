@@ -10,7 +10,7 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 
 **Determine which skill to invoke first based on the input:**
 
-- If the input is a path to an **existing `.md` file in `plans/`** (NOT ending in `-design.md`): invoke `plan-enrich` (skip creation)
+- If the input is a path to an **existing `.md` file in `docs/plans/`** (NOT ending in `-design.md`): invoke `plan-enrich` (skip creation)
 - **Otherwise** (feature description OR `-design.md` path): invoke `plan-creation`
 
 **Invoke the first skill NOW using the Skill tool:**
@@ -19,7 +19,7 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 skill: plan-creation
 ```
 
-OR if the input is an existing plan file in `plans/`:
+OR if the input is an existing plan file in `docs/plans/`:
 
 ```
 skill: plan-enrich
@@ -90,8 +90,8 @@ Display summary: plan path, context path, phases completed, findings count, and 
 ## Examples
 
 - `/fly:plan Add user authentication with OAuth2` — Full mode (all 4 phases)
-- `/fly:plan plans/oauth2-design.md` — Design mode (creation uses design doc as input)
-- `/fly:plan plans/feat-user-auth.md` — Review mode (skips creation, starts at enrich)
+- `/fly:plan docs/plans/oauth2-design.md` — Design mode (creation uses design doc as input)
+- `/fly:plan docs/plans/feat-user-auth.md` — Review mode (skips creation, starts at enrich)
 
 ---
 

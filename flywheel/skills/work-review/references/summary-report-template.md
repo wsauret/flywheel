@@ -29,6 +29,6 @@ This reference contains the full template for the Phase 5 summary report.
 
 ### Next Steps:
 1. Address P1 findings before merge
-2. Review todo files in `todos/` directory
+2. Review todo files in `docs/todos/` directory
 3. Update todo status as items are resolved
 ```
