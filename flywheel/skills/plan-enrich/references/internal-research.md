@@ -314,7 +314,7 @@ Extract major sections from plan headings. **Include:**
 
 ### Per-Section Subagent Dispatch Template
 
-For EACH major section (up to 5):
+For EACH major section (up to 5). **Do NOT specify a `model` parameter** — let subagents inherit the current session's model.
 
 ```
 Task Explore: "Research codebase patterns for: [section topic].

@@ -82,6 +82,20 @@ This two-pass approach reduces context usage by 40-60%.
 
 ---
 
+## Model Inheritance for Subagents
+
+**Implementation and execution subagents** (`general-purpose`, `Explore`, `Plan`, `Bash`) must **NOT** specify a `model` parameter when dispatched. Omitting the parameter causes them to inherit the parent session's model automatically.
+
+This ensures that if the user selected Opus, all phases run on Opus — not a random mix of models.
+
+**Only research agents** (locators, analyzers) specify explicit models, because their model choices are deliberate cost/speed tradeoffs independent of the user's session:
+- Locators → haiku (fast, cheap, paths-only)
+- Analyzers → sonnet (thorough, documentarian)
+
+**Rule:** If you're dispatching a subagent to *do work* (implement, explore, plan), never set `model`. If you're dispatching a subagent to *research* (locate, analyze), use the model from the Research Agent Matrix below.
+
+---
+
 ## Research Agent Matrix
 
 | Agent | Model | Tools | Purpose |

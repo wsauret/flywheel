@@ -67,6 +67,8 @@ Quick check of referenced files. If >500 lines: warn, consider splitting. Note m
 
 ### 2.2 Dispatch Subagent
 
+**Do NOT specify a `model` parameter** — subagents inherit the current session's model. Specifying a model overrides the user's selection and causes inconsistent behavior across phases.
+
 ```
 Task general-purpose: "
 ## Task
