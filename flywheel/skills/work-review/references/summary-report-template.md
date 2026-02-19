@@ -1,6 +1,6 @@
 # Summary Report Template — Full Reference
 
-This reference contains the full template for the Phase 5 summary report.
+This reference contains the full template for the Phase 6 summary report displayed to the user.
 
 ## Template
 
@@ -9,6 +9,7 @@ This reference contains the full template for the Phase 5 summary report.
 
 **Review Target:** PR #XXX - [Title]
 **Branch:** [branch-name]
+**Saved to:** `docs/reviews/[filename].md`
 
 ### Findings Summary:
 - **Total:** [X]
@@ -29,6 +30,7 @@ This reference contains the full template for the Phase 5 summary report.
 
 ### Next Steps:
 1. Address P1 findings before merge
-2. Review todo files in `docs/todos/` directory
-3. Update todo status as items are resolved
+2. Full review details: `docs/reviews/[filename].md`
+3. Individual todo files: `docs/todos/` directory
+4. Use `/fly:work` to implement fixes from this review
 ```

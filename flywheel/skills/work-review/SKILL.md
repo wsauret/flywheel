@@ -1,6 +1,6 @@
 ---
 name: work-review
-description: Perform exhaustive code reviews using multi-agent analysis. Reviews PRs, branches, or current changes. Creates todo files for findings. Triggers on "review", "code review", "check PR".
+description: Perform exhaustive code reviews using multi-agent analysis. Reviews PRs, branches, or current changes. Saves review to docs/reviews/ and creates todo files for findings. Triggers on "review", "code review", "check PR".
 allowed-tools:
   - Read
   - Write
@@ -13,7 +13,7 @@ allowed-tools:
 
 # Reviewing Skill
 
-Perform exhaustive code reviews using multi-agent analysis. Creates actionable todo files for all findings.
+Perform exhaustive code reviews using multi-agent analysis. Saves the full review to `docs/reviews/` and creates actionable todo files in `docs/todos/`.
 
 ## Input
 
@@ -110,9 +110,26 @@ Always tag findings with `code-review` plus relevant tags: `security`, `performa
 
 ---
 
-## Phase 5: Summary Report
+## Phase 5: Persist Review
 
-Present a summary report showing finding counts by severity, created todo files grouped by priority, and next steps.
+Write the full review to `docs/reviews/YYYY-MM-DD-<target-slug>.md`. This is the durable artifact that survives context clearing — always write it.
+
+Read `references/review-document-template.md` before proceeding — it contains the output path conventions, document template with YAML frontmatter, all required sections (findings by severity, agent coverage, todo file references), and integration patterns for other skills.
+
+**Target slug derivation:**
+- PR: `pr-{number}-{title-slug}` (e.g., `pr-123-add-user-auth`)
+- Branch: branch name slugified (e.g., `feature-add-user-auth`)
+- Current changes: `review-current-changes`
+
+```bash
+mkdir -p docs/reviews
+```
+
+---
+
+## Phase 6: Summary Report
+
+Present a **brief** summary to the user (not the full document). Include the path to the saved review file so the user knows where to find it.
 
 Read `references/summary-report-template.md` before proceeding -- it contains the full report template with all required sections.
 
@@ -123,7 +140,7 @@ Read `references/summary-report-template.md` before proceeding -- it contains th
 - **P1 findings block merge.** Present critical findings prominently.
 - **Run agents in parallel.** Launch all applicable agents simultaneously.
 - **Create todos immediately.** Don't present findings one-by-one for approval. Create all todo files, then summarize.
-- **Use built-in tasks.** Ensures findings are tracked and actionable.
+- **Always persist the review.** Write to `docs/reviews/` before presenting the summary. The saved file is the durable artifact that survives context clearing.
 
 ---
 
@@ -142,6 +159,7 @@ Read `references/summary-report-template.md` before proceeding -- it contains th
 - Don't create vague findings without specific file:line references
 - Don't mark P1 findings as P2/P3 to avoid blocking merge
 - Don't forget to run conditional agents when criteria match
+- Don't skip persisting the review document — the whole point is surviving context clears
 
 ---
 

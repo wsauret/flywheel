@@ -1,6 +1,6 @@
 ---
 name: fly:review
-description: Perform exhaustive code reviews using multi-agent analysis. Creates todo files for findings. Reviews PRs, branches, or current changes.
+description: Perform exhaustive code reviews using multi-agent analysis. Saves review to docs/reviews/ and creates todo files. Reviews PRs, branches, or current changes.
 argument-hint: "[PR number, GitHub URL, branch name, or empty for current branch]"
 ---
 
@@ -21,7 +21,8 @@ The work-review skill handles:
 - Environment setup (worktree option)
 - Parallel reviewer agents (security, performance, architecture, etc.)
 - Finding synthesis and severity assignment
-- Finding tracking using built-in tasks
+- Finding tracking via todo files in `docs/todos/`
+- **Persisting full review to `docs/reviews/`** (survives context clearing)
 - Summary report with next steps
 
 See `plugin/skills/work-review/SKILL.md` for full procedural details.
