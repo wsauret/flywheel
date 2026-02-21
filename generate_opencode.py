@@ -154,6 +154,12 @@ def get_transform_type(rel_path: Path) -> str | None:
             return "skills"
         # Copy other skill files verbatim (assets, scripts, etc.)
         return "copy"
+    if parts[0] == "hooks":
+        return None  # Claude Code-only; OpenCode uses plugins/flywheel-hooks.ts
+    if parts[0] == "scripts":
+        return None  # Claude Code-only; shell scripts referenced by hooks.json
+    if parts[0] == "plugins":
+        return "copy"  # OpenCode-native plugin files (e.g., flywheel-hooks.ts)
 
     return None
 
@@ -173,7 +179,7 @@ def main() -> int:
         return 1
 
     # Subdirectories we manage (only these will be replaced)
-    managed_subdirs = {"agents", "commands", "skills"}
+    managed_subdirs = {"agents", "commands", "skills", "plugins"}
 
     # Use temp directory for atomic swap of each subdir
     temp_base = args.output.parent / f".{args.output.name}.tmp" if not args.dry_run else None
@@ -202,6 +208,11 @@ def main() -> int:
             dest_rel = rel
 
         dest = (temp_base or args.output) / dest_rel
+
+        if not is_safe_path(dest, (temp_base or args.output)):
+            print(f"Skipping unsafe output path: {dest}", file=sys.stderr)
+            counts["skipped"] += 1
+            continue
 
         if args.dry_run:
             action = "copy" if transform_type == "copy" else f"transform ({transform_type})"

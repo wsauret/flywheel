@@ -56,7 +56,8 @@ For local development or OpenCode, see the [repository README](https://github.co
 |-----------|-------|
 | Agents | 17 |
 | Commands | 6 |
-| Skills | 11 |
+| Skills | 12 |
+| Hooks | 3 |
 
 ## Agents
 
@@ -140,6 +141,14 @@ Core workflow commands use `fly:` prefix:
 | `compound-docs` | Capture solved problems as categorized documentation |
 | `git-worktree` | Manage Git worktrees for parallel development |
 
+## Hooks
+
+| Hook | Event | Description |
+|------|-------|-------------|
+| `session-start.sh` | SessionStart | Auto-installs subtask CLI; reminds to load skill on compact/resume |
+| `skill-reminder.sh` | UserPromptSubmit | Detects "subtask" in prompts, suggests loading skill |
+| `skill-required.sh` | PostToolUse (Bash) | Detects direct `subtask` CLI usage, suggests loading skill |
+
 ## Research Pattern
 
 Flywheel uses a two-phase locate→analyze pattern for research:
@@ -154,3 +163,18 @@ Flywheel uses a two-phase locate→analyze pattern for research:
    - Full file reads (no partial reads)
 
 This reduces context usage significantly compared to all-in-one research agents.
+
+## Subtask Integration
+
+Flywheel uses [subtask](https://subtask.dev) for durable work dispatch. The subtask CLI is auto-installed via session hooks and the install script.
+
+**When subtask is used:**
+- **Work phases** (`/fly:work`): Each plan phase runs in an isolated git worktree via `subtask send`. Changes are merged back after review.
+- **Code reviews** (`/fly:review`): All reviewer agents run as parallel subtask workers. Results are collected and synthesized.
+- **Plan reviews** (`/fly:plan`): Same parallel pattern as code reviews.
+
+**When Task tool is used instead:**
+- Research agents (locators, analyzers) still use the Task tool for ephemeral, cheap operations
+- Quick explorations that return small results and don't modify files
+
+See the dispatch mechanism selection section in `flywheel-conventions` for full guidance.

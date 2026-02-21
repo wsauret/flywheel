@@ -57,26 +57,116 @@ Ensure code is ready for analysis before proceeding.
 
 ---
 
-## Phase 2: Run Reviewer Agents
+## Phase 2: Run Reviewer Agents via Subtask Dispatch
 
-### Parallel Review Agents
+Reviewers are read-only, but subtask gives them isolation and persistence through context compaction.
 
-Run ALL applicable agents simultaneously:
+### Naming Convention
 
+Subtask names follow: `review/<target-slug>/<reviewer-type>`
+
+Example: if reviewing PR #123 titled "Add user auth", the slug is `pr-123-add-user-auth`, and subtask names are `review/pr-123-add-user-auth/code-quality`, `review/pr-123-add-user-auth/security`, etc.
+
+### Step 1: Write Subtask Manifest
+
+Before dispatching, write `.flywheel/review-subtasks.md` listing all reviewer subtask names. This enables result collection after context compaction.
+
+```markdown
+# Review Subtasks — <target-slug>
+- review/<target-slug>/code-quality
+- review/<target-slug>/git-history
+- review/<target-slug>/pattern
+- review/<target-slug>/architecture
+- review/<target-slug>/security
+- review/<target-slug>/performance
+- review/<target-slug>/code-simplicity
+# conditional:
+# - review/<target-slug>/data-integrity  (if migrations present)
 ```
-Task code-quality-reviewer(PR content)    # Code quality (Python/TypeScript)
-Task git-history-reviewer(PR content)     # History context
-Task pattern-reviewer(PR content)
-Task architecture-reviewer(PR content)
-Task security-reviewer(PR content)
-Task performance-reviewer(PR content)
-Task code-simplicity-reviewer(PR content)
+
+### Step 2: Draft ALL Reviewer Subtasks
+
+Draft one subtask per reviewer. Use the current branch as base (reviewers are read-only, no merge needed).
+
+```bash
+subtask draft review/<target-slug>/code-quality \
+  --base-branch "$(git branch --show-current)" \
+  --title "Review: code-quality" <<'EOF'
+Review this PR/branch for code quality concerns (Python/TypeScript).
+
+TARGET: <branch or PR identifier>
+FILES CHANGED:
+<file list from gh pr view or git diff --stat>
+
+DIFF:
+<diff content or instructions to read files>
+
+Provide findings with priority (P1/P2/P3) and specific file:line locations.
+EOF
 ```
+
+Repeat for ALL reviewers: `code-quality`, `git-history`, `pattern`, `architecture`, `security`, `performance`, `code-simplicity`.
 
 ### Conditional Agents
 
 **If PR contains database migrations** (files matching `**/migrations/**`, `alembic/`, `prisma/migrations/`):
-- Task data-integrity-reviewer(PR content)
+- Also draft `review/<target-slug>/data-integrity` with migration-focused review prompt
+- Add to the manifest
+
+### Step 3: Send ALL with Background Execution
+
+Send each subtask using `run_in_background: true` in the Bash tool. Launch ALL in a SINGLE message with multiple Bash calls:
+
+```bash
+# Bash tool: run_in_background: true
+subtask send review/<target-slug>/code-quality "Go ahead."
+```
+
+```bash
+# Bash tool: run_in_background: true
+subtask send review/<target-slug>/security "Go ahead."
+```
+
+Continue for ALL reviewer subtasks (including conditional ones). Each runs in parallel in its own worktree.
+
+### Step 4: Poll Until All Complete
+
+Wait for all reviewers to finish. Poll with reasonable delay:
+
+```bash
+subtask list --status doing
+```
+
+Repeat until the count of `doing` tasks reaches 0. All reviewers have finished when none remain in `doing` status.
+
+### Step 5: Collect Results
+
+Read each reviewer's output:
+
+```bash
+subtask show review/<target-slug>/code-quality
+subtask show review/<target-slug>/security
+# ... for each reviewer
+```
+
+Use the manifest from `.flywheel/review-subtasks.md` to enumerate all subtask names (essential after context compaction).
+
+### Step 6: Cleanup Reviewer Subtasks
+
+After collecting all results, close every reviewer subtask to free worktrees:
+
+```bash
+subtask close review/<target-slug>/code-quality
+subtask close review/<target-slug>/security
+# ... for each reviewer
+```
+
+This prevents orphaned worktrees. Do this BEFORE the synthesis phase.
+
+**Rules:**
+- Launch ALL sends in a SINGLE message with multiple Bash calls (`run_in_background: true`)
+- Don't skip agents to save time -- parallel execution is fast
+- Reviewers are read-only -- close (don't merge) when done
 
 ---
 

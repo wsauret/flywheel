@@ -34,6 +34,13 @@ Before offering to resume, **validate the session state**:
 4. **Check context file staleness:**
    - If context file >7 days old: Note warning
    - If codebase >50 commits since research: Note warning
+5. **Clean up orphaned subtasks:**
+   ```bash
+   subtask list --status doing 2>/dev/null | while read task; do
+     subtask close "$task" 2>/dev/null
+   done
+   ```
+   Prevents "branch already exists" errors from previously interrupted sessions.
 
 ### Present Validation Summary
 

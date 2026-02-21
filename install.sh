@@ -24,8 +24,17 @@ echo "Step 2: Installing plugin..."
 claude plugin install flywheel@flywheel-marketplace > /dev/null
 echo "  ✓ Plugin installed"
 
-# Step 3: Configure Context7 API key
-echo "Step 3: Configuring Context7..."
+# Step 3: Install subtask CLI
+echo "Step 3: Installing subtask CLI..."
+if command -v subtask &>/dev/null; then
+  echo "  * subtask already installed: $(subtask --version)"
+else
+  curl -fsSL https://subtask.dev/install.sh | bash
+  echo "  ✓ subtask installed: $(subtask --version)"
+fi
+
+# Step 4: Configure Context7 API key
+echo "Step 4: Configuring Context7..."
 
 # Determine shell profile file
 get_shell_profile() {

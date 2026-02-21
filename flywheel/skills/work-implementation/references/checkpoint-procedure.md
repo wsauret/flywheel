@@ -1,10 +1,24 @@
 # Checkpoint Procedure
 
-Dual-write checkpoint approach and manual verification pause for Phase 2 execution loop.
+Checkpoint approach after subtask merge, with dual-write state tracking and manual verification pause for Phase 2 execution loop.
 
-## Dual-Write Checkpoint (After Subagent Completes)
+## Checkpoint (After Subtask Merge)
 
-### Step 1: Update Native Tasks (Primary)
+### Step 0: Verify Subtask Merge Succeeded
+
+```bash
+# Record pre-merge HEAD for rollback capability
+PRE_MERGE_SHA=$(git rev-parse HEAD)
+
+# After subtask merge, verify the merge commit exists
+git log -1 --oneline
+```
+
+**If merge fails:** Do NOT update state file or Tasks. Log the failure. Retry or escalate per 3-Strike protocol.
+
+**If merge succeeds:** Record the merge commit SHA and proceed to Step 1.
+
+### Step 1: Update Native Tasks (Secondary Tracking)
 
 ```
 TaskUpdate:
@@ -12,28 +26,28 @@ TaskUpdate:
   status: completed
 ```
 
-**Why Tasks are primary:**
-- Survive terminal restarts
-- Visual progress in Claude Code UI
-- Stored in `~/.claude/tasks`
+**Note:** TaskUpdate happens AFTER merge verification. Tasks provide visual progress in Claude Code UI but are secondary to the state file.
 
-### Step 2: Update State File (Backup)
+### Step 2: Update State File (Source of Truth)
 
 1. Mark phase complete: `- [x] Phase N`
-2. Append key decisions to state file
-3. Append learnings (patterns, gotchas discovered)
-4. Update code context (files modified/created)
+2. Record subtask name and merge commit SHA
+3. Record pre-merge HEAD SHA (for rollback capability)
+4. Append key decisions to state file
+5. Append learnings (patterns, gotchas discovered)
+6. Update code context (files modified/created)
 
-**Why state file is backup:**
+**Why state file is source of truth:**
 - Ralph mode recovery relies on state file
 - Cross-session recovery (Tasks don't persist across sessions by default)
 - Full context for cold resume
+- Merge commit SHA enables precise rollback
 
 ### Step 3: Verify & Continue
 
-5. **Verify TDD evidence:** Tests created/modified, suite passing
-6. Run tests - fail fast if broken
-7. **Update session file:**
+7. **Verify TDD evidence:** Tests created/modified, suite passing
+8. Run tests - fail fast if broken
+9. **Update session file:**
    - `last_checkpoint: [timestamp]`
    - `current_phase: [N+1]`
    - Update "Current Status" section

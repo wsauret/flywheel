@@ -1,7 +1,7 @@
 ---
 name: flywheel-conventions
 description: Shared conventions for Flywheel subagents. Provides token limits, output format, severity definitions, and research patterns.
-user-invocable: false
+user-invokable: false
 ---
 
 ## Output Token Limits
@@ -93,6 +93,27 @@ This ensures that if the user selected Opus, all phases run on Opus — not a ra
 - Analyzers → sonnet (thorough, documentarian)
 
 **Rule:** If you're dispatching a subagent to *do work* (implement, explore, plan), never set `model`. If you're dispatching a subagent to *research* (locate, analyze), use the model from the Research Agent Matrix below.
+
+---
+
+## Dispatch Mechanism Selection
+
+Two dispatch mechanisms are available. Choose based on the work's nature:
+
+**Task tool** -- for ephemeral, cheap research:
+- Locator/analyzer agents (file discovery, pattern extraction)
+- Quick explorations that return small results
+- No persistent workspace needed
+- Results returned inline to orchestrator
+
+**Subtask CLI** -- for durable, expensive implementation work:
+- Phase execution in work-implementation
+- Reviewer dispatch in plan-review and work-review
+- Worker gets isolated git worktree
+- Changes merged back via `subtask merge`
+- Survives context compaction (subtask tracks state independently)
+
+**Rule of thumb:** If the work modifies files, use subtask. If the work only reads/searches, use Task.
 
 ---
 

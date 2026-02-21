@@ -33,3 +33,5 @@ Follow the **3-Strike Error Protocol** from `flywheel-conventions`:
 - **Subagent failures**: Apply 3-Strike, then ask user: retry/skip/abort
 - **Test failures**: Fix before checkpointing (3-Strike applies)
 - **Missing files**: Warn during probe, clarify before dispatch
+- **Subtask failures**: Use `subtask show <task>` for status, `subtask log <task>` for conversation history. Apply 3-Strike, then ask user: retry/skip/abort
+- **Subtask merge conflicts**: Worker's changes conflict with main branch. Options: resolve in worktree, close subtask and redo phase, or manual merge. Use `subtask diff <task>` to inspect conflicting changes before deciding

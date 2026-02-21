@@ -129,17 +129,18 @@ TaskCreate:
 
 ## Worktree Assessment
 
-**Recommend worktree when:**
-- Plan modifies >10 files
-- Plan has >3 phases
-- Plan touches critical paths (auth, payments, migrations)
+**Note:** With subtask integration, per-phase isolation is handled automatically -- each `subtask send` creates its own git worktree. The assessment below applies to the overall work session, not individual phases.
+
+**Recommend worktree for the session when:**
+- Working on critical paths (auth, payments, migrations) where you want to preserve main branch state
+- Multiple concurrent `/fly:work` sessions on different plans
 
 **AskUserQuestion:**
 ```
 Question: "Ready to execute. [Worktree recommended due to: X] How to work?"
 Options:
-1. Current branch
-2. Create worktree (Recommended)
+1. Current branch (Recommended) - subtask handles per-phase isolation
+2. Create worktree - Additional session-level isolation
 ```
 
 **If worktree:** Use `worktree-manager.sh create <branch> main`, remind about deps and /init.
