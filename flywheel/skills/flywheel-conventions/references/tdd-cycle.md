@@ -25,4 +25,5 @@ Red-Green-Refactor cycle applied per implementation task within each phase.
 
 - Pure refactoring (tests already exist)
 - Config-only changes
+- Security-sensitive configurations (auth, CORS, CSP, encryption) are NOT exempt — these require test coverage even when config-only
 - Documentation updates

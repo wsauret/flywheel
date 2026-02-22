@@ -94,7 +94,7 @@ Provide plan text directly (don't make subagent read file). One phase at a time.
 
 ### 2.2a TDD Cycle
 
-Read `references/tdd-cycle.md` before proceeding -- contains RED/GREEN/REFACTOR steps and skip conditions.
+Read `flywheel-conventions/references/tdd-cycle.md` before proceeding -- contains RED/GREEN/REFACTOR steps and skip conditions.
 
 Apply RED-GREEN-REFACTOR per implementation task. Skip TDD for pure refactoring, config-only, or docs changes.
 
@@ -169,7 +169,7 @@ Read `references/recovery-and-errors.md` before proceeding -- contains dual-writ
 
 - `references/session-detection.md` - Phase 0 validation logic, presentation templates, edge cases
 - `references/load-resume-procedures.md` - Phase 1 state checks, format validation, task creation, worktree assessment
-- `references/tdd-cycle.md` - RED/GREEN/REFACTOR steps and skip conditions
+- `flywheel-conventions/references/tdd-cycle.md` - RED/GREEN/REFACTOR steps and skip conditions
 - `references/checkpoint-procedure.md` - Dual-write checkpoint steps, manual verification pause
 - `references/ralph-mode.md` - Stateless agent loop triggers, checkpoint format, state completeness
 - `references/recovery-and-errors.md` - Recovery flow, 3-Strike protocol, specific error cases

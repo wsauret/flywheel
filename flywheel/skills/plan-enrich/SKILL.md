@@ -58,6 +58,8 @@ Read the plan and identify three categories:
 
 **Goal:** Prevent reinventing wheels and breaking patterns. Run all internal research in parallel.
 
+**BLOCKING:** Do NOT use Read/Grep/Glob for TARGET CODEBASE research — dispatch locator Tasks first, then feed results to analyzer Tasks. Skill references, plan artifacts, and template files are exempt from this requirement.
+
 **Before dispatching:** If Phase 0a loaded existing research, use it to scope the internal research — skip areas already covered, focus on gaps.
 
 | Subsection | Purpose | Flag on Finding |
@@ -151,10 +153,10 @@ Read `references/enhancement-format.md` before proceeding -- it contains the wri
 
 ## Anti-Patterns
 
-- **Skipping internal research** - External best practices mean nothing if we already have a solution
-- **Not validating claims** - "Library X supports Y" must be verified in docs
-- **Modifying original content** - Only ADD research sections
-- **Resolving conflicts yourself** - Convert to Open Questions for user
+- **Skipping internal research** — External best practices mean nothing if we already have a solution
+- **Not validating claims** — "Library X supports Y" must be verified in docs
+- **Modifying original content** — Only ADD research sections
+- **Resolving conflicts yourself** — Convert to Open Questions for user
 
 ---
 

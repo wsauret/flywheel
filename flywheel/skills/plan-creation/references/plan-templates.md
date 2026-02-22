@@ -21,6 +21,7 @@ Templates for different levels of plan detail. Choose based on complexity.
 ## MVP
 
 ### test.py
+<!-- Intentionally test-first: write test before implementation -->
 
 ## References
 
@@ -64,6 +65,12 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 [High-level approach]
 
+### Implementation Steps (Test-First)
+
+- [ ] **Step 1.1: Write tests for [behavior]**
+- [ ] **Step 1.2: Implement [behavior]**
+- [ ] **Step 1.3: Verify**: `make test` (and optionally `make lint`, `make typecheck`)
+
 ## Technical Considerations
 
 - Architecture impacts
@@ -71,12 +78,6 @@ Templates for different levels of plan detail. Choose based on complexity.
 - Security considerations
 
 ## Success Criteria
-
-### Automated Verification
-
-- [ ] Tests pass: `make test`
-- [ ] Linting passes: `make lint`
-- [ ] Type checking passes: `make typecheck`
 
 ### Manual Verification (Acceptance Criteria)
 
@@ -152,23 +153,20 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 ### Implementation Phases
 
-#### Phase 1: [Foundation]
+- Phase 1: [Foundation]
+  - [ ] **Step 1.1: Write tests for [foundation behavior]**
+  - [ ] **Step 1.2: Implement [foundation capability]**
+  - [ ] **Step 1.3: Verify**: `make test` (and any relevant checks)
 
-- Tasks and deliverables
-- Success criteria
-- Estimated effort
+- Phase 2: [Core Implementation]
+  - [ ] **Step 2.1: Write tests for [core behavior]**
+  - [ ] **Step 2.2: Implement [core capability]**
+  - [ ] **Step 2.3: Verify**: `make test` (and any relevant checks)
 
-#### Phase 2: [Core Implementation]
-
-- Tasks and deliverables
-- Success criteria
-- Estimated effort
-
-#### Phase 3: [Polish & Optimization]
-
-- Tasks and deliverables
-- Success criteria
-- Estimated effort
+- Phase 3: [Polish & Optimization]
+  - [ ] **Step 3.1: Write tests for [polish behavior]**
+  - [ ] **Step 3.2: Implement [polish improvements]**
+  - [ ] **Step 3.3: Verify**: `make test` (and any relevant checks)
 
 ## Alternative Approaches Considered
 

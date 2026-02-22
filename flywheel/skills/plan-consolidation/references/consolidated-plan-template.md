@@ -53,15 +53,21 @@ Use this structure for the final consolidated output.
   - Anti-pattern to avoid: [Specific warning]
   - Edge case: [What to handle]
 
+- [ ] **Step 1.3: Verify — Tests pass for this phase**
+
 ### Phase 2: [Name]
 
 - [ ] **Step 2.1: [Concrete action]**
   [Continue pattern...]
 
-### Phase N: [Final Phase]
+- [ ] **Step 2.2: Verify — Tests pass for this phase**
 
-- [ ] **Step N.1: [Final action]**
-- [ ] **Verification: Run tests and confirm all acceptance criteria**
+### Phase 3: [Name]
+
+- [ ] **Step 3.1: [Concrete action]**
+  [Continue pattern...]
+
+- [ ] **Step 3.2: Verify — Tests pass for this phase**
 
 ## Technical Reference
 
