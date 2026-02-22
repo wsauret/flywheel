@@ -46,6 +46,8 @@ If no matches, proceed normally to Phase 1.
 
 Research the codebase using a **locate then analyze** pattern:
 
+**BLOCKING:** Do NOT use Read/Grep/Glob for TARGET CODEBASE research — dispatch locator Tasks first, then feed results to analyzer Tasks. Skill references, plan artifacts, and template files are exempt from this requirement.
+
 1. **Locate (parallel, cheap):** Run codebase-locator, pattern-locator, and docs-locator Tasks simultaneously to find WHERE relevant code lives. Return paths only.
 2. **Analyze (targeted):** Feed top 10-15 paths into a codebase-analyzer Task. Document existing implementations, conventions, and architectural patterns. Flag OPEN QUESTIONS.
 3. **Also check:** `CLAUDE.md` for team conventions; recent similar features for precedent.
@@ -102,6 +104,20 @@ Using chosen template:
 3. Follow existing patterns identified in Phase 1
 4. Ensure acceptance criteria are testable
 5. Include Open Questions from research
+6. Structure each implementation phase with test steps before implementation steps (test-first ordering). Reference `flywheel-conventions/references/tdd-cycle.md` for skip conditions.
+7. Decompose phases along Single Responsibility lines — each phase should have one clear purpose
+8. Check for duplication across phases — shared setup, utilities, or patterns should be extracted into an early foundation phase
+
+**Example (phase decomposition):**
+Bad:
+- Phase 2: Implement feature end-to-end (DB/API/UI)
+- Phase 3: Write all tests at the end
+- Phase 4: Refactor/cleanup
+
+Good:
+- Phase 2: Foundation (shared fixtures/helpers) + tests first
+- Phase 3: API layer changes + tests first
+- Phase 4: UI integration + tests first
 
 Read `references/verification-claims.md` before proceeding — it contains the template and guidelines for flagging assumptions that need external validation in plan-enrich. **Do not validate external claims yourself.**
 
@@ -170,7 +186,10 @@ Maximum 2 revision cycles.
 - **Write code** — This skill is research and planning ONLY. If tempted to code, add it to the plan instead
 - **Validate external claims** — Flag for verification in plan-enrich, don't research yourself
 - **Skip codebase research** — Even "simple" features benefit from understanding patterns
+- **Read target codebase files directly instead of dispatching analyzers** — Use the locate->analyze pattern (locators first, then targeted analyzer Tasks)
+- **Skip locators and go straight to analyzers with assumed paths** — Locators discover; analyzers analyze. Both steps required
 - **Over-engineer simple issues** — Use MINIMAL template
+- **Defer all testing to a final phase** — Tests should be per-phase, not an afterthought. Each implementation phase includes test steps before implementation steps
 - **Vague acceptance criteria** — Must be testable
 - **Omit file references** — Include paths with line numbers
 - **Skip AskUserQuestion** — User must choose next step
