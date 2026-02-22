@@ -191,3 +191,9 @@ Track errors in state file:
 | Error | Attempt | Approach | Outcome |
 |-------|---------|----------|---------|
 | [error message] | 1 | [what you tried] | [result] |
+
+---
+
+## References
+
+- `references/tdd-cycle.md` - RED/GREEN/REFACTOR steps and skip conditions

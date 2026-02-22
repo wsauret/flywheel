@@ -63,6 +63,7 @@ temp/
 # Project-specific
 .claude/
 .opencode/
+.subtask/
 .flywheel/
 .worktrees/
 docs/
