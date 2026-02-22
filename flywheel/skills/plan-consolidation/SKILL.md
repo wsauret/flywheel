@@ -70,9 +70,10 @@ Scan for all open questions, TODOs, TBDs, option-vs-option language, and reviewe
 
 1. **Deduplicate** - Same insight from multiple sources -> one entry
 2. **Prioritize** - P1 before P2, high-impact first
-3. **Integrate** - Insights IN checklist items, not floating
-4. **Preserve attribution** - Track where recommendations came from
-5. **Make executable** - Every item is a concrete action
+3. **Preserve test-first ordering** — If the enriched plan has test steps before implementation steps, maintain that order during restructuring. This takes precedence over the **Prioritize** ("Prioritize by impact") principle for within-phase step ordering.
+4. **Integrate** - Insights IN checklist items, not floating
+5. **Preserve attribution** - Track where recommendations came from
+6. **Make executable** - Every item is a concrete action
 
 P1 findings are CRITICAL: resolve with a specific checklist action, or flag as BLOCKING. For conflicts, apply the review resolution if provided; otherwise present with recommendation or flag for user decision.
 
@@ -147,6 +148,7 @@ Before finalizing:
 - [ ] Decisions recorded in "Decisions Made" section
 - [ ] All P1 findings addressed or flagged as blocking
 - [ ] Every implementation step has concrete action
+- [ ] Each implementation phase has test verification (not just the final phase)
 - [ ] Research insights integrated into relevant steps
 - [ ] Appendix contains raw verification/review data
 - [ ] Plan genuinely ready for `/fly:work`
@@ -159,4 +161,3 @@ Before finalizing:
 - `references/extraction-patterns.md` - How to extract and categorize content
 - `references/question-resolution.md` - Question scan patterns, presentation format, response handling
 - `references/results-presentation.md` - Summary output template, post-consolidation options
-
