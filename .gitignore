@@ -36,6 +36,16 @@ out/
 *.js.map
 *.d.ts.map
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
 # Test coverage
 coverage/
 .nyc_output/

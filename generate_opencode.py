@@ -40,10 +40,43 @@ TRANSFORMS: dict[str, TransformConfig] = {
 
 BODY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"#\$ARGUMENTS"), "$ARGUMENTS"),
-    (re.compile(r"/fly:(\w+)"), r"/\1"),
+    (re.compile(r"/fly:(\w+)"), r"/fly-\1"),
     (re.compile(r"^skill:\s*([\w-]+)\s*$", re.MULTILINE), r'skill({ name: "\1" })'),
     (re.compile(r"^See `flywheel/skills/.*$\n?", re.MULTILINE), ""),
+    (re.compile(r"(references/[\w-]+)\.md"), r"\1.txt"),
 ]
+
+# Path replacements applied to ALL text files (skills, agents, commands, references).
+# Order matters: longer/more-specific patterns first to avoid partial matches.
+PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # ~/.claude/plugins/cache .../agents/*.md -> ~/.config/opencode/agents
+    (re.compile(r"find ~/\.claude/plugins/cache -path \"\*/agents/\*\.md\"[^\n]*"),
+     'find ~/.config/opencode/agents -name "*.md" 2>/dev/null'),
+    # ~/.claude/plugins -name "SKILL.md" -> ~/.config/opencode/skills
+    (re.compile(r"find ~/\.claude/plugins -name \"SKILL\.md\"[^\n]*"),
+     'find ~/.config/opencode/skills -name "SKILL.md" 2>/dev/null'),
+    # ~/.claude/agents -> ~/.config/opencode/agents
+    (re.compile(r"~/\.claude/agents"), "~/.config/opencode/agents"),
+    # ~/.claude/skills -> ~/.config/opencode/skills
+    (re.compile(r"~/\.claude/skills/"), "~/.config/opencode/skills/"),
+    (re.compile(r"~/\.claude/skills\b"), "~/.config/opencode/skills"),
+    # .claude/agents (project-local) -> .opencode/agents
+    (re.compile(r"(?<![~/])\.claude/agents"), ".opencode/agents"),
+    # .claude/skills (project-local) -> .opencode/skills
+    (re.compile(r"(?<![~/])\.claude/skills/"), ".opencode/skills/"),
+    (re.compile(r"(?<![~/])\.claude/skills\b"), ".opencode/skills"),
+    # .claude/flywheel/... (local plugin path) -> .opencode/...
+    (re.compile(r"(?<![~/])\.claude/flywheel/"), ".opencode/"),
+    # ${CLAUDE_PLUGIN_ROOT}/skills/ -> ~/.config/opencode/skills/
+    (re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/skills/"), "~/.config/opencode/skills/"),
+    # CLAUDE.md -> AGENTS.md
+    (re.compile(r"\bCLAUDE\.md\b"), "AGENTS.md"),
+    # Claude Code UI / Claude Code (product name in prose)
+    (re.compile(r"Claude Code UI"), "OpenCode UI"),
+    (re.compile(r"Claude Code"), "OpenCode"),
+]
+
+TEXT_SUFFIXES = {".md", ".txt"}
 
 SKIP_PATHS = {".claude-plugin", "README.md"}
 SKIP_EXTENSIONS = {".DS_Store"}
@@ -75,6 +108,13 @@ def transform_frontmatter(lines: list[str], config: TransformConfig) -> list[str
         result.append(f"{key}: {value}\n")
 
     return result
+
+
+def transform_paths(content: str) -> str:
+    """Replace Claude-specific paths with OpenCode equivalents."""
+    for pattern, replacement in PATH_PATTERNS:
+        content = pattern.sub(replacement, content)
+    return content
 
 
 def transform_body(content: str) -> str:
@@ -133,6 +173,9 @@ def transform_file(src: Path, dest: Path, transform_type: str) -> None:
 
             content = frontmatter + body
 
+    # Always apply path transforms
+    content = transform_paths(content)
+
     atomic_write(dest, content)
 
 
@@ -146,6 +189,8 @@ def get_transform_type(rel_path: Path) -> str | None:
         return None
 
     if parts[0] == "commands":
+        if "references" in parts:
+            return "copy_as_txt" if rel_path.suffix == ".md" else "copy"
         return "commands" if rel_path.suffix == ".md" else None
     if parts[0] == "agents":
         return "agents" if rel_path.suffix == ".md" else None
@@ -195,21 +240,28 @@ def main() -> int:
             counts["skipped"] += 1
             continue
 
-        # Flatten commands/fly/*.md -> commands/*.md
+        # Flatten commands/fly/*.md -> commands/fly-*.md
         if transform_type == "commands" and len(rel.parts) > 2:
-            dest_rel = Path("commands") / rel.name
+            dest_rel = Path("commands") / f"fly-{rel.name}"
+        elif transform_type == "copy_as_txt":
+            dest_rel = rel.with_suffix(".txt")
         else:
             dest_rel = rel
 
         dest = (temp_base or args.output) / dest_rel
 
         if args.dry_run:
-            action = "copy" if transform_type == "copy" else f"transform ({transform_type})"
+            action = "copy" if transform_type in ("copy", "copy_as_txt") else f"transform ({transform_type})"
             print(f"{rel} -> {dest_rel} [{action}]")
         else:
-            if transform_type == "copy":
+            if transform_type in ("copy", "copy_as_txt"):
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dest)
+                # Apply path transforms to text files; binary files get raw copy
+                if src.suffix in TEXT_SUFFIXES:
+                    text = src.read_text(encoding="utf-8")
+                    atomic_write(dest, transform_paths(text))
+                else:
+                    shutil.copy2(src, dest)
                 counts["copied"] += 1
             else:
                 transform_file(src, dest, transform_type)
