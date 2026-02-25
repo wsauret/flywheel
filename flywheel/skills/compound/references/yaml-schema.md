@@ -1,6 +1,6 @@
 # YAML Frontmatter Schema
 
-Schema for compound-docs solution files. All solution documentation uses this frontmatter format.
+Schema for compound solution files. All solution documentation uses this frontmatter format.
 
 ## Required Fields
 

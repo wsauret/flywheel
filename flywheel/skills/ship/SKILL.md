@@ -114,13 +114,13 @@ If `$ARGUMENTS` includes a commit message hint, use it as guidance.
 
 ## Phase 5: Compound Learnings
 
-After the PR is created, invoke the `compound-docs` skill to capture knowledge from this work session:
+After the PR is created, invoke the `compound` skill to capture knowledge from this work session:
 
 ```
-skill: compound-docs
+skill: compound
 ```
 
-The compound-docs skill will review the conversation for non-trivial problems solved, debugging insights, or patterns discovered during implementation. If nothing worth documenting was encountered (simple feature, no surprises), compound-docs will detect this and skip gracefully.
+The compound skill will review the conversation for non-trivial problems solved, debugging insights, or patterns discovered during implementation. If nothing worth documenting was encountered (simple feature, no surprises), compound will detect this and skip gracefully.
 
 **Do NOT skip this phase.** The value of shipping is not just the code — it's the institutional knowledge captured alongside it.
 

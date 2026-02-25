@@ -76,5 +76,6 @@ temp/
 .subtask/
 .flywheel/
 .worktrees/
+.claude/worktrees/
 docs/
 inspiration/

@@ -9,6 +9,7 @@ allowed-tools:
   - Bash
   - Task
   - Skill
+  - AskUserQuestion
 ---
 
 # Reviewing Skill
@@ -51,7 +52,7 @@ gh pr view <PR_NUM> --json title,body,files
 
 **If already on target branch:** Proceed with analysis.
 
-**If different branch:** Offer worktree option via `skill: git-worktree`.
+**If different branch:** Offer to check out the target branch or use a native worktree (`git worktree add`).
 
 Ensure code is ready for analysis before proceeding.
 

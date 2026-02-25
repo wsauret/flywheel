@@ -108,6 +108,7 @@ This ensures that if the user selected Opus, all phases run on Opus — not a ra
 | analyzer-patterns | sonnet | Read, Grep, Glob | Extract code examples |
 | analyzer-docs | sonnet | Read, Grep, Glob | Extract doc insights |
 | analyzer-web | sonnet | WebFetch, Read | Deep web content analysis |
+| analyzer-git-history | sonnet | Bash, Read, Grep, Glob | Trace code evolution via git |
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: compound-docs
+name: compound
 description: Document solved problems to compound team knowledge. Creates categorized docs with YAML frontmatter. Triggers on "that worked", "it's fixed", "compound".
 allowed-tools:
   - Read
@@ -10,7 +10,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# Compound-Docs Skill
+# Compound Skill
 
 Document solved problems to build searchable institutional knowledge.
 

@@ -100,43 +100,4 @@ Preserve standalone:
 [Description]
 ```
 
----
 
-## Context File Update Template
-
-Append to `[plan_path].context.md`:
-
-```markdown
-## Review [YYYY-MM-DD HH:MM]
-
-### Agent Coverage
-- **Agents discovered:** [count]
-- **Agents run:** [count]
-- **Agents responded:** [count]
-- **Agents failed:** [count]
-
-### Findings Summary
-| Priority | Count | Status |
-|----------|-------|--------|
-| P1 (Critical) | [n] | [BLOCKS APPROVAL / None] |
-| P2 (Important) | [n] | [Should address / None] |
-| P3 (Nice-to-have) | [n] | [Optional / None] |
-
-### Open Questions Generated
-- [Question 1]: [Options] (from [agent])
-- [Question 2]: [Options] (from conflict between [agents])
-- Total: [count] questions for consolidation to resolve
-
-### Conflicts Detected (Converted to Open Questions)
-- [Conflict 1]: [Agent A] vs [Agent B] → Open Question #[n]
-- None
-
-### P1 Details (if any)
-- [P1 finding 1: brief description]
-- None
-
-### Review Status
-- **Approval status:** [Blocked by P1s / Ready for consolidation]
-- **Open questions:** [count] requiring user decision
-- **Recommended next step:** [Address P1 findings / Proceed to consolidation]
-```

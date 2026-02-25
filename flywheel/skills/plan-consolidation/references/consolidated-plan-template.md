@@ -137,40 +137,4 @@ Use this structure for the final consolidated output.
 </details>
 ```
 
----
 
-## Context File Update Template
-
-Append this to the existing context file after consolidation:
-
-```markdown
-## Consolidation [YYYY-MM-DD HH:MM]
-
-### Actions Performed
-- Resolved [N] open questions with user input
-- Restructured into actionable checklist format
-- Incorporated [Y] review findings
-- Created Technical Reference section
-- Preserved raw data in Appendix
-
-### Decisions Made
-[List each decision from Phase 3]
-- [Topic 1]: [Choice] ([user choice / delegated])
-- [Topic 2]: [Choice] ([user choice / delegated])
-
-### Synthesis Statistics
-- **Total checklist items:** [count]
-- **Implementation phases:** [count]
-- **Best practices consolidated:** [count]
-- **Anti-patterns documented:** [count]
-
-### Plan Status
-- **P1 findings:** [count] ([all addressed / N blocking])
-- **P2 findings:** [count] (incorporated)
-- **P3 findings:** [count] (deferred)
-- **Conflicts:** [count] ([all resolved / N pending])
-
-### Ready for Implementation
-- **Status:** [Ready for /fly:work | Blocked by P1 findings | Blocked by unresolved conflicts]
-- **Recommended next step:** [/fly:work [plan_path] | Address blocking items first]
-```

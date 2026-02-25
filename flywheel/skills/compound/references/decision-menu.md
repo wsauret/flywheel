@@ -51,7 +51,7 @@ User selects when:
 ### Option 4: Add to existing skill
 
 **Action:**
-1. Prompt: "Which skill? (compound-docs, git-worktree, etc.)"
+1. Prompt: "Which skill? (compound, work-implementation, etc.)"
 2. Determine reference file (resources.md, patterns.md, or examples.md)
 3. Add link and brief description
 4. Confirm: "✓ Added to [skill-name] in [file]"

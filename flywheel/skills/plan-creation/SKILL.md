@@ -1,6 +1,6 @@
 ---
 name: plan-creation
-description: Research codebase, validate claims, and draft implementation plans. Single-pass creation with integrated validation. Triggers on "create plan", "plan for", "write a plan".
+description: Research codebase, validate external claims, and draft implementation plans. Single-pass creation with integrated validation via Context7 and locator/analyzer agents. Triggers on "create plan", "plan for", "write a plan".
 allowed-tools:
   - Read
   - Write

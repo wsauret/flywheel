@@ -9,6 +9,7 @@ allowed-tools:
   - Bash
   - Task
   - Skill
+  - AskUserQuestion
 ---
 
 # Plan Reviewing Skill
@@ -114,15 +115,7 @@ Collect individual agent Open Questions alongside conflict-generated questions.
 
 ---
 
-## Phase 6: Update Context File
-
-Append review metadata to `[plan_path].context.md`:
-
-Use template from `references/review-summary-template.md` (Context File Update section).
-
----
-
-## Phase 7: Post-Review Options
+## Phase 6: Post-Review Options
 
 1. **Run consolidation (Recommended)** - Proceed to consolidation phase
 2. **Run specific agent deeper** - Get more detail on specific concerns
@@ -151,5 +144,5 @@ Use template from `references/review-summary-template.md` (Context File Update s
 
 ## Detailed References
 
-- `references/review-summary-template.md` - Output format, context file template, deduplication patterns
+- `references/review-summary-template.md` - Output format, deduplication patterns
 - `references/conflict-handling.md` - Philosophy, detection patterns, Open Question conversion

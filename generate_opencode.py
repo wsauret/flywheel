@@ -40,7 +40,7 @@ TRANSFORMS: dict[str, TransformConfig] = {
 
 BODY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"#\$ARGUMENTS"), "$ARGUMENTS"),
-    (re.compile(r"/fly:(\w+)"), r"/fly-\1"),
+    (re.compile(r"/fly:(\w+)"), r"/fly/\1"),
     (re.compile(r"^skill:\s*([\w-]+)\s*$", re.MULTILINE), r'skill({ name: "\1" })'),
     (re.compile(r"^See `flywheel/skills/.*$\n?", re.MULTILINE), ""),
     (re.compile(r"(references/[\w-]+)\.md"), r"\1.txt"),
@@ -217,8 +217,15 @@ def main() -> int:
         print(f"Error: Source '{args.source}' not found", file=sys.stderr)
         return 1
 
-    # Subdirectories we manage (only these will be replaced)
-    managed_subdirs = {"agents", "commands", "skills"}
+    # Paths we manage (relative to output), only these will be replaced.
+    # agents/fly and commands/fly are namespaced subfolders so we don't
+    # clobber agents/commands from other sources.  skills use per-skill
+    # directories so the whole skills/ tree is ours to manage.
+    managed_paths = [
+        Path("agents") / "fly",
+        Path("commands") / "fly",
+        Path("skills"),
+    ]
 
     # Use temp directory for atomic swap of each subdir
     temp_base = args.output.parent / f".{args.output.name}.tmp" if not args.dry_run else None
@@ -240,11 +247,14 @@ def main() -> int:
             counts["skipped"] += 1
             continue
 
-        # Flatten commands/fly/*.md -> commands/fly-*.md
-        if transform_type == "commands" and len(rel.parts) > 2:
-            dest_rel = Path("commands") / f"fly-{rel.name}"
-        elif transform_type == "copy_as_txt":
+        if transform_type == "copy_as_txt":
             dest_rel = rel.with_suffix(".txt")
+        elif transform_type == "agents":
+            # Namespace agents under fly/ subfolder
+            dest_rel = Path("agents") / "fly" / rel.relative_to("agents")
+        elif transform_type == "commands":
+            # Keep commands/fly/ subfolder structure (source already has it)
+            dest_rel = rel
         else:
             dest_rel = rel
 
@@ -268,15 +278,16 @@ def main() -> int:
                 counts[transform_type] += 1
 
     if not args.dry_run and temp_base:
-        # Atomic swap of only the managed subdirectories
+        # Atomic swap of only the managed paths
         args.output.mkdir(parents=True, exist_ok=True)
-        for subdir in managed_subdirs:
-            temp_subdir = temp_base / subdir
-            final_subdir = args.output / subdir
-            if temp_subdir.exists():
-                if final_subdir.exists():
-                    shutil.rmtree(final_subdir)
-                temp_subdir.rename(final_subdir)
+        for managed in managed_paths:
+            temp_managed = temp_base / managed
+            final_managed = args.output / managed
+            if temp_managed.exists():
+                if final_managed.exists():
+                    shutil.rmtree(final_managed)
+                final_managed.parent.mkdir(parents=True, exist_ok=True)
+                temp_managed.rename(final_managed)
         # Clean up temp directory
         if temp_base.exists():
             shutil.rmtree(temp_base)

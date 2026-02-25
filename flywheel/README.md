@@ -132,8 +132,7 @@ Core workflow commands use `fly:` prefix:
 
 | Skill | Description |
 |-------|-------------|
-| `compound-docs` | Capture solved problems as categorized documentation |
-| `git-worktree` | Manage Git worktrees for parallel development |
+| `compound` | Capture solved problems as categorized documentation |
 
 ## Research Pattern
 

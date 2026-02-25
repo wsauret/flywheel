@@ -1,8 +1,7 @@
 ---
 name: codebase-research
-description: "Conduct comprehensive codebase research producing a persistent document. Use when you need to understand something BEFORE planning, or for pure exploration."
+description: "Conduct comprehensive codebase research producing a persistent document. Use when you need to understand something BEFORE planning, or for pure exploration. Triggers on \"research\", \"investigate\", \"explore codebase\"."
 user-invocable: true
-triggers: ["research", "investigate", "explore codebase"]
 allowed-tools:
   - Read
   - Write
@@ -10,6 +9,7 @@ allowed-tools:
   - Glob
   - Bash
   - Task
+  - WebFetch
   - AskUserQuestion
 ---
 

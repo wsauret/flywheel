@@ -136,10 +136,10 @@ TaskCreate:
 
 **AskUserQuestion:**
 ```
-Question: "Ready to execute. [Worktree recommended due to: X] How to work?"
+Question: "Ready to execute. How to work?"
 Options:
 1. Current branch
-2. Create worktree (Recommended)
+2. Create worktree (Recommended for parallel work)
 ```
 
-**If worktree:** Use `worktree-manager.sh create <branch> main`, remind about deps and /init.
+**If worktree:** Use native worktree support (`claude --worktree <branch>` or `git worktree add`), remind about deps and /init.

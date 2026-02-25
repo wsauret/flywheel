@@ -112,148 +112,18 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 **Best for:** Major features, architectural changes, complex integrations
 
-```markdown
-## Overview
+Uses all sections from MORE, plus these additional sections:
 
-[Executive summary]
-
-## Desired End State
-
-[Specification of what "done" looks like + how to verify it]
-
-**What complete looks like:**
-- [Observable outcome 1]
-- [Observable outcome 2]
-
-**How to verify:**
-- Automated: `make test && make lint`
-- Manual: [Specific test scenarios]
-
-## Problem Statement
-
-[Detailed problem analysis]
-
-## What We're NOT Doing
-
-[Explicit out-of-scope items to prevent scope creep and set clear boundaries]
-
-- [Out-of-scope item 1] - [brief reason]
-- [Out-of-scope item 2] - [brief reason]
-- [Future enhancement] - [why deferred]
-
-## Proposed Solution
-
-[Comprehensive solution design]
-
-## Technical Approach
-
-### Architecture
-
-[Detailed technical design]
-
-### Implementation Phases
-
-- Phase 1: [Foundation]
-  - [ ] **Step 1.1: Write tests for [foundation behavior]**
-  - [ ] **Step 1.2: Implement [foundation capability]**
-  - [ ] **Step 1.3: Verify**: `make test` (and any relevant checks)
-
-- Phase 2: [Core Implementation]
-  - [ ] **Step 2.1: Write tests for [core behavior]**
-  - [ ] **Step 2.2: Implement [core capability]**
-  - [ ] **Step 2.3: Verify**: `make test` (and any relevant checks)
-
-- Phase 3: [Polish & Optimization]
-  - [ ] **Step 3.1: Write tests for [polish behavior]**
-  - [ ] **Step 3.2: Implement [polish improvements]**
-  - [ ] **Step 3.3: Verify**: `make test` (and any relevant checks)
-
-## Alternative Approaches Considered
-
-[Other solutions evaluated and why rejected]
-
-## Success Criteria
-
-### Automated Verification
-
-- [ ] Unit tests pass: `make test`
-- [ ] Integration tests pass: `make test-integration`
-- [ ] Linting passes: `make lint`
-- [ ] Type checking passes: `make typecheck`
-- [ ] Coverage meets threshold: `make coverage`
-
-### Manual Verification (Acceptance Criteria)
-
-#### Functional Requirements
-
-- [ ] Detailed functional criteria
-- [ ] User flow works end-to-end
-
-#### Non-Functional Requirements
-
-- [ ] Performance targets met under load
-- [ ] Security requirements verified
-- [ ] Accessibility standards met
-
-### Quality Gates
-
-- [ ] Test coverage requirements
-- [ ] Documentation completeness
-- [ ] Code review approval
-
-## Success Metrics
-
-[Detailed KPIs and measurement methods]
-
-## Dependencies & Prerequisites
-
-[Detailed dependency analysis]
-
-## Risk Analysis & Mitigation
-
-[Comprehensive risk assessment]
-
-## Resource Requirements
-
-[Team, time, infrastructure needs]
-
-## Future Considerations
-
-[Extensibility and long-term vision]
-
-## Documentation Plan
-
-[What docs need updating]
-
-## Open Questions
-
-[Questions identified during research that need resolution before implementation]
-
-| Question | Options | Source |
-|----------|---------|--------|
-| [Question from research] | A: [option], B: [option] | [which agent flagged it] |
-| [Trade-off identified] | A: [approach], B: [approach] | [source] |
-
-## References & Research
-
-### Internal References
-
-- Architecture decisions: [file_path:line_number]
-- Similar features: [file_path:line_number]
-- Configuration: [file_path:line_number]
-
-### External References
-
-- Framework documentation: [url]
-- Best practices guide: [url]
-- Industry standards: [url]
-
-### Related Work
-
-- Previous PRs: #[pr_numbers]
-- Related issues: #[issue_numbers]
-- Design documents: [links]
-```
+- **Desired End State** — Observable outcomes + automated/manual verification commands
+- **What We're NOT Doing** — Explicit out-of-scope items with reasons
+- **Technical Approach / Architecture** — Detailed technical design
+- **Implementation Phases** — Multi-phase with test-first steps per phase (same pattern as MORE)
+- **Alternative Approaches Considered** — Other solutions evaluated and why rejected
+- **Success Criteria** — Automated verification (test/lint/typecheck/coverage), manual verification (functional + non-functional), quality gates
+- **Risk Analysis & Mitigation**
+- **Future Considerations**
+- **Open Questions** — Table format: `| Question | Options | Source |`
+- **References & Research** — Internal (file paths), External (docs URLs), Related (PRs/issues)
 
 ---
 
@@ -261,67 +131,32 @@ Templates for different levels of plan detail. Choose based on complexity.
 
 File: `docs/plans/<plan-name>.context.md`
 
+Purpose: Recovery artifact — lets downstream skills pick up key context without re-researching. Keep it lean.
+
 ```markdown
 ---
 plan: <plan-filename>.md
 created: <date>
 feature: "<feature description>"
-research_date: <date>
-codebase_version: <git commit hash when research was done>
-researchers:
-  - locator-codebase
-  - analyzer-codebase
-  - locator-patterns
-  - analyzer-patterns
-  - locator-docs
-  - analyzer-docs
 ---
 
 # Research Context: <Feature Name>
 
-## File References
+## Key File Paths
 
-<list of specific file paths, one per line>
+<list of specific file paths referenced in the plan, one per line>
 
-## Naming Conventions
+## Patterns & Conventions
 
-- [Convention type]: [pattern observed]
+- [Key pattern or convention observed]
 
-## External Research
+## Validation Summary
 
-### Framework Documentation
+- **High-risk topics:** [list or "None"]
+- **External research:** [Yes/No]
+- **Issues found:** [list or "None"]
 
-- [URL with description]
-
-### Best Practices
-
-- [Best practice with source]
-
-## DRY & Integration Findings
-
-- **DRY violations:** [list or "None found"]
-- **Integration risks:** [list or "None found"]
-- **Existing solutions to reuse:** [list or "None found"]
-
-## Validation Research
-
-- **High-risk topics detected:** [list or "None"]
-- **External research run:** [Yes/No]
-- **Claims validated:** [count or "N/A"]
-- **Issues found:** [CLAIM_INVALID / VERSION_ISSUE items or "None"]
-
-## Gotchas & Warnings
+## Gotchas
 
 - [Warning about patterns or pitfalls]
-
-## Open Questions from Research
-
-[Questions flagged by research agents that need user decision]
-
-- **[Question]**: [Options if applicable] (Source: [agent])
-
-## Research Quality
-
-- **Confidence**: High/Medium/Low
-- **Last verified**: <date>
 ```
