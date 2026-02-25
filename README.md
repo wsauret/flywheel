@@ -1,53 +1,72 @@
 # Flywheel
 
-A Claude Code plugin that turns development cycles into momentum.
+A plugin for Claude Code and OpenCode that turns development cycles into momentum.
 
 ## Install
 
-In Claude Code, run:
+### Claude Code
+
+**Marketplace (recommended):**
 
 ```
 /plugin marketplace add wsauret/flywheel
 /plugin install flywheel@flywheel-marketplace
 ```
 
+**Local:**
+
+```bash
+git clone https://github.com/wsauret/flywheel.git
+cd flywheel
+./install_claude_code.sh
+```
+
+### OpenCode
+
+```bash
+git clone https://github.com/wsauret/flywheel.git
+cd flywheel
+python3 install_opencode.py
+```
+
+This transforms the plugin into OpenCode's config format and writes to `~/.config/opencode/`. Re-run the script to update.
+
 ### Optional: Context7 Setup
 
 Context7 provides up-to-date framework documentation for the planning workflow.
-Get a free API key at https://context7.com/dashboard, then run:
+Both installers will prompt you to configure Context7 automatically.
+
+To get an API key, sign up at https://context7.com/dashboard. If you skip during
+install, you can configure it manually later:
+
+**Claude Code:**
 
 ```bash
 claude mcp add --header "CONTEXT7_API_KEY: your-key-here" \
   --transport http context7 https://mcp.context7.com/mcp
 ```
 
-### Local Install
+**OpenCode** — add to `~/.config/opencode/opencode.json`:
 
-```bash
-git clone https://github.com/wsauret/flywheel.git
-cd flywheel
-./install.sh
+```json
+{
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+      }
+    }
+  }
+}
 ```
 
-### Auto-Update
+### Staying Up To Date
 
-To receive updates automatically, enable auto-update for the marketplace:
+**Claude Code:** Run `/plugins` and toggle auto-update on for `flywheel-marketplace`.
 
-```
-/plugins
-```
-
-Then toggle auto-update on for `flywheel-marketplace`.
-
-### Upgrading from local-marketplace
-
-If you previously installed via the old local-marketplace pattern:
-
-```bash
-claude plugin marketplace remove local-marketplace
-```
-
-Then follow the standard install instructions.
+**OpenCode:** Re-run `python3 install_opencode.py` to pick up changes.
 
 ## What Problems Does This Solve?
 
@@ -66,7 +85,8 @@ This keeps context utilization low, which is where models perform best.
 
 When an agent solves a problem, the solution lives in chat history and disappears. Flywheel captures lessons so they persist:
 
-- **`/fly:compound`** documents solutions while context is fresh
+- **`/fly:compound`** (Claude Code) or **`/fly/compound`** (OpenCode) documents solutions while context is fresh
+- **`/fly:ship`** automatically compounds learnings when opening a PR, so knowledge capture is built into the shipping flow
 - **`docs/solutions/`** stores them as a searchable knowledge base with YAML frontmatter
 - **Planning skills** surface relevant past solutions automatically
 
@@ -87,17 +107,21 @@ Flywheel requires human approval at research and plan boundaries because that's 
 ## Workflow
 
 ```
-Brainstorm → Plan → Work → Review → Compound → Repeat
+Plan → Work → Ship → Repeat
 ```
 
-| Command | Purpose |
-|---------|---------|
-| `/fly:brainstorm` | Explore ideas conversationally before detailed planning |
-| `/fly:research` | Codebase research using a locate→analyze pattern |
-| `/fly:plan` | Create, enrich, review, and consolidate implementation plans |
-| `/fly:work` | Execute plans with continuous testing and quality checks |
-| `/fly:review` | Multi-agent code review with structured todo tracking |
-| `/fly:compound` | Document solved problems for future reference |
+Brainstorm and research are optional entry points. Review can be added before shipping. Ship automatically compounds learnings.
+
+| Command (Claude Code) | Command (OpenCode) | Purpose |
+|-----------------------|-------------------|---------|
+| `/fly:brainstorm` | `/fly/brainstorm` | Explore ideas conversationally before detailed planning |
+| `/fly:research` | `/fly/research` | Codebase research using a locate→analyze pattern |
+| `/fly:plan` | `/fly/plan` | Create, enrich, review, and consolidate implementation plans |
+| `/fly:work` | `/fly/work` | Execute plans with continuous testing and quality checks |
+| `/fly:review` | `/fly/review` | Multi-agent code review with structured todo tracking |
+| `/fly:compound` | `/fly/compound` | Document solved problems for future reference |
+| `/fly:debug` | `/fly/debug` | Iterative debug loop with fix-verify cycles |
+| `/fly:ship` | `/fly/ship` | Create branch, commit, push, open a PR, and compound learnings |
 
 Each cycle builds on the last: plans inform future plans, reviews catch more issues, patterns get documented.
 
@@ -105,12 +129,11 @@ Each cycle builds on the last: plans inform future plans, reviews catch more iss
 
 ### Planning in phases
 
-`/fly:plan` orchestrates four phases, each writing to the same plan file:
+`/fly:plan` orchestrates three skills in sequence, each writing to the same plan file:
 
-1. **Create** — Draft a plan based on codebase patterns (creative/generative)
-2. **Enrich** — Validate assumptions against docs and add research insights
-3. **Review** — Critique from multiple reviewer agents (security, performance, architecture)
-4. **Consolidate** — Surface open questions for user decision and then write out a plan ready for implementation
+1. **Create** — Research the codebase (locate→analyze pattern), validate high-risk claims against external docs (Context7), and draft the plan
+2. **Review** — Run all reviewer agents in parallel (architecture, performance, data integrity, etc.), deduplicate findings, and convert conflicts to open questions
+3. **Consolidate** — Resolve open questions with the user one at a time, then restructure everything into an actionable checklist ready for `/fly:work`
 
 ### Research with tiered agents
 
@@ -131,11 +154,11 @@ Each cycle builds on the last: plans inform future plans, reviews catch more iss
 
 | Type | Count | Examples |
 |------|-------|---------|
-| Reviewers | 9 | architecture, security, performance, code-quality, simplicity, patterns, data-integrity, git-history, agent-native |
+| Reviewers | 6 | architecture, code-quality, performance, patterns, data-integrity, plan-philosophy |
 | Research Locators | 4 | codebase, patterns, docs, web |
-| Research Analyzers | 4 | codebase, patterns, docs, web |
-| Commands | 6 | brainstorm, research, plan, work, review, compound |
-| Skills | 10 | plan-creation, plan-review, plan-consolidation, work-implementation, work-review, and more |
+| Research Analyzers | 5 | codebase, patterns, docs, web, git-history |
+| Commands | 8 | brainstorm, research, plan, work, review, compound, debug, ship |
+| Skills | 13 | plan-creation, plan-review, plan-consolidation, work-implementation, work-review, and more |
 
 See `flywheel/README.md` for full agent, command, and skill reference tables.
 

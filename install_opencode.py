@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Transform flywheel/ markdown files to ~/.config/opencode/ format."""
+"""Install Flywheel for OpenCode.
+
+Transforms flywheel/ markdown files to ~/.config/opencode/ format and
+optionally configures Context7 MCP server.
+"""
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -203,19 +208,122 @@ def get_transform_type(rel_path: Path) -> str | None:
     return None
 
 
+def get_shell_profile() -> Path:
+    """Determine the user's shell profile file."""
+    shell = os.environ.get("SHELL", "")
+    home = Path.home()
+    if "zsh" in shell:
+        return home / ".zshrc"
+    if "bash" in shell:
+        bash_profile = home / ".bash_profile"
+        return bash_profile if bash_profile.exists() else home / ".bashrc"
+    return home / ".profile"
+
+
+def configure_context7(config_path: Path, dry_run: bool) -> None:
+    """Prompt for Context7 API key and write MCP config to opencode.json."""
+
+    api_key = os.environ.get("CONTEXT7_API_KEY", "")
+    save_to_profile = False
+
+    if api_key:
+        print("  * Found CONTEXT7_API_KEY in environment, using it...")
+    else:
+        print("  * Context7 provides up-to-date framework documentation for the planning workflow.")
+        try:
+            api_key = input("  * Enter your Context7 API key (or press Enter to skip): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            api_key = ""
+        save_to_profile = True
+
+    if not api_key:
+        print("  * Skipped Context7 configuration")
+        return
+
+    # Build the MCP config block
+    context7_mcp: dict = {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp",
+        "headers": {"CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"},
+    }
+
+    # Read existing config or start fresh
+    config: dict = {}
+    if config_path.exists():
+        try:
+            text = config_path.read_text(encoding="utf-8")
+            if text.strip():
+                config = json.loads(text)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Merge MCP config
+    config.setdefault("$schema", "https://opencode.ai/config.json")
+    config.setdefault("mcp", {})
+    config["mcp"]["context7"] = context7_mcp
+
+    if dry_run:
+        print(f"  [dry-run] Would write Context7 config to {config_path}")
+        print(f"  [dry-run] Config: {json.dumps(config, indent=2)}")
+    else:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(config_path, json.dumps(config, indent=2) + "\n")
+        print(f"  \u2713 Context7 configured in {config_path}")
+
+    # Offer to save API key to shell profile
+    if save_to_profile:
+        profile = get_shell_profile()
+        try:
+            choice = input(f"  * Save API key to {profile} for future installs? [Y/n]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            choice = "n"
+        if not choice or choice.lower().startswith("y"):
+            if dry_run:
+                print(f"  [dry-run] Would save CONTEXT7_API_KEY to {profile}")
+            else:
+                profile_text = profile.read_text(encoding="utf-8") if profile.exists() else ""
+                export_line = f'export CONTEXT7_API_KEY="{api_key}"'
+                if "export CONTEXT7_API_KEY=" in profile_text:
+                    # Update existing entry
+                    profile_text = re.sub(
+                        r"^export CONTEXT7_API_KEY=.*$",
+                        export_line,
+                        profile_text,
+                        flags=re.MULTILINE,
+                    )
+                    profile.write_text(profile_text, encoding="utf-8")
+                    print(f"  \u2713 Updated CONTEXT7_API_KEY in {profile}")
+                else:
+                    with profile.open("a", encoding="utf-8") as f:
+                        f.write(f"\n# Context7 API key for Flywheel plugin\n{export_line}\n")
+                    print(f"  \u2713 Added CONTEXT7_API_KEY to {profile}")
+                print("  * Restart your terminal to use this variable in future sessions.")
+
+
 def main() -> int:
-    """Transform flywheel/ directory to ~/.config/opencode/ format."""
+    """Install Flywheel for OpenCode."""
     parser = argparse.ArgumentParser(
-        description="Transform flywheel/ to ~/.config/opencode/ format"
+        description="Install Flywheel for OpenCode"
     )
     parser.add_argument("--source", type=Path, default=Path("flywheel"))
     parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
+    parser.add_argument(
+        "--no-context7", action="store_true",
+        help="Skip Context7 MCP configuration",
+    )
     args = parser.parse_args()
+
+    print("================================")
+    print("  Flywheel Installer (OpenCode)")
+    print("================================")
+    print("")
 
     if not args.source.is_dir():
         print(f"Error: Source '{args.source}' not found", file=sys.stderr)
         return 1
+
+    print("Step 1: Installing Flywheel files...")
 
     # Paths we manage (relative to output), only these will be replaced.
     # agents/fly and commands/fly are namespaced subfolders so we don't
@@ -292,8 +400,18 @@ def main() -> int:
         if temp_base.exists():
             shutil.rmtree(temp_base)
 
-    print(f"Done: {counts['commands']} commands, {counts['agents']} agents, "
+    print(f"  \u2713 {counts['commands']} commands, {counts['agents']} agents, "
           f"{counts['skills']} skills, {counts['copied']} copied, {counts['skipped']} skipped")
+
+    # Step 2: Context7 MCP configuration
+    if not args.no_context7:
+        print("\nStep 2: Configuring Context7...")
+        config_path = args.output / "opencode.json"
+        configure_context7(config_path, args.dry_run)
+    else:
+        print("\nStep 2: Skipped Context7 configuration (--no-context7)")
+
+    print("\nInstallation Complete!")
     return 0
 
 

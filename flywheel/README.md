@@ -1,6 +1,6 @@
 # Flywheel Plugin
 
-A Claude Code plugin that turns development cycles into momentum.
+A plugin for Claude Code and OpenCode that turns development cycles into momentum.
 
 ## What Problems Does This Solve?
 
@@ -15,13 +15,14 @@ AI agents struggle with large codebases because context windows fill with search
 
 This keeps context utilization in the 40-60% range where models perform best.
 
-**Session Recovery:** If you need to clear context mid-work (`/clear`), just run `/fly:work` with no arguments. The session file remembers where you left off.
+**Session Recovery:** If you need to clear context mid-work, just run `/fly:work` (Claude Code) or `/fly/work` (OpenCode) with no arguments. The session file remembers where you left off.
 
 ### Knowledge walks out the door
 
 When an agent solves a problem, the solution lives in chat history and disappears. Flywheel captures lessons so they persist:
 
-- **`/fly:compound`** - Document solutions while context is fresh
+- **`/fly:compound`** (Claude Code) or **`/fly/compound`** (OpenCode) - Document solutions while context is fresh
+- **`/fly:ship`** - Automatically compounds learnings when opening a PR, so knowledge capture is built into the shipping flow
 - **`docs/solutions/`** - Searchable knowledge base with YAML frontmatter
 - **Automatic discovery** - Planning skills surface relevant past solutions
 
@@ -41,28 +42,48 @@ Flywheel requires human approval at research and plan boundaries because that's 
 
 ## Installation
 
-In Claude Code, run:
+### Claude Code
+
+**Marketplace (recommended):**
 
 ```
 /plugin marketplace add wsauret/flywheel
 /plugin install flywheel@flywheel-marketplace
 ```
 
-For local development or OpenCode, see the [repository README](https://github.com/wsauret/flywheel).
+**Local:**
+
+```bash
+git clone https://github.com/wsauret/flywheel.git
+cd flywheel
+./install_claude_code.sh
+```
+
+### OpenCode
+
+```bash
+git clone https://github.com/wsauret/flywheel.git
+cd flywheel
+python3 install_opencode.py
+```
+
+This transforms the plugin into OpenCode's config format and writes to `~/.config/opencode/`. Re-run the script to update.
+
+Both installers will prompt you to configure the Context7 MCP server (optional, for up-to-date framework docs during planning). For manual setup details, see the [repository README](https://github.com/wsauret/flywheel).
 
 ## Components
 
 | Component | Count |
 |-----------|-------|
-| Agents | 17 |
-| Commands | 6 |
-| Skills | 11 |
+| Agents | 15 |
+| Commands | 8 |
+| Skills | 13 |
 
 ## Agents
 
 Agents are organized into categories for easier discovery.
 
-### Reviewers (9)
+### Reviewers (6)
 
 | Agent | Description |
 |-------|-------------|
@@ -71,6 +92,7 @@ Agents are organized into categories for easier discovery.
 | `reviewer-data-integrity` | Database migrations and data integrity |
 | `reviewer-patterns` | Analyze code for patterns and anti-patterns |
 | `reviewer-performance` | Performance analysis and optimization |
+| `reviewer-plan-philosophy` | TDD ordering, SOLID compliance, DRY compliance in plans |
 
 ### Research Locators (4) - Cheap, Parallel
 
@@ -83,7 +105,7 @@ Find WHERE things are without reading full contents. Use haiku model.
 | `locator-docs` | Grep, Glob | Find WHERE documentation lives |
 | `locator-web` | WebSearch | Find relevant URLs (no fetching) |
 
-### Research Analyzers (4) - Expensive, Targeted
+### Research Analyzers (5) - Expensive, Targeted
 
 Understand HOW things work by reading files. Use sonnet model. Documentarian mode - no suggestions.
 
@@ -93,26 +115,33 @@ Understand HOW things work by reading files. Use sonnet model. Documentarian mod
 | `analyzer-patterns` | Read, Grep, Glob | Extract code examples with context |
 | `analyzer-docs` | Read, Grep, Glob | Extract insights from documentation |
 | `analyzer-web` | WebFetch, Read | Fetch and analyze web content deeply |
+| `analyzer-git-history` | Bash, Read, Grep, Glob | Analyze git history for code evolution and development insights |
 
 ## Commands
 
 ### Workflow Commands
 
-Core workflow commands use `fly:` prefix:
+Core workflow commands use `fly:` prefix in Claude Code and `fly/` prefix in OpenCode:
 
-| Command | Description |
-|---------|-------------|
-| `/fly:brainstorm` | Conversational exploration of ideas. One question at a time, explores 2-3 approaches, validates design incrementally. |
-| `/fly:research` | Comprehensive codebase research using locate→analyze pattern. Creates persistent research documents. |
-| `/fly:plan` | Create or refine implementation plans with research persistence. Handles design docs, feature descriptions, or existing plans. |
-| `/fly:work` | Execute work plans efficiently. Loads context files, follows patterns, tests continuously. |
-| `/fly:review` | Perform exhaustive code reviews using multi-agent analysis. Creates todo files for findings. |
-| `/fly:compound` | Document solved problems using parallel subagents. Captures solutions while context is fresh. |
+| Command (Claude Code) | Command (OpenCode) | Description |
+|-----------------------|-------------------|-------------|
+| `/fly:brainstorm` | `/fly/brainstorm` | Conversational exploration of ideas. One question at a time, explores 2-3 approaches, validates design incrementally. |
+| `/fly:research` | `/fly/research` | Comprehensive codebase research using locate→analyze pattern. Creates persistent research documents. |
+| `/fly:plan` | `/fly/plan` | Create or refine implementation plans with research persistence. Handles design docs, feature descriptions, or existing plans. |
+| `/fly:work` | `/fly/work` | Execute work plans efficiently. Loads context files, follows patterns, tests continuously. |
+| `/fly:review` | `/fly/review` | Perform exhaustive code reviews using multi-agent analysis. Creates todo files for findings. |
+| `/fly:compound` | `/fly/compound` | Document solved problems using parallel subagents. Captures solutions while context is fresh. |
+| `/fly:debug` | `/fly/debug` | Iterative debug loop: gather problem, investigate, fix-verify cycle. |
+| `/fly:ship` | `/fly/ship` | Create branch, commit, push, open a PR, and compound learnings from the session. |
 
-**Recommended Workflow:**
+**Core Workflow:**
 ```
-/fly:brainstorm → /fly:research (optional) → /fly:plan → /fly:work → /fly:review → /fly:compound
+/fly:plan → /fly:work → /fly:ship
 ```
+
+Brainstorm and research are optional entry points. Review can be added before shipping. Ship automatically compounds learnings.
+
+(In OpenCode, replace `:` with `/` in all commands.)
 
 ## Skills
 
@@ -123,16 +152,26 @@ Core workflow commands use `fly:` prefix:
 | `brainstorm` | Conversational exploration of ideas before planning |
 | `codebase-research` | Comprehensive research using locate→analyze pattern |
 | `plan-creation` | Research codebase, validate claims, and draft plans in a single pass |
-| `plan-review` | Critique from multiple reviewer perspectives (security, perf, arch) |
+| `plan-review` | Critique from multiple reviewer perspectives (architecture, perf, data integrity, etc.) |
 | `plan-consolidation` | Resolve open questions with user; create actionable checklists |
 | `work-implementation` | Execute plans following patterns, testing continuously |
 | `work-review` | Multi-agent code reviews with todo file creation |
+| `compound` | Capture solved problems as categorized documentation |
+| `debug` | Iterative debug loop with verification after each fix attempt |
+| `ship` | Branch creation, commit, push, PR creation, and compound learnings |
+
+### Domain-Specific Skills
+
+| Skill | Description |
+|-------|-------------|
+| `astronomer-airflow` | Operational reference for Airflow 3.x on Astronomer |
 
 ### Utility Skills
 
 | Skill | Description |
 |-------|-------------|
-| `compound` | Capture solved problems as categorized documentation |
+| `flywheel-conventions` | Shared conventions for subagents: token limits, output format, severity definitions |
+| `language-standards` | Language-specific standards for Python, TypeScript, SQL; loaded by reviewers on demand |
 
 ## Research Pattern
 
@@ -148,3 +187,15 @@ Flywheel uses a two-phase locate→analyze pattern for research:
    - Full file reads (no partial reads)
 
 This reduces context usage significantly compared to all-in-one research agents.
+
+## Client Differences
+
+While Flywheel provides the same functionality on both clients, there are a few structural differences:
+
+| Aspect | Claude Code | OpenCode |
+|--------|------------|----------|
+| Distribution | Plugin marketplace or local install | `install_opencode.py` script |
+| Command syntax | `/fly:command` | `/fly/command` |
+| Config location | `~/.claude/plugins/cache/...` | `~/.config/opencode/` |
+| Auto-update | Marketplace toggle | Re-run install script |
+| Context7 MCP | Bundled in plugin or configured via installer | Configured via installer into `opencode.json` |
