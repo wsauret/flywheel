@@ -12,6 +12,7 @@ allowed-tools:
   - TaskCreate
   - TaskUpdate
   - TaskList
+  - Skill
   - AskUserQuestion
 ---
 
@@ -128,12 +129,26 @@ Follow `references/verification-gates.md`: IDENTIFY proving command, RUN it fres
 
 ---
 
-## Phase 4: Ship It
+## Phase 4: Complete
 
-1. **Commit & PR:** `git add`, `git commit`, `git push`, `gh pr create`
-2. **Update state:** Mark `status: completed`
-3. **Clear session and baseline:** `rm .flywheel/session.md` and baseline file
-4. **Worktree cleanup:** If in worktree, offer to remove and switch to main
+All phases executed and quality-checked. Present the user with next steps:
+
+```
+All phases complete and verified.
+
+What's next?
+1. Review the work (recommended if complex changes)
+2. Ship it (commit, PR, and compound learnings)
+```
+
+- **Option 1**: Invoke the `work-review` skill to run a code review before shipping.
+- **Option 2**: Invoke the `ship` skill, which handles branch creation, commit, PR, and compounding learnings from this work session.
+
+After the user's choice completes:
+
+1. **Update state:** Mark `status: completed`
+2. **Clear session and baseline:** `rm .flywheel/session.md` and baseline file
+3. **Worktree cleanup:** If in worktree, offer to remove and switch to main
 
 ---
 

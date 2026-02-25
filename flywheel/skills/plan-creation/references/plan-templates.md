@@ -269,12 +269,12 @@ feature: "<feature description>"
 research_date: <date>
 codebase_version: <git commit hash when research was done>
 researchers:
-  - codebase-locator
-  - codebase-analyzer
-  - pattern-locator
-  - pattern-analyzer
-  - docs-locator
-  - docs-analyzer
+  - locator-codebase
+  - analyzer-codebase
+  - locator-patterns
+  - analyzer-patterns
+  - locator-docs
+  - analyzer-docs
 ---
 
 # Research Context: <Feature Name>
@@ -296,6 +296,19 @@ researchers:
 ### Best Practices
 
 - [Best practice with source]
+
+## DRY & Integration Findings
+
+- **DRY violations:** [list or "None found"]
+- **Integration risks:** [list or "None found"]
+- **Existing solutions to reuse:** [list or "None found"]
+
+## Validation Research
+
+- **High-risk topics detected:** [list or "None"]
+- **External research run:** [Yes/No]
+- **Claims validated:** [count or "N/A"]
+- **Issues found:** [CLAIM_INVALID / VERSION_ISSUE items or "None"]
 
 ## Gotchas & Warnings
 

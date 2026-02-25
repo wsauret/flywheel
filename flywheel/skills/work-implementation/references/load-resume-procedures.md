@@ -114,9 +114,9 @@ TaskCreate:
 **Example:**
 ```
 TaskCreate:
-  subject: "Phase 1: Rename plan-verification to plan-enrich"
-  description: "Rename skill directory, update triggers, search-replace all references..."
-  activeForm: "Renaming plan-verification to plan-enrich"
+  subject: "Phase 1: Add user authentication endpoints"
+  description: "Create auth service, add JWT middleware, write integration tests..."
+  activeForm: "Implementing user authentication endpoints"
 ```
 
 **Benefits:**

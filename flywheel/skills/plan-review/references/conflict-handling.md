@@ -47,17 +47,17 @@ For each conflict:
 
 **Context:** [Brief description of what the plan proposes]
 
-**Perspective A** (security-reviewer):
+**Perspective A** (reviewer-architecture):
 > [Their recommendation and reasoning]
 
-**Perspective B** (performance-reviewer):
+**Perspective B** (reviewer-performance):
 > [Their opposing recommendation and reasoning]
 
 **Trade-off:** [What you gain/lose with each option]
 
 **Options:**
-- A: [Follow security-reviewer's recommendation]
-- B: [Follow performance-reviewer's recommendation]
+- A: [Follow reviewer-architecture's recommendation]
+- B: [Follow reviewer-performance's recommendation]
 - C: [Hybrid approach if applicable]
 ```
 

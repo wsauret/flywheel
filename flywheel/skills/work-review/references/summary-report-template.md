@@ -1,6 +1,6 @@
 # Summary Report Template — Full Reference
 
-This reference contains the full template for the Phase 6 summary report displayed to the user.
+This reference contains the full template for the Phase 5 summary report displayed to the user.
 
 ## Template
 
@@ -17,20 +17,10 @@ This reference contains the full template for the Phase 6 summary report display
 - **IMPORTANT (P2):** [count] - Should Fix
 - **NICE-TO-HAVE (P3):** [count] - Enhancements
 
-### Created Todo Files:
+### Top Findings:
+[List the 3-5 most important findings with file:line references]
 
-**P1 - Critical:**
-- `001-pending-p1-{finding}.md`
-
-**P2 - Important:**
-- `002-pending-p2-{finding}.md`
-
-**P3 - Nice-to-Have:**
-- `003-pending-p3-{finding}.md`
-
-### Next Steps:
-1. Address P1 findings before merge
-2. Full review details: `docs/reviews/[filename].md`
-3. Individual todo files: `docs/todos/` directory
-4. Use `/fly:work` to implement fixes from this review
+### What's next?
+1. Implement review findings — invoke `/fly:work docs/reviews/[filename].md`
+2. Ship as-is — invoke `/fly:ship`
 ```

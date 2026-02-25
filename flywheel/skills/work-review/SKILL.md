@@ -1,6 +1,6 @@
 ---
 name: work-review
-description: Perform exhaustive code reviews using multi-agent analysis. Reviews PRs, branches, or current changes. Saves review to docs/reviews/ and creates todo files for findings. Triggers on "review", "code review", "check PR".
+description: Perform exhaustive code reviews using multi-agent analysis. Reviews PRs, branches, or current changes. Saves review to docs/reviews/. Triggers on "review", "code review", "check PR".
 allowed-tools:
   - Read
   - Write
@@ -13,7 +13,7 @@ allowed-tools:
 
 # Reviewing Skill
 
-Perform exhaustive code reviews using multi-agent analysis. Saves the full review to `docs/reviews/` and creates actionable todo files in `docs/todos/`.
+Perform exhaustive code reviews using multi-agent analysis. Saves the full review to `docs/reviews/`.
 
 ## Input
 
@@ -64,25 +64,25 @@ Ensure code is ready for analysis before proceeding.
 Run ALL applicable agents simultaneously:
 
 ```
-Task code-quality-reviewer(PR content)    # Code quality (Python/TypeScript)
-Task git-history-reviewer(PR content)     # History context
-Task pattern-reviewer(PR content)
-Task architecture-reviewer(PR content)
-Task security-reviewer(PR content)
-Task performance-reviewer(PR content)
-Task code-simplicity-reviewer(PR content)
+Task reviewer-architecture(PR content)
+Task reviewer-code-quality(PR content)    # Code quality (Python/TypeScript)
+Task reviewer-patterns(PR content)
+Task reviewer-performance(PR content)
+Task reviewer-data-integrity(PR content)
 ```
 
 ### Conditional Agents
 
 **If PR contains database migrations** (files matching `**/migrations/**`, `alembic/`, `prisma/migrations/`):
-- Task data-integrity-reviewer(PR content)
+- Task reviewer-data-integrity(PR content)
 
 ---
 
-## Phase 3: Synthesize Findings
+## Phase 3: Synthesize Findings into Actionable Plan
 
-### Collect & Categorize
+The review document must be consumable by `/fly:work` as an implementation plan. Structure findings as phases with concrete, checkable steps — not just a list of observations.
+
+### Collect & Deduplicate
 
 - Collect findings from all agents
 - Remove duplicates/overlapping findings
@@ -94,27 +94,45 @@ Task code-simplicity-reviewer(PR content)
 - **P2 (Important)**: Performance issues, architectural concerns, reliability issues
 - **P3 (Nice-to-have)**: Minor improvements, cleanup, documentation
 
-### Estimate Effort
+### Triage P3 Findings
 
-Tag each finding: Small / Medium / Large
+Before structuring the plan, present the P3 findings to the user and ask which to include:
+
+```
+P3 (Nice-to-have) findings:
+1. [Finding title] — [one-line summary] (file:line)
+2. [Finding title] — [one-line summary] (file:line)
+3. [Finding title] — [one-line summary] (file:line)
+
+Which P3 items should be included in the review plan?
+1. All of them
+2. None — drop P3 items entirely
+3. Pick specific ones (list numbers)
+```
+
+Only P3 findings the user selects are included in the implementation checklist. Dropped P3 findings are omitted from the review document entirely — they are not deferred or preserved.
+
+If there are no P3 findings, skip this step.
+
+### Group into Implementation Phases
+
+Convert the findings (P1, P2, and selected P3) into ordered phases:
+
+1. **Group by file or module** — findings in the same file or closely related files become one phase
+2. **Order by severity** — P1 phases first, then P2, then selected P3
+3. **Respect dependencies** — if fixing A is required before B, A's phase comes first
+4. **Each phase ends with a verify step** — tests must pass after each phase
+5. **Keep phases small** — 2-4 steps per phase; split if larger
+
+Each step must include: the specific file and line, what the problem is, and the concrete fix to apply.
 
 ---
 
-## Phase 4: Track Findings
-
-Create a todo file for each finding using the built-in task system.
-
-Read `references/todo-format.md` before proceeding -- it contains the file naming convention, required YAML frontmatter structure, and all required sections (problem statement, findings, proposed solutions, acceptance criteria, work log).
-
-Always tag findings with `code-review` plus relevant tags: `security`, `performance`, `architecture`, `quality`.
-
----
-
-## Phase 5: Persist Review
+## Phase 4: Persist Review
 
 Write the full review to `docs/reviews/YYYY-MM-DD-<target-slug>.md`. This is the durable artifact that survives context clearing — always write it.
 
-Read `references/review-document-template.md` before proceeding — it contains the output path conventions, document template with YAML frontmatter, all required sections (findings by severity, agent coverage, todo file references), and integration patterns for other skills.
+Read `references/review-document-template.md` before proceeding — it contains the output path conventions, document template with YAML frontmatter, implementation checklist format, phase grouping guidelines, and integration patterns for other skills.
 
 **Target slug derivation:**
 - PR: `pr-{number}-{title-slug}` (e.g., `pr-123-add-user-auth`)
@@ -127,11 +145,22 @@ mkdir -p docs/reviews
 
 ---
 
-## Phase 6: Summary Report
+## Phase 5: Summary & Next Steps
 
 Present a **brief** summary to the user (not the full document). Include the path to the saved review file so the user knows where to find it.
 
 Read `references/summary-report-template.md` before proceeding -- it contains the full report template with all required sections.
+
+After presenting the summary, prompt the user to address the findings:
+
+```
+What's next?
+1. Implement review findings (invoke /fly:work on the review file)
+2. Ship as-is (skip to /fly:ship)
+```
+
+- **Option 1**: Invoke the `work-implementation` skill with the review file path as input. The review document is structured as an actionable plan — each finding has file references, severity, and proposed solutions.
+- **Option 2**: Proceed directly to shipping without addressing findings.
 
 ---
 
@@ -139,8 +168,8 @@ Read `references/summary-report-template.md` before proceeding -- it contains th
 
 - **P1 findings block merge.** Present critical findings prominently.
 - **Run agents in parallel.** Launch all applicable agents simultaneously.
-- **Create todos immediately.** Don't present findings one-by-one for approval. Create all todo files, then summarize.
-- **Always persist the review.** Write to `docs/reviews/` before presenting the summary. The saved file is the durable artifact that survives context clearing.
+- **Always persist the review.** Write to `docs/reviews/` before presenting the summary. The review file is the single durable artifact that survives context clearing.
+- **Prompt for implementation.** After presenting findings, offer to invoke `work-implementation` on the review file to address them.
 
 ---
 
@@ -148,7 +177,7 @@ Read `references/summary-report-template.md` before proceeding -- it contains th
 
 - **Agent failures:** Log failure, continue with remaining agents, report in summary. Minimum 50% agent success required.
 - **Git/GitHub failures:** If PR not found, verify number. If branch inaccessible, suggest worktree. If gh CLI not authenticated, provide setup instructions.
-- **Todo file failures:** Create `docs/todos/` directory if missing. If write fails, report and continue. Save partial results rather than losing all findings.
+- **Review file write failure:** Retry once. If still failing, output findings directly to the user rather than losing them.
 
 ---
 
@@ -160,6 +189,7 @@ Read `references/summary-report-template.md` before proceeding -- it contains th
 - Don't mark P1 findings as P2/P3 to avoid blocking merge
 - Don't forget to run conditional agents when criteria match
 - Don't skip persisting the review document — the whole point is surviving context clears
+- Don't end without prompting the user to implement findings
 
 ---
 

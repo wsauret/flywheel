@@ -1,6 +1,8 @@
 # Review Document Template — Full Reference
 
-The output format for Phase 5: Persist Review. Write this document to `docs/reviews/YYYY-MM-DD-<target-slug>.md`.
+The output format for Phase 4: Persist Review. Write this document to `docs/reviews/YYYY-MM-DD-<target-slug>.md`.
+
+This document serves two purposes: (1) a record of the review, and (2) an actionable plan consumable by `/fly:work`. Structure findings as implementation phases with concrete, checkable steps — the same format `plan-consolidation` produces.
 
 ---
 
@@ -30,16 +32,17 @@ findings:
   p2: [N]
   p3: [N]
 tags: [review, code-review, <relevant-tags>]
+ready_for: /fly:work
 ---
 
 # Code Review: [Target Description]
 
-## Review Target
-
+## Status
+- **Reviewed:** [YYYY-MM-DD]
 - **Target:** [PR #123 - Title | branch-name | current changes]
 - **Branch:** [branch-name]
-- **Date:** [YYYY-MM-DD]
 - **Verdict:** [BLOCKS MERGE | APPROVED WITH CONCERNS | CLEAN]
+- **Ready for:** /fly:work
 
 ## Plan Compliance
 
@@ -54,72 +57,79 @@ tags: [review, code-review, <relevant-tags>]
 | P3 (Nice-to-have) | [N] | Enhancements |
 | **Total** | **[N]** | |
 
-## Critical Findings (P1)
+## Critical Items Before Implementation
 
-[If no P1 findings: "None — no merge-blocking issues found."]
+[Only include this section if P1 findings exist]
 
-### [Finding Title]
+- **[Finding title]** (Source: [agent])
+  - Issue: [Description]
+  - Resolution: [How it's addressed in the checklist below, OR "BLOCKS IMPLEMENTATION"]
 
-- **File:** `path/to/file.ts:42`
-- **Category:** [security | performance | architecture | quality]
-- **Effort:** [Small | Medium | Large]
-- **Todo:** `docs/todos/001-pending-p1-finding-slug.md`
+## Implementation Checklist
 
-[Brief description of the issue and why it blocks merge.]
+Group findings into phases by file/module/concern. Each phase should be a coherent unit of work. Order by severity (P1 first), then by logical dependency.
 
-## Important Findings (P2)
+### Phase 1: [Name — grouped by file, module, or concern]
 
-[If no P2 findings: "None."]
+- [ ] **Step 1.1: [Concrete action — what to change, where]**
+  - File: `path/to/file.ts:42`
+  - Severity: P1
+  - Category: [security | performance | architecture | quality]
+  - Problem: [What is broken or at risk]
+  - Fix: [Specific change to make]
+  - Agent: [Which reviewer found this]
 
-### [Finding Title]
+- [ ] **Step 1.2: [Concrete action]**
+  - File: `path/to/file.ts:85`
+  - Severity: P2
+  - Category: [category]
+  - Problem: [Description]
+  - Fix: [Specific change to make]
+  - Agent: [source agent]
 
-- **File:** `path/to/file.ts:85`
-- **Category:** [security | performance | architecture | quality]
-- **Effort:** [Small | Medium | Large]
-- **Todo:** `docs/todos/002-pending-p2-finding-slug.md`
+- [ ] **Step 1.3: Verify — Tests pass for this phase**
 
-[Brief description of the issue.]
+### Phase 2: [Name]
 
-## Nice-to-Have Findings (P3)
+- [ ] **Step 2.1: [Concrete action]**
+  - File: `path/to/file.ts:120`
+  - Severity: [P1 | P2 | P3]
+  - Category: [category]
+  - Problem: [Description]
+  - Fix: [Specific change to make]
+  - Agent: [source agent]
 
-[If no P3 findings: "None."]
-
-### [Finding Title]
-
-- **File:** `path/to/file.ts:120`
-- **Category:** [security | performance | architecture | quality]
-- **Effort:** [Small | Medium | Large]
-- **Todo:** `docs/todos/003-pending-p3-finding-slug.md`
-
-[Brief description.]
+- [ ] **Step 2.2: Verify — Tests pass for this phase**
 
 ## Agent Coverage
 
 | Agent | Status | Findings |
 |-------|--------|----------|
-| code-quality-reviewer | [completed | failed | skipped] | [N] |
-| git-history-reviewer | [completed | failed | skipped] | [N] |
-| pattern-reviewer | [completed | failed | skipped] | [N] |
-| architecture-reviewer | [completed | failed | skipped] | [N] |
-| security-reviewer | [completed | failed | skipped] | [N] |
-| performance-reviewer | [completed | failed | skipped] | [N] |
-| code-simplicity-reviewer | [completed | failed | skipped] | [N] |
-| data-integrity-reviewer | [completed | failed | skipped | N/A] | [N] |
-
-## Todo Files Created
-
-| File | Priority | Description |
-|------|----------|-------------|
-| `docs/todos/001-pending-p1-xxx.md` | P1 | [description] |
-| `docs/todos/002-pending-p2-xxx.md` | P2 | [description] |
+| reviewer-code-quality | [completed | failed | skipped] | [N] |
+| reviewer-patterns | [completed | failed | skipped] | [N] |
+| reviewer-architecture | [completed | failed | skipped] | [N] |
+| reviewer-performance | [completed | failed | skipped] | [N] |
+| reviewer-data-integrity | [completed | failed | skipped | N/A] | [N] |
 
 ## Next Steps
 
-1. [Address P1 findings before merge (if any)]
-2. Review todo files in `docs/todos/` directory
-3. Update todo status as items are resolved
-4. Use `/fly:work` to implement fixes from this review
+1. Run `/fly:work docs/reviews/[this-file].md` to implement fixes
+2. Re-review after fixes if P1 findings were present
+3. Ship when findings are addressed via `/fly:ship`
 ```
+
+---
+
+## Phase Grouping Guidelines
+
+When converting flat findings into implementation phases:
+
+1. **Group by file or module** — findings in the same file or closely related files become one phase.
+2. **Respect dependency order** — if fixing finding A is required before finding B makes sense, A's phase comes first.
+3. **P1 findings go in the earliest phases** — critical issues are addressed before nice-to-haves.
+4. **Each phase ends with a verify step** — maintain TDD discipline even in fix work.
+5. **Only include user-approved P3 findings** — P3 items are triaged by the user before the plan is written. Dropped P3s are omitted entirely.
+6. **Keep phases small** — prefer 2-4 steps per phase. A phase with 8+ steps should be split.
 
 ---
 

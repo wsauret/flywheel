@@ -7,14 +7,13 @@ Use this structure for the final consolidated output.
 
 ## Status
 - **Created:** [date from original plan]
-- **Deepened:** [date from Enhancement Summary]
 - **Reviewed:** [date from Review Summary]
 - **Consolidated:** [today's date]
 - **Ready for:** /fly:work
 
 ## Executive Summary
 
-[1-2 paragraph synthesis of what this plan accomplishes. Pull from original plan overview, enhanced with key insights from verification.]
+[1-2 paragraph synthesis of what this plan accomplishes. Pull from original plan overview, enhanced with key review findings.]
 
 ## Decisions Made
 
@@ -45,7 +44,6 @@ Use this structure for the final consolidated output.
 ### Phase 1: [Name]
 
 - [ ] **Step 1.1: [Concrete action]**
-  - Research insight: [Relevant finding - be specific]
   - Review note: [If any finding applies to this step]
   - Code reference: [If a code example applies]
 
@@ -73,7 +71,7 @@ Use this structure for the final consolidated output.
 
 ### Best Practices to Follow
 
-[Consolidated from all Research Insights - deduplicated, organized by topic]
+[Consolidated from plan content and review findings - deduplicated, organized by topic]
 
 1. **[Topic 1]**
    - [Practice] (Source: [agent/section])
@@ -83,14 +81,14 @@ Use this structure for the final consolidated output.
 
 ### Anti-Patterns to Avoid
 
-[Consolidated from Research Insights + Review findings]
+[Consolidated from review findings]
 
 1. **[Anti-pattern]**: [Why it's problematic]
 2. **[Anti-pattern]**: [Why it's problematic]
 
 ### Code Examples
 
-[Key code snippets from Research Insights, organized by topic]
+[Key code snippets from plan, organized by topic]
 
 **[Topic/Purpose]:**
 ```[language]
@@ -129,26 +127,12 @@ Use this structure for the final consolidated output.
 
 ---
 
-## Appendix: Raw Research & Review Data
-
-<details>
-<summary>Original Enhancement Summary</summary>
-
-[Copy the Enhancement Summary section from verification verbatim]
-
-</details>
+## Appendix: Raw Review Data
 
 <details>
 <summary>Original Review Summary</summary>
 
 [Copy the Plan Review Summary section from reviewing verbatim]
-
-</details>
-
-<details>
-<summary>Full Research Insights by Section</summary>
-
-[Copy all Research Insights subsections verbatim, preserving structure]
 
 </details>
 ```
@@ -165,7 +149,6 @@ Append this to the existing context file after consolidation:
 ### Actions Performed
 - Resolved [N] open questions with user input
 - Restructured into actionable checklist format
-- Integrated [X] research insights into implementation steps
 - Incorporated [Y] review findings
 - Created Technical Reference section
 - Preserved raw data in Appendix
@@ -180,7 +163,6 @@ Append this to the existing context file after consolidation:
 - **Implementation phases:** [count]
 - **Best practices consolidated:** [count]
 - **Anti-patterns documented:** [count]
-- **Code examples preserved:** [count]
 
 ### Plan Status
 - **P1 findings:** [count] ([all addressed / N blocking])

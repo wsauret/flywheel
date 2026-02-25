@@ -1,5 +1,5 @@
 ---
-name: docs-locator
+name: locator-docs
 description: "Find WHERE documentation lives. Searches README, CLAUDE.md, docs/, and inline comments."
 model: haiku
 tools: [Grep, Glob, LS]

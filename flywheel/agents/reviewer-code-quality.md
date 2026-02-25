@@ -1,5 +1,5 @@
 ---
-name: code-quality-reviewer
+name: reviewer-code-quality
 description: Reviews Python and TypeScript code with an extremely high quality bar. Invoke after implementing features, modifying existing code, or creating new modules/components to ensure code meets exceptional standards for type safety, patterns, and maintainability.
 model: inherit
 tools: [Read, Grep, Glob]

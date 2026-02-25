@@ -1,5 +1,5 @@
 ---
-name: codebase-locator
+name: locator-codebase
 description: "Find WHERE files and components live in the codebase. Returns paths only - no file contents. Use for initial discovery before deep analysis."
 model: haiku
 tools: [Grep, Glob, LS]

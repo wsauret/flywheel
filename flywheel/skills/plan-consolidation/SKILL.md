@@ -1,6 +1,6 @@
 ---
 name: plan-consolidation
-description: Restructure deepened and reviewed plans into actionable checklists for /work. Triggers on "consolidate plan", "finalize plan".
+description: Restructure reviewed plans into actionable checklists for /work. Triggers on "consolidate plan", "finalize plan".
 allowed-tools:
   - Read
   - Write
@@ -13,13 +13,13 @@ allowed-tools:
 
 # Plan Consolidation Skill
 
-Transform plans with Research Insights and Review Summary into a single, coherent, work-ready document with integrated checklists.
+Transform plans with a Review Summary into a single, coherent, work-ready document with integrated checklists.
 
-**Philosophy:** Verification and reviewing add valuable content but scatter it. Consolidation restructures everything into actionable format.
+**Philosophy:** Reviewing adds valuable content but scatters it. Consolidation restructures everything into actionable format.
 
 ## Input
 
-Plan path via `$ARGUMENTS`. Should already have Enhancement Summary (from plan-enrich) and Review Summary (from plan-review).
+Plan path via `$ARGUMENTS`. Should already have Plan Review Summary (from plan-review).
 
 ---
 
@@ -29,17 +29,14 @@ Plan path via `$ARGUMENTS`. Should already have Enhancement Summary (from plan-e
 
 Check for:
 - Original content (Technical Approach, Implementation, etc.)
-- Enhancement Summary (added by plan-enrich)
-- Research Insights (subsections under original sections)
 - Plan Review Summary (appended by plan-review)
 
 See `references/extraction-patterns.md` for detection details.
 
 ### Handle Missing Sections
 
-- **No Enhancement Summary:** Warn and ask to continue
 - **No Review Summary:** Warn and ask to continue
-- **Both missing:** Error - plan hasn't been processed
+- **No original content:** Error - plan hasn't been created
 
 ---
 
@@ -48,9 +45,8 @@ See `references/extraction-patterns.md` for detection details.
 Using patterns from `references/extraction-patterns.md`:
 
 1. **Extract review findings** into P1/P2/P3 categories
-2. **Extract research insights** into best practices, anti-patterns, code examples, security, performance, edge cases
-3. **Extract implementation steps** into phases
-4. **Map insights to steps** for integrated checklists
+2. **Extract implementation steps** into phases
+3. **Map findings to steps** for integrated checklists
 
 ---
 
@@ -70,7 +66,7 @@ Scan for all open questions, TODOs, TBDs, option-vs-option language, and reviewe
 
 1. **Deduplicate** - Same insight from multiple sources -> one entry
 2. **Prioritize** - P1 before P2, high-impact first
-3. **Preserve test-first ordering** — If the enriched plan has test steps before implementation steps, maintain that order during restructuring. This takes precedence over the **Prioritize** ("Prioritize by impact") principle for within-phase step ordering.
+3. **Preserve test-first ordering** — If the plan has test steps before implementation steps, maintain that order during restructuring. This takes precedence over the **Prioritize** ("Prioritize by impact") principle for within-phase step ordering.
 4. **Integrate** - Insights IN checklist items, not floating
 5. **Preserve attribution** - Track where recommendations came from
 6. **Make executable** - Every item is a concrete action
@@ -117,7 +113,7 @@ Append consolidation metadata using template from `references/consolidated-plan-
 
 Read `references/results-presentation.md` before proceeding -- it contains the summary output template and post-consolidation option menu.
 
-Present a summary of phases, checklist items, insights integrated, findings addressed, and P1 status. Then ask the user whether to start `/fly:work` or stop here.
+Present a summary of phases, checklist items, findings addressed, and P1 status. Then ask the user whether to start `/fly:work` or stop here.
 
 ---
 
@@ -149,8 +145,8 @@ Before finalizing:
 - [ ] All P1 findings addressed or flagged as blocking
 - [ ] Every implementation step has concrete action
 - [ ] Each implementation phase has test verification (not just the final phase)
-- [ ] Research insights integrated into relevant steps
-- [ ] Appendix contains raw verification/review data
+- [ ] Review findings integrated into relevant steps
+- [ ] Appendix contains raw review data
 - [ ] Plan genuinely ready for `/fly:work`
 
 ---

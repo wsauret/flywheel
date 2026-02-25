@@ -88,16 +88,3 @@ npm test || pytest || cargo test || go test ./...
 ```
 
 Run after each phase checkpoint.
-
----
-
-## Optional Reviewers
-
-For complex changes (10+ files or security-sensitive):
-
-```
-Task code-simplicity-reviewer: "Review changes"
-Task security-reviewer: "Check for vulnerabilities"
-```
-
-Run reviewers in parallel. Present findings.

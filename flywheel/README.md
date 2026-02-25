@@ -66,15 +66,11 @@ Agents are organized into categories for easier discovery.
 
 | Agent | Description |
 |-------|-------------|
-| `agent-native-reviewer` | Agent parity and tool accessibility review |
-| `architecture-reviewer` | Analyze architectural decisions and compliance |
-| `code-quality-reviewer` | Python/TypeScript review with high quality bar |
-| `code-simplicity-reviewer` | Final pass for simplicity and minimalism |
-| `data-integrity-reviewer` | Database migrations and data integrity |
-| `git-history-reviewer` | Analyze git history and code evolution |
-| `pattern-reviewer` | Analyze code for patterns and anti-patterns |
-| `performance-reviewer` | Performance analysis and optimization |
-| `security-reviewer` | Security audits and vulnerability assessments |
+| `reviewer-architecture` | Analyze architectural decisions and compliance |
+| `reviewer-code-quality` | Python/TypeScript review with high quality bar |
+| `reviewer-data-integrity` | Database migrations and data integrity |
+| `reviewer-patterns` | Analyze code for patterns and anti-patterns |
+| `reviewer-performance` | Performance analysis and optimization |
 
 ### Research Locators (4) - Cheap, Parallel
 
@@ -82,10 +78,10 @@ Find WHERE things are without reading full contents. Use haiku model.
 
 | Agent | Tools | Description |
 |-------|-------|-------------|
-| `codebase-locator` | Grep, Glob | Find WHERE files and components live |
-| `pattern-locator` | Grep, Glob | Find WHERE patterns exist (file:line refs) |
-| `docs-locator` | Grep, Glob | Find WHERE documentation lives |
-| `web-searcher` | WebSearch | Find relevant URLs (no fetching) |
+| `locator-codebase` | Grep, Glob | Find WHERE files and components live |
+| `locator-patterns` | Grep, Glob | Find WHERE patterns exist (file:line refs) |
+| `locator-docs` | Grep, Glob | Find WHERE documentation lives |
+| `locator-web` | WebSearch | Find relevant URLs (no fetching) |
 
 ### Research Analyzers (4) - Expensive, Targeted
 
@@ -93,10 +89,10 @@ Understand HOW things work by reading files. Use sonnet model. Documentarian mod
 
 | Agent | Tools | Description |
 |-------|-------|-------------|
-| `codebase-analyzer` | Read, Grep, Glob | Understand HOW code works |
-| `pattern-analyzer` | Read, Grep, Glob | Extract code examples with context |
-| `docs-analyzer` | Read, Grep, Glob | Extract insights from documentation |
-| `web-analyzer` | WebFetch, Read | Fetch and analyze web content deeply |
+| `analyzer-codebase` | Read, Grep, Glob | Understand HOW code works |
+| `analyzer-patterns` | Read, Grep, Glob | Extract code examples with context |
+| `analyzer-docs` | Read, Grep, Glob | Extract insights from documentation |
+| `analyzer-web` | WebFetch, Read | Fetch and analyze web content deeply |
 
 ## Commands
 
@@ -126,8 +122,7 @@ Core workflow commands use `fly:` prefix:
 |-------|-------------|
 | `brainstorm` | Conversational exploration of ideas before planning |
 | `codebase-research` | Comprehensive research using locate→analyze pattern |
-| `plan-creation` | Draft plans based on codebase patterns (creative); flags claims for verification |
-| `plan-enrich` | Single-pass verification AND enrichment - validate assumptions, add research insights |
+| `plan-creation` | Research codebase, validate claims, and draft plans in a single pass |
 | `plan-review` | Critique from multiple reviewer perspectives (security, perf, arch) |
 | `plan-consolidation` | Resolve open questions with user; create actionable checklists |
 | `work-implementation` | Execute plans following patterns, testing continuously |

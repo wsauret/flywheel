@@ -9,16 +9,16 @@ Detailed dispatch templates for Phase 1 (Silent Research) and Phase 1.5 (Researc
 Run all locators in parallel to gather broad context quickly:
 
 ```
-Task codebase-locator: "Find files related to: <feature_idea>. Return paths only."
-Task pattern-locator: "Find patterns related to: <feature_idea>. Return file:line refs."
-Task docs-locator: "Find docs about: <feature_idea>. Return paths only."
-Task web-searcher: "Find best practices for: <feature_idea>. Return URLs only." [15s timeout]
+Task locator-codebase: "Find files related to: <feature_idea>. Return paths only."
+Task locator-patterns: "Find patterns related to: <feature_idea>. Return file:line refs."
+Task locator-docs: "Find docs about: <feature_idea>. Return paths only."
+Task locator-web: "Find best practices for: <feature_idea>. Return URLs only." [15s timeout]
 ```
 
 ## Phase 1.2: Analyze Top Findings (Targeted)
 
 ```
-Task codebase-analyzer: "
+Task analyzer-codebase: "
 Analyze top 10 files from locators for: <feature_idea>
 Document existing patterns, constraints, naming conventions.
 "

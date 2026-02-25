@@ -67,14 +67,14 @@ Partial reads cause hallucination. Read fully once, not partially multiple times
 When spawning research agents:
 
 1. **First pass: Locators** (parallel, cheap)
-   - Use codebase-locator, pattern-locator, docs-locator
+   - Use locator-codebase, locator-patterns, locator-docs
    - No Read tool - paths only
    - Model: haiku (fast, cheap)
    - Run in parallel
 
 2. **Second pass: Analyzers** (targeted, expensive)
    - Only on top 15 findings from locators
-   - Use codebase-analyzer, pattern-analyzer, docs-analyzer
+   - Use analyzer-codebase, analyzer-patterns, analyzer-docs
    - Model: sonnet (thorough)
    - Documentarian mode
 
@@ -100,14 +100,14 @@ This ensures that if the user selected Opus, all phases run on Opus — not a ra
 
 | Agent | Model | Tools | Purpose |
 |-------|-------|-------|---------|
-| codebase-locator | haiku | Grep, Glob, LS | Find WHERE files live |
-| pattern-locator | haiku | Grep, Glob, LS | Find WHERE patterns exist |
-| docs-locator | haiku | Grep, Glob, LS | Find WHERE docs live |
-| web-searcher | haiku | WebSearch | Find URLs (no fetch) |
-| codebase-analyzer | sonnet | Read, Grep, Glob | Understand HOW code works |
-| pattern-analyzer | sonnet | Read, Grep, Glob | Extract code examples |
-| docs-analyzer | sonnet | Read, Grep, Glob | Extract doc insights |
-| web-analyzer | sonnet | WebFetch, Read | Deep web content analysis |
+| locator-codebase | haiku | Grep, Glob, LS | Find WHERE files live |
+| locator-patterns | haiku | Grep, Glob, LS | Find WHERE patterns exist |
+| locator-docs | haiku | Grep, Glob, LS | Find WHERE docs live |
+| locator-web | haiku | WebSearch | Find URLs (no fetch) |
+| analyzer-codebase | sonnet | Read, Grep, Glob | Understand HOW code works |
+| analyzer-patterns | sonnet | Read, Grep, Glob | Extract code examples |
+| analyzer-docs | sonnet | Read, Grep, Glob | Extract doc insights |
+| analyzer-web | sonnet | WebFetch, Read | Deep web content analysis |
 
 ---
 
@@ -117,7 +117,6 @@ Build only what's asked. These principles are defined in specific skills - this 
 
 - **YAGNI ruthlessly**: `brainstorm/SKILL.md` (defer until needed)
 - **No extras**: `work-implementation/SKILL.md` (don't add features beyond request)
-- **Code simplicity**: `code-simplicity-reviewer` agent (post-implementation review)
 
 When in doubt, do less. Premature abstraction costs more than duplication.
 

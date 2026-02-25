@@ -1,5 +1,5 @@
 ---
-name: codebase-analyzer
+name: analyzer-codebase
 description: "Understand HOW code works. Reads specific files (from locator results) and documents implementation details. Documentarian mode - no suggestions."
 model: sonnet
 tools: [Read, Grep, Glob]
@@ -35,7 +35,7 @@ Partial reads cause hallucination. Better to read fully once than partially mult
 ## Input Expectations
 
 You will receive:
-1. A list of file paths (from codebase-locator)
+1. A list of file paths (from locator-codebase)
 2. A research question or topic to focus on
 
 ## Analysis Process

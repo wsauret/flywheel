@@ -22,10 +22,10 @@ arguments: $ARGUMENTS
 This command conducts comprehensive research using a two-phase approach:
 
 1. **Phase 1: Locate (parallel, cheap)** - Find WHERE things are
-   - codebase-locator: Find file paths
-   - pattern-locator: Find pattern locations
-   - docs-locator: Find documentation
-   - (optional) web-searcher: Find URLs
+   - locator-codebase: Find file paths
+   - locator-patterns: Find pattern locations
+   - locator-docs: Find documentation
+   - (optional) locator-web: Find URLs
 
 2. **Phase 2: Analyze (targeted, expensive)** - Understand HOW things work
    - Only analyze top findings from Phase 1

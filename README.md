@@ -135,7 +135,7 @@ Each cycle builds on the last: plans inform future plans, reviews catch more iss
 | Research Locators | 4 | codebase, patterns, docs, web |
 | Research Analyzers | 4 | codebase, patterns, docs, web |
 | Commands | 6 | brainstorm, research, plan, work, review, compound |
-| Skills | 11 | plan-creation, plan-enrich, plan-review, plan-consolidation, work-implementation, work-review, and more |
+| Skills | 10 | plan-creation, plan-review, plan-consolidation, work-implementation, work-review, and more |
 
 See `flywheel/README.md` for full agent, command, and skill reference tables.
 

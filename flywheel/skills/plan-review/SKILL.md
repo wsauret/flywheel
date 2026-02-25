@@ -38,7 +38,9 @@ find ~/.claude/agents -name "*.md" 2>/dev/null
 find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
 ```
 
-**Baseline reviewers:** architecture-reviewer, code-simplicity-reviewer, pattern-reviewer, security-reviewer, performance-reviewer, data-integrity-reviewer, agent-native-reviewer
+**Plan reviewers:** reviewer-architecture, reviewer-code-quality, reviewer-patterns, reviewer-performance, reviewer-data-integrity
+
+**Note:** These reviewers may catch external claim issues (version mismatches, anti-patterns, security concerns) as part of their normal review. There is no separate enrichment/validation step — plan-creation handles initial validation, and reviewers provide a second check from their respective perspectives.
 
 ---
 
@@ -47,15 +49,15 @@ find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
 Launch Task for EVERY discovered agent in a SINGLE message:
 
 ```
-Task architecture-reviewer: "Review this plan for architectural concerns.
+Task reviewer-architecture: "Review this plan for architectural concerns.
 PLAN: [full plan content]
 Provide findings with priority (P1/P2/P3) and specific locations.
 Flag OPEN QUESTIONS for trade-offs or decisions needing user input."
 
-Task security-reviewer: "Review this plan for security concerns.
+Task reviewer-performance: "Review this plan for performance concerns.
 PLAN: [full plan content]
 Provide findings with priority (P1/P2/P3) and specific locations.
-Flag OPEN QUESTIONS for security vs usability trade-offs."
+Flag OPEN QUESTIONS for performance vs simplicity trade-offs."
 
 # ... continue for ALL discovered agents
 ```

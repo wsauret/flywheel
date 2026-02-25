@@ -1,5 +1,5 @@
 ---
-name: web-searcher
+name: locator-web
 description: "Find relevant URLs and summaries from web search. Returns URLs with descriptions - does not fetch full content."
 model: haiku
 tools: [WebSearch]

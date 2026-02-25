@@ -35,11 +35,11 @@ tags: [research, <relevant-tags>]
 
 ### [Component/Area 1]
 
-[Findings with file:line references from codebase-analyzer]
+[Findings with file:line references from analyzer-codebase]
 
 ### [Component/Area 2]
 
-[Findings from pattern-analyzer]
+[Findings from analyzer-patterns]
 
 ### [Additional Areas...]
 
