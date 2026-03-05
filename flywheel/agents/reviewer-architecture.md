@@ -1,7 +1,7 @@
 ---
 name: reviewer-architecture
 description: "Use this agent when you need to analyze code changes from an architectural perspective, evaluate system design decisions, or ensure that modifications align with established architectural patterns. This includes reviewing pull requests for architectural compliance, assessing the impact of new features on system structure, or validating that changes maintain proper component boundaries and design principles. <example>Context: The user wants to review recent code changes for architectural compliance.\\nuser: \"I just refactored the authentication service to use a new pattern\"\\nassistant: \"I'll use the reviewer-architecture agent to review these changes from an architectural perspective\"\\n<commentary>Since the user has made structural changes to a service, use the reviewer-architecture agent to ensure the refactoring aligns with system architecture.</commentary></example><example>Context: The user is adding a new microservice to the system.\\nuser: \"I've added a new notification service that integrates with our existing services\"\\nassistant: \"Let me analyze this with the reviewer-architecture agent to ensure it fits properly within our system architecture\"\\n<commentary>New service additions require architectural review to verify proper boundaries and integration patterns.</commentary></example>"
-model: inherit
+model: sonnet
 tools: [Read, Grep, Glob, Skill]
 skills: [flywheel-conventions, language-standards]
 ---
@@ -78,10 +78,10 @@ Return findings using this structure:
 ### Key Findings
 - [Finding 1]
 - [Finding 2]
-(max 15 items - if more, write overflow to `docs/plans/context/overflow-{task-id}.md`)
+(max 15 items - if more, prioritize by severity and truncate)
 
 ### Files Identified
 - `path/to/file.ts` - [brief description]
-(paths only, max 20 files - if more, write overflow to file)
+(paths only, max 20 files - if more, prioritize and truncate)
 
 **Output Validation:** Before returning, verify ALL sections are present. If any would be empty, write "None".

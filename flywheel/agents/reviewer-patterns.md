@@ -1,7 +1,7 @@
 ---
 name: reviewer-patterns
 description: "Use this agent when you need to analyze code for design patterns, anti-patterns, naming conventions, and code duplication. This agent excels at identifying architectural patterns, detecting code smells, and ensuring consistency across the codebase. <example>Context: The user wants to analyze their codebase for patterns and potential issues.\\nuser: \"Can you check our codebase for design patterns and anti-patterns?\"\\nassistant: \"I'll use the reviewer-patterns agent to analyze your codebase for patterns, anti-patterns, and code quality issues.\"\\n<commentary>Since the user is asking for pattern analysis and code quality review, use the Task tool to launch the reviewer-patterns agent.</commentary></example><example>Context: After implementing a new feature, the user wants to ensure it follows established patterns.\\nuser: \"I just added a new service layer. Can we check if it follows our existing patterns?\"\\nassistant: \"Let me use the reviewer-patterns agent to analyze the new service layer and compare it with existing patterns in your codebase.\"\\n<commentary>The user wants pattern consistency verification, so use the reviewer-patterns agent to analyze the code.</commentary></example>"
-model: inherit
+model: sonnet
 tools: [Read, Grep, Glob, Skill]
 skills: [flywheel-conventions, language-standards]
 ---
@@ -82,10 +82,10 @@ Return findings using this structure:
 ### Key Findings
 - [Finding 1]
 - [Finding 2]
-(max 15 items - if more, write overflow to `docs/plans/context/overflow-{task-id}.md`)
+(max 15 items - if more, prioritize by severity and truncate)
 
 ### Files Identified
 - `path/to/file.ts` - [brief description]
-(paths only, max 20 files - if more, write overflow to file)
+(paths only, max 20 files - if more, prioritize and truncate)
 
 **Output Validation:** Before returning, verify ALL sections are present. If any would be empty, write "None".

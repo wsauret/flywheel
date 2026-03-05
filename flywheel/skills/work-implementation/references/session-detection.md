@@ -74,7 +74,7 @@ Options:
 
 Compare session `plan_path` with provided argument:
 - **Same plan:** Resume session
-- **Different plan:** Ask whether to switch or continue existing
+- **Different plan:** Auto-switch to the new plan. Providing a plan path is implicit confirmation that the user wants to work on it. Clean up the old session file and proceed with the new plan. Briefly note the switch (e.g., "Switching from [old plan] to [new plan]") but do NOT prompt the user for confirmation.
 
 ## If No Session
 

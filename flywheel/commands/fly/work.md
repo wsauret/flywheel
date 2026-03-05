@@ -35,4 +35,4 @@ The work-implementation skill handles:
 - Commit and PR creation
 - Handoff to `/fly:review`
 
-See `plugin/skills/work-implementation/SKILL.md` for full procedural details.
+See `flywheel/skills/work-implementation/SKILL.md` for full procedural details.

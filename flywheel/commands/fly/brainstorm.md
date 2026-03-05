@@ -26,4 +26,4 @@ The brainstorm skill handles:
 - Design document creation (`docs/plans/<topic>-design.md`)
 - Handoff to `/fly:plan`
 
-See `plugin/skills/brainstorm/SKILL.md` for full procedural details.
+See `flywheel/skills/brainstorm/SKILL.md` for full procedural details.

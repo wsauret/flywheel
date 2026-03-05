@@ -32,7 +32,7 @@ TRANSFORMS: dict[str, TransformConfig] = {
         "apply_body_transforms": True,
     },
     "agents": {
-        "remove": ["model", "tools"],
+        "remove": ["name", "tools", "skills"],
         "add": {"mode": "subagent"},
         "apply_body_transforms": False,
     },
@@ -54,6 +54,24 @@ BODY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 # Path replacements applied to ALL text files (skills, agents, commands, references).
 # Order matters: longer/more-specific patterns first to avoid partial matches.
 PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # --- Claude Code tool names -> OpenCode tool names ---
+    # AskUserQuestion -> question (tool name in prose and code)
+    (re.compile(r"\bAskUserQuestion\b"), "question"),
+    # TaskCreate/TaskUpdate/TaskList -> todowrite/todoread
+    (re.compile(r"\bTaskCreate\b"), "todowrite"),
+    (re.compile(r"\bTaskUpdate\b"), "todowrite"),
+    (re.compile(r"\bTaskList\b"), "todoread"),
+    # --- Claude Code-specific paths and env vars ---
+    # ~/.claude/tasks (task storage path — no OpenCode equivalent)
+    (re.compile(r"`~/\.claude/tasks`"), "the todo system"),
+    (re.compile(r"~/\.claude/tasks"), "the todo system"),
+    # CLAUDE_CODE_TASK_LIST_ID env var (no OpenCode equivalent — remove references)
+    (re.compile(r"[^\n]*CLAUDE_CODE_TASK_LIST_ID[^\n]*\n?"), ""),
+    # claude --worktree -> git worktree add
+    (re.compile(r"`claude --worktree <branch>` or "), ""),
+    # flywheel/skills/ (source repo path) -> ~/.config/opencode/skills/ (installed path)
+    (re.compile(r"\bflywheel/skills/"), "~/.config/opencode/skills/"),
+    # --- Claude Code directory paths ---
     # ~/.claude/plugins/cache .../agents/*.md -> ~/.config/opencode/agents
     (re.compile(r"find ~/\.claude/plugins/cache -path \"\*/agents/\*\.md\"[^\n]*"),
      'find ~/.config/opencode/agents -name "*.md" 2>/dev/null'),
@@ -74,14 +92,26 @@ PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?<![~/])\.claude/flywheel/"), ".opencode/"),
     # ${CLAUDE_PLUGIN_ROOT}/skills/ -> ~/.config/opencode/skills/
     (re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/skills/"), "~/.config/opencode/skills/"),
+    # --- Product names and docs ---
     # CLAUDE.md -> AGENTS.md
     (re.compile(r"\bCLAUDE\.md\b"), "AGENTS.md"),
     # Claude Code UI / Claude Code (product name in prose)
     (re.compile(r"Claude Code UI"), "OpenCode UI"),
     (re.compile(r"Claude Code"), "OpenCode"),
+    # Claude attribution -> AI attribution
+    (re.compile(r"Claude attribution"), "AI attribution"),
 ]
 
 TEXT_SUFFIXES = {".md", ".txt"}
+
+# Map short model names (used in source files) to full OpenCode model IDs.
+# "inherit" means "use the parent agent's model" — achieved by omitting the key.
+MODEL_MAP: dict[str, str | None] = {
+    "haiku": "anthropic/claude-haiku-4-20250514",
+    "sonnet": "anthropic/claude-sonnet-4-20250514",
+    "opus": "anthropic/claude-opus-4-20250514",
+    "inherit": None,  # Remove the key so OpenCode inherits from parent
+}
 
 SKIP_PATHS = {".claude-plugin", "README.md"}
 SKIP_EXTENSIONS = {".DS_Store"}
@@ -105,6 +135,16 @@ def transform_frontmatter(lines: list[str], config: TransformConfig) -> list[str
             if line.startswith("  ") or line.startswith("\t"):
                 continue
             in_block = False
+
+        # Map short model names to full OpenCode model IDs
+        if line.startswith("model:"):
+            short_name = line.split(":", 1)[1].strip()
+            if short_name in MODEL_MAP:
+                full_id = MODEL_MAP[short_name]
+                if full_id is None:
+                    # "inherit" — omit the key entirely
+                    continue
+                line = f"model: {full_id}\n"
 
         result.append(line)
 
@@ -156,6 +196,33 @@ def atomic_write(path: Path, content: str) -> None:
         raise
 
 
+def extract_skills(fm_lines: list[str]) -> list[str]:
+    """Extract skill names from a 'skills:' frontmatter field."""
+    for line in fm_lines:
+        if line.startswith("skills:"):
+            # Parse inline list: skills: [foo, bar-baz]
+            match = re.search(r"\[([^\]]*)\]", line)
+            if match:
+                return [s.strip() for s in match.group(1).split(",") if s.strip()]
+    return []
+
+
+def skills_to_body_prefix(skills: list[str]) -> str:
+    """Generate a body-level instruction to load skills at agent startup."""
+    if not skills:
+        return ""
+    lines = [
+        "**IMPORTANT — Before starting any work, load the following skills "
+        "using the skill tool:**\n",
+    ]
+    for name in skills:
+        lines.append(f'- `skill({{ name: "{name}" }})`')
+    lines.append("")
+    lines.append("These skills contain required conventions and standards. "
+                 "Do not skip this step.\n\n")
+    return "\n".join(lines)
+
+
 def transform_file(src: Path, dest: Path, transform_type: str) -> None:
     """Read, transform, and write a single file."""
     config = TRANSFORMS[transform_type]
@@ -167,6 +234,11 @@ def transform_file(src: Path, dest: Path, transform_type: str) -> None:
         if len(parts) >= 3:
             fm_lines = parts[1].splitlines(keepends=True)
             body = parts[2]
+
+            # For agents: extract skills before stripping, inject into body
+            if transform_type == "agents":
+                skills = extract_skills(fm_lines)
+                body = skills_to_body_prefix(skills) + body
 
             # Transform frontmatter
             fm_lines = transform_frontmatter(fm_lines, config)

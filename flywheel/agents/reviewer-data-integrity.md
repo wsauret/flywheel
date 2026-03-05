@@ -1,7 +1,7 @@
 ---
 name: reviewer-data-integrity
 description: "Use this agent when you need to review database migrations, data models, or any code that manipulates persistent data. This includes checking migration safety, validating data constraints, ensuring transaction boundaries are correct, and verifying that referential integrity and privacy requirements are maintained. <example>Context: The user has just written a database migration that adds a new column and updates existing records. user: \"I've created a migration to add a status column to the orders table\" assistant: \"I'll use the reviewer-data-integrity agent to review this migration for safety and data integrity concerns\" <commentary>Since the user has created a database migration, use the reviewer-data-integrity agent to ensure the migration is safe, handles existing data properly, and maintains referential integrity.</commentary></example> <example>Context: The user has implemented a service that transfers data between models. user: \"Here's my new service that moves user data from the legacy_users table to the new users table\" assistant: \"Let me have the reviewer-data-integrity agent review this data transfer service\" <commentary>Since this involves moving data between tables, the reviewer-data-integrity should review transaction boundaries, data validation, and integrity preservation.</commentary></example>"
-model: inherit
+model: sonnet
 tools: [Read, Grep, Glob, Skill]
 skills: [flywheel-conventions, language-standards]
 ---
@@ -135,10 +135,10 @@ Return findings using this structure:
 ### Key Findings
 - [Finding 1]
 - [Finding 2]
-(max 15 items - if more, write overflow to `docs/plans/context/overflow-{task-id}.md`)
+(max 15 items - if more, prioritize by severity and truncate)
 
 ### Files Identified
 - `path/to/file.ts` - [brief description]
-(paths only, max 20 files - if more, write overflow to file)
+(paths only, max 20 files - if more, prioritize and truncate)
 
 **Output Validation:** Before returning, verify ALL sections are present. If any would be empty, write "None".

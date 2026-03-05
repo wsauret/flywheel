@@ -53,20 +53,24 @@ Launch Task for EVERY discovered agent in a SINGLE message:
 Task reviewer-architecture: "Review this plan for architectural concerns.
 PLAN: [full plan content]
 Provide findings with priority (P1/P2/P3) and specific locations.
-Flag OPEN QUESTIONS for trade-offs or decisions needing user input."
+Flag OPEN QUESTIONS for trade-offs or decisions needing user input.
+IMPORTANT: Return ALL findings in your response message only. Do NOT write to any files — no editing the plan, no creating review files, no overflow files. The orchestrator handles all file writes."
 
 Task reviewer-performance: "Review this plan for performance concerns.
 PLAN: [full plan content]
 Provide findings with priority (P1/P2/P3) and specific locations.
-Flag OPEN QUESTIONS for performance vs simplicity trade-offs."
+Flag OPEN QUESTIONS for performance vs simplicity trade-offs.
+IMPORTANT: Return ALL findings in your response message only. Do NOT write to any files — no editing the plan, no creating review files, no overflow files. The orchestrator handles all file writes."
 
 # ... continue for ALL discovered agents
+# EVERY agent prompt MUST include the "Do NOT write to any files" instruction above
 ```
 
 **Rules:**
 - Do NOT filter agents - run them ALL
 - Launch ALL in SINGLE message with multiple Task calls
 - Each agent may catch something others miss
+- **Every agent prompt MUST include the no-file-write constraint** — agents have Write/Edit tools and will use them unless explicitly told not to
 
 ---
 

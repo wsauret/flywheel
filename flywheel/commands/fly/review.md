@@ -24,4 +24,4 @@ The work-review skill handles:
 - **Persisting full review to `docs/reviews/`** (survives context clearing)
 - Summary report with prompt to implement findings via `/fly:work`
 
-See `plugin/skills/work-review/SKILL.md` for full procedural details.
+See `flywheel/skills/work-review/SKILL.md` for full procedural details.

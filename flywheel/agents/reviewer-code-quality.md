@@ -1,7 +1,7 @@
 ---
 name: reviewer-code-quality
 description: Reviews code with an extremely high quality bar. Invoke after implementing features, modifying existing code, or creating new modules/components to ensure code meets exceptional standards for type safety, patterns, and maintainability. Loads language-specific standards (Python, TypeScript, SQL) on demand via the language-standards skill.
-model: inherit
+model: sonnet
 tools: [Read, Grep, Glob, Skill]
 skills: [flywheel-conventions, language-standards]
 ---
@@ -84,10 +84,10 @@ Before reviewing, load the `language-standards` skill and read the appropriate r
 ### Key Findings
 - [Finding 1]
 - [Finding 2]
-(max 15 items - if more, write overflow to `docs/plans/context/overflow-{task-id}.md`)
+(max 15 items - if more, prioritize by severity and truncate)
 
 ### Files Identified
 - `path/to/file.ts` - [brief description]
-(paths only, max 20 files - if more, write overflow to file)
+(paths only, max 20 files - if more, prioritize and truncate)
 
 **Output Validation:** Before returning, verify ALL sections are present. If any would be empty, write "None".

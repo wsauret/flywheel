@@ -1,7 +1,7 @@
 ---
 name: reviewer-plan-philosophy
 description: "Use this agent when reviewing a multi-phase implementation plan for adherence to core engineering philosophies. It evaluates: (1) TDD ordering — whether each phase specifies tests before or alongside implementation, (2) SOLID compliance — whether the code design described in the plan follows SOLID principles, and (3) DRY compliance — whether the plan describes building duplicated logic that should be consolidated. Language-agnostic; does not evaluate syntax, types, or naming. <example>Context: The user wrote a 6-phase plan where Phase 6 is \"Write all tests\".\\nuser: \"Review this plan before I start implementing\"\\nassistant: \"I'll use the reviewer-plan-philosophy to check TDD ordering, SOLID compliance in the planned code design, and DRY compliance\"\\n<commentary>Tests being deferred to the end is a TDD ordering violation; this agent surfaces it.</commentary></example><example>Context: A plan describes creating a UserManager class that handles auth, database queries, email, and logging.\\nuser: \"Is this plan structured well?\"\\nassistant: \"Let me run the reviewer-plan-philosophy to check whether the planned code design follows SOLID and DRY\"\\n<commentary>A God class described in the plan is an SRP violation — caught before any code is written.</commentary></example>"
-model: inherit
+model: sonnet
 tools: [Read, Grep, Glob]
 skills: [flywheel-conventions]
 ---
@@ -212,10 +212,10 @@ Return findings using this structure:
 ### Key Findings
 - [Finding 1]
 - [Finding 2]
-(max 15 items - if more, write overflow to `docs/plans/context/overflow-{task-id}.md`)
+(max 15 items - if more, prioritize by severity and truncate)
 
 ### Files Identified
 - `path/to/file.md` - [brief description]
-(paths only, max 20 files - if more, write overflow to file)
+(paths only, max 20 files - if more, prioritize and truncate)
 
 **Output Validation:** Before returning, verify ALL sections are present. If any would be empty, write "None".

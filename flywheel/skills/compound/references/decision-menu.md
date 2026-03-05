@@ -60,7 +60,7 @@ User selects when:
 
 **Action:**
 1. Prompt: "What should the new skill be called?"
-2. Create skill directory: `mkdir -p plugin/skills/[skill-name]`
+2. Create skill directory: `mkdir -p flywheel/skills/[skill-name]`
 3. Create `SKILL.md` with skill template
 4. Create initial reference files with this solution
 5. Confirm: "✓ Created new [skill-name] skill"

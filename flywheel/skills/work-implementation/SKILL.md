@@ -38,7 +38,7 @@ Read `references/session-detection.md` before proceeding -- contains validation 
 
 1. Check for `.flywheel/session.md`
 2. **Session exists, no args:** Validate state (files exist, no unexpected changes, context freshness), present summary, ask user to resume/show details/start fresh
-3. **Session exists, args provided:** Compare plan paths -- same plan resumes, different plan asks user
+3. **Session exists, args provided:** Compare plan paths -- same plan resumes, different plan auto-switches (providing a plan is implicit confirmation)
 4. **No session:** Require plan path from arguments or ask user
 
 ---
