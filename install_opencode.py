@@ -92,6 +92,11 @@ PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?<![~/])\.claude/flywheel/"), ".opencode/"),
     # ${CLAUDE_PLUGIN_ROOT}/skills/ -> ~/.config/opencode/skills/
     (re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/skills/"), "~/.config/opencode/skills/"),
+    # --- Agent namespace ---
+    # Prefix fly/ agent names with fly/ (agents live under agents/fly/ in OpenCode).
+    # Negative lookbehind avoids double-prefixing if fly/ is already present.
+    (re.compile(r"(?<!fly/)(?<!agents/)\b((?:reviewer|analyzer|locator)-[\w-]+)"),
+     r"fly/\1"),
     # --- Product names and docs ---
     # CLAUDE.md -> AGENTS.md
     (re.compile(r"\bCLAUDE\.md\b"), "AGENTS.md"),
