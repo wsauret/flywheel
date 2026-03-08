@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -111,12 +112,64 @@ TEXT_SUFFIXES = {".md", ".txt"}
 
 # Map short model names (used in source files) to full OpenCode model IDs.
 # "inherit" means "use the parent agent's model" — achieved by omitting the key.
-MODEL_MAP: dict[str, str | None] = {
-    "haiku": "anthropic/claude-haiku-4-20250514",
-    "sonnet": "anthropic/claude-sonnet-4-20250514",
-    "opus": "anthropic/claude-opus-4-20250514",
+# These are fallback values; resolve_model_map() queries the CLI for current IDs.
+MODEL_MAP_DEFAULTS: dict[str, str | None] = {
+    "haiku": "anthropic/claude-haiku-4-5",
+    "sonnet": "anthropic/claude-sonnet-4-5",
+    "opus": "anthropic/claude-opus-4-6",
     "inherit": None,  # Remove the key so OpenCode inherits from parent
 }
+
+# Populated at runtime by resolve_model_map(); falls back to MODEL_MAP_DEFAULTS.
+MODEL_MAP: dict[str, str | None] = dict(MODEL_MAP_DEFAULTS)
+
+# Patterns to match short names to undated model aliases from `opencode models`.
+# Each entry: (short_name, regex capturing major and minor version numbers).
+# Minor version limited to 1-3 digits to exclude dated IDs like "4-20250514".
+_MODEL_FAMILY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("haiku", re.compile(r"^anthropic/claude-haiku-(\d+)-(\d{1,3})$")),
+    ("sonnet", re.compile(r"^anthropic/claude-sonnet-(\d+)-(\d{1,3})$")),
+    ("opus", re.compile(r"^anthropic/claude-opus-(\d+)-(\d{1,3})$")),
+]
+
+
+def _version_key(model_id: str, pattern: re.Pattern[str]) -> tuple[int, int]:
+    """Extract (major, minor) version tuple from a model ID for sorting."""
+    m = pattern.match(model_id)
+    if not m:
+        return (0, 0)
+    return (int(m.group(1)), int(m.group(2)))
+
+
+def resolve_model_map() -> None:
+    """Query ``opencode models anthropic`` and update MODEL_MAP with latest IDs.
+
+    For each model family (haiku, sonnet, opus), we find all undated aliases
+    (e.g. ``anthropic/claude-haiku-4-5``, not ``...-20251001``) and pick the
+    one with the highest version number.
+
+    Falls back silently to MODEL_MAP_DEFAULTS if the CLI is unavailable.
+    """
+    try:
+        result = subprocess.run(
+            ["opencode", "models", "anthropic"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            return
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return
+
+    available = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    for short_name, pattern in _MODEL_FAMILY_PATTERNS:
+        matches = [m for m in available if pattern.match(m)]
+        if not matches:
+            continue
+        # Highest version = latest generation.
+        best = str(max(matches, key=lambda m: _version_key(m, pattern)))
+        MODEL_MAP[short_name] = best
+
 
 SKIP_PATHS = {".claude-plugin", "README.md"}
 SKIP_EXTENSIONS = {".DS_Store"}
@@ -400,7 +453,14 @@ def main() -> int:
         print(f"Error: Source '{args.source}' not found", file=sys.stderr)
         return 1
 
-    print("Step 1: Installing Flywheel files...")
+    print("Step 1: Resolving model IDs...")
+    resolve_model_map()
+    for short, full in MODEL_MAP.items():
+        if full is not None:
+            print(f"  {short:8s} -> {full}")
+    print()
+
+    print("Step 2: Installing Flywheel files...")
 
     # Paths we manage (relative to output), only these will be replaced.
     # agents/fly and commands/fly are namespaced subfolders so we don't
@@ -480,13 +540,13 @@ def main() -> int:
     print(f"  \u2713 {counts['commands']} commands, {counts['agents']} agents, "
           f"{counts['skills']} skills, {counts['copied']} copied, {counts['skipped']} skipped")
 
-    # Step 2: Context7 MCP configuration
+    # Step 3: Context7 MCP configuration
     if not args.no_context7:
-        print("\nStep 2: Configuring Context7...")
+        print("\nStep 3: Configuring Context7...")
         config_path = args.output / "opencode.json"
         configure_context7(config_path, args.dry_run)
     else:
-        print("\nStep 2: Skipped Context7 configuration (--no-context7)")
+        print("\nStep 3: Skipped Context7 configuration (--no-context7)")
 
     print("\nInstallation Complete!")
     return 0
