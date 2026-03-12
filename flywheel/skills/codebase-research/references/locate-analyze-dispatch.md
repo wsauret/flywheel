@@ -41,22 +41,14 @@ Max 20 paths.
 "
 ```
 
-### locator-web (Optional)
-
-Use only if user requests external research or topic is about an external library.
-
-**Cache check first:** Before calling locator-web, check for cached results:
-```bash
-find .flywheel/cache/external/ -name "<topic-slug>*.md" -mtime -7 2>/dev/null
-```
-If a recent cache hit is found, Read the cached file instead. If no cache or stale, proceed and write the result to `.flywheel/cache/external/<topic-slug>-<query-slug>.md` afterward (markdown with YAML frontmatter: `library`, `query`, `source`, `fetched`).
+### locator-web
 
 ```
 Task locator-web: "
 Find documentation/articles about: <topic>
 Return URLs with descriptions only - do not fetch.
 Categorize: official docs, tutorials, community.
-Max 10 URLs per category.
+Max 15 URLs per category.
 "
 ```
 
@@ -77,7 +69,7 @@ Combine locator outputs:
    - Top 15 file paths for analyzer-codebase
    - Top 10 pattern locations for analyzer-patterns
    - Top 5 documentation paths for analyzer-docs
-   - Top 5 URLs for analyzer-web (if applicable)
+   - Top 10 URLs for analyzer-web
 
 If total findings < 10, may skip analyzer phase for simple topics.
 
@@ -137,16 +129,14 @@ Filter aggressively - skip tangential mentions.
 "
 ```
 
-### analyzer-web (Optional)
-
-Use only if locator-web was used in Phase 1.
+### analyzer-web
 
 ```
 Task analyzer-web: "
 Fetch and analyze these URLs (from locator-web):
 - https://docs.example.com/...
 - https://github.com/...
-[... up to 5 URLs]
+[... up to 10 URLs]
 
 Research topic: <topic>
 

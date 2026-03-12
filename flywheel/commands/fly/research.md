@@ -25,7 +25,7 @@ This command conducts comprehensive research using a two-phase approach:
    - locator-codebase: Find file paths
    - locator-patterns: Find pattern locations
    - locator-docs: Find documentation
-   - (optional) locator-web: Find URLs
+   - locator-web: Find URLs
 
 2. **Phase 2: Analyze (targeted, expensive)** - Understand HOW things work
    - Only analyze top findings from Phase 1

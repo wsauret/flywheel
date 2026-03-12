@@ -171,7 +171,6 @@ Brainstorm sessions can run long. Watch for warning signs (too many research cyc
 ## Error Handling
 
 - **Agent failures**: Continue without research context
-- **locator-web timeout (15s)**: Continue with partial results
 - **User abandonment**: Save partial progress to draft
 
 ---

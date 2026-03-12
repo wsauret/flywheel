@@ -53,9 +53,9 @@ If no matches or no `docs/research/` directory, proceed to Phase 1.
 
 ## Phase 1: Locate (Parallel, Cheap)
 
-Spawn locator agents in parallel (haiku model) to find files, patterns, and docs related to the topic. Each returns paths/references only — no file contents. Optionally spawn a locator-web for external library topics.
+Spawn locator agents in parallel (haiku model) to find files, patterns, and docs related to the topic. Each returns paths/references only — no file contents. Spawn a locator-web for external library research and/or discovering best practices.
 
-Locators: `locator-codebase`, `locator-patterns`, `locator-docs`, `locator-web` (optional).
+Locators: `locator-codebase`, `locator-patterns`, `locator-docs`, `locator-web`.
 
 Read `references/locate-analyze-dispatch.md` before proceeding — it contains the full dispatch templates with parameters and constraints for all locators.
 
@@ -75,7 +75,7 @@ Read `references/locate-analyze-dispatch.md` before proceeding — the "Ranking 
 
 Spawn analyzer agents (sonnet model) on TOP FINDINGS ONLY from Phase 1b. Each analyzer reads the actual files/URLs and extracts structured findings in documentarian mode.
 
-Analyzers: `analyzer-codebase`, `analyzer-patterns`, `analyzer-docs`, `analyzer-web` (optional).
+Analyzers: `analyzer-codebase`, `analyzer-patterns`, `analyzer-docs`, `analyzer-web`.
 
 Read `references/locate-analyze-dispatch.md` before proceeding — it contains the full dispatch templates with parameters and constraints for all analyzers.
 
