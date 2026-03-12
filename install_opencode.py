@@ -26,6 +26,7 @@ class TransformConfig(TypedDict):
     add: dict[str, str]
     apply_body_transforms: bool
 
+
 TRANSFORMS: dict[str, TransformConfig] = {
     "commands": {
         "remove": ["name", "argument-hint"],
@@ -74,11 +75,15 @@ PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bflywheel/skills/"), "~/.config/opencode/skills/"),
     # --- Claude Code directory paths ---
     # ~/.claude/plugins/cache .../agents/*.md -> ~/.config/opencode/agents
-    (re.compile(r"find ~/\.claude/plugins/cache -path \"\*/agents/\*\.md\"[^\n]*"),
-     'find ~/.config/opencode/agents -name "*.md" 2>/dev/null'),
+    (
+        re.compile(r"find ~/\.claude/plugins/cache -path \"\*/agents/\*\.md\"[^\n]*"),
+        'find ~/.config/opencode/agents -name "*.md" 2>/dev/null',
+    ),
     # ~/.claude/plugins -name "SKILL.md" -> ~/.config/opencode/skills
-    (re.compile(r"find ~/\.claude/plugins -name \"SKILL\.md\"[^\n]*"),
-     'find ~/.config/opencode/skills -name "SKILL.md" 2>/dev/null'),
+    (
+        re.compile(r"find ~/\.claude/plugins -name \"SKILL\.md\"[^\n]*"),
+        'find ~/.config/opencode/skills -name "SKILL.md" 2>/dev/null',
+    ),
     # ~/.claude/agents -> ~/.config/opencode/agents
     (re.compile(r"~/\.claude/agents"), "~/.config/opencode/agents"),
     # ~/.claude/skills -> ~/.config/opencode/skills
@@ -96,8 +101,7 @@ PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # --- Agent namespace ---
     # Prefix fly/ agent names with fly/ (agents live under agents/fly/ in OpenCode).
     # Negative lookbehind avoids double-prefixing if fly/ is already present.
-    (re.compile(r"(?<!fly/)(?<!agents/)\b((?:reviewer|analyzer|locator)-[\w-]+)"),
-     r"fly/\1"),
+    (re.compile(r"(?<!fly/)(?<!agents/)\b((?:reviewer|analyzer|locator)-[\w-]+)"), r"fly/\1"),
     # --- Product names and docs ---
     # CLAUDE.md -> AGENTS.md
     (re.compile(r"\bCLAUDE\.md\b"), "AGENTS.md"),
@@ -153,7 +157,9 @@ def resolve_model_map() -> None:
     try:
         result = subprocess.run(
             ["opencode", "models", "anthropic"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode != 0:
             return
@@ -270,14 +276,12 @@ def skills_to_body_prefix(skills: list[str]) -> str:
     if not skills:
         return ""
     lines = [
-        "**IMPORTANT — Before starting any work, load the following skills "
-        "using the skill tool:**\n",
+        "**IMPORTANT — Before starting any work, load the following skills using the skill tool:**\n",
     ]
     for name in skills:
         lines.append(f'- `skill({{ name: "{name}" }})`')
     lines.append("")
-    lines.append("These skills contain required conventions and standards. "
-                 "Do not skip this step.\n\n")
+    lines.append("These skills contain required conventions and standards. Do not skip this step.\n\n")
     return "\n".join(lines)
 
 
@@ -352,7 +356,6 @@ def get_shell_profile() -> Path:
 
 def configure_context7(config_path: Path, dry_run: bool) -> None:
     """Prompt for Context7 API key and write MCP config to opencode.json."""
-
     api_key = os.environ.get("CONTEXT7_API_KEY", "")
     save_to_profile = False
 
@@ -432,14 +435,13 @@ def configure_context7(config_path: Path, dry_run: bool) -> None:
 
 def main() -> int:
     """Install Flywheel for OpenCode."""
-    parser = argparse.ArgumentParser(
-        description="Install Flywheel for OpenCode"
-    )
+    parser = argparse.ArgumentParser(description="Install Flywheel for OpenCode")
     parser.add_argument("--source", type=Path, default=Path("flywheel"))
     parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
     parser.add_argument(
-        "--no-context7", action="store_true",
+        "--no-context7",
+        action="store_true",
         help="Skip Context7 MCP configuration",
     )
     args = parser.parse_args()
@@ -537,8 +539,10 @@ def main() -> int:
         if temp_base.exists():
             shutil.rmtree(temp_base)
 
-    print(f"  \u2713 {counts['commands']} commands, {counts['agents']} agents, "
-          f"{counts['skills']} skills, {counts['copied']} copied, {counts['skipped']} skipped")
+    print(
+        f"  \u2713 {counts['commands']} commands, {counts['agents']} agents, "
+        f"{counts['skills']} skills, {counts['copied']} copied, {counts['skipped']} skipped"
+    )
 
     # Step 3: Context7 MCP configuration
     if not args.no_context7:
