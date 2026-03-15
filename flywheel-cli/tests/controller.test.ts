@@ -418,7 +418,7 @@ describe("PhaseExecutor", () => {
     expect(spawner.calls[0].command).toBe("claude");
     expect(spawner.calls[0].args).toContain("--print");
     expect(spawner.calls[0].args).toContain("--output-format");
-    expect(spawner.calls[0].args).toContain("text");
+    expect(spawner.calls[0].args).toContain("stream-json");
     expect(spawner.calls[0].args).toContain("--dangerously-skip-permissions");
     // Prompt is passed via stdin, not as an arg
     expect(spawner.calls[0].options?.stdin).toBe("do stuff");

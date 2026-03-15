@@ -28,6 +28,7 @@ export type FlywheelEvent =
   | WorkerCompleted
   | WorkerFailed
   | WorkerRetrying
+  | WorkerOutput
   | ApprovalRequested
   | ApprovalReceived;
 
@@ -191,6 +192,14 @@ export interface WorkerRetrying {
   attempt: number;
   maxAttempts: number;
   reason: string;
+  timestamp: string;
+}
+
+export interface WorkerOutput {
+  type: "worker:output";
+  workflowId: string;
+  stream: "stdout" | "stderr";
+  data: string;
   timestamp: string;
 }
 

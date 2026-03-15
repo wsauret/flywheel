@@ -62,6 +62,7 @@ export class WorkExecutionLoop {
   private readonly baseDir: string;
 
   private _shutdownRequested = false;
+  private readonly _shutdownController = new AbortController();
 
   constructor(options: ExecutionLoopOptions) {
     this.planPath = options.planPath;
@@ -80,6 +81,7 @@ export class WorkExecutionLoop {
    */
   requestShutdown(): void {
     this._shutdownRequested = true;
+    this._shutdownController.abort();
   }
 
   /**
@@ -182,6 +184,9 @@ export class WorkExecutionLoop {
           phaseIndex: phase.index,
           prompt,
           cwd: this.config.project_cwd,
+          onStdout: (chunk) => this.emitter.workerOutput(this.workflowId, "stdout", chunk),
+          onStderr: (chunk) => this.emitter.workerOutput(this.workflowId, "stderr", chunk),
+          signal: this._shutdownController.signal,
         });
 
         // Success: update state to completed

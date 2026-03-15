@@ -82,6 +82,7 @@ const NON_RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
   "exit_code",
   "schema_error",
   "completion_not_detected",
+  "interrupted",
 ]);
 
 /**
@@ -104,9 +105,19 @@ export function categorizeFailure(opts: {
   timedOut: boolean;
   timeoutMs?: number;
   completionDetected: boolean;
+  /** Whether the process was killed by user interrupt (SIGINT/SIGTERM) */
+  interrupted?: boolean;
 }): WorkerFailureReason | undefined {
-  const { exitCode, stdout, stderr, timedOut, timeoutMs, completionDetected } = opts;
-  const combined = stdout + stderr;
+  const { exitCode, stdout, stderr, timedOut, timeoutMs, completionDetected, interrupted } = opts;
+
+  // Interrupted by user (Ctrl+C / SIGINT / SIGTERM) — never retry
+  // Must check before timeout since both can set timedOut
+  if (interrupted) {
+    return {
+      kind: "interrupted",
+      message: "Process interrupted by user",
+    };
+  }
 
   // Timeout
   if (timedOut) {
@@ -127,16 +138,17 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Transient errors
-  if (isTransientError(combined)) {
+  // Transient errors — only check stderr (not stdout) to avoid false positives
+  // from code/text the worker produces containing transient-like patterns
+  if (isTransientError(stderr)) {
     return {
       kind: "transient",
-      message: `Transient error detected: ${extractTransientPattern(combined)}`,
+      message: `Transient error detected: ${extractTransientPattern(stderr)}`,
     };
   }
 
   // API errors (non-zero exit + no specific pattern)
-  if (exitCode !== 0 && isApiError(combined)) {
+  if (exitCode !== 0 && isApiError(stderr)) {
     return {
       kind: "api_error",
       message: `API error with exit code ${exitCode}`,

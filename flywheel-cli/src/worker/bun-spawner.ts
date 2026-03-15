@@ -45,6 +45,23 @@ export function validateSpawnArgs(command: string, _args: readonly string[]): vo
 }
 
 /**
+ * Check if an exit code indicates the process was killed by a signal.
+ *
+ * On Unix, signal kills produce exit code 128 + signal number:
+ * - SIGINT (2)  → 130
+ * - SIGTERM (15) → 143
+ * - SIGKILL (9)  → 137
+ *
+ * Following ralph-tui's pattern of detecting interruptions from exit codes.
+ */
+function isSignalExit(exitCode: number): boolean {
+  // Standard Unix signal exit codes
+  return exitCode === 130   // SIGINT (Ctrl+C)
+      || exitCode === 143   // SIGTERM
+      || exitCode === 137;  // SIGKILL
+}
+
+/**
  * Resolve a command name to its full executable path using Bun.which().
  *
  * - If the command contains a path separator (/ or \), return as-is
@@ -149,6 +166,13 @@ export class BunProcessSpawner implements ProcessSpawner {
       signal.addEventListener("abort", cancelReaders, { once: true });
     }
 
+    // Wire external abort signal (from controller shutdown) to interrupt
+    if (options?.signal && !options.signal.aborted) {
+      options.signal.addEventListener("abort", () => workerTimeout.interrupt(), { once: true });
+    } else if (options?.signal?.aborted) {
+      workerTimeout.interrupt();
+    }
+
     try {
       // Spawn the process
       const proc = Bun.spawn([executable, ...args], {
@@ -176,6 +200,7 @@ export class BunProcessSpawner implements ProcessSpawner {
             if (done) break;
             const text = stdoutDecoder.decode(value, { stream: true });
             rawStdoutChunks.push(text);
+            options?.onStdout?.(text);
             ndjsonParser.write(text);
             completionDetector.check(text);
           }
@@ -183,6 +208,7 @@ export class BunProcessSpawner implements ProcessSpawner {
           const remaining = stdoutDecoder.decode(undefined, { stream: false });
           if (remaining) {
             rawStdoutChunks.push(remaining);
+            options?.onStdout?.(remaining);
             ndjsonParser.write(remaining);
             completionDetector.check(remaining);
           }
@@ -202,9 +228,13 @@ export class BunProcessSpawner implements ProcessSpawner {
             if (done) break;
             const text = stderrDecoder.decode(value, { stream: true });
             rawStderrChunks.push(text);
+            options?.onStderr?.(text);
           }
           const remaining = stderrDecoder.decode(undefined, { stream: false });
-          if (remaining) rawStderrChunks.push(remaining);
+          if (remaining) {
+            rawStderrChunks.push(remaining);
+            options?.onStderr?.(remaining);
+          }
         } catch {
           // Stream may be closed due to process kill or reader cancellation
         }
@@ -223,6 +253,11 @@ export class BunProcessSpawner implements ProcessSpawner {
       workerTimeout.cancel();
       unregister();
 
+      // Detect if process was interrupted by signal (Ctrl+C → SIGINT → exit 130)
+      // or by user-initiated interrupt via workerTimeout.interrupt()
+      // Following ralph-tui pattern: check signal/exit code before categorizing
+      const interrupted = workerTimeout.interrupted || isSignalExit(exitCode);
+
       // Fallback completion check
       const tier1 = buffer.getTier1();
       completionDetector.checkFallback(tier1.content);
@@ -238,6 +273,7 @@ export class BunProcessSpawner implements ProcessSpawner {
         timedOut: workerTimeout.timedOut,
         timeoutMs,
         completionDetected: completionDetector.hasSeenCompletion,
+        interrupted,
       });
 
       return {

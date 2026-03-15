@@ -34,6 +34,10 @@ export const WorkerFailureReasonSchema = z.discriminatedUnion("kind", [
     kind: z.literal("transient"),
     message: z.string(),
   }),
+  z.object({
+    kind: z.literal("interrupted"),
+    message: z.string(),
+  }),
 ]);
 
 export type WorkerFailureReason = z.infer<typeof WorkerFailureReasonSchema>;

@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 /**
  * CLI entry point (plain TS, thin entry point).
  *
@@ -11,7 +12,7 @@ import { parseArgs } from "./args";
 import { loadConfig, resolveModels } from "../config/loader";
 import { getEngine } from "../engines/core/registry";
 import { BunProcessSpawner } from "../worker/bun-spawner";
-import { MockAdapter } from "../tui/adapters/mock";
+import { ConsoleAdapter } from "../tui/adapters/console";
 import { WorkController } from "../controller/work";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ async function runWork(planPath: string, configPath?: string): Promise<void> {
   const spawner = new BunProcessSpawner({
     timeoutMinutes: config.timeout_minutes,
   });
-  const ui = new MockAdapter();
+  const ui = new ConsoleAdapter();
 
   const controller = new WorkController({
     config,

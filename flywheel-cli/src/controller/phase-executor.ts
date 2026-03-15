@@ -32,6 +32,12 @@ export interface ExecutePhaseOptions {
   prompt: string;
   /** Working directory for the worker */
   cwd?: string;
+  /** Called with each decoded stdout chunk as it arrives */
+  onStdout?: (chunk: string) => void;
+  /** Called with each decoded stderr chunk as it arrives */
+  onStderr?: (chunk: string) => void;
+  /** Abort signal — when fired, worker is interrupted (not retried) */
+  signal?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +66,7 @@ export class PhaseExecutor {
    * @throws Error if all retries are exhausted or failure is non-retryable
    */
   async execute(options: ExecutePhaseOptions): Promise<WorkerResult> {
-    const { phaseIndex, prompt, cwd } = options;
+    const { phaseIndex, prompt, cwd, onStdout, onStderr, signal } = options;
 
     // Build command using the engine pattern (worker tier model)
     const engineCmd = this.engine.buildCommand({
@@ -85,6 +91,9 @@ export class PhaseExecutor {
               cwd,
               timeoutMs,
               stdin: engineCmd.stdinPrompt ? prompt : undefined,
+              onStdout,
+              onStderr,
+              signal,
             },
           );
         } catch (error) {

@@ -39,8 +39,12 @@ export interface WorkerTimeout {
   signal: AbortSignal;
   /** Whether the timeout has fired. */
   timedOut: boolean;
+  /** Whether the process was interrupted by user (SIGINT/SIGTERM). */
+  interrupted: boolean;
   /** Cancel the timeout (prevents it from firing). */
   cancel(): void;
+  /** Interrupt the worker (user-initiated, not a timeout). */
+  interrupt(): void;
   /** Wire up process-group-kill when the signal aborts. */
   attachProcess(child: ChildHandle): void;
 }
@@ -54,6 +58,7 @@ export interface WorkerTimeout {
 export function createWorkerTimeout(timeoutMs: number): WorkerTimeout {
   const controller = new AbortController();
   let timedOut = false;
+  let interrupted = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   timer = setTimeout(() => {
@@ -67,11 +72,22 @@ export function createWorkerTimeout(timeoutMs: number): WorkerTimeout {
     get timedOut() {
       return timedOut;
     },
+    get interrupted() {
+      return interrupted;
+    },
     cancel() {
       if (timer !== null) {
         clearTimeout(timer);
         timer = null;
       }
+    },
+    interrupt() {
+      interrupted = true;
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      controller.abort(new Error("Worker interrupted by user"));
     },
     attachProcess(child: ChildHandle) {
       // If already aborted, kill immediately

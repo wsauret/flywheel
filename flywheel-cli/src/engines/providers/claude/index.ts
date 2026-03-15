@@ -20,7 +20,7 @@ export const metadata: EngineMetadata = {
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
   const args: string[] = [
     "--print",
-    "--output-format", "text",
+    "--output-format", "stream-json",
     "--dangerously-skip-permissions",
   ];
 

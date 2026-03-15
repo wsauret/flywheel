@@ -13,13 +13,13 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("Engine: claude", () => {
-  it("builds command with --print and --output-format text", () => {
+  it("builds command with --print and --output-format stream-json", () => {
     const cmd = claudeEngine.buildCommand({ prompt: "do stuff" });
 
     expect(cmd.command).toBe("claude");
     expect(cmd.args).toContain("--print");
     expect(cmd.args).toContain("--output-format");
-    expect(cmd.args).toContain("text");
+    expect(cmd.args).toContain("stream-json");
   });
 
   it("passes model via --model flag when provided", () => {
