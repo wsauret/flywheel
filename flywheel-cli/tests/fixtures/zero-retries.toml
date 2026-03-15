@@ -1,0 +1,4 @@
+max_retries = 0
+timeout_minutes = 30
+engine = "claude"
+model = "claude-sonnet-4-20250514"

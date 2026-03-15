@@ -1,0 +1,23 @@
+{
+  "name": "flywheel-cli",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/cli/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "build": "bun build src/cli/index.ts --outdir dist --target bun",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "micromatch": "^4.0.8",
+    "yargs": "^17.7.2",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/micromatch": "^4.0.9",
+    "@types/yargs": "^17.0.33"
+  }
+}

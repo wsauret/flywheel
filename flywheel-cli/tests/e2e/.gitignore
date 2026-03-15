@@ -1,0 +1,12 @@
+# Worker outputs (recreated each run)
+workspace/*
+!workspace/.gitkeep
+
+# State file (recreated each run)
+plan.state.md
+
+# Lock files
+.flywheel/
+
+# Results are kept for iteration tracking
+# results.json

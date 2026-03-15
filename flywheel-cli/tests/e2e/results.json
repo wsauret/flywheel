@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-03-15T19:42:46.565Z",
+  "engine": "opencode",
+  "model": "anthropic/claude-opus-4-6",
+  "totalMs": 22161,
+  "phasesCompleted": 2,
+  "phasesTotal": 2,
+  "allPhasesCompleted": true,
+  "phases": [
+    {
+      "phase": 1,
+      "completed": true,
+      "fileExists": true,
+      "contentMatch": true,
+      "actualContent": "Hello from Phase 1",
+      "expectedContent": "Hello from Phase 1"
+    },
+    {
+      "phase": 2,
+      "completed": true,
+      "fileExists": true,
+      "contentMatch": true,
+      "actualContent": "Goodbye from Phase 2",
+      "expectedContent": "Goodbye from Phase 2"
+    }
+  ],
+  "eventSequence": [
+    "workflow:started",
+    "phase:started",
+    "worker:spawned",
+    "worker:completed",
+    "phase:completed",
+    "phase:started",
+    "worker:spawned",
+    "worker:completed",
+    "phase:completed",
+    "workflow:completed"
+  ],
+  "eventCount": 10,
+  "correctEventSequence": true,
+  "overallScore": 100
+}
