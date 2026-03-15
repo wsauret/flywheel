@@ -38,8 +38,24 @@ export interface EngineCommandOptions {
   resumeSessionId?: string;
 }
 
+export interface ModelInfo {
+  /** Model ID in the engine's native format (e.g., "opus", "anthropic/claude-opus-4-6") */
+  id: string;
+  /** Human-readable display name (e.g., "Claude Opus 4.6") */
+  name: string;
+  /** Model family for grouping (e.g., "opus", "sonnet", "haiku") */
+  family: string;
+  /** Whether this is an alias (e.g., "opus") vs a dated version */
+  isAlias: boolean;
+}
+
 export interface Engine {
   metadata: EngineMetadata;
   /** Build the CLI command + args for execution */
   buildCommand(options: EngineCommandOptions): EngineCommand;
+  /**
+   * List available models.
+   * @param provider - Optional provider filter (e.g., "anthropic"). If omitted, returns all.
+   */
+  listModels(provider?: string): Promise<ModelInfo[]>;
 }
