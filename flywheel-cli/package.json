@@ -4,9 +4,11 @@
   "type": "module",
   "main": "src/cli/index.ts",
   "bin": {
-    "flywheel": "src/cli/index.ts"
+    "flywheel": "bin/flywheel"
   },
   "scripts": {
+    "dev": "bun --conditions=browser run src/cli/index.ts",
+    "start": "bun --conditions=browser run src/cli/index.ts",
     "test": "bun test",
     "build": "bun build src/cli/index.ts --outdir dist --target bun",
     "typecheck": "tsc --noEmit"

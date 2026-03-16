@@ -8,7 +8,10 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "paths": {
+      "@tui/*": ["./src/tui/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

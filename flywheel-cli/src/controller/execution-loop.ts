@@ -135,8 +135,10 @@ export class WorkExecutionLoop {
         };
       }
 
-      // Skip completed phases
+      // Skip completed phases (but emit events so TUI shows them)
       if (phase.status === "completed") {
+        this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
+        this.emitter.phaseCompleted(this.workflowId, phase.index);
         continue;
       }
 

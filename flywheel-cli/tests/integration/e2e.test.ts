@@ -199,13 +199,18 @@ describe("E2E Integration", () => {
     expect(result2.completed).toBe(true);
     expect(result2.phasesCompleted).toBe(2);
 
-    // No new phase:started events (both already completed)
+    // Already-completed phases still emit started+completed events (for TUI display)
     const phaseStarts = adapter2.events.filter(
       (e: FlywheelEvent) => e.type === "phase:started"
     );
-    expect(phaseStarts.length).toBe(0);
+    expect(phaseStarts.length).toBe(2);
 
-    // But workflow:started and workflow:completed should still fire
+    const phaseCompletes = adapter2.events.filter(
+      (e: FlywheelEvent) => e.type === "phase:completed"
+    );
+    expect(phaseCompletes.length).toBe(2);
+
+    // workflow:started and workflow:completed should still fire
     const workflowEvents = adapter2.events.filter(
       (e: FlywheelEvent) => e.type === "workflow:started" || e.type === "workflow:completed"
     );

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Wrapper that ensures solid-js resolves to the browser (reactive) runtime.
+# Without --conditions=browser, Bun picks the "node" export condition which
+# maps solid-js to dist/server.js (SSR), breaking OpenTUI's reactive rendering.
+exec bun --conditions=browser run "$(dirname "$0")/../src/cli/index.ts" "$@"

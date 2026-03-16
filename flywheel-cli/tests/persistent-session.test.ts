@@ -1,0 +1,788 @@
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { resetWorkStore } from "../src/tui/routes/work/context/ui-state/store";
+import { timerService } from "../src/tui/shared/services/timer";
+import {
+  createWorkflowSession,
+  destroyWorkflowSession,
+  type WorkflowSession,
+} from "../src/tui/components/workflow-session";
+import { parseSlashCommand } from "../src/tui/utils/slash-commands";
+import { createEscapeHandler, type EscapeHandler } from "../src/tui/utils/escape-handler";
+import type { ShellState } from "../src/tui/components/flywheel-shell-types";
+
+/**
+ * Persistent Session Integration Test
+ *
+ * Exercises the full non-UI lifecycle that FlywheelShell orchestrates:
+ *   idle → start workflow → complete → start another → stop → exit
+ *
+ * Integrates:
+ *   - createWorkflowSession / destroyWorkflowSession
+ *   - Store actions (startWorkflow, appendOutput, completePhase, stopWorkflow)
+ *   - Timer service reset between runs
+ *   - Slash command parsing in context of shell state
+ *   - Escape handler state machine in context of workflow states
+ *
+ * Does NOT render TUI components (no OpenTUI runtime needed).
+ */
+
+function ts(): string {
+  return new Date().toISOString();
+}
+
+/**
+ * Simulates the FlywheelShell's state management logic without rendering.
+ * Mirrors the real handleSubmit / handleEscape decision tree.
+ */
+class ShellSimulator {
+  shellState: ShellState = "idle";
+  runs: Array<{ id: string; planName: string; status: string; startTime: number; endTime?: number }> = [];
+  activeSession: WorkflowSession | null = null;
+  escapeHandler: EscapeHandler;
+  escHint = "";
+  exitCalled = false;
+
+  constructor() {
+    this.escapeHandler = createEscapeHandler({ timeoutMs: 200 }); // fast timeout for tests
+  }
+
+  startWorkflow(planPath: string): void {
+    // Clean up any previous session
+    if (this.activeSession) {
+      destroyWorkflowSession(this.activeSession);
+      this.activeSession = null;
+    }
+
+    const session = createWorkflowSession(planPath);
+    this.activeSession = session;
+
+    const planName = planPath.split("/").pop() ?? planPath;
+    const runId = `run-${this.runs.length}`;
+    this.runs.push({
+      id: runId,
+      planName,
+      status: "running",
+      startTime: Date.now(),
+    });
+    this.shellState = "working";
+
+    // Subscribe to store for state updates → update runs
+    session.store.subscribe(() => {
+      const state = session.store.getState();
+      const wfStatus = state.workflowStatus;
+      const run = this.runs.find((r) => r.id === runId);
+      if (run) {
+        run.status = wfStatus;
+        if (wfStatus === "completed" || wfStatus === "failed" || wfStatus === "interrupted") {
+          run.endTime = Date.now();
+        }
+      }
+      if (wfStatus === "completed" || wfStatus === "failed" || wfStatus === "interrupted") {
+        this.shellState = "completed";
+      }
+    });
+  }
+
+  stopWorkflow(): void {
+    this.escapeHandler.reset();
+    this.escHint = "";
+    if (this.activeSession) {
+      destroyWorkflowSession(this.activeSession);
+      this.activeSession = null;
+    }
+    this.shellState = "completed";
+  }
+
+  handleSubmit(input: string): void {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    const cmd = parseSlashCommand(trimmed);
+    if (cmd) {
+      switch (cmd.command) {
+        case "exit":
+          this.exitCalled = true;
+          return;
+        case "new":
+          this.stopWorkflow();
+          this.runs = [];
+          this.shellState = "idle";
+          return;
+        case "stop":
+          if (this.shellState === "working") {
+            this.stopWorkflow();
+          }
+          return;
+        case "help":
+          return;
+      }
+      return;
+    }
+
+    if (this.shellState === "idle" || this.shellState === "completed") {
+      this.startWorkflow(trimmed);
+    }
+    // "working" state: steering text (no-op for now)
+  }
+
+  handleEscape(): void {
+    if (this.shellState === "idle" || this.shellState === "completed") {
+      this.exitCalled = true;
+      return;
+    }
+    if (this.shellState === "working") {
+      const result = this.escapeHandler.handleEscape();
+      if (result === "show-hint") {
+        this.escHint = "Press Esc again to stop";
+      } else {
+        this.escHint = "";
+        this.stopWorkflow();
+      }
+    }
+  }
+
+  dispose(): void {
+    this.escapeHandler.dispose();
+    if (this.activeSession) {
+      destroyWorkflowSession(this.activeSession);
+      this.activeSession = null;
+    }
+  }
+}
+
+describe("Persistent Session Integration", () => {
+  let shell: ShellSimulator;
+
+  beforeEach(() => {
+    resetWorkStore();
+    timerService.reset();
+    shell = new ShellSimulator();
+  });
+
+  afterEach(() => {
+    shell.dispose();
+    resetWorkStore();
+    timerService.reset();
+  });
+
+  // ── Full lifecycle: idle → start → complete → start another → stop → exit ──
+
+  describe("full lifecycle", () => {
+    it("idle → start workflow → phases → complete → start another → complete", () => {
+      // Initial state: idle
+      expect(shell.shellState).toBe("idle");
+      expect(shell.runs).toHaveLength(0);
+      expect(shell.activeSession).toBeNull();
+
+      // Submit a plan path → starts first workflow
+      shell.handleSubmit("plans/build.md");
+      expect(shell.shellState).toBe("working");
+      expect(shell.runs).toHaveLength(1);
+      expect(shell.runs[0].planName).toBe("build.md");
+      expect(shell.activeSession).not.toBeNull();
+
+      const session1 = shell.activeSession!;
+      expect(session1.store.getState().workflowStatus).toBe("idle"); // not yet started via events
+      expect(session1.adapter.isConnected()).toBe(true);
+      expect(session1.adapter.isRunning()).toBe(true);
+
+      // Simulate workflow events through the session's eventBus
+      session1.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plans/build.md",
+        timestamp: ts(),
+      });
+      expect(session1.store.getState().workflowStatus).toBe("running");
+
+      // Phase 0: Setup
+      session1.eventBus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 0,
+        phaseName: "Setup",
+        timestamp: ts(),
+      });
+      expect(session1.store.getState().phases).toHaveLength(1);
+      expect(session1.store.getState().phases[0].name).toBe("Setup");
+      expect(session1.store.getState().phases[0].status).toBe("running");
+
+      // Output during phase 0
+      session1.eventBus.emit({
+        type: "worker:output",
+        workflowId: "w1",
+        stream: "stdout",
+        data: "Installing dependencies...\n",
+        timestamp: ts(),
+      });
+      expect(session1.store.getState().outputLines).toHaveLength(1);
+
+      // Phase 0 completes
+      session1.eventBus.emit({
+        type: "phase:completed",
+        workflowId: "w1",
+        phaseIndex: 0,
+        timestamp: ts(),
+      });
+      expect(session1.store.getState().phases[0].status).toBe("completed");
+
+      // Phase 1: Build
+      session1.eventBus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 1,
+        phaseName: "Build",
+        timestamp: ts(),
+      });
+      session1.eventBus.emit({
+        type: "worker:output",
+        workflowId: "w1",
+        stream: "stdout",
+        data: "Compiling...\n",
+        timestamp: ts(),
+      });
+      session1.eventBus.emit({
+        type: "phase:completed",
+        workflowId: "w1",
+        phaseIndex: 1,
+        timestamp: ts(),
+      });
+      expect(session1.store.getState().phases).toHaveLength(2);
+      expect(session1.store.getState().outputLines).toHaveLength(2);
+
+      // Workflow completes
+      session1.eventBus.emit({
+        type: "workflow:completed",
+        workflowId: "w1",
+        timestamp: ts(),
+      });
+      expect(session1.store.getState().workflowStatus).toBe("completed");
+
+      // Store subscription is throttled (16ms). In the real TUI, the shell state
+      // transitions asynchronously. For this synchronous test, set it explicitly.
+      shell.shellState = "completed";
+
+      // Now start a second workflow by submitting a new plan path
+      shell.handleSubmit("plans/deploy.md");
+      expect(shell.shellState).toBe("working");
+      expect(shell.runs).toHaveLength(2);
+      expect(shell.runs[1].planName).toBe("deploy.md");
+
+      // First session should have been destroyed, new one created
+      const session2 = shell.activeSession!;
+      expect(session2).not.toBe(session1);
+      expect(session2.store.getState().workflowStatus).toBe("idle");
+      expect(session2.store.getState().phases).toHaveLength(0);
+      expect(session2.store.getState().outputLines).toHaveLength(0);
+
+      // Complete second workflow
+      session2.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w2",
+        planPath: "plans/deploy.md",
+        timestamp: ts(),
+      });
+      session2.eventBus.emit({
+        type: "phase:started",
+        workflowId: "w2",
+        phaseIndex: 0,
+        phaseName: "Deploy",
+        timestamp: ts(),
+      });
+      session2.eventBus.emit({
+        type: "phase:completed",
+        workflowId: "w2",
+        phaseIndex: 0,
+        timestamp: ts(),
+      });
+      session2.eventBus.emit({
+        type: "workflow:completed",
+        workflowId: "w2",
+        timestamp: ts(),
+      });
+      expect(session2.store.getState().workflowStatus).toBe("completed");
+    });
+
+    it("idle → start → /stop → completed → /new → idle → /exit", () => {
+      // Start a workflow
+      shell.handleSubmit("plans/test.md");
+      expect(shell.shellState).toBe("working");
+
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plans/test.md",
+        timestamp: ts(),
+      });
+
+      // Stop with slash command
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("completed");
+      expect(shell.activeSession).toBeNull();
+
+      // /new resets to idle
+      shell.handleSubmit("/new");
+      expect(shell.shellState).toBe("idle");
+      expect(shell.runs).toHaveLength(0);
+
+      // /exit sets exitCalled
+      shell.handleSubmit("/exit");
+      expect(shell.exitCalled).toBe(true);
+    });
+  });
+
+  // ── Session isolation: no cross-contamination between runs ──
+
+  describe("session isolation", () => {
+    it("second session has zero contamination from first", () => {
+      // First session with lots of state
+      shell.handleSubmit("plan-A.md");
+      const session1 = shell.activeSession!;
+
+      session1.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A.md", timestamp: ts() });
+      session1.eventBus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Phase-A", timestamp: ts() });
+      for (let i = 0; i < 10; i++) {
+        session1.eventBus.emit({
+          type: "worker:output",
+          workflowId: "w1",
+          stream: "stdout",
+          data: `line ${i}\n`,
+          timestamp: ts(),
+        });
+      }
+      session1.eventBus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 0, timestamp: ts() });
+      session1.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+
+      // Verify first session has accumulated state
+      expect(session1.store.getState().phases).toHaveLength(1);
+      expect(session1.store.getState().outputLines).toHaveLength(10);
+      expect(session1.store.getState().workflowStatus).toBe("completed");
+
+      // Store subscription is throttled — set shell state explicitly for sync test
+      shell.shellState = "completed";
+
+      // Start second session (first is destroyed automatically in startWorkflow)
+      shell.handleSubmit("plan-B.md");
+      const session2 = shell.activeSession!;
+
+      // Second session must be completely clean
+      expect(session2.store.getState().workflowStatus).toBe("idle");
+      expect(session2.store.getState().phases).toHaveLength(0);
+      expect(session2.store.getState().outputLines).toHaveLength(0);
+      expect(session2.store.getState().planName).toBe("plan-B.md");
+      expect(timerService.getStatus()).toBe("idle");
+    });
+
+    it("destroying session stops events from reaching store", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      expect(session.store.getState().workflowStatus).toBe("running");
+
+      // Stop the workflow (destroys session)
+      shell.handleSubmit("/stop");
+      expect(shell.activeSession).toBeNull();
+
+      // Events on the old event bus should not update the store
+      session.eventBus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 0,
+        phaseName: "Ghost",
+        timestamp: ts(),
+      });
+      expect(session.store.getState().phases).toHaveLength(0);
+    });
+  });
+
+  // ── Timer service integration ──
+
+  describe("timer service lifecycle", () => {
+    it("timer resets between sequential workflow sessions", () => {
+      // First session
+      shell.handleSubmit("plan-1.md");
+      const session1 = shell.activeSession!;
+      session1.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan-1.md",
+        timestamp: ts(),
+      });
+      expect(timerService.isRunning()).toBe(true);
+
+      // Stop first
+      shell.handleSubmit("/stop");
+      expect(timerService.getStatus()).toBe("idle");
+
+      // Second session
+      shell.handleSubmit("plan-2.md");
+      const session2 = shell.activeSession!;
+      // Timer is idle again (reset by createWorkflowSession)
+      expect(timerService.getStatus()).toBe("idle");
+
+      // Start events on second session
+      session2.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w2",
+        planPath: "plan-2.md",
+        timestamp: ts(),
+      });
+      expect(timerService.isRunning()).toBe(true);
+
+      shell.handleSubmit("/stop");
+      expect(timerService.getStatus()).toBe("idle");
+    });
+
+    it("timer agents are cleaned up between sessions", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      timerService.registerAgent("phase-0");
+      expect(timerService.hasAgent("phase-0")).toBe(true);
+
+      // Stop workflow → destroys session → resets timer
+      shell.handleSubmit("/stop");
+      expect(timerService.hasAgent("phase-0")).toBe(false);
+    });
+  });
+
+  // ── Slash commands in context of shell state ──
+
+  describe("slash commands in shell state context", () => {
+    it("/stop is no-op when idle", () => {
+      expect(shell.shellState).toBe("idle");
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("idle"); // unchanged
+    });
+
+    it("/stop stops workflow when working", () => {
+      shell.handleSubmit("plan.md");
+      expect(shell.shellState).toBe("working");
+
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("completed");
+      expect(shell.activeSession).toBeNull();
+    });
+
+    it("/new during working stops and resets to idle", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      expect(shell.shellState).toBe("working");
+
+      shell.handleSubmit("/new");
+      expect(shell.shellState).toBe("idle");
+      expect(shell.runs).toHaveLength(0);
+      expect(shell.activeSession).toBeNull();
+    });
+
+    it("/new during completed clears runs and resets to idle", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      session.eventBus.emit({
+        type: "workflow:completed",
+        workflowId: "w1",
+        timestamp: ts(),
+      });
+
+      shell.handleSubmit("/new");
+      expect(shell.shellState).toBe("idle");
+      expect(shell.runs).toHaveLength(0);
+    });
+
+    it("/exit always triggers exit regardless of state", () => {
+      shell.handleSubmit("/exit");
+      expect(shell.exitCalled).toBe(true);
+    });
+
+    it("empty input is ignored", () => {
+      shell.handleSubmit("");
+      expect(shell.shellState).toBe("idle");
+      shell.handleSubmit("   ");
+      expect(shell.shellState).toBe("idle");
+    });
+
+    it("unrecognized slash commands are treated as plan paths", () => {
+      // parseSlashCommand returns null for unknown commands,
+      // so they're treated as regular input (plan path when idle)
+      shell.handleSubmit("/foobar");
+      expect(shell.shellState).toBe("working");
+      expect(shell.runs[0].planName).toBe("foobar"); // split("/").pop() strips leading /
+    });
+
+    it("non-slash input during working is treated as steering (no-op)", () => {
+      shell.handleSubmit("plan.md");
+      expect(shell.shellState).toBe("working");
+      expect(shell.runs).toHaveLength(1);
+
+      // Typing during working state should not start a new workflow
+      shell.handleSubmit("some steering text");
+      expect(shell.runs).toHaveLength(1); // no new run added
+      expect(shell.shellState).toBe("working");
+    });
+  });
+
+  // ── Escape handler in context of workflow states ──
+
+  describe("escape handler in workflow context", () => {
+    it("Esc when idle triggers exit", () => {
+      expect(shell.shellState).toBe("idle");
+      shell.handleEscape();
+      expect(shell.exitCalled).toBe(true);
+    });
+
+    it("Esc when completed triggers exit", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan.md", timestamp: ts() });
+      session.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+
+      // shellState transitions to completed via store subscription,
+      // but subscription is throttled (16ms). Manually set for this test.
+      shell.shellState = "completed";
+
+      shell.handleEscape();
+      expect(shell.exitCalled).toBe(true);
+    });
+
+    it("single Esc when working shows hint, does not stop", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      expect(shell.shellState).toBe("working");
+
+      shell.handleEscape();
+      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.shellState).toBe("working"); // still working
+      expect(shell.activeSession).not.toBeNull(); // session still alive
+    });
+
+    it("double Esc when working stops the workflow", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      expect(shell.shellState).toBe("working");
+
+      // First Esc → hint
+      shell.handleEscape();
+      expect(shell.escHint).toBe("Press Esc again to stop");
+
+      // Second Esc → stop
+      shell.handleEscape();
+      expect(shell.escHint).toBe("");
+      expect(shell.shellState).toBe("completed");
+      expect(shell.activeSession).toBeNull();
+    });
+
+    it("Esc hint resets after timeout, requires fresh double-Esc", async () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      // First Esc → hint
+      shell.handleEscape();
+      expect(shell.escHint).toBe("Press Esc again to stop");
+
+      // Wait for timeout (200ms in test config)
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Esc after timeout → hint again (not stop)
+      shell.handleEscape();
+      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.shellState).toBe("working"); // still working
+    });
+  });
+
+  // ── Store subscription drives shell state transitions ──
+
+  describe("store subscription state transitions", () => {
+    it("workflow:completed transitions shell to completed", (done) => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      expect(shell.shellState).toBe("working");
+
+      session.eventBus.emit({
+        type: "workflow:completed",
+        workflowId: "w1",
+        timestamp: ts(),
+      });
+
+      // Store subscription is throttled at 16ms, wait for it
+      setTimeout(() => {
+        expect(shell.shellState).toBe("completed");
+        expect(shell.runs[0].status).toBe("completed");
+        expect(shell.runs[0].endTime).toBeDefined();
+        done();
+      }, 50);
+    });
+
+    it("workflow:failed transitions shell to completed", (done) => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      session.eventBus.emit({
+        type: "workflow:failed",
+        workflowId: "w1",
+        error: "Something went wrong",
+        timestamp: ts(),
+      });
+
+      setTimeout(() => {
+        expect(shell.shellState).toBe("completed");
+        expect(shell.runs[0].status).toBe("failed");
+        done();
+      }, 50);
+    });
+
+    it("run entry tracks correct plan names across multiple runs", () => {
+      shell.handleSubmit("path/to/first-plan.md");
+      expect(shell.runs[0].planName).toBe("first-plan.md");
+
+      // Complete first
+      const s1 = shell.activeSession!;
+      s1.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "first-plan.md", timestamp: ts() });
+      s1.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+
+      // Throttled subscription — set shell state explicitly for sync test
+      shell.shellState = "completed";
+
+      // Start second
+      shell.handleSubmit("another/second-plan.md");
+      expect(shell.runs).toHaveLength(2);
+      expect(shell.runs[0].planName).toBe("first-plan.md");
+      expect(shell.runs[1].planName).toBe("second-plan.md");
+    });
+  });
+
+  // ── Edge cases ──
+
+  describe("edge cases", () => {
+    it("starting workflow while another is running destroys the first", () => {
+      shell.handleSubmit("plan-1.md");
+      const session1 = shell.activeSession!;
+      session1.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan-1.md",
+        timestamp: ts(),
+      });
+
+      // Force shell state to completed so handleSubmit treats next input as plan path
+      shell.shellState = "completed";
+
+      shell.handleSubmit("plan-2.md");
+      const session2 = shell.activeSession!;
+
+      // session1's adapter should be disconnected
+      expect(session1.adapter.isConnected()).toBe(false);
+      expect(session1.adapter.isRunning()).toBe(false);
+
+      // session2 is fresh
+      expect(session2.adapter.isConnected()).toBe(true);
+      expect(session2.adapter.isRunning()).toBe(true);
+      expect(session2.store.getState().workflowStatus).toBe("idle");
+    });
+
+    it("/stop when already idle is harmless", () => {
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("idle");
+      expect(shell.activeSession).toBeNull();
+    });
+
+    it("/new when already idle is harmless", () => {
+      shell.handleSubmit("/new");
+      expect(shell.shellState).toBe("idle");
+      expect(shell.runs).toHaveLength(0);
+    });
+
+    it("multiple /stop calls are idempotent", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("completed");
+
+      // Second /stop is no-op (not in working state)
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("completed");
+    });
+
+    it("rapid start-stop-start cycle maintains clean state", () => {
+      // Start first
+      shell.handleSubmit("plan-1.md");
+      expect(shell.shellState).toBe("working");
+
+      // Immediately stop
+      shell.handleSubmit("/stop");
+      expect(shell.shellState).toBe("completed");
+      expect(shell.activeSession).toBeNull();
+
+      // Start second
+      shell.handleSubmit("plan-2.md");
+      expect(shell.shellState).toBe("working");
+      const session = shell.activeSession!;
+      expect(session.store.getState().workflowStatus).toBe("idle");
+      expect(session.store.getState().phases).toHaveLength(0);
+      expect(session.store.getState().outputLines).toHaveLength(0);
+    });
+  });
+});

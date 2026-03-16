@@ -1,1 +1,5 @@
+# solid-js must resolve with "browser" condition for reactive runtime.
+# Use `bun --conditions=browser` when running (see package.json scripts and bin/flywheel).
+# Tests don't need it — they don't render OpenTUI components.
+
 [test]

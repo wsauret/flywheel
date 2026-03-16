@@ -1,7 +1,9 @@
 /**
- * Type-safe yargs argument parsing.
+ * Type-safe CLI argument parsing.
  *
- * Defines `flywheel work <plan-path>` command with typed options.
+ * Two modes:
+ * - `flywheel` (no args) → persistent TUI shell
+ * - `flywheel --headless <plan-path>` → headless execution (no TUI)
  */
 
 import yargs from "yargs";
@@ -11,16 +13,14 @@ import { hideBin } from "yargs/helpers";
 // Types
 // ---------------------------------------------------------------------------
 
-export interface WorkArgs {
+export interface HeadlessArgs {
   planPath: string;
   config?: string;
-  headless: boolean;
 }
 
-export interface ParsedArgs {
-  command: "work";
-  args: WorkArgs;
-}
+export type ParsedArgs =
+  | { command: "tui" }
+  | { command: "work-headless"; args: HeadlessArgs };
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -29,8 +29,12 @@ export interface ParsedArgs {
 /**
  * Parse CLI arguments using yargs.
  *
- * @param argv - Raw argv array (default: process.argv)
- * @returns Parsed command and arguments
+ * - No args → `{ command: "tui" }`
+ * - `--headless <plan-path>` → `{ command: "work-headless", args: { planPath, config? } }`
+ * - `--headless` without plan path → error (returns null)
+ *
+ * @param argv - Raw argv array (default: process.argv via hideBin)
+ * @returns Parsed command and arguments, or null on parse error
  */
 export async function parseArgs(
   argv?: string[],
@@ -41,27 +45,21 @@ export async function parseArgs(
 
   const parsed = await yargs(raw)
     .scriptName("flywheel")
-    .usage("$0 <command> [options]")
-    .command(
-      "work <plan-path>",
-      "Run the execution loop against a plan",
-      (yargs) => {
-        return yargs.positional("plan-path", {
-          describe: "Path to the plan markdown file",
-          type: "string",
-          demandOption: true,
-        });
-      },
-    )
-    .option("config", {
-      alias: "c",
-      type: "string",
-      describe: "Path to TOML configuration file",
+    .command("$0 [plan-path]", "Run flywheel", (y) => {
+      return y.positional("plan-path", {
+        describe: "Path to plan markdown file (required with --headless)",
+        type: "string",
+      });
     })
     .option("headless", {
       type: "boolean",
       default: false,
-      describe: "Run without TUI (v1+)",
+      describe: "Run without TUI — requires a plan path as positional arg",
+    })
+    .option("config", {
+      alias: "c",
+      type: "string",
+      describe: "Path to TOML configuration file",
     })
     .help()
     .strict()
@@ -75,19 +73,33 @@ export async function parseArgs(
     return null;
   }
 
-  const command = parsed._[0];
+  const planPath = parsed["plan-path"] as string | undefined;
 
-  if (command === "work") {
+  // --headless mode: requires a plan path
+  if (parsed.headless) {
+    if (!planPath) {
+      console.error("Error: --headless requires a plan path. Usage: flywheel --headless <plan-path>");
+      return null;
+    }
+
     return {
-      command: "work",
+      command: "work-headless",
       args: {
-        planPath: parsed["plan-path"] as string,
+        planPath,
         config: parsed.config as string | undefined,
-        headless: parsed.headless as boolean,
       },
     };
   }
 
-  // No recognized command
-  return null;
+  // Bare positional without --headless → error
+  if (planPath) {
+    console.error(
+      `Error: unexpected argument "${planPath}". ` +
+      "Use 'flywheel' for the TUI or 'flywheel --headless <plan-path>' for headless mode."
+    );
+    return null;
+  }
+
+  // No args → TUI mode
+  return { command: "tui" };
 }

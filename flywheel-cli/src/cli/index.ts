@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 /**
- * CLI entry point (plain TS, thin entry point).
+ * CLI entry point.
  *
- * `flywheel work <plan-path>` — runs controller loop.
- * `flywheel` (no args) — prints help.
+ * Two modes:
+ * - `flywheel` (no args) → persistent TUI shell (all workflow creation happens inside)
+ * - `flywheel --headless plan.md` → headless execution via ConsoleAdapter
  *
- * Graceful shutdown: calls `controller.shutdown()` (not direct subsystem calls).
+ * IMPORTANT: solid-js must resolve with "browser" condition (not "node").
+ * Run via `bin/flywheel` or `bun --conditions=browser run src/cli/index.ts`.
  */
 
 import { parseArgs } from "./args";
@@ -14,6 +16,7 @@ import { getEngine } from "../engines/core/registry";
 import { BunProcessSpawner } from "../worker/bun-spawner";
 import { ConsoleAdapter } from "../tui/adapters/console";
 import { WorkController } from "../controller/work";
+import type { IWorkflowUI } from "../tui/adapters/types";
 
 // ---------------------------------------------------------------------------
 // Main
@@ -23,24 +26,44 @@ export async function main(argv?: string[]): Promise<void> {
   const parsed = await parseArgs(argv);
 
   if (!parsed) {
-    // No command or help was shown by yargs
-    process.exitCode = 0;
+    process.exitCode = 1;
     return;
   }
 
-  if (parsed.command === "work") {
-    await runWork(parsed.args.planPath, parsed.args.config);
+  switch (parsed.command) {
+    case "tui":
+      await runTUI();
+      break;
+
+    case "work-headless":
+      await runHeadless(parsed.args.planPath, parsed.args.config);
+      break;
   }
 }
 
-async function runWork(planPath: string, configPath?: string): Promise<void> {
-  // Load config
-  const { config, warnings } = loadConfig(configPath);
-  for (const warning of warnings) {
-    console.warn(warning);
-  }
+// ---------------------------------------------------------------------------
+// TUI mode — persistent shell
+// ---------------------------------------------------------------------------
 
-  // Resolve engine from config
+async function runTUI(): Promise<void> {
+  const { startTUI } = await import("../tui/launcher");
+  const tuiPromise = startTUI({ mode: "dark" });
+
+  // Block until the shell exits (user types /exit or Ctrl+C)
+  await tuiPromise;
+
+  // Terminal is already restored by exitTUI() — safe to exit
+  process.exit(process.exitCode ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// Headless mode — ConsoleAdapter, no TUI
+// ---------------------------------------------------------------------------
+
+async function runHeadless(planPath: string, configPath?: string): Promise<void> {
+  const { config, warnings } = loadConfig(configPath);
+  for (const warning of warnings) console.warn(warning);
+
   const engine = getEngine(config.engine);
   const models = resolveModels(config);
   console.log(`Engine: ${engine.metadata.name} (${engine.metadata.id})`);
@@ -53,39 +76,16 @@ async function runWork(planPath: string, configPath?: string): Promise<void> {
     console.log(`Worker model: ${workerModel}`);
   }
 
-  // Create components (v1: MockAdapter, BunProcessSpawner)
-  const spawner = new BunProcessSpawner({
-    timeoutMinutes: config.timeout_minutes,
-  });
-  const ui = new ConsoleAdapter();
-
-  const controller = new WorkController({
-    config,
-    spawner,
-    engine,
-    ui,
-  });
-
-  // Register shutdown handler
-  const shutdown = async () => {
-    await controller.shutdown();
-    process.exit(0);
-  };
-
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  const spawner = new BunProcessSpawner({ timeoutMinutes: config.timeout_minutes });
+  const ui: IWorkflowUI = new ConsoleAdapter();
+  const controller = new WorkController({ config, spawner, engine, ui });
 
   try {
     const result = await controller.run(planPath);
-
     if (result.completed) {
-      console.log(
-        `All ${result.phasesTotal} phases completed successfully.`,
-      );
+      console.log(`All ${result.phasesTotal} phases completed successfully.`);
     } else {
-      console.error(
-        `Stopped after ${result.phasesCompleted}/${result.phasesTotal} phases: ${result.reason}`,
-      );
+      console.error(`Stopped after ${result.phasesCompleted}/${result.phasesTotal} phases: ${result.reason}`);
       process.exitCode = 1;
     }
   } catch (error) {
