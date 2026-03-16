@@ -436,7 +436,8 @@ def configure_context7(config_path: Path, dry_run: bool) -> None:
 def main() -> int:
     """Install Flywheel for OpenCode."""
     parser = argparse.ArgumentParser(description="Install Flywheel for OpenCode")
-    parser.add_argument("--source", type=Path, default=Path("flywheel"))
+    _script_dir = Path(__file__).resolve().parent
+    parser.add_argument("--source", type=Path, default=_script_dir / "flywheel")
     parser.add_argument("--output", type=Path, default=Path.home() / ".config/opencode")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
     parser.add_argument(

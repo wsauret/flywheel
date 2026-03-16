@@ -11,7 +11,7 @@ Flywheel CLI is a terminal UI application that executes workflow plans. It spawn
 ## Running unit tests
 
 ```bash
-cd flywheel-cli
+cd flywheel-tui
 bun test                   # all tests
 bun test tests/foo.test.ts # single file
 ```
@@ -37,7 +37,7 @@ Kill any existing session, then start the TUI in a detached tmux session:
 ```bash
 tmux kill-session -t flywheel 2>/dev/null
 tmux new-session -d -s flywheel -x 120 -y 40 \
-  'cd /path/to/flywheel-cli && bin/flywheel'
+  'cd /path/to/flywheel-tui && bin/flywheel'
 sleep 2
 ```
 
@@ -156,7 +156,7 @@ If the TUI exits (via Escape on empty input, Ctrl+C, or a crash), the tmux sessi
 ```bash
 tmux kill-session -t flywheel 2>/dev/null
 tmux new-session -d -s flywheel -x 120 -y 40 \
-  'cd /path/to/flywheel-cli && bin/flywheel'
+  'cd /path/to/flywheel-tui && bin/flywheel'
 sleep 2
 ```
 

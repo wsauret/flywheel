@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "flywheel",
-      "source": "./flywheel",
+      "source": "./plugin/flywheel",
       "description": "A Claude Code plugin that turns development cycles into momentum",
       "version": "1.0.0",
       "author": {

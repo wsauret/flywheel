@@ -1,5 +1,5 @@
 ---
-plan: /Users/wsauret/Documents/GitHub/flywheel/flywheel-cli/tests/fixtures/two-phase-plan.md
+plan: /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui/tests/fixtures/two-phase-plan.md
 status: in_progress
 schema_version: 3
 writer: controller

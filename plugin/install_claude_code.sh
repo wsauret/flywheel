@@ -6,6 +6,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "================================"
 echo "  Flywheel Plugin Installer"
@@ -16,7 +17,7 @@ echo ""
 echo "Step 1: Adding marketplace..."
 claude plugin marketplace remove flywheel-marketplace > /dev/null 2>&1 || true
 claude plugin marketplace remove local-marketplace > /dev/null 2>&1 || true
-claude plugin marketplace add "$SCRIPT_DIR" > /dev/null
+claude plugin marketplace add "$REPO_ROOT" > /dev/null
 echo "  ✓ Marketplace added"
 
 # Step 2: Install the plugin

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "flywheel-cli",
+      "name": "flywheel-tui",
       "dependencies": {
         "@opencode-ai/sdk": "^1.2.27",
         "@opentui/core": "^0.1.0",

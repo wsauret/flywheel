@@ -56,7 +56,7 @@ Flywheel requires human approval at research and plan boundaries because that's 
 ```bash
 git clone https://github.com/wsauret/flywheel.git
 cd flywheel
-./install_claude_code.sh
+./plugin/install_claude_code.sh
 ```
 
 ### OpenCode
@@ -64,7 +64,7 @@ cd flywheel
 ```bash
 git clone https://github.com/wsauret/flywheel.git
 cd flywheel
-python3 install_opencode.py
+python3 plugin/install_opencode.py
 ```
 
 This transforms the plugin into OpenCode's config format and writes to `~/.config/opencode/`. Re-run the script to update.
