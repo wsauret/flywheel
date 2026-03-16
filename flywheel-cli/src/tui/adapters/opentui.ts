@@ -71,6 +71,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "phase:started":
+        // Dynamic phase discovery: if phase doesn't exist yet, add it
+        if (event.phaseIndex >= this.actions.getState().phases.length) {
+          this.actions.addPhase({
+            index: event.phaseIndex,
+            name: event.phaseName,
+          });
+        }
         this.stdoutLineBuf = "";
         timerService.registerAgent(`phase-${event.phaseIndex}`);
         this.actions.startPhase(event.phaseIndex, event.phaseName);
@@ -106,22 +113,104 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.clearApproval();
         break;
 
-      // Phase-level tracking handles worker lifecycle
+      // Worker lifecycle events
       case "worker:spawned":
-      case "worker:completed":
-      case "worker:failed":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `◉ Worker spawned for step ${event.stepIndex}\n`,
+          timestamp: event.timestamp,
+        });
         break;
 
-      // Step/dispatcher/evaluator events — no UI update needed
+      case "worker:completed":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `◉ Worker finished\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case "worker:failed":
+        this.actions.appendOutput({
+          stream: "stderr",
+          data: `◉ Worker failed: ${event.failure.message}\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
+      // Step events
       case "step:started":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `▸ Step ${event.stepIndex}: ${event.description}\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
       case "step:completed":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `✓ Step ${event.stepIndex} complete\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
       case "step:failed":
+        this.actions.appendOutput({
+          stream: "stderr",
+          data: `✗ Step ${event.stepIndex} failed: ${event.reason}\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
+      // Dispatcher events
       case "dispatcher:invoked":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `⚡ Dispatcher: crafting prompt for step ${event.stepIndex}...\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
       case "dispatcher:completed":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `⚡ Dispatcher: prompt ready\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
       case "dispatcher:failed":
+        this.actions.appendOutput({
+          stream: "stderr",
+          data: `⚠ Dispatcher failed: ${event.reason}. Using static template.\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
+      // Evaluator events
       case "evaluator:invoked":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `🔍 Evaluator: checking output quality...\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
       case "evaluator:completed":
+        this.actions.appendOutput({
+          stream: "stdout",
+          data: `🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`,
+          timestamp: event.timestamp,
+        });
+        break;
+
       case "evaluator:failed":
+        this.actions.appendOutput({
+          stream: "stderr",
+          data: `⚠ Evaluator failed: ${event.reason}. Skipping.\n`,
+          timestamp: event.timestamp,
+        });
         break;
 
       default:

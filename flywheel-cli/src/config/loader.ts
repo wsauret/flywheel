@@ -37,6 +37,7 @@ export const FlywheelConfigSchema = z.object({
   project_cwd: noShellMetachars("project_cwd").optional(),
   skip_approval_gates: z.boolean().default(false),
   use_dispatcher: z.boolean().default(true),
+  skip_evaluation: z.boolean().default(false),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
@@ -53,6 +54,7 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   timeout_minutes: 60,
   skip_approval_gates: false,
   use_dispatcher: true,
+  skip_evaluation: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -105,6 +107,9 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   },
   FLYWHEEL_USE_DISPATCHER: (val, config) => {
     config.use_dispatcher = val !== "false" && val !== "0";
+  },
+  FLYWHEEL_SKIP_EVALUATION: (val, config) => {
+    config.skip_evaluation = val === "true" || val === "1";
   },
 };
 

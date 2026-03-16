@@ -166,42 +166,47 @@ describe("OpenTUIAdapter", () => {
       expect(lines[0].data).toContain("timeout");
     });
 
-    it("worker:spawned is handled (no state change)", () => {
+    it("worker:spawned appends formatted output", () => {
       const { bus, store } = createHarness();
-      const before = JSON.stringify(store.getState());
       bus.emit({
         type: "worker:spawned",
         workflowId: "w1",
         phaseIndex: 0,
         stepIndex: 0,
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      // No crash, state unchanged (except possibly minor differences)
-      expect(store.getState().phases).toHaveLength(0);
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Worker spawned for step 0");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("worker:completed is handled (no state change)", () => {
+    it("worker:completed appends formatted output", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:completed",
         workflowId: "w1",
         result: { output: "", exitCode: 0, durationMs: 100, truncated: false } as any,
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      // No crash
-      expect(store.getState().phases).toHaveLength(0);
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Worker finished");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("worker:failed is handled (no state change)", () => {
+    it("worker:failed appends formatted error output", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:failed",
         workflowId: "w1",
-        failure: { type: "timeout", message: "timed out" } as any,
-        timestamp: ts(),
+        failure: { kind: "timeout", timeoutMs: 5000, message: "timed out" } as any,
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      // No crash
-      expect(store.getState().phases).toHaveLength(0);
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Worker failed: timed out");
+      expect(lines[0].stream).toBe("stderr");
     });
 
     // -- Approval events --
@@ -240,9 +245,9 @@ describe("OpenTUIAdapter", () => {
       expect(store.getState().approvalState.pending).toBe(false);
     });
 
-    // -- Step events (pass-through) --
+    // -- Step events --
 
-    it("step:started is handled (no-op)", () => {
+    it("step:started appends formatted output", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "step:started",
@@ -250,102 +255,151 @@ describe("OpenTUIAdapter", () => {
         phaseIndex: 0,
         stepIndex: 0,
         description: "Run tests",
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      // No crash, no state change
-      expect(store.getState().phases).toHaveLength(0);
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Step 0: Run tests");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("step:completed is handled (no-op)", () => {
+    it("step:completed appends formatted output", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "step:completed",
         workflowId: "w1",
         phaseIndex: 0,
         stepIndex: 0,
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      expect(store.getState().phases).toHaveLength(0);
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Step 0 complete");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("step:failed is handled (no-op)", () => {
+    it("step:failed appends formatted error output", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "step:failed",
         workflowId: "w1",
         phaseIndex: 0,
         stepIndex: 0,
-        reason: "failed",
-        timestamp: ts(),
+        reason: "assertion failed",
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      expect(store.getState().phases).toHaveLength(0);
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Step 0 failed: assertion failed");
+      expect(lines[0].stream).toBe("stderr");
     });
 
-    // -- Dispatcher events (pass-through) --
+    // -- Dispatcher events --
 
-    it("dispatcher:invoked is handled (no-op)", () => {
-      const { bus } = createHarness();
+    it("dispatcher:invoked appends formatted output", () => {
+      const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:invoked",
         workflowId: "w1",
         phaseIndex: 0,
-        stepIndex: 0,
-        timestamp: ts(),
+        stepIndex: 2,
+        timestamp: "2025-01-01T00:00:00Z",
       });
-      // No crash
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Dispatcher: crafting prompt for step 2");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("dispatcher:completed is handled (no-op)", () => {
-      const { bus } = createHarness();
+    it("dispatcher:completed appends formatted output", () => {
+      const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:completed",
         workflowId: "w1",
         decision: { action: "continue", phaseIndex: 0 } as any,
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Dispatcher: prompt ready");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("dispatcher:failed is handled (no-op)", () => {
-      const { bus } = createHarness();
+    it("dispatcher:failed appends formatted error output", () => {
+      const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:failed",
         workflowId: "w1",
         reason: "dispatch error",
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Dispatcher failed: dispatch error");
+      expect(lines[0].data).toContain("Using static template");
+      expect(lines[0].stream).toBe("stderr");
     });
 
-    // -- Evaluator events (pass-through) --
+    // -- Evaluator events --
 
-    it("evaluator:invoked is handled (no-op)", () => {
-      const { bus } = createHarness();
+    it("evaluator:invoked appends formatted output", () => {
+      const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:invoked",
         workflowId: "w1",
         phaseIndex: 0,
         stepIndex: 0,
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Evaluator: checking output quality");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("evaluator:completed is handled (no-op)", () => {
-      const { bus } = createHarness();
+    it("evaluator:completed (passed) appends formatted output", () => {
+      const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:completed",
         workflowId: "w1",
-        result: { passed: true } as any,
-        timestamp: ts(),
+        result: { passed: true, reasoning: "All tests pass" } as any,
+        timestamp: "2025-01-01T00:00:00Z",
       });
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("passed");
+      expect(lines[0].data).toContain("All tests pass");
+      expect(lines[0].stream).toBe("stdout");
     });
 
-    it("evaluator:failed is handled (no-op)", () => {
-      const { bus } = createHarness();
+    it("evaluator:completed (failed) appends formatted output", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "evaluator:completed",
+        workflowId: "w1",
+        result: { passed: false, reasoning: "Missing error handling" } as any,
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("needs revision");
+      expect(lines[0].data).toContain("Missing error handling");
+      expect(lines[0].stream).toBe("stdout");
+    });
+
+    it("evaluator:failed appends formatted error output", () => {
+      const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:failed",
         workflowId: "w1",
         reason: "eval error",
-        timestamp: ts(),
+        timestamp: "2025-01-01T00:00:00Z",
       });
+      const lines = store.getState().outputLines;
+      expect(lines).toHaveLength(1);
+      expect(lines[0].data).toContain("Evaluator failed: eval error");
+      expect(lines[0].data).toContain("Skipping");
+      expect(lines[0].stream).toBe("stderr");
     });
   });
 
@@ -401,6 +455,87 @@ describe("OpenTUIAdapter", () => {
       expect(timerService.hasAgent("phase-1")).toBe(true);
       bus.emit({ type: "phase:failed", workflowId: "w1", phaseIndex: 1, reason: "err", timestamp: ts() });
       expect(timerService.hasAgent("phase-1")).toBe(false);
+    });
+  });
+
+  // ── Dynamic Phase Discovery ──
+
+  describe("dynamic phase discovery", () => {
+    it("phase:started with unknown index dynamically adds phase before starting it", () => {
+      const { bus, store } = createHarness();
+      // No phases exist initially
+      expect(store.getState().phases).toHaveLength(0);
+
+      // Emit phase:started with index 0 — should add + start
+      bus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 0,
+        phaseName: "Dynamic Phase 0",
+        timestamp: ts(),
+      });
+      expect(store.getState().phases).toHaveLength(1);
+      expect(store.getState().phases[0].status).toBe("running");
+      expect(store.getState().phases[0].name).toBe("Dynamic Phase 0");
+    });
+
+    it("phase:started with gap in indices adds missing phase", () => {
+      const { bus, store } = createHarness();
+
+      // Start phase 0
+      bus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 0,
+        phaseName: "Phase 0",
+        timestamp: ts(),
+      });
+      bus.emit({
+        type: "phase:completed",
+        workflowId: "w1",
+        phaseIndex: 0,
+        timestamp: ts(),
+      });
+      expect(store.getState().phases).toHaveLength(1);
+
+      // Jump to phase 2 (skipping phase 1) — dynamic discovery adds phase 2
+      bus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 2,
+        phaseName: "Skipped Ahead",
+        timestamp: ts(),
+      });
+      // Phase was added dynamically, so we have phases at index 0 and 2
+      expect(store.getState().phases.length).toBeGreaterThanOrEqual(2);
+      const phase2 = store.getState().phases.find(p => p.index === 2);
+      expect(phase2).toBeDefined();
+      expect(phase2!.status).toBe("running");
+    });
+
+    it("phase:started with existing index does not duplicate", () => {
+      const { bus, store } = createHarness();
+
+      // Start and complete phase 0
+      bus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 0,
+        phaseName: "Phase 0",
+        timestamp: ts(),
+      });
+      expect(store.getState().phases).toHaveLength(1);
+
+      // Emit phase:started again for index 0 — should not add duplicate
+      bus.emit({
+        type: "phase:started",
+        workflowId: "w1",
+        phaseIndex: 0,
+        phaseName: "Phase 0 Restarted",
+        timestamp: ts(),
+      });
+      expect(store.getState().phases).toHaveLength(1);
+      expect(store.getState().phases[0].name).toBe("Phase 0 Restarted");
     });
   });
 

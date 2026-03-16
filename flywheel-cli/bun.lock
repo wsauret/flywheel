@@ -5,8 +5,10 @@
     "": {
       "name": "flywheel-cli",
       "dependencies": {
+        "@opencode-ai/sdk": "^1.2.27",
         "@opentui/core": "^0.1.0",
         "@opentui/solid": "^0.1.0",
+        "fuzzysort": "^3.1.0",
         "js-yaml": "^4.1.0",
         "micromatch": "^4.0.8",
         "solid-js": "^1.9.0",
@@ -146,6 +148,8 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.2.27", "", {}, "sha512-Wk0o/I+Fo+wE3zgvlJDs8Fb67KlKqX0PrV8dK5adSDkANq6r4Z25zXJg2iOir+a8ntg3rAcpel1OY4FV/TwRUA=="],
+
     "@opentui/core": ["@opentui/core@0.1.87", "", { "dependencies": { "bun-ffi-structs": "0.1.2", "diff": "8.0.2", "jimp": "1.6.0", "marked": "17.0.1", "yoga-layout": "3.2.1" }, "optionalDependencies": { "@dimforge/rapier2d-simd-compat": "^0.17.3", "@opentui/core-darwin-arm64": "0.1.87", "@opentui/core-darwin-x64": "0.1.87", "@opentui/core-linux-arm64": "0.1.87", "@opentui/core-linux-x64": "0.1.87", "@opentui/core-win32-arm64": "0.1.87", "@opentui/core-win32-x64": "0.1.87", "bun-webgpu": "0.1.5", "planck": "^1.4.2", "three": "0.177.0" }, "peerDependencies": { "web-tree-sitter": "0.25.10" } }, "sha512-dhsmMv0IqKftwG7J/pBrLBj2armsYIg5R3LBvciRQI/6X89GufP4l1u0+QTACAx6iR4SYJJNVNQ2tdX8LM9rMw=="],
 
     "@opentui/core-darwin-arm64": ["@opentui/core-darwin-arm64@0.1.87", "", { "os": "darwin", "cpu": "arm64" }, "sha512-G8oq85diOfkU6n0T1CxCle7oDmpKxwhcdhZ9khBMU5IrfLx9ZDuCM3F6MsiRQWdvPPCq2oomNbd64bYkPamYgw=="],
@@ -269,6 +273,8 @@
     "fs.realpath": ["fs.realpath@1.0.0", "", {}, "sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw=="],
 
     "function-bind": ["function-bind@1.1.2", "", {}, "sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA=="],
+
+    "fuzzysort": ["fuzzysort@3.1.0", "", {}, "sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ=="],
 
     "gensync": ["gensync@1.0.0-beta.2", "", {}, "sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg=="],
 

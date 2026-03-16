@@ -9,8 +9,8 @@
  * Compact two-line logo for narrow/short terminals and headers
  */
 export const SIMPLE_LOGO = [
-  '█▀▀ █   █ █ █ █ █ █ █▀▀ █▀▀ █  ',
-  '█▀  █▄▄ ▀█▀ ▀▄▀▄▀ █▀█ ██▄ ██▄ █▄▄'
+  '█▀▀ █   ▀█▀ █ █ █ █▀█ █▀▀ █▀▀ █  ',
+  '█▀  █▄▄  █  ▀▄▀▄▀ █ █ ██▄ ██▄ █▄▄',
 ]
 
 /**

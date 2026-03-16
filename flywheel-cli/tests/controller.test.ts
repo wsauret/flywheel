@@ -693,32 +693,6 @@ schema_version: 3
     expect(eventTypes).toContain("workflow:interrupted");
   });
 
-  it("checks for active skill session on startup", async () => {
-    // Create .flywheel/session.md with active_skill: work-implementation
-    const sessionDir = path.join(tmpDir, ".flywheel");
-    fs.mkdirSync(sessionDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(sessionDir, "session.md"),
-      "---\nactive_skill: work-implementation\n---\n",
-    );
-
-    spawner.results = [successResult(), successResult()];
-
-    // Capture console.warn
-    const warnings: string[] = [];
-    const origWarn = console.warn;
-    console.warn = (...args: any[]) => {
-      warnings.push(args.join(" "));
-    };
-
-    const loop = createLoop("two-phase-plan.md");
-    await loop.run();
-
-    console.warn = origWarn;
-
-    expect(warnings.some((w) => w.includes("Active skill session detected"))).toBe(true);
-  });
-
   it("creates initial state file when none exists", async () => {
     spawner.results = [successResult(), successResult()];
     const statePath = path.join(tmpDir, "test.state.md");

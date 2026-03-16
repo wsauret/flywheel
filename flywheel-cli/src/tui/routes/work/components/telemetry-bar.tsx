@@ -15,6 +15,8 @@ export interface TelemetryBarProps {
   status: WorkflowStatus
   currentPhase?: number
   totalPhases?: number
+  workflowLabel?: string  // "work" | "plan" | "review" etc.
+  stepLabel?: string      // "Phase" | "Step" | "Cycle"
 }
 
 /**
@@ -69,7 +71,7 @@ export function TelemetryBar(props: TelemetryBarProps) {
         </text>
         <Show when={props.totalPhases && props.totalPhases > 0}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
-          <text wrapMode="none" fg={themeCtx.theme.primary}>Phase {props.currentPhase ?? 0}/{props.totalPhases}</text>
+          <text wrapMode="none" fg={themeCtx.theme.primary}>{props.stepLabel ?? "Phase"} {props.currentPhase ?? 0}/{props.totalPhases}</text>
         </Show>
         <Show when={showStatus()}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>

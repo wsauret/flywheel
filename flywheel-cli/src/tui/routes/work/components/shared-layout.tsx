@@ -27,6 +27,8 @@ export interface SharedLayoutProps {
   errorMessage?: string
   approvalPending?: boolean
   isPromptFocused?: boolean
+  workflowLabel?: string  // "work" | "plan" | "review" etc.
+  stepLabel?: string      // "Phase" | "Step" | "Cycle"
   onStopConfirm: () => void
   onStopCancel: () => void
   onApprovalContinue: () => void
@@ -67,6 +69,8 @@ export function SharedLayout(props: SharedLayoutProps) {
           status={props.state.workflowStatus}
           currentPhase={runningPhaseIndex()}
           totalPhases={props.state.phases.length}
+          workflowLabel={props.workflowLabel}
+          stepLabel={props.stepLabel}
         />
         <StatusFooter
           approvalPending={props.approvalPending}

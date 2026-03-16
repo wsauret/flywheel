@@ -338,10 +338,10 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 // ── CLI Arg Parsing → Adapter Selection ──
 
 describe("CLI arg parsing → adapter selection", () => {
-  it("--headless flag results in work-headless command", async () => {
-    const result = await parseArgs(["--headless", "plan.md"]);
+  it("'work <path>' results in work command", async () => {
+    const result = await parseArgs(["work", "plan.md"]);
     expect(result).not.toBeNull();
-    expect(result!.command).toBe("work-headless");
+    expect(result!.command).toBe("work");
   });
 
   it("no args results in TUI mode", async () => {
@@ -361,10 +361,10 @@ describe("CLI arg parsing → adapter selection", () => {
     expect(adapter.adapterType).toBe("opentui");
   });
 
-  it("headless mode would select ConsoleAdapter (adapterType check)", async () => {
-    const result = await parseArgs(["--headless", "plan.md"]);
-    expect(result!.command).toBe("work-headless");
-    // In headless mode, CLI creates ConsoleAdapter
+  it("'work' subcommand would select ConsoleAdapter (adapterType check)", async () => {
+    const result = await parseArgs(["work", "plan.md"]);
+    expect(result!.command).toBe("work");
+    // In work subcommand mode, CLI creates ConsoleAdapter
     const adapter = new ConsoleAdapter();
     expect(adapter.adapterType).toBe("mock");
     expect(adapter.isConnected()).toBe(false);
@@ -402,11 +402,13 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     expect(store.getState().phases[0].name).toBe("Chain Phase");
 
     emitter.workerSpawned(wfId, 0, 0);
-    // No state change for spawned (verified by no crash + same phase count)
+    // worker:spawned now produces output but phase count unchanged
     expect(store.getState().phases).toHaveLength(1);
+    expect(store.getState().outputLines).toHaveLength(1);
+    expect(store.getState().outputLines[0].data).toContain("Worker spawned");
 
     emitter.workerOutput(wfId, "stdout", "chain output\n");
-    expect(store.getState().outputLines[0].data).toBe("chain output\n");
+    expect(store.getState().outputLines[1].data).toBe("chain output\n");
 
     emitter.workerCompleted(wfId, {
       output: "done",
@@ -414,8 +416,9 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
       durationMs: 500,
       truncated: false,
     } as any);
-    // No state change for worker:completed
+    // worker:completed now produces output but phase status unchanged
     expect(store.getState().phases[0].status).toBe("running");
+    expect(store.getState().outputLines.some((l: any) => l.data.includes("Worker finished"))).toBe(true);
 
     emitter.phaseCompleted(wfId, 0);
     expect(store.getState().phases[0].status).toBe("completed");

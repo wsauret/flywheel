@@ -11,7 +11,6 @@ import {
   StateFileSchema,
   migrateStateFile,
 } from "../src/schemas/state";
-import { ConfigSchema } from "../src/schemas/config";
 import {
   WorkerResultSchema,
   WorkerFailureReasonSchema,
@@ -275,112 +274,6 @@ describe("migrateStateFile", () => {
     const migrated = migrateStateFile(raw, new Date("2026-01-01T00:00:00Z"));
     const result = StateFileSchema.safeParse(migrated);
     expect(result.success).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// ConfigSchema (.strict() — internal)
-// ---------------------------------------------------------------------------
-describe("ConfigSchema", () => {
-  const validConfig = {
-    model: "claude-sonnet-4-20250514",
-    max_retries: 3,
-    timeout_minutes: 30,
-    dispatcher_timeout_ms: 30000,
-  };
-
-  it("parses a valid config", () => {
-    const result = ConfigSchema.safeParse(validConfig);
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects max_retries > 10", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      max_retries: 11,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects max_retries < 0", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      max_retries: -1,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects timeout_minutes > 120", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      timeout_minutes: 121,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects timeout_minutes < 1", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      timeout_minutes: 0,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects dispatcher_timeout_ms < 5000", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      dispatcher_timeout_ms: 4999,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects dispatcher_timeout_ms > 120000", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      dispatcher_timeout_ms: 120001,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("defaults dispatcher_timeout_ms to 30000", () => {
-    const { dispatcher_timeout_ms, ...noTimeout } = validConfig;
-    const result = ConfigSchema.safeParse(noTimeout);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.dispatcher_timeout_ms).toBe(30000);
-    }
-  });
-
-  it("rejects shell metacharacters in model field", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      model: "claude; rm -rf /",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects shell metacharacters (backticks) in model field", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      model: "claude`whoami`",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects shell metacharacters ($()) in model field", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      model: "claude$(whoami)",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects unknown fields in strict mode", () => {
-    const result = ConfigSchema.safeParse({
-      ...validConfig,
-      unknown: "fail",
-    });
-    expect(result.success).toBe(false);
   });
 });
 

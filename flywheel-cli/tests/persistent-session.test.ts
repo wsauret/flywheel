@@ -6,9 +6,23 @@ import {
   destroyWorkflowSession,
   type WorkflowSession,
 } from "../src/tui/components/workflow-session";
-import { parseSlashCommand } from "../src/tui/utils/slash-commands";
 import { createEscapeHandler, type EscapeHandler } from "../src/tui/utils/escape-handler";
-import type { ShellState } from "../src/tui/components/flywheel-shell-types";
+
+/** Shell state — matches the ViewMode type used in flywheel-shell.tsx */
+type ShellState = "idle" | "working" | "completed";
+
+/** Minimal slash command parser for test harness (production uses parseHomeCommand) */
+const KNOWN_COMMANDS = new Set(["exit", "new", "stop", "help"]);
+function parseSlashCommand(input: string): { command: string; args: string } | null {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith("/")) return null;
+  const spaceIndex = trimmed.indexOf(" ");
+  const rawCommand = spaceIndex === -1 ? trimmed.slice(1) : trimmed.slice(1, spaceIndex);
+  const args = spaceIndex === -1 ? "" : trimmed.slice(spaceIndex + 1).trim();
+  const command = rawCommand.toLowerCase();
+  if (!command || !KNOWN_COMMANDS.has(command)) return null;
+  return { command, args };
+}
 
 /**
  * Persistent Session Integration Test

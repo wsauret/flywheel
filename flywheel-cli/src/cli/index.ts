@@ -2,9 +2,14 @@
 /**
  * CLI entry point.
  *
- * Two modes:
- * - `flywheel` (no args) → persistent TUI shell (all workflow creation happens inside)
- * - `flywheel --headless plan.md` → headless execution via ConsoleAdapter
+ * Modes:
+ * - `flywheel` (no args) -> persistent TUI shell (all workflow creation happens inside)
+ * - `flywheel work plan.md` -> headless work execution via ConsoleAdapter
+ * - `flywheel plan "description"` -> plan workflow
+ * - `flywheel review` -> review workflow
+ * - `flywheel ship` -> ship workflow
+ * - `flywheel debug "description"` -> debug workflow
+ * - `flywheel research "topic"` -> research workflow
  *
  * IMPORTANT: solid-js must resolve with "browser" condition (not "node").
  * Run via `bin/flywheel` or `bun --conditions=browser run src/cli/index.ts`.
@@ -35,8 +40,28 @@ export async function main(argv?: string[]): Promise<void> {
       await runTUI();
       break;
 
-    case "work-headless":
-      await runHeadless(parsed.args.planPath, parsed.args.config);
+    case "work":
+      await runHeadless(parsed.planPath, parsed.config);
+      break;
+
+    case "plan":
+      await runWorkflowHeadless("plan", { description: parsed.description });
+      break;
+
+    case "review":
+      await runWorkflowHeadless("review", {});
+      break;
+
+    case "ship":
+      await runWorkflowHeadless("ship", {});
+      break;
+
+    case "debug":
+      await runWorkflowHeadless("debug", { description: parsed.description });
+      break;
+
+    case "research":
+      await runWorkflowHeadless("research", { topic: parsed.topic });
       break;
   }
 }
@@ -93,6 +118,77 @@ async function runHeadless(planPath: string, configPath?: string): Promise<void>
     process.exitCode = 1;
   } finally {
     await controller.shutdown();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Generic workflow headless mode
+// ---------------------------------------------------------------------------
+
+async function runWorkflowHeadless(
+  workflowName: string,
+  args: Record<string, string>,
+): Promise<void> {
+  const { workflowRegistry, WorkflowRunner, StepExecutor, buildWorkflowPrompt } =
+    await import("../workflows/index");
+  const { EventBus, createFlywheelEmitter } = await import("../events/event-bus");
+
+  const workflow = workflowRegistry[workflowName];
+  if (!workflow) {
+    console.error(`Unknown workflow: ${workflowName}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const { config, warnings } = loadConfig();
+  for (const warning of warnings) console.warn(warning);
+
+  const engine = getEngine(config.engine);
+  console.log(`Workflow: ${workflow.name} — ${workflow.description}`);
+  console.log(`Engine: ${engine.metadata.name} (${engine.metadata.id})`);
+
+  const spawner = new BunProcessSpawner({ timeoutMinutes: config.timeout_minutes });
+  const ui: IWorkflowUI = new ConsoleAdapter();
+  const eventBus = new EventBus();
+  const emitter = createFlywheelEmitter(eventBus);
+
+  ui.connect(eventBus);
+  ui.start();
+
+  const executor = new StepExecutor({
+    spawner,
+    emitter,
+    engine,
+    config,
+    workflowId: `${workflowName}-headless`,
+  });
+
+  const runner = new WorkflowRunner({
+    workflow,
+    executor,
+    emitter,
+    ui,
+    config,
+    promptBuilder: (stepIndex, wf, prevResult) =>
+      buildWorkflowPrompt(stepIndex, wf, args, prevResult, config.project_cwd),
+  });
+
+  try {
+    const result = await runner.run();
+    if (result.completed) {
+      console.log(`All ${result.stepsTotal} steps completed successfully.`);
+    } else {
+      console.error(
+        `Stopped after ${result.stepsCompleted}/${result.stepsTotal} steps: ${result.reason}`,
+      );
+      process.exitCode = 1;
+    }
+  } catch (error) {
+    console.error("Fatal error:", error);
+    process.exitCode = 1;
+  } finally {
+    ui.stop();
+    ui.disconnect();
   }
 }
 

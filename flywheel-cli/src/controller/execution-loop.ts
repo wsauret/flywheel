@@ -17,10 +17,11 @@ import type { ParsedStateFile } from "../state/reader";
 import type { PlanPhase } from "./plan-parser";
 import { parseStateFile } from "../state/reader";
 import { writeStateFileAtomic } from "../state/writer";
-import { acquireLock, checkActiveSkillSession } from "../state/lock";
+import { acquireLock } from "../state/lock";
 import { parsePlan } from "./plan-parser";
 import { buildPhasePrompt, readCachedFile, parseContextFile } from "./templates";
 import { PhaseExecutor, WorkerError } from "./phase-executor";
+import type { DispatcherOrchestrator } from "./dispatcher-orchestrator";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +37,8 @@ export interface ExecutionLoopOptions {
   ui: IWorkflowUI;
   workflowId: string;
   baseDir: string;
+  /** Optional dispatcher orchestrator for dynamic prompt crafting */
+  dispatcherOrchestrator?: DispatcherOrchestrator;
 }
 
 export interface ExecutionResult {
@@ -63,6 +66,7 @@ export class WorkExecutionLoop {
 
   private _shutdownRequested = false;
   private readonly _shutdownController = new AbortController();
+  private readonly dispatcherOrchestrator?: DispatcherOrchestrator;
 
   constructor(options: ExecutionLoopOptions) {
     this.planPath = options.planPath;
@@ -74,6 +78,7 @@ export class WorkExecutionLoop {
     this.ui = options.ui;
     this.workflowId = options.workflowId;
     this.baseDir = options.baseDir;
+    this.dispatcherOrchestrator = options.dispatcherOrchestrator;
   }
 
   /**
@@ -87,20 +92,13 @@ export class WorkExecutionLoop {
   /**
    * Run the execution loop.
    *
-   * 1. Check for active skill session
-   * 2. Read plan -> parse phases
+   * 1. Read plan -> parse phases
    * 3. Load/create state file
    * 4. Find first unchecked phase
    * 5. For each unchecked phase: execute, update state
    * 6. Handle [~] phases via approval callback
    */
   async run(): Promise<ExecutionResult> {
-    // Check for active skill session
-    const sessionWarning = checkActiveSkillSession(this.baseDir);
-    if (sessionWarning) {
-      console.warn(sessionWarning);
-    }
-
     // Read and parse plan
     const planContent = readPlanFile(this.planPath);
     const state = this.loadOrCreateState(planContent);
@@ -174,12 +172,26 @@ export class WorkExecutionLoop {
         phase.title,
       );
 
-      const prompt = buildPhasePrompt({
-        phase,
-        keyDecisions: state.keyDecisions,
-        fileReferences,
-        projectCwd: this.config.project_cwd,
-      });
+      let prompt: string;
+      if (this.dispatcherOrchestrator && this.config.use_dispatcher) {
+        prompt = await this.dispatcherOrchestrator.getPhasePrompt(
+          phase,
+          planContent,
+          fs.existsSync(this.statePath) ? fs.readFileSync(this.statePath, "utf-8") : "",
+          this.contextPath ? readCachedFile(this.contextPath) ?? undefined : undefined,
+          undefined, // lastWorkerResult — not tracked yet
+          state.keyDecisions,
+          fileReferences,
+          this.config.project_cwd,
+        );
+      } else {
+        prompt = buildPhasePrompt({
+          phase,
+          keyDecisions: state.keyDecisions,
+          fileReferences,
+          projectCwd: this.config.project_cwd,
+        });
+      }
 
       try {
         await this.executor.execute({

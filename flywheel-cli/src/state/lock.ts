@@ -128,29 +128,6 @@ export function acquireLock(
   return { release, lockPath: lockPath_ };
 }
 
-/**
- * Check for an active skill session that might conflict with CLI usage.
- * Reads `.flywheel/session.md` and checks for `active_skill: work-implementation`.
- *
- * @returns Warning message if active session detected, null otherwise
- */
-export function checkActiveSkillSession(baseDir: string): string | null {
-  const sessionPath = path.join(baseDir, LOCK_DIR, "session.md");
-  try {
-    const content = fs.readFileSync(sessionPath, "utf-8");
-    if (/active_skill:\s*work-implementation/i.test(content)) {
-      return (
-        "WARNING: Active skill session detected (work-implementation). " +
-        "Do NOT run flywheel CLI concurrently with /fly:work on the same plan. " +
-        "Concurrent writes may corrupt state."
-      );
-    }
-  } catch {
-    // File doesn't exist — no session active
-  }
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

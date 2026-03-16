@@ -16,6 +16,7 @@ import { ErrorBoundary } from "solid-js"
 import type { ParentProps } from "solid-js"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
+import { DialogProvider } from "@tui/shared/context/dialog"
 import { ErrorComponent } from "./components/error-boundary"
 
 export interface TUIOptions {
@@ -49,7 +50,9 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
           <ExitProvider onExit={onExit}>
             <ToastProvider>
               <ThemeProvider mode={mode}>
-                <FlywheelShell />
+                <DialogProvider>
+                  <FlywheelShell />
+                </DialogProvider>
               </ThemeProvider>
             </ToastProvider>
           </ExitProvider>

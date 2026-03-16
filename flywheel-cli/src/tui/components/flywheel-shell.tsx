@@ -2,29 +2,26 @@
 /**
  * FlywheelShell — Top-level persistent shell component
  *
- * Two modes:
- *   IDLE/COMPLETED (no active store): Branding header + centered logo + always-on prompt
- *   WORKING (active store): Full WorkShell (PhaseProgress, OutputWindow, TelemetryBar,
- *     StatusFooter, modals) — the rich CodeMachine-forked work view
+ * Two views driven by signal-based routing:
+ *   HOME: Logo, help rows, command prompt — accepts workflow commands
+ *   WORKING: Full WorkflowView (PhaseProgress, OutputWindow, TelemetryBar,
+ *     StatusFooter, modals) — the rich work view
  *
  * Workflow lifecycle:
- *   startWorkflow(planPath) — creates session, loads config, creates controller, runs
- *   stopWorkflow() — shuts down controller, destroys session, returns to prompt
+ *   handleCommand(workflow, args) — dispatches to startWorkWorkflow or
+ *     startGenericWorkflow, returns to home on completion/stop
+ *   stopWorkflow() — shuts down controller/runner, destroys session, returns to home
  */
 
 import fs from "node:fs"
 import os from "node:os"
-import { createSignal, onCleanup, Show, For } from "solid-js"
+import { createSignal, onCleanup, Show, Switch, Match } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { Toast } from "@tui/shared/ui/toast"
-import { BrandingHeader } from "@tui/shared/components/layout/branding-header"
-import { FULL_LOGO } from "@tui/shared/components/logo"
-import { Prompt } from "./prompt/index"
-import { HelpOverlay } from "./help-overlay"
-import { WorkShell } from "../routes/work/components/work-shell"
-import { parseSlashCommand } from "../utils/slash-commands"
+import { WorkflowView } from "@tui/shared/components/workflow-view"
+import { HomeView } from "../routes/home/home-view"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
 import {
@@ -35,7 +32,13 @@ import { WorkController } from "../../controller/work"
 import { loadConfig } from "../../config/loader"
 import { getEngine } from "../../engines/core/registry"
 import { BunProcessSpawner } from "../../worker/bun-spawner"
-import type { ShellState } from "./flywheel-shell-types"
+import { EventBus, createFlywheelEmitter } from "../../events/event-bus"
+import {
+  workflowRegistry,
+  WorkflowRunner,
+  StepExecutor,
+  buildWorkflowPrompt,
+} from "../../workflows/index"
 import type { WorkflowSession } from "./workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 
@@ -47,26 +50,56 @@ function expandTilde(p: string): string {
   return p
 }
 
+// ── Workflow type → label mapping ──
+
+type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research"
+
+interface WorkflowMeta {
+  stepLabel: string
+  workflowName: string
+}
+
+const WORKFLOW_META: Record<WorkflowType, WorkflowMeta> = {
+  work:     { stepLabel: "Phase",  workflowName: "work" },
+  plan:     { stepLabel: "Step",   workflowName: "plan" },
+  review:   { stepLabel: "Step",   workflowName: "review" },
+  ship:     { stepLabel: "Step",   workflowName: "ship" },
+  debug:    { stepLabel: "Cycle",  workflowName: "debug" },
+  research: { stepLabel: "Step",   workflowName: "research" },
+}
+
+function isWorkflowType(s: string): s is WorkflowType {
+  return s in WORKFLOW_META
+}
+
+// ── View mode ──
+
+type ViewMode = "home" | "working"
+
 export function FlywheelShell() {
   const themeCtx = useTheme()
   const toast = useToast()
-  const [shellState, setShellState] = createSignal<ShellState>("idle")
+  const [view, setView] = createSignal<ViewMode>("home")
   const [escHint, setEscHint] = createSignal("")
-  const [showHelp, setShowHelp] = createSignal(false)
 
-  // Active workflow store as signal — drives the idle/work view switch
+  // Active workflow metadata
+  const [activeStepLabel, setActiveStepLabel] = createSignal("Phase")
+  const [activeWorkflowName, setActiveWorkflowName] = createSignal("work")
+
+  // Active workflow store as signal — drives the home/work view switch
   const [activeStore, setActiveStore] = createSignal<UIActions | null>(null)
 
   // Non-reactive refs for lifecycle management
   let activeSession: WorkflowSession | null = null
   let activeController: WorkController | null = null
+  let activeRunner: WorkflowRunner | null = null
 
   // Double-Esc handler for stopping workflows
   const escapeHandler = createEscapeHandler({ timeoutMs: 5000 })
 
   // ── Workflow Lifecycle ──
 
-  const startWorkflow = (planPath: string) => {
+  const startWorkWorkflow = (planPath: string) => {
     // Clean up any previous session
     if (activeSession) {
       destroyWorkflowSession(activeSession)
@@ -79,9 +112,9 @@ export function FlywheelShell() {
     const session = createWorkflowSession(planPath)
     activeSession = session
     setActiveStore(session.store)
-    setShellState("working")
+    setView("working")
 
-    // Subscribe to store — transition shell to completed when workflow ends
+    // Subscribe to store — transition shell back to home when workflow ends
     session.store.subscribe(() => {
       const wfStatus = session.store.getState().workflowStatus
       if (
@@ -89,7 +122,8 @@ export function FlywheelShell() {
         wfStatus === "failed" ||
         wfStatus === "interrupted"
       ) {
-        setShellState("completed")
+        // Stay on working view so user can see final state;
+        // they return home via Esc or a new command
       }
     })
 
@@ -99,10 +133,7 @@ export function FlywheelShell() {
       const result = loadConfig()
       config = result.config
     } catch {
-      setShellState("completed")
-      destroyWorkflowSession(session)
-      activeSession = null
-      setActiveStore(null)
+      returnToHome()
       return
     }
 
@@ -111,10 +142,7 @@ export function FlywheelShell() {
     try {
       engine = getEngine(config.engine)
     } catch {
-      setShellState("completed")
-      destroyWorkflowSession(session)
-      activeSession = null
-      setActiveStore(null)
+      returnToHome()
       return
     }
 
@@ -135,9 +163,83 @@ export function FlywheelShell() {
     queueMicrotask(() => {
       controller.run(planPath).catch(() => {
         // Controller threw before emitting workflow:failed (e.g., plan file not found)
-        if (shellState() === "working") {
-          setShellState("completed")
-        }
+      })
+    })
+  }
+
+  const startGenericWorkflow = (
+    workflowName: string,
+    args: Record<string, string>,
+  ) => {
+    const workflow = workflowRegistry[workflowName]
+    if (!workflow) return
+
+    // Clean up any previous session
+    if (activeSession) {
+      destroyWorkflowSession(activeSession)
+      activeSession = null
+      activeController = null
+      activeRunner = null
+      setActiveStore(null)
+    }
+
+    // Create fresh session (reuses the same store/adapter infrastructure)
+    const session = createWorkflowSession(workflowName)
+    activeSession = session
+    setActiveStore(session.store)
+    setView("working")
+
+    // Load config
+    let config
+    try {
+      const result = loadConfig()
+      config = result.config
+    } catch {
+      returnToHome()
+      return
+    }
+
+    // Create engine and spawner
+    let engine
+    try {
+      engine = getEngine(config.engine)
+    } catch {
+      returnToHome()
+      return
+    }
+
+    const spawner = new BunProcessSpawner({
+      timeoutMinutes: config.timeout_minutes,
+    })
+
+    // Wire event bus from session through adapter
+    const eventBus = new EventBus()
+    const emitter = createFlywheelEmitter(eventBus)
+    session.adapter.connect(eventBus)
+
+    const executor = new StepExecutor({
+      spawner,
+      emitter,
+      engine,
+      config,
+      workflowId: `${workflowName}-tui`,
+    })
+
+    const runner = new WorkflowRunner({
+      workflow,
+      executor,
+      emitter,
+      ui: session.adapter,
+      config,
+      promptBuilder: (stepIndex, wf, prevResult) =>
+        buildWorkflowPrompt(stepIndex, wf, args, prevResult, config.project_cwd),
+    })
+    activeRunner = runner
+
+    // Run the workflow asynchronously
+    queueMicrotask(() => {
+      runner.run().catch(() => {
+        // Runner threw before emitting workflow:failed
       })
     })
   }
@@ -145,6 +247,10 @@ export function FlywheelShell() {
   const stopWorkflow = async () => {
     escapeHandler.reset()
     setEscHint("")
+    if (activeRunner) {
+      activeRunner.requestShutdown()
+      activeRunner = null
+    }
     if (activeController) {
       await activeController.shutdown()
       activeController = null
@@ -154,17 +260,33 @@ export function FlywheelShell() {
       activeSession = null
     }
     setActiveStore(null)
-    setShellState("completed")
+    setView("home")
   }
 
-  const returnToIdle = () => {
-    stopWorkflow()
-    setShellState("idle")
+  const returnToHome = () => {
+    if (activeRunner) {
+      activeRunner.requestShutdown()
+      activeRunner = null
+    }
+    if (activeController) {
+      activeController.shutdown().catch(() => {})
+      activeController = null
+    }
+    if (activeSession) {
+      destroyWorkflowSession(activeSession)
+      activeSession = null
+    }
+    setActiveStore(null)
+    setView("home")
   }
 
   // Clean up on component unmount
   onCleanup(() => {
     escapeHandler.dispose()
+    if (activeRunner) {
+      activeRunner.requestShutdown()
+      activeRunner = null
+    }
     if (activeController) {
       activeController.shutdown().catch(() => {})
       activeController = null
@@ -175,15 +297,107 @@ export function FlywheelShell() {
     }
   })
 
-  // ── Escape Handling ──
+  // ── Command Handler ──
 
-  const handleEscape = () => {
-    const state = shellState()
-    if (state === "idle" || state === "completed") {
+  const handleCommand = (workflow: string, args: Record<string, string>) => {
+    // Handle special commands first
+    if (workflow === "exit") {
       exitTUI()
       return
     }
-    if (state === "working") {
+
+    if (workflow === "help") {
+      toast.show({
+        message: "Commands: /work, /plan, /review, /ship, /debug, /research, /config, /exit",
+        variant: "info",
+        duration: 8000,
+      })
+      return
+    }
+
+    if (workflow === "config") {
+      toast.show({
+        message: "Not yet implemented: /config",
+        variant: "warning",
+      })
+      return
+    }
+
+    // Check if this is a workflow type
+    if (!isWorkflowType(workflow)) {
+      toast.show({
+        message: `Unknown workflow: ${workflow}`,
+        variant: "error",
+      })
+      return
+    }
+
+    const meta = WORKFLOW_META[workflow]
+    setActiveStepLabel(meta.stepLabel)
+    setActiveWorkflowName(meta.workflowName)
+
+    // "work" workflow — resolve plan path
+    if (workflow === "work") {
+      const planPath = args.planPath
+      if (!planPath) {
+        toast.show({
+          message: "Usage: /work <plan-path>",
+          variant: "error",
+        })
+        return
+      }
+
+      const resolved = expandTilde(planPath)
+      if (!fs.existsSync(resolved)) {
+        toast.show({
+          message: `File not found: ${planPath}`,
+          variant: "error",
+        })
+        return
+      }
+
+      startWorkWorkflow(resolved)
+      return
+    }
+
+    // Non-work workflows — validate required args
+    if (workflow === "plan" && !args.description) {
+      toast.show({
+        message: "Usage: /plan <feature description>",
+        variant: "error",
+      })
+      return
+    }
+
+    if (workflow === "debug" && !args.description) {
+      toast.show({
+        message: "Usage: /debug <problem description>",
+        variant: "error",
+      })
+      return
+    }
+
+    if (workflow === "research" && !args.topic) {
+      toast.show({
+        message: "Usage: /research <topic>",
+        variant: "error",
+      })
+      return
+    }
+
+    // Start generic workflow
+    startGenericWorkflow(workflow, args)
+  }
+
+  // ── Escape Handling ──
+
+  const handleEscape = () => {
+    const currentView = view()
+    if (currentView === "home") {
+      exitTUI()
+      return
+    }
+    if (currentView === "working") {
       const result = escapeHandler.handleEscape()
       if (result === "show-hint") {
         setEscHint("Press Esc again to stop")
@@ -204,61 +418,18 @@ export function FlywheelShell() {
       themeCtx.setMode(themeCtx.mode === "dark" ? "light" : "dark")
       return
     }
-    // Ctrl+C: exit when idle/completed, stop workflow when working
+    // Ctrl+C: exit when home, stop workflow when working
     if (evt.ctrl && evt.name === "c") {
       evt.preventDefault()
-      const state = shellState()
-      if (state === "idle" || state === "completed") {
+      const currentView = view()
+      if (currentView === "home") {
         exitTUI()
-      } else if (state === "working") {
+      } else if (currentView === "working") {
         stopWorkflow()
       }
       return
     }
   })
-
-  // ── Prompt Submit Handler (idle/completed mode) ──
-
-  const handleSubmit = (input: string) => {
-    const trimmed = input.trim()
-    if (!trimmed) return
-
-    const cmd = parseSlashCommand(trimmed)
-    if (cmd) {
-      switch (cmd.command) {
-        case "exit": exitTUI(); return
-        case "new": returnToIdle(); return
-        case "stop":
-          if (shellState() === "working") stopWorkflow()
-          return
-        case "help": setShowHelp(true); return
-      }
-      return
-    }
-
-    // Unrecognized slash command — show error, stay in current view
-    if (trimmed.startsWith("/")) {
-      toast.show({
-        message: `Unknown command: ${trimmed}. Try /help, /new, /stop, /exit`,
-        variant: "error",
-      })
-      return
-    }
-
-    // Treat as plan path
-    const state = shellState()
-    if (state === "idle" || state === "completed") {
-      const resolved = expandTilde(trimmed)
-      if (!fs.existsSync(resolved)) {
-        toast.show({
-          message: `File not found: ${trimmed}`,
-          variant: "error",
-        })
-        return
-      }
-      startWorkflow(resolved)
-    }
-  }
 
   // ── Approval decision handler ──
 
@@ -270,129 +441,46 @@ export function FlywheelShell() {
 
   // ── Render ──
 
-  const store = () => activeStore()
-
   return (
     <box flexDirection="column" height="100%">
       <Toast />
-      <Show
-        when={store()}
-        fallback={
-          /* ── IDLE VIEW: branding + logo + prompt ── */
-          <IdleView
-            shellState={shellState()}
-            escHint={escHint()}
-            showHelp={showHelp()}
-            onCloseHelp={() => setShowHelp(false)}
-            onSubmit={handleSubmit}
+      <Switch>
+        <Match when={view() === "home"}>
+          <HomeView
+            onCommand={handleCommand}
             onEscape={handleEscape}
           />
-        }
-      >
-        {(currentStore) => (
-          <>
-            {/* ── WORK VIEW: full rich CodeMachine-forked UI ── */}
-            <WorkShell
-              actions={currentStore()}
-              onApprovalDecision={handleApprovalDecision}
-              onStop={() => stopWorkflow()}
-              onToggleRawMode={() => {
-                if (activeSession) {
-                  const nowRaw = activeSession.adapter.toggleRawMode()
-                  toast.show({
-                    message: nowRaw ? "Raw output: ON" : "Raw output: OFF",
-                    variant: "info",
-                    duration: 2000,
-                  })
-                }
-              }}
-            />
+        </Match>
+        <Match when={view() === "working" && activeStore()}>
+          {/* Working view with active store */}
+          <WorkflowView
+            store={activeStore()!}
+            stepLabel={activeStepLabel()}
+            workflowName={activeWorkflowName()}
+            onStop={() => stopWorkflow()}
+            onApprovalDecision={handleApprovalDecision}
+            onToggleRawMode={() => {
+              if (activeSession) {
+                const nowRaw = activeSession.adapter.toggleRawMode()
+                toast.show({
+                  message: nowRaw ? "Raw output: ON" : "Raw output: OFF",
+                  variant: "info",
+                  duration: 2000,
+                })
+              }
+            }}
+          />
 
-            {/* Escape hint overlay (during double-Esc) */}
-            <Show when={escHint()}>
-              <box flexShrink={0} paddingLeft={2}>
-                <text fg={themeCtx.theme.warning ?? themeCtx.theme.textMuted}>
-                  {escHint()}
-                </text>
-              </box>
-            </Show>
-          </>
-        )}
-      </Show>
+          {/* Escape hint overlay (during double-Esc) */}
+          <Show when={escHint()}>
+            <box flexShrink={0} paddingLeft={2}>
+              <text fg={themeCtx.theme.warning ?? themeCtx.theme.textMuted}>
+                {escHint()}
+              </text>
+            </box>
+          </Show>
+        </Match>
+      </Switch>
     </box>
-  )
-}
-
-// ── Idle View ──
-
-interface IdleViewProps {
-  shellState: ShellState
-  escHint: string
-  showHelp: boolean
-  onCloseHelp: () => void
-  onSubmit: (input: string) => void
-  onEscape: () => void
-}
-
-function IdleView(props: IdleViewProps) {
-  const themeCtx = useTheme()
-
-  const promptPlaceholder = () => {
-    switch (props.shellState) {
-      case "idle":
-        return "Enter a plan path, or /help"
-      case "completed":
-        return "Enter to run again, /new to start fresh, or paste new path"
-      default:
-        return "Enter a plan path, or /help"
-    }
-  }
-
-  return (
-    <>
-      {/* Branding header */}
-      <box flexShrink={0}>
-        <BrandingHeader version="0.0.1" currentDir={process.cwd()} />
-      </box>
-
-      {/* Content area — centered logo */}
-      <box
-        flexGrow={1}
-        flexDirection="column"
-        justifyContent="center"
-        alignItems="center"
-      >
-        <box flexDirection="column" alignItems="center">
-          <For each={FULL_LOGO}>
-            {(line) => (
-              <text fg={themeCtx.theme.primary}>{line}</text>
-            )}
-          </For>
-        </box>
-      </box>
-
-      {/* Escape hint */}
-      <Show when={props.escHint}>
-        <box flexShrink={0} paddingLeft={2}>
-          <text fg={themeCtx.theme.warning ?? themeCtx.theme.textMuted}>
-            {props.escHint}
-          </text>
-        </box>
-      </Show>
-
-      {/* Prompt — pinned at bottom */}
-      <box flexShrink={0}>
-        <Prompt
-          placeholder={promptPlaceholder()}
-          onSubmit={props.onSubmit}
-          onEscape={props.onEscape}
-        />
-      </box>
-
-      {/* Help overlay */}
-      <Show when={props.showHelp}>
-        <HelpOverlay onClose={props.onCloseHelp} />
-      </Show>
-    </>
   )
 }

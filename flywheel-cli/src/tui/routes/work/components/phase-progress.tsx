@@ -15,6 +15,7 @@ export interface PhaseProgressProps {
   phases: PhaseState[]
   selectedIndex: number
   availableWidth?: number
+  stepLabel?: string  // "Phase" | "Step" | "Cycle" — defaults to "Phase"
 }
 
 export function PhaseProgress(props: PhaseProgressProps) {
@@ -24,7 +25,7 @@ export function PhaseProgress(props: PhaseProgressProps) {
     <box flexDirection="column" width="100%">
       <box paddingLeft={1} paddingRight={1} paddingTop={1} paddingBottom={1}>
         <text fg={themeCtx.theme.text} attributes={1}>
-          Plan Progress ({props.phases.length} {props.phases.length === 1 ? "phase" : "phases"})
+          {props.stepLabel ?? "Plan"} Progress ({props.phases.length} {props.phases.length === 1 ? (props.stepLabel?.toLowerCase() ?? "phase") : (props.stepLabel?.toLowerCase() ?? "phase") + "s"})
         </text>
       </box>
 

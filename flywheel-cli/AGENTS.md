@@ -179,7 +179,7 @@ After modifying any file under `src/tui/`, always:
 | TUI launcher | `src/tui/launcher.ts`, `src/tui/app.tsx` |
 | Shell (idle/working) | `src/tui/components/flywheel-shell.tsx` |
 | Idle prompt | `src/tui/components/prompt/index.tsx` |
-| Slash commands | `src/tui/utils/slash-commands.ts` |
+| Commands | `src/tui/config/commands.ts`, `src/tui/routes/home/hooks/use-home-commands.ts` |
 | Work view | `src/tui/routes/work/components/work-shell.tsx` |
 | Output window | `src/tui/routes/work/components/output-window.tsx` |
 | Work prompt | `src/tui/routes/work/components/prompt-line/index.tsx` |

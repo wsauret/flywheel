@@ -26,6 +26,9 @@ export const DispatcherInputSchema = z.object({
   context: z.object({
     files: z.array(z.string()),
   }).strip(),
+  relevant_learnings: z.array(z.string()).optional(),
+  plan_truncated: z.boolean().default(false),
+  history_truncated: z.boolean().default(false),
 }).strip();
 
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
