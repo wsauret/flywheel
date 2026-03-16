@@ -1,7 +1,7 @@
 /**
  * Flywheel Command Definitions
  *
- * Slash commands available from the home screen.
+ * Single source of truth for all slash commands.
  */
 
 export interface SlashCommand {
@@ -18,6 +18,8 @@ export const COMMANDS: SlashCommand[] = [
   { name: "/debug",    description: "Debug a failing test or issue" },
   { name: "/research", description: "Research a topic in the codebase" },
   { name: "/config",   description: "Edit flywheel.yaml" },
+  { name: "/help",     description: "Show available commands" },
+  { name: "/new",      description: "Start fresh from idle screen" },
   { name: "/exit",     description: "Exit flywheel" },
 ]
 

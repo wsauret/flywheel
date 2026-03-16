@@ -71,11 +71,12 @@ temp/
 *.bak
 
 # Project-specific
-.claude/
-.opencode/
-.subtask/
 .flywheel/
 .worktrees/
-.claude/worktrees/
 docs/
-inspiration/
+plugin/docs/
+flywheel-tui/docs/
+plugin/inspiration/
+flywheel-tui/inspiration/
+plugin/.flywheel/
+flywheel-tui/.flywheel/
