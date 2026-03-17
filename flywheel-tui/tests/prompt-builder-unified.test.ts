@@ -100,8 +100,8 @@ describe("Unified PromptBuilder contract", () => {
         "/tmp/project",
       );
 
-      // Should be wrapped with completion instruction
-      expect(prompt).toContain("<promise>COMPLETE</promise>");
+      // buildWorkflowPrompt returns raw prompt — the loop adds the completion marker
+      expect(prompt).not.toContain("<promise>COMPLETE</promise>");
       // Should contain workflow-specific content
       expect(prompt).toContain("Build a user auth system");
     });
@@ -119,13 +119,14 @@ describe("Unified PromptBuilder contract", () => {
       expect(prompt).toContain("Research findings from step 1");
     });
 
-    it("all prompts get completion marker", () => {
+    it("raw prompts do not contain completion marker (loop adds it)", () => {
       const prompt = buildWorkflowPrompt(
         0,
         planWorkflow,
         { description: "test" },
       );
-      expect(prompt).toContain("<promise>COMPLETE</promise>");
+      // The loop calls wrapCompletionInstruction, not the builder
+      expect(prompt).not.toContain("<promise>COMPLETE</promise>");
     });
   });
 

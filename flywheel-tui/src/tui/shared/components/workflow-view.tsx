@@ -159,7 +159,7 @@ export function WorkflowView(props: WorkflowViewProps) {
         props.onApprovalDecision?.(true, true)
         props.store.clearApproval()
       }}
-      onErrorClose={() => {}}
+      onErrorClose={() => props.store.clearError()}
     >
       {/* Output window takes full center width */}
       <box flexDirection="column" width="100%">

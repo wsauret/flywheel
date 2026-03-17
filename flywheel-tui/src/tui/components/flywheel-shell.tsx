@@ -229,9 +229,8 @@ export function FlywheelShell() {
       workflowId,
     })
 
-    // Non-work prompt builder: uses per-workflow templates via buildWorkflowPrompt
-    // Note: wrapCompletionInstruction is called in the loop, but buildWorkflowPrompt
-    // already applies it. The loop's wrapping is additive (idempotent for the marker check).
+    // Non-work prompt builder: per-workflow templates via buildWorkflowPrompt.
+    // The loop applies wrapCompletionInstruction — builders return raw prompts.
     const promptBuilder: PromptBuilder = (phase, ctx) =>
       buildWorkflowPrompt(
         phase.index,

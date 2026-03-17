@@ -49,6 +49,15 @@ export function createWorkflowActions(ctx: StoreContext) {
       notify();
     },
 
+    clearError(): void {
+      const state = getState();
+      setState({
+        ...state,
+        error: undefined,
+      });
+      notify();
+    },
+
     appendOutput(line: OutputLine): void {
       const state = getState();
       let lines = [...state.outputLines, line];

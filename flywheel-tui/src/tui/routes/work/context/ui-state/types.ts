@@ -25,6 +25,7 @@ export interface UIActions {
   startWorkflow(planName: string): void;
   stopWorkflow(status: "completed" | "interrupted"): void;
   setError(reason: string): void;
+  clearError(): void;
   appendOutput(line: OutputLine): void;
   setApprovalPending(description: string): void;
   clearApproval(): void;
