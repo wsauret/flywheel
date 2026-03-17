@@ -38,6 +38,16 @@ export const FlywheelConfigSchema = z.object({
   skip_approval_gates: z.boolean().default(false),
   use_dispatcher: z.boolean().default(true),
   skip_evaluation: z.boolean().default(false),
+
+  /** Worktree (Worktrunk) integration configuration. */
+  worktree: z.object({
+    /** Enable worktree integration. Default: false (auto-detected from wt CLI). */
+    enabled: z.boolean().default(false),
+    /** Automatically remove worktree when session is archived. */
+    auto_remove: z.boolean().default(false),
+    /** Grace period (ms) before trashed session worktrees are cleaned up. Default: 300000 (5 min). */
+    grace_period_ms: z.number().int().min(0).default(300_000),
+  }).default({}),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
@@ -55,6 +65,11 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   skip_approval_gates: false,
   use_dispatcher: true,
   skip_evaluation: false,
+  worktree: {
+    enabled: false,
+    auto_remove: false,
+    grace_period_ms: 300_000,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -110,6 +125,14 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   },
   FLYWHEEL_SKIP_EVALUATION: (val, config) => {
     config.skip_evaluation = val === "true" || val === "1";
+  },
+  FLYWHEEL_WORKTREE_ENABLED: (val, config) => {
+    if (!config.worktree) config.worktree = {};
+    (config.worktree as Record<string, unknown>).enabled = val === "true" || val === "1";
+  },
+  FLYWHEEL_WORKTREE_AUTO_REMOVE: (val, config) => {
+    if (!config.worktree) config.worktree = {};
+    (config.worktree as Record<string, unknown>).auto_remove = val === "true" || val === "1";
   },
 };
 

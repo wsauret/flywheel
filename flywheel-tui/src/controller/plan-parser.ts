@@ -27,6 +27,11 @@ export interface PlanPhase {
   status: "completed" | "pending" | "in_progress";
 }
 
+/** Discriminated union for plan validation results. */
+export type ValidationResult =
+  | { ok: true; phases: PlanPhase[] }
+  | { ok: false; issues: string[]; phases: PlanPhase[] };
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -39,6 +44,10 @@ const TOP_LEVEL_STEP_RE = /^- \[[ x~]\]\s+(.+)$/;
 
 /** Matches indented lines (2+ spaces or tab prefix) */
 const INDENTED_RE = /^(?:\s{2,}|\t)/;
+
+/** Matches acceptance-criteria-like section headings */
+const ACCEPTANCE_CRITERIA_RE =
+  /^##\s+(Acceptance\s+Criteria|Success\s+Criteria|Verification|Done\s+When)\s*$/i;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -55,6 +64,7 @@ export function parsePlan(
   planContent: string,
   state?: ParsedStateFile | null,
 ): PlanPhase[] {
+  planContent = planContent.replace(/\r\n/g, "\n");
   const lines = planContent.split("\n");
   const phases: PlanPhase[] = [];
 
@@ -119,6 +129,62 @@ export function extractPhaseTitles(planContent: string): string[] {
     }
   }
   return titles;
+}
+
+/**
+ * Validate a plan's structure and return a discriminated union result.
+ *
+ * Checks:
+ * 1. At least one phase exists
+ * 2. Every phase has at least one step (checklist item)
+ * 3. An acceptance criteria section is present
+ *
+ * The parsed phases are always returned (even on failure) so callers can
+ * inspect partial structure.
+ */
+export function validatePlan(planContent: string): ValidationResult {
+  const phases = parsePlan(planContent);
+  const issues: string[] = [];
+
+  // Check 1: at least one phase
+  if (phases.length === 0) {
+    issues.push("Plan has no phases. Expected at least one '### Phase N: Title' heading.");
+  }
+
+  // Check 2: every phase must have at least one step
+  for (const phase of phases) {
+    if (phase.steps.length === 0) {
+      issues.push(
+        `Phase ${phase.index + 1} ("${phase.title}") has no steps. Add checklist items (- [ ] ...).`,
+      );
+    }
+  }
+
+  // Check 3: acceptance criteria section
+  if (!hasAcceptanceCriteria(planContent)) {
+    issues.push(
+      "Plan is missing an acceptance criteria section. " +
+        "Add a '## Acceptance Criteria', '## Success Criteria', '## Verification', or '## Done When' heading.",
+    );
+  }
+
+  if (issues.length === 0) {
+    return { ok: true, phases };
+  }
+  return { ok: false, issues, phases };
+}
+
+/**
+ * Check whether plan content contains an acceptance-criteria-like section.
+ */
+export function hasAcceptanceCriteria(planContent: string): boolean {
+  const normalized = planContent.replace(/\r\n/g, "\n");
+  for (const line of normalized.split("\n")) {
+    if (ACCEPTANCE_CRITERIA_RE.test(line)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

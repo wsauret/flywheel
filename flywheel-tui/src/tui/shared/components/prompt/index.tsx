@@ -84,11 +84,18 @@ export function Prompt(props: PromptProps) {
     inputRef?.setCursorByOffset?.(newValue.length)
   }
 
+  // Autocomplete only for bare command prefixes (e.g. "/wo"), not
+  // once the user has typed arguments (e.g. "/work some-plan.md").
+  const isCommandPrefix = (value: string) => {
+    const trimmed = value.trim()
+    return trimmed.startsWith("/") && !trimmed.includes(" ")
+  }
+
   const handleInput = (value: string) => {
     if (props.disabled) return
     setInput(value)
 
-    if (value.startsWith("/")) {
+    if (isCommandPrefix(value)) {
       setShowAutocomplete(true)
       // Reset selection to top (best match) on every keystroke
       setSelectedIndex(0)

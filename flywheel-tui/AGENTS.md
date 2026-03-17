@@ -100,11 +100,12 @@ Use `sleep 0.5` for simple keystrokes, `sleep 1-2` after actions that trigger st
 
 ### Common test sequences
 
-**Verify idle screen renders correctly:**
+**Verify launcher screen renders correctly:**
 
 ```bash
 tmux capture-pane -t flywheel -p
-# Expect: branding header, FLYWHEEL ASCII art, prompt "Paste a plan path to start, or /help"
+# Expect: branding header, FLYWHEEL ASCII art, starter chooser (recent sessions, commands),
+#         session sidebar (left column, if terminal >= 90 cols), prompt
 ```
 
 **Test a slash command:**
@@ -121,7 +122,8 @@ tmux capture-pane -t flywheel -p
 tmux send-keys -t flywheel 'tests/fixtures/two-phase-plan.md' Enter
 sleep 3
 tmux capture-pane -t flywheel -p
-# Expect: working view with "Plan Progress", output window, phase status
+# Expect: working view with session sidebar (left), output window (center),
+#         workflow panel (right, if terminal >= 120 cols), prompt line (bottom), status footer
 ```
 
 **Stop a running workflow (Escape -> confirm):**
@@ -135,12 +137,49 @@ sleep 1
 tmux capture-pane -t flywheel -p   # should return to completed/idle view
 ```
 
-**Return to idle from any state:**
+**Return to launcher from any state:**
 
 ```bash
 tmux send-keys -t flywheel '/new' Enter
 sleep 1
 tmux capture-pane -t flywheel -p
+```
+
+**Test session sidebar (shows recent sessions):**
+
+```bash
+# Start a workflow, then stop it, then /new — the sidebar should list the session
+tmux send-keys -t flywheel 'tests/fixtures/two-phase-plan.md' Enter
+sleep 3
+tmux send-keys -t flywheel Escape
+sleep 1
+tmux send-keys -t flywheel 'y'
+sleep 1
+tmux send-keys -t flywheel '/new' Enter
+sleep 1
+tmux capture-pane -t flywheel -p
+# Expect: sidebar shows the previous session with its lifecycle state
+```
+
+**Test plan import flow:**
+
+```bash
+# Paste a plan path to trigger import -> confirmation UI
+tmux send-keys -t flywheel 'tests/fixtures/two-phase-plan.md' Enter
+sleep 2
+tmux capture-pane -t flywheel -p
+# Expect: plan confirmation view (importing mode) or working view
+```
+
+**Test responsive layout (narrow terminal):**
+
+```bash
+tmux kill-session -t flywheel 2>/dev/null
+tmux new-session -d -s flywheel -x 80 -y 40 \
+  'cd /path/to/flywheel-tui && bin/flywheel'
+sleep 2
+tmux capture-pane -t flywheel -p
+# Expect: sidebar hidden (< 90 cols), panel hidden (< 120 cols)
 ```
 
 **Clean up when done:**
@@ -166,43 +205,136 @@ After modifying any file under `src/tui/`, always:
 
 1. Run `bun test` to ensure unit tests pass
 2. Start the TUI in tmux
-3. Verify the idle screen renders correctly (branding, prompt, layout)
+3. Verify the launcher screen renders correctly (branding, sidebar, starter chooser, prompt)
 4. Test the specific feature you changed
 5. Test adjacent interactions (e.g., if you changed a modal, also test opening and closing it, keyboard shortcuts within it, and that the view behind it restores correctly)
 6. Clean up the tmux session
 
 ## Architecture quick reference
 
+### Core layers
+
 | Layer | Key files |
 |-------|-----------|
 | CLI entry | `src/cli/index.ts` |
 | TUI launcher | `src/tui/launcher.ts`, `src/tui/app.tsx` |
-| Shell (idle/working) | `src/tui/components/flywheel-shell.tsx` |
+| Shell (mode routing) | `src/tui/components/flywheel-shell.tsx` |
+| Shell modes (state machine) | `src/tui/components/shell-modes.ts` |
+| WorkController | `src/controller/work.ts` |
+| Engine registry | `src/engines/core/registry.ts` |
+
+### Session management
+
+| Layer | Key files |
+|-------|-----------|
+| Session state machine | `src/session/state-machine.ts` |
+| Session persistence | `src/session/persistence.ts` |
+| Session manager | `src/session/manager.ts` |
+| Cost tracker | `src/session/cost-tracker.ts` |
+| Worktree manager | `src/session/worktree-manager.ts` |
+| Session schema | `src/schemas/session.ts` |
+
+### TUI components
+
+| Layer | Key files |
+|-------|-----------|
+| Session sidebar | `src/tui/components/session-sidebar.tsx` |
+| Session header | `src/tui/components/session-header.tsx` |
+| Starter chooser | `src/tui/components/starter-chooser.tsx` |
+| Plan confirmation | `src/tui/components/plan-confirmation.tsx` |
+| Workflow panel | `src/tui/components/workflow-panel.tsx` |
+| Action dispatcher | `src/tui/components/action-dispatcher.ts` |
+| Prompt placeholders | `src/tui/components/prompt-placeholders.ts` |
+| Workflow session | `src/tui/components/workflow-session.ts` |
 | Idle prompt | `src/tui/components/prompt/index.tsx` |
 | Commands | `src/tui/config/commands.ts`, `src/tui/routes/home/hooks/use-home-commands.ts` |
-| Work view | `src/tui/routes/work/components/work-shell.tsx` |
+
+### Work view
+
+| Layer | Key files |
+|-------|-----------|
+| Work shell | `src/tui/routes/work/components/work-shell.tsx` |
 | Output window | `src/tui/routes/work/components/output-window.tsx` |
 | Work prompt | `src/tui/routes/work/components/prompt-line/index.tsx` |
 | Keyboard handling | `src/tui/routes/work/hooks/use-work-keyboard.ts` |
 | Modals | `src/tui/routes/work/components/modals/` |
 | Status footer | `src/tui/routes/work/components/status-footer.tsx` |
+
+### Controllers and context
+
+| Layer | Key files |
+|-------|-----------|
+| Plan import | `src/controller/plan-import.ts` |
+| Session provider | `src/tui/shared/context/session.tsx` |
 | Escape logic | `src/tui/utils/escape-handler.ts` |
 | Toast system | `src/tui/shared/context/toast.tsx`, `src/tui/shared/ui/toast.tsx` |
 | Theme system | `src/tui/shared/context/theme.tsx` |
-| Workflow session | `src/tui/components/workflow-session.ts` |
-| WorkController | `src/controller/work.ts` |
-| Engine registry | `src/engines/core/registry.ts` |
 
 ## TUI states
 
-The shell has three states: `idle`, `working`, and `completed`.
+### View modes (shell)
 
-- **idle** -- Initial state. Shows branding + ASCII art + command prompt.
-- **working** -- Active workflow. Shows plan progress (left), output window (right), prompt line (bottom), status footer.
-- **completed** -- Workflow finished/stopped/failed. Same branding as idle but prompt says "Enter to run again, or paste new path".
+The shell has four view modes: `launcher`, `working`, `completed`, and `importing`.
 
-Transitions: `idle -> working` (submit a plan path), `working -> completed` (workflow ends, user stops, or error), `completed -> idle` (`/new` command), `completed -> working` (submit another path).
+- **launcher** -- Initial state. Shows starter chooser (recent sessions, commands), session sidebar (left), branding header.
+- **working** -- Active workflow. Shows session sidebar (left), output window (center), workflow panel (right), prompt line (bottom), status footer.
+- **completed** -- Workflow finished/stopped/failed. Shows summary, option to re-run or start new session.
+- **importing** -- Plan import flow. Shows plan confirmation UI for reviewing and approving an imported plan.
+
+View mode transitions:
+
+- `launcher -> working` (start workflow)
+- `launcher -> importing` (begin plan import)
+- `working -> completed` (workflow ends, user stops, or error)
+- `completed -> working` (re-run or resume)
+- `completed -> launcher` (`/new` command)
+- `completed -> importing` (import new plan)
+- `importing -> launcher` (cancel import)
+- `importing -> working` (confirm import, start workflow)
+
+Escape behavior per mode: `launcher` exits TUI, `working` uses double-Esc to stop, `completed` returns to launcher, `importing` cancels import.
+
+The sidebar and panel columns collapse responsively: sidebar hides below 90 columns, panel hides below 120 columns.
+
+### Session lifecycle states
+
+Sessions have 11 lifecycle states managed by the state machine in `src/session/state-machine.ts`:
+
+```
+new -> plan:draft | plan:imported
+plan:draft -> plan:imported | plan:needs-fix | trashed
+plan:imported -> plan:approved | plan:needs-fix | trashed
+plan:approved -> work:active | trashed
+plan:needs-fix -> plan:imported | plan:approved | trashed
+work:active -> work:paused | work:review | completed | trashed
+work:paused -> work:active | trashed | archived
+work:review -> work:active | completed | trashed
+completed -> archived | trashed | work:active
+archived -> (terminal)
+trashed -> (terminal)
+```
+
+Common paths:
+- **Happy path:** `new -> plan:imported -> plan:approved -> work:active -> work:review -> completed -> archived`
+- **Draft path:** `new -> plan:draft -> plan:needs-fix -> plan:imported -> plan:approved -> work:active -> completed`
+- **Pause/resume:** `work:active -> work:paused -> work:active -> completed`
+- **Re-open:** `completed -> work:active -> completed -> archived`
 
 ## Slash commands
 
-Four commands are recognized: `/exit`, `/new`, `/stop`, `/help`. Any input starting with `/` that doesn't match one of these is treated as a file path (not as an unknown command error).
+Ten commands are recognized: `/work`, `/plan`, `/review`, `/ship`, `/debug`, `/research`, `/config`, `/help`, `/new`, `/exit`. The primary UX is contextual actions dispatched via the action dispatcher based on current session state. Slash commands provide direct access to specific workflows.
+
+| Command | Description |
+|---------|-------------|
+| `/work` | Run a plan (paste path or pick from recent) |
+| `/plan` | Create a new plan from description |
+| `/review` | Review current changes |
+| `/ship` | Commit, PR, and compound learnings |
+| `/debug` | Debug a failing test or issue |
+| `/research` | Research a topic in the codebase |
+| `/config` | Edit flywheel.yaml |
+| `/help` | Show available commands |
+| `/new` | Start fresh from launcher screen |
+| `/exit` | Exit flywheel |
+
+Any input starting with `/` that doesn't match one of these is treated as a file path (not as an unknown command error).

@@ -8,7 +8,7 @@ import { DialogWrapper } from "@tui/shared/ui/dialog-wrapper"
 // where all contexts are available, and properly cleaned up when dialog closes
 type DialogContentFactory = () => JSX.Element
 
-type DialogContextValue = {
+export type DialogContextValue = {
   readonly current: DialogContentFactory | null
   show(content: () => JSX.Element): void
   close(): void

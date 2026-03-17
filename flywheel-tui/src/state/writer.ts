@@ -1,8 +1,6 @@
 import * as yaml from "js-yaml";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as crypto from "node:crypto";
 import type { ParsedStateFile, ParsedPhase, ErrorLogEntry } from "./reader";
+import { writeFileAtomic } from "../utils/atomic-write";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -122,36 +120,12 @@ export function writeStateFileAtomic(
   state: ParsedStateFile,
 ): void {
   const content = serializeStateFile(state);
-  const tmpPath = makeTmpPath(filePath);
-
-  // Ensure parent directory exists
-  const dir = path.dirname(tmpPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  // Write -> fsync -> rename
-  const fd = fs.openSync(tmpPath, "w");
-  try {
-    fs.writeFileSync(fd, content, "utf-8");
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-
-  fs.renameSync(tmpPath, filePath);
+  writeFileAtomic(filePath, content);
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-function makeTmpPath(filePath: string): string {
-  const pid = process.pid;
-  const timestamp = Date.now();
-  const rand = crypto.randomBytes(4).toString("hex");
-  return `${filePath}.__flywheel__.${pid}.${timestamp}.${rand}.tmp`;
-}
 
 function serializePhase(index: number, phase: ParsedPhase): string {
   const checkbox =

@@ -111,4 +111,20 @@ describe("parseHomeCommand", () => {
     const result = parseHomeCommand("/research")
     expect(result).toEqual({ workflow: "research", args: {} })
   })
+
+  it('parses "/new" correctly', () => {
+    const result = parseHomeCommand("/new")
+    expect(result).toEqual({ workflow: "new", args: {} })
+  })
+
+  it("derives valid commands from COMMANDS array (sync check)", () => {
+    // All COMMANDS entries should be parseable
+    const { COMMANDS } = require("../src/tui/config/commands")
+    for (const cmd of COMMANDS) {
+      const name = cmd.name // e.g., "/work"
+      const result = parseHomeCommand(name)
+      expect(result).not.toBeNull()
+      expect(result!.workflow).toBe(name.slice(1))
+    }
+  })
 })

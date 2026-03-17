@@ -2,28 +2,38 @@
 /**
  * FlywheelShell — Top-level persistent shell component
  *
- * Two views driven by signal-based routing:
- *   HOME: Logo, help rows, command prompt — accepts workflow commands
- *   WORKING: Full WorkflowView (PhaseProgress, OutputWindow, TelemetryBar,
- *     StatusFooter, modals) — the rich work view
+ * Four view modes driven by signal-based routing:
+ *   LAUNCHER:  Logo, help rows, command prompt — accepts workflow commands
+ *   WORKING:   Full WorkflowView (PhaseProgress, OutputWindow, TelemetryBar,
+ *              StatusFooter, modals) — the rich work view
+ *   COMPLETED: Workflow finished/stopped/failed — prompt for next action
+ *   IMPORTING: Plan import flow (placeholder, reuses launcher for now)
+ *
+ * ViewMode transitions are defined in shell-modes.ts (pure state machine).
+ *
+ * Command dispatch is handled by ActionDispatcher (action-dispatcher.ts),
+ * a pure function with dependency injection. Both slash commands and
+ * contextual UI actions route through the same dispatcher.
  *
  * Workflow lifecycle:
- *   handleCommand(workflow, args) — dispatches to startWorkWorkflow or
- *     startGenericWorkflow, returns to home on completion/stop
- *   stopWorkflow() — shuts down controller/runner, destroys session, returns to home
+ *   handleCommand(workflow, args) — routes through ActionDispatcher
+ *   stopWorkflow() — shuts down controller/runner, destroys session,
+ *     transitions to completed
  */
 
 import fs from "node:fs"
-import os from "node:os"
 import { createSignal, onCleanup, Show, Switch, Match } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
+import { useDialog } from "@tui/shared/context/dialog"
 import { Toast } from "@tui/shared/ui/toast"
 import { WorkflowView } from "@tui/shared/components/workflow-view"
-import { HomeView } from "../routes/home/home-view"
+import { LauncherView } from "../routes/home/home-view"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
+import { openStarterChooser } from "./starter-chooser"
+import { createActionDispatcher } from "./action-dispatcher"
 import {
   createWorkflowSession,
   destroyWorkflowSession,
@@ -42,44 +52,19 @@ import {
 import type { WorkflowSession } from "./workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 
-/** Expand a leading `~` to the user's home directory. */
-function expandTilde(p: string): string {
-  if (p === "~" || p.startsWith("~/")) {
-    return os.homedir() + p.slice(1)
-  }
-  return p
-}
-
-// ── Workflow type → label mapping ──
-
-type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research"
-
-interface WorkflowMeta {
-  stepLabel: string
-  workflowName: string
-}
-
-const WORKFLOW_META: Record<WorkflowType, WorkflowMeta> = {
-  work:     { stepLabel: "Phase",  workflowName: "work" },
-  plan:     { stepLabel: "Step",   workflowName: "plan" },
-  review:   { stepLabel: "Step",   workflowName: "review" },
-  ship:     { stepLabel: "Step",   workflowName: "ship" },
-  debug:    { stepLabel: "Cycle",  workflowName: "debug" },
-  research: { stepLabel: "Step",   workflowName: "research" },
-}
-
-function isWorkflowType(s: string): s is WorkflowType {
-  return s in WORKFLOW_META
-}
-
 // ── View mode ──
 
-type ViewMode = "home" | "working"
+import {
+  escapeForMode,
+  ctrlCForMode,
+  type ViewMode,
+} from "./shell-modes"
 
 export function FlywheelShell() {
   const themeCtx = useTheme()
   const toast = useToast()
-  const [view, setView] = createSignal<ViewMode>("home")
+  const dialog = useDialog()
+  const [view, setView] = createSignal<ViewMode>("launcher")
   const [escHint, setEscHint] = createSignal("")
 
   // Active workflow metadata
@@ -244,168 +229,96 @@ export function FlywheelShell() {
     })
   }
 
+  /**
+   * Tear down the active workflow: shut down runner, controller, and session.
+   * Returns the controller shutdown promise so callers can await if needed.
+   */
+  const teardownActiveWorkflow = (): Promise<void> | undefined => {
+    if (activeRunner) {
+      activeRunner.requestShutdown()
+      activeRunner = null
+    }
+    let shutdownPromise: Promise<void> | undefined
+    if (activeController) {
+      shutdownPromise = activeController.shutdown().catch(() => {})
+      activeController = null
+    }
+    if (activeSession) {
+      destroyWorkflowSession(activeSession)
+      activeSession = null
+    }
+    setActiveStore(null)
+    return shutdownPromise
+  }
+
   const stopWorkflow = async () => {
     escapeHandler.reset()
     setEscHint("")
-    if (activeRunner) {
-      activeRunner.requestShutdown()
-      activeRunner = null
-    }
-    if (activeController) {
-      await activeController.shutdown()
-      activeController = null
-    }
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-    }
-    setActiveStore(null)
-    setView("home")
+    await teardownActiveWorkflow()
+    setView("completed")
   }
 
   const returnToHome = () => {
-    if (activeRunner) {
-      activeRunner.requestShutdown()
-      activeRunner = null
-    }
-    if (activeController) {
-      activeController.shutdown().catch(() => {})
-      activeController = null
-    }
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-    }
-    setActiveStore(null)
-    setView("home")
+    teardownActiveWorkflow()
+    setView("launcher")
   }
 
   // Clean up on component unmount
   onCleanup(() => {
     escapeHandler.dispose()
-    if (activeRunner) {
-      activeRunner.requestShutdown()
-      activeRunner = null
-    }
-    if (activeController) {
-      activeController.shutdown().catch(() => {})
-      activeController = null
-    }
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-    }
+    teardownActiveWorkflow()
   })
 
-  // ── Command Handler ──
+  // ── Command Handler (via ActionDispatcher) ──
+
+  const dispatch = createActionDispatcher({
+    fileExists: (path) => fs.existsSync(path),
+    notify: (message, variant) => {
+      toast.show({
+        message,
+        variant: variant as "info" | "error" | "warning",
+        ...(variant === "info" ? { duration: 8000 } : {}),
+      })
+    },
+    launchWorkWorkflow: startWorkWorkflow,
+    launchGenericWorkflow: startGenericWorkflow,
+    exit: exitTUI,
+    returnToLauncher: returnToHome,
+  })
 
   const handleCommand = (workflow: string, args: Record<string, string>) => {
-    // Handle special commands first
-    if (workflow === "exit") {
-      exitTUI()
-      return
+    const meta = dispatch(workflow, args)
+    if (meta) {
+      setActiveStepLabel(meta.stepLabel)
+      setActiveWorkflowName(meta.workflowName)
     }
-
-    if (workflow === "help") {
-      toast.show({
-        message: "Commands: /work, /plan, /review, /ship, /debug, /research, /config, /exit",
-        variant: "info",
-        duration: 8000,
-      })
-      return
-    }
-
-    if (workflow === "config") {
-      toast.show({
-        message: "Not yet implemented: /config",
-        variant: "warning",
-      })
-      return
-    }
-
-    // Check if this is a workflow type
-    if (!isWorkflowType(workflow)) {
-      toast.show({
-        message: `Unknown workflow: ${workflow}`,
-        variant: "error",
-      })
-      return
-    }
-
-    const meta = WORKFLOW_META[workflow]
-    setActiveStepLabel(meta.stepLabel)
-    setActiveWorkflowName(meta.workflowName)
-
-    // "work" workflow — resolve plan path
-    if (workflow === "work") {
-      const planPath = args.planPath
-      if (!planPath) {
-        toast.show({
-          message: "Usage: /work <plan-path>",
-          variant: "error",
-        })
-        return
-      }
-
-      const resolved = expandTilde(planPath)
-      if (!fs.existsSync(resolved)) {
-        toast.show({
-          message: `File not found: ${planPath}`,
-          variant: "error",
-        })
-        return
-      }
-
-      startWorkWorkflow(resolved)
-      return
-    }
-
-    // Non-work workflows — validate required args
-    if (workflow === "plan" && !args.description) {
-      toast.show({
-        message: "Usage: /plan <feature description>",
-        variant: "error",
-      })
-      return
-    }
-
-    if (workflow === "debug" && !args.description) {
-      toast.show({
-        message: "Usage: /debug <problem description>",
-        variant: "error",
-      })
-      return
-    }
-
-    if (workflow === "research" && !args.topic) {
-      toast.show({
-        message: "Usage: /research <topic>",
-        variant: "error",
-      })
-      return
-    }
-
-    // Start generic workflow
-    startGenericWorkflow(workflow, args)
   }
 
   // ── Escape Handling ──
 
   const handleEscape = () => {
-    const currentView = view()
-    if (currentView === "home") {
-      exitTUI()
-      return
-    }
-    if (currentView === "working") {
-      const result = escapeHandler.handleEscape()
-      if (result === "show-hint") {
-        setEscHint("Press Esc again to stop")
-        setTimeout(() => setEscHint(""), 5000)
-      } else {
-        setEscHint("")
-        stopWorkflow()
+    const behavior = escapeForMode(view())
+    switch (behavior) {
+      case "exit-tui":
+        exitTUI()
+        return
+      case "double-esc-stop": {
+        const result = escapeHandler.handleEscape()
+        if (result === "show-hint") {
+          setEscHint("Press Esc again to stop")
+          setTimeout(() => setEscHint(""), 5000)
+        } else {
+          setEscHint("")
+          stopWorkflow()
+        }
+        return
       }
+      case "return-launcher":
+        returnToHome()
+        return
+      case "cancel-import":
+        setView("launcher")
+        return
     }
   }
 
@@ -418,14 +331,32 @@ export function FlywheelShell() {
       themeCtx.setMode(themeCtx.mode === "dark" ? "light" : "dark")
       return
     }
-    // Ctrl+C: exit when home, stop workflow when working
+    // Ctrl+N: open starter chooser dialog
+    if (evt.ctrl && evt.name === "n") {
+      evt.preventDefault()
+      openStarterChooser(dialog, (selection) => {
+        if (selection === "import-plan") {
+          toast.show({ message: "Type /work <plan-path> to start", variant: "info" })
+        } else if (selection === "new-idea") {
+          toast.show({ message: "Type /plan <description> to create a plan", variant: "info" })
+        }
+      })
+      return
+    }
+    // Ctrl+C: behavior depends on current view mode
     if (evt.ctrl && evt.name === "c") {
       evt.preventDefault()
-      const currentView = view()
-      if (currentView === "home") {
-        exitTUI()
-      } else if (currentView === "working") {
-        stopWorkflow()
+      const behavior = ctrlCForMode(view())
+      switch (behavior) {
+        case "exit-tui":
+          exitTUI()
+          return
+        case "stop-workflow":
+          stopWorkflow()
+          return
+        case "return-launcher":
+          returnToHome()
+          return
       }
       return
     }
@@ -445,8 +376,15 @@ export function FlywheelShell() {
     <box flexDirection="column" height="100%">
       <Toast />
       <Switch>
-        <Match when={view() === "home"}>
-          <HomeView
+        <Match when={view() === "launcher"}>
+          <LauncherView
+            onCommand={handleCommand}
+            onEscape={handleEscape}
+          />
+        </Match>
+        <Match when={view() === "importing"}>
+          {/* Importing view — plan import flow (placeholder, reuses launcher for now) */}
+          <LauncherView
             onCommand={handleCommand}
             onEscape={handleEscape}
           />
@@ -479,6 +417,13 @@ export function FlywheelShell() {
               </text>
             </box>
           </Show>
+        </Match>
+        <Match when={view() === "completed"}>
+          {/* Completed view — show final state, prompt for next action */}
+          <LauncherView
+            onCommand={handleCommand}
+            onEscape={handleEscape}
+          />
         </Match>
       </Switch>
     </box>

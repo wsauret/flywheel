@@ -3,7 +3,13 @@
  *
  * Parses user input from the home screen prompt into a structured command result.
  * Used by HomeView and tested independently.
+ *
+ * **Derived from COMMANDS** — adding a new slash command to `commands.ts`
+ * automatically makes it available here. The `argKey` field on each command
+ * determines how trailing text is mapped into `args`.
  */
+
+import { COMMAND_MAP } from "../../../config/commands"
 
 export interface CommandResult {
   workflow: string
@@ -22,6 +28,7 @@ export interface CommandResult {
  * - `/config` -> { workflow: "config", args: {} }
  * - `/exit` -> { workflow: "exit", args: {} }
  * - `/help` -> { workflow: "help", args: {} }
+ * - `/new` -> { workflow: "new", args: {} }
  * - Bare text (no `/`) -> null (must use a slash command)
  * - Unknown `/command` -> null
  * - Empty string -> null
@@ -44,35 +51,13 @@ export function parseHomeCommand(input: string): CommandResult | null {
 
   const command = rawCommand.toLowerCase()
 
-  switch (command) {
-    case "work":
-      return { workflow: "work", args: rest ? { planPath: rest } : {} }
+  // Look up command in the derived map (single source of truth)
+  const def = COMMAND_MAP.get(command)
+  if (!def) return null
 
-    case "plan":
-      return { workflow: "plan", args: rest ? { description: rest } : {} }
+  // Build args from the argKey (if any)
+  const args: Record<string, string> =
+    def.argKey && rest ? { [def.argKey]: rest } : {}
 
-    case "review":
-      return { workflow: "review", args: {} }
-
-    case "ship":
-      return { workflow: "ship", args: {} }
-
-    case "debug":
-      return { workflow: "debug", args: rest ? { description: rest } : {} }
-
-    case "research":
-      return { workflow: "research", args: rest ? { topic: rest } : {} }
-
-    case "config":
-      return { workflow: "config", args: {} }
-
-    case "exit":
-      return { workflow: "exit", args: {} }
-
-    case "help":
-      return { workflow: "help", args: {} }
-
-    default:
-      return null
-  }
+  return { workflow: command, args }
 }

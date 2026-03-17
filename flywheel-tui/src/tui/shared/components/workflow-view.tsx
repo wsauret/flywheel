@@ -10,13 +10,17 @@
  * Used by WorkShell (work workflow) and future workflow views (plan, review, debug).
  */
 
-import { createSignal, createEffect, onCleanup, Show } from "solid-js"
+import { createSignal, createEffect, createMemo, onCleanup, Show } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { SharedLayout } from "../../routes/work/components/shared-layout"
 import { PhaseProgress } from "../../routes/work/components/phase-progress"
 import { OutputWindow, type CurrentPhaseInfo } from "../../routes/work/components/output-window"
 import { useWorkKeyboard } from "../../routes/work/hooks/use-work-keyboard"
 import { useTimer } from "@tui/shared/services"
+import { useSession } from "@tui/shared/context/session"
+import { SessionSidebar } from "../../components/session-sidebar"
+import { WorkflowPanel } from "../../components/workflow-panel"
+import { SessionHeader } from "../../components/session-header"
 import type { UIActions } from "../../routes/work/context/ui-state/types"
 import type { WorkState } from "../../routes/work/state/types"
 
@@ -36,6 +40,7 @@ export interface WorkflowViewProps {
 export function WorkflowView(props: WorkflowViewProps) {
   const dimensions = useTerminalDimensions()
   const timer = useTimer()
+  const sessionCtx = useSession()
   const [state, setState] = createSignal<WorkState>(props.store.getState())
   const [showStopModal, setShowStopModal] = createSignal(false)
   const [isPromptFocused, setIsPromptFocused] = createSignal(false)
@@ -73,8 +78,8 @@ export function WorkflowView(props: WorkflowViewProps) {
   const outputWidth = () => (timelineCollapsed() ? "100%" : "65%")
   const runtime = () => timer.workflowRuntime()
 
-  // Derive current phase for the rich output header
-  const currentPhase = (): CurrentPhaseInfo | null => {
+  // Derive current phase for the rich output header (memoized to avoid linear scan on every access)
+  const currentPhase = createMemo((): CurrentPhaseInfo | null => {
     const phases = state().phases
     // Prefer the running phase
     const running = phases.find((p) => p.status === "running")
@@ -89,7 +94,7 @@ export function WorkflowView(props: WorkflowViewProps) {
       }
     }
     return null
-  }
+  })
 
   const handlePromptSubmit = (prompt: string) => {
     if (state().approvalState.pending) {
@@ -120,6 +125,29 @@ export function WorkflowView(props: WorkflowViewProps) {
       isPromptFocused={isPromptFocused()}
       workflowLabel={props.workflowName}
       stepLabel={props.stepLabel}
+      header={
+        <SessionHeader
+          info={{
+            sessionName: state().planName,
+            planName: state().planName,
+            workflowStatus: state().workflowStatus,
+            currentPhase: currentPhase()?.name,
+          }}
+          version={state().version}
+        />
+      }
+      sidebar={
+        <SessionSidebar
+          sessions={sessionCtx.sessions()}
+          terminalWidth={dimensions()?.width}
+        />
+      }
+      panel={
+        <WorkflowPanel
+          state={state()}
+          stepLabel={props.stepLabel}
+        />
+      }
       onStopConfirm={() => {
         setShowStopModal(false)
         props.onStop?.()

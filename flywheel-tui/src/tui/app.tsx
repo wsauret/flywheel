@@ -17,7 +17,13 @@ import type { ParentProps } from "solid-js"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
 import { DialogProvider } from "@tui/shared/context/dialog"
+import { SessionProvider } from "@tui/shared/context/session"
 import { ErrorComponent } from "./components/error-boundary"
+import { createSessionManager } from "../session/manager"
+import {
+  createWorkflowSession,
+  destroyWorkflowSession,
+} from "./components/workflow-session"
 
 export interface TUIOptions {
   mode?: "dark" | "light"
@@ -37,6 +43,13 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     // Lazy import FlywheelShell to ensure OpenTUI preload has registered
     const { FlywheelShell } = await import("./components/flywheel-shell")
 
+    // Create session manager for the current working directory
+    const sessionManager = createSessionManager({
+      baseDir: process.cwd(),
+      createWorkflowSessionFn: createWorkflowSession,
+      destroyWorkflowSessionFn: destroyWorkflowSession,
+    })
+
     render(
       () => (
         <ErrorBoundary fallback={(error) => {
@@ -51,7 +64,9 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode}>
                 <DialogProvider>
-                  <FlywheelShell />
+                  <SessionProvider manager={sessionManager}>
+                    <FlywheelShell />
+                  </SessionProvider>
                 </DialogProvider>
               </ThemeProvider>
             </ToastProvider>
