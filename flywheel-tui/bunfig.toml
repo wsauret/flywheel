@@ -3,3 +3,4 @@
 # Tests don't need it — they don't render OpenTUI components.
 
 [test]
+root = "./tests"

@@ -23,7 +23,7 @@
 
 import fs from "node:fs"
 import { createSignal, onCleanup, Show, Switch, Match } from "solid-js"
-import { useKeyboard } from "@opentui/solid"
+import { useKeyboard, useRenderer } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useDialog } from "@tui/shared/context/dialog"
@@ -32,6 +32,8 @@ import { WorkflowView } from "@tui/shared/components/workflow-view"
 import { LauncherView } from "../routes/home/home-view"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
+import { Selection } from "../utils/selection"
+import { Clipboard } from "../utils/clipboard"
 import { openStarterChooser } from "./starter-chooser"
 import { createActionDispatcher } from "./action-dispatcher"
 import {
@@ -64,6 +66,7 @@ export function FlywheelShell() {
   const themeCtx = useTheme()
   const toast = useToast()
   const dialog = useDialog()
+  const renderer = useRenderer()
   const [view, setView] = createSignal<ViewMode>("launcher")
   const [escHint, setEscHint] = createSignal("")
 
@@ -81,6 +84,19 @@ export function FlywheelShell() {
 
   // Double-Esc handler for stopping workflows
   const escapeHandler = createEscapeHandler({ timeoutMs: 5000 })
+
+  // Wire console copy-to-clipboard via OpenTUI's onCopySelection callback
+  renderer.console.onCopySelection = async (text: string) => {
+    if (!text || text.length === 0) return
+    await Clipboard.copy(text)
+      .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
+      .catch((err) => toast.show({ message: String(err), variant: "error" }))
+    renderer.clearSelection()
+  }
+
+  // ── Selection: copy on mouse-up (X11 / macOS style) ──
+  // When user selects text with mouse drag, copy to clipboard on release.
+  // Ctrl+C copies when there's an active selection (handled in keyboard section below).
 
   // ── Workflow Lifecycle ──
 
@@ -343,8 +359,15 @@ export function FlywheelShell() {
       })
       return
     }
-    // Ctrl+C: behavior depends on current view mode
+    // Ctrl+C: copy selection if active, otherwise view-mode behavior
     if (evt.ctrl && evt.name === "c") {
+      if (renderer.getSelection()) {
+        evt.preventDefault()
+        if (!Selection.copy(renderer, toast)) {
+          renderer.clearSelection()
+        }
+        return
+      }
       evt.preventDefault()
       const behavior = ctrlCForMode(view())
       switch (behavior) {
@@ -373,7 +396,7 @@ export function FlywheelShell() {
   // ── Render ──
 
   return (
-    <box flexDirection="column" height="100%">
+    <box flexDirection="column" height="100%" onMouseUp={() => Selection.copy(renderer, toast)}>
       <Toast />
       <Switch>
         <Match when={view() === "launcher"}>

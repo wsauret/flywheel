@@ -14,6 +14,7 @@ import { render } from "@opentui/solid"
 import { useRenderer } from "@opentui/solid"
 import { ErrorBoundary } from "solid-js"
 import type { ParentProps } from "solid-js"
+import { Clipboard } from "./utils/clipboard"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
 import { DialogProvider } from "@tui/shared/context/dialog"
@@ -77,6 +78,14 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
         targetFps: 30,
         gatherStats: false,
         exitOnCtrlC: false,
+        consoleOptions: {
+          keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
+          onCopySelection: (text) => {
+            Clipboard.copy(text).catch((error) => {
+              console.error(`Failed to copy console selection to clipboard: ${error}`)
+            })
+          },
+        },
       },
     )
   })
