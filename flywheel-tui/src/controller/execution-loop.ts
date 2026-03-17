@@ -1,44 +1,75 @@
 /**
- * WorkExecutionLoop — pure state machine for phase execution.
+ * ExecutionLoop — unified execution loop using dependency injection.
  *
- * Reads plan phases, determines which to run, delegates execution
- * to PhaseExecutor, updates state file after each phase, and handles
- * [~] (manual verification) phases.
- *
- * Acquires full-cycle O_EXCL lock before state file writes.
+ * Uses PhaseProvider, StatePersistence, ApprovalHandler, and PromptBuilder
+ * to handle both work (plan-file) and non-work (workflow-definition) paths.
  */
 
 import * as fs from "node:fs";
-import * as path from "node:path";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { IWorkflowUI } from "../tui/adapters/types";
 import type { ParsedStateFile } from "../state/reader";
-import type { PlanPhase } from "./plan-parser";
-import { parseStateFile } from "../state/reader";
-import { writeStateFileAtomic } from "../state/writer";
-import { acquireLock } from "../state/lock";
-import { parsePlan } from "./plan-parser";
-import { buildPhasePrompt, readCachedFile, parseContextFile } from "./templates";
-import { PhaseExecutor, WorkerError } from "./phase-executor";
+import type { PhaseInfo, PhaseProvider } from "./phase-provider";
+import type { StatePersistence } from "./state-persistence";
+import type { ApprovalHandler } from "./approval-handler";
 import type { DispatcherOrchestrator } from "./dispatcher-orchestrator";
+import type { WorkflowStepContext } from "../prompts/index";
+import { readCachedFile } from "./templates";
+import { wrapCompletionInstruction } from "../worker/completion";
+import { PhaseExecutor, WorkerError } from "./phase-executor";
 
 // ---------------------------------------------------------------------------
-// Types
+// Constants
 // ---------------------------------------------------------------------------
 
-export interface ExecutionLoopOptions {
-  planPath: string;
-  statePath: string;
-  contextPath?: string;
+/**
+ * Maximum size of previousResult passed between phases.
+ * Caps at 200K chars (~50K tokens) to stay within model limits.
+ */
+const MAX_PHASE_RESULT_CHARS = 200_000;
+
+const TRUNCATION_NOTICE =
+  "\n\n[... output truncated for next phase — see full output above ...]\n";
+
+// ---------------------------------------------------------------------------
+// Unified types
+// ---------------------------------------------------------------------------
+
+/**
+ * Prompt builder callback for the unified ExecutionLoop.
+ *
+ * Called for each phase to construct the prompt. The loop wraps the
+ * result with `wrapCompletionInstruction` — builders should NOT
+ * add the completion marker themselves.
+ */
+export type PromptBuilder = (phase: PhaseInfo, ctx: WorkflowStepContext) => string;
+
+export interface UnifiedExecutionLoopOptions {
+  phaseProvider: PhaseProvider;
+  promptBuilder: PromptBuilder;
   executor: PhaseExecutor;
   emitter: FlywheelEmitter;
   config: FlywheelConfig;
   ui: IWorkflowUI;
   workflowId: string;
-  baseDir: string;
-  /** Optional dispatcher orchestrator for dynamic prompt crafting */
+  /** Label for workflow:started event (plan path or workflow name) */
+  workflowLabel: string;
+  // Optional capabilities (work path provides these, non-work doesn't)
+  statePersistence?: StatePersistence;
+  approvalHandler?: ApprovalHandler;
+  /** File references from .context.md (work path only) */
+  fileReferences?: string[];
+  /** Key decisions from state (work path only) */
+  keyDecisions?: string[];
+  /** Dispatcher orchestrator for dynamic prompt crafting (work path only) */
   dispatcherOrchestrator?: DispatcherOrchestrator;
+  /** Optional plan content for dispatcher (work path only) */
+  planContent?: string;
+  /** Optional state path for dispatcher (work path only) */
+  statePath?: string;
+  /** Optional context path for dispatcher (work path only) */
+  contextPath?: string;
 }
 
 export interface ExecutionResult {
@@ -50,35 +81,45 @@ export interface ExecutionResult {
 }
 
 // ---------------------------------------------------------------------------
-// WorkExecutionLoop
+// ExecutionLoop (unified)
 // ---------------------------------------------------------------------------
 
-export class WorkExecutionLoop {
-  private readonly planPath: string;
-  private readonly statePath: string;
-  private readonly contextPath?: string;
+export class ExecutionLoop {
+  private readonly phaseProvider: PhaseProvider;
+  private readonly promptBuilder: PromptBuilder;
   private readonly executor: PhaseExecutor;
   private readonly emitter: FlywheelEmitter;
   private readonly config: FlywheelConfig;
-  private readonly ui: IWorkflowUI;
   private readonly workflowId: string;
-  private readonly baseDir: string;
+  private readonly workflowLabel: string;
+  private readonly statePersistence?: StatePersistence;
+  private readonly approvalHandler?: ApprovalHandler;
+  private readonly fileReferences: string[];
+  private readonly keyDecisions: string[];
+  private readonly dispatcherOrchestrator?: DispatcherOrchestrator;
+  private readonly planContent?: string;
+  private readonly statePath?: string;
+  private readonly contextPath?: string;
 
   private _shutdownRequested = false;
   private readonly _shutdownController = new AbortController();
-  private readonly dispatcherOrchestrator?: DispatcherOrchestrator;
 
-  constructor(options: ExecutionLoopOptions) {
-    this.planPath = options.planPath;
-    this.statePath = options.statePath;
-    this.contextPath = options.contextPath;
+  constructor(options: UnifiedExecutionLoopOptions) {
+    this.phaseProvider = options.phaseProvider;
+    this.promptBuilder = options.promptBuilder;
     this.executor = options.executor;
     this.emitter = options.emitter;
     this.config = options.config;
-    this.ui = options.ui;
     this.workflowId = options.workflowId;
-    this.baseDir = options.baseDir;
+    this.workflowLabel = options.workflowLabel;
+    this.statePersistence = options.statePersistence;
+    this.approvalHandler = options.approvalHandler;
+    this.fileReferences = options.fileReferences ?? [];
+    this.keyDecisions = options.keyDecisions ?? [];
     this.dispatcherOrchestrator = options.dispatcherOrchestrator;
+    this.planContent = options.planContent;
+    this.statePath = options.statePath;
+    this.contextPath = options.contextPath;
   }
 
   /**
@@ -92,31 +133,27 @@ export class WorkExecutionLoop {
   /**
    * Run the execution loop.
    *
-   * 1. Read plan -> parse phases
-   * 3. Load/create state file
-   * 4. Find first unchecked phase
-   * 5. For each unchecked phase: execute, update state
-   * 6. Handle [~] phases via approval callback
+   * 1. Get phases from provider
+   * 2. For each phase: check shutdown, skip completed, handle approval, build prompt, execute, chain result
+   * 3. Completion marker applied in the loop (not in prompt builders)
+   * 4. previousResult always tracked and truncated
+   * 5. On failure: emit phaseFailed + workflowFailed + optional workerFailed
+   * 6. On success: emit phaseCompleted, update state if persistence exists
    */
   async run(): Promise<ExecutionResult> {
-    // Read and parse plan
-    const planContent = readPlanFile(this.planPath);
-    const state = this.loadOrCreateState(planContent);
-    const phases = parsePlan(planContent, state);
+    const phases = this.phaseProvider.getPhases();
 
     if (phases.length === 0) {
-      this.emitter.workflowFailed(this.workflowId, "No phases found in plan");
-      return { completed: false, phasesCompleted: 0, phasesTotal: 0, reason: "No phases found in plan" };
+      this.emitter.workflowFailed(this.workflowId, "No phases found");
+      return { completed: false, phasesCompleted: 0, phasesTotal: 0, reason: "No phases found" };
     }
 
     // Emit workflow started
-    this.emitter.workflowStarted(this.workflowId, this.planPath);
+    this.emitter.workflowStarted(this.workflowId, this.workflowLabel);
 
     const phasesTotal = phases.length;
     let phasesCompleted = phases.filter((p) => p.status === "completed").length;
-
-    // Load context file references
-    const fileReferences = this.loadFileReferences();
+    let previousResult: string | undefined;
 
     // Iterate over phases
     for (const phase of phases) {
@@ -141,11 +178,16 @@ export class WorkExecutionLoop {
       }
 
       // Handle [~] (in_progress / awaiting manual verification)
-      if (phase.status === "in_progress") {
-        const approved = await this.requestApproval(phase);
+      if (phase.status === "in_progress" && this.approvalHandler) {
+        const approved = await this.approvalHandler.requestApproval(phase.index, phase.title);
         if (!approved) {
           // Write rejection to state + error log
-          this.updateStatePhase(state, phase.index, "in_progress", `Phase ${phase.index + 1} approval rejected`);
+          this.statePersistence?.updatePhase(
+            this.loadedState!,
+            phase.index,
+            "in_progress",
+            `Phase ${phase.index + 1} approval rejected`,
+          );
           this.emitter.phaseFailed(
             this.workflowId,
             phase.index,
@@ -159,9 +201,17 @@ export class WorkExecutionLoop {
           };
         }
         // Approval granted — mark as completed
-        this.updateStatePhase(state, phase.index, "completed");
+        this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
         this.emitter.phaseCompleted(this.workflowId, phase.index);
+        continue;
+      }
+
+      // Auto-approve in_progress phases when no approval handler (non-work)
+      if (phase.status === "in_progress" && !this.approvalHandler) {
+        this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
+        this.emitter.phaseCompleted(this.workflowId, phase.index);
+        phasesCompleted++;
         continue;
       }
 
@@ -172,29 +222,35 @@ export class WorkExecutionLoop {
         phase.title,
       );
 
-      let prompt: string;
-      if (this.dispatcherOrchestrator && this.config.use_dispatcher) {
+      // Build prompt — try dispatcher first, fall through to prompt builder
+      let prompt: string | null = null;
+      if (this.dispatcherOrchestrator && this.planContent) {
         prompt = await this.dispatcherOrchestrator.getPhasePrompt(
           phase,
-          planContent,
-          fs.existsSync(this.statePath) ? fs.readFileSync(this.statePath, "utf-8") : "",
+          this.planContent,
+          this.statePath && fs.existsSync(this.statePath)
+            ? fs.readFileSync(this.statePath, "utf-8")
+            : "",
           this.contextPath ? readCachedFile(this.contextPath) ?? undefined : undefined,
-          undefined, // lastWorkerResult — not tracked yet
-          state.keyDecisions,
-          fileReferences,
-          this.config.project_cwd,
+          previousResult,
         );
-      } else {
-        prompt = buildPhasePrompt({
-          phase,
-          keyDecisions: state.keyDecisions,
-          fileReferences,
+      }
+      if (prompt === null) {
+        const ctx: WorkflowStepContext = {
+          planContent: phase.description,
+          keyDecisions: this.keyDecisions,
+          fileReferences: this.fileReferences,
+          previousResult,
           projectCwd: this.config.project_cwd,
-        });
+        };
+        prompt = this.promptBuilder(phase, ctx);
       }
 
+      // Apply completion instruction in the loop (not in individual builders)
+      prompt = wrapCompletionInstruction(prompt);
+
       try {
-        await this.executor.execute({
+        const result = await this.executor.execute({
           phaseIndex: phase.index,
           prompt,
           cwd: this.config.project_cwd,
@@ -203,8 +259,11 @@ export class WorkExecutionLoop {
           signal: this._shutdownController.signal,
         });
 
-        // Success: update state to completed
-        this.updateStatePhase(state, phase.index, "completed");
+        // Chain result for next phase (always on, truncated)
+        previousResult = truncateForNextPhase(result.output);
+
+        // Success: update state if persistence exists
+        this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
         this.emitter.phaseCompleted(this.workflowId, phase.index);
       } catch (error) {
@@ -216,9 +275,12 @@ export class WorkExecutionLoop {
               ? error.message
               : String(error);
 
-        this.updateStatePhase(state, phase.index, "pending", reason);
+        // Update state if persistence exists
+        this.statePersistence?.updatePhase(this.loadedState!, phase.index, "pending", reason);
 
         this.emitter.phaseFailed(this.workflowId, phase.index, reason);
+        // Emit workflowFailed on all paths (not just non-work)
+        this.emitter.workflowFailed(this.workflowId, reason);
 
         if (error instanceof WorkerError && error.result.failure) {
           this.emitter.workerFailed(
@@ -242,133 +304,36 @@ export class WorkExecutionLoop {
   }
 
   // ---------------------------------------------------------------------------
-  // State management
+  // Internal state tracking
   // ---------------------------------------------------------------------------
 
-  private loadOrCreateState(planContent: string): ParsedStateFile {
-    if (fs.existsSync(this.statePath)) {
-      const content = fs.readFileSync(this.statePath, "utf-8");
-      return parseStateFile(content);
-    }
+  /**
+   * Loaded state reference for state persistence updates.
+   * Set externally by the caller after loading state via persistence.load().
+   */
+  private _loadedState?: ParsedStateFile;
 
-    // Create initial state from plan
-    const titles = parsePlan(planContent).map((p) => p.title);
-    const state: ParsedStateFile = {
-      frontmatter: {
-        plan: this.planPath,
-        status: "in_progress",
-        schema_version: 3,
-      },
-      title: path.basename(this.planPath, ".md"),
-      phases: titles.map((name) => ({
-        name,
-        status: "pending" as const,
-        annotations: {},
-      })),
-      keyDecisions: [],
-      errorLog: [],
-    };
-
-    // Write initial state
-    this.writeState(state);
-    return state;
+  /** Set the loaded state for persistence updates. */
+  setLoadedState(state: ParsedStateFile): void {
+    this._loadedState = state;
   }
 
-  private updateStatePhase(
-    state: ParsedStateFile,
-    phaseIndex: number,
-    status: "completed" | "pending" | "in_progress",
-    errorMessage?: string,
-  ): void {
-    if (phaseIndex < state.phases.length) {
-      state.phases[phaseIndex].status = status;
-    }
-
-    if (errorMessage) {
-      state.errorLog.push({
-        error: errorMessage,
-        attempt: String(state.errorLog.length + 1),
-        approach: "controller",
-        outcome: status === "completed" ? "Resolved" : "Failed",
-      });
-    }
-
-    this.writeState(state);
-  }
-
-  private writeState(state: ParsedStateFile): void {
-    const planName = path.basename(this.planPath, ".md");
-    const lock = acquireLock(planName, this.baseDir);
-    try {
-      writeStateFileAtomic(this.statePath, state);
-    } finally {
-      lock.release();
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Context / file references
-  // ---------------------------------------------------------------------------
-
-  private loadFileReferences(): string[] {
-    if (!this.contextPath) return [];
-    const content = readCachedFile(this.contextPath);
-    if (!content) return [];
-    return parseContextFile(content);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Approval handling
-  // ---------------------------------------------------------------------------
-
-  private async requestApproval(phase: PlanPhase): Promise<boolean> {
-    if (this.config.skip_approval_gates) {
-      return true;
-    }
-
-    // Use the UI adapter's approval callback
-    return new Promise<boolean>((resolve) => {
-      const existingCallback = this.ui.onApprovalDecision;
-
-      if (!existingCallback) {
-        // No approval callback — auto-approve
-        this.emitter.approvalRequested(
-          this.workflowId,
-          phase.index,
-          0,
-          `Phase ${phase.index + 1}: ${phase.title}`,
-        );
-        this.emitter.approvalReceived(this.workflowId, true, true);
-        resolve(true);
-        return;
-      }
-
-      // Install resolver callback that will be called by the UI
-      this.ui.onApprovalDecision = (approved: boolean) => {
-        this.emitter.approvalReceived(this.workflowId, approved, false);
-        // Restore original callback
-        this.ui.onApprovalDecision = existingCallback;
-        resolve(approved);
-      };
-
-      // Emit approval requested AFTER installing the callback
-      this.emitter.approvalRequested(
-        this.workflowId,
-        phase.index,
-        0,
-        `Phase ${phase.index + 1}: ${phase.title}`,
-      );
-    });
+  private get loadedState(): ParsedStateFile | undefined {
+    return this._loadedState;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers (unified)
 // ---------------------------------------------------------------------------
 
-function readPlanFile(planPath: string): string {
-  if (!fs.existsSync(planPath)) {
-    throw new Error(`Plan file not found: ${planPath}`);
-  }
-  return fs.readFileSync(planPath, "utf-8");
+/**
+ * Truncate phase output so the next phase's prompt stays within model limits.
+ * Keeps the tail (most recent content) which is typically the summary/conclusion.
+ */
+function truncateForNextPhase(output: string): string {
+  if (output.length <= MAX_PHASE_RESULT_CHARS) return output;
+  return TRUNCATION_NOTICE + output.slice(output.length - MAX_PHASE_RESULT_CHARS);
 }
+
+

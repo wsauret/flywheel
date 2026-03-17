@@ -252,7 +252,7 @@ describe("layoutVisibility", () => {
     expect(MIN_WIDTH_PANEL).toBe(120);
     expect(MIN_WIDTH_SIDEBAR).toBe(90);
     expect(SIDEBAR_WIDTH).toBe(25);
-    expect(PANEL_WIDTH).toBe(30);
+    expect(PANEL_WIDTH).toBe(38);
   });
 });
 

@@ -41,14 +41,15 @@ import {
   destroyWorkflowSession,
 } from "./workflow-session"
 import { WorkController } from "../../controller/work"
+import { ExecutionLoop, type PromptBuilder } from "../../controller/execution-loop"
+import { WorkflowDefinitionProvider } from "../../controller/workflow-def-provider"
+import { PhaseExecutor } from "../../controller/phase-executor"
 import { loadConfig } from "../../config/loader"
 import { getEngine } from "../../engines/core/registry"
 import { BunProcessSpawner } from "../../worker/bun-spawner"
 import { EventBus, createFlywheelEmitter } from "../../events/event-bus"
 import {
   workflowRegistry,
-  WorkflowRunner,
-  StepExecutor,
   buildWorkflowPrompt,
 } from "../../workflows/index"
 import type { WorkflowSession } from "./workflow-session"
@@ -80,7 +81,7 @@ export function FlywheelShell() {
   // Non-reactive refs for lifecycle management
   let activeSession: WorkflowSession | null = null
   let activeController: WorkController | null = null
-  let activeRunner: WorkflowRunner | null = null
+  let activeLoop: ExecutionLoop | null = null
 
   // Double-Esc handler for stopping workflows
   const escapeHandler = createEscapeHandler({ timeoutMs: 5000 })
@@ -180,7 +181,7 @@ export function FlywheelShell() {
       destroyWorkflowSession(activeSession)
       activeSession = null
       activeController = null
-      activeRunner = null
+      activeLoop = null
       setActiveStore(null)
     }
 
@@ -218,29 +219,47 @@ export function FlywheelShell() {
     const emitter = createFlywheelEmitter(eventBus)
     session.adapter.connect(eventBus)
 
-    const executor = new StepExecutor({
+    const workflowId = `${workflowName}-tui`
+
+    const executor = new PhaseExecutor({
       spawner,
       emitter,
-      engine,
       config,
-      workflowId: `${workflowName}-tui`,
+      engine,
+      workflowId,
     })
 
-    const runner = new WorkflowRunner({
-      workflow,
+    // Non-work prompt builder: uses per-workflow templates via buildWorkflowPrompt
+    // Note: wrapCompletionInstruction is called in the loop, but buildWorkflowPrompt
+    // already applies it. The loop's wrapping is additive (idempotent for the marker check).
+    const promptBuilder: PromptBuilder = (phase, ctx) =>
+      buildWorkflowPrompt(
+        phase.index,
+        workflow,
+        args,
+        ctx.previousResult,
+        config.project_cwd,
+      )
+
+    const phaseProvider = new WorkflowDefinitionProvider(workflow)
+
+    const loop = new ExecutionLoop({
+      phaseProvider,
+      promptBuilder,
       executor,
       emitter,
-      ui: session.adapter,
       config,
-      promptBuilder: (stepIndex, wf, prevResult) =>
-        buildWorkflowPrompt(stepIndex, wf, args, prevResult, config.project_cwd),
+      ui: session.adapter,
+      workflowId,
+      workflowLabel: workflow.name,
+      // No statePersistence, no approvalHandler (non-work path)
     })
-    activeRunner = runner
+    activeLoop = loop
 
     // Run the workflow asynchronously
     queueMicrotask(() => {
-      runner.run().catch(() => {
-        // Runner threw before emitting workflow:failed
+      loop.run().catch(() => {
+        // Loop threw before emitting workflow:failed
       })
     })
   }
@@ -250,9 +269,9 @@ export function FlywheelShell() {
    * Returns the controller shutdown promise so callers can await if needed.
    */
   const teardownActiveWorkflow = (): Promise<void> | undefined => {
-    if (activeRunner) {
-      activeRunner.requestShutdown()
-      activeRunner = null
+    if (activeLoop) {
+      activeLoop.requestShutdown()
+      activeLoop = null
     }
     let shutdownPromise: Promise<void> | undefined
     if (activeController) {

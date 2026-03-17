@@ -21,12 +21,12 @@ export function StatusFooter(props: StatusFooterProps) {
 
   const shortcutText = () => {
     if (props.isPromptFocused) {
-      return "[Esc] Exit Prompt  [Enter] Continue/Send  [Tab] Toggle Panel  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme"
+      return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme"
     }
     if (props.approvalPending) {
-      return "[Right] Focus Prompt  [\u2191\u2193] Navigate  [Tab] Toggle Panel  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop"
+      return "[Right] Focus Prompt  [\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop"
     }
-    return "[\u2191\u2193] Navigate  [Tab] Toggle Panel  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop"
+    return "[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop"
   }
 
   return (

@@ -486,7 +486,7 @@ describe("DispatcherOrchestrator", () => {
     expect(prompt).toBe("Dynamic prompt from dispatcher");
   });
 
-  it("when use_dispatcher: false, uses static template directly", async () => {
+  it("when use_dispatcher: false, returns null so caller uses its own builder", async () => {
     let dispatcherCalled = false;
     const mockTransport: DispatcherTransport = {
       async invoke() {
@@ -515,12 +515,11 @@ describe("DispatcherOrchestrator", () => {
     );
 
     expect(dispatcherCalled).toBe(false);
-    // Should contain static template content
-    expect(prompt).toContain("Phase 1: Setup project structure");
-    expect(prompt).toContain("<promise>COMPLETE</promise>");
+    // Returns null — the execution loop will use its own prompt builder
+    expect(prompt).toBeNull();
   });
 
-  it("on dispatcher failure, falls back to static template and emits fallback event", async () => {
+  it("on dispatcher failure, returns null and emits fallback event", async () => {
     const mockTransport: DispatcherTransport = {
       async invoke() {
         throw new Error("Dispatcher exploded");
@@ -546,9 +545,8 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
     );
 
-    // Should fall back to static template
-    expect(prompt).toContain("Phase 1: Setup project structure");
-    expect(prompt).toContain("<promise>COMPLETE</promise>");
+    // Returns null — the execution loop will use its own prompt builder
+    expect(prompt).toBeNull();
 
     // Should emit dispatcher:failed event
     const failedEvents = events.filter((e) => e.type === "dispatcher:failed");
@@ -579,7 +577,7 @@ describe("DispatcherOrchestrator", () => {
     const promptOn = await orchOn.getPhasePrompt(phase, TWO_PHASE_PLAN, STATE_CONTENT_ALL_PENDING);
     expect(promptOn).toBe("Dispatcher prompt");
 
-    // With dispatcher OFF
+    // With dispatcher OFF — returns null
     const orchOff = new DispatcherOrchestrator({
       transport: mockTransport,
       emitter: createFlywheelEmitter(bus),
@@ -587,8 +585,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
     const promptOff = await orchOff.getPhasePrompt(phase, TWO_PHASE_PLAN, STATE_CONTENT_ALL_PENDING);
-    expect(promptOff).not.toBe("Dispatcher prompt");
-    expect(promptOff).toContain("<promise>COMPLETE</promise>");
+    expect(promptOff).toBeNull();
   });
 
   it("emits dispatcher:invoked before calling and dispatcher:completed on success", async () => {

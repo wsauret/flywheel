@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import { OpenTUIAdapter } from "../src/tui/adapters/opentui";
-import { ConsoleAdapter } from "../src/tui/adapters/console";
+// ConsoleAdapter deleted — headless mode removed
 import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
 import { parseArgs } from "../src/cli/args";
 import { timerService } from "../src/tui/shared/services/timer";
@@ -338,10 +338,10 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 // ── CLI Arg Parsing → Adapter Selection ──
 
 describe("CLI arg parsing → adapter selection", () => {
-  it("'work <path>' results in work command", async () => {
+  it("all args result in TUI mode", async () => {
     const result = await parseArgs(["work", "plan.md"]);
     expect(result).not.toBeNull();
-    expect(result!.command).toBe("work");
+    expect(result!.command).toBe("tui");
   });
 
   it("no args results in TUI mode", async () => {
@@ -350,10 +350,7 @@ describe("CLI arg parsing → adapter selection", () => {
     expect(result!.command).toBe("tui");
   });
 
-  it("ConsoleAdapter has mock adapter type", () => {
-    const adapter = new ConsoleAdapter();
-    expect(adapter.adapterType).toBe("mock");
-  });
+  // ConsoleAdapter deleted — headless mode removed.
 
   it("OpenTUIAdapter has opentui adapter type", () => {
     const store = createTestStore("test");
@@ -361,14 +358,7 @@ describe("CLI arg parsing → adapter selection", () => {
     expect(adapter.adapterType).toBe("opentui");
   });
 
-  it("'work' subcommand would select ConsoleAdapter (adapterType check)", async () => {
-    const result = await parseArgs(["work", "plan.md"]);
-    expect(result!.command).toBe("work");
-    // In work subcommand mode, CLI creates ConsoleAdapter
-    const adapter = new ConsoleAdapter();
-    expect(adapter.adapterType).toBe("mock");
-    expect(adapter.isConnected()).toBe(false);
-  });
+  // 'work' subcommand removed — all workflows go through TUI.
 
   it("TUI mode would select OpenTUIAdapter (adapterType check)", async () => {
     const result = await parseArgs([]);

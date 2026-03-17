@@ -2,16 +2,14 @@
  * DispatcherOrchestrator — bridges the dispatcher transport with the execution loop.
  *
  * When `use_dispatcher` is true: assembles input, calls dispatcher, returns crafted prompt.
- * When `use_dispatcher` is false: returns static template prompt directly.
- * On any dispatcher failure: falls back to static template (never blocks execution).
+ * On any dispatcher failure: returns null so the caller falls through to its own prompt builder.
  */
 
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { DispatcherTransport } from "../dispatcher/transport";
-import type { PlanPhase } from "./plan-parser";
+import type { PhaseInfo } from "./phase-provider";
 import { assembleDispatcherInput } from "../dispatcher/assemble";
-import { buildPhasePrompt } from "./templates";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,22 +40,21 @@ export class DispatcherOrchestrator {
   }
 
   /**
-   * Get the prompt for a phase, using dispatcher if enabled.
-   * Falls back to static template on any error.
+   * Get the prompt for a phase via the dispatcher transport.
+   *
+   * Returns `null` if the dispatcher is disabled or fails, allowing
+   * the caller to fall through to its own prompt builder.
    */
   async getPhasePrompt(
-    phase: PlanPhase,
+    phase: PhaseInfo,
     planContent: string,
     stateContent: string,
     contextContent?: string,
     lastWorkerResult?: string,
-    keyDecisions?: string[],
-    fileReferences?: string[],
-    projectCwd?: string,
-  ): Promise<string> {
-    // If dispatcher is disabled, use static template directly
+  ): Promise<string | null> {
+    // If dispatcher is disabled, let the caller handle prompt building
     if (!this.config.use_dispatcher) {
-      return this.buildStaticPrompt(phase, keyDecisions, fileReferences, projectCwd);
+      return null;
     }
 
     // Emit dispatcher:invoked
@@ -80,29 +77,11 @@ export class DispatcherOrchestrator {
 
       return decision.prompt;
     } catch (error) {
-      // Dispatcher failed — emit event and fall back to static template
+      // Dispatcher failed — emit event and return null so caller uses its prompt builder
       const reason = error instanceof Error ? error.message : String(error);
       this.emitter.dispatcherFailed(this.workflowId, reason);
 
-      return this.buildStaticPrompt(phase, keyDecisions, fileReferences, projectCwd);
+      return null;
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-
-  private buildStaticPrompt(
-    phase: PlanPhase,
-    keyDecisions?: string[],
-    fileReferences?: string[],
-    projectCwd?: string,
-  ): string {
-    return buildPhasePrompt({
-      phase,
-      keyDecisions: keyDecisions ?? [],
-      fileReferences: fileReferences ?? [],
-      projectCwd,
-    });
   }
 }

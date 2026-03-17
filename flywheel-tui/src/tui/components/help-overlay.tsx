@@ -43,7 +43,6 @@ export function HelpOverlay(props: HelpOverlayProps) {
       <box flexDirection="column" paddingBottom={1}>
         <text fg={themeCtx.theme.primary} attributes={1}>Working</text>
         <text fg={themeCtx.theme.text}>  Esc         Stop workflow (press twice)</text>
-        <text fg={themeCtx.theme.text}>  Tab         Toggle panel view</text>
         <text fg={themeCtx.theme.text}>  Ctrl+S      Skip current phase</text>
         <text fg={themeCtx.theme.text}>  Ctrl+D      Toggle raw output</text>
         <text fg={themeCtx.theme.text}>  Ctrl+T      Toggle theme</text>

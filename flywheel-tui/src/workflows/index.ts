@@ -1,8 +1,8 @@
 /**
  * Workflow definitions for all non-work workflows.
  *
- * "work" still uses the dedicated WorkController with plan parsing.
- * These workflows use the generic WorkflowRunner.
+ * "work" uses WorkController with plan parsing + unified ExecutionLoop.
+ * Non-work workflows use ExecutionLoop with WorkflowDefinitionProvider.
  */
 
 export { planWorkflow } from "./plan";
@@ -10,12 +10,6 @@ export { reviewWorkflow } from "./review";
 export { shipWorkflow } from "./ship";
 export { debugWorkflow } from "./debug";
 export { researchWorkflow } from "./research";
-
-export { StepExecutor } from "./step-executor";
-export type { StepExecutorOptions } from "./step-executor";
-
-export { WorkflowRunner } from "./workflow-runner";
-export type { WorkflowRunnerOptions, WorkflowRunResult } from "./workflow-runner";
 
 export { buildWorkflowPrompt } from "./prompt-builder";
 

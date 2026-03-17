@@ -8,6 +8,7 @@
 
 import type { WorkflowDefinition } from "../schemas/workflow";
 import type { WorkflowStepContext } from "../prompts/index";
+import { wrapCompletionInstruction } from "../worker/completion";
 import {
   buildPlanResearchPrompt,
   buildPlanDraftPrompt,
@@ -103,16 +104,16 @@ export function buildWorkflowPrompt(
   };
 
   if (prompts && stepIndex < prompts.length) {
-    return prompts[stepIndex](ctx);
+    return wrapCompletionInstruction(prompts[stepIndex](ctx));
   }
 
   // Fallback: generic prompt built from step description
   const step = workflow.steps[stepIndex];
   if (!step) {
-    return `Execute step ${stepIndex + 1} of ${workflow.name} workflow.`;
+    return wrapCompletionInstruction(`Execute step ${stepIndex + 1} of ${workflow.name} workflow.`);
   }
 
-  return [
+  return wrapCompletionInstruction([
     `# ${workflow.name} — Step ${stepIndex + 1}`,
     "",
     `## Objective`,
@@ -129,5 +130,5 @@ export function buildWorkflowPrompt(
     projectCwd ? `## Working Directory\n\n\`${projectCwd}\`` : "",
   ]
     .filter(Boolean)
-    .join("\n");
+    .join("\n"));
 }

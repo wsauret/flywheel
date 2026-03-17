@@ -2,18 +2,19 @@
 /**
  * WorkflowView Component
  *
- * Generalized split-view layout for any workflow:
- * - Phase/step progress panel (left, collapsible via Tab)
- * - Output window with prompt line (right, shown when terminal is wide enough)
+ * Layout: sidebar (left) | output window (center) | workflow panel (right)
+ *
+ * The workflow panel on the right contains both summary stats and the
+ * detailed phase timeline (merged from the former PhaseProgress component).
+ * The output window gets the full center width.
  *
  * Subscribes to the UI store and wires keyboard/events.
  * Used by WorkShell (work workflow) and future workflow views (plan, review, debug).
  */
 
-import { createSignal, createEffect, createMemo, onCleanup, Show } from "solid-js"
+import { createSignal, createEffect, createMemo, onCleanup } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { SharedLayout } from "../../routes/work/components/shared-layout"
-import { PhaseProgress } from "../../routes/work/components/phase-progress"
 import { OutputWindow, type CurrentPhaseInfo } from "../../routes/work/components/output-window"
 import { useWorkKeyboard } from "../../routes/work/hooks/use-work-keyboard"
 import { useTimer } from "@tui/shared/services"
@@ -23,8 +24,6 @@ import { WorkflowPanel } from "../../components/workflow-panel"
 import { SessionHeader } from "../../components/session-header"
 import type { UIActions } from "../../routes/work/context/ui-state/types"
 import type { WorkState } from "../../routes/work/state/types"
-
-const MIN_WIDTH_FOR_SPLIT_VIEW = 100
 
 export interface WorkflowViewProps {
   store: UIActions
@@ -44,7 +43,6 @@ export function WorkflowView(props: WorkflowViewProps) {
   const [state, setState] = createSignal<WorkState>(props.store.getState())
   const [showStopModal, setShowStopModal] = createSignal(false)
   const [isPromptFocused, setIsPromptFocused] = createSignal(false)
-  const [timelineCollapsed, setTimelineCollapsed] = createSignal(false)
 
   // Subscribe to store updates
   createEffect(() => {
@@ -59,23 +57,21 @@ export function WorkflowView(props: WorkflowViewProps) {
     }
   })
 
-  // Keyboard + event wiring
+  // Keyboard + event wiring (timelineCollapsed no longer used but hook still accepts it)
+  const [_unused, _setUnused] = createSignal(false)
   useWorkKeyboard({
     actions: props.store,
     showStopModal,
     setShowStopModal,
     state,
-    timelineCollapsed,
-    setTimelineCollapsed,
+    timelineCollapsed: _unused,
+    setTimelineCollapsed: _setUnused,
     isPromptFocused,
     setIsPromptFocused,
     onSkip: props.onSkip,
     onToggleRawMode: props.onToggleRawMode,
   })
 
-  const showSplit = () => (dimensions()?.width ?? 80) >= MIN_WIDTH_FOR_SPLIT_VIEW
-  const timelineWidth = () => (showSplit() ? "35%" : "100%")
-  const outputWidth = () => (timelineCollapsed() ? "100%" : "65%")
   const runtime = () => timer.workflowRuntime()
 
   // Derive current phase for the rich output header (memoized to avoid linear scan on every access)
@@ -98,15 +94,12 @@ export function WorkflowView(props: WorkflowViewProps) {
 
   const handlePromptSubmit = (prompt: string) => {
     if (state().approvalState.pending) {
-      // Enter with empty prompt = continue approval
-      // Enter with text = steer (submit prompt, then continue)
       if (prompt) {
         props.onPromptSubmit?.(prompt)
       }
       props.onApprovalDecision?.(true)
       props.store.clearApproval()
     } else {
-      // Not in approval state — submit as steering prompt
       if (prompt) {
         props.onPromptSubmit?.(prompt)
       }
@@ -118,7 +111,7 @@ export function WorkflowView(props: WorkflowViewProps) {
       state={state()}
       runtime={runtime()}
       showStopModal={showStopModal()}
-      showApprovalGate={false}
+      showApprovalGate={state().approvalState.pending}
       showErrorModal={!!state().error && state().workflowStatus === "failed"}
       errorMessage={state().error}
       approvalPending={state().approvalState.pending}
@@ -146,6 +139,7 @@ export function WorkflowView(props: WorkflowViewProps) {
         <WorkflowPanel
           state={state()}
           stepLabel={props.stepLabel}
+          selectedPhaseIndex={state().selectedPhaseIndex}
         />
       }
       onStopConfirm={() => {
@@ -162,35 +156,24 @@ export function WorkflowView(props: WorkflowViewProps) {
         props.store.clearApproval()
       }}
       onApprovalSkip={() => {
-        props.onApprovalDecision?.(false, true)
+        props.onApprovalDecision?.(true, true)
         props.store.clearApproval()
       }}
       onErrorClose={() => {}}
     >
-      <Show when={!timelineCollapsed()}>
-        <box flexDirection="column" width={timelineWidth()}>
-          <PhaseProgress
-            phases={state().phases}
-            selectedIndex={state().selectedPhaseIndex}
-            stepLabel={props.stepLabel}
-          />
-        </box>
-      </Show>
-
-      <Show when={showSplit() || timelineCollapsed()}>
-        <box flexDirection="column" width={outputWidth()}>
-          <OutputWindow
-            outputLines={state().outputLines}
-            workflowStatus={state().workflowStatus}
-            approvalPending={state().approvalState.pending}
-            isPromptFocused={isPromptFocused()}
-            onPromptSubmit={handlePromptSubmit}
-            onPromptFocusExit={() => setIsPromptFocused(false)}
-            availableWidth={dimensions()?.width}
-            currentPhase={currentPhase()}
-          />
-        </box>
-      </Show>
+      {/* Output window takes full center width */}
+      <box flexDirection="column" width="100%">
+        <OutputWindow
+          outputLines={state().outputLines}
+          workflowStatus={state().workflowStatus}
+          approvalPending={state().approvalState.pending}
+          isPromptFocused={isPromptFocused()}
+          onPromptSubmit={handlePromptSubmit}
+          onPromptFocusExit={() => setIsPromptFocused(false)}
+          availableWidth={dimensions()?.width}
+          currentPhase={currentPhase()}
+        />
+      </box>
     </SharedLayout>
   )
 }

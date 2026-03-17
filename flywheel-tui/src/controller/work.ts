@@ -1,10 +1,12 @@
 /**
- * Work — composes execution loop + executor + event emitter.
+ * Work — composes unified ExecutionLoop with work-specific providers.
  *
  * Provides a `run(planPath)` entry point and `shutdown()` method.
- * CLI `index.ts` calls only `shutdown()`, not individual subsystems (SRP).
+ * Uses PlanFileProvider, FileStatePersistence, UIApprovalHandler,
+ * and buildWorkPhasePrompt for the work execution path.
  */
 
+import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { EventBus, createFlywheelEmitter } from "../events/event-bus";
@@ -14,7 +16,12 @@ import type { IWorkflowUI } from "../tui/adapters/types";
 import type { Engine } from "../engines/core/types";
 import { killAllActiveProcesses } from "../worker/process-lifecycle";
 import { PhaseExecutor } from "./phase-executor";
-import { WorkExecutionLoop, type ExecutionResult } from "./execution-loop";
+import { ExecutionLoop, type ExecutionResult, type PromptBuilder } from "./execution-loop";
+import { PlanFileProvider } from "./plan-file-provider";
+import { FileStatePersistence } from "./file-state-persistence";
+import { UIApprovalHandler } from "./ui-approval-handler";
+import { buildWorkPhasePrompt } from "../prompts/work/phase-prompt";
+import { readCachedFile, parseContextFile } from "./templates";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,7 +48,7 @@ export class WorkController {
   private readonly baseDir: string;
   private readonly eventBus: EventBus;
 
-  private loop: WorkExecutionLoop | null = null;
+  private loop: ExecutionLoop | null = null;
 
   constructor(options: WorkOptions) {
     this.config = options.config;
@@ -78,6 +85,25 @@ export class WorkController {
     const statePath = path.join(planDir, `${planBasename}.state.md`);
     const contextPath = path.join(planDir, `${planBasename}.context.md`);
 
+    // Read plan content
+    if (!fs.existsSync(absPlanPath)) {
+      throw new Error(`Plan file not found: ${absPlanPath}`);
+    }
+    const planContent = fs.readFileSync(absPlanPath, "utf-8");
+
+    // Create state persistence and load state
+    const persistence = new FileStatePersistence(absPlanPath, statePath, this.baseDir);
+    const state = persistence.load(planContent);
+
+    // Create phase provider with state for cross-referencing
+    const phaseProvider = new PlanFileProvider(planContent, state);
+
+    // Create approval handler
+    const approvalHandler = new UIApprovalHandler(emitter, this.config, this.ui, workflowId);
+
+    // Load file references from context file
+    const fileReferences = this.loadFileReferences(contextPath);
+
     // Create executor
     const executor = new PhaseExecutor({
       spawner: this.spawner,
@@ -87,18 +113,32 @@ export class WorkController {
       workflowId,
     });
 
-    // Create execution loop
-    this.loop = new WorkExecutionLoop({
-      planPath: absPlanPath,
-      statePath,
-      contextPath,
+    // Work prompt builder uses the rich buildWorkPhasePrompt template
+    const promptBuilder: PromptBuilder = (phase, ctx) =>
+      buildWorkPhasePrompt({
+        ...ctx,
+        planContent: phase.description,
+      });
+
+    // Create unified execution loop with work-specific providers
+    this.loop = new ExecutionLoop({
+      phaseProvider,
+      promptBuilder,
       executor,
       emitter,
       config: this.config,
       ui: this.ui,
       workflowId,
-      baseDir: this.baseDir,
+      workflowLabel: absPlanPath,
+      statePersistence: persistence,
+      approvalHandler,
+      fileReferences,
+      keyDecisions: state.keyDecisions,
+      planContent,
+      statePath,
+      contextPath,
     });
+    this.loop.setLoadedState(state);
 
     return this.loop.run();
   }
@@ -118,5 +158,15 @@ export class WorkController {
     // Stop and disconnect UI
     this.ui.stop();
     this.ui.disconnect();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  private loadFileReferences(contextPath: string): string[] {
+    const content = readCachedFile(contextPath);
+    if (!content) return [];
+    return parseContextFile(content);
   }
 }

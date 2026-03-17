@@ -131,8 +131,8 @@ export const MIN_WIDTH_SIDEBAR = 90
 /** Default sidebar width in columns. */
 export const SIDEBAR_WIDTH = 25
 
-/** Default panel width in columns. */
-export const PANEL_WIDTH = 30
+/** Default panel width in columns (wider to fit phase names + durations). */
+export const PANEL_WIDTH = 38
 
 export interface LayoutVisibility {
   showSidebar: boolean
