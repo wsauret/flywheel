@@ -5,6 +5,13 @@
  * Uses assertNever for exhaustive switch — adding a new event type
  * without a case here causes a compile-time error.
  *
+ * Structured output pipeline:
+ *   worker stdout chunks → NDJSONParser (line buffering + JSON parsing)
+ *     → StructuredEventParser (engine routing + format normalization)
+ *       → SubagentTraceParser (agent lifecycle tracking)
+ *       → StructuredOutputBuilder (block accumulation)
+ *         → setOutputBlocks (batched flush)
+ *
  * Timer service integration: converts phase indexes to string IDs
  * ("phase-0", "phase-1", …) for the agent-based timer API.
  */
@@ -16,6 +23,13 @@ import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
 import { timerService } from "../shared/services/timer";
 import { extractDisplayText } from "./output-formatter";
+import { NDJSONParser } from "../../worker/ndjson-parser";
+import { SubagentTraceParser } from "./subagent-tracing/parser";
+import { StructuredOutputBuilder } from "./structured-output-builder";
+import { StructuredEventParser } from "./structured-event-parser";
+
+/** Flush interval for batched block updates (ms). */
+const FLUSH_INTERVAL_MS = 16;
 
 export interface OpenTUIAdapterOptions {
   actions: UIActions;
@@ -25,15 +39,49 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   readonly adapterType: AdapterType = "opentui";
   private actions: UIActions;
 
-  /** Buffer for incomplete NDJSON lines across stdout chunks */
-  private stdoutLineBuf = "";
-
   /** When true, pass raw output without NDJSON parsing */
   private _rawMode = false;
+
+  /** Current engine ID for routing events. Updated per worker:output event. */
+  private currentEngineId: string | undefined;
+
+  // ── Structured pipeline components ──
+
+  private ndjsonParser: NDJSONParser;
+  private traceParser: SubagentTraceParser;
+  private builder: StructuredOutputBuilder;
+  private eventParser: StructuredEventParser;
+
+  /** Interval handle for batched flush. */
+  private flushInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: OpenTUIAdapterOptions) {
     super();
     this.actions = options.actions;
+
+    // Initialize structured pipeline
+    this.traceParser = new SubagentTraceParser();
+    this.builder = new StructuredOutputBuilder();
+    this.eventParser = new StructuredEventParser({
+      traceParser: this.traceParser,
+      builder: this.builder,
+    });
+    this.ndjsonParser = new NDJSONParser();
+
+    // Wire NDJSONParser events to StructuredEventParser
+    this.ndjsonParser.onEvent = (event) => {
+      this.eventParser.dispatch(event, this.currentEngineId);
+    };
+
+    // Raw text lines (non-JSON) → push as text blocks
+    this.ndjsonParser.onRawText = (text) => {
+      this.builder.pushText(text + "\n", Date.now());
+    };
+
+    // Start batched flush interval
+    this.flushInterval = setInterval(() => {
+      this.flushBlocks();
+    }, FLUSH_INTERVAL_MS);
   }
 
   /** Toggle raw output mode. Returns the new state. */
@@ -47,6 +95,15 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     return this._rawMode;
   }
 
+  /** Clean up interval on disconnect. */
+  override disconnect(): void {
+    super.disconnect();
+    if (this.flushInterval !== null) {
+      clearInterval(this.flushInterval);
+      this.flushInterval = null;
+    }
+  }
+
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "workflow:started":
@@ -57,16 +114,20 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "workflow:completed":
         timerService.stop();
+        // Final flush before completing
+        this.flushBlocks();
         this.actions.stopWorkflow("completed");
         break;
 
       case "workflow:failed":
         timerService.stop();
+        this.flushBlocks();
         this.actions.setError(event.reason);
         break;
 
       case "workflow:interrupted":
         timerService.stop();
+        this.flushBlocks();
         this.actions.stopWorkflow("interrupted");
         break;
 
@@ -78,31 +139,39 @@ export class OpenTUIAdapter extends BaseUIAdapter {
             name: event.phaseName,
           });
         }
-        this.stdoutLineBuf = "";
+        // Reset structured pipeline state for new phase
+        this.traceParser.reset();
+        this.builder.reset();
+        this.eventParser.reset();
+        this.ndjsonParser.flush();
+        // Push cleared blocks to store
+        this.actions.setOutputBlocks(this.builder.getBlocks());
+
         timerService.registerAgent(`phase-${event.phaseIndex}`);
         this.actions.startPhase(event.phaseIndex, event.phaseName);
         break;
 
       case "phase:completed":
+        // Final flush for this phase
+        this.ndjsonParser.flush();
+        this.flushBlocks();
         timerService.completeAgent(`phase-${event.phaseIndex}`);
         this.actions.completePhase(event.phaseIndex);
         break;
 
       case "phase:failed":
+        this.ndjsonParser.flush();
+        this.flushBlocks();
         timerService.completeAgent(`phase-${event.phaseIndex}`);
         this.actions.failPhase(event.phaseIndex, event.reason);
         break;
 
       case "worker:output":
-        this.handleWorkerOutput(event.stream, event.data, event.timestamp);
+        this.handleWorkerOutput(event.stream, event.data, event.timestamp, event.engineId);
         break;
 
       case "worker:retrying":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `↻ Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`↻ Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`, event.timestamp);
         break;
 
       case "approval:requested":
@@ -115,102 +184,54 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       // Worker lifecycle events
       case "worker:spawned":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `◉ Worker spawned for step ${event.stepIndex}\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`◉ Worker spawned for step ${event.stepIndex}\n`, event.timestamp);
         break;
 
       case "worker:completed":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `◉ Worker finished\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`◉ Worker finished\n`, event.timestamp);
         break;
 
       case "worker:failed":
-        this.actions.appendOutput({
-          stream: "stderr",
-          data: `◉ Worker failed: ${event.failure.message}\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`◉ Worker failed: ${event.failure.message}\n`, event.timestamp);
         break;
 
       // Step events
       case "step:started":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `▸ Step ${event.stepIndex}: ${event.description}\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`▸ Step ${event.stepIndex}: ${event.description}\n`, event.timestamp);
         break;
 
       case "step:completed":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `✓ Step ${event.stepIndex} complete\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`✓ Step ${event.stepIndex} complete\n`, event.timestamp);
         break;
 
       case "step:failed":
-        this.actions.appendOutput({
-          stream: "stderr",
-          data: `✗ Step ${event.stepIndex} failed: ${event.reason}\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`✗ Step ${event.stepIndex} failed: ${event.reason}\n`, event.timestamp);
         break;
 
       // Dispatcher events
       case "dispatcher:invoked":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `⚡ Dispatcher: crafting prompt for step ${event.stepIndex}...\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`⚡ Dispatcher: crafting prompt for step ${event.stepIndex}...\n`, event.timestamp);
         break;
 
       case "dispatcher:completed":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `⚡ Dispatcher: prompt ready\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`⚡ Dispatcher: prompt ready\n`, event.timestamp);
         break;
 
       case "dispatcher:failed":
-        this.actions.appendOutput({
-          stream: "stderr",
-          data: `⚠ Dispatcher failed: ${event.reason}. Using static template.\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`⚠ Dispatcher failed: ${event.reason}. Using static template.\n`, event.timestamp);
         break;
 
       // Evaluator events
       case "evaluator:invoked":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `🔍 Evaluator: checking output quality...\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`🔍 Evaluator: checking output quality...\n`, event.timestamp);
         break;
 
       case "evaluator:completed":
-        this.actions.appendOutput({
-          stream: "stdout",
-          data: `🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`, event.timestamp);
         break;
 
       case "evaluator:failed":
-        this.actions.appendOutput({
-          stream: "stderr",
-          data: `⚠ Evaluator failed: ${event.reason}. Skipping.\n`,
-          timestamp: event.timestamp,
-        });
+        this.pushSystemText(`⚠ Evaluator failed: ${event.reason}. Skipping.\n`, event.timestamp);
         break;
 
       // Question events — handled by QuestionPrompt component, not adapter
@@ -232,18 +253,30 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   }
 
   /**
-   * Handle worker output chunks. In formatted mode, buffers NDJSON lines
-   * and extracts displayable text (same logic as ConsoleAdapter).
-   * In raw mode, passes chunks through unfiltered.
+   * Push a system message through the structured block pipeline and flush.
+   * Used for lifecycle events (worker:spawned, step:started, etc.) that
+   * previously went through appendOutput.
+   */
+  private pushSystemText(text: string, timestamp: string): void {
+    this.builder.pushText(text, new Date(timestamp).getTime() || Date.now());
+    this.flushBlocks();
+  }
+
+  /**
+   * Handle worker output chunks.
+   * - stderr: push through builder as text blocks (structured pipeline)
+   * - raw mode: pass through to appendOutput (bypass structured pipeline)
+   * - formatted mode: feed to NDJSONParser → structured pipeline → setOutputBlocks
    */
   private handleWorkerOutput(
     stream: "stdout" | "stderr",
     data: string,
     timestamp: string,
+    engineId?: string,
   ): void {
-    // stderr always passes through directly
+    // stderr goes through the structured pipeline as text blocks
     if (stream === "stderr") {
-      this.actions.appendOutput({ stream, data, timestamp });
+      this.pushSystemText(data, timestamp);
       return;
     }
 
@@ -253,20 +286,26 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       return;
     }
 
-    // Formatted mode: buffer lines and extract display text
-    this.stdoutLineBuf += data;
-    const lines = this.stdoutLineBuf.split("\n");
-    // Last element is incomplete (or empty if data ended with \n)
-    this.stdoutLineBuf = lines.pop() ?? "";
+    // Formatted mode: feed to structured pipeline
+    // Update engine ID for event routing
+    if (engineId !== undefined) {
+      this.currentEngineId = engineId;
+    }
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+    // Feed chunk to NDJSONParser (handles line buffering, ANSI stripping,
+    // CRLF normalization, garbage-prefix extraction)
+    this.ndjsonParser.write(data);
 
-      const text = extractDisplayText(trimmed);
-      if (text) {
-        this.actions.appendOutput({ stream, data: text, timestamp });
-      }
+    // Immediate flush if builder has changes (responsive for small batches)
+    this.flushBlocks();
+  }
+
+  /**
+   * Flush builder blocks to the store if the builder has pending changes.
+   */
+  private flushBlocks(): void {
+    if (this.builder.hasChanged()) {
+      this.actions.setOutputBlocks(this.builder.getBlocks());
     }
   }
 }

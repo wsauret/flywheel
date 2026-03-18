@@ -18,6 +18,7 @@ export function createInitialState(planName: string): WorkState {
     workflowStatus: "idle",
     phases: [],
     outputLines: [],
+    outputBlocks: [],
     approvalState: { pending: false },
     selectedPhaseIndex: 0,
     scrollOffset: 0,

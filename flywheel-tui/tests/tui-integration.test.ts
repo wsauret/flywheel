@@ -56,15 +56,17 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       expect(store.getState().phases[0].status).toBe("running");
       expect(store.getState().phases[0].name).toBe("Setup environment");
 
-      // 3. Worker output
+      // 3. Worker output — stdout now goes to structured outputBlocks
       emitter.workerOutput(wfId, "stdout", "Installing dependencies...\n");
-      expect(store.getState().outputLines).toHaveLength(1);
-      expect(store.getState().outputLines[0].data).toBe("Installing dependencies...\n");
-      expect(store.getState().outputLines[0].stream).toBe("stdout");
+      expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
+      const textBlocks = store.getState().outputBlocks.filter((b: any) => b.kind === "text");
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
 
+      // stderr now goes through structured pipeline as text blocks
       emitter.workerOutput(wfId, "stderr", "warning: deprecated package\n");
-      expect(store.getState().outputLines).toHaveLength(2);
-      expect(store.getState().outputLines[1].stream).toBe("stderr");
+      const blocksAfterStderr = store.getState().outputBlocks;
+      const stderrText = blocksAfterStderr.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(stderrText).toContain("warning: deprecated package");
 
       // 4. Complete phase 0
       emitter.phaseCompleted(wfId, 0);
@@ -102,9 +104,14 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       emitter.phaseStarted(wfId, 1, "Test");
       emitter.workerOutput(wfId, "stdout", "running tests...\n");
       emitter.workerOutput(wfId, "stderr", "1 deprecation warning\n");
+
+      // Verify stderr appears in blocks during the phase it was emitted
+      const phase1Text = store.getState().outputBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(phase1Text).toContain("1 deprecation warning");
+
       emitter.phaseCompleted(wfId, 1);
 
-      // Phase 2
+      // Phase 2 — blocks reset on phase:started
       emitter.phaseStarted(wfId, 2, "Deploy");
       emitter.workerOutput(wfId, "stdout", "deploying...\n");
       emitter.phaseCompleted(wfId, 2);
@@ -116,7 +123,9 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       expect(state.workflowStatus).toBe("completed");
       expect(state.phases).toHaveLength(3);
       expect(state.phases.every((p) => p.status === "completed")).toBe(true);
-      expect(state.outputLines).toHaveLength(5);
+      // Final blocks contain only Phase 2's output (blocks reset per phase)
+      const finalText = state.outputBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(finalText).toContain("deploying...");
     });
   });
 
@@ -217,7 +226,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
   // ── Retry Flow ──
 
   describe("retry flow", () => {
-    it("worker:retrying appends retry message to output", () => {
+    it("worker:retrying appends retry message to outputBlocks", () => {
       const wfId = "wf-retry";
       const emitter = createFlywheelEmitter(bus);
 
@@ -227,11 +236,12 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       emitter.workerRetrying(wfId, 1, 3, "Connection timeout");
       emitter.workerRetrying(wfId, 2, 3, "Connection timeout");
 
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(2);
-      expect(lines[0].data).toContain("Retrying (1/3)");
-      expect(lines[0].data).toContain("Connection timeout");
-      expect(lines[1].data).toContain("Retrying (2/3)");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Retrying (1/3)");
+      expect(text).toContain("Connection timeout");
+      expect(text).toContain("Retrying (2/3)");
     });
   });
 
@@ -392,13 +402,18 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     expect(store.getState().phases[0].name).toBe("Chain Phase");
 
     emitter.workerSpawned(wfId, 0, 0);
-    // worker:spawned now produces output but phase count unchanged
+    // worker:spawned now produces an outputBlock (system message via structured pipeline)
     expect(store.getState().phases).toHaveLength(1);
-    expect(store.getState().outputLines).toHaveLength(1);
-    expect(store.getState().outputLines[0].data).toContain("Worker spawned");
+    const spawnBlocks = store.getState().outputBlocks;
+    expect(spawnBlocks.length).toBeGreaterThanOrEqual(1);
+    const spawnText = spawnBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+    expect(spawnText).toContain("Worker spawned");
 
+    // stdout now goes to structured outputBlocks
     emitter.workerOutput(wfId, "stdout", "chain output\n");
-    expect(store.getState().outputLines[1].data).toBe("chain output\n");
+    expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
+    const chainTextBlocks = store.getState().outputBlocks.filter((b: any) => b.kind === "text");
+    expect(chainTextBlocks.some((b: any) => b.content.includes("chain output"))).toBe(true);
 
     emitter.workerCompleted(wfId, {
       output: "done",
@@ -406,9 +421,10 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
       durationMs: 500,
       truncated: false,
     } as any);
-    // worker:completed now produces output but phase status unchanged
+    // worker:completed now produces an outputBlock (system message via structured pipeline)
     expect(store.getState().phases[0].status).toBe("running");
-    expect(store.getState().outputLines.some((l: any) => l.data.includes("Worker finished"))).toBe(true);
+    const completeText = store.getState().outputBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+    expect(completeText).toContain("Worker finished");
 
     emitter.phaseCompleted(wfId, 0);
     expect(store.getState().phases[0].status).toBe("completed");

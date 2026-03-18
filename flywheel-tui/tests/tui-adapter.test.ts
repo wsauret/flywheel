@@ -136,7 +136,7 @@ describe("OpenTUIAdapter", () => {
 
     // -- Worker events --
 
-    it("worker:output → appendOutput", () => {
+    it("worker:output stdout → structured outputBlocks", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:output",
@@ -145,12 +145,30 @@ describe("OpenTUIAdapter", () => {
         data: "hello world\n",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      expect(store.getState().outputLines).toHaveLength(1);
-      expect(store.getState().outputLines[0].data).toBe("hello world\n");
-      expect(store.getState().outputLines[0].stream).toBe("stdout");
+      // Stdout now goes through the structured pipeline → outputBlocks
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      expect(blocks[0].kind).toBe("text");
+      expect((blocks[0] as any).content).toContain("hello world");
     });
 
-    it("worker:retrying → appendOutput with retry message", () => {
+    it("worker:output stderr → structured outputBlocks (text block)", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "worker:output",
+        workflowId: "w1",
+        stream: "stderr",
+        data: "error output\n",
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const textBlocks = blocks.filter((b: any) => b.kind === "text");
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      expect((textBlocks[0] as any).content).toContain("error output");
+    });
+
+    it("worker:retrying → structured outputBlocks with retry message", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:retrying",
@@ -160,13 +178,14 @@ describe("OpenTUIAdapter", () => {
         reason: "timeout",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Retrying (2/3)");
-      expect(lines[0].data).toContain("timeout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Retrying (2/3)");
+      expect(text).toContain("timeout");
     });
 
-    it("worker:spawned appends formatted output", () => {
+    it("worker:spawned produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:spawned",
@@ -175,13 +194,13 @@ describe("OpenTUIAdapter", () => {
         stepIndex: 0,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Worker spawned for step 0");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Worker spawned for step 0");
     });
 
-    it("worker:completed appends formatted output", () => {
+    it("worker:completed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:completed",
@@ -189,13 +208,13 @@ describe("OpenTUIAdapter", () => {
         result: { output: "", exitCode: 0, durationMs: 100, truncated: false } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Worker finished");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Worker finished");
     });
 
-    it("worker:failed appends formatted error output", () => {
+    it("worker:failed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:failed",
@@ -203,10 +222,10 @@ describe("OpenTUIAdapter", () => {
         failure: { kind: "timeout", timeoutMs: 5000, message: "timed out" } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Worker failed: timed out");
-      expect(lines[0].stream).toBe("stderr");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Worker failed: timed out");
     });
 
     // -- Approval events --
@@ -247,7 +266,7 @@ describe("OpenTUIAdapter", () => {
 
     // -- Step events --
 
-    it("step:started appends formatted output", () => {
+    it("step:started produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "step:started",
@@ -257,13 +276,13 @@ describe("OpenTUIAdapter", () => {
         description: "Run tests",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Step 0: Run tests");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Step 0: Run tests");
     });
 
-    it("step:completed appends formatted output", () => {
+    it("step:completed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "step:completed",
@@ -272,13 +291,13 @@ describe("OpenTUIAdapter", () => {
         stepIndex: 0,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Step 0 complete");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Step 0 complete");
     });
 
-    it("step:failed appends formatted error output", () => {
+    it("step:failed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "step:failed",
@@ -288,15 +307,15 @@ describe("OpenTUIAdapter", () => {
         reason: "assertion failed",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Step 0 failed: assertion failed");
-      expect(lines[0].stream).toBe("stderr");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Step 0 failed: assertion failed");
     });
 
     // -- Dispatcher events --
 
-    it("dispatcher:invoked appends formatted output", () => {
+    it("dispatcher:invoked produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:invoked",
@@ -305,13 +324,13 @@ describe("OpenTUIAdapter", () => {
         stepIndex: 2,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Dispatcher: crafting prompt for step 2");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Dispatcher: crafting prompt for step 2");
     });
 
-    it("dispatcher:completed appends formatted output", () => {
+    it("dispatcher:completed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:completed",
@@ -319,13 +338,13 @@ describe("OpenTUIAdapter", () => {
         decision: { action: "continue", phaseIndex: 0 } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Dispatcher: prompt ready");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Dispatcher: prompt ready");
     });
 
-    it("dispatcher:failed appends formatted error output", () => {
+    it("dispatcher:failed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:failed",
@@ -333,16 +352,16 @@ describe("OpenTUIAdapter", () => {
         reason: "dispatch error",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Dispatcher failed: dispatch error");
-      expect(lines[0].data).toContain("Using static template");
-      expect(lines[0].stream).toBe("stderr");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Dispatcher failed: dispatch error");
+      expect(text).toContain("Using static template");
     });
 
     // -- Evaluator events --
 
-    it("evaluator:invoked appends formatted output", () => {
+    it("evaluator:invoked produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:invoked",
@@ -351,13 +370,13 @@ describe("OpenTUIAdapter", () => {
         stepIndex: 0,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Evaluator: checking output quality");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Evaluator: checking output quality");
     });
 
-    it("evaluator:completed (passed) appends formatted output", () => {
+    it("evaluator:completed (passed) produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:completed",
@@ -365,14 +384,14 @@ describe("OpenTUIAdapter", () => {
         result: { passed: true, reasoning: "All tests pass" } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("passed");
-      expect(lines[0].data).toContain("All tests pass");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("passed");
+      expect(text).toContain("All tests pass");
     });
 
-    it("evaluator:completed (failed) appends formatted output", () => {
+    it("evaluator:completed (failed) produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:completed",
@@ -380,14 +399,14 @@ describe("OpenTUIAdapter", () => {
         result: { passed: false, reasoning: "Missing error handling" } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("needs revision");
-      expect(lines[0].data).toContain("Missing error handling");
-      expect(lines[0].stream).toBe("stdout");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("needs revision");
+      expect(text).toContain("Missing error handling");
     });
 
-    it("evaluator:failed appends formatted error output", () => {
+    it("evaluator:failed produces structured outputBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:failed",
@@ -395,11 +414,11 @@ describe("OpenTUIAdapter", () => {
         reason: "eval error",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("Evaluator failed: eval error");
-      expect(lines[0].data).toContain("Skipping");
-      expect(lines[0].stream).toBe("stderr");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Evaluator failed: eval error");
+      expect(text).toContain("Skipping");
     });
   });
 

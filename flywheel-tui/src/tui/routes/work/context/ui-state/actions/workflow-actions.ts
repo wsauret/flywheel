@@ -4,7 +4,7 @@
  * Factory that takes store context and returns workflow mutation functions.
  */
 
-import type { WorkState, OutputLine } from "../../../state/types";
+import type { WorkState, OutputLine, AnyBlock } from "../../../state/types";
 import type { StoreContext } from "./phase-actions";
 
 const OUTPUT_LINES_CAP = 5000;
@@ -21,6 +21,7 @@ export function createWorkflowActions(ctx: StoreContext) {
         workflowStatus: "running",
         phases: [],
         outputLines: [],
+        outputBlocks: [],
         approvalState: { pending: false },
         selectedPhaseIndex: 0,
         scrollOffset: 0,
@@ -87,6 +88,15 @@ export function createWorkflowActions(ctx: StoreContext) {
         approvalState: { pending: false },
       });
       notifyImmediate();
+    },
+
+    setOutputBlocks(blocks: AnyBlock[]): void {
+      const state = getState();
+      setState({
+        ...state,
+        outputBlocks: blocks,
+      });
+      notify();
     },
   };
 }

@@ -5,7 +5,7 @@
  * Re-exports WorkState types for convenience.
  */
 
-import type { WorkState, OutputLine, WorkflowStatus as WfStatus, PhaseStatus } from "../../state/types";
+import type { WorkState, OutputLine, AnyBlock, WorkflowStatus as WfStatus, PhaseStatus } from "../../state/types";
 
 export type Listener = () => void;
 
@@ -27,6 +27,7 @@ export interface UIActions {
   setError(reason: string): void;
   clearError(): void;
   appendOutput(line: OutputLine): void;
+  setOutputBlocks(blocks: AnyBlock[]): void;
   setApprovalPending(description: string): void;
   clearApproval(): void;
 

@@ -133,7 +133,7 @@ export interface FlywheelEmitter {
   workerCompleted(workflowId: string, result: import("../schemas/worker").WorkerResult): void;
   workerFailed(workflowId: string, failure: import("../schemas/worker").WorkerFailureReason): void;
   workerRetrying(workflowId: string, attempt: number, maxAttempts: number, reason: string): void;
-  workerOutput(workflowId: string, stream: "stdout" | "stderr", data: string): void;
+  workerOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineId?: string): void;
   approvalRequested(workflowId: string, phaseIndex: number, stepIndex: number, description: string): void;
   approvalReceived(workflowId: string, approved: boolean, skipped: boolean): void;
 }
@@ -184,8 +184,8 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "worker:failed", workflowId, failure, timestamp: now() }),
     workerRetrying: (workflowId, attempt, maxAttempts, reason) =>
       bus.emit({ type: "worker:retrying", workflowId, attempt, maxAttempts, reason, timestamp: now() }),
-    workerOutput: (workflowId, stream, data) =>
-      bus.emit({ type: "worker:output", workflowId, stream, data, timestamp: now() }),
+    workerOutput: (workflowId, stream, data, engineId?) =>
+      bus.emit({ type: "worker:output", workflowId, stream, data, timestamp: now(), ...(engineId !== undefined ? { engineId } : {}) }),
     approvalRequested: (workflowId, phaseIndex, stepIndex, description) =>
       bus.emit({ type: "approval:requested", workflowId, phaseIndex, stepIndex, description, timestamp: now() }),
     approvalReceived: (workflowId, approved, skipped) =>

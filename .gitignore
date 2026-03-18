@@ -73,6 +73,8 @@ temp/
 # Project-specific
 .flywheel/
 .worktrees/
+.beads/
+.ralph-tui/
 docs/
 plugin/docs/
 flywheel-tui/docs/

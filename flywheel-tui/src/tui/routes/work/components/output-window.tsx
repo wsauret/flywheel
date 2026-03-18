@@ -11,9 +11,9 @@ import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
-import { LogLine } from "./log-line"
+import { BlockRenderer } from "./output-blocks/block-renderer"
 import { PromptLine, type PromptLineState } from "./prompt-line"
-import type { OutputLine, WorkflowStatus, PhaseStatus } from "../state/types"
+import type { WorkflowStatus, PhaseStatus, AnyBlock } from "../state/types"
 import { getStatusIcon, getStatusColor } from "./status-utils"
 
 const MIN_WIDTH_FOR_INLINE_STATUS = 75
@@ -25,7 +25,7 @@ export interface CurrentPhaseInfo {
 }
 
 export interface OutputWindowProps {
-  outputLines: OutputLine[]
+  outputBlocks: AnyBlock[]
   workflowStatus: WorkflowStatus
   approvalPending: boolean
   isPromptFocused: boolean
@@ -40,9 +40,9 @@ export function OutputWindow(props: OutputWindowProps) {
   const [scrollRef, setScrollRef] = createSignal<ScrollBoxRenderable | undefined>()
 
   const isRunning = () => props.workflowStatus === "running"
-  const hasLines = () => props.outputLines.length > 0
+  const hasContent = () => props.outputBlocks.length > 0
   const isWide = () => (props.availableWidth ?? 80) >= MIN_WIDTH_FOR_INLINE_STATUS
-  const lineCountText = () => `${props.outputLines.length} lines`
+  const blockCountText = () => `${props.outputBlocks.length} blocks`
 
   const activityPhrase = () => {
     if (props.approvalPending) return "Waiting for approval..."
@@ -74,7 +74,7 @@ export function OutputWindow(props: OutputWindowProps) {
                 Output
               </text>
             </box>
-            <text fg={themeCtx.theme.textMuted}>{lineCountText()}</text>
+            <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
           </box>
           <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
         </box>
@@ -109,7 +109,7 @@ export function OutputWindow(props: OutputWindowProps) {
                   <box flexDirection="row">
                     <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
                     <Show when={activityPhrase()} fallback={
-                      <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}{lineCountText()}</text>
+                      <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}{blockCountText()}</text>
                     }>
                       {(phrase) => (
                         <>
@@ -120,7 +120,7 @@ export function OutputWindow(props: OutputWindowProps) {
                     </Show>
                   </box>
                   <Show when={activityPhrase()}>
-                    <text fg={themeCtx.theme.textMuted}>{lineCountText()}</text>
+                    <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
                   </Show>
                 </box>
                 <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
@@ -161,7 +161,7 @@ export function OutputWindow(props: OutputWindowProps) {
                       )}
                     </Show>
                   </box>
-                  <text fg={themeCtx.theme.textMuted}>{lineCountText()}</text>
+                  <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
                 </box>
                 <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
               </box>
@@ -172,18 +172,18 @@ export function OutputWindow(props: OutputWindowProps) {
 
       {/* Content */}
       <box paddingLeft={1} paddingRight={1} flexDirection="column" flexGrow={1}>
-        <Show when={!hasLines() && isRunning()}>
+        <Show when={!hasContent() && isRunning()}>
           <box flexDirection="row">
             <text fg={themeCtx.theme.text}>{"\u25CF "}</text>
             <ShimmerText text="Waiting for output..." />
           </box>
         </Show>
 
-        <Show when={!hasLines() && !isRunning()}>
+        <Show when={!hasContent() && !isRunning()}>
           <text fg={themeCtx.theme.textMuted}>No output</text>
         </Show>
 
-        <Show when={hasLines()}>
+        <Show when={hasContent()}>
           <scrollbox
             ref={(r: ScrollBoxRenderable) => setScrollRef(r)}
             flexGrow={1}
@@ -200,8 +200,8 @@ export function OutputWindow(props: OutputWindowProps) {
             viewportCulling={true}
             focused={!props.isPromptFocused}
           >
-            <For each={props.outputLines}>
-              {(line) => <LogLine line={line.data} />}
+            <For each={props.outputBlocks}>
+              {(block) => <BlockRenderer block={block} />}
             </For>
           </scrollbox>
         </Show>

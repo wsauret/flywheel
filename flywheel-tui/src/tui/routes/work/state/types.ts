@@ -38,6 +38,49 @@ export interface OutputLine {
   timestamp: string;
 }
 
+// ── Structured Output Blocks ──
+
+export interface TextBlock {
+  kind: "text";
+  content: string;
+  timestamp: number;
+}
+
+export interface ToolBlock {
+  kind: "tool";
+  name: string;
+  detail: string;
+  timestamp: number;
+}
+
+export interface AgentBlock {
+  kind: "agent";
+  id: string;
+  agentLabel: string;
+  description: string;
+  status: "active" | "completed" | "error";
+  children: ToolBlock[];
+  latestChild?: string;
+  duration?: number;
+  toolCount?: number;
+  errorMessage?: string;
+  timestamp: number;
+}
+
+export interface ContextGroupBlock {
+  kind: "contextGroup";
+  tools: ToolBlock[];
+  timestamp: number;
+}
+
+export interface SystemBlock {
+  kind: "system";
+  message: string;
+  timestamp: number;
+}
+
+export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock;
+
 export interface WorkState {
   planName: string;
   version: string;
@@ -45,7 +88,14 @@ export interface WorkState {
   endTime?: number;
   workflowStatus: WorkflowStatus;
   phases: PhaseState[];
+  /**
+   * @deprecated Prefer `outputBlocks` for display. `outputLines` is retained
+   * for the console adapter and raw-mode passthrough. The OpenTUI adapter now
+   * routes all output (including system messages and stderr) through the
+   * structured block pipeline.
+   */
   outputLines: OutputLine[];
+  outputBlocks: AnyBlock[];
   approvalState: ApprovalState;
   selectedPhaseIndex: number;
   scrollOffset: number;

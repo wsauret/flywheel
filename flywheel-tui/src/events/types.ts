@@ -209,6 +209,8 @@ export interface WorkerOutput {
   stream: "stdout" | "stderr";
   data: string;
   timestamp: string;
+  /** Engine that produced this output (e.g. "claude", "opencode"). Optional for backward compat. */
+  engineId?: string;
 }
 
 // -- Approval events --

@@ -54,7 +54,8 @@ describe("Workflow Lifecycle", () => {
 
       expect(store1.getState().workflowStatus).toBe("running");
       expect(store1.getState().phases).toHaveLength(1);
-      expect(store1.getState().outputLines).toHaveLength(1);
+      // Stdout goes to structured outputBlocks now, not outputLines
+      expect(store1.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
       // Disconnect first adapter
       adapter1.stop();
@@ -121,7 +122,8 @@ describe("Workflow Lifecycle", () => {
         data: "installing deps...\n",
         timestamp: ts(),
       });
-      expect(store.getState().outputLines).toHaveLength(1);
+      // Stdout goes to structured outputBlocks now
+      expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
       // Phase 0 completes
       bus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 0, timestamp: ts() });
@@ -259,7 +261,8 @@ describe("Workflow Lifecycle", () => {
       // Verify first workflow had state
       expect(store1.getState().workflowStatus).toBe("completed");
       expect(store1.getState().phases).toHaveLength(1);
-      expect(store1.getState().outputLines).toHaveLength(1);
+      // Stdout goes to structured outputBlocks now
+      expect(store1.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
       // Cleanup first workflow (simulates stopWorkflow)
       adapter1.stop();

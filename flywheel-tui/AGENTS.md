@@ -249,6 +249,31 @@ After modifying any file under `src/tui/`, always:
 | Idle prompt | `src/tui/components/prompt/index.tsx` |
 | Commands | `src/tui/config/commands.ts`, `src/tui/routes/home/hooks/use-home-commands.ts` |
 
+### Structured output pipeline
+
+Worker output flows through a multi-stage pipeline before reaching the TUI:
+
+```
+worker stdout → NDJSONParser (line buffering + JSON parsing)
+  → StructuredEventParser (engine routing + format normalization)
+    → SubagentTraceParser (agent lifecycle tracking)
+    → StructuredOutputBuilder (block accumulation)
+      → setOutputBlocks() (batched flush → SolidJS reactivity)
+```
+
+System messages (worker:spawned, step:started, etc.) and stderr also go through the builder as text blocks. Raw mode bypasses the pipeline entirely.
+
+| Layer | Key files |
+|-------|-----------|
+| OpenTUI adapter | `src/tui/adapters/opentui.ts` |
+| NDJSON parser | `src/worker/ndjson-parser.ts` |
+| Structured event parser | `src/tui/adapters/structured-event-parser.ts` |
+| Subagent trace parser | `src/tui/adapters/subagent-tracing/parser.ts` |
+| Structured output builder | `src/tui/adapters/structured-output-builder.ts` |
+| Output formatter (legacy) | `src/tui/adapters/output-formatter.ts` |
+| Block renderer | `src/tui/routes/work/components/output-blocks/block-renderer.tsx` |
+| Block types | `src/tui/routes/work/state/types.ts` (TextBlock, ToolBlock, AgentBlock, ContextGroupBlock, SystemBlock) |
+
 ### Work view
 
 | Layer | Key files |

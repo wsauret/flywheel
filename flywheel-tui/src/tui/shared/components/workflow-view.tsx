@@ -166,7 +166,7 @@ export function WorkflowView(props: WorkflowViewProps) {
       {/* Output window takes full center width */}
       <box flexDirection="column" width="100%">
         <OutputWindow
-          outputLines={state().outputLines}
+          outputBlocks={state().outputBlocks}
           workflowStatus={state().workflowStatus}
           approvalPending={state().approvalState.pending}
           isPromptFocused={isPromptFocused()}

@@ -300,8 +300,8 @@ export class ExecutionLoop {
           phaseIndex: phase.index,
           prompt,
           cwd: this.config.project_cwd,
-          onStdout: (chunk) => this.emitter.workerOutput(this.workflowId, "stdout", chunk),
-          onStderr: (chunk) => this.emitter.workerOutput(this.workflowId, "stderr", chunk),
+          onStdout: (chunk) => this.emitter.workerOutput(this.workflowId, "stdout", chunk, this.config.engine),
+          onStderr: (chunk) => this.emitter.workerOutput(this.workflowId, "stderr", chunk, this.config.engine),
           signal: this._shutdownController.signal,
         });
 

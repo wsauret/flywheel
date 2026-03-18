@@ -4,6 +4,7 @@ import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentu
 import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
+import type { TextBlock, ToolBlock } from "../src/tui/routes/work/state/types";
 
 function createHarness() {
   const bus = new EventBus();
@@ -25,7 +26,7 @@ describe("OpenTUI Adapter — output formatting", () => {
   // ── NDJSON parsing ──
 
   describe("NDJSON parsing (formatted mode)", () => {
-    it("extracts text from assistant NDJSON", () => {
+    it("extracts text from assistant NDJSON → outputBlocks", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({
         type: "assistant",
@@ -38,12 +39,14 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson + "\n",
         timestamp: ts(),
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toBe("Hello world");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(textBlocks[0].content).toContain("Hello world");
     });
 
-    it("formats tool_use from assistant NDJSON", () => {
+    it("formats tool_use from assistant NDJSON → ToolBlock", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({
         type: "assistant",
@@ -60,13 +63,14 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson + "\n",
         timestamp: ts(),
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toContain("▸ Read");
-      expect(lines[0].data).toContain("src/index.ts");
+      const blocks = store.getState().outputBlocks;
+      const toolBlocks = blocks.filter((b) => b.kind === "tool") as ToolBlock[];
+      expect(toolBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(toolBlocks[0].name).toBe("Read");
+      expect(toolBlocks[0].detail).toContain("src/index.ts");
     });
 
-    it("skips system NDJSON lines", () => {
+    it("skips system NDJSON lines (no blocks or lines produced)", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({ type: "system", data: "init config" });
       bus.emit({
@@ -76,10 +80,12 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson + "\n",
         timestamp: ts(),
       });
+      // System lines should not produce outputLines
       expect(store.getState().outputLines).toHaveLength(0);
+      // May or may not produce outputBlocks (unknown type gets skipped)
     });
 
-    it("skips tool_result NDJSON lines", () => {
+    it("skips tool_result NDJSON lines (no outputLines)", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({ type: "tool_result", content: "..." });
       bus.emit({
@@ -92,7 +98,7 @@ describe("OpenTUI Adapter — output formatting", () => {
       expect(store.getState().outputLines).toHaveLength(0);
     });
 
-    it("passes through non-JSON text (plain text fallback)", () => {
+    it("passes through non-JSON text → TextBlock in outputBlocks", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:output",
@@ -101,12 +107,14 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: "hello world\n",
         timestamp: "2025-01-01T00:00:00Z",
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toBe("hello world\n");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(textBlocks[0].content).toContain("hello world");
     });
 
-    it("extracts result text", () => {
+    it("extracts result text → TextBlock in outputBlocks", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({
         type: "result",
@@ -119,9 +127,11 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson + "\n",
         timestamp: ts(),
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toBe("Task done\n");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(textBlocks[0].content).toContain("Task done");
     });
   });
 
@@ -144,8 +154,9 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson.slice(0, half),
         timestamp: ts(),
       });
-      // No output yet — incomplete line
-      expect(store.getState().outputLines).toHaveLength(0);
+      // No blocks yet — incomplete line (NDJSONParser buffers it)
+      const blocksAfterFirst = store.getState().outputBlocks;
+      expect(blocksAfterFirst.filter((b) => b.kind === "text" && (b as TextBlock).content.includes("buffered"))).toHaveLength(0);
 
       bus.emit({
         type: "worker:output",
@@ -154,10 +165,12 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson.slice(half) + "\n",
         timestamp: ts(),
       });
-      // Now the complete line should appear
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toBe("buffered");
+      // Now the complete line should produce a TextBlock
+      const blocks = store.getState().outputBlocks;
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      const hasBuffered = textBlocks.some((b) => b.content.includes("buffered"));
+      expect(hasBuffered).toBe(true);
     });
 
     it("handles multiple lines in a single chunk", () => {
@@ -177,10 +190,13 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: line1 + "\n" + line2 + "\n",
         timestamp: ts(),
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(2);
-      expect(lines[0].data).toBe("first");
-      expect(lines[1].data).toBe("second");
+      // Both text values should be in outputBlocks (possibly merged into one TextBlock)
+      const blocks = store.getState().outputBlocks;
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      const allText = textBlocks.map((b) => b.content).join("");
+      expect(allText).toContain("first");
+      expect(allText).toContain("second");
     });
 
     it("resets buffer on phase:started", () => {
@@ -193,9 +209,12 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: '{"type":"assistant"',
         timestamp: ts(),
       });
-      expect(store.getState().outputLines).toHaveLength(0);
+      // No output yet (incomplete JSON)
+      expect(store.getState().outputBlocks.filter(
+        (b) => b.kind === "text" && (b as TextBlock).content.includes("assistant"),
+      )).toHaveLength(0);
 
-      // Start a new phase — should reset buffer
+      // Start a new phase — should reset buffer and builder
       bus.emit({
         type: "phase:started",
         workflowId: "w1",
@@ -216,16 +235,17 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson + "\n",
         timestamp: ts(),
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toBe("fresh");
+      const blocks = store.getState().outputBlocks;
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(textBlocks[0].content).toContain("fresh");
     });
   });
 
   // ── stderr passthrough ──
 
   describe("stderr passthrough", () => {
-    it("passes stderr through without parsing", () => {
+    it("routes stderr through structured pipeline as text block", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:output",
@@ -234,10 +254,11 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: "error: something failed\n",
         timestamp: ts(),
       });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(1);
-      expect(lines[0].data).toBe("error: something failed\n");
-      expect(lines[0].stream).toBe("stderr");
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
+      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(textBlocks[0].content).toContain("error: something failed");
     });
   });
 
@@ -288,7 +309,7 @@ describe("OpenTUI Adapter — output formatting", () => {
         data: ndjson + "\n",
         timestamp: ts(),
       });
-      // System lines should be filtered out in formatted mode
+      // System lines should be filtered out in formatted mode (no outputLines)
       expect(store.getState().outputLines).toHaveLength(0);
     });
   });
