@@ -339,7 +339,7 @@ export function FlywheelShell() {
     // Run the pipeline asynchronously
     queueMicrotask(() => {
       pipeline.run().catch(() => {
-        // Pipeline threw unexpectedly
+        // Pipeline threw unexpectedly — errors are surfaced via event bus
       })
     })
   }

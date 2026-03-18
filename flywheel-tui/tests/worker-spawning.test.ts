@@ -104,6 +104,25 @@ describe("CompletionDetector", () => {
     expect(wrapped).toContain("Do the thing");
     expect(wrapped).toContain("<promise>COMPLETE</promise>");
   });
+
+  it("detects NDJSON result event with subtype success", () => {
+    const line = '{"type":"result","subtype":"success","is_error":false,"duration_ms":5000}';
+    detector.check(line);
+    expect(detector.hasSeenCompletion).toBe(true);
+  });
+
+  it("does not detect NDJSON result event with is_error true", () => {
+    // subtype must be "success" — an error result is not completion
+    const line = '{"type":"result","subtype":"error","is_error":true}';
+    detector.check(line);
+    expect(detector.hasSeenCompletion).toBe(false);
+  });
+
+  it("detects NDJSON result in fallback check", () => {
+    const output = 'some stuff\n{"type":"result","subtype":"success","duration_ms":100}\n';
+    detector.checkFallback(output);
+    expect(detector.hasSeenCompletion).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

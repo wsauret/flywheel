@@ -34,6 +34,10 @@ export interface WorkOptions {
   ui: IWorkflowUI;
   /** Base directory for .flywheel/ files (default: cwd) */
   baseDir?: string;
+  /** External event bus (e.g. from a pipeline session). When provided,
+   *  the controller uses it instead of creating its own, and skips
+   *  reconnecting the UI adapter (caller already connected it). */
+  eventBus?: EventBus;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,11 +60,16 @@ export class WorkController {
     this.engine = options.engine;
     this.ui = options.ui;
     this.baseDir = options.baseDir ?? process.cwd();
-    this.eventBus = new EventBus();
 
-    // Connect UI to event bus
-    this.ui.connect(this.eventBus);
-    this.ui.start();
+    if (options.eventBus) {
+      // Pipeline mode: reuse the session's unified event bus
+      this.eventBus = options.eventBus;
+    } else {
+      // Standalone mode: create own bus and connect the UI
+      this.eventBus = new EventBus();
+      this.ui.connect(this.eventBus);
+      this.ui.start();
+    }
   }
 
   /**

@@ -18,6 +18,28 @@ bun test tests/foo.test.ts # single file
 
 Unit tests do NOT render OpenTUI components, so they don't need the `--conditions=browser` flag.
 
+## E2E pipeline test
+
+A full TUI-level end-to-end test lives at `tests/e2e/tui-pipeline.sh`. It starts the TUI in tmux, sends a `/plan` command, and monitors state transitions through plan → work → review. This test uses real API calls.
+
+```bash
+# Run the e2e pipeline test (takes several minutes, requires API key)
+./tests/e2e/tui-pipeline.sh
+
+# Run and attach to watch it live
+./tests/e2e/tui-pipeline.sh --attach
+```
+
+The script:
+1. Starts flywheel in a tmux session (`flywheel-e2e`)
+2. Sends `/plan <simple feature description>` to trigger the full pipeline
+3. Polls the screen every 10s, logging state transitions to `tests/e2e/tui-pipeline.log`
+4. Passes if the `work` stage starts (plan→work chaining works)
+5. Fails if it stalls at idle after plan, crashes, or times out (15 min)
+6. Cleans up the tmux session and sandbox files on exit
+
+Use this test after modifying the pipeline, stage runner, event bus, or workflow chaining logic.
+
 ## Testing the TUI with tmux
 
 The TUI is a full-screen interactive application. You cannot test it by running `bin/flywheel` directly in a Bash tool call because it takes over the terminal. Instead, use tmux to run the TUI in a detached session, send keystrokes to it, and read its screen output.

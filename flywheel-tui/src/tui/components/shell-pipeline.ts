@@ -8,7 +8,7 @@
  * Extracted so the logic is testable without JSX or OpenTUI runtime.
  */
 
-import { EventBus, createFlywheelEmitter } from "../../events/event-bus";
+import { createFlywheelEmitter } from "../../events/event-bus";
 import { ExecutionLoop, type PromptBuilder } from "../../controller/execution-loop";
 import { WorkflowDefinitionProvider } from "../../controller/workflow-def-provider";
 import { PhaseExecutor } from "../../controller/phase-executor";
@@ -106,6 +106,7 @@ export function createShellStageRunner(
         spawner: deps.spawner,
         engine: deps.engine,
         ui: session.adapter,
+        eventBus: session.eventBus,
       });
 
       // Respect abort signal
@@ -139,9 +140,10 @@ export function createShellStageRunner(
       };
     }
 
-    const eventBus = new EventBus();
+    // Use the session's unified event bus — not a per-stage bus.
+    // The adapter is already connected to session.eventBus.
+    const eventBus = session.eventBus;
     const emitter = createFlywheelEmitter(eventBus);
-    session.adapter.connect(eventBus);
 
     const workflowId = `${stage.workflow}-pipeline`;
 
@@ -167,10 +169,10 @@ export function createShellStageRunner(
 
     // For plan: install onStepComplete and skipTruncation
     const isPlan = stage.workflow === "plan";
-    const onStepComplete =
-      isPlan && deps.config.project_cwd
-        ? createPlanOnStepComplete(deps.config.project_cwd)
-        : undefined;
+    const projectCwd = deps.config.project_cwd || process.cwd();
+    const onStepComplete = isPlan
+      ? createPlanOnStepComplete(projectCwd)
+      : undefined;
 
     const loop = new ExecutionLoop({
       phaseProvider,
