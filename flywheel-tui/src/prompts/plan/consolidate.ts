@@ -1,5 +1,14 @@
 import type { WorkflowStepContext } from "../index.js";
 import { SEVERITY_DEFINITIONS, SCOPE_DISCIPLINE } from "../conventions.js";
+import type { ResolvedQuestion } from "../../workflows/question-parser.js";
+
+/**
+ * Format a single resolved question as a readable line.
+ */
+function formatResolvedQuestion(q: ResolvedQuestion, index: number): string {
+  const answers = q.answers.length > 0 ? q.answers.join(", ") : "_no answer_";
+  return `${index + 1}. ${q.question} → ${answers} (source: ${q.source})`;
+}
 
 /**
  * Builds a prompt for consolidating a reviewed plan into a final actionable plan.
@@ -7,12 +16,9 @@ import { SEVERITY_DEFINITIONS, SCOPE_DISCIPLINE } from "../conventions.js";
 export function buildPlanConsolidatePrompt(ctx: WorkflowStepContext): string {
   const resolvedQuestions = ctx.extra?.resolvedQuestions;
   const questionsSection =
-    resolvedQuestions && Array.isArray(resolvedQuestions)
-      ? resolvedQuestions
-          .map(
-            (q: unknown, i: number) =>
-              `${i + 1}. ${typeof q === "string" ? q : JSON.stringify(q)}`
-          )
+    resolvedQuestions && Array.isArray(resolvedQuestions) && resolvedQuestions.length > 0
+      ? (resolvedQuestions as ResolvedQuestion[])
+          .map((q, i) => formatResolvedQuestion(q, i))
           .join("\n")
       : "_No resolved questions._";
 
@@ -109,5 +115,18 @@ Before finalizing, verify:
 - [ ] All file references use file:line format where possible
 - [ ] Open questions are all resolved (none remaining)
 - [ ] The plan can be executed phase-by-phase without ambiguity
+
+## IMPORTANT: Write the plan file to disk
+
+After consolidating, you MUST write the final plan to a file at:
+\`docs/plans/<type>-<description>.md\`
+
+Where \`<type>\` is one of: feat, fix, refactor, chore, docs
+And \`<description>\` is a short kebab-case name for the feature.
+
+Example: \`docs/plans/feat-auth-jwt.md\`
+
+Create the \`docs/plans/\` directory if it does not exist.
+The filename MUST appear in your output so downstream tools can locate it.
 `;
 }

@@ -334,3 +334,74 @@ describe("Per-tier model config", () => {
     expect(models.workerModel).toBe("claude-sonnet-4-20250514");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Pipeline config fields (Phase 4)
+// ---------------------------------------------------------------------------
+
+describe("Pipeline config fields", () => {
+  it("interactive_consolidation defaults to false", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.interactive_consolidation).toBe(false);
+    }
+  });
+
+  it("auto_ship defaults to false", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.auto_ship).toBe(false);
+    }
+  });
+
+  it("auto_chain defaults to true", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.auto_chain).toBe(true);
+    }
+  });
+
+  it("CONFIG_DEFAULTS includes pipeline fields", () => {
+    expect(CONFIG_DEFAULTS.interactive_consolidation).toBe(false);
+    expect(CONFIG_DEFAULTS.auto_ship).toBe(false);
+    expect(CONFIG_DEFAULTS.auto_chain).toBe(true);
+  });
+
+  it("env var FLYWHEEL_INTERACTIVE_CONSOLIDATION overrides config", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_INTERACTIVE_CONSOLIDATION: "true",
+    });
+    expect(config.interactive_consolidation).toBe(true);
+  });
+
+  it("env var FLYWHEEL_AUTO_SHIP overrides config", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_AUTO_SHIP: "1",
+    });
+    expect(config.auto_ship).toBe(true);
+  });
+
+  it("env var FLYWHEEL_AUTO_CHAIN can disable chaining", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_AUTO_CHAIN: "false",
+    });
+    expect(config.auto_chain).toBe(false);
+  });
+
+  it("env var FLYWHEEL_AUTO_CHAIN=0 disables chaining", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_AUTO_CHAIN: "0",
+    });
+    expect(config.auto_chain).toBe(false);
+  });
+
+  it("env var FLYWHEEL_AUTO_CHAIN=true enables chaining", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_AUTO_CHAIN: "true",
+    });
+    expect(config.auto_chain).toBe(true);
+  });
+});

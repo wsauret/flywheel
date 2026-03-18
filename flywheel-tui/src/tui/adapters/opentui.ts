@@ -213,6 +213,19 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         });
         break;
 
+      // Question events — handled by QuestionPrompt component, not adapter
+      case "question:asked":
+      case "question:replied":
+      case "question:rejected":
+        break;
+
+      // Pipeline events — handled by shell, not adapter
+      case "pipeline:started":
+      case "pipeline:completed":
+      case "pipeline:failed":
+      case "pipeline:stage-transition":
+        break;
+
       default:
         assertNever(event);
     }

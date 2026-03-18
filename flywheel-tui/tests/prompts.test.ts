@@ -545,14 +545,16 @@ describe("buildPlanConsolidatePrompt extras", () => {
       ...baseCtx,
       extra: {
         resolvedQuestions: [
-          "Use Redis for session storage",
-          "JWT refresh tokens are out of scope",
+          { question: "Use Redis for session storage?", answers: ["Yes, Redis"], source: "user" },
+          { question: "JWT refresh tokens are out of scope?", answers: ["Confirmed"], source: "auto" },
         ],
       },
     };
     const result = buildPlanConsolidatePrompt(ctx);
-    expect(result).toContain("Use Redis for session storage");
-    expect(result).toContain("JWT refresh tokens are out of scope");
+    expect(result).toContain("Use Redis for session storage?");
+    expect(result).toContain("Yes, Redis");
+    expect(result).toContain("JWT refresh tokens are out of scope?");
+    expect(result).toContain("Confirmed");
   });
 
   it("shows placeholder when resolvedQuestions is absent", () => {

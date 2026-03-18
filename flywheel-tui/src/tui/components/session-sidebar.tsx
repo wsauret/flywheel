@@ -21,6 +21,7 @@ import {
   type SessionGroupKey,
   type SelectionAction,
 } from "./sidebar-logic"
+import { SIDEBAR_WIDTH } from "./shell-modes"
 import type { SessionSummary } from "../../session/manager"
 
 // ---------------------------------------------------------------------------
@@ -48,7 +49,7 @@ export function SessionSidebar(props: SessionSidebarProps) {
   const themeCtx = useTheme()
   const [selectedIndex, setSelectedIndex] = createSignal(0)
 
-  const width = () => props.width ?? 28
+  const width = () => props.width ?? SIDEBAR_WIDTH
 
   // Collapse when terminal is too narrow
   const isVisible = () => (props.terminalWidth ?? 120) >= 90

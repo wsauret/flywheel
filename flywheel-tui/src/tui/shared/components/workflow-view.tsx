@@ -22,6 +22,7 @@ import { useSession } from "@tui/shared/context/session"
 import { SessionSidebar } from "../../components/session-sidebar"
 import { WorkflowPanel } from "../../components/workflow-panel"
 import { SessionHeader } from "../../components/session-header"
+import { SIDEBAR_WIDTH } from "../../components/shell-modes"
 import type { UIActions } from "../../routes/work/context/ui-state/types"
 import type { WorkState } from "../../routes/work/state/types"
 
@@ -133,6 +134,7 @@ export function WorkflowView(props: WorkflowViewProps) {
         <SessionSidebar
           sessions={sessionCtx.sessions()}
           terminalWidth={dimensions()?.width}
+          width={SIDEBAR_WIDTH}
         />
       }
       panel={

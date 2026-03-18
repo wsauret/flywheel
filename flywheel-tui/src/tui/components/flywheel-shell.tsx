@@ -44,16 +44,21 @@ import { WorkController } from "../../controller/work"
 import { ExecutionLoop, type PromptBuilder } from "../../controller/execution-loop"
 import { WorkflowDefinitionProvider } from "../../controller/workflow-def-provider"
 import { PhaseExecutor } from "../../controller/phase-executor"
-import { loadConfig } from "../../config/loader"
-import { getEngine } from "../../engines/core/registry"
-import { BunProcessSpawner } from "../../worker/bun-spawner"
+import { prepareWorkflowDeps } from "../../controller/workflow-deps"
+import type { WorkflowDeps } from "../../controller/workflow-deps"
 import { EventBus, createFlywheelEmitter } from "../../events/event-bus"
 import {
   workflowRegistry,
   buildWorkflowPrompt,
 } from "../../workflows/index"
+import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor"
+import { WorkflowPipeline } from "../../controller/workflow-pipeline"
+import { QuestionService, type QuestionRequest } from "../../controller/question-service"
+import { QuestionPrompt } from "./question-prompt"
+import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
 import type { WorkflowSession } from "./workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
+import type { Unsubscribe } from "../../events/event-bus"
 
 // ── View mode ──
 
@@ -78,10 +83,16 @@ export function FlywheelShell() {
   // Active workflow store as signal — drives the home/work view switch
   const [activeStore, setActiveStore] = createSignal<UIActions | null>(null)
 
+  // Pending question tracking for QuestionPrompt
+  const [pendingQuestion, setPendingQuestion] = createSignal<QuestionRequest | null>(null)
+  let activeQuestionService: QuestionService | null = null
+  let questionUnsubs: Unsubscribe[] = []
+
   // Non-reactive refs for lifecycle management
   let activeSession: WorkflowSession | null = null
   let activeController: WorkController | null = null
   let activeLoop: ExecutionLoop | null = null
+  let activePipeline: WorkflowPipeline | null = null
 
   // Double-Esc handler for stopping workflows
   const escapeHandler = createEscapeHandler({ timeoutMs: 5000 })
@@ -129,28 +140,15 @@ export function FlywheelShell() {
       }
     })
 
-    // Load config fresh per workflow (~1ms, catches edits)
-    let config
+    // Load config, resolve engine, create spawner (~1ms, catches config edits)
+    let deps: WorkflowDeps
     try {
-      const result = loadConfig()
-      config = result.config
+      deps = prepareWorkflowDeps()
     } catch {
       returnToHome()
       return
     }
-
-    // Create engine and spawner
-    let engine
-    try {
-      engine = getEngine(config.engine)
-    } catch {
-      returnToHome()
-      return
-    }
-
-    const spawner = new BunProcessSpawner({
-      timeoutMinutes: config.timeout_minutes,
-    })
+    const { config, engine, spawner } = deps
 
     // Create WorkController — constructor calls adapter.connect(eventBus)
     const controller = new WorkController({
@@ -191,28 +189,15 @@ export function FlywheelShell() {
     setActiveStore(session.store)
     setView("working")
 
-    // Load config
-    let config
+    // Load config, resolve engine, create spawner (~1ms, catches config edits)
+    let deps: WorkflowDeps
     try {
-      const result = loadConfig()
-      config = result.config
+      deps = prepareWorkflowDeps()
     } catch {
       returnToHome()
       return
     }
-
-    // Create engine and spawner
-    let engine
-    try {
-      engine = getEngine(config.engine)
-    } catch {
-      returnToHome()
-      return
-    }
-
-    const spawner = new BunProcessSpawner({
-      timeoutMinutes: config.timeout_minutes,
-    })
+    const { config, engine, spawner } = deps
 
     // Wire event bus from session through adapter
     const eventBus = new EventBus()
@@ -238,9 +223,17 @@ export function FlywheelShell() {
         args,
         ctx.previousResult,
         config.project_cwd,
+        ctx.extra,
       )
 
     const phaseProvider = new WorkflowDefinitionProvider(workflow)
+
+    // For plan workflows: install onStepComplete hook to extract plan file path
+    // after consolidation, and skip truncation so full output chains between steps.
+    const isPlan = workflowName === "plan"
+    const onStepComplete = isPlan && config.project_cwd
+      ? createPlanOnStepComplete(config.project_cwd)
+      : undefined
 
     const loop = new ExecutionLoop({
       phaseProvider,
@@ -251,6 +244,8 @@ export function FlywheelShell() {
       ui: session.adapter,
       workflowId,
       workflowLabel: workflow.name,
+      onStepComplete,
+      skipTruncation: isPlan,
       // No statePersistence, no approvalHandler (non-work path)
     })
     activeLoop = loop
@@ -264,10 +259,109 @@ export function FlywheelShell() {
   }
 
   /**
+   * Start a multi-stage pipeline (plan -> work -> review [-> ship]).
+   *
+   * Uses WorkflowPipeline to sequence stages within a single session.
+   * Called when auto_chain is true and the entry workflow is "plan" or "work".
+   */
+  const startPipeline = (
+    stages: import("../../controller/workflow-pipeline").PipelineStage[],
+    args: Record<string, string>,
+    /** Pre-loaded deps to avoid double config load from the launcher wrappers. */
+    preloadedDeps?: WorkflowDeps,
+  ) => {
+    // Clean up any previous session
+    if (activeSession) {
+      destroyWorkflowSession(activeSession)
+      activeSession = null
+      activeController = null
+      activeLoop = null
+      activePipeline = null
+      setActiveStore(null)
+    }
+
+    // Create fresh session: store -> adapter -> eventBus
+    const sessionLabel = stages.map((s) => s.workflow).join(" -> ")
+    const session = createWorkflowSession(sessionLabel)
+    activeSession = session
+    setActiveStore(session.store)
+    setView("working")
+
+    // Config loaded once at pipeline start (Decision #5)
+    let deps: WorkflowDeps
+    if (preloadedDeps) {
+      deps = preloadedDeps
+    } else {
+      try {
+        deps = prepareWorkflowDeps()
+      } catch {
+        returnToHome()
+        return
+      }
+    }
+
+    // Create QuestionService for pipeline gates
+    const questionService = new QuestionService(session.eventBus)
+    activeQuestionService = questionService
+
+    // Subscribe to question events on the session bus to drive QuestionPrompt
+    cleanupQuestionSubscriptions()
+    questionUnsubs.push(
+      session.eventBus.subscribeToType("question:asked", (e) => {
+        // Show the first pending question (pipeline asks one at a time)
+        const pending = questionService.list()
+        if (pending.length > 0) {
+          setPendingQuestion(pending[0])
+        }
+      }),
+      session.eventBus.subscribeToType("question:replied", () => {
+        setPendingQuestion(null)
+      }),
+      session.eventBus.subscribeToType("question:rejected", () => {
+        setPendingQuestion(null)
+      }),
+    )
+
+    // Create stage runner that reuses this session
+    const stageRunner = createShellStageRunner(session, deps)
+
+    // Create and start the pipeline
+    const pipeline = new WorkflowPipeline({
+      stages,
+      args,
+      config: deps.config,
+      stageRunner,
+      questionService,
+      eventBus: session.eventBus,
+    })
+    activePipeline = pipeline
+
+    // Run the pipeline asynchronously
+    queueMicrotask(() => {
+      pipeline.run().catch(() => {
+        // Pipeline threw unexpectedly
+      })
+    })
+  }
+
+  /** Clean up question event subscriptions and reset state. */
+  const cleanupQuestionSubscriptions = () => {
+    for (const unsub of questionUnsubs) unsub()
+    questionUnsubs = []
+    setPendingQuestion(null)
+    activeQuestionService = null
+  }
+
+  /**
    * Tear down the active workflow: shut down runner, controller, and session.
    * Returns the controller shutdown promise so callers can await if needed.
    */
   const teardownActiveWorkflow = (): Promise<void> | undefined => {
+    cleanupQuestionSubscriptions()
+    if (activePipeline) {
+      activePipeline.requestShutdown()
+      activePipeline = null
+    }
     if (activeLoop) {
       activeLoop.requestShutdown()
       activeLoop = null
@@ -305,6 +399,50 @@ export function FlywheelShell() {
 
   // ── Command Handler (via ActionDispatcher) ──
 
+  /**
+   * Pipeline-aware launcher for /work commands.
+   * If auto_chain is true, wraps in a pipeline ["work", "review"] (+ "ship").
+   * Otherwise, runs the work workflow standalone.
+   */
+  const launchWorkWithPipeline = (planPath: string) => {
+    let deps: WorkflowDeps
+    try {
+      deps = prepareWorkflowDeps()
+    } catch {
+      returnToHome()
+      return
+    }
+
+    const stages = buildPipelineStages("work", deps.config)
+    if (stages) {
+      startPipeline(stages, { planPath }, deps)
+    } else {
+      startWorkWorkflow(planPath)
+    }
+  }
+
+  /**
+   * Pipeline-aware launcher for generic workflows (/plan, /review, etc.).
+   * If auto_chain is true and the workflow is "plan", wraps in a pipeline
+   * ["plan", "work", "review"] (+ "ship"). Otherwise, runs standalone.
+   */
+  const launchGenericWithPipeline = (name: string, args: Record<string, string>) => {
+    let deps: WorkflowDeps
+    try {
+      deps = prepareWorkflowDeps()
+    } catch {
+      returnToHome()
+      return
+    }
+
+    const stages = buildPipelineStages(name, deps.config)
+    if (stages) {
+      startPipeline(stages, args, deps)
+    } else {
+      startGenericWorkflow(name, args)
+    }
+  }
+
   const dispatch = createActionDispatcher({
     fileExists: (path) => fs.existsSync(path),
     notify: (message, variant) => {
@@ -314,8 +452,8 @@ export function FlywheelShell() {
         ...(variant === "info" ? { duration: 8000 } : {}),
       })
     },
-    launchWorkWorkflow: startWorkWorkflow,
-    launchGenericWorkflow: startGenericWorkflow,
+    launchWorkWorkflow: launchWorkWithPipeline,
+    launchGenericWorkflow: launchGenericWithPipeline,
     exit: exitTUI,
     returnToLauncher: returnToHome,
   })
@@ -449,6 +587,14 @@ export function FlywheelShell() {
               }
             }}
           />
+
+          {/* QuestionPrompt overlay — shown when pipeline gate asks a question */}
+          <Show when={pendingQuestion() && activeQuestionService}>
+            <QuestionPrompt
+              request={pendingQuestion()!}
+              questionService={activeQuestionService!}
+            />
+          </Show>
 
           {/* Escape hint overlay (during double-Esc) */}
           <Show when={escHint()}>

@@ -92,7 +92,7 @@ export function SharedLayout(props: SharedLayoutProps) {
       <box flexDirection="row" flexGrow={1} gap={1}>
         {/* Left sidebar — hidden below MIN_WIDTH_SIDEBAR */}
         <Show when={props.sidebar && visibility().showSidebar}>
-          <box flexShrink={0} width={SIDEBAR_WIDTH}>
+          <box flexShrink={0} width={SIDEBAR_WIDTH} overflow="hidden">
             {props.sidebar}
           </box>
         </Show>
@@ -104,7 +104,7 @@ export function SharedLayout(props: SharedLayoutProps) {
 
         {/* Right panel — hidden below MIN_WIDTH_PANEL */}
         <Show when={props.panel && visibility().showPanel}>
-          <box flexShrink={0} width={PANEL_WIDTH}>
+          <box flexShrink={0} width={PANEL_WIDTH} overflow="hidden">
             {props.panel}
           </box>
         </Show>

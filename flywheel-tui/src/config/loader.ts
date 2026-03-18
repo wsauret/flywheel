@@ -39,6 +39,14 @@ export const FlywheelConfigSchema = z.object({
   use_dispatcher: z.boolean().default(true),
   skip_evaluation: z.boolean().default(false),
 
+  /** Present open questions to user during plan consolidation. Default: false (auto-resolve). */
+  interactive_consolidation: z.boolean().default(false),
+  /** Automatically run ship after review completes. Default: false. */
+  auto_ship: z.boolean().default(false),
+  /** Chain workflows automatically (plan -> work -> review). Default: true.
+   * Decision #1: intentional behavior change — /work now chains to review. */
+  auto_chain: z.boolean().default(true),
+
   /** Worktree (Worktrunk) integration configuration. */
   worktree: z.object({
     /** Enable worktree integration. Default: false (auto-detected from wt CLI). */
@@ -65,6 +73,9 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   skip_approval_gates: false,
   use_dispatcher: true,
   skip_evaluation: false,
+  interactive_consolidation: false,
+  auto_ship: false,
+  auto_chain: true,
   worktree: {
     enabled: false,
     auto_remove: false,
@@ -125,6 +136,15 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   },
   FLYWHEEL_SKIP_EVALUATION: (val, config) => {
     config.skip_evaluation = val === "true" || val === "1";
+  },
+  FLYWHEEL_INTERACTIVE_CONSOLIDATION: (val, config) => {
+    config.interactive_consolidation = val === "true" || val === "1";
+  },
+  FLYWHEEL_AUTO_SHIP: (val, config) => {
+    config.auto_ship = val === "true" || val === "1";
+  },
+  FLYWHEEL_AUTO_CHAIN: (val, config) => {
+    config.auto_chain = val !== "false" && val !== "0";
   },
   FLYWHEEL_WORKTREE_ENABLED: (val, config) => {
     if (!config.worktree) config.worktree = {};

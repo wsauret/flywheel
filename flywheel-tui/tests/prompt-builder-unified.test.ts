@@ -128,6 +128,55 @@ describe("Unified PromptBuilder contract", () => {
       // The loop calls wrapCompletionInstruction, not the builder
       expect(prompt).not.toContain("<promise>COMPLETE</promise>");
     });
+
+    it("passes extra data through to ctx.extra for consolidation prompt", () => {
+      const resolvedQuestions = [
+        { question: "Use JWT?", answers: ["Yes"], source: "user" },
+      ];
+      const prompt = buildWorkflowPrompt(
+        3, // consolidation step
+        planWorkflow,
+        { description: "Build auth" },
+        "Previous review output",
+        "/tmp/project",
+        { resolvedQuestions },
+      );
+      // The consolidation prompt template reads ctx.extra?.resolvedQuestions
+      // and formats them as a numbered list with "→ answer (source: ...)" format
+      expect(prompt).toContain("Use JWT?");
+      expect(prompt).toContain("→ Yes (source: user)");
+    });
+
+    it("formats multiple resolved questions with answers in consolidation prompt", () => {
+      const resolvedQuestions = [
+        { question: "Use JWT?", answers: ["Yes"], source: "user" },
+        { question: "Cache strategy?", answers: ["Redis", "In-memory"], source: "auto" },
+        { question: "Deploy target?", answers: [], source: "auto" },
+      ];
+      const prompt = buildWorkflowPrompt(
+        3,
+        planWorkflow,
+        { description: "Build auth" },
+        "Previous review output",
+        "/tmp/project",
+        { resolvedQuestions },
+      );
+      expect(prompt).toContain("1. Use JWT? → Yes (source: user)");
+      expect(prompt).toContain("2. Cache strategy? → Redis, In-memory (source: auto)");
+      expect(prompt).toContain("3. Deploy target? → _no answer_ (source: auto)");
+    });
+
+    it("shows 'No resolved questions' when resolvedQuestions is empty", () => {
+      const prompt = buildWorkflowPrompt(
+        3,
+        planWorkflow,
+        { description: "Build auth" },
+        "Previous review output",
+        "/tmp/project",
+        { resolvedQuestions: [] },
+      );
+      expect(prompt).toContain("_No resolved questions._");
+    });
   });
 
   describe("wrapCompletionInstruction", () => {

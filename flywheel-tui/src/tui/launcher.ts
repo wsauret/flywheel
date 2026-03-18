@@ -31,6 +31,10 @@ if (isDev) {
   debug('[Launcher] OpenTUI preload loaded');
 }
 
+// Apply framework patches (must run before any TUI components are created)
+await import("./patches/text-wrap-resize")
+debug('[Launcher] Framework patches applied');
+
 // Re-export type for callers
 export type { TUIOptions } from "./app"
 

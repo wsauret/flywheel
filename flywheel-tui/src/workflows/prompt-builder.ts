@@ -82,6 +82,7 @@ const workflowPromptMap: Record<string, PromptFn[]> = {
  * @param args - Workflow-specific arguments (description, topic, etc.)
  * @param previousResult - Output from the previous step (if any)
  * @param projectCwd - Working directory for the project
+ * @param extra - Optional extra data to merge into ctx.extra (e.g. resolvedQuestions from onStepComplete accumulator)
  * @returns The assembled prompt string
  */
 export function buildWorkflowPrompt(
@@ -90,6 +91,7 @@ export function buildWorkflowPrompt(
   args: Record<string, string>,
   previousResult?: string,
   projectCwd?: string,
+  extra?: Record<string, unknown>,
 ): string {
   const prompts = workflowPromptMap[workflow.name];
 
@@ -100,6 +102,7 @@ export function buildWorkflowPrompt(
     fileReferences: [],
     previousResult,
     projectCwd,
+    extra,
   };
 
   if (prompts && stepIndex < prompts.length) {

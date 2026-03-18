@@ -17,6 +17,7 @@ import type { DispatcherOrchestrator } from "./dispatcher-orchestrator";
 import type { WorkflowStepContext } from "../prompts/index";
 import { readCachedFile } from "./templates";
 import { wrapCompletionInstruction } from "../worker/completion";
+import type { WorkerResult } from "../schemas/worker";
 import { PhaseExecutor, WorkerError } from "./phase-executor";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,20 @@ const TRUNCATION_NOTICE =
  */
 export type PromptBuilder = (phase: PhaseInfo, ctx: WorkflowStepContext) => string;
 
+/**
+ * Callback invoked after each executed phase completes successfully.
+ *
+ * Receives the phase index, the full (un-truncated) WorkerResult, and the
+ * current accumulated extra data from previous steps. Returns additional
+ * key-value pairs to merge into the accumulator, which is passed to the
+ * next phase's prompt builder via `ctx.extra`.
+ */
+export type OnStepCompleteHook = (
+  stepIndex: number,
+  result: WorkerResult,
+  accumulatedExtra: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
+
 export interface UnifiedExecutionLoopOptions {
   phaseProvider: PhaseProvider;
   promptBuilder: PromptBuilder;
@@ -70,6 +85,16 @@ export interface UnifiedExecutionLoopOptions {
   statePath?: string;
   /** Optional context path for dispatcher (work path only) */
   contextPath?: string;
+  /**
+   * Hook called after each phase completes. Returned data is merged into
+   * an accumulator that is passed as `ctx.extra` to subsequent phases.
+   */
+  onStepComplete?: OnStepCompleteHook;
+  /**
+   * When true, previousResult is NOT truncated between phases.
+   * Useful for plan workflows where the full output is needed.
+   */
+  skipTruncation?: boolean;
 }
 
 export interface ExecutionResult {
@@ -100,9 +125,17 @@ export class ExecutionLoop {
   private readonly planContent?: string;
   private readonly statePath?: string;
   private readonly contextPath?: string;
+  private readonly onStepComplete?: OnStepCompleteHook;
+  private readonly skipTruncation: boolean;
 
   private _shutdownRequested = false;
   private readonly _shutdownController = new AbortController();
+
+  /**
+   * Accumulator for extra data passed between phases via onStepComplete hook.
+   * Hoisted to instance level so callers can read accumulated data after run().
+   */
+  private readonly _extraAccumulator: Record<string, unknown> = {};
 
   constructor(options: UnifiedExecutionLoopOptions) {
     this.phaseProvider = options.phaseProvider;
@@ -120,6 +153,8 @@ export class ExecutionLoop {
     this.planContent = options.planContent;
     this.statePath = options.statePath;
     this.contextPath = options.contextPath;
+    this.onStepComplete = options.onStepComplete;
+    this.skipTruncation = options.skipTruncation ?? false;
   }
 
   /**
@@ -128,6 +163,16 @@ export class ExecutionLoop {
   requestShutdown(): void {
     this._shutdownRequested = true;
     this._shutdownController.abort();
+  }
+
+  /**
+   * Return accumulated extra data from onStepComplete hooks.
+   *
+   * Useful for retrieving data produced during execution (e.g. planFilePath
+   * from the plan workflow) after run() completes.
+   */
+  getAccumulatedExtra(): Readonly<Record<string, unknown>> {
+    return { ...this._extraAccumulator };
   }
 
   /**
@@ -242,6 +287,7 @@ export class ExecutionLoop {
           fileReferences: this.fileReferences,
           previousResult,
           projectCwd: this.config.project_cwd,
+          extra: { ...this._extraAccumulator },
         };
         prompt = this.promptBuilder(phase, ctx);
       }
@@ -259,8 +305,16 @@ export class ExecutionLoop {
           signal: this._shutdownController.signal,
         });
 
-        // Chain result for next phase (always on, truncated)
-        previousResult = truncateForNextPhase(result.output);
+        // Chain result for next phase (truncated unless skipTruncation is set)
+        previousResult = this.skipTruncation
+          ? result.output
+          : truncateForNextPhase(result.output);
+
+        // Call onStepComplete hook with full result; merge returned data into accumulator
+        if (this.onStepComplete) {
+          const hookData = await this.onStepComplete(phase.index, result, { ...this._extraAccumulator });
+          Object.assign(this._extraAccumulator, hookData);
+        }
 
         // Success: update state if persistence exists
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");

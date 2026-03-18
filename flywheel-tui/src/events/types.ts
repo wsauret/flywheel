@@ -2,9 +2,10 @@ import type { DispatcherDecision } from "../schemas/dispatcher";
 import type { EvaluatorResult } from "../schemas/evaluator";
 import type { WorkerResult, WorkerFailureReason } from "../schemas/worker";
 import type { ExecutionStatus } from "../schemas/execution";
+import type { QuestionInfo, QuestionAnswer } from "../controller/question-service";
 
 // ---------------------------------------------------------------------------
-// FlywheelEvent discriminated union (~22 event types, namespace:verb naming)
+// FlywheelEvent discriminated union (~25 event types, namespace:verb naming)
 // ---------------------------------------------------------------------------
 
 export type FlywheelEvent =
@@ -30,7 +31,14 @@ export type FlywheelEvent =
   | WorkerRetrying
   | WorkerOutput
   | ApprovalRequested
-  | ApprovalReceived;
+  | ApprovalReceived
+  | QuestionAsked
+  | QuestionReplied
+  | QuestionRejected
+  | PipelineStarted
+  | PipelineCompleted
+  | PipelineFailed
+  | PipelineStageTransition;
 
 // -- Workflow events --
 
@@ -219,6 +227,60 @@ export interface ApprovalReceived {
   workflowId: string;
   approved: boolean;
   skipped: boolean;
+  timestamp: string;
+}
+
+// -- Question events --
+
+export interface QuestionAsked {
+  type: "question:asked";
+  requestId: string;
+  questions: QuestionInfo[];
+  timestamp: string;
+}
+
+export interface QuestionReplied {
+  type: "question:replied";
+  requestId: string;
+  answers: QuestionAnswer[];
+  timestamp: string;
+}
+
+export interface QuestionRejected {
+  type: "question:rejected";
+  requestId: string;
+  timestamp: string;
+}
+
+// -- Pipeline events --
+
+export interface PipelineStarted {
+  type: "pipeline:started";
+  pipelineId: string;
+  stages: string[];
+  timestamp: string;
+}
+
+export interface PipelineCompleted {
+  type: "pipeline:completed";
+  pipelineId: string;
+  stagesCompleted: number;
+  timestamp: string;
+}
+
+export interface PipelineFailed {
+  type: "pipeline:failed";
+  pipelineId: string;
+  reason: string;
+  stagesCompleted: number;
+  timestamp: string;
+}
+
+export interface PipelineStageTransition {
+  type: "pipeline:stage-transition";
+  pipelineId: string;
+  from: string;
+  to: string;
   timestamp: string;
 }
 
