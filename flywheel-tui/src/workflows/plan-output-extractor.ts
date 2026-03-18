@@ -22,11 +22,19 @@ import { parseOpenQuestions, type ResolvedQuestion } from "./question-parser";
 /** Valid plan type prefixes (matches buildPlanDraftPrompt naming convention). */
 const PLAN_TYPES = ["feat", "fix", "refactor", "chore", "docs"] as const;
 
-/** Regex to match plan filenames: <type>-<description>.md */
+/** Regex to match plan filenames: <type>-<description>.md (global, for String.match). */
 const PLAN_FILENAME_PATTERN = new RegExp(
-  `(?:${PLAN_TYPES.join("|")})-[a-z0-9]+(?:-[a-z0-9]+)*\\.md`,
+  `(?:${PLAN_TYPES.join("|")})-[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\\.md`,
   "g",
 );
+
+/** Non-global variant for single-match testing (avoids lastIndex statefulness). */
+const PLAN_FILENAME_TEST = new RegExp(
+  `(?:${PLAN_TYPES.join("|")})-[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\\.md`,
+);
+
+/** File suffixes to exclude from scan results (metadata companions, not actual plans). */
+export const EXCLUDED_SUFFIXES = [".context.md", ".state.md", ".baseline.md"];
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -95,24 +103,26 @@ export async function scanForNewPlan(
     return null;
   }
 
-  // Filter to matching plan files and collect stats
-  const candidates: Array<{ filename: string; mtimeMs: number }> = [];
+  // Filter entries: must match plan pattern and NOT be excluded metadata files
+  const matchingEntries = entries.filter((entry) => {
+    if (EXCLUDED_SUFFIXES.some((suffix) => entry.endsWith(suffix))) return false;
+    return PLAN_FILENAME_TEST.test(entry);
+  });
 
-  for (const entry of entries) {
-    // Must match the plan filename pattern
-    PLAN_FILENAME_PATTERN.lastIndex = 0;
-    if (!PLAN_FILENAME_PATTERN.test(entry)) continue;
-
+  // Parallelize fs.stat calls
+  const statPromises = matchingEntries.map(async (entry) => {
     try {
       const stat = await fs.stat(path.join(plansDir, entry));
-      if (stat.mtimeMs > beforeTimestamp) {
-        candidates.push({ filename: entry, mtimeMs: stat.mtimeMs });
-      }
+      return stat.mtimeMs > beforeTimestamp
+        ? { filename: entry, mtimeMs: stat.mtimeMs }
+        : null;
     } catch {
-      // Skip files we can't stat
-      continue;
+      return null;
     }
-  }
+  });
+  const candidates = (await Promise.all(statPromises)).filter(
+    (c): c is { filename: string; mtimeMs: number } => c !== null,
+  );
 
   if (candidates.length === 0) return null;
 

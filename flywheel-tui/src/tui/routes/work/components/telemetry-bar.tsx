@@ -5,8 +5,9 @@
  * Show plan info, status, and phase progress in footer
  */
 
-import { Show } from "solid-js"
+import { Show, createMemo } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
+import { formatPipelineStage, type PipelineStageInfo } from "../../../utils/format"
 import type { WorkflowStatus } from "../state/types"
 
 export interface TelemetryBarProps {
@@ -17,6 +18,7 @@ export interface TelemetryBarProps {
   totalPhases?: number
   workflowLabel?: string  // "work" | "plan" | "review" etc.
   stepLabel?: string      // "Phase" | "Step" | "Cycle"
+  pipelineInfo?: PipelineStageInfo | null
 }
 
 /**
@@ -24,6 +26,8 @@ export interface TelemetryBarProps {
  */
 export function TelemetryBar(props: TelemetryBarProps) {
   const themeCtx = useTheme()
+
+  const pipelineStageText = createMemo(() => formatPipelineStage(props.pipelineInfo))
 
   const showStatus = () => props.status === "stopping" || props.status === "interrupted" || props.status === "failed"
 
@@ -64,11 +68,15 @@ export function TelemetryBar(props: TelemetryBarProps) {
       {/* Separator to prevent left/right merging */}
       <text fg={themeCtx.theme.textMuted}> • </text>
 
-      {/* Right side: plan name, phase progress, status */}
+      {/* Right side: plan name, pipeline stage, phase progress, status */}
       <box flexDirection="row" flexShrink={1} overflow="hidden">
         <text wrapMode="none" fg={themeCtx.theme.text} attributes={1}>
           {props.planName}
         </text>
+        <Show when={pipelineStageText()}>
+          <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
+          <text wrapMode="none" fg={themeCtx.theme.secondary}>{pipelineStageText()}</text>
+        </Show>
         <Show when={props.totalPhases && props.totalPhases > 0}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
           <text wrapMode="none" fg={themeCtx.theme.primary}>{props.stepLabel ?? "Phase"} {props.currentPhase ?? 0}/{props.totalPhases}</text>

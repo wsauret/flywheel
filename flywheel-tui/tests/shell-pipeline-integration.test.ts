@@ -4,7 +4,15 @@ import {
   buildPipelineStages,
   createShellStageRunner,
 } from "../src/tui/components/shell-pipeline";
-import type { PipelineStage, PipelineStageResult, StageRunner } from "../src/controller/workflow-pipeline";
+import {
+  WorkflowPipeline,
+  type PipelineStage,
+  type PipelineStageResult,
+  type StageRunner,
+} from "../src/controller/workflow-pipeline";
+import { EventBus } from "../src/events/event-bus";
+import { QuestionService } from "../src/controller/question-service";
+import type { FlywheelEvent } from "../src/events/types";
 import type { WorkflowDeps } from "../src/controller/workflow-deps";
 import type { Engine } from "../src/engines/core/types";
 import type { ProcessSpawner } from "../src/worker/spawner";
@@ -395,5 +403,258 @@ describe("ExecutionLoop.getAccumulatedExtra", () => {
     // Should be equal but not the same reference
     expect(extra1).toEqual(extra2);
     expect(extra1).not.toBe(extra2);
+  });
+});
+
+// ===========================================================================
+// Phase 4: Pipeline result handling — contract tests for shell integration
+// ===========================================================================
+
+describe("Pipeline result handling (shell contract)", () => {
+  // Helper: create a simple stage runner that can succeed or fail
+  function mockStageRunner(opts?: {
+    failAt?: string;
+    failReason?: string;
+  }): StageRunner {
+    return async (stage, _args, _signal) => {
+      if (opts?.failAt === stage.workflow) {
+        return {
+          workflow: stage.workflow,
+          completed: false,
+          reason: opts.failReason ?? `${stage.workflow} stage failed`,
+        };
+      }
+      return {
+        workflow: stage.workflow,
+        completed: true,
+        ...(stage.workflow === "plan" ? { planPath: "/tmp/plan.md" } : {}),
+      };
+    };
+  }
+
+  it("pipeline.run() returns { completed: true } when all stages succeed", async () => {
+    const bus = new EventBus();
+    const pipeline = new WorkflowPipeline({
+      stages: [
+        { workflow: "plan" },
+        { workflow: "work" },
+        { workflow: "review" },
+      ],
+      args: {},
+      config: makeConfig(),
+      stageRunner: mockStageRunner(),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stagesCompleted).toBe(3);
+    expect(result.stagesTotal).toBe(3);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it("pipeline.run() returns { completed: false, reason } when a stage fails", async () => {
+    const bus = new EventBus();
+    const pipeline = new WorkflowPipeline({
+      stages: [
+        { workflow: "plan" },
+        { workflow: "work" },
+        { workflow: "review" },
+      ],
+      args: {},
+      config: makeConfig(),
+      stageRunner: mockStageRunner({
+        failAt: "work",
+        failReason: "Work stage compilation error",
+      }),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stagesCompleted).toBe(1); // only plan completed
+    expect(result.stagesTotal).toBe(3);
+    expect(result.reason).toBe("Work stage compilation error");
+  });
+
+  it("pipeline.run() returns { completed: false } with default reason when stage fails without reason", async () => {
+    const bus = new EventBus();
+    const pipeline = new WorkflowPipeline({
+      stages: [{ workflow: "plan" }, { workflow: "work" }],
+      args: {},
+      config: makeConfig(),
+      stageRunner: async (stage) => {
+        if (stage.workflow === "work") {
+          return { workflow: "work", completed: false }; // no reason
+        }
+        return { workflow: stage.workflow, completed: true };
+      },
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(false);
+    // Pipeline should provide a default reason
+    expect(result.reason).toBeTruthy();
+    expect(result.reason).toContain("work");
+  });
+
+  it("pipeline.run() returns { completed: false } when shut down", async () => {
+    const bus = new EventBus();
+    const pipeline = new WorkflowPipeline({
+      stages: [{ workflow: "plan" }, { workflow: "work" }],
+      args: {},
+      config: makeConfig(),
+      stageRunner: async (stage, _args, signal) => {
+        // plan succeeds quickly
+        if (stage.workflow === "plan") {
+          return { workflow: "plan", completed: true, planPath: "/tmp/p.md" };
+        }
+        // work hangs until aborted
+        return new Promise((resolve) => {
+          signal.addEventListener("abort", () => {
+            resolve({ workflow: "work", completed: false, reason: "aborted" });
+          });
+        });
+      },
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    // Start run, then shut down after a tick
+    const runPromise = pipeline.run();
+    // Give plan time to complete, then abort during work
+    await new Promise((r) => setTimeout(r, 10));
+    pipeline.requestShutdown();
+
+    const result = await runPromise;
+
+    expect(result.completed).toBe(false);
+    expect(result.reason).toBeDefined();
+  });
+});
+
+// ===========================================================================
+// Phase 4: pipeline:stage-transition event contract
+// ===========================================================================
+
+describe("pipeline:stage-transition event contract", () => {
+  it("stage-transition event has from and to fields", async () => {
+    const bus = new EventBus();
+    const transitions: Array<{ from: string; to: string }> = [];
+
+    bus.subscribeToType("pipeline:stage-transition", (e) => {
+      transitions.push({ from: e.from, to: e.to });
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: [
+        { workflow: "plan" },
+        { workflow: "work" },
+        { workflow: "review" },
+      ],
+      args: {},
+      config: makeConfig(),
+      stageRunner: async (stage) => ({
+        workflow: stage.workflow,
+        completed: true,
+        ...(stage.workflow === "plan" ? { planPath: "/tmp/p.md" } : {}),
+      }),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    await pipeline.run();
+
+    expect(transitions).toHaveLength(2);
+    expect(transitions[0]).toEqual({ from: "plan", to: "work" });
+    expect(transitions[1]).toEqual({ from: "work", to: "review" });
+  });
+
+  it("pipeline:started event has stages array with workflow names", async () => {
+    const bus = new EventBus();
+    let startedStages: string[] = [];
+
+    bus.subscribeToType("pipeline:started", (e) => {
+      startedStages = e.stages;
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: [
+        { workflow: "plan" },
+        { workflow: "work" },
+        { workflow: "review" },
+      ],
+      args: {},
+      config: makeConfig(),
+      stageRunner: async (stage) => ({
+        workflow: stage.workflow,
+        completed: true,
+      }),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    await pipeline.run();
+
+    expect(startedStages).toEqual(["plan", "work", "review"]);
+  });
+
+  it("pipeline:failed event fires when a stage fails", async () => {
+    const bus = new EventBus();
+    let failedReason: string | undefined;
+
+    bus.subscribeToType("pipeline:failed", (e) => {
+      failedReason = e.reason;
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: [{ workflow: "plan" }, { workflow: "work" }],
+      args: {},
+      config: makeConfig(),
+      stageRunner: async (stage) => {
+        if (stage.workflow === "work") {
+          return { workflow: "work", completed: false, reason: "tests failed" };
+        }
+        return { workflow: stage.workflow, completed: true };
+      },
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    await pipeline.run();
+
+    expect(failedReason).toBe("tests failed");
+  });
+
+  it("no stage-transition event fires for a single-stage pipeline", async () => {
+    const bus = new EventBus();
+    const transitions: any[] = [];
+
+    bus.subscribeToType("pipeline:stage-transition", (e) => {
+      transitions.push(e);
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: [{ workflow: "review" }],
+      args: {},
+      config: makeConfig(),
+      stageRunner: async (stage) => ({
+        workflow: stage.workflow,
+        completed: true,
+      }),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+    });
+
+    await pipeline.run();
+
+    expect(transitions).toHaveLength(0);
   });
 });

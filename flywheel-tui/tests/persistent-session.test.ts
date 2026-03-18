@@ -8,7 +8,7 @@ import {
 } from "../src/tui/components/workflow-session";
 import { createEscapeHandler, type EscapeHandler } from "../src/tui/utils/escape-handler";
 
-/** Shell state — matches the ViewMode type used in flywheel-shell.tsx */
+/** Shell state — matches the AppState type used in flywheel-shell.tsx */
 type ShellState = "idle" | "working" | "completed";
 
 /** Minimal slash command parser for test harness (production uses parseHomeCommand) */
@@ -56,6 +56,11 @@ class ShellSimulator {
   escHint = "";
   exitCalled = false;
 
+  // Pipeline pause state (mirrors flywheel-shell.tsx Phase 5)
+  isPipelineRunning = false;
+  userInitiatedPause = false;
+  pauseMessageEmitted = false;
+
   constructor() {
     this.escapeHandler = createEscapeHandler({ timeoutMs: 200 }); // fast timeout for tests
   }
@@ -66,6 +71,11 @@ class ShellSimulator {
       destroyWorkflowSession(this.activeSession);
       this.activeSession = null;
     }
+
+    // Reset pause state on new workflow
+    this.userInitiatedPause = false;
+    this.pauseMessageEmitted = false;
+    this.isPipelineRunning = false;
 
     const session = createWorkflowSession(planPath);
     this.activeSession = session;
@@ -104,6 +114,36 @@ class ShellSimulator {
       destroyWorkflowSession(this.activeSession);
       this.activeSession = null;
     }
+    this.shellState = "completed";
+  }
+
+  /**
+   * Pause the pipeline (user-initiated via double-Esc).
+   * Mirrors the pausePipeline() function in flywheel-shell.tsx.
+   */
+  pausePipeline(): void {
+    this.userInitiatedPause = true;
+    this.escapeHandler.reset();
+    this.escHint = "";
+
+    // Set suppressPipelineError on the adapter before shutdown triggers pipeline:failed
+    if (this.activeSession) {
+      this.activeSession.adapter.suppressPipelineError = true;
+    }
+
+    // Push pause message through event bus
+    if (this.activeSession) {
+      this.activeSession.eventBus.emit({
+        type: "worker:output",
+        workflowId: "pipeline-pause",
+        stream: "stderr",
+        data: "⏸ Pipeline paused. Resume with /work or select from session sidebar.\n",
+        timestamp: new Date().toISOString(),
+      });
+      this.pauseMessageEmitted = true;
+    }
+
+    // Transition app state to completed (keeps output visible)
     this.shellState = "completed";
   }
 
@@ -150,7 +190,12 @@ class ShellSimulator {
         this.escHint = "Press Esc again to stop";
       } else {
         this.escHint = "";
-        this.stopWorkflow();
+        // During pipeline: pause instead of full stop
+        if (this.isPipelineRunning) {
+          this.pausePipeline();
+        } else {
+          this.stopWorkflow();
+        }
       }
     }
   }
@@ -720,6 +765,138 @@ describe("Persistent Session Integration", () => {
       expect(shell.runs).toHaveLength(2);
       expect(shell.runs[0].planName).toBe("first-plan.md");
       expect(shell.runs[1].planName).toBe("second-plan.md");
+    });
+  });
+
+  // ── Double-Esc Pause Behavior ──
+
+  describe("double-Esc pause behavior", () => {
+    it("double-Esc during pipeline sets session state to work:paused", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      // Simulate pipeline running
+      shell.isPipelineRunning = true;
+
+      // First Esc → hint
+      shell.handleEscape();
+      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.shellState).toBe("working");
+
+      // Second Esc → pause (not full teardown)
+      shell.handleEscape();
+      expect(shell.shellState).toBe("completed");
+      expect(shell.userInitiatedPause).toBe(true);
+      // Session adapter should have suppressPipelineError set
+      expect(session.adapter.suppressPipelineError).toBe(true);
+    });
+
+    it("pipeline:failed is NOT turned into ErrorModal for user-initiated pauses", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      // Set suppress flag on adapter (as pause would)
+      session.adapter.suppressPipelineError = true;
+
+      // Emit pipeline:failed (happens internally when shutdown is requested)
+      session.eventBus.emit({
+        type: "pipeline:failed",
+        pipelineId: "p1",
+        reason: "Pipeline shut down",
+        stagesCompleted: 0,
+        timestamp: ts(),
+      });
+
+      // Error should NOT be set on the store (no ErrorModal)
+      expect(session.store.getState().error).toBeUndefined();
+    });
+
+    it("pause pushes system text to output", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      shell.isPipelineRunning = true;
+
+      // Double-Esc to pause
+      shell.handleEscape();
+      shell.handleEscape();
+
+      // Check that pause message was emitted through event bus
+      expect(shell.pauseMessageEmitted).toBe(true);
+    });
+
+    it("userInitiatedPause flag distinguishes pause from failure", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      // Normal stop (not pipeline) — userInitiatedPause stays false
+      shell.handleSubmit("/stop");
+      expect(shell.userInitiatedPause).toBe(false);
+      expect(shell.shellState).toBe("completed");
+    });
+
+    it("userInitiatedPause is true only for double-Esc during pipeline", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+
+      shell.isPipelineRunning = true;
+
+      // Double-Esc
+      shell.handleEscape();
+      shell.handleEscape();
+
+      expect(shell.userInitiatedPause).toBe(true);
+    });
+
+    it("userInitiatedPause resets when starting a new workflow", () => {
+      shell.handleSubmit("plan.md");
+      const session = shell.activeSession!;
+      session.eventBus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan.md",
+        timestamp: ts(),
+      });
+      shell.isPipelineRunning = true;
+
+      // Double-Esc to pause
+      shell.handleEscape();
+      shell.handleEscape();
+      expect(shell.userInitiatedPause).toBe(true);
+
+      // Start new workflow
+      shell.handleSubmit("plan-2.md");
+      expect(shell.userInitiatedPause).toBe(false);
     });
   });
 

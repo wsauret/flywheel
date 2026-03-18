@@ -93,20 +93,6 @@ export function WorkflowView(props: WorkflowViewProps) {
     return null
   })
 
-  const handlePromptSubmit = (prompt: string) => {
-    if (state().approvalState.pending) {
-      if (prompt) {
-        props.onPromptSubmit?.(prompt)
-      }
-      props.onApprovalDecision?.(true)
-      props.store.clearApproval()
-    } else {
-      if (prompt) {
-        props.onPromptSubmit?.(prompt)
-      }
-    }
-  }
-
   return (
     <SharedLayout
       state={state()}
@@ -170,8 +156,6 @@ export function WorkflowView(props: WorkflowViewProps) {
           workflowStatus={state().workflowStatus}
           approvalPending={state().approvalState.pending}
           isPromptFocused={isPromptFocused()}
-          onPromptSubmit={handlePromptSubmit}
-          onPromptFocusExit={() => setIsPromptFocused(false)}
           availableWidth={dimensions()?.width}
           currentPhase={currentPhase()}
         />

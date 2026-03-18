@@ -1,120 +1,64 @@
 /**
- * Shell Modes — Pure logic for ViewMode state machine
+ * Shell Modes — Pure logic for AppState and layout
  *
- * Extracted from flywheel-shell.tsx so transitions can be unit-tested
+ * Extracted from flywheel-shell.tsx so behavior can be unit-tested
  * without the OpenTUI runtime. Covers:
- *   - ViewMode type and transition actions
- *   - Transition function (current mode + action → next mode)
- *   - Escape behavior per mode
+ *   - AppState type (activity state, not screen selection)
+ *   - Escape behavior per state
+ *   - Ctrl+C behavior per state
  *   - assertNever exhaustiveness guard
  *   - Responsive collapse thresholds for three-column layout
  */
 
 // ---------------------------------------------------------------------------
-// ViewMode type
-// ---------------------------------------------------------------------------
-
-export type ViewMode = "launcher" | "working" | "completed" | "importing"
-
-// ---------------------------------------------------------------------------
-// Transition actions
-// ---------------------------------------------------------------------------
-
-/** Actions that cause a ViewMode transition. */
-export type ViewAction =
-  | "start-workflow"    // user submits a plan/command
-  | "workflow-ended"    // workflow completes, fails, or is interrupted
-  | "stop-workflow"     // user explicitly stops (double-Esc, /stop)
-  | "new-session"       // /new command — back to launcher
-  | "start-import"      // begin plan import flow
-  | "cancel-import"     // cancel import, return to previous mode
-  | "confirm-import"    // import confirmed, start workflow
-
-// ---------------------------------------------------------------------------
-// Transition function
+// AppState — describes what the app is *doing*
 // ---------------------------------------------------------------------------
 
 /**
- * Pure state-machine transition: given the current mode and an action,
- * return the next mode.
- *
- * Returns `null` if the action is invalid for the current mode
- * (callers should ignore or log).
+ * AppState describes what the app is *doing* rather than which *screen* to show.
+ * The layout is always SharedLayout; only content varies based on state.
  */
-export function transitionViewMode(
-  current: ViewMode,
-  action: ViewAction,
-): ViewMode | null {
-  switch (current) {
-    case "launcher":
-      switch (action) {
-        case "start-workflow":  return "working"
-        case "start-import":    return "importing"
-        default:                return null
-      }
-    case "working":
-      switch (action) {
-        case "workflow-ended":  return "completed"
-        case "stop-workflow":   return "completed"
-        default:                return null
-      }
-    case "completed":
-      switch (action) {
-        case "start-workflow":  return "working"
-        case "new-session":     return "launcher"
-        case "start-import":    return "importing"
-        default:                return null
-      }
-    case "importing":
-      switch (action) {
-        case "cancel-import":   return "launcher"
-        case "confirm-import":  return "working"
-        default:                return null
-      }
-    default:
-      return assertNever(current)
-  }
-}
+export type AppState = "idle" | "working" | "completed" | "importing"
 
 // ---------------------------------------------------------------------------
-// Escape behavior per mode
+// Escape behavior per state
 // ---------------------------------------------------------------------------
 
-export type EscapeBehavior =
-  | "exit-tui"        // launcher: Esc exits the application
+export type EscapeStateBehavior =
+  | "exit-tui"        // idle: Esc exits the application
   | "double-esc-stop" // working: first Esc shows hint, second stops
-  | "return-launcher"  // completed: go back to launcher
+  | "return-idle"     // completed: go back to idle
   | "cancel-import"   // importing: cancel the import flow
 
 /**
- * What should happen when Esc is pressed in a given ViewMode.
+ * What should happen when Esc is pressed in a given AppState.
  */
-export function escapeForMode(mode: ViewMode): EscapeBehavior {
-  switch (mode) {
-    case "launcher":    return "exit-tui"
+export function escapeForState(state: AppState): EscapeStateBehavior {
+  switch (state) {
+    case "idle":        return "exit-tui"
     case "working":     return "double-esc-stop"
-    case "completed":   return "return-launcher"
+    case "completed":   return "return-idle"
     case "importing":   return "cancel-import"
-    default:            return assertNever(mode)
+    default:            return assertNever(state)
   }
 }
 
 // ---------------------------------------------------------------------------
-// Ctrl+C behavior per mode
+// Ctrl+C behavior per state
 // ---------------------------------------------------------------------------
 
-export type CtrlCBehavior = "exit-tui" | "stop-workflow" | "return-launcher"
+export type CtrlCStateBehavior = "exit-tui" | "stop-workflow" | "return-idle"
 
 /**
- * What should happen when Ctrl+C is pressed in a given ViewMode.
+ * What should happen when Ctrl+C is pressed in a given AppState.
  */
-export function ctrlCForMode(mode: ViewMode): CtrlCBehavior {
-  switch (mode) {
-    case "launcher":    return "exit-tui"
+export function ctrlCForState(state: AppState): CtrlCStateBehavior {
+  switch (state) {
+    case "idle":        return "exit-tui"
     case "working":     return "stop-workflow"
-    case "completed":   return "return-launcher"
+    case "completed":   return "return-idle"
     case "importing":   return "exit-tui"
-    default:            return assertNever(mode)
+    default:            return assertNever(state)
   }
 }
 
@@ -155,8 +99,8 @@ export function layoutVisibility(terminalWidth: number): LayoutVisibility {
 
 /**
  * Exhaustiveness guard. TypeScript will error at compile time if a switch
- * over ViewMode doesn't cover every variant.
+ * doesn't cover every variant.
  */
 export function assertNever(x: never): never {
-  throw new Error(`Unexpected ViewMode value: ${x}`)
+  throw new Error(`Unexpected value: ${x}`)
 }

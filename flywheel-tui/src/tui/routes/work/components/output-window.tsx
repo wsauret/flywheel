@@ -2,8 +2,8 @@
 /**
  * Output Window Component
  *
- * Displays streaming workflow output with auto-scroll and an always-present
- * prompt line at the bottom (adapted from CodeMachine).
+ * Displays streaming workflow output with auto-scroll.
+ * The prompt now lives outside OutputWindow as UnifiedPrompt.
  */
 
 import { Show, For, createSignal } from "solid-js"
@@ -12,7 +12,6 @@ import { useTheme } from "@tui/shared/context/theme"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer"
-import { PromptLine, type PromptLineState } from "./prompt-line"
 import type { WorkflowStatus, PhaseStatus, AnyBlock } from "../state/types"
 import { getStatusIcon, getStatusColor } from "./status-utils"
 
@@ -29,8 +28,6 @@ export interface OutputWindowProps {
   workflowStatus: WorkflowStatus
   approvalPending: boolean
   isPromptFocused: boolean
-  onPromptSubmit: (prompt: string) => void
-  onPromptFocusExit: () => void
   availableWidth?: number
   currentPhase?: CurrentPhaseInfo | null
 }
@@ -48,16 +45,6 @@ export function OutputWindow(props: OutputWindowProps) {
     if (props.approvalPending) return "Waiting for approval..."
     if (props.currentPhase?.status === "running") return "Executing phase..."
     return null
-  }
-
-  const promptState = (): PromptLineState => {
-    if (props.approvalPending) {
-      return { mode: "active", reason: "approval" }
-    }
-    if (props.workflowStatus === "running") {
-      return { mode: "passive" }
-    }
-    return { mode: "disabled" }
   }
 
   return (
@@ -206,14 +193,6 @@ export function OutputWindow(props: OutputWindowProps) {
           </scrollbox>
         </Show>
       </box>
-
-      {/* Always-present prompt line */}
-      <PromptLine
-        state={promptState()}
-        isFocused={props.isPromptFocused}
-        onSubmit={props.onPromptSubmit}
-        onFocusExit={props.onPromptFocusExit}
-      />
     </box>
   )
 }

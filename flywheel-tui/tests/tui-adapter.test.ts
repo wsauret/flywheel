@@ -558,6 +558,300 @@ describe("OpenTUIAdapter", () => {
     });
   });
 
+  // ── Pipeline Events ──
+
+  describe("pipeline events", () => {
+    it("pipeline:started pushes system text with joined stage names", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work", "review"],
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Pipeline started");
+      expect(text).toContain("plan → work → review");
+    });
+
+    it("pipeline:stage-transition pushes transition message with from and to", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "pipeline:stage-transition",
+        pipelineId: "p1",
+        from: "plan",
+        to: "work",
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("plan");
+      expect(text).toContain("work");
+    });
+
+    it("pipeline:completed pushes completion message with stagesCompleted", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "pipeline:completed",
+        pipelineId: "p1",
+        stagesCompleted: 3,
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Pipeline complete");
+      expect(text).toContain("3 stages");
+    });
+
+    it("pipeline:failed pushes error text AND calls setError", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "pipeline:failed",
+        pipelineId: "p1",
+        reason: "stage work exploded",
+        stagesCompleted: 1,
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      const blocks = store.getState().outputBlocks;
+      expect(blocks.length).toBeGreaterThanOrEqual(1);
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Pipeline failed");
+      expect(text).toContain("stage work exploded");
+      // Also sets error on the store (for ErrorModal)
+      expect(store.getState().error).toBe("stage work exploded");
+    });
+  });
+
+  // ── Pipeline Timer Continuity ──
+
+  describe("pipeline timer continuity", () => {
+    it("pipeline:started sets pipelineMode to true", () => {
+      const { bus, adapter } = createHarness();
+      expect(adapter.isPipelineMode).toBe(false);
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work", "review"],
+        timestamp: ts(),
+      });
+      expect(adapter.isPipelineMode).toBe(true);
+    });
+
+    it("workflow:started does NOT reset timer when pipelineMode is true", () => {
+      const { bus } = createHarness();
+      // Start the pipeline (sets pipelineMode)
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: ts(),
+      });
+      // First workflow:started — timer resets and starts normally
+      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan.md", timestamp: ts() });
+      expect(timerService.isRunning()).toBe(true);
+      const startTime1 = timerService.getWorkflowRuntime();
+
+      // Complete the first workflow
+      bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+
+      // Stage transition
+      bus.emit({
+        type: "pipeline:stage-transition",
+        pipelineId: "p1",
+        from: "plan",
+        to: "work",
+        timestamp: ts(),
+      });
+
+      // Second workflow:started — should NOT reset timer (pipelineMode is true)
+      bus.emit({ type: "workflow:started", workflowId: "w2", planPath: "work.md", timestamp: ts() });
+      // Timer should be running again (start() was called, but NOT reset())
+      expect(timerService.isRunning()).toBe(true);
+    });
+
+    it("pipeline:stage-transition records elapsed time for completed stage", () => {
+      const { bus, adapter } = createHarness();
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: ts(),
+      });
+      expect(adapter.pipelineStageTimings).toHaveLength(0);
+
+      bus.emit({
+        type: "pipeline:stage-transition",
+        pipelineId: "p1",
+        from: "plan",
+        to: "work",
+        timestamp: ts(),
+      });
+      expect(adapter.pipelineStageTimings).toHaveLength(1);
+      expect(typeof adapter.pipelineStageTimings[0]).toBe("number");
+      expect(adapter.pipelineStageTimings[0]).toBeGreaterThanOrEqual(0);
+    });
+
+    it("pipeline:completed clears pipelineMode and preserves stage timings", () => {
+      const { bus, adapter } = createHarness();
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: ts(),
+      });
+      bus.emit({
+        type: "pipeline:stage-transition",
+        pipelineId: "p1",
+        from: "plan",
+        to: "work",
+        timestamp: ts(),
+      });
+      expect(adapter.isPipelineMode).toBe(true);
+
+      bus.emit({
+        type: "pipeline:completed",
+        pipelineId: "p1",
+        stagesCompleted: 2,
+        timestamp: ts(),
+      });
+      expect(adapter.isPipelineMode).toBe(false);
+      // Stage timings are still accessible after pipeline completes
+      expect(adapter.pipelineStageTimings).toHaveLength(1);
+    });
+
+    it("pipeline:failed clears pipelineMode", () => {
+      const { bus, adapter } = createHarness();
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: ts(),
+      });
+      expect(adapter.isPipelineMode).toBe(true);
+
+      bus.emit({
+        type: "pipeline:failed",
+        pipelineId: "p1",
+        reason: "stage failed",
+        stagesCompleted: 1,
+        timestamp: ts(),
+      });
+      expect(adapter.isPipelineMode).toBe(false);
+    });
+
+    it("workflow:started resets timer when NOT in pipelineMode", () => {
+      const { bus } = createHarness();
+      // No pipeline — normal workflow behavior
+      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan.md", timestamp: ts() });
+      expect(timerService.isRunning()).toBe(true);
+      bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      expect(timerService.isStopped()).toBe(true);
+
+      // New workflow:started should reset and start fresh
+      bus.emit({ type: "workflow:started", workflowId: "w2", planPath: "plan2.md", timestamp: ts() });
+      expect(timerService.isRunning()).toBe(true);
+    });
+  });
+
+  // ── Suppress Pipeline Error (Pause Behavior) ──
+
+  describe("suppressPipelineError", () => {
+    it("suppressPipelineError defaults to false", () => {
+      const { adapter } = createHarness();
+      expect(adapter.suppressPipelineError).toBe(false);
+    });
+
+    it("pipeline:failed calls setError when suppressPipelineError is false", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "pipeline:failed",
+        pipelineId: "p1",
+        reason: "stage failed",
+        stagesCompleted: 1,
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      expect(store.getState().error).toBe("stage failed");
+    });
+
+    it("pipeline:failed skips setError when suppressPipelineError is true", () => {
+      const { bus, store, adapter } = createHarness();
+      adapter.suppressPipelineError = true;
+      bus.emit({
+        type: "pipeline:failed",
+        pipelineId: "p1",
+        reason: "user paused",
+        stagesCompleted: 1,
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      // Error text is still pushed to output blocks
+      const blocks = store.getState().outputBlocks;
+      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      expect(text).toContain("Pipeline failed");
+      // But store.error is NOT set (no ErrorModal)
+      expect(store.getState().error).toBeUndefined();
+    });
+
+    it("suppressPipelineError resets to false after being set", () => {
+      const { adapter } = createHarness();
+      adapter.suppressPipelineError = true;
+      expect(adapter.suppressPipelineError).toBe(true);
+      adapter.suppressPipelineError = false;
+      expect(adapter.suppressPipelineError).toBe(false);
+    });
+
+    it("workflow:failed skips setError when suppressPipelineError is true", () => {
+      const { bus, store, adapter } = createHarness();
+      // Enter pipeline mode
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: "2025-01-01T00:00:00Z",
+      });
+      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
+      adapter.suppressPipelineError = true;
+      bus.emit({ type: "workflow:failed", workflowId: "w1", reason: "interrupted by user", timestamp: ts() });
+      // Error should NOT be set (suppressed)
+      expect(store.getState().error).toBeUndefined();
+    });
+
+    it("workflow:failed still calls setError when suppressPipelineError is false", () => {
+      const { bus, store } = createHarness();
+      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
+      bus.emit({ type: "workflow:failed", workflowId: "w1", reason: "real failure", timestamp: ts() });
+      expect(store.getState().error).toBe("real failure");
+    });
+
+    it("pipeline:failed still stops timer and clears pipelineMode when suppressed", () => {
+      const { bus, adapter } = createHarness();
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: ts(),
+      });
+      // Start a workflow so the timer is running
+      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
+      expect(adapter.isPipelineMode).toBe(true);
+      expect(timerService.isRunning()).toBe(true);
+
+      adapter.suppressPipelineError = true;
+      bus.emit({
+        type: "pipeline:failed",
+        pipelineId: "p1",
+        reason: "user paused",
+        stagesCompleted: 1,
+        timestamp: ts(),
+      });
+      expect(adapter.isPipelineMode).toBe(false);
+      expect(timerService.isStopped()).toBe(true);
+    });
+  });
+
   // ── Disconnect ──
 
   describe("disconnect", () => {

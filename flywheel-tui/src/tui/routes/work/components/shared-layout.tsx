@@ -27,6 +27,7 @@ import {
   PANEL_WIDTH,
 } from "../../../components/shell-modes"
 import type { WorkState } from "../state/types"
+import type { PipelineStageInfo } from "../../../utils/format"
 
 export interface SharedLayoutProps {
   state: WorkState
@@ -39,6 +40,7 @@ export interface SharedLayoutProps {
   isPromptFocused?: boolean
   workflowLabel?: string  // "work" | "plan" | "review" etc.
   stepLabel?: string      // "Phase" | "Step" | "Cycle"
+  pipelineInfo?: PipelineStageInfo | null
   onStopConfirm: () => void
   onStopCancel: () => void
   onApprovalContinue: () => void
@@ -119,6 +121,7 @@ export function SharedLayout(props: SharedLayoutProps) {
           totalPhases={props.state.phases.length}
           workflowLabel={props.workflowLabel}
           stepLabel={props.stepLabel}
+          pipelineInfo={props.pipelineInfo}
         />
         <StatusFooter
           approvalPending={props.approvalPending}

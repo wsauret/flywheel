@@ -196,6 +196,17 @@ export function createShellStageRunner(
       // For plan workflows, check if planFilePath was captured
       const extra = loop.getAccumulatedExtra();
       const planFilePath = extra.planFilePath as string | undefined;
+      const planFileWarning = extra.planFileWarning as string | undefined;
+
+      // Surface plan extraction results as system messages
+      if (isPlan) {
+        if (planFileWarning) {
+          emitter.workerOutput(workflowId, "stderr", `⚠ ${planFileWarning}\n`);
+        }
+        if (planFilePath) {
+          emitter.workerOutput(workflowId, "stderr", `✓ Extracted plan path: ${planFilePath}\n`);
+        }
+      }
 
       return {
         workflow: stage.workflow as WorkflowType,

@@ -1,14 +1,17 @@
 /** @jsxImportSource @opentui/solid */
 /**
- * Welcome Section Component
+ * Empty State Component
  *
- * Displays logo, version, slogans, and help rows for top commands.
+ * Renders welcome/branding content in the output area when no session
+ * is active. Replaces the WelcomeSection from the old LauncherView.
+ *
+ * Shows: FULL_LOGO, version, HOME_HELP_COMMANDS help rows, random slogan.
+ * Centered vertically and horizontally in available space.
  */
 
 import { For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { FULL_LOGO } from "@tui/shared/components/logo"
-import { HelpRow } from "./help-row"
 import { HOME_HELP_COMMANDS } from "@tui/config/commands"
 
 const SLOGANS = [
@@ -23,12 +26,18 @@ const SLOGANS = [
 
 const getRandomSlogan = () => SLOGANS[Math.floor(Math.random() * SLOGANS.length)]
 
-export function WelcomeSection() {
+export function EmptyState() {
   const themeCtx = useTheme()
   const slogan = getRandomSlogan()
 
   return (
-    <>
+    <box
+      flexGrow={1}
+      flexDirection="column"
+      justifyContent="center"
+      alignItems="center"
+      gap={0}
+    >
       {/* ASCII Logo */}
       <box flexDirection="column" alignItems="center">
         <For each={FULL_LOGO}>
@@ -47,7 +56,14 @@ export function WelcomeSection() {
       <box width={60} flexDirection="column" gap={0}>
         <For each={HOME_HELP_COMMANDS}>
           {(cmd) => (
-            <HelpRow command={cmd.name} description={cmd.description} />
+            <box flexDirection="row" gap={2}>
+              <box width={14}>
+                <text fg={themeCtx.theme.primary}>{cmd.name}</text>
+              </box>
+              <box>
+                <text fg={themeCtx.theme.textMuted}>{cmd.description}</text>
+              </box>
+            </box>
           )}
         </For>
       </box>
@@ -56,6 +72,6 @@ export function WelcomeSection() {
       <box marginTop={1}>
         <text fg={themeCtx.theme.textMuted}>{slogan}</text>
       </box>
-    </>
+    </box>
   )
 }

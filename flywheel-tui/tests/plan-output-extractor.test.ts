@@ -110,6 +110,18 @@ docs/plans/feat-final-name.md which is the consolidated version.
     const result = await extractPlanPath(output);
     expect(result).toBe("feat-add-user-auth-with-jwt-tokens.md");
   });
+
+  it("extracts filenames with mixed-case words", async () => {
+    const output = "Plan saved to docs/plans/feat-Add-Auth.md";
+    const result = await extractPlanPath(output);
+    expect(result).toBe("feat-Add-Auth.md");
+  });
+
+  it("extracts filenames with mixed-case and numbers", async () => {
+    const output = "Created docs/plans/feat-OAuth2-Setup.md for the feature.";
+    const result = await extractPlanPath(output);
+    expect(result).toBe("feat-OAuth2-Setup.md");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -239,6 +251,41 @@ describe("scanForNewPlan", () => {
     fs.mkdirSync(plansDir, { recursive: true });
 
     const result = await scanForNewPlan(dir, Date.now() - 1000);
+    expect(result).toBeNull();
+  });
+
+  it("excludes files ending in .context.md, .state.md, and .baseline.md", async () => {
+    const dir = ensureTmpDir();
+    const plansDir = path.join(dir, "docs", "plans");
+    fs.mkdirSync(plansDir, { recursive: true });
+
+    const beforeTimestamp = Date.now() - 1000;
+
+    // Create excluded metadata files (these match the plan pattern but should be filtered)
+    fs.writeFileSync(path.join(plansDir, "feat-auth.context.md"), "# Context");
+    fs.writeFileSync(path.join(plansDir, "feat-auth.state.md"), "# State");
+    fs.writeFileSync(path.join(plansDir, "feat-auth.baseline.md"), "# Baseline");
+
+    // Create a valid plan file
+    fs.writeFileSync(path.join(plansDir, "feat-auth.md"), "# Plan");
+
+    const result = await scanForNewPlan(dir, beforeTimestamp);
+    expect(result).toBe("feat-auth.md");
+  });
+
+  it("returns null when only excluded metadata files exist", async () => {
+    const dir = ensureTmpDir();
+    const plansDir = path.join(dir, "docs", "plans");
+    fs.mkdirSync(plansDir, { recursive: true });
+
+    const beforeTimestamp = Date.now() - 1000;
+
+    // Only metadata files — no valid plan
+    fs.writeFileSync(path.join(plansDir, "feat-setup.context.md"), "# Context");
+    fs.writeFileSync(path.join(plansDir, "feat-setup.state.md"), "# State");
+    fs.writeFileSync(path.join(plansDir, "feat-setup.baseline.md"), "# Baseline");
+
+    const result = await scanForNewPlan(dir, beforeTimestamp);
     expect(result).toBeNull();
   });
 });

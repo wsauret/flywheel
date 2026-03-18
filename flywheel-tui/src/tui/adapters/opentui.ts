@@ -42,6 +42,18 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** When true, pass raw output without NDJSON parsing */
   private _rawMode = false;
 
+  /** When true, we're inside a multi-stage pipeline — skip timer reset on workflow:started */
+  private _pipelineMode = false;
+
+  /** When true, pipeline:failed skips setError (user-initiated pause). */
+  public suppressPipelineError = false;
+
+  /** Elapsed time (ms) for each completed pipeline stage, recorded at stage transitions */
+  private _stageTimings: number[] = [];
+
+  /** Timestamp when the current pipeline stage started (for computing per-stage elapsed) */
+  private _stageStartedAt: number = 0;
+
   /** Current engine ID for routing events. Updated per worker:output event. */
   private currentEngineId: string | undefined;
 
@@ -95,6 +107,16 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     return this._rawMode;
   }
 
+  /** Check if we're inside a multi-stage pipeline. */
+  get isPipelineMode(): boolean {
+    return this._pipelineMode;
+  }
+
+  /** Per-stage elapsed times (ms) recorded at each stage transition. */
+  get pipelineStageTimings(): number[] {
+    return this._stageTimings;
+  }
+
   /** Clean up interval on disconnect. */
   override disconnect(): void {
     super.disconnect();
@@ -107,26 +129,36 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "workflow:started":
-        timerService.reset();
+        if (!this._pipelineMode) {
+          timerService.reset();
+        }
         timerService.start();
         this.actions.startWorkflow(event.planPath);
         break;
 
       case "workflow:completed":
-        timerService.stop();
+        if (!this._pipelineMode) {
+          timerService.stop();
+        }
         // Final flush before completing
         this.flushBlocks();
         this.actions.stopWorkflow("completed");
         break;
 
       case "workflow:failed":
-        timerService.stop();
+        if (!this._pipelineMode) {
+          timerService.stop();
+        }
         this.flushBlocks();
-        this.actions.setError(event.reason);
+        if (!this.suppressPipelineError) {
+          this.actions.setError(event.reason);
+        }
         break;
 
       case "workflow:interrupted":
-        timerService.stop();
+        if (!this._pipelineMode) {
+          timerService.stop();
+        }
         this.flushBlocks();
         this.actions.stopWorkflow("interrupted");
         break;
@@ -240,11 +272,34 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       case "question:rejected":
         break;
 
-      // Pipeline events — handled by shell, not adapter
+      // Pipeline events
       case "pipeline:started":
+        this._pipelineMode = true;
+        this._stageTimings = [];
+        this._stageStartedAt = Date.now();
+        this.pushSystemText(`▶ Pipeline started: ${event.stages.join(" → ")}\n`, event.timestamp);
+        break;
+      case "pipeline:stage-transition": {
+        const now = Date.now();
+        if (this._stageStartedAt > 0) {
+          this._stageTimings.push(now - this._stageStartedAt);
+        }
+        this._stageStartedAt = now;
+        this.pushSystemText(`◈ ${event.from} complete. Starting ${event.to}...\n`, event.timestamp);
+        break;
+      }
       case "pipeline:completed":
+        this._pipelineMode = false;
+        timerService.stop();
+        this.pushSystemText(`✓ Pipeline complete (${event.stagesCompleted} stages)\n`, event.timestamp);
+        break;
       case "pipeline:failed":
-      case "pipeline:stage-transition":
+        this._pipelineMode = false;
+        timerService.stop();
+        this.pushSystemText(`✗ Pipeline failed: ${event.reason}\n`, event.timestamp);
+        if (!this.suppressPipelineError) {
+          this.actions.setError(event.reason);
+        }
         break;
 
       default:
