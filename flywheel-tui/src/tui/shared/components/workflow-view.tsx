@@ -17,7 +17,6 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { SharedLayout } from "../../routes/work/components/shared-layout"
 import { OutputWindow, type CurrentPhaseInfo } from "../../routes/work/components/output-window"
 import { useWorkKeyboard } from "../../routes/work/hooks/use-work-keyboard"
-import { useTimer } from "@tui/shared/services"
 import { useSession } from "@tui/shared/context/session"
 import { SessionSidebar } from "../../components/session-sidebar"
 import { WorkflowPanel } from "../../components/workflow-panel"
@@ -39,7 +38,6 @@ export interface WorkflowViewProps {
 
 export function WorkflowView(props: WorkflowViewProps) {
   const dimensions = useTerminalDimensions()
-  const timer = useTimer()
   const sessionCtx = useSession()
   const [state, setState] = createSignal<WorkState>(props.store.getState())
   const [showStopModal, setShowStopModal] = createSignal(false)
@@ -73,8 +71,6 @@ export function WorkflowView(props: WorkflowViewProps) {
     onToggleRawMode: props.onToggleRawMode,
   })
 
-  const runtime = () => timer.workflowRuntime()
-
   // Derive current phase for the rich output header (memoized to avoid linear scan on every access)
   const currentPhase = createMemo((): CurrentPhaseInfo | null => {
     const phases = state().phases
@@ -96,15 +92,12 @@ export function WorkflowView(props: WorkflowViewProps) {
   return (
     <SharedLayout
       state={state()}
-      runtime={runtime()}
       showStopModal={showStopModal()}
       showApprovalGate={state().approvalState.pending}
       showErrorModal={!!state().error && state().workflowStatus === "failed"}
       errorMessage={state().error}
       approvalPending={state().approvalState.pending}
       isPromptFocused={isPromptFocused()}
-      workflowLabel={props.workflowName}
-      stepLabel={props.stepLabel}
       header={
         <SessionHeader
           info={{

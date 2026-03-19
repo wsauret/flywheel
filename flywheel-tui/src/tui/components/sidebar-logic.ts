@@ -20,10 +20,10 @@ export type SessionGroupKey = "active" | "paused" | "other" | "archived" | "tras
 export type SessionGroup = Record<SessionGroupKey, SessionSummary[]>;
 
 /** Actions the sidebar can trigger when a session is selected. */
-export type SelectionAction = "switch" | "resume" | "view";
+export type SelectionAction = "switch" | "resume" | "view" | "delete";
 
 /** Keyboard actions the sidebar handles. */
-export type SidebarAction = "move-up" | "move-down" | "select";
+export type SidebarAction = "move-up" | "move-down" | "select" | "delete";
 
 /** Result of a sidebar key handler invocation. */
 export interface SidebarKeyResult {
@@ -120,13 +120,17 @@ function groupToFlatList(sessions: SessionSummary[]): SessionSummary[] {
 
 /**
  * Determine what action to take when a session is selected.
+ * Returns null for non-selectable sessions (trashed / archived).
  */
-function getSelectionAction(session: SessionSummary): SelectionAction {
+export function getSelectionAction(session: SessionSummary): SelectionAction | null {
   switch (session.lifecycleState) {
     case "work:active":
       return "switch";
     case "work:paused":
       return "resume";
+    case "trashed":
+    case "archived":
+      return null;
     default:
       return "view";
   }
@@ -137,9 +141,34 @@ function getSelectionAction(session: SessionSummary): SelectionAction {
 // ---------------------------------------------------------------------------
 
 /**
+ * Check whether a session is selectable (not trashed/archived).
+ */
+function isSelectable(session: SessionSummary): boolean {
+  return getSelectionAction(session) !== null;
+}
+
+/**
+ * Find the next selectable index in the given direction.
+ * Returns `fallback` if no selectable session exists.
+ */
+function findNextSelectable(
+  flatList: SessionSummary[],
+  from: number,
+  direction: 1 | -1,
+  fallback: number,
+): number {
+  let idx = from;
+  while (idx >= 0 && idx < flatList.length) {
+    if (isSelectable(flatList[idx])) return idx;
+    idx += direction;
+  }
+  return fallback;
+}
+
+/**
  * Pure function handling sidebar keyboard navigation.
  *
- * @param action - The keyboard action (move-up, move-down, select)
+ * @param action - The keyboard action (move-up, move-down, select, delete)
  * @param sessions - All sessions (ungrouped; will be grouped internally)
  * @param currentIndex - Current selected index in the flat list
  * @returns Updated index and optional selection info
@@ -150,26 +179,49 @@ export function sidebarKeyHandler(
   currentIndex: number,
 ): SidebarKeyResult {
   const flatList = groupToFlatList(sessions);
-  const maxIndex = Math.max(0, flatList.length - 1);
 
   switch (action) {
     case "move-down": {
       if (flatList.length === 0) return { selectedIndex: 0 };
-      return { selectedIndex: Math.min(currentIndex + 1, maxIndex) };
+      // Find next selectable session below current position
+      const next = findNextSelectable(flatList, currentIndex + 1, 1, currentIndex);
+      return { selectedIndex: next };
     }
     case "move-up": {
       if (flatList.length === 0) return { selectedIndex: 0 };
-      return { selectedIndex: Math.max(currentIndex - 1, 0) };
+      // Find next selectable session above current position
+      const next = findNextSelectable(flatList, currentIndex - 1, -1, currentIndex);
+      return { selectedIndex: next };
     }
     case "select": {
       if (flatList.length === 0 || currentIndex >= flatList.length) {
-        return { selectedIndex: currentIndex, selectedSessionId: undefined };
+        return { selectedIndex: currentIndex };
       }
       const session = flatList[currentIndex];
+      const selectionAction = getSelectionAction(session);
+      if (selectionAction === null) {
+        // Non-selectable session — no action
+        return { selectedIndex: currentIndex };
+      }
       return {
         selectedIndex: currentIndex,
         selectedSessionId: session.id,
-        action: getSelectionAction(session),
+        action: selectionAction,
+      };
+    }
+    case "delete": {
+      if (flatList.length === 0 || currentIndex >= flatList.length) {
+        return { selectedIndex: currentIndex };
+      }
+      const session = flatList[currentIndex];
+      if (!isSelectable(session)) {
+        // Non-selectable session — no delete action
+        return { selectedIndex: currentIndex };
+      }
+      return {
+        selectedIndex: currentIndex,
+        selectedSessionId: session.id,
+        action: "delete",
       };
     }
   }

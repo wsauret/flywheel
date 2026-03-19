@@ -60,6 +60,30 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
     const initialResult = props.manager.list()
     setSessions(initialResult.sessions)
 
+    // Startup crash recovery: transition stale work:active → work:paused
+    // Must run BEFORE trashed sweep so recovered sessions aren't accidentally swept.
+    try {
+      const recovered = props.manager.recoverStaleSessions()
+      if (recovered > 0) {
+        const updated = props.manager.list()
+        setSessions(updated.sessions)
+      }
+    } catch {
+      // Non-fatal — don't block startup
+    }
+
+    // Startup sweep: clean up trashed sessions (fire-and-forget)
+    try {
+      const swept = props.manager.sweepTrashed()
+      if (swept > 0) {
+        // Refresh list to reflect deletions
+        const updated = props.manager.list()
+        setSessions(updated.sessions)
+      }
+    } catch {
+      // Non-fatal — don't block startup
+    }
+
     const refreshList = (): SessionListResult => {
       const result = props.manager.list()
       setSessions(result.sessions)

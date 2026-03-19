@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   groupSessions,
   sidebarKeyHandler,
+  getSelectionAction,
   type SessionGroup,
   type SidebarAction,
   GROUP_ORDER,
@@ -245,18 +246,168 @@ describe("Session selection actions", () => {
     expect(result.action).toBe("view");
   });
 
-  it("selecting an archived session returns 'view' action", () => {
-    const session = makeSession({ lifecycleState: "archived" });
+  it("selecting a work:review session returns 'view' action", () => {
+    const session = makeSession({ lifecycleState: "work:review" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
+    expect(result.selectedSessionId).toBe(session.id);
     expect(result.action).toBe("view");
   });
 
-  it("selecting a trashed session returns 'view' action", () => {
+  it("selecting an archived session returns no action (null — not selectable)", () => {
+    const session = makeSession({ lifecycleState: "archived" });
+    const sessions = [session];
+    const result = sidebarKeyHandler("select", sessions, 0);
+    expect(result.selectedSessionId).toBeUndefined();
+    expect(result.action).toBeUndefined();
+  });
+
+  it("selecting a trashed session returns no action (null — not selectable)", () => {
     const session = makeSession({ lifecycleState: "trashed" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
-    expect(result.action).toBe("view");
+    expect(result.selectedSessionId).toBeUndefined();
+    expect(result.action).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSelectionAction — direct tests
+// ---------------------------------------------------------------------------
+
+describe("getSelectionAction", () => {
+  it("work:paused → 'resume'", () => {
+    const session = makeSession({ lifecycleState: "work:paused" });
+    expect(getSelectionAction(session)).toBe("resume");
+  });
+
+  it("work:active → 'switch'", () => {
+    const session = makeSession({ lifecycleState: "work:active" });
+    expect(getSelectionAction(session)).toBe("switch");
+  });
+
+  it("completed → 'view'", () => {
+    const session = makeSession({ lifecycleState: "completed" });
+    expect(getSelectionAction(session)).toBe("view");
+  });
+
+  it("work:review → 'view'", () => {
+    const session = makeSession({ lifecycleState: "work:review" });
+    expect(getSelectionAction(session)).toBe("view");
+  });
+
+  it("trashed → null (not selectable)", () => {
+    const session = makeSession({ lifecycleState: "trashed" });
+    expect(getSelectionAction(session)).toBeNull();
+  });
+
+  it("archived → null (not selectable)", () => {
+    const session = makeSession({ lifecycleState: "archived" });
+    expect(getSelectionAction(session)).toBeNull();
+  });
+
+  it("new → 'view'", () => {
+    const session = makeSession({ lifecycleState: "new" });
+    expect(getSelectionAction(session)).toBe("view");
+  });
+
+  it("plan:draft → 'view'", () => {
+    const session = makeSession({ lifecycleState: "plan:draft" });
+    expect(getSelectionAction(session)).toBe("view");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sidebarKeyHandler — skip non-selectable sessions during navigation
+// ---------------------------------------------------------------------------
+
+describe("sidebarKeyHandler — skip non-selectable", () => {
+  // Flat order (GROUP_ORDER): active, paused, other, archived, trash
+  // So: [Active1, Paused1, Completed1, Archived1, Trashed1]
+  const sessions = [
+    makeSession({ lifecycleState: "work:active", name: "Active1" }),
+    makeSession({ lifecycleState: "work:paused", name: "Paused1" }),
+    makeSession({ lifecycleState: "completed", name: "Completed1" }),
+    makeSession({ lifecycleState: "archived", name: "Archived1" }),
+    makeSession({ lifecycleState: "trashed", name: "Trashed1" }),
+  ];
+
+  it("move-down from Completed1 (idx 2) skips Archived1 and Trashed1, clamps at 2", () => {
+    // Completed1 is the last selectable item (idx 2), move-down should stay there
+    const result = sidebarKeyHandler("move-down", sessions, 2);
+    expect(result.selectedIndex).toBe(2);
+  });
+
+  it("move-up from Completed1 (idx 2) goes to Paused1 (idx 1)", () => {
+    const result = sidebarKeyHandler("move-up", sessions, 2);
+    expect(result.selectedIndex).toBe(1);
+  });
+
+  it("move-down from Active1 (idx 0) goes to Paused1 (idx 1)", () => {
+    const result = sidebarKeyHandler("move-down", sessions, 0);
+    expect(result.selectedIndex).toBe(1);
+  });
+
+  it("move-down from Paused1 (idx 1) goes to Completed1 (idx 2)", () => {
+    const result = sidebarKeyHandler("move-down", sessions, 1);
+    expect(result.selectedIndex).toBe(2);
+  });
+
+  it("handles all non-selectable list (only trashed/archived)", () => {
+    const allNonSelectable = [
+      makeSession({ lifecycleState: "archived", name: "A" }),
+      makeSession({ lifecycleState: "trashed", name: "T" }),
+    ];
+    const result = sidebarKeyHandler("move-down", allNonSelectable, 0);
+    // No selectable sessions, should stay at 0
+    expect(result.selectedIndex).toBe(0);
+  });
+
+  it("select on a non-selectable session returns no action", () => {
+    // Archived1 is at flat index 3 — but even if we try to select at idx 3
+    const result = sidebarKeyHandler("select", sessions, 3);
+    expect(result.selectedSessionId).toBeUndefined();
+    expect(result.action).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sidebarKeyHandler — delete action
+// ---------------------------------------------------------------------------
+
+describe("sidebarKeyHandler — delete action", () => {
+  const sessions = [
+    makeSession({ lifecycleState: "work:active", name: "Active1" }),
+    makeSession({ lifecycleState: "work:paused", name: "Paused1" }),
+    makeSession({ lifecycleState: "completed", name: "Completed1" }),
+  ];
+
+  it("delete action returns the session ID + 'delete' action", () => {
+    const flat = groupToFlatList(sessions);
+    const result = sidebarKeyHandler("delete", sessions, 0);
+    expect(result.selectedSessionId).toBe(flat[0].id);
+    expect(result.action).toBe("delete");
+  });
+
+  it("delete on non-selectable session returns no action", () => {
+    const sessionsWithTrash = [
+      makeSession({ lifecycleState: "trashed", name: "Trashed1" }),
+    ];
+    const result = sidebarKeyHandler("delete", sessionsWithTrash, 0);
+    expect(result.selectedSessionId).toBeUndefined();
+    expect(result.action).toBeUndefined();
+  });
+
+  it("delete on empty list returns no action", () => {
+    const result = sidebarKeyHandler("delete", [], 0);
+    expect(result.selectedSessionId).toBeUndefined();
+    expect(result.action).toBeUndefined();
+  });
+
+  it("delete on out-of-bounds index returns no action", () => {
+    const result = sidebarKeyHandler("delete", sessions, 99);
+    expect(result.selectedSessionId).toBeUndefined();
+    expect(result.action).toBeUndefined();
   });
 });
 

@@ -188,3 +188,90 @@ export function deleteSession(id: string, baseDir: string): boolean {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Delete with companion file cleanup
+// ---------------------------------------------------------------------------
+
+/** Result of a deleteSessionWithCompanions call. */
+export interface DeleteResult {
+  deleted: string[];
+  errors: string[];
+}
+
+/**
+ * Delete a session and all its companion files (state, context, output).
+ *
+ * Reads the session JSON first to discover companion paths. Falls back to
+ * convention-based output path (`<id>.output.json`) if the JSON is unreadable.
+ * Deletes companions first, then the session JSON last.
+ *
+ * @param id - The session UUID.
+ * @param baseDir - The project root directory.
+ * @param activeSessionId - If provided, deletion is refused when `id` matches.
+ * @returns `{ deleted, errors }` for partial failure reporting.
+ */
+export function deleteSessionWithCompanions(
+  id: string,
+  baseDir: string,
+  activeSessionId?: string | null,
+): DeleteResult {
+  const result: DeleteResult = { deleted: [], errors: [] };
+
+  // Guard: don't delete the currently active session
+  if (activeSessionId && id === activeSessionId) {
+    result.errors.push("Cannot delete the currently active session");
+    return result;
+  }
+
+  // Read session JSON first to get companion paths
+  const session = readSession(id, baseDir);
+
+  // Collect companion paths to delete (before the JSON itself)
+  const toDelete: string[] = [];
+
+  if (session) {
+    if (session.statePath) {
+      toDelete.push(path.resolve(baseDir, session.statePath));
+    }
+    if (session.contextPath) {
+      toDelete.push(path.resolve(baseDir, session.contextPath));
+    }
+    if (session.outputPath) {
+      toDelete.push(path.join(sessionsDir(baseDir), session.outputPath));
+    }
+  }
+
+  // Convention-based output path fallback (always attempt if not already listed)
+  const conventionOutput = path.join(sessionsDir(baseDir), `${id}.output.json`);
+  if (!toDelete.includes(conventionOutput)) {
+    toDelete.push(conventionOutput);
+  }
+
+  // Delete companion files
+  for (const filePath of toDelete) {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        result.deleted.push(filePath);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      result.errors.push(`${filePath}: ${message}`);
+    }
+  }
+
+  // Delete session JSON last
+  const jsonPath = sessionFilePath(id, baseDir);
+  try {
+    if (fs.existsSync(jsonPath)) {
+      fs.unlinkSync(jsonPath);
+      result.deleted.push(jsonPath);
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    result.errors.push(`${jsonPath}: ${message}`);
+  }
+
+  return result;
+}

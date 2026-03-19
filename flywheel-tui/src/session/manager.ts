@@ -17,6 +17,7 @@ import {
   readSession,
   updateSession,
   listSessions,
+  deleteSessionWithCompanions,
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
 import { isValidTransition, type SessionLifecycleState } from "./state-machine";
@@ -81,6 +82,24 @@ export interface SessionManager {
 
   /** Destroy the active session's runtime (stop adapter, disconnect). */
   destroyActive(): void;
+
+  /**
+   * Sweep trashed sessions: delete their files and companions from disk.
+   * Intended for fire-and-forget startup cleanup.
+   *
+   * @returns The number of trashed sessions cleaned up.
+   */
+  sweepTrashed(): number;
+
+  /**
+   * Recover stale `work:active` sessions that have no running pipeline.
+   * Transitions them to `work:paused` so they can be resumed.
+   *
+   * Intended for startup crash recovery — call BEFORE `sweepTrashed()`.
+   *
+   * @returns The number of sessions recovered.
+   */
+  recoverStaleSessions(): number;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,6 +265,52 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     activeSession = null;
   }
 
+  function sweepTrashed(): number {
+    const { sessions } = listSessions(baseDir);
+    let swept = 0;
+
+    for (const entry of sessions) {
+      const state = entry.data.sessionLifecycleState;
+      if (state !== "trashed") continue;
+
+      // Delete session files + companions
+      deleteSessionWithCompanions(entry.id, baseDir);
+
+      // Also clean up worktree if available
+      if (worktreeManager) {
+        worktreeManager.cleanupTrashed(entry.id).catch(() => {});
+      }
+
+      swept++;
+    }
+
+    return swept;
+  }
+
+  function recoverStaleSessions(): number {
+    const { sessions } = listSessions(baseDir);
+    let recovered = 0;
+
+    for (const entry of sessions) {
+      const state = entry.data.sessionLifecycleState;
+      if (state !== "work:active") continue;
+
+      // This session was work:active on disk but has no running pipeline
+      // (since we just started up). Transition to work:paused.
+      try {
+        updateSession(entry.id, { sessionLifecycleState: "work:paused" }, baseDir);
+        console.error(
+          `Recovered stale session ${entry.data.name || entry.id} -> work:paused`,
+        );
+        recovered++;
+      } catch {
+        // Non-fatal — skip sessions that fail to update
+      }
+    }
+
+    return recovered;
+  }
+
   return {
     create,
     resume,
@@ -255,5 +320,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     archive,
     getActiveSession,
     destroyActive,
+    sweepTrashed,
+    recoverStaleSessions,
   };
 }

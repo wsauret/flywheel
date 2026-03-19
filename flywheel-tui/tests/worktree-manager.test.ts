@@ -5,6 +5,7 @@ import {
   type WorktreeInfo,
   type WorktreeManagerDeps,
 } from "../src/session/worktree-manager";
+import type { CliSession } from "../src/schemas/session";
 
 // ---------------------------------------------------------------------------
 // Mock IWorktreeClient
@@ -532,5 +533,151 @@ describe("WorktreeManager — multiple sessions", () => {
     // session-2 is gone
     const s2 = await mgr.switchToSession("session-2");
     expect(s2).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Worktree path persistence (Phase 2 — step 2.6)
+// ---------------------------------------------------------------------------
+
+describe("WorktreeManager — worktreePath persistence", () => {
+  it("createForSession calls updateSession with worktreePath and branch", async () => {
+    const client = createMockWorktreeClient();
+    const updates: Array<{ id: string; partial: Partial<CliSession> }> = [];
+    const mgr = createWorktreeManager(makeDeps(client, {
+      updateSession: (id, partial) => { updates.push({ id, partial }); },
+    }));
+
+    await mgr.createForSession("session-1", "feat/persisted");
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].id).toBe("session-1");
+    expect(updates[0].partial.worktreePath).toBe("/tmp/worktrees/feat/persisted");
+    expect(updates[0].partial.branch).toBe("feat/persisted");
+  });
+
+  it("createForSession does NOT call updateSession when worktree creation fails", async () => {
+    const client = createMockWorktreeClient({ failOn: "create" });
+    const updates: Array<{ id: string; partial: Partial<CliSession> }> = [];
+    const mgr = createWorktreeManager(makeDeps(client, {
+      updateSession: (id, partial) => { updates.push({ id, partial }); },
+    }));
+
+    const result = await mgr.createForSession("session-1", "feat/fail");
+
+    expect(result).toBeNull();
+    expect(updates).toHaveLength(0);
+  });
+
+  it("createForSession does NOT call updateSession when disabled", async () => {
+    const client = createMockWorktreeClient();
+    const updates: Array<{ id: string; partial: Partial<CliSession> }> = [];
+    const mgr = createWorktreeManager(makeDeps(client, {
+      enabled: false,
+      updateSession: (id, partial) => { updates.push({ id, partial }); },
+    }));
+
+    await mgr.createForSession("session-1", "feat/disabled");
+
+    expect(updates).toHaveLength(0);
+  });
+
+  it("createForSession tolerates missing updateSession (optional dep)", async () => {
+    const client = createMockWorktreeClient();
+    // No updateSession provided — should not throw
+    const mgr = createWorktreeManager(makeDeps(client));
+
+    const result = await mgr.createForSession("session-1", "feat/no-persist");
+    expect(result).not.toBeNull();
+    expect(result!.branch).toBe("feat/no-persist");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lazy rehydration from disk (Phase 2 — step 2.6)
+// ---------------------------------------------------------------------------
+
+describe("WorktreeManager — lazy rehydration (switchToSession)", () => {
+  it("switchToSession falls back to readSession when Map has no entry", async () => {
+    const client = createMockWorktreeClient({
+      existingWorktrees: [
+        { path: "/tmp/worktrees/feat/from-disk", branch: "feat/from-disk", isActive: false },
+      ],
+    });
+    const mgr = createWorktreeManager(makeDeps(client, {
+      readSession: (id) => ({
+        worktreePath: "/tmp/worktrees/feat/from-disk",
+        branch: "feat/from-disk",
+      }),
+    }));
+
+    // No createForSession — Map is empty. readSession provides fallback.
+    const result = await mgr.switchToSession("session-1");
+
+    expect(result).not.toBeNull();
+    expect(result!.branch).toBe("feat/from-disk");
+  });
+
+  it("switchToSession prefers Map entry over readSession", async () => {
+    const client = createMockWorktreeClient();
+    let readCalled = false;
+    const mgr = createWorktreeManager(makeDeps(client, {
+      readSession: (id) => {
+        readCalled = true;
+        return { worktreePath: "/tmp/disk", branch: "from-disk" };
+      },
+    }));
+
+    // Create entry in Map
+    await mgr.createForSession("session-1", "feat/in-memory");
+
+    // Switch should use Map, not readSession
+    const result = await mgr.switchToSession("session-1");
+
+    expect(result).not.toBeNull();
+    expect(result!.branch).toBe("feat/in-memory");
+    expect(readCalled).toBe(false);
+  });
+
+  it("switchToSession returns null when readSession returns no worktreePath", async () => {
+    const client = createMockWorktreeClient();
+    const mgr = createWorktreeManager(makeDeps(client, {
+      readSession: (id) => ({ worktreePath: undefined, branch: undefined }),
+    }));
+
+    const result = await mgr.switchToSession("session-1");
+    expect(result).toBeNull();
+  });
+
+  it("switchToSession returns null when readSession is not provided", async () => {
+    const client = createMockWorktreeClient();
+    // No readSession dep — default behavior (returns null for unknown)
+    const mgr = createWorktreeManager(makeDeps(client));
+
+    const result = await mgr.switchToSession("unknown-session");
+    expect(result).toBeNull();
+  });
+
+  it("switchToSession populates Map after reading from disk (subsequent calls use Map)", async () => {
+    const client = createMockWorktreeClient({
+      existingWorktrees: [
+        { path: "/tmp/worktrees/feat/rehydrated", branch: "feat/rehydrated", isActive: false },
+      ],
+    });
+    let readCount = 0;
+    const mgr = createWorktreeManager(makeDeps(client, {
+      readSession: (id) => {
+        readCount++;
+        return { worktreePath: "/tmp/worktrees/feat/rehydrated", branch: "feat/rehydrated" };
+      },
+    }));
+
+    // First call: reads from disk
+    await mgr.switchToSession("session-1");
+    expect(readCount).toBe(1);
+
+    // Second call: should use Map (not call readSession again)
+    await mgr.switchToSession("session-1");
+    expect(readCount).toBe(1);
   });
 });

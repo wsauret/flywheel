@@ -9,15 +9,13 @@
  *
  * Plus:
  *   - Header slot (BrandingHeader by default, SessionHeader when active)
- *   - Telemetry bar + status footer at bottom
  *   - Modal overlays (approval gate, stop, error)
  */
 
 import { Show, type JSX } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { BrandingHeader } from "@tui/shared/components/layout/branding-header"
-import { TelemetryBar } from "./telemetry-bar"
-import { StatusFooter } from "./status-footer"
+
 import { StopModal } from "./modals/stop-modal"
 import { ErrorModal } from "./modals/error-modal"
 import { ApprovalGate } from "./modals/approval-gate"
@@ -27,20 +25,14 @@ import {
   PANEL_WIDTH,
 } from "../../../components/shell-modes"
 import type { WorkState } from "../state/types"
-import type { PipelineStageInfo } from "../../../utils/format"
-
 export interface SharedLayoutProps {
   state: WorkState
-  runtime: string
   showStopModal: boolean
   showApprovalGate: boolean
   showErrorModal: boolean
   errorMessage?: string
   approvalPending?: boolean
   isPromptFocused?: boolean
-  workflowLabel?: string  // "work" | "plan" | "review" etc.
-  stepLabel?: string      // "Phase" | "Step" | "Cycle"
-  pipelineInfo?: PipelineStageInfo | null
   onStopConfirm: () => void
   onStopCancel: () => void
   onApprovalContinue: () => void
@@ -63,18 +55,8 @@ export function SharedLayout(props: SharedLayoutProps) {
 
   const visibility = () => layoutVisibility(termWidth())
 
-  const runningPhaseIndex = () => {
-    const running = props.state.phases.findIndex((p) => p.status === "running")
-    if (running >= 0) return running + 1
-    // Fall back to last completed/failed/skipped phase
-    for (let i = props.state.phases.length - 1; i >= 0; i--) {
-      if (props.state.phases[i].status !== "pending") return i + 1
-    }
-    return 0
-  }
-
   return (
-    <box flexDirection="column" height="100%">
+    <box flexDirection="column" height="100%" zIndex={0}>
       {/* Header: custom header slot or default BrandingHeader */}
       <box flexShrink={0}>
         <Show
@@ -110,23 +92,6 @@ export function SharedLayout(props: SharedLayoutProps) {
             {props.panel}
           </box>
         </Show>
-      </box>
-
-      <box flexShrink={0} flexDirection="column">
-        <TelemetryBar
-          planName={props.state.planName}
-          runtime={props.runtime}
-          status={props.state.workflowStatus}
-          currentPhase={runningPhaseIndex()}
-          totalPhases={props.state.phases.length}
-          workflowLabel={props.workflowLabel}
-          stepLabel={props.stepLabel}
-          pipelineInfo={props.pipelineInfo}
-        />
-        <StatusFooter
-          approvalPending={props.approvalPending}
-          isPromptFocused={props.isPromptFocused}
-        />
       </box>
 
       <Show when={props.showApprovalGate}>

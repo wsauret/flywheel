@@ -34,7 +34,7 @@ import { WorkflowPanel } from "./workflow-panel"
 import { SessionHeader } from "./session-header"
 import { BrandingHeader } from "@tui/shared/components/layout/branding-header"
 import { EmptyState } from "./empty-state"
-import { UnifiedPrompt } from "./unified-prompt"
+import { useUnifiedPrompt } from "./unified-prompt"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
 import { Selection } from "../utils/selection"
@@ -61,14 +61,24 @@ import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor"
 import { WorkflowPipeline } from "../../controller/workflow-pipeline"
 import { QuestionService, type QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
+import { StatusFooter } from "../routes/work/components/status-footer"
+import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
 import { parseHomeCommand } from "../routes/home/hooks/use-home-commands"
 import { SIDEBAR_WIDTH } from "./shell-modes"
+import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
+import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
+import { fromSnapshot } from "../../schemas/output"
+import { createSessionOrchestrator, type SessionOrchestrator } from "./session-orchestrator"
+import { handlePipelineCompletion } from "./pipeline-completion"
+import { injectOutputBlocks } from "./resume-utils"
 import type { PipelineStageInfo } from "../utils/format"
 import type { WorkflowSession } from "./workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 import type { WorkState } from "../routes/work/state/types"
+import type { AnyBlock } from "../routes/work/state/types"
 import type { Unsubscribe } from "../../events/event-bus"
+import type { SelectionAction } from "./sidebar-logic"
 
 // ── App state ──
 
@@ -117,6 +127,7 @@ export function FlywheelShell() {
   let activeController: WorkController | null = null
   let activeLoop: ExecutionLoop | null = null
   let activePipeline: WorkflowPipeline | null = null
+  let activeFlusher: OutputFlusher | null = null
   let storeUnsub: (() => void) | null = null
 
   // Pipeline running guard: prevents handleCommand from overwriting activeWorkflowName
@@ -126,6 +137,36 @@ export function FlywheelShell() {
   // User-initiated pause flag: set when double-Esc pauses a pipeline.
   // Distinguishes pause from failure so ErrorModal is suppressed.
   let _userInitiatedPause = false
+
+  // ── Session Orchestrator ──
+  // Handles resume, session switching, auto-archive, and delete.
+  // Uses dependency injection — no direct imports of persistence internals.
+  const orchestrator: SessionOrchestrator = createSessionOrchestrator({
+    readSession: (id: string) => {
+      const projectCwd = (() => {
+        try { return prepareWorkflowDeps().config.project_cwd ?? "."; } catch { return "."; }
+      })()
+      return readSession(id, projectCwd)
+    },
+    createOutputPersistence: (sessionId: string) => {
+      const projectCwd = (() => {
+        try { return prepareWorkflowDeps().config.project_cwd ?? "."; } catch { return "."; }
+      })()
+      return createOutputPersistence({ sessionId, baseDir: projectCwd })
+    },
+    fromSnapshot,
+    manager: sessionCtx.manager,
+    refreshList: () => sessionCtx.refreshList(),
+    pauseCurrent: async (currentId: string) => {
+      await pausePipeline()
+    },
+    deleteSessionFiles: (id: string, activeSessionId?: string | null) => {
+      const projectCwd = (() => {
+        try { return prepareWorkflowDeps().config.project_cwd ?? "."; } catch { return "."; }
+      })()
+      return deleteSessionWithCompanions(id, projectCwd, activeSessionId)
+    },
+  })
 
   // Double-Esc handler for stopping workflows
   const escapeHandler = createEscapeHandler({ timeoutMs: 5000 })
@@ -326,6 +367,10 @@ export function FlywheelShell() {
       activeController = null
       activeLoop = null
       activePipeline = null
+      if (activeFlusher) {
+        activeFlusher.dispose()
+        activeFlusher = null
+      }
       setActiveStore(null)
       setWorkState(null)
     }
@@ -349,6 +394,38 @@ export function FlywheelShell() {
         returnToIdle()
         return
       }
+    }
+
+    // Create persistent CliSession for pause/resume support
+    const planPathForSession = args.planPath ?? stages.map((s) => s.workflow).join(" -> ")
+    try {
+      const persistedSessionId = sessionCtx.manager.create(planPathForSession)
+      sessionCtx.setActiveSessionId(persistedSessionId)
+
+      // Set outputPath on the session
+      const projectCwd = deps.config.project_cwd ?? "."
+      updateSession(persistedSessionId, { outputPath: `${persistedSessionId}.output.json` }, projectCwd)
+
+      // Transition to work:active (new -> plan:imported -> plan:approved -> work:active)
+      sessionCtx.manager.updateState(persistedSessionId, "plan:imported")
+      sessionCtx.manager.updateState(persistedSessionId, "plan:approved")
+      sessionCtx.manager.updateState(persistedSessionId, "work:active")
+
+      // Start output flusher
+      const persistence = createOutputPersistence({
+        sessionId: persistedSessionId,
+        baseDir: projectCwd,
+      })
+      const getOutputBlocks = () => (activeStore()?.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
+      activeFlusher = persistence.createFlusher(getOutputBlocks, { intervalMs: 5000 })
+
+      sessionCtx.refreshList()
+    } catch (err) {
+      // Best effort — don't block pipeline start on persistence failure
+      toast.show({
+        message: `Session persistence failed: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "warning",
+      })
     }
 
     // Create QuestionService for pipeline gates
@@ -392,9 +469,20 @@ export function FlywheelShell() {
       }),
       session.eventBus.subscribeToType("pipeline:completed", () => {
         setActivePipelineInfo(null)
+        // Final flush on pipeline completion
+        if (activeFlusher) {
+          activeFlusher.schedule()
+          activeFlusher.flush().catch(() => {})
+        }
       }),
       session.eventBus.subscribeToType("pipeline:failed", () => {
         setActivePipelineInfo(null)
+      }),
+      // Event-driven flush: persist output after each phase completes
+      session.eventBus.subscribeToType("phase:completed", () => {
+        if (activeFlusher) {
+          activeFlusher.schedule()
+        }
       }),
     )
 
@@ -415,10 +503,11 @@ export function FlywheelShell() {
     _userInitiatedPause = false
 
     queueMicrotask(async () => {
+      let pipelineResult: import("../../controller/workflow-pipeline").PipelineResult | undefined
       try {
-        const result = await pipeline.run()
-        if (!result.completed && !_userInitiatedPause) {
-          activeStore()?.setError(result.reason ?? "Pipeline failed")
+        pipelineResult = await pipeline.run()
+        if (!pipelineResult.completed && !_userInitiatedPause) {
+          activeStore()?.setError(pipelineResult.reason ?? "Pipeline failed")
           setAppState("completed")
         }
       } catch (err) {
@@ -428,6 +517,19 @@ export function FlywheelShell() {
         }
       } finally {
         _isPipelineRunning = false
+
+        // Handle auto-archive or completion
+        if (pipelineResult && !_userInitiatedPause) {
+          await handlePipelineCompletion(pipelineResult, {
+            orchestrator,
+            sessionId: sessionCtx.activeSessionId(),
+            flusher: activeFlusher,
+            toast,
+            updateState: (id, s) => sessionCtx.manager.updateState(id, s),
+            refreshList: () => sessionCtx.refreshList(),
+          })
+          activeFlusher = null
+        }
       }
     })
   }
@@ -446,13 +548,14 @@ export function FlywheelShell() {
     _isPipelineRunning = false
   }
 
-  const teardownActiveWorkflow = (): Promise<void> | undefined => {
-    cleanupQuestionSubscriptions()
-    cleanupPipelineSubscriptions()
-    if (storeUnsub) {
-      storeUnsub()
-      storeUnsub = null
-    }
+  /**
+   * Shut down pipeline/loop/controller runtime without touching
+   * session, store, adapter, or subscriptions.
+   *
+   * Used by both teardownActiveWorkflow() (full cleanup) and
+   * pausePipeline() (partial cleanup — keeps store/adapter alive).
+   */
+  const _clearPipelineRuntime = (): Promise<void> | undefined => {
     if (activePipeline) {
       activePipeline.requestShutdown()
       activePipeline = null
@@ -466,6 +569,22 @@ export function FlywheelShell() {
       shutdownPromise = activeController.shutdown().catch(() => {})
       activeController = null
     }
+    return shutdownPromise
+  }
+
+  const teardownActiveWorkflow = (): Promise<void> | undefined => {
+    cleanupQuestionSubscriptions()
+    cleanupPipelineSubscriptions()
+    if (storeUnsub) {
+      storeUnsub()
+      storeUnsub = null
+    }
+    // Dispose output flusher (does NOT flush — just cancels timers)
+    if (activeFlusher) {
+      activeFlusher.dispose()
+      activeFlusher = null
+    }
+    const shutdownPromise = _clearPipelineRuntime()
     if (activeSession) {
       destroyWorkflowSession(activeSession)
       activeSession = null
@@ -492,7 +611,7 @@ export function FlywheelShell() {
    * - Pushes a pause system message to output
    * - Transitions app state to "completed" (keeps output visible)
    */
-  const pausePipeline = () => {
+  const pausePipeline = async () => {
     _userInitiatedPause = true
     escapeHandler.reset()
     setEscHint("")
@@ -502,20 +621,33 @@ export function FlywheelShell() {
       activeSession.adapter.suppressPipelineError = true
     }
 
-    // Request pipeline shutdown (triggers pipeline:failed internally)
-    if (activePipeline) {
-      activePipeline.requestShutdown()
-      activePipeline = null
+    // Flush output BEFORE shutting down runtime (data must be persisted first)
+    if (activeFlusher) {
+      try {
+        activeFlusher.schedule()
+        await activeFlusher.flush()
+      } catch {
+        // Best effort — don't block pause on flush failure
+      }
+      activeFlusher.dispose()
+      activeFlusher = null
     }
 
-    // Persist session state as work:paused (best effort)
+    // Shut down pipeline, loop, and controller (but NOT session/adapter/store)
+    _clearPipelineRuntime()
+
+    // Persist session state as work:paused
     const sessionId = sessionCtx.activeSessionId()
     if (sessionId) {
       try {
         sessionCtx.manager.updateState(sessionId, "work:paused")
         sessionCtx.refreshList()
-      } catch {
-        // Best effort — don't crash if session persistence fails
+      } catch (err) {
+        // Show toast on persistence failure (not silent catch — P3-21)
+        toast.show({
+          message: `Failed to persist pause state: ${err instanceof Error ? err.message : String(err)}`,
+          variant: "warning",
+        })
       }
     }
 
@@ -532,6 +664,144 @@ export function FlywheelShell() {
 
     // Transition to completed (keeps output visible, enables /work to restart)
     setAppState("completed")
+  }
+
+  /**
+   * Resume a previously paused session.
+   *
+   * Unlike startPipeline(), this does NOT create a new CliSession on disk
+   * or a new WorkflowSession from scratch. Instead, it:
+   *
+   * 1. Tears down any active workflow
+   * 2. Loads session data + output blocks via orchestrator
+   * 3. Creates fresh WorkflowSession (store/adapter/eventBus)
+   * 4. Injects restored output blocks in chunks
+   * 5. Transitions session from work:paused → work:active
+   * 6. Starts WorkController (which reads .state.md and skips completed phases)
+   * 7. Transitions shell to "working"
+   */
+  const resumeSession = async (sessionId: string) => {
+    // 1. Clean up any current workflow
+    if (activeSession) {
+      teardownActiveWorkflow()
+    }
+
+    // 2. Get session data + output from orchestrator
+    const result = await orchestrator.handleResumeSession(sessionId)
+    if (!result) {
+      toast.show({ message: "Session not found or corrupt", variant: "error" })
+      return
+    }
+
+    // 3. Load workflow deps (config, engine, spawner)
+    let deps: WorkflowDeps
+    try {
+      deps = prepareWorkflowDeps()
+    } catch {
+      toast.show({ message: "Failed to load config for resume", variant: "error" })
+      return
+    }
+
+    // 4. Create fresh workflow session (store → adapter → eventBus)
+    const session = createWorkflowSession(result.planPath)
+    activeSession = session
+    setActiveStore(session.store)
+    subscribeToStore(session.store)
+
+    // 5. Inject output blocks in chunks (prevents UI freeze on large histories)
+    injectOutputBlocks(session.store, result.outputBlocks as unknown as AnyBlock[])
+
+    // 6. Wire session context (reuse existing session ID — no new CliSession)
+    sessionCtx.setActiveSessionId(sessionId)
+
+    // 7. Transition session state: work:paused → work:active
+    try {
+      sessionCtx.manager.updateState(sessionId, "work:active")
+      sessionCtx.refreshList()
+    } catch (err) {
+      toast.show({
+        message: `Failed to update session state: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "warning",
+      })
+    }
+
+    // 8. Start output flusher for resumed session
+    const projectCwd = deps.config.project_cwd ?? "."
+    const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+    activeFlusher = persistence.createFlusher(
+      () => (activeStore()?.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[],
+      { intervalMs: 5000 },
+    )
+
+    // 9. Start WorkController directly (reads .state.md, skips completed phases).
+    //    We do NOT call startPipeline() because that creates a new CliSession
+    //    and tears down the session we just set up.
+    const controller = new WorkController({
+      config: deps.config,
+      spawner: deps.spawner,
+      engine: deps.engine,
+      ui: session.adapter,
+    })
+    activeController = controller
+
+    // 10. Transition to working
+    setAppState("working")
+
+    queueMicrotask(() => {
+      controller.run(result.planPath).catch(() => {})
+    })
+  }
+
+  /**
+   * Handle session selection from the sidebar.
+   * Routes to resume, switch, or view based on the action.
+   */
+  /** Look up a session's display name by ID. */
+  const sessionName = (id: string): string => {
+    const s = sessionCtx.sessions().find((s) => s.id === id)
+    return s?.name || s?.planPath || id.slice(0, 8)
+  }
+
+  const handleSessionSelect = (sessionId: string, action: SelectionAction) => {
+    switch (action) {
+      case "resume":
+        resumeSession(sessionId)
+        return
+      case "switch":
+        // Switch is pause-current + resume-target — handled by orchestrator
+        {
+          const currentId = sessionCtx.activeSessionId()
+          if (currentId && currentId !== sessionId) {
+            const currentName = sessionName(currentId)
+            const targetName = sessionName(sessionId)
+            // Pause current, then resume target
+            orchestrator.handleSessionSwitch(currentId, sessionId).then((result) => {
+              if (result) {
+                toast.show({
+                  message: `Paused ${currentName} — Resuming ${targetName}`,
+                  variant: "info",
+                })
+                resumeSession(sessionId)
+              } else {
+                toast.show({ message: "Failed to switch sessions", variant: "error" })
+              }
+            })
+          } else {
+            // No active session to pause — just resume
+            resumeSession(sessionId)
+          }
+        }
+        return
+      case "view":
+        toast.show({ message: "Session viewing not yet implemented", variant: "info" })
+        return
+      case "delete":
+        orchestrator.handleDeleteSession(sessionId).then(() => {
+          toast.show({ message: `Deleted ${sessionName(sessionId)}`, variant: "info" })
+          sessionCtx.refreshList()
+        })
+        return
+    }
   }
 
   const returnToIdle = () => {
@@ -817,23 +1087,40 @@ export function FlywheelShell() {
 
   const layoutState = () => workState() ?? defaultWorkState
 
+  const runningPhaseIndex = () => {
+    const state = layoutState()
+    const running = state.phases.findIndex((p) => p.status === "running")
+    if (running >= 0) return running + 1
+    for (let i = state.phases.length - 1; i >= 0; i--) {
+      if (state.phases[i].status !== "pending") return i + 1
+    }
+    return 0
+  }
+
+  // ── Unified prompt (Input + Overlay split for z-ordering) ──
+
+  const prompt = useUnifiedPrompt({
+    get appState() { return appState() },
+    get approvalPending() { return approvalPending() },
+    onCommand: handleCommand,
+    onPromptSubmit: handlePromptInput,
+    onEscape: handleEscape,
+    get availableWidth() { return dimensions()?.width },
+  })
+
   // ── Render ──
 
   return (
-    <box flexDirection="column" height="100%" onMouseUp={() => Selection.copy(renderer, toast)}>
+    <box flexDirection="column" height="100%" position="relative" onMouseUp={() => Selection.copy(renderer, toast)}>
       <Toast />
       <SharedLayout
         state={layoutState()}
-        runtime={runtime()}
         showStopModal={showStopModal()}
         showApprovalGate={approvalPending()}
         showErrorModal={!!layoutState().error && layoutState().workflowStatus === "failed"}
         errorMessage={layoutState().error}
         approvalPending={approvalPending()}
         isPromptFocused={isPromptFocused()}
-        workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
-        stepLabel={hasActiveWorkflow() ? activeStepLabel() : undefined}
-        pipelineInfo={activePipelineInfo()}
         header={
           hasActiveWorkflow() ? (
             <SessionHeader
@@ -858,6 +1145,7 @@ export function FlywheelShell() {
               sessions={sessionCtx.sessions()}
               terminalWidth={dimensions()?.width}
               width={SIDEBAR_WIDTH}
+              onSelect={handleSessionSelect}
             />
           ) : undefined
         }
@@ -907,17 +1195,30 @@ export function FlywheelShell() {
         </Show>
       </SharedLayout>
 
-      {/* UnifiedPrompt — always present below the layout */}
+      {/* Prompt input — always present below the layout */}
       <box flexShrink={0} alignItems="center" justifyContent="center">
-        <UnifiedPrompt
-          appState={appState()}
-          approvalPending={approvalPending()}
-          onCommand={handleCommand}
-          onPromptSubmit={handlePromptInput}
-          onEscape={handleEscape}
-          availableWidth={dimensions()?.width}
+        <prompt.Input />
+      </box>
+
+      {/* Telemetry bar — below the prompt */}
+      <box flexShrink={0}>
+        <TelemetryBar
+          planName={layoutState().planName}
+          runtime={runtime()}
+          status={layoutState().workflowStatus}
+          currentPhase={runningPhaseIndex()}
+          totalPhases={layoutState().phases.length}
+          workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
+          stepLabel={hasActiveWorkflow() ? activeStepLabel() : undefined}
+          pipelineInfo={activePipelineInfo()}
         />
       </box>
+
+      {/* Status footer — always at the very bottom */}
+      <StatusFooter
+        approvalPending={approvalPending()}
+        isPromptFocused={isPromptFocused()}
+      />
 
       {/* QuestionPrompt overlay — shown when pipeline gate asks a question */}
       <Show when={pendingQuestion() && activeQuestionService}>
@@ -935,6 +1236,9 @@ export function FlywheelShell() {
           </text>
         </box>
       </Show>
+
+      {/* Autocomplete overlay — rendered LAST so it paints on top of everything */}
+      <prompt.Overlay />
     </box>
   )
 }

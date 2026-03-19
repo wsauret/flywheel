@@ -57,6 +57,12 @@ export interface IWorktreeClient {
 // WorktreeManager types
 // ---------------------------------------------------------------------------
 
+/** Minimal session shape for worktree rehydration (avoids coupling to full CliSession). */
+export interface WorktreeSessionData {
+  worktreePath?: string;
+  branch?: string;
+}
+
 /** Dependencies injected into the worktree manager. */
 export interface WorktreeManagerDeps {
   client: IWorktreeClient;
@@ -66,6 +72,10 @@ export interface WorktreeManagerDeps {
   autoRemoveOnArchive: boolean;
   /** Grace period (ms) before trashed worktrees are cleaned up. */
   gracePeriodMs: number;
+  /** Optional: persist worktreePath/branch to session JSON after creation. */
+  updateSession?: (id: string, partial: { worktreePath?: string; branch?: string }) => void;
+  /** Optional: read worktreePath/branch from session JSON for lazy rehydration. */
+  readSession?: (id: string) => WorktreeSessionData | null;
 }
 
 /** Returned by trashSession to persist in the session record. */
@@ -157,6 +167,16 @@ export function createWorktreeManager(deps: WorktreeManagerDeps): WorktreeManage
     try {
       const info = await client.create(branchName, baseBranch);
       sessions.set(sessionId, { branchName, locked: false });
+
+      // Persist worktreePath and branch to session JSON (best effort)
+      if (deps.updateSession) {
+        try {
+          deps.updateSession(sessionId, { worktreePath: info.path, branch: branchName });
+        } catch {
+          // Non-fatal — worktree was created, just not persisted
+        }
+      }
+
       return info;
     } catch {
       // Graceful fallback on failure
@@ -169,7 +189,21 @@ export function createWorktreeManager(deps: WorktreeManagerDeps): WorktreeManage
   ): Promise<WorktreeInfo | null> {
     if (!(await checkAvailable())) return null;
 
-    const state = sessions.get(sessionId);
+    let state = sessions.get(sessionId);
+
+    // Lazy rehydration: if Map has no entry, try reading from disk
+    if (!state && deps.readSession) {
+      try {
+        const diskData = deps.readSession(sessionId);
+        if (diskData?.worktreePath && diskData?.branch) {
+          state = { branchName: diskData.branch, locked: false };
+          sessions.set(sessionId, state);
+        }
+      } catch {
+        // Fallback: no rehydration possible
+      }
+    }
+
     if (!state) return null;
 
     try {

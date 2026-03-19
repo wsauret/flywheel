@@ -18,6 +18,10 @@ export const CliSessionSchema = z.object({
   branch: z.string().optional(),
   totalCost: z.number().min(0).optional(),
 
+  // --- Output persistence ---
+  /** Path to the output snapshot file (`.output.json`). */
+  outputPath: z.string().optional(),
+
   // --- Worktree integration (Phase 7) ---
   /** Path to the git worktree directory, if one was created for this session. */
   worktreePath: z.string().optional(),

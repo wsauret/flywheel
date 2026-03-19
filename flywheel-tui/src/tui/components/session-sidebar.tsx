@@ -11,7 +11,7 @@
  * SessionSummary (plain data, no live store/adapter).
  */
 
-import { createSignal, For, Show } from "solid-js"
+import { createMemo, createSignal, For, Show } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import {
   groupSessions,
@@ -66,6 +66,11 @@ export function SessionSidebar(props: SessionSidebarProps) {
     return flat
   }
 
+  // O(1) index lookup per session row (replaces O(n) findIndex per row)
+  const flatIndexMap = createMemo(() =>
+    new Map(flatList().map((s, i) => [s.id, i]))
+  )
+
   const handleKeyDown = () => {
     const result = sidebarKeyHandler("move-down", props.sessions, selectedIndex())
     setSelectedIndex(result.selectedIndex)
@@ -78,6 +83,13 @@ export function SessionSidebar(props: SessionSidebarProps) {
 
   const handleSelect = () => {
     const result = sidebarKeyHandler("select", props.sessions, selectedIndex())
+    if (result.selectedSessionId && result.action && props.onSelect) {
+      props.onSelect(result.selectedSessionId, result.action)
+    }
+  }
+
+  const handleDelete = () => {
+    const result = sidebarKeyHandler("delete", props.sessions, selectedIndex())
     if (result.selectedSessionId && result.action && props.onSelect) {
       props.onSelect(result.selectedSessionId, result.action)
     }
@@ -114,7 +126,7 @@ export function SessionSidebar(props: SessionSidebarProps) {
                 {/* Session rows */}
                 <For each={groups()[groupKey]}>
                   {(session) => {
-                    const flatIdx = () => flatList().findIndex((s) => s.id === session.id)
+                    const flatIdx = () => flatIndexMap().get(session.id) ?? -1
                     const isSelected = () => flatIdx() === selectedIndex()
 
                     return (
