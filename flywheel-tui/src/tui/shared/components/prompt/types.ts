@@ -5,6 +5,8 @@ export interface PromptProps {
   hint?: string
   placeholder?: string
   disabled?: boolean
+  /** Override input focus state. When false, input is blurred even if not disabled. */
+  focused?: boolean
   onEscape?: () => void
 }
 

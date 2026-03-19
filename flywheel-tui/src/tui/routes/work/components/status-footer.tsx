@@ -10,6 +10,9 @@ import { useTheme } from "@tui/shared/context/theme"
 export interface StatusFooterProps {
   approvalPending?: boolean
   isPromptFocused?: boolean
+  sidebarFocused?: boolean
+  /** Whether the sidebar is visible (terminal >= 90 cols and sessions exist). */
+  sidebarVisible?: boolean
 }
 
 /**
@@ -20,13 +23,17 @@ export function StatusFooter(props: StatusFooterProps) {
   const themeCtx = useTheme()
 
   const shortcutText = () => {
+    if (props.sidebarFocused) {
+      return "[\u2191\u2193] Navigate  [Enter] Select  [Del] Delete  [Esc/Tab] Exit Sidebar  [Ctrl+T] Theme"
+    }
     if (props.isPromptFocused) {
       return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme"
     }
+    const sidebarHint = props.sidebarVisible ? "[Tab] Sidebar  " : ""
     if (props.approvalPending) {
-      return "[Right] Focus Prompt  [\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop"
+      return `[Right] Focus Prompt  ${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
     }
-    return "[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop"
+    return `${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
   }
 
   return (

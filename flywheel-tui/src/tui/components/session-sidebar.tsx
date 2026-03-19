@@ -35,10 +35,16 @@ export interface SessionSidebarProps {
   terminalWidth?: number
   /** Sidebar width in columns. */
   width?: number
+  /** Whether the sidebar has keyboard focus (controlled by shell). */
+  focused?: boolean
+  /** Currently selected flat index (controlled by shell). */
+  selectedIndex?: number
   /** Called when a session is selected. */
   onSelect?: (sessionId: string, action: SelectionAction) => void
   /** Called when "+" button is activated (open starter chooser). */
   onNewSession?: () => void
+  /** Called when a session row is clicked (mouse interaction). */
+  onSessionClick?: (sessionId: string, flatIndex: number) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -47,7 +53,10 @@ export interface SessionSidebarProps {
 
 export function SessionSidebar(props: SessionSidebarProps) {
   const themeCtx = useTheme()
-  const [selectedIndex, setSelectedIndex] = createSignal(0)
+  const [localSelectedIndex, setLocalSelectedIndex] = createSignal(0)
+
+  // Controlled component: prefer shell-managed index when provided
+  const selectedIndex = () => props.selectedIndex ?? localSelectedIndex()
 
   const width = () => props.width ?? SIDEBAR_WIDTH
 
@@ -73,12 +82,12 @@ export function SessionSidebar(props: SessionSidebarProps) {
 
   const handleKeyDown = () => {
     const result = sidebarKeyHandler("move-down", props.sessions, selectedIndex())
-    setSelectedIndex(result.selectedIndex)
+    setLocalSelectedIndex(result.selectedIndex)
   }
 
   const handleKeyUp = () => {
     const result = sidebarKeyHandler("move-up", props.sessions, selectedIndex())
-    setSelectedIndex(result.selectedIndex)
+    setLocalSelectedIndex(result.selectedIndex)
   }
 
   const handleSelect = () => {
@@ -102,7 +111,7 @@ export function SessionSidebar(props: SessionSidebarProps) {
         width={width()}
         height="100%"
         borderStyle="single"
-        borderColor={themeCtx.theme.border}
+        borderColor={props.focused ? themeCtx.theme.primary : themeCtx.theme.border}
       >
         {/* Header */}
         <box paddingLeft={1} paddingRight={1} flexShrink={0}>
@@ -130,7 +139,15 @@ export function SessionSidebar(props: SessionSidebarProps) {
                     const isSelected = () => flatIdx() === selectedIndex()
 
                     return (
-                      <box paddingLeft={2}>
+                      <box
+                        paddingLeft={2}
+                        onMouseDown={() => {
+                          const idx = flatIdx()
+                          if (idx >= 0 && props.onSessionClick) {
+                            props.onSessionClick(session.id, idx)
+                          }
+                        }}
+                      >
                         <text
                           fg={isSelected() ? themeCtx.theme.background : themeCtx.theme.text}
                           bg={isSelected() ? themeCtx.theme.primary : undefined}

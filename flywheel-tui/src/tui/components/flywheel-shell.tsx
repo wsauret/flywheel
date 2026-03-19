@@ -78,7 +78,7 @@ import type { UIActions } from "../routes/work/context/ui-state/types"
 import type { WorkState } from "../routes/work/state/types"
 import type { AnyBlock } from "../routes/work/state/types"
 import type { Unsubscribe } from "../../events/event-bus"
-import type { SelectionAction } from "./sidebar-logic"
+import { sidebarKeyHandler, getSelectionAction, type SelectionAction } from "./sidebar-logic"
 
 // ── App state ──
 
@@ -112,6 +112,10 @@ export function FlywheelShell() {
   // Prompt focus management (P1: re-wired through FlywheelShell)
   const [isPromptFocused, setIsPromptFocused] = createSignal(false)
   const [showStopModal, setShowStopModal] = createSignal(false)
+
+  // Sidebar focus management — mutually exclusive with prompt focus
+  const [sidebarFocused, setSidebarFocused] = createSignal(false)
+  const [sidebarSelectedIndex, setSidebarSelectedIndex] = createSignal(0)
 
   // Pending question tracking for QuestionPrompt
   const [pendingQuestion, setPendingQuestion] = createSignal<QuestionRequest | null>(null)
@@ -221,6 +225,7 @@ export function FlywheelShell() {
   const _autoFocusApproval = createMemo(() => {
     if (approvalPending()) {
       setIsPromptFocused(true)
+      setSidebarFocused(false)
     }
     return approvalPending()
   })
@@ -956,6 +961,45 @@ export function FlywheelShell() {
   // ── Shell-Level Keyboard Shortcuts ──
 
   useKeyboard((evt) => {
+    // === Sidebar-focused key routing ===
+    // When sidebar has focus, intercept navigation keys before anything else.
+    // Modal guards: sidebar focus is disabled when stop/error/approval modals are open.
+    if (sidebarFocused() && !showStopModal() && !approvalPending() && !pendingQuestion()) {
+      if (evt.name === "up") {
+        evt.preventDefault()
+        const result = sidebarKeyHandler("move-up", sessionCtx.sessions(), sidebarSelectedIndex())
+        setSidebarSelectedIndex(result.selectedIndex)
+        return
+      }
+      if (evt.name === "down") {
+        evt.preventDefault()
+        const result = sidebarKeyHandler("move-down", sessionCtx.sessions(), sidebarSelectedIndex())
+        setSidebarSelectedIndex(result.selectedIndex)
+        return
+      }
+      if (evt.name === "return") {
+        evt.preventDefault()
+        const result = sidebarKeyHandler("select", sessionCtx.sessions(), sidebarSelectedIndex())
+        if (result.selectedSessionId && result.action) {
+          handleSessionSelect(result.selectedSessionId, result.action)
+        }
+        return
+      }
+      if (evt.name === "delete" || evt.name === "backspace") {
+        evt.preventDefault()
+        const result = sidebarKeyHandler("delete", sessionCtx.sessions(), sidebarSelectedIndex())
+        if (result.selectedSessionId && result.action) {
+          handleSessionSelect(result.selectedSessionId, result.action)
+        }
+        return
+      }
+      if (evt.name === "escape" || evt.name === "tab") {
+        evt.preventDefault()
+        setSidebarFocused(false)
+        return
+      }
+    }
+
     // === Work-mode shortcuts (only active when working) ===
     if (appState() === "working" && activeStore()) {
       // Ctrl+S: skip current phase
@@ -978,8 +1022,8 @@ export function FlywheelShell() {
         return
       }
 
-      // Up/Down: phase navigation (only when not prompt focused)
-      if (!isPromptFocused()) {
+      // Up/Down: phase navigation (only when not prompt or sidebar focused)
+      if (!isPromptFocused() && !sidebarFocused()) {
         if (evt.name === "up") {
           evt.preventDefault()
           activeStore()!.selectPrevious()
@@ -995,11 +1039,25 @@ export function FlywheelShell() {
         if (evt.name === "right" && workState()?.approvalState?.pending) {
           evt.preventDefault()
           setIsPromptFocused(true)
+          setSidebarFocused(false)
           return
         }
       }
     }
     // === End work-mode shortcuts ===
+
+    // Tab: toggle sidebar focus (when not prompt focused, sessions exist, sidebar visible)
+    if (evt.name === "tab" && !isPromptFocused() && !showStopModal() && !approvalPending() && !pendingQuestion()) {
+      const hasSessions = sessionCtx.sessions().length > 0
+      const sidebarVisible = (dimensions()?.width ?? 120) >= 90
+      if (hasSessions && sidebarVisible) {
+        evt.preventDefault()
+        const next = !sidebarFocused()
+        setSidebarFocused(next)
+        if (next) setIsPromptFocused(false)
+        return
+      }
+    }
 
     // Escape: handle at shell level when prompt is disabled/passive
     // (Prompt component doesn't fire onEscape when disabled)
@@ -1102,6 +1160,7 @@ export function FlywheelShell() {
   const prompt = useUnifiedPrompt({
     get appState() { return appState() },
     get approvalPending() { return approvalPending() },
+    get sidebarFocused() { return sidebarFocused() },
     onCommand: handleCommand,
     onPromptSubmit: handlePromptInput,
     onEscape: handleEscape,
@@ -1145,7 +1204,19 @@ export function FlywheelShell() {
               sessions={sessionCtx.sessions()}
               terminalWidth={dimensions()?.width}
               width={SIDEBAR_WIDTH}
+              focused={sidebarFocused()}
+              selectedIndex={sidebarSelectedIndex()}
               onSelect={handleSessionSelect}
+              onSessionClick={(sessionId, flatIndex) => {
+                setSidebarFocused(true)
+                setIsPromptFocused(false)
+                setSidebarSelectedIndex(flatIndex)
+                const session = sessionCtx.sessions().find((s) => s.id === sessionId)
+                if (session) {
+                  const action = getSelectionAction(session)
+                  if (action) handleSessionSelect(sessionId, action)
+                }
+              }}
             />
           ) : undefined
         }
@@ -1187,7 +1258,7 @@ export function FlywheelShell() {
               outputBlocks={layoutState().outputBlocks}
               workflowStatus={layoutState().workflowStatus}
               approvalPending={approvalPending()}
-              isPromptFocused={isPromptFocused()}
+              isPromptFocused={isPromptFocused() || sidebarFocused()}
               availableWidth={dimensions()?.width}
               currentPhase={currentPhase()}
             />
@@ -1196,7 +1267,11 @@ export function FlywheelShell() {
       </SharedLayout>
 
       {/* Prompt input — always present below the layout */}
-      <box flexShrink={0} alignItems="center" justifyContent="center">
+      <box flexShrink={0} alignItems="center" justifyContent="center" onMouseDown={() => {
+        if (sidebarFocused()) {
+          setSidebarFocused(false)
+        }
+      }}>
         <prompt.Input />
       </box>
 
@@ -1218,6 +1293,8 @@ export function FlywheelShell() {
       <StatusFooter
         approvalPending={approvalPending()}
         isPromptFocused={isPromptFocused()}
+        sidebarFocused={sidebarFocused()}
+        sidebarVisible={sessionCtx.sessions().length > 0 && (dimensions()?.width ?? 120) >= 90}
       />
 
       {/* QuestionPrompt overlay — shown when pipeline gate asks a question */}

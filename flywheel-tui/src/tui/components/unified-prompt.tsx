@@ -25,6 +25,8 @@ import type { JSX } from "solid-js"
 export interface UnifiedPromptProps {
   appState: AppState
   approvalPending: boolean
+  /** Whether the sidebar currently has keyboard focus (blurs prompt input). */
+  sidebarFocused?: boolean
   onCommand: (workflow: string, args: Record<string, string>) => void
   onPromptSubmit: (text: string) => void
   onEscape: () => void
@@ -67,10 +69,13 @@ export function useUnifiedPrompt(props: UnifiedPromptProps): UnifiedPromptResult
     props.onEscape()
   }
 
+  const isDisabled = () => mode() === "passive" || mode() === "disabled"
+
   const prompt = Prompt({
     onSubmit: handleSubmit,
     onEscape: handleEscape,
-    get disabled() { return mode() === "passive" || mode() === "disabled" },
+    get disabled() { return isDisabled() },
+    get focused() { return !isDisabled() && !props.sidebarFocused },
     get placeholder() { return PLACEHOLDERS[mode()] },
   })
 

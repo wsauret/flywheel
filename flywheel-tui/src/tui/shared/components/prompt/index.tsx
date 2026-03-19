@@ -270,7 +270,7 @@ export function Prompt(props: PromptProps) {
             placeholderColor={themeCtx.theme.textMuted}
             onInput={handleInput}
             onKeyDown={handleKeyDown}
-            focused={!props.disabled}
+            focused={props.focused !== undefined ? props.focused : !props.disabled}
             textColor={themeCtx.theme.text}
             focusedTextColor={themeCtx.theme.text}
             cursorColor={themeCtx.theme.primary}

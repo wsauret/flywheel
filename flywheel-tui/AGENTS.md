@@ -42,11 +42,11 @@ Use this test after modifying the pipeline, stage runner, event bus, or workflow
 
 ## Testing the TUI with tmux
 
-The TUI is a full-screen interactive application. You cannot test it by running `bin/flywheel` directly in a Bash tool call because it takes over the terminal. Instead, use tmux to run the TUI in a detached session, send keystrokes to it, and read its screen output.
+Always do extensive UAT after any change to confirm that everything works. Since the TUI is a full-screen interactive application, you need to use tmux to run the TUI in a detached session, send keystrokes to it, and read its screen output.
 
-**When someone asks you to "test the TUI", "verify the UI works", or "make sure your changes work in the actual app", this is what they mean.** Do not skip this step!
+**When someone asks you to "test the TUI", "verify the UI works", or "make sure your changes work in the actual app", this is what they mean.** Do not skip this step! Always do UAT after making changes.
 
-Also, a test plan is available at `tests/fixtures/two-phase-plan.md` if you need to test the `work` workflow.
+A test plan is available at `tests/fixtures/two-phase-plan.md` if you need to test the `work` workflow.
 
 ### Prerequisites
 
