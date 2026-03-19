@@ -1,8 +1,8 @@
 /**
  * Session Orchestrator
  *
- * Extracts lifecycle orchestration logic out of the shell: resume, session
- * switching, auto-archive, and delete operations. All dependencies are
+ * Extracts lifecycle orchestration logic out of the shell: resume,
+ * auto-archive, and delete operations. All dependencies are
  * injected via factory function — NO direct imports of shell/session/TUI.
  *
  * Factory pattern matching `createSessionManager(deps)`, `createWorktreeManager(deps)`.
@@ -71,9 +71,6 @@ export interface SessionOrchestratorDeps {
   /** Callback to refresh the session list in the UI. */
   refreshList: () => void;
 
-  /** Optional callback to pause the current session (used by handleSessionSwitch). */
-  pauseCurrent?: (currentId: string) => Promise<void>;
-
   /**
    * Delete session files and companions from disk.
    * Returns `{ deleted, errors }` for partial failure reporting.
@@ -85,12 +82,6 @@ export interface SessionOrchestratorDeps {
 export interface SessionOrchestrator {
   /** Resume a session: load from disk, restore output blocks. */
   handleResumeSession(sessionId: string): Promise<ResumeResult | null>;
-
-  /** Switch sessions: pause current, resume target. */
-  handleSessionSwitch(
-    currentSessionId: string,
-    targetSessionId: string,
-  ): Promise<ResumeResult | null>;
 
   /** Auto-archive: transition to completed, optionally archive if ship stage completed. */
   handleAutoArchive(
@@ -153,19 +144,6 @@ export function createSessionOrchestrator(
     };
   }
 
-  async function handleSessionSwitch(
-    currentSessionId: string,
-    targetSessionId: string,
-  ): Promise<ResumeResult | null> {
-    // 1. Pause current session via injected callback
-    if (deps.pauseCurrent) {
-      await deps.pauseCurrent(currentSessionId);
-    }
-
-    // 2. Resume target session
-    return handleResumeSession(targetSessionId);
-  }
-
   async function handleAutoArchive(
     sessionId: string,
     stageResults: PipelineStageResult[],
@@ -211,7 +189,6 @@ export function createSessionOrchestrator(
 
   return {
     handleResumeSession,
-    handleSessionSwitch,
     handleAutoArchive,
     handleDeleteSession,
   };

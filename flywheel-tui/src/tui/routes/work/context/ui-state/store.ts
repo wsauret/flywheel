@@ -5,7 +5,8 @@
  * Uses immutable state updates — each action replaces the full WorkState object.
  *
  * Production: `createStore()` returns singleton (prevents dual-instance bugs).
- * Tests: `createTestStore()` always returns fresh instance for isolation.
+ * `createTestStore()` returns a fresh instance — used in tests for isolation
+ * and in production by session-viewport.ts for ephemeral read-only views.
  */
 
 import type { WorkState } from "../../state/types";
@@ -99,7 +100,11 @@ export function createStore(planName: string): UIActions {
 /** Alias for production usage */
 export const createWorkStore = createStore;
 
-/** Test-only: always returns a fresh, isolated store */
+/**
+ * Returns a fresh, isolated store instance (not the singleton).
+ * Used in tests for isolation AND in production by session-viewport.ts
+ * for ephemeral read-only session views that need their own store.
+ */
 export function createTestStore(planName: string): UIActions {
   return createStoreInternal(planName);
 }

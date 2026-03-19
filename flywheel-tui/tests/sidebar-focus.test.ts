@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   sidebarKeyHandler,
   getSelectionAction,
+  getOpenAction,
   groupSessions,
   GROUP_ORDER,
   type SidebarAction,
@@ -9,34 +10,8 @@ import {
 } from "../src/tui/components/sidebar-logic";
 import type { SessionSummary } from "../src/session/manager";
 import type { SessionLifecycleState } from "../src/session/state-machine";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeSession(
-  overrides: Partial<SessionSummary> & { lifecycleState: SessionLifecycleState },
-): SessionSummary {
-  return {
-    id: crypto.randomUUID(),
-    name: "Test Session",
-    planPath: "plans/test.md",
-    currentPhase: 0,
-    totalCost: 0,
-    lastUpdated: new Date().toISOString(),
-    ...overrides,
-  };
-}
-
-/** Mirrors the internal groupToFlatList used by sidebarKeyHandler. */
-function groupToFlatList(sessions: SessionSummary[]): SessionSummary[] {
-  const groups = groupSessions(sessions);
-  const flat: SessionSummary[] = [];
-  for (const key of GROUP_ORDER) {
-    flat.push(...groups[key]);
-  }
-  return flat;
-}
+import { isResumable } from "../src/session/state-machine";
+import { makeSession, groupToFlatList } from "./helpers/sidebar";
 
 // ---------------------------------------------------------------------------
 // Focus state management — modelled as pure state transitions
@@ -215,24 +190,24 @@ describe("sidebar navigation (shell perspective)", () => {
 // ---------------------------------------------------------------------------
 
 describe("sidebar selection from focused state", () => {
-  it("select on paused session returns resume action", () => {
+  it("select on paused session returns open action", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
     const result = sidebarKeyHandler("select", [session], 0);
-    expect(result.action).toBe("resume");
+    expect(result.action).toBe("open");
     expect(result.selectedSessionId).toBe(session.id);
   });
 
-  it("select on active session returns switch action", () => {
+  it("select on active session returns open action", () => {
     const session = makeSession({ lifecycleState: "work:active" });
     const result = sidebarKeyHandler("select", [session], 0);
-    expect(result.action).toBe("switch");
+    expect(result.action).toBe("open");
     expect(result.selectedSessionId).toBe(session.id);
   });
 
-  it("select on completed session returns view action", () => {
+  it("select on completed session returns open action", () => {
     const session = makeSession({ lifecycleState: "completed" });
     const result = sidebarKeyHandler("select", [session], 0);
-    expect(result.action).toBe("view");
+    expect(result.action).toBe("open");
     expect(result.selectedSessionId).toBe(session.id);
   });
 
@@ -318,14 +293,14 @@ describe("sidebar focus guard conditions", () => {
 // ---------------------------------------------------------------------------
 
 describe("sidebar mouse click behavior", () => {
-  it("getSelectionAction returns resume for paused session", () => {
+  it("getSelectionAction returns open for paused session", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getSelectionAction(session)).toBe("resume");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
-  it("getSelectionAction returns switch for active session", () => {
+  it("getSelectionAction returns open for active session", () => {
     const session = makeSession({ lifecycleState: "work:active" });
-    expect(getSelectionAction(session)).toBe("switch");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
   it("getSelectionAction returns null for archived session", () => {
@@ -336,6 +311,23 @@ describe("sidebar mouse click behavior", () => {
   it("getSelectionAction returns null for trashed session", () => {
     const session = makeSession({ lifecycleState: "trashed" });
     expect(getSelectionAction(session)).toBeNull();
+  });
+
+  it("getOpenAction returns open for all non-terminal sessions", () => {
+    expect(getOpenAction(makeSession({ lifecycleState: "work:active" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "work:paused" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "completed" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "work:review" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "new" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "plan:draft" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "plan:imported" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "plan:approved" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "plan:needs-fix" }))).toBe("open");
+  });
+
+  it("getOpenAction returns null for terminal sessions", () => {
+    expect(getOpenAction(makeSession({ lifecycleState: "archived" }))).toBeNull();
+    expect(getOpenAction(makeSession({ lifecycleState: "trashed" }))).toBeNull();
   });
 
   it("clicking a session should determine the correct flat index", () => {
@@ -358,10 +350,10 @@ describe("sidebar mouse click behavior", () => {
     expect(completedIdx).toBe(2);
     expect(archivedIdx).toBe(3);
 
-    // Verify that selecting at those indices produces correct actions
-    expect(sidebarKeyHandler("select", sessions, activeIdx).action).toBe("switch");
-    expect(sidebarKeyHandler("select", sessions, pausedIdx).action).toBe("resume");
-    expect(sidebarKeyHandler("select", sessions, completedIdx).action).toBe("view");
+    // All selectable sessions now return "open"
+    expect(sidebarKeyHandler("select", sessions, activeIdx).action).toBe("open");
+    expect(sidebarKeyHandler("select", sessions, pausedIdx).action).toBe("open");
+    expect(sidebarKeyHandler("select", sessions, completedIdx).action).toBe("open");
     // Archived is not selectable
     expect(sidebarKeyHandler("select", sessions, archivedIdx).action).toBeUndefined();
   });
@@ -385,5 +377,189 @@ describe("sidebar mouse click behavior", () => {
       "Archived",
       "Trashed",
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isResumable — domain logic for resume affordance
+// ---------------------------------------------------------------------------
+
+describe("isResumable", () => {
+  it("work:paused is resumable", () => {
+    expect(isResumable("work:paused")).toBe(true);
+  });
+
+  it("completed is not resumable", () => {
+    expect(isResumable("completed")).toBe(false);
+  });
+
+  it("archived is not resumable", () => {
+    expect(isResumable("archived")).toBe(false);
+  });
+
+  it("trashed is not resumable", () => {
+    expect(isResumable("trashed")).toBe(false);
+  });
+
+  it("new is not resumable", () => {
+    expect(isResumable("new")).toBe(false);
+  });
+
+  it("work:active is not resumable (already running)", () => {
+    expect(isResumable("work:active")).toBe(false);
+  });
+
+  it("work:review is not resumable", () => {
+    expect(isResumable("work:review")).toBe(false);
+  });
+
+  it("plan states are not resumable", () => {
+    expect(isResumable("plan:draft")).toBe(false);
+    expect(isResumable("plan:imported")).toBe(false);
+    expect(isResumable("plan:approved")).toBe(false);
+    expect(isResumable("plan:needs-fix")).toBe(false);
+  });
+
+  it("only work:paused returns true among all states", () => {
+    const allStates: SessionLifecycleState[] = [
+      "new",
+      "plan:draft",
+      "plan:imported",
+      "plan:approved",
+      "plan:needs-fix",
+      "work:active",
+      "work:paused",
+      "work:review",
+      "completed",
+      "archived",
+      "trashed",
+    ];
+    const resumableStates = allStates.filter(isResumable);
+    expect(resumableStates).toEqual(["work:paused"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Resume key guard conditions
+// ---------------------------------------------------------------------------
+
+describe("resume key guard conditions", () => {
+  /**
+   * Models the guard the shell checks before activating the resume key:
+   *   1. appState is "completed" (viewing a non-running session)
+   *   2. prompt is not focused
+   *   3. sidebar is not focused
+   *   4. no modal is open
+   *   5. viewed session is in work:paused state (isResumable)
+   */
+  function canResumeWithKey(opts: {
+    appState: string;
+    isPromptFocused: boolean;
+    sidebarFocused: boolean;
+    modalOpen: boolean;
+    viewedSessionState: SessionLifecycleState | null;
+  }): boolean {
+    if (opts.appState !== "completed") return false;
+    if (opts.isPromptFocused) return false;
+    if (opts.sidebarFocused) return false;
+    if (opts.modalOpen) return false;
+    if (!opts.viewedSessionState) return false;
+    return isResumable(opts.viewedSessionState);
+  }
+
+  it("activates when all conditions are met (completed + paused session)", () => {
+    expect(
+      canResumeWithKey({
+        appState: "completed",
+        isPromptFocused: false,
+        sidebarFocused: false,
+        modalOpen: false,
+        viewedSessionState: "work:paused",
+      }),
+    ).toBe(true);
+  });
+
+  it("does not activate when appState is working", () => {
+    expect(
+      canResumeWithKey({
+        appState: "working",
+        isPromptFocused: false,
+        sidebarFocused: false,
+        modalOpen: false,
+        viewedSessionState: "work:paused",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not activate when appState is idle", () => {
+    expect(
+      canResumeWithKey({
+        appState: "idle",
+        isPromptFocused: false,
+        sidebarFocused: false,
+        modalOpen: false,
+        viewedSessionState: "work:paused",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not activate when prompt is focused", () => {
+    expect(
+      canResumeWithKey({
+        appState: "completed",
+        isPromptFocused: true,
+        sidebarFocused: false,
+        modalOpen: false,
+        viewedSessionState: "work:paused",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not activate when sidebar is focused", () => {
+    expect(
+      canResumeWithKey({
+        appState: "completed",
+        isPromptFocused: false,
+        sidebarFocused: true,
+        modalOpen: false,
+        viewedSessionState: "work:paused",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not activate when modal is open", () => {
+    expect(
+      canResumeWithKey({
+        appState: "completed",
+        isPromptFocused: false,
+        sidebarFocused: false,
+        modalOpen: true,
+        viewedSessionState: "work:paused",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not activate when viewed session is completed (not paused)", () => {
+    expect(
+      canResumeWithKey({
+        appState: "completed",
+        isPromptFocused: false,
+        sidebarFocused: false,
+        modalOpen: false,
+        viewedSessionState: "completed",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not activate when no session is viewed", () => {
+    expect(
+      canResumeWithKey({
+        appState: "completed",
+        isPromptFocused: false,
+        sidebarFocused: false,
+        modalOpen: false,
+        viewedSessionState: null,
+      }),
+    ).toBe(false);
   });
 });

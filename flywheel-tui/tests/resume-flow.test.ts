@@ -2,7 +2,8 @@
  * Resume Flow Tests (Phase 4)
  *
  * Tests the end-to-end resume path:
- * - injectOutputBlocks utility: chunked block injection into the store
+ * - appendOutputBlocks: delta-only append to existing blocks
+ * - injectOutputBlocks utility: chunked block injection with cancellation
  * - Resume result → store → shell wiring
  * - OutputSnapshot → AnyBlock compatibility
  * - Session state transition work:paused → work:active
@@ -13,6 +14,7 @@ import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
 import { injectOutputBlocks } from "../src/tui/components/resume-utils";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/routes/work/state/types";
+import { snapshotToBlocks } from "../src/schemas/output";
 import type { OutputSnapshot } from "../src/schemas/output";
 
 // ---------------------------------------------------------------------------
@@ -53,7 +55,85 @@ function flushTimers(count: number = 1): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// injectOutputBlocks — chunked injection
+// appendOutputBlocks — delta-only append
+// ---------------------------------------------------------------------------
+
+describe("appendOutputBlocks", () => {
+  let store: UIActions;
+
+  beforeEach(() => {
+    store = createTestStore("test-plan");
+  });
+
+  it("appends blocks to an empty store", () => {
+    const blocks = makeTextBlocks(3);
+    store.appendOutputBlocks(blocks);
+
+    expect(store.getState().outputBlocks).toHaveLength(3);
+    expect((store.getState().outputBlocks[0] as TextBlock).content).toBe("block-0");
+    expect((store.getState().outputBlocks[2] as TextBlock).content).toBe("block-2");
+  });
+
+  it("appends delta to existing blocks without replacing", () => {
+    // Start with some existing blocks
+    store.setOutputBlocks([
+      { kind: "text", content: "existing-0", timestamp: 1 },
+      { kind: "text", content: "existing-1", timestamp: 2 },
+    ]);
+    expect(store.getState().outputBlocks).toHaveLength(2);
+
+    // Append new blocks (delta only)
+    const delta: AnyBlock[] = [
+      { kind: "text", content: "new-0", timestamp: 3 },
+      { kind: "text", content: "new-1", timestamp: 4 },
+    ];
+    store.appendOutputBlocks(delta);
+
+    // Should have 4 total: 2 existing + 2 new
+    const output = store.getState().outputBlocks;
+    expect(output).toHaveLength(4);
+    expect((output[0] as TextBlock).content).toBe("existing-0");
+    expect((output[1] as TextBlock).content).toBe("existing-1");
+    expect((output[2] as TextBlock).content).toBe("new-0");
+    expect((output[3] as TextBlock).content).toBe("new-1");
+  });
+
+  it("handles empty delta array as no-op", () => {
+    store.setOutputBlocks(makeTextBlocks(3));
+    store.appendOutputBlocks([]);
+    expect(store.getState().outputBlocks).toHaveLength(3);
+  });
+
+  it("preserves block types when appending varied blocks", () => {
+    store.setOutputBlocks([{ kind: "text", content: "first", timestamp: 1 }]);
+
+    const delta: AnyBlock[] = [
+      { kind: "tool", name: "read", detail: "file.ts", timestamp: 2 },
+      { kind: "system", message: "Phase started", timestamp: 3 },
+    ];
+    store.appendOutputBlocks(delta);
+
+    const output = store.getState().outputBlocks;
+    expect(output).toHaveLength(3);
+    expect(output[0].kind).toBe("text");
+    expect(output[1].kind).toBe("tool");
+    expect(output[2].kind).toBe("system");
+  });
+
+  it("multiple sequential appends accumulate correctly", () => {
+    store.appendOutputBlocks(makeTextBlocks(2));
+    expect(store.getState().outputBlocks).toHaveLength(2);
+
+    store.appendOutputBlocks(makeTextBlocks(3));
+    expect(store.getState().outputBlocks).toHaveLength(5);
+
+    store.appendOutputBlocks(makeTextBlocks(1));
+    expect(store.getState().outputBlocks).toHaveLength(6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// injectOutputBlocks — chunked injection with cancellation
 // ---------------------------------------------------------------------------
 
 describe("injectOutputBlocks", () => {
@@ -169,6 +249,85 @@ describe("injectOutputBlocks", () => {
     expect(store.getState().outputBlocks[2].kind).toBe("system");
     expect(store.getState().outputBlocks[3].kind).toBe("contextGroup");
   });
+
+  // --- Cancellation ---
+
+  it("returns a handle with cancel()", () => {
+    const blocks = makeTextBlocks(500);
+    const handle = injectOutputBlocks(store, blocks);
+
+    expect(handle).toBeDefined();
+    expect(typeof handle.cancel).toBe("function");
+  });
+
+  it("cancel() stops further batches from being injected", async () => {
+    const blocks = makeTextBlocks(500);
+    const handle = injectOutputBlocks(store, blocks);
+
+    // First batch (100) is already injected synchronously
+    expect(store.getState().outputBlocks).toHaveLength(100);
+
+    // Cancel before async batches run
+    handle.cancel();
+
+    // Wait for would-be timer ticks
+    await flushTimers(3);
+
+    // Should still be 100 — cancellation prevented further batches
+    expect(store.getState().outputBlocks).toHaveLength(100);
+  });
+
+  it("cancel() mid-injection stops at the current progress", async () => {
+    const blocks = makeTextBlocks(1000);
+    const handle = injectOutputBlocks(store, blocks);
+
+    // Let one async batch run: 100 + 200 = 300
+    await flushTimers(1);
+    expect(store.getState().outputBlocks).toHaveLength(300);
+
+    // Cancel now
+    handle.cancel();
+
+    // Wait for more would-be ticks
+    await flushTimers(5);
+
+    // Should still be 300
+    expect(store.getState().outputBlocks).toHaveLength(300);
+  });
+
+  it("cancelling an already-completed injection is a no-op", async () => {
+    const blocks = makeTextBlocks(50);
+    const handle = injectOutputBlocks(store, blocks);
+
+    // All blocks fit in the first batch (< 100) — already done
+    expect(store.getState().outputBlocks).toHaveLength(50);
+
+    // Cancel after completion — should not throw or corrupt state
+    handle.cancel();
+    expect(store.getState().outputBlocks).toHaveLength(50);
+  });
+
+  it("new injection after cancel replaces content correctly", async () => {
+    // Start first injection
+    const blocks1 = makeTextBlocks(500);
+    const handle1 = injectOutputBlocks(store, blocks1);
+
+    // Cancel after first batch
+    handle1.cancel();
+    expect(store.getState().outputBlocks).toHaveLength(100);
+
+    // Start new injection with different blocks
+    const blocks2: AnyBlock[] = Array.from({ length: 50 }, (_, i) => ({
+      kind: "text" as const,
+      content: `replacement-${i}`,
+      timestamp: Date.now() + i,
+    }));
+    injectOutputBlocks(store, blocks2);
+
+    // New injection uses setOutputBlocks for first batch, so it replaces
+    expect(store.getState().outputBlocks).toHaveLength(50);
+    expect((store.getState().outputBlocks[0] as TextBlock).content).toBe("replacement-0");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -176,14 +335,11 @@ describe("injectOutputBlocks", () => {
 // ---------------------------------------------------------------------------
 
 describe("OutputSnapshot → AnyBlock compatibility", () => {
-  it("snapshots with 'paused' agent status can be cast to AnyBlock[]", () => {
-    // OutputSnapshot uses "paused" for agent blocks. On resume,
-    // these are injected as-is into the store. The renderer should handle
-    // "paused" status for display purposes.
+  it("snapshotToBlocks converts snapshots with 'paused' agent status", () => {
+    // OutputSnapshot uses "paused" for agent blocks. snapshotToBlocks
+    // provides type-safe conversion without double-casts.
     const snapshots = makeVariedSnapshots();
-
-    // Cast snapshots to AnyBlock[] — this is what the shell does on resume
-    const blocks = snapshots as unknown as AnyBlock[];
+    const blocks = snapshotToBlocks(snapshots) as AnyBlock[];
 
     const store = createTestStore("test");
     injectOutputBlocks(store, blocks);
@@ -191,38 +347,37 @@ describe("OutputSnapshot → AnyBlock compatibility", () => {
     expect(store.getState().outputBlocks).toHaveLength(5);
 
     // Agent block retains its "paused" status from the snapshot.
-    // Note: AnyBlock's AgentBlock type only declares "active" | "completed" | "error",
-    // but the persisted snapshot uses "paused". At runtime the value is preserved.
-    const agentBlock = store.getState().outputBlocks[2];
+    // AgentBlock.status now includes "paused" — no need for (as any).
+    const agentBlock = store.getState().outputBlocks[2] as AgentBlock;
     expect(agentBlock.kind).toBe("agent");
-    expect((agentBlock as any).status).toBe("paused");
-    expect((agentBlock as any).agentLabel).toBe("worker");
+    expect(agentBlock.status).toBe("paused");
+    expect(agentBlock.agentLabel).toBe("worker");
   });
 
   it("text snapshots are identical to TextBlock", () => {
     const snapshot: OutputSnapshot = { kind: "text", content: "hello", timestamp: 1000 };
-    const block = snapshot as unknown as TextBlock;
+    const [block] = snapshotToBlocks([snapshot]) as AnyBlock[];
 
     expect(block.kind).toBe("text");
-    expect(block.content).toBe("hello");
-    expect(block.timestamp).toBe(1000);
+    expect((block as TextBlock).content).toBe("hello");
+    expect((block as TextBlock).timestamp).toBe(1000);
   });
 
   it("tool snapshots are identical to ToolBlock", () => {
     const snapshot: OutputSnapshot = { kind: "tool", name: "read", detail: "file.ts", timestamp: 2000 };
-    const block = snapshot as unknown as ToolBlock;
+    const [block] = snapshotToBlocks([snapshot]) as AnyBlock[];
 
     expect(block.kind).toBe("tool");
-    expect(block.name).toBe("read");
-    expect(block.detail).toBe("file.ts");
+    expect((block as ToolBlock).name).toBe("read");
+    expect((block as ToolBlock).detail).toBe("file.ts");
   });
 
   it("system snapshots are identical to SystemBlock", () => {
     const snapshot: OutputSnapshot = { kind: "system", message: "Phase started", timestamp: 3000 };
-    const block = snapshot as unknown as SystemBlock;
+    const [block] = snapshotToBlocks([snapshot]) as AnyBlock[];
 
     expect(block.kind).toBe("system");
-    expect(block.message).toBe("Phase started");
+    expect((block as SystemBlock).message).toBe("Phase started");
   });
 });
 
@@ -280,8 +435,8 @@ describe("Resume result → store injection", () => {
       statePath: ".flywheel/state/test.state.md",
     };
 
-    // Inject output blocks (what the shell does)
-    injectOutputBlocks(store, resumeResult.outputBlocks as unknown as AnyBlock[]);
+    // Inject output blocks (what the shell does — using snapshotToBlocks)
+    injectOutputBlocks(store, snapshotToBlocks(resumeResult.outputBlocks) as AnyBlock[]);
 
     // Verify all blocks are injected
     expect(store.getState().outputBlocks).toHaveLength(5);

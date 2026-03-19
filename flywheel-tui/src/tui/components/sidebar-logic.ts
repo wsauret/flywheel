@@ -20,7 +20,7 @@ export type SessionGroupKey = "active" | "paused" | "other" | "archived" | "tras
 export type SessionGroup = Record<SessionGroupKey, SessionSummary[]>;
 
 /** Actions the sidebar can trigger when a session is selected. */
-export type SelectionAction = "switch" | "resume" | "view" | "delete";
+export type SelectionAction = "open" | "delete";
 
 /** Keyboard actions the sidebar handles. */
 export type SidebarAction = "move-up" | "move-down" | "select" | "delete";
@@ -104,8 +104,10 @@ export function groupSessions(sessions: SessionSummary[]): SessionGroup {
 /**
  * Flatten grouped sessions into a single ordered list following GROUP_ORDER.
  * This is the navigation order for up/down keys.
+ *
+ * Exported for use in memoized flat-list derivation in the shell.
  */
-function groupToFlatList(sessions: SessionSummary[]): SessionSummary[] {
+export function groupToFlatList(sessions: SessionSummary[]): SessionSummary[] {
   const groups = groupSessions(sessions);
   const flat: SessionSummary[] = [];
   for (const key of GROUP_ORDER) {
@@ -119,21 +121,27 @@ function groupToFlatList(sessions: SessionSummary[]): SessionSummary[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Determine what action to take when a session is selected.
- * Returns null for non-selectable sessions (trashed / archived).
+ * Determine whether a session can be opened in the viewport.
+ * Returns "open" for all selectable sessions, null for archived/trashed.
  */
-export function getSelectionAction(session: SessionSummary): SelectionAction | null {
+export function getOpenAction(session: SessionSummary): SelectionAction | null {
   switch (session.lifecycleState) {
-    case "work:active":
-      return "switch";
-    case "work:paused":
-      return "resume";
     case "trashed":
     case "archived":
       return null;
     default:
-      return "view";
+      return "open";
   }
+}
+
+/**
+ * Determine what action to take when a session is selected.
+ * Returns null for non-selectable sessions (trashed / archived).
+ *
+ * @deprecated Use `getOpenAction()` instead. Kept for backward compatibility.
+ */
+export function getSelectionAction(session: SessionSummary): SelectionAction | null {
+  return getOpenAction(session);
 }
 
 // ---------------------------------------------------------------------------

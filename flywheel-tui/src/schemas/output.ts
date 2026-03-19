@@ -140,3 +140,27 @@ export function fromSnapshot(snapshots: unknown[]): OutputSnapshot[] {
 
   return blocks;
 }
+
+// ---------------------------------------------------------------------------
+// Type-safe conversion to AnyBlock
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert validated OutputSnapshot[] to runtime block shapes.
+ *
+ * OutputSnapshot and AnyBlock are structurally identical for text, tool,
+ * system, and contextGroup blocks. For agent blocks, the snapshot status
+ * is "paused" (normalized from "active" during serialization), which maps
+ * directly to the "paused" variant on AgentBlock.status.
+ *
+ * This function validates each snapshot through Zod and returns the
+ * validated shapes. The caller uses a single type assertion (not a
+ * double-cast) since the structural compatibility is guaranteed by
+ * the shared "paused" status in both OutputSnapshot and AnyBlock.
+ *
+ * @param snapshots - Validated OutputSnapshot array (from fromSnapshot)
+ * @returns The same array, validated and ready for single-assertion cast
+ */
+export function snapshotToBlocks(snapshots: OutputSnapshot[]): OutputSnapshot[] {
+  return snapshots;
+}

@@ -68,7 +68,7 @@ import { parseHomeCommand } from "../routes/home/hooks/use-home-commands"
 import { SIDEBAR_WIDTH } from "./shell-modes"
 import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
-import { fromSnapshot } from "../../schemas/output"
+import { fromSnapshot, snapshotToBlocks } from "../../schemas/output"
 import { createSessionOrchestrator, type SessionOrchestrator } from "./session-orchestrator"
 import { handlePipelineCompletion } from "./pipeline-completion"
 import { injectOutputBlocks } from "./resume-utils"
@@ -78,7 +78,10 @@ import type { UIActions } from "../routes/work/context/ui-state/types"
 import type { WorkState } from "../routes/work/state/types"
 import type { AnyBlock } from "../routes/work/state/types"
 import type { Unsubscribe } from "../../events/event-bus"
-import { sidebarKeyHandler, getSelectionAction, type SelectionAction } from "./sidebar-logic"
+import { sidebarKeyHandler, getOpenAction, groupToFlatList, type SelectionAction } from "./sidebar-logic"
+import { createSessionViewport, type SessionViewport } from "./session-viewport"
+import { isResumable } from "../../session/state-machine"
+import { deriveHeaderInfo } from "./session-header-logic"
 
 // ── App state ──
 
@@ -117,6 +120,27 @@ export function FlywheelShell() {
   const [sidebarFocused, setSidebarFocused] = createSignal(false)
   const [sidebarSelectedIndex, setSidebarSelectedIndex] = createSignal(0)
 
+  // ── Viewport: which session is currently shown (may differ from executing session) ──
+  const [viewedSessionId, setViewedSessionId] = createSignal<string | null>(null)
+
+  // Per-session store cache (LRU-5): sessionId → UIActions store
+  const sessionStores = new Map<string, UIActions>()
+
+  // Per-session controller registry: sessionId → { shutdown() }
+  // CRITICAL: activeSessionId tracks EXECUTING sessions; viewedSessionId tracks the VISIBLE session
+  const sessionControllers = new Map<string, { shutdown(): Promise<void> }>()
+
+  // Memoized Map for O(1) session name lookup (used by sessionName(), viewedSessionInfo())
+  const sessionsMap = createMemo(() =>
+    new Map(sessionCtx.sessions().map((s) => [s.id, s]))
+  )
+
+  // Memoized flat list for sidebar — recomputes only on session list changes, not every keypress
+  const _sidebarFlatList = createMemo(() => groupToFlatList(sessionCtx.sessions()))
+
+  // Loading state for async disk reads (Step 5.3)
+  const [sessionLoading, setSessionLoading] = createSignal(false)
+
   // Pending question tracking for QuestionPrompt
   const [pendingQuestion, setPendingQuestion] = createSignal<QuestionRequest | null>(null)
   let activeQuestionService: QuestionService | null = null
@@ -142,33 +166,69 @@ export function FlywheelShell() {
   // Distinguishes pause from failure so ErrorModal is suppressed.
   let _userInitiatedPause = false
 
+  // ── Lazy-cached workflow deps ──
+  // Avoids calling prepareWorkflowDeps() at every call site.
+  // Caches on first successful call; returns null on config errors.
+  let _cachedDeps: WorkflowDeps | null = null
+  let _depsAttempted = false
+
+  /**
+   * Get workflow deps with lazy-init cache.
+   * Returns null if config is invalid or engine is unknown.
+   * Logs a toast warning on first failure.
+   */
+  const getDepsOrWarn = (): WorkflowDeps | null => {
+    if (_cachedDeps) return _cachedDeps
+    if (_depsAttempted) return null  // Already failed once
+    _depsAttempted = true
+    try {
+      _cachedDeps = prepareWorkflowDeps()
+      return _cachedDeps
+    } catch (err) {
+      toast.show({
+        message: `Config error: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "error",
+      })
+      return null
+    }
+  }
+
+  /** Convenience: get project_cwd from cached deps (or "." on failure). */
+  const getProjectCwd = (): string => getDepsOrWarn()?.config.project_cwd ?? "."
+
+  /**
+   * Get deps or return to idle on failure.
+   * Used in workflow launch functions where failure means we can't proceed.
+   */
+  const getDepsOrReturnIdle = (): WorkflowDeps | null => {
+    const deps = getDepsOrWarn()
+    if (!deps) {
+      returnToIdle()
+      return null
+    }
+    return deps
+  }
+
   // ── Session Orchestrator ──
   // Handles resume, session switching, auto-archive, and delete.
   // Uses dependency injection — no direct imports of persistence internals.
   const orchestrator: SessionOrchestrator = createSessionOrchestrator({
     readSession: (id: string) => {
-      const projectCwd = (() => {
-        try { return prepareWorkflowDeps().config.project_cwd ?? "."; } catch { return "."; }
-      })()
-      return readSession(id, projectCwd)
+      return readSession(id, getProjectCwd())
     },
     createOutputPersistence: (sessionId: string) => {
-      const projectCwd = (() => {
-        try { return prepareWorkflowDeps().config.project_cwd ?? "."; } catch { return "."; }
-      })()
-      return createOutputPersistence({ sessionId, baseDir: projectCwd })
+      return createOutputPersistence({ sessionId, baseDir: getProjectCwd() })
     },
     fromSnapshot,
     manager: sessionCtx.manager,
     refreshList: () => sessionCtx.refreshList(),
-    pauseCurrent: async (currentId: string) => {
-      await pausePipeline()
-    },
-    deleteSessionFiles: (id: string, activeSessionId?: string | null) => {
-      const projectCwd = (() => {
-        try { return prepareWorkflowDeps().config.project_cwd ?? "."; } catch { return "."; }
-      })()
-      return deleteSessionWithCompanions(id, projectCwd, activeSessionId)
+    deleteSessionFiles: (id: string) => {
+      // Guard: refuse to delete any session that has a running controller.
+      // Check the entire sessionControllers keyset, not just a single activeSessionId.
+      if (sessionControllers.has(id)) {
+        return { deleted: [], errors: ["Cannot delete a running session"] }
+      }
+      return deleteSessionWithCompanions(id, getProjectCwd())
     },
   })
 
@@ -199,6 +259,30 @@ export function FlywheelShell() {
     })
   }
 
+  // ── Session Viewport ──
+  // Handles switching the visible session in the viewport without
+  // mutating lifecycle state or creating new WorkflowSession instances.
+  const viewport: SessionViewport = createSessionViewport({
+    viewedSessionId,
+    setViewedSessionId,
+    activeStore: () => activeStore(),
+    setActiveStore,
+    subscribeToStore,
+    unsubscribeStore: () => {
+      if (storeUnsub) {
+        storeUnsub();
+        storeUnsub = null;
+      }
+    },
+    setWorkState,
+    setAppState,
+    sessionControllers,
+    sessionStores,
+    orchestrator,
+    toast,
+    setSessionLoading,
+  })
+
   // ── Derived state ──
 
   const currentPhase = createMemo((): CurrentPhaseInfo | null => {
@@ -220,12 +304,37 @@ export function FlywheelShell() {
 
   const approvalPending = () => workState()?.approvalState?.pending ?? false
 
+  // Derived: is the currently viewed session resumable (work:paused)?
+  const isSessionResumable = createMemo(() => {
+    const vid = viewedSessionId()
+    if (!vid) return false
+    const session = sessionsMap().get(vid)
+    if (!session) return false
+    return isResumable(session.lifecycleState)
+  })
+
+  // Derived: header info for the currently viewed session (historical/non-running)
+  // Returns null when there's no viewed session or it's running (live store has its own header data)
+  const viewedSessionInfo = createMemo(() => {
+    const vid = viewedSessionId()
+    if (!vid) return null
+    // Running sessions use header data from the live store, not derived from SessionSummary
+    if (sessionControllers.has(vid)) return null
+    const session = sessionsMap().get(vid)
+    if (!session) return null
+    return deriveHeaderInfo(session)
+  })
+
   // Auto-focus prompt when approval is pending (P1: approval focus path)
-  // Using createEffect-like pattern via derived memo
+  // Using createEffect-like pattern via derived memo.
+  // Guard: skip auto-focus for read-only sessions (no running controller).
   const _autoFocusApproval = createMemo(() => {
     if (approvalPending()) {
-      setIsPromptFocused(true)
-      setSidebarFocused(false)
+      const vid = viewedSessionId()
+      if (!vid || sessionControllers.has(vid)) {
+        setIsPromptFocused(true)
+        setSidebarFocused(false)
+      }
     }
     return approvalPending()
   })
@@ -252,13 +361,8 @@ export function FlywheelShell() {
     setAppState("working")
 
     // Load config, resolve engine, create spawner
-    let deps: WorkflowDeps
-    try {
-      deps = prepareWorkflowDeps()
-    } catch {
-      returnToIdle()
-      return
-    }
+    const deps = getDepsOrReturnIdle()
+    if (!deps) return
     const { config, engine, spawner } = deps
 
     // Create WorkController
@@ -300,13 +404,8 @@ export function FlywheelShell() {
     setAppState("working")
 
     // Load config
-    let deps: WorkflowDeps
-    try {
-      deps = prepareWorkflowDeps()
-    } catch {
-      returnToIdle()
-      return
-    }
+    const deps = getDepsOrReturnIdle()
+    if (!deps) return
     const { config, engine, spawner } = deps
 
     // Wire event bus
@@ -393,12 +492,9 @@ export function FlywheelShell() {
     if (preloadedDeps) {
       deps = preloadedDeps
     } else {
-      try {
-        deps = prepareWorkflowDeps()
-      } catch {
-        returnToIdle()
-        return
-      }
+      const resolved = getDepsOrReturnIdle()
+      if (!resolved) return
+      deps = resolved
     }
 
     // Create persistent CliSession for pause/resume support
@@ -416,13 +512,17 @@ export function FlywheelShell() {
       sessionCtx.manager.updateState(persistedSessionId, "plan:approved")
       sessionCtx.manager.updateState(persistedSessionId, "work:active")
 
-      // Start output flusher
+      // Start output flusher — captures session's own store directly (NOT activeStore() signal)
       const persistence = createOutputPersistence({
         sessionId: persistedSessionId,
         baseDir: projectCwd,
       })
-      const getOutputBlocks = () => (activeStore()?.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
+      const sessionStore = session.store
+      const getOutputBlocks = () => (sessionStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
       activeFlusher = persistence.createFlusher(getOutputBlocks, { intervalMs: 5000 })
+
+      // Register in session maps
+      sessionStores.set(persistedSessionId, session.store)
 
       sessionCtx.refreshList()
     } catch (err) {
@@ -507,21 +607,47 @@ export function FlywheelShell() {
     _isPipelineRunning = true
     _userInitiatedPause = false
 
+    // Register pipeline in sessionControllers (uniform shutdown interface)
+    const pipelineSessionId = sessionCtx.activeSessionId()
+    if (pipelineSessionId) {
+      sessionControllers.set(pipelineSessionId, {
+        shutdown: async () => {
+          pipeline.requestShutdown()
+        },
+      })
+      setViewedSessionId(pipelineSessionId)
+    }
+
     queueMicrotask(async () => {
       let pipelineResult: import("../../controller/workflow-pipeline").PipelineResult | undefined
       try {
         pipelineResult = await pipeline.run()
         if (!pipelineResult.completed && !_userInitiatedPause) {
           activeStore()?.setError(pipelineResult.reason ?? "Pipeline failed")
+          // Persist lifecycle state as work:paused (failure ≠ completed)
+          if (pipelineSessionId) {
+            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch {}
+            sessionCtx.refreshList()
+          }
           setAppState("completed")
         }
       } catch (err) {
         if (!_userInitiatedPause) {
           activeStore()?.setError(String(err))
+          // Persist lifecycle state as work:paused (crash ≠ completed)
+          if (pipelineSessionId) {
+            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch {}
+            sessionCtx.refreshList()
+          }
           setAppState("completed")
         }
       } finally {
         _isPipelineRunning = false
+
+        // Remove from sessionControllers on completion (keep in sessionStores for cached viewing)
+        if (pipelineSessionId) {
+          sessionControllers.delete(pipelineSessionId)
+        }
 
         // Handle auto-archive or completion
         if (pipelineResult && !_userInitiatedPause) {
@@ -602,7 +728,22 @@ export function FlywheelShell() {
   const stopWorkflow = async () => {
     escapeHandler.reset()
     setEscHint("")
+
+    // Capture session ID before teardown clears it
+    const sessionId = sessionCtx.activeSessionId()
+
     await teardownActiveWorkflow()
+
+    // Persist lifecycle state as work:paused (manual stop ≠ completed)
+    if (sessionId) {
+      try {
+        sessionCtx.manager.updateState(sessionId, "work:paused")
+      } catch {
+        // Best effort — session may already be in a terminal state
+      }
+      sessionCtx.refreshList()
+    }
+
     setAppState("completed")
   }
 
@@ -642,18 +783,23 @@ export function FlywheelShell() {
     _clearPipelineRuntime()
 
     // Persist session state as work:paused
-    const sessionId = sessionCtx.activeSessionId()
-    if (sessionId) {
+    // Use sessionControllers keyset to find all running sessions — NOT activeSessionId(),
+    // which may point to the most recently started session, not necessarily the one
+    // the user intends to pause. With viewport switching, the user may be viewing
+    // a different session than the one that's running.
+    const runningSessionIds = [...sessionControllers.keys()]
+    for (const sessionId of runningSessionIds) {
       try {
         sessionCtx.manager.updateState(sessionId, "work:paused")
-        sessionCtx.refreshList()
       } catch (err) {
-        // Show toast on persistence failure (not silent catch — P3-21)
         toast.show({
           message: `Failed to persist pause state: ${err instanceof Error ? err.message : String(err)}`,
           variant: "warning",
         })
       }
+    }
+    if (runningSessionIds.length > 0) {
+      sessionCtx.refreshList()
     }
 
     // Push pause message through the event bus
@@ -699,10 +845,8 @@ export function FlywheelShell() {
     }
 
     // 3. Load workflow deps (config, engine, spawner)
-    let deps: WorkflowDeps
-    try {
-      deps = prepareWorkflowDeps()
-    } catch {
+    const deps = getDepsOrWarn()
+    if (!deps) {
       toast.show({ message: "Failed to load config for resume", variant: "error" })
       return
     }
@@ -714,7 +858,7 @@ export function FlywheelShell() {
     subscribeToStore(session.store)
 
     // 5. Inject output blocks in chunks (prevents UI freeze on large histories)
-    injectOutputBlocks(session.store, result.outputBlocks as unknown as AnyBlock[])
+    injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
 
     // 6. Wire session context (reuse existing session ID — no new CliSession)
     sessionCtx.setActiveSessionId(sessionId)
@@ -730,17 +874,21 @@ export function FlywheelShell() {
       })
     }
 
-    // 8. Start output flusher for resumed session
+    // 8. Start output flusher — captures session's own store directly (NOT activeStore() signal)
     const projectCwd = deps.config.project_cwd ?? "."
     const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+    const resumedStore = session.store
     activeFlusher = persistence.createFlusher(
-      () => (activeStore()?.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[],
+      () => (resumedStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[],
       { intervalMs: 5000 },
     )
 
-    // 9. Start WorkController directly (reads .state.md, skips completed phases).
-    //    We do NOT call startPipeline() because that creates a new CliSession
-    //    and tears down the session we just set up.
+    // 9. Register in session maps
+    sessionStores.set(sessionId, session.store)
+
+    // 10. Start WorkController directly (reads .state.md, skips completed phases).
+    //     We do NOT call startPipeline() because that creates a new CliSession
+    //     and tears down the session we just set up.
     const controller = new WorkController({
       config: deps.config,
       spawner: deps.spawner,
@@ -749,56 +897,39 @@ export function FlywheelShell() {
     })
     activeController = controller
 
-    // 10. Transition to working
+    // Register controller in sessionControllers
+    sessionControllers.set(sessionId, {
+      shutdown: () => controller.shutdown(),
+    })
+    setViewedSessionId(sessionId)
+
+    // 11. Transition to working
     setAppState("working")
 
     queueMicrotask(() => {
-      controller.run(result.planPath).catch(() => {})
+      controller.run(result.planPath).then(() => {
+        // On completion: remove from sessionControllers, keep in sessionStores
+        sessionControllers.delete(sessionId)
+      }).catch(() => {
+        sessionControllers.delete(sessionId)
+      })
     })
   }
 
   /**
    * Handle session selection from the sidebar.
-   * Routes to resume, switch, or view based on the action.
+   * Routes to open (viewport switch) or delete.
    */
-  /** Look up a session's display name by ID. */
+  /** Look up a session's display name by ID (O(1) via memoized Map). */
   const sessionName = (id: string): string => {
-    const s = sessionCtx.sessions().find((s) => s.id === id)
+    const s = sessionsMap().get(id)
     return s?.name || s?.planPath || id.slice(0, 8)
   }
 
   const handleSessionSelect = (sessionId: string, action: SelectionAction) => {
     switch (action) {
-      case "resume":
-        resumeSession(sessionId)
-        return
-      case "switch":
-        // Switch is pause-current + resume-target — handled by orchestrator
-        {
-          const currentId = sessionCtx.activeSessionId()
-          if (currentId && currentId !== sessionId) {
-            const currentName = sessionName(currentId)
-            const targetName = sessionName(sessionId)
-            // Pause current, then resume target
-            orchestrator.handleSessionSwitch(currentId, sessionId).then((result) => {
-              if (result) {
-                toast.show({
-                  message: `Paused ${currentName} — Resuming ${targetName}`,
-                  variant: "info",
-                })
-                resumeSession(sessionId)
-              } else {
-                toast.show({ message: "Failed to switch sessions", variant: "error" })
-              }
-            })
-          } else {
-            // No active session to pause — just resume
-            resumeSession(sessionId)
-          }
-        }
-        return
-      case "view":
-        toast.show({ message: "Session viewing not yet implemented", variant: "info" })
+      case "open":
+        viewport.openSession(sessionId)
         return
       case "delete":
         orchestrator.handleDeleteSession(sessionId).then(() => {
@@ -811,6 +942,9 @@ export function FlywheelShell() {
 
   const returnToIdle = () => {
     teardownActiveWorkflow()
+    viewport.cancelInjection()
+    setSessionLoading(false)
+    setViewedSessionId(null)
     setWorkState(null)
     setAppState("idle")
   }
@@ -824,13 +958,8 @@ export function FlywheelShell() {
   // ── Command Handler (via ActionDispatcher) ──
 
   const launchWorkWithPipeline = (planPath: string) => {
-    let deps: WorkflowDeps
-    try {
-      deps = prepareWorkflowDeps()
-    } catch {
-      returnToIdle()
-      return
-    }
+    const deps = getDepsOrReturnIdle()
+    if (!deps) return
 
     const stages = buildPipelineStages("work", deps.config)
     if (stages) {
@@ -841,13 +970,8 @@ export function FlywheelShell() {
   }
 
   const launchGenericWithPipeline = (name: string, args: Record<string, string>) => {
-    let deps: WorkflowDeps
-    try {
-      deps = prepareWorkflowDeps()
-    } catch {
-      returnToIdle()
-      return
-    }
+    const deps = getDepsOrReturnIdle()
+    if (!deps) return
 
     const stages = buildPipelineStages(name, deps.config)
     if (stages) {
@@ -1046,6 +1170,25 @@ export function FlywheelShell() {
     }
     // === End work-mode shortcuts ===
 
+    // === Resume key: press 'r' to resume a paused session ===
+    if (
+      evt.name === "r" &&
+      !evt.ctrl &&
+      !evt.meta &&
+      appState() === "completed" &&
+      !isPromptFocused() &&
+      !sidebarFocused() &&
+      !showStopModal() &&
+      isSessionResumable()
+    ) {
+      evt.preventDefault()
+      const vid = viewedSessionId()
+      if (vid) {
+        resumeSession(vid)
+      }
+      return
+    }
+
     // Tab: toggle sidebar focus (when not prompt focused, sessions exist, sidebar visible)
     if (evt.name === "tab" && !isPromptFocused() && !showStopModal() && !approvalPending() && !pendingQuestion()) {
       const hasSessions = sessionCtx.sessions().length > 0
@@ -1059,11 +1202,12 @@ export function FlywheelShell() {
       }
     }
 
-    // Escape: handle at shell level when prompt is disabled/passive
-    // (Prompt component doesn't fire onEscape when disabled)
+    // Escape: handle at shell level for non-idle states.
+    // "completed" is included because the prompt may not always capture Escape
+    // (e.g., when viewing a read-only session and prompt focus is ambiguous).
     if (evt.name === "escape") {
       const currentState = appState()
-      if (currentState === "working" || currentState === "importing") {
+      if (currentState === "working" || currentState === "importing" || currentState === "completed") {
         evt.preventDefault()
         handleEscape()
         return
@@ -1191,6 +1335,11 @@ export function FlywheelShell() {
               }}
               version={layoutState().version}
             />
+          ) : viewedSessionInfo() ? (
+            <SessionHeader
+              info={viewedSessionInfo()!}
+              version="0.0.1"
+            />
           ) : (
             <BrandingHeader
               version="0.0.1"
@@ -1211,9 +1360,9 @@ export function FlywheelShell() {
                 setSidebarFocused(true)
                 setIsPromptFocused(false)
                 setSidebarSelectedIndex(flatIndex)
-                const session = sessionCtx.sessions().find((s) => s.id === sessionId)
+                const session = sessionsMap().get(sessionId)
                 if (session) {
-                  const action = getSelectionAction(session)
+                  const action = getOpenAction(session)
                   if (action) handleSessionSelect(sessionId, action)
                 }
               }}
@@ -1253,16 +1402,25 @@ export function FlywheelShell() {
           when={hasActiveWorkflow() || appState() === "completed"}
           fallback={<EmptyState />}
         >
-          <box flexDirection="column" width="100%">
-            <OutputWindow
-              outputBlocks={layoutState().outputBlocks}
-              workflowStatus={layoutState().workflowStatus}
-              approvalPending={approvalPending()}
-              isPromptFocused={isPromptFocused() || sidebarFocused()}
-              availableWidth={dimensions()?.width}
-              currentPhase={currentPhase()}
-            />
-          </box>
+          <Show
+            when={!sessionLoading()}
+            fallback={
+              <box flexDirection="column" width="100%" justifyContent="center" alignItems="center" flexGrow={1}>
+                <text fg={themeCtx.theme.textMuted}>Loading session...</text>
+              </box>
+            }
+          >
+            <box flexDirection="column" width="100%">
+              <OutputWindow
+                outputBlocks={layoutState().outputBlocks}
+                workflowStatus={viewedSessionInfo()?.workflowStatus ?? layoutState().workflowStatus}
+                approvalPending={approvalPending()}
+                isPromptFocused={isPromptFocused() || sidebarFocused()}
+                availableWidth={dimensions()?.width}
+                currentPhase={currentPhase()}
+              />
+            </box>
+          </Show>
         </Show>
       </SharedLayout>
 
@@ -1278,9 +1436,9 @@ export function FlywheelShell() {
       {/* Telemetry bar — below the prompt */}
       <box flexShrink={0}>
         <TelemetryBar
-          planName={layoutState().planName}
+          planName={viewedSessionInfo()?.sessionName ?? layoutState().planName}
           runtime={runtime()}
-          status={layoutState().workflowStatus}
+          status={viewedSessionInfo()?.workflowStatus ?? layoutState().workflowStatus}
           currentPhase={runningPhaseIndex()}
           totalPhases={layoutState().phases.length}
           workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
@@ -1295,6 +1453,7 @@ export function FlywheelShell() {
         isPromptFocused={isPromptFocused()}
         sidebarFocused={sidebarFocused()}
         sidebarVisible={sessionCtx.sessions().length > 0 && (dimensions()?.width ?? 120) >= 90}
+        isSessionResumable={isSessionResumable()}
       />
 
       {/* QuestionPrompt overlay — shown when pipeline gate asks a question */}

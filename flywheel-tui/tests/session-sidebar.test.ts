@@ -3,6 +3,7 @@ import {
   groupSessions,
   sidebarKeyHandler,
   getSelectionAction,
+  getOpenAction,
   type SessionGroup,
   type SidebarAction,
   GROUP_ORDER,
@@ -10,24 +11,7 @@ import {
 } from "../src/tui/components/sidebar-logic";
 import type { SessionSummary } from "../src/session/manager";
 import type { SessionLifecycleState } from "../src/session/state-machine";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeSession(
-  overrides: Partial<SessionSummary> & { lifecycleState: SessionLifecycleState },
-): SessionSummary {
-  return {
-    id: crypto.randomUUID(),
-    name: "Test Session",
-    planPath: "plans/test.md",
-    currentPhase: 0,
-    totalCost: 0,
-    lastUpdated: new Date().toISOString(),
-    ...overrides,
-  };
-}
+import { makeSession, groupToFlatList } from "./helpers/sidebar";
 
 // ---------------------------------------------------------------------------
 // groupSessions()
@@ -222,36 +206,36 @@ describe("sidebarKeyHandler", () => {
 // ---------------------------------------------------------------------------
 
 describe("Session selection actions", () => {
-  it("selecting a work:paused session returns 'resume' action", () => {
+  it("selecting a work:paused session returns 'open' action", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
     expect(result.selectedSessionId).toBe(session.id);
-    expect(result.action).toBe("resume");
+    expect(result.action).toBe("open");
   });
 
-  it("selecting a work:active session returns 'switch' action", () => {
+  it("selecting a work:active session returns 'open' action", () => {
     const session = makeSession({ lifecycleState: "work:active" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
     expect(result.selectedSessionId).toBe(session.id);
-    expect(result.action).toBe("switch");
+    expect(result.action).toBe("open");
   });
 
-  it("selecting a completed session returns 'view' action", () => {
+  it("selecting a completed session returns 'open' action", () => {
     const session = makeSession({ lifecycleState: "completed" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
     expect(result.selectedSessionId).toBe(session.id);
-    expect(result.action).toBe("view");
+    expect(result.action).toBe("open");
   });
 
-  it("selecting a work:review session returns 'view' action", () => {
+  it("selecting a work:review session returns 'open' action", () => {
     const session = makeSession({ lifecycleState: "work:review" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
     expect(result.selectedSessionId).toBe(session.id);
-    expect(result.action).toBe("view");
+    expect(result.action).toBe("open");
   });
 
   it("selecting an archived session returns no action (null — not selectable)", () => {
@@ -272,28 +256,28 @@ describe("Session selection actions", () => {
 });
 
 // ---------------------------------------------------------------------------
-// getSelectionAction — direct tests
+// getSelectionAction — kept for backward compat, delegates to getOpenAction
 // ---------------------------------------------------------------------------
 
 describe("getSelectionAction", () => {
-  it("work:paused → 'resume'", () => {
+  it("work:paused → 'open'", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getSelectionAction(session)).toBe("resume");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
-  it("work:active → 'switch'", () => {
+  it("work:active → 'open'", () => {
     const session = makeSession({ lifecycleState: "work:active" });
-    expect(getSelectionAction(session)).toBe("switch");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
-  it("completed → 'view'", () => {
+  it("completed → 'open'", () => {
     const session = makeSession({ lifecycleState: "completed" });
-    expect(getSelectionAction(session)).toBe("view");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
-  it("work:review → 'view'", () => {
+  it("work:review → 'open'", () => {
     const session = makeSession({ lifecycleState: "work:review" });
-    expect(getSelectionAction(session)).toBe("view");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
   it("trashed → null (not selectable)", () => {
@@ -306,14 +290,75 @@ describe("getSelectionAction", () => {
     expect(getSelectionAction(session)).toBeNull();
   });
 
-  it("new → 'view'", () => {
+  it("new → 'open'", () => {
     const session = makeSession({ lifecycleState: "new" });
-    expect(getSelectionAction(session)).toBe("view");
+    expect(getSelectionAction(session)).toBe("open");
   });
 
-  it("plan:draft → 'view'", () => {
+  it("plan:draft → 'open'", () => {
     const session = makeSession({ lifecycleState: "plan:draft" });
-    expect(getSelectionAction(session)).toBe("view");
+    expect(getSelectionAction(session)).toBe("open");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getOpenAction — new unified action
+// ---------------------------------------------------------------------------
+
+describe("getOpenAction", () => {
+  it("work:active → 'open'", () => {
+    const session = makeSession({ lifecycleState: "work:active" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("work:paused → 'open'", () => {
+    const session = makeSession({ lifecycleState: "work:paused" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("completed → 'open'", () => {
+    const session = makeSession({ lifecycleState: "completed" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("work:review → 'open'", () => {
+    const session = makeSession({ lifecycleState: "work:review" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("new → 'open'", () => {
+    const session = makeSession({ lifecycleState: "new" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("plan:draft → 'open'", () => {
+    const session = makeSession({ lifecycleState: "plan:draft" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("plan:imported → 'open'", () => {
+    const session = makeSession({ lifecycleState: "plan:imported" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("plan:approved → 'open'", () => {
+    const session = makeSession({ lifecycleState: "plan:approved" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("plan:needs-fix → 'open'", () => {
+    const session = makeSession({ lifecycleState: "plan:needs-fix" });
+    expect(getOpenAction(session)).toBe("open");
+  });
+
+  it("trashed → null (not selectable)", () => {
+    const session = makeSession({ lifecycleState: "trashed" });
+    expect(getOpenAction(session)).toBeNull();
+  });
+
+  it("archived → null (not selectable)", () => {
+    const session = makeSession({ lifecycleState: "archived" });
+    expect(getOpenAction(session)).toBeNull();
   });
 });
 
@@ -411,15 +456,4 @@ describe("sidebarKeyHandler — delete action", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Helper — mirrors the groupToFlatList used internally
-// ---------------------------------------------------------------------------
 
-function groupToFlatList(sessions: SessionSummary[]): SessionSummary[] {
-  const groups = groupSessions(sessions);
-  const flat: SessionSummary[] = [];
-  for (const key of GROUP_ORDER) {
-    flat.push(...groups[key]);
-  }
-  return flat;
-}

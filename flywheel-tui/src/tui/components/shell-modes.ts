@@ -17,6 +17,12 @@
 /**
  * AppState describes what the app is *doing* rather than which *screen* to show.
  * The layout is always SharedLayout; only content varies based on state.
+ *
+ * Dual meanings after session viewport switching:
+ * - "working" = either "a session I started is executing" OR "I'm viewing a
+ *   running session started elsewhere (read-only live view)".
+ * - "completed" = either "the workflow finished/stopped/failed" OR "I'm viewing
+ *   a non-running session's snapshot (read-only historical view)".
  */
 export type AppState = "idle" | "working" | "completed" | "importing"
 

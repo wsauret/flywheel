@@ -98,5 +98,15 @@ export function createWorkflowActions(ctx: StoreContext) {
       });
       notify();
     },
+
+    appendOutputBlocks(blocks: AnyBlock[]): void {
+      if (blocks.length === 0) return;
+      const state = getState();
+      setState({
+        ...state,
+        outputBlocks: [...state.outputBlocks, ...blocks],
+      });
+      notify();
+    },
   };
 }

@@ -981,48 +981,6 @@ describe("Pause / Resume Lifecycle", () => {
     expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("completed");
   });
 
-  it("session switch: pauses current and resumes target", async () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    // Create two sessions, advance both to work-capable states
-    const id1 = mgr.create("plans/current.md", "Current Session");
-    advanceToActive(mgr, id1);
-
-    const id2 = mgr.create("plans/target.md", "Target Session");
-    advanceToActive(mgr, id2);
-    mgr.updateState(id2, "work:paused"); // pause target so it can be resumed
-
-    // Set up orchestrator with pauseCurrent callback
-    let pausedSessionId: string | null = null;
-    const orchestrator = createSessionOrchestrator({
-      readSession: (sessionId) => readSession(sessionId, baseDir),
-      createOutputPersistence: (sessionId) =>
-        createOutputPersistence({ sessionId, baseDir }),
-      fromSnapshot,
-      manager: mgr,
-      refreshList: () => {},
-      pauseCurrent: async (currentId) => {
-        mgr.updateState(currentId, "work:paused");
-        pausedSessionId = currentId;
-      },
-    });
-
-    // Switch from id1 to id2
-    // First, transition id2 back to active so it can be resumed in the orchestrator
-    mgr.updateState(id2, "work:active");
-
-    const result = await orchestrator.handleSessionSwitch(id1, id2);
-
-    // Current session should have been paused
-    expect(pausedSessionId as string | null).toBe(id1 as string);
-    expect(readSession(id1, baseDir)!.sessionLifecycleState).toBe("work:paused");
-
-    // Target session data should be returned
-    expect(result).not.toBeNull();
-    expect(result!.planPath).toBe("plans/target.md");
-  });
-
   it("concurrent guard: only one active workflow session at a time", () => {
     const baseDir = makeTmpDir();
     const destroyedPaths: string[] = [];

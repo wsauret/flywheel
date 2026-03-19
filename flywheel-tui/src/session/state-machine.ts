@@ -68,3 +68,15 @@ export function isValidTransition(
   const targets = VALID_TRANSITIONS[from];
   return targets.includes(to);
 }
+
+// ---------------------------------------------------------------------------
+// State predicates
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns `true` if a session in the given state can be resumed.
+ * Currently only `work:paused` sessions are resumable.
+ */
+export function isResumable(state: SessionLifecycleState): boolean {
+  return state === "work:paused";
+}

@@ -62,6 +62,10 @@ export function AgentBlock(props: AgentBlockProps) {
         <text fg={themeCtx.theme.text}>{`✓ ${label()}`}</text>
       </Show>
 
+      <Show when={props.block.status === "paused"}>
+        <text fg={themeCtx.theme.textMuted}>{`⏸ ${label()}`}</text>
+      </Show>
+
       <Show when={props.block.status === "error"}>
         <text fg={themeCtx.theme.error}>{`✗ ${label()}`}</text>
       </Show>
@@ -71,8 +75,8 @@ export function AgentBlock(props: AgentBlockProps) {
         <text fg={themeCtx.theme.textMuted}>{`  ↳ ${props.block.latestChild}`}</text>
       </Show>
 
-      {/* Completed: show tool count + duration */}
-      <Show when={props.block.status === "completed"}>
+      {/* Completed/Paused: show tool count + duration */}
+      <Show when={props.block.status === "completed" || props.block.status === "paused"}>
         <text fg={themeCtx.theme.textMuted}>
           {`  └ ${toolCount()} toolcalls${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`}
         </text>

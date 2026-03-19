@@ -58,7 +58,7 @@ export interface AgentBlock {
   id: string;
   agentLabel: string;
   description: string;
-  status: "active" | "completed" | "error";
+  status: "active" | "completed" | "error" | "paused";
   children: ToolBlock[];
   latestChild?: string;
   duration?: number;

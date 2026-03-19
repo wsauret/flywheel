@@ -2,7 +2,12 @@
  * Session Header Logic — Pure functions for session header display
  *
  * Separated from JSX to enable unit testing without OpenTUI rendering.
+ * Includes lifecycle → workflow status mapping for historical sessions.
  */
+
+import type { SessionLifecycleState } from "../../session/state-machine"
+import type { WorkflowStatus } from "../routes/work/state/types"
+import type { SessionSummary } from "../../session/manager"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,8 +20,58 @@ export interface SessionHeaderInfo {
   branch?: string
   currentPhase?: string
   phaseStatus?: "pending" | "running" | "completed" | "failed" | "skipped"
-  workflowStatus?: "idle" | "running" | "completed" | "failed" | "interrupted" | "stopping"
+  workflowStatus?: WorkflowStatus
   lastActivity?: string
+}
+
+// ---------------------------------------------------------------------------
+// lifecycleToWorkflowStatus
+// ---------------------------------------------------------------------------
+
+/**
+ * Map a session lifecycle state to the WorkflowStatus used by the TUI header.
+ *
+ * This is used for historical (non-running) sessions where the WorkflowStatus
+ * is derived from the persisted lifecycle state, NOT from a live store.
+ */
+export function lifecycleToWorkflowStatus(state: SessionLifecycleState): WorkflowStatus {
+  switch (state) {
+    case "work:active":
+    case "work:review":
+      return "running"
+    case "work:paused":
+      return "interrupted"
+    case "completed":
+    case "archived":
+    case "trashed":
+      return "completed"
+    // Plan stages and "new"
+    default:
+      return "idle"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// deriveHeaderInfo
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive SessionHeaderInfo from a SessionSummary.
+ *
+ * Used when viewing a historical (non-running) session — the header info
+ * is derived from persisted metadata rather than from the live store.
+ *
+ * IMPORTANT: Does NOT set startTime — that is managed separately by the
+ * store/shell to avoid incorrect timestamps on historical sessions.
+ */
+export function deriveHeaderInfo(summary: SessionSummary): SessionHeaderInfo {
+  return {
+    sessionName: summary.name || summary.planPath,
+    planName: summary.planPath,
+    workflowStatus: lifecycleToWorkflowStatus(summary.lifecycleState),
+    branch: summary.branch,
+    repo: summary.repo,
+  }
 }
 
 // ---------------------------------------------------------------------------

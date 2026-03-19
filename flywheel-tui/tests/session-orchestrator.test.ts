@@ -194,90 +194,6 @@ describe("SessionOrchestrator.handleResumeSession", () => {
 });
 
 // ---------------------------------------------------------------------------
-// handleSessionSwitch
-// ---------------------------------------------------------------------------
-
-describe("SessionOrchestrator.handleSessionSwitch", () => {
-  it("pauses current session and resumes target session", async () => {
-    const pauseCalls: string[] = [];
-    const targetSession = minimalCliSession({
-      planPath: "plans/target.md",
-      worktreePath: "/tmp/wt/target",
-    });
-
-    const { deps } = makeMockDeps({
-      readSession: (id: string) => {
-        if (id === "target-id") return targetSession;
-        return minimalCliSession();
-      },
-    });
-
-    // Inject pauseCurrent callback
-    deps.pauseCurrent = async (id: string) => {
-      pauseCalls.push(`pause:${id}`);
-    };
-
-    const orchestrator = createSessionOrchestrator(deps);
-
-    const result = await orchestrator.handleSessionSwitch(
-      "current-id",
-      "target-id",
-    );
-
-    expect(pauseCalls).toContain("pause:current-id");
-    expect(result).not.toBeNull();
-    expect(result!.session.planPath).toBe("plans/target.md");
-  });
-
-  it("calls pauseCurrent before resuming target", async () => {
-    const order: string[] = [];
-    const targetSession = minimalCliSession({ planPath: "plans/target.md" });
-
-    const { deps } = makeMockDeps({
-      readSession: (id: string) => {
-        if (id === "target-id") {
-          order.push("readSession:target");
-          return targetSession;
-        }
-        return minimalCliSession();
-      },
-    });
-
-    deps.pauseCurrent = async (id: string) => {
-      order.push("pauseCurrent");
-    };
-
-    const orchestrator = createSessionOrchestrator(deps);
-    await orchestrator.handleSessionSwitch("current-id", "target-id");
-
-    // pauseCurrent must come before readSession (resume)
-    const pauseIdx = order.indexOf("pauseCurrent");
-    const resumeIdx = order.indexOf("readSession:target");
-    expect(pauseIdx).toBeLessThan(resumeIdx);
-  });
-
-  it("returns null if target session does not exist", async () => {
-    const { deps } = makeMockDeps({
-      readSession: (id: string) => {
-        if (id === "target-id") return null;
-        return minimalCliSession();
-      },
-    });
-
-    deps.pauseCurrent = async () => {};
-
-    const orchestrator = createSessionOrchestrator(deps);
-
-    const result = await orchestrator.handleSessionSwitch(
-      "current-id",
-      "target-id",
-    );
-
-    expect(result).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // handleAutoArchive
 // ---------------------------------------------------------------------------
 
@@ -467,7 +383,6 @@ describe("SessionOrchestrator dependency injection", () => {
     const orchestrator = createSessionOrchestrator(deps);
 
     expect(typeof orchestrator.handleResumeSession).toBe("function");
-    expect(typeof orchestrator.handleSessionSwitch).toBe("function");
     expect(typeof orchestrator.handleAutoArchive).toBe("function");
     expect(typeof orchestrator.handleDeleteSession).toBe("function");
   });

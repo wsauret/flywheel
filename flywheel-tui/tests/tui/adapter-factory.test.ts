@@ -22,6 +22,8 @@ function createMockActions() {
     completePhase: () => {},
     failPhase: () => {},
     appendOutput: () => {},
+    setOutputBlocks: () => {},
+    appendOutputBlocks: () => {},
     setError: () => {},
     setApprovalPending: () => {},
     clearApproval: () => {},

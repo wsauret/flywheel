@@ -13,6 +13,8 @@ export interface StatusFooterProps {
   sidebarFocused?: boolean
   /** Whether the sidebar is visible (terminal >= 90 cols and sessions exist). */
   sidebarVisible?: boolean
+  /** Whether the currently viewed session is resumable (work:paused). */
+  isSessionResumable?: boolean
 }
 
 /**
@@ -30,10 +32,11 @@ export function StatusFooter(props: StatusFooterProps) {
       return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme"
     }
     const sidebarHint = props.sidebarVisible ? "[Tab] Sidebar  " : ""
+    const resumeHint = props.isSessionResumable ? "[R] Resume  " : ""
     if (props.approvalPending) {
       return `[Right] Focus Prompt  ${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
     }
-    return `${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
+    return `${resumeHint}${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
   }
 
   return (

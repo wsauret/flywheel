@@ -28,6 +28,7 @@ export interface UIActions {
   clearError(): void;
   appendOutput(line: OutputLine): void;
   setOutputBlocks(blocks: AnyBlock[]): void;
+  appendOutputBlocks(blocks: AnyBlock[]): void;
   setApprovalPending(description: string): void;
   clearApproval(): void;
 
