@@ -282,6 +282,68 @@ describe("StructuredOutputBuilder", () => {
     });
   });
 
+  // ── resetTracking ──
+
+  describe("resetTracking", () => {
+    it("preserves accumulated blocks", () => {
+      const now = Date.now();
+      builder.pushText("line 1", now);
+      builder.pushTool("Bash", "ls", now + 100);
+      builder.getBlocks(); // clear dirty flag
+
+      builder.resetTracking();
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("tool");
+    });
+
+    it("marks builder as dirty after resetTracking", () => {
+      const now = Date.now();
+      builder.pushText("hello", now);
+      builder.getBlocks(); // clear dirty flag
+      expect(builder.hasChanged()).toBe(false);
+
+      builder.resetTracking();
+
+      expect(builder.hasChanged()).toBe(true);
+    });
+
+    it("clears agent tracking so new agents get fresh indices", () => {
+      const now = Date.now();
+      builder.startAgent("agent-1", "Explore", "Searching", now);
+      builder.pushText("agent output", now + 100);
+      builder.completeAgent("agent-1", 200, 1);
+
+      builder.resetTracking();
+
+      // Starting a new agent with the same ID should create a new block,
+      // not try to append to the old one
+      builder.startAgent("agent-1", "Explore", "Searching again", now + 300);
+      builder.pushText("new agent output", now + 400);
+      builder.completeAgent("agent-1", 200, 1);
+
+      const blocks = builder.getBlocks();
+      const agentBlocks = blocks.filter((b) => b.kind === "agent");
+      expect(agentBlocks).toHaveLength(2);
+    });
+
+    it("new text after resetTracking appends to existing blocks", () => {
+      const now = Date.now();
+      builder.pushText("before reset\n", now);
+      builder.resetTracking();
+      builder.pushText("after reset\n", now + 100);
+
+      const blocks = builder.getBlocks();
+      // Text should merge into the existing text block (consecutive text merges)
+      const textBlocks = blocks.filter((b) => b.kind === "text");
+      expect(textBlocks).toHaveLength(1);
+      expect((textBlocks[0] as TextBlock).content).toContain("before reset");
+      expect((textBlocks[0] as TextBlock).content).toContain("after reset");
+    });
+  });
+
   // ── Dirty flag / hasChanged ──
 
   describe("hasChanged / getBlocks", () => {

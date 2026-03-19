@@ -242,6 +242,41 @@ describe("Work Store", () => {
       expect(approval.pending).toBe(false);
       expect(approval.description).toBeUndefined();
     });
+
+    it("continueStage updates planName without wiping output", () => {
+      store.startWorkflow("stage-1-plan");
+      store.appendOutput({ stream: "stdout", data: "stage 1 output\n", timestamp: "t1" });
+      store.setOutputBlocks([{ kind: "text", content: "block1", timestamp: Date.now() }]);
+      store.startPhase(0, "Phase A");
+
+      store.continueStage("stage-2-plan");
+
+      const state = store.getState();
+      expect(state.planName).toBe("stage-2-plan");
+      expect(state.workflowStatus).toBe("running");
+      expect(state.approvalState.pending).toBe(false);
+      expect(state.error).toBeUndefined();
+      // Output must be preserved (not wiped)
+      expect(state.outputLines).toHaveLength(1);
+      expect(state.outputBlocks).toHaveLength(1);
+      // Phases must be preserved
+      expect(state.phases).toHaveLength(1);
+      // startTime must be preserved (not reset)
+      expect(state.startTime).toBeDefined();
+    });
+
+    it("continueStage clears pending approval and error", () => {
+      store.startWorkflow("plan-a");
+      store.setApprovalPending("Review this");
+      store.setError("old error");
+
+      store.continueStage("plan-b");
+
+      const state = store.getState();
+      expect(state.approvalState.pending).toBe(false);
+      expect(state.error).toBeUndefined();
+      expect(state.workflowStatus).toBe("running");
+    });
   });
 
   // ── Navigation Actions ──

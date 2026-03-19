@@ -130,10 +130,15 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     switch (event.type) {
       case "workflow:started":
         if (!this._pipelineMode) {
+          // Standalone workflow: full reset — fresh timer, fresh store.
           timerService.reset();
+          timerService.start();
+          this.actions.startWorkflow(event.planPath);
+        } else {
+          // Pipeline mode: new stage starting within an ongoing session.
+          // The output log is continuous — only update metadata, don't wipe blocks.
+          this.actions.continueStage(event.planPath);
         }
-        timerService.start();
-        this.actions.startWorkflow(event.planPath);
         break;
 
       case "workflow:completed":
@@ -163,7 +168,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.stopWorkflow("interrupted");
         break;
 
-      case "phase:started":
+      case "phase:started": {
         // Dynamic phase discovery: if phase doesn't exist yet, add it
         if (event.phaseIndex >= this.actions.getState().phases.length) {
           this.actions.addPhase({
@@ -171,17 +176,27 @@ export class OpenTUIAdapter extends BaseUIAdapter {
             name: event.phaseName,
           });
         }
-        // Reset structured pipeline state for new phase
+
+        // Reset worker-level tracking (agent IDs, tool-use mappings, partial buffers).
+        // These are per-worker-process and invalid across phase boundaries.
         this.traceParser.reset();
-        this.builder.reset();
         this.eventParser.reset();
         this.ndjsonParser.flush();
-        // Push cleared blocks to store
-        this.actions.setOutputBlocks(this.builder.getBlocks());
+
+        if (this._pipelineMode) {
+          // Pipeline mode: keep accumulated blocks, reset only tracking state.
+          // The output log is continuous across stages/phases.
+          this.builder.resetTracking();
+        } else {
+          // Standalone: each phase starts with a clean output slate.
+          this.builder.reset();
+          this.actions.setOutputBlocks(this.builder.getBlocks());
+        }
 
         timerService.registerAgent(`phase-${event.phaseIndex}`);
         this.actions.startPhase(event.phaseIndex, event.phaseName);
         break;
+      }
 
       case "phase:completed":
         // Final flush for this phase
@@ -277,6 +292,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this._pipelineMode = true;
         this._stageTimings = [];
         this._stageStartedAt = Date.now();
+        // Start the session timer once at pipeline start (not per-stage).
+        timerService.reset();
+        timerService.start();
         this.pushSystemText(`▶ Pipeline started: ${event.stages.join(" → ")}\n`, event.timestamp);
         break;
       case "pipeline:stage-transition": {

@@ -30,6 +30,19 @@ export function createWorkflowActions(ctx: StoreContext) {
       notifyImmediate();
     },
 
+    continueStage(planName: string): void {
+      const state = getState();
+      setState({
+        ...state,
+        planName,
+        workflowStatus: "running",
+        approvalState: { pending: false },
+        error: undefined,
+        // Preserve: outputBlocks, outputLines, phases, startTime, scrollOffset
+      });
+      notifyImmediate();
+    },
+
     stopWorkflow(status: "completed" | "interrupted"): void {
       const state = getState();
       setState({

@@ -737,6 +737,11 @@ export function FlywheelShell() {
 
     await teardownActiveWorkflow()
 
+    // Remove from sessionControllers so sidebar shows "Paused" not "Active"
+    if (sessionId) {
+      sessionControllers.delete(sessionId)
+    }
+
     // Persist lifecycle state as work:paused (manual stop ≠ completed)
     if (sessionId) {
       try {
@@ -785,11 +790,8 @@ export function FlywheelShell() {
     // Shut down pipeline, loop, and controller (but NOT session/adapter/store)
     _clearPipelineRuntime()
 
-    // Persist session state as work:paused
-    // Use sessionControllers keyset to find all running sessions — NOT activeSessionId(),
-    // which may point to the most recently started session, not necessarily the one
-    // the user intends to pause. With viewport switching, the user may be viewing
-    // a different session than the one that's running.
+    // Persist session state as work:paused and remove from sessionControllers
+    // so the sidebar groups them as "Paused" instead of "Active".
     const runningSessionIds = [...sessionControllers.keys()]
     for (const sessionId of runningSessionIds) {
       try {
@@ -800,6 +802,7 @@ export function FlywheelShell() {
           variant: "warning",
         })
       }
+      sessionControllers.delete(sessionId)
     }
     if (runningSessionIds.length > 0) {
       sessionCtx.refreshList()

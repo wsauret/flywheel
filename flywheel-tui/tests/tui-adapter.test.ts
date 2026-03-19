@@ -852,6 +852,88 @@ describe("OpenTUIAdapter", () => {
     });
   });
 
+  // ── Pipeline mode: continueStage vs startWorkflow ──
+
+  describe("pipeline mode stage transitions", () => {
+    it("pipeline:started starts timer once, workflow:started uses continueStage", () => {
+      const { bus, store } = createHarness();
+
+      // Enter pipeline mode
+      bus.emit({
+        type: "pipeline:started",
+        pipelineId: "p1",
+        stages: ["plan", "work"],
+        timestamp: ts(),
+      });
+
+      // Timer should already be running from pipeline:started
+      expect(timerService.isRunning()).toBe(true);
+
+      // First workflow:started in pipeline mode → continueStage (not startWorkflow)
+      bus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "stage-1.md",
+        timestamp: ts(),
+      });
+
+      const state1 = store.getState();
+      expect(state1.workflowStatus).toBe("running");
+      expect(state1.planName).toBe("stage-1.md");
+
+      // Manually add output to simulate stage 1 producing data
+      store.appendOutput({ stream: "stdout", data: "stage 1 output\n", timestamp: ts() });
+
+      // Complete first stage
+      bus.emit({
+        type: "workflow:completed",
+        workflowId: "w1",
+        timestamp: ts(),
+      });
+
+      // Second workflow:started in pipeline → continueStage preserves output
+      bus.emit({
+        type: "workflow:started",
+        workflowId: "w2",
+        planPath: "stage-2.md",
+        timestamp: ts(),
+      });
+
+      const state2 = store.getState();
+      expect(state2.planName).toBe("stage-2.md");
+      expect(state2.workflowStatus).toBe("running");
+      // Output from stage 1 should be preserved (continueStage, not startWorkflow)
+      expect(state2.outputLines.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("standalone workflow:started does full reset", () => {
+      const { bus, store } = createHarness();
+
+      // NOT in pipeline mode — standalone
+      bus.emit({
+        type: "workflow:started",
+        workflowId: "w1",
+        planPath: "plan-a.md",
+        timestamp: ts(),
+      });
+
+      store.appendOutput({ stream: "stdout", data: "output\n", timestamp: ts() });
+
+      // Another standalone workflow:started → full reset
+      bus.emit({
+        type: "workflow:started",
+        workflowId: "w2",
+        planPath: "plan-b.md",
+        timestamp: ts(),
+      });
+
+      const state = store.getState();
+      expect(state.planName).toBe("plan-b.md");
+      // startWorkflow wipes output
+      expect(state.outputLines).toEqual([]);
+    });
+  });
+
   // ── Disconnect ──
 
   describe("disconnect", () => {

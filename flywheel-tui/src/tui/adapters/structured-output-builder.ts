@@ -185,6 +185,10 @@ export class StructuredOutputBuilder {
     return this.dirty;
   }
 
+  /**
+   * Full reset — wipes blocks AND tracking state.
+   * Used when starting a fresh standalone workflow (non-pipeline).
+   */
   reset(): void {
     this.blocks = [];
     this.dirty = false;
@@ -193,6 +197,22 @@ export class StructuredOutputBuilder {
     this.agentIndexById.clear();
     this.contextRunStart = -1;
     this.contextRunLength = 0;
+  }
+
+  /**
+   * Reset only worker-level tracking state, preserving accumulated blocks.
+   * Used at pipeline phase boundaries: a new worker means new agent IDs and
+   * context runs, but the output log is continuous.
+   */
+  resetTracking(): void {
+    this.activeAgentId = null;
+    this.agentIndexById.clear();
+    this.contextRunStart = -1;
+    this.contextRunLength = 0;
+    // Mark dirty so the next getBlocks() returns a fresh snapshot
+    // (tracking changes may affect how subsequent blocks are grouped).
+    this.dirty = true;
+    this.cachedSnapshot = [];
   }
 
   // ── Context grouping (private) ──
