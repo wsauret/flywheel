@@ -45,7 +45,7 @@ export interface ActionDispatcherDeps {
   launchWorkWorkflow: (planPath: string) => void
   launchGenericWorkflow: (name: string, args: Record<string, string>) => void
   exit: () => void
-  returnToLauncher?: () => void
+  returnToIdle?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
     }
 
     if (workflow === "new") {
-      deps.returnToLauncher?.()
+      deps.returnToIdle?.()
       return null
     }
 

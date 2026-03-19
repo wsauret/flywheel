@@ -15,6 +15,8 @@ export interface StatusFooterProps {
   sidebarVisible?: boolean
   /** Whether the currently viewed session is resumable (work:paused). */
   isSessionResumable?: boolean
+  /** Whether a workflow is actively running (show background hint). */
+  isWorking?: boolean
 }
 
 /**
@@ -26,17 +28,18 @@ export function StatusFooter(props: StatusFooterProps) {
 
   const shortcutText = () => {
     if (props.sidebarFocused) {
-      return "[\u2191\u2193] Navigate  [Enter] Select  [Del] Delete  [Esc/Tab] Exit Sidebar  [Ctrl+T] Theme"
+      return "[\u2191\u2193] Navigate  [Enter] Select  [Del] Delete  [Esc/Tab] Exit Sidebar"
     }
     if (props.isPromptFocused) {
-      return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme"
+      return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw"
     }
     const sidebarHint = props.sidebarVisible ? "[Tab] Sidebar  " : ""
     const resumeHint = props.isSessionResumable ? "[R] Resume  " : ""
+    const bgHint = props.isWorking ? "[Ctrl+B] Background  " : ""
     if (props.approvalPending) {
-      return `[Right] Focus Prompt  ${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
+      return `[Right] Focus Prompt  ${sidebarHint}${bgHint}[\u2191\u2193] Navigate  [Ctrl+D] Raw  [Esc] Stop`
     }
-    return `${resumeHint}${sidebarHint}[\u2191\u2193] Navigate  [Ctrl+S] Skip  [Ctrl+D] Raw  [Ctrl+T] Theme  [Esc] Stop`
+    return `${resumeHint}${sidebarHint}${bgHint}[\u2191\u2193] Navigate  [Ctrl+D] Raw  [Esc] Stop`
   }
 
   return (

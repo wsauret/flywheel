@@ -2,7 +2,7 @@
  * Flywheel Command Definitions
  *
  * Single source of truth for all slash commands.
- * The `argKey` field tells `parseHomeCommand` how to map the "rest"
+ * The `argKey` field tells `parseCommand` how to map the "rest"
  * of user input into a named argument (e.g., `/work foo.md` →
  * `{ planPath: "foo.md" }`). Commands without `argKey` take no args.
  */
@@ -30,7 +30,7 @@ export const COMMANDS: SlashCommand[] = [
 
 /**
  * Lookup table: command name (without `/`) → SlashCommand.
- * Derived from COMMANDS so parseHomeCommand stays in sync automatically.
+ * Derived from COMMANDS so parseCommand stays in sync automatically.
  */
 export const COMMAND_MAP: ReadonlyMap<string, SlashCommand> = new Map(
   COMMANDS.map((c) => [c.name.slice(1), c]),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { parseHomeCommand } from "../src/tui/routes/home/hooks/use-home-commands"
+import { parseCommand as parseHomeCommand } from "../src/tui/utils/command-parser"
 
 describe("parseHomeCommand", () => {
   it('parses "/work path/to/plan.md" correctly', () => {

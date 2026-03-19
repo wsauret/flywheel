@@ -1,15 +1,15 @@
 /**
- * Home Command Parser
+ * Command Parser
  *
- * Parses user input from the home screen prompt into a structured command result.
- * Used by HomeView and tested independently.
+ * Parses user input from the prompt into a structured command result.
+ * Used by FlywheelShell and tested independently.
  *
  * **Derived from COMMANDS** — adding a new slash command to `commands.ts`
  * automatically makes it available here. The `argKey` field on each command
  * determines how trailing text is mapped into `args`.
  */
 
-import { COMMAND_MAP } from "../../../config/commands"
+import { COMMAND_MAP } from "../config/commands"
 
 export interface CommandResult {
   workflow: string
@@ -17,7 +17,7 @@ export interface CommandResult {
 }
 
 /**
- * Parse home screen input into a CommandResult.
+ * Parse prompt input into a CommandResult.
  *
  * - `/work <path>` -> { workflow: "work", args: { planPath: path } }
  * - `/plan <description>` -> { workflow: "plan", args: { description } }
@@ -33,7 +33,7 @@ export interface CommandResult {
  * - Unknown `/command` -> null
  * - Empty string -> null
  */
-export function parseHomeCommand(input: string): CommandResult | null {
+export function parseCommand(input: string): CommandResult | null {
   const trimmed = input.trim()
   if (!trimmed) return null
 
@@ -61,3 +61,8 @@ export function parseHomeCommand(input: string): CommandResult | null {
 
   return { workflow: command, args }
 }
+
+/**
+ * @deprecated Use `parseCommand` instead. This alias exists for backward compatibility.
+ */
+export const parseHomeCommand = parseCommand

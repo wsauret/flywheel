@@ -24,7 +24,6 @@ import { createSignal, createMemo, onCleanup, Show } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
-import { useDialog } from "@tui/shared/context/dialog"
 import { useSession } from "@tui/shared/context/session"
 import { Toast } from "@tui/shared/ui/toast"
 import { SharedLayout } from "../routes/work/components/shared-layout"
@@ -39,7 +38,7 @@ import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
 import { Selection } from "../utils/selection"
 import { Clipboard } from "../utils/clipboard"
-import { openStarterChooser } from "./starter-chooser"
+import { QuitConfirmModal } from "../routes/work/components/modals/quit-confirm-modal"
 import { createActionDispatcher } from "./action-dispatcher"
 import {
   createWorkflowSession,
@@ -64,7 +63,7 @@ import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
-import { parseHomeCommand } from "../routes/home/hooks/use-home-commands"
+import { parseCommand } from "../utils/command-parser"
 import { SIDEBAR_WIDTH } from "./shell-modes"
 import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
@@ -94,7 +93,6 @@ import {
 export function FlywheelShell() {
   const themeCtx = useTheme()
   const toast = useToast()
-  const dialog = useDialog()
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
   const sessionCtx = useSession()
@@ -115,6 +113,7 @@ export function FlywheelShell() {
   // Prompt focus management (P1: re-wired through FlywheelShell)
   const [isPromptFocused, setIsPromptFocused] = createSignal(false)
   const [showStopModal, setShowStopModal] = createSignal(false)
+  const [showQuitModal, setShowQuitModal] = createSignal(false)
 
   // Sidebar focus management — mutually exclusive with prompt focus
   const [sidebarFocused, setSidebarFocused] = createSignal(false)
@@ -619,6 +618,10 @@ export function FlywheelShell() {
     }
 
     queueMicrotask(async () => {
+      // Check if this session is still the one the user is viewing.
+      // If backgrounded, we should persist state but NOT force UI transitions.
+      const isStillViewed = () => viewedSessionId() === pipelineSessionId
+
       let pipelineResult: import("../../controller/workflow-pipeline").PipelineResult | undefined
       try {
         pipelineResult = await pipeline.run()
@@ -629,7 +632,7 @@ export function FlywheelShell() {
             try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch {}
             sessionCtx.refreshList()
           }
-          setAppState("completed")
+          if (isStillViewed()) setAppState("completed")
         }
       } catch (err) {
         if (!_userInitiatedPause) {
@@ -639,7 +642,7 @@ export function FlywheelShell() {
             try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch {}
             sessionCtx.refreshList()
           }
-          setAppState("completed")
+          if (isStillViewed()) setAppState("completed")
         }
       } finally {
         _isPipelineRunning = false
@@ -653,7 +656,7 @@ export function FlywheelShell() {
         if (pipelineResult && !_userInitiatedPause) {
           await handlePipelineCompletion(pipelineResult, {
             orchestrator,
-            sessionId: sessionCtx.activeSessionId(),
+            sessionId: pipelineSessionId ?? sessionCtx.activeSessionId(),
             flusher: activeFlusher,
             toast,
             updateState: (id, s) => sessionCtx.manager.updateState(id, s),
@@ -949,6 +952,51 @@ export function FlywheelShell() {
     setAppState("idle")
   }
 
+  /**
+   * Background the current session: deselect it from the viewport and return
+   * to idle, but keep the pipeline/controller running. The session stays in
+   * `sessionControllers` and can be re-opened from the sidebar.
+   *
+   * Unlike returnToIdle(), this does NOT tear down the workflow — the worker
+   * process continues executing in the background.
+   */
+  const backgroundSession = () => {
+    // Unsubscribe from the active store so we stop driving workState
+    if (storeUnsub) {
+      storeUnsub()
+      storeUnsub = null
+    }
+
+    // Detach the live session references from the shell's "active" slots
+    // without destroying them. The session, controller, pipeline, and flusher
+    // continue to run — they're still tracked in sessionControllers/sessionStores.
+    //
+    // IMPORTANT: We null these refs so the shell doesn't try to interact with
+    // them, but the pipeline's async closure captured its own local references.
+    // The pipeline will clean up sessionControllers when it finishes.
+    activeSession = null
+    activeController = null
+    activeLoop = null
+    // Note: activePipeline and activeFlusher are NOT nulled here — the pipeline's
+    // completion handler reads them. They'll be cleaned up when the pipeline ends,
+    // or overwritten when a new pipeline starts.
+
+    // Clear question/pipeline UI subscriptions (the pipeline itself doesn't need
+    // these signals to function — they only drive UI state like pendingQuestion).
+    cleanupQuestionSubscriptions()
+    cleanupPipelineSubscriptions()
+
+    // Reset viewport and shell state
+    viewport.cancelInjection()
+    setSessionLoading(false)
+    setActiveStore(null)
+    setWorkState(null)
+    setViewedSessionId(null)
+    setAppState("idle")
+    setEscHint("")
+    escapeHandler.reset()
+  }
+
   // Clean up on component unmount
   onCleanup(() => {
     escapeHandler.dispose()
@@ -993,7 +1041,7 @@ export function FlywheelShell() {
     launchWorkWorkflow: launchWorkWithPipeline,
     launchGenericWorkflow: launchGenericWithPipeline,
     exit: exitTUI,
-    returnToLauncher: returnToIdle,
+    returnToIdle,
   })
 
   const handleCommand = (workflow: string, args: Record<string, string>) => {
@@ -1012,7 +1060,11 @@ export function FlywheelShell() {
     const behavior = escapeForState(appState())
     switch (behavior) {
       case "exit-tui":
-        exitTUI()
+        if (sessionControllers.size > 0) {
+          setShowQuitModal(true)
+        } else {
+          exitTUI()
+        }
         return
       case "double-esc-stop": {
         const result = escapeHandler.handleEscape()
@@ -1049,7 +1101,7 @@ export function FlywheelShell() {
       const trimmed = input.trim()
       if (!trimmed) return
 
-      const result = parseHomeCommand(trimmed)
+      const result = parseCommand(trimmed)
 
       if (result === null) {
         // If it doesn't start with / and looks like a file path, treat as /work <path>
@@ -1088,7 +1140,7 @@ export function FlywheelShell() {
     // === Sidebar-focused key routing ===
     // When sidebar has focus, intercept navigation keys before anything else.
     // Modal guards: sidebar focus is disabled when stop/error/approval modals are open.
-    if (sidebarFocused() && !showStopModal() && !approvalPending() && !pendingQuestion()) {
+    if (sidebarFocused() && !showStopModal() && !showQuitModal() && !approvalPending() && !pendingQuestion()) {
       if (evt.name === "up") {
         evt.preventDefault()
         const result = sidebarKeyHandler("move-up", sessionCtx.sessions(), sidebarSelectedIndex())
@@ -1126,6 +1178,13 @@ export function FlywheelShell() {
 
     // === Work-mode shortcuts (only active when working) ===
     if (appState() === "working" && activeStore()) {
+      // Ctrl+B: background session (minimize to sidebar, keep running)
+      if (evt.ctrl && evt.name === "b") {
+        evt.preventDefault()
+        backgroundSession()
+        return
+      }
+
       // Ctrl+S: skip current phase
       if (evt.ctrl && evt.name === "s") {
         evt.preventDefault()
@@ -1214,24 +1273,8 @@ export function FlywheelShell() {
       }
     }
 
-    // Ctrl+T: toggle theme (always available)
-    if (evt.ctrl && evt.name === "t") {
-      evt.preventDefault()
-      themeCtx.setMode(themeCtx.mode === "dark" ? "light" : "dark")
-      return
-    }
-    // Ctrl+N: open starter chooser dialog
-    if (evt.ctrl && evt.name === "n") {
-      evt.preventDefault()
-      openStarterChooser(dialog, (selection) => {
-        if (selection === "import-plan") {
-          toast.show({ message: "Type /work <plan-path> to start", variant: "info" })
-        } else if (selection === "new-idea") {
-          toast.show({ message: "Type /plan <description> to create a plan", variant: "info" })
-        }
-      })
-      return
-    }
+
+
     // Ctrl+C: copy selection if active, otherwise state-based behavior
     if (evt.ctrl && evt.name === "c") {
       if (renderer.getSelection()) {
@@ -1245,7 +1288,11 @@ export function FlywheelShell() {
       const behavior = ctrlCForState(appState())
       switch (behavior) {
         case "exit-tui":
-          exitTUI()
+          if (sessionControllers.size > 0) {
+            setShowQuitModal(true)
+          } else {
+            exitTUI()
+          }
           return
         case "stop-workflow":
           stopWorkflow()
@@ -1454,6 +1501,7 @@ export function FlywheelShell() {
         sidebarFocused={sidebarFocused()}
         sidebarVisible={sessionCtx.sessions().length > 0 && (dimensions()?.width ?? 120) >= 90}
         isSessionResumable={isSessionResumable()}
+        isWorking={appState() === "working"}
       />
 
       {/* QuestionPrompt overlay — shown when pipeline gate asks a question */}
@@ -1461,6 +1509,18 @@ export function FlywheelShell() {
         <QuestionPrompt
           request={pendingQuestion()!}
           questionService={activeQuestionService!}
+        />
+      </Show>
+
+      {/* Quit confirmation modal (Esc in idle with running sessions) */}
+      <Show when={showQuitModal()}>
+        <QuitConfirmModal
+          activeSessionCount={sessionControllers.size}
+          onConfirm={() => {
+            setShowQuitModal(false)
+            exitTUI()
+          }}
+          onCancel={() => setShowQuitModal(false)}
         />
       </Show>
 
