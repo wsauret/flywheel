@@ -1,0 +1,117 @@
+import { describe, it, expect } from "bun:test"
+import { RGBA } from "@opentui/core"
+import { resolveTheme, type Theme } from "../src/tui/shared/context/theme/resolve"
+import flywheelTheme from "../src/tui/shared/context/theme/flywheel.json" with { type: "json" }
+
+// All keys that must be present in Theme
+const EXPECTED_KEYS: (keyof Theme)[] = [
+  // Original tokens
+  "primary",
+  "secondary",
+  "error",
+  "warning",
+  "success",
+  "info",
+  "text",
+  "textMuted",
+  "background",
+  "backgroundPanel",
+  "backgroundElement",
+  "border",
+  "borderActive",
+  "borderSubtle",
+  "purple",
+  "blue",
+  // Accent
+  "accent",
+  // Diff tokens
+  "diffAdded",
+  "diffRemoved",
+  "diffContext",
+  "diffHunkHeader",
+  "diffHighlightAdded",
+  "diffHighlightRemoved",
+  "diffAddedBg",
+  "diffRemovedBg",
+  "diffContextBg",
+  "diffLineNumber",
+  "diffAddedLineNumberBg",
+  "diffRemovedLineNumberBg",
+  // Markdown tokens
+  "markdownText",
+  "markdownHeading",
+  "markdownLink",
+  "markdownLinkText",
+  "markdownCode",
+  "markdownBlockQuote",
+  "markdownEmph",
+  "markdownStrong",
+  "markdownHorizontalRule",
+  "markdownListItem",
+  "markdownListEnumeration",
+  "markdownImage",
+  "markdownImageText",
+  "markdownCodeBlock",
+  // Syntax tokens
+  "syntaxComment",
+  "syntaxKeyword",
+  "syntaxFunction",
+  "syntaxVariable",
+  "syntaxString",
+  "syntaxNumber",
+  "syntaxType",
+  "syntaxOperator",
+  "syntaxPunctuation",
+]
+
+describe("theme resolution", () => {
+  it("resolves all tokens to valid RGBA in dark mode", () => {
+    const theme = resolveTheme(flywheelTheme as any, "dark")
+    for (const key of EXPECTED_KEYS) {
+      expect(theme[key]).toBeInstanceOf(RGBA)
+    }
+  })
+
+  it("resolves all tokens to valid RGBA in light mode", () => {
+    const theme = resolveTheme(flywheelTheme as any, "light")
+    for (const key of EXPECTED_KEYS) {
+      expect(theme[key]).toBeInstanceOf(RGBA)
+    }
+  })
+
+  it("has no undefined values in dark mode", () => {
+    const theme = resolveTheme(flywheelTheme as any, "dark")
+    const entries = Object.entries(theme)
+    for (const [key, value] of entries) {
+      expect(value).toBeDefined()
+    }
+  })
+
+  it("has no undefined values in light mode", () => {
+    const theme = resolveTheme(flywheelTheme as any, "light")
+    const entries = Object.entries(theme)
+    for (const [key, value] of entries) {
+      expect(value).toBeDefined()
+    }
+  })
+
+  it("resolved theme key count matches expected token count", () => {
+    const theme = resolveTheme(flywheelTheme as any, "dark")
+    const resolvedKeys = Object.keys(theme)
+    expect(resolvedKeys.length).toBe(EXPECTED_KEYS.length)
+  })
+
+  it("JSON theme keys match expected token list", () => {
+    const jsonKeys = Object.keys(flywheelTheme.theme).sort()
+    const expectedKeys = [...EXPECTED_KEYS].sort()
+    expect(jsonKeys).toEqual(expectedKeys)
+  })
+
+  it("accent resolves to purple in both modes", () => {
+    const dark = resolveTheme(flywheelTheme as any, "dark")
+    const light = resolveTheme(flywheelTheme as any, "light")
+    // accent should equal purple in both modes
+    expect(dark.accent).toEqual(dark.purple)
+    expect(light.accent).toEqual(light.purple)
+  })
+})

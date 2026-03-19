@@ -1,66 +1,24 @@
 /** @jsxImportSource solid-js */
-import { RGBA } from "@opentui/core"
-import { createMemo, createSignal } from "solid-js"
+import { createMemo, createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper"
 import flywheelTheme from "./theme/flywheel.json" with { type: "json" }
+import { resolveTheme } from "./theme/resolve"
+import { generateSyntax } from "./syntax-rules"
 
-export type Theme = {
-  primary: RGBA
-  secondary: RGBA
-  error: RGBA
-  warning: RGBA
-  success: RGBA
-  info: RGBA
-  text: RGBA
-  textMuted: RGBA
-  background: RGBA
-  backgroundPanel: RGBA
-  backgroundElement: RGBA
-  border: RGBA
-  borderActive: RGBA
-  borderSubtle: RGBA
-  purple: RGBA
-  blue: RGBA
-}
-
-type HexColor = `#${string}`
-type RefName = string
-type Variant = {
-  dark: HexColor | RefName
-  light: HexColor | RefName
-}
-type ColorValue = HexColor | RefName | Variant | RGBA
-
-type ThemeJson = {
-  $schema?: string
-  defs?: Record<string, HexColor | RefName>
-  theme: Record<keyof Theme, ColorValue>
-}
-
-function resolveTheme(theme: ThemeJson, mode: "dark" | "light"): Theme {
-  const defs = theme.defs ?? {}
-
-  function resolveColor(c: ColorValue): RGBA {
-    if (c instanceof RGBA) return c
-    if (typeof c === "string") {
-      return c.startsWith("#") ? RGBA.fromHex(c) : resolveColor(defs[c])
-    }
-    return resolveColor(c[mode])
-  }
-
-  return Object.fromEntries(
-    Object.entries(theme.theme).map(([key, value]) => {
-      return [key, resolveColor(value)]
-    }),
-  ) as Theme
-}
+export type { Theme } from "./theme/resolve"
+export { resolveTheme } from "./theme/resolve"
 
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { mode: "dark" | "light" }) => {
     // Use signal so theme can be changed dynamically
     const [mode, setMode] = createSignal(props.mode)
-    const theme = createMemo(() => resolveTheme(flywheelTheme, mode()))
+    const theme = createMemo(() => resolveTheme(flywheelTheme as any, mode()))
+    const syntax = createMemo(() => {
+      const s = generateSyntax(theme())
+      onCleanup(() => s.destroy())
+      return s
+    })
 
     return {
       get theme() {
@@ -68,6 +26,9 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       },
       get mode() {
         return mode()
+      },
+      get syntax() {
+        return syntax()
       },
       setMode,
     }

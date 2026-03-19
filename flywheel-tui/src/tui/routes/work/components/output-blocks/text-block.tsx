@@ -2,10 +2,11 @@
 /**
  * TextBlock Component
  *
- * Renders a text output block. Reuses LogLine for markdown/color rendering.
+ * Renders a text output block using the native OpenTUI <markdown> element
+ * with syntax highlighting from the theme context.
  */
 
-import { LogLine } from "../log-line"
+import { useTheme } from "@tui/shared/context/theme"
 import type { TextBlock as TextBlockType } from "../../state/types"
 
 export interface TextBlockProps {
@@ -13,5 +14,13 @@ export interface TextBlockProps {
 }
 
 export function TextBlock(props: TextBlockProps) {
-  return <LogLine line={props.block.content} />
+  const themeCtx = useTheme()
+  return (
+    <markdown
+      syntaxStyle={themeCtx.syntax}
+      content={props.block.content}
+      streaming={true}
+      conceal={true}
+    />
+  )
 }

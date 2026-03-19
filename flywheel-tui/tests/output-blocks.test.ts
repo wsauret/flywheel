@@ -14,7 +14,45 @@ import type {
  * These test the pure-logic functions used by block rendering components.
  * Actual OpenTUI rendering cannot be tested in unit tests (per AGENTS.md) —
  * visual verification is done via tmux UAT.
+ *
+ * TextBlock renders via the native OpenTUI <markdown> element with
+ * syntaxStyle (from theme context) and content (from block.content).
+ * It uses streaming={true} and conceal={true} for live output.
  */
+
+// ── TextBlock props interface ──
+
+describe("TextBlock expected props", () => {
+  /**
+   * TextBlock renders an OpenTUI <markdown> element with:
+   *   - syntaxStyle: SyntaxStyle from useTheme().syntax
+   *   - content: block.content (string)
+   *   - streaming: true
+   *   - conceal: true
+   *
+   * We can't render OpenTUI components in unit tests, but we verify
+   * the TextBlock data shape is correct for the component's contract.
+   */
+  it("TextBlock has the content field needed by <markdown>", () => {
+    const block: TextBlock = { kind: "text", content: "# Hello World", timestamp: 1 };
+    expect(block.content).toBe("# Hello World");
+    expect(typeof block.content).toBe("string");
+  });
+
+  it("TextBlock content can be empty string (streaming start)", () => {
+    const block: TextBlock = { kind: "text", content: "", timestamp: 1 };
+    expect(block.content).toBe("");
+  });
+
+  it("TextBlock content can contain markdown with code fences", () => {
+    const block: TextBlock = {
+      kind: "text",
+      content: "```ts\nconst x = 1;\n```",
+      timestamp: 1,
+    };
+    expect(block.content).toContain("```ts");
+  });
+});
 
 // ── Duration formatting ──
 

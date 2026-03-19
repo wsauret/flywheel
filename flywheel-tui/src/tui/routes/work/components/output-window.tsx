@@ -6,7 +6,7 @@
  * The prompt now lives outside OutputWindow as UnifiedPrompt.
  */
 
-import { Show, For, createSignal } from "solid-js"
+import { Show, Index, createSignal } from "solid-js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
@@ -187,9 +187,9 @@ export function OutputWindow(props: OutputWindowProps) {
             viewportCulling={true}
             focused={!props.isPromptFocused}
           >
-            <For each={props.outputBlocks}>
-              {(block) => <BlockRenderer block={block} />}
-            </For>
+            <Index each={props.outputBlocks}>
+              {(block) => <BlockRenderer block={block()} />}
+            </Index>
           </scrollbox>
         </Show>
       </box>

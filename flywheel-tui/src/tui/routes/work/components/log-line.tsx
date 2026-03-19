@@ -136,6 +136,10 @@ function parseInlineMarkdown(text: string, theme: Theme): TextSegment[] {
 // Component
 // ============================================================================
 
+/**
+ * @deprecated Use `<markdown>` with `syntaxStyle` from theme context instead.
+ * Replaced by native OpenTUI markdown rendering in text-block.tsx.
+ */
 export function LogLine(props: LogLineProps) {
   const themeCtx = useTheme()
 
