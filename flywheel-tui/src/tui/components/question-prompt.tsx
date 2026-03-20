@@ -27,6 +27,7 @@ import {
   isSingle,
   isConfirmTab,
   isMulti,
+  isTextOnly,
   hasCustom,
   isOther,
   optionCount,
@@ -59,6 +60,7 @@ export function QuestionPrompt(props: QuestionPromptProps) {
   const confirm = createMemo(() => isConfirmTab(questions(), store.tab))
   const options = createMemo(() => question()?.options ?? [])
   const custom = createMemo(() => hasCustom(question()))
+  const textOnly = createMemo(() => isTextOnly(question()))
   const other = createMemo(() => isOther(question(), store.selected))
   const input = createMemo(() => store.custom[store.tab] ?? "")
   const multi = createMemo(() => isMulti(question()))
@@ -101,11 +103,15 @@ export function QuestionPrompt(props: QuestionPromptProps) {
     // Skip if a dialog is open
     if (dialog.isOpen()) return
 
-    // Editing mode: handle custom text input
+    // Editing mode: handle custom text input (and textOnly questions)
     if (store.editing && !confirm()) {
       if (evt.name === "escape") {
         evt.preventDefault()
-        setStore("editing", false)
+        if (textOnly()) {
+          reject() // textOnly: Escape dismisses the question entirely
+        } else {
+          setStore("editing", false)
+        }
         return
       }
       if (evt.ctrl && evt.name === "u") {
@@ -288,74 +294,91 @@ export function QuestionPrompt(props: QuestionPromptProps) {
                 {multi() ? " (select all that apply)" : ""}
               </text>
             </box>
-            <box>
-              {/* Regular options */}
-              <For each={options()}>
-                {(opt, i) => {
-                  const active = () => i() === store.selected
-                  const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
-                  return (
-                    <box>
-                      <box flexDirection="row">
-                        <box backgroundColor={active() ? theme.backgroundElement : undefined} paddingRight={1}>
-                          <text fg={active() ? theme.textMuted : theme.textMuted}>
-                            {`${i() + 1}.`}
-                          </text>
-                        </box>
-                        <box backgroundColor={active() ? theme.backgroundElement : undefined}>
-                          <text fg={active() ? theme.secondary : picked() ? theme.success : theme.text}>
-                            {multi() ? `[${picked() ? "✓" : " "}] ${opt.label}` : opt.label}
-                          </text>
-                        </box>
-                        <Show when={!multi()}>
-                          <text fg={theme.success}>{picked() ? " ✓" : ""}</text>
-                        </Show>
-                      </box>
-                      <box paddingLeft={3}>
-                        <text fg={theme.textMuted}>{opt.description}</text>
-                      </box>
-                    </box>
-                  )
-                }}
-              </For>
 
-              {/* Custom option */}
-              <Show when={custom()}>
-                <box>
-                  <box flexDirection="row">
-                    <box backgroundColor={other() ? theme.backgroundElement : undefined} paddingRight={1}>
-                      <text fg={other() ? theme.textMuted : theme.textMuted}>
-                        {`${options().length + 1}.`}
-                      </text>
+            {/* Text-only mode: bare text input, no options */}
+            <Show when={textOnly()}>
+              <box paddingLeft={1}>
+                <box flexDirection="row">
+                  <text fg={theme.primary}>{"▸ "}</text>
+                  <text fg={theme.text}>
+                    {input()}
+                    <span style={{ fg: theme.primary }}>▎</span>
+                  </text>
+                </box>
+              </box>
+            </Show>
+
+            {/* Options mode: option list + optional custom */}
+            <Show when={!textOnly()}>
+              <box>
+                {/* Regular options */}
+                <For each={options()}>
+                  {(opt, i) => {
+                    const active = () => i() === store.selected
+                    const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
+                    return (
+                      <box>
+                        <box flexDirection="row">
+                          <box backgroundColor={active() ? theme.backgroundElement : undefined} paddingRight={1}>
+                            <text fg={active() ? theme.textMuted : theme.textMuted}>
+                              {`${i() + 1}.`}
+                            </text>
+                          </box>
+                          <box backgroundColor={active() ? theme.backgroundElement : undefined}>
+                            <text fg={active() ? theme.secondary : picked() ? theme.success : theme.text}>
+                              {multi() ? `[${picked() ? "✓" : " "}] ${opt.label}` : opt.label}
+                            </text>
+                          </box>
+                          <Show when={!multi()}>
+                            <text fg={theme.success}>{picked() ? " ✓" : ""}</text>
+                          </Show>
+                        </box>
+                        <box paddingLeft={3}>
+                          <text fg={theme.textMuted}>{opt.description}</text>
+                        </box>
+                      </box>
+                    )
+                  }}
+                </For>
+
+                {/* Custom option */}
+                <Show when={custom()}>
+                  <box>
+                    <box flexDirection="row">
+                      <box backgroundColor={other() ? theme.backgroundElement : undefined} paddingRight={1}>
+                        <text fg={other() ? theme.textMuted : theme.textMuted}>
+                          {`${options().length + 1}.`}
+                        </text>
+                      </box>
+                      <box backgroundColor={other() ? theme.backgroundElement : undefined}>
+                        <text fg={other() ? theme.secondary : customPicked() ? theme.success : theme.text}>
+                          {multi()
+                            ? `[${customPicked() ? "✓" : " "}] Type your own answer`
+                            : "Type your own answer"}
+                        </text>
+                      </box>
+                      <Show when={!multi()}>
+                        <text fg={theme.success}>{customPicked() ? " ✓" : ""}</text>
+                      </Show>
                     </box>
-                    <box backgroundColor={other() ? theme.backgroundElement : undefined}>
-                      <text fg={other() ? theme.secondary : customPicked() ? theme.success : theme.text}>
-                        {multi()
-                          ? `[${customPicked() ? "✓" : " "}] Type your own answer`
-                          : "Type your own answer"}
-                      </text>
-                    </box>
-                    <Show when={!multi()}>
-                      <text fg={theme.success}>{customPicked() ? " ✓" : ""}</text>
+                    {/* V1: simple inline text display for custom editing */}
+                    <Show when={store.editing}>
+                      <box paddingLeft={3}>
+                        <text fg={theme.text}>
+                          {input()}
+                          <span style={{ fg: theme.primary }}>▎</span>
+                        </text>
+                      </box>
+                    </Show>
+                    <Show when={!store.editing && input()}>
+                      <box paddingLeft={3}>
+                        <text fg={theme.textMuted}>{input()}</text>
+                      </box>
                     </Show>
                   </box>
-                  {/* V1: simple inline text display for custom editing */}
-                  <Show when={store.editing}>
-                    <box paddingLeft={3}>
-                      <text fg={theme.text}>
-                        {input()}
-                        <span style={{ fg: theme.primary }}>▎</span>
-                      </text>
-                    </box>
-                  </Show>
-                  <Show when={!store.editing && input()}>
-                    <box paddingLeft={3}>
-                      <text fg={theme.textMuted}>{input()}</text>
-                    </box>
-                  </Show>
-                </box>
-              </Show>
-            </box>
+                </Show>
+              </box>
+            </Show>
           </box>
         </Show>
 
@@ -399,7 +422,7 @@ export function QuestionPrompt(props: QuestionPromptProps) {
               {"⇆"} <span style={{ fg: theme.textMuted }}>tab</span>
             </text>
           </Show>
-          <Show when={!confirm()}>
+          <Show when={!confirm() && !textOnly()}>
             <text fg={theme.text}>
               {"↑↓"} <span style={{ fg: theme.textMuted }}>select</span>
             </text>
@@ -409,11 +432,13 @@ export function QuestionPrompt(props: QuestionPromptProps) {
             <span style={{ fg: theme.textMuted }}>
               {confirm()
                 ? "submit"
-                : multi()
-                  ? "toggle"
-                  : single()
-                    ? "submit"
-                    : "confirm"}
+                : textOnly()
+                  ? "submit"
+                  : multi()
+                    ? "toggle"
+                    : single()
+                      ? "submit"
+                      : "confirm"}
             </span>
           </text>
           <text fg={theme.text}>

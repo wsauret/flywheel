@@ -8,11 +8,22 @@
  * Run via `bin/flywheel` or `bun --conditions=browser run src/cli/index.ts`.
  */
 
+import { Log } from "../utils/log"
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 export async function main(): Promise<void> {
+  // Initialize file-based logger before anything else.
+  // --print-logs flag sends output to stderr instead of file (for debugging).
+  const dir = process.env.FLYWHEEL_PROJECT_CWD || process.cwd()
+  await Log.init({
+    dir,
+    print: process.argv.includes("--print-logs"),
+    level: process.env.FLYWHEEL_LOG_LEVEL as Log.Level | undefined,
+  })
+
   await runTUI();
 }
 
@@ -34,7 +45,7 @@ async function runTUI(): Promise<void> {
 // Auto-run when executed directly
 if (import.meta.main) {
   main().catch((err) => {
-    console.error(err);
+    Log.Default.error("fatal", { error: err instanceof Error ? err : String(err) })
     process.exit(1);
   });
 }

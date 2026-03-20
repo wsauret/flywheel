@@ -22,7 +22,16 @@ import type {
 
 export type { QuestionOption, OpenQuestion };
 
-export type QuestionInfo = OpenQuestion & { custom?: boolean };
+export type QuestionInfo = OpenQuestion & {
+  custom?: boolean;
+  /**
+   * When true, the question renders as a bare text input — no options list,
+   * no "Type your own answer" indirection. The user types directly and
+   * presses Enter to submit. Used for free-form prompts like "What do
+   * you want to build?".
+   */
+  textOnly?: boolean;
+};
 
 /** Per-question answer: array of selected option labels or custom text */
 export type QuestionAnswer = string[];

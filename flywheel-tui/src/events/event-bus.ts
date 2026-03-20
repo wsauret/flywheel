@@ -1,4 +1,7 @@
 import type { FlywheelEvent } from "./types";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "event-bus" });
 
 export type Listener = (event: FlywheelEvent) => void;
 export type TypedListener<T extends FlywheelEvent["type"]> = (
@@ -85,10 +88,7 @@ export class EventBus {
       try {
         listener(event);
       } catch (err) {
-        console.error(
-          `[EventBus] Error in catch-all listener for ${event.type}:`,
-          err,
-        );
+        log.error("catch-all listener error", { type: event.type, error: err instanceof Error ? err : String(err) });
       }
     }
     // Type-specific listeners
@@ -98,10 +98,7 @@ export class EventBus {
         try {
           listener(event);
         } catch (err) {
-          console.error(
-            `[EventBus] Error in typed listener for ${event.type}:`,
-            err,
-          );
+          log.error("typed listener error", { type: event.type, error: err instanceof Error ? err : String(err) });
         }
       }
     }

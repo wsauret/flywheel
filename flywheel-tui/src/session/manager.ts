@@ -23,6 +23,9 @@ import {
 import { isValidTransition, type SessionLifecycleState } from "./state-machine";
 import type { WorkflowSession } from "../tui/components/workflow-session";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "session.manager" });
 
 // ---------------------------------------------------------------------------
 // Types
@@ -299,9 +302,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       // (since we just started up). Transition to work:paused.
       try {
         updateSession(entry.id, { sessionLifecycleState: "work:paused" }, baseDir);
-        console.error(
-          `Recovered stale session ${entry.data.name || entry.id} -> work:paused`,
-        );
+        log.info("recovered stale session", { session: entry.data.name || entry.id, to: "work:paused" });
         recovered++;
       } catch {
         // Non-fatal — skip sessions that fail to update

@@ -6,8 +6,12 @@
  *
  * - Flushing and disposing the output flusher
  * - Calling orchestrator.handleAutoArchive() when ship stage completed
- * - Transitioning non-ship completions to "completed"
+ * - Transitioning non-ship completions to work:paused (resumable)
  * - Showing toast notification on auto-archive
+ *
+ * Only a pipeline that completes the ship stage (i.e. all possible stages)
+ * transitions to "completed". Partial pipelines (plan-only, plan+work,
+ * plan+work+review) leave the session in work:paused so it's resumable.
  *
  * Phase 7 — Auto-Archive on Ship.
  */
@@ -43,7 +47,7 @@ export interface PipelineCompletionDeps {
 
 /**
  * Handle pipeline completion: flush output, auto-archive if ship completed,
- * or transition to "completed" for non-ship pipelines.
+ * or transition to work:paused for partial pipelines (no ship).
  *
  * Called from the shell's `queueMicrotask` block after `pipeline.run()` resolves.
  */
@@ -83,8 +87,10 @@ export async function handlePipelineCompletion(
       variant: "info",
     });
   } else {
-    // Non-ship completion: just transition to completed
-    deps.updateState(deps.sessionId, "completed");
+    // Non-ship completion: session still has stages left (e.g. ship).
+    // Transition to work:paused so it's resumable — only a pipeline that
+    // includes ship (i.e. all possible stages) should mark "completed".
+    deps.updateState(deps.sessionId, "work:paused");
     deps.refreshList();
   }
 }

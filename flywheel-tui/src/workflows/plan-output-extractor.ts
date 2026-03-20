@@ -13,6 +13,9 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { WorkerResult } from "../schemas/worker";
 import type { OnStepCompleteHook } from "../controller/execution-loop";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "plan-hook" });
 import {
   parseOpenQuestions,
   type OpenQuestion,
@@ -259,7 +262,7 @@ export function createPlanOnStepComplete(
         return await handleReviewQuestions(result.output, hookOptions);
       } catch (err) {
         // Outer catch: unexpected errors don't abort the pipeline
-        console.error("[plan-hook] Unexpected error handling review questions:", err);
+        log.error("unexpected error handling review questions", { error: err instanceof Error ? err : String(err) });
         return {};
       }
     }

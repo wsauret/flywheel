@@ -64,9 +64,15 @@ export function isMulti(q: QuestionInfo | undefined): boolean {
   return q?.multiple === true
 }
 
+/** Whether a question is text-only (bare text input, no options) */
+export function isTextOnly(q: QuestionInfo | undefined): boolean {
+  return q?.textOnly === true
+}
+
 /** Whether a question has a custom/free-text option (enabled by default unless explicitly false) */
 export function hasCustom(q: QuestionInfo | undefined): boolean {
   if (!q) return false
+  if (isTextOnly(q)) return false // textOnly handles its own input
   return q.custom !== false
 }
 
@@ -79,6 +85,7 @@ export function isOther(q: QuestionInfo | undefined, selected: number): boolean 
 /** Total number of selectable items for a question (options + custom if enabled) */
 export function optionCount(q: QuestionInfo | undefined): number {
   if (!q) return 0
+  if (isTextOnly(q)) return 0
   return q.options.length + (hasCustom(q) ? 1 : 0)
 }
 
@@ -87,12 +94,13 @@ export function optionCount(q: QuestionInfo | undefined): number {
 // ---------------------------------------------------------------------------
 
 export function createInitialStore(questions: QuestionInfo[]): QuestionStore {
+  const firstIsTextOnly = isTextOnly(questions[0])
   return {
     tab: 0,
     answers: questions.map(() => []),
     custom: questions.map(() => ""),
     selected: 0,
-    editing: false,
+    editing: firstIsTextOnly, // textOnly questions start in editing mode
   }
 }
 
@@ -110,13 +118,15 @@ export function moveTo(
   return { selected: ((index % total) + total) % total }
 }
 
-/** Select a tab by index (wrapping), resets selected to 0 */
+/** Select a tab by index (wrapping), resets selected to 0. Sets editing for textOnly tabs. */
 export function selectTab(
   questions: QuestionInfo[],
   index: number,
-): { tab: number; selected: number } {
+): { tab: number; selected: number; editing?: boolean } {
   const total = tabCount(questions)
-  return { tab: ((index % total) + total) % total, selected: 0 }
+  const tab = ((index % total) + total) % total
+  const q = questions[tab]
+  return { tab, selected: 0, ...(isTextOnly(q) ? { editing: true } : {}) }
 }
 
 /**

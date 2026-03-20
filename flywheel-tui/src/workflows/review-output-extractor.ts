@@ -13,6 +13,9 @@
 import type { WorkerResult } from "../schemas/worker";
 import type { OnStepCompleteHook } from "../controller/execution-loop";
 import type { QuestionInfo } from "../controller/question-service";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "review-hook" });
 import {
   QuestionRejectedError,
   type QuestionService,
@@ -366,7 +369,7 @@ export function createReviewOnStepComplete(
       return await handleP3Triage(result.output, hookOptions);
     } catch (err) {
       // Outer catch: unexpected errors don't abort the pipeline
-      console.error("[review-hook] Unexpected error handling P3 triage:", err);
+      log.error("unexpected error handling P3 triage", { error: err instanceof Error ? err : String(err) });
       return {};
     }
   };

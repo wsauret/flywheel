@@ -41,6 +41,16 @@ export function OutputWindow(props: OutputWindowProps) {
   const isWide = () => (props.availableWidth ?? 80) >= MIN_WIDTH_FOR_INLINE_STATUS
   const blockCountText = () => `${props.outputBlocks.length} blocks`
 
+  const statusHeading = () => {
+    if (isRunning()) return "Starting..."
+    switch (props.workflowStatus) {
+      case "completed": return "Completed"
+      case "interrupted": return "Stopped"
+      case "failed": return "Failed"
+      default: return "Output"
+    }
+  }
+
   const activityPhrase = () => {
     if (props.approvalPending) return "Waiting for approval..."
     if (props.currentPhase?.status === "running") return "Executing phase..."
@@ -51,17 +61,19 @@ export function OutputWindow(props: OutputWindowProps) {
     <box flexDirection="column" flexGrow={1}>
       {/* Rich Header (when phase is active) */}
       <Show when={props.currentPhase} fallback={
-        /* Simple header: no active phase */
+        /* Simple header: no active phase — show status-aware heading */
         <box flexDirection="column" paddingLeft={1} height={3} flexShrink={0}>
           <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
           <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
             <box flexDirection="row">
               <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
               <text fg={themeCtx.theme.text} attributes={1}>
-                Output
+                {hasContent() ? "Output" : statusHeading()}
               </text>
             </box>
-            <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
+            <Show when={hasContent()}>
+              <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
+            </Show>
           </box>
           <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
         </box>
@@ -167,7 +179,15 @@ export function OutputWindow(props: OutputWindowProps) {
         </Show>
 
         <Show when={!hasContent() && !isRunning()}>
-          <text fg={themeCtx.theme.textMuted}>No output</text>
+          <text fg={themeCtx.theme.textMuted}>
+            {props.workflowStatus === "completed"
+              ? "Workflow completed with no output"
+              : props.workflowStatus === "interrupted"
+                ? "Workflow was stopped before producing output"
+                : props.workflowStatus === "failed"
+                  ? "Workflow failed before producing output"
+                  : "No output yet"}
+          </text>
         </Show>
 
         <Show when={hasContent()}>

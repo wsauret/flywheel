@@ -402,22 +402,14 @@ describe("createReviewOnStepComplete — P3 triage", () => {
       interactive: true,
     });
 
-    // Capture console.error
-    const errors: unknown[] = [];
-    const origError = console.error;
-    console.error = (...args: unknown[]) => errors.push(args);
-
-    try {
-      const result = await hook(
-        REVIEW_MULTI_AGENT_STEP_INDEX,
-        workerResult(REVIEW_WITH_P3),
-        {},
-      );
-      expect(result).toEqual({});
-      expect(errors.length).toBeGreaterThan(0);
-    } finally {
-      console.error = origError;
-    }
+    // Error is logged to file-based logger (not console.error), so we just
+    // verify the hook doesn't throw and returns empty.
+    const result = await hook(
+      REVIEW_MULTI_AGENT_STEP_INDEX,
+      workerResult(REVIEW_WITH_P3),
+      {},
+    );
+    expect(result).toEqual({});
   });
 
   it("non-review step returns empty object", async () => {

@@ -16,53 +16,50 @@
  * to ensure the plugin is registered before any JSX files are parsed.
  */
 
-// TODO: Replace with flywheel logger when available
-const debug = (...args: unknown[]) => {
-  if (process.env.DEBUG) console.debug('[tui:launcher]', ...args);
-};
+import { Log } from "../utils/log"
+
+const log = Log.create({ service: "launcher" })
 
 // Only load preload in dev mode (when running from source)
 // In production binaries, JSX is pre-transformed during build
 const isDev = import.meta.url.includes('/src/')
-debug('[Launcher] isDev=%s', isDev);
+log.debug("init", { isDev })
 if (isDev) {
-  debug('[Launcher] Loading OpenTUI preload');
+  log.debug("loading OpenTUI preload")
   await import("@opentui/solid/preload")
-  debug('[Launcher] OpenTUI preload loaded');
+  log.debug("OpenTUI preload loaded")
 }
 
 // Apply framework patches (must run before any TUI components are created)
 await import("./patches/text-wrap-resize")
-debug('[Launcher] Framework patches applied');
+log.debug("framework patches applied")
 
 // Re-export type for callers
 export type { TUIOptions } from "./app"
 
 // Dynamic import ensures app.js is loaded AFTER preload is registered (in dev)
 export async function startTUI(options: import("./app").TUIOptions = {}) {
-  debug('[Launcher] startTUI() called');
-  debug('[Launcher] Importing TUI app module');
+  log.debug("startTUI called")
   try {
     const app = await import("./app.js");
-    debug('[Launcher] app.js imported successfully');
-    debug('[Launcher] Calling app.startTUI()');
+    log.debug("app module imported")
     const result = await app.startTUI(options);
-    debug('[Launcher] app.startTUI() returned');
+    log.debug("app.startTUI returned")
     return result;
   } catch (err) {
-    debug('[Launcher] Error: %s', err);
+    log.error("startTUI failed", { error: err instanceof Error ? err : String(err) })
     throw err;
   }
 }
 
 export async function exitTUI() {
-  debug('[Launcher] exitTUI() called');
+  log.debug("exitTUI called")
   try {
     const app = await import("./app.js");
     app.exitTUI();
-    debug('[Launcher] TUI exited');
+    log.debug("TUI exited")
   } catch (err) {
-    debug('[Launcher] Error exiting TUI: %s', err);
+    log.error("exitTUI failed", { error: err instanceof Error ? err : String(err) })
   }
 }
 

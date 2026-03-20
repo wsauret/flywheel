@@ -8,6 +8,9 @@ import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
 import { SDK_AVAILABLE, SdkTransport } from "./sdk-transport";
 import { CliTransport } from "./cli-transport";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "dispatcher" });
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,9 +47,7 @@ export async function autoDetectTransport(
       return { transport, label: "sdk" };
     } catch {
       // SDK constructor failed — fall through to CLI
-      console.error(
-        "[flywheel] SDK transport initialization failed, falling back to CLI transport",
-      );
+      log.warn("SDK transport init failed, falling back to CLI");
     }
   }
 

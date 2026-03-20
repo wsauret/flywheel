@@ -476,19 +476,10 @@ describe("createPlanOnStepComplete — question handling", () => {
       interactive: true,
     });
 
-    // Capture console.error
-    const errors: unknown[] = [];
-    const origError = console.error;
-    console.error = (...args: unknown[]) => errors.push(args);
-
-    try {
-      const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
-      expect(result).toEqual({});
-      // Verify error was logged
-      expect(errors.length).toBeGreaterThan(0);
-    } finally {
-      console.error = origError;
-    }
+    // Error is logged to file-based logger (not console.error), so we just
+    // verify the hook doesn't throw and returns empty.
+    const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
+    expect(result).toEqual({});
   });
 
   it("non-review step returns empty object", async () => {

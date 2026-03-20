@@ -5,10 +5,9 @@
  * before the process terminates.
  */
 
-// TODO: Replace with flywheel logger when available
-const debug = (...args: unknown[]) => {
-  if (process.env.DEBUG) console.debug('[tui:exit]', ...args);
-};
+import { Log } from "../utils/log"
+
+const log = Log.create({ service: "exit" })
 
 let exitResolver: (() => void) | null = null;
 
@@ -26,13 +25,13 @@ export function registerExitResolver(resolver: () => void): void {
  * Otherwise, falls back to process.exit() (which may not flush tracing).
  */
 export function exitTUI(code: number = 0): void {
-  debug('[TUI Exit] exitTUI called with code=%d', code);
+  log.debug("exitTUI called", { code })
 
   if (exitResolver) {
-    debug('[TUI Exit] Using registered exit resolver');
+    log.debug("using registered exit resolver")
     exitResolver();
   } else {
-    debug('[TUI Exit] No exit resolver, falling back to process.exit()');
+    log.debug("no exit resolver, falling back to process.exit()")
     process.exit(code);
   }
 }

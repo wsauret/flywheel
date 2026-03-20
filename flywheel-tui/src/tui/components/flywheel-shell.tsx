@@ -83,6 +83,9 @@ import { sidebarKeyHandler, getOpenAction, groupToFlatList, type SelectionAction
 import { createSessionViewport, type SessionViewport } from "./session-viewport"
 import { isResumable } from "../../session/state-machine"
 import { deriveHeaderInfo } from "./session-header-logic"
+import { Log } from "../../utils/log"
+
+const log = Log.create({ service: "shell" })
 
 // ── App state ──
 
@@ -670,7 +673,9 @@ export function FlywheelShell() {
           activeStore()?.setError(pipelineResult.reason ?? "Pipeline failed")
           // Persist lifecycle state as work:paused (failure ≠ completed)
           if (pipelineSessionId) {
-            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch {}
+            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch (stateErr) {
+              log.error("state transition failed (failure path)", { session: pipelineSessionId, error: stateErr instanceof Error ? stateErr : String(stateErr) })
+            }
             sessionCtx.refreshList()
           }
           if (isStillViewed()) setAppState("completed")
@@ -680,7 +685,9 @@ export function FlywheelShell() {
           activeStore()?.setError(String(err))
           // Persist lifecycle state as work:paused (crash ≠ completed)
           if (pipelineSessionId) {
-            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch {}
+            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch (stateErr) {
+              log.error("state transition failed (crash path)", { session: pipelineSessionId, error: stateErr instanceof Error ? stateErr : String(stateErr) })
+            }
             sessionCtx.refreshList()
           }
           if (isStillViewed()) setAppState("completed")
@@ -693,16 +700,21 @@ export function FlywheelShell() {
           sessionControllers.delete(pipelineSessionId)
         }
 
-        // Handle auto-archive or completion
+        // Handle auto-archive or completion — errors must stay in the output
+        // pane, never leak to stderr where they overlay the TUI chrome.
         if (pipelineResult && !_userInitiatedPause) {
-          await handlePipelineCompletion(pipelineResult, {
-            orchestrator,
-            sessionId: pipelineSessionId ?? sessionCtx.activeSessionId(),
-            flusher: activeFlusher,
-            toast,
-            updateState: (id, s) => sessionCtx.manager.updateState(id, s),
-            refreshList: () => sessionCtx.refreshList(),
-          })
+          try {
+            await handlePipelineCompletion(pipelineResult, {
+              orchestrator,
+              sessionId: pipelineSessionId ?? sessionCtx.activeSessionId(),
+              flusher: activeFlusher,
+              toast,
+              updateState: (id, s) => sessionCtx.manager.updateState(id, s),
+              refreshList: () => sessionCtx.refreshList(),
+            })
+          } catch (completionErr) {
+            log.error("pipeline completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
+          }
           activeFlusher = null
         }
       }
@@ -793,8 +805,9 @@ export function FlywheelShell() {
     if (sessionId) {
       try {
         sessionCtx.manager.updateState(sessionId, "work:paused")
-      } catch {
-        // Best effort — session may already be in a terminal state
+      } catch (stateErr) {
+        // Session may already be in a terminal state
+        log.warn("state transition failed (stop)", { session: sessionId, error: stateErr instanceof Error ? stateErr : String(stateErr) })
       }
       sessionCtx.refreshList()
     }
@@ -844,10 +857,7 @@ export function FlywheelShell() {
       try {
         sessionCtx.manager.updateState(sessionId, "work:paused")
       } catch (err) {
-        toast.show({
-          message: `Failed to persist pause state: ${err instanceof Error ? err.message : String(err)}`,
-          variant: "warning",
-        })
+        log.warn("state transition failed (pause)", { session: sessionId, error: err instanceof Error ? err : String(err) })
       }
       sessionControllers.delete(sessionId)
     }
@@ -1117,7 +1127,7 @@ export function FlywheelShell() {
           question: "What do you want to build?",
           header: "Description",
           options: [],
-          custom: true,
+          textOnly: true,
         }])
         description = descAnswers[0]?.[0] ?? ""
         if (!description) {
@@ -1135,6 +1145,7 @@ export function FlywheelShell() {
           label: o.label,
           description: o.description,
         })),
+        custom: false,
         default: "Plan + Work + Review",
       }])
       const selectedLabel = modeAnswers[0]?.[0]
@@ -1578,9 +1589,9 @@ export function FlywheelShell() {
         }}
         onErrorClose={() => activeStore()?.clearError()}
       >
-        {/* Center content: EmptyState when idle, OutputWindow when working/completed */}
+        {/* Center content: EmptyState when idle, OutputWindow when working/completed with content */}
         <Show
-          when={hasActiveWorkflow() || appState() === "completed"}
+          when={hasActiveWorkflow() || (appState() === "completed" && (layoutState().outputBlocks.length > 0 || viewedSessionInfo()))}
           fallback={<EmptyState />}
         >
           <Show

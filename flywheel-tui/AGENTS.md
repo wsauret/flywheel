@@ -100,7 +100,7 @@ tmux capture-pane -t flywheel -p
 # Expect: working view with pipeline running (plan -> work -> review in telemetry bar)
 ```
 
-Without a description, `/start` first asks "What do you want to build?" — press Enter to type a custom answer, then submit.
+Without a description, `/start` first asks "What do you want to build?" as a direct text input — just type and press Enter.
 
 **3. Start work with a test plan (direct `/work`):**
 
@@ -151,7 +151,13 @@ After modifying any file under `src/tui/`, always:
 3. Verify the idle screen renders correctly (branding, sidebar, starter chooser, prompt)
 4. Test the specific feature you changed
 5. Test adjacent interactions (e.g., if you changed a modal, also test opening and closing it, keyboard shortcuts within it, and that the view behind it restores correctly)
-6. Clean up the tmux session
+6. **Check the log file for errors** — after the test, read `.flywheel/log/` for the most recent `.log` file and look for `ERROR` or `WARN` lines. Any errors there indicate problems even if the TUI appeared to work visually.
+7. Clean up the tmux session
+
+```bash
+# After running a tmux TUI test, check for logged errors:
+ls -t .flywheel/log/*.log | head -1 | xargs cat | grep -E '^(ERROR|WARN)'
+```
 
 ## Architecture quick reference
 
@@ -171,10 +177,10 @@ src/
 ├── schemas/       # Zod schemas (session, workflow, execution, output, etc.)
 ├── session/       # Session state machine, persistence, worktree, cost tracker
 ├── state/         # Plan state file (.state.md) lock, reader, writer
-├── telemetry/     # Logger
+├── telemetry/     # Telemetry metrics (workflow timing/counts)
 ├── tui/           # TUI shell, components, adapters, routes, shared context
 ├── types/         # Shared type definitions
-├── utils/         # Atomic write, debounced writer, retry
+├── utils/         # Atomic write, debounced writer, retry, file-based logger
 ├── worker/        # Process spawning, NDJSON parsing, rate limiting, timeouts
 └── workflows/     # Per-workflow runners (plan, work, review, ship, debug, research)
 ```
@@ -189,6 +195,40 @@ src/
 | Shell modes (state machine) | `src/tui/components/shell-modes.ts` |
 | WorkController | `src/controller/work.ts` |
 | Engine registry | `src/engines/core/registry.ts`, `src/engines/core/types.ts` |
+
+### Logging
+
+File-based logger adapted from OpenCode. **Never use `console.error`/`console.warn`/`console.debug` in production code** — they write to stderr and corrupt the TUI display. Use the `Log` module instead.
+
+| Key file | Purpose |
+|----------|---------|
+| `src/utils/log.ts` | `Log` namespace: file-based logger |
+| `src/cli/index.ts` | `Log.init()` call at startup |
+
+**Log directory:** `.flywheel/log/` (relative to project cwd)
+**Log format:** `LEVEL TIMESTAMP +DELTAms key=value ... message`
+**Rotation:** Keeps the 10 newest `.log` files, deletes older ones at startup.
+
+Usage:
+```ts
+import { Log } from "../utils/log"
+const log = Log.create({ service: "session.manager" })
+
+log.info("recovered stale session", { session: id, to: "work:paused" })
+log.error("state transition failed", { error: err instanceof Error ? err : String(err) })
+log.debug("init", { isDev: true })
+
+// Timed operations:
+const timer = log.time("pipeline execution")
+// ... work ...
+timer.stop()  // logs duration automatically
+```
+
+Service tag convention (dot-separated namespaces): `"shell"`, `"session.manager"`, `"event-bus"`, `"dispatcher"`, `"launcher"`, `"exit"`, `"plan-hook"`, `"review-hook"`.
+
+**CLI flags:**
+- `--print-logs` — send log output to stderr instead of file (for debugging outside the TUI)
+- `FLYWHEEL_LOG_LEVEL=DEBUG` — override the log level (default: `INFO`)
 
 ### Event system
 
