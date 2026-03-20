@@ -193,16 +193,16 @@ export function LogLine(props: LogLineProps) {
           const fg: RGBA | undefined = segment.color
             ? (themeCtx.theme[segment.color] as RGBA)
             : undefined
-          return (
+          const content = (
             <span
               style={{
                 fg: fg ?? themeCtx.theme.text,
               }}
-              attributes={segment.bold ? 1 : 0}
             >
               {segment.text}
             </span>
           )
+          return segment.bold ? <b>{content}</b> : content
         }}
       </For>
     </text>

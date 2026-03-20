@@ -10,7 +10,7 @@
     "dev": "bun --conditions=browser run src/cli/index.ts",
     "start": "bun --conditions=browser run src/cli/index.ts",
     "test": "bun test",
-    "build": "bun build src/cli/index.ts --outdir dist --target bun",
+    "build": "bun run scripts/build.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

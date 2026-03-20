@@ -10,7 +10,7 @@ export { WorkflowView } from "./workflow-view"
 export type { WorkflowViewProps } from "./workflow-view"
 
 export { Prompt } from "./prompt/index"
-export type { PromptProps, SlashCommand } from "./prompt/types"
+export type { PromptProps } from "./prompt/types"
 
 export { SelectMenu } from "./select-menu/index"
 export type { SelectMenuProps, SelectChoice } from "./select-menu/types"

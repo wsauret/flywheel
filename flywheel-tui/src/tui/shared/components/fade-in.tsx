@@ -29,6 +29,5 @@ export function FadeIn(props: FadeInProps) {
     )
   })
 
-  // @ts-expect-error - opacity is a valid box property in OpenTUI
   return <box opacity={opacity()} flexGrow={1}>{props.children}</box>
 }
