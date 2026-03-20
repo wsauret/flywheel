@@ -32,6 +32,7 @@ export { buildPlanReviewPrompt } from "./plan/review.js";
 export { buildPlanConsolidatePrompt } from "./plan/consolidate.js";
 
 export { buildReviewDispatchPrompt } from "./review/dispatch.js";
+export { buildReviewConsolidatePrompt } from "./review/consolidate.js";
 
 export { buildShipPrompt } from "./ship/workflow.js";
 

@@ -13,11 +13,23 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { WorkerResult } from "../schemas/worker";
 import type { OnStepCompleteHook } from "../controller/execution-loop";
-import { parseOpenQuestions, type ResolvedQuestion } from "./question-parser";
+import {
+  parseOpenQuestions,
+  type OpenQuestion,
+  type ResolvedQuestion,
+} from "./question-parser";
+import {
+  QuestionRejectedError,
+  type QuestionService,
+} from "../controller/question-service";
+import { extractTextFromOutput } from "./output-text-extractor";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+/** Directive sent to consolidation when open questions are forwarded unresolved. */
+export const PLAN_QUESTION_DIRECTIVE = "resolve-best-judgment" as const;
 
 /** Valid plan type prefixes (matches buildPlanDraftPrompt naming convention). */
 const PLAN_TYPES = ["feat", "fix", "refactor", "chore", "docs"] as const;
@@ -141,8 +153,79 @@ const REVIEW_STEP_INDEX = 2;
 /** The consolidation step index in the plan workflow (0-based). */
 const CONSOLIDATION_STEP_INDEX = 3;
 
+/** Options for the plan onStepComplete hook factory. */
+export interface PlanHookOptions {
+  /** QuestionService instance for interactive question flow. */
+  questionService?: QuestionService;
+  /** When true, questions are presented to the user via QuestionService. */
+  interactive?: boolean;
+}
+
+/**
+ * Handle open questions from the review step.
+ *
+ * Three modes:
+ *   1. interactive + questionService → ask user, return resolvedQuestions with source: "user"
+ *   2. interactive + user dismisses (QuestionRejectedError) → return unresolvedQuestions + directive
+ *   3. non-interactive (no questionService or interactive=false) → return unresolvedQuestions + directive
+ *
+ * Returns empty object when no questions are parsed.
+ */
+async function handleReviewQuestions(
+  output: string,
+  options: PlanHookOptions,
+): Promise<Record<string, unknown>> {
+  // Extract clean text from NDJSON-wrapped output before parsing
+  const cleanText = extractTextFromOutput(output);
+  const openQuestions = parseOpenQuestions(cleanText);
+
+  // No questions parsed → nothing to do
+  if (openQuestions.length === 0) {
+    return {};
+  }
+
+  const { questionService, interactive } = options;
+
+  // Non-interactive path: forward questions as unresolved with directive
+  if (!interactive || !questionService) {
+    return {
+      unresolvedQuestions: openQuestions,
+      questionDirective: PLAN_QUESTION_DIRECTIVE,
+    };
+  }
+
+  // Interactive path: ask the user
+  try {
+    const answers = await questionService.ask(
+      openQuestions.map((q) => ({ ...q, custom: true })),
+    );
+    // Map answers to ResolvedQuestion[] with source: "user"
+    const resolvedQuestions: ResolvedQuestion[] = openQuestions.map((q, i) => ({
+      question: q.question,
+      answers: answers[i] ?? [],
+      source: "user" as const,
+    }));
+    return { resolvedQuestions };
+  } catch (err) {
+    if (err instanceof QuestionRejectedError) {
+      // User dismissed — forward as unresolved
+      return {
+        unresolvedQuestions: openQuestions,
+        questionDirective: PLAN_QUESTION_DIRECTIVE,
+      };
+    }
+    // Unexpected error — don't abort pipeline
+    throw err;
+  }
+}
+
 /**
  * Create an `onStepComplete` hook for the plan workflow.
+ *
+ * After the review step (step 2), handles open questions in three modes:
+ *   - Interactive + user answers → resolvedQuestions with source: "user"
+ *   - Interactive + user dismisses → unresolvedQuestions + directive
+ *   - Non-interactive → unresolvedQuestions + directive (auto-forward)
  *
  * After the consolidation step (step 3), extracts the plan file path from
  * the worker output using three strategies:
@@ -153,27 +236,32 @@ const CONSOLIDATION_STEP_INDEX = 3;
  * Stores the result as `planFilePath` in the extra accumulator.
  *
  * @param projectCwd - The project root directory (for disk verification)
+ * @param options - Optional question service and interactive flag. When omitted,
+ *   falls back to non-interactive auto-forward behavior (backward-compatible).
  * @returns An OnStepCompleteHook suitable for ExecutionLoop
  */
-export function createPlanOnStepComplete(projectCwd: string): OnStepCompleteHook {
+export function createPlanOnStepComplete(
+  projectCwd: string,
+  options?: PlanHookOptions,
+): OnStepCompleteHook {
   // Record the time before the workflow starts, used for fallback scan
   const workflowStartTime = Date.now();
+  const hookOptions: PlanHookOptions = options ?? {};
 
-  return async (
+   return async (
     stepIndex: number,
     result: WorkerResult,
     _accumulatedExtra: Record<string, unknown>,
   ): Promise<Record<string, unknown>> => {
-    // After the review step: parse open questions and auto-resolve (V1)
+    // After the review step: handle open questions
     if (stepIndex === REVIEW_STEP_INDEX) {
-      const openQuestions = parseOpenQuestions(result.output);
-      // V1: auto-resolve with first option (or empty) — no UI interaction yet
-      const resolvedQuestions: ResolvedQuestion[] = openQuestions.map((q) => ({
-        question: q.question,
-        answers: q.options.length > 0 ? [q.options[0].label] : [],
-        source: "auto" as const,
-      }));
-      return { openQuestions, resolvedQuestions };
+      try {
+        return await handleReviewQuestions(result.output, hookOptions);
+      } catch (err) {
+        // Outer catch: unexpected errors don't abort the pipeline
+        console.error("[plan-hook] Unexpected error handling review questions:", err);
+        return {};
+      }
     }
 
     // Only extract plan file on the consolidation step

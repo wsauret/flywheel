@@ -6,7 +6,17 @@ import {
   extractPlanPath,
   verifyPlanFile,
   scanForNewPlan,
+  createPlanOnStepComplete,
+  PLAN_QUESTION_DIRECTIVE,
 } from "../src/workflows/plan-output-extractor";
+import type { WorkerResult } from "../src/schemas/worker";
+import {
+  QuestionService,
+  QuestionRejectedError,
+  type QuestionInfo,
+  type QuestionAnswer,
+} from "../src/controller/question-service";
+import { EventBus } from "../src/events/event-bus";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -287,5 +297,209 @@ describe("scanForNewPlan", () => {
 
     const result = await scanForNewPlan(dir, beforeTimestamp);
     expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createPlanOnStepComplete — three-mode question behavior
+// ---------------------------------------------------------------------------
+
+/** Review step index in the plan workflow. */
+const REVIEW_STEP = 2;
+
+/** Helper to create a WorkerResult with the given output. */
+function workerResult(output: string): WorkerResult {
+  return {
+    output,
+    exitCode: 0,
+    truncated: false,
+    durationMs: 1000,
+    failure: undefined,
+  };
+}
+
+/** Review output containing two open questions. */
+const REVIEW_WITH_QUESTIONS = `# Plan Review Summary
+
+## Open Questions
+
+| # | Question | Options | Source(s) |
+|---|----------|---------|-----------|
+| 1 | Should \`auto_chain\` default to \`true\` or \`false\`? | A: \`true\` B: \`false\` | reviewer-architecture |
+| 2 | How should sessions be managed? | | reviewer-design |
+
+## Critical (P1)
+
+No critical findings.
+`;
+
+/** Review output with no open questions. */
+const REVIEW_NO_QUESTIONS = `# Plan Review Summary
+
+## Critical (P1)
+
+No critical findings.
+`;
+
+describe("createPlanOnStepComplete — question handling", () => {
+  it("interactive: true + user answers → resolvedQuestions with source: 'user'", async () => {
+    const bus = new EventBus();
+    const qs = new QuestionService(bus);
+
+    const hook = createPlanOnStepComplete("/tmp/test", {
+      questionService: qs,
+      interactive: true,
+    });
+
+    // Set up: reply to questions as soon as they arrive
+    bus.subscribe((event) => {
+      if (event.type === "question:asked") {
+        const requestId = (event as any).requestId;
+        // Answer first question with "true", second with "custom answer"
+        qs.reply(requestId, [["true"], ["custom answer"]]);
+      }
+    });
+
+    const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
+
+    expect(result.resolvedQuestions).toBeDefined();
+    const resolved = result.resolvedQuestions as Array<{
+      question: string;
+      answers: string[];
+      source: string;
+    }>;
+    expect(resolved).toHaveLength(2);
+    expect(resolved[0].source).toBe("user");
+    expect(resolved[0].answers).toEqual(["true"]);
+    expect(resolved[1].source).toBe("user");
+    expect(resolved[1].answers).toEqual(["custom answer"]);
+
+    // Should NOT have unresolvedQuestions
+    expect(result.unresolvedQuestions).toBeUndefined();
+    expect(result.questionDirective).toBeUndefined();
+  });
+
+  it("interactive: true + user dismisses (QuestionRejectedError) → unresolvedQuestions + directive", async () => {
+    const bus = new EventBus();
+    const qs = new QuestionService(bus);
+
+    const hook = createPlanOnStepComplete("/tmp/test", {
+      questionService: qs,
+      interactive: true,
+    });
+
+    // Set up: reject (dismiss) questions as soon as they arrive
+    bus.subscribe((event) => {
+      if (event.type === "question:asked") {
+        const requestId = (event as any).requestId;
+        qs.reject(requestId);
+      }
+    });
+
+    const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
+
+    expect(result.unresolvedQuestions).toBeDefined();
+    const unresolved = result.unresolvedQuestions as Array<{ question: string }>;
+    expect(unresolved).toHaveLength(2);
+    expect(unresolved[0].question).toBe(
+      "Should `auto_chain` default to `true` or `false`?"
+    );
+    expect(result.questionDirective).toBe(PLAN_QUESTION_DIRECTIVE);
+
+    // Should NOT have resolvedQuestions
+    expect(result.resolvedQuestions).toBeUndefined();
+  });
+
+  it("interactive: false → unresolvedQuestions + directive (never calls ask)", async () => {
+    const bus = new EventBus();
+    const qs = new QuestionService(bus);
+
+    let askCalled = false;
+    bus.subscribe((event) => {
+      if (event.type === "question:asked") {
+        askCalled = true;
+      }
+    });
+
+    const hook = createPlanOnStepComplete("/tmp/test", {
+      questionService: qs,
+      interactive: false,
+    });
+
+    const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
+
+    expect(askCalled).toBe(false);
+    expect(result.unresolvedQuestions).toBeDefined();
+    const unresolved = result.unresolvedQuestions as Array<{ question: string }>;
+    expect(unresolved).toHaveLength(2);
+    expect(result.questionDirective).toBe(PLAN_QUESTION_DIRECTIVE);
+  });
+
+  it("no questionService provided → unresolvedQuestions + directive (backward compat)", async () => {
+    const hook = createPlanOnStepComplete("/tmp/test");
+
+    const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
+
+    expect(result.unresolvedQuestions).toBeDefined();
+    const unresolved = result.unresolvedQuestions as Array<{ question: string }>;
+    expect(unresolved).toHaveLength(2);
+    expect(result.questionDirective).toBe(PLAN_QUESTION_DIRECTIVE);
+  });
+
+  it("no questions parsed → returns empty object", async () => {
+    const bus = new EventBus();
+    const qs = new QuestionService(bus);
+
+    const hook = createPlanOnStepComplete("/tmp/test", {
+      questionService: qs,
+      interactive: true,
+    });
+
+    const result = await hook(REVIEW_STEP, workerResult(REVIEW_NO_QUESTIONS), {});
+
+    expect(result).toEqual({});
+  });
+
+  it("unexpected error from ask() → logs error, returns empty object", async () => {
+    // Create a mock QuestionService whose ask() throws an unexpected error
+    const bus = new EventBus();
+    const qs = new QuestionService(bus);
+
+    // Monkey-patch ask to throw a generic error
+    const originalAsk = qs.ask.bind(qs);
+    qs.ask = async () => {
+      throw new Error("Unexpected network failure");
+    };
+
+    const hook = createPlanOnStepComplete("/tmp/test", {
+      questionService: qs,
+      interactive: true,
+    });
+
+    // Capture console.error
+    const errors: unknown[] = [];
+    const origError = console.error;
+    console.error = (...args: unknown[]) => errors.push(args);
+
+    try {
+      const result = await hook(REVIEW_STEP, workerResult(REVIEW_WITH_QUESTIONS), {});
+      expect(result).toEqual({});
+      // Verify error was logged
+      expect(errors.length).toBeGreaterThan(0);
+    } finally {
+      console.error = origError;
+    }
+  });
+
+  it("non-review step returns empty object", async () => {
+    const hook = createPlanOnStepComplete("/tmp/test");
+
+    // Step 0 (research) should return {}
+    const result = await hook(0, workerResult("Research done."), {});
+    expect(result).toEqual({});
+
+    // Step 1 (draft) should return {}
+    const result1 = await hook(1, workerResult("Draft done."), {});
+    expect(result1).toEqual({});
   });
 });

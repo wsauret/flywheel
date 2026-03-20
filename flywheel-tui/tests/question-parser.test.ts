@@ -185,6 +185,55 @@ describe("parseOpenQuestions — mixed formats", () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Realistic agent output (from actual UAT runs)
+// ---------------------------------------------------------------------------
+
+describe("parseOpenQuestions — realistic agent output", () => {
+  it("parses questions from actual plan review output with ## Open Questions", () => {
+    const output = `# Plan Review Summary
+
+## Critical (P1)
+
+| # | Finding | File | Reviewers | Action Required |
+|---|---------|------|-----------|-----------------|
+| 1 | No consumer exists in codebase | - | All 6 reviewers | Identify concrete use case |
+
+## Important (P2)
+
+| # | Finding | File | Reviewers | Action Required |
+|---|---------|------|-----------|-----------------|
+| 1 | Scope too broad | - | reviewer-scope, reviewer-architecture | Narrow to specific need |
+
+## Minor (P3)
+
+| # | Finding | File | Reviewers |
+|---|---------|------|-----------|
+| 1 | Test strategy insufficient | - | reviewer-testing |
+
+## Open Questions
+
+1. What feature needs this? No reviewer found a consumer in the codebase. The plan should not proceed without identifying the concrete use case that drives this requirement.
+2. Library or built-in? If the need is just display formatting with timezone, Intl.DateTimeFormat (zero dependencies) may be sufficient. If arbitrary format parsing is needed, a library is required. The scope determines the answer.
+
+---
+
+Recommendation: Reject this plan.`;
+
+    const result = parseOpenQuestions(output);
+    expect(result).toHaveLength(2);
+    expect(result[0].question).toContain("What feature needs this?");
+    expect(result[1].question).toContain("Library or built-in?");
+  });
+
+});
+
+
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
 describe("parseOpenQuestions — edge cases", () => {
   it("returns empty array when no open questions exist", () => {
     const output = `# Plan Review Summary

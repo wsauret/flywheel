@@ -9,7 +9,7 @@
  */
 
 import { createFlywheelEmitter } from "../../events/event-bus";
-import { ExecutionLoop, type PromptBuilder } from "../../controller/execution-loop";
+import { ExecutionLoop, type PromptBuilder, type OnStepCompleteHook } from "../../controller/execution-loop";
 import { WorkflowDefinitionProvider } from "../../controller/workflow-def-provider";
 import { PhaseExecutor } from "../../controller/phase-executor";
 import { WorkController } from "../../controller/work";
@@ -18,6 +18,8 @@ import {
   buildWorkflowPrompt,
 } from "../../workflows/index";
 import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor";
+import { createReviewOnStepComplete } from "../../workflows/review-output-extractor";
+import type { QuestionService } from "../../controller/question-service";
 import type { FlywheelConfig } from "../../config/loader";
 import type { WorkflowDeps } from "../../controller/workflow-deps";
 import type { WorkflowSession } from "./workflow-session";
@@ -86,6 +88,7 @@ export function buildPipelineStages(
 export function createShellStageRunner(
   session: WorkflowSession,
   deps: WorkflowDeps,
+  questionService?: QuestionService,
 ): StageRunner {
   return async (
     stage: PipelineStage,
@@ -167,12 +170,17 @@ export function createShellStageRunner(
 
     const phaseProvider = new WorkflowDefinitionProvider(workflow);
 
-    // For plan: install onStepComplete and skipTruncation
+    // For plan/review: install onStepComplete and skipTruncation
     const isPlan = stage.workflow === "plan";
+    const isReview = stage.workflow === "review";
     const projectCwd = deps.config.project_cwd || process.cwd();
-    const onStepComplete = isPlan
-      ? createPlanOnStepComplete(projectCwd)
-      : undefined;
+    const interactive = deps.config.interactive_consolidation ?? false;
+    let onStepComplete: OnStepCompleteHook | undefined;
+    if (isPlan) {
+      onStepComplete = createPlanOnStepComplete(projectCwd, { questionService, interactive });
+    } else if (isReview) {
+      onStepComplete = createReviewOnStepComplete({ questionService, interactive });
+    }
 
     const loop = new ExecutionLoop({
       phaseProvider,

@@ -14,6 +14,7 @@ import {
   buildPlanReviewPrompt,
   buildPlanConsolidatePrompt,
   buildReviewDispatchPrompt,
+  buildReviewConsolidatePrompt,
   buildShipPrompt,
   buildDebugPrompt,
 } from "../prompts/index";
@@ -36,8 +37,8 @@ const reviewPrompts: PromptFn[] = [
   buildReviewDispatchPrompt,
   // Step 1: Multi-agent review — same template, dispatches reviewers
   buildReviewDispatchPrompt,
-  // Step 2: Consolidate — same template, consolidation pass
-  buildReviewDispatchPrompt,
+  // Step 2: Consolidate — uses review consolidate template with P3 triage data
+  buildReviewConsolidatePrompt,
 ];
 
 const shipPrompts: PromptFn[] = [

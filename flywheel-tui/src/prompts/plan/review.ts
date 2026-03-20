@@ -63,7 +63,9 @@ After collecting all reviewer findings:
 2. **Similar findings** (related but different aspect): Group together, note the nuances from each reviewer.
 3. **Unique findings**: Keep as-is with the originating reviewer noted.
 
-## Review Summary Template
+## Output Format
+
+You MUST use the exact headings below. The headings are parsed by downstream tooling — do NOT rename, reword, or omit them.
 
 \`\`\`markdown
 # Plan Review Summary
@@ -91,5 +93,7 @@ After collecting all reviewer findings:
 1. <question with context from contradicting reviewers>
 2. ...
 \`\`\`
+
+**CRITICAL:** The \`## Open Questions\` section MUST be present as an H2 heading even if there are no open questions (write "None." as the body). Questions found under any other heading will be missed by the pipeline.
 `;
 }

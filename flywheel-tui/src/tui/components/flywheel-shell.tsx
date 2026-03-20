@@ -57,6 +57,7 @@ import {
   buildWorkflowPrompt,
 } from "../../workflows/index"
 import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor"
+import { createReviewOnStepComplete } from "../../workflows/review-output-extractor"
 import { WorkflowPipeline } from "../../controller/workflow-pipeline"
 import { QuestionService, type QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
@@ -435,9 +436,45 @@ export function FlywheelShell() {
     const phaseProvider = new WorkflowDefinitionProvider(workflow)
 
     const isPlan = workflowName === "plan"
-    const onStepComplete = isPlan && config.project_cwd
-      ? createPlanOnStepComplete(config.project_cwd)
-      : undefined
+    const isReview = workflowName === "review"
+
+    // Create QuestionService for interactive gates (standalone path)
+    // Both plan and review workflows use interactive question checkpoints
+    if (isPlan || isReview) {
+      const questionSvc = new QuestionService(eventBus)
+      // Clean up old subscriptions FIRST (this nulls activeQuestionService),
+      // then set the new reference.
+      cleanupQuestionSubscriptions()
+      activeQuestionService = questionSvc
+      questionUnsubs.push(
+        eventBus.subscribeToType("question:asked", () => {
+          const pending = questionSvc.list()
+          if (pending.length > 0) {
+            setPendingQuestion(pending[0])
+          }
+        }),
+        eventBus.subscribeToType("question:replied", () => {
+          setPendingQuestion(null)
+        }),
+        eventBus.subscribeToType("question:rejected", () => {
+          setPendingQuestion(null)
+        }),
+      )
+    }
+
+    const interactive = config.interactive_consolidation ?? false
+    let onStepComplete: import("../../controller/execution-loop").OnStepCompleteHook | undefined
+    if (isPlan && config.project_cwd) {
+      onStepComplete = createPlanOnStepComplete(config.project_cwd, {
+        questionService: activeQuestionService ?? undefined,
+        interactive,
+      })
+    } else if (isReview) {
+      onStepComplete = createReviewOnStepComplete({
+        questionService: activeQuestionService ?? undefined,
+        interactive,
+      })
+    }
 
     const loop = new ExecutionLoop({
       phaseProvider,
@@ -534,9 +571,12 @@ export function FlywheelShell() {
 
     // Create QuestionService for pipeline gates
     const questionService = new QuestionService(session.eventBus)
+
+    // Clean up old subscriptions FIRST (this nulls activeQuestionService),
+    // then set the new reference.
+    cleanupQuestionSubscriptions()
     activeQuestionService = questionService
 
-    cleanupQuestionSubscriptions()
     questionUnsubs.push(
       session.eventBus.subscribeToType("question:asked", (e) => {
         const pending = questionService.list()
@@ -590,8 +630,8 @@ export function FlywheelShell() {
       }),
     )
 
-    // Create stage runner
-    const stageRunner = createShellStageRunner(session, deps)
+    // Create stage runner (pass questionService for interactive plan gates)
+    const stageRunner = createShellStageRunner(session, deps, questionService)
 
     // Create and start the pipeline
     const pipeline = new WorkflowPipeline({
@@ -672,6 +712,12 @@ export function FlywheelShell() {
     for (const unsub of questionUnsubs) unsub()
     questionUnsubs = []
     setPendingQuestion(null)
+    // Reject all pending questions before nulling — prevents pipeline deadlock on abort
+    if (activeQuestionService) {
+      for (const pending of activeQuestionService.list()) {
+        activeQuestionService.reject(pending.id)
+      }
+    }
     activeQuestionService = null
   }
 
@@ -1267,7 +1313,8 @@ export function FlywheelShell() {
     // Escape: handle at shell level for non-idle states.
     // "completed" is included because the prompt may not always capture Escape
     // (e.g., when viewing a read-only session and prompt focus is ambiguous).
-    if (evt.name === "escape") {
+    // When a question is pending, let the QuestionPrompt handle Escape (to dismiss the question).
+    if (evt.name === "escape" && !pendingQuestion()) {
       const currentState = appState()
       if (currentState === "working" || currentState === "importing" || currentState === "completed") {
         evt.preventDefault()
@@ -1474,14 +1521,26 @@ export function FlywheelShell() {
         </Show>
       </SharedLayout>
 
-      {/* Prompt input — always present below the layout */}
-      <box flexShrink={0} alignItems="center" justifyContent="center" onMouseDown={() => {
-        if (sidebarFocused()) {
-          setSidebarFocused(false)
+      {/* Bottom slot: QuestionPrompt (when pending) OR normal Prompt input */}
+      <Show
+        when={pendingQuestion() && activeQuestionService}
+        fallback={
+          <box flexShrink={0} alignItems="center" justifyContent="center" onMouseDown={() => {
+            if (sidebarFocused()) {
+              setSidebarFocused(false)
+            }
+          }}>
+            <prompt.Input />
+          </box>
         }
-      }}>
-        <prompt.Input />
-      </box>
+      >
+        <box flexShrink={0}>
+          <QuestionPrompt
+            request={pendingQuestion()!}
+            questionService={activeQuestionService!}
+          />
+        </box>
+      </Show>
 
       {/* Telemetry bar — below the prompt */}
       <box flexShrink={0}>
@@ -1506,14 +1565,6 @@ export function FlywheelShell() {
         isSessionResumable={isSessionResumable()}
         isWorking={appState() === "working"}
       />
-
-      {/* QuestionPrompt overlay — shown when pipeline gate asks a question */}
-      <Show when={pendingQuestion() && activeQuestionService}>
-        <QuestionPrompt
-          request={pendingQuestion()!}
-          questionService={activeQuestionService!}
-        />
-      </Show>
 
       {/* Quit confirmation modal (Esc in idle with running sessions) */}
       <Show when={showQuitModal()}>

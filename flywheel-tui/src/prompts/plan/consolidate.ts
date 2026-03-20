@@ -1,6 +1,9 @@
 import type { WorkflowStepContext } from "../index.js";
 import { SEVERITY_DEFINITIONS, SCOPE_DISCIPLINE } from "../conventions.js";
-import type { ResolvedQuestion } from "../../workflows/question-parser.js";
+import type {
+  OpenQuestion,
+  ResolvedQuestion,
+} from "../../workflows/question-parser.js";
 
 /**
  * Format a single resolved question as a readable line.
@@ -11,24 +14,62 @@ function formatResolvedQuestion(q: ResolvedQuestion, index: number): string {
 }
 
 /**
+ * Format a single unresolved question with its options.
+ */
+function formatUnresolvedQuestion(q: OpenQuestion, index: number): string {
+  const optionsList =
+    q.options.length > 0
+      ? q.options.map((o) => `   - ${o.label}${o.description ? `: ${o.description}` : ""}`).join("\n")
+      : "   _(no predefined options)_";
+  return `${index + 1}. ${q.question}\n${optionsList}`;
+}
+
+/**
+ * Build the questions section of the consolidation prompt.
+ *
+ * Two mutually exclusive payloads:
+ *   - `resolvedQuestions` → user answered interactively ("## Decisions Made")
+ *   - `unresolvedQuestions` + `questionDirective` → forwarded for AI resolution
+ *     ("## Open Questions to Resolve")
+ */
+function buildQuestionsSection(extra: Record<string, unknown> | undefined): string {
+  // Path 1: User-resolved questions
+  const resolved = extra?.resolvedQuestions;
+  if (resolved && Array.isArray(resolved) && resolved.length > 0) {
+    const lines = (resolved as ResolvedQuestion[])
+      .map((q, i) => formatResolvedQuestion(q, i))
+      .join("\n");
+    return `## Decisions Made\n\n${lines}`;
+  }
+
+  // Path 2: Unresolved questions forwarded with directive
+  const unresolved = extra?.unresolvedQuestions;
+  if (unresolved && Array.isArray(unresolved) && unresolved.length > 0) {
+    const lines = (unresolved as OpenQuestion[])
+      .map((q, i) => formatUnresolvedQuestion(q, i))
+      .join("\n\n");
+    return `## Open Questions to Resolve
+
+Resolve each question using your best judgment from the review findings. Document your rationale.
+
+${lines}`;
+  }
+
+  // No questions at all
+  return `## Resolved Open Questions\n\n_No open questions._`;
+}
+
+/**
  * Builds a prompt for consolidating a reviewed plan into a final actionable plan.
  */
 export function buildPlanConsolidatePrompt(ctx: WorkflowStepContext): string {
-  const resolvedQuestions = ctx.extra?.resolvedQuestions;
-  const questionsSection =
-    resolvedQuestions && Array.isArray(resolvedQuestions) && resolvedQuestions.length > 0
-      ? (resolvedQuestions as ResolvedQuestion[])
-          .map((q, i) => formatResolvedQuestion(q, i))
-          .join("\n")
-      : "_No resolved questions._";
+  const questionsSection = buildQuestionsSection(ctx.extra);
 
   return `# Plan Consolidation
 
 ## Plan with Review Findings
 
 ${ctx.planContent}
-
-## Resolved Open Questions
 
 ${questionsSection}
 

@@ -11,24 +11,18 @@
  */
 
 import type { EventBus } from "../events/event-bus";
+import type {
+  QuestionOption,
+  OpenQuestion,
+} from "../workflows/question-parser";
 
 // ---------------------------------------------------------------------------
-// Types (mirroring OpenCode's Zod schemas, but plain TypeScript interfaces)
+// Types — QuestionInfo extends OpenQuestion with `custom` for TUI prompts
 // ---------------------------------------------------------------------------
 
-export interface QuestionOption {
-  label: string;
-  description: string;
-}
+export type { QuestionOption, OpenQuestion };
 
-export interface QuestionInfo {
-  question: string;
-  header: string;
-  options: QuestionOption[];
-  multiple?: boolean;
-  custom?: boolean;
-  default?: string;
-}
+export type QuestionInfo = OpenQuestion & { custom?: boolean };
 
 /** Per-question answer: array of selected option labels or custom text */
 export type QuestionAnswer = string[];

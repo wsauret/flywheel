@@ -315,6 +315,12 @@ describe("buildPlanReviewPrompt", () => {
     }
   });
 
+  it("instructs agent to use exact ## Open Questions heading", () => {
+    const result = buildPlanReviewPrompt(baseCtx);
+    expect(result).toContain("## Open Questions");
+    expect(result).toContain("MUST be present as an H2 heading");
+  });
+
   it("has no orchestration leaks", () => {
     assertNoOrchestrationLeaks(buildPlanReviewPrompt(baseCtx));
     assertNoOrchestrationLeaks(buildPlanReviewPrompt(minimalCtx));
@@ -388,7 +394,7 @@ describe("buildReviewDispatchPrompt", () => {
     const result = buildReviewDispatchPrompt(baseCtx);
     for (const kw of [
       "Phase Grouping",
-      "Review Document",
+      "Output Format",
       "P3 Triage",
     ]) {
       expect(result).toContain(kw);
@@ -402,6 +408,14 @@ describe("buildReviewDispatchPrompt", () => {
     };
     const result = buildReviewDispatchPrompt(ctx);
     expect(result).toContain("Plan Compliance");
+  });
+
+  it("instructs agent to use exact ## Findings and ## Minor Findings headings", () => {
+    const result = buildReviewDispatchPrompt(baseCtx);
+    expect(result).toContain("## Findings");
+    expect(result).toContain("## Minor Findings");
+    expect(result).toContain("Severity");
+    expect(result).toContain("MUST include a \"Severity\" column");
   });
 
   it("has no orchestration leaks", () => {
@@ -540,7 +554,7 @@ describe("buildReviewDispatchPrompt extras", () => {
 });
 
 describe("buildPlanConsolidatePrompt extras", () => {
-  it("includes resolved questions from extra", () => {
+  it("includes resolved questions from extra as 'Decisions Made'", () => {
     const ctx: WorkflowStepContext = {
       ...baseCtx,
       extra: {
@@ -551,14 +565,49 @@ describe("buildPlanConsolidatePrompt extras", () => {
       },
     };
     const result = buildPlanConsolidatePrompt(ctx);
+    expect(result).toContain("## Decisions Made");
     expect(result).toContain("Use Redis for session storage?");
     expect(result).toContain("Yes, Redis");
     expect(result).toContain("JWT refresh tokens are out of scope?");
     expect(result).toContain("Confirmed");
   });
 
-  it("shows placeholder when resolvedQuestions is absent", () => {
+  it("includes unresolved questions from extra as 'Open Questions to Resolve'", () => {
+    const ctx: WorkflowStepContext = {
+      ...baseCtx,
+      extra: {
+        unresolvedQuestions: [
+          {
+            question: "Should `auto_chain` default to `true` or `false`?",
+            header: "auto_chain default",
+            options: [
+              { label: "true", description: "" },
+              { label: "false", description: "" },
+            ],
+          },
+          {
+            question: "How should sessions be managed?",
+            header: "session management",
+            options: [],
+          },
+        ],
+        questionDirective: "resolve-best-judgment",
+      },
+    };
+    const result = buildPlanConsolidatePrompt(ctx);
+    expect(result).toContain("## Open Questions to Resolve");
+    expect(result).toContain("Resolve each question using your best judgment");
+    expect(result).toContain("Should `auto_chain` default to `true` or `false`?");
+    expect(result).toContain("How should sessions be managed?");
+    expect(result).toContain("- true");
+    expect(result).toContain("- false");
+    // The dynamic section should be "Open Questions to Resolve", not "Decisions Made"
+    // (Note: "## Decisions Made" also appears in the template example, so we check the dynamic heading)
+    expect(result).toContain("## Open Questions to Resolve");
+  });
+
+  it("shows placeholder when no questions of either type", () => {
     const result = buildPlanConsolidatePrompt(minimalCtx);
-    expect(result).toContain("No resolved questions");
+    expect(result).toContain("No open questions");
   });
 });

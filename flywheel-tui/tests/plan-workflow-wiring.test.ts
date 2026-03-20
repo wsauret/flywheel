@@ -317,17 +317,12 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
 
     // The extra snapshots are captured by the prompt builder.
     // Steps 0-1 should not have any extra data.
-    // Step 2 (review) returns openQuestions + resolvedQuestions, which are
-    // visible to step 3 (consolidation).
+    // Step 2 (review) returns empty object when no questions are parsed.
     expect(extraSnapshots[0]).toEqual({}); // Phase 0: no prior extra
     expect(extraSnapshots[1]).toEqual({}); // Phase 1: step 0 returned {}
     expect(extraSnapshots[2]).toEqual({}); // Phase 2: step 1 returned {}
-    // Phase 3 sees step 2's output: openQuestions and resolvedQuestions
-    // (both empty arrays since "Review done." has no open questions)
-    expect(extraSnapshots[3]).toEqual({
-      openQuestions: [],
-      resolvedQuestions: [],
-    });
+    // Phase 3 sees step 2's output: no questions parsed → empty object
+    expect(extraSnapshots[3]).toEqual({});
     // The hook extracts planFilePath on step 3, so it would be in accumulator
     // AFTER step 3 completes. Since there's no step 4, we verify the
     // workflow completed and that the hook ran by checking completion.
@@ -400,26 +395,21 @@ No critical findings.
     const result = await loop.run();
     expect(result.completed).toBe(true);
 
-    // Phase 3 (consolidation) should receive parsed questions from step 2
+    // Phase 3 (consolidation) should receive parsed questions from step 2.
+    // With no questionService/interactive, questions are forwarded as unresolved.
     const consolidationExtra = extraSnapshots[3];
     expect(consolidationExtra).toBeDefined();
 
-    const openQuestions = consolidationExtra.openQuestions as Array<{ question: string; options: Array<{ label: string }> }>;
-    expect(openQuestions).toHaveLength(2);
-    expect(openQuestions[0].question).toBe(
+    const unresolvedQuestions = consolidationExtra.unresolvedQuestions as Array<{ question: string; options: Array<{ label: string }> }>;
+    expect(unresolvedQuestions).toHaveLength(2);
+    expect(unresolvedQuestions[0].question).toBe(
       "Should `auto_chain` default to `true` or `false`?"
     );
-    expect(openQuestions[1].question).toBe(
+    expect(unresolvedQuestions[1].question).toBe(
       "How should sessions be managed across stages?"
     );
 
-    const resolvedQuestions = consolidationExtra.resolvedQuestions as Array<{ question: string; answers: string[]; source: string }>;
-    expect(resolvedQuestions).toHaveLength(2);
-    // V1 auto-resolve: no options → empty answers
-    expect(resolvedQuestions[0].answers).toEqual([]);
-    expect(resolvedQuestions[0].source).toBe("auto");
-    expect(resolvedQuestions[1].answers).toEqual([]);
-    expect(resolvedQuestions[1].source).toBe("auto");
+    expect(consolidationExtra.questionDirective).toBe("resolve-best-judgment");
   });
 
   it("auto-resolves questions with first option when options exist", async () => {
@@ -486,11 +476,14 @@ No critical findings.
     const result = await loop.run();
     expect(result.completed).toBe(true);
 
+    // With no questionService/interactive, questions are forwarded as unresolved with directive
     const consolidationExtra = extraSnapshots[3];
-    const resolvedQuestions = consolidationExtra.resolvedQuestions as Array<{ question: string; answers: string[]; source: string }>;
-    expect(resolvedQuestions).toHaveLength(1);
-    // V1 auto-resolve picks the first option label
-    expect(resolvedQuestions[0].answers).toEqual(["true"]);
-    expect(resolvedQuestions[0].source).toBe("auto");
+    const unresolvedQuestions = consolidationExtra.unresolvedQuestions as Array<{ question: string; options: Array<{ label: string }> }>;
+    expect(unresolvedQuestions).toHaveLength(1);
+    expect(unresolvedQuestions[0].question).toBe(
+      "Should `auto_chain` default to `true` or `false`?"
+    );
+    expect(unresolvedQuestions[0].options[0].label).toBe("true");
+    expect(consolidationExtra.questionDirective).toBe("resolve-best-judgment");
   });
 });

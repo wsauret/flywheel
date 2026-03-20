@@ -60,16 +60,37 @@ export function parseOpenQuestions(reviewOutput: string): OpenQuestion[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Parse numbered questions from `## Open Questions` section.
+ * Section headings that contain open questions.
+ * "Open Questions" is the canonical heading from the plan review prompt template.
+ */
+const QUESTION_SECTION_HEADINGS = [
+  "Open Questions",
+];
+
+/**
+ * Parse numbered questions from a questions section.
+ * Tries multiple heading variants to handle agent output deviations.
  * Handles multi-line questions (continuation lines starting with whitespace).
  */
 function parseNumberedList(output: string): OpenQuestion[] {
-  const section = extractSection(output, "Open Questions");
-  if (!section) return [];
+  for (const heading of QUESTION_SECTION_HEADINGS) {
+    const section = extractSection(output, heading);
+    if (!section) continue;
 
-  // Skip if this section contains a table (handled by parseTable)
-  if (section.includes("| # |") || section.includes("|---|")) return [];
+    // Skip if this section contains a table (handled by parseTable)
+    if (section.includes("| # |") || section.includes("|---|")) continue;
 
+    const questions = parseNumberedListFromSection(section);
+    if (questions.length > 0) return questions;
+  }
+
+  return [];
+}
+
+/**
+ * Parse numbered questions from a section's content.
+ */
+function parseNumberedListFromSection(section: string): OpenQuestion[] {
   const questions: OpenQuestion[] = [];
   const lines = section.split("\n");
   let currentQuestion = "";
@@ -101,11 +122,15 @@ function parseNumberedList(output: string): OpenQuestion[] {
 }
 
 /**
- * Parse questions from a markdown table in `## Open Questions` section.
- * Expects columns: #, Question, Options (optional), Source(s) (optional).
+ * Parse questions from a markdown table in a questions section.
+ * Tries multiple heading variants. Expects columns: #, Question, Options (optional), Source(s) (optional).
  */
 function parseTable(output: string): OpenQuestion[] {
-  const section = extractSection(output, "Open Questions");
+  let section: string | null = null;
+  for (const heading of QUESTION_SECTION_HEADINGS) {
+    section = extractSection(output, heading);
+    if (section) break;
+  }
   if (!section) return [];
 
   // Must contain a table
@@ -185,7 +210,7 @@ function parseOpenQuestionBlocks(output: string): OpenQuestion[] {
 /**
  * Extract content of a `## <heading>` section (up to the next `##` heading or end).
  */
-function extractSection(
+export function extractSection(
   output: string,
   heading: string
 ): string | null {
@@ -207,7 +232,7 @@ function extractSection(
 /**
  * Parse a single markdown table row into an array of cell values.
  */
-function parseTableRow(row: string): string[] {
+export function parseTableRow(row: string): string[] {
   return row
     .split("|")
     .slice(1, -1) // Remove leading/trailing empty strings from | ... |

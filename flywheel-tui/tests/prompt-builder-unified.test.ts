@@ -166,7 +166,7 @@ describe("Unified PromptBuilder contract", () => {
       expect(prompt).toContain("3. Deploy target? → _no answer_ (source: auto)");
     });
 
-    it("shows 'No resolved questions' when resolvedQuestions is empty", () => {
+    it("shows 'No open questions' when resolvedQuestions is empty", () => {
       const prompt = buildWorkflowPrompt(
         3,
         planWorkflow,
@@ -175,7 +175,7 @@ describe("Unified PromptBuilder contract", () => {
         "/tmp/project",
         { resolvedQuestions: [] },
       );
-      expect(prompt).toContain("_No resolved questions._");
+      expect(prompt).toContain("_No open questions._");
     });
   });
 

@@ -98,7 +98,9 @@ Group findings for implementation:
 - Ordered by severity within each group (P1 first)
 - Respect dependencies (if fix A must happen before fix B, note it)
 
-## Review Document Template
+## Output Format
+
+You MUST use the exact headings below. The headings are parsed by downstream tooling — do NOT rename, reword, or omit them.
 
 \`\`\`yaml
 ---
@@ -110,13 +112,30 @@ findings: { p1: <count>, p2: <count>, p3: <count> }
 ---
 \`\`\`
 
-### Sections
+\`\`\`markdown
+## Summary
 
-1. **Summary** — 2-3 sentence overview of code quality and key concerns
-2. **Critical Findings (P1)** — Table: finding, file:line, reviewer, required action
-3. **Important Findings (P2)** — Table: finding, file:line, reviewer, recommended action
-4. **Minor Findings (P3)** — Bulleted list with deferred items noted
-5. **Implementation Order** — Ordered list of fixes grouped by file, respecting dependencies
+2-3 sentence overview of code quality and key concerns.
+
+## Findings
+
+| # | Finding | Severity | File | Reviewers | Action Required |
+|---|---------|----------|------|-----------|-----------------|
+| 1 | ...     | P1       | ...  | ...       | ...             |
+| 2 | ...     | P2       | ...  | ...       | ...             |
+| 3 | ...     | P3       | ...  | ...       | ...             |
+
+## Minor Findings
+
+- P3: <finding> at \`file:line\`
+- P3 (deferred): <finding> at \`file:line\` — reason: <why not now>
+
+## Implementation Order
+
+Ordered list of fixes grouped by file, respecting dependencies.
+\`\`\`
+
+**CRITICAL:** The \`## Findings\` table MUST include a "Severity" column with values P1/P2/P3. The \`## Minor Findings\` section MUST use the exact heading. P3 bullets MUST start with \`- P3:\` or \`- P3 (deferred):\`. These formats are parsed by downstream tooling — do NOT deviate.
 
 The review document must be consumable as an implementation plan. A developer should be able to go through it top-to-bottom and address every finding.
 `;
