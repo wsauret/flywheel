@@ -22,6 +22,7 @@ export const COMMANDS: SlashCommand[] = [
   { name: "/ship",     description: "Commit, PR, and compound learnings" },
   { name: "/debug",    description: "Debug a failing test or issue",               argKey: "description" },
   { name: "/research", description: "Research a topic in the codebase",            argKey: "topic" },
+  { name: "/start",    description: "Guided workflow launcher",              argKey: "description" },
   { name: "/config",   description: "Edit flywheel.yaml" },
   { name: "/help",     description: "Show available commands" },
   { name: "/new",      description: "Start fresh from idle screen" },
@@ -38,5 +39,5 @@ export const COMMAND_MAP: ReadonlyMap<string, SlashCommand> = new Map(
 
 /** Commands shown as help rows on the home screen */
 export const HOME_HELP_COMMANDS = COMMANDS.filter((c) =>
-  ["/work", "/plan", "/review", "/ship"].includes(c.name)
+  ["/start", "/work", "/plan", "/review", "/ship"].includes(c.name)
 )

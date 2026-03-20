@@ -64,6 +64,7 @@ import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
+import { buildCustomPipeline, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
 import { parseCommand } from "../utils/command-parser"
 import { SIDEBAR_WIDTH } from "./shell-modes"
 import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
@@ -1078,6 +1079,88 @@ export function FlywheelShell() {
     }
   }
 
+  /**
+   * /start flow: guided question wizard that collects a description and
+   * pipeline mode, then starts the appropriate pipeline.
+   *
+   * Questions happen BEFORE the pipeline starts. Uses a temporary EventBus
+   * + QuestionService to drive the existing QuestionPrompt component.
+   */
+  const launchStartFlow = async (args: Record<string, string>) => {
+    // Create a temporary event bus + question service for pre-pipeline questions
+    const startBus = new EventBus()
+    const startQS = new QuestionService(startBus)
+
+    // Wire question events to the shell's pendingQuestion signal
+    cleanupQuestionSubscriptions()
+    activeQuestionService = startQS
+    questionUnsubs.push(
+      startBus.subscribeToType("question:asked", () => {
+        const pending = startQS.list()
+        if (pending.length > 0) {
+          setPendingQuestion(pending[0])
+        }
+      }),
+      startBus.subscribeToType("question:replied", () => {
+        setPendingQuestion(null)
+      }),
+      startBus.subscribeToType("question:rejected", () => {
+        setPendingQuestion(null)
+      }),
+    )
+
+    try {
+      // Step 1: Get description (skip if already provided via /start <description>)
+      let description = args.description ?? ""
+      if (!description) {
+        const descAnswers = await startQS.ask([{
+          question: "What do you want to build?",
+          header: "Description",
+          options: [],
+          custom: true,
+        }])
+        description = descAnswers[0]?.[0] ?? ""
+        if (!description) {
+          // User dismissed the question
+          cleanupQuestionSubscriptions()
+          return
+        }
+      }
+
+      // Step 2: Pick pipeline mode
+      const modeAnswers = await startQS.ask([{
+        question: "How far should the pipeline go?",
+        header: "Pipeline Mode",
+        options: PIPELINE_MODE_OPTIONS.map((o) => ({
+          label: o.label,
+          description: o.description,
+        })),
+        default: "Plan + Work + Review",
+      }])
+      const selectedLabel = modeAnswers[0]?.[0]
+      if (!selectedLabel) {
+        // User dismissed
+        cleanupQuestionSubscriptions()
+        return
+      }
+
+      // Map label back to PipelineMode value
+      const selectedOption = PIPELINE_MODE_OPTIONS.find((o) => o.label === selectedLabel)
+      const mode: PipelineMode = selectedOption?.value ?? "plan-work-review"
+
+      // Clean up question subscriptions before starting pipeline
+      // (pipeline will create its own QuestionService)
+      cleanupQuestionSubscriptions()
+
+      // Step 3: Build stages and start pipeline
+      const stages = buildCustomPipeline(mode)
+      startPipeline(stages, { description })
+    } catch {
+      // QuestionRejectedError or other: user dismissed, clean up
+      cleanupQuestionSubscriptions()
+    }
+  }
+
   const dispatch = createActionDispatcher({
     fileExists: (path) => fs.existsSync(path),
     notify: (message, variant) => {
@@ -1089,6 +1172,7 @@ export function FlywheelShell() {
     },
     launchWorkWorkflow: launchWorkWithPipeline,
     launchGenericWorkflow: launchGenericWithPipeline,
+    launchStartFlow,
     exit: exitTUI,
     returnToIdle,
   })

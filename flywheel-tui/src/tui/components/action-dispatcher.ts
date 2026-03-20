@@ -44,6 +44,7 @@ export interface ActionDispatcherDeps {
   notify: (message: string, variant: string) => void
   launchWorkWorkflow: (planPath: string) => void
   launchGenericWorkflow: (name: string, args: Record<string, string>) => void
+  launchStartFlow?: (args: Record<string, string>) => void
   exit: () => void
   returnToIdle?: () => void
 }
@@ -80,7 +81,7 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
 
     if (workflow === "help") {
       deps.notify(
-        "Commands: /work, /plan, /review, /ship, /debug, /research, /config, /exit",
+        "Commands: /start, /work, /plan, /review, /ship, /debug, /research, /config, /exit",
         "info",
       )
       return null
@@ -93,6 +94,11 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
 
     if (workflow === "config") {
       deps.notify("Not yet implemented: /config", "warning")
+      return null
+    }
+
+    if (workflow === "start") {
+      deps.launchStartFlow?.(args)
       return null
     }
 

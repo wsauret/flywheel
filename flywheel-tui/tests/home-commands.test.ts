@@ -117,6 +117,19 @@ describe("parseHomeCommand", () => {
     expect(result).toEqual({ workflow: "new", args: {} })
   })
 
+  it('parses "/start build a new feature" correctly', () => {
+    const result = parseHomeCommand("/start build a new feature")
+    expect(result).toEqual({
+      workflow: "start",
+      args: { description: "build a new feature" },
+    })
+  })
+
+  it('parses "/start" with no args as empty args', () => {
+    const result = parseHomeCommand("/start")
+    expect(result).toEqual({ workflow: "start", args: {} })
+  })
+
   it("derives valid commands from COMMANDS array (sync check)", () => {
     // All COMMANDS entries should be parseable
     const { COMMANDS } = require("../src/tui/config/commands")
