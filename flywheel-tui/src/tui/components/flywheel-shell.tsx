@@ -64,7 +64,7 @@ import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
-import { buildCustomPipeline, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
+import { buildCustomPipeline, modeHasReview, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
 import { parseCommand } from "../utils/command-parser"
 import { SIDEBAR_WIDTH } from "./shell-modes"
 import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
@@ -503,6 +503,7 @@ export function FlywheelShell() {
     stages: import("../../controller/workflow-pipeline").PipelineStage[],
     args: Record<string, string>,
     preloadedDeps?: WorkflowDeps,
+    interactiveOverrides?: { plan?: boolean; review?: boolean },
   ) => {
     // Clean up any previous session
     if (activeSession) {
@@ -635,7 +636,7 @@ export function FlywheelShell() {
     )
 
     // Create stage runner (pass questionService for interactive plan gates)
-    const stageRunner = createShellStageRunner(session, deps, questionService)
+    const stageRunner = createShellStageRunner(session, deps, questionService, interactiveOverrides)
 
     // Create and start the pipeline
     const pipeline = new WorkflowPipeline({
@@ -1159,13 +1160,55 @@ export function FlywheelShell() {
       const selectedOption = PIPELINE_MODE_OPTIONS.find((o) => o.label === selectedLabel)
       const mode: PipelineMode = selectedOption?.value ?? "plan-work-review"
 
+      // Step 2.5a: Consolidation preference (all modes include plan)
+      const consolidationAnswers = await startQS.ask([{
+        question: "Do you want to participate in plan consolidation?",
+        header: "Consolidation",
+        options: [
+          { label: "Yes, let me review", description: "Review and consolidate the plan interactively (Recommended)" },
+          { label: "No, handle automatically", description: "Auto-consolidate without prompts" },
+        ],
+        custom: false,
+        default: "Yes, let me review",
+      }])
+      const consolidationLabel = consolidationAnswers[0]?.[0]
+      if (!consolidationLabel) {
+        cleanupQuestionSubscriptions()
+        return
+      }
+      const planInteractive = consolidationLabel === "Yes, let me review"
+
+      // Step 2.5b: Review triage preference (only if mode includes review)
+      let reviewInteractive = false
+      if (modeHasReview(mode)) {
+        const triageAnswers = await startQS.ask([{
+          question: "Do you want to triage review findings?",
+          header: "Review Triage",
+          options: [
+            { label: "Yes, let me triage", description: "Review P3 findings interactively (Recommended)" },
+            { label: "No, handle automatically", description: "Auto-resolve P3 findings" },
+          ],
+          custom: false,
+          default: "Yes, let me triage",
+        }])
+        const triageLabel = triageAnswers[0]?.[0]
+        if (!triageLabel) {
+          cleanupQuestionSubscriptions()
+          return
+        }
+        reviewInteractive = triageLabel === "Yes, let me triage"
+      }
+
       // Clean up question subscriptions before starting pipeline
       // (pipeline will create its own QuestionService)
       cleanupQuestionSubscriptions()
 
       // Step 3: Build stages and start pipeline
       const stages = buildCustomPipeline(mode)
-      startPipeline(stages, { description })
+      startPipeline(stages, { description }, undefined, {
+        plan: planInteractive,
+        review: reviewInteractive,
+      })
     } catch {
       // QuestionRejectedError or other: user dismissed, clean up
       cleanupQuestionSubscriptions()
@@ -1470,6 +1513,7 @@ export function FlywheelShell() {
     startTime: 0,
     workflowStatus: "idle",
     phases: [],
+    stages: [],
     outputLines: [],
     outputBlocks: [],
     error: undefined,

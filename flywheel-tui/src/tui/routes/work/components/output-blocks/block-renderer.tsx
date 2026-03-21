@@ -21,20 +21,20 @@ export interface BlockRendererProps {
 export function BlockRenderer(props: BlockRendererProps) {
   return (
     <Switch>
-      <Match when={props.block.kind === "text"}>
-        <TextBlock block={props.block as any} />
+      <Match when={props.block.kind === "text" ? props.block : undefined}>
+        {(block) => <TextBlock block={block()} />}
       </Match>
-      <Match when={props.block.kind === "tool"}>
-        <ToolBlock block={props.block as any} />
+      <Match when={props.block.kind === "tool" ? props.block : undefined}>
+        {(block) => <ToolBlock block={block()} />}
       </Match>
-      <Match when={props.block.kind === "agent"}>
-        <AgentBlock block={props.block as any} />
+      <Match when={props.block.kind === "agent" ? props.block : undefined}>
+        {(block) => <AgentBlock block={block()} />}
       </Match>
-      <Match when={props.block.kind === "contextGroup"}>
-        <ContextGroupBlock block={props.block as any} />
+      <Match when={props.block.kind === "contextGroup" ? props.block : undefined}>
+        {(block) => <ContextGroupBlock block={block()} />}
       </Match>
-      <Match when={props.block.kind === "system"}>
-        <SystemBlock block={props.block as any} />
+      <Match when={props.block.kind === "system" ? props.block : undefined}>
+        {(block) => <SystemBlock block={block()} />}
       </Match>
     </Switch>
   )

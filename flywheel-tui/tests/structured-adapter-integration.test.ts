@@ -547,7 +547,7 @@ describe("Structured Adapter Integration", () => {
   // ── stderr passthrough ──
 
   describe("stderr passthrough", () => {
-    it("stderr goes through structured pipeline as text block", () => {
+    it("stderr goes through structured pipeline as SystemBlock", () => {
       const { bus, store } = createHarness();
 
       bus.emit({
@@ -560,9 +560,9 @@ describe("Structured Adapter Integration", () => {
 
       const blocks = store.getState().outputBlocks;
       expect(blocks.length).toBeGreaterThanOrEqual(1);
-      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
-      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(textBlocks[0].content).toContain("Error: something broke");
+      const systemBlocks = blocks.filter((b) => b.kind === "system");
+      expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
+      expect((systemBlocks[0] as any).message).toContain("Error: something broke");
     });
   });
 
@@ -595,7 +595,7 @@ describe("Structured Adapter Integration", () => {
   // ── System messages ──
 
   describe("system messages", () => {
-    it("worker:spawned produces structured outputBlock", () => {
+    it("worker:spawned is suppressed from TUI output (no blocks)", () => {
       const { bus, store } = createHarness();
 
       bus.emit({
@@ -607,9 +607,7 @@ describe("Structured Adapter Integration", () => {
       });
 
       const blocks = store.getState().outputBlocks;
-      expect(blocks.length).toBeGreaterThanOrEqual(1);
-      const text = blocks.filter((b) => b.kind === "text").map((b: any) => b.content).join("");
-      expect(text).toContain("Worker spawned");
+      expect(blocks).toHaveLength(0);
     });
   });
 

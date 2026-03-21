@@ -23,6 +23,7 @@
 import { Show } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
+import { truncate, MAX_BLOCK_LINE_LENGTH } from "@tui/utils/text"
 import type { AgentBlock as AgentBlockType } from "../../state/types"
 
 export interface AgentBlockProps {
@@ -49,12 +50,12 @@ export function AgentBlock(props: AgentBlockProps) {
   const toolCount = () => props.block.toolCount ?? props.block.children.length
 
   return (
-    <box flexDirection="column">
+    <box flexDirection="column" marginTop={1}>
       {/* Header line */}
       <Show when={props.block.status === "active"}>
         <box flexDirection="row">
           <Spinner color={themeCtx.theme.primary} />
-          <text fg={themeCtx.theme.text}>{` ${label()}`}</text>
+          <text fg={themeCtx.theme.primary}>{` ${label()}`}</text>
         </box>
       </Show>
 
@@ -72,7 +73,7 @@ export function AgentBlock(props: AgentBlockProps) {
 
       {/* Running: show latest tool being called */}
       <Show when={props.block.status === "active" && props.block.latestChild}>
-        <text fg={themeCtx.theme.textMuted}>{`  ↳ ${props.block.latestChild}`}</text>
+        <text fg={themeCtx.theme.textMuted}>{`  ↳ ${truncate(props.block.latestChild!, MAX_BLOCK_LINE_LENGTH - 4)}`}</text>
       </Show>
 
       {/* Completed/Paused: show tool count + duration */}

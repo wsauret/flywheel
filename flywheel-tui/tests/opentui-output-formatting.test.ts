@@ -245,7 +245,7 @@ describe("OpenTUI Adapter — output formatting", () => {
   // ── stderr passthrough ──
 
   describe("stderr passthrough", () => {
-    it("routes stderr through structured pipeline as text block", () => {
+    it("routes stderr through structured pipeline as SystemBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:output",
@@ -256,9 +256,9 @@ describe("OpenTUI Adapter — output formatting", () => {
       });
       const blocks = store.getState().outputBlocks;
       expect(blocks.length).toBeGreaterThanOrEqual(1);
-      const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
-      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(textBlocks[0].content).toContain("error: something failed");
+      const systemBlocks = blocks.filter((b) => b.kind === "system");
+      expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
+      expect((systemBlocks[0] as any).message).toContain("error: something failed");
     });
   });
 

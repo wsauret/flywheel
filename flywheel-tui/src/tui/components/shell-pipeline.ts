@@ -89,6 +89,7 @@ export function createShellStageRunner(
   session: WorkflowSession,
   deps: WorkflowDeps,
   questionService?: QuestionService,
+  interactiveOverrides?: { plan?: boolean; review?: boolean },
 ): StageRunner {
   return async (
     stage: PipelineStage,
@@ -174,7 +175,8 @@ export function createShellStageRunner(
     const isPlan = stage.workflow === "plan";
     const isReview = stage.workflow === "review";
     const projectCwd = deps.config.project_cwd || process.cwd();
-    const interactive = deps.config.interactive_consolidation ?? false;
+    const stageKey = stage.workflow as "plan" | "review";
+    const interactive = interactiveOverrides?.[stageKey] ?? deps.config.interactive_consolidation ?? false;
     let onStepComplete: OnStepCompleteHook | undefined;
     if (isPlan) {
       onStepComplete = createPlanOnStepComplete(projectCwd, { questionService, interactive });

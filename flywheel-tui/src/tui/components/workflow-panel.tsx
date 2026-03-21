@@ -18,13 +18,14 @@ import { Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { useTimer } from "@tui/shared/services"
 import { Spinner } from "@tui/shared/components/spinner"
-import { computeProgress, statusLabel } from "./workflow-panel-logic"
+import { computeProgress, computeStageProgress, statusLabel } from "./workflow-panel-logic"
 import { getStatusIcon, getStatusColor } from "../routes/work/components/status-utils"
+import { truncate } from "../utils/text"
 import type { Theme } from "@tui/shared/context/theme"
-import type { WorkState, PhaseState } from "../routes/work/state/types"
+import type { WorkState, PhaseState, StageGroup, StageStatus } from "../routes/work/state/types"
 
 // Re-export pure logic for consumers
-export { computeProgress, statusLabel, type PanelProgress } from "./workflow-panel-logic"
+export { computeProgress, computeStageProgress, statusLabel, type PanelProgress } from "./workflow-panel-logic"
 
 // ---------------------------------------------------------------------------
 // Props
@@ -50,7 +51,11 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
   const timer = useTimer()
   const label = () => props.stepLabel ?? "Phase"
 
-  const progress = () => computeProgress(props.state.phases)
+  const hasStages = () => props.state.stages.length > 0
+  const progress = () =>
+    hasStages()
+      ? computeStageProgress(props.state.stages)
+      : computeProgress(props.state.phases)
 
   const statusColor = () => {
     switch (props.state.workflowStatus) {
@@ -120,7 +125,7 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
 
         {/* ── Detailed phase timeline (scrollable) ── */}
         <Show
-          when={props.state.phases.length > 0}
+          when={props.state.phases.length > 0 || hasStages()}
           fallback={
             <box paddingLeft={1} marginTop={1}>
               <text fg={themeCtx.theme.textMuted}>No phases yet.</text>
@@ -138,20 +143,92 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
             scrollbarOptions={{ visible: false }}
             viewportCulling={true}
           >
-            <For each={props.state.phases}>
-              {(phase) => (
-                <PhaseRow
-                  phase={phase}
-                  isSelected={phase.index === (props.selectedPhaseIndex ?? -1)}
-                  timer={timer}
-                  theme={themeCtx.theme}
-                />
-              )}
-            </For>
+            <Show
+              when={hasStages()}
+              fallback={
+                <For each={props.state.phases}>
+                  {(phase) => (
+                    <PhaseRow
+                      phase={phase}
+                      isSelected={phase.index === (props.selectedPhaseIndex ?? -1)}
+                      timer={timer}
+                      theme={themeCtx.theme}
+                    />
+                  )}
+                </For>
+              }
+            >
+              <For each={props.state.stages}>
+                {(stage) => (
+                  <box flexDirection="column">
+                    <StageHeader label={stage.label} status={stage.status} theme={themeCtx.theme} />
+                    <For each={stage.phases}>
+                      {(phase) => (
+                        <PhaseRow
+                          phase={phase}
+                          isSelected={phase.index === (props.selectedPhaseIndex ?? -1)}
+                          timer={timer}
+                          theme={themeCtx.theme}
+                        />
+                      )}
+                    </For>
+                  </box>
+                )}
+              </For>
+            </Show>
           </scrollbox>
         </Show>
       </box>
     </Show>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// StageHeader — stage group label with status icon
+// ---------------------------------------------------------------------------
+
+interface StageHeaderProps {
+  label: string
+  status: StageStatus
+  theme: Theme
+}
+
+function StageHeader(props: StageHeaderProps) {
+  const icon = () => {
+    switch (props.status) {
+      case "running":   return "◐"
+      case "completed": return "●"
+      case "failed":    return "✗"
+      default:          return "○"
+    }
+  }
+
+  const color = () => {
+    switch (props.status) {
+      case "running":   return props.theme.info
+      case "completed": return props.theme.success
+      case "failed":    return props.theme.error
+      default:          return props.theme.textMuted
+    }
+  }
+
+  return (
+    <box paddingLeft={1} paddingRight={1} marginTop={0}>
+      <Show
+        when={props.status === "running"}
+        fallback={
+          <text wrapMode="none" fg={color()}>
+            {icon()}{" "}
+          </text>
+        }
+      >
+        <Spinner color={color()} />
+        <text wrapMode="none"> </text>
+      </Show>
+      <text wrapMode="none" fg={props.theme.textMuted} attributes={1}>
+        {props.label.toUpperCase()}
+      </text>
+    </box>
   )
 }
 
@@ -227,11 +304,5 @@ function PhaseRow(props: PhaseRowProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers — truncate() imported from ../utils/text
 // ---------------------------------------------------------------------------
-
-function truncate(text: string, maxLen: number): string {
-  if (maxLen < 4) return text.slice(0, maxLen)
-  if (text.length <= maxLen) return text
-  return text.slice(0, maxLen - 1) + "\u2026"
-}

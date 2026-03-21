@@ -27,13 +27,20 @@ import { NDJSONParser } from "../../worker/ndjson-parser";
 import { SubagentTraceParser } from "./subagent-tracing/parser";
 import { StructuredOutputBuilder } from "./structured-output-builder";
 import { StructuredEventParser } from "./structured-event-parser";
+import { Log } from "../../utils/log";
+import { COMPLETION_REGEX } from "../../worker/completion";
 
 /** Flush interval for batched block updates (ms). */
 const FLUSH_INTERVAL_MS = 16;
 
+/** Timeout (ms) after which an agent with no activity is auto-completed. */
+const AGENT_STALE_TIMEOUT_MS = 30_000;
+
 export interface OpenTUIAdapterOptions {
   actions: UIActions;
 }
+
+const log = Log.create({ service: "opentui-adapter" });
 
 export class OpenTUIAdapter extends BaseUIAdapter {
   readonly adapterType: AdapterType = "opentui";
@@ -54,6 +61,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Timestamp when the current pipeline stage started (for computing per-stage elapsed) */
   private _stageStartedAt: number = 0;
 
+  /** Current stage label for routing phase events to the correct StageGroup. */
+  private _currentStageLabel: string = "work";
+
   /** Current engine ID for routing events. Updated per worker:output event. */
   private currentEngineId: string | undefined;
 
@@ -66,6 +76,12 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
   /** Interval handle for batched flush. */
   private flushInterval: ReturnType<typeof setInterval> | null = null;
+
+  /** Tracks last-activity timestamp per active agent for stale detection. */
+  private agentActivityMap = new Map<string, number>();
+
+  /** Interval handle for stale agent checks (1s). */
+  private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: OpenTUIAdapterOptions) {
     super();
@@ -80,20 +96,44 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     });
     this.ndjsonParser = new NDJSONParser();
 
+    // Wire builder callbacks for stale agent tracking
+    this.builder.onAgentLifecycle = (type, id) => {
+      if (type === "start") {
+        this.agentActivityMap.set(id, Date.now());
+      } else {
+        // "complete" or "error" — agent is no longer active
+        this.agentActivityMap.delete(id);
+      }
+    };
+    this.builder.onAgentActivity = (id) => {
+      if (this.agentActivityMap.has(id)) {
+        this.agentActivityMap.set(id, Date.now());
+      }
+    };
+
     // Wire NDJSONParser events to StructuredEventParser
     this.ndjsonParser.onEvent = (event) => {
       this.eventParser.dispatch(event, this.currentEngineId);
     };
 
     // Raw text lines (non-JSON) → push as text blocks
+    // Strip completion markers before they reach the output window.
     this.ndjsonParser.onRawText = (text) => {
-      this.builder.pushText(text + "\n", Date.now());
+      const cleaned = text.replace(COMPLETION_REGEX, "");
+      if (cleaned.trim().length > 0) {
+        this.builder.pushText(cleaned + "\n", Date.now());
+      }
     };
 
     // Start batched flush interval
     this.flushInterval = setInterval(() => {
       this.flushBlocks();
     }, FLUSH_INTERVAL_MS);
+
+    // Start stale agent check interval (1s)
+    this.staleCheckInterval = setInterval(() => {
+      this.checkStaleAgents();
+    }, 1000);
   }
 
   /** Toggle raw output mode. Returns the new state. */
@@ -117,12 +157,16 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     return this._stageTimings;
   }
 
-  /** Clean up interval on disconnect. */
+  /** Clean up intervals on disconnect. */
   override disconnect(): void {
     super.disconnect();
     if (this.flushInterval !== null) {
       clearInterval(this.flushInterval);
       this.flushInterval = null;
+    }
+    if (this.staleCheckInterval !== null) {
+      clearInterval(this.staleCheckInterval);
+      this.staleCheckInterval = null;
     }
   }
 
@@ -134,10 +178,16 @@ export class OpenTUIAdapter extends BaseUIAdapter {
           timerService.reset();
           timerService.start();
           this.actions.startWorkflow(event.planPath);
+          // Create a single "work" stage for standalone mode
+          this._currentStageLabel = "work";
+          this.actions.addStage("work");
+          this.actions.startStage("work");
         } else {
           // Pipeline mode: new stage starting within an ongoing session.
           // The output log is continuous — only update metadata, don't wipe blocks.
           this.actions.continueStage(event.planPath);
+          // Start the current stage (already created by pipeline:started)
+          this.actions.startStage(this._currentStageLabel);
         }
         break;
 
@@ -195,6 +245,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
         timerService.registerAgent(`phase-${event.phaseIndex}`);
         this.actions.startPhase(event.phaseIndex, event.phaseName);
+
+        // Also populate stage-scoped phases
+        this.actions.startPhaseInStage(this._currentStageLabel, event.phaseIndex, event.phaseName);
         break;
       }
 
@@ -204,6 +257,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.flushBlocks();
         timerService.completeAgent(`phase-${event.phaseIndex}`);
         this.actions.completePhase(event.phaseIndex);
+        this.actions.completePhaseInStage(this._currentStageLabel, event.phaseIndex);
         break;
 
       case "phase:failed":
@@ -211,6 +265,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.flushBlocks();
         timerService.completeAgent(`phase-${event.phaseIndex}`);
         this.actions.failPhase(event.phaseIndex, event.reason);
+        this.actions.failPhaseInStage(this._currentStageLabel, event.phaseIndex, event.reason);
         break;
 
       case "worker:output":
@@ -229,13 +284,14 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.clearApproval();
         break;
 
-      // Worker lifecycle events
+      // Worker lifecycle events — spawned/completed are suppressed from TUI
+      // output (noise) but logged for debugging. Failures remain visible.
       case "worker:spawned":
-        this.pushSystemText(`◉ Worker spawned for step ${event.stepIndex}\n`, event.timestamp);
+        log.debug(`Worker spawned for step ${event.stepIndex}`, { step: event.stepIndex });
         break;
 
       case "worker:completed":
-        this.pushSystemText(`◉ Worker finished\n`, event.timestamp);
+        log.debug("Worker finished");
         break;
 
       case "worker:failed":
@@ -295,6 +351,12 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         // Start the session timer once at pipeline start (not per-stage).
         timerService.reset();
         timerService.start();
+        // Pre-create all stage groups with pending status
+        for (const stage of event.stages) {
+          this.actions.addStage(stage);
+        }
+        // Set the first stage as current (will be started on workflow:started)
+        this._currentStageLabel = event.stages[0] ?? "work";
         this.pushSystemText(`▶ Pipeline started: ${event.stages.join(" → ")}\n`, event.timestamp);
         break;
       case "pipeline:stage-transition": {
@@ -303,15 +365,22 @@ export class OpenTUIAdapter extends BaseUIAdapter {
           this._stageTimings.push(now - this._stageStartedAt);
         }
         this._stageStartedAt = now;
+        // Complete the outgoing stage and buffer the incoming stage label
+        this.actions.completeStage(event.from);
+        this._currentStageLabel = event.to;
         this.pushSystemText(`◈ ${event.from} complete. Starting ${event.to}...\n`, event.timestamp);
         break;
       }
       case "pipeline:completed":
+        // Complete the final stage
+        this.actions.completeStage(this._currentStageLabel);
         this._pipelineMode = false;
         timerService.stop();
         this.pushSystemText(`✓ Pipeline complete (${event.stagesCompleted} stages)\n`, event.timestamp);
         break;
       case "pipeline:failed":
+        // Fail the current stage
+        this.actions.failStage(this._currentStageLabel);
         this._pipelineMode = false;
         timerService.stop();
         this.pushSystemText(`✗ Pipeline failed: ${event.reason}\n`, event.timestamp);
@@ -327,11 +396,14 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
   /**
    * Push a system message through the structured block pipeline and flush.
-   * Used for lifecycle events (worker:spawned, step:started, etc.) that
-   * previously went through appendOutput.
+   * Used for lifecycle events (step:started, worker:failed, etc.) that
+   * are user-relevant. Produces SystemBlock objects.
+   *
+   * Timestamp conversion: `new Date(timestamp).getTime()` handles ISO strings;
+   * falls back to `Date.now()` if parsing returns NaN (e.g., empty string).
    */
   private pushSystemText(text: string, timestamp: string): void {
-    this.builder.pushText(text, new Date(timestamp).getTime() || Date.now());
+    this.builder.pushSystemMessage(text, new Date(timestamp).getTime() || Date.now());
     this.flushBlocks();
   }
 
@@ -379,6 +451,23 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   private flushBlocks(): void {
     if (this.builder.hasChanged()) {
       this.actions.setOutputBlocks(this.builder.getBlocks());
+    }
+  }
+
+  /**
+   * Auto-complete agents that haven't had any activity for AGENT_STALE_TIMEOUT_MS.
+   * Runs on a 1-second interval, separate from the 16ms flush cycle.
+   * Stale agents are completed normally (not errored) since they likely
+   * did finish — we just missed the completion signal.
+   */
+  private checkStaleAgents(): void {
+    const now = Date.now();
+    for (const [id, lastActivity] of this.agentActivityMap) {
+      if (now - lastActivity > AGENT_STALE_TIMEOUT_MS) {
+        this.builder.completeAgent(id, 0, 0);
+        this.agentActivityMap.delete(id);
+        this.flushBlocks();
+      }
     }
   }
 }

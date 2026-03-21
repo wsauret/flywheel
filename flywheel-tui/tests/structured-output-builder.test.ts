@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/tui/adapters/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, ContextGroupBlock } from "../src/tui/routes/work/state/types";
+import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, ContextGroupBlock, SystemBlock } from "../src/tui/routes/work/state/types";
 
 describe("StructuredOutputBuilder", () => {
   let builder: StructuredOutputBuilder;
@@ -393,6 +393,132 @@ describe("StructuredOutputBuilder", () => {
       // Oldest blocks should have been dropped
       const firstTool = blocks[0] as ToolBlock;
       expect(firstTool.name).toBe("Tool10");
+    });
+  });
+
+  // ── System messages ──
+
+  describe("pushSystemMessage", () => {
+    it("creates a SystemBlock", () => {
+      const now = Date.now();
+      builder.pushSystemMessage("▸ Step 0: Run tests\n", now);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("system");
+      const sys = blocks[0] as SystemBlock;
+      expect(sys.message).toBe("▸ Step 0: Run tests\n");
+      expect(sys.timestamp).toBe(now);
+    });
+
+    it("consecutive system messages create separate SystemBlocks (no merging)", () => {
+      const now = Date.now();
+      builder.pushSystemMessage("first\n", now);
+      builder.pushSystemMessage("second\n", now + 100);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("system");
+      expect(blocks[1].kind).toBe("system");
+    });
+
+    it("system message breaks context run", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+      builder.pushTool("Glob", "**/*.ts", now + 100);
+      builder.pushSystemMessage("step started\n", now + 200);
+      builder.pushTool("Grep", "pattern", now + 300);
+
+      const blocks = builder.getBlocks();
+      // Read, Glob (standalone - only 2 before break), SystemBlock, Grep (standalone)
+      expect(blocks).toHaveLength(4);
+      expect(blocks[0].kind).toBe("tool");
+      expect(blocks[1].kind).toBe("tool");
+      expect(blocks[2].kind).toBe("system");
+      expect(blocks[3].kind).toBe("tool");
+    });
+
+    it("system message after text creates separate block", () => {
+      const now = Date.now();
+      builder.pushText("some output\n", now);
+      builder.pushSystemMessage("system event\n", now + 100);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("system");
+    });
+
+    it("text after system message creates new TextBlock", () => {
+      const now = Date.now();
+      builder.pushSystemMessage("system event\n", now);
+      builder.pushText("output\n", now + 100);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("system");
+      expect(blocks[1].kind).toBe("text");
+    });
+  });
+
+  // ── Lifecycle callbacks ──
+
+  describe("lifecycle callbacks", () => {
+    it("onAgentLifecycle fires 'start' when agent is started", () => {
+      const events: Array<{ type: string; id: string }> = [];
+      builder.onAgentLifecycle = (type, id) => events.push({ type, id });
+
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      expect(events).toHaveLength(1);
+      expect(events[0]).toEqual({ type: "start", id: "a1" });
+    });
+
+    it("onAgentLifecycle fires 'complete' when agent is completed", () => {
+      const events: Array<{ type: string; id: string }> = [];
+      builder.onAgentLifecycle = (type, id) => events.push({ type, id });
+
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.completeAgent("a1", 500, 2);
+
+      expect(events).toHaveLength(2);
+      expect(events[1]).toEqual({ type: "complete", id: "a1" });
+    });
+
+    it("onAgentLifecycle fires 'error' when agent errors", () => {
+      const events: Array<{ type: string; id: string }> = [];
+      builder.onAgentLifecycle = (type, id) => events.push({ type, id });
+
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.errorAgent("a1", "timeout");
+
+      expect(events).toHaveLength(2);
+      expect(events[1]).toEqual({ type: "error", id: "a1" });
+    });
+
+    it("onAgentActivity fires when tool is added to agent", () => {
+      const activities: string[] = [];
+      builder.onAgentActivity = (id) => activities.push(id);
+
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.pushTool("Read", "file.ts", Date.now());
+      builder.pushTool("Grep", "pattern", Date.now());
+
+      expect(activities).toEqual(["a1", "a1"]);
+    });
+
+    it("onAgentActivity fires for pushToolToAgent", () => {
+      const activities: string[] = [];
+      builder.onAgentActivity = (id) => activities.push(id);
+
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.completeAgent("a1", 100, 0);
+      builder.pushToolToAgent("a1", "Read", "file.ts", Date.now());
+
+      expect(activities).toEqual(["a1"]);
+    });
+
+    it("callbacks are optional — no error when not set", () => {
+      // No callbacks set — should not throw
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.pushTool("Read", "file.ts", Date.now());
+      builder.completeAgent("a1", 100, 1);
+      expect(builder.getBlocks()).toHaveLength(1);
     });
   });
 

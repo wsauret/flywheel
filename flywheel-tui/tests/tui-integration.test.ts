@@ -62,10 +62,10 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const textBlocks = store.getState().outputBlocks.filter((b: any) => b.kind === "text");
       expect(textBlocks.length).toBeGreaterThanOrEqual(1);
 
-      // stderr now goes through structured pipeline as text blocks
+      // stderr now goes through structured pipeline as SystemBlocks
       emitter.workerOutput(wfId, "stderr", "warning: deprecated package\n");
       const blocksAfterStderr = store.getState().outputBlocks;
-      const stderrText = blocksAfterStderr.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      const stderrText = blocksAfterStderr.filter((b: any) => b.kind === "system").map((b: any) => b.message).join("");
       expect(stderrText).toContain("warning: deprecated package");
 
       // 4. Complete phase 0
@@ -105,8 +105,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       emitter.workerOutput(wfId, "stdout", "running tests...\n");
       emitter.workerOutput(wfId, "stderr", "1 deprecation warning\n");
 
-      // Verify stderr appears in blocks during the phase it was emitted
-      const phase1Text = store.getState().outputBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      // Verify stderr appears in blocks during the phase it was emitted (as SystemBlock)
+      const phase1Text = store.getState().outputBlocks.filter((b: any) => b.kind === "system").map((b: any) => b.message).join("");
       expect(phase1Text).toContain("1 deprecation warning");
 
       emitter.phaseCompleted(wfId, 1);
@@ -238,7 +238,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 
       const blocks = store.getState().outputBlocks;
       expect(blocks.length).toBeGreaterThanOrEqual(1);
-      const text = blocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
+      const systemBlocks = blocks.filter((b: any) => b.kind === "system");
+      const text = systemBlocks.map((b: any) => b.message).join("");
       expect(text).toContain("Retrying (1/3)");
       expect(text).toContain("Connection timeout");
       expect(text).toContain("Retrying (2/3)");
@@ -402,12 +403,10 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     expect(store.getState().phases[0].name).toBe("Chain Phase");
 
     emitter.workerSpawned(wfId, 0, 0);
-    // worker:spawned now produces an outputBlock (system message via structured pipeline)
+    // worker:spawned is suppressed from TUI output (only logged to file)
     expect(store.getState().phases).toHaveLength(1);
     const spawnBlocks = store.getState().outputBlocks;
-    expect(spawnBlocks.length).toBeGreaterThanOrEqual(1);
-    const spawnText = spawnBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
-    expect(spawnText).toContain("Worker spawned");
+    expect(spawnBlocks).toHaveLength(0);
 
     // stdout now goes to structured outputBlocks
     emitter.workerOutput(wfId, "stdout", "chain output\n");
@@ -421,10 +420,8 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
       durationMs: 500,
       truncated: false,
     } as any);
-    // worker:completed now produces an outputBlock (system message via structured pipeline)
+    // worker:completed is suppressed from TUI output (only logged to file)
     expect(store.getState().phases[0].status).toBe("running");
-    const completeText = store.getState().outputBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
-    expect(completeText).toContain("Worker finished");
 
     emitter.phaseCompleted(wfId, 0);
     expect(store.getState().phases[0].status).toBe("completed");

@@ -194,6 +194,7 @@ export function OutputWindow(props: OutputWindowProps) {
           <scrollbox
             ref={(r: ScrollBoxRenderable) => setScrollRef(r)}
             flexGrow={1}
+            flexDirection="column"
             width="100%"
             stickyScroll={true}
             stickyStart="bottom"

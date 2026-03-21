@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test"
 import {
   buildCustomPipeline,
+  modeHasReview,
   PIPELINE_MODE_OPTIONS,
   type PipelineMode,
 } from "../src/tui/components/start-command"
@@ -52,5 +53,46 @@ describe("PIPELINE_MODE_OPTIONS", () => {
   it("values match PipelineMode union", () => {
     const values = PIPELINE_MODE_OPTIONS.map((o) => o.value)
     expect(values).toEqual(["plan-only", "plan-work", "plan-work-review", "full"])
+  })
+})
+
+describe("modeHasReview", () => {
+  it("returns true for modes that include a review stage", () => {
+    expect(modeHasReview("plan-work-review")).toBe(true)
+    expect(modeHasReview("full")).toBe(true)
+  })
+
+  it("returns false for modes without a review stage", () => {
+    expect(modeHasReview("plan-only")).toBe(false)
+    expect(modeHasReview("plan-work")).toBe(false)
+  })
+})
+
+describe("triage preference wiring", () => {
+  it("all modes include a plan stage (consolidation question always applies)", () => {
+    const allModes: PipelineMode[] = ["plan-only", "plan-work", "plan-work-review", "full"]
+    for (const mode of allModes) {
+      const stages = buildCustomPipeline(mode)
+      const hasPlan = stages.some((s) => s.workflow === "plan")
+      expect(hasPlan).toBe(true)
+    }
+  })
+
+  it("modes with review include a review stage (triage question applies)", () => {
+    const reviewModes: PipelineMode[] = ["plan-work-review", "full"]
+    for (const mode of reviewModes) {
+      const stages = buildCustomPipeline(mode)
+      const hasReview = stages.some((s) => s.workflow === "review")
+      expect(hasReview).toBe(true)
+    }
+  })
+
+  it("modes without review skip the review stage (no triage question)", () => {
+    const noReviewModes: PipelineMode[] = ["plan-only", "plan-work"]
+    for (const mode of noReviewModes) {
+      const stages = buildCustomPipeline(mode)
+      const hasReview = stages.some((s) => s.workflow === "review")
+      expect(hasReview).toBe(false)
+    }
   })
 })

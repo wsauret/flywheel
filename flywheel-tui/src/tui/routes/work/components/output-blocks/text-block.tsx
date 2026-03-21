@@ -16,11 +16,13 @@ export interface TextBlockProps {
 export function TextBlock(props: TextBlockProps) {
   const themeCtx = useTheme()
   return (
-    <markdown
-      syntaxStyle={themeCtx.syntax}
-      content={props.block.content}
-      streaming={true}
-      conceal={true}
-    />
+    <box marginTop={1}>
+      <markdown
+        syntaxStyle={themeCtx.syntax}
+        content={props.block.content}
+        streaming={true}
+        conceal={true}
+      />
+    </box>
   )
 }

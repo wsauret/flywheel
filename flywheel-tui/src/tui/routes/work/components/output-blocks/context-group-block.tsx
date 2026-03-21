@@ -19,6 +19,8 @@ export function ContextGroupBlock(props: ContextGroupBlockProps) {
   const fileCount = () => props.block.tools.length
 
   return (
-    <text fg={themeCtx.theme.textMuted}>{`◆ Gathered context (${fileCount()} files)`}</text>
+    <box marginTop={1}>
+      <text fg={themeCtx.theme.textMuted}>{`◆ Gathered context (${fileCount()} files)`}</text>
+    </box>
   )
 }

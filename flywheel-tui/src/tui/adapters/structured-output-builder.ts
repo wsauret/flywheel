@@ -18,6 +18,7 @@ import type {
   ToolBlock,
   AgentBlock,
   ContextGroupBlock,
+  SystemBlock,
 } from "../routes/work/state/types";
 
 const BLOCKS_CAP = 5000;
@@ -52,6 +53,18 @@ export class StructuredOutputBuilder {
   private contextRunStart = -1;
   private contextRunLength = 0;
 
+  /**
+   * Optional callback fired when an agent has activity (tool added).
+   * Notification-only — does not alter accumulator behavior.
+   */
+  onAgentActivity?: (agentId: string) => void;
+
+  /**
+   * Optional callback fired on agent lifecycle transitions.
+   * Notification-only — does not alter accumulator behavior.
+   */
+  onAgentLifecycle?: (type: "start" | "complete" | "error", agentId: string) => void;
+
   // ── Public API ──
 
   pushText(text: string, timestamp: number): void {
@@ -68,6 +81,18 @@ export class StructuredOutputBuilder {
       this.blocks.push({ kind: "text", content: text, timestamp });
     }
 
+    this.markDirty();
+  }
+
+  /**
+   * Push a system message as a SystemBlock.
+   * Used for lifecycle events (step:started, dispatcher:invoked, etc.)
+   * that are user-relevant but not worker output.
+   */
+  pushSystemMessage(message: string, timestamp: number): void {
+    this.breakContextRun();
+    this.blocks.push({ kind: "system", message, timestamp } as SystemBlock);
+    this.enforceBlocksCap();
     this.markDirty();
   }
 
@@ -115,6 +140,7 @@ export class StructuredOutputBuilder {
     const latestChild = `${tool.name}: ${tool.detail}`;
     this.blocks[agentIdx] = { ...agent, children, latestChild };
     this.markDirty();
+    this.onAgentActivity?.(agentId);
     return true;
   }
 
@@ -135,6 +161,7 @@ export class StructuredOutputBuilder {
     this.activeAgentId = id;
     this.enforceBlocksCap();
     this.markDirty();
+    this.onAgentLifecycle?.("start", id);
   }
 
   completeAgent(id: string, duration: number, toolCount: number): void {
@@ -150,6 +177,7 @@ export class StructuredOutputBuilder {
       this.activeAgentId = null;
     }
     this.markDirty();
+    this.onAgentLifecycle?.("complete", id);
   }
 
   errorAgent(id: string, message: string): void {
@@ -163,6 +191,7 @@ export class StructuredOutputBuilder {
       this.activeAgentId = null;
     }
     this.markDirty();
+    this.onAgentLifecycle?.("error", id);
   }
 
   updateAgentLatestChild(id: string, childDisplay: string): void {

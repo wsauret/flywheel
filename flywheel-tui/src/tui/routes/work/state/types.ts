@@ -9,6 +9,14 @@ export type PhaseStatus = "pending" | "running" | "completed" | "failed" | "skip
 
 export type WorkflowStatus = "idle" | "running" | "completed" | "failed" | "interrupted" | "stopping";
 
+export type StageStatus = "pending" | "running" | "completed" | "failed";
+
+export interface StageGroup {
+  label: string;           // "plan", "work", "review", "ship"
+  status: StageStatus;
+  phases: PhaseState[];
+}
+
 export interface PhaseState {
   index: number;
   name: string;
@@ -88,6 +96,8 @@ export interface WorkState {
   endTime?: number;
   workflowStatus: WorkflowStatus;
   phases: PhaseState[];
+  /** Hierarchical stage groups for pipeline mode. Empty for standalone workflows. */
+  stages: StageGroup[];
   /**
    * @deprecated Prefer `outputBlocks` for display. `outputLines` is retained
    * for the console adapter and raw-mode passthrough. The OpenTUI adapter now

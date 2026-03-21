@@ -52,6 +52,18 @@ export const PIPELINE_MODE_OPTIONS: PipelineModeOption[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// Mode helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the given pipeline mode includes a review stage.
+ * Used to decide whether to show the "triage review findings" question.
+ */
+export function modeHasReview(mode: PipelineMode): boolean {
+  return mode === "plan-work-review" || mode === "full"
+}
+
+// ---------------------------------------------------------------------------
 // Pipeline builder (pure function)
 // ---------------------------------------------------------------------------
 

@@ -16,6 +16,8 @@ export function SystemBlock(props: SystemBlockProps) {
   const themeCtx = useTheme()
 
   return (
-    <text fg={themeCtx.theme.textMuted}>{props.block.message}</text>
+    <box marginTop={1}>
+      <text fg={themeCtx.theme.textMuted}>{props.block.message}</text>
+    </box>
   )
 }
