@@ -1,7 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
   sidebarKeyHandler,
-  getSelectionAction,
   getOpenAction,
   groupSessions,
   GROUP_ORDER,
@@ -289,28 +288,28 @@ describe("sidebar focus guard conditions", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Mouse click behavior — getSelectionAction + flat index lookup
+// Mouse click behavior — getOpenAction + flat index lookup
 // ---------------------------------------------------------------------------
 
 describe("sidebar mouse click behavior", () => {
-  it("getSelectionAction returns open for paused session", () => {
+  it("getOpenAction returns open for paused session", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
-  it("getSelectionAction returns open for active session", () => {
+  it("getOpenAction returns open for active session", () => {
     const session = makeSession({ lifecycleState: "work:active" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
-  it("getSelectionAction returns null for archived session", () => {
+  it("getOpenAction returns null for archived session", () => {
     const session = makeSession({ lifecycleState: "archived" });
-    expect(getSelectionAction(session)).toBeNull();
+    expect(getOpenAction(session)).toBeNull();
   });
 
-  it("getSelectionAction returns null for trashed session", () => {
+  it("getOpenAction returns null for trashed session", () => {
     const session = makeSession({ lifecycleState: "trashed" });
-    expect(getSelectionAction(session)).toBeNull();
+    expect(getOpenAction(session)).toBeNull();
   });
 
   it("getOpenAction returns open for all non-terminal sessions", () => {
@@ -420,7 +419,11 @@ describe("isResumable", () => {
     expect(isResumable("plan:needs-fix")).toBe(false);
   });
 
-  it("only work:paused returns true among all states", () => {
+  it("budget_exhausted is resumable", () => {
+    expect(isResumable("budget_exhausted")).toBe(true);
+  });
+
+  it("only work:paused and budget_exhausted return true among all states", () => {
     const allStates: SessionLifecycleState[] = [
       "new",
       "plan:draft",
@@ -430,12 +433,13 @@ describe("isResumable", () => {
       "work:active",
       "work:paused",
       "work:review",
+      "budget_exhausted",
       "completed",
       "archived",
       "trashed",
     ];
     const resumableStates = allStates.filter(isResumable);
-    expect(resumableStates).toEqual(["work:paused"]);
+    expect(resumableStates).toEqual(["work:paused", "budget_exhausted"]);
   });
 });
 

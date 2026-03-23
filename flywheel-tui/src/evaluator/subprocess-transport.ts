@@ -1,7 +1,7 @@
 /**
- * CliEvaluatorTransport — invokes the evaluator by spawning `opencode run --format json`.
+ * SubprocessEvaluatorTransport — invokes the evaluator by spawning `opencode run --format json`.
  *
- * Same pattern as src/dispatcher/cli-transport.ts.
+ * Same pattern as src/dispatcher/subprocess-transport.ts.
  * Spawns process, passes evaluator prompt via stdin, parses EvaluatorResultSchema from stdout.
  * Uses createEnvFilter() for env sanitization.
  * 30s timeout. On parse failure: retry ONCE with error feedback.
@@ -21,18 +21,18 @@ const CLI_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 1;
 
 // ---------------------------------------------------------------------------
-// CliEvaluatorTransport
+// SubprocessEvaluatorTransport
 // ---------------------------------------------------------------------------
 
-export interface CliEvaluatorTransportOptions {
+export interface SubprocessEvaluatorTransportOptions {
   spawner: ProcessSpawner;
 }
 
-export class CliEvaluatorTransport implements EvaluatorTransport {
+export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private readonly spawner: ProcessSpawner;
   private readonly envFilter = createEnvFilter();
 
-  constructor(options: CliEvaluatorTransportOptions) {
+  constructor(options: SubprocessEvaluatorTransportOptions) {
     this.spawner = options.spawner;
   }
 
@@ -51,7 +51,7 @@ export class CliEvaluatorTransport implements EvaluatorTransport {
         process.env as Record<string, string | undefined>,
       );
 
-      const result = await this.spawner.spawn(
+      const { result: resultPromise } = await this.spawner.spawn(
         "opencode",
         ["run", "--format", "json"],
         {
@@ -60,6 +60,7 @@ export class CliEvaluatorTransport implements EvaluatorTransport {
           env,
         },
       );
+      const result = await resultPromise;
 
       // Try to parse the output
       const parseResult = this.parseOutput(result.output);
@@ -71,7 +72,7 @@ export class CliEvaluatorTransport implements EvaluatorTransport {
     }
 
     throw new Error(
-      `Evaluator CLI failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
+      `Evaluator subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
     );
   }
 
@@ -80,7 +81,7 @@ export class CliEvaluatorTransport implements EvaluatorTransport {
   // -------------------------------------------------------------------------
 
   private buildPrompt(input: EvaluatorInput): string {
-    return [
+    const sections: string[] = [
       "You are an evaluator checking whether worker output meets the validation criteria.",
       "",
       "## Worker Output",
@@ -89,9 +90,41 @@ export class CliEvaluatorTransport implements EvaluatorTransport {
       "## Validation Criteria",
       input.validation_criteria,
       "",
-      input.context_files.length > 0
-        ? `## Context Files\n${input.context_files.join("\n")}\n`
-        : "",
+    ];
+
+    if (input.acceptance_criteria.length > 0) {
+      sections.push(
+        "## Acceptance Criteria",
+        ...input.acceptance_criteria.map((c) => `- ${c}`),
+        "",
+      );
+    }
+
+    if (input.artifacts_produced.length > 0) {
+      sections.push(
+        "## Artifacts Produced",
+        ...input.artifacts_produced.map((a) => `- ${a}`),
+        "",
+      );
+    }
+
+    if (input.tests_passed !== null) {
+      sections.push(
+        "## Test Results",
+        `Tests passed: ${input.tests_passed ? "yes" : "no"}`,
+        "",
+      );
+    }
+
+    if (input.context_files.length > 0) {
+      sections.push(
+        `## Context Files`,
+        input.context_files.join("\n"),
+        "",
+      );
+    }
+
+    sections.push(
       "## Instructions",
       'Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this schema:',
       '{ "passed": boolean, "reasoning": string, "suggestions": string[] }',
@@ -99,7 +132,9 @@ export class CliEvaluatorTransport implements EvaluatorTransport {
       "- passed: true if the output meets all criteria, false otherwise",
       "- reasoning: brief explanation of your evaluation",
       "- suggestions: optional array of improvement suggestions (only if passed is false)",
-    ].join("\n");
+    );
+
+    return sections.join("\n");
   }
 
   private parseOutput(

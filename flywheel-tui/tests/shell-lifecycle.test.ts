@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
-import { resetWorkStore } from "../src/tui/routes/work/context/ui-state/store";
+// Store is now factory-based (no singleton to reset)
 import { timerService } from "../src/tui/shared/services/timer";
 import {
   createWorkflowSession,
@@ -22,12 +22,10 @@ function ts(): string {
 
 describe("Shell Lifecycle (workflow-session)", () => {
   beforeEach(() => {
-    resetWorkStore();
     timerService.reset();
   });
 
   afterEach(() => {
-    resetWorkStore();
     timerService.reset();
   });
 
@@ -53,18 +51,17 @@ describe("Shell Lifecycle (workflow-session)", () => {
       destroyWorkflowSession(session);
     });
 
-    it("clears singleton and timer before creating", () => {
-      // Dirty up the timer
+    it("creates session with fresh per-session timer", () => {
+      // Dirty up the global timer (should not affect the session's timer)
       timerService.start();
       timerService.registerAgent("leftover-agent");
       expect(timerService.isRunning()).toBe(true);
 
       const session = createWorkflowSession("fresh.md");
 
-      // Timer should have been reset (it's idle after reset, not running — 
-      // running only starts when workflow:started event fires)
-      expect(timerService.getStatus()).toBe("idle");
-      expect(timerService.hasAgent("leftover-agent")).toBe(false);
+      // Session has its own fresh timer (idle, no leftover agents)
+      expect(session.timer.getStatus()).toBe("idle");
+      expect(session.timer.hasAgent("leftover-agent")).toBe(false);
 
       destroyWorkflowSession(session);
     });
@@ -97,7 +94,7 @@ describe("Shell Lifecycle (workflow-session)", () => {
   });
 
   describe("destroyWorkflowSession", () => {
-    it("disconnects adapter and resets timer", () => {
+    it("disconnects adapter and stops timer", () => {
       const session = createWorkflowSession("destroy-test.md");
 
       // Start workflow to get timer running
@@ -107,14 +104,14 @@ describe("Shell Lifecycle (workflow-session)", () => {
         planPath: "destroy-test.md",
         timestamp: ts(),
       });
-      expect(timerService.isRunning()).toBe(true);
+      expect(session.timer.isRunning()).toBe(true);
       expect(session.adapter.isConnected()).toBe(true);
 
       destroyWorkflowSession(session);
 
       expect(session.adapter.isRunning()).toBe(false);
       expect(session.adapter.isConnected()).toBe(false);
-      expect(timerService.getStatus()).toBe("idle");
+      expect(session.timer.isStopped()).toBe(true);
     });
 
     it("events after destroy do not reach store", () => {
@@ -184,7 +181,7 @@ describe("Shell Lifecycle (workflow-session)", () => {
       expect(session2.store.getState().phases).toHaveLength(0);
       expect(session2.store.getState().outputLines).toHaveLength(0);
       expect(session2.store.getState().planName).toBe("plan-B.md");
-      expect(timerService.getStatus()).toBe("idle");
+      expect(session2.timer.getStatus()).toBe("idle");
 
       // Second session works independently
       session2.eventBus.emit({

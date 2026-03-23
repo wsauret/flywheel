@@ -14,9 +14,10 @@ import {
   readSession,
   listSessions,
 } from "../src/session/persistence";
-import type { CliSession } from "../src/schemas/session";
+import type { Session } from "../src/schemas/session";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import type { WorkflowSession } from "../src/tui/components/workflow-session";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,14 +35,14 @@ function makeTmpDir(): string {
 }
 
 /** Minimal valid session data. */
-function minimalSession(overrides?: Partial<CliSession>): CliSession {
+function minimalSession(overrides?: Partial<Session>): Session {
   return {
+    label: "plans/test.md",
     planPath: "plans/test.md",
-    statePath: ".flywheel/state/test.state.md",
-    contextPath: ".flywheel/context/test.ctx.md",
-    currentPhase: 0,
     lastUpdated: new Date().toISOString(),
-    workflowId: crypto.randomUUID(),
+    budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
+    budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+    workflowType: "work",
     ...overrides,
   };
 }
@@ -146,6 +147,26 @@ describe("SessionManager.create()", () => {
     expect(persisted!.createdAt! <= after).toBe(true);
   });
 
+  it("sets label from name when provided", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md", "My Named Session");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.label).toBe("My Named Session");
+  });
+
+  it("sets label from planPath when name not provided", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.label).toBe("plans/test.md");
+  });
+
   it("does NOT create a live WorkflowSession (no side-effect)", () => {
     const baseDir = makeTmpDir();
     let createCalled = false;
@@ -160,102 +181,6 @@ describe("SessionManager.create()", () => {
     mgr.create("plans/test.md");
 
     expect(createCalled).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// resume()
-// ---------------------------------------------------------------------------
-
-describe("SessionManager.resume()", () => {
-  it("returns a WorkflowSession for an existing session", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/resume-test.md");
-    // Transition to an active state so resume makes sense
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-
-    const session = mgr.resume(id);
-
-    expect(session).not.toBeNull();
-    expect(session!.planPath).toBe("plans/resume-test.md");
-  });
-
-  it("calls createWorkflowSessionFn internally", () => {
-    const baseDir = makeTmpDir();
-    let createdPlanPath: string | null = null;
-    const deps = makeDeps(baseDir, {
-      createWorkflowSessionFn: (planPath: string) => {
-        createdPlanPath = planPath;
-        return makeMockWorkflowSession(planPath);
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    const id = mgr.create("plans/resume-test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.resume(id);
-
-    expect(createdPlanPath).toBe("plans/resume-test.md");
-  });
-
-  it("returns null for non-existent session ID", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const session = mgr.resume("non-existent-uuid");
-
-    expect(session).toBeNull();
-  });
-
-  it("sets the active session so getActiveSession() returns it", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-
-    expect(mgr.getActiveSession()).toBeNull();
-
-    mgr.resume(id);
-
-    expect(mgr.getActiveSession()).not.toBeNull();
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/test.md");
-  });
-
-  it("destroys previous active session before resuming a new one", () => {
-    const baseDir = makeTmpDir();
-    let destroyCount = 0;
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: (_session: WorkflowSession) => {
-        destroyCount++;
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    // Create and resume first session
-    const id1 = mgr.create("plans/first.md");
-    mgr.updateState(id1, "plan:imported");
-    mgr.updateState(id1, "plan:approved");
-    mgr.updateState(id1, "work:active");
-    mgr.resume(id1);
-
-    // Create and resume second session — should destroy first
-    const id2 = mgr.create("plans/second.md");
-    mgr.updateState(id2, "plan:imported");
-    mgr.updateState(id2, "plan:approved");
-    mgr.updateState(id2, "work:active");
-    mgr.resume(id2);
-
-    expect(destroyCount).toBe(1);
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/second.md");
   });
 });
 
@@ -287,9 +212,8 @@ describe("SessionManager.list()", () => {
     // SessionSummary has specific fields, NOT store/adapter/eventBus
     expect(summary).toHaveProperty("id");
     expect(summary).toHaveProperty("name");
-    expect(summary).toHaveProperty("planPath");
+    expect(summary).toHaveProperty("label");
     expect(summary).toHaveProperty("lifecycleState");
-    expect(summary).toHaveProperty("currentPhase");
     expect(summary).toHaveProperty("totalCost");
     expect(summary).toHaveProperty("lastUpdated");
     // Must NOT have WorkflowSession properties
@@ -308,9 +232,9 @@ describe("SessionManager.list()", () => {
     const result = mgr.list();
     expect(result.sessions).toHaveLength(2);
 
-    const planPaths = result.sessions.map((s) => s.planPath);
-    expect(planPaths).toContain("plans/alpha.md");
-    expect(planPaths).toContain("plans/beta.md");
+    const labels = result.sessions.map((s) => s.label);
+    expect(labels).toContain("Alpha");
+    expect(labels).toContain("Beta");
 
     const names = result.sessions.map((s) => s.name);
     expect(names).toContain("Alpha");
@@ -330,7 +254,7 @@ describe("SessionManager.list()", () => {
   it("handles sessions without lifecycle state gracefully", () => {
     const baseDir = makeTmpDir();
     // Manually create a legacy session without lifecycle state
-    persistCreateSession(minimalSession({ planPath: "plans/legacy.md" }), baseDir);
+    persistCreateSession(minimalSession({ label: "plans/legacy.md", planPath: "plans/legacy.md" }), baseDir);
 
     const mgr = createSessionManager(makeDeps(baseDir));
     const result = mgr.list();
@@ -554,136 +478,6 @@ describe("SessionManager.archive()", () => {
 });
 
 // ---------------------------------------------------------------------------
-// getActiveSession() / destroyActive()
-// ---------------------------------------------------------------------------
-
-describe("SessionManager.getActiveSession()", () => {
-  it("returns null when no session is active", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    expect(mgr.getActiveSession()).toBeNull();
-  });
-
-  it("returns the active session after resume()", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.resume(id);
-
-    const active = mgr.getActiveSession();
-    expect(active).not.toBeNull();
-    expect(active!.planPath).toBe("plans/test.md");
-  });
-});
-
-describe("SessionManager.destroyActive()", () => {
-  it("calls destroyWorkflowSessionFn on the active session", () => {
-    const baseDir = makeTmpDir();
-    let destroyedSession: WorkflowSession | null = null;
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: (session: WorkflowSession) => {
-        destroyedSession = session;
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.resume(id);
-    mgr.destroyActive();
-
-    expect(destroyedSession).not.toBeNull();
-    expect(destroyedSession!.planPath).toBe("plans/test.md");
-  });
-
-  it("clears active session after destroy", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.resume(id);
-
-    expect(mgr.getActiveSession()).not.toBeNull();
-
-    mgr.destroyActive();
-
-    expect(mgr.getActiveSession()).toBeNull();
-  });
-
-  it("is a no-op when no session is active", () => {
-    const baseDir = makeTmpDir();
-    let destroyCalled = false;
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: (_session: WorkflowSession) => {
-        destroyCalled = true;
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    // Should not throw or call destroy
-    mgr.destroyActive();
-
-    expect(destroyCalled).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Wraps (not replaces) existing lifecycle
-// ---------------------------------------------------------------------------
-
-describe("SessionManager wraps existing lifecycle", () => {
-  it("resume() delegates to createWorkflowSessionFn", () => {
-    const baseDir = makeTmpDir();
-    const calls: string[] = [];
-    const deps = makeDeps(baseDir, {
-      createWorkflowSessionFn: (planPath: string) => {
-        calls.push(`create:${planPath}`);
-        return makeMockWorkflowSession(planPath);
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    const id = mgr.create("plans/delegate-test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.resume(id);
-
-    expect(calls).toEqual(["create:plans/delegate-test.md"]);
-  });
-
-  it("destroyActive() delegates to destroyWorkflowSessionFn", () => {
-    const baseDir = makeTmpDir();
-    const calls: string[] = [];
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: (session: WorkflowSession) => {
-        calls.push(`destroy:${session.planPath}`);
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    const id = mgr.create("plans/delegate-test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.resume(id);
-    mgr.destroyActive();
-
-    expect(calls).toEqual(["destroy:plans/delegate-test.md"]);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Factory function pattern
 // ---------------------------------------------------------------------------
 
@@ -718,5 +512,173 @@ describe("createSessionManager factory", () => {
 
     const result = mgr2.list();
     expect(result.sessions).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Config injection + budget initialization (Phase 3)
+// ---------------------------------------------------------------------------
+
+describe("SessionManager config injection", () => {
+  it("accepts config in SessionManagerDeps", () => {
+    const baseDir = makeTmpDir();
+    const config: FlywheelConfig = {
+      ...CONFIG_DEFAULTS,
+      budget: { max_invocations: 10, max_tokens: 5000, max_wall_clock_minutes: 30 },
+    };
+    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+
+    // Should create without error
+    const id = mgr.create("plans/test.md");
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("uses default config when config is not provided in deps", () => {
+    const baseDir = makeTmpDir();
+    // No config in deps — should use CONFIG_DEFAULTS
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    const persisted = readSession(id, baseDir);
+
+    // Default budget: all zeros → unlimited
+    expect(persisted!.budgetLimits.max_invocations).toBe(0);
+    expect(persisted!.budgetLimits.max_tokens).toBeNull();
+    expect(persisted!.budgetLimits.wall_clock_deadline).toBeNull();
+  });
+});
+
+describe("SessionManager.create() budget initialization from config", () => {
+  it("populates budgetLimits from config.budget", () => {
+    const baseDir = makeTmpDir();
+    const config: FlywheelConfig = {
+      ...CONFIG_DEFAULTS,
+      budget: { max_invocations: 10, max_tokens: 50000, max_wall_clock_minutes: 45 },
+    };
+    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+
+    const before = Date.now();
+    const id = mgr.create("plans/test.md");
+    const after = Date.now();
+
+    const persisted = readSession(id, baseDir);
+    expect(persisted!.budgetLimits.max_invocations).toBe(10);
+    expect(persisted!.budgetLimits.max_tokens).toBe(50000);
+
+    // wall_clock_deadline should be ~45 minutes from now
+    const deadline = new Date(persisted!.budgetLimits.wall_clock_deadline!).getTime();
+    const expectedMin = before + 45 * 60_000;
+    const expectedMax = after + 45 * 60_000;
+    expect(deadline).toBeGreaterThanOrEqual(expectedMin);
+    expect(deadline).toBeLessThanOrEqual(expectedMax);
+  });
+
+  it("maps config.budget with all zeros to unlimited budget (null sentinels)", () => {
+    const baseDir = makeTmpDir();
+    const config: FlywheelConfig = {
+      ...CONFIG_DEFAULTS,
+      budget: { max_invocations: 0, max_tokens: 0, max_wall_clock_minutes: 0 },
+    };
+    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+
+    const id = mgr.create("plans/test.md");
+    const persisted = readSession(id, baseDir);
+
+    // 0 means unlimited — max_invocations stays 0, others map to null
+    expect(persisted!.budgetLimits.max_invocations).toBe(0);
+    expect(persisted!.budgetLimits.max_tokens).toBeNull();
+    expect(persisted!.budgetLimits.wall_clock_deadline).toBeNull();
+  });
+
+  it("initializes budgetUsage to zeros", () => {
+    const baseDir = makeTmpDir();
+    const config: FlywheelConfig = {
+      ...CONFIG_DEFAULTS,
+      budget: { max_invocations: 5, max_tokens: 10000, max_wall_clock_minutes: 10 },
+    };
+    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+
+    const id = mgr.create("plans/test.md");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.budgetUsage.invocations_used).toBe(0);
+    expect(persisted!.budgetUsage.tokens_used).toBe(0);
+    expect(persisted!.budgetUsage.cost_usd).toBe(0);
+  });
+
+  it("sets wall_clock_deadline based on config.budget.max_wall_clock_minutes", () => {
+    const baseDir = makeTmpDir();
+    const config: FlywheelConfig = {
+      ...CONFIG_DEFAULTS,
+      budget: { max_invocations: 0, max_tokens: 0, max_wall_clock_minutes: 60 },
+    };
+    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+
+    const before = Date.now();
+    const id = mgr.create("plans/test.md");
+    const after = Date.now();
+
+    const persisted = readSession(id, baseDir);
+    expect(persisted!.budgetLimits.wall_clock_deadline).not.toBeNull();
+
+    const deadline = new Date(persisted!.budgetLimits.wall_clock_deadline!).getTime();
+    expect(deadline).toBeGreaterThanOrEqual(before + 60 * 60_000);
+    expect(deadline).toBeLessThanOrEqual(after + 60 * 60_000);
+  });
+
+  it("sets wall_clock_deadline to null when max_wall_clock_minutes is 0", () => {
+    const baseDir = makeTmpDir();
+    const config: FlywheelConfig = {
+      ...CONFIG_DEFAULTS,
+      budget: { max_invocations: 0, max_tokens: 0, max_wall_clock_minutes: 0 },
+    };
+    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+
+    const id = mgr.create("plans/test.md");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.budgetLimits.wall_clock_deadline).toBeNull();
+  });
+});
+
+describe("SessionManager.create() workflowType parameter", () => {
+  it("defaults workflowType to 'work' when not specified", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.workflowType).toBe("work");
+  });
+
+  it("sets workflowType to 'plan' when specified", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md", undefined, "plan");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.workflowType).toBe("plan");
+  });
+
+  it("sets workflowType to 'review' when specified", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md", "My Session", "review");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.workflowType).toBe("review");
+  });
+
+  it("sets workflowType to 'debug' when specified", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md", undefined, "debug");
+    const persisted = readSession(id, baseDir);
+
+    expect(persisted!.workflowType).toBe("debug");
   });
 });

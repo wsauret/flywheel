@@ -20,6 +20,22 @@ export interface EngineMetadata {
   description: string;
   /** Display order in UI (lower = first) */
   order?: number;
+  /**
+   * Whether this engine enforces tool scoping via CLI flags (true)
+   * or only via prompt-based instructions (false).
+   */
+  supportsToolScoping: boolean;
+  /**
+   * Whether this engine supports streaming input via stdin pipe
+   * (e.g., Claude's `--input-format stream-json`).
+   *
+   * When true, PhaseExecutor uses `stdinPipe: true` and wraps the
+   * StdinHandle with engine-specific message formatting.
+   *
+   * When false (e.g., OpenCode SDK path), stdin injection is handled
+   * internally by the spawner (SdkSpawner).
+   */
+  supportsStreamingInput: boolean;
 }
 
 export interface EngineCommand {
@@ -27,6 +43,22 @@ export interface EngineCommand {
   args: string[];
   /** Whether the prompt should be passed via stdin (true) or is already in args */
   stdinPrompt: boolean;
+  /**
+   * Optional prompt prefix for engines that enforce tool scoping via prompt instructions
+   * rather than CLI flags. Callers should prepend this to the prompt before passing via stdin.
+   */
+  promptPrefix?: string;
+}
+
+/**
+ * Tool scoping shape — controls which tool categories the worker can use.
+ * Defined inline to avoid engine types depending on Zod schemas at runtime.
+ */
+export interface ToolScopingConfig {
+  read: boolean;
+  bash: boolean;
+  write: boolean;
+  edit: boolean;
 }
 
 export interface EngineCommandOptions {
@@ -36,6 +68,8 @@ export interface EngineCommandOptions {
   model?: string;
   /** Session ID to resume */
   resumeSessionId?: string;
+  /** Tool scoping restrictions — controls which tool categories the worker can access */
+  toolScoping?: ToolScopingConfig;
 }
 
 export interface ModelInfo {

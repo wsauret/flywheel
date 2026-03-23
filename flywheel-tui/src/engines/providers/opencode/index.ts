@@ -15,6 +15,18 @@ export const metadata: EngineMetadata = {
   installCommand: "npm i -g opencode-ai@latest",
   description: "OpenCode AI CLI",
   order: 1,
+  supportsToolScoping: false,
+  supportsStreamingInput: false,
+};
+
+/**
+ * Human-readable tool names for prompt-based scoping instructions.
+ */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  read: "Read",
+  bash: "Bash",
+  write: "Write",
+  edit: "Edit",
 };
 
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
@@ -28,10 +40,30 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     args.push("--model", options.model.trim());
   }
 
+  // Tool scoping: OpenCode has no CLI flags for tool restriction.
+  // Use a prompt prefix to instruct the model not to use certain tools.
+  let promptPrefix: string | undefined;
+  if (options.toolScoping) {
+    const denied: string[] = [];
+    const allowed: string[] = [];
+    for (const [key, displayName] of Object.entries(TOOL_DISPLAY_NAMES)) {
+      if (options.toolScoping[key as keyof typeof options.toolScoping]) {
+        allowed.push(displayName);
+      } else {
+        denied.push(displayName);
+      }
+    }
+    // Only add prefix if some tools are denied
+    if (denied.length > 0) {
+      promptPrefix = `IMPORTANT: Do NOT use the following tools: ${denied.join(", ")}. Only use: ${allowed.join(", ")}.`;
+    }
+  }
+
   return {
     command: metadata.cliBinary,
     args,
     stdinPrompt: true,
+    promptPrefix,
   };
 }
 

@@ -16,7 +16,7 @@
  */
 
 import type { OutputSnapshot } from "../../schemas/output";
-import type { CliSession } from "../../schemas/session";
+import type { Session } from "../../schemas/session";
 import type { DeleteResult } from "../../session/persistence";
 import type { PipelineStageResult } from "../../controller/workflow-pipeline";
 
@@ -26,10 +26,9 @@ import type { PipelineStageResult } from "../../controller/workflow-pipeline";
 
 /** Result returned by handleResumeSession. */
 export interface ResumeResult {
-  session: CliSession;
+  session: Session;
   outputBlocks: OutputSnapshot[];
   planPath: string;
-  statePath: string;
   worktreePath?: string;
 }
 
@@ -54,7 +53,7 @@ interface WorktreeManagerSubset {
 /** Dependencies injected into the session orchestrator. */
 export interface SessionOrchestratorDeps {
   /** Read a session from disk by ID. Returns null if not found. */
-  readSession: (id: string) => CliSession | null;
+  readSession: (id: string) => Session | null;
 
   /** Factory to create an output persistence reader for a given session. */
   createOutputPersistence: (sessionId: string) => OutputPersistenceReader;
@@ -138,8 +137,7 @@ export function createSessionOrchestrator(
     return {
       session,
       outputBlocks,
-      planPath: session.planPath,
-      statePath: session.statePath,
+      planPath: session.planPath ?? session.label,
       worktreePath: session.worktreePath,
     };
   }

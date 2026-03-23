@@ -2,7 +2,6 @@ import { describe, it, expect } from "bun:test";
 import {
   groupSessions,
   sidebarKeyHandler,
-  getSelectionAction,
   getOpenAction,
   type SessionGroup,
   type SidebarAction,
@@ -256,48 +255,48 @@ describe("Session selection actions", () => {
 });
 
 // ---------------------------------------------------------------------------
-// getSelectionAction — kept for backward compat, delegates to getOpenAction
+// getOpenAction — covers all lifecycle states
 // ---------------------------------------------------------------------------
 
-describe("getSelectionAction", () => {
+describe("getOpenAction (extended)", () => {
   it("work:paused → 'open'", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
   it("work:active → 'open'", () => {
     const session = makeSession({ lifecycleState: "work:active" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
   it("completed → 'open'", () => {
     const session = makeSession({ lifecycleState: "completed" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
   it("work:review → 'open'", () => {
     const session = makeSession({ lifecycleState: "work:review" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
   it("trashed → null (not selectable)", () => {
     const session = makeSession({ lifecycleState: "trashed" });
-    expect(getSelectionAction(session)).toBeNull();
+    expect(getOpenAction(session)).toBeNull();
   });
 
   it("archived → null (not selectable)", () => {
     const session = makeSession({ lifecycleState: "archived" });
-    expect(getSelectionAction(session)).toBeNull();
+    expect(getOpenAction(session)).toBeNull();
   });
 
   it("new → 'open'", () => {
     const session = makeSession({ lifecycleState: "new" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 
   it("plan:draft → 'open'", () => {
     const session = makeSession({ lifecycleState: "plan:draft" });
-    expect(getSelectionAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("open");
   });
 });
 

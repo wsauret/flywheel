@@ -30,6 +30,7 @@ export type FlywheelEvent =
   | WorkerFailed
   | WorkerRetrying
   | WorkerOutput
+  | WorkerInjected
   | ApprovalRequested
   | ApprovalReceived
   | QuestionAsked
@@ -38,7 +39,9 @@ export type FlywheelEvent =
   | PipelineStarted
   | PipelineCompleted
   | PipelineFailed
-  | PipelineStageTransition;
+  | PipelineStageTransition
+  | BudgetWarning
+  | BudgetExhausted;
 
 // -- Workflow events --
 
@@ -213,6 +216,13 @@ export interface WorkerOutput {
   engineId?: string;
 }
 
+export interface WorkerInjected {
+  type: "worker:injected";
+  workflowId: string;
+  message: string;
+  timestamp: string;
+}
+
 // -- Approval events --
 
 export interface ApprovalRequested {
@@ -283,6 +293,25 @@ export interface PipelineStageTransition {
   pipelineId: string;
   from: string;
   to: string;
+  timestamp: string;
+}
+
+// -- Budget events --
+
+export interface BudgetWarning {
+  type: "budget:warning";
+  workflowId: string;
+  metric: "invocations" | "tokens" | "wall_clock";
+  used: number;
+  limit: number;
+  remaining: number;
+  timestamp: string;
+}
+
+export interface BudgetExhausted {
+  type: "budget:exhausted";
+  workflowId: string;
+  reason: string;
   timestamp: string;
 }
 

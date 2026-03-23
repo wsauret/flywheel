@@ -15,12 +15,26 @@ export const metadata: EngineMetadata = {
   installCommand: "npm install -g @anthropic-ai/claude-code",
   description: "Anthropic's Claude Code CLI",
   order: 2,
+  supportsToolScoping: true,
+  supportsStreamingInput: true,
+};
+
+/**
+ * Map ToolScopingConfig booleans to Claude CLI tool names.
+ * Only tools with `true` are included in the --allowedTools list.
+ */
+const TOOL_NAME_MAP: Record<string, string> = {
+  read: "Read",
+  bash: "Bash",
+  write: "Write",
+  edit: "Edit",
 };
 
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
   const args: string[] = [
     "--print",
     "--output-format", "stream-json",
+    "--input-format", "stream-json",
     "--dangerously-skip-permissions",
   ];
 
@@ -30,6 +44,19 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
 
   if (options.model?.trim()) {
     args.push("--model", options.model.trim());
+  }
+
+  // Tool scoping: use --allowedTools to restrict available tools
+  if (options.toolScoping) {
+    const allowed: string[] = [];
+    for (const [key, cliName] of Object.entries(TOOL_NAME_MAP)) {
+      if (options.toolScoping[key as keyof typeof options.toolScoping]) {
+        allowed.push(cliName);
+      }
+    }
+    if (allowed.length > 0) {
+      args.push("--allowedTools", allowed.join(","));
+    }
   }
 
   return {

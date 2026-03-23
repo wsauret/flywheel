@@ -14,11 +14,17 @@ import type { PhaseInfo, PhaseProvider } from "./phase-provider";
 import type { StatePersistence } from "./state-persistence";
 import type { ApprovalHandler } from "./approval-handler";
 import type { DispatcherOrchestrator } from "./dispatcher-orchestrator";
+import type { DispatcherDecision } from "../schemas/dispatcher";
 import type { WorkflowStepContext } from "../prompts/index";
+import type { BudgetTracker } from "../session/budget-tracker";
+import type { BudgetLimits, SessionBudgetStatus } from "../schemas/shared";
+import type { ContextIndexer, ContextQuery } from "../memory/indexer";
+import type { WorkflowType } from "./workflow-pipeline";
 import { readCachedFile } from "./templates";
 import { wrapCompletionInstruction } from "../worker/completion";
 import type { WorkerResult } from "../schemas/worker";
 import { PhaseExecutor, WorkerError } from "./phase-executor";
+import { Log } from "../utils/log";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -95,6 +101,12 @@ export interface UnifiedExecutionLoopOptions {
    * Useful for plan workflows where the full output is needed.
    */
   skipTruncation?: boolean;
+  /** Budget tracker for monitoring cost/invocation/token usage. */
+  budgetTracker?: BudgetTracker;
+  /** Budget limits to check against. Both tracker and limits must be provided together. */
+  budgetLimits?: BudgetLimits;
+  /** Context indexer for providing conventions/standards/learnings to the dispatcher. */
+  contextIndexer?: ContextIndexer;
 }
 
 export interface ExecutionResult {
@@ -108,6 +120,8 @@ export interface ExecutionResult {
 // ---------------------------------------------------------------------------
 // ExecutionLoop (unified)
 // ---------------------------------------------------------------------------
+
+const log = Log.create({ service: "execution-loop" });
 
 export class ExecutionLoop {
   private readonly phaseProvider: PhaseProvider;
@@ -127,6 +141,9 @@ export class ExecutionLoop {
   private readonly contextPath?: string;
   private readonly onStepComplete?: OnStepCompleteHook;
   private readonly skipTruncation: boolean;
+  private readonly budgetTracker?: BudgetTracker;
+  private readonly budgetLimits?: BudgetLimits;
+  private readonly contextIndexer?: ContextIndexer;
 
   private _shutdownRequested = false;
   private readonly _shutdownController = new AbortController();
@@ -155,6 +172,9 @@ export class ExecutionLoop {
     this.contextPath = options.contextPath;
     this.onStepComplete = options.onStepComplete;
     this.skipTruncation = options.skipTruncation ?? false;
+    this.budgetTracker = options.budgetTracker;
+    this.budgetLimits = options.budgetLimits;
+    this.contextIndexer = options.contextIndexer;
   }
 
   /**
@@ -163,6 +183,25 @@ export class ExecutionLoop {
   requestShutdown(): void {
     this._shutdownRequested = true;
     this._shutdownController.abort();
+  }
+
+  /**
+   * Inject a message into the currently running worker's stdin.
+   *
+   * Routes to the PhaseExecutor's StdinHandle (which is already
+   * wrapped with engine-specific formatting for Claude, or handled
+   * internally by the SDK spawner for OpenCode).
+   *
+   * @returns true if the message was written, false if no worker is active or pipe is closed.
+   */
+  injectToWorker(message: string): boolean {
+    const handle = this.executor.getStdinHandle();
+    if (!handle || !handle.isOpen) return false;
+    const written = handle.write(message);
+    if (written) {
+      this.emitter.workerInjected(this.workflowId, message);
+    }
+    return written;
   }
 
   /**
@@ -212,6 +251,17 @@ export class ExecutionLoop {
           phasesCompleted,
           phasesTotal,
           reason: "Shutdown requested",
+        };
+      }
+
+      // Budget check — stop before dispatching if limits exceeded
+      const budgetCheck = this.checkBudget();
+      if (budgetCheck.exhausted) {
+        return {
+          completed: false,
+          phasesCompleted,
+          phasesTotal,
+          reason: budgetCheck.reason,
         };
       }
 
@@ -268,26 +318,35 @@ export class ExecutionLoop {
       );
 
       // Build prompt — try dispatcher first, fall through to prompt builder
-      let prompt: string | null = null;
-      if (this.dispatcherOrchestrator && this.planContent) {
-        prompt = await this.dispatcherOrchestrator.getPhasePrompt(
-          phase,
-          this.planContent,
-          this.statePath && fs.existsSync(this.statePath)
-            ? fs.readFileSync(this.statePath, "utf-8")
-            : "",
-          this.contextPath ? readCachedFile(this.contextPath) ?? undefined : undefined,
-          previousResult,
-        );
-      }
+      const decision = await this.getDispatcherDecision(phase, phasesTotal, previousResult);
+      let prompt: string | null = decision?.prompt ?? null;
+
       if (prompt === null) {
+        // Retrieve relevant context (conventions, standards, learnings) for this phase
+        const relevantContext = this.contextIndexer?.getRelevantContext({
+          workflowType: this.workflowLabel as WorkflowType,
+          phaseDescription: phase.title,
+        });
+
+        log.info("available_context populated for prompt builder", {
+          phaseIndex: phase.index,
+          conventions: relevantContext?.conventions.length ?? 0,
+          standards: relevantContext?.standards.length ?? 0,
+          learnings: relevantContext?.learnings.length ?? 0,
+        });
+
         const ctx: WorkflowStepContext = {
           planContent: phase.description,
           keyDecisions: this.keyDecisions,
           fileReferences: this.fileReferences,
           previousResult,
           projectCwd: this.config.project_cwd,
-          extra: { ...this._extraAccumulator },
+          extra: {
+            ...this._extraAccumulator,
+            conventions: relevantContext?.conventions ?? [],
+            standards: relevantContext?.standards ?? [],
+            learnings: relevantContext?.learnings ?? [],
+          },
         };
         prompt = this.promptBuilder(phase, ctx);
       }
@@ -295,15 +354,14 @@ export class ExecutionLoop {
       // Apply completion instruction in the loop (not in individual builders)
       prompt = wrapCompletionInstruction(prompt);
 
+      // Extract worker_config overrides from dispatcher decision
+      const executeOptions = this.buildExecuteOptions(phase, prompt, decision);
+
       try {
-        const result = await this.executor.execute({
-          phaseIndex: phase.index,
-          prompt,
-          cwd: this.config.project_cwd,
-          onStdout: (chunk) => this.emitter.workerOutput(this.workflowId, "stdout", chunk, this.config.engine),
-          onStderr: (chunk) => this.emitter.workerOutput(this.workflowId, "stderr", chunk, this.config.engine),
-          signal: this._shutdownController.signal,
-        });
+        const result = await this.executor.execute(executeOptions);
+
+        // Increment invocation count after successful execution
+        this.budgetTracker?.incrementInvocations();
 
         // Chain result for next phase (truncated unless skipTruncation is set)
         previousResult = this.skipTruncation
@@ -355,6 +413,148 @@ export class ExecutionLoop {
     // All phases complete
     this.emitter.workflowCompleted(this.workflowId);
     return { completed: true, phasesCompleted, phasesTotal };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dispatcher helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get the full dispatcher decision for the current phase.
+   * Returns null if no dispatcher is configured or if the dispatcher fails.
+   */
+  private async getDispatcherDecision(
+    phase: PhaseInfo,
+    phasesTotal: number,
+    previousResult: string | undefined,
+  ): Promise<DispatcherDecision | null> {
+    if (!this.dispatcherOrchestrator || !this.planContent) {
+      return null;
+    }
+
+    return this.dispatcherOrchestrator.getPhaseDecision(
+      phase,
+      this.planContent,
+      this.statePath && fs.existsSync(this.statePath)
+        ? fs.readFileSync(this.statePath, "utf-8")
+        : "",
+      this.contextPath ? readCachedFile(this.contextPath) ?? undefined : undefined,
+      previousResult,
+      {
+        workflowContext: {
+          workflowId: this.workflowId,
+          name: this.workflowLabel,
+          stepNumber: phase.index + 1,
+          totalSteps: phasesTotal,
+          stepDescription: phase.title,
+        },
+        configContext: {
+          maxEvalCycles: this.config.max_eval_cycles,
+          worktreePath: "",
+          projectCwd: this.config.project_cwd ?? process.cwd(),
+          workerModel: this.config.worker?.model ?? this.config.model ?? this.config.engine,
+          dispatcherModel: this.config.dispatcher?.model ?? this.config.model ?? this.config.engine,
+        },
+        sessionBudget: this.getSessionBudget(),
+        availableContext: (() => {
+          const ctx = this.contextIndexer
+            ? this.contextIndexer.getRelevantContext({
+                workflowType: this.workflowLabel as WorkflowType,
+                phaseDescription: phase.title,
+              })
+            : { conventions: [], standards: [], learnings: [] };
+          log.info("available_context populated for dispatcher", {
+            phaseIndex: phase.index,
+            conventions: ctx.conventions.length,
+            standards: ctx.standards.length,
+            learnings: ctx.learnings.length,
+            hasIndexer: !!this.contextIndexer,
+          });
+          return ctx;
+        })(),
+      },
+    );
+  }
+
+  /**
+   * Build ExecutePhaseOptions, applying worker_config overrides from the
+   * dispatcher decision when present.
+   */
+  private buildExecuteOptions(
+    phase: PhaseInfo,
+    prompt: string,
+    decision: DispatcherDecision | null,
+  ): import("./phase-executor").ExecutePhaseOptions {
+    const workerConfig = decision?.worker_config;
+
+    // Guard: parallel execution not yet supported
+    if (workerConfig?.parallel) {
+      log.warn("parallel execution requested but not yet supported; proceeding single-threaded", {
+        phaseIndex: phase.index,
+      });
+    }
+
+    // Build timeout override
+    let timeoutOverrideMs: number | undefined;
+    if (workerConfig?.timeout_minutes != null) {
+      const overrideMs = workerConfig.timeout_minutes * 60_000;
+      const globalCapMs = this.config.timeout_minutes * 60_000;
+      if (overrideMs > globalCapMs) {
+        log.warn("dispatcher timeout override exceeds global config cap; clamping", {
+          overrideMinutes: workerConfig.timeout_minutes,
+          globalCapMinutes: this.config.timeout_minutes,
+        });
+        timeoutOverrideMs = globalCapMs;
+      } else {
+        timeoutOverrideMs = overrideMs;
+      }
+    }
+
+    return {
+      phaseIndex: phase.index,
+      prompt,
+      cwd: this.config.project_cwd,
+      onStdout: (chunk) => this.emitter.workerOutput(this.workflowId, "stdout", chunk, this.config.engine),
+      onStderr: (chunk) => this.emitter.workerOutput(this.workflowId, "stderr", chunk, this.config.engine),
+      signal: this._shutdownController.signal,
+      // Worker config overrides from dispatcher decision
+      timeoutOverrideMs,
+      modelOverride: workerConfig?.model_override ?? undefined,
+      maxRetriesOverride: workerConfig?.max_retries,
+      toolScoping: workerConfig?.tool_scoping,
+      iterationBudget: workerConfig?.iteration_budget,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Budget helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Check whether the budget has been exhausted.
+   * Returns `{ exhausted: false }` when no budget tracking is configured.
+   */
+  private checkBudget(): { exhausted: boolean; reason?: string } {
+    if (this.budgetTracker && this.budgetLimits && this.budgetTracker.isExhausted(this.budgetLimits)) {
+      return { exhausted: true, reason: "Budget exhausted" };
+    }
+    return { exhausted: false };
+  }
+
+  /**
+   * Build the sessionBudget object for the dispatcher.
+   * Returns real values from the budget tracker when available,
+   * otherwise falls back to unlimited defaults.
+   */
+  private getSessionBudget(): SessionBudgetStatus {
+    if (this.budgetTracker && this.budgetLimits) {
+      return this.budgetTracker.getBudgetStatus(this.budgetLimits);
+    }
+    return {
+      invocations_remaining: null,
+      token_budget_remaining: null,
+      wall_clock_deadline: null,
+    };
   }
 
   // ---------------------------------------------------------------------------

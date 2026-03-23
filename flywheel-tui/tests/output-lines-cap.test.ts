@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 
 describe("outputLines sliding window cap", () => {
   let store: UIActions;
 
   beforeEach(() => {
-    store = createTestStore("test-plan");
+    store = createStore("test-plan");
   });
 
   it("keeps lines under cap without trimming", () => {

@@ -2,7 +2,7 @@
  * Pause Wiring Tests (Phase 2)
  *
  * Tests the gap where pausePipeline() cannot persist state because:
- * 1. No CliSession exists (startPipeline never calls manager.create())
+ * 1. No Session exists (startPipeline never calls manager.create())
  * 2. activeSessionId is never set
  *
  * These tests verify the building blocks that will be wired into startPipeline:

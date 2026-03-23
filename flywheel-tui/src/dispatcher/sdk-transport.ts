@@ -9,7 +9,7 @@
 import type { DispatcherInput, DispatcherDecision } from "../schemas/dispatcher";
 import type { DispatcherTransport } from "./transport";
 import { DispatcherDecisionSchema } from "../schemas/dispatcher";
-import { buildDispatcherSystemPrompt } from "./system-prompt";
+import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prompt";
 
 // ---------------------------------------------------------------------------
 // SDK availability detection
@@ -53,10 +53,9 @@ export class SdkTransport implements DispatcherTransport {
       };
     };
 
-    const systemPrompt = buildDispatcherSystemPrompt({
-      plan: input.plan_truncated,
-      history: input.history_truncated,
-    });
+    const systemPrompt = buildDispatcherSystemPrompt();
+    const truncationNotes = buildTruncationNotes(input);
+    const userContent = `${truncationNotes}${JSON.stringify(input)}`;
 
     // Create a session
     const sessionResult = await client.session.create({});
@@ -65,7 +64,7 @@ export class SdkTransport implements DispatcherTransport {
     }
 
     const sessionId = sessionResult.data.id;
-    const userMessage = `${systemPrompt}\n\n---\n\n${JSON.stringify(input, null, 2)}`;
+    const userMessage = `${systemPrompt}\n\n---\n\n${userContent}`;
 
     // Send prompt with timeout
     const promptPromise = client.session.prompt({

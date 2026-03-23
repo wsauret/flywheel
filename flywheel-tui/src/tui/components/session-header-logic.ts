@@ -40,6 +40,7 @@ export function lifecycleToWorkflowStatus(state: SessionLifecycleState): Workflo
     case "work:review":
       return "running"
     case "work:paused":
+    case "budget_exhausted":
       return "interrupted"
     case "completed":
     case "archived":
@@ -66,8 +67,8 @@ export function lifecycleToWorkflowStatus(state: SessionLifecycleState): Workflo
  */
 export function deriveHeaderInfo(summary: SessionSummary): SessionHeaderInfo {
   return {
-    sessionName: summary.name || summary.planPath,
-    planName: summary.planPath,
+    sessionName: summary.name || summary.label,
+    planName: summary.planPath ?? summary.label,
     workflowStatus: lifecycleToWorkflowStatus(summary.lifecycleState),
     branch: summary.branch,
     repo: summary.repo,

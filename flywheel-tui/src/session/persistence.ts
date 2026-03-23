@@ -6,7 +6,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { CliSessionSchema, type CliSession } from "../schemas/session";
+import { SessionSchema, migrateSession, type Session } from "../schemas/session";
 import { writeFileAtomic } from "../utils/atomic-write";
 
 // ---------------------------------------------------------------------------
@@ -36,12 +36,12 @@ function sessionFilePath(id: string, baseDir: string): string {
  *
  * @returns The generated UUID for the session.
  */
-export function createSession(data: CliSession, baseDir: string): string {
+export function createSession(data: Session, baseDir: string): string {
   const id = crypto.randomUUID();
   const filePath = sessionFilePath(id, baseDir);
 
   // Validate before writing — fail fast on bad data
-  const parsed = CliSessionSchema.parse(data);
+  const parsed = SessionSchema.parse(data);
 
   writeFileAtomic(filePath, JSON.stringify(parsed, null, 2));
   return id;
@@ -50,10 +50,10 @@ export function createSession(data: CliSession, baseDir: string): string {
 /**
  * Read a session by ID.
  *
- * @returns The validated CliSession data, or `null` if the file doesn't exist,
+ * @returns The validated Session data, or `null` if the file doesn't exist,
  *          is corrupt, or fails Zod validation.
  */
-export function readSession(id: string, baseDir: string): CliSession | null {
+export function readSession(id: string, baseDir: string): Session | null {
   const filePath = sessionFilePath(id, baseDir);
 
   try {
@@ -63,7 +63,8 @@ export function readSession(id: string, baseDir: string): CliSession | null {
 
     const raw = fs.readFileSync(filePath, "utf-8");
     const json = JSON.parse(raw);
-    const result = CliSessionSchema.safeParse(json);
+    const migrated = migrateSession(json);
+    const result = SessionSchema.safeParse(migrated);
 
     if (!result.success) {
       return null;
@@ -83,7 +84,7 @@ export function readSession(id: string, baseDir: string): CliSession | null {
  */
 export function updateSession(
   id: string,
-  updates: Partial<CliSession>,
+  updates: Partial<Session>,
   baseDir: string,
 ): void {
   const existing = readSession(id, baseDir);
@@ -91,14 +92,14 @@ export function updateSession(
     throw new Error(`Session not found: ${id}`);
   }
 
-  const merged: CliSession = {
+  const merged: Session = {
     ...existing,
     ...updates,
     lastUpdated: new Date().toISOString(),
   };
 
   // Validate the merged result
-  const parsed = CliSessionSchema.parse(merged);
+  const parsed = SessionSchema.parse(merged);
   const filePath = sessionFilePath(id, baseDir);
   writeFileAtomic(filePath, JSON.stringify(parsed, null, 2));
 }
@@ -106,7 +107,7 @@ export function updateSession(
 /** Entry in the list result: session ID + validated data. */
 export interface SessionEntry {
   id: string;
-  data: CliSession;
+  data: Session;
 }
 
 /** Per-file parse error for error isolation. */
@@ -151,7 +152,8 @@ export function listSessions(baseDir: string): SessionListResult {
     try {
       const raw = fs.readFileSync(filePath, "utf-8");
       const json = JSON.parse(raw);
-      const result = CliSessionSchema.safeParse(json);
+      const migrated = migrateSession(json);
+      const result = SessionSchema.safeParse(migrated);
 
       if (result.success) {
         sessions.push({ id, data: result.data });
@@ -200,9 +202,9 @@ export interface DeleteResult {
 }
 
 /**
- * Delete a session and all its companion files (state, context, output).
+ * Delete a session and its companion files (output snapshot).
  *
- * Reads the session JSON first to discover companion paths. Falls back to
+ * Reads the session JSON first to discover the output path. Falls back to
  * convention-based output path (`<id>.output.json`) if the JSON is unreadable.
  * Deletes companions first, then the session JSON last.
  *
@@ -231,12 +233,6 @@ export function deleteSessionWithCompanions(
   const toDelete: string[] = [];
 
   if (session) {
-    if (session.statePath) {
-      toDelete.push(path.resolve(baseDir, session.statePath));
-    }
-    if (session.contextPath) {
-      toDelete.push(path.resolve(baseDir, session.contextPath));
-    }
     if (session.outputPath) {
       toDelete.push(path.join(sessionsDir(baseDir), session.outputPath));
     }

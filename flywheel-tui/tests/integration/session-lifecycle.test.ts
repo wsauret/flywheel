@@ -446,70 +446,6 @@ describe("Trash from any non-terminal state", () => {
 });
 
 // ===========================================================================
-// Active session management through lifecycle
-// ===========================================================================
-
-describe("Active session management across lifecycle", () => {
-  it("resume sets active, destroyActive clears it", () => {
-    const baseDir = makeTmpDir();
-    let destroyCount = 0;
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: () => { destroyCount++; },
-    });
-    const mgr = createSessionManager(deps);
-
-    const id = mgr.create("plans/active-test.md", "Active Test");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-
-    // No active session initially
-    expect(mgr.getActiveSession()).toBeNull();
-
-    // Resume -> active
-    mgr.resume(id);
-    expect(mgr.getActiveSession()).not.toBeNull();
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/active-test.md");
-
-    // Destroy -> cleared
-    mgr.destroyActive();
-    expect(mgr.getActiveSession()).toBeNull();
-    expect(destroyCount).toBe(1);
-  });
-
-  it("switching active sessions destroys the previous one", () => {
-    const baseDir = makeTmpDir();
-    const destroyedPaths: string[] = [];
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: (session: WorkflowSession) => {
-        destroyedPaths.push(session.planPath);
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    // Create two sessions and move both to work:active
-    const id1 = mgr.create("plans/first.md", "First");
-    mgr.updateState(id1, "plan:imported");
-    mgr.updateState(id1, "plan:approved");
-    mgr.updateState(id1, "work:active");
-
-    const id2 = mgr.create("plans/second.md", "Second");
-    mgr.updateState(id2, "plan:imported");
-    mgr.updateState(id2, "plan:approved");
-    mgr.updateState(id2, "work:active");
-
-    // Resume first
-    mgr.resume(id1);
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/first.md");
-
-    // Resume second — should destroy first
-    mgr.resume(id2);
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/second.md");
-    expect(destroyedPaths).toEqual(["plans/first.md"]);
-  });
-});
-
-// ===========================================================================
 // Invalid transitions are rejected
 // ===========================================================================
 
@@ -627,9 +563,9 @@ describe("Persistence integrity across lifecycle", () => {
     expect(session).toBeDefined();
     expect(session!.id).toBe(id);
     expect(session!.name).toBe("Round Trip");
+    expect(session!.label).toBe("Round Trip");
     expect(session!.planPath).toBe("plans/roundtrip.md");
     expect(session!.lifecycleState).toBe("new");
-    expect(session!.currentPhase).toBe(0);
     expect(session!.totalCost).toBe(0);
     expect(session!.lastUpdated).toBeDefined();
     expect(session!.createdAt).toBeDefined();
@@ -706,14 +642,6 @@ describe("Error handling in lifecycle operations", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
 
     expect(() => mgr.archive("nonexistent-id")).toThrow(/Session not found/);
-  });
-
-  it("resume on nonexistent session returns null", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const result = mgr.resume("nonexistent-id");
-    expect(result).toBeNull();
   });
 
   it("list handles corrupt session files gracefully", () => {
@@ -898,14 +826,14 @@ describe("Pause / Resume Lifecycle", () => {
     expect(session!.lifecycleState).toBe("work:paused");
     expect(session!.name).toBe("Restart Resume");
 
-    // Session can be resumed
+    // Session can be transitioned back to active
     mgr2.updateState(id, "work:active");
     expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("work:active");
 
-    // Can resume via manager (creates live WorkflowSession)
-    const workflowSession = mgr2.resume(id);
-    expect(workflowSession).not.toBeNull();
-    expect(workflowSession!.planPath).toBe("plans/restart-resume.md");
+    // Persisted plan path is correct
+    const persisted = readSession(id, baseDir);
+    expect(persisted).not.toBeNull();
+    expect(persisted!.planPath).toBe("plans/restart-resume.md");
   });
 
   it("delete paused session cleans up all companion files", () => {
@@ -981,46 +909,6 @@ describe("Pause / Resume Lifecycle", () => {
     expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("completed");
   });
 
-  it("concurrent guard: only one active workflow session at a time", () => {
-    const baseDir = makeTmpDir();
-    const destroyedPaths: string[] = [];
-    const deps = makeDeps(baseDir, {
-      destroyWorkflowSessionFn: (session: WorkflowSession) => {
-        destroyedPaths.push(session.planPath);
-      },
-    });
-    const mgr = createSessionManager(deps);
-
-    // Create three sessions, all in work:active
-    const id1 = mgr.create("plans/one.md", "One");
-    advanceToActive(mgr, id1);
-
-    const id2 = mgr.create("plans/two.md", "Two");
-    advanceToActive(mgr, id2);
-
-    const id3 = mgr.create("plans/three.md", "Three");
-    advanceToActive(mgr, id3);
-
-    // Resume first — should be active, no destroy yet
-    mgr.resume(id1);
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/one.md");
-    expect(destroyedPaths).toHaveLength(0);
-
-    // Resume second — should destroy first
-    mgr.resume(id2);
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/two.md");
-    expect(destroyedPaths).toEqual(["plans/one.md"]);
-
-    // Resume third — should destroy second
-    mgr.resume(id3);
-    expect(mgr.getActiveSession()!.planPath).toBe("plans/three.md");
-    expect(destroyedPaths).toEqual(["plans/one.md", "plans/two.md"]);
-
-    // Destroy active — should destroy third
-    mgr.destroyActive();
-    expect(mgr.getActiveSession()).toBeNull();
-    expect(destroyedPaths).toEqual(["plans/one.md", "plans/two.md", "plans/three.md"]);
-  });
 });
 
 // ===========================================================================
@@ -1159,14 +1047,14 @@ describe("Crash recovery: stale work:active sessions", () => {
     // Session should be paused now
     expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("work:paused");
 
-    // Resume it
+    // Resume it (state transition only — SessionManager no longer creates live sessions)
     mgr2.updateState(id, "work:active");
     expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("work:active");
 
-    // Create live workflow session
-    const session = mgr2.resume(id);
-    expect(session).not.toBeNull();
-    expect(session!.planPath).toBe("plans/recover-resume.md");
+    // Persisted plan path is correct
+    const persisted = readSession(id, baseDir);
+    expect(persisted).not.toBeNull();
+    expect(persisted!.planPath).toBe("plans/recover-resume.md");
   });
 
   it("recovery is idempotent — running it twice does nothing extra", () => {
@@ -1197,7 +1085,7 @@ describe("Crash recovery: stale work:active sessions", () => {
 // ===========================================================================
 
 describe("Edge cases", () => {
-  it("corrupt .state.md on resume: session still loads (graceful degradation)", () => {
+  it("session still loads after pause/resume cycle (graceful degradation)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
@@ -1206,26 +1094,17 @@ describe("Edge cases", () => {
     mgr.updateState(id, "plan:approved");
     mgr.updateState(id, "work:active");
 
-    // Read session to get the statePath
-    const session = readSession(id, baseDir);
-    expect(session).not.toBeNull();
-
-    // Write corrupt content to the state path
-    const stateFullPath = path.resolve(baseDir, session!.statePath);
-    fs.mkdirSync(path.dirname(stateFullPath), { recursive: true });
-    fs.writeFileSync(stateFullPath, "<<<CORRUPT DATA>>>");
-
     // Pause and then resume — session itself should be readable
     mgr.updateState(id, "work:paused");
     mgr.updateState(id, "work:active");
 
-    // Session is still valid and can be resumed
-    const workflowSession = mgr.resume(id);
-    expect(workflowSession).not.toBeNull();
-    expect(workflowSession!.planPath).toBe("plans/corrupt-state.md");
+    // Session is still valid — persisted data is correct
+    const persisted = readSession(id, baseDir);
+    expect(persisted).not.toBeNull();
+    expect(persisted!.planPath).toBe("plans/corrupt-state.md");
 
     // Session still reflects correct state
-    expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("work:active");
+    expect(persisted!.sessionLifecycleState).toBe("work:active");
   });
 
   it("resume with modified plan file: uses persisted session data", () => {
@@ -1255,12 +1134,8 @@ describe("Edge cases", () => {
     expect(persisted).not.toBeNull();
     expect(persisted!.planPath).toBe("plans/modifiable.md");
 
-    // The currentPhase from the session persisted data is still 0 (unchanged)
-    expect(persisted!.currentPhase).toBe(0);
-
-    // Session is still functional
-    const workflowSession = mgr.resume(id);
-    expect(workflowSession).not.toBeNull();
+    // Session is still functional — state is persisted correctly
+    expect(readSession(id, baseDir)!.sessionLifecycleState).toBe("work:active");
   });
 
   it("corrupt output file: load returns empty array gracefully", async () => {

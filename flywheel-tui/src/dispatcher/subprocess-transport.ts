@@ -1,5 +1,5 @@
 /**
- * CliTransport — invokes the dispatcher by spawning `opencode run --format json`.
+ * SubprocessTransport — invokes the dispatcher by spawning `opencode run --format json`.
  *
  * Uses ProcessSpawner (DI seam, same pattern as worker).
  * Passes assembled prompt + system prompt via stdin.
@@ -12,7 +12,7 @@ import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
 import { DispatcherDecisionSchema } from "../schemas/dispatcher";
 import { createEnvFilter } from "../worker/env-filter";
-import { buildDispatcherSystemPrompt } from "./system-prompt";
+import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prompt";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -22,28 +22,26 @@ const CLI_TIMEOUT_MS = 60_000;
 const MAX_RETRIES = 1;
 
 // ---------------------------------------------------------------------------
-// CliTransport
+// SubprocessTransport
 // ---------------------------------------------------------------------------
 
-export interface CliTransportOptions {
+export interface SubprocessTransportOptions {
   spawner: ProcessSpawner;
 }
 
-export class CliTransport implements DispatcherTransport {
+export class SubprocessTransport implements DispatcherTransport {
   private readonly spawner: ProcessSpawner;
   private readonly envFilter = createEnvFilter();
 
-  constructor(options: CliTransportOptions) {
+  constructor(options: SubprocessTransportOptions) {
     this.spawner = options.spawner;
   }
 
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
-    const systemPrompt = buildDispatcherSystemPrompt({
-      plan: input.plan_truncated,
-      history: input.history_truncated,
-    });
-
-    const userMessage = `${systemPrompt}\n\n---\n\nHere is the dispatcher input:\n\n${JSON.stringify(input, null, 2)}\n\nRespond with valid JSON only.`;
+    const systemPrompt = buildDispatcherSystemPrompt();
+    const truncationNotes = buildTruncationNotes(input);
+    const userContent = `${truncationNotes}Here is the dispatcher input:\n\n${JSON.stringify(input)}\n\nRespond with valid JSON only.`;
+    const userMessage = `${systemPrompt}\n\n---\n\n${userContent}`;
 
     let lastError: Error | null = null;
 
@@ -56,7 +54,7 @@ export class CliTransport implements DispatcherTransport {
         process.env as Record<string, string | undefined>,
       );
 
-      const result = await this.spawner.spawn(
+      const { result: resultPromise } = await this.spawner.spawn(
         "opencode",
         ["run", "--format", "json"],
         {
@@ -65,6 +63,7 @@ export class CliTransport implements DispatcherTransport {
           env,
         },
       );
+      const result = await resultPromise;
 
       // Try to parse the output
       const parseResult = this.parseOutput(result.output);
@@ -76,7 +75,7 @@ export class CliTransport implements DispatcherTransport {
     }
 
     throw new Error(
-      `Dispatcher CLI failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
+      `Dispatcher subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
     );
   }
 

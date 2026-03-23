@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { resetWorkStore } from "../src/tui/routes/work/context/ui-state/store";
+// Store is now factory-based (no singleton to reset)
 import { timerService } from "../src/tui/shared/services/timer";
 import {
   createWorkflowSession,
@@ -213,14 +213,12 @@ describe("Persistent Session Integration", () => {
   let shell: ShellSimulator;
 
   beforeEach(() => {
-    resetWorkStore();
     timerService.reset();
     shell = new ShellSimulator();
   });
 
   afterEach(() => {
     shell.dispose();
-    resetWorkStore();
     timerService.reset();
   });
 
@@ -432,7 +430,7 @@ describe("Persistent Session Integration", () => {
       expect(session2.store.getState().phases).toHaveLength(0);
       expect(session2.store.getState().outputLines).toHaveLength(0);
       expect(session2.store.getState().planName).toBe("plan-B.md");
-      expect(timerService.getStatus()).toBe("idle");
+      expect(session2.timer.getStatus()).toBe("idle");
     });
 
     it("destroying session stops events from reaching store", () => {
@@ -466,7 +464,7 @@ describe("Persistent Session Integration", () => {
   // ── Timer service integration ──
 
   describe("timer service lifecycle", () => {
-    it("timer resets between sequential workflow sessions", () => {
+    it("each session has its own fresh timer", () => {
       // First session
       shell.handleSubmit("plan-1.md");
       const session1 = shell.activeSession!;
@@ -476,17 +474,17 @@ describe("Persistent Session Integration", () => {
         planPath: "plan-1.md",
         timestamp: ts(),
       });
-      expect(timerService.isRunning()).toBe(true);
+      expect(session1.timer.isRunning()).toBe(true);
 
-      // Stop first
+      // Stop first — timer is stopped (not reset, since destroy calls .stop())
       shell.handleSubmit("/stop");
-      expect(timerService.getStatus()).toBe("idle");
+      expect(session1.timer.isStopped()).toBe(true);
 
-      // Second session
+      // Second session gets a fresh timer
       shell.handleSubmit("plan-2.md");
       const session2 = shell.activeSession!;
-      // Timer is idle again (reset by createWorkflowSession)
-      expect(timerService.getStatus()).toBe("idle");
+      // New session timer is idle (fresh instance)
+      expect(session2.timer.getStatus()).toBe("idle");
 
       // Start events on second session
       session2.eventBus.emit({
@@ -495,13 +493,13 @@ describe("Persistent Session Integration", () => {
         planPath: "plan-2.md",
         timestamp: ts(),
       });
-      expect(timerService.isRunning()).toBe(true);
+      expect(session2.timer.isRunning()).toBe(true);
 
       shell.handleSubmit("/stop");
-      expect(timerService.getStatus()).toBe("idle");
+      expect(session2.timer.isStopped()).toBe(true);
     });
 
-    it("timer agents are cleaned up between sessions", () => {
+    it("timer agents are cleaned up when session is destroyed", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
 
@@ -511,12 +509,12 @@ describe("Persistent Session Integration", () => {
         planPath: "plan.md",
         timestamp: ts(),
       });
-      timerService.registerAgent("phase-0");
-      expect(timerService.hasAgent("phase-0")).toBe(true);
+      session.timer.registerAgent("phase-0");
+      expect(session.timer.hasAgent("phase-0")).toBe(true);
 
-      // Stop workflow → destroys session → resets timer
+      // Stop workflow → destroys session → stops timer
       shell.handleSubmit("/stop");
-      expect(timerService.hasAgent("phase-0")).toBe(false);
+      expect(session.timer.isStopped()).toBe(true);
     });
   });
 

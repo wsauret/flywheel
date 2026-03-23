@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import { OpenTUIAdapter } from "../src/tui/adapters/opentui";
 // ConsoleAdapter deleted — headless mode removed
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { parseArgs } from "../src/cli/args";
 import { timerService } from "../src/tui/shared/services/timer";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
@@ -26,7 +26,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
   beforeEach(() => {
     timerService.reset();
     bus = new EventBus();
-    store = createTestStore("integration-test-plan");
+    store = createStore("integration-test-plan");
     adapter = new OpenTUIAdapter({ actions: store });
     adapter.connect(bus);
     adapter.start();
@@ -255,32 +255,32 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 
       // Timer starts on workflow:started
       emitter.workflowStarted(wfId, "plan.md");
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
 
       // Phase registers agent
       emitter.phaseStarted(wfId, 0, "Phase A");
-      expect(timerService.hasAgent("phase-0")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-0")).toBe(true);
 
       // Phase completion removes agent
       emitter.phaseCompleted(wfId, 0);
-      expect(timerService.hasAgent("phase-0")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-0")).toBe(false);
 
       // Multiple phases tracked simultaneously
       emitter.phaseStarted(wfId, 1, "Phase B");
       emitter.phaseStarted(wfId, 2, "Phase C");
-      expect(timerService.hasAgent("phase-1")).toBe(true);
-      expect(timerService.hasAgent("phase-2")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-1")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-2")).toBe(true);
 
       emitter.phaseCompleted(wfId, 1);
-      expect(timerService.hasAgent("phase-1")).toBe(false);
-      expect(timerService.hasAgent("phase-2")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-1")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-2")).toBe(true);
 
       emitter.phaseFailed(wfId, 2, "failed");
-      expect(timerService.hasAgent("phase-2")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-2")).toBe(false);
 
       // Timer stops on workflow completion
       emitter.workflowCompleted(wfId);
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
   });
 
@@ -364,7 +364,7 @@ describe("CLI arg parsing → adapter selection", () => {
   // ConsoleAdapter deleted — headless mode removed.
 
   it("OpenTUIAdapter has opentui adapter type", () => {
-    const store = createTestStore("test");
+    const store = createStore("test");
     const adapter = new OpenTUIAdapter({ actions: store });
     expect(adapter.adapterType).toBe("opentui");
   });
@@ -375,7 +375,7 @@ describe("CLI arg parsing → adapter selection", () => {
     const result = await parseArgs([]);
     expect(result!.command).toBe("tui");
     // In TUI mode, CLI creates OpenTUIAdapter with store
-    const store = createTestStore("plan.md");
+    const store = createStore("plan.md");
     const adapter = new OpenTUIAdapter({ actions: store });
     expect(adapter.adapterType).toBe("opentui");
   });
@@ -387,7 +387,7 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
   it("emitter methods produce correct store mutations through entire chain", () => {
     timerService.reset();
     const bus = new EventBus();
-    const store = createTestStore("chain-test");
+    const store = createStore("chain-test");
     const adapter = new OpenTUIAdapter({ actions: store });
     adapter.connect(bus);
     adapter.start();

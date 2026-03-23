@@ -1,9 +1,7 @@
 import { z } from "zod";
+import { WorkflowStepBaseSchema } from "./shared";
 
-const WorkflowStepSchema = z.object({
-  description: z.string(),
-  dispatcherHint: z.string().optional(),
-  validationCriteria: z.string().optional(),
+const WorkflowStepSchema = WorkflowStepBaseSchema.extend({
   requiredOutputs: z.array(z.string()).optional(),
   dependencies: z.array(z.string()).optional(),
 });

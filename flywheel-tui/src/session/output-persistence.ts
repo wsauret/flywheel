@@ -2,7 +2,7 @@
  * Output Persistence
  *
  * Persists structured output blocks to `.flywheel/sessions/<id>.output.json`.
- * Factory pattern matching `createCostTracker`, `createSessionManager`, etc.
+ * Factory pattern matching `createBudgetTracker`, `createSessionManager`, etc.
  *
  * Features:
  * - Atomic writes via writeFileAtomic

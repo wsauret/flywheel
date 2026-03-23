@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import type { WorkerResult, WorkerFailureReason } from "../src/schemas/worker";
-import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
+import type { ProcessSpawner, SpawnOptions, SpawnResult } from "../src/worker/spawner";
 import type { FlywheelConfig } from "../src/config/loader";
 import type { PhaseInfo } from "../src/controller/phase-provider";
 import type { WorkflowStepContext } from "../src/prompts/index";
@@ -34,11 +34,11 @@ class MockSpawner implements ProcessSpawner {
   calls: Array<{ command: string; args: string[]; options?: SpawnOptions }> = [];
   private callIndex = 0;
 
-  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<WorkerResult> {
+  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
     this.calls.push({ command, args, options });
     const result = this.results[this.callIndex] ?? successResult();
     this.callIndex++;
-    return result;
+    return { result: Promise.resolve(result) };
   }
 
   reset(): void {
@@ -242,12 +242,14 @@ describe("ExecutionLoop onStepComplete hook", () => {
 
       await loop.run();
 
-      // Phase 1 prompt: no extra yet (accumulator starts empty)
-      expect(capturedExtras[0]).toEqual({});
-      // Phase 2 prompt: extra from step 0
-      expect(capturedExtras[1]).toEqual({ fromStep0: "data0" });
-      // Phase 3 prompt: extra from step 0 + step 1
-      expect(capturedExtras[2]).toEqual({ fromStep0: "data0", fromStep1: "data1" });
+      // Context entries are always populated (empty arrays when no indexer)
+      const emptyContext = { conventions: [], standards: [], learnings: [] };
+      // Phase 1 prompt: no extra yet (accumulator starts empty) + context entries
+      expect(capturedExtras[0]).toEqual({ ...emptyContext });
+      // Phase 2 prompt: extra from step 0 + context entries
+      expect(capturedExtras[1]).toEqual({ fromStep0: "data0", ...emptyContext });
+      // Phase 3 prompt: extra from step 0 + step 1 + context entries
+      expect(capturedExtras[2]).toEqual({ fromStep0: "data0", fromStep1: "data1", ...emptyContext });
     });
 
     it("works without onStepComplete hook (no crash, empty extra)", async () => {
@@ -268,9 +270,10 @@ describe("ExecutionLoop onStepComplete hook", () => {
       const result = await loop.run();
 
       expect(result.completed).toBe(true);
-      // Extra should still be passed but empty
-      expect(capturedExtras[0]).toEqual({});
-      expect(capturedExtras[1]).toEqual({});
+      // Extra should contain context entries (empty arrays when no indexer)
+      const emptyContext = { conventions: [], standards: [], learnings: [] };
+      expect(capturedExtras[0]).toEqual({ ...emptyContext });
+      expect(capturedExtras[1]).toEqual({ ...emptyContext });
     });
   });
 

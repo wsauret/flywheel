@@ -27,6 +27,31 @@
 export type AppState = "idle" | "working" | "completed" | "importing"
 
 // ---------------------------------------------------------------------------
+// resolveAppState — derives AppState from session signals
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive AppState from current session state.
+ *
+ * Priority:
+ * 1. `isImporting` → "importing"
+ * 2. `focusedId` with a running runtime → "working"
+ * 3. `viewedId` exists → "completed" (viewing a non-running session)
+ * 4. else → "idle"
+ */
+export function resolveAppState(
+  focusedId: string | null,
+  hasRuntime: (id: string) => boolean,
+  viewedId: string | null,
+  isImporting: boolean,
+): AppState {
+  if (isImporting) return "importing"
+  if (focusedId && hasRuntime(focusedId)) return "working"
+  if (viewedId) return "completed"
+  return "idle"
+}
+
+// ---------------------------------------------------------------------------
 // Escape behavior per state
 // ---------------------------------------------------------------------------
 

@@ -19,7 +19,7 @@
  *   viewport.openSession(sessionId);
  */
 
-import { createTestStore } from "../routes/work/context/ui-state/store";
+import { createStore } from "../routes/work/context/ui-state/store";
 import { injectOutputBlocks, type InjectionHandle } from "./resume-utils";
 import { snapshotToBlocks } from "../../schemas/output";
 import type { UIActions } from "../routes/work/context/ui-state/types";
@@ -54,8 +54,8 @@ export interface SessionViewportDeps {
   unsubscribeStore: () => void;
   /** Set the work state signal directly. */
   setWorkState: (state: import("../routes/work/state/types").WorkState | null) => void;
-  /** Set the app state signal. */
-  setAppState: (state: AppState) => void;
+  /** Set the app state signal (optional — shell may derive this instead). */
+  setAppState?: (state: AppState) => void;
 
   /**
    * Map of sessionId → controller for running sessions.
@@ -109,7 +109,6 @@ export function createSessionViewport(
     subscribeToStore,
     unsubscribeStore,
     setWorkState,
-    setAppState,
     sessionControllers,
     sessionStores,
     orchestrator,
@@ -136,12 +135,14 @@ export function createSessionViewport(
   function evictLRU(): void {
     if (sessionStores.size <= LRU_CAP) return;
 
-    // Find the first non-running entry (oldest insertion order)
+    // Find the first non-running, non-viewed entry (oldest insertion order)
+    const currentViewedId = viewedSessionId();
     for (const [id] of sessionStores) {
-      if (!sessionControllers.has(id)) {
-        sessionStores.delete(id);
-        if (sessionStores.size <= LRU_CAP) return;
-      }
+      // Never evict the currently viewed session or running sessions
+      if (id === currentViewedId) continue;
+      if (sessionControllers.has(id)) continue;
+      sessionStores.delete(id);
+      if (sessionStores.size <= LRU_CAP) return;
     }
   }
 
@@ -179,7 +180,7 @@ export function createSessionViewport(
       if (store) {
         hydrateStore(store, true);
         setViewedSessionId(sessionId);
-        setAppState("working");
+        deps.setAppState?.("working");
         return;
       }
       // Controller exists but no store cached — fall through to disk load
@@ -191,12 +192,12 @@ export function createSessionViewport(
       const isRunning = sessionControllers.has(sessionId);
       hydrateStore(cachedStore, isRunning);
       setViewedSessionId(sessionId);
-      setAppState(isRunning ? "working" : "completed");
+      deps.setAppState?.(isRunning ? "working" : "completed");
       return;
     }
 
     // 6. Not cached — show loading state, then load from disk
-    setAppState("completed");
+    deps.setAppState?.("completed");
     setViewedSessionId(sessionId);
     deps.setSessionLoading?.(true);
 
@@ -224,7 +225,7 @@ export function createSessionViewport(
     }
 
     // 8. Create a fresh store for viewing (NOT createWorkflowSession — no timer/singleton reset)
-    const store = createTestStore(result.planPath);
+    const store = createStore(result.planPath);
 
     // 9. Inject blocks with cancellation
     const blocks = snapshotToBlocks(result.outputBlocks) as AnyBlock[];
@@ -239,7 +240,7 @@ export function createSessionViewport(
     hydrateStore(store, isRunning);
 
     // 12. Determine app state: running → "working", else → "completed"
-    setAppState(isRunning ? "working" : "completed");
+    deps.setAppState?.(isRunning ? "working" : "completed");
     deps.setSessionLoading?.(false);
   }
 

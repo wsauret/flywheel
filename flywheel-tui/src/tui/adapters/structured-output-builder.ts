@@ -132,9 +132,11 @@ export class StructuredOutputBuilder {
     if (agentIdx === undefined) return false;
 
     const agent = this.blocks[agentIdx] as AgentBlock;
-    let children = [...agent.children, tool];
+    // Mutate in-place: push + splice (O(1) amortized vs O(n) spread)
+    const children = agent.children;
+    children.push(tool);
     if (children.length > AGENT_CHILDREN_CAP) {
-      children = children.slice(children.length - AGENT_CHILDREN_CAP);
+      children.splice(0, children.length - AGENT_CHILDREN_CAP);
     }
     // Update latestChild for live display (single-line "↳ ToolName: detail")
     const latestChild = `${tool.name}: ${tool.detail}`;

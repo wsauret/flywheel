@@ -5,7 +5,7 @@ import {
   type WorktreeInfo,
   type WorktreeManagerDeps,
 } from "../src/session/worktree-manager";
-import type { CliSession } from "../src/schemas/session";
+import type { Session } from "../src/schemas/session";
 
 // ---------------------------------------------------------------------------
 // Mock IWorktreeClient
@@ -543,7 +543,7 @@ describe("WorktreeManager — multiple sessions", () => {
 describe("WorktreeManager — worktreePath persistence", () => {
   it("createForSession calls updateSession with worktreePath and branch", async () => {
     const client = createMockWorktreeClient();
-    const updates: Array<{ id: string; partial: Partial<CliSession> }> = [];
+    const updates: Array<{ id: string; partial: Partial<Session> }> = [];
     const mgr = createWorktreeManager(makeDeps(client, {
       updateSession: (id, partial) => { updates.push({ id, partial }); },
     }));
@@ -558,7 +558,7 @@ describe("WorktreeManager — worktreePath persistence", () => {
 
   it("createForSession does NOT call updateSession when worktree creation fails", async () => {
     const client = createMockWorktreeClient({ failOn: "create" });
-    const updates: Array<{ id: string; partial: Partial<CliSession> }> = [];
+    const updates: Array<{ id: string; partial: Partial<Session> }> = [];
     const mgr = createWorktreeManager(makeDeps(client, {
       updateSession: (id, partial) => { updates.push({ id, partial }); },
     }));
@@ -571,7 +571,7 @@ describe("WorktreeManager — worktreePath persistence", () => {
 
   it("createForSession does NOT call updateSession when disabled", async () => {
     const client = createMockWorktreeClient();
-    const updates: Array<{ id: string; partial: Partial<CliSession> }> = [];
+    const updates: Array<{ id: string; partial: Partial<Session> }> = [];
     const mgr = createWorktreeManager(makeDeps(client, {
       enabled: false,
       updateSession: (id, partial) => { updates.push({ id, partial }); },

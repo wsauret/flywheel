@@ -2,11 +2,10 @@
  * Session Manager
  *
  * Coordinates session lifecycle: persistence, state machine validation,
- * and runtime WorkflowSession creation/destruction.
+ * and session metadata management.
  *
  * Uses factory function pattern (`createSessionManager(deps)`) with
- * dependency injection for testability. Wraps (not replaces) the existing
- * `createWorkflowSession`/`destroyWorkflowSession` from workflow-session.ts.
+ * dependency injection for testability.
  *
  * Historical sessions are returned as plain `SessionSummary` objects,
  * NOT live UIActions stores.
@@ -23,6 +22,7 @@ import {
 import { isValidTransition, type SessionLifecycleState } from "./state-machine";
 import type { WorkflowSession } from "../tui/components/workflow-session";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/loader";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "session.manager" });
@@ -35,9 +35,11 @@ const log = Log.create({ service: "session.manager" });
 export interface SessionSummary {
   id: string;
   name: string;
-  planPath: string;
+  /** Display name for the session (user-facing). */
+  label: string;
+  /** Actual file path to the plan, if one exists on disk. */
+  planPath?: string;
   lifecycleState: SessionLifecycleState;
-  currentPhase: number;
   totalCost: number;
   lastUpdated: string;
   createdAt?: string;
@@ -54,19 +56,31 @@ export interface SessionListResult {
 /** Dependencies injected into the session manager. */
 export interface SessionManagerDeps {
   baseDir: string;
-  createWorkflowSessionFn: (planPath: string) => WorkflowSession;
-  destroyWorkflowSessionFn: (session: WorkflowSession) => void;
+  /**
+   * @deprecated No longer used by SessionManager — kept for backward
+   * compatibility with existing test harnesses. Will be removed in a
+   * future phase.
+   */
+  createWorkflowSessionFn?: (planPath: string) => WorkflowSession;
+  /**
+   * @deprecated No longer used by SessionManager — kept for backward
+   * compatibility with existing test harnesses. Will be removed in a
+   * future phase.
+   */
+  destroyWorkflowSessionFn?: (session: WorkflowSession) => void;
   /** Optional worktree manager for git worktree lifecycle integration. */
   worktreeManager?: IWorktreeManager;
+  /** Optional config — defaults to CONFIG_DEFAULTS when omitted. */
+  config?: FlywheelConfig;
 }
+
+/** Workflow type for a session. */
+export type SessionWorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research";
 
 /** The SessionManager interface. */
 export interface SessionManager {
   /** Create a new session and persist it. Returns session ID. */
-  create(planPath: string, name?: string): string;
-
-  /** Resume a session from disk. Creates a live WorkflowSession. */
-  resume(id: string): WorkflowSession | null;
+  create(planPath: string, name?: string, workflowType?: SessionWorkflowType): string;
 
   /** List all sessions as summaries. */
   list(): SessionListResult;
@@ -79,12 +93,6 @@ export interface SessionManager {
 
   /** Transition session to archived state. */
   archive(id: string): void;
-
-  /** Get the currently active workflow session (if any). */
-  getActiveSession(): WorkflowSession | null;
-
-  /** Destroy the active session's runtime (stop adapter, disconnect). */
-  destroyActive(): void;
 
   /**
    * Sweep trashed sessions: delete their files and companions from disk.
@@ -115,9 +123,8 @@ export interface SessionManager {
  * @param deps - Injected dependencies (baseDir, workflow session functions).
  */
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
-  const { baseDir, createWorkflowSessionFn, destroyWorkflowSessionFn, worktreeManager } = deps;
-
-  let activeSession: WorkflowSession | null = null;
+  const { baseDir, worktreeManager } = deps;
+  const config = deps.config ?? CONFIG_DEFAULTS;
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -147,44 +154,38 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   // SessionManager methods
   // -------------------------------------------------------------------------
 
-  function create(planPath: string, name?: string): string {
+  function create(planPath: string, name?: string, workflowType?: SessionWorkflowType): string {
     const now = new Date().toISOString();
+    const budget = config.budget;
+
+    // Map config budget to session budget limits:
+    // - max_invocations: 0 stays 0 (BudgetTracker treats 0 as unlimited)
+    // - max_tokens: 0 → null (unlimited)
+    // - max_wall_clock_minutes: 0 → null (unlimited), >0 → ISO deadline
+    const wallClockDeadline = budget.max_wall_clock_minutes > 0
+      ? new Date(Date.now() + budget.max_wall_clock_minutes * 60_000).toISOString()
+      : null;
 
     const id = persistCreateSession(
       {
+        label: name ?? planPath,
         planPath,
-        statePath: `.flywheel/state/${crypto.randomUUID()}.state.md`,
-        contextPath: `.flywheel/context/${crypto.randomUUID()}.ctx.md`,
-        currentPhase: 0,
         lastUpdated: now,
-        workflowId: crypto.randomUUID(),
         sessionLifecycleState: "new" as SessionLifecycleState,
         name,
         createdAt: now,
+        budgetLimits: {
+          max_invocations: budget.max_invocations,
+          max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
+          wall_clock_deadline: wallClockDeadline,
+        },
+        budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+        workflowType: workflowType ?? "work",
       },
       baseDir,
     );
 
     return id;
-  }
-
-  function resume(id: string): WorkflowSession | null {
-    const persisted = readSession(id, baseDir);
-    if (persisted === null) {
-      return null;
-    }
-
-    // Destroy any existing active session first
-    if (activeSession !== null) {
-      destroyWorkflowSessionFn(activeSession);
-      activeSession = null;
-    }
-
-    // Create a live workflow session via the injected factory
-    const session = createWorkflowSessionFn(persisted.planPath);
-    activeSession = session;
-
-    return session;
   }
 
   function list(): SessionListResult {
@@ -193,9 +194,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const sessions: SessionSummary[] = raw.sessions.map((entry) => ({
       id: entry.id,
       name: entry.data.name ?? "",
+      label: entry.data.label,
       planPath: entry.data.planPath,
       lifecycleState: getLifecycleState(entry.data),
-      currentPhase: entry.data.currentPhase,
       totalCost: entry.data.totalCost ?? 0,
       lastUpdated: entry.data.lastUpdated,
       createdAt: entry.data.createdAt,
@@ -255,19 +256,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     updateState(id, "archived");
   }
 
-  function getActiveSession(): WorkflowSession | null {
-    return activeSession;
-  }
-
-  function destroyActive(): void {
-    if (activeSession === null) {
-      return;
-    }
-
-    destroyWorkflowSessionFn(activeSession);
-    activeSession = null;
-  }
-
   function sweepTrashed(): number {
     const { sessions } = listSessions(baseDir);
     let swept = 0;
@@ -314,13 +302,10 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
   return {
     create,
-    resume,
     list,
     updateState,
     trash,
     archive,
-    getActiveSession,
-    destroyActive,
     sweepTrashed,
     recoverStaleSessions,
   };

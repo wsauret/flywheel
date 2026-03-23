@@ -44,34 +44,35 @@ import {
   createWorkflowSession,
   destroyWorkflowSession,
 } from "./workflow-session"
+import {
+  createSessionRuntimeManager,
+  type SessionRuntimeManager,
+  type RunningRuntime,
+} from "./session-runtime"
 import { useTimer } from "@tui/shared/services"
 import { WorkController } from "../../controller/work"
-import { ExecutionLoop, type PromptBuilder } from "../../controller/execution-loop"
-import { WorkflowDefinitionProvider } from "../../controller/workflow-def-provider"
-import { PhaseExecutor } from "../../controller/phase-executor"
+import { ExecutionLoop } from "../../controller/execution-loop"
 import { prepareWorkflowDeps } from "../../controller/workflow-deps"
 import type { WorkflowDeps } from "../../controller/workflow-deps"
-import { EventBus, createFlywheelEmitter } from "../../events/event-bus"
-import {
-  workflowRegistry,
-  buildWorkflowPrompt,
-} from "../../workflows/index"
-import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor"
-import { createReviewOnStepComplete } from "../../workflows/review-output-extractor"
+import { EventBus } from "../../events/event-bus"
 import { WorkflowPipeline } from "../../controller/workflow-pipeline"
-import { QuestionService, type QuestionRequest } from "../../controller/question-service"
+import type { QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
 import { buildCustomPipeline, modeHasReview, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
 import { parseCommand } from "../utils/command-parser"
+import { createQuestionWiring, type QuestionWiring } from "../utils/question-wiring"
 import { SIDEBAR_WIDTH } from "./shell-modes"
 import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
+import { createBudgetTracker, type BudgetTracker } from "../../session/budget-tracker"
+import type { BudgetLimits } from "../../schemas/shared"
 import { fromSnapshot, snapshotToBlocks } from "../../schemas/output"
 import { createSessionOrchestrator, type SessionOrchestrator } from "./session-orchestrator"
 import { handlePipelineCompletion } from "./pipeline-completion"
+import { ContextIndexer } from "../../memory/indexer"
 import { injectOutputBlocks } from "./resume-utils"
 import type { PipelineStageInfo } from "../utils/format"
 import type { WorkflowSession } from "./workflow-session"
@@ -134,6 +135,14 @@ export function FlywheelShell() {
   // CRITICAL: activeSessionId tracks EXECUTING sessions; viewedSessionId tracks the VISIBLE session
   const sessionControllers = new Map<string, { shutdown(): Promise<void> }>()
 
+  // ── SessionRuntime Map (replaces single-instance let refs) ──
+  const runtimes: SessionRuntimeManager = createSessionRuntimeManager({
+    destroyWorkflowSession,
+  })
+
+  // ── Focused session: which running session the viewport is connected to ──
+  const [focusedSessionId, setFocusedSessionId] = createSignal<string | null>(null)
+
   // Memoized Map for O(1) session name lookup (used by sessionName(), viewedSessionInfo())
   const sessionsMap = createMemo(() =>
     new Map(sessionCtx.sessions().map((s) => [s.id, s]))
@@ -147,8 +156,7 @@ export function FlywheelShell() {
 
   // Pending question tracking for QuestionPrompt
   const [pendingQuestion, setPendingQuestion] = createSignal<QuestionRequest | null>(null)
-  let activeQuestionService: QuestionService | null = null
-  let questionUnsubs: Unsubscribe[] = []
+  let activeQuestionWiring: QuestionWiring | null = null
 
   // Pipeline stage indicator tracking
   const [activePipelineInfo, setActivePipelineInfo] = createSignal<PipelineStageInfo | null>(null)
@@ -160,6 +168,7 @@ export function FlywheelShell() {
   let activeLoop: ExecutionLoop | null = null
   let activePipeline: WorkflowPipeline | null = null
   let activeFlusher: OutputFlusher | null = null
+  let activeBudgetTracker: BudgetTracker | null = null
   let storeUnsub: (() => void) | null = null
 
   // Pipeline running guard: prevents handleCommand from overwriting activeWorkflowName
@@ -195,6 +204,18 @@ export function FlywheelShell() {
       })
       return null
     }
+  }
+
+  // ── Shared ContextIndexer (one per project_cwd) ──
+  // Lazy-init: created on first pipeline start, disposed on shell unmount.
+  let _sharedContextIndexer: ContextIndexer | null = null
+  let _indexerStarted = false
+
+  const getOrCreateContextIndexer = (): ContextIndexer => {
+    if (!_sharedContextIndexer) {
+      _sharedContextIndexer = new ContextIndexer(getProjectCwd())
+    }
+    return _sharedContextIndexer
   }
 
   /** Convenience: get project_cwd from cached deps (or "." on failure). */
@@ -347,166 +368,35 @@ export function FlywheelShell() {
 
   // ── Workflow Lifecycle ──
 
-  const startWorkWorkflow = (planPath: string) => {
-    // Clean up any previous session
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-      activeController = null
-      setActiveStore(null)
-      setWorkState(null)
-    }
-
-    // Create fresh session: store -> adapter -> eventBus
-    const session = createWorkflowSession(planPath)
-    activeSession = session
-    setActiveStore(session.store)
-    subscribeToStore(session.store)
-    setAppState("working")
-
-    // Load config, resolve engine, create spawner
-    const deps = getDepsOrReturnIdle()
-    if (!deps) return
-    const { config, engine, spawner } = deps
-
-    // Create WorkController
-    const controller = new WorkController({
-      config,
-      spawner,
-      engine,
-      ui: session.adapter,
-    })
-    activeController = controller
-
-    queueMicrotask(() => {
-      controller.run(planPath).catch(() => {})
-    })
-  }
-
-  const startGenericWorkflow = (
-    workflowName: string,
-    args: Record<string, string>,
-  ) => {
-    const workflow = workflowRegistry[workflowName]
-    if (!workflow) return
-
-    // Clean up any previous session
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-      activeController = null
-      activeLoop = null
-      setActiveStore(null)
-      setWorkState(null)
-    }
-
-    // Create fresh session
-    const session = createWorkflowSession(workflowName)
-    activeSession = session
-    setActiveStore(session.store)
-    subscribeToStore(session.store)
-    setAppState("working")
-
-    // Load config
-    const deps = getDepsOrReturnIdle()
-    if (!deps) return
-    const { config, engine, spawner } = deps
-
-    // Wire event bus
-    const eventBus = new EventBus()
-    const emitter = createFlywheelEmitter(eventBus)
-    session.adapter.connect(eventBus)
-
-    const workflowId = `${workflowName}-tui`
-
-    const executor = new PhaseExecutor({
-      spawner,
-      emitter,
-      config,
-      engine,
-      workflowId,
-    })
-
-    const promptBuilder: PromptBuilder = (phase, ctx) =>
-      buildWorkflowPrompt(
-        phase.index,
-        workflow,
-        args,
-        ctx.previousResult,
-        config.project_cwd,
-        ctx.extra,
-      )
-
-    const phaseProvider = new WorkflowDefinitionProvider(workflow)
-
-    const isPlan = workflowName === "plan"
-    const isReview = workflowName === "review"
-
-    // Create QuestionService for interactive gates (standalone path)
-    // Both plan and review workflows use interactive question checkpoints
-    if (isPlan || isReview) {
-      const questionSvc = new QuestionService(eventBus)
-      // Clean up old subscriptions FIRST (this nulls activeQuestionService),
-      // then set the new reference.
-      cleanupQuestionSubscriptions()
-      activeQuestionService = questionSvc
-      questionUnsubs.push(
-        eventBus.subscribeToType("question:asked", () => {
-          const pending = questionSvc.list()
-          if (pending.length > 0) {
-            setPendingQuestion(pending[0])
-          }
-        }),
-        eventBus.subscribeToType("question:replied", () => {
-          setPendingQuestion(null)
-        }),
-        eventBus.subscribeToType("question:rejected", () => {
-          setPendingQuestion(null)
-        }),
-      )
-    }
-
-    const interactive = config.interactive_consolidation ?? false
-    let onStepComplete: import("../../controller/execution-loop").OnStepCompleteHook | undefined
-    if (isPlan && config.project_cwd) {
-      onStepComplete = createPlanOnStepComplete(config.project_cwd, {
-        questionService: activeQuestionService ?? undefined,
-        interactive,
-      })
-    } else if (isReview) {
-      onStepComplete = createReviewOnStepComplete({
-        questionService: activeQuestionService ?? undefined,
-        interactive,
-      })
-    }
-
-    const loop = new ExecutionLoop({
-      phaseProvider,
-      promptBuilder,
-      executor,
-      emitter,
-      config,
-      ui: session.adapter,
-      workflowId,
-      workflowLabel: workflow.name,
-      onStepComplete,
-      skipTruncation: isPlan,
-    })
-    activeLoop = loop
-
-    queueMicrotask(() => {
-      loop.run().catch(() => {})
-    })
-  }
-
   const startPipeline = (
     stages: import("../../controller/workflow-pipeline").PipelineStage[],
     args: Record<string, string>,
     preloadedDeps?: WorkflowDeps,
     interactiveOverrides?: { plan?: boolean; review?: boolean },
   ) => {
-    // Clean up any previous session
-    if (activeSession) {
+    // Background previous session (don't destroy — allow concurrent pipelines)
+    const prevFocused = focusedSessionId()
+    if (prevFocused && runtimes.has(prevFocused)) {
+      runtimes.background(prevFocused)
+      // Detach local refs WITHOUT destroying — the pipeline continues running
+      // in the background, tracked by runtimes. The pipeline's async closure
+      // captured its own local references and will clean up on completion.
+      activeSession = null
+      activeController = null
+      activeLoop = null
+      activePipeline = null
+      activeFlusher = null
+      activeBudgetTracker = null
+      if (storeUnsub) {
+        storeUnsub()
+        storeUnsub = null
+      }
+      cleanupQuestionSubscriptions()
+      cleanupPipelineSubscriptions()
+      setActiveStore(null)
+      setWorkState(null)
+    } else if (activeSession) {
+      // No previous session in runtimes — full destroy (legacy path)
       destroyWorkflowSession(activeSession)
       activeSession = null
       activeController = null
@@ -515,6 +405,10 @@ export function FlywheelShell() {
       if (activeFlusher) {
         activeFlusher.dispose()
         activeFlusher = null
+      }
+      if (activeBudgetTracker) {
+        activeBudgetTracker.dispose()
+        activeBudgetTracker = null
       }
       setActiveStore(null)
       setWorkState(null)
@@ -538,11 +432,11 @@ export function FlywheelShell() {
       deps = resolved
     }
 
-    // Create persistent CliSession for pause/resume support
+    // Create persistent Session for pause/resume support
     const planPathForSession = args.planPath ?? stages.map((s) => s.workflow).join(" -> ")
+    let persistedSessionId: string | null = null
     try {
-      const persistedSessionId = sessionCtx.manager.create(planPathForSession)
-      sessionCtx.setActiveSessionId(persistedSessionId)
+      persistedSessionId = sessionCtx.manager.create(planPathForSession)
 
       // Set outputPath on the session
       const projectCwd = deps.config.project_cwd ?? "."
@@ -574,28 +468,35 @@ export function FlywheelShell() {
       })
     }
 
-    // Create QuestionService for pipeline gates
-    const questionService = new QuestionService(session.eventBus)
+    // Create BudgetTracker for the pipeline.
+    // Read budgetLimits from the persisted session (set by SessionManager.create()
+    // from config.budget). If no session was persisted, budgetLimits stays null
+    // and the tracker is not created — budget enforcement is silently skipped.
+    let pipelineBudgetTracker: BudgetTracker | null = null
+    let pipelineBudgetLimits: BudgetLimits | null = null
+    const pipelineSessionId_ = persistedSessionId
+    if (pipelineSessionId_) {
+      const projectCwd = deps.config.project_cwd ?? "."
+      const persistedSession = readSession(pipelineSessionId_, projectCwd)
+      if (persistedSession) {
+        pipelineBudgetLimits = persistedSession.budgetLimits
+        pipelineBudgetTracker = createBudgetTracker({
+          sessionId: pipelineSessionId_,
+          baseDir: projectCwd,
+        })
+        activeBudgetTracker = pipelineBudgetTracker
+      }
+    }
 
-    // Clean up old subscriptions FIRST (this nulls activeQuestionService),
-    // then set the new reference.
+    // Create question wiring for pipeline gates (DRY: extracted to createQuestionWiring)
     cleanupQuestionSubscriptions()
-    activeQuestionService = questionService
-
-    questionUnsubs.push(
-      session.eventBus.subscribeToType("question:asked", (e) => {
-        const pending = questionService.list()
-        if (pending.length > 0) {
-          setPendingQuestion(pending[0])
-        }
-      }),
-      session.eventBus.subscribeToType("question:replied", () => {
-        setPendingQuestion(null)
-      }),
-      session.eventBus.subscribeToType("question:rejected", () => {
-        setPendingQuestion(null)
-      }),
-    )
+    const questionWiring = createQuestionWiring({
+      eventBus: session.eventBus,
+      onQuestion: (q) => setPendingQuestion(q),
+      onClear: () => setPendingQuestion(null),
+    })
+    activeQuestionWiring = questionWiring
+    const questionService = questionWiring.service
 
     // Pipeline stage indicator subscriptions
     cleanupPipelineSubscriptions()
@@ -635,8 +536,17 @@ export function FlywheelShell() {
       }),
     )
 
-    // Create stage runner (pass questionService for interactive plan gates)
-    const stageRunner = createShellStageRunner(session, deps, questionService, interactiveOverrides)
+    // Shared context indexer (one per project_cwd, lazy-init)
+    const pipelineContextIndexer = getOrCreateContextIndexer()
+
+    // Create stage runner (pass questionService for interactive plan gates, and budget tracking)
+    const stageRunner = createShellStageRunner(
+      session, deps, questionService, interactiveOverrides,
+      pipelineBudgetTracker ?? undefined,
+      pipelineBudgetLimits ?? undefined,
+      (loop) => { activeLoop = loop },
+      pipelineContextIndexer,
+    )
 
     // Create and start the pipeline
     const pipeline = new WorkflowPipeline({
@@ -652,7 +562,7 @@ export function FlywheelShell() {
     _userInitiatedPause = false
 
     // Register pipeline in sessionControllers (uniform shutdown interface)
-    const pipelineSessionId = sessionCtx.activeSessionId()
+    const pipelineSessionId = persistedSessionId
     if (pipelineSessionId) {
       sessionControllers.set(pipelineSessionId, {
         shutdown: async () => {
@@ -660,12 +570,42 @@ export function FlywheelShell() {
         },
       })
       setViewedSessionId(pipelineSessionId)
+
+      // Register in runtimes manager (parallel tracking — let refs kept for now)
+      runtimes.register(pipelineSessionId, {
+        kind: "running" as const,
+        sessionId: pipelineSessionId,
+        session,
+        controller: null as any, // Will be set when WorkController is created
+        loop: null as any, // Set via the setLoop callback
+        pipeline,
+        flusher: activeFlusher!,
+        budgetTracker: pipelineBudgetTracker!,
+        storeUnsub: storeUnsub!,
+        questionCleanup: () => cleanupQuestionSubscriptions(),
+        pipelineCleanup: () => cleanupPipelineSubscriptions(),
+        contextIndexer: pipelineContextIndexer,
+        workerPid: null,
+      })
+      setFocusedSessionId(pipelineSessionId)
     }
+
+    // Capture local references for the async closure — these survive backgrounding
+    // (backgrounding nulls the shell-level `let` refs but the closure keeps its own)
+    const capturedFlusher = activeFlusher
 
     queueMicrotask(async () => {
       // Check if this session is still the one the user is viewing.
       // If backgrounded, we should persist state but NOT force UI transitions.
       const isStillViewed = () => viewedSessionId() === pipelineSessionId
+
+      // Start context indexing (shared — only runs once, subsequent calls are no-ops)
+      if (!_indexerStarted) {
+        try {
+          await pipelineContextIndexer.startIndexing()
+          _indexerStarted = true
+        } catch { /* silently fall back to empty context */ }
+      }
 
       let pipelineResult: import("../../controller/workflow-pipeline").PipelineResult | undefined
       try {
@@ -696,9 +636,23 @@ export function FlywheelShell() {
       } finally {
         _isPipelineRunning = false
 
-        // Remove from sessionControllers on completion (keep in sessionStores for cached viewing)
+        // Note: shared context indexer is NOT disposed per-pipeline.
+        // It stays alive for the shell's lifetime and is disposed in onCleanup.
+
+        // Dispose budget tracker (flushes pending cost/usage data to session file)
+        if (pipelineBudgetTracker) {
+          pipelineBudgetTracker.dispose()
+          if (activeBudgetTracker === pipelineBudgetTracker) {
+            activeBudgetTracker = null
+          }
+        }
+
+        // Remove from sessionControllers and runtimes on completion
+        // (keep in sessionStores for cached viewing).
+        // Use remove() (not teardown()) — pipeline resources are already cleaned up.
         if (pipelineSessionId) {
           sessionControllers.delete(pipelineSessionId)
+          runtimes.remove(pipelineSessionId)
         }
 
         // Handle auto-archive or completion — errors must stay in the output
@@ -707,8 +661,8 @@ export function FlywheelShell() {
           try {
             await handlePipelineCompletion(pipelineResult, {
               orchestrator,
-              sessionId: pipelineSessionId ?? sessionCtx.activeSessionId(),
-              flusher: activeFlusher,
+              sessionId: pipelineSessionId ?? null,
+              flusher: capturedFlusher,
               toast,
               updateState: (id, s) => sessionCtx.manager.updateState(id, s),
               refreshList: () => sessionCtx.refreshList(),
@@ -716,23 +670,17 @@ export function FlywheelShell() {
           } catch (completionErr) {
             log.error("pipeline completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
           }
-          activeFlusher = null
         }
       }
     })
   }
 
   const cleanupQuestionSubscriptions = () => {
-    for (const unsub of questionUnsubs) unsub()
-    questionUnsubs = []
-    setPendingQuestion(null)
-    // Reject all pending questions before nulling — prevents pipeline deadlock on abort
-    if (activeQuestionService) {
-      for (const pending of activeQuestionService.list()) {
-        activeQuestionService.reject(pending.id)
-      }
+    if (activeQuestionWiring) {
+      activeQuestionWiring.cleanup()
+      activeQuestionWiring = null
     }
-    activeQuestionService = null
+    setPendingQuestion(null)
   }
 
   const cleanupPipelineSubscriptions = () => {
@@ -778,6 +726,11 @@ export function FlywheelShell() {
       activeFlusher.dispose()
       activeFlusher = null
     }
+    // Dispose budget tracker (flushes pending data, cancels timers)
+    if (activeBudgetTracker) {
+      activeBudgetTracker.dispose()
+      activeBudgetTracker = null
+    }
     const shutdownPromise = _clearPipelineRuntime()
     if (activeSession) {
       destroyWorkflowSession(activeSession)
@@ -793,12 +746,13 @@ export function FlywheelShell() {
     setEscHint("")
 
     // Capture session ID before teardown clears it
-    const sessionId = sessionCtx.activeSessionId()
+    const sessionId = focusedSessionId()
 
     await teardownActiveWorkflow()
 
     // Remove from sessionControllers so sidebar shows "Paused" not "Active"
     if (sessionId) {
+      runtimes.teardown(sessionId)
       sessionControllers.delete(sessionId)
     }
 
@@ -848,6 +802,12 @@ export function FlywheelShell() {
       activeFlusher = null
     }
 
+    // Flush and dispose budget tracker (persists final cost/usage data)
+    if (activeBudgetTracker) {
+      activeBudgetTracker.dispose()
+      activeBudgetTracker = null
+    }
+
     // Shut down pipeline, loop, and controller (but NOT session/adapter/store)
     _clearPipelineRuntime()
 
@@ -884,7 +844,7 @@ export function FlywheelShell() {
   /**
    * Resume a previously paused session.
    *
-   * Unlike startPipeline(), this does NOT create a new CliSession on disk
+   * Unlike startPipeline(), this does NOT create a new Session on disk
    * or a new WorkflowSession from scratch. Instead, it:
    *
    * 1. Tears down any active workflow
@@ -924,8 +884,8 @@ export function FlywheelShell() {
     // 5. Inject output blocks in chunks (prevents UI freeze on large histories)
     injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
 
-    // 6. Wire session context (reuse existing session ID — no new CliSession)
-    sessionCtx.setActiveSessionId(sessionId)
+    // 6. Wire focused session (reuse existing session ID — no new Session)
+    setFocusedSessionId(sessionId)
 
     // 7. Transition session state: work:paused → work:active
     try {
@@ -951,7 +911,7 @@ export function FlywheelShell() {
     sessionStores.set(sessionId, session.store)
 
     // 10. Start WorkController directly (reads .state.md, skips completed phases).
-    //     We do NOT call startPipeline() because that creates a new CliSession
+    //     We do NOT call startPipeline() because that creates a new Session
     //     and tears down the session we just set up.
     const controller = new WorkController({
       config: deps.config,
@@ -987,7 +947,7 @@ export function FlywheelShell() {
   /** Look up a session's display name by ID (O(1) via memoized Map). */
   const sessionName = (id: string): string => {
     const s = sessionsMap().get(id)
-    return s?.name || s?.planPath || id.slice(0, 8)
+    return s?.name || s?.label || id.slice(0, 8)
   }
 
   const handleSessionSelect = (sessionId: string, action: SelectionAction) => {
@@ -1022,6 +982,12 @@ export function FlywheelShell() {
    * process continues executing in the background.
    */
   const backgroundSession = () => {
+    // Background in runtimes manager (pauses adapter flush)
+    const currentFocused = focusedSessionId()
+    if (currentFocused) {
+      runtimes.background(currentFocused)
+    }
+
     // Unsubscribe from the active store so we stop driving workState
     if (storeUnsub) {
       storeUnsub()
@@ -1038,9 +1004,9 @@ export function FlywheelShell() {
     activeSession = null
     activeController = null
     activeLoop = null
-    // Note: activePipeline and activeFlusher are NOT nulled here — the pipeline's
-    // completion handler reads them. They'll be cleaned up when the pipeline ends,
-    // or overwritten when a new pipeline starts.
+    activePipeline = null
+    activeFlusher = null
+    activeBudgetTracker = null
 
     // Clear question/pipeline UI subscriptions (the pipeline itself doesn't need
     // these signals to function — they only drive UI state like pendingQuestion).
@@ -1053,15 +1019,26 @@ export function FlywheelShell() {
     setActiveStore(null)
     setWorkState(null)
     setViewedSessionId(null)
+    setFocusedSessionId(null)
     setAppState("idle")
     setEscHint("")
     escapeHandler.reset()
+    // Force the Prompt component to re-acquire keyboard focus.
+    // Toggle sidebarFocused to trigger a focused prop change on the Prompt,
+    // which forces the underlying input to regain focus after mode switch.
+    setSidebarFocused(true)
+    queueMicrotask(() => setSidebarFocused(false))
   }
 
   // Clean up on component unmount
   onCleanup(() => {
     escapeHandler.dispose()
     teardownActiveWorkflow()
+    runtimes.teardownAll()
+    if (_sharedContextIndexer) {
+      _sharedContextIndexer.dispose()
+      _sharedContextIndexer = null
+    }
   })
 
   // ── Command Handler (via ActionDispatcher) ──
@@ -1071,11 +1048,8 @@ export function FlywheelShell() {
     if (!deps) return
 
     const stages = buildPipelineStages("work", deps.config)
-    if (stages) {
-      startPipeline(stages, { planPath }, deps)
-    } else {
-      startWorkWorkflow(planPath)
-    }
+      ?? [{ workflow: "work" as const }]
+    startPipeline(stages, { planPath }, deps)
   }
 
   const launchGenericWithPipeline = (name: string, args: Record<string, string>) => {
@@ -1083,11 +1057,8 @@ export function FlywheelShell() {
     if (!deps) return
 
     const stages = buildPipelineStages(name, deps.config)
-    if (stages) {
-      startPipeline(stages, args, deps)
-    } else {
-      startGenericWorkflow(name, args)
-    }
+      ?? [{ workflow: name as import("../../controller/workflow-pipeline").WorkflowType }]
+    startPipeline(stages, args, deps)
   }
 
   /**
@@ -1098,27 +1069,16 @@ export function FlywheelShell() {
    * + QuestionService to drive the existing QuestionPrompt component.
    */
   const launchStartFlow = async (args: Record<string, string>) => {
-    // Create a temporary event bus + question service for pre-pipeline questions
+    // Create a temporary event bus + question wiring for pre-pipeline questions
     const startBus = new EventBus()
-    const startQS = new QuestionService(startBus)
-
-    // Wire question events to the shell's pendingQuestion signal
     cleanupQuestionSubscriptions()
-    activeQuestionService = startQS
-    questionUnsubs.push(
-      startBus.subscribeToType("question:asked", () => {
-        const pending = startQS.list()
-        if (pending.length > 0) {
-          setPendingQuestion(pending[0])
-        }
-      }),
-      startBus.subscribeToType("question:replied", () => {
-        setPendingQuestion(null)
-      }),
-      startBus.subscribeToType("question:rejected", () => {
-        setPendingQuestion(null)
-      }),
-    )
+    const startWiring = createQuestionWiring({
+      eventBus: startBus,
+      onQuestion: (q) => setPendingQuestion(q),
+      onClear: () => setPendingQuestion(null),
+    })
+    activeQuestionWiring = startWiring
+    const startQS = startWiring.service
 
     try {
       // Step 1: Get description (skip if already provided via /start <description>)
@@ -1247,7 +1207,7 @@ export function FlywheelShell() {
     const behavior = escapeForState(appState())
     switch (behavior) {
       case "exit-tui":
-        if (sessionControllers.size > 0) {
+        if (runtimes.size > 0) {
           setShowQuitModal(true)
         } else {
           exitTUI()
@@ -1308,14 +1268,23 @@ export function FlywheelShell() {
     }
 
     if (currentAppState === "working") {
-      // Active mode: approval handling
       const state = workState()
       if (state?.approvalState?.pending) {
-        // Approve (with optional steering prompt)
+        // Active mode: approval handling (approve with optional steering prompt)
         if (activeSession) {
           activeSession.adapter.onApprovalDecision?.(true)
         }
         activeStore()?.clearApproval()
+      } else if (input.trim()) {
+        // Working mode without approval: inject text into the running worker's stdin
+        const injected = activeLoop?.injectToWorker(input.trim()) ?? false
+        if (injected) {
+          log.info("injected message to worker", { length: input.trim().length })
+          toast.show({ message: "Message sent to worker", variant: "info", duration: 2000 })
+        } else {
+          log.warn("worker injection failed (no active loop or stdin handle)")
+          toast.show({ message: "No active worker to send to", variant: "warning", duration: 3000 })
+        }
       }
       return
     }
@@ -1475,8 +1444,8 @@ export function FlywheelShell() {
       evt.preventDefault()
       const behavior = ctrlCForState(appState())
       switch (behavior) {
-        case "exit-tui":
-          if (sessionControllers.size > 0) {
+         case "exit-tui":
+          if (runtimes.size > 0) {
             setShowQuitModal(true)
           } else {
             exitTUI()
@@ -1545,6 +1514,7 @@ export function FlywheelShell() {
     onPromptSubmit: handlePromptInput,
     onEscape: handleEscape,
     get availableWidth() { return dimensions()?.width },
+    get runningCount() { return runtimes.getRunningIds().length },
   })
 
   // ── Render ──
@@ -1592,6 +1562,7 @@ export function FlywheelShell() {
               focused={sidebarFocused()}
               selectedIndex={sidebarSelectedIndex()}
               onSelect={handleSessionSelect}
+              focusedSessionId={focusedSessionId()}
               onSessionClick={(sessionId, flatIndex) => {
                 setSidebarFocused(true)
                 setIsPromptFocused(false)
@@ -1662,7 +1633,7 @@ export function FlywheelShell() {
 
       {/* Bottom slot: QuestionPrompt (when pending) OR normal Prompt input */}
       <Show
-        when={pendingQuestion() && activeQuestionService}
+        when={pendingQuestion() && activeQuestionWiring}
         fallback={
           <box flexShrink={0} alignItems="center" justifyContent="center" onMouseDown={() => {
             if (sidebarFocused()) {
@@ -1676,7 +1647,7 @@ export function FlywheelShell() {
         <box flexShrink={0}>
           <QuestionPrompt
             request={pendingQuestion()!}
-            questionService={activeQuestionService!}
+            questionService={activeQuestionWiring!.service}
           />
         </box>
       </Show>
@@ -1708,9 +1679,26 @@ export function FlywheelShell() {
       {/* Quit confirmation modal (Esc in idle with running sessions) */}
       <Show when={showQuitModal()}>
         <QuitConfirmModal
-          activeSessionCount={sessionControllers.size}
+          activeSessionCount={runtimes.size}
           onConfirm={() => {
             setShowQuitModal(false)
+            // Pause all running sessions before exiting
+            for (const id of runtimes.getRunningIds()) {
+              try {
+                const rt = runtimes.get(id)
+                if (rt?.kind === "running") {
+                  // Only pause work:active sessions
+                  const persisted = sessionsMap().get(id)
+                  if (persisted?.lifecycleState === "work:active") {
+                    sessionCtx.manager.updateState(id, "work:paused")
+                  }
+                }
+              } catch (err) {
+                log.warn("quit pause failed", { session: id, error: err instanceof Error ? err : String(err) })
+              }
+            }
+            runtimes.teardownAll()
+            sessionCtx.refreshList()
             exitTUI()
           }}
           onCancel={() => setShowQuitModal(false)}

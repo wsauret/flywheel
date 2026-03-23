@@ -14,7 +14,7 @@ import {
   createSessionViewport,
   type SessionViewportDeps,
 } from "../src/tui/components/session-viewport";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { WorkState } from "../src/tui/routes/work/state/types";
 import type { AppState } from "../src/tui/components/shell-modes";
@@ -103,7 +103,7 @@ function makeMockDeps(overrides?: Partial<SessionViewportDeps>): {
 describe("SessionViewport store hydration", () => {
   describe("non-running sessions (snapshot only)", () => {
     it("gets setWorkState snapshot with NO subscribeToStore call", async () => {
-      const store = createTestStore("test-plan");
+      const store = createStore("test-plan");
       const { deps, calls } = makeMockDeps();
 
       // Pre-cache the store (not running — no sessionControllers entry)
@@ -140,7 +140,7 @@ describe("SessionViewport store hydration", () => {
 
   describe("running sessions (live subscription)", () => {
     it("gets subscribeToStore for live updates when controller exists", async () => {
-      const store = createTestStore("running-plan");
+      const store = createStore("running-plan");
       const { deps, calls } = makeMockDeps();
 
       // Mark as running: controller + store cache
@@ -161,8 +161,8 @@ describe("SessionViewport store hydration", () => {
 
   describe("switching from running → non-running", () => {
     it("unsubscribes previous subscription and takes snapshot", async () => {
-      const runningStore = createTestStore("running-plan");
-      const completedStore = createTestStore("completed-plan");
+      const runningStore = createStore("running-plan");
+      const completedStore = createStore("completed-plan");
       const { deps, calls, unsubscribeCalls } = makeMockDeps();
 
       // Set up: running session + completed session cached
@@ -196,8 +196,8 @@ describe("SessionViewport store hydration", () => {
 
   describe("switching from non-running → running", () => {
     it("subscribes to the running session's store", async () => {
-      const runningStore = createTestStore("running-plan");
-      const completedStore = createTestStore("completed-plan");
+      const runningStore = createStore("running-plan");
+      const completedStore = createStore("completed-plan");
       const { deps, calls } = makeMockDeps();
 
       // Set up: completed session + running session
@@ -268,8 +268,8 @@ describe("SessionViewport deleteSessionFiles guard", () => {
 
 describe("Output flusher isolation", () => {
   it("each session store is independent (stores don't share state)", () => {
-    const storeA = createTestStore("plan-A");
-    const storeB = createTestStore("plan-B");
+    const storeA = createStore("plan-A");
+    const storeB = createStore("plan-B");
 
     // Mutate store A
     storeA.startWorkflow("plan-A");
@@ -283,8 +283,8 @@ describe("Output flusher isolation", () => {
   });
 
   it("flusher closure captures specific store, not a shared reference", () => {
-    const storeA = createTestStore("plan-A");
-    const storeB = createTestStore("plan-B");
+    const storeA = createStore("plan-A");
+    const storeB = createStore("plan-B");
 
     // Simulate flusher pattern: closure captures specific store
     const getOutputBlocksA = () => storeA.getState().outputBlocks ?? [];
@@ -341,7 +341,7 @@ describe("SessionViewport loading state", () => {
 
   it("does NOT set loading for cached session (no disk load)", async () => {
     const loadingStates: boolean[] = [];
-    const store = createTestStore("cached");
+    const store = createStore("cached");
     const { deps } = makeMockDeps();
     deps.sessionStores.set("cached-1", store);
     deps.setSessionLoading = (loading) => {

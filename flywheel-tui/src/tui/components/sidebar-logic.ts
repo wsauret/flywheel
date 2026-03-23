@@ -66,6 +66,7 @@ const STATE_TO_GROUP: Readonly<Record<SessionLifecycleState, SessionGroupKey>> =
   "plan:needs-fix": "other",
   "work:active": "active",
   "work:paused": "paused",
+  "budget_exhausted": "paused",
   "work:review": "other",
   "completed": "other",
   "archived": "archived",
@@ -134,16 +135,6 @@ export function getOpenAction(session: SessionSummary): SelectionAction | null {
   }
 }
 
-/**
- * Determine what action to take when a session is selected.
- * Returns null for non-selectable sessions (trashed / archived).
- *
- * @deprecated Use `getOpenAction()` instead. Kept for backward compatibility.
- */
-export function getSelectionAction(session: SessionSummary): SelectionAction | null {
-  return getOpenAction(session);
-}
-
 // ---------------------------------------------------------------------------
 // sidebarKeyHandler
 // ---------------------------------------------------------------------------
@@ -152,7 +143,8 @@ export function getSelectionAction(session: SessionSummary): SelectionAction | n
  * Check whether a session is selectable (not trashed/archived).
  */
 function isSelectable(session: SessionSummary): boolean {
-  return getSelectionAction(session) !== null;
+  const { lifecycleState } = session;
+  return lifecycleState !== "trashed" && lifecycleState !== "archived";
 }
 
 /**
@@ -206,7 +198,7 @@ export function sidebarKeyHandler(
         return { selectedIndex: currentIndex };
       }
       const session = flatList[currentIndex];
-      const selectionAction = getSelectionAction(session);
+      const selectionAction = getOpenAction(session);
       if (selectionAction === null) {
         // Non-selectable session — no action
         return { selectedIndex: currentIndex };

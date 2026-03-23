@@ -1,4 +1,5 @@
 import * as yaml from "js-yaml";
+import { parseFrontmatter as parseRawFrontmatter } from "../utils/frontmatter";
 
 /**
  * Parsed representation of a `.state.md` file.
@@ -45,7 +46,6 @@ export interface ErrorLogEntry {
 // Constants
 // ---------------------------------------------------------------------------
 
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---/;
 const TITLE_RE = /^#\s+Execution State:\s*(.+)$/m;
 const PHASE_RE =
   /^- \[([ x~])\]\s+Phase\s+\d+:\s*(.+?)(?:\s*\(([^)]+)\))?\s*$/;
@@ -74,12 +74,8 @@ export function parseStateFile(content: string): ParsedStateFile {
 // ---------------------------------------------------------------------------
 
 function parseFrontmatter(content: string): Record<string, unknown> {
-  const match = content.match(FRONTMATTER_RE);
-  if (!match) return {};
-
-  const raw = yaml.load(match[1], { schema: yaml.JSON_SCHEMA });
-  if (raw === null || raw === undefined || typeof raw !== "object") return {};
-  return raw as Record<string, unknown>;
+  const parsed = parseRawFrontmatter(content, { schema: yaml.JSON_SCHEMA });
+  return parsed?.frontmatter ?? {};
 }
 
 function parseTitle(content: string): string {

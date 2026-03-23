@@ -2,28 +2,23 @@
  * DispatcherInput assembler — transforms raw plan/state content
  * into the structured DispatcherInput with budget-aware truncation.
  *
- * Budget allocations (bytes):
- *   Plan:               2048
- *   Last worker result:  1024
- *   History:             1536
- *   Learnings:            512
- *   Total:              5120 (5KB)
+ * Single safety-valve cap: 100KB total. If the assembled input exceeds
+ * this cap, available_context arrays are truncated to 10 entries each.
+ * Per-field sub-budgets were removed — context is passed through as-is
+ * unless the total overflows.
  */
 
-import type { DispatcherInput } from "../schemas/dispatcher";
+import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "../schemas/dispatcher";
+import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
 import { parsePlan } from "../controller/plan-parser";
 import { parseStateFile } from "../state/reader";
 import { parseContextFile } from "../controller/templates";
 
 // ---------------------------------------------------------------------------
-// Budget constants (bytes)
+// Budget constant (bytes) — single safety-valve cap
 // ---------------------------------------------------------------------------
 
-const BUDGET_PLAN = 2048;
-const BUDGET_LAST_RESULT = 1024;
-const BUDGET_HISTORY = 1536;
-const BUDGET_LEARNINGS = 512;
-const BUDGET_TOTAL = 5120;
+const BUDGET_TOTAL = 102400; // 100KB
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,8 +28,27 @@ export interface AssemblerInput {
   planContent: string;
   stateContent: string;
   contextContent?: string;
-  lastWorkerResult?: string;
-  learnings?: string[];
+  lastWorkerResult?: string | LastWorkerResult | null;
+  /** Workflow step context for the dispatcher */
+  workflowContext: {
+    workflowId: string;
+    name: string;
+    stepNumber: number;
+    totalSteps: number;
+    stepDescription: string;
+  };
+  /** Runtime config subset for the dispatcher */
+  configContext: {
+    maxEvalCycles: number;
+    worktreePath: string;
+    projectCwd: string;
+    workerModel: string;
+    dispatcherModel: string;
+  };
+  /** Budget status for the dispatcher */
+  sessionBudget: SessionBudgetStatus;
+  /** Available context (conventions, standards, learnings) */
+  availableContext: AvailableContext;
 }
 
 export interface AssembledInput {
@@ -86,46 +100,70 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     steps: p.steps.map((s) => ({ description: s })),
   }));
 
-  // Apply budget truncation
+  // Tracking flags
   let planTruncated = false;
   let historyTruncated = false;
 
-  // Truncate plan phases to fit within BUDGET_PLAN bytes
-  let truncatedPlanPhases = planPhases;
-  let planJson = JSON.stringify(truncatedPlanPhases);
-
-  if (byteLength(planJson) > BUDGET_PLAN) {
-    planTruncated = true;
-    truncatedPlanPhases = truncatePlanPhases(planPhases, BUDGET_PLAN);
+  // Parse lastWorkerResult — accept structured object or skip raw strings
+  let lastWorkerResultObj: LastWorkerResult | null = null;
+  if (raw.lastWorkerResult != null) {
+    if (typeof raw.lastWorkerResult === "string") {
+      // Legacy string path: try to parse as JSON, otherwise skip
+      try {
+        const parsed = JSON.parse(raw.lastWorkerResult);
+        if (parsed && typeof parsed === "object" && "step" in parsed && "status" in parsed) {
+          lastWorkerResultObj = parsed as LastWorkerResult;
+        }
+      } catch {
+        // Not parseable — drop silently (raw strings can't populate the structured schema)
+      }
+    } else {
+      lastWorkerResultObj = raw.lastWorkerResult;
+    }
   }
 
-  // Truncate learnings to fit within BUDGET_LEARNINGS bytes
-  let relevantLearnings: string[] | undefined;
-  if (raw.learnings && raw.learnings.length > 0) {
-    relevantLearnings = truncateLearnings(raw.learnings, BUDGET_LEARNINGS);
-  }
+  // Build workflow info (required)
+  const workflowInfo: WorkflowInfo = {
+    name: raw.workflowContext.name,
+    step_number: raw.workflowContext.stepNumber,
+    total_steps: raw.workflowContext.totalSteps,
+    step_description: raw.workflowContext.stepDescription,
+  };
+
+  // Build dispatcher config (required)
+  const dispatcherConfig: DispatcherConfig = {
+    max_eval_cycles: raw.configContext.maxEvalCycles,
+    worktree_path: raw.configContext.worktreePath,
+    project_cwd: raw.configContext.projectCwd,
+    worker_model: raw.configContext.workerModel,
+    dispatcher_model: raw.configContext.dispatcherModel,
+  };
 
   // Build the input
   const input: DispatcherInput = {
-    plan: { phases: truncatedPlanPhases },
+    plan: { phases: planPhases },
     state: {
       completed_phases: completedPhases,
       current_phase_index: currentPhaseIndex,
     },
     context: { files: contextFiles },
-    ...(relevantLearnings ? { relevant_learnings: relevantLearnings } : {}),
     plan_truncated: planTruncated,
     history_truncated: historyTruncated,
+    workflow_id: raw.workflowContext.workflowId,
+    workflow: workflowInfo,
+    last_worker_result: lastWorkerResultObj,
+    config: dispatcherConfig,
+    session_budget: raw.sessionBudget,
+    available_context: raw.availableContext,
   };
 
-  // Check total budget
-  let serialized = JSON.stringify(input);
-  if (byteLength(serialized) > BUDGET_TOTAL) {
-    // Aggressively truncate: remove context files, truncate plan further
-    input.context.files = input.context.files.slice(0, 5);
-    input.plan.phases = truncatePlanPhases(input.plan.phases, BUDGET_PLAN / 2);
-    input.plan_truncated = true;
-    planTruncated = true;
+  // Safety valve — if total exceeds 100KB, truncate available_context as last resort
+  if (byteLength(JSON.stringify(input)) > BUDGET_TOTAL) {
+    input.available_context = {
+      conventions: input.available_context.conventions.slice(0, 10),
+      standards: input.available_context.standards.slice(0, 10),
+      learnings: input.available_context.learnings.slice(0, 10),
+    };
   }
 
   return {
@@ -140,7 +178,7 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
 // ---------------------------------------------------------------------------
 
 function byteLength(str: string): number {
-  return new TextEncoder().encode(str).length;
+  return Buffer.byteLength(str, "utf8");
 }
 
 /**
@@ -185,20 +223,3 @@ function truncatePlanPhases(
   return result;
 }
 
-/**
- * Truncate learnings array to fit within a byte budget.
- * Keeps as many complete learnings as possible.
- */
-function truncateLearnings(learnings: string[], budget: number): string[] {
-  const result: string[] = [];
-  let currentBytes = 2; // JSON array brackets []
-
-  for (const learning of learnings) {
-    const entryBytes = byteLength(JSON.stringify(learning)) + (result.length > 0 ? 1 : 0); // comma
-    if (currentBytes + entryBytes > budget && result.length > 0) break;
-    result.push(learning);
-    currentBytes += entryBytes;
-  }
-
-  return result;
-}

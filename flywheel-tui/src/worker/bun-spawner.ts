@@ -1,8 +1,13 @@
 /**
  * BunProcessSpawner — implements ProcessSpawner using Bun.spawn().
  *
- * - Pre-encoded stdin delivery (Uint8Array, not proc.stdin.write())
- * - Piped stdio: stdout/stderr piped, stdin from buffer or 'ignore'
+ * Stdin modes:
+ * - Pre-encoded delivery (Uint8Array): default when `stdin` is provided without `stdinPipe`
+ * - Streaming pipe: when `stdinPipe: true` — returns StdinHandle for mid-execution writes
+ * - Ignore: when no `stdin` is provided
+ *
+ * Features:
+ * - Piped stdio: stdout/stderr piped, stdin from buffer, pipe, or 'ignore'
  * - ReadableStream readers with TextDecoder({ stream: true })
  * - Global process registry with clean entry removal on exit
  * - Shell metacharacter validation on all spawn args
@@ -12,7 +17,7 @@
  * - Integrates: buffer, completion, env-filter, NDJSON parser, error categorization
  */
 
-import type { ProcessSpawner, SpawnOptions } from "./spawner";
+import type { ProcessSpawner, SpawnOptions, SpawnResult, StdinHandle } from "./spawner";
 import type { WorkerResult } from "../schemas/worker";
 import { TieredBuffer } from "./buffer";
 import { CompletionDetector } from "./completion";
@@ -111,7 +116,7 @@ export class BunProcessSpawner implements ProcessSpawner {
     this.timeoutMs = minutesToMs(minutes);
   }
 
-  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<WorkerResult> {
+  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
     // Validate args for shell metacharacters
     validateSpawnArgs(command, args);
 
@@ -125,9 +130,12 @@ export class BunProcessSpawner implements ProcessSpawner {
     const baseEnv = options?.env ?? (process.env as Record<string, string>);
     const filteredEnv = this.envFilter.filter(baseEnv);
 
-    // Pre-encode stdin if provided; otherwise use 'ignore' so processes
-    // that don't expect stdin don't receive an empty Blob.
-    const stdinEncoded = options?.stdin !== undefined
+    // Determine stdin mode:
+    // - stdinPipe + stdin → streaming pipe (write initial content, keep open)
+    // - no stdinPipe + stdin → pre-encoded Uint8Array (one-shot, closed after write)
+    // - no stdin → 'ignore'
+    const usePipe = options?.stdinPipe === true && options?.stdin !== undefined;
+    const stdinEncoded = !usePipe && options?.stdin !== undefined
       ? new TextEncoder().encode(options.stdin)
       : undefined;
 
@@ -173,12 +181,66 @@ export class BunProcessSpawner implements ProcessSpawner {
       workerTimeout.interrupt();
     }
 
+    // Build the WorkerResult from completion state (shared between pipe and non-pipe paths)
+    const buildWorkerResult = (exitCode: number): WorkerResult => {
+      // Flush NDJSON parser
+      ndjsonParser.flush();
+
+      // Detect if process was interrupted by signal (Ctrl+C → SIGINT → exit 130)
+      // or by user-initiated interrupt via workerTimeout.interrupt()
+      const interrupted = workerTimeout.interrupted || isSignalExit(exitCode);
+
+      // Fallback completion check
+      const tier1 = buffer.getTier1();
+      completionDetector.checkFallback(tier1.content);
+
+      const durationMs = Date.now() - startTime;
+
+      // Categorize failure
+      const stderrContent = rawStderrChunks.join("");
+      const failure = categorizeFailure({
+        exitCode,
+        stdout: tier1.content,
+        stderr: stderrContent,
+        timedOut: workerTimeout.timedOut,
+        timeoutMs,
+        completionDetected: completionDetector.hasSeenCompletion,
+        interrupted,
+      });
+
+      return {
+        output: tier1.content,
+        rawOutput: rawStdoutChunks.join(""),
+        rawStderr: stderrContent,
+        exitCode,
+        truncated: buffer.truncated,
+        durationMs,
+        failure,
+      };
+    };
+
+    const buildErrorResult = (error: unknown): WorkerResult => {
+      const durationMs = Date.now() - startTime;
+      return {
+        output: buffer.getTier1().content,
+        rawOutput: rawStdoutChunks.join(""),
+        rawStderr: rawStderrChunks.join(""),
+        exitCode: -1,
+        truncated: buffer.truncated,
+        durationMs,
+        failure: {
+          kind: "transient",
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    };
+
     try {
       // Spawn the process
       const proc = Bun.spawn([executable, ...args], {
         cwd: options?.cwd,
         env: filteredEnv,
-        stdin: stdinEncoded ?? "ignore",
+        stdin: usePipe ? "pipe" : (stdinEncoded ?? "ignore"),
         stdout: "pipe",
         stderr: "pipe",
       });
@@ -240,67 +302,83 @@ export class BunProcessSpawner implements ProcessSpawner {
         }
       };
 
-      // Read both streams concurrently, then wait for exit
+      // --- Pipe mode: return early with StdinHandle, result resolves later ---
+      if (usePipe) {
+        const encoder = new TextEncoder();
+        let pipeOpen = true;
+
+        // proc.stdin is a FileSink when spawned with stdin: "pipe"
+        const stdinSink = proc.stdin as import("bun").FileSink;
+
+        // Close pipe when process exits
+        const onExit = () => { pipeOpen = false; };
+        proc.exited.then(onExit, onExit);
+
+        const stdinHandle: StdinHandle = {
+          write(message: string): boolean {
+            if (!pipeOpen) return false;
+            try {
+              stdinSink.write(encoder.encode(message));
+              return true;
+            } catch {
+              pipeOpen = false;
+              return false;
+            }
+          },
+          close(): void {
+            if (!pipeOpen) return;
+            pipeOpen = false;
+            try {
+              stdinSink.end();
+            } catch {
+              // Already closed
+            }
+          },
+          get isOpen(): boolean {
+            return pipeOpen;
+          },
+        };
+
+        // Write initial stdin content CONCURRENTLY with stdout/stderr reads
+        // (avoids >64KB deadlock — the process can start consuming stdin
+        // while we're already reading its output)
+        const writeInitialStdin = async () => {
+          try {
+            stdinSink.write(encoder.encode(options!.stdin!));
+          } catch {
+            pipeOpen = false;
+          }
+        };
+
+        // The result promise: read streams + wait for exit + build result
+        const resultPromise = (async (): Promise<WorkerResult> => {
+          try {
+            await Promise.all([readStdout(), readStderr(), writeInitialStdin()]);
+            const exitCode = await proc.exited;
+            workerTimeout.cancel();
+            unregister();
+            return buildWorkerResult(exitCode);
+          } catch (error) {
+            workerTimeout.cancel();
+            return buildErrorResult(error);
+          }
+        })();
+
+        return { result: resultPromise, stdinHandle, pid: proc.pid };
+      }
+
+      // --- Non-pipe mode: wait for completion, wrap in SpawnResult ---
       await Promise.all([readStdout(), readStderr()]);
-
-      // Wait for process to exit
       const exitCode = await proc.exited;
-
-      // Flush NDJSON parser
-      ndjsonParser.flush();
-
-      // Clean up
       workerTimeout.cancel();
       unregister();
 
-      // Detect if process was interrupted by signal (Ctrl+C → SIGINT → exit 130)
-      // or by user-initiated interrupt via workerTimeout.interrupt()
-      // Following ralph-tui pattern: check signal/exit code before categorizing
-      const interrupted = workerTimeout.interrupted || isSignalExit(exitCode);
+      const workerResult = buildWorkerResult(exitCode);
+      return { result: Promise.resolve(workerResult), pid: proc.pid };
 
-      // Fallback completion check
-      const tier1 = buffer.getTier1();
-      completionDetector.checkFallback(tier1.content);
-
-      const durationMs = Date.now() - startTime;
-
-      // Categorize failure
-      const stderrContent = rawStderrChunks.join("");
-      const failure = categorizeFailure({
-        exitCode,
-        stdout: tier1.content,
-        stderr: stderrContent,
-        timedOut: workerTimeout.timedOut,
-        timeoutMs,
-        completionDetected: completionDetector.hasSeenCompletion,
-        interrupted,
-      });
-
-      return {
-        output: tier1.content,
-        rawOutput: rawStdoutChunks.join(""),
-        rawStderr: stderrContent,
-        exitCode,
-        truncated: buffer.truncated,
-        durationMs,
-        failure,
-      };
     } catch (error) {
       workerTimeout.cancel();
-      const durationMs = Date.now() - startTime;
-
-      return {
-        output: buffer.getTier1().content,
-        rawOutput: rawStdoutChunks.join(""),
-        rawStderr: rawStderrChunks.join(""),
-        exitCode: -1,
-        truncated: buffer.truncated,
-        durationMs,
-        failure: {
-          kind: "transient",
-          message: error instanceof Error ? error.message : String(error),
-        },
-      };
+      return { result: Promise.resolve(buildErrorResult(error)) };
     }
   }
 }

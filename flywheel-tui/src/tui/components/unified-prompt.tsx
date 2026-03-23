@@ -32,6 +32,8 @@ export interface UnifiedPromptProps {
   onEscape: () => void
   /** Available column width for the prompt (optional, for responsive sizing). */
   availableWidth?: number
+  /** Number of running sessions (background or focused). When > 0 in idle, shows count in placeholder. */
+  runningCount?: number
 }
 
 export interface UnifiedPromptResult {
@@ -41,7 +43,7 @@ export interface UnifiedPromptResult {
 
 const PLACEHOLDERS: Record<PromptMode, string> = {
   command: "Type a / command...",
-  active: "Enter to continue, or type to steer...",
+  active: "Type to steer the worker...",
   passive: "Phase executing...",
   disabled: "Import in progress...",
 }
@@ -76,7 +78,13 @@ export function useUnifiedPrompt(props: UnifiedPromptProps): UnifiedPromptResult
     onEscape: handleEscape,
     get disabled() { return isDisabled() },
     get focused() { return !isDisabled() && !props.sidebarFocused },
-    get placeholder() { return PLACEHOLDERS[mode()] },
+    get placeholder() {
+      const base = PLACEHOLDERS[mode()]
+      if (mode() === "command" && (props.runningCount ?? 0) > 0) {
+        return `${base} (${props.runningCount} running)`
+      }
+      return base
+    },
   })
 
   return {

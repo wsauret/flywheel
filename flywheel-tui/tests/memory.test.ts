@@ -5,6 +5,12 @@ import { tmpdir } from "node:os";
 import { extractLearning, computeHash, CompoundDocSchema } from "../src/memory/extract";
 import { SESMemoryRetriever } from "../src/memory/retrieve";
 import type { ExtractionInput } from "../src/memory/extract";
+import {
+  parseCompoundDocs,
+  createShipOnStepComplete,
+  COMPOUND_STEP_INDEX,
+} from "../src/workflows/ship-output-extractor";
+import type { WorkerResult } from "../src/schemas/worker";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -512,5 +518,392 @@ describe("SESMemoryRetriever", () => {
     const results = retriever.retrieve(["good"]);
     expect(results.length).toBe(1);
     retriever.dispose();
+  });
+
+  it("getHashes() returns set of all extraction_hash values", async () => {
+    await writeSolutionFile({
+      title: "Fix A",
+      tags: ["docker"],
+      hash: "aaaa",
+      problem: "p1",
+      solution: "s1",
+    });
+    await writeSolutionFile({
+      title: "Fix B",
+      tags: ["node"],
+      hash: "bbbb",
+      problem: "p2",
+      solution: "s2",
+    });
+
+    const retriever = new SESMemoryRetriever(solutionsDir);
+    await retriever.startIndexing();
+    const hashes = retriever.getHashes();
+    expect(hashes.size).toBe(2);
+    expect(hashes.has("aaaa")).toBe(true);
+    expect(hashes.has("bbbb")).toBe(true);
+    retriever.dispose();
+  });
+
+  it("getHashes() returns empty set before indexing", () => {
+    const retriever = new SESMemoryRetriever(solutionsDir);
+    const hashes = retriever.getHashes();
+    expect(hashes.size).toBe(0);
+    retriever.dispose();
+  });
+
+  it("getHashes() excludes entries with empty hash", async () => {
+    // Write a file with no extraction_hash
+    await writeFile(
+      join(solutionsDir, "no-hash.md"),
+      '---\ntype: compound\ntitle: "No Hash"\ntags: [test]\ndate: "2026-03-22"\n---\n\n## Problem\np\n\n## Solution\ns',
+      "utf-8",
+    );
+
+    const retriever = new SESMemoryRetriever(solutionsDir);
+    await retriever.startIndexing();
+    const hashes = retriever.getHashes();
+    // Empty string hashes should be filtered out
+    expect(hashes.has("")).toBe(false);
+    retriever.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractLearning with knownHashes
+// ---------------------------------------------------------------------------
+
+describe("extractLearning with knownHashes", () => {
+  let base: string;
+
+  beforeEach(async () => {
+    base = await setupDirs();
+  });
+
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true });
+  });
+
+  it("uses knownHashes for dedup instead of disk scan", () => {
+    const hash = computeHash(VALID_INPUT);
+    const knownHashes = new Set([hash]);
+
+    const result = extractLearning(VALID_INPUT, {
+      solutionsDir,
+      draftsDir,
+      knownHashes,
+    });
+    expect(result.written).toBe(false);
+    expect(result.reason).toBe("duplicate");
+  });
+
+  it("writes when knownHashes does not contain the hash", () => {
+    const knownHashes = new Set(["other-hash"]);
+
+    const result = extractLearning(VALID_INPUT, {
+      solutionsDir,
+      draftsDir,
+      knownHashes,
+    });
+    expect(result.written).toBe(true);
+    expect(result.reason).toBe("success");
+  });
+
+  it("writes when knownHashes is empty", () => {
+    const knownHashes = new Set<string>();
+
+    const result = extractLearning(VALID_INPUT, {
+      solutionsDir,
+      draftsDir,
+      knownHashes,
+    });
+    expect(result.written).toBe(true);
+    expect(result.reason).toBe("success");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseCompoundDocs
+// ---------------------------------------------------------------------------
+
+describe("parseCompoundDocs", () => {
+  it("parses a single compound doc block", () => {
+    const output = `Some preamble text.
+
+---
+type: compound
+title: "Fix Docker Volumes"
+tags: [docker, macos]
+date: "2026-03-22"
+extraction_hash: "abc123"
+---
+
+## Problem
+Docker volume mounts fail on macOS.
+
+## Solution
+Add :delegated flag to volume mounts.
+
+## Context
+macOS with Docker Desktop 4.x.
+`;
+
+    const docs = parseCompoundDocs(output);
+    expect(docs.length).toBe(1);
+    expect(docs[0].title).toBe("Fix Docker Volumes");
+    expect(docs[0].tags).toEqual(["docker", "macos"]);
+    expect(docs[0].problem).toContain("Docker volume mounts fail");
+    expect(docs[0].solution).toContain(":delegated");
+    expect(docs[0].context).toContain("macOS with Docker Desktop");
+  });
+
+  it("parses multiple compound doc blocks", () => {
+    const output = `---
+type: compound
+title: "Fix A"
+tags: [a]
+date: "2026-03-22"
+extraction_hash: "h1"
+---
+
+## Problem
+Problem A
+
+## Solution
+Solution A
+
+---
+type: compound
+title: "Fix B"
+tags: [b]
+date: "2026-03-22"
+extraction_hash: "h2"
+---
+
+## Problem
+Problem B
+
+## Solution
+Solution B
+`;
+
+    const docs = parseCompoundDocs(output);
+    expect(docs.length).toBe(2);
+    expect(docs[0].title).toBe("Fix A");
+    expect(docs[1].title).toBe("Fix B");
+  });
+
+  it("returns empty array for empty output", () => {
+    expect(parseCompoundDocs("")).toEqual([]);
+    expect(parseCompoundDocs("  ")).toEqual([]);
+  });
+
+  it("returns empty array for output with no compound docs", () => {
+    const output = "No new learnings to extract.";
+    expect(parseCompoundDocs(output)).toEqual([]);
+  });
+
+  it("skips blocks that are not type: compound", () => {
+    const output = `---
+type: note
+title: "Not compound"
+tags: [test]
+---
+
+## Problem
+p
+
+## Solution
+s
+`;
+    expect(parseCompoundDocs(output)).toEqual([]);
+  });
+
+  it("skips blocks with missing required fields", () => {
+    const output = `---
+type: compound
+title: ""
+tags: []
+date: "2026-03-22"
+extraction_hash: "abc"
+---
+
+## Problem
+
+
+## Solution
+s
+`;
+    // Empty title and empty tags should fail CompoundDocSchema validation
+    expect(parseCompoundDocs(output)).toEqual([]);
+  });
+
+  it("handles compound docs without Context section", () => {
+    const output = `---
+type: compound
+title: "No Context"
+tags: [test]
+date: "2026-03-22"
+extraction_hash: "abc"
+---
+
+## Problem
+A problem
+
+## Solution
+A solution
+`;
+
+    const docs = parseCompoundDocs(output);
+    expect(docs.length).toBe(1);
+    expect(docs[0].context).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createShipOnStepComplete
+// ---------------------------------------------------------------------------
+
+describe("createShipOnStepComplete", () => {
+  let base: string;
+
+  beforeEach(async () => {
+    base = await setupDirs();
+    // Also create nested dirs the hook expects
+    await mkdir(join(base, "docs", "solutions"), { recursive: true });
+    await mkdir(join(base, ".flywheel", "cache", "ses-drafts"), { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true });
+  });
+
+  function makeWorkerResult(output: string): WorkerResult {
+    return {
+      output,
+      exitCode: 0,
+      truncated: false,
+      durationMs: 1000,
+    };
+  }
+
+  it("returns empty object for steps other than COMPOUND_STEP_INDEX", async () => {
+    const hook = createShipOnStepComplete(base);
+    const result = await hook(0, makeWorkerResult("anything"), {});
+    expect(result).toEqual({});
+  });
+
+  it("returns learningsExtracted: 0 when no compound docs in output", async () => {
+    const hook = createShipOnStepComplete(base);
+    const result = await hook(
+      COMPOUND_STEP_INDEX,
+      makeWorkerResult("No new learnings to extract."),
+      {},
+    );
+    expect(result.learningsExtracted).toBe(0);
+  });
+
+  it("extracts and writes compound docs from output", async () => {
+    const hook = createShipOnStepComplete(base);
+    const output = `---
+type: compound
+title: "Fix Test Flakiness"
+tags: [testing, flaky]
+date: "2026-03-22"
+extraction_hash: "abc"
+---
+
+## Problem
+Tests were flaky due to timing.
+
+## Solution
+Added retry logic with exponential backoff.
+
+## Context
+CI environment with limited resources.
+`;
+
+    const result = await hook(
+      COMPOUND_STEP_INDEX,
+      makeWorkerResult(output),
+      {},
+    );
+    expect(result.learningsExtracted).toBe(1);
+    expect(result.learningsDuplicate).toBe(0);
+    expect(result.learningsFailed).toBe(0);
+
+    // Verify file was written
+    const files = await readdir(join(base, "docs", "solutions"));
+    expect(files.length).toBe(1);
+    expect(files[0]).toContain("fix-test-flakiness");
+  });
+
+  it("handles duplicate compound docs gracefully", async () => {
+    const hook = createShipOnStepComplete(base);
+    const output = `---
+type: compound
+title: "Same Learning"
+tags: [test]
+date: "2026-03-22"
+extraction_hash: "abc"
+---
+
+## Problem
+A problem
+
+## Solution
+A solution
+`;
+
+    // First call writes
+    await hook(COMPOUND_STEP_INDEX, makeWorkerResult(output), {});
+
+    // Second call should detect duplicate
+    const result = await hook(
+      COMPOUND_STEP_INDEX,
+      makeWorkerResult(output),
+      {},
+    );
+    expect(result.learningsExtracted).toBe(0);
+    expect(result.learningsDuplicate).toBe(1);
+  });
+
+  it("uses knownHashes for dedup when provided", async () => {
+    // Pre-compute the hash that would be generated for this input
+    const hash = computeHash({
+      title: "Known Learning",
+      problem: "A problem",
+      solution: "A solution",
+      tags: ["test"],
+    });
+    const knownHashes = new Set([hash]);
+
+    const hook = createShipOnStepComplete(base, knownHashes);
+    const output = `---
+type: compound
+title: "Known Learning"
+tags: [test]
+date: "2026-03-22"
+extraction_hash: "abc"
+---
+
+## Problem
+A problem
+
+## Solution
+A solution
+`;
+
+    const result = await hook(
+      COMPOUND_STEP_INDEX,
+      makeWorkerResult(output),
+      {},
+    );
+    expect(result.learningsExtracted).toBe(0);
+    expect(result.learningsDuplicate).toBe(1);
+
+    // Nothing should be written to disk
+    const files = await readdir(join(base, "docs", "solutions"));
+    expect(files.length).toBe(0);
   });
 });

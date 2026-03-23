@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { EventBus } from "../src/events/event-bus";
 import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentui";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type {
   AnyBlock,
@@ -31,7 +31,7 @@ function ts(): string {
  */
 function createHarness() {
   const bus = new EventBus();
-  const store = createTestStore("test-plan");
+  const store = createStore("test-plan");
   const adapter = createOpenTUIAdapter(store);
   adapter.connect(bus);
   adapter.start();

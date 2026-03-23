@@ -19,10 +19,14 @@ import {
 } from "../../workflows/index";
 import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor";
 import { createReviewOnStepComplete } from "../../workflows/review-output-extractor";
+import { createShipOnStepComplete } from "../../workflows/ship-output-extractor";
 import type { QuestionService } from "../../controller/question-service";
 import type { FlywheelConfig } from "../../config/loader";
 import type { WorkflowDeps } from "../../controller/workflow-deps";
 import type { WorkflowSession } from "./workflow-session";
+import type { BudgetTracker } from "../../session/budget-tracker";
+import type { BudgetLimits } from "../../schemas/shared";
+import type { ContextIndexer } from "../../memory/indexer";
 import type {
   PipelineStage,
   PipelineStageResult,
@@ -90,6 +94,12 @@ export function createShellStageRunner(
   deps: WorkflowDeps,
   questionService?: QuestionService,
   interactiveOverrides?: { plan?: boolean; review?: boolean },
+  budgetTracker?: BudgetTracker,
+  budgetLimits?: BudgetLimits,
+  /** Called when a new ExecutionLoop is created for a stage. Used to expose the loop for injection. */
+  onLoopCreated?: (loop: ExecutionLoop) => void,
+  /** Context indexer for conventions/standards/learnings metadata. Caller manages lifecycle. */
+  contextIndexer?: ContextIndexer,
 ): StageRunner {
   return async (
     stage: PipelineStage,
@@ -111,6 +121,9 @@ export function createShellStageRunner(
         engine: deps.engine,
         ui: session.adapter,
         eventBus: session.eventBus,
+        budgetTracker,
+        budgetLimits,
+        contextIndexer,
       });
 
       // Respect abort signal
@@ -171,9 +184,10 @@ export function createShellStageRunner(
 
     const phaseProvider = new WorkflowDefinitionProvider(workflow);
 
-    // For plan/review: install onStepComplete and skipTruncation
+    // For plan/review/ship: install onStepComplete and skipTruncation
     const isPlan = stage.workflow === "plan";
     const isReview = stage.workflow === "review";
+    const isShip = stage.workflow === "ship";
     const projectCwd = deps.config.project_cwd || process.cwd();
     const stageKey = stage.workflow as "plan" | "review";
     const interactive = interactiveOverrides?.[stageKey] ?? deps.config.interactive_consolidation ?? false;
@@ -182,6 +196,8 @@ export function createShellStageRunner(
       onStepComplete = createPlanOnStepComplete(projectCwd, { questionService, interactive });
     } else if (isReview) {
       onStepComplete = createReviewOnStepComplete({ questionService, interactive });
+    } else if (isShip) {
+      onStepComplete = createShipOnStepComplete(projectCwd);
     }
 
     const loop = new ExecutionLoop({
@@ -195,7 +211,13 @@ export function createShellStageRunner(
       workflowLabel: workflow.name,
       onStepComplete,
       skipTruncation: isPlan,
+      budgetTracker,
+      budgetLimits,
+      contextIndexer,
     });
+
+    // Expose the loop for mid-execution injection
+    onLoopCreated?.(loop);
 
     // Respect abort signal
     signal.addEventListener("abort", () => loop.requestShutdown());

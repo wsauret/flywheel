@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { injectOutputBlocks } from "../src/tui/components/resume-utils";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/routes/work/state/types";
@@ -62,7 +62,7 @@ describe("appendOutputBlocks", () => {
   let store: UIActions;
 
   beforeEach(() => {
-    store = createTestStore("test-plan");
+    store = createStore("test-plan");
   });
 
   it("appends blocks to an empty store", () => {
@@ -140,7 +140,7 @@ describe("injectOutputBlocks", () => {
   let store: UIActions;
 
   beforeEach(() => {
-    store = createTestStore("test-plan");
+    store = createStore("test-plan");
   });
 
   it("injects empty blocks as no-op", () => {
@@ -341,7 +341,7 @@ describe("OutputSnapshot → AnyBlock compatibility", () => {
     const snapshots = makeVariedSnapshots();
     const blocks = snapshotToBlocks(snapshots) as AnyBlock[];
 
-    const store = createTestStore("test");
+    const store = createStore("test");
     injectOutputBlocks(store, blocks);
 
     expect(store.getState().outputBlocks).toHaveLength(5);
@@ -417,7 +417,7 @@ describe("Resume session state transitions", () => {
 describe("Resume result → store injection", () => {
   it("full resume flow: orchestrator result → injectOutputBlocks → store has blocks", () => {
     // Simulate what resumeSession() in the shell does
-    const store = createTestStore("resumed-plan");
+    const store = createStore("resumed-plan");
 
     // Simulate orchestrator result
     const resumeResult = {
@@ -445,7 +445,7 @@ describe("Resume result → store injection", () => {
   });
 
   it("store with existing blocks gets replaced on resume", () => {
-    const store = createTestStore("old-plan");
+    const store = createStore("old-plan");
 
     // Simulate existing blocks
     store.setOutputBlocks([

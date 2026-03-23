@@ -45,6 +45,8 @@ export interface SessionSidebarProps {
   onNewSession?: () => void
   /** Called when a session row is clicked (mouse interaction). */
   onSessionClick?: (sessionId: string, flatIndex: number) => void
+  /** ID of the currently focused (executing + viewed) session — gets ">" prefix. */
+  focusedSessionId?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -137,10 +139,11 @@ export function SessionSidebar(props: SessionSidebarProps) {
                   {(session) => {
                     const flatIdx = () => flatIndexMap().get(session.id) ?? -1
                     const isSelected = () => flatIdx() === selectedIndex()
+                    const isFocused = () => props.focusedSessionId === session.id
 
                     return (
                       <box
-                        paddingLeft={2}
+                        paddingLeft={isFocused() ? 1 : 2}
                         onMouseDown={() => {
                           const idx = flatIdx()
                           if (idx >= 0 && props.onSessionClick) {
@@ -149,10 +152,10 @@ export function SessionSidebar(props: SessionSidebarProps) {
                         }}
                       >
                         <text
-                          fg={isSelected() ? themeCtx.theme.background : themeCtx.theme.text}
+                          fg={isSelected() ? themeCtx.theme.background : isFocused() ? themeCtx.theme.primary : themeCtx.theme.text}
                           bg={isSelected() ? themeCtx.theme.primary : undefined}
                         >
-                          {truncate(session.name || session.planPath, width() - 4)}
+                          {isFocused() ? "> " : ""}{truncate(session.name || session.planPath || "Untitled", width() - (isFocused() ? 5 : 4))}
                         </text>
                       </box>
                     )

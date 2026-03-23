@@ -13,13 +13,17 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("Engine: claude", () => {
-  it("builds command with --print and --output-format stream-json", () => {
+  it("builds command with --print, --output-format stream-json, and --input-format stream-json", () => {
     const cmd = claudeEngine.buildCommand({ prompt: "do stuff" });
 
     expect(cmd.command).toBe("claude");
     expect(cmd.args).toContain("--print");
     expect(cmd.args).toContain("--output-format");
     expect(cmd.args).toContain("stream-json");
+    expect(cmd.args).toContain("--input-format");
+    // Both --output-format and --input-format should have "stream-json" as their value
+    const inputIdx = cmd.args.indexOf("--input-format");
+    expect(cmd.args[inputIdx + 1]).toBe("stream-json");
   });
 
   it("passes model via --model flag when provided", () => {
@@ -148,6 +152,116 @@ describe("Engine metadata", () => {
     const engine = getEngine("opencode");
     expect(engine.metadata.description).toBe("OpenCode AI CLI");
     expect(engine.metadata.order).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Engine: claude — tool scoping
+// ---------------------------------------------------------------------------
+
+describe("Engine: claude — tool scoping", () => {
+  it("adds --allowedTools with only allowed tools when toolScoping provided", () => {
+    const cmd = claudeEngine.buildCommand({
+      prompt: "do stuff",
+      toolScoping: { read: true, bash: false, write: false, edit: false },
+    });
+
+    expect(cmd.args).toContain("--allowedTools");
+    const flagIdx = cmd.args.indexOf("--allowedTools");
+    const toolsArg = cmd.args[flagIdx + 1];
+    expect(toolsArg).toBe("Read");
+  });
+
+  it("includes all tools when all scoping booleans are true", () => {
+    const cmd = claudeEngine.buildCommand({
+      prompt: "do stuff",
+      toolScoping: { read: true, bash: true, write: true, edit: true },
+    });
+
+    expect(cmd.args).toContain("--allowedTools");
+    const flagIdx = cmd.args.indexOf("--allowedTools");
+    const toolsArg = cmd.args[flagIdx + 1];
+    // Should contain all four tool names
+    expect(toolsArg).toContain("Read");
+    expect(toolsArg).toContain("Bash");
+    expect(toolsArg).toContain("Write");
+    expect(toolsArg).toContain("Edit");
+  });
+
+  it("lists multiple allowed tools comma-separated", () => {
+    const cmd = claudeEngine.buildCommand({
+      prompt: "do stuff",
+      toolScoping: { read: true, bash: true, write: false, edit: false },
+    });
+
+    const flagIdx = cmd.args.indexOf("--allowedTools");
+    const toolsArg = cmd.args[flagIdx + 1];
+    expect(toolsArg).toBe("Read,Bash");
+  });
+
+  it("omits --allowedTools when toolScoping is undefined (backward compat)", () => {
+    const cmd = claudeEngine.buildCommand({ prompt: "do stuff" });
+
+    expect(cmd.args).not.toContain("--allowedTools");
+  });
+
+  it("sets supportsToolScoping: true in metadata", () => {
+    expect(claudeEngine.metadata.supportsToolScoping).toBe(true);
+  });
+
+  it("sets supportsStreamingInput: true in metadata", () => {
+    expect(claudeEngine.metadata.supportsStreamingInput).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Engine: opencode — tool scoping
+// ---------------------------------------------------------------------------
+
+describe("Engine: opencode — tool scoping", () => {
+  it("returns promptPrefix when toolScoping restricts tools", () => {
+    const cmd = opencodeEngine.buildCommand({
+      prompt: "do stuff",
+      toolScoping: { read: true, bash: true, write: false, edit: false },
+    });
+
+    expect(cmd.promptPrefix).toBeDefined();
+    expect(cmd.promptPrefix).toContain("Write");
+    expect(cmd.promptPrefix).toContain("Edit");
+    expect(cmd.promptPrefix).toContain("Do NOT");
+  });
+
+  it("does not add promptPrefix when all tools allowed", () => {
+    const cmd = opencodeEngine.buildCommand({
+      prompt: "do stuff",
+      toolScoping: { read: true, bash: true, write: true, edit: true },
+    });
+
+    expect(cmd.promptPrefix).toBeUndefined();
+  });
+
+  it("does not add promptPrefix when toolScoping is undefined (backward compat)", () => {
+    const cmd = opencodeEngine.buildCommand({ prompt: "do stuff" });
+
+    expect(cmd.promptPrefix).toBeUndefined();
+  });
+
+  it("does not add CLI flags for tool scoping (no --allowedTools)", () => {
+    const cmd = opencodeEngine.buildCommand({
+      prompt: "do stuff",
+      toolScoping: { read: true, bash: false, write: false, edit: false },
+    });
+
+    expect(cmd.args).not.toContain("--allowedTools");
+    expect(cmd.args).not.toContain("--disallowedTools");
+  });
+
+  it("sets supportsToolScoping: false in metadata", () => {
+    expect(opencodeEngine.metadata.supportsToolScoping).toBe(false);
+  });
+
+  it("sets supportsStreamingInput: false in metadata", () => {
+    expect(opencodeEngine.metadata.supportsStreamingInput).toBe(false);
   });
 });
 

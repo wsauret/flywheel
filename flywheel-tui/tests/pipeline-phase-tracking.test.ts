@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { EventBus } from "../src/events/event-bus";
 import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentui";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import { computeStageProgress } from "../src/tui/components/workflow-panel-logic";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 
 function createHarness() {
   const bus = new EventBus();
-  const store = createTestStore("test-plan");
+  const store = createStore("test-plan");
   const adapter = createOpenTUIAdapter(store);
   adapter.connect(bus);
   adapter.start();
@@ -32,7 +32,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
 
   describe("stage store actions", () => {
     it("addStage creates a new StageGroup with pending status", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("plan");
       const stages = store.getState().stages;
       expect(stages).toHaveLength(1);
@@ -42,21 +42,21 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("addStage does not create duplicates", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("plan");
       store.addStage("plan");
       expect(store.getState().stages).toHaveLength(1);
     });
 
     it("startStage sets stage to running", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startStage("work");
       expect(store.getState().stages[0].status).toBe("running");
     });
 
     it("completeStage sets stage to completed", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startStage("work");
       store.completeStage("work");
@@ -64,7 +64,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("failStage sets stage to failed", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startStage("work");
       store.failStage("work");
@@ -72,13 +72,13 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("startStage is no-op for unknown label", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.startStage("nonexistent");
       expect(store.getState().stages).toHaveLength(0);
     });
 
     it("addPhaseToStage appends a phase to the stage", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("plan");
       store.addPhaseToStage("plan", { index: 0, name: "Phase 0", status: "pending" });
       const stages = store.getState().stages;
@@ -88,7 +88,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("startPhaseInStage starts a phase within the stage", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startPhaseInStage("work", 0, "Build");
       const phase = store.getState().stages[0].phases[0];
@@ -98,7 +98,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("startPhaseInStage creates phase if not existing", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startPhaseInStage("work", 0, "Phase A");
       expect(store.getState().stages[0].phases).toHaveLength(1);
@@ -106,7 +106,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("startPhaseInStage updates existing phase to running", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.addPhaseToStage("work", { index: 0, name: "Phase A", status: "pending" });
       store.startPhaseInStage("work", 0, "Phase A");
@@ -116,7 +116,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("completePhaseInStage completes a phase within the stage", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startPhaseInStage("work", 0, "Build");
       store.completePhaseInStage("work", 0);
@@ -128,7 +128,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("failPhaseInStage fails a phase within the stage", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("work");
       store.startPhaseInStage("work", 0, "Build");
       store.failPhaseInStage("work", 0, "compile error");
@@ -138,7 +138,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("stages are cleared on reset", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("plan");
       store.addStage("work");
       store.reset("new-plan");
@@ -146,7 +146,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
     });
 
     it("stages are cleared on startWorkflow", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("plan");
       store.startWorkflow("new-plan");
       expect(store.getState().stages).toEqual([]);
@@ -329,7 +329,7 @@ describe("Pipeline Phase Tracking (Hierarchical Stages)", () => {
 
   describe("computeStageProgress", () => {
     it("computes progress across all stages", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       store.addStage("plan");
       store.addStage("work");
       store.startPhaseInStage("plan", 0, "Phase A");

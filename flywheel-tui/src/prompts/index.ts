@@ -35,5 +35,6 @@ export { buildReviewDispatchPrompt } from "./review/dispatch.js";
 export { buildReviewConsolidatePrompt } from "./review/consolidate.js";
 
 export { buildShipPrompt } from "./ship/workflow.js";
+export { buildShipCompoundPrompt } from "./ship/compound.js";
 
 export { buildDebugPrompt } from "./debug/investigate.js";

@@ -10,6 +10,7 @@ import * as path from "node:path"
 import { BaseUIAdapter } from "./base"
 import type { AdapterType } from "./types"
 import type { FlywheelEvent } from "../../events/types"
+import { assertNever } from "../../events/types"
 
 export interface HeadlessAdapterOptions {
   /** Path to log file (if not set, logs to console) */
@@ -204,6 +205,65 @@ export class HeadlessAdapter extends BaseUIAdapter {
           this.log(`  Approval: ${event.approved ? "approved" : "rejected"}${event.skipped ? " (skipped)" : ""}`)
         }
         break
+
+      // ── Question events ──
+      case "question:asked":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Question asked (${event.questions.length} question(s))`)
+        }
+        break
+
+      case "question:replied":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Question replied`)
+        }
+        break
+
+      case "question:rejected":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Question rejected`)
+        }
+        break
+
+      // ── Pipeline events ──
+      case "pipeline:started":
+        this.log(`Pipeline started: ${event.stages.join(" → ")}`)
+        break
+
+      case "pipeline:completed":
+        this.log(`Pipeline completed (${event.stagesCompleted} stages)`)
+        break
+
+      case "pipeline:failed":
+        this.log(`Pipeline FAILED: ${event.reason} (${event.stagesCompleted} stages completed)`)
+        break
+
+      case "pipeline:stage-transition":
+        if (this.logLevel !== "minimal") {
+          this.log(`Pipeline stage: ${event.from} → ${event.to}`)
+        }
+        break
+
+      // ── Budget events ──
+      case "budget:warning":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Budget warning: ${event.metric} ${event.used}/${event.limit} (${event.remaining} remaining)`)
+        }
+        break
+
+      case "budget:exhausted":
+        this.log(`  Budget EXHAUSTED: ${event.reason}`)
+        break
+
+      // Worker injection events
+      case "worker:injected":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Worker stdin injected (${event.message.length} chars)`)
+        }
+        break
+
+      default:
+        assertNever(event)
     }
   }
 

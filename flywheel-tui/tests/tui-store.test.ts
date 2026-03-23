@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 
 describe("Work Store", () => {
   let store: UIActions;
 
   beforeEach(() => {
-    store = createTestStore("test-plan");
+    store = createStore("test-plan");
   });
 
   // ── Factory ──
 
-  describe("createTestStore", () => {
+  describe("createStore", () => {
     it("creates store with initial state", () => {
       const state = store.getState();
       expect(state.planName).toBe("test-plan");
@@ -23,11 +23,35 @@ describe("Work Store", () => {
       expect(state.scrollOffset).toBe(0);
     });
 
-    it("each createTestStore returns isolated instance", () => {
-      const store2 = createTestStore("other-plan");
+    it("each createStore returns isolated instance", () => {
+      const store2 = createStore("other-plan");
       store.startWorkflow("plan-a");
       expect(store.getState().workflowStatus).toBe("running");
       expect(store2.getState().workflowStatus).toBe("idle");
+    });
+
+    it("createStore(a) !== createStore(b) — always independent", () => {
+      const storeA = createStore("a");
+      const storeB = createStore("b");
+      expect(storeA).not.toBe(storeB);
+    });
+
+    it("state mutations do not leak between independent stores", () => {
+      const storeA = createStore("a");
+      const storeB = createStore("b");
+
+      // Mutate store A
+      storeA.startWorkflow("plan-a");
+      storeA.startPhase(0, "Phase 0");
+      storeA.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
+      storeA.setApprovalPending("Approve?");
+
+      // Store B must be completely unaffected
+      expect(storeB.getState().workflowStatus).toBe("idle");
+      expect(storeB.getState().phases).toHaveLength(0);
+      expect(storeB.getState().outputLines).toHaveLength(0);
+      expect(storeB.getState().approvalState.pending).toBe(false);
+      expect(storeB.getState().planName).toBe("b");
     });
   });
 

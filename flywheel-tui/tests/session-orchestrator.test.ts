@@ -4,7 +4,7 @@ import {
   type SessionOrchestratorDeps,
   type ResumeResult,
 } from "../src/tui/components/session-orchestrator";
-import type { CliSession } from "../src/schemas/session";
+import type { Session } from "../src/schemas/session";
 import type { OutputSnapshot } from "../src/schemas/output";
 import type { PipelineStageResult } from "../src/controller/workflow-pipeline";
 
@@ -12,17 +12,17 @@ import type { PipelineStageResult } from "../src/controller/workflow-pipeline";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Minimal valid CliSession data for testing. */
-function minimalCliSession(overrides?: Partial<CliSession>): CliSession {
+/** Minimal valid Session data for testing. */
+function minimalSession(overrides?: Partial<Session>): Session {
   return {
+    label: "plans/test.md",
     planPath: "plans/test.md",
-    statePath: ".flywheel/state/test.state.md",
-    contextPath: ".flywheel/context/test.ctx.md",
-    currentPhase: 2,
     lastUpdated: new Date().toISOString(),
-    workflowId: crypto.randomUUID(),
     sessionLifecycleState: "work:active",
     worktreePath: "/tmp/worktrees/test",
+    budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
+    budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+    workflowType: "work",
     ...overrides,
   };
 }
@@ -45,7 +45,7 @@ function makeMockDeps(overrides?: Partial<SessionOrchestratorDeps>): {
   const deps: SessionOrchestratorDeps = {
     readSession: (id: string) => {
       calls.push(`readSession:${id}`);
-      return minimalCliSession();
+      return minimalSession();
     },
     createOutputPersistence: (sessionId: string) => {
       calls.push(`createOutputPersistence:${sessionId}`);
@@ -95,10 +95,9 @@ function makeMockDeps(overrides?: Partial<SessionOrchestratorDeps>): {
 
 describe("SessionOrchestrator.handleResumeSession", () => {
   it("loads session from disk and returns session data with planPath and worktreePath", async () => {
-    const session = minimalCliSession({
+    const session = minimalSession({
       planPath: "plans/my-plan.md",
       worktreePath: "/tmp/wt/session-1",
-      statePath: ".flywheel/state/s1.state.md",
     });
     const { deps } = makeMockDeps({
       readSession: () => session,
@@ -111,7 +110,6 @@ describe("SessionOrchestrator.handleResumeSession", () => {
     expect(result!.session.planPath).toBe("plans/my-plan.md");
     expect(result!.session.worktreePath).toBe("/tmp/wt/session-1");
     expect(result!.planPath).toBe("plans/my-plan.md");
-    expect(result!.statePath).toBe(".flywheel/state/s1.state.md");
     expect(result!.worktreePath).toBe("/tmp/wt/session-1");
   });
 
@@ -150,8 +148,8 @@ describe("SessionOrchestrator.handleResumeSession", () => {
     expect(result!.outputBlocks).toHaveLength(0);
   });
 
-  it("returns phase offset 0 when session has corrupt/missing state (currentPhase defaults)", async () => {
-    const session = minimalCliSession({ currentPhase: 0 });
+  it("returns session with default fields when session has minimal data", async () => {
+    const session = minimalSession();
     const { deps } = makeMockDeps({
       readSession: () => session,
     });
@@ -160,7 +158,7 @@ describe("SessionOrchestrator.handleResumeSession", () => {
     const result = await orchestrator.handleResumeSession("session-1");
 
     expect(result).not.toBeNull();
-    expect(result!.session.currentPhase).toBe(0);
+    expect(result!.session.label).toBe("plans/test.md");
   });
 
   it("returns null when session is not found on disk", async () => {

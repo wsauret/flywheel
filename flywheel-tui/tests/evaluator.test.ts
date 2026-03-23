@@ -13,6 +13,9 @@ function passingResult(overrides?: Partial<EvaluatorResult>): EvaluatorResult {
     passed: true,
     reasoning: "All validation criteria met",
     suggestions: [],
+    confidence: 0.9,
+    feedback: "Good work",
+    files_to_review: [],
     ...overrides,
   };
 }
@@ -22,6 +25,9 @@ function failingResult(overrides?: Partial<EvaluatorResult>): EvaluatorResult {
     passed: false,
     reasoning: "Validation criteria not met",
     suggestions: ["Fix the output"],
+    confidence: 0.3,
+    feedback: "Needs improvement",
+    files_to_review: [],
     ...overrides,
   };
 }
@@ -57,7 +63,7 @@ function createMockTransport(
 }
 
 // ---------------------------------------------------------------------------
-// a) Max 2 re-prompt cycles
+// a) Configurable max re-prompt cycles (default 3)
 // ---------------------------------------------------------------------------
 
 describe("Evaluator — re-prompt cycles", () => {
@@ -82,7 +88,11 @@ describe("Evaluator — re-prompt cycles", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("worker output", "must be valid", ["src/index.ts"]);
+    const result = await evaluator.evaluate({
+      workerOutput: "worker output",
+      validationCriteria: { acceptance_criteria: ["must be valid"], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: ["src/index.ts"],
+    });
 
     expect(result.passed).toBe(true);
     expect(result.cyclesUsed).toBe(1);
@@ -102,7 +112,11 @@ describe("Evaluator — re-prompt cycles", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("worker output", "must be valid", ["src/index.ts"]);
+    const result = await evaluator.evaluate({
+      workerOutput: "worker output",
+      validationCriteria: { acceptance_criteria: ["must be valid"], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: ["src/index.ts"],
+    });
 
     expect(result.passed).toBe(true);
     expect(result.cyclesUsed).toBe(2);
@@ -110,10 +124,11 @@ describe("Evaluator — re-prompt cycles", () => {
     expect(callCount()).toBe(2);
   });
 
-  it("fails twice — marks as failed and proceeds", async () => {
+  it("exhausts all 3 default cycles — marks as failed", async () => {
     const { transport, callCount } = createMockTransport([
       failingResult({ reasoning: "Missing tests" }),
       failingResult({ reasoning: "Still missing tests" }),
+      failingResult({ reasoning: "Third failure" }),
     ]);
 
     const evaluator = new Evaluator({
@@ -122,17 +137,22 @@ describe("Evaluator — re-prompt cycles", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("worker output", "must have tests", ["src/index.ts"]);
+    const result = await evaluator.evaluate({
+      workerOutput: "worker output",
+      validationCriteria: { acceptance_criteria: ["must have tests"], required_tests: true, custom_checks: [], required_outputs: [] },
+      contextFiles: ["src/index.ts"],
+    });
 
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(2);
+    expect(result.cyclesUsed).toBe(3);
     expect(result.skipped).toBe(false);
-    expect(result.reason).toBe("Still missing tests");
-    expect(callCount()).toBe(2);
+    expect(result.reason).toBe("Third failure");
+    expect(callCount()).toBe(3);
   });
 
-  it("does not attempt a third cycle after two failures", async () => {
+  it("does not attempt a fourth cycle after three default failures", async () => {
     const { transport, callCount } = createMockTransport([
+      failingResult(),
       failingResult(),
       failingResult(),
       passingResult(), // should never be reached
@@ -144,16 +164,123 @@ describe("Evaluator — re-prompt cycles", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(2);
-    expect(callCount()).toBe(2); // third call never made
+    expect(result.cyclesUsed).toBe(3);
+    expect(callCount()).toBe(3); // fourth call never made
+  });
+
+  it("maxCycles: 3 — evaluator runs up to 3 cycles", async () => {
+    const { transport, callCount } = createMockTransport([
+      failingResult(),
+      failingResult(),
+      passingResult(),
+    ]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+      maxCycles: 3,
+    });
+
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.cyclesUsed).toBe(3);
+    expect(callCount()).toBe(3);
+  });
+
+  it("maxCycles: 1 — evaluator runs exactly 1 cycle", async () => {
+    const { transport, callCount } = createMockTransport([
+      failingResult({ reasoning: "Single cycle failure" }),
+      passingResult(), // should never be reached
+    ]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+      maxCycles: 1,
+    });
+
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.cyclesUsed).toBe(1);
+    expect(result.reason).toBe("Single cycle failure");
+    expect(callCount()).toBe(1);
+  });
+
+  it("without maxCycles — uses DEFAULT_MAX_CYCLES (3)", async () => {
+    const { transport, callCount } = createMockTransport([
+      failingResult(),
+      failingResult(),
+      failingResult(),
+    ]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+      // no maxCycles — uses default
+    });
+
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.cyclesUsed).toBe(3);
+    expect(callCount()).toBe(3);
+  });
+
+  it("cyclesUsed reflects actual cycles used in mixed failure+error case", async () => {
+    const schemaError = new Error("Schema validation failed");
+    schemaError.name = "SchemaError";
+
+    const { transport, callCount } = createMockTransport([
+      failingResult(),   // cycle 1: failure (failureCount = 1)
+      schemaError,       // cycle 2: error (failureCount = 2)
+      passingResult(),   // cycle 3: pass
+    ]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+      maxCycles: 3,
+    });
+
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.cyclesUsed).toBe(3);
+    expect(callCount()).toBe(3);
   });
 });
 
 // ---------------------------------------------------------------------------
-// b) Timeouts do NOT count against 2-cycle cap
+// b) Timeouts do NOT count against cycle cap
 // ---------------------------------------------------------------------------
 
 describe("Evaluator — timeout handling", () => {
@@ -178,7 +305,11 @@ describe("Evaluator — timeout handling", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("worker output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "worker output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(true);
     expect(result.skipped).toBe(true);
@@ -198,7 +329,11 @@ describe("Evaluator — timeout handling", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     // Timeout should short-circuit and proceed
     expect(result.passed).toBe(true);
@@ -215,7 +350,11 @@ describe("Evaluator — timeout handling", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const failedEvents = events.filter((e) => e.type === "evaluator:failed");
     expect(failedEvents).toHaveLength(1);
@@ -250,7 +389,11 @@ describe("Evaluator — skip_evaluation config", () => {
       skipEvaluation: true,
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(true);
     expect(result.cyclesUsed).toBe(0);
@@ -268,7 +411,11 @@ describe("Evaluator — skip_evaluation config", () => {
       skipEvaluation: false,
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(true);
     expect(callCount()).toBe(1);
@@ -284,7 +431,11 @@ describe("Evaluator — skip_evaluation config", () => {
       // no skipEvaluation
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(true);
     expect(callCount()).toBe(1); // evaluator was invoked
@@ -314,17 +465,21 @@ describe("Evaluator — transport interface", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate(
-      "worker output text",
-      "must pass all tests",
-      ["src/main.ts", "tests/main.test.ts"],
-    );
+    await evaluator.evaluate({
+      workerOutput: "worker output text",
+      validationCriteria: { acceptance_criteria: ["must pass all tests"], required_tests: true, custom_checks: [], required_outputs: [] },
+      contextFiles: ["src/main.ts", "tests/main.test.ts"],
+    });
 
     expect(inputs()).toHaveLength(1);
     expect(inputs()[0]).toEqual({
       worker_output: "worker output text",
-      validation_criteria: "must pass all tests",
+      validation_criteria: "Acceptance criteria:\n- must pass all tests\nRequired: tests must pass",
       context_files: ["src/main.ts", "tests/main.test.ts"],
+      acceptance_criteria: ["must pass all tests"],
+      artifacts_produced: [],
+      tests_passed: null,
+      duration_seconds: 0,
     });
   });
 
@@ -339,10 +494,89 @@ describe("Evaluator — transport interface", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(true);
     expect(result.reason).toBeUndefined();
+  });
+
+  it("forwards optional fields to transport input", async () => {
+    const { transport, inputs } = createMockTransport([passingResult()]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+    });
+
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+      acceptanceCriteria: ["tests pass"],
+      artifactsProduced: ["src/new.ts"],
+      testsPassed: true,
+      durationSeconds: 30,
+    });
+
+    expect(inputs()).toHaveLength(1);
+    expect(inputs()[0].acceptance_criteria).toEqual(["tests pass"]);
+    expect(inputs()[0].artifacts_produced).toEqual(["src/new.ts"]);
+    expect(inputs()[0].tests_passed).toBe(true);
+    expect(inputs()[0].duration_seconds).toBe(30);
+  });
+
+  it("merges acceptance_criteria from structured ValidationCriteria", async () => {
+    const { transport, inputs } = createMockTransport([passingResult()]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+    });
+
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: {
+        acceptance_criteria: ["from-criteria"],
+        required_tests: false,
+        custom_checks: [],
+        required_outputs: [],
+      },
+      contextFiles: [],
+      acceptanceCriteria: ["from-explicit"],
+    });
+
+    expect(inputs()).toHaveLength(1);
+    // Both explicit and extracted criteria merged, deduplicated
+    expect(inputs()[0].acceptance_criteria).toContain("from-explicit");
+    expect(inputs()[0].acceptance_criteria).toContain("from-criteria");
+  });
+
+  it("provides default values for fields when caller omits optional EvaluateOptions", async () => {
+    const { transport, inputs } = createMockTransport([passingResult()]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "test-wf",
+    });
+
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
+
+    expect(inputs()).toHaveLength(1);
+    expect(inputs()[0].acceptance_criteria).toEqual([]);
+    expect(inputs()[0].artifacts_produced).toEqual([]);
+    expect(inputs()[0].tests_passed).toBeNull();
+    expect(inputs()[0].duration_seconds).toBe(0);
   });
 });
 
@@ -367,6 +601,7 @@ describe("Evaluator — failure definitions", () => {
     const { transport, callCount } = createMockTransport([
       failingResult(),
       failingResult(),
+      failingResult(),
     ]);
 
     const evaluator = new Evaluator({
@@ -375,11 +610,15 @@ describe("Evaluator — failure definitions", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(2);
-    expect(callCount()).toBe(2);
+    expect(result.cyclesUsed).toBe(3);
+    expect(callCount()).toBe(3);
   });
 
   it("schema parse error counts as failure (increments cap)", async () => {
@@ -390,6 +629,7 @@ describe("Evaluator — failure definitions", () => {
     const { transport, callCount } = createMockTransport([
       schemaError,
       schemaError,
+      schemaError,
     ]);
 
     const evaluator = new Evaluator({
@@ -398,11 +638,15 @@ describe("Evaluator — failure definitions", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(2);
-    expect(callCount()).toBe(2);
+    expect(result.cyclesUsed).toBe(3);
+    expect(callCount()).toBe(3);
   });
 
   it("timeout is NOT a failure — skip and proceed", async () => {
@@ -414,7 +658,11 @@ describe("Evaluator — failure definitions", () => {
       workflowId: "test-wf",
     });
 
-    const result = await evaluator.evaluate("output", "criteria", []);
+    const result = await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     expect(result.passed).toBe(true);
     expect(result.skipped).toBe(true);
@@ -447,7 +695,11 @@ describe("Evaluator — event emission", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const invokedEvents = events.filter((e) => e.type === "evaluator:invoked");
     expect(invokedEvents).toHaveLength(2); // one per cycle
@@ -462,17 +714,22 @@ describe("Evaluator — event emission", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const completedEvents = events.filter((e) => e.type === "evaluator:completed");
     expect(completedEvents).toHaveLength(1);
     expect((completedEvents[0] as any).result.passed).toBe(true);
   });
 
-  it("emits evaluator:completed after 2 failures (with last result)", async () => {
+  it("emits evaluator:completed after exhausting all cycles (with last result)", async () => {
     const { transport } = createMockTransport([
       failingResult({ reasoning: "first failure" }),
       failingResult({ reasoning: "second failure" }),
+      failingResult({ reasoning: "third failure" }),
     ]);
 
     const evaluator = new Evaluator({
@@ -481,12 +738,16 @@ describe("Evaluator — event emission", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const completedEvents = events.filter((e) => e.type === "evaluator:completed");
     expect(completedEvents).toHaveLength(1);
     expect((completedEvents[0] as any).result.passed).toBe(false);
-    expect((completedEvents[0] as any).result.reasoning).toBe("second failure");
+    expect((completedEvents[0] as any).result.reasoning).toBe("third failure");
   });
 
   it("emits evaluator:failed on timeout", async () => {
@@ -498,7 +759,11 @@ describe("Evaluator — event emission", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const failedEvents = events.filter((e) => e.type === "evaluator:failed");
     expect(failedEvents).toHaveLength(1);
@@ -508,6 +773,7 @@ describe("Evaluator — event emission", () => {
     const { transport } = createMockTransport([
       new Error("Something broke"),
       new Error("Still broken"),
+      new Error("Third error"),
     ]);
 
     const evaluator = new Evaluator({
@@ -516,10 +782,14 @@ describe("Evaluator — event emission", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const failedEvents = events.filter((e) => e.type === "evaluator:failed");
-    expect(failedEvents).toHaveLength(2); // one per failed attempt
+    expect(failedEvents).toHaveLength(3); // one per failed attempt
   });
 
   it("evaluator:invoked comes before evaluator:completed", async () => {
@@ -531,7 +801,11 @@ describe("Evaluator — event emission", () => {
       workflowId: "test-wf",
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const eventTypes = events.map((e) => e.type);
     const invokedIdx = eventTypes.indexOf("evaluator:invoked");
@@ -549,7 +823,11 @@ describe("Evaluator — event emission", () => {
       skipEvaluation: true,
     });
 
-    await evaluator.evaluate("output", "criteria", []);
+    await evaluator.evaluate({
+      workerOutput: "output",
+      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      contextFiles: [],
+    });
 
     const evaluatorEvents = events.filter((e) =>
       e.type.startsWith("evaluator:"),
@@ -559,15 +837,15 @@ describe("Evaluator — event emission", () => {
 });
 
 // ---------------------------------------------------------------------------
-// g) CliEvaluatorTransport
+// g) SubprocessEvaluatorTransport
 // ---------------------------------------------------------------------------
 
-describe("CliEvaluatorTransport", () => {
-  let CliEvaluatorTransport: typeof import("../src/evaluator/cli-transport").CliEvaluatorTransport;
+describe("SubprocessEvaluatorTransport", () => {
+  let SubprocessEvaluatorTransport: typeof import("../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
 
   beforeEach(async () => {
-    const mod = await import("../src/evaluator/cli-transport");
-    CliEvaluatorTransport = mod.CliEvaluatorTransport;
+    const mod = await import("../src/evaluator/subprocess-transport");
+    SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
   });
 
   it("spawns process and parses EvaluatorResult from stdout", async () => {
@@ -575,20 +853,24 @@ describe("CliEvaluatorTransport", () => {
 
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn() {
-        return {
+        return { result: Promise.resolve({
           output: JSON.stringify(result),
           exitCode: 0,
           truncated: false,
           durationMs: 1000,
-        };
+        }) };
       },
     };
 
-    const transport = new CliEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     const evalResult = await transport.invoke({
       worker_output: "some output",
       validation_criteria: "must pass",
       context_files: [],
+      acceptance_criteria: ["must pass"],
+      artifacts_produced: [],
+      tests_passed: null,
+      duration_seconds: 0,
     });
 
     expect(evalResult.passed).toBe(true);
@@ -603,27 +885,31 @@ describe("CliEvaluatorTransport", () => {
       async spawn() {
         callCount++;
         if (callCount === 1) {
-          return {
+          return { result: Promise.resolve({
             output: "not valid json {{{",
             exitCode: 0,
             truncated: false,
             durationMs: 500,
-          };
+          }) };
         }
-        return {
+        return { result: Promise.resolve({
           output: JSON.stringify(validResult),
           exitCode: 0,
           truncated: false,
           durationMs: 500,
-        };
+        }) };
       },
     };
 
-    const transport = new CliEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     const result = await transport.invoke({
       worker_output: "output",
       validation_criteria: "criteria",
       context_files: [],
+      acceptance_criteria: [],
+      artifacts_produced: [],
+      tests_passed: null,
+      duration_seconds: 0,
     });
 
     expect(callCount).toBe(2);
@@ -633,22 +919,26 @@ describe("CliEvaluatorTransport", () => {
   it("throws after two parse failures", async () => {
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn() {
-        return {
+        return { result: Promise.resolve({
           output: "garbage output",
           exitCode: 0,
           truncated: false,
           durationMs: 500,
-        };
+        }) };
       },
     };
 
-    const transport = new CliEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
 
     await expect(
       transport.invoke({
         worker_output: "output",
         validation_criteria: "criteria",
         context_files: [],
+        acceptance_criteria: [],
+        artifacts_produced: [],
+        tests_passed: null,
+        duration_seconds: 0,
       }),
     ).rejects.toThrow();
   });
@@ -659,20 +949,24 @@ describe("CliEvaluatorTransport", () => {
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn(_command, _args, options) {
         receivedEnv = options?.env;
-        return {
+        return { result: Promise.resolve({
           output: JSON.stringify(passingResult()),
           exitCode: 0,
           truncated: false,
           durationMs: 100,
-        };
+        }) };
       },
     };
 
-    const transport = new CliEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     await transport.invoke({
       worker_output: "output",
       validation_criteria: "criteria",
       context_files: [],
+      acceptance_criteria: [],
+      artifacts_produced: [],
+      tests_passed: null,
+      duration_seconds: 0,
     });
 
     expect(receivedEnv).toBeDefined();
@@ -692,20 +986,24 @@ describe("CliEvaluatorTransport", () => {
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn(_command, _args, options) {
         receivedTimeout = options?.timeoutMs;
-        return {
+        return { result: Promise.resolve({
           output: JSON.stringify(passingResult()),
           exitCode: 0,
           truncated: false,
           durationMs: 100,
-        };
+        }) };
       },
     };
 
-    const transport = new CliEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     await transport.invoke({
       worker_output: "output",
       validation_criteria: "criteria",
       context_files: [],
+      acceptance_criteria: [],
+      artifacts_produced: [],
+      tests_passed: null,
+      duration_seconds: 0,
     });
 
     expect(receivedTimeout).toBe(30_000);

@@ -295,7 +295,31 @@ Shell-level components live in `src/tui/components/`. Most follow a `<name>.tsx`
 | Start command | `start-command.ts` |
 | Shell pipeline | `shell-pipeline.ts` |
 | Session orchestrator | `session-orchestrator.ts` |
+| Session runtime | `session-runtime.ts` |
+| Workflow instance | `workflow-instance.ts`, `src/types/workflow-instance.ts` |
+| Question wiring | `src/tui/utils/question-wiring.ts` |
 | Commands | `src/tui/config/commands.ts` |
+
+### Multi-workflow concurrency
+
+The shell supports multiple concurrent workflow sessions via `SessionRuntimeManager`. Each session runs in its own worktree with independent state, timer, adapter, and event bus.
+
+| Concept | Key files |
+|---------|-----------|
+| SessionRuntime types | `src/tui/components/session-runtime.ts` |
+| Runtime manager | `createSessionRuntimeManager()` in session-runtime.ts |
+| Focused session | `focusedSessionId` signal in flywheel-shell.tsx |
+| Question wiring | `createQuestionWiring()` in `src/tui/utils/question-wiring.ts` |
+| AppState resolution | `resolveAppState()` in shell-modes.ts |
+| WorkflowInstance facade | `src/types/workflow-instance.ts` |
+
+**SessionRuntime** is a discriminated union: `PendingRuntime` (session created, pipeline not started) or `RunningRuntime` (all resources allocated). The `kind` field discriminates.
+
+**focusedSessionId** tracks which running session the viewport is connected to. Separate from `viewedSessionId` (any visible session, running or historical).
+
+**Dispatcher** is mandatory (no `use_dispatcher` toggle). Dispatcher calls have 2-retry with linear backoff before falling back to null (graceful degradation).
+
+**Shared ContextIndexer** is created once per shell lifecycle (lazy on first pipeline start), shared across all pipelines. Disposed on shell unmount.
 
 ### Structured output pipeline
 
@@ -349,6 +373,73 @@ Provider nesting order (outermost → innermost): `ExitProvider → ToastProvide
 | Escape logic | `src/tui/utils/escape-handler.ts` |
 | Command parser | `src/tui/utils/command-parser.ts` |
 | Modal keyboard hook | `src/tui/shared/hooks/use-modal-keyboard.ts` |
+
+## Context Discovery
+
+Flywheel uses a three-level progressive context disclosure system so workers receive relevant project knowledge without prompt bloat.
+
+### Three Levels
+
+| Level | What | How | Who |
+|-------|------|-----|-----|
+| **L1: Metadata** | Name, path, summary for each convention/standard/learning | `available_context` in dispatcher input | Dispatcher sees metadata, decides what's important |
+| **L2: Targeted inline** | Full file content injected into worker prompt | `context_to_inline` in dispatcher decision → `enrichPromptWithContext()` | Controller reads files, prepends to prompt (8KB cap) |
+| **L3: On-demand** | File paths the worker can read during execution | `context_files` in dispatcher decision | Worker reads files as needed |
+
+### Key Files
+
+| Component | File |
+|-----------|------|
+| ContextIndexer | `src/memory/indexer.ts` |
+| SESMemoryRetriever | `src/memory/retrieve.ts` |
+| Shared frontmatter parser | `src/utils/frontmatter.ts` |
+| Path security | `src/utils/path-security.ts` |
+| Enrichment function | `src/controller/dispatcher-orchestrator.ts` (`enrichPromptWithContext()`) |
+
+### `docs/standards/` Directory
+
+Standards files must have YAML frontmatter to be indexed:
+
+```yaml
+---
+title: "Testing Standards"
+summary: "Testing conventions and patterns for this project"
+tags: [testing, conventions]
+---
+```
+
+Files without frontmatter (including `README.md`) are skipped by the standards scanner.
+
+### `docs/solutions/` Directory
+
+Compound solution documents are created by the ship workflow's learning extraction hook. Format:
+
+```yaml
+---
+type: compound
+title: "Descriptive title"
+tags: [relevant, searchable, tags]
+date: "YYYY-MM-DD"
+extraction_hash: "<SHA-256>"
+---
+
+## Problem
+<what was encountered>
+
+## Solution
+<how it was solved>
+
+## Context
+<when this applies>
+```
+
+### ContextIndexer Lifecycle
+
+- Created in `flywheel-shell.tsx` before pipeline starts
+- `startIndexing()` triggers convention scanner (one-time), standards scanner (one-time), and learnings retriever (60s refresh)
+- Passed to all `ExecutionLoop` instances via DI (`contextIndexer` option)
+- `dispose()` called in finally block after pipeline completes
+- Convention files scanned: `AGENTS.md`, `CONTRIBUTING.md`, `DEVELOPMENT.md` (configurable)
 
 ## Execution data flow
 
@@ -460,12 +551,11 @@ Config is loaded from TOML (`flywheel.toml`) with env var overrides. Schema in `
 | `timeout_minutes` | int 1-120 | `60` | `FLYWHEEL_TIMEOUT_MINUTES` |
 | `project_cwd` | string? | — | `FLYWHEEL_PROJECT_CWD` |
 | `skip_approval_gates` | bool | `false` | `FLYWHEEL_SKIP_APPROVAL_GATES` |
-| `use_dispatcher` | bool | `true` | `FLYWHEEL_USE_DISPATCHER` |
 | `skip_evaluation` | bool | `false` | — |
 | `interactive_consolidation` | bool | `false` | `FLYWHEEL_INTERACTIVE_CONSOLIDATION` |
 | `auto_ship` | bool | `false` | `FLYWHEEL_AUTO_SHIP` |
 | `auto_chain` | bool | `true` | `FLYWHEEL_AUTO_CHAIN` |
-| `worktree.enabled` | bool | `false` | `FLYWHEEL_WORKTREE_ENABLED` |
+| `worktree.enabled` | bool | `true` | `FLYWHEEL_WORKTREE_ENABLED` |
 | `worktree.auto_remove` | bool | `false` | `FLYWHEEL_WORKTREE_AUTO_REMOVE` |
 | `worktree.grace_period_ms` | int ≥0 | `300000` | — |
 

@@ -104,7 +104,8 @@ describe("E2E Integration", () => {
       async spawn(command, args, options) {
         // Replace "claude" with our mock worker
         const realSpawner = new BunProcessSpawner({ timeoutMinutes: 1 });
-        return realSpawner.spawn("bun", ["run", MOCK_WORKER, ...args], options);
+        const spawnResult = await realSpawner.spawn("bun", ["run", MOCK_WORKER, ...args], options);
+        return spawnResult;
       },
     };
 

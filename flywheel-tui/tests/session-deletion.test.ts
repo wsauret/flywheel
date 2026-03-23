@@ -11,7 +11,7 @@ import {
   listSessions,
   type DeleteResult,
 } from "../src/session/persistence";
-import type { CliSession } from "../src/schemas/session";
+import type { Session } from "../src/schemas/session";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import {
   createSessionManager,
@@ -36,14 +36,14 @@ function makeTmpDir(): string {
 }
 
 /** Minimal valid session data (required fields only). */
-function minimalSession(overrides?: Partial<CliSession>): CliSession {
+function minimalSession(overrides?: Partial<Session>): Session {
   return {
+    label: "plans/test.md",
     planPath: "plans/test.md",
-    statePath: ".flywheel/state/test.state.md",
-    contextPath: ".flywheel/context/test.ctx.md",
-    currentPhase: 0,
     lastUpdated: new Date().toISOString(),
-    workflowId: crypto.randomUUID(),
+    budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
+    budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+    workflowType: "work",
     ...overrides,
   };
 }
@@ -52,32 +52,18 @@ function minimalSession(overrides?: Partial<CliSession>): CliSession {
  * Create a session with all companion files on disk.
  * Returns { id, baseDir, statePath, contextPath, outputPath, jsonPath }.
  */
-function createSessionWithCompanions(baseDir: string, overrides?: Partial<CliSession>) {
-  const stateRelPath = `.flywheel/state/${crypto.randomUUID()}.state.md`;
-  const contextRelPath = `.flywheel/context/${crypto.randomUUID()}.ctx.md`;
-
+function createSessionWithCompanions(baseDir: string, overrides?: Partial<Session>) {
   const data = minimalSession({
-    statePath: stateRelPath,
-    contextPath: contextRelPath,
     ...overrides,
   });
 
   const id = createSession(data, baseDir);
-
-  // Create the companion files on disk
-  const statePath = path.join(baseDir, stateRelPath);
-  const contextPath = path.join(baseDir, contextRelPath);
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.mkdirSync(path.dirname(contextPath), { recursive: true });
-  fs.writeFileSync(statePath, "# State file");
-  fs.writeFileSync(contextPath, "# Context file");
 
   // Create the output file using convention-based path
   const outputPath = path.join(baseDir, ".flywheel/sessions", `${id}.output.json`);
   fs.writeFileSync(outputPath, JSON.stringify([]));
 
   // Update session to record outputPath
-  // (We just write it directly since we know the schema)
   const jsonPath = path.join(baseDir, ".flywheel/sessions", `${id}.json`);
   const sessionData = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
   sessionData.outputPath = `${id}.output.json`;
@@ -87,8 +73,6 @@ function createSessionWithCompanions(baseDir: string, overrides?: Partial<CliSes
   return {
     id,
     baseDir,
-    statePath,
-    contextPath,
     outputPath,
     jsonPath,
   };
@@ -111,27 +95,23 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("deleteSessionWithCompanions", () => {
-  it("deletes session JSON + state + context + output files", () => {
+  it("deletes session JSON + output files", () => {
     const baseDir = makeTmpDir();
-    const { id, statePath, contextPath, outputPath, jsonPath } =
+    const { id, outputPath, jsonPath } =
       createSessionWithCompanions(baseDir);
 
     // Verify all files exist before deletion
     expect(fs.existsSync(jsonPath)).toBe(true);
-    expect(fs.existsSync(statePath)).toBe(true);
-    expect(fs.existsSync(contextPath)).toBe(true);
     expect(fs.existsSync(outputPath)).toBe(true);
 
     const result = deleteSessionWithCompanions(id, baseDir);
 
     // All files should be gone
     expect(fs.existsSync(jsonPath)).toBe(false);
-    expect(fs.existsSync(statePath)).toBe(false);
-    expect(fs.existsSync(contextPath)).toBe(false);
     expect(fs.existsSync(outputPath)).toBe(false);
 
     // All files should be in the deleted list
-    expect(result.deleted.length).toBe(4);
+    expect(result.deleted.length).toBe(2);
     expect(result.errors).toHaveLength(0);
   });
 
@@ -147,22 +127,15 @@ describe("deleteSessionWithCompanions", () => {
     expect(Array.isArray(result.errors)).toBe(true);
   });
 
-  it("reads session JSON to find companion paths", () => {
+  it("reads session JSON to find output path", () => {
     const baseDir = makeTmpDir();
-    // Use a non-standard statePath to prove it's read from JSON
-    const customStatePath = `.flywheel/custom-states/unique-${crypto.randomUUID()}.md`;
-    const customStateAbsPath = path.join(baseDir, customStatePath);
-    fs.mkdirSync(path.dirname(customStateAbsPath), { recursive: true });
-    fs.writeFileSync(customStateAbsPath, "# Custom state");
-
-    const data = minimalSession({ statePath: customStatePath });
-    const id = createSession(data, baseDir);
+    const { id, outputPath } = createSessionWithCompanions(baseDir);
 
     const result = deleteSessionWithCompanions(id, baseDir);
 
-    // The custom statePath should have been resolved from JSON and deleted
-    expect(fs.existsSync(customStateAbsPath)).toBe(false);
-    expect(result.deleted).toContain(customStateAbsPath);
+    // The output path should have been resolved from JSON and deleted
+    expect(fs.existsSync(outputPath)).toBe(false);
+    expect(result.deleted).toContain(outputPath);
   });
 
   it("falls back to convention-based output path if JSON read fails", () => {
@@ -192,27 +165,21 @@ describe("deleteSessionWithCompanions", () => {
 
   it("reports errors for files that fail to delete but continues", () => {
     const baseDir = makeTmpDir();
-    const { id, statePath, contextPath, jsonPath } =
+    const { id, outputPath, jsonPath } =
       createSessionWithCompanions(baseDir);
 
-    // Make statePath's directory read-only to cause delete failure
-    // (On macOS/Linux, making the parent dir read-only prevents unlinking)
-    const stateDir = path.dirname(statePath);
-    fs.chmodSync(stateDir, 0o555);
+    // Make output file's directory read-only to cause delete failure
+    const outputDir = path.dirname(outputPath);
+    fs.chmodSync(outputDir, 0o555);
 
     try {
       const result = deleteSessionWithCompanions(id, baseDir);
 
-      // State file deletion should have failed
+      // Output file deletion should have failed (and session JSON too, same dir)
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some((e) => e.includes("state"))).toBe(true);
-
-      // But context + output + JSON should still have been attempted
-      // (context and JSON should succeed since their dirs are writable)
-      expect(result.deleted.length).toBeGreaterThan(0);
     } finally {
       // Restore permissions so cleanup works
-      fs.chmodSync(stateDir, 0o755);
+      fs.chmodSync(outputDir, 0o755);
     }
   });
 
@@ -244,11 +211,8 @@ describe("deleteSessionWithCompanions", () => {
 
   it("handles missing companion files gracefully (still deletes what exists)", () => {
     const baseDir = makeTmpDir();
-    // Create session but don't create companion files on disk
-    const data = minimalSession({
-      statePath: ".flywheel/state/nonexistent.state.md",
-      contextPath: ".flywheel/context/nonexistent.ctx.md",
-    });
+    // Create session without output file on disk
+    const data = minimalSession();
     const id = createSession(data, baseDir);
 
     const result = deleteSessionWithCompanions(id, baseDir);
@@ -365,26 +329,17 @@ describe("SessionManager.sweepTrashed", () => {
     expect(readSession(id3, baseDir)).not.toBeNull();
   });
 
-  it("cleans up companion files for trashed sessions", () => {
+  it("cleans up output files for trashed sessions", () => {
     const baseDir = makeTmpDir();
 
-    // Create a session with companion files, then trash it
-    const stateRelPath = `.flywheel/state/${crypto.randomUUID()}.state.md`;
-    const contextRelPath = `.flywheel/context/${crypto.randomUUID()}.ctx.md`;
-
-    const data = minimalSession({
-      statePath: stateRelPath,
-      contextPath: contextRelPath,
-    });
+    const data = minimalSession();
     const id = createSession(data, baseDir);
 
-    // Create companion files
-    const statePath = path.join(baseDir, stateRelPath);
-    const contextPath = path.join(baseDir, contextRelPath);
-    fs.mkdirSync(path.dirname(statePath), { recursive: true });
-    fs.mkdirSync(path.dirname(contextPath), { recursive: true });
-    fs.writeFileSync(statePath, "# State");
-    fs.writeFileSync(contextPath, "# Context");
+    // Create output file
+    const sessionsDir = path.join(baseDir, ".flywheel/sessions");
+    const outputPath = path.join(sessionsDir, `${id}.output.json`);
+    fs.writeFileSync(outputPath, JSON.stringify([]));
+    updateSession(id, { outputPath: `${id}.output.json` }, baseDir);
 
     // Transition to trashed
     updateSession(id, { sessionLifecycleState: "plan:draft" as SessionLifecycleState }, baseDir);
@@ -393,8 +348,8 @@ describe("SessionManager.sweepTrashed", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
     mgr.sweepTrashed();
 
-    // Companion files should be gone
-    expect(fs.existsSync(statePath)).toBe(false);
-    expect(fs.existsSync(contextPath)).toBe(false);
+    // Session and output files should be gone
+    expect(readSession(id, baseDir)).toBeNull();
+    expect(fs.existsSync(outputPath)).toBe(false);
   });
 });

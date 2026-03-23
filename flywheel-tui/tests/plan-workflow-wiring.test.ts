@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import type { WorkerResult } from "../src/schemas/worker";
-import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
+import type { ProcessSpawner, SpawnOptions, SpawnResult } from "../src/worker/spawner";
 import type { FlywheelConfig } from "../src/config/loader";
 import type { PhaseInfo } from "../src/controller/phase-provider";
 import type { WorkflowStepContext } from "../src/prompts/index";
@@ -45,11 +45,11 @@ class MockSpawner implements ProcessSpawner {
   calls: Array<{ command: string; args: string[]; options?: SpawnOptions }> = [];
   private callIndex = 0;
 
-  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<WorkerResult> {
+  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
     this.calls.push({ command, args, options });
     const result = this.results[this.callIndex] ?? successResult();
     this.callIndex++;
-    return result;
+    return { result: Promise.resolve(result) };
   }
 
   reset(): void {
@@ -316,13 +316,15 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
     expect(result.completed).toBe(true);
 
     // The extra snapshots are captured by the prompt builder.
-    // Steps 0-1 should not have any extra data.
+    // Context entries are always populated (empty arrays when no indexer).
+    const emptyContext = { conventions: [], standards: [], learnings: [] };
+    // Steps 0-1 should not have any extra data beyond context entries.
     // Step 2 (review) returns empty object when no questions are parsed.
-    expect(extraSnapshots[0]).toEqual({}); // Phase 0: no prior extra
-    expect(extraSnapshots[1]).toEqual({}); // Phase 1: step 0 returned {}
-    expect(extraSnapshots[2]).toEqual({}); // Phase 2: step 1 returned {}
+    expect(extraSnapshots[0]).toEqual({ ...emptyContext }); // Phase 0: no prior extra
+    expect(extraSnapshots[1]).toEqual({ ...emptyContext }); // Phase 1: step 0 returned {}
+    expect(extraSnapshots[2]).toEqual({ ...emptyContext }); // Phase 2: step 1 returned {}
     // Phase 3 sees step 2's output: no questions parsed → empty object
-    expect(extraSnapshots[3]).toEqual({});
+    expect(extraSnapshots[3]).toEqual({ ...emptyContext });
     // The hook extracts planFilePath on step 3, so it would be in accumulator
     // AFTER step 3 completes. Since there's no step 4, we verify the
     // workflow completed and that the hook ran by checking completion.

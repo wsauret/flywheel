@@ -135,6 +135,8 @@ export function extractLearning(
   options: {
     solutionsDir: string;
     draftsDir: string;
+    /** Pre-built hash set to skip disk scan (e.g. from SESMemoryRetriever.getHashes()). */
+    knownHashes?: Set<string>;
   },
 ): ExtractionResult {
   const hash = computeHash(input);
@@ -154,8 +156,8 @@ export function extractLearning(
     return { written: true, path, reason: "validation_failed", hash };
   }
 
-  // Check dedup in solutions dir
-  const known = existingHashes(options.solutionsDir);
+  // Check dedup: use pre-built hash set if provided, otherwise scan disk
+  const known = options.knownHashes ?? existingHashes(options.solutionsDir);
   if (known.has(hash)) {
     return { written: false, path: "", reason: "duplicate", hash };
   }

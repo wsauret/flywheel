@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import type { WorkerResult, WorkerFailureReason } from "../src/schemas/worker";
-import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
+import type { ProcessSpawner, SpawnOptions, SpawnResult } from "../src/worker/spawner";
 import type { FlywheelEvent } from "../src/events/types";
 import type { FlywheelConfig } from "../src/config/loader";
 import type { PhaseInfo } from "../src/controller/phase-provider";
@@ -11,6 +11,10 @@ import type { WorkflowStepContext } from "../src/prompts/index";
 import type { StatePersistence } from "../src/controller/state-persistence";
 import type { ApprovalHandler } from "../src/controller/approval-handler";
 import type { ParsedStateFile } from "../src/state/reader";
+import type { BudgetTracker } from "../src/session/budget-tracker";
+import type { BudgetLimits, SessionBudgetStatus } from "../src/schemas/shared";
+import type { DispatcherDecision } from "../src/schemas/dispatcher";
+import type { DispatcherOrchestrator, PhasePromptOptions } from "../src/controller/dispatcher-orchestrator";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import { MockAdapter } from "../src/tui/adapters/mock";
 import { CONFIG_DEFAULTS } from "../src/config/loader";
@@ -77,11 +81,11 @@ class MockSpawner implements ProcessSpawner {
   calls: Array<{ command: string; args: string[]; options?: SpawnOptions }> = [];
   private callIndex = 0;
 
-  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<WorkerResult> {
+  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
     this.calls.push({ command, args, options });
     const result = this.results[this.callIndex] ?? successResult();
     this.callIndex++;
-    return result;
+    return { result: Promise.resolve(result) };
   }
 
   reset(): void {
@@ -129,6 +133,48 @@ function makePhases(count: number, overrides?: (Partial<PhaseInfo> | null)[]): P
   }));
 }
 
+/**
+ * Mock BudgetTracker for testing budget enforcement in the execution loop.
+ * Lets tests control `isExhausted()` return value and verify `incrementInvocations()` calls.
+ */
+class MockBudgetTracker implements BudgetTracker {
+  exhausted = false;
+  invocations = 0;
+  tokens = 0;
+  cost = 0;
+  private _limits: BudgetLimits = { max_invocations: 0, max_tokens: null, wall_clock_deadline: null };
+
+  handleEvent(): void { /* no-op */ }
+  getTotalCost(): number { return this.cost; }
+  getInvocationsUsed(): number { return this.invocations; }
+  getTokensUsed(): number { return this.tokens; }
+
+  incrementInvocations(): void {
+    this.invocations += 1;
+  }
+
+  isExhausted(_budgetLimits: BudgetLimits): boolean {
+    return this.exhausted;
+  }
+
+  getBudgetStatus(budgetLimits: BudgetLimits): SessionBudgetStatus {
+    const invocationsRemaining = budgetLimits.max_invocations > 0
+      ? Math.max(0, budgetLimits.max_invocations - this.invocations)
+      : null;
+    const tokenBudgetRemaining = budgetLimits.max_tokens !== null
+      ? Math.max(0, budgetLimits.max_tokens - this.tokens)
+      : null;
+    return {
+      invocations_remaining: invocationsRemaining,
+      token_budget_remaining: tokenBudgetRemaining,
+      wall_clock_deadline: budgetLimits.wall_clock_deadline,
+    };
+  }
+
+  flush(): void { /* no-op */ }
+  dispose(): void { /* no-op */ }
+}
+
 function createUnifiedLoop(opts: {
   phases?: PhaseInfo[];
   spawnerResults?: WorkerResult[];
@@ -137,6 +183,8 @@ function createUnifiedLoop(opts: {
   approvalHandler?: ApprovalHandler;
   keyDecisions?: string[];
   fileReferences?: string[];
+  budgetTracker?: BudgetTracker;
+  budgetLimits?: BudgetLimits;
 }) {
   const bus = new EventBus();
   const emitter = createFlywheelEmitter(bus);
@@ -172,6 +220,8 @@ function createUnifiedLoop(opts: {
     approvalHandler: opts.approvalHandler,
     keyDecisions: opts.keyDecisions,
     fileReferences: opts.fileReferences,
+    budgetTracker: opts.budgetTracker,
+    budgetLimits: opts.budgetLimits,
   });
 
   return { loop, bus, emitter, adapter, spawner, config };
@@ -768,6 +818,898 @@ describe("ExecutionLoop (unified)", () => {
       // The completion instruction is in the prompt passed via stdin
       // Since Claude engine passes prompt via stdin, check that
       expect(spawner.calls[0].options?.stdin).toContain("<promise>COMPLETE</promise>");
+    });
+  });
+
+  describe("budget enforcement", () => {
+    it("stops with 'Budget exhausted' when isExhausted() returns true before first phase", async () => {
+      const tracker = new MockBudgetTracker();
+      tracker.exhausted = true; // already exhausted
+
+      const limits: BudgetLimits = { max_invocations: 5, max_tokens: null, wall_clock_deadline: null };
+
+      const { loop, spawner } = createUnifiedLoop({
+        phases: makePhases(2),
+        spawnerResults: [successResult(), successResult()],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(false);
+      expect(result.phasesCompleted).toBe(0);
+      expect(result.phasesTotal).toBe(2);
+      expect(result.reason).toBe("Budget exhausted");
+      // No phases should have been dispatched
+      expect(spawner.calls).toHaveLength(0);
+    });
+
+    it("stops between phases when budget becomes exhausted", async () => {
+      const tracker = new MockBudgetTracker();
+      const limits: BudgetLimits = { max_invocations: 5, max_tokens: null, wall_clock_deadline: null };
+
+      const { loop, spawner } = createUnifiedLoop({
+        phases: makePhases(3),
+        spawnerResults: [successResult(), successResult(), successResult()],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      // Exhaust budget after first phase completes (spawner triggers it)
+      let firstDone = false;
+      const originalSpawn = spawner.spawn.bind(spawner);
+      spawner.spawn = async (cmd, args, opts) => {
+        const result = await originalSpawn(cmd, args, opts);
+        if (!firstDone) {
+          firstDone = true;
+          // Mark budget as exhausted after first phase
+          tracker.exhausted = true;
+        }
+        return result;
+      };
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(false);
+      expect(result.phasesCompleted).toBe(1);
+      expect(result.reason).toBe("Budget exhausted");
+      // Only one phase should have been dispatched
+      expect(spawner.calls).toHaveLength(1);
+    });
+
+    it("passes when limits are 0/null (unlimited)", async () => {
+      const tracker = new MockBudgetTracker();
+      // Unlimited: max_invocations=0, max_tokens=null, no deadline
+      const limits: BudgetLimits = { max_invocations: 0, max_tokens: null, wall_clock_deadline: null };
+
+      const { loop, spawner } = createUnifiedLoop({
+        phases: makePhases(2),
+        spawnerResults: [successResult(), successResult()],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(true);
+      expect(result.phasesCompleted).toBe(2);
+      expect(spawner.calls).toHaveLength(2);
+    });
+
+    it("passes when under all limits", async () => {
+      const tracker = new MockBudgetTracker();
+      tracker.invocations = 2;
+      tracker.tokens = 1000;
+      // Well under limits
+      const limits: BudgetLimits = { max_invocations: 10, max_tokens: 100000, wall_clock_deadline: null };
+
+      const { loop } = createUnifiedLoop({
+        phases: makePhases(2),
+        spawnerResults: [successResult(), successResult()],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(true);
+      expect(result.phasesCompleted).toBe(2);
+    });
+
+    it("runs normally without budget tracker (backward compat)", async () => {
+      // No budgetTracker or budgetLimits provided
+      const { loop } = createUnifiedLoop({
+        spawnerResults: [successResult(), successResult()],
+      });
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(true);
+      expect(result.phasesCompleted).toBe(2);
+    });
+
+    it("increments invocation count after each executor.execute() call", async () => {
+      const tracker = new MockBudgetTracker();
+      const limits: BudgetLimits = { max_invocations: 0, max_tokens: null, wall_clock_deadline: null };
+
+      const { loop } = createUnifiedLoop({
+        phases: makePhases(3),
+        spawnerResults: [successResult(), successResult(), successResult()],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      expect(tracker.invocations).toBe(0);
+
+      await loop.run();
+
+      // 3 phases executed = 3 increments
+      expect(tracker.invocations).toBe(3);
+    });
+
+    it("does not increment invocations for skipped (completed) phases", async () => {
+      const tracker = new MockBudgetTracker();
+      const limits: BudgetLimits = { max_invocations: 0, max_tokens: null, wall_clock_deadline: null };
+
+      const phases = makePhases(3, [
+        { status: "completed" },
+        null, // pending
+        null, // pending
+      ]);
+
+      const { loop } = createUnifiedLoop({
+        phases,
+        spawnerResults: [successResult(), successResult()],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      await loop.run();
+
+      // Only 2 phases actually executed (first was already completed)
+      expect(tracker.invocations).toBe(2);
+    });
+
+    it("does not increment invocations on failed phase", async () => {
+      const tracker = new MockBudgetTracker();
+      const limits: BudgetLimits = { max_invocations: 0, max_tokens: null, wall_clock_deadline: null };
+
+      const { loop } = createUnifiedLoop({
+        phases: makePhases(2),
+        spawnerResults: [failureResult(nonRetryableError("Crash"))],
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+
+      await loop.run();
+
+      // Phase failed, incrementInvocations is only called on success
+      expect(tracker.invocations).toBe(0);
+    });
+
+    it("checkpoints state (current phase stays pending) on budget stop", async () => {
+      const dir = ensureTmpDir();
+      const planPath = path.join(dir, "test.md");
+      const statePath = path.join(dir, "test.state.md");
+      const planContent = readFixture("two-phase-plan.md");
+      fs.writeFileSync(planPath, planContent);
+
+      const persistence = new FileStatePersistence(planPath, statePath, dir);
+      const state = persistence.load(planContent);
+      const provider = new PlanFileProvider(planContent, state);
+
+      const tracker = new MockBudgetTracker();
+      tracker.exhausted = true; // exhausted immediately
+      const limits: BudgetLimits = { max_invocations: 1, max_tokens: null, wall_clock_deadline: null };
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-budget-state",
+      });
+
+      const loop = new ExecutionLoop({
+        phaseProvider: provider,
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-budget-state",
+        workflowLabel: planPath,
+        statePersistence: persistence,
+        budgetTracker: tracker,
+        budgetLimits: limits,
+      });
+      loop.setLoadedState(state);
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(false);
+      expect(result.reason).toBe("Budget exhausted");
+      // No phases dispatched — state file should still have pending phases
+      expect(spawner.calls).toHaveLength(0);
+
+      // Verify state was not modified (phases remain pending)
+      if (fs.existsSync(statePath)) {
+        const diskState = parseStateFile(fs.readFileSync(statePath, "utf-8"));
+        for (const phase of diskState.phases) {
+          expect(phase.status).toBe("pending");
+        }
+      }
+      // If state file doesn't exist, that's also fine — no state was written
+    });
+
+    it("returns sessionBudget with real remaining values from tracker", async () => {
+      // This test verifies the dispatcher receives real budget values.
+      // We use the dispatcherOrchestrator path to capture what sessionBudget is passed.
+      let capturedSessionBudget: SessionBudgetStatus | undefined;
+
+      const tracker = new MockBudgetTracker();
+      tracker.invocations = 3;
+      tracker.tokens = 5000;
+      const limits: BudgetLimits = {
+        max_invocations: 10,
+        max_tokens: 50000,
+        wall_clock_deadline: "2099-12-31T23:59:59Z",
+      };
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-budget-status",
+      });
+
+      // Mock dispatcher orchestrator that captures the sessionBudget
+      const mockDispatcher = {
+        getPhaseDecision: async (
+          _phase: any,
+          _planContent: string,
+          _stateContent: string,
+          _contextContent: string | undefined,
+          _previousResult: string | undefined,
+          extra: any,
+        ): Promise<DispatcherDecision | null> => {
+          capturedSessionBudget = extra.sessionBudget;
+          return {
+            schema_version: 1,
+            phase_index: 0,
+            step_index: 0,
+            prompt: "dispatched prompt",
+            context_files: [],
+            validation_criteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+            reasoning: "",
+            warnings: [],
+            worker_config: {
+              model_override: null, timeout_minutes: 30, retry_on_failure: true,
+              max_retries: 3, iteration_budget: 5,
+              tool_scoping: { read: true, bash: true, write: true, edit: true },
+              parallel: false, parallel_variants: null,
+            },
+          };
+        },
+      };
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-budget-status",
+        workflowLabel: "test",
+        budgetTracker: tracker,
+        budgetLimits: limits,
+        dispatcherOrchestrator: mockDispatcher as any,
+        planContent: "fake plan",
+      });
+
+      await loop.run();
+
+      expect(capturedSessionBudget).toBeDefined();
+      expect(capturedSessionBudget!.invocations_remaining).toBe(7); // 10 - 3
+      expect(capturedSessionBudget!.token_budget_remaining).toBe(45000); // 50000 - 5000
+      expect(capturedSessionBudget!.wall_clock_deadline).toBe("2099-12-31T23:59:59Z");
+    });
+
+    it("returns null sessionBudget values when no budget tracker", async () => {
+      // When no budget tracker is configured, the dispatcher should get unlimited values.
+      let capturedSessionBudget: SessionBudgetStatus | undefined;
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-no-budget",
+      });
+
+      const mockDispatcher = {
+        getPhaseDecision: async (
+          _phase: any,
+          _planContent: string,
+          _stateContent: string,
+          _contextContent: string | undefined,
+          _previousResult: string | undefined,
+          extra: any,
+        ): Promise<DispatcherDecision | null> => {
+          capturedSessionBudget = extra.sessionBudget;
+          return {
+            schema_version: 1,
+            phase_index: 0,
+            step_index: 0,
+            prompt: "dispatched prompt",
+            context_files: [],
+            validation_criteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+            reasoning: "",
+            warnings: [],
+            worker_config: {
+              model_override: null, timeout_minutes: 30, retry_on_failure: true,
+              max_retries: 3, iteration_budget: 5,
+              tool_scoping: { read: true, bash: true, write: true, edit: true },
+              parallel: false, parallel_variants: null,
+            },
+          };
+        },
+      };
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-no-budget",
+        workflowLabel: "test",
+        // No budgetTracker or budgetLimits
+        dispatcherOrchestrator: mockDispatcher as any,
+        planContent: "fake plan",
+      });
+
+      await loop.run();
+
+      expect(capturedSessionBudget).toBeDefined();
+      expect(capturedSessionBudget!.invocations_remaining).toBeNull();
+      expect(capturedSessionBudget!.token_budget_remaining).toBeNull();
+      expect(capturedSessionBudget!.wall_clock_deadline).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Dispatcher decision flow-through (worker_config overrides)
+  // -------------------------------------------------------------------------
+
+  describe("dispatcher decision flow-through", () => {
+    /** Helper to build a valid DispatcherDecision for tests */
+    function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecision {
+      return {
+        schema_version: 1,
+        phase_index: 0,
+        step_index: 0,
+        prompt: "Dispatcher-crafted prompt for the worker",
+        context_files: ["src/index.ts"],
+        validation_criteria: {
+          acceptance_criteria: ["Tests pass"],
+          required_tests: true,
+          custom_checks: [],
+          required_outputs: [],
+        },
+        reasoning: "Standard execution",
+        warnings: [],
+        worker_config: {
+          model_override: null,
+          timeout_minutes: 30,
+          retry_on_failure: true,
+          max_retries: 3,
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: false,
+          parallel_variants: null,
+        },
+        ...overrides,
+      };
+    }
+
+    /** Creates a mock DispatcherOrchestrator that returns a specific decision */
+    function mockDispatcherOrchestrator(decision: DispatcherDecision | null) {
+      return {
+        getPhaseDecision: async () => decision,
+      } as unknown as DispatcherOrchestrator;
+    }
+
+    /** Creates a loop with dispatcher orchestrator */
+    function createLoopWithDispatcher(opts: {
+      decision: DispatcherDecision | null;
+      phases?: PhaseInfo[];
+      spawnerResults?: WorkerResult[];
+      config?: Partial<FlywheelConfig>;
+    }) {
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      if (opts.spawnerResults) spawner.results = opts.spawnerResults;
+
+      const config = defaultConfig(opts.config);
+      const executor = new PhaseExecutor({
+        spawner,
+        emitter,
+        config,
+        engine: claudeEngine,
+        workflowId: "test-wf",
+      });
+
+      const phases = opts.phases ?? makePhases(1);
+      const provider = new SimplePhaseProvider(phases);
+
+      const loop = new ExecutionLoop({
+        phaseProvider: provider,
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-wf",
+        workflowLabel: "test-workflow",
+        dispatcherOrchestrator: mockDispatcherOrchestrator(opts.decision),
+        planContent: "# Test plan",
+      });
+
+      return { loop, bus, emitter, adapter, spawner, config };
+    }
+
+    it("when dispatcher returns worker_config.timeout_minutes, it overrides config", async () => {
+      const decision = validDecision({
+        worker_config: {
+          model_override: null,
+          timeout_minutes: 10, // override: 10 min instead of config's 60
+          retry_on_failure: true,
+          max_retries: 3,
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: false,
+          parallel_variants: null,
+        },
+      });
+
+      const { loop, spawner } = createLoopWithDispatcher({
+        decision,
+        spawnerResults: [successResult()],
+        config: { timeout_minutes: 60 },
+      });
+
+      await loop.run();
+
+      // The spawner should have received the overridden timeout (10 * 60000 = 600000)
+      expect(spawner.calls).toHaveLength(1);
+      const spawnOpts = spawner.calls[0].options;
+      expect(spawnOpts?.timeoutMs).toBe(10 * 60_000);
+    });
+
+    it("when dispatcher returns worker_config.model_override, it's passed to engine", async () => {
+      const decision = validDecision({
+        worker_config: {
+          model_override: "sonnet",
+          timeout_minutes: 30,
+          retry_on_failure: true,
+          max_retries: 3,
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: false,
+          parallel_variants: null,
+        },
+      });
+
+      const { loop, spawner } = createLoopWithDispatcher({
+        decision,
+        spawnerResults: [successResult()],
+      });
+
+      await loop.run();
+
+      expect(spawner.calls).toHaveLength(1);
+      // Claude engine passes model via --model flag in args
+      const args = spawner.calls[0].args;
+      expect(args).toContain("sonnet");
+    });
+
+    it("when dispatcher returns worker_config.max_retries, it overrides config", async () => {
+      // To verify max_retries override, we need a retryable failure followed by success.
+      // With max_retries=1 from dispatcher (vs config's 3), it should retry once then succeed.
+      const decision = validDecision({
+        worker_config: {
+          model_override: null,
+          timeout_minutes: 30,
+          retry_on_failure: true,
+          max_retries: 1, // override: only 1 retry
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: false,
+          parallel_variants: null,
+        },
+      });
+
+      const { loop, spawner } = createLoopWithDispatcher({
+        decision,
+        spawnerResults: [
+          failureResult(retryableError("Timeout")),
+          successResult(), // succeeds on retry
+        ],
+        config: { max_retries: 3 }, // config says 3 but dispatcher says 1
+      });
+
+      const result = await loop.run();
+
+      // Should succeed — 1 retry was enough
+      expect(result.completed).toBe(true);
+      expect(spawner.calls).toHaveLength(2); // initial + 1 retry
+    });
+
+    it("when worker_config.parallel === true, logs warning and proceeds single-threaded", async () => {
+      const decision = validDecision({
+        worker_config: {
+          model_override: null,
+          timeout_minutes: 30,
+          retry_on_failure: true,
+          max_retries: 3,
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: true, // parallel requested
+          parallel_variants: [
+            { name: "variant-a", prompt: "Approach A" },
+            { name: "variant-b", prompt: "Approach B" },
+          ],
+        },
+      });
+
+      const { loop, spawner } = createLoopWithDispatcher({
+        decision,
+        spawnerResults: [successResult()],
+      });
+
+      const result = await loop.run();
+
+      // Should still complete (single-threaded fallback)
+      expect(result.completed).toBe(true);
+      // Only one spawn call — parallel was not actually executed
+      expect(spawner.calls).toHaveLength(1);
+    });
+
+    it("when dispatcher disabled, falls through to prompt builder (existing behavior)", async () => {
+      const capturedPrompts: string[] = [];
+      const customBuilder: PromptBuilder = (phase, ctx) => {
+        const prompt = `Fallback: Phase ${phase.index + 1}`;
+        capturedPrompts.push(prompt);
+        return prompt;
+      };
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner,
+        emitter,
+        config,
+        engine: claudeEngine,
+        workflowId: "test-wf",
+      });
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: customBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-wf",
+        workflowLabel: "test",
+        // Dispatcher returns null (simulating dispatcher failure fallback)
+        dispatcherOrchestrator: mockDispatcherOrchestrator(null),
+        planContent: "# Test plan",
+      });
+
+      await loop.run();
+
+      // Should have used the fallback prompt builder
+      expect(capturedPrompts).toHaveLength(1);
+      expect(capturedPrompts[0]).toBe("Fallback: Phase 1");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // ContextIndexer integration
+  // -------------------------------------------------------------------------
+
+  describe("contextIndexer integration", () => {
+    /** Mock ContextIndexer that captures calls and returns controlled data */
+    class MockContextIndexer {
+      calls: Array<{ workflowType: string; phaseDescription: string }> = [];
+      contextToReturn = {
+        conventions: [{ name: "AGENTS.md", path: "AGENTS.md", summary: "Project conventions" }],
+        standards: [{ name: "coding-style", path: "docs/standards/coding-style.md", summary: "Code style rules" }],
+        learnings: [{ name: "fix-race-condition", path: "docs/solutions/fix-race-condition.md", summary: "How we fixed a race condition" }],
+      };
+
+      getRelevantContext(query: { workflowType: string; phaseDescription: string }) {
+        this.calls.push(query);
+        return this.contextToReturn;
+      }
+
+      dispose(): void { /* no-op */ }
+    }
+
+    it("accepts contextIndexer via options (DI)", async () => {
+      const indexer = new MockContextIndexer();
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-indexer",
+      });
+
+      // Should not throw — contextIndexer is accepted as an optional DI parameter
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-indexer",
+        workflowLabel: "test",
+        contextIndexer: indexer as any,
+      });
+
+      const result = await loop.run();
+      expect(result.completed).toBe(true);
+    });
+
+    it("calls indexer.getRelevantContext() when dispatcher is active and indexer present", async () => {
+      const indexer = new MockContextIndexer();
+      let capturedAvailableContext: any;
+
+      const mockDispatcher = {
+        getPhaseDecision: async (
+          _phase: any,
+          _planContent: string,
+          _stateContent: string,
+          _contextContent: string | undefined,
+          _previousResult: string | undefined,
+          extra: any,
+        ): Promise<DispatcherDecision | null> => {
+          capturedAvailableContext = extra.availableContext;
+          return null; // fall through to prompt builder
+        },
+      };
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-indexer-ctx",
+      });
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-indexer-ctx",
+        workflowLabel: "work",
+        dispatcherOrchestrator: mockDispatcher as any,
+        planContent: "# Test plan",
+        contextIndexer: indexer as any,
+      });
+
+      await loop.run();
+
+      // Indexer is called twice per phase: once from the dispatcher path,
+      // and once from the non-dispatcher fallback (since dispatcher returns null)
+      expect(indexer.calls).toHaveLength(2);
+      expect(indexer.calls[0].workflowType).toBe("work");
+      expect(indexer.calls[0].phaseDescription).toBe("Phase 1");
+      expect(indexer.calls[1].workflowType).toBe("work");
+      expect(indexer.calls[1].phaseDescription).toBe("Phase 1");
+
+      // The dispatcher should have received populated availableContext
+      expect(capturedAvailableContext).toBeDefined();
+      expect(capturedAvailableContext.conventions).toHaveLength(1);
+      expect(capturedAvailableContext.conventions[0].name).toBe("AGENTS.md");
+      expect(capturedAvailableContext.standards).toHaveLength(1);
+      expect(capturedAvailableContext.standards[0].name).toBe("coding-style");
+      expect(capturedAvailableContext.learnings).toHaveLength(1);
+      expect(capturedAvailableContext.learnings[0].name).toBe("fix-race-condition");
+    });
+
+    it("falls back to empty arrays when indexer is absent", async () => {
+      let capturedAvailableContext: any;
+
+      const mockDispatcher = {
+        getPhaseDecision: async (
+          _phase: any,
+          _planContent: string,
+          _stateContent: string,
+          _contextContent: string | undefined,
+          _previousResult: string | undefined,
+          extra: any,
+        ): Promise<DispatcherDecision | null> => {
+          capturedAvailableContext = extra.availableContext;
+          return null;
+        },
+      };
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-no-indexer",
+      });
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-no-indexer",
+        workflowLabel: "test",
+        dispatcherOrchestrator: mockDispatcher as any,
+        planContent: "# Test plan",
+        // No contextIndexer — should fall back to empty arrays
+      });
+
+      await loop.run();
+
+      expect(capturedAvailableContext).toBeDefined();
+      expect(capturedAvailableContext.conventions).toEqual([]);
+      expect(capturedAvailableContext.standards).toEqual([]);
+      expect(capturedAvailableContext.learnings).toEqual([]);
+    });
+
+    it("calls indexer for each phase when dispatcher is active", async () => {
+      const indexer = new MockContextIndexer();
+      const phases = makePhases(3);
+
+      const mockDispatcher = {
+        getPhaseDecision: async (): Promise<DispatcherDecision | null> => null,
+      };
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult(), successResult(), successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-multi-phase",
+      });
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(phases),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-multi-phase",
+        workflowLabel: "plan",
+        dispatcherOrchestrator: mockDispatcher as any,
+        planContent: "# Test plan",
+        contextIndexer: indexer as any,
+      });
+
+      await loop.run();
+
+      // Two calls per phase: once from dispatcher path, once from non-dispatcher fallback
+      expect(indexer.calls).toHaveLength(6);
+      // Dispatcher calls (indices 0, 2, 4) and fallback calls (indices 1, 3, 5)
+      expect(indexer.calls[0].phaseDescription).toBe("Phase 1");
+      expect(indexer.calls[1].phaseDescription).toBe("Phase 1");
+      expect(indexer.calls[2].phaseDescription).toBe("Phase 2");
+      expect(indexer.calls[3].phaseDescription).toBe("Phase 2");
+      expect(indexer.calls[4].phaseDescription).toBe("Phase 3");
+      expect(indexer.calls[5].phaseDescription).toBe("Phase 3");
+    });
+
+    it("calls indexer from non-dispatcher fallback path when no dispatcher is configured", async () => {
+      const indexer = new MockContextIndexer();
+
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner, emitter, config, engine: claudeEngine, workflowId: "test-no-dispatcher",
+      });
+
+      const loopNoDispatcher = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-no-dispatcher",
+        workflowLabel: "test",
+        contextIndexer: indexer as any,
+        // No dispatcherOrchestrator — dispatcher path skipped, but non-dispatcher
+        // fallback still calls getRelevantContext to populate ctx.extra
+      });
+
+      await loopNoDispatcher.run();
+
+      // Indexer IS called from the non-dispatcher fallback path (once per phase)
+      expect(indexer.calls).toHaveLength(1);
+      expect(indexer.calls[0].workflowType).toBe("test");
+      expect(indexer.calls[0].phaseDescription).toBe("Phase 1");
     });
   });
 });

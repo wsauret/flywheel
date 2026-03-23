@@ -56,8 +56,31 @@ export const TOKEN_LIMITS = `## Token Limits
 - Research output: max 500 tokens
 - Reviewer output: max 1000 tokens`;
 
+export const UNDERSTAND_ACT_VERIFY = `## Understand-Act-Verify
+
+Before making ANY change, follow this loop:
+
+1. **UNDERSTAND:** Read existing code, understand context, review acceptance criteria. Do not guess — read the actual files.
+2. **ACT:** Implement the change using all available tools. Do not stop and explain what you would do — do it.
+3. **VERIFY:** Run the actual code. Check real outputs against acceptance criteria. Do not declare success based on unit tests alone — verify actual behavior.
+
+Keep iterating this loop until acceptance criteria pass or your iteration budget is exhausted. Every iteration must make measurable progress.`;
+
 export const VERIFICATION_BANNED_PHRASES = `## Verification — Banned Phrases
 
 Never claim without evidence. The following phrases are BANNED unless accompanied by concrete proof (command output, test result, file content):
 
 "Done", "Fixed", "Complete", "Passing", "Working", "Should work", "Probably", "Seems to", "Great!", "Perfect!", "Looks good!"`;
+
+/**
+ * Builds an iteration budget instruction for a worker prompt.
+ * @param budget - Number of internal iteration cycles allowed (must be >= 1, finite)
+ */
+export function buildIterationBudgetInstruction(budget: number): string {
+  if (budget < 1 || !Number.isFinite(budget)) {
+    throw new Error(
+      `Invalid iteration budget: ${budget}. Must be a finite number >= 1.`,
+    );
+  }
+  return `You have ${budget} internal iteration cycles. Use them to refine your output. Do not signal completion until acceptance criteria are met or you've exhausted all ${budget} cycles.`;
+}

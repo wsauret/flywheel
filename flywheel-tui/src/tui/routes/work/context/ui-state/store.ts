@@ -1,12 +1,11 @@
 /**
  * Work Store
  *
- * Singleton store with 16ms throttled notifications.
+ * Factory-based store with 16ms throttled notifications.
  * Uses immutable state updates — each action replaces the full WorkState object.
  *
- * Production: `createStore()` returns singleton (prevents dual-instance bugs).
- * `createTestStore()` returns a fresh instance — used in tests for isolation
- * and in production by session-viewport.ts for ephemeral read-only views.
+ * `createStore()` always returns a fresh, isolated instance.
+ * No singleton — each workflow session gets its own store.
  */
 
 import type { WorkState } from "../../state/types";
@@ -89,34 +88,12 @@ function createStoreInternal(planName: string) {
   } satisfies UIActions;
 }
 
-// ── Singleton ──
-
-let singletonStore: ReturnType<typeof createStoreInternal> | null = null;
-
-/** Production: returns singleton store instance */
-export function createStore(planName: string): UIActions {
-  if (!singletonStore) {
-    singletonStore = createStoreInternal(planName);
-  }
-  return singletonStore;
-}
-
-/** Alias for production usage */
-export const createWorkStore = createStore;
+// ── Factory ──
 
 /**
- * Returns a fresh, isolated store instance (not the singleton).
- * Used in tests for isolation AND in production by session-viewport.ts
- * for ephemeral read-only session views that need their own store.
+ * Create a fresh, isolated store instance.
+ * Each call returns an independent store — no singleton caching.
  */
-export function createTestStore(planName: string): UIActions {
+export function createStore(planName: string): UIActions {
   return createStoreInternal(planName);
 }
-
-/** Reset singleton (for cleanup between test suites) */
-export function resetStore(): void {
-  singletonStore = null;
-}
-
-/** Alias for backward compatibility */
-export const resetWorkStore = resetStore;

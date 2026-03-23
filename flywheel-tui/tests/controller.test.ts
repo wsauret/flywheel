@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import type { WorkerResult, WorkerFailureReason } from "../src/schemas/worker";
-import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
+import type { ProcessSpawner, SpawnOptions, SpawnResult } from "../src/worker/spawner";
 import type { FlywheelEvent } from "../src/events/types";
 import type { FlywheelConfig } from "../src/config/loader";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
@@ -60,11 +60,11 @@ class MockSpawner implements ProcessSpawner {
   calls: Array<{ command: string; args: string[]; options?: SpawnOptions }> = [];
   private callIndex = 0;
 
-  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<WorkerResult> {
+  async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
     this.calls.push({ command, args, options });
     const result = this.results[this.callIndex] ?? successResult();
     this.callIndex++;
-    return result;
+    return { result: Promise.resolve(result) };
   }
 
   reset(): void {
@@ -332,9 +332,18 @@ describe("PhaseExecutor", () => {
     expect(spawner.calls[0].args).toContain("--print");
     expect(spawner.calls[0].args).toContain("--output-format");
     expect(spawner.calls[0].args).toContain("stream-json");
+    expect(spawner.calls[0].args).toContain("--input-format");
     expect(spawner.calls[0].args).toContain("--dangerously-skip-permissions");
-    // Prompt is passed via stdin, not as an arg
-    expect(spawner.calls[0].options?.stdin).toBe("do stuff");
+    // Prompt is passed via stdin in SDKUserMessage NDJSON format (for --input-format stream-json)
+    const stdinContent = spawner.calls[0].options?.stdin;
+    expect(stdinContent).toBeDefined();
+    const parsed = JSON.parse(stdinContent!.trim());
+    expect(parsed).toEqual({
+      type: "user",
+      message: { role: "user", content: "do stuff" },
+    });
+    // stdinPipe should be true for Claude (streaming input support)
+    expect(spawner.calls[0].options?.stdinPipe).toBe(true);
   });
 });
 

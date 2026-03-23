@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { EventBus } from "../src/events/event-bus";
 import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentui";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import { StructuredOutputBuilder } from "../src/tui/adapters/structured-output-builder";
 import type { FlywheelEvent } from "../src/events/types";
@@ -12,7 +12,7 @@ import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
  */
 function createHarness() {
   const bus = new EventBus();
-  const store = createTestStore("test-plan");
+  const store = createStore("test-plan");
   const adapter = createOpenTUIAdapter(store);
   adapter.connect(bus);
   adapter.start();
@@ -36,7 +36,7 @@ describe("OpenTUIAdapter", () => {
 
   describe("basics", () => {
     it("has adapterType 'opentui'", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       expect(adapter.adapterType).toBe("opentui");
     });
@@ -53,7 +53,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("factory function creates adapter", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       expect(adapter).toBeInstanceOf(OpenTUIAdapter);
     });
@@ -65,7 +65,7 @@ describe("OpenTUIAdapter", () => {
     // -- Workflow events --
 
     it("workflow:started → startWorkflow + timer start", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({
         type: "workflow:started",
         workflowId: "w1",
@@ -74,38 +74,38 @@ describe("OpenTUIAdapter", () => {
       });
       expect(store.getState().workflowStatus).toBe("running");
       expect(store.getState().planName).toBe("plan.md");
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
     });
 
     it("workflow:completed → stopWorkflow('completed') + timer stop", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("completed");
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
 
     it("workflow:failed → setError + timer stop", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       bus.emit({ type: "workflow:failed", workflowId: "w1", reason: "kaboom", timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("failed");
       expect(store.getState().error).toBe("kaboom");
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
 
     it("workflow:interrupted → stopWorkflow('interrupted') + timer stop", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       bus.emit({ type: "workflow:interrupted", workflowId: "w1", reason: "ctrl-c", timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("interrupted");
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
 
     // -- Phase events --
 
     it("phase:started → startPhase + timer registerAgent", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({
         type: "phase:started",
         workflowId: "w1",
@@ -115,24 +115,24 @@ describe("OpenTUIAdapter", () => {
       });
       expect(store.getState().phases).toHaveLength(1);
       expect(store.getState().phases[0].status).toBe("running");
-      expect(timerService.hasAgent("phase-0")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-0")).toBe(true);
     });
 
     it("phase:completed → completePhase + timer completeAgent", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Build", timestamp: ts() });
       bus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 0, timestamp: ts() });
       expect(store.getState().phases[0].status).toBe("completed");
-      expect(timerService.hasAgent("phase-0")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-0")).toBe(false);
     });
 
     it("phase:failed → failPhase + timer completeAgent", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
       bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Build", timestamp: ts() });
       bus.emit({ type: "phase:failed", workflowId: "w1", phaseIndex: 0, reason: "compile error", timestamp: ts() });
       expect(store.getState().phases[0].status).toBe("failed");
       expect(store.getState().phases[0].error).toBe("compile error");
-      expect(timerService.hasAgent("phase-0")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-0")).toBe(false);
     });
 
     // -- Worker events --
@@ -486,54 +486,54 @@ describe("OpenTUIAdapter", () => {
 
   describe("timer integration", () => {
     it("timer starts on workflow:started", () => {
-      const { bus } = createHarness();
-      expect(timerService.getStatus()).toBe("idle");
+      const { bus, adapter } = createHarness();
+      expect(adapter.timer.getStatus()).toBe("idle");
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
     });
 
     it("timer stops on workflow:completed", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
 
     it("timer stops on workflow:failed", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       bus.emit({ type: "workflow:failed", workflowId: "w1", reason: "fail", timestamp: ts() });
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
 
     it("timer stops on workflow:interrupted", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       bus.emit({ type: "workflow:interrupted", workflowId: "w1", reason: "ctrl-c", timestamp: ts() });
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
 
     it("timer resets on new workflow:started", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
-      // timerService was reset then started
-      expect(timerService.isRunning()).toBe(true);
+      // adapter.timer was reset then started
+      expect(adapter.timer.isRunning()).toBe(true);
     });
 
     it("phase start/complete registers and completes agent", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 2, phaseName: "Test", timestamp: ts() });
-      expect(timerService.hasAgent("phase-2")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-2")).toBe(true);
       bus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 2, timestamp: ts() });
-      expect(timerService.hasAgent("phase-2")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-2")).toBe(false);
     });
 
     it("phase fail completes agent timer", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 1, phaseName: "Build", timestamp: ts() });
-      expect(timerService.hasAgent("phase-1")).toBe(true);
+      expect(adapter.timer.hasAgent("phase-1")).toBe(true);
       bus.emit({ type: "phase:failed", workflowId: "w1", phaseIndex: 1, reason: "err", timestamp: ts() });
-      expect(timerService.hasAgent("phase-1")).toBe(false);
+      expect(adapter.timer.hasAgent("phase-1")).toBe(false);
     });
   });
 
@@ -710,7 +710,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("workflow:started does NOT reset timer when pipelineMode is true", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();  
       // Start the pipeline (sets pipelineMode)
       bus.emit({
         type: "pipeline:started",
@@ -720,8 +720,8 @@ describe("OpenTUIAdapter", () => {
       });
       // First workflow:started — timer resets and starts normally
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan.md", timestamp: ts() });
-      expect(timerService.isRunning()).toBe(true);
-      const startTime1 = timerService.getWorkflowRuntime();
+      expect(adapter.timer.isRunning()).toBe(true);
+      const startTime1 = adapter.timer.getWorkflowRuntime();
 
       // Complete the first workflow
       bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
@@ -738,7 +738,7 @@ describe("OpenTUIAdapter", () => {
       // Second workflow:started — should NOT reset timer (pipelineMode is true)
       bus.emit({ type: "workflow:started", workflowId: "w2", planPath: "work.md", timestamp: ts() });
       // Timer should be running again (start() was called, but NOT reset())
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
     });
 
     it("pipeline:stage-transition records elapsed time for completed stage", () => {
@@ -812,16 +812,16 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("workflow:started resets timer when NOT in pipelineMode", () => {
-      const { bus } = createHarness();
+      const { bus, adapter } = createHarness();
       // No pipeline — normal workflow behavior
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan.md", timestamp: ts() });
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
       bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
 
       // New workflow:started should reset and start fresh
       bus.emit({ type: "workflow:started", workflowId: "w2", planPath: "plan2.md", timestamp: ts() });
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
     });
   });
 
@@ -905,7 +905,7 @@ describe("OpenTUIAdapter", () => {
       // Start a workflow so the timer is running
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "p", timestamp: ts() });
       expect(adapter.isPipelineMode).toBe(true);
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
 
       adapter.suppressPipelineError = true;
       bus.emit({
@@ -916,7 +916,7 @@ describe("OpenTUIAdapter", () => {
         timestamp: ts(),
       });
       expect(adapter.isPipelineMode).toBe(false);
-      expect(timerService.isStopped()).toBe(true);
+      expect(adapter.timer.isStopped()).toBe(true);
     });
   });
 
@@ -924,7 +924,7 @@ describe("OpenTUIAdapter", () => {
 
   describe("pipeline mode stage transitions", () => {
     it("pipeline:started starts timer once, workflow:started uses continueStage", () => {
-      const { bus, store } = createHarness();
+      const { bus, store, adapter } = createHarness();
 
       // Enter pipeline mode
       bus.emit({
@@ -935,7 +935,7 @@ describe("OpenTUIAdapter", () => {
       });
 
       // Timer should already be running from pipeline:started
-      expect(timerService.isRunning()).toBe(true);
+      expect(adapter.timer.isRunning()).toBe(true);
 
       // First workflow:started in pipeline mode → continueStage (not startWorkflow)
       bus.emit({
@@ -1022,7 +1022,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("checkStaleAgents completes agents inactive for >30s", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const builder = (adapter as any).builder as StructuredOutputBuilder;
       const activityMap = (adapter as any).agentActivityMap as Map<string, number>;
@@ -1047,7 +1047,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("checkStaleAgents does not complete recently active agents", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const builder = (adapter as any).builder as StructuredOutputBuilder;
       const activityMap = (adapter as any).agentActivityMap as Map<string, number>;
@@ -1068,7 +1068,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("tool activity resets the agent's stale timer", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const builder = (adapter as any).builder as StructuredOutputBuilder;
       const activityMap = (adapter as any).agentActivityMap as Map<string, number>;
@@ -1090,7 +1090,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("normally completed agent is removed from activity tracking", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const builder = (adapter as any).builder as StructuredOutputBuilder;
       const activityMap = (adapter as any).agentActivityMap as Map<string, number>;
@@ -1105,7 +1105,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("errored agent is removed from activity tracking", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const builder = (adapter as any).builder as StructuredOutputBuilder;
       const activityMap = (adapter as any).agentActivityMap as Map<string, number>;
@@ -1120,7 +1120,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("stale check uses children.length when completing with toolCount=0", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const builder = (adapter as any).builder as StructuredOutputBuilder;
       const activityMap = (adapter as any).agentActivityMap as Map<string, number>;
@@ -1142,7 +1142,7 @@ describe("OpenTUIAdapter", () => {
     });
 
     it("disconnect clears the stale check interval", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       const staleInterval = (adapter as any).staleCheckInterval;
       expect(staleInterval).not.toBeNull();

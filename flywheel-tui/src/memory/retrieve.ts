@@ -8,9 +8,10 @@
  * with a TTL-based fallback re-read interval.
  */
 
-import { readdirSync, readFileSync, existsSync, watchFile, unwatchFile } from "node:fs";
+import { existsSync } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import * as yaml from "js-yaml";
+import { parseFrontmatter } from "../utils/frontmatter";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,32 +89,45 @@ export class SESMemoryRetriever {
   /**
    * Retrieve relevant learnings by tag match, ranked by number of matching tags (descending).
    * Returns empty array if the index is not yet ready.
+   *
+   * When tags is empty with Infinity maxResults, returns all entries (used by ContextIndexer).
    */
   retrieve(tags: string[], maxResults?: number): LearningEntry[] {
     if (!this.ready) return [];
 
+    // Special case: empty tags with Infinity returns all entries
+    if (tags.length === 0) {
+      const limit = maxResults ?? 0;
+      return this.entries.slice(0, limit === Infinity ? undefined : limit);
+    }
+
     const normalizedTags = tags.map((t) => t.toLowerCase().trim());
 
-    // Score each entry by number of matching tags
-    const scored: Array<{ entry: LearningEntry; score: number }> = [];
-
-    for (const entry of this.entries) {
-      let score = 0;
-      for (const tag of normalizedTags) {
-        if (entry.tags.some((et) => et.toLowerCase() === tag)) {
-          score++;
+    // Use tagIndex for O(tags x fanout) instead of O(n x m)
+    const scores = new Map<number, number>();
+    for (const tag of normalizedTags) {
+      const indices = this.tagIndex.get(tag);
+      if (indices) {
+        for (const idx of indices) {
+          scores.set(idx, (scores.get(idx) ?? 0) + 1);
         }
-      }
-      if (score > 0) {
-        scored.push({ entry, score });
       }
     }
 
-    // Sort by score descending
-    scored.sort((a, b) => b.score - a.score);
+    const sorted = [...scores.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, maxResults ?? scores.size)
+      .map(([idx]) => this.entries[idx]);
 
-    const limit = maxResults ?? scored.length;
-    return scored.slice(0, limit).map((s) => s.entry);
+    return sorted;
+  }
+
+  /**
+   * Return the set of all extraction_hash values from indexed entries.
+   * Uses the warm in-memory index — no disk I/O.
+   */
+  getHashes(): Set<string> {
+    return new Set(this.entries.map((e) => e.hash).filter(Boolean));
   }
 
   /** Dispose file watcher and TTL timer. */
@@ -140,45 +154,54 @@ export class SESMemoryRetriever {
       return;
     }
 
-    let files: string[];
+    let allFiles: string[];
     try {
-      files = readdirSync(this.solutionsDir).filter((f) => f.endsWith(".md"));
+      allFiles = (await readdir(this.solutionsDir)).filter((f: string) => f.endsWith(".md"));
     } catch {
       return;
     }
 
-    for (const file of files) {
-      const filePath = join(this.solutionsDir, file);
-      try {
-        const raw = readFileSync(filePath, "utf-8");
-        const parsed = parseFrontmatter(raw);
-        if (!parsed) continue;
-
-        const { frontmatter, body } = parsed;
-
-        const entry: LearningEntry = {
-          title: String(frontmatter.title ?? ""),
-          tags: Array.isArray(frontmatter.tags)
-            ? frontmatter.tags.map(String)
-            : [],
-          hash: String(frontmatter.extraction_hash ?? ""),
-          filePath,
-          content: body,
-        };
-
-        const idx = entries.length;
-        entries.push(entry);
-
-        // Index by tags
-        for (const tag of entry.tags) {
-          const normalized = tag.toLowerCase().trim();
-          if (!tagIndex.has(normalized)) {
-            tagIndex.set(normalized, new Set());
-          }
-          tagIndex.get(normalized)!.add(idx);
+    // Parallel file reads
+    const fileContents = await Promise.all(
+      allFiles.map(async (file) => {
+        const filePath = join(this.solutionsDir, file);
+        try {
+          const raw = await readFile(filePath, "utf-8");
+          return { filePath, raw };
+        } catch {
+          return null;
         }
-      } catch {
-        // Skip unreadable or malformed files
+      }),
+    );
+
+    for (const result of fileContents) {
+      if (!result) continue;
+
+      const parsed = parseFrontmatter(result.raw);
+      if (!parsed) continue;
+
+      const { frontmatter, body } = parsed;
+
+      const entry: LearningEntry = {
+        title: String(frontmatter.title ?? ""),
+        tags: Array.isArray(frontmatter.tags)
+          ? frontmatter.tags.map(String)
+          : [],
+        hash: String(frontmatter.extraction_hash ?? ""),
+        filePath: result.filePath,
+        content: body.slice(0, 500),
+      };
+
+      const idx = entries.length;
+      entries.push(entry);
+
+      // Index by tags
+      for (const tag of entry.tags) {
+        const normalized = tag.toLowerCase().trim();
+        if (!tagIndex.has(normalized)) {
+          tagIndex.set(normalized, new Set());
+        }
+        tagIndex.get(normalized)!.add(idx);
       }
     }
 
@@ -187,24 +210,4 @@ export class SESMemoryRetriever {
   }
 }
 
-// ---------------------------------------------------------------------------
-// YAML frontmatter parser
-// ---------------------------------------------------------------------------
 
-interface ParsedDoc {
-  frontmatter: Record<string, unknown>;
-  body: string;
-}
-
-function parseFrontmatter(content: string): ParsedDoc | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) return null;
-
-  try {
-    const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
-    if (typeof frontmatter !== "object" || frontmatter === null) return null;
-    return { frontmatter, body: match[2] };
-  } catch {
-    return null;
-  }
-}

@@ -16,6 +16,7 @@ import {
   buildReviewDispatchPrompt,
   buildReviewConsolidatePrompt,
   buildShipPrompt,
+  buildShipCompoundPrompt,
   buildDebugPrompt,
 } from "../prompts/index";
 
@@ -42,11 +43,10 @@ const reviewPrompts: PromptFn[] = [
 ];
 
 const shipPrompts: PromptFn[] = [
-  // All ship steps use the same comprehensive ship prompt
-  buildShipPrompt,
-  buildShipPrompt,
-  buildShipPrompt,
-  buildShipPrompt,
+  buildShipPrompt,   // Step 0: Assess git state
+  buildShipPrompt,   // Step 1: Create branch + commit
+  buildShipPrompt,   // Step 2: Create PR
+  buildShipCompoundPrompt, // Step 3: Extract learnings (compound format)
 ];
 
 const debugPrompts: PromptFn[] = [

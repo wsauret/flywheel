@@ -12,7 +12,7 @@
 import { createSignal } from "solid-js"
 import { createSimpleContext } from "./helper"
 import type { SessionManager, SessionSummary, SessionListResult } from "../../../session/manager"
-import type { WorkflowSession } from "../../components/workflow-session"
+
 
 // ---------------------------------------------------------------------------
 // Context value type
@@ -21,18 +21,6 @@ import type { WorkflowSession } from "../../components/workflow-session"
 export interface SessionContextValue {
   /** The underlying SessionManager instance. */
   manager: SessionManager
-
-  /** Reactive signal: the currently active session ID (or null). */
-  activeSessionId: () => string | null
-
-  /** Set the active session ID. */
-  setActiveSessionId: (id: string | null) => void
-
-  /** Reactive signal: the live WorkflowSession for the active session (or null). */
-  activeWorkflowSession: () => WorkflowSession | null
-
-  /** Set the live WorkflowSession. */
-  setActiveWorkflowSession: (session: WorkflowSession | null) => void
 
   /** Refresh the session list from disk. Returns the current list. */
   refreshList: () => SessionListResult
@@ -51,9 +39,6 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
 >({
   name: "Session",
   init: (props) => {
-    const [activeSessionId, setActiveSessionId] = createSignal<string | null>(null)
-    const [activeWorkflowSession, setActiveWorkflowSession] =
-      createSignal<WorkflowSession | null>(null)
     const [sessions, setSessions] = createSignal<SessionSummary[]>([])
 
     // Load initial session list
@@ -92,10 +77,6 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
 
     return {
       manager: props.manager,
-      activeSessionId,
-      setActiveSessionId,
-      activeWorkflowSession,
-      setActiveWorkflowSession,
       refreshList,
       sessions,
     }

@@ -25,7 +25,6 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.max_retries).toBe(3);
       expect(result.data.timeout_minutes).toBe(60);
       expect(result.data.skip_approval_gates).toBe(false);
-      expect(result.data.use_dispatcher).toBe(true);
     }
   });
 
@@ -88,7 +87,6 @@ describe("loadConfig: file loading", () => {
     expect(config.max_retries).toBe(5);
     expect(config.timeout_minutes).toBe(90);
     expect(config.skip_approval_gates).toBe(false);
-    expect(config.use_dispatcher).toBe(true);
   });
 
   it("uses defaults when no config file provided", () => {
@@ -167,20 +165,6 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
       FLYWHEEL_SKIP_APPROVAL_GATES: "1",
     });
     expect(config.skip_approval_gates).toBe(true);
-  });
-
-  it("handles FLYWHEEL_USE_DISPATCHER=false", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_USE_DISPATCHER: "false",
-    });
-    expect(config.use_dispatcher).toBe(false);
-  });
-
-  it("handles FLYWHEEL_USE_DISPATCHER=0", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_USE_DISPATCHER: "0",
-    });
-    expect(config.use_dispatcher).toBe(false);
   });
 
   it("handles FLYWHEEL_PROJECT_CWD", () => {
@@ -403,5 +387,215 @@ describe("Pipeline config fields", () => {
       FLYWHEEL_AUTO_CHAIN: "true",
     });
     expect(config.auto_chain).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Budget and Eval Config Fields (Phase 1)
+// ---------------------------------------------------------------------------
+
+describe("max_eval_cycles config field", () => {
+  it("defaults to 3", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.max_eval_cycles).toBe(3);
+    }
+  });
+
+  it("accepts values 1-10", () => {
+    for (const val of [1, 2, 5, 10]) {
+      const result = FlywheelConfigSchema.safeParse({ max_eval_cycles: val });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.max_eval_cycles).toBe(val);
+      }
+    }
+  });
+
+  it("rejects max_eval_cycles < 1", () => {
+    const result = FlywheelConfigSchema.safeParse({ max_eval_cycles: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects max_eval_cycles > 10", () => {
+    const result = FlywheelConfigSchema.safeParse({ max_eval_cycles: 11 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-integer max_eval_cycles", () => {
+    const result = FlywheelConfigSchema.safeParse({ max_eval_cycles: 2.5 });
+    expect(result.success).toBe(false);
+  });
+
+  it("env var FLYWHEEL_MAX_EVAL_CYCLES overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_MAX_EVAL_CYCLES: "5",
+    });
+    expect(config.max_eval_cycles).toBe(5);
+  });
+
+  it("emits warning when max_eval_cycles is 1", () => {
+    const { warnings } = loadConfig(undefined, {
+      FLYWHEEL_MAX_EVAL_CYCLES: "1",
+    });
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.includes("max_eval_cycles is 1"))).toBe(true);
+  });
+
+  it("no warning when max_eval_cycles > 1", () => {
+    const { warnings } = loadConfig(undefined, {
+      FLYWHEEL_MAX_EVAL_CYCLES: "5",
+    });
+    expect(warnings.every((w) => !w.includes("max_eval_cycles"))).toBe(true);
+  });
+
+  it("CONFIG_DEFAULTS includes max_eval_cycles", () => {
+    expect(CONFIG_DEFAULTS.max_eval_cycles).toBe(3);
+  });
+});
+
+describe("fallback_agents config field", () => {
+  it("defaults to empty array", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fallback_agents).toEqual([]);
+    }
+  });
+
+  it("accepts array of strings", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      fallback_agents: ["claude", "opencode"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fallback_agents).toEqual(["claude", "opencode"]);
+    }
+  });
+
+  it("env var FLYWHEEL_FALLBACK_AGENTS sets comma-separated values", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_FALLBACK_AGENTS: "claude,opencode",
+    });
+    expect(config.fallback_agents).toEqual(["claude", "opencode"]);
+  });
+
+  it("env var FLYWHEEL_FALLBACK_AGENTS handles whitespace around commas", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_FALLBACK_AGENTS: "claude , opencode , gemini",
+    });
+    expect(config.fallback_agents).toEqual(["claude", "opencode", "gemini"]);
+  });
+
+  it("env var FLYWHEEL_FALLBACK_AGENTS handles trailing comma", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_FALLBACK_AGENTS: "claude,opencode,",
+    });
+    expect(config.fallback_agents).toEqual(["claude", "opencode"]);
+  });
+
+  it("env var FLYWHEEL_FALLBACK_AGENTS handles empty string", () => {
+    // Empty string should not trigger the env override (it's filtered out)
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_FALLBACK_AGENTS: "",
+    });
+    expect(config.fallback_agents).toEqual([]);
+  });
+
+  it("env var FLYWHEEL_FALLBACK_AGENTS handles single value", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_FALLBACK_AGENTS: "claude",
+    });
+    expect(config.fallback_agents).toEqual(["claude"]);
+  });
+
+  it("CONFIG_DEFAULTS includes fallback_agents", () => {
+    expect(CONFIG_DEFAULTS.fallback_agents).toEqual([]);
+  });
+});
+
+describe("budget config section", () => {
+  it("defaults to all zeros (unlimited)", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budget).toEqual({
+        max_invocations: 0,
+        max_tokens: 0,
+        max_wall_clock_minutes: 0,
+      });
+    }
+  });
+
+  it("accepts valid budget values", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      budget: {
+        max_invocations: 100,
+        max_tokens: 500_000,
+        max_wall_clock_minutes: 30,
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budget.max_invocations).toBe(100);
+      expect(result.data.budget.max_tokens).toBe(500_000);
+      expect(result.data.budget.max_wall_clock_minutes).toBe(30);
+    }
+  });
+
+  it("rejects negative budget values", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      budget: { max_invocations: -1 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-integer budget values", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      budget: { max_tokens: 1.5 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("allows partial budget (missing fields get defaults)", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      budget: { max_invocations: 50 },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budget.max_invocations).toBe(50);
+      expect(result.data.budget.max_tokens).toBe(0);
+      expect(result.data.budget.max_wall_clock_minutes).toBe(0);
+    }
+  });
+
+  it("env var FLYWHEEL_BUDGET_MAX_INVOCATIONS overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_BUDGET_MAX_INVOCATIONS: "200",
+    });
+    expect(config.budget.max_invocations).toBe(200);
+  });
+
+  it("env var FLYWHEEL_BUDGET_MAX_TOKENS overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_BUDGET_MAX_TOKENS: "1000000",
+    });
+    expect(config.budget.max_tokens).toBe(1_000_000);
+  });
+
+  it("env var FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES: "45",
+    });
+    expect(config.budget.max_wall_clock_minutes).toBe(45);
+  });
+
+  it("CONFIG_DEFAULTS includes budget section", () => {
+    expect(CONFIG_DEFAULTS.budget).toEqual({
+      max_invocations: 0,
+      max_tokens: 0,
+      max_wall_clock_minutes: 0,
+    });
   });
 });

@@ -21,7 +21,7 @@ import { assertNever } from "../../events/types";
 import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
-import { timerService } from "../shared/services/timer";
+import { TimerService } from "../shared/services/timer";
 import { extractDisplayText } from "./output-formatter";
 import { NDJSONParser } from "../../worker/ndjson-parser";
 import { SubagentTraceParser } from "./subagent-tracing/parser";
@@ -38,6 +38,7 @@ const AGENT_STALE_TIMEOUT_MS = 30_000;
 
 export interface OpenTUIAdapterOptions {
   actions: UIActions;
+  timer?: TimerService;
 }
 
 const log = Log.create({ service: "opentui-adapter" });
@@ -45,6 +46,8 @@ const log = Log.create({ service: "opentui-adapter" });
 export class OpenTUIAdapter extends BaseUIAdapter {
   readonly adapterType: AdapterType = "opentui";
   private actions: UIActions;
+  /** Per-session timer instance. Injected via constructor; falls back to a private instance. */
+  readonly timer: TimerService;
 
   /** When true, pass raw output without NDJSON parsing */
   private _rawMode = false;
@@ -86,6 +89,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   constructor(options: OpenTUIAdapterOptions) {
     super();
     this.actions = options.actions;
+    this.timer = options.timer ?? new TimerService();
 
     // Initialize structured pipeline
     this.traceParser = new SubagentTraceParser();
@@ -170,13 +174,35 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     }
   }
 
+  /**
+   * Suspend the periodic flush interval.
+   * Called when a session is backgrounded to avoid wasting ticks on a non-viewed session.
+   */
+  pauseFlush(): void {
+    if (this.flushInterval !== null) {
+      clearInterval(this.flushInterval);
+      this.flushInterval = null;
+    }
+  }
+
+  /**
+   * Resume the periodic flush interval.
+   * Called when a session is brought back to the foreground.
+   */
+  resumeFlush(): void {
+    if (this.flushInterval !== null) return; // already running
+    this.flushInterval = setInterval(() => {
+      this.flushBlocks();
+    }, FLUSH_INTERVAL_MS);
+  }
+
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "workflow:started":
         if (!this._pipelineMode) {
           // Standalone workflow: full reset — fresh timer, fresh store.
-          timerService.reset();
-          timerService.start();
+          this.timer.reset();
+          this.timer.start();
           this.actions.startWorkflow(event.planPath);
           // Create a single "work" stage for standalone mode
           this._currentStageLabel = "work";
@@ -193,7 +219,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "workflow:completed":
         if (!this._pipelineMode) {
-          timerService.stop();
+          this.timer.stop();
         }
         // Final flush before completing
         this.flushBlocks();
@@ -202,7 +228,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "workflow:failed":
         if (!this._pipelineMode) {
-          timerService.stop();
+          this.timer.stop();
         }
         this.flushBlocks();
         if (!this.suppressPipelineError) {
@@ -212,7 +238,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "workflow:interrupted":
         if (!this._pipelineMode) {
-          timerService.stop();
+          this.timer.stop();
         }
         this.flushBlocks();
         this.actions.stopWorkflow("interrupted");
@@ -243,7 +269,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
           this.actions.setOutputBlocks(this.builder.getBlocks());
         }
 
-        timerService.registerAgent(`phase-${event.phaseIndex}`);
+        this.timer.registerAgent(`phase-${event.phaseIndex}`);
         this.actions.startPhase(event.phaseIndex, event.phaseName);
 
         // Also populate stage-scoped phases
@@ -255,7 +281,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         // Final flush for this phase
         this.ndjsonParser.flush();
         this.flushBlocks();
-        timerService.completeAgent(`phase-${event.phaseIndex}`);
+        this.timer.completeAgent(`phase-${event.phaseIndex}`);
         this.actions.completePhase(event.phaseIndex);
         this.actions.completePhaseInStage(this._currentStageLabel, event.phaseIndex);
         break;
@@ -263,7 +289,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       case "phase:failed":
         this.ndjsonParser.flush();
         this.flushBlocks();
-        timerService.completeAgent(`phase-${event.phaseIndex}`);
+        this.timer.completeAgent(`phase-${event.phaseIndex}`);
         this.actions.failPhase(event.phaseIndex, event.reason);
         this.actions.failPhaseInStage(this._currentStageLabel, event.phaseIndex, event.reason);
         break;
@@ -349,8 +375,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this._stageTimings = [];
         this._stageStartedAt = Date.now();
         // Start the session timer once at pipeline start (not per-stage).
-        timerService.reset();
-        timerService.start();
+        this.timer.reset();
+        this.timer.start();
         // Pre-create all stage groups with pending status
         for (const stage of event.stages) {
           this.actions.addStage(stage);
@@ -375,18 +401,34 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         // Complete the final stage
         this.actions.completeStage(this._currentStageLabel);
         this._pipelineMode = false;
-        timerService.stop();
+        this.timer.stop();
         this.pushSystemText(`✓ Pipeline complete (${event.stagesCompleted} stages)\n`, event.timestamp);
         break;
       case "pipeline:failed":
         // Fail the current stage
         this.actions.failStage(this._currentStageLabel);
         this._pipelineMode = false;
-        timerService.stop();
+        this.timer.stop();
         this.pushSystemText(`✗ Pipeline failed: ${event.reason}\n`, event.timestamp);
         if (!this.suppressPipelineError) {
           this.actions.setError(event.reason);
         }
+        break;
+
+      // Budget events
+      case "budget:warning":
+        log.info("Budget warning", { metric: event.metric, used: event.used, limit: event.limit, remaining: event.remaining });
+        break;
+
+      case "budget:exhausted":
+        log.warn("Budget exhausted", { workflowId: event.workflowId, reason: event.reason });
+        this.pushSystemText(`⚠ Budget exhausted: ${event.reason}\n`, event.timestamp);
+        break;
+
+      // Worker injection events
+      case "worker:injected":
+        log.info("Worker stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
+        this.pushSystemText(`↳ Injected: ${event.message.slice(0, 100)}${event.message.length > 100 ? "..." : ""}\n`, event.timestamp);
         break;
 
       default:
@@ -473,6 +515,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 }
 
 /** Factory function for creating an OpenTUI adapter */
-export function createOpenTUIAdapter(actions: UIActions): OpenTUIAdapter {
-  return new OpenTUIAdapter({ actions });
+export function createOpenTUIAdapter(actions: UIActions, timer?: TimerService): OpenTUIAdapter {
+  return new OpenTUIAdapter({ actions, timer });
 }

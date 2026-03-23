@@ -36,7 +36,6 @@ export const FlywheelConfigSchema = z.object({
   timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
   skip_approval_gates: z.boolean().default(false),
-  use_dispatcher: z.boolean().default(true),
   skip_evaluation: z.boolean().default(false),
 
   /** Present open questions to user during plan consolidation. Default: false (auto-resolve). */
@@ -47,10 +46,26 @@ export const FlywheelConfigSchema = z.object({
    * Decision #1: intentional behavior change — /work now chains to review. */
   auto_chain: z.boolean().default(true),
 
+  /** Max evaluator retry cycles per phase. 1 = single attempt (no retries). Default: 3. */
+  max_eval_cycles: z.number().int().min(1).max(10).default(3),
+
+  /** Fallback engine IDs to try when the primary engine fails. Validated at runtime. */
+  fallback_agents: z.array(z.string()).default([]),
+
+  /** Budget limits for workflow execution. 0 = unlimited for all fields. */
+  budget: z.object({
+    /** Max total worker invocations across all phases. 0 = unlimited. */
+    max_invocations: z.number().int().min(0).default(0),
+    /** Max total tokens consumed. 0 = unlimited. */
+    max_tokens: z.number().int().min(0).default(0),
+    /** Max wall-clock time in minutes. 0 = unlimited. */
+    max_wall_clock_minutes: z.number().int().min(0).default(0),
+  }).default({}),
+
   /** Worktree (Worktrunk) integration configuration. */
   worktree: z.object({
-    /** Enable worktree integration. Default: false (auto-detected from wt CLI). */
-    enabled: z.boolean().default(false),
+    /** Enable worktree integration. Default: true (requires wt CLI available). */
+    enabled: z.boolean().default(true),
     /** Automatically remove worktree when session is archived. */
     auto_remove: z.boolean().default(false),
     /** Grace period (ms) before trashed session worktrees are cleaned up. Default: 300000 (5 min). */
@@ -71,13 +86,19 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   max_retries: 3,
   timeout_minutes: 60,
   skip_approval_gates: false,
-  use_dispatcher: true,
   skip_evaluation: false,
   interactive_consolidation: false,
   auto_ship: false,
   auto_chain: true,
+  max_eval_cycles: 3,
+  fallback_agents: [],
+  budget: {
+    max_invocations: 0,
+    max_tokens: 0,
+    max_wall_clock_minutes: 0,
+  },
   worktree: {
-    enabled: false,
+    enabled: true,
     auto_remove: false,
     grace_period_ms: 300_000,
   },
@@ -131,9 +152,7 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   FLYWHEEL_SKIP_APPROVAL_GATES: (val, config) => {
     config.skip_approval_gates = val === "true" || val === "1";
   },
-  FLYWHEEL_USE_DISPATCHER: (val, config) => {
-    config.use_dispatcher = val !== "false" && val !== "0";
-  },
+
   FLYWHEEL_SKIP_EVALUATION: (val, config) => {
     config.skip_evaluation = val === "true" || val === "1";
   },
@@ -145,6 +164,34 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   },
   FLYWHEEL_AUTO_CHAIN: (val, config) => {
     config.auto_chain = val !== "false" && val !== "0";
+  },
+  FLYWHEEL_MAX_EVAL_CYCLES: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) config.max_eval_cycles = n;
+  },
+  FLYWHEEL_FALLBACK_AGENTS: (val, config) => {
+    config.fallback_agents = val.split(",").map((s) => s.trim()).filter(Boolean);
+  },
+  FLYWHEEL_BUDGET_MAX_INVOCATIONS: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      if (!config.budget) config.budget = {};
+      (config.budget as Record<string, unknown>).max_invocations = n;
+    }
+  },
+  FLYWHEEL_BUDGET_MAX_TOKENS: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      if (!config.budget) config.budget = {};
+      (config.budget as Record<string, unknown>).max_tokens = n;
+    }
+  },
+  FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      if (!config.budget) config.budget = {};
+      (config.budget as Record<string, unknown>).max_wall_clock_minutes = n;
+    }
   },
   FLYWHEEL_WORKTREE_ENABLED: (val, config) => {
     if (!config.worktree) config.worktree = {};
@@ -216,6 +263,13 @@ export function loadConfig(
     warnings.push(
       "WARNING: max_retries is 0. The worker will not retry on failure. " +
         "This is unusual and may lead to premature failure.",
+    );
+  }
+
+  if (config.max_eval_cycles === 1) {
+    warnings.push(
+      "WARNING: max_eval_cycles is 1. The evaluator will not retry on failure. " +
+        "This means phases that fail evaluation will not be re-attempted.",
     );
   }
 

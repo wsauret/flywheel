@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { timerService, formatDuration } from "../src/tui/shared/services/timer";
+import { TimerService, timerService, useTimer, formatDuration } from "../src/tui/shared/services/timer";
 
 describe("TimerService", () => {
   beforeEach(() => {
@@ -193,6 +193,130 @@ describe("TimerService", () => {
       timerService.start();
       // Immediately after start, should be 00:00 (< 1s elapsed)
       expect(timerService.getWorkflowRuntime()).toBe("00:00");
+    });
+  });
+
+  // ── useTimer null case ──
+
+  describe("useTimer(null)", () => {
+    it("returns idle defaults when timer is null", () => {
+      const result = useTimer(null);
+      expect(result.workflowRuntime()).toBe("00:00");
+      expect(result.agentDuration("phase-0")).toBe("");
+      expect(result.status()).toBe("idle");
+      expect(result.isPaused()).toBe(false);
+      expect(result.isRunning()).toBe(false);
+      expect(result.isStopped()).toBe(false);
+      expect(result.pauseReason()).toBeUndefined();
+      expect(result.service).toBeNull();
+    });
+  });
+
+  // ── Instance Independence (Phase 1 — per-session timers) ──
+
+  describe("instance independence", () => {
+    it("new TimerService() returns distinct instances", () => {
+      const a = new TimerService();
+      const b = new TimerService();
+      expect(a).not.toBe(b);
+      a.reset();
+      b.reset();
+    });
+
+    it("start/stop on instance A does not affect instance B", () => {
+      const a = new TimerService();
+      const b = new TimerService();
+
+      a.start();
+      expect(a.isRunning()).toBe(true);
+      expect(b.isRunning()).toBe(false);
+      expect(b.getStatus()).toBe("idle");
+
+      a.stop();
+      expect(a.isStopped()).toBe(true);
+      expect(b.getStatus()).toBe("idle");
+
+      a.reset();
+      b.reset();
+    });
+
+    it("agent registration on instance A does not leak to instance B", () => {
+      const a = new TimerService();
+      const b = new TimerService();
+
+      a.start();
+      b.start();
+      a.registerAgent("phase-0");
+
+      expect(a.hasAgent("phase-0")).toBe(true);
+      expect(b.hasAgent("phase-0")).toBe(false);
+
+      a.reset();
+      b.reset();
+    });
+
+    it("pause/resume on instance A does not affect instance B", () => {
+      const a = new TimerService();
+      const b = new TimerService();
+
+      a.start();
+      b.start();
+      a.pause("user");
+
+      expect(a.isPaused()).toBe(true);
+      expect(b.isRunning()).toBe(true);
+      expect(b.isPaused()).toBe(false);
+
+      a.resume();
+      expect(a.isRunning()).toBe(true);
+      expect(b.isRunning()).toBe(true);
+
+      a.reset();
+      b.reset();
+    });
+
+    it("subscriptions on instance A do not fire for instance B events", () => {
+      const a = new TimerService();
+      const b = new TimerService();
+
+      let aCalled = 0;
+      let bCalled = 0;
+      const unsubA = a.subscribe(() => { aCalled++; });
+      const unsubB = b.subscribe(() => { bCalled++; });
+
+      a.start();
+      const aCalledAfterStart = aCalled;
+      expect(aCalledAfterStart).toBeGreaterThanOrEqual(1);
+      expect(bCalled).toBe(0);
+
+      b.start();
+      expect(bCalled).toBeGreaterThanOrEqual(1);
+      // A should not have been notified again
+      expect(aCalled).toBe(aCalledAfterStart);
+
+      unsubA();
+      unsubB();
+      a.reset();
+      b.reset();
+    });
+
+    it("reset on instance A does not affect instance B", () => {
+      const a = new TimerService();
+      const b = new TimerService();
+
+      a.start();
+      b.start();
+      a.registerAgent("phase-0");
+      b.registerAgent("phase-1");
+
+      a.reset();
+
+      expect(a.getStatus()).toBe("idle");
+      expect(a.hasAgent("phase-0")).toBe(false);
+      expect(b.isRunning()).toBe(true);
+      expect(b.hasAgent("phase-1")).toBe(true);
+
+      b.reset();
     });
   });
 });

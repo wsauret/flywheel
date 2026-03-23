@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { EventBus } from "../src/events/event-bus";
 import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentui";
-import { createTestStore } from "../src/tui/routes/work/context/ui-state/store";
+import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { TextBlock, ToolBlock } from "../src/tui/routes/work/state/types";
 
 function createHarness() {
   const bus = new EventBus();
-  const store = createTestStore("test-plan");
+  const store = createStore("test-plan");
   const adapter = createOpenTUIAdapter(store);
   adapter.connect(bus);
   adapter.start();
@@ -266,7 +266,7 @@ describe("OpenTUI Adapter — output formatting", () => {
 
   describe("raw mode", () => {
     it("toggleRawMode toggles state and returns new value", () => {
-      const store = createTestStore("test");
+      const store = createStore("test");
       const adapter = createOpenTUIAdapter(store);
       expect(adapter.rawMode).toBe(false);
       expect(adapter.toggleRawMode()).toBe(true);

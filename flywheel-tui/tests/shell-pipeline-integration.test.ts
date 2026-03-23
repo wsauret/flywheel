@@ -45,11 +45,12 @@ function makeFakeEngine(id = "claude"): Engine {
 function makeFakeSpawner(): ProcessSpawner {
   return {
     spawn: async () => ({
-      pid: 1,
-      stdout: null,
-      stderr: null,
-      exitCode: 0,
-      kill: () => {},
+      result: Promise.resolve({
+        output: "",
+        exitCode: 0,
+        truncated: false,
+        durationMs: 0,
+      }),
     }),
   } as unknown as ProcessSpawner;
 }

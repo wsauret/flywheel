@@ -23,11 +23,12 @@ import {
   getTransientPatterns,
 } from "../src/worker/errors";
 import { validateSpawnArgs, BunProcessSpawner, resolveCommandExecutable } from "../src/worker/bun-spawner";
-import { PhaseExecutor } from "../src/controller/phase-executor";
-import type { ProcessSpawner } from "../src/worker/spawner";
+import { PhaseExecutor, WorkerError } from "../src/controller/phase-executor";
+import type { ProcessSpawner, SpawnResult } from "../src/worker/spawner";
 import type { FlywheelEmitter } from "../src/events/event-bus";
 import type { FlywheelConfig } from "../src/config/loader";
 import type { Engine } from "../src/engines/core/types";
+import type { WorkerResult } from "../src/schemas/worker";
 
 // ---------------------------------------------------------------------------
 // Completion Detection
@@ -595,19 +596,21 @@ describe("Stdin delivery and ignore handling", () => {
   it("when options.stdin is provided, the process receives it on stdin", async () => {
     const spawner = new BunProcessSpawner();
     // `cat` reads from stdin and echoes it to stdout
-    const result = await spawner.spawn("cat", [], {
+    const { result: resultPromise } = await spawner.spawn("cat", [], {
       stdin: "hello from stdin",
       timeoutMs: 5_000,
     });
+    const result = await resultPromise;
     expect(result.output).toContain("hello from stdin");
   });
 
   it("when options.stdin is undefined, stdin is set to 'ignore' (not an empty Blob)", async () => {
     const spawner = new BunProcessSpawner();
     // `cat` with no stdin and 'ignore' should exit immediately (no input to read)
-    const result = await spawner.spawn("cat", [], {
+    const { result: resultPromise } = await spawner.spawn("cat", [], {
       timeoutMs: 5_000,
     });
+    const result = await resultPromise;
     // cat with stdin=ignore should exit with code 0 and no output
     expect(result.exitCode).toBe(0);
     expect(result.output).toBe("");
@@ -616,10 +619,11 @@ describe("Stdin delivery and ignore handling", () => {
   it("empty string stdin ('') still delivers an empty stdin (not ignore)", async () => {
     const spawner = new BunProcessSpawner();
     // `cat` with empty stdin should exit immediately with empty output
-    const result = await spawner.spawn("cat", [], {
+    const { result: resultPromise } = await spawner.spawn("cat", [], {
       stdin: "",
       timeoutMs: 5_000,
     });
+    const result = await resultPromise;
     expect(result.exitCode).toBe(0);
     expect(result.output).toBe("");
   });
@@ -665,9 +669,10 @@ describe("resolveCommandExecutable", () => {
 describe("Raw stdout/stderr collection", () => {
   it("WorkerResult.rawOutput contains the unprocessed stdout", async () => {
     const spawner = new BunProcessSpawner();
-    const result = await spawner.spawn("echo", ["hello raw"], {
+    const { result: resultPromise } = await spawner.spawn("echo", ["hello raw"], {
       timeoutMs: 5_000,
     });
+    const result = await resultPromise;
     expect(result.rawOutput).toBeDefined();
     expect(result.rawOutput).toContain("hello raw");
   });
@@ -675,9 +680,10 @@ describe("Raw stdout/stderr collection", () => {
   it("WorkerResult.rawStderr contains unprocessed stderr", async () => {
     const spawner = new BunProcessSpawner();
     // Use bash to write to stderr
-    const result = await spawner.spawn("bash", ["-c", "echo 'stderr msg' >&2"], {
+    const { result: resultPromise } = await spawner.spawn("bash", ["-c", "echo 'stderr msg' >&2"], {
       timeoutMs: 5_000,
     });
+    const result = await resultPromise;
     expect(result.rawStderr).toBeDefined();
     expect(result.rawStderr).toContain("stderr msg");
   });
@@ -685,9 +691,10 @@ describe("Raw stdout/stderr collection", () => {
   it("rawOutput preserves content even if Tier 1 buffer truncates", async () => {
     const spawner = new BunProcessSpawner();
     // Small test: just verify rawOutput is collected independently
-    const result = await spawner.spawn("echo", ["preserved content"], {
+    const { result: resultPromise } = await spawner.spawn("echo", ["preserved content"], {
       timeoutMs: 5_000,
     });
+    const result = await resultPromise;
     expect(result.rawOutput).toContain("preserved content");
     // rawOutput should be at least as long as output
     expect(result.rawOutput!.length).toBeGreaterThanOrEqual(result.output.length);
@@ -733,12 +740,11 @@ describe("ENOENT → install instructions", () => {
     max_retries: 0,
     timeout_minutes: 1,
     skip_approval_gates: false,
-    use_dispatcher: true,
   };
 
   it("ENOENT error produces install instructions with installCommand", async () => {
     const enoentSpawner: ProcessSpawner = {
-      spawn: async () => {
+      spawn: async (): Promise<SpawnResult> => {
         const err = new Error("spawn nonexistent-binary-that-does-not-exist ENOENT") as Error & { code: string };
         err.code = "ENOENT";
         throw err;
@@ -765,7 +771,7 @@ describe("ENOENT → install instructions", () => {
 
   it("error message includes the engine name", async () => {
     const enoentSpawner: ProcessSpawner = {
-      spawn: async () => {
+      spawn: async (): Promise<SpawnResult> => {
         const err = new Error("spawn ENOENT") as Error & { code: string };
         err.code = "ENOENT";
         throw err;
@@ -792,7 +798,7 @@ describe("ENOENT → install instructions", () => {
 
   it('"command not found" message is treated as ENOENT', async () => {
     const cmdNotFoundSpawner: ProcessSpawner = {
-      spawn: async () => {
+      spawn: async (): Promise<SpawnResult> => {
         throw new Error("command not found: claude");
       },
     };
@@ -817,7 +823,7 @@ describe("ENOENT → install instructions", () => {
 
   it('"not recognized" message is treated as ENOENT (Windows)', async () => {
     const notRecognizedSpawner: ProcessSpawner = {
-      spawn: async () => {
+      spawn: async (): Promise<SpawnResult> => {
         throw new Error("'claude' is not recognized as an internal or external command");
       },
     };
@@ -842,7 +848,7 @@ describe("ENOENT → install instructions", () => {
 
   it("non-ENOENT errors are re-thrown without install instructions", async () => {
     const genericErrorSpawner: ProcessSpawner = {
-      spawn: async () => {
+      spawn: async (): Promise<SpawnResult> => {
         throw new Error("some other unexpected error");
       },
     };
@@ -863,5 +869,674 @@ describe("ENOENT → install instructions", () => {
       expect(msg).toBe("some other unexpected error");
       expect(msg).not.toContain("Install");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fallback Agent Chain (Phase 6)
+// ---------------------------------------------------------------------------
+
+describe("Fallback Agent Chain", () => {
+  /** Create a mock emitter that swallows all events. */
+  function createNoopEmitter(): FlywheelEmitter {
+    return {
+      workflowStarted: () => {},
+      workflowCompleted: () => {},
+      phaseStarted: () => {},
+      phaseCompleted: () => {},
+      workerSpawned: () => {},
+      workerCompleted: () => {},
+      workerOutput: () => {},
+      workerRetrying: () => {},
+    } as unknown as FlywheelEmitter;
+  }
+
+  /** Create a mock engine with the given ID. */
+  function mockEngine(id: string): Engine {
+    return {
+      metadata: {
+        id,
+        name: id,
+        cliBinary: id,
+        defaultModel: "test",
+        installCommand: `install-${id}`,
+        description: `Mock ${id} engine`,
+      },
+      buildCommand: (opts) => ({
+        command: id,
+        args: ["-p", opts.prompt],
+        stdinPrompt: false,
+      }),
+      listModels: async () => [],
+    };
+  }
+
+  /** Create a successful WorkerResult. */
+  function successWorkerResult(output = "done"): WorkerResult {
+    return {
+      output,
+      exitCode: 0,
+      truncated: false,
+      durationMs: 100,
+    };
+  }
+
+  /** Create a failed WorkerResult with a specific failure kind. */
+  function failureWorkerResult(
+    kind: "rate_limited" | "timeout" | "api_error" | "exit_code" | "transient",
+    message = `${kind} failure`,
+  ): WorkerResult {
+    const base = {
+      output: "",
+      exitCode: 1,
+      truncated: false,
+      durationMs: 100,
+    };
+    switch (kind) {
+      case "timeout":
+        return { ...base, failure: { kind: "timeout", timeoutMs: 60000, message } };
+      case "exit_code":
+        return { ...base, failure: { kind: "exit_code", exitCode: 1, message } };
+      default:
+        return { ...base, failure: { kind, message } };
+    }
+  }
+
+  /** Wrap a WorkerResult as a SpawnResult for inline spawner mocks. */
+  function successResult(output = "done"): SpawnResult {
+    return { result: Promise.resolve(successWorkerResult(output)) };
+  }
+  function failureResult(
+    kind: "rate_limited" | "timeout" | "api_error" | "exit_code" | "transient",
+    message = `${kind} failure`,
+  ): SpawnResult {
+    return { result: Promise.resolve(failureWorkerResult(kind, message)) };
+  }
+
+  const defaultConfig: FlywheelConfig = {
+    engine: "claude",
+    max_retries: 0, // No retries by default — faster tests, clearer fallback behavior
+    timeout_minutes: 1,
+    skip_approval_gates: false,
+  } as FlywheelConfig;
+
+  const primaryEngine = mockEngine("claude");
+  const fallbackEngine1 = mockEngine("opencode");
+  const fallbackEngine2 = mockEngine("gemini");
+
+  it("rate-limited final failure with fallbackEngines triggers fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        callCount++;
+        if (command === "claude") {
+          return failureResult("rate_limited");
+        }
+        // Fallback engine succeeds
+        return successResult("fallback success");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-1",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    const result = await executor.execute({ phaseIndex: 0, prompt: "test" });
+    expect(result.output).toBe("fallback success");
+    expect(callCount).toBe(2); // primary + fallback
+  });
+
+  it("rate-limited final failure with empty fallbackEngines throws (existing behavior)", async () => {
+    const spawner: ProcessSpawner = {
+      spawn: async () => failureResult("rate_limited"),
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-2",
+      fallbackEngines: [],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false); // Should not reach
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("rate_limited");
+    }
+  });
+
+  it("rate-limited without fallbackEngines option throws (existing behavior)", async () => {
+    const spawner: ProcessSpawner = {
+      spawn: async () => failureResult("rate_limited"),
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-2b",
+      // No fallbackEngines at all
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("rate_limited");
+    }
+  });
+
+  it("fallback engine succeeds → returns result normally", async () => {
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        if (command === "claude") return failureResult("rate_limited");
+        return successResult("opencode output");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-3",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    const result = await executor.execute({ phaseIndex: 0, prompt: "test" });
+    expect(result.output).toBe("opencode output");
+    expect(result.failure).toBeUndefined();
+  });
+
+  it("fallback engine also rate-limited → tries next fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        callCount++;
+        if (command === "claude") return failureResult("rate_limited", "claude rate limited");
+        if (command === "opencode") return failureResult("rate_limited", "opencode rate limited");
+        return successResult("gemini output");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-4",
+      fallbackEngines: [fallbackEngine1, fallbackEngine2],
+    });
+
+    const result = await executor.execute({ phaseIndex: 0, prompt: "test" });
+    expect(result.output).toBe("gemini output");
+    expect(callCount).toBe(3); // primary + fallback1 + fallback2
+  });
+
+  it("all fallbacks exhausted → throws final error", async () => {
+    const spawner: ProcessSpawner = {
+      spawn: async () => failureResult("rate_limited"),
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-5",
+      fallbackEngines: [fallbackEngine1, fallbackEngine2],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("rate_limited");
+    }
+  });
+
+  it("non-rate-limit final failure (timeout) does NOT trigger fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async () => {
+        callCount++;
+        return failureResult("timeout");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-6",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("timeout");
+    }
+    // Only primary engine was tried
+    expect(callCount).toBe(1);
+  });
+
+  it("non-rate-limit final failure (exit_code) does NOT trigger fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async () => {
+        callCount++;
+        return failureResult("exit_code");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-6b",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("exit_code");
+    }
+    expect(callCount).toBe(1);
+  });
+
+  it("final retry failure is timeout (not rate_limited) → no fallback even if earlier retries were rate-limited", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async () => {
+        callCount++;
+        // First call: rate_limited (will be retried)
+        // Second call: timeout (final failure)
+        if (callCount === 1) return failureResult("rate_limited");
+        return failureResult("timeout");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: { ...defaultConfig, max_retries: 1 } as FlywheelConfig,
+      engine: primaryEngine,
+      workflowId: "fb-7",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      // The final error should be timeout, not rate_limited
+      expect((error as WorkerError).result.failure?.kind).toBe("timeout");
+    }
+    // Only 2 calls to primary engine (initial + 1 retry), no fallback calls
+    expect(callCount).toBe(2);
+  });
+
+  it("fallback switching is immediate (no delay between agents)", async () => {
+    const timestamps: number[] = [];
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        timestamps.push(Date.now());
+        if (command === "claude") return failureResult("rate_limited");
+        return successResult("ok");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-8",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    await executor.execute({ phaseIndex: 0, prompt: "test" });
+
+    expect(timestamps.length).toBe(2);
+    const gap = timestamps[1] - timestamps[0];
+    // Should be near-instant — allow up to 200ms for test overhead
+    expect(gap).toBeLessThan(200);
+  });
+
+  it("fallback engine non-rate-limited failure throws immediately (does not try next fallback)", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        callCount++;
+        if (command === "claude") return failureResult("rate_limited");
+        if (command === "opencode") return failureResult("timeout"); // non-rate-limited
+        return successResult("should not reach");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-9",
+      fallbackEngines: [fallbackEngine1, fallbackEngine2],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("timeout");
+    }
+    // primary + fallback1, but NOT fallback2
+    expect(callCount).toBe(2);
+  });
+
+  it("primary engine succeeds → no fallback attempted", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async () => {
+        callCount++;
+        return successResult("primary ok");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-10",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    const result = await executor.execute({ phaseIndex: 0, prompt: "test" });
+    expect(result.output).toBe("primary ok");
+    expect(callCount).toBe(1);
+  });
+
+  it("retries exhaust within primary engine before fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        callCount++;
+        if (command === "claude") return failureResult("rate_limited");
+        return successResult("fallback ok");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: { ...defaultConfig, max_retries: 2 } as FlywheelConfig,
+      engine: primaryEngine,
+      workflowId: "fb-11",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    const result = await executor.execute({ phaseIndex: 0, prompt: "test" });
+    expect(result.output).toBe("fallback ok");
+    // 3 attempts on primary (1 initial + 2 retries) + 1 on fallback
+    expect(callCount).toBe(4);
+  });
+
+  it("fallback engine uses its own command/args from buildCommand", async () => {
+    const commandsUsed: string[] = [];
+    const spawner: ProcessSpawner = {
+      spawn: async (command) => {
+        commandsUsed.push(command);
+        if (command === "claude") return failureResult("rate_limited");
+        return successResult("ok");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-12",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    await executor.execute({ phaseIndex: 0, prompt: "test" });
+    expect(commandsUsed).toEqual(["claude", "opencode"]);
+  });
+
+  it("api_error final failure does NOT trigger fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async () => {
+        callCount++;
+        return failureResult("api_error");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-13",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("api_error");
+    }
+    expect(callCount).toBe(1);
+  });
+
+  it("transient final failure does NOT trigger fallback", async () => {
+    let callCount = 0;
+    const spawner: ProcessSpawner = {
+      spawn: async () => {
+        callCount++;
+        return failureResult("transient");
+      },
+    };
+
+    const executor = new PhaseExecutor({
+      spawner,
+      emitter: createNoopEmitter(),
+      config: defaultConfig,
+      engine: primaryEngine,
+      workflowId: "fb-14",
+      fallbackEngines: [fallbackEngine1],
+    });
+
+    try {
+      await executor.execute({ phaseIndex: 0, prompt: "test" });
+      expect(true).toBe(false);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkerError);
+      expect((error as WorkerError).result.failure?.kind).toBe("transient");
+    }
+    expect(callCount).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Streaming Stdin (Phase 4: Mid-Worker Stdin Injection)
+// ---------------------------------------------------------------------------
+
+describe("Streaming stdin (stdinPipe mode)", () => {
+  it("initial prompt is delivered via stdin pipe (not pre-encoded Uint8Array)", async () => {
+    const spawner = new BunProcessSpawner();
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      stdin: "hello from pipe",
+      stdinPipe: true,
+      timeoutMs: 5_000,
+    });
+
+    // stdinHandle should be present
+    expect(stdinHandle).toBeDefined();
+    expect(stdinHandle!.isOpen).toBe(true);
+
+    // Close stdin to signal EOF so cat exits
+    stdinHandle!.close();
+
+    const result = await resultPromise;
+    expect(result.output).toContain("hello from pipe");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("subsequent write() calls deliver additional content; write() returns true", async () => {
+    const spawner = new BunProcessSpawner();
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      stdin: "first ",
+      stdinPipe: true,
+      timeoutMs: 5_000,
+    });
+
+    expect(stdinHandle).toBeDefined();
+
+    // Write additional content
+    const wrote = stdinHandle!.write("second ");
+    expect(wrote).toBe(true);
+
+    const wrote2 = stdinHandle!.write("third");
+    expect(wrote2).toBe(true);
+
+    // Close stdin to signal EOF
+    stdinHandle!.close();
+
+    const result = await resultPromise;
+    expect(result.output).toContain("first ");
+    expect(result.output).toContain("second ");
+    expect(result.output).toContain("third");
+  });
+
+  it("close() closes the stdin pipe; subsequent write() returns false", async () => {
+    const spawner = new BunProcessSpawner();
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      stdin: "data",
+      stdinPipe: true,
+      timeoutMs: 5_000,
+    });
+
+    expect(stdinHandle).toBeDefined();
+    stdinHandle!.close();
+    expect(stdinHandle!.isOpen).toBe(false);
+
+    // write() after close should return false
+    const wrote = stdinHandle!.write("more data");
+    expect(wrote).toBe(false);
+
+    await resultPromise;
+  });
+
+  it("if process exits before write(), write() returns false (not an error)", async () => {
+    const spawner = new BunProcessSpawner();
+    // Use 'true' command which exits immediately with code 0
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("true", [], {
+      stdin: "initial",
+      stdinPipe: true,
+      timeoutMs: 5_000,
+    });
+
+    // Wait for process to exit
+    await resultPromise;
+
+    // Process has exited, so write should return false
+    const wrote = stdinHandle!.write("late data");
+    expect(wrote).toBe(false);
+    expect(stdinHandle!.isOpen).toBe(false);
+  });
+
+  it("close() is idempotent (no error on double-close)", async () => {
+    const spawner = new BunProcessSpawner();
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      stdin: "data",
+      stdinPipe: true,
+      timeoutMs: 5_000,
+    });
+
+    expect(stdinHandle).toBeDefined();
+
+    // First close
+    stdinHandle!.close();
+    expect(stdinHandle!.isOpen).toBe(false);
+
+    // Second close should not throw
+    expect(() => stdinHandle!.close()).not.toThrow();
+    expect(stdinHandle!.isOpen).toBe(false);
+
+    await resultPromise;
+  });
+
+  it("without stdinPipe (no stdinPipe flag), stdin is pre-encoded (existing behavior)", async () => {
+    const spawner = new BunProcessSpawner();
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      stdin: "pre-encoded content",
+      timeoutMs: 5_000,
+      // No stdinPipe — uses pre-encoded Uint8Array
+    });
+
+    // stdinHandle should be undefined for non-pipe mode
+    expect(stdinHandle).toBeUndefined();
+
+    const result = await resultPromise;
+    expect(result.output).toContain("pre-encoded content");
+  });
+
+  it("without stdin, stdin is 'ignore' (existing behavior)", async () => {
+    const spawner = new BunProcessSpawner();
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      timeoutMs: 5_000,
+      // No stdin at all
+    });
+
+    expect(stdinHandle).toBeUndefined();
+
+    const result = await resultPromise;
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toBe("");
+  });
+
+  it("initial prompt write runs concurrently with stdout/stderr reads (no deadlock)", async () => {
+    const spawner = new BunProcessSpawner();
+    // Generate a large payload to test the concurrent write/read pattern
+    const largeInput = "x".repeat(100_000);
+    const { result: resultPromise, stdinHandle } = await spawner.spawn("cat", [], {
+      stdin: largeInput,
+      stdinPipe: true,
+      timeoutMs: 10_000,
+    });
+
+    expect(stdinHandle).toBeDefined();
+    // Close stdin so cat can finish
+    stdinHandle!.close();
+
+    const result = await resultPromise;
+    expect(result.output.length).toBe(largeInput.length);
+    expect(result.exitCode).toBe(0);
   });
 });

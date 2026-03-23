@@ -2,6 +2,8 @@ import { describe, it, expect } from "bun:test";
 import {
   DispatcherInputSchema,
   DispatcherDecisionSchema,
+  WorkflowInfoSchema,
+  DispatcherConfigSchema,
 } from "../src/schemas/dispatcher";
 import {
   EvaluatorInputSchema,
@@ -15,21 +17,50 @@ import {
   WorkerResultSchema,
   WorkerFailureReasonSchema,
 } from "../src/schemas/worker";
-import { CliSessionSchema } from "../src/schemas/session";
+import { SessionSchema, migrateSession } from "../src/schemas/session";
 import { WorkflowDefinitionSchema } from "../src/schemas/workflow";
-import { ExecutionStatusSchema } from "../src/schemas/execution";
+import { ExecutionStatusSchema, SessionStatusSchema } from "../src/schemas/execution";
+import {
+  ValidationCriteriaSchema,
+  ToolScopingSchema,
+  SessionBudgetStatusSchema,
+  WorkerConfigSchema,
+  AvailableContextSchema,
+  LastWorkerResultSchema,
+  WorkflowStepBaseSchema,
+} from "../src/schemas/shared";
+import { assembleDispatcherInput } from "../src/dispatcher/assemble";
+import { Evaluator } from "../src/evaluator/invoke";
+import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 
 // ---------------------------------------------------------------------------
 // DispatcherDecisionSchema (.strip() — LLM output)
 // ---------------------------------------------------------------------------
 describe("DispatcherDecisionSchema", () => {
   const validDecision = {
+    schema_version: 1 as const,
     phase_index: 0,
     step_index: 0,
     prompt: "Implement feature X",
     context_files: ["src/foo.ts"],
-    validation_criteria: "Tests pass",
-    timeout_minutes: 5,
+    validation_criteria: {
+      acceptance_criteria: ["Tests pass"],
+      required_tests: true,
+      custom_checks: [],
+      required_outputs: [],
+    },
+    reasoning: "Standard execution",
+    warnings: [],
+    worker_config: {
+      model_override: null,
+      timeout_minutes: 30,
+      retry_on_failure: true,
+      max_retries: 3,
+      iteration_budget: 5,
+      tool_scoping: { read: true, bash: true, write: true, edit: true },
+      parallel: false,
+      parallel_variants: null,
+    },
   };
 
   it("parses a valid decision", () => {
@@ -47,28 +78,142 @@ describe("DispatcherDecisionSchema", () => {
     expect((result as any).adapted_plan).toBeUndefined();
   });
 
-  it("rejects parallel: true with refinement error", () => {
+  it("strips removed parallel field (no longer in schema)", () => {
     const result = DispatcherDecisionSchema.safeParse({
       ...validDecision,
       parallel: true,
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const messages = result.error.issues.map((i) => i.message);
-      expect(messages.some((m) => /parallel/i.test(m))).toBe(true);
-    }
-  });
-
-  it("accepts parallel: false without error", () => {
-    const result = DispatcherDecisionSchema.safeParse({
-      ...validDecision,
-      parallel: false,
-    });
+    // parallel is stripped (not rejected) — it's an unknown field
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect((result.data as any).parallel).toBeUndefined();
+    }
   });
 
   it("rejects missing required fields", () => {
     const result = DispatcherDecisionSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it("requires schema_version: 1", () => {
+    const result = DispatcherDecisionSchema.parse(validDecision);
+    expect(result.schema_version).toBe(1);
+  });
+
+  it("rejects missing schema_version", () => {
+    const { schema_version, ...noVersion } = validDecision;
+    const result = DispatcherDecisionSchema.safeParse(noVersion);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects schema_version other than 1", () => {
+    const result = DispatcherDecisionSchema.safeParse({
+      ...validDecision,
+      schema_version: 2,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires reasoning string", () => {
+    const result = DispatcherDecisionSchema.parse({
+      ...validDecision,
+      reasoning: "Phase is straightforward setup",
+    });
+    expect(result.reasoning).toBe("Phase is straightforward setup");
+  });
+
+  it("rejects missing reasoning", () => {
+    const { reasoning, ...noReasoning } = validDecision;
+    const result = DispatcherDecisionSchema.safeParse(noReasoning);
+    expect(result.success).toBe(false);
+  });
+
+  it("requires warnings array", () => {
+    const result = DispatcherDecisionSchema.parse({
+      ...validDecision,
+      warnings: ["Large file detected", "Possible circular dependency"],
+    });
+    expect(result.warnings).toEqual(["Large file detected", "Possible circular dependency"]);
+  });
+
+  it("rejects missing warnings", () => {
+    const { warnings, ...noWarnings } = validDecision;
+    const result = DispatcherDecisionSchema.safeParse(noWarnings);
+    expect(result.success).toBe(false);
+  });
+
+  it("requires worker_config", () => {
+    const workerConfig = {
+      model_override: null,
+      timeout_minutes: 30,
+      retry_on_failure: true,
+      max_retries: 3,
+      iteration_budget: 10,
+      tool_scoping: { read: true, bash: true, write: true, edit: true },
+      parallel: false,
+      parallel_variants: null,
+    };
+    const result = DispatcherDecisionSchema.parse({
+      ...validDecision,
+      worker_config: workerConfig,
+    });
+    expect(result.worker_config).toEqual(workerConfig);
+  });
+
+  it("rejects missing worker_config", () => {
+    const { worker_config, ...noWorkerConfig } = validDecision;
+    const result = DispatcherDecisionSchema.safeParse(noWorkerConfig);
+    expect(result.success).toBe(false);
+  });
+
+  it("requires validation_criteria as ValidationCriteria object", () => {
+    const criteria = {
+      acceptance_criteria: ["tests pass", "no regressions"],
+      required_tests: true,
+      custom_checks: ["lint clean"],
+      required_outputs: ["src/feature.ts"],
+    };
+    const result = DispatcherDecisionSchema.parse({
+      ...validDecision,
+      validation_criteria: criteria,
+    });
+    expect(result.validation_criteria).toEqual(criteria);
+  });
+
+  it("rejects validation_criteria as string", () => {
+    const result = DispatcherDecisionSchema.safeParse({
+      ...validDecision,
+      validation_criteria: "Tests pass",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // --- context_to_inline tests ---
+
+  it("accepts context_to_inline as string array", () => {
+    const result = DispatcherDecisionSchema.safeParse({
+      ...validDecision,
+      context_to_inline: ["docs/conventions.md", "docs/standards.md"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.context_to_inline).toEqual(["docs/conventions.md", "docs/standards.md"]);
+    }
+  });
+
+  it("accepts decision without context_to_inline (optional)", () => {
+    const result = DispatcherDecisionSchema.safeParse(validDecision);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.context_to_inline).toBeUndefined();
+    }
+  });
+
+  it("validates context_to_inline paths are strings", () => {
+    const result = DispatcherDecisionSchema.safeParse({
+      ...validDecision,
+      context_to_inline: [123, true],
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -93,6 +238,12 @@ describe("DispatcherInputSchema", () => {
     context: {
       files: ["src/foo.ts"],
     },
+    workflow_id: "wf-test-001",
+    workflow: { name: "work", step_number: 1, total_steps: 2, step_description: "Setup" },
+    last_worker_result: null,
+    config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", worker_model: "opus", dispatcher_model: "opus" },
+    session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
+    available_context: { conventions: [], standards: [], learnings: [] },
   };
 
   it("parses valid input", () => {
@@ -121,6 +272,175 @@ describe("DispatcherInputSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("requires workflow_id", () => {
+    const { workflow_id, ...noWfId } = validInput;
+    const result = DispatcherInputSchema.safeParse(noWfId);
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts workflow_id string", () => {
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      workflow_id: "wf-abc-123",
+    });
+    expect(result.workflow_id).toBe("wf-abc-123");
+  });
+
+  it("accepts and round-trips workflow (WorkflowInfoSchema)", () => {
+    const workflow = {
+      name: "work",
+      step_number: 2,
+      total_steps: 5,
+      step_description: "Implement core logic",
+    };
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      workflow,
+    });
+    expect(result.workflow).toEqual(workflow);
+  });
+
+  it("accepts and round-trips last_worker_result", () => {
+    const lastWorkerResult = {
+      step: 1,
+      status: "completed",
+      output_summary: "Phase 1 done",
+      artifacts_produced: ["src/setup.ts"],
+      tests_passed: true,
+      duration_seconds: 30,
+    };
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      last_worker_result: lastWorkerResult,
+    });
+    expect(result.last_worker_result).toEqual(lastWorkerResult);
+  });
+
+  it("accepts null for last_worker_result", () => {
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      last_worker_result: null,
+    });
+    expect(result.last_worker_result).toBeNull();
+  });
+
+  it("accepts and round-trips config (DispatcherConfigSchema)", () => {
+    const config = {
+      max_eval_cycles: 3,
+      worktree_path: "/tmp/wt",
+      project_cwd: "/home/project",
+      worker_model: "opus",
+      dispatcher_model: "sonnet",
+    };
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      config,
+    });
+    expect(result.config).toEqual(config);
+  });
+
+  it("accepts and round-trips session_budget", () => {
+    const sessionBudget = {
+      invocations_remaining: 50,
+      token_budget_remaining: 200000,
+      wall_clock_deadline: "2026-03-20T18:00:00Z",
+    };
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      session_budget: sessionBudget,
+    });
+    expect(result.session_budget).toEqual(sessionBudget);
+  });
+
+  it("accepts and round-trips available_context", () => {
+    const entry = { name: "conventions", path: "docs/conv.md", summary: "Code conventions" };
+    const availableContext = {
+      conventions: [entry],
+      standards: [],
+      learnings: [entry],
+    };
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      available_context: availableContext,
+    });
+    expect(result.available_context).toEqual(availableContext);
+  });
+
+  it("accepts all required fields together", () => {
+    const full = {
+      ...validInput,
+      workflow_id: "wf-full-test",
+      workflow: {
+        name: "plan",
+        step_number: 1,
+        total_steps: 3,
+        step_description: "Create plan",
+      },
+      last_worker_result: {
+        step: 0,
+        status: "completed",
+        output_summary: "Init done",
+        artifacts_produced: [],
+        tests_passed: null,
+        duration_seconds: 5,
+      },
+      config: {
+        max_eval_cycles: 2,
+        worktree_path: "/tmp/wt",
+        project_cwd: "/home/proj",
+        worker_model: "opus",
+        dispatcher_model: "sonnet",
+      },
+      session_budget: {
+        invocations_remaining: 10,
+        token_budget_remaining: null,
+        wall_clock_deadline: null,
+      },
+      available_context: {
+        conventions: [],
+        standards: [],
+        learnings: [],
+      },
+    };
+    const result = DispatcherInputSchema.safeParse(full);
+    expect(result.success).toBe(true);
+  });
+
+  it("strips unknown fields from sub-schemas", () => {
+    const result = DispatcherInputSchema.parse({
+      ...validInput,
+      workflow: {
+        name: "work",
+        step_number: 1,
+        total_steps: 2,
+        step_description: "Do work",
+        hallucinated_field: "should be stripped",
+      },
+      config: {
+        max_eval_cycles: 3,
+        worktree_path: "/tmp",
+        project_cwd: "/home",
+        worker_model: "opus",
+        dispatcher_model: "sonnet",
+        extra_config: "should be stripped",
+      },
+      unknown_top_level: "should be stripped",
+    });
+    expect((result.workflow as any).hallucinated_field).toBeUndefined();
+    expect((result.config as any).extra_config).toBeUndefined();
+    expect((result as any).unknown_top_level).toBeUndefined();
+  });
+
+  it("rejects missing required fields", () => {
+    const minimalInput = {
+      plan: { phases: [] },
+      state: { completed_phases: [], current_phase_index: 0 },
+      context: { files: [] },
+    };
+    const result = DispatcherInputSchema.safeParse(minimalInput);
+    expect(result.success).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -131,6 +451,9 @@ describe("EvaluatorResultSchema", () => {
     passed: true,
     reasoning: "Tests pass and output looks correct",
     suggestions: [],
+    confidence: 0.9,
+    feedback: "Looks good",
+    files_to_review: [],
   };
 
   it("parses a valid result", () => {
@@ -149,8 +472,85 @@ describe("EvaluatorResultSchema", () => {
   it("rejects missing passed field", () => {
     const result = EvaluatorResultSchema.safeParse({
       reasoning: "no pass field",
+      confidence: 0.5,
+      feedback: "test",
+      files_to_review: [],
     });
     expect(result.success).toBe(false);
+  });
+
+  it("requires confidence (0-1 range)", () => {
+    const result = EvaluatorResultSchema.parse({
+      ...validResult,
+      confidence: 0.85,
+    });
+    expect(result.confidence).toBe(0.85);
+  });
+
+  it("accepts confidence at boundaries (0 and 1)", () => {
+    const atZero = EvaluatorResultSchema.parse({ ...validResult, confidence: 0 });
+    expect(atZero.confidence).toBe(0);
+
+    const atOne = EvaluatorResultSchema.parse({ ...validResult, confidence: 1 });
+    expect(atOne.confidence).toBe(1);
+  });
+
+  it("rejects confidence below 0", () => {
+    const result = EvaluatorResultSchema.safeParse({
+      ...validResult,
+      confidence: -0.1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects confidence above 1", () => {
+    const result = EvaluatorResultSchema.safeParse({
+      ...validResult,
+      confidence: 1.1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires feedback string", () => {
+    const result = EvaluatorResultSchema.parse({
+      ...validResult,
+      feedback: "Consider adding error handling",
+    });
+    expect(result.feedback).toBe("Consider adding error handling");
+  });
+
+  it("rejects missing feedback", () => {
+    const { feedback, ...noFeedback } = validResult;
+    const result = EvaluatorResultSchema.safeParse(noFeedback);
+    expect(result.success).toBe(false);
+  });
+
+  it("requires files_to_review array", () => {
+    const result = EvaluatorResultSchema.parse({
+      ...validResult,
+      files_to_review: ["src/index.ts", "tests/index.test.ts"],
+    });
+    expect(result.files_to_review).toEqual(["src/index.ts", "tests/index.test.ts"]);
+  });
+
+  it("rejects missing required fields", () => {
+    const result = EvaluatorResultSchema.safeParse({
+      passed: true,
+      reasoning: "ok",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts all fields together", () => {
+    const result = EvaluatorResultSchema.parse({
+      ...validResult,
+      confidence: 0.95,
+      feedback: "Looks great overall",
+      files_to_review: ["src/main.ts"],
+    });
+    expect(result.confidence).toBe(0.95);
+    expect(result.feedback).toBe("Looks great overall");
+    expect(result.files_to_review).toEqual(["src/main.ts"]);
   });
 });
 
@@ -158,13 +558,104 @@ describe("EvaluatorResultSchema", () => {
 // EvaluatorInputSchema
 // ---------------------------------------------------------------------------
 describe("EvaluatorInputSchema", () => {
+  const validInput = {
+    worker_output: "some output text",
+    validation_criteria: "Tests pass",
+    context_files: ["src/foo.ts"],
+    acceptance_criteria: ["Tests pass"],
+    artifacts_produced: ["src/feature.ts"],
+    tests_passed: true,
+    duration_seconds: 120,
+  };
+
   it("parses valid evaluator input", () => {
-    const result = EvaluatorInputSchema.safeParse({
-      worker_output: "some output text",
-      validation_criteria: "Tests pass",
-      context_files: ["src/foo.ts"],
-    });
+    const result = EvaluatorInputSchema.safeParse(validInput);
     expect(result.success).toBe(true);
+  });
+
+  it("requires acceptance_criteria array", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      acceptance_criteria: ["tests pass", "no regressions"],
+    });
+    expect(result.acceptance_criteria).toEqual(["tests pass", "no regressions"]);
+  });
+
+  it("rejects missing acceptance_criteria", () => {
+    const { acceptance_criteria, ...noAC } = validInput;
+    const result = EvaluatorInputSchema.safeParse(noAC);
+    expect(result.success).toBe(false);
+  });
+
+  it("requires artifacts_produced array", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      artifacts_produced: ["src/feature.ts", "tests/feature.test.ts"],
+    });
+    expect(result.artifacts_produced).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+  });
+
+  it("accepts tests_passed as true", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      tests_passed: true,
+    });
+    expect(result.tests_passed).toBe(true);
+  });
+
+  it("accepts tests_passed as false", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      tests_passed: false,
+    });
+    expect(result.tests_passed).toBe(false);
+  });
+
+  it("accepts tests_passed as null", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      tests_passed: null,
+    });
+    expect(result.tests_passed).toBeNull();
+  });
+
+  it("requires duration_seconds", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      duration_seconds: 42.5,
+    });
+    expect(result.duration_seconds).toBe(42.5);
+  });
+
+  it("rejects missing required fields", () => {
+    const result = EvaluatorInputSchema.safeParse({
+      worker_output: "output",
+      validation_criteria: "criteria",
+      context_files: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts all required fields together", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      acceptance_criteria: ["feature works"],
+      artifacts_produced: ["src/new.ts"],
+      tests_passed: true,
+      duration_seconds: 30,
+    });
+    expect(result.acceptance_criteria).toEqual(["feature works"]);
+    expect(result.artifacts_produced).toEqual(["src/new.ts"]);
+    expect(result.tests_passed).toBe(true);
+    expect(result.duration_seconds).toBe(30);
+  });
+
+  it("strips unknown fields", () => {
+    const result = EvaluatorInputSchema.parse({
+      ...validInput,
+      hallucinated: "strip me",
+    });
+    expect((result as any).hallucinated).toBeUndefined();
   });
 });
 
@@ -289,10 +780,11 @@ describe("WorkerFailureReasonSchema", () => {
     "api_error",
     "rate_limited",
     "transient",
+    "interrupted",
   ] as const;
 
-  it("validates all 7 kind strings", () => {
-    expect(allKinds.length).toBe(7);
+  it("validates all 8 kind strings", () => {
+    expect(allKinds.length).toBe(8);
   });
 
   it("parses timeout kind with timeoutMs", () => {
@@ -383,43 +875,61 @@ describe("WorkerResultSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// CliSessionSchema (.strict() — internal)
+// SessionSchema (.strict() — internal)
 // ---------------------------------------------------------------------------
-describe("CliSessionSchema", () => {
+describe("SessionSchema", () => {
   const validSession = {
+    label: "docs/plans/my-plan.md",
     planPath: "docs/plans/my-plan.md",
-    statePath: "docs/plans/my-plan.state.md",
-    contextPath: "docs/plans/my-plan.context.md",
-    currentPhase: 0,
     lastUpdated: "2026-03-15T00:00:00Z",
-    workflowId: "550e8400-e29b-41d4-a716-446655440000",
+    budgetLimits: {
+      max_invocations: 0,
+      max_tokens: null,
+      wall_clock_deadline: null,
+    },
+    budgetUsage: {
+      invocations_used: 0,
+      tokens_used: 0,
+      cost_usd: 0,
+    },
+    workflowType: "work" as const,
   };
 
   it("parses a valid session", () => {
-    const result = CliSessionSchema.safeParse(validSession);
+    const result = SessionSchema.safeParse(validSession);
     expect(result.success).toBe(true);
   });
 
-  it("rejects invalid UUID for workflowId", () => {
-    const result = CliSessionSchema.safeParse({
-      ...validSession,
-      workflowId: "not-a-uuid",
-    });
-    expect(result.success).toBe(false);
-  });
-
   it("rejects unknown fields in strict mode", () => {
-    const result = CliSessionSchema.safeParse({
+    const result = SessionSchema.safeParse({
       ...validSession,
       unknown: "fail",
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects null optional fields that are required", () => {
-    const { planPath, ...noPath } = validSession;
-    const result = CliSessionSchema.safeParse(noPath);
+  it("rejects missing required fields (label)", () => {
+    const { label, ...noLabel } = validSession;
+    const result = SessionSchema.safeParse(noLabel);
     expect(result.success).toBe(false);
+  });
+
+  it("rejects missing budgetLimits", () => {
+    const { budgetLimits, ...noBudget } = validSession;
+    const result = SessionSchema.safeParse(noBudget);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing workflowType", () => {
+    const { workflowType, ...noType } = validSession;
+    const result = SessionSchema.safeParse(noType);
+    expect(result.success).toBe(false);
+  });
+
+  it("allows planPath to be optional", () => {
+    const { planPath, ...noPlanPath } = validSession;
+    const result = SessionSchema.safeParse(noPlanPath);
+    expect(result.success).toBe(true);
   });
 });
 
@@ -496,5 +1006,1067 @@ describe("ExecutionStatusSchema", () => {
   it("rejects invalid status", () => {
     const result = ExecutionStatusSchema.safeParse("paused");
     expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shared Sub-Schemas (src/schemas/shared.ts)
+// ---------------------------------------------------------------------------
+
+describe("ValidationCriteriaSchema", () => {
+  const valid = {
+    acceptance_criteria: ["tests pass", "no regressions"],
+    required_tests: true,
+    custom_checks: ["lint clean"],
+    required_outputs: ["src/feature.ts"],
+  };
+
+  it("round-trips valid data", () => {
+    const result = ValidationCriteriaSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("strips unknown fields", () => {
+    const result = ValidationCriteriaSchema.parse({
+      ...valid,
+      hallucinated: "remove me",
+    });
+    expect((result as any).hallucinated).toBeUndefined();
+  });
+
+  it("rejects missing required fields", () => {
+    const result = ValidationCriteriaSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("ToolScopingSchema", () => {
+  const valid = { read: true, bash: true, write: true, edit: true };
+
+  it("round-trips valid data", () => {
+    const result = ToolScopingSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("strips unknown fields", () => {
+    const result = ToolScopingSchema.parse({
+      ...valid,
+      extra: "strip me",
+    });
+    expect((result as any).extra).toBeUndefined();
+  });
+
+  it("rejects non-boolean values", () => {
+    const result = ToolScopingSchema.safeParse({
+      read: "yes",
+      bash: true,
+      write: true,
+      edit: true,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("SessionBudgetStatusSchema", () => {
+  // Budget status sent to dispatcher — tracks remaining budget
+  const valid = {
+    invocations_remaining: 75,
+    token_budget_remaining: 380000,
+    wall_clock_deadline: "2026-03-20T12:00:00Z",
+  };
+
+  it("round-trips valid data", () => {
+    const result = SessionBudgetStatusSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("accepts null for nullable fields", () => {
+    const result = SessionBudgetStatusSchema.parse({
+      ...valid,
+      token_budget_remaining: null,
+      wall_clock_deadline: null,
+    });
+    expect(result.token_budget_remaining).toBeNull();
+    expect(result.wall_clock_deadline).toBeNull();
+  });
+
+  it("strips unknown fields", () => {
+    const result = SessionBudgetStatusSchema.parse({
+      ...valid,
+      extra: "gone",
+    });
+    expect((result as any).extra).toBeUndefined();
+  });
+});
+
+describe("WorkerConfigSchema", () => {
+  const valid = {
+    model_override: null,
+    timeout_minutes: 30,
+    retry_on_failure: true,
+    max_retries: 3,
+    iteration_budget: 10,
+    tool_scoping: { read: true, bash: true, write: true, edit: true },
+    parallel: false,
+    parallel_variants: null,
+  };
+
+  it("round-trips valid data", () => {
+    const result = WorkerConfigSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("accepts model_override as string", () => {
+    const result = WorkerConfigSchema.parse({
+      ...valid,
+      model_override: "claude-opus-4-20250514",
+    });
+    expect(result.model_override).toBe("claude-opus-4-20250514");
+  });
+
+  it("accepts parallel_variants array", () => {
+    const result = WorkerConfigSchema.parse({
+      ...valid,
+      parallel_variants: [
+        { name: "variant-a", prompt: "approach A" },
+        { name: "variant-b", prompt: "approach B" },
+      ],
+    });
+    expect(result.parallel_variants).toHaveLength(2);
+    expect(result.parallel_variants![0].name).toBe("variant-a");
+  });
+
+  it("strips unknown fields", () => {
+    const result = WorkerConfigSchema.parse({
+      ...valid,
+      hallucinated: "remove",
+    });
+    expect((result as any).hallucinated).toBeUndefined();
+  });
+
+  it("rejects missing required fields", () => {
+    const result = WorkerConfigSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("AvailableContextSchema", () => {
+  const entry = { name: "coding-standards", path: "docs/standards.md", summary: "Project coding standards" };
+  const valid = {
+    conventions: [entry],
+    standards: [entry],
+    learnings: [entry],
+  };
+
+  it("round-trips valid data", () => {
+    const result = AvailableContextSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("accepts empty sub-arrays", () => {
+    const result = AvailableContextSchema.parse({
+      conventions: [],
+      standards: [],
+      learnings: [],
+    });
+    expect(result.conventions).toEqual([]);
+  });
+
+  it("enforces max(20) on each sub-array", () => {
+    const twentyOne = Array.from({ length: 21 }, (_, i) => ({
+      name: `entry-${i}`,
+      path: `path-${i}`,
+      summary: `summary-${i}`,
+    }));
+    const result = AvailableContextSchema.safeParse({
+      conventions: twentyOne,
+      standards: [],
+      learnings: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts exactly 20 entries", () => {
+    const twenty = Array.from({ length: 20 }, (_, i) => ({
+      name: `entry-${i}`,
+      path: `path-${i}`,
+      summary: `summary-${i}`,
+    }));
+    const result = AvailableContextSchema.safeParse({
+      conventions: twenty,
+      standards: [],
+      learnings: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("strips unknown fields", () => {
+    const result = AvailableContextSchema.parse({
+      ...valid,
+      extra: "strip",
+    });
+    expect((result as any).extra).toBeUndefined();
+  });
+});
+
+describe("LastWorkerResultSchema", () => {
+  const valid = {
+    step: 3,
+    status: "completed",
+    output_summary: "Built feature successfully",
+    artifacts_produced: ["src/feature.ts", "tests/feature.test.ts"],
+    tests_passed: true,
+    duration_seconds: 45,
+  };
+
+  it("round-trips valid data", () => {
+    const result = LastWorkerResultSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("accepts null for tests_passed", () => {
+    const result = LastWorkerResultSchema.parse({
+      ...valid,
+      tests_passed: null,
+    });
+    expect(result.tests_passed).toBeNull();
+  });
+
+  it("strips unknown fields", () => {
+    const result = LastWorkerResultSchema.parse({
+      ...valid,
+      extra: "strip",
+    });
+    expect((result as any).extra).toBeUndefined();
+  });
+
+  it("rejects missing required fields", () => {
+    const result = LastWorkerResultSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("WorkflowStepBaseSchema", () => {
+  it("round-trips with all fields", () => {
+    const valid = {
+      description: "Implement the feature",
+      dispatcherHint: "Use TDD approach",
+      validationCriteria: "All tests pass",
+    };
+    const result = WorkflowStepBaseSchema.parse(valid);
+    expect(result).toEqual(valid);
+  });
+
+  it("accepts minimal fields (description only)", () => {
+    const result = WorkflowStepBaseSchema.parse({
+      description: "Do something",
+    });
+    expect(result.description).toBe("Do something");
+    expect(result.dispatcherHint).toBeUndefined();
+    expect(result.validationCriteria).toBeUndefined();
+  });
+
+  it("rejects missing description", () => {
+    const result = WorkflowStepBaseSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SessionStatusSchema (Phase 5 — superset of ExecutionStatus)
+// ---------------------------------------------------------------------------
+describe("SessionStatusSchema", () => {
+  const executionStatuses = [
+    "running",
+    "completed",
+    "failed",
+    "interrupted",
+    "timeout",
+  ];
+
+  const additionalStatuses = [
+    "budget_exhausted",
+    "awaiting_user",
+  ];
+
+  const allStatuses = [...executionStatuses, ...additionalStatuses];
+
+  it("has exactly 7 values", () => {
+    expect(SessionStatusSchema.options).toHaveLength(7);
+  });
+
+  for (const status of allStatuses) {
+    it(`accepts '${status}'`, () => {
+      const result = SessionStatusSchema.safeParse(status);
+      expect(result.success).toBe(true);
+    });
+  }
+
+  it("is a superset of ExecutionStatus (all 5 execution statuses accepted)", () => {
+    for (const status of ExecutionStatusSchema.options) {
+      const result = SessionStatusSchema.safeParse(status);
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects invalid status", () => {
+    const result = SessionStatusSchema.safeParse("paused");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-string input", () => {
+    const result = SessionStatusSchema.safeParse(42);
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ExecutionStatusSchema — verify unchanged (Phase 5)
+// ---------------------------------------------------------------------------
+describe("ExecutionStatusSchema — unchanged", () => {
+  it("still has exactly 5 values", () => {
+    expect(ExecutionStatusSchema.options).toHaveLength(5);
+  });
+
+  it("does NOT accept budget_exhausted", () => {
+    const result = ExecutionStatusSchema.safeParse("budget_exhausted");
+    expect(result.success).toBe(false);
+  });
+
+  it("does NOT accept awaiting_user", () => {
+    const result = ExecutionStatusSchema.safeParse("awaiting_user");
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SessionSchema — WP2 budget fields (budgetLimits + budgetUsage)
+// ---------------------------------------------------------------------------
+describe("SessionSchema — budget fields", () => {
+  const validSession = {
+    label: "docs/plans/my-plan.md",
+    planPath: "docs/plans/my-plan.md",
+    lastUpdated: "2026-03-15T00:00:00Z",
+    budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
+    budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+    workflowType: "work" as const,
+  };
+
+  const validLimits = {
+    max_invocations: 100,
+    max_tokens: 500000,
+    wall_clock_deadline: "2026-03-20T12:00:00Z",
+  };
+
+  const validUsage = {
+    invocations_used: 25,
+    tokens_used: 120000,
+    cost_usd: 1.50,
+  };
+
+  it("accepts budgetLimits with valid data", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      budgetLimits: validLimits,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetLimits).toEqual(validLimits);
+    }
+  });
+
+  it("accepts budgetUsage with valid data", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      budgetUsage: validUsage,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetUsage).toEqual(validUsage);
+    }
+  });
+
+  it("accepts both budgetLimits and budgetUsage together", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      budgetLimits: validLimits,
+      budgetUsage: validUsage,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetLimits).toEqual(validLimits);
+      expect(result.data.budgetUsage).toEqual(validUsage);
+    }
+  });
+
+  it("strips unknown fields from budget sub-objects (.strip())", () => {
+    const result = SessionSchema.parse({
+      ...validSession,
+      budgetLimits: {
+        ...validLimits,
+        unknown_budget_field: "should be stripped",
+      },
+    });
+    expect((result.budgetLimits as any).unknown_budget_field).toBeUndefined();
+    expect(result.budgetLimits.max_invocations).toBe(100);
+  });
+
+  it("accepts workflowType for each valid workflow", () => {
+    const types = ["work", "plan", "review", "ship", "debug", "research"] as const;
+    for (const wfType of types) {
+      const result = SessionSchema.safeParse({
+        ...validSession,
+        workflowType: wfType,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.workflowType).toBe(wfType);
+      }
+    }
+  });
+
+  it("rejects invalid workflowType", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      workflowType: "unknown",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing budget fields", () => {
+    const { budgetLimits, budgetUsage, workflowType, ...noNewFields } = validSession;
+    const result = SessionSchema.safeParse(noNewFields);
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts all fields together with optional fields", () => {
+    const full = {
+      ...validSession,
+      sessionLifecycleState: "work:active",
+      name: "My session",
+      createdAt: "2026-03-15T00:00:00Z",
+      repo: "flywheel",
+      branch: "main",
+      totalCost: 1.5,
+      outputPath: "output.json",
+      worktreePath: "/tmp/wt",
+      budgetLimits: validLimits,
+      budgetUsage: validUsage,
+      workflowType: "work",
+    };
+    const result = SessionSchema.safeParse(full);
+    expect(result.success).toBe(true);
+  });
+
+  it("still rejects unknown top-level fields (.strict())", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      unknown_top_level: "should fail",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// migrateSession — handles old format → new format
+// ---------------------------------------------------------------------------
+describe("migrateSession", () => {
+  const defaultBudgetLimits = {
+    max_invocations: 0,
+    max_tokens: null,
+    wall_clock_deadline: null,
+  };
+
+  const defaultBudgetUsage = {
+    invocations_used: 0,
+    tokens_used: 0,
+    cost_usd: 0,
+  };
+
+  const oldSession = {
+    planPath: "docs/plans/my-plan.md",
+    statePath: "docs/plans/my-plan.state.md",
+    contextPath: "docs/plans/my-plan.context.md",
+    currentPhase: 0,
+    lastUpdated: "2026-03-15T00:00:00Z",
+    workflowId: "550e8400-e29b-41d4-a716-446655440000",
+  };
+
+  it("pre-existing session JSON without budget fields loads correctly after migration", () => {
+    const migrated = migrateSession(oldSession);
+    const result = SessionSchema.safeParse(migrated);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetLimits).toEqual(defaultBudgetLimits);
+      expect(result.data.budgetUsage).toEqual(defaultBudgetUsage);
+      expect(result.data.workflowType).toBe("work");
+    }
+  });
+
+  it("preserves existing fields through migration", () => {
+    const withOptionals = {
+      ...oldSession,
+      name: "My session",
+      totalCost: 2.5,
+      sessionLifecycleState: "work:active",
+    };
+    const migrated = migrateSession(withOptionals);
+    const result = SessionSchema.safeParse(migrated);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe("My session");
+      expect(result.data.totalCost).toBe(2.5);
+      expect(result.data.sessionLifecycleState).toBe("work:active");
+    }
+  });
+
+  it("migrates old budgetConfig to new budgetLimits", () => {
+    const withBudget = {
+      ...oldSession,
+      budgetConfig: {
+        total_invocations_limit: 100,
+        total_invocations_used: 0,
+        total_token_budget: 500000,
+        total_tokens_used: 0,
+        wall_clock_deadline: null,
+      },
+      budgetUsed: {
+        total_invocations_limit: 100,
+        total_invocations_used: 52,
+        total_token_budget: 500000,
+        total_tokens_used: 320000,
+        wall_clock_deadline: null,
+      },
+      workflowType: "plan",
+    };
+    const migrated = migrateSession(withBudget);
+    const result = SessionSchema.safeParse(migrated);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetLimits.max_invocations).toBe(100);
+      expect(result.data.budgetLimits.max_tokens).toBe(500000);
+      expect(result.data.budgetUsage.invocations_used).toBe(52);
+      expect(result.data.budgetUsage.tokens_used).toBe(320000);
+      expect(result.data.workflowType).toBe("plan");
+    }
+  });
+
+  it("maps total_token_budget: 0 to max_tokens: null (unlimited)", () => {
+    const withZeroBudget = {
+      ...oldSession,
+      budgetConfig: {
+        total_invocations_limit: 0,
+        total_invocations_used: 0,
+        total_token_budget: 0,
+        total_tokens_used: 0,
+        wall_clock_deadline: null,
+      },
+    };
+    const migrated = migrateSession(withZeroBudget);
+    const result = SessionSchema.safeParse(migrated);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetLimits.max_tokens).toBeNull();
+    }
+  });
+
+  it("removes vestigial fields (statePath, contextPath, currentPhase, workflowId)", () => {
+    const migrated = migrateSession(oldSession);
+    expect(migrated.statePath).toBeUndefined();
+    expect(migrated.contextPath).toBeUndefined();
+    expect(migrated.currentPhase).toBeUndefined();
+    expect(migrated.workflowId).toBeUndefined();
+    // And the old budget fields
+    expect(migrated.budgetConfig).toBeUndefined();
+    expect(migrated.budgetUsed).toBeUndefined();
+  });
+
+  it("adds label defaulting to planPath for old sessions", () => {
+    const migrated = migrateSession(oldSession);
+    expect(migrated.label).toBe("docs/plans/my-plan.md");
+  });
+
+  it("returns a new object (does not mutate input)", () => {
+    const input = { ...oldSession };
+    const migrated = migrateSession(input);
+    expect(migrated).not.toBe(input);
+  });
+
+  it("result of migrating minimal session parses with SessionSchema", () => {
+    const migrated = migrateSession(oldSession);
+    const result = SessionSchema.safeParse(migrated);
+    expect(result.success).toBe(true);
+  });
+
+  it("adds default budgetLimits, budgetUsage, and workflowType for old sessions", () => {
+    const migrated = migrateSession(oldSession);
+    expect(migrated.budgetLimits).toEqual(defaultBudgetLimits);
+    expect(migrated.budgetUsage).toEqual(defaultBudgetUsage);
+    expect(migrated.workflowType).toBe("work");
+  });
+
+  it("preserves new format fields when already present", () => {
+    const newFormatSession = {
+      label: "my-plan",
+      lastUpdated: "2026-03-15T00:00:00Z",
+      budgetLimits: { max_invocations: 50, max_tokens: 100000, wall_clock_deadline: null },
+      budgetUsage: { invocations_used: 10, tokens_used: 50000, cost_usd: 0.5 },
+      workflowType: "work",
+    };
+    const migrated = migrateSession(newFormatSession);
+    const result = SessionSchema.safeParse(migrated);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.budgetLimits.max_invocations).toBe(50);
+      expect(result.data.budgetUsage.invocations_used).toBe(10);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration — full data contract flow
+// ---------------------------------------------------------------------------
+describe("Integration — full data contract flow", () => {
+  // --- Shared test fixtures ---
+
+  const planContent = `# Test Plan
+
+### Phase 1: Setup
+- [ ] Initialize project structure
+- [ ] Configure build tooling
+
+### Phase 2: Implementation
+- [ ] Implement core feature
+- [ ] Add error handling
+`;
+
+  const stateContent = `---
+plan_path: docs/plans/test-plan.md
+schema_version: 1
+writer: controller
+last_written_at: "2026-03-20T10:00:00Z"
+---
+
+# Test Plan
+
+## Phase 1: Setup
+status: completed
+- [x] Initialize project structure
+- [x] Configure build tooling
+
+## Phase 2: Implementation
+status: in_progress
+- [ ] Implement core feature
+- [ ] Add error handling
+`;
+
+  const contextContent = `- src/index.ts
+- src/utils.ts
+- tests/index.test.ts`;
+
+  const fullAssemblerInput: import("../src/dispatcher/assemble").AssemblerInput = {
+    planContent,
+    stateContent,
+    contextContent,
+    lastWorkerResult: {
+      step: 1,
+      status: "completed",
+      output_summary: "Phase 1 setup completed — project structure initialized and build tooling configured.",
+      artifacts_produced: ["src/index.ts", "tsconfig.json"],
+      tests_passed: true,
+      duration_seconds: 45,
+    },
+    workflowContext: {
+      workflowId: "wf-integration-test",
+      name: "work",
+      stepNumber: 2,
+      totalSteps: 4,
+      stepDescription: "Implement core feature",
+    },
+    configContext: {
+      maxEvalCycles: 3,
+      worktreePath: "/tmp/wt-integration",
+      projectCwd: "/home/project",
+      workerModel: "opus",
+      dispatcherModel: "sonnet",
+    },
+    sessionBudget: {
+      invocations_remaining: 48,
+      token_budget_remaining: 180000,
+      wall_clock_deadline: "2026-03-20T18:00:00Z",
+    },
+    availableContext: {
+      conventions: [{ name: "coding-standards", path: "docs/standards.md", summary: "Project coding standards" }],
+      standards: [],
+      learnings: [{ name: "lesson-1", path: "docs/lessons/1.md", summary: "Lesson from past sprint" }],
+    },
+  };
+
+  const fullDecision = {
+    schema_version: 1 as const,
+    phase_index: 1,
+    step_index: 0,
+    prompt: "Implement the core feature with proper error handling and tests.",
+    context_files: ["src/index.ts", "src/utils.ts"],
+    validation_criteria: {
+      acceptance_criteria: ["Feature works end-to-end", "All tests pass"],
+      required_tests: true,
+      custom_checks: ["No lint warnings"],
+      required_outputs: ["src/feature.ts", "tests/feature.test.ts"],
+    },
+    reasoning: "Phase 2 requires both implementation and test coverage.",
+    warnings: ["Large module — consider splitting if over 300 lines"],
+    worker_config: {
+      model_override: null,
+      timeout_minutes: 15,
+      retry_on_failure: true,
+      max_retries: 2,
+      iteration_budget: 8,
+      tool_scoping: { read: true, bash: true, write: true, edit: true },
+      parallel: false,
+      parallel_variants: null,
+    },
+  };
+
+  const fullEvaluatorResult = {
+    passed: true,
+    reasoning: "All acceptance criteria met. Tests pass, no lint warnings.",
+    suggestions: ["Consider extracting utility functions to src/utils.ts"],
+    confidence: 0.92,
+    feedback: "Solid implementation with good error handling coverage.",
+    files_to_review: ["src/feature.ts", "tests/feature.test.ts"],
+  };
+
+  // --- 8.1a: assembleDispatcherInput with all expanded fields ---
+
+  it("assembles DispatcherInput with all expanded fields", () => {
+    const { input, planTruncated, historyTruncated } = assembleDispatcherInput(fullAssemblerInput);
+
+    // Core fields populated
+    expect(input.plan.phases.length).toBeGreaterThan(0);
+    expect(input.state.completed_phases).toBeDefined();
+    expect(input.context.files).toEqual(["src/index.ts", "src/utils.ts", "tests/index.test.ts"]);
+
+    // New fields populated
+    expect(input.workflow_id).toBe("wf-integration-test");
+    expect(input.workflow).toEqual({
+      name: "work",
+      step_number: 2,
+      total_steps: 4,
+      step_description: "Implement core feature",
+    });
+    expect(input.last_worker_result).toBeDefined();
+    expect(input.last_worker_result!.step).toBe(1);
+    expect(input.last_worker_result!.status).toBe("completed");
+    expect(input.last_worker_result!.tests_passed).toBe(true);
+    expect(input.config).toEqual({
+      max_eval_cycles: 3,
+      worktree_path: "/tmp/wt-integration",
+      project_cwd: "/home/project",
+      worker_model: "opus",
+      dispatcher_model: "sonnet",
+    });
+    expect(input.session_budget).toEqual({
+      invocations_remaining: 48,
+      token_budget_remaining: 180000,
+      wall_clock_deadline: "2026-03-20T18:00:00Z",
+    });
+    expect(input.available_context.conventions).toHaveLength(1);
+    expect(input.available_context.learnings).toHaveLength(1);
+
+    // Schema-validates the assembled output
+    const parsed = DispatcherInputSchema.safeParse(input);
+    expect(parsed.success).toBe(true);
+  });
+
+  // --- 8.1b: DispatcherDecision rejects string validation_criteria ---
+
+  it("rejects DispatcherDecision with string validation_criteria", () => {
+    const result = DispatcherDecisionSchema.safeParse({
+      ...fullDecision,
+      validation_criteria: "All tests pass and linting is clean",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  // --- 8.1c: DispatcherDecision with structured validation_criteria ---
+
+  it("parses DispatcherDecision with structured validation_criteria", () => {
+    const decision = DispatcherDecisionSchema.parse(fullDecision);
+
+    expect(decision.schema_version).toBe(1);
+    expect(typeof decision.validation_criteria).toBe("object");
+    expect(decision.validation_criteria.acceptance_criteria).toEqual(["Feature works end-to-end", "All tests pass"]);
+    expect(decision.validation_criteria.required_tests).toBe(true);
+    expect(decision.validation_criteria.custom_checks).toEqual(["No lint warnings"]);
+    expect(decision.validation_criteria.required_outputs).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+  });
+
+  // --- 8.1d: Evaluator with mock transport (end-to-end options-object pattern) ---
+
+  it("builds EvaluatorInput from expanded DispatcherDecision via mock transport", async () => {
+    const bus = new EventBus();
+    const emitter = createFlywheelEmitter(bus);
+
+    // Track events emitted during evaluation
+    const events: import("../src/events/types").FlywheelEvent[] = [];
+    bus.subscribe((e) => events.push(e));
+
+    // Mock transport that captures the input it receives
+    let capturedInput: import("../src/schemas/evaluator").EvaluatorInput | null = null;
+    const mockTransport: import("../src/evaluator/transport").EvaluatorTransport = {
+      async invoke(input) {
+        capturedInput = input;
+        return {
+          passed: true,
+          reasoning: "All criteria met",
+          suggestions: [],
+          confidence: 0.95,
+          feedback: "Good work",
+          files_to_review: ["src/feature.ts"],
+        };
+      },
+    };
+
+    const evaluator = new Evaluator({
+      transport: mockTransport,
+      emitter,
+      workflowId: "wf-integration-eval",
+      phaseIndex: 1,
+      stepIndex: 0,
+    });
+
+    // Build EvaluateOptions from our DispatcherDecision
+    const decision = DispatcherDecisionSchema.parse(fullDecision);
+    const result = await evaluator.evaluate({
+      workerOutput: "Feature implemented successfully. All tests pass.",
+      validationCriteria: decision.validation_criteria,
+      contextFiles: decision.context_files,
+      acceptanceCriteria: ["Manual review completed"],
+      artifactsProduced: ["src/feature.ts", "tests/feature.test.ts"],
+      testsPassed: true,
+      durationSeconds: 120,
+    });
+
+    // Verify evaluator result
+    expect(result.passed).toBe(true);
+    expect(result.cyclesUsed).toBe(1);
+    expect(result.skipped).toBe(false);
+
+    // Verify the transport received correct EvaluatorInput
+    expect(capturedInput).not.toBeNull();
+    expect(capturedInput!.worker_output).toBe("Feature implemented successfully. All tests pass.");
+    // validation_criteria is serialized to string by Evaluator
+    expect(typeof capturedInput!.validation_criteria).toBe("string");
+    expect(capturedInput!.validation_criteria).toContain("Acceptance criteria:");
+    expect(capturedInput!.validation_criteria).toContain("Feature works end-to-end");
+    expect(capturedInput!.context_files).toEqual(["src/index.ts", "src/utils.ts"]);
+    // Merged acceptance_criteria: explicit + from structured criteria
+    expect(capturedInput!.acceptance_criteria).toContain("Manual review completed");
+    expect(capturedInput!.acceptance_criteria).toContain("Feature works end-to-end");
+    expect(capturedInput!.acceptance_criteria).toContain("All tests pass");
+    expect(capturedInput!.artifacts_produced).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+    expect(capturedInput!.tests_passed).toBe(true);
+    expect(capturedInput!.duration_seconds).toBe(120);
+
+    // Validate the captured input against EvaluatorInputSchema
+    const parsedInput = EvaluatorInputSchema.safeParse(capturedInput);
+    expect(parsedInput.success).toBe(true);
+
+    // Verify events were emitted correctly
+    const evalInvoked = events.find((e) => e.type === "evaluator:invoked");
+    expect(evalInvoked).toBeDefined();
+    expect((evalInvoked as any).workflowId).toBe("wf-integration-eval");
+    expect((evalInvoked as any).phaseIndex).toBe(1);
+
+    const evalCompleted = events.find((e) => e.type === "evaluator:completed");
+    expect(evalCompleted).toBeDefined();
+    const evalResult = (evalCompleted as any).result;
+    expect(evalResult.passed).toBe(true);
+    expect(evalResult.confidence).toBe(0.95);
+    expect(evalResult.feedback).toBe("Good work");
+    expect(evalResult.files_to_review).toEqual(["src/feature.ts"]);
+  });
+
+  // --- 8.1e: EvaluatorResult with new fields ---
+
+  it("parses EvaluatorResult with all new fields", () => {
+    const result = EvaluatorResultSchema.parse(fullEvaluatorResult);
+
+    expect(result.passed).toBe(true);
+    expect(result.reasoning).toBe("All acceptance criteria met. Tests pass, no lint warnings.");
+    expect(result.suggestions).toEqual(["Consider extracting utility functions to src/utils.ts"]);
+    expect(result.confidence).toBe(0.92);
+    expect(result.feedback).toBe("Solid implementation with good error handling coverage.");
+    expect(result.files_to_review).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+  });
+
+  // --- 8.1f: Session with budget fields round-trips through migration ---
+
+  it("Session with old budget fields round-trips through migration", () => {
+    const sessionWithBudget = {
+      planPath: "docs/plans/integration-plan.md",
+      statePath: "docs/plans/integration-plan.state.md",
+      contextPath: "docs/plans/integration-plan.context.md",
+      currentPhase: 1,
+      lastUpdated: "2026-03-20T10:00:00Z",
+      workflowId: "550e8400-e29b-41d4-a716-446655440000",
+      budgetConfig: {
+        total_invocations_limit: 100,
+        total_invocations_used: 0,
+        total_token_budget: 500000,
+        total_tokens_used: 0,
+        wall_clock_deadline: "2026-03-20T18:00:00Z",
+      },
+      budgetUsed: {
+        total_invocations_limit: 100,
+        total_invocations_used: 52,
+        total_token_budget: 500000,
+        total_tokens_used: 320000,
+        wall_clock_deadline: "2026-03-20T18:00:00Z",
+      },
+      workflowType: "work" as const,
+    };
+
+    // Migrate
+    const migrated = migrateSession(sessionWithBudget);
+    // Parse
+    const parsed = SessionSchema.safeParse(migrated);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.budgetLimits.max_invocations).toBe(100);
+      expect(parsed.data.budgetUsage.invocations_used).toBe(52);
+      expect(parsed.data.budgetUsage.tokens_used).toBe(320000);
+      expect(parsed.data.workflowType).toBe("work");
+    }
+  });
+
+  // --- 8.1g: Event payloads carry expanded types correctly ---
+
+  it("event payloads carry expanded types correctly", () => {
+    const bus = new EventBus();
+    const emitter = createFlywheelEmitter(bus);
+    const events: import("../src/events/types").FlywheelEvent[] = [];
+    bus.subscribe((e) => events.push(e));
+
+    // Emit dispatcher:completed with a decision containing new fields
+    const decision = DispatcherDecisionSchema.parse(fullDecision);
+    emitter.dispatcherCompleted("wf-event-test", decision);
+
+    // Emit evaluator:completed with a result containing new fields
+    const evalResult = EvaluatorResultSchema.parse(fullEvaluatorResult);
+    emitter.evaluatorCompleted("wf-event-test", evalResult);
+
+    // Verify dispatcher event payload
+    const dispEvent = events.find((e) => e.type === "dispatcher:completed") as
+      import("../src/events/types").DispatcherCompleted;
+    expect(dispEvent).toBeDefined();
+    expect(dispEvent.decision.schema_version).toBe(1);
+    expect(dispEvent.decision.reasoning).toBe("Phase 2 requires both implementation and test coverage.");
+    expect(dispEvent.decision.warnings).toEqual(["Large module — consider splitting if over 300 lines"]);
+    expect(dispEvent.decision.worker_config).toBeDefined();
+    expect(typeof dispEvent.decision.validation_criteria).toBe("object");
+
+    // Verify evaluator event payload
+    const evalEvent = events.find((e) => e.type === "evaluator:completed") as
+      import("../src/events/types").EvaluatorCompleted;
+    expect(evalEvent).toBeDefined();
+    expect(evalEvent.result.confidence).toBe(0.92);
+    expect(evalEvent.result.feedback).toBe("Solid implementation with good error handling coverage.");
+    expect(evalEvent.result.files_to_review).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+  });
+
+  // --- 8.1h: Full pipeline: assemble → dispatch parse → evaluate → result ---
+
+  it("full pipeline: assemble → dispatch → evaluate → result", async () => {
+    // Step 1: Assemble DispatcherInput
+    const { input } = assembleDispatcherInput(fullAssemblerInput);
+    const parsedInput = DispatcherInputSchema.parse(input);
+    expect(parsedInput.workflow_id).toBe("wf-integration-test");
+
+    // Step 2: Parse a mock DispatcherDecision (simulating LLM output)
+    const rawLlmDecision = {
+      schema_version: 1 as const,
+      phase_index: 1,
+      step_index: 0,
+      prompt: "Build feature X based on the plan.",
+      context_files: ["src/index.ts"],
+      validation_criteria: {
+        acceptance_criteria: ["Feature X works"],
+        required_tests: true,
+        custom_checks: [],
+        required_outputs: ["src/feature-x.ts"],
+      },
+      reasoning: "Straightforward implementation step",
+      warnings: [],
+      worker_config: {
+        model_override: null,
+        timeout_minutes: 10,
+        retry_on_failure: true,
+        max_retries: 2,
+        iteration_budget: 5,
+        tool_scoping: { read: true, bash: true, write: true, edit: true },
+        parallel: false,
+        parallel_variants: null,
+      },
+      // Extra LLM hallucinated field — should be stripped
+      thinking: "I need to carefully consider...",
+    };
+    const decision = DispatcherDecisionSchema.parse(rawLlmDecision);
+    expect(decision.schema_version).toBe(1);
+    expect((decision as any).thinking).toBeUndefined(); // stripped
+    expect(decision.reasoning).toBe("Straightforward implementation step");
+
+    // Step 3: Evaluate with mock transport
+    const bus = new EventBus();
+    const emitter = createFlywheelEmitter(bus);
+    let capturedEvalInput: import("../src/schemas/evaluator").EvaluatorInput | null = null;
+
+    const mockTransport: import("../src/evaluator/transport").EvaluatorTransport = {
+      async invoke(evalInput) {
+        capturedEvalInput = evalInput;
+        return {
+          passed: true,
+          reasoning: "Feature X implemented correctly",
+          suggestions: [],
+          confidence: 0.88,
+          feedback: "Clean implementation",
+          files_to_review: ["src/feature-x.ts"],
+        };
+      },
+    };
+
+    const evaluator = new Evaluator({
+      transport: mockTransport,
+      emitter,
+      workflowId: "wf-pipeline-test",
+      phaseIndex: decision.phase_index,
+      stepIndex: decision.step_index,
+    });
+
+    const evalResult = await evaluator.evaluate({
+      workerOutput: "Feature X implemented. Tests added and passing.",
+      validationCriteria: decision.validation_criteria,
+      contextFiles: decision.context_files,
+      artifactsProduced: ["src/feature-x.ts"],
+      testsPassed: true,
+      durationSeconds: 60,
+    });
+
+    // Step 4: Verify end-to-end result
+    expect(evalResult.passed).toBe(true);
+    expect(evalResult.cyclesUsed).toBe(1);
+
+    // Verify evaluator received properly assembled input
+    expect(capturedEvalInput).not.toBeNull();
+    const parsedEvalInput = EvaluatorInputSchema.parse(capturedEvalInput);
+    expect(parsedEvalInput.worker_output).toBe("Feature X implemented. Tests added and passing.");
+    expect(parsedEvalInput.validation_criteria).toContain("Feature X works");
+    expect(parsedEvalInput.artifacts_produced).toEqual(["src/feature-x.ts"]);
+    expect(parsedEvalInput.tests_passed).toBe(true);
+    expect(parsedEvalInput.duration_seconds).toBe(60);
+    // acceptance_criteria merged from structured ValidationCriteria
+    expect(parsedEvalInput.acceptance_criteria).toContain("Feature X works");
   });
 });

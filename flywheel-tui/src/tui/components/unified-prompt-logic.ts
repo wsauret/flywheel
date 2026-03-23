@@ -10,14 +10,18 @@ import type { AppState } from "./shell-modes"
 /**
  * Prompt modes:
  * - "command": slash commands + autocomplete (idle/completed)
- * - "active": approval-aware, user can type to steer (working + approval pending)
- * - "passive": read-only, phase is executing (working, no approval)
+ * - "active": user can type to steer/inject (working — both with and without approval)
+ * - "passive": reserved for future use (currently unused)
  * - "disabled": prompt not usable (importing)
  */
 export type PromptMode = "command" | "active" | "passive" | "disabled"
 
 /**
  * Resolve the prompt mode from app state and approval status.
+ *
+ * When working, the prompt is always "active" so the user can inject
+ * messages into the running worker (mid-execution steering). The
+ * approval state affects the placeholder text but not the mode.
  */
 export function resolvePromptMode(
   appState: AppState,
@@ -28,7 +32,7 @@ export function resolvePromptMode(
     case "completed":
       return "command"
     case "working":
-      return approvalPending ? "active" : "passive"
+      return "active"
     case "importing":
       return "disabled"
   }

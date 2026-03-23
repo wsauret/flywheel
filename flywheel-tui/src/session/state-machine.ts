@@ -1,7 +1,7 @@
 /**
  * Session Lifecycle State Machine
  *
- * Defines the 11 lifecycle states a session can be in and the valid
+ * Defines the 12 lifecycle states a session can be in and the valid
  * transitions between them. The state is persisted to disk, so the
  * schema uses `z.enum` (boundary type).
  *
@@ -22,6 +22,7 @@ export const SessionLifecycleStateSchema = z.enum([
   "work:active",
   "work:paused",
   "work:review",
+  "budget_exhausted",
   "completed",
   "archived",
   "trashed",
@@ -45,8 +46,9 @@ export const VALID_TRANSITIONS: Readonly<
   "plan:imported": ["plan:approved", "plan:needs-fix", "trashed"],
   "plan:approved": ["work:active", "trashed"],
   "plan:needs-fix": ["plan:imported", "plan:approved", "trashed"],
-  "work:active": ["work:paused", "work:review", "completed", "trashed"],
+  "work:active": ["work:paused", "work:review", "completed", "trashed", "budget_exhausted"],
   "work:paused": ["work:active", "trashed", "archived"],
+  "budget_exhausted": ["work:active", "trashed"],
   "work:review": ["work:active", "completed", "trashed"],
   completed: ["archived", "trashed", "work:active"],
   archived: [],
@@ -78,5 +80,5 @@ export function isValidTransition(
  * Currently only `work:paused` sessions are resumable.
  */
 export function isResumable(state: SessionLifecycleState): boolean {
-  return state === "work:paused";
+  return state === "work:paused" || state === "budget_exhausted";
 }

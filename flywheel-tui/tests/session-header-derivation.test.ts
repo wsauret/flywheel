@@ -66,9 +66,9 @@ describe("deriveHeaderInfo", () => {
   const baseSummary: SessionSummary = {
     id: "test-id",
     name: "Test Session",
+    label: "Test Session",
     planPath: "plans/feature.md",
     lifecycleState: "completed",
-    currentPhase: 3,
     totalCost: 0.42,
     lastUpdated: "2026-01-15T10:30:00.000Z",
   };
@@ -100,10 +100,10 @@ describe("deriveHeaderInfo", () => {
     expect(info.workflowStatus).toBe("idle");
   });
 
-  it("falls back to planPath when name is empty", () => {
+  it("falls back to label when name is empty", () => {
     const noName = { ...baseSummary, name: "" };
     const info = deriveHeaderInfo(noName);
-    expect(info.sessionName).toBe("plans/feature.md");
+    expect(info.sessionName).toBe("Test Session");
   });
 
   it("does NOT set startTime to Date.now() (must not call workflowStarted)", () => {

@@ -25,6 +25,7 @@ import {
   createWorkflowSession,
   destroyWorkflowSession,
 } from "./components/workflow-session"
+import { loadConfig } from "../config/loader"
 
 export interface TUIOptions {
   mode?: "dark" | "light"
@@ -44,11 +45,23 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     // Lazy import FlywheelShell to ensure OpenTUI preload has registered
     const { FlywheelShell } = await import("./components/flywheel-shell")
 
+    // Load config (best-effort: falls back to defaults on error)
+    let config: import("../config/loader").FlywheelConfig | undefined
+    try {
+      const configPath = ["flywheel.toml", ".flywheel.toml"].find(
+        (p) => require("node:fs").existsSync(p),
+      )
+      config = loadConfig(configPath).config
+    } catch {
+      // Config load failure is non-fatal — session manager will use CONFIG_DEFAULTS
+    }
+
     // Create session manager for the current working directory
     const sessionManager = createSessionManager({
       baseDir: process.cwd(),
       createWorkflowSessionFn: createWorkflowSession,
       destroyWorkflowSessionFn: destroyWorkflowSession,
+      config,
     })
 
     render(

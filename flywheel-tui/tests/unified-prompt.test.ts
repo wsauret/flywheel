@@ -30,9 +30,9 @@ describe("resolvePromptMode", () => {
     });
   });
 
-  describe("passive mode", () => {
-    it("working without approval → passive", () => {
-      expect(resolvePromptMode("working", false)).toBe("passive");
+  describe("active mode (injection)", () => {
+    it("working without approval → active (allows mid-execution injection)", () => {
+      expect(resolvePromptMode("working", false)).toBe("active");
     });
   });
 

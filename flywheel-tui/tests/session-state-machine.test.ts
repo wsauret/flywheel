@@ -19,13 +19,14 @@ describe("SessionLifecycleStateSchema", () => {
     "work:active",
     "work:paused",
     "work:review",
+    "budget_exhausted",
     "completed",
     "archived",
     "trashed",
   ];
 
-  it("defines exactly 11 states", () => {
-    expect(SessionLifecycleStateSchema.options).toHaveLength(11);
+  it("defines exactly 12 states", () => {
+    expect(SessionLifecycleStateSchema.options).toHaveLength(12);
   });
 
   for (const state of allStates) {
@@ -112,10 +113,14 @@ describe("isValidTransition — valid transitions", () => {
     ["work:active", "work:review"],
     ["work:active", "completed"],
     ["work:active", "trashed"],
+    ["work:active", "budget_exhausted"],
     // work:paused ->
     ["work:paused", "work:active"],
     ["work:paused", "trashed"],
     ["work:paused", "archived"],
+    // budget_exhausted ->
+    ["budget_exhausted", "work:active"],
+    ["budget_exhausted", "trashed"],
     // work:review ->
     ["work:review", "work:active"],
     ["work:review", "completed"],

@@ -14,6 +14,8 @@ import type { FlywheelConfig } from "../config/loader";
 import type { ProcessSpawner } from "../worker/spawner";
 import type { IWorkflowUI } from "../tui/adapters/types";
 import type { Engine } from "../engines/core/types";
+import type { BudgetTracker } from "../session/budget-tracker";
+import type { BudgetLimits } from "../schemas/shared";
 import { killAllActiveProcesses } from "../worker/process-lifecycle";
 import { PhaseExecutor } from "./phase-executor";
 import { ExecutionLoop, type ExecutionResult, type PromptBuilder } from "./execution-loop";
@@ -22,6 +24,7 @@ import { FileStatePersistence } from "./file-state-persistence";
 import { UIApprovalHandler } from "./ui-approval-handler";
 import { buildWorkPhasePrompt } from "../prompts/work/phase-prompt";
 import { readCachedFile, parseContextFile } from "./templates";
+import type { ContextIndexer } from "../memory/indexer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +41,12 @@ export interface WorkOptions {
    *  the controller uses it instead of creating its own, and skips
    *  reconnecting the UI adapter (caller already connected it). */
   eventBus?: EventBus;
+  /** Budget tracker for monitoring cost/invocation/token usage. */
+  budgetTracker?: BudgetTracker;
+  /** Budget limits to check against. Both tracker and limits must be provided together. */
+  budgetLimits?: BudgetLimits;
+  /** Context indexer for conventions/standards/learnings metadata. */
+  contextIndexer?: ContextIndexer;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,6 +60,9 @@ export class WorkController {
   private readonly ui: IWorkflowUI;
   private readonly baseDir: string;
   private readonly eventBus: EventBus;
+  private readonly budgetTracker?: BudgetTracker;
+  private readonly budgetLimits?: BudgetLimits;
+  private readonly contextIndexer?: ContextIndexer;
 
   private loop: ExecutionLoop | null = null;
 
@@ -60,6 +72,9 @@ export class WorkController {
     this.engine = options.engine;
     this.ui = options.ui;
     this.baseDir = options.baseDir ?? process.cwd();
+    this.budgetTracker = options.budgetTracker;
+    this.budgetLimits = options.budgetLimits;
+    this.contextIndexer = options.contextIndexer;
 
     if (options.eventBus) {
       // Pipeline mode: reuse the session's unified event bus
@@ -146,6 +161,9 @@ export class WorkController {
       planContent,
       statePath,
       contextPath,
+      budgetTracker: this.budgetTracker,
+      budgetLimits: this.budgetLimits,
+      contextIndexer: this.contextIndexer,
     });
     this.loop.setLoadedState(state);
 
