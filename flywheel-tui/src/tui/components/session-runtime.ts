@@ -11,7 +11,6 @@
 
 import { Log } from "../../utils/log"
 import type { WorkflowSession } from "./workflow-session"
-import type { WorkController } from "../../controller/work"
 import type { ExecutionLoop } from "../../controller/execution-loop"
 import type { WorkflowPipeline } from "../../controller/workflow-pipeline"
 import type { OutputFlusher } from "../../session/output-persistence"
@@ -36,7 +35,8 @@ export interface RunningRuntime {
   kind: "running"
   sessionId: string
   session: WorkflowSession
-  controller: WorkController
+  /** @deprecated — field retained for type compatibility; not actively used. */
+  controller: null
   loop: ExecutionLoop
   pipeline: WorkflowPipeline
   flusher: OutputFlusher
@@ -191,10 +191,6 @@ export function createSessionRuntimeManager(
 
       try { runtime.loop.requestShutdown() } catch (e) {
         log.warn("loop shutdown failed", { session: id, error: e instanceof Error ? e : String(e) })
-      }
-
-      try { runtime.controller.shutdown().catch(() => {}) } catch (e) {
-        log.warn("controller shutdown failed", { session: id, error: e instanceof Error ? e : String(e) })
       }
     }
 

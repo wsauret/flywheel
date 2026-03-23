@@ -1090,7 +1090,7 @@ describe("ExecutionLoop (unified)", () => {
             schema_version: 1,
             phase_index: 0,
             step_index: 0,
-            prompt: "dispatched prompt",
+            task_content: "dispatched prompt",
             context_files: [],
             validation_criteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
             reasoning: "",
@@ -1160,7 +1160,7 @@ describe("ExecutionLoop (unified)", () => {
             schema_version: 1,
             phase_index: 0,
             step_index: 0,
-            prompt: "dispatched prompt",
+            task_content: "dispatched prompt",
             context_files: [],
             validation_criteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
             reasoning: "",
@@ -1209,7 +1209,7 @@ describe("ExecutionLoop (unified)", () => {
         schema_version: 1,
         phase_index: 0,
         step_index: 0,
-        prompt: "Dispatcher-crafted prompt for the worker",
+        task_content: "Dispatcher-crafted prompt for the worker",
         context_files: ["src/index.ts"],
         validation_criteria: {
           acceptance_criteria: ["Tests pass"],
@@ -1661,13 +1661,10 @@ describe("ExecutionLoop (unified)", () => {
 
       await loop.run();
 
-      // Indexer is called twice per phase: once from the dispatcher path,
-      // and once from the non-dispatcher fallback (since dispatcher returns null)
-      expect(indexer.calls).toHaveLength(2);
+      // Context is cached once per phase (shared between dispatcher and template)
+      expect(indexer.calls).toHaveLength(1);
       expect(indexer.calls[0].workflowType).toBe("work");
       expect(indexer.calls[0].phaseDescription).toBe("Phase 1");
-      expect(indexer.calls[1].workflowType).toBe("work");
-      expect(indexer.calls[1].phaseDescription).toBe("Phase 1");
 
       // The dispatcher should have received populated availableContext
       expect(capturedAvailableContext).toBeDefined();
@@ -1770,15 +1767,11 @@ describe("ExecutionLoop (unified)", () => {
 
       await loop.run();
 
-      // Two calls per phase: once from dispatcher path, once from non-dispatcher fallback
-      expect(indexer.calls).toHaveLength(6);
-      // Dispatcher calls (indices 0, 2, 4) and fallback calls (indices 1, 3, 5)
+      // Context is cached once per phase (shared between dispatcher and template)
+      expect(indexer.calls).toHaveLength(3);
       expect(indexer.calls[0].phaseDescription).toBe("Phase 1");
-      expect(indexer.calls[1].phaseDescription).toBe("Phase 1");
-      expect(indexer.calls[2].phaseDescription).toBe("Phase 2");
-      expect(indexer.calls[3].phaseDescription).toBe("Phase 2");
-      expect(indexer.calls[4].phaseDescription).toBe("Phase 3");
-      expect(indexer.calls[5].phaseDescription).toBe("Phase 3");
+      expect(indexer.calls[1].phaseDescription).toBe("Phase 2");
+      expect(indexer.calls[2].phaseDescription).toBe("Phase 3");
     });
 
     it("calls indexer from non-dispatcher fallback path when no dispatcher is configured", async () => {
@@ -1818,6 +1811,309 @@ describe("ExecutionLoop (unified)", () => {
       expect(indexer.calls).toHaveLength(1);
       expect(indexer.calls[0].workflowType).toBe("test");
       expect(indexer.calls[0].phaseDescription).toBe("Phase 1");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Dispatcher-template composition (Phase 3 refactor)
+  // -------------------------------------------------------------------------
+
+  describe("dispatcher-template composition", () => {
+    /** Helper to build a valid DispatcherDecision for composition tests */
+    function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecision {
+      return {
+        schema_version: 1,
+        phase_index: 0,
+        step_index: 0,
+        task_content: "Dispatcher task instructions",
+        context_files: [],
+        validation_criteria: {
+          acceptance_criteria: [],
+          required_tests: false,
+          custom_checks: [],
+          required_outputs: [],
+        },
+        reasoning: "",
+        warnings: [],
+        worker_config: {
+          model_override: null,
+          timeout_minutes: 30,
+          retry_on_failure: true,
+          max_retries: 3,
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: false,
+          parallel_variants: null,
+        },
+        ...overrides,
+      };
+    }
+
+    /** Creates a mock DispatcherOrchestrator that returns a specific decision */
+    function mockDispatcherOrchestrator(decision: DispatcherDecision | null) {
+      return {
+        getPhaseDecision: async () => decision,
+      } as unknown as DispatcherOrchestrator;
+    }
+
+    /** Creates a loop with a dispatcher and a custom prompt builder */
+    function createCompositionLoop(opts: {
+      decision: DispatcherDecision | null;
+      promptBuilder?: PromptBuilder;
+      phases?: PhaseInfo[];
+      spawnerResults?: WorkerResult[];
+      onSessionName?: (name: string) => void;
+    }) {
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      if (opts.spawnerResults) spawner.results = opts.spawnerResults;
+      else spawner.results = [successResult()];
+
+      const config = defaultConfig();
+      const executor = new PhaseExecutor({
+        spawner,
+        emitter,
+        config,
+        engine: claudeEngine,
+        workflowId: "test-compose",
+      });
+
+      const phases = opts.phases ?? makePhases(1);
+      const provider = new SimplePhaseProvider(phases);
+
+      const loop = new ExecutionLoop({
+        phaseProvider: provider,
+        promptBuilder: opts.promptBuilder ?? testPromptBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-compose",
+        workflowLabel: "test-workflow",
+        dispatcherOrchestrator: mockDispatcherOrchestrator(opts.decision),
+        planContent: "# Test plan",
+        onSessionName: opts.onSessionName,
+      });
+
+      return { loop, bus, emitter, adapter, spawner, config };
+    }
+
+    it("when dispatcher returns task_content, prompt builder receives it as ctx.planContent", async () => {
+      let capturedPlanContent: string | undefined;
+
+      const customBuilder: PromptBuilder = (_phase, ctx) => {
+        capturedPlanContent = ctx.planContent;
+        return `built: ${ctx.planContent}`;
+      };
+
+      const decision = validDecision({
+        task_content: "Dispatcher task instructions",
+      });
+
+      const { loop } = createCompositionLoop({
+        decision,
+        promptBuilder: customBuilder,
+      });
+
+      await loop.run();
+
+      expect(capturedPlanContent).toBe("Dispatcher task instructions");
+    });
+
+    it("when dispatcher fails (returns null), ctx.planContent is phase.description", async () => {
+      let capturedPlanContent: string | undefined;
+
+      const customBuilder: PromptBuilder = (_phase, ctx) => {
+        capturedPlanContent = ctx.planContent;
+        return `built: ${ctx.planContent}`;
+      };
+
+      const { loop } = createCompositionLoop({
+        decision: null,
+        promptBuilder: customBuilder,
+      });
+
+      await loop.run();
+
+      // phase.description from makePhases(1) is "Description for phase 1"
+      expect(capturedPlanContent).toBe("Description for phase 1");
+    });
+
+    it("prompt builder is ALWAYS called, even when dispatcher succeeds", async () => {
+      let promptBuilderCalled = false;
+
+      const customBuilder: PromptBuilder = (_phase, _ctx) => {
+        promptBuilderCalled = true;
+        return "template output";
+      };
+
+      const decision = validDecision({
+        task_content: "Dispatcher crafted content",
+      });
+
+      const { loop } = createCompositionLoop({
+        decision,
+        promptBuilder: customBuilder,
+      });
+
+      await loop.run();
+
+      expect(promptBuilderCalled).toBe(true);
+    });
+
+    it("worker_config overrides still flow correctly from dispatcher decision", async () => {
+      const decision = validDecision({
+        task_content: "Dispatcher crafted content",
+        worker_config: {
+          model_override: "sonnet",
+          timeout_minutes: 10,
+          retry_on_failure: true,
+          max_retries: 3,
+          iteration_budget: 5,
+          tool_scoping: { read: true, bash: true, write: true, edit: true },
+          parallel: false,
+          parallel_variants: null,
+        },
+      });
+
+      const { loop, spawner } = createCompositionLoop({
+        decision,
+      });
+
+      await loop.run();
+
+      expect(spawner.calls).toHaveLength(1);
+      // Model override: claude engine passes via --model flag
+      const args = spawner.calls[0].args;
+      expect(args).toContain("sonnet");
+      // Timeout override: 10 * 60000 = 600000
+      expect(spawner.calls[0].options?.timeoutMs).toBe(10 * 60_000);
+    });
+
+    it("enrichPromptWithContext is applied to the template output when context_to_inline is present", async () => {
+      const dir = ensureTmpDir();
+      const filePath = path.join(dir, "standard.md");
+      fs.writeFileSync(filePath, "# Coding Standard\nUse TypeScript strict mode.");
+
+      const customBuilder: PromptBuilder = (_phase, _ctx) => {
+        return "template output for worker";
+      };
+
+      const decision = validDecision({
+        task_content: "Dispatcher crafted content",
+        context_to_inline: [filePath],
+      });
+
+      // Need a custom loop with project_cwd set to the temp dir so the file passes path security
+      const bus = new EventBus();
+      const emitter = createFlywheelEmitter(bus);
+      const adapter = new MockAdapter();
+      adapter.connect(bus);
+      adapter.start();
+
+      const spawner = new MockSpawner();
+      spawner.results = [successResult()];
+
+      const config = defaultConfig({ project_cwd: dir });
+      const executor = new PhaseExecutor({
+        spawner,
+        emitter,
+        config,
+        engine: claudeEngine,
+        workflowId: "test-enrich",
+      });
+
+      const loop = new ExecutionLoop({
+        phaseProvider: new SimplePhaseProvider(makePhases(1)),
+        promptBuilder: customBuilder,
+        executor,
+        emitter,
+        config,
+        ui: adapter,
+        workflowId: "test-enrich",
+        workflowLabel: "test-workflow",
+        dispatcherOrchestrator: mockDispatcherOrchestrator(decision),
+        planContent: "# Test plan",
+      });
+
+      await loop.run();
+
+      expect(spawner.calls).toHaveLength(1);
+      const stdinPrompt = spawner.calls[0].options?.stdin ?? "";
+      // The enriched prompt should contain the context header
+      expect(stdinPrompt).toContain("Relevant Context");
+      expect(stdinPrompt).toContain("Coding Standard");
+      // The template output should also be in the prompt
+      expect(stdinPrompt).toContain("template output for worker");
+    });
+
+    it("when dispatcher returns empty string task_content, ctx.planContent falls back to phase.description", async () => {
+      let capturedPlanContent: string | undefined;
+
+      const customBuilder: PromptBuilder = (_phase, ctx) => {
+        capturedPlanContent = ctx.planContent;
+        return `built: ${ctx.planContent}`;
+      };
+
+      const decision = validDecision({
+        task_content: "   ", // whitespace-only treated as empty
+      });
+
+      const { loop } = createCompositionLoop({
+        decision,
+        promptBuilder: customBuilder,
+      });
+
+      await loop.run();
+
+      expect(capturedPlanContent).toBe("Description for phase 1");
+    });
+
+    it("session_name extraction still works from dispatcher decision", async () => {
+      let capturedSessionName: string | undefined;
+
+      const decision = validDecision({
+        session_name: "Test Session Name",
+      });
+
+      const { loop } = createCompositionLoop({
+        decision,
+        onSessionName: (name) => {
+          capturedSessionName = name;
+        },
+      });
+
+      await loop.run();
+
+      expect(capturedSessionName).toBe("Test Session Name");
+    });
+
+    it("session_name is only emitted once across multiple phases", async () => {
+      const sessionNames: string[] = [];
+
+      const decision = validDecision({
+        session_name: "Multi Phase Session",
+      });
+
+      const { loop } = createCompositionLoop({
+        decision,
+        phases: makePhases(3),
+        spawnerResults: [successResult(), successResult(), successResult()],
+        onSessionName: (name) => {
+          sessionNames.push(name);
+        },
+      });
+
+      await loop.run();
+
+      // Fire-once: should only be called once despite 3 phases
+      expect(sessionNames).toHaveLength(1);
+      expect(sessionNames[0]).toBe("Multi Phase Session");
     });
   });
 });

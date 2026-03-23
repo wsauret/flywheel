@@ -41,7 +41,7 @@ describe("DispatcherDecisionSchema", () => {
     schema_version: 1 as const,
     phase_index: 0,
     step_index: 0,
-    prompt: "Implement feature X",
+    task_content: "Implement feature X",
     context_files: ["src/foo.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -122,10 +122,10 @@ describe("DispatcherDecisionSchema", () => {
     expect(result.reasoning).toBe("Phase is straightforward setup");
   });
 
-  it("rejects missing reasoning", () => {
+  it("accepts missing reasoning (optional)", () => {
     const { reasoning, ...noReasoning } = validDecision;
     const result = DispatcherDecisionSchema.safeParse(noReasoning);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("requires warnings array", () => {
@@ -136,10 +136,10 @@ describe("DispatcherDecisionSchema", () => {
     expect(result.warnings).toEqual(["Large file detected", "Possible circular dependency"]);
   });
 
-  it("rejects missing warnings", () => {
+  it("accepts missing warnings (optional)", () => {
     const { warnings, ...noWarnings } = validDecision;
     const result = DispatcherDecisionSchema.safeParse(noWarnings);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("requires worker_config", () => {
@@ -160,10 +160,10 @@ describe("DispatcherDecisionSchema", () => {
     expect(result.worker_config).toEqual(workerConfig);
   });
 
-  it("rejects missing worker_config", () => {
+  it("accepts missing worker_config (optional)", () => {
     const { worker_config, ...noWorkerConfig } = validDecision;
     const result = DispatcherDecisionSchema.safeParse(noWorkerConfig);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("requires validation_criteria as ValidationCriteria object", () => {
@@ -1144,9 +1144,9 @@ describe("WorkerConfigSchema", () => {
     expect((result as any).hallucinated).toBeUndefined();
   });
 
-  it("rejects missing required fields", () => {
+  it("accepts empty object (all fields optional)", () => {
     const result = WorkerConfigSchema.safeParse({});
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });
 
@@ -1706,7 +1706,7 @@ status: in_progress
     schema_version: 1 as const,
     phase_index: 1,
     step_index: 0,
-    prompt: "Implement the core feature with proper error handling and tests.",
+    task_content: "Implement the core feature with proper error handling and tests.",
     context_files: ["src/index.ts", "src/utils.ts"],
     validation_criteria: {
       acceptance_criteria: ["Feature works end-to-end", "All tests pass"],
@@ -1990,7 +1990,7 @@ status: in_progress
       schema_version: 1 as const,
       phase_index: 1,
       step_index: 0,
-      prompt: "Build feature X based on the plan.",
+      task_content: "Build feature X based on the plan.",
       context_files: ["src/index.ts"],
       validation_criteria: {
         acceptance_criteria: ["Feature X works"],

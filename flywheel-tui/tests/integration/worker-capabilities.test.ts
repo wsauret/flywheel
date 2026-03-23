@@ -130,7 +130,7 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
     schema_version: 1,
     phase_index: 0,
     step_index: 0,
-    prompt: "Dispatcher-crafted prompt for the worker",
+    task_content: "Dispatcher-crafted prompt for the worker",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -217,7 +217,7 @@ describe("Worker capabilities — full decision flow integration", () => {
 
   it("dispatcher decision flows through: tool scoping + model override + timeout override reach the spawner", async () => {
     const decision = validDecision({
-      prompt: "Execute with custom overrides",
+      task_content: "Execute with custom overrides",
       worker_config: {
         model_override: "sonnet",
         timeout_minutes: 15,
@@ -265,7 +265,7 @@ describe("Worker capabilities — full decision flow integration", () => {
 
   it("iteration budget from worker_config is passed through to executor options", async () => {
     const decision = validDecision({
-      prompt: "Execute with iteration budget of 12",
+      task_content: "Execute with iteration budget of 12",
       worker_config: {
         model_override: null,
         timeout_minutes: 30,
@@ -344,7 +344,7 @@ describe("Worker capabilities — full decision flow integration", () => {
 
   it("multi-phase execution applies dispatcher overrides to each phase independently", async () => {
     const decision = validDecision({
-      prompt: "Phase with overrides",
+      task_content: "Phase with overrides",
       worker_config: {
         model_override: "haiku",
         timeout_minutes: 5,

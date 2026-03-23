@@ -72,6 +72,49 @@ Never claim without evidence. The following phrases are BANNED unless accompanie
 
 "Done", "Fixed", "Complete", "Passing", "Working", "Should work", "Probably", "Seems to", "Great!", "Perfect!", "Looks good!"`;
 
+// ---------------------------------------------------------------------------
+// Project Context section builder
+// ---------------------------------------------------------------------------
+
+import type { ContextEntry } from "../schemas/shared.js";
+
+/**
+ * Build a "Project Context" section from context entries in ctx.extra.
+ * Returns an empty string if no entries are present.
+ */
+export function buildProjectContextSection(extra?: Record<string, unknown>): string {
+  if (!extra) return "";
+
+  const conventions = (extra.conventions ?? []) as ContextEntry[];
+  const standards = (extra.standards ?? []) as ContextEntry[];
+  const learnings = (extra.learnings ?? []) as ContextEntry[];
+
+  const hasAny = conventions.length > 0 || standards.length > 0 || learnings.length > 0;
+  if (!hasAny) return "";
+
+  const formatEntries = (entries: ContextEntry[]): string =>
+    entries.map((e) => `- \`${e.path}\` — ${e.summary}`).join("\n");
+
+  const sections: string[] = [];
+
+  if (conventions.length > 0) {
+    sections.push(`### Conventions\n${formatEntries(conventions)}`);
+  }
+  if (standards.length > 0) {
+    sections.push(`### Standards\n${formatEntries(standards)}`);
+  }
+  if (learnings.length > 0) {
+    sections.push(`### Learnings\n${formatEntries(learnings)}`);
+  }
+
+  return `## Project Context
+
+The following project files contain conventions and standards relevant to this phase.
+Read them before starting implementation.
+
+${sections.join("\n\n")}`;
+}
+
 /**
  * Builds an iteration budget instruction for a worker prompt.
  * @param budget - Number of internal iteration cycles allowed (must be >= 1, finite)

@@ -30,6 +30,12 @@ import { extractTextFromOutput } from "./output-text-extractor";
 /** The multi-agent review step index in the review workflow (0-based). */
 export const REVIEW_MULTI_AGENT_STEP_INDEX = 1;
 
+/** The consolidation step index in the review workflow (0-based). */
+export const REVIEW_CONSOLIDATION_STEP_INDEX = 2;
+
+/** The fix/implementation step index in the review workflow (0-based). */
+export const REVIEW_FIX_STEP_INDEX = 3;
+
 /** Directive sent when P3 findings are auto-included (non-interactive or dismissed). */
 export const REVIEW_P3_DIRECTIVE = "include-non-cosmetic" as const;
 
@@ -262,6 +268,54 @@ function deduplicateFindings(findings: P3Finding[]): P3Finding[] {
 }
 
 // ---------------------------------------------------------------------------
+// Review file path parser
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the review file path (docs/reviews/*.md) from consolidation output.
+ * Looks for a backtick-wrapped path matching `docs/reviews/...md`.
+ */
+export function parseReviewFilePath(output: string): string | undefined {
+  const match = output.match(/`(docs\/reviews\/[^`]+\.md)`/);
+  return match ? match[1] : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Finding counts parser
+// ---------------------------------------------------------------------------
+
+export interface FindingCounts {
+  p1: number;
+  p2: number;
+  p3: number;
+}
+
+/**
+ * Extract finding counts from YAML frontmatter `findings: { p1: N, p2: N, p3: N }`.
+ * Tolerates spacing variations. Returns zeros when not found or malformed.
+ */
+export function parseFindingCounts(output: string): FindingCounts {
+  const zero: FindingCounts = { p1: 0, p2: 0, p3: 0 };
+
+  // Match the findings line in YAML frontmatter
+  const findingsMatch = output.match(
+    /^findings:\s*\{([^}]*)\}/m,
+  );
+  if (!findingsMatch) return zero;
+
+  const inner = findingsMatch[1];
+  const p1 = inner.match(/p1:\s*(\d+)/);
+  const p2 = inner.match(/p2:\s*(\d+)/);
+  const p3 = inner.match(/p3:\s*(\d+)/);
+
+  return {
+    p1: p1 ? parseInt(p1[1], 10) : 0,
+    p2: p2 ? parseInt(p2[1], 10) : 0,
+    p3: p3 ? parseInt(p3[1], 10) : 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Hook factory
 // ---------------------------------------------------------------------------
 
@@ -360,17 +414,32 @@ export function createReviewOnStepComplete(
     result: WorkerResult,
     _accumulatedExtra: Record<string, unknown>,
   ): Promise<Record<string, unknown>> => {
-    // Only process after the multi-agent review step
-    if (stepIndex !== REVIEW_MULTI_AGENT_STEP_INDEX) {
-      return {};
+    // Multi-agent review step: P3 triage
+    if (stepIndex === REVIEW_MULTI_AGENT_STEP_INDEX) {
+      try {
+        return await handleP3Triage(result.output, hookOptions);
+      } catch (err) {
+        log.error("unexpected error handling P3 triage", { error: err instanceof Error ? err : String(err) });
+        return {};
+      }
     }
 
-    try {
-      return await handleP3Triage(result.output, hookOptions);
-    } catch (err) {
-      // Outer catch: unexpected errors don't abort the pipeline
-      log.error("unexpected error handling P3 triage", { error: err instanceof Error ? err : String(err) });
-      return {};
+    // Consolidation step: extract file path and finding counts
+    if (stepIndex === REVIEW_CONSOLIDATION_STEP_INDEX) {
+      try {
+        const cleanText = extractTextFromOutput(result.output);
+        const reviewFilePath = parseReviewFilePath(cleanText);
+        const findingCounts = parseFindingCounts(cleanText);
+        const hasActionableFindings =
+          findingCounts.p1 + findingCounts.p2 > 0;
+
+        return { reviewFilePath, findingCounts, hasActionableFindings };
+      } catch (err) {
+        log.error("unexpected error handling consolidation", { error: err instanceof Error ? err : String(err) });
+        return {};
+      }
     }
+
+    return {};
   };
 }

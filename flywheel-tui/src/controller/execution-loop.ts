@@ -22,6 +22,7 @@ import type { ContextIndexer, ContextQuery } from "../memory/indexer";
 import type { WorkflowType } from "./workflow-pipeline";
 import { readCachedFile } from "./templates";
 import { wrapCompletionInstruction } from "../worker/completion";
+import { enrichPromptWithContext } from "./context-enrichment";
 import type { WorkerResult } from "../schemas/worker";
 import { PhaseExecutor, WorkerError } from "./phase-executor";
 import { Log } from "../utils/log";
@@ -66,6 +67,18 @@ export type OnStepCompleteHook = (
   accumulatedExtra: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
 
+/**
+ * Callback invoked before executing a phase to decide whether to skip it.
+ *
+ * Receives the phase info and the current accumulated extra data from
+ * previous steps. Returns `true` to skip the phase entirely (the phase
+ * is marked completed and execution continues to the next phase).
+ */
+export type ShouldSkipPhaseHook = (
+  phase: PhaseInfo,
+  accumulatedExtra: Readonly<Record<string, unknown>>,
+) => boolean;
+
 export interface UnifiedExecutionLoopOptions {
   phaseProvider: PhaseProvider;
   promptBuilder: PromptBuilder;
@@ -97,6 +110,13 @@ export interface UnifiedExecutionLoopOptions {
    */
   onStepComplete?: OnStepCompleteHook;
   /**
+   * Hook called before executing a phase. If it returns `true`, the phase
+   * is skipped (marked completed, events emitted, execution continues).
+   * Useful for conditionally skipping steps based on accumulated data
+   * from previous steps (e.g. skip review fix when no actionable findings).
+   */
+  shouldSkipPhase?: ShouldSkipPhaseHook;
+  /**
    * When true, previousResult is NOT truncated between phases.
    * Useful for plan workflows where the full output is needed.
    */
@@ -107,6 +127,8 @@ export interface UnifiedExecutionLoopOptions {
   budgetLimits?: BudgetLimits;
   /** Context indexer for providing conventions/standards/learnings to the dispatcher. */
   contextIndexer?: ContextIndexer;
+  /** Callback invoked when the dispatcher generates a session name (first phase only). */
+  onSessionName?: (name: string) => void;
 }
 
 export interface ExecutionResult {
@@ -140,10 +162,13 @@ export class ExecutionLoop {
   private readonly statePath?: string;
   private readonly contextPath?: string;
   private readonly onStepComplete?: OnStepCompleteHook;
+  private readonly shouldSkipPhase?: ShouldSkipPhaseHook;
   private readonly skipTruncation: boolean;
   private readonly budgetTracker?: BudgetTracker;
   private readonly budgetLimits?: BudgetLimits;
   private readonly contextIndexer?: ContextIndexer;
+  private readonly onSessionName?: (name: string) => void;
+  private _sessionNameEmitted = false;
 
   private _shutdownRequested = false;
   private readonly _shutdownController = new AbortController();
@@ -171,10 +196,12 @@ export class ExecutionLoop {
     this.statePath = options.statePath;
     this.contextPath = options.contextPath;
     this.onStepComplete = options.onStepComplete;
+    this.shouldSkipPhase = options.shouldSkipPhase;
     this.skipTruncation = options.skipTruncation ?? false;
     this.budgetTracker = options.budgetTracker;
     this.budgetLimits = options.budgetLimits;
     this.contextIndexer = options.contextIndexer;
+    this.onSessionName = options.onSessionName;
   }
 
   /**
@@ -310,6 +337,19 @@ export class ExecutionLoop {
         continue;
       }
 
+      // Conditional skip — e.g. review fix step when no actionable findings
+      if (this.shouldSkipPhase?.(phase, this._extraAccumulator)) {
+        log.info("phase skipped by shouldSkipPhase hook", {
+          phaseIndex: phase.index,
+          title: phase.title,
+        });
+        this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
+        this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
+        phasesCompleted++;
+        this.emitter.phaseCompleted(this.workflowId, phase.index);
+        continue;
+      }
+
       // Execute the phase
       this.emitter.phaseStarted(
         this.workflowId,
@@ -317,41 +357,65 @@ export class ExecutionLoop {
         phase.title,
       );
 
-      // Build prompt — try dispatcher first, fall through to prompt builder
-      const decision = await this.getDispatcherDecision(phase, phasesTotal, previousResult);
-      let prompt: string | null = decision?.prompt ?? null;
+      // 1. Cache context once per phase (reuse for both dispatcher and template)
+      const relevantContext = this.contextIndexer?.getRelevantContext({
+        workflowType: this.workflowLabel as WorkflowType,
+        phaseDescription: phase.title,
+      });
 
-      if (prompt === null) {
-        // Retrieve relevant context (conventions, standards, learnings) for this phase
-        const relevantContext = this.contextIndexer?.getRelevantContext({
-          workflowType: this.workflowLabel as WorkflowType,
-          phaseDescription: phase.title,
-        });
+      log.info("phase_context resolved", {
+        phaseIndex: phase.index,
+        conventions: relevantContext?.conventions.length ?? 0,
+        standards: relevantContext?.standards.length ?? 0,
+        learnings: relevantContext?.learnings.length ?? 0,
+      });
 
-        log.info("available_context populated for prompt builder", {
-          phaseIndex: phase.index,
-          conventions: relevantContext?.conventions.length ?? 0,
-          standards: relevantContext?.standards.length ?? 0,
-          learnings: relevantContext?.learnings.length ?? 0,
-        });
+      // 2. Get dispatcher decision (may return null)
+      const decision = await this.getDispatcherDecision(phase, phasesTotal, previousResult, relevantContext);
 
-        const ctx: WorkflowStepContext = {
-          planContent: phase.description,
-          keyDecisions: this.keyDecisions,
-          fileReferences: this.fileReferences,
-          previousResult,
-          projectCwd: this.config.project_cwd,
-          extra: {
-            ...this._extraAccumulator,
-            conventions: relevantContext?.conventions ?? [],
-            standards: relevantContext?.standards ?? [],
-            learnings: relevantContext?.learnings ?? [],
-          },
-        };
-        prompt = this.promptBuilder(phase, ctx);
+      // 3. Emit session name from first dispatcher response (fire-once)
+      if (decision?.session_name && !this._sessionNameEmitted && this.onSessionName) {
+        this._sessionNameEmitted = true;
+        log.info("dispatcher returned session_name", { sessionName: decision.session_name });
+        try { this.onSessionName(decision.session_name); } catch { /* best-effort */ }
+      }
+      if (decision && !decision.session_name && !this._sessionNameEmitted) {
+        log.debug("dispatcher decision had no session_name", { phaseIndex: phase.index });
       }
 
-      // Apply completion instruction in the loop (not in individual builders)
+      // 4. Resolve task content — dispatcher wins if non-empty, otherwise phase.description
+      const resolvedPlanContent = (decision?.task_content && decision.task_content.trim())
+        ? decision.task_content
+        : phase.description;
+
+      // 5. Build context — template sees resolved planContent + accumulated extra + context entries
+      const ctx: WorkflowStepContext = {
+        planContent: resolvedPlanContent,
+        keyDecisions: this.keyDecisions,
+        fileReferences: this.fileReferences,
+        previousResult,
+        projectCwd: this.config.project_cwd,
+        extra: {
+          ...this._extraAccumulator,
+          conventions: relevantContext?.conventions ?? [],
+          standards: relevantContext?.standards ?? [],
+          learnings: relevantContext?.learnings ?? [],
+        },
+      };
+
+      // 6. Template ALWAYS runs
+      let prompt = this.promptBuilder(phase, ctx);
+
+      // 7. Level 2 context inlining (from dispatcher decision, applied to composed prompt)
+      if (decision?.context_to_inline && decision.context_to_inline.length > 0) {
+        prompt = await enrichPromptWithContext(
+          prompt,
+          decision.context_to_inline,
+          this.config.project_cwd ?? process.cwd(),
+        );
+      }
+
+      // 8. Completion marker
       prompt = wrapCompletionInstruction(prompt);
 
       // Extract worker_config overrides from dispatcher decision
@@ -445,10 +509,21 @@ export class ExecutionLoop {
     phase: PhaseInfo,
     phasesTotal: number,
     previousResult: string | undefined,
+    relevantContext?: { conventions: any[]; standards: any[]; learnings: any[] },
   ): Promise<DispatcherDecision | null> {
     if (!this.dispatcherOrchestrator || !this.planContent) {
       return null;
     }
+
+    const availableContext = relevantContext ?? { conventions: [], standards: [], learnings: [] };
+
+    log.info("available_context populated for dispatcher", {
+      phaseIndex: phase.index,
+      conventions: availableContext.conventions.length,
+      standards: availableContext.standards.length,
+      learnings: availableContext.learnings.length,
+      hasIndexer: !!this.contextIndexer,
+    });
 
     return this.dispatcherOrchestrator.getPhaseDecision(
       phase,
@@ -474,22 +549,7 @@ export class ExecutionLoop {
           dispatcherModel: this.config.dispatcher?.model ?? this.config.model ?? this.config.engine,
         },
         sessionBudget: this.getSessionBudget(),
-        availableContext: (() => {
-          const ctx = this.contextIndexer
-            ? this.contextIndexer.getRelevantContext({
-                workflowType: this.workflowLabel as WorkflowType,
-                phaseDescription: phase.title,
-              })
-            : { conventions: [], standards: [], learnings: [] };
-          log.info("available_context populated for dispatcher", {
-            phaseIndex: phase.index,
-            conventions: ctx.conventions.length,
-            standards: ctx.standards.length,
-            learnings: ctx.learnings.length,
-            hasIndexer: !!this.contextIndexer,
-          });
-          return ctx;
-        })(),
+        availableContext,
       },
     );
   }

@@ -181,45 +181,5 @@ function byteLength(str: string): number {
   return Buffer.byteLength(str, "utf8");
 }
 
-/**
- * Truncate plan phases to fit within a byte budget.
- * Keeps as many complete phases as possible, truncating step descriptions.
- */
-function truncatePlanPhases(
-  phases: Array<{ name: string; steps: Array<{ description: string }> }>,
-  budget: number,
-): Array<{ name: string; steps: Array<{ description: string }> }> {
-  const result: Array<{ name: string; steps: Array<{ description: string }> }> = [];
 
-  for (const phase of phases) {
-    const truncatedPhase = {
-      name: phase.name,
-      steps: phase.steps.map((s) => ({
-        description: s.description.length > 100
-          ? s.description.slice(0, 100) + "..."
-          : s.description,
-      })),
-    };
-
-    result.push(truncatedPhase);
-
-    if (byteLength(JSON.stringify(result)) > budget) {
-      // Remove the last phase if it pushed over budget
-      result.pop();
-      break;
-    }
-  }
-
-  // If even a single phase is too large, return it truncated
-  if (result.length === 0 && phases.length > 0) {
-    result.push({
-      name: phases[0].name,
-      steps: phases[0].steps.slice(0, 3).map((s) => ({
-        description: s.description.slice(0, 50) + "...",
-      })),
-    });
-  }
-
-  return result;
-}
 

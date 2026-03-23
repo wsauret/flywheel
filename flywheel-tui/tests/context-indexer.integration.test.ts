@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ContextIndexer } from "../src/memory/indexer";
 import { AvailableContextSchema } from "../src/schemas/shared";
-import { enrichPromptWithContext } from "../src/controller/dispatcher-orchestrator";
+import { enrichPromptWithContext } from "../src/controller/context-enrichment";
 
 // ---------------------------------------------------------------------------
 // Helpers

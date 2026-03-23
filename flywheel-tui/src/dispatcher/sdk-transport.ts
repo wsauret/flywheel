@@ -22,19 +22,24 @@ import { Log } from "../utils/log";
 // ---------------------------------------------------------------------------
 
 let _sdkAvailable = false;
-let _createOpencodeClient: (() => unknown) | null = null;
+let _createOpencodeClient: ((config?: { baseUrl?: string }) => unknown) | null = null;
+let _createOpencodeServer: ((opts?: Record<string, unknown>) => Promise<{ url: string; close(): void }>) | null = null;
 
 try {
   const sdk = await import("@opencode-ai/sdk");
   if (sdk.createOpencodeClient) {
-    _createOpencodeClient = sdk.createOpencodeClient as () => unknown;
+    _createOpencodeClient = sdk.createOpencodeClient as (config?: { baseUrl?: string }) => unknown;
     _sdkAvailable = true;
+  }
+  if (sdk.createOpencodeServer) {
+    _createOpencodeServer = sdk.createOpencodeServer as (opts?: Record<string, unknown>) => Promise<{ url: string; close(): void }>;
   }
 } catch {
   // SDK not available — that's fine
 }
 
 export const SDK_AVAILABLE: boolean = _sdkAvailable;
+export { _createOpencodeServer };
 
 // ---------------------------------------------------------------------------
 // Testing seam — allows tests to inject a mock client factory.
@@ -50,7 +55,7 @@ export function _setClientFactoryForTesting(factory: (() => unknown) | null): vo
 // Timeout constant
 // ---------------------------------------------------------------------------
 
-const SDK_TIMEOUT_MS = 30_000;
+const SDK_TIMEOUT_MS = 120_000;
 
 const log = Log.create({ service: "sdk-transport" });
 
@@ -78,12 +83,18 @@ export interface SdkClient {
 // ---------------------------------------------------------------------------
 
 export class SdkTransport implements DispatcherTransport {
+  private readonly baseUrl: string;
+
+  constructor(options?: { baseUrl?: string }) {
+    this.baseUrl = options?.baseUrl ?? "";
+  }
+
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
     if (!SDK_AVAILABLE || !_createOpencodeClient) {
       throw new Error("@opencode-ai/sdk is not available");
     }
 
-    const client = _createOpencodeClient() as SdkClient;
+    const client = _createOpencodeClient({ baseUrl: this.baseUrl }) as SdkClient;
 
     const systemPrompt = buildDispatcherSystemPrompt();
     const truncationNotes = buildTruncationNotes(input);
@@ -127,6 +138,11 @@ export class SdkTransport implements DispatcherTransport {
     const responseData = (result as { data?: unknown }).data;
     const responseText = extractTextFromResponse(responseData);
 
+    log.debug("dispatcher raw response", {
+      responseTextLength: responseText.length,
+      responseSnippet: responseText.slice(0, 200),
+    });
+
     return parseDecision(responseText);
   }
 }
@@ -138,12 +154,23 @@ export class SdkTransport implements DispatcherTransport {
 function extractTextFromResponse(data: unknown): string {
   if (typeof data === "string") return data;
   if (data && typeof data === "object") {
-    // Try common response shapes
     const obj = data as Record<string, unknown>;
+
+    // OpenCode SDK response shape: { info: {...}, parts: [{ type: "text", text: "..." }] }
+    if (Array.isArray(obj.parts)) {
+      const textParts = (obj.parts as Array<{ type?: string; text?: string }>)
+        .filter(p => p.type === "text" && typeof p.text === "string")
+        .map(p => p.text!);
+      if (textParts.length > 0) {
+        return textParts.join("");
+      }
+    }
+
+    // Fallback: try common response shapes
     if (typeof obj.text === "string") return obj.text;
     if (typeof obj.content === "string") return obj.content;
     if (typeof obj.output === "string") return obj.output;
-    // Try stringifying the whole thing
+    // Last resort: stringify
     return JSON.stringify(data);
   }
   return String(data);
@@ -165,7 +192,13 @@ function parseDecision(text: string): DispatcherDecision {
 
   const result = DispatcherDecisionSchema.safeParse(parsed);
   if (!result.success) {
-    throw new Error(`Invalid dispatcher decision: ${result.error.message}`);
+    const issues = result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ");
+    log.warn("dispatcher decision validation failed", {
+      issues,
+      keys: Object.keys(parsed as Record<string, unknown>),
+      rawSnippet: JSON.stringify(parsed).slice(0, 300),
+    });
+    throw new Error(`Invalid dispatcher decision: ${issues}`);
   }
 
   return result.data;

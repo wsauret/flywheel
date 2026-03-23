@@ -60,7 +60,7 @@ export function AgentBlock(props: AgentBlockProps) {
       </Show>
 
       <Show when={props.block.status === "completed"}>
-        <text fg={themeCtx.theme.text}>{`✓ ${label()}`}</text>
+        <text fg={themeCtx.theme.secondary}>{`✓ ${label()}`}</text>
       </Show>
 
       <Show when={props.block.status === "paused"}>

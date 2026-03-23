@@ -164,15 +164,11 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Completion not detected (exit 0 but no marker)
-  if (!completionDetected) {
-    return {
-      kind: "completion_not_detected",
-      message: "Process completed but completion marker was not detected",
-    };
-  }
-
-  // Success — no failure
+  // Clean exit (code 0) is treated as successful completion.
+  // The <promise>COMPLETE</promise> marker and NDJSON result events are
+  // belt-and-suspenders signals; a clean exit is the authoritative indicator.
+  // Previously, missing the completion marker would cause non-retryable failure,
+  // silently halting the workflow even though the worker exited successfully.
   return undefined;
 }
 

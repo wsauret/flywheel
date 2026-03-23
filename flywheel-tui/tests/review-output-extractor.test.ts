@@ -1,8 +1,11 @@
 import { describe, it, expect } from "bun:test";
 import {
   REVIEW_MULTI_AGENT_STEP_INDEX,
+  REVIEW_CONSOLIDATION_STEP_INDEX,
   REVIEW_P3_DIRECTIVE,
   parseP3Findings,
+  parseReviewFilePath,
+  parseFindingCounts,
   createReviewOnStepComplete,
   type P3Finding,
 } from "../src/workflows/review-output-extractor";
@@ -421,8 +424,207 @@ describe("createReviewOnStepComplete — P3 triage", () => {
     const result = await hook(0, workerResult("Some output"), {});
     expect(result).toEqual({});
 
-    // Step 2 should return {}
-    const result2 = await hook(2, workerResult("Some output"), {});
-    expect(result2).toEqual({});
+    // Step 0 should return {}
+    const result3 = await hook(0, workerResult("Some output"), {});
+    expect(result3).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseReviewFilePath
+// ---------------------------------------------------------------------------
+
+describe("parseReviewFilePath", () => {
+  it("extracts backtick-wrapped docs/reviews/*.md path from output", () => {
+    const output = `Review saved to \`docs/reviews/2026-03-23-auth-refactor.md\`
+
+Done.`;
+    expect(parseReviewFilePath(output)).toBe(
+      "docs/reviews/2026-03-23-auth-refactor.md",
+    );
+  });
+
+  it("returns undefined when no docs/reviews path present", () => {
+    const output = `Review complete. No file was written.`;
+    expect(parseReviewFilePath(output)).toBeUndefined();
+  });
+
+  it("extracts path even with surrounding text on the same line", () => {
+    const output = `I wrote the consolidated review to \`docs/reviews/my-review.md\` for your reference.`;
+    expect(parseReviewFilePath(output)).toBe("docs/reviews/my-review.md");
+  });
+
+  it("extracts the first matching path if multiple are present", () => {
+    const output = `Saved \`docs/reviews/first.md\` and also \`docs/reviews/second.md\``;
+    expect(parseReviewFilePath(output)).toBe("docs/reviews/first.md");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseFindingCounts
+// ---------------------------------------------------------------------------
+
+describe("parseFindingCounts", () => {
+  it("extracts finding counts from YAML frontmatter", () => {
+    const output = `---
+title: "Review: auth refactor"
+findings: { p1: 2, p2: 3, p3: 1 }
+---
+
+## Summary
+...`;
+    expect(parseFindingCounts(output)).toEqual({ p1: 2, p2: 3, p3: 1 });
+  });
+
+  it("tolerates spacing variations in findings line", () => {
+    const output = `---
+title: "Review"
+findings: {p1: 2, p2:3, p3: 1}
+---
+
+Content here.`;
+    expect(parseFindingCounts(output)).toEqual({ p1: 2, p2: 3, p3: 1 });
+  });
+
+  it("returns zeros when no findings line present", () => {
+    const output = `No frontmatter here, just plain text.`;
+    expect(parseFindingCounts(output)).toEqual({ p1: 0, p2: 0, p3: 0 });
+  });
+
+  it("returns zeros when frontmatter is malformed", () => {
+    const output = `---
+title: "Review"
+findings: not a valid object
+---`;
+    expect(parseFindingCounts(output)).toEqual({ p1: 0, p2: 0, p3: 0 });
+  });
+
+  it("handles missing individual counts gracefully", () => {
+    const output = `---
+findings: { p1: 5 }
+---`;
+    expect(parseFindingCounts(output)).toEqual({ p1: 5, p2: 0, p3: 0 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Constants — consolidation step index
+// ---------------------------------------------------------------------------
+
+describe("review-output-extractor consolidation constants", () => {
+  it("REVIEW_CONSOLIDATION_STEP_INDEX is 2", () => {
+    expect(REVIEW_CONSOLIDATION_STEP_INDEX).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createReviewOnStepComplete — consolidation step (stepIndex 2)
+// ---------------------------------------------------------------------------
+
+/** Consolidation output with findings and file path. */
+const CONSOLIDATION_WITH_FINDINGS = `---
+title: "Review: auth refactor"
+findings: { p1: 1, p2: 2, p3: 3 }
+---
+
+## Summary
+
+Review saved to \`docs/reviews/2026-03-23-auth-refactor.md\`
+
+## Findings
+
+| # | Finding | Severity |
+|---|---------|----------|
+| 1 | Missing null check | P1 |
+| 2 | Type safety gap | P2 |
+| 3 | Unused import | P3 |
+`;
+
+/** Consolidation output with zero actionable findings. */
+const CONSOLIDATION_NO_ACTIONABLE = `---
+title: "Review: cleanup"
+findings: { p1: 0, p2: 0, p3: 4 }
+---
+
+## Summary
+
+Review saved to \`docs/reviews/2026-03-23-cleanup.md\`
+
+Only minor issues found.
+`;
+
+describe("createReviewOnStepComplete — consolidation step", () => {
+  it("stepIndex 2 returns reviewFilePath, findingCounts, hasActionableFindings: true when P1+P2 > 0", async () => {
+    const hook = createReviewOnStepComplete({ interactive: false });
+
+    const result = await hook(
+      REVIEW_CONSOLIDATION_STEP_INDEX,
+      workerResult(CONSOLIDATION_WITH_FINDINGS),
+      {},
+    );
+
+    expect(result.reviewFilePath).toBe(
+      "docs/reviews/2026-03-23-auth-refactor.md",
+    );
+    expect(result.findingCounts).toEqual({ p1: 1, p2: 2, p3: 3 });
+    expect(result.hasActionableFindings).toBe(true);
+  });
+
+  it("stepIndex 2 returns hasActionableFindings: false when P1+P2 are 0", async () => {
+    const hook = createReviewOnStepComplete({ interactive: false });
+
+    const result = await hook(
+      REVIEW_CONSOLIDATION_STEP_INDEX,
+      workerResult(CONSOLIDATION_NO_ACTIONABLE),
+      {},
+    );
+
+    expect(result.reviewFilePath).toBe(
+      "docs/reviews/2026-03-23-cleanup.md",
+    );
+    expect(result.findingCounts).toEqual({ p1: 0, p2: 0, p3: 4 });
+    expect(result.hasActionableFindings).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: full onStepComplete data flow (accumulated extra)
+// ---------------------------------------------------------------------------
+
+describe("createReviewOnStepComplete — full data flow integration", () => {
+  it("step 1 → p3Triage, step 2 → reviewFilePath + findingCounts + hasActionableFindings, accumulated together", async () => {
+    const hook = createReviewOnStepComplete({ interactive: false });
+
+    // Simulate ExecutionLoop accumulator pattern: start empty, merge after each step
+    const accumulatedExtra: Record<string, unknown> = {};
+
+    // Step 1: multi-agent review — produces p3Triage
+    const step1Result = await hook(
+      REVIEW_MULTI_AGENT_STEP_INDEX,
+      workerResult(REVIEW_WITH_P3),
+      { ...accumulatedExtra },
+    );
+    Object.assign(accumulatedExtra, step1Result);
+
+    // After step 1: p3Triage should be in accumulated extra
+    expect(accumulatedExtra.p3Triage).toBeDefined();
+    const triage = accumulatedExtra.p3Triage as P3TriageDirective;
+    expect(triage.directive).toBe(REVIEW_P3_DIRECTIVE);
+
+    // Step 2: consolidation — produces reviewFilePath, findingCounts, hasActionableFindings
+    const step2Result = await hook(
+      REVIEW_CONSOLIDATION_STEP_INDEX,
+      workerResult(CONSOLIDATION_WITH_FINDINGS),
+      { ...accumulatedExtra },
+    );
+    Object.assign(accumulatedExtra, step2Result);
+
+    // After step 2: all data should be accumulated
+    expect(accumulatedExtra.p3Triage).toBeDefined(); // still from step 1
+    expect(accumulatedExtra.reviewFilePath).toBe(
+      "docs/reviews/2026-03-23-auth-refactor.md",
+    );
+    expect(accumulatedExtra.findingCounts).toEqual({ p1: 1, p2: 2, p3: 3 });
+    expect(accumulatedExtra.hasActionableFindings).toBe(true);
   });
 });

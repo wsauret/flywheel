@@ -178,6 +178,9 @@ export interface ClaudeJsonlMessage {
   tool?: { name?: string; input?: Record<string, unknown> };
   result?: string;
   raw: Record<string, unknown>;
+  /** Pre-computed duration in ms (e.g., from OpenCode timing data). When set,
+   *  SubagentTraceParser uses this instead of computing from wall-clock timestamps. */
+  durationMs?: number;
 }
 
 /**

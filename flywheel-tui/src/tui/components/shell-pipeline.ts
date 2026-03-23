@@ -1,25 +1,16 @@
 /**
- * Shell Pipeline — extracted pipeline logic for flywheel-shell.
+ * Shell Pipeline — pipeline stage composition and stage runner factory.
  *
  * Contains `buildPipelineStages` (pure function to compute stages from
  * config) and `createShellStageRunner` (factory for the StageRunner used
  * by WorkflowPipeline when running within the shell).
  *
- * Extracted so the logic is testable without JSX or OpenTUI runtime.
+ * All workflow types flow through one code path via `createStageLoop()`.
  */
 
 import { createFlywheelEmitter } from "../../events/event-bus";
-import { ExecutionLoop, type PromptBuilder, type OnStepCompleteHook } from "../../controller/execution-loop";
-import { WorkflowDefinitionProvider } from "../../controller/workflow-def-provider";
-import { PhaseExecutor } from "../../controller/phase-executor";
-import { WorkController } from "../../controller/work";
-import {
-  workflowRegistry,
-  buildWorkflowPrompt,
-} from "../../workflows/index";
-import { createPlanOnStepComplete } from "../../workflows/plan-output-extractor";
-import { createReviewOnStepComplete } from "../../workflows/review-output-extractor";
-import { createShipOnStepComplete } from "../../workflows/ship-output-extractor";
+import { createStageLoop } from "../../controller/stage-loop-factory";
+import type { ExecutionLoop } from "../../controller/execution-loop";
 import type { QuestionService } from "../../controller/question-service";
 import type { FlywheelConfig } from "../../config/loader";
 import type { WorkflowDeps } from "../../controller/workflow-deps";
@@ -27,6 +18,7 @@ import type { WorkflowSession } from "./workflow-session";
 import type { BudgetTracker } from "../../session/budget-tracker";
 import type { BudgetLimits } from "../../schemas/shared";
 import type { ContextIndexer } from "../../memory/indexer";
+import type { DispatcherTransport } from "../../dispatcher/transport";
 import type {
   PipelineStage,
   PipelineStageResult,
@@ -78,44 +70,62 @@ export function buildPipelineStages(
 // Stage runner factory
 // ---------------------------------------------------------------------------
 
+export interface StageRunnerOptions {
+  session: WorkflowSession;
+  deps: WorkflowDeps;
+  questionService?: QuestionService;
+  interactiveOverrides?: { plan?: boolean; review?: boolean };
+  budgetTracker?: BudgetTracker;
+  budgetLimits?: BudgetLimits;
+  /** Called when a new ExecutionLoop is created for a stage. Used to expose the loop for injection. */
+  onLoopCreated?: (loop: ExecutionLoop) => void;
+  /** Context indexer for conventions/standards/learnings metadata. Caller manages lifecycle. */
+  contextIndexer?: ContextIndexer;
+  /** Dispatcher transport — wired into every stage's ExecutionLoop. */
+  dispatcherTransport?: DispatcherTransport;
+  /** Called when the dispatcher generates a short session name (first phase of first stage). */
+  onSessionName?: (name: string) => void;
+}
+
 /**
  * Create a StageRunner that executes stages within a single WorkflowSession.
  *
- * Decision #2: the pipeline runs ALL stages within a SINGLE session.
- * The stage runner does NOT create new sessions. It creates ExecutionLoop
- * or WorkController instances that connect to the same EventBus/adapter.
- *
- * For "work" stages: uses WorkController (plan file-based execution).
- * For generic stages (plan, review, ship, debug, research): uses ExecutionLoop
- * with WorkflowDefinitionProvider.
+ * All workflow types (including "work") flow through `createStageLoop()` —
+ * one factory, one code path. The dispatcher is wired when `dispatcherTransport`
+ * is provided.
  */
-export function createShellStageRunner(
-  session: WorkflowSession,
-  deps: WorkflowDeps,
-  questionService?: QuestionService,
-  interactiveOverrides?: { plan?: boolean; review?: boolean },
-  budgetTracker?: BudgetTracker,
-  budgetLimits?: BudgetLimits,
-  /** Called when a new ExecutionLoop is created for a stage. Used to expose the loop for injection. */
-  onLoopCreated?: (loop: ExecutionLoop) => void,
-  /** Context indexer for conventions/standards/learnings metadata. Caller manages lifecycle. */
-  contextIndexer?: ContextIndexer,
-): StageRunner {
+export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
+  const {
+    session,
+    deps,
+    questionService,
+    interactiveOverrides,
+    budgetTracker,
+    budgetLimits,
+    onLoopCreated,
+    contextIndexer,
+    dispatcherTransport,
+    onSessionName,
+  } = opts;
+
   return async (
     stage: PipelineStage,
     args: Record<string, string>,
     signal: AbortSignal,
   ): Promise<PipelineStageResult> => {
-    // ── Work stage: use WorkController ──
-    if (stage.workflow === "work") {
-      if (!args.planPath) {
-        return {
-          workflow: "work",
-          completed: false,
-          reason: "No plan file path available. The plan stage may not have written a plan file to disk.",
-        };
-      }
-      const controller = new WorkController({
+    // Validate work stage has a planPath
+    if (stage.workflow === "work" && !args.planPath) {
+      return {
+        workflow: "work",
+        completed: false,
+        reason: "No plan file path available. The plan stage may not have written a plan file to disk.",
+      };
+    }
+
+    try {
+      const handle = createStageLoop({
+        workflow: stage.workflow as WorkflowType,
+        args,
         config: deps.config,
         spawner: deps.spawner,
         engine: deps.engine,
@@ -124,122 +134,34 @@ export function createShellStageRunner(
         budgetTracker,
         budgetLimits,
         contextIndexer,
+        dispatcherTransport,
+        questionService,
+        interactiveOverrides,
+        onSessionName,
       });
+
+      // Expose the loop for mid-execution stdin injection
+      onLoopCreated?.(handle.loop);
 
       // Respect abort signal
-      signal.addEventListener("abort", () => {
-        controller.shutdown().catch(() => {});
-      });
+      signal.addEventListener("abort", () => handle.shutdown());
 
-      try {
-        const result = await controller.run(args.planPath, (loop) => {
-          // Expose the work stage's loop for mid-execution stdin injection
-          onLoopCreated?.(loop);
-        });
-        return {
-          workflow: "work",
-          completed: result.completed,
-          reason: result.reason,
-        };
-      } catch (err) {
-        return {
-          workflow: "work",
-          completed: false,
-          reason: String(err),
-        };
-      }
-    }
+      const result = await handle.loop.run();
 
-    // ── Generic workflow (plan, review, ship, debug, research) ──
-    const workflow = workflowRegistry[stage.workflow];
-    if (!workflow) {
-      return {
-        workflow: stage.workflow,
-        completed: false,
-        reason: `Unknown workflow: ${stage.workflow}`,
-      };
-    }
-
-    // Use the session's unified event bus — not a per-stage bus.
-    // The adapter is already connected to session.eventBus.
-    const eventBus = session.eventBus;
-    const emitter = createFlywheelEmitter(eventBus);
-
-    const workflowId = `${stage.workflow}-pipeline`;
-
-    const executor = new PhaseExecutor({
-      spawner: deps.spawner,
-      emitter,
-      config: deps.config,
-      engine: deps.engine,
-      workflowId,
-    });
-
-    const promptBuilder: PromptBuilder = (phase, ctx) =>
-      buildWorkflowPrompt(
-        phase.index,
-        workflow,
-        args,
-        ctx.previousResult,
-        deps.config.project_cwd,
-        ctx.extra,
-      );
-
-    const phaseProvider = new WorkflowDefinitionProvider(workflow);
-
-    // For plan/review/ship: install onStepComplete and skipTruncation
-    const isPlan = stage.workflow === "plan";
-    const isReview = stage.workflow === "review";
-    const isShip = stage.workflow === "ship";
-    const projectCwd = deps.config.project_cwd || process.cwd();
-    const stageKey = stage.workflow as "plan" | "review";
-    const interactive = interactiveOverrides?.[stageKey] ?? deps.config.interactive_consolidation ?? false;
-    let onStepComplete: OnStepCompleteHook | undefined;
-    if (isPlan) {
-      onStepComplete = createPlanOnStepComplete(projectCwd, { questionService, interactive });
-    } else if (isReview) {
-      onStepComplete = createReviewOnStepComplete({ questionService, interactive });
-    } else if (isShip) {
-      onStepComplete = createShipOnStepComplete(projectCwd);
-    }
-
-    const loop = new ExecutionLoop({
-      phaseProvider,
-      promptBuilder,
-      executor,
-      emitter,
-      config: deps.config,
-      ui: session.adapter,
-      workflowId,
-      workflowLabel: workflow.name,
-      onStepComplete,
-      skipTruncation: isPlan,
-      budgetTracker,
-      budgetLimits,
-      contextIndexer,
-    });
-
-    // Expose the loop for mid-execution injection
-    onLoopCreated?.(loop);
-
-    // Respect abort signal
-    signal.addEventListener("abort", () => loop.requestShutdown());
-
-    try {
-      const result = await loop.run();
-
-      // For plan workflows, check if planFilePath was captured
-      const extra = loop.getAccumulatedExtra();
+      // Extract accumulated data (e.g., planFilePath from plan workflow)
+      const extra = handle.getAccumulatedExtra();
       const planFilePath = extra.planFilePath as string | undefined;
       const planFileWarning = extra.planFileWarning as string | undefined;
 
       // Surface plan extraction results as system messages
-      if (isPlan) {
+      if (stage.workflow === "plan") {
+        const emitter = createFlywheelEmitter(session.eventBus);
+        const workflowId = `${stage.workflow}-pipeline`;
         if (planFileWarning) {
-          emitter.workerOutput(workflowId, "stderr", `⚠ ${planFileWarning}\n`);
+          emitter.workerOutput(workflowId, "stderr", `\u26A0 ${planFileWarning}\n`);
         }
         if (planFilePath) {
-          emitter.workerOutput(workflowId, "stderr", `✓ Extracted plan path: ${planFilePath}\n`);
+          emitter.workerOutput(workflowId, "stderr", `\u2713 Extracted plan path: ${planFilePath}\n`);
         }
       }
 

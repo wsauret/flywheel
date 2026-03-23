@@ -526,7 +526,7 @@ describe("categorizeFailure", () => {
     expect(result?.kind === "exit_code" && result.exitCode).toBe(1);
   });
 
-  it("returns completion_not_detected for exit 0 without marker", () => {
+  it("returns success for exit 0 without marker (clean exit = implicit completion)", () => {
     const result = categorizeFailure({
       exitCode: 0,
       stdout: "output without marker",
@@ -534,7 +534,7 @@ describe("categorizeFailure", () => {
       timedOut: false,
       completionDetected: false,
     });
-    expect(result?.kind).toBe("completion_not_detected");
+    expect(result).toBeUndefined();
   });
 
   it("returns undefined (success) for exit 0 with completion detected", () => {

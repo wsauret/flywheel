@@ -1,5 +1,4 @@
 import type { WorkflowStepContext } from "../index.js";
-import type { ContextEntry } from "../../schemas/shared.js";
 import {
   TDD_CYCLE,
   UNDERSTAND_ACT_VERIFY,
@@ -7,48 +6,8 @@ import {
   SCOPE_DISCIPLINE,
   THREE_STRIKE_PROTOCOL,
   buildIterationBudgetInstruction,
+  buildProjectContextSection,
 } from "../conventions.js";
-
-// ---------------------------------------------------------------------------
-// Project Context section builder
-// ---------------------------------------------------------------------------
-
-/**
- * Build a "Project Context" section from context entries in ctx.extra.
- * Returns an empty string if no entries are present.
- */
-function buildProjectContextSection(extra?: Record<string, unknown>): string {
-  if (!extra) return "";
-
-  const conventions = (extra.conventions ?? []) as ContextEntry[];
-  const standards = (extra.standards ?? []) as ContextEntry[];
-  const learnings = (extra.learnings ?? []) as ContextEntry[];
-
-  const hasAny = conventions.length > 0 || standards.length > 0 || learnings.length > 0;
-  if (!hasAny) return "";
-
-  const formatEntries = (entries: ContextEntry[]): string =>
-    entries.map((e) => `- \`${e.path}\` — ${e.summary}`).join("\n");
-
-  const sections: string[] = [];
-
-  if (conventions.length > 0) {
-    sections.push(`### Conventions\n${formatEntries(conventions)}`);
-  }
-  if (standards.length > 0) {
-    sections.push(`### Standards\n${formatEntries(standards)}`);
-  }
-  if (learnings.length > 0) {
-    sections.push(`### Learnings\n${formatEntries(learnings)}`);
-  }
-
-  return `## Project Context
-
-The following project files contain conventions and standards relevant to this phase.
-Read them before starting implementation.
-
-${sections.join("\n\n")}`;
-}
 
 // ---------------------------------------------------------------------------
 // Main prompt builder

@@ -74,13 +74,15 @@ export const DispatcherDecisionSchema = z.object({
   schema_version: z.literal(1),
   phase_index: z.number(),
   step_index: z.number(),
-  prompt: z.string(),
+  task_content: z.string(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),
   validation_criteria: ValidationCriteriaSchema,
-  reasoning: z.string(),
-  warnings: z.array(z.string()),
-  worker_config: WorkerConfigSchema,
+  reasoning: z.string().optional(),
+  warnings: z.array(z.string()).optional(),
+  worker_config: WorkerConfigSchema.optional(),
+  /** Short session name (2-5 words) summarizing the task. Generated on the first dispatcher call. */
+  session_name: z.string().optional(),
 }).strip();
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>;

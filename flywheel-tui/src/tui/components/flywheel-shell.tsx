@@ -49,8 +49,6 @@ import {
   type SessionRuntimeManager,
   type RunningRuntime,
 } from "./session-runtime"
-import { useTimer } from "@tui/shared/services"
-import { WorkController } from "../../controller/work"
 import { ExecutionLoop } from "../../controller/execution-loop"
 import { prepareWorkflowDeps } from "../../controller/workflow-deps"
 import type { WorkflowDeps } from "../../controller/workflow-deps"
@@ -84,6 +82,9 @@ import { sidebarKeyHandler, getOpenAction, groupToFlatList, type SelectionAction
 import { createSessionViewport, type SessionViewport } from "./session-viewport"
 import { isResumable } from "../../session/state-machine"
 import { deriveHeaderInfo } from "./session-header-logic"
+import { autoDetectTransport } from "../../dispatcher/auto-detect"
+import { killAllActiveProcesses } from "../../worker/process-lifecycle"
+import { createStageLoop } from "../../controller/stage-loop-factory"
 import { Log } from "../../utils/log"
 
 const log = Log.create({ service: "shell" })
@@ -102,7 +103,6 @@ export function FlywheelShell() {
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
   const sessionCtx = useSession()
-  const timer = useTimer()
   const [appState, setAppState] = createSignal<AppState>("idle")
   const [escHint, setEscHint] = createSignal("")
 
@@ -162,9 +162,34 @@ export function FlywheelShell() {
   const [activePipelineInfo, setActivePipelineInfo] = createSignal<PipelineStageInfo | null>(null)
   let pipelineUnsubs: Unsubscribe[] = []
 
+  // Track the active session's timer for the status bar runtime display.
+  // The timer is a per-session instance (not the global singleton).
+  // We subscribe/unsubscribe as sessions switch.
+  const [runtimeText, setRuntimeText] = createSignal("00:00")
+  let _activeTimerUnsub: (() => void) | null = null
+
+  /** Subscribe to a session's timer for runtime display updates. */
+  const subscribeToTimer = (sessionTimer: import("../shared/services/timer").TimerService) => {
+    if (_activeTimerUnsub) _activeTimerUnsub()
+    // Immediately read current value
+    setRuntimeText(sessionTimer.getWorkflowRuntime())
+    // Subscribe for ongoing ticks
+    _activeTimerUnsub = sessionTimer.subscribe(() => {
+      setRuntimeText(sessionTimer.getWorkflowRuntime())
+    })
+  }
+
+  const unsubscribeTimer = () => {
+    if (_activeTimerUnsub) {
+      _activeTimerUnsub()
+      _activeTimerUnsub = null
+    }
+    setRuntimeText("00:00")
+  }
+
   // Non-reactive refs for lifecycle management
   let activeSession: WorkflowSession | null = null
-  let activeController: WorkController | null = null
+  // activeController was removed — shutdown is now via activeLoop.requestShutdown()
   let activeLoop: ExecutionLoop | null = null
   let activePipeline: WorkflowPipeline | null = null
   let activeFlusher: OutputFlusher | null = null
@@ -394,7 +419,6 @@ export function FlywheelShell() {
       // in the background, tracked by runtimes. The pipeline's async closure
       // captured its own local references and will clean up on completion.
       activeSession = null
-      activeController = null
       activeLoop = null
       activePipeline = null
       activeFlusher = null
@@ -411,7 +435,6 @@ export function FlywheelShell() {
       // No previous session in runtimes — full destroy (legacy path)
       destroyWorkflowSession(activeSession)
       activeSession = null
-      activeController = null
       activeLoop = null
       activePipeline = null
       if (activeFlusher) {
@@ -432,6 +455,7 @@ export function FlywheelShell() {
     activeSession = session
     setActiveStore(session.store)
     subscribeToStore(session.store)
+    subscribeToTimer(session.timer)
     setAppState("working")
 
     // Config loaded once at pipeline start
@@ -446,9 +470,12 @@ export function FlywheelShell() {
 
     // Create persistent Session for pause/resume support
     const planPathForSession = args.planPath ?? stages.map((s) => s.workflow).join(" -> ")
+    // Use the raw description as a placeholder name. The dispatcher LLM will
+    // generate a short 2-5 word session name on its first call and update it.
+    const placeholderName = args.description || args.topic || undefined
     let persistedSessionId: string | null = null
     try {
-      persistedSessionId = sessionCtx.manager.create(planPathForSession)
+      persistedSessionId = sessionCtx.manager.create(planPathForSession, placeholderName)
 
       // Set outputPath on the session
       const projectCwd = deps.config.project_cwd ?? "."
@@ -551,56 +578,11 @@ export function FlywheelShell() {
     // Shared context indexer (one per project_cwd, lazy-init)
     const pipelineContextIndexer = getOrCreateContextIndexer()
 
-    // Create stage runner (pass questionService for interactive plan gates, and budget tracking)
-    const stageRunner = createShellStageRunner(
-      session, deps, questionService, interactiveOverrides,
-      pipelineBudgetTracker ?? undefined,
-      pipelineBudgetLimits ?? undefined,
-      (loop) => { activeLoop = loop },
-      pipelineContextIndexer,
-    )
-
-    // Create and start the pipeline
-    const pipeline = new WorkflowPipeline({
-      stages,
-      args,
-      config: deps.config,
-      stageRunner,
-      questionService,
-      eventBus: session.eventBus,
-    })
-    activePipeline = pipeline
+    const capturedSessionId = persistedSessionId
+    const capturedProjectCwd = deps.config.project_cwd ?? "."
+    const pipelineSessionId = persistedSessionId
     _isPipelineRunning = true
     _userInitiatedPause = false
-
-    // Register pipeline in sessionControllers (uniform shutdown interface)
-    const pipelineSessionId = persistedSessionId
-    if (pipelineSessionId) {
-      sessionControllers.set(pipelineSessionId, {
-        shutdown: async () => {
-          pipeline.requestShutdown()
-        },
-      })
-      setViewedSessionId(pipelineSessionId)
-
-      // Register in runtimes manager (parallel tracking — let refs kept for now)
-      runtimes.register(pipelineSessionId, {
-        kind: "running" as const,
-        sessionId: pipelineSessionId,
-        session,
-        controller: null as any, // Will be set when WorkController is created
-        loop: null as any, // Set via the setLoop callback
-        pipeline,
-        flusher: activeFlusher!,
-        budgetTracker: pipelineBudgetTracker!,
-        storeUnsub: storeUnsub!,
-        questionCleanup: () => cleanupQuestionSubscriptions(),
-        pipelineCleanup: () => cleanupPipelineSubscriptions(),
-        contextIndexer: pipelineContextIndexer,
-        workerPid: null,
-      })
-      setFocusedSessionId(pipelineSessionId)
-    }
 
     // Capture local references for the async closure — these survive backgrounding
     // (backgrounding nulls the shell-level `let` refs but the closure keeps its own)
@@ -617,6 +599,75 @@ export function FlywheelShell() {
           await pipelineContextIndexer.startIndexing()
           _indexerStarted = true
         } catch { /* silently fall back to empty context */ }
+      }
+
+      // Auto-detect dispatcher transport (SDK preferred, CLI fallback).
+      let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
+      try {
+        const resolved = await autoDetectTransport({ spawner: deps.spawner })
+        dispatcherTransport = resolved.transport
+        log.info("dispatcher transport resolved", { label: resolved.label })
+      } catch (err) {
+        log.warn("dispatcher transport auto-detect failed, phases will use static prompt builder", {
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+
+      // Create stage runner — unified path for all workflow types, dispatcher always wired.
+      const stageRunner = createShellStageRunner({
+        session,
+        deps,
+        questionService,
+        interactiveOverrides,
+        budgetTracker: pipelineBudgetTracker ?? undefined,
+        budgetLimits: pipelineBudgetLimits ?? undefined,
+        onLoopCreated: (loop: ExecutionLoop) => { activeLoop = loop },
+        contextIndexer: pipelineContextIndexer,
+        dispatcherTransport,
+        // onSessionName: update persisted session + refresh sidebar when dispatcher returns a name
+        onSessionName: capturedSessionId ? (name: string) => {
+          try {
+            updateSession(capturedSessionId, { name, label: name }, capturedProjectCwd)
+            sessionCtx.refreshList()
+          } catch { /* best-effort */ }
+        } : undefined,
+      })
+
+      // Create pipeline now that stageRunner is ready
+      const pipeline = new WorkflowPipeline({
+        stages,
+        args,
+        config: deps.config,
+        stageRunner,
+        questionService,
+        eventBus: session.eventBus,
+      })
+      activePipeline = pipeline
+
+      // Register pipeline in sessionControllers (uniform shutdown interface)
+      if (pipelineSessionId) {
+        sessionControllers.set(pipelineSessionId, {
+          shutdown: async () => { pipeline.requestShutdown() },
+        })
+        setViewedSessionId(pipelineSessionId)
+
+        // Register in runtimes manager
+        runtimes.register(pipelineSessionId, {
+          kind: "running" as const,
+          sessionId: pipelineSessionId,
+          session,
+          controller: null,
+          loop: null as any, // Set via onLoopCreated callback
+          pipeline,
+          flusher: activeFlusher!,
+          budgetTracker: pipelineBudgetTracker!,
+          storeUnsub: storeUnsub!,
+          questionCleanup: () => cleanupQuestionSubscriptions(),
+          pipelineCleanup: () => cleanupPipelineSubscriptions(),
+          contextIndexer: pipelineContextIndexer,
+          workerPid: null,
+        })
+        setFocusedSessionId(pipelineSessionId)
       }
 
       let pipelineResult: import("../../controller/workflow-pipeline").PipelineResult | undefined
@@ -730,17 +781,15 @@ export function FlywheelShell() {
       activeLoop.requestShutdown()
       activeLoop = null
     }
-    let shutdownPromise: Promise<void> | undefined
-    if (activeController) {
-      shutdownPromise = activeController.shutdown().catch(() => {})
-      activeController = null
-    }
+    // Kill all active worker processes (fire-and-forget)
+    const shutdownPromise = killAllActiveProcesses().catch(() => {})
     return shutdownPromise
   }
 
   const teardownActiveWorkflow = (): Promise<void> | undefined => {
     cleanupQuestionSubscriptions()
     cleanupPipelineSubscriptions()
+    unsubscribeTimer()
     if (storeUnsub) {
       storeUnsub()
       storeUnsub = null
@@ -904,6 +953,7 @@ export function FlywheelShell() {
     activeSession = session
     setActiveStore(session.store)
     subscribeToStore(session.store)
+    subscribeToTimer(session.timer)
 
     // 5. Inject output blocks in chunks (prevents UI freeze on large histories)
     injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
@@ -934,33 +984,43 @@ export function FlywheelShell() {
     // 9. Register in session maps
     sessionStores.set(sessionId, session.store)
 
-    // 10. Start WorkController directly (reads .state.md, skips completed phases).
+    // 10. Create a stage loop for the "work" workflow (reads .state.md, skips completed phases).
     //     We do NOT call startPipeline() because that creates a new Session
     //     and tears down the session we just set up.
-    const controller = new WorkController({
-      config: deps.config,
-      spawner: deps.spawner,
-      engine: deps.engine,
-      ui: session.adapter,
-    })
-    activeController = controller
-
-    // Register controller in sessionControllers
-    sessionControllers.set(sessionId, {
-      shutdown: () => controller.shutdown(),
-    })
     setViewedSessionId(sessionId)
-
-    // 11. Transition to working
     setAppState("working")
 
-    queueMicrotask(() => {
-      controller.run(result.planPath).then(() => {
-        // On completion: remove from sessionControllers, keep in sessionStores
+    queueMicrotask(async () => {
+      // Auto-detect dispatcher transport for the resumed session
+      let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
+      try {
+        const resolved = await autoDetectTransport({ spawner: deps.spawner })
+        dispatcherTransport = resolved.transport
+      } catch { /* fallback to static prompts */ }
+
+      try {
+        const handle = createStageLoop({
+          workflow: "work",
+          args: { planPath: result.planPath },
+          config: deps.config,
+          spawner: deps.spawner,
+          engine: deps.engine,
+          ui: session.adapter,
+          eventBus: session.eventBus,
+          dispatcherTransport,
+        })
+        activeLoop = handle.loop
+
+        // Register in sessionControllers for shutdown
+        sessionControllers.set(sessionId, {
+          shutdown: () => { handle.shutdown(); return killAllActiveProcesses() },
+        })
+
+        const execResult = await handle.loop.run()
         sessionControllers.delete(sessionId)
-      }).catch(() => {
+      } catch {
         sessionControllers.delete(sessionId)
-      })
+      }
     })
   }
 
@@ -1026,7 +1086,6 @@ export function FlywheelShell() {
     // them, but the pipeline's async closure captured its own local references.
     // The pipeline will clean up sessionControllers when it finishes.
     activeSession = null
-    activeController = null
     activeLoop = null
     activePipeline = null
     activeFlusher = null
@@ -1036,6 +1095,7 @@ export function FlywheelShell() {
     // these signals to function — they only drive UI state like pendingQuestion).
     cleanupQuestionSubscriptions()
     cleanupPipelineSubscriptions()
+    unsubscribeTimer()
 
     // Reset viewport and shell state
     viewport.cancelInjection()
@@ -1497,7 +1557,7 @@ export function FlywheelShell() {
   // ── Computed layout props ──
 
   const hasActiveWorkflow = () => activeStore() !== null && workState() !== null
-  const runtime = () => timer.workflowRuntime()
+  const runtime = () => runtimeText()
 
   // Default work state for SharedLayout when no workflow is active
   const defaultWorkState: WorkState = {

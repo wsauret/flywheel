@@ -202,7 +202,7 @@ export function OutputWindow(props: OutputWindowProps) {
               showArrows: true,
               trackOptions: {
                 foregroundColor: themeCtx.theme.info,
-                backgroundColor: themeCtx.theme.borderSubtle,
+                backgroundColor: themeCtx.theme.border,
               },
             }}
             viewportCulling={true}

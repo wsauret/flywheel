@@ -12,7 +12,7 @@ import { MockAdapter } from "../src/tui/adapters/mock";
 import { CONFIG_DEFAULTS } from "../src/config/loader";
 import { PhaseExecutor } from "../src/controller/phase-executor";
 import { ExecutionLoop } from "../src/controller/execution-loop";
-import type { PromptBuilder, UnifiedExecutionLoopOptions } from "../src/controller/execution-loop";
+import type { PromptBuilder, ShouldSkipPhaseHook, UnifiedExecutionLoopOptions } from "../src/controller/execution-loop";
 import { claudeEngine } from "../src/engines/providers/claude/index";
 
 // ---------------------------------------------------------------------------
@@ -82,6 +82,7 @@ function createLoopWithHook(opts: {
   phases?: PhaseInfo[];
   spawnerResults?: WorkerResult[];
   onStepComplete?: UnifiedExecutionLoopOptions["onStepComplete"];
+  shouldSkipPhase?: ShouldSkipPhaseHook;
   skipTruncation?: boolean;
   promptBuilder?: PromptBuilder;
 }) {
@@ -125,6 +126,7 @@ function createLoopWithHook(opts: {
     workflowId: "test-hooks",
     workflowLabel: "test-hooks",
     onStepComplete: opts.onStepComplete,
+    shouldSkipPhase: opts.shouldSkipPhase,
     skipTruncation: opts.skipTruncation,
   });
 
@@ -351,5 +353,135 @@ describe("ExecutionLoop onStepComplete hook", () => {
       // Only the two pending phases should trigger the hook
       expect(hookCalls).toEqual([1, 2]);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// shouldSkipPhase hook
+// ---------------------------------------------------------------------------
+
+describe("ExecutionLoop shouldSkipPhase hook", () => {
+  it("skips phases where shouldSkipPhase returns true", async () => {
+    const executedPhases: number[] = [];
+
+    const { loop, spawner } = createLoopWithHook({
+      phases: makePhases(4),
+      spawnerResults: [
+        successResult("r1"),
+        successResult("r2"),
+        successResult("r3"),
+        successResult("r4"),
+      ],
+      shouldSkipPhase: (phase) => phase.index === 2, // skip phase 3
+      promptBuilder: (phase, _ctx) => {
+        executedPhases.push(phase.index);
+        return `Phase ${phase.index + 1}`;
+      },
+    });
+
+    const result = await loop.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.phasesCompleted).toBe(4); // all counted as completed
+    expect(result.phasesTotal).toBe(4);
+    // Phase 2 (index 2) was skipped — never sent to prompt builder or spawner
+    expect(executedPhases).toEqual([0, 1, 3]);
+    expect(spawner.calls).toHaveLength(3); // only 3 spawns, not 4
+  });
+
+  it("still counts skipped phases toward phasesCompleted", async () => {
+    const { loop } = createLoopWithHook({
+      phases: makePhases(3),
+      spawnerResults: [successResult("r1"), successResult("r2")],
+      shouldSkipPhase: (phase) => phase.index === 1, // skip middle phase
+    });
+
+    const result = await loop.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.phasesCompleted).toBe(3);
+    expect(result.phasesTotal).toBe(3);
+  });
+
+  it("does not call onStepComplete for skipped phases", async () => {
+    const hookCalls: number[] = [];
+
+    const { loop } = createLoopWithHook({
+      phases: makePhases(3),
+      spawnerResults: [successResult("r1"), successResult("r2")],
+      shouldSkipPhase: (phase) => phase.index === 1,
+      onStepComplete: async (stepIndex, _result, _accum) => {
+        hookCalls.push(stepIndex);
+        return {};
+      },
+    });
+
+    await loop.run();
+
+    // Only phases 0 and 2 executed — phase 1 was skipped
+    expect(hookCalls).toEqual([0, 2]);
+  });
+
+  it("receives accumulated extra from previous steps", async () => {
+    const skipCalls: Array<{ index: number; extra: Record<string, unknown> }> = [];
+
+    const { loop } = createLoopWithHook({
+      phases: makePhases(3),
+      spawnerResults: [successResult("r1"), successResult("r2"), successResult("r3")],
+      shouldSkipPhase: (phase, extra) => {
+        skipCalls.push({ index: phase.index, extra: { ...extra } });
+        return false; // don't actually skip
+      },
+      onStepComplete: async (stepIndex, _result, _accum) => {
+        if (stepIndex === 0) return { fromStep0: true };
+        if (stepIndex === 1) return { fromStep1: true };
+        return {};
+      },
+    });
+
+    await loop.run();
+
+    expect(skipCalls).toHaveLength(3);
+    // Phase 0: no accumulated data yet
+    expect(skipCalls[0].extra).toEqual({});
+    // Phase 1: has data from step 0
+    expect(skipCalls[1].extra).toEqual({ fromStep0: true });
+    // Phase 2: has data from step 0 + step 1
+    expect(skipCalls[2].extra).toEqual({ fromStep0: true, fromStep1: true });
+  });
+
+  it("works correctly when all phases are skipped", async () => {
+    const { loop, spawner } = createLoopWithHook({
+      phases: makePhases(2),
+      shouldSkipPhase: () => true, // skip everything
+    });
+
+    const result = await loop.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.phasesCompleted).toBe(2);
+    expect(spawner.calls).toHaveLength(0); // nothing spawned
+  });
+
+  it("does not skip already-completed phases (completed check runs first)", async () => {
+    const skipCalls: number[] = [];
+
+    const { loop } = createLoopWithHook({
+      phases: makePhases(3, [
+        { status: "completed" }, // already done
+        null, // pending
+        null, // pending
+      ]),
+      spawnerResults: [successResult("r1"), successResult("r2")],
+      shouldSkipPhase: (phase) => {
+        skipCalls.push(phase.index);
+        return false;
+      },
+    });
+
+    await loop.run();
+
+    // shouldSkipPhase should NOT be called for the already-completed phase 0
+    expect(skipCalls).toEqual([1, 2]);
   });
 });

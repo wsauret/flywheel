@@ -20,6 +20,7 @@ import {
 } from "./subagent-tracing/opencode-adapter";
 import type { OpenCodeJsonlMessage } from "./subagent-tracing/opencode-adapter";
 import { getToolDetail } from "./output-formatter";
+import { COMPLETION_REGEX } from "../../worker/completion";
 
 // ── Types ──
 
@@ -29,6 +30,11 @@ export interface StructuredEventParserOptions {
 }
 
 // ── Parser ──
+
+/** Strip completion markers from text before display. */
+function stripCompletionMarker(text: string): string {
+  return text.replace(COMPLETION_REGEX, "");
+}
 
 export class StructuredEventParser {
   private traceParser: SubagentTraceParser;
@@ -79,7 +85,10 @@ export class StructuredEventParser {
     } else if (type === "result") {
       const result = data.result;
       if (typeof result === "string" && result.length > 0) {
-        this.builder.pushText(result + "\n", now);
+        const cleaned = stripCompletionMarker(result);
+        if (cleaned.trim().length > 0) {
+          this.builder.pushText(cleaned + "\n", now);
+        }
       }
     } else if (type === "tool_result") {
       // Tool results correlate with subagent completions
@@ -118,7 +127,10 @@ export class StructuredEventParser {
       if (blockType === "text" && typeof block.text === "string") {
         // Text inside a child message: skip (agent text is not useful for display)
         if (!parentAgentId) {
-          this.builder.pushText(block.text, now);
+          const cleaned = stripCompletionMarker(block.text);
+          if (cleaned.length > 0) {
+            this.builder.pushText(cleaned, now);
+          }
         }
       } else if (blockType === "tool_use") {
         const name = block.name as string;
@@ -172,7 +184,10 @@ export class StructuredEventParser {
     if (type === "text") {
       const part = data.part as { text?: string } | undefined;
       if (part?.text) {
-        this.builder.pushText(part.text, now);
+        const cleaned = stripCompletionMarker(part.text);
+        if (cleaned.length > 0) {
+          this.builder.pushText(cleaned, now);
+        }
       }
     } else if (type === "tool_use") {
       this.handleOpenCodeToolUse(data, now);
@@ -236,13 +251,19 @@ export class StructuredEventParser {
     } else if (type === "result") {
       const result = data.result;
       if (typeof result === "string" && result.length > 0) {
-        this.builder.pushText(result + "\n", now);
+        const cleaned = stripCompletionMarker(result);
+        if (cleaned.trim().length > 0) {
+          this.builder.pushText(cleaned + "\n", now);
+        }
       }
     } else if (type === "text") {
       // OpenCode text format
       const part = data.part as { text?: string } | undefined;
       if (part?.text) {
-        this.builder.pushText(part.text, now);
+        const cleaned = stripCompletionMarker(part.text);
+        if (cleaned.length > 0) {
+          this.builder.pushText(cleaned, now);
+        }
       }
     } else if (type === "tool_use") {
       // Could be OpenCode tool_use

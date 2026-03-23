@@ -185,6 +185,15 @@ export function openCodeTaskToClaudeMessages(message: OpenCodeJsonlMessage): Cla
   // 2. Create completion message (tool_result)
   // Only create if the tool has completed (has output or status === 'completed')
   if (state?.output || state?.status === 'completed') {
+    // Compute duration from OpenCode's actual timing data (if available)
+    let durationMs: number | undefined;
+    if (state?.time?.start && state?.time?.end) {
+      durationMs = state.time.end - state.time.start;
+    } else if (state?.time?.start && message.timestamp) {
+      // Fallback: use message timestamp as end time
+      durationMs = message.timestamp - state.time.start;
+    }
+
     const resultMessage: ClaudeJsonlMessage = {
       type: 'result',
       result: state.output,
@@ -194,6 +203,8 @@ export function openCodeTaskToClaudeMessages(message: OpenCodeJsonlMessage): Cla
         content: state.output || '',
         is_error: false,
       },
+      // Carry actual duration so SubagentTraceParser doesn't compute 0ms
+      durationMs,
     };
     results.push(resultMessage);
   }

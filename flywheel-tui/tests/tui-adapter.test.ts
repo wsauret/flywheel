@@ -375,7 +375,7 @@ describe("OpenTUIAdapter", () => {
       const systemBlocks = blocks.filter((b: any) => b.kind === "system");
       expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
       const text = systemBlocks.map((b: any) => b.message).join("");
-      expect(text).toContain("Dispatcher: crafting prompt for step 2");
+      expect(text).toContain("Dispatcher: analyzing phase and crafting worker prompt");
     });
 
     it("dispatcher:completed produces SystemBlock", () => {
@@ -383,7 +383,7 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "dispatcher:completed",
         workflowId: "w1",
-        decision: { action: "continue", phaseIndex: 0 } as any,
+        decision: { action: "continue", phaseIndex: 0, warnings: [] } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
       const blocks = store.getState().outputBlocks;
@@ -407,8 +407,8 @@ describe("OpenTUIAdapter", () => {
       const systemBlocks = blocks.filter((b: any) => b.kind === "system");
       expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
       const text = systemBlocks.map((b: any) => b.message).join("");
-      expect(text).toContain("Dispatcher failed: dispatch error");
-      expect(text).toContain("Using static template");
+      expect(text).toContain("Dispatcher unavailable: dispatch error");
+      expect(text).toContain("Using static prompt");
     });
 
     // -- Evaluator events --

@@ -315,7 +315,9 @@ export class SubagentTraceParser {
       (typeof raw.content === 'string' && raw.content.toLowerCase().includes('error'));
 
     const now = new Date().toISOString();
-    const durationMs = new Date(now).getTime() - new Date(state.spawnedAt).getTime();
+    // Prefer pre-computed duration from message (e.g., OpenCode timing data)
+    // over wall-clock diff which can be 0ms when spawn+complete are synchronous.
+    const durationMs = message.durationMs ?? (new Date(now).getTime() - new Date(state.spawnedAt).getTime());
 
     // Update state
     state.status = isError ? 'error' : 'completed';

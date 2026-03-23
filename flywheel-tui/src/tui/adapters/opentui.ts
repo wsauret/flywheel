@@ -83,6 +83,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Tracks last-activity timestamp per active agent for stale detection. */
   private agentActivityMap = new Map<string, number>();
 
+  /** Tracks spawn timestamp per agent for accurate duration on stale completion. */
+  private agentSpawnTimeMap = new Map<string, number>();
+
   /** Interval handle for stale agent checks (1s). */
   private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -103,10 +106,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     // Wire builder callbacks for stale agent tracking
     this.builder.onAgentLifecycle = (type, id) => {
       if (type === "start") {
-        this.agentActivityMap.set(id, Date.now());
+        const now = Date.now();
+        this.agentActivityMap.set(id, now);
+        this.agentSpawnTimeMap.set(id, now);
       } else {
         // "complete" or "error" — agent is no longer active
         this.agentActivityMap.delete(id);
+        this.agentSpawnTimeMap.delete(id);
       }
     };
     this.builder.onAgentActivity = (id) => {
@@ -339,15 +345,20 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       // Dispatcher events
       case "dispatcher:invoked":
-        this.pushSystemText(`⚡ Dispatcher: crafting prompt for step ${event.stepIndex}...\n`, event.timestamp);
+        this.pushSystemText(`⚡ Dispatcher: analyzing phase and crafting worker prompt...\n`, event.timestamp);
         break;
 
-      case "dispatcher:completed":
-        this.pushSystemText(`⚡ Dispatcher: prompt ready\n`, event.timestamp);
+      case "dispatcher:completed": {
+        const warnings = event.decision.warnings;
+        const warningText = warnings && warnings.length > 0
+          ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
+          : "";
+        this.pushSystemText(`⚡ Dispatcher: prompt ready${warningText} — launching worker\n`, event.timestamp);
         break;
+      }
 
       case "dispatcher:failed":
-        this.pushSystemText(`⚠ Dispatcher failed: ${event.reason}. Using static template.\n`, event.timestamp);
+        this.pushSystemText(`⚠ Dispatcher unavailable: ${event.reason}. Using static prompt.\n`, event.timestamp);
         break;
 
       // Evaluator events
@@ -506,8 +517,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     const now = Date.now();
     for (const [id, lastActivity] of this.agentActivityMap) {
       if (now - lastActivity > AGENT_STALE_TIMEOUT_MS) {
-        this.builder.completeAgent(id, 0, 0);
+        // Compute elapsed time from when the agent was first seen (spawned),
+        // not from last activity, so the duration is meaningful.
+        const spawnedAt = this.agentSpawnTimeMap.get(id) ?? lastActivity;
+        const elapsed = now - spawnedAt;
+        this.builder.completeAgent(id, elapsed, 0);
         this.agentActivityMap.delete(id);
+        this.agentSpawnTimeMap.delete(id);
         this.flushBlocks();
       }
     }

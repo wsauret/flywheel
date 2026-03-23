@@ -258,7 +258,7 @@ describe("createShellStageRunner", () => {
     };
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(mockSession as any, deps);
+    const runner = createShellStageRunner({ session: mockSession as any, deps });
     expect(typeof runner).toBe("function");
   });
 
@@ -278,7 +278,7 @@ describe("createShellStageRunner", () => {
     };
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(mockSession as any, deps);
+    const runner = createShellStageRunner({ session: mockSession as any, deps });
     const ac = new AbortController();
 
     // Force an unknown workflow type through the runner
@@ -311,7 +311,7 @@ describe("createShellStageRunner", () => {
     };
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(mockSession as any, deps);
+    const runner = createShellStageRunner({ session: mockSession as any, deps });
     const ac = new AbortController();
 
     // Work stage without planPath in args — falls through to generic
@@ -351,18 +351,18 @@ describe("createShellStageRunner with QuestionService", () => {
     const questionService = new QuestionService(bus);
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(
-      makeMockSession() as any,
+    const runner = createShellStageRunner({
+      session: makeMockSession() as any,
       deps,
       questionService,
-    );
+    });
     expect(typeof runner).toBe("function");
   });
 
   it("still works without questionService (backward compatible)", () => {
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(makeMockSession() as any, deps);
+    const runner = createShellStageRunner({ session: makeMockSession() as any, deps });
     expect(typeof runner).toBe("function");
   });
 
@@ -371,11 +371,11 @@ describe("createShellStageRunner with QuestionService", () => {
     const questionService = new QuestionService(bus);
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(
-      makeMockSession() as any,
+    const runner = createShellStageRunner({
+      session: makeMockSession() as any,
       deps,
       questionService,
-    );
+    });
     const ac = new AbortController();
 
     const result = await runner(
@@ -394,11 +394,11 @@ describe("createShellStageRunner with QuestionService", () => {
     const questionService = new QuestionService(bus);
     const deps = makeDeps({ interactive_consolidation: true });
 
-    const runner = createShellStageRunner(
-      makeMockSession() as any,
+    const runner = createShellStageRunner({
+      session: makeMockSession() as any,
       deps,
       questionService,
-    );
+    });
     // If it didn't throw, the config was read and wired correctly
     expect(typeof runner).toBe("function");
   });
@@ -408,11 +408,11 @@ describe("createShellStageRunner with QuestionService", () => {
     const questionService = new QuestionService(bus);
     const deps = makeDeps();
 
-    const runner = createShellStageRunner(
-      makeMockSession() as any,
+    const runner = createShellStageRunner({
+      session: makeMockSession() as any,
       deps,
       questionService,
-    );
+    });
     const ac = new AbortController();
 
     const result = await runner(

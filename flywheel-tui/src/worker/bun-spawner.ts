@@ -255,6 +255,9 @@ export class BunProcessSpawner implements ProcessSpawner {
       stdoutReader = proc.stdout.getReader();
       const stdoutDecoder = new TextDecoder("utf-8", { fatal: false });
 
+      /** Optional callback invoked once when completion is first detected during streaming. */
+      let _onCompletionDetected: (() => void) | null = null;
+
       const readStdout = async () => {
         try {
           while (true) {
@@ -264,7 +267,13 @@ export class BunProcessSpawner implements ProcessSpawner {
             rawStdoutChunks.push(text);
             options?.onStdout?.(text);
             ndjsonParser.write(text);
+            const wasDetected = completionDetector.hasSeenCompletion;
             completionDetector.check(text);
+            // Fire once on transition from undetected → detected
+            if (!wasDetected && completionDetector.hasSeenCompletion && _onCompletionDetected) {
+              _onCompletionDetected();
+              _onCompletionDetected = null;
+            }
           }
           // Flush decoder
           const remaining = stdoutDecoder.decode(undefined, { stream: false });
@@ -347,6 +356,19 @@ export class BunProcessSpawner implements ProcessSpawner {
             stdinSink.write(encoder.encode(options!.stdin!));
           } catch {
             pipeOpen = false;
+          }
+        };
+
+        // In pipe mode, close stdin when the worker signals completion.
+        // Without this, Claude's stream-json mode keeps waiting for more input
+        // on stdin, preventing the process from exiting and the phase from advancing.
+        _onCompletionDetected = () => {
+          if (!pipeOpen) return;
+          pipeOpen = false;
+          try {
+            stdinSink.end();
+          } catch {
+            // Already closed
           }
         };
 

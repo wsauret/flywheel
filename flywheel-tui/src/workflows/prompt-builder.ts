@@ -15,6 +15,7 @@ import {
   buildPlanConsolidatePrompt,
   buildReviewDispatchPrompt,
   buildReviewConsolidatePrompt,
+  buildReviewFixPrompt,
   buildShipPrompt,
   buildShipCompoundPrompt,
   buildDebugPrompt,
@@ -40,6 +41,8 @@ const reviewPrompts: PromptFn[] = [
   buildReviewDispatchPrompt,
   // Step 2: Consolidate — uses review consolidate template with P3 triage data
   buildReviewConsolidatePrompt,
+  // Step 3: Implement findings — uses review fix template
+  buildReviewFixPrompt,
 ];
 
 const shipPrompts: PromptFn[] = [

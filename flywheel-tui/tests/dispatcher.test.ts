@@ -78,7 +78,7 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
     schema_version: 1,
     phase_index: 0,
     step_index: 0,
-    prompt: "Execute the setup phase by creating directory layout",
+    task_content: "Execute the setup phase by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -172,6 +172,47 @@ const basePhasePromptOptions = {
   sessionBudget: baseSessionBudget,
   availableContext: baseAvailableContext,
 };
+
+// ---------------------------------------------------------------------------
+// Schema validation tests
+// ---------------------------------------------------------------------------
+
+describe("DispatcherDecisionSchema", () => {
+  it("accepts objects with task_content field", () => {
+    const obj = {
+      schema_version: 1,
+      phase_index: 0,
+      step_index: 0,
+      task_content: "Execute the setup phase",
+      context_files: ["src/index.ts"],
+      validation_criteria: {
+        acceptance_criteria: ["Tests pass"],
+        required_tests: true,
+        custom_checks: [],
+        required_outputs: [],
+      },
+    };
+    const result = DispatcherDecisionSchema.parse(obj);
+    expect(result.task_content).toBe("Execute the setup phase");
+  });
+
+  it("rejects objects without task_content", () => {
+    const obj = {
+      schema_version: 1,
+      phase_index: 0,
+      step_index: 0,
+      // no task_content
+      context_files: ["src/index.ts"],
+      validation_criteria: {
+        acceptance_criteria: ["Tests pass"],
+        required_tests: true,
+        custom_checks: [],
+        required_outputs: [],
+      },
+    };
+    expect(() => DispatcherDecisionSchema.parse(obj)).toThrow();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // a) DispatcherInput assembler tests
@@ -670,7 +711,7 @@ describe("SubprocessTransport", () => {
     const input = baseDispatcherInput();
 
     const result = await transport.invoke(input);
-    expect(result.prompt).toBe(decision.prompt);
+    expect(result.task_content).toBe(decision.task_content);
     expect(result.phase_index).toBe(decision.phase_index);
   });
 
@@ -703,7 +744,7 @@ describe("SubprocessTransport", () => {
 
     const result = await transport.invoke(input);
     expect(callCount).toBe(2);
-    expect(result.prompt).toBe(decision.prompt);
+    expect(result.task_content).toBe(decision.task_content);
   });
 
   it("returns null (throws) on second parse failure", async () => {
@@ -835,7 +876,7 @@ describe("DispatcherOrchestrator", () => {
   });
 
   it("calls dispatcher and returns full decision", async () => {
-    const decision = validDecision({ prompt: "Dynamic prompt from dispatcher" });
+    const decision = validDecision({ task_content: "Dynamic prompt from dispatcher" });
     const mockTransport: DispatcherTransport = {
       async invoke() {
         return decision;
@@ -865,7 +906,7 @@ describe("DispatcherOrchestrator", () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.prompt).toBe("Dynamic prompt from dispatcher");
+    expect(result!.task_content).toBe("Dynamic prompt from dispatcher");
   });
 
   it("on dispatcher failure, returns null and emits fallback event", async () => {
@@ -948,7 +989,7 @@ describe("DispatcherOrchestrator", () => {
   // -------------------------------------------------------------------------
 
   it("getPhaseDecision() returns full DispatcherDecision object (not just string)", async () => {
-    const decision = validDecision({ prompt: "Full decision prompt" });
+    const decision = validDecision({ task_content: "Full decision prompt" });
     const mockTransport: DispatcherTransport = {
       async invoke() { return decision; },
     };
@@ -976,7 +1017,7 @@ describe("DispatcherOrchestrator", () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.prompt).toBe("Full decision prompt");
+    expect(result!.task_content).toBe("Full decision prompt");
     expect(result!.schema_version).toBe(1);
     expect(result!.worker_config).toBeDefined();
     expect(result!.worker_config.timeout_minutes).toBe(30);
@@ -1158,9 +1199,16 @@ describe("Dispatcher system prompt", () => {
     expect(prompt).toContain("tool_scoping");
   });
 
-  it("instructs dispatcher to include Understand-Act-Verify in worker prompts", () => {
+  it("mentions task_content (not prompt) in the output schema", () => {
     const prompt = buildDispatcherSystemPrompt();
-    expect(prompt).toContain("Understand-Act-Verify");
+    expect(prompt).toContain("task_content");
+    // The output schema should describe task_content, not bare "prompt"
+    expect(prompt).toContain('"task_content"');
+  });
+
+  it("does NOT contain Understand-Act-Verify (behavioral instructions belong in templates)", () => {
+    const prompt = buildDispatcherSystemPrompt();
+    expect(prompt).not.toContain("Understand-Act-Verify");
   });
 
   it("instructs dispatcher to include iteration budget when worker_config.iteration_budget is set", () => {
@@ -1423,12 +1471,12 @@ describe("Cache-stable prompt structure", () => {
 // ---------------------------------------------------------------------------
 
 describe("enrichPromptWithContext", () => {
-  let enrichPromptWithContext: typeof import("../src/controller/dispatcher-orchestrator").enrichPromptWithContext;
+  let enrichPromptWithContext: typeof import("../src/controller/context-enrichment").enrichPromptWithContext;
   let INLINE_CONTENT_BUDGET: number;
   let tmpDir: string;
 
   beforeEach(async () => {
-    const mod = await import("../src/controller/dispatcher-orchestrator");
+    const mod = await import("../src/controller/context-enrichment");
     enrichPromptWithContext = mod.enrichPromptWithContext;
     INLINE_CONTENT_BUDGET = mod.INLINE_CONTENT_BUDGET;
     tmpDir = await mkdtemp(join(tmpdir(), "enrich-ctx-"));
@@ -1592,10 +1640,10 @@ describe("enrichPromptWithContext", () => {
 });
 
 // ---------------------------------------------------------------------------
-// g) enrichPromptWithContext integration via getPhaseDecision()
+// g) Orchestrator returns raw decision (enrichment moved to execution loop)
 // ---------------------------------------------------------------------------
 
-describe("DispatcherOrchestrator enrichment wiring", () => {
+describe("DispatcherOrchestrator raw decision passthrough", () => {
   let DispatcherOrchestrator: typeof import("../src/controller/dispatcher-orchestrator").DispatcherOrchestrator;
   let bus: EventBus;
   let events: FlywheelEvent[];
@@ -1610,12 +1658,12 @@ describe("DispatcherOrchestrator enrichment wiring", () => {
     tmpDir = await mkdtemp(join(tmpdir(), "enrich-orch-"));
   });
 
-  it("enriches prompt when decision has context_to_inline with valid files", async () => {
+  it("returns raw prompt without enrichment even when context_to_inline has valid files", async () => {
     const filePath = join(tmpDir, "conventions.md");
     await writeFile(filePath, "Use strict mode always.");
 
     const decision = validDecision({
-      prompt: "Execute the setup phase",
+      task_content: "Execute the setup phase",
       context_to_inline: [filePath],
     });
     const mockTransport: DispatcherTransport = {
@@ -1648,16 +1696,15 @@ describe("DispatcherOrchestrator enrichment wiring", () => {
     );
 
     expect(result).not.toBeNull();
-    // Prompt should be enriched with context header
-    expect(result!.prompt).toContain("## Relevant Context");
-    expect(result!.prompt).toContain("Use strict mode always.");
-    // Original prompt should still be present at the end
-    expect(result!.prompt).toContain("Execute the setup phase");
+    // Orchestrator no longer enriches — returns raw task_content from dispatcher
+    expect(result!.task_content).toBe("Execute the setup phase");
+    // context_to_inline is preserved in the decision for the execution loop
+    expect(result!.context_to_inline).toEqual([filePath]);
   });
 
-  it("does not enrich prompt when context_to_inline is absent", async () => {
+  it("returns raw task_content when context_to_inline is absent", async () => {
     const decision = validDecision({
-      prompt: "Execute the setup phase",
+      task_content: "Execute the setup phase",
       // No context_to_inline field
     });
     const mockTransport: DispatcherTransport = {
@@ -1687,12 +1734,12 @@ describe("DispatcherOrchestrator enrichment wiring", () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.prompt).toBe("Execute the setup phase");
+    expect(result!.task_content).toBe("Execute the setup phase");
   });
 
-  it("does not enrich prompt when context_to_inline is empty array", async () => {
+  it("returns raw task_content when context_to_inline is empty array", async () => {
     const decision = validDecision({
-      prompt: "Execute the setup phase",
+      task_content: "Execute the setup phase",
       context_to_inline: [],
     });
     const mockTransport: DispatcherTransport = {
@@ -1722,6 +1769,6 @@ describe("DispatcherOrchestrator enrichment wiring", () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.prompt).toBe("Execute the setup phase");
+    expect(result!.task_content).toBe("Execute the setup phase");
   });
 });

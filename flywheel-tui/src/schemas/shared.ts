@@ -67,14 +67,14 @@ const ParallelVariantSchema = z.object({
 });
 
 export const WorkerConfigSchema = z.object({
-  model_override: z.string().nullable(),
-  timeout_minutes: z.number(),
-  retry_on_failure: z.boolean(),
-  max_retries: z.number(),
-  iteration_budget: z.number(),
-  tool_scoping: ToolScopingSchema,
-  parallel: z.boolean(),
-  parallel_variants: z.array(ParallelVariantSchema).nullable(),
+  model_override: z.string().nullable().optional(),
+  timeout_minutes: z.number().optional(),
+  retry_on_failure: z.boolean().optional(),
+  max_retries: z.number().optional(),
+  iteration_budget: z.number().optional(),
+  tool_scoping: ToolScopingSchema.optional(),
+  parallel: z.boolean().optional(),
+  parallel_variants: z.array(ParallelVariantSchema).nullable().optional(),
 }).strip();
 
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>;

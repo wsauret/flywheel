@@ -25,5 +25,10 @@ export const reviewWorkflow: WorkflowDefinition = {
       validationCriteria:
         "Review document with P1/P2/P3 findings and implementation order",
     },
+    {
+      description: "Implement review findings",
+      dispatcherHint: "Read the review document and implement P1/P2 fixes. Skip if no actionable findings.",
+      validationCriteria: "All P1 findings addressed, P2 findings addressed where feasible, tests pass",
+    },
   ],
 };
