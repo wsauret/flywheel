@@ -390,6 +390,24 @@ export class ExecutionLoop {
         // Update state if persistence exists
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "pending", reason);
 
+        // Rate limit exhaustion: treat as interruption (resumable), not failure
+        if (error instanceof WorkerError && error.result.failure?.kind === "rate_limited") {
+          const rateLimitReason = "Rate limit exhausted — workflow paused for resumption";
+          this.emitter.phaseFailed(this.workflowId, phase.index, reason);
+          this.emitter.workflowInterrupted(this.workflowId, rateLimitReason);
+
+          if (error.result.failure) {
+            this.emitter.workerFailed(this.workflowId, error.result.failure);
+          }
+
+          return {
+            completed: false,
+            phasesCompleted,
+            phasesTotal,
+            reason: rateLimitReason,
+          };
+        }
+
         this.emitter.phaseFailed(this.workflowId, phase.index, reason);
         // Emit workflowFailed on all paths (not just non-work)
         this.emitter.workflowFailed(this.workflowId, reason);

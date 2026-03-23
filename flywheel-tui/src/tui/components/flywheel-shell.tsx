@@ -366,6 +366,18 @@ export function FlywheelShell() {
   // Force tracking
   void _autoFocusApproval
 
+  // Auto-focus prompt during working state so user can inject messages
+  // into the running worker. Without this, the output scrollbox steals
+  // focus (it gets focused={!isPromptFocused}) and keystrokes don't
+  // reach the prompt input.
+  const _autoFocusWorking = createMemo(() => {
+    if (appState() === "working" && !sidebarFocused()) {
+      setIsPromptFocused(true)
+    }
+    return appState()
+  })
+  void _autoFocusWorking
+
   // ── Workflow Lifecycle ──
 
   const startPipeline = (
@@ -611,7 +623,19 @@ export function FlywheelShell() {
       try {
         pipelineResult = await pipeline.run()
         if (!pipelineResult.completed && !_userInitiatedPause) {
-          activeStore()?.setError(pipelineResult.reason ?? "Pipeline failed")
+          const isRateLimitPause = /rate limit/i.test(pipelineResult.reason ?? "")
+
+          if (isRateLimitPause) {
+            // Rate limit exhaustion: show toast warning, skip ErrorModal
+            toast.show({
+              message: "Workflow paused — rate limit reached. Resume when limits lift.",
+              variant: "warning",
+              duration: 5000,
+            })
+          } else {
+            activeStore()?.setError(pipelineResult.reason ?? "Pipeline failed")
+          }
+
           // Persist lifecycle state as work:paused (failure ≠ completed)
           if (pipelineSessionId) {
             try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch (stateErr) {

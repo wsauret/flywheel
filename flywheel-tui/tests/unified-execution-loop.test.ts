@@ -1450,6 +1450,114 @@ describe("ExecutionLoop (unified)", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Rate limit exhaustion handling
+  // -------------------------------------------------------------------------
+
+  describe("rate limit exhaustion", () => {
+    /** Rate-limited failure for testing. */
+    function rateLimitedError(message: string): WorkerFailureReason {
+      return { kind: "rate_limited", message };
+    }
+
+    it("returns { completed: false } with rate-limit reason (not a thrown error)", async () => {
+      // max_retries: 0 so rate-limited error propagates immediately without retry delay
+      const { loop, adapter } = createUnifiedLoop({
+        spawnerResults: [
+          failureResult(rateLimitedError("Rate limited by API")),
+        ],
+        config: { max_retries: 0 },
+      });
+
+      const result = await loop.run();
+
+      expect(result.completed).toBe(false);
+      expect(result.reason).toContain("Rate limit exhausted");
+      expect(result.reason).toContain("paused for resumption");
+    });
+
+    it("emits workflow:interrupted (not workflow:failed) for rate limit exhaustion", async () => {
+      const { loop, adapter } = createUnifiedLoop({
+        spawnerResults: [
+          failureResult(rateLimitedError("Rate limited by API")),
+        ],
+        config: { max_retries: 0 },
+      });
+
+      await loop.run();
+
+      const interrupted = adapter.events.find((e) => e.type === "workflow:interrupted");
+      const failed = adapter.events.find((e) => e.type === "workflow:failed");
+
+      expect(interrupted).toBeDefined();
+      expect(failed).toBeUndefined();
+    });
+
+    it("still emits phase:failed for the rate-limited phase", async () => {
+      const { loop, adapter } = createUnifiedLoop({
+        spawnerResults: [
+          failureResult(rateLimitedError("Rate limited by API")),
+        ],
+        config: { max_retries: 0 },
+      });
+
+      await loop.run();
+
+      const phaseFailed = adapter.events.find((e) => e.type === "phase:failed");
+      expect(phaseFailed).toBeDefined();
+    });
+
+    it("still emits worker:failed for the rate-limited worker", async () => {
+      const { loop, adapter } = createUnifiedLoop({
+        spawnerResults: [
+          failureResult(rateLimitedError("Rate limited by API")),
+        ],
+        config: { max_retries: 0 },
+      });
+
+      await loop.run();
+
+      const workerFailed = adapter.events.find((e) => e.type === "worker:failed");
+      expect(workerFailed).toBeDefined();
+    });
+
+    it("returns same shape as budget exhaustion (completed: false, reason, phasesCompleted, phasesTotal)", async () => {
+      const { loop } = createUnifiedLoop({
+        phases: makePhases(3),
+        spawnerResults: [
+          successResult(),
+          failureResult(rateLimitedError("Rate limited by API")),
+        ],
+        config: { max_retries: 0 },
+      });
+
+      const result = await loop.run();
+
+      expect(result).toEqual({
+        completed: false,
+        phasesCompleted: 1,
+        phasesTotal: 3,
+        reason: "Rate limit exhausted — workflow paused for resumption",
+      });
+    });
+
+    it("non-rate-limit failures still emit workflow:failed (existing behavior)", async () => {
+      const { loop, adapter } = createUnifiedLoop({
+        spawnerResults: [
+          failureResult(nonRetryableError("Worker crashed")),
+        ],
+      });
+
+      await loop.run();
+
+      const failed = adapter.events.find((e) => e.type === "workflow:failed");
+      const interrupted = adapter.events.find((e) => e.type === "workflow:interrupted");
+
+      expect(failed).toBeDefined();
+      expect(interrupted).toBeUndefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // ContextIndexer integration
   // -------------------------------------------------------------------------
 

@@ -95,9 +95,25 @@ export class WorkController {
   }
 
   /**
-   * Run the work loop for a given plan.
+   * Get the underlying ExecutionLoop (available after run() sets it up).
+   * Returns null before run() is called or if setup hasn't reached loop creation.
    */
-  async run(planPath: string): Promise<ExecutionResult> {
+  getLoop(): ExecutionLoop | null {
+    return this.loop;
+  }
+
+  /**
+   * Run the work loop for a given plan.
+   *
+   * @param planPath - Path to the plan file
+   * @param onLoopReady - Optional callback fired after the ExecutionLoop is created
+   *   but before it starts running. Use this to capture the loop reference for
+   *   mid-execution stdin injection.
+   */
+  async run(
+    planPath: string,
+    onLoopReady?: (loop: ExecutionLoop) => void,
+  ): Promise<ExecutionResult> {
     const workflowId = crypto.randomUUID();
     const emitter = createFlywheelEmitter(this.eventBus);
 
@@ -166,6 +182,10 @@ export class WorkController {
       contextIndexer: this.contextIndexer,
     });
     this.loop.setLoadedState(state);
+
+    // Notify caller that the loop is ready (for mid-execution stdin injection wiring).
+    // This fires synchronously before the async loop.run() begins.
+    onLoopReady?.(this.loop);
 
     return this.loop.run();
   }

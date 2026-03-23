@@ -16,6 +16,10 @@ export const metadata: EngineMetadata = {
   description: "OpenCode AI CLI",
   order: 1,
   supportsToolScoping: false,
+  // OpenCode does not support mid-execution stdin injection.
+  // The initial prompt is sent via stdin, but no additional messages
+  // can be injected after startup. Only Claude (with --input-format
+  // stream-json) supports streaming input for mid-worker steering.
   supportsStreamingInput: false,
 };
 

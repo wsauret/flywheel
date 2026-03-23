@@ -41,6 +41,12 @@ export class SubprocessTransport implements DispatcherTransport {
     const systemPrompt = buildDispatcherSystemPrompt();
     const truncationNotes = buildTruncationNotes(input);
     const userContent = `${truncationNotes}Here is the dispatcher input:\n\n${JSON.stringify(input)}\n\nRespond with valid JSON only.`;
+
+    // OpenCode CLI does not support --system-prompt; system prompt is
+    // concatenated into the user message. Claude Code supports
+    // --system-prompt but the subprocess transport uses OpenCode.
+    // The SDK transport (sdk-transport.ts) separates them via the
+    // `system` body field for prompt caching.
     const userMessage = `${systemPrompt}\n\n---\n\n${userContent}`;
 
     let lastError: Error | null = null;

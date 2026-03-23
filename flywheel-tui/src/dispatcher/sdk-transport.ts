@@ -4,12 +4,18 @@
  * If the SDK is available, creates a session and sends the prompt.
  * If the SDK is not available (import fails), SDK_AVAILABLE is false
  * and SdkTransport.invoke() will always throw.
+ *
+ * The system prompt is passed via the `system` body field so the hosting
+ * runtime (OpenCode) can cache the stable prefix across invocations.
+ * Variable per-call content (truncation notes + input JSON) goes in
+ * `parts` as user content.
  */
 
 import type { DispatcherInput, DispatcherDecision } from "../schemas/dispatcher";
 import type { DispatcherTransport } from "./transport";
 import { DispatcherDecisionSchema } from "../schemas/dispatcher";
 import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prompt";
+import { Log } from "../utils/log";
 
 // ---------------------------------------------------------------------------
 // SDK availability detection
@@ -31,10 +37,41 @@ try {
 export const SDK_AVAILABLE: boolean = _sdkAvailable;
 
 // ---------------------------------------------------------------------------
+// Testing seam — allows tests to inject a mock client factory.
+// ---------------------------------------------------------------------------
+
+/** @internal — for tests only. Replaces the client factory used by SdkTransport. */
+export function _setClientFactoryForTesting(factory: (() => unknown) | null): void {
+  _createOpencodeClient = factory;
+  _sdkAvailable = factory !== null;
+}
+
+// ---------------------------------------------------------------------------
 // Timeout constant
 // ---------------------------------------------------------------------------
 
 const SDK_TIMEOUT_MS = 30_000;
+
+const log = Log.create({ service: "sdk-transport" });
+
+// ---------------------------------------------------------------------------
+// SDK client type — mirrors the subset of the @opencode-ai/sdk client API
+// that we use: session.create() and session.prompt().
+// ---------------------------------------------------------------------------
+
+/** @internal — exported for testing. */
+export interface SdkClient {
+  session: {
+    create: (opts: object) => Promise<{ data?: { id: string }; error?: unknown }>;
+    prompt: (opts: {
+      path: { id: string };
+      body: {
+        system?: string;
+        parts: Array<{ type: "text"; text: string }>;
+      };
+    }) => Promise<{ data?: unknown; error?: unknown }>;
+  };
+}
 
 // ---------------------------------------------------------------------------
 // SdkTransport
@@ -46,16 +83,16 @@ export class SdkTransport implements DispatcherTransport {
       throw new Error("@opencode-ai/sdk is not available");
     }
 
-    const client = _createOpencodeClient() as {
-      session: {
-        create: (opts: object) => Promise<{ data?: { id: string }; error?: unknown }>;
-        prompt: (opts: object) => Promise<{ data?: unknown; error?: unknown }>;
-      };
-    };
+    const client = _createOpencodeClient() as SdkClient;
 
     const systemPrompt = buildDispatcherSystemPrompt();
     const truncationNotes = buildTruncationNotes(input);
     const userContent = `${truncationNotes}${JSON.stringify(input)}`;
+
+    log.debug("prompt segments", {
+      systemLen: systemPrompt.length,
+      userLen: userContent.length,
+    });
 
     // Create a session
     const sessionResult = await client.session.create({});
@@ -64,12 +101,16 @@ export class SdkTransport implements DispatcherTransport {
     }
 
     const sessionId = sessionResult.data.id;
-    const userMessage = `${systemPrompt}\n\n---\n\n${userContent}`;
 
-    // Send prompt with timeout
+    // Send prompt with system/user separation for prompt caching.
+    // The stable system prompt goes in `system` (cacheable prefix).
+    // Variable per-call content goes in `parts` as user text.
     const promptPromise = client.session.prompt({
       path: { id: sessionId },
-      body: { content: userMessage },
+      body: {
+        system: systemPrompt,
+        parts: [{ type: "text" as const, text: userContent }],
+      },
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>

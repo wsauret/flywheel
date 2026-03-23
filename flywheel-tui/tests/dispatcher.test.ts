@@ -499,12 +499,14 @@ describe("DispatcherInput assembler", () => {
 
 describe("SdkTransport", () => {
   let SdkTransport: typeof import("../src/dispatcher/sdk-transport").SdkTransport;
+  let _setClientFactoryForTesting: typeof import("../src/dispatcher/sdk-transport")._setClientFactoryForTesting;
   let sdkAvailable: boolean;
 
   beforeEach(async () => {
     try {
       const mod = await import("../src/dispatcher/sdk-transport");
       SdkTransport = mod.SdkTransport;
+      _setClientFactoryForTesting = mod._setClientFactoryForTesting;
       sdkAvailable = mod.SDK_AVAILABLE;
     } catch {
       sdkAvailable = false;
@@ -532,6 +534,109 @@ describe("SdkTransport", () => {
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect((parsed.data as any).parallel).toBeUndefined();
+    }
+  });
+
+  it("sends system prompt as separate `system` field, not concatenated into user content", async () => {
+    let capturedPromptOpts: { path: { id: string }; body: { system?: string; parts: Array<{ type: string; text: string }> } } | undefined;
+
+    const mockClient = {
+      session: {
+        create: async () => ({ data: { id: "mock-session-123" } }),
+        prompt: async (opts: any) => {
+          capturedPromptOpts = opts;
+          return { data: { text: JSON.stringify(validDecision()) } };
+        },
+      },
+    };
+
+    _setClientFactoryForTesting(() => mockClient);
+
+    try {
+      const transport = new SdkTransport();
+      const input = baseDispatcherInput();
+      await transport.invoke(input);
+
+      expect(capturedPromptOpts).toBeDefined();
+
+      // system field should be present and contain the system prompt
+      expect(capturedPromptOpts!.body.system).toBeDefined();
+      expect(typeof capturedPromptOpts!.body.system).toBe("string");
+      expect(capturedPromptOpts!.body.system!).toContain("prompt engineering specialist");
+
+      // parts should contain exactly one text part with the user content
+      expect(capturedPromptOpts!.body.parts).toHaveLength(1);
+      expect(capturedPromptOpts!.body.parts[0].type).toBe("text");
+
+      // User content should contain the input JSON but NOT the system prompt
+      const userText = capturedPromptOpts!.body.parts[0].text;
+      expect(userText).toContain(JSON.stringify(input));
+      expect(userText).not.toContain("prompt engineering specialist");
+
+      // No concatenation separator should exist in user content
+      expect(userText).not.toContain("\n\n---\n\n");
+    } finally {
+      // Restore original factory so other tests aren't affected
+      _setClientFactoryForTesting(null);
+    }
+  });
+
+  it("includes truncation notes in user content, not in system field", async () => {
+    let capturedPromptOpts: any;
+
+    const mockClient = {
+      session: {
+        create: async () => ({ data: { id: "mock-session-456" } }),
+        prompt: async (opts: any) => {
+          capturedPromptOpts = opts;
+          return { data: { text: JSON.stringify(validDecision()) } };
+        },
+      },
+    };
+
+    _setClientFactoryForTesting(() => mockClient);
+
+    try {
+      const transport = new SdkTransport();
+      const input = baseDispatcherInput({ plan_truncated: true, history_truncated: true });
+      await transport.invoke(input);
+
+      // System prompt should NOT contain truncation warnings
+      expect(capturedPromptOpts.body.system).not.toContain("Truncation");
+
+      // User content should contain truncation warnings
+      const userText = capturedPromptOpts.body.parts[0].text;
+      expect(userText).toContain("Truncation");
+      expect(userText).toContain("truncated");
+    } finally {
+      _setClientFactoryForTesting(null);
+    }
+  });
+
+  it("system prompt is identical across invocations (cache-stable)", async () => {
+    const capturedSystems: string[] = [];
+
+    const mockClient = {
+      session: {
+        create: async () => ({ data: { id: "mock-session-789" } }),
+        prompt: async (opts: any) => {
+          capturedSystems.push(opts.body.system);
+          return { data: { text: JSON.stringify(validDecision()) } };
+        },
+      },
+    };
+
+    _setClientFactoryForTesting(() => mockClient);
+
+    try {
+      const transport = new SdkTransport();
+      await transport.invoke(baseDispatcherInput({ plan_truncated: false }));
+      await transport.invoke(baseDispatcherInput({ plan_truncated: true, workflow_id: "different-wf" }));
+
+      expect(capturedSystems).toHaveLength(2);
+      expect(capturedSystems[0]).toBe(capturedSystems[1]);
+    } finally {
+      _setClientFactoryForTesting(null);
     }
   });
 });

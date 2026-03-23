@@ -14,6 +14,7 @@ import type { FlywheelConfig } from "../config/loader";
 import type { Engine } from "../engines/core/types";
 import type { ToolScoping } from "../schemas/shared";
 import { isRetryable } from "../worker/errors";
+import { RATE_LIMIT_RETRY_OPTIONS } from "../worker/rate-limit";
 import { retry } from "../utils/retry";
 import { Log } from "../utils/log";
 
@@ -118,7 +119,13 @@ export class PhaseExecutor {
    * Get the stdin handle for the currently active spawn.
    * Returns undefined if no spawn is active or stdin pipe was not requested.
    *
-   * TODO: Wire this through ExecutionLoop to TUI for mid-execution stdin injection (Phase 4.7-4.8).
+   * Wired through ExecutionLoop.injectToWorker() → shell's activeLoop for
+   * mid-execution stdin injection during both work and generic stages.
+   *
+   * Note: OpenCode engine has supportsStreamingInput: false, so stdin
+   * injection only works for Claude workers (which use --input-format stream-json).
+   * OpenCode workers receive the initial prompt via stdin but do not accept
+   * additional messages after startup.
    */
   getStdinHandle(): StdinHandle | undefined {
     return this._currentStdinHandle;
@@ -275,7 +282,7 @@ export class PhaseExecutor {
         maxRetries,
         backoff: "exponential",
         baseDelayMs: 1000,
-        maxDelayMs: 120_000,
+        maxDelayMs: RATE_LIMIT_RETRY_OPTIONS.maxDelayMs,
         jitter: true,
         isRetryable: (error) => {
           if (error instanceof WorkerError && error.result.failure) {
@@ -283,11 +290,19 @@ export class PhaseExecutor {
           }
           return false;
         },
-        onRetry: (attempt, error, _delayMs) => {
+        onRetry: (attempt, error, delayMs) => {
           const reason =
             error instanceof WorkerError && error.result.failure
               ? error.result.failure.message
               : String(error);
+
+          if (error instanceof WorkerError && error.result.failure?.kind === "rate_limited") {
+            log.info("rate-limited, retrying with exponential backoff", {
+              attempt,
+              delayMs,
+              rateLimitBaseDelayMs: RATE_LIMIT_RETRY_OPTIONS.baseDelayMs,
+            });
+          }
 
           this.emitter.workerRetrying(
             this.workflowId,

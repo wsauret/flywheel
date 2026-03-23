@@ -132,7 +132,10 @@ export function createShellStageRunner(
       });
 
       try {
-        const result = await controller.run(args.planPath);
+        const result = await controller.run(args.planPath, (loop) => {
+          // Expose the work stage's loop for mid-execution stdin injection
+          onLoopCreated?.(loop);
+        });
         return {
           workflow: "work",
           completed: result.completed,

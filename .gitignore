@@ -70,6 +70,10 @@ temp/
 *.temp
 *.bak
 
+# Rust
+target/
+Cargo.lock
+
 # Project-specific
 .flywheel/
 .worktrees/
