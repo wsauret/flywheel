@@ -1,0 +1,37 @@
+{
+  "groupId": "revision-infrastructure",
+  "milestone": "evaluator-retry-and-revision",
+  "assertions": {
+    "VAL-REV-002": {
+      "status": "pass",
+      "evidence": "WorkerResultSchema in src/schemas/worker.ts has `sessionId: z.string().optional()` field (line 44). bun-spawner.ts buildWorkerResult() reads `ndjsonParser.sessionId ?? undefined` and includes it in the returned object (line 189). Tests: 'schema accepts sessionId field' and 'schema accepts missing sessionId (optional)' both pass, confirming the schema validates sessionId as optional string.",
+      "details": "2 tests pass: (1) WorkerResultSchema.safeParse with sessionId='session-abc-123' succeeds and roundtrips the value. (2) WorkerResultSchema.safeParse without sessionId succeeds with undefined. Source inspection confirms bun-spawner reads ndjsonParser.sessionId in buildWorkerResult."
+    },
+    "VAL-REV-007": {
+      "status": "pass",
+      "evidence": "FlywheelConfigSchema in src/config/loader.ts defines `max_revisions: z.number().int().min(0).max(5).default(1)` (line 57). CONFIG_DEFAULTS has `max_revisions: 1` (line 77). ENV_MAP has FLYWHEEL_MAX_REVISIONS entry that parses integer (line 138). 9 tests cover: default=1, range 0-5, rejection of <0/>5/non-integer, CONFIG_DEFAULTS, env var override, env var 0 disabling, out-of-range env rejection.",
+      "details": "9 tests pass covering schema validation (default, range, rejection), CONFIG_DEFAULTS, and env var override (FLYWHEEL_MAX_REVISIONS). Source confirms: z.number().int().min(0).max(5).default(1) in FlywheelConfigSchema, CONFIG_DEFAULTS.max_revisions=1, and FLYWHEEL_MAX_REVISIONS in ENV_MAP with parseInt."
+    },
+    "VAL-REV-009": {
+      "status": "pass",
+      "evidence": "EvaluatorRevisionRequested type defined in src/events/types.ts (line 157-164) with fields: type, workflowId, phaseIndex, revisionAttempt, maxRevisions, reason, timestamp. Included in FlywheelEvent union (line 17). FlywheelEmitter interface has evaluatorRevisionRequested() method (event-bus.ts line 127). createFlywheelEmitter() implements it emitting type 'evaluator:revision-requested' (event-bus.ts line 176). 3 tests verify: EventBus can emit/subscribe to the event, typed listener receives correct fields, and FlywheelEmitter.evaluatorRevisionRequested() emits correctly.",
+      "details": "3 tests pass: (1) event emitted via EventBus and received by catch-all subscriber. (2) typed listener receives all fields (workflowId, phaseIndex, revisionAttempt, maxRevisions, reason, timestamp). (3) FlywheelEmitter.evaluatorRevisionRequested() convenience method emits correctly. Source confirms EvaluatorRevisionRequested interface in types.ts and emitter method in event-bus.ts."
+    },
+    "VAL-REV-010": {
+      "status": "pass",
+      "evidence": "OpenTUIAdapter handles 'evaluator:revision-requested' at src/tui/adapters/opentui.ts line 381, pushing system text '🔄 Needs revision (attempt N/M) — re-running worker...'. HeadlessAdapter handles it at src/tui/adapters/headless.ts line 198, logging 'Revision requested (attempt N/M): reason'. 2 tests verify HeadlessAdapter logs revision event at both verbose and normal log levels. Note: OpenTUI adapter handler was verified via source inspection (unit test for OpenTUI rendering not included due to OpenTUI requiring --conditions=browser).",
+      "details": "2 tests pass for HeadlessAdapter: (1) verbose level logs message containing 'Revision'. (2) normal level logs message containing 'Revision'. OpenTUI adapter verified by source code inspection — line 381-385 handles evaluator:revision-requested with pushSystemText showing revision attempt info."
+    }
+  },
+  "testsRun": [
+    {
+      "command": "bun test tests/revision-infrastructure.test.ts",
+      "exitCode": 0,
+      "output": "18 pass, 0 fail, 46 expect() calls, ran 18 tests across 1 file in 42.00ms"
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["bun test"],
+  "summary": "Tested 4 assertions: all 4 passed. VAL-REV-002 (WorkerResult.sessionId) confirmed via schema tests and bun-spawner source. VAL-REV-007 (max_revisions config) confirmed via 9 config tests covering defaults, range, and env var. VAL-REV-009 (evaluator:revision-requested event) confirmed via 3 event system tests. VAL-REV-010 (TUI adapter display) confirmed via 2 HeadlessAdapter tests and OpenTUI source inspection."
+}

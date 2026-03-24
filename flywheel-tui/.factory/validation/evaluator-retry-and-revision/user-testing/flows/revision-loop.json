@@ -1,0 +1,103 @@
+{
+  "groupId": "revision-loop",
+  "milestone": "evaluator-retry-and-revision",
+  "testedAt": "2026-03-24T15:01:57Z",
+  "isolation": {
+    "repoRoot": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testFile": "tests/revision-loop.test.ts",
+    "sourceFiles": [
+      "src/controller/execution-loop.ts",
+      "src/evaluator/invoke.ts",
+      "src/controller/phase-executor.ts",
+      "src/schemas/worker.ts"
+    ]
+  },
+  "toolsUsed": ["bun test"],
+  "assertions": {
+    "VAL-REV-001": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-001/004: re-invokes executor with resumeSessionId from WorkerResult.sessionId' passes. Verifies spawner.calls[1].args contains '--resume' and 'session-abc-123'. Source: execution-loop.ts builds revisionOptions with resumeSessionId = result.sessionId, PhaseExecutor passes resumeSessionId to engine.buildCommand().",
+      "details": "After evaluator returns passed:false, the execution loop captures WorkerResult.sessionId and passes it as resumeSessionId to executor.execute(). PhaseExecutor forwards it to engine.buildCommand() which adds --resume <sessionId> (Claude) or --session <sessionId> (OpenCode)."
+    },
+    "VAL-REV-003": {
+      "status": "pass",
+      "evidence": "Tests 'VAL-REV-003/016: revision prompt contains evaluator reasoning, feedback, and suggestions' (4 sub-tests all pass). buildRevisionPrompt() tested directly with EvaluationResult containing reasoning, feedback, suggestions. Source: EvaluationResult in invoke.ts includes feedback?, suggestions?, reasoning? fields populated from EvaluatorResult.",
+      "details": "EvaluationResult extended with feedback, suggestions, reasoning fields. buildRevisionPrompt() formats these into structured markdown with ## Revision Required, ### Evaluator Reasoning, ### Feedback, ### Suggestions sections."
+    },
+    "VAL-REV-004": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-001/004' verifies second spawn args contain '--resume session-abc-123'. Source: phase-executor.ts destructures resumeSessionId from options and passes to engine.buildCommand({ resumeSessionId }). Claude engine adds '--resume <id>'.",
+      "details": "Resumed worker receives --resume flag with the sessionId, which makes Claude continue the existing conversation with full prior context."
+    },
+    "VAL-REV-005": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-005: first attempt fails eval, revision passes eval, phase completes' passes. result.completed=true, result.phasesCompleted=1, spawner.calls.length=2, evaluator callCount=2, phase:completed event emitted once.",
+      "details": "Sequential evaluator mock returns failingEvalResult() then passingEvalResult(). Execution loop spawns worker twice (initial + revision). Phase completes normally after revision passes."
+    },
+    "VAL-REV-006": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-006: all attempts fail, phase fails with accumulated feedback' passes. result.completed=false, result.reason contains 'revision', spawner.calls.length=3 (1 initial + 2 revisions), callCount=3, phase:failed and workflow:failed events emitted.",
+      "details": "With max_revisions=2, three consecutive eval failures exhaust revisions. accumulatedFeedback collects feedback from each attempt. Phase fails with reason containing accumulated feedback."
+    },
+    "VAL-REV-008": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-008: evaluator failure immediately fails phase with no revision attempts' passes. result.completed=false, spawner.calls.length=1, callCount=1, no evaluator:revision-requested events.",
+      "details": "With max_revisions=0, the while loop condition (revisionAttempt < maxRevisions = 0) is false immediately. Evaluator failure goes straight to the failure path."
+    },
+    "VAL-REV-011": {
+      "status": "pass",
+      "evidence": "Tests 'VAL-REV-011: revision triggers for research workflow type' and 'revision triggers for review workflow type' both pass. Both show spawner.calls.length=2, callCount=2, result.completed=true.",
+      "details": "No workflow-type conditional in the revision logic. workflowLabel is set to 'research' and 'review' respectively; both trigger revision identically."
+    },
+    "VAL-REV-012": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-012: revision re-spawns without --resume when sessionId is undefined' passes. Second spawn args do NOT contain '--resume'. WARN log emitted: 'sessionId unavailable for revision, re-spawning without --resume'.",
+      "details": "When WorkerResult.sessionId is undefined, the condition `if (result.sessionId)` is false so resumeSessionId is not set. buildRevisionPrompt receives hasSessionId=false and prepends originalPrompt. Warning logged."
+    },
+    "VAL-REV-013": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-013: no evaluator invocation and no revision events when skip_evaluation=true' passes. callCount=0, no evaluator:revision-requested events, result.completed=true.",
+      "details": "The evaluator guard `!this.config.skip_evaluation` prevents entering the evaluator block entirely. No evaluator or revision logic runs."
+    },
+    "VAL-REV-014": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-014: first attempt fails eval, revision throws WorkerError, immediate failure' passes. result.completed=false, result.reason contains 'Worker crashed during revision', spawner.calls.length=2.",
+      "details": "WorkerError during revision propagates up to the catch block. The error is not caught by the revision while-loop; it bubbles to the outer try/catch which emits phaseFailed and workflowFailed."
+    },
+    "VAL-REV-015": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-015: first attempt fails eval, revision evaluator times out, phase completes' passes. result.completed=true, result.phasesCompleted=1.",
+      "details": "Evaluator timeout returns passed:true, skipped:true. The while-loop exits because evalResult.skipped is true. Phase completes successfully."
+    },
+    "VAL-REV-016": {
+      "status": "pass",
+      "evidence": "Tests 'VAL-REV-003/016' cover both paths. Resume path: only feedback sections (## Revision Required, ### Evaluator Reasoning, ### Feedback, ### Suggestions). Fresh path: originalPrompt prepended + feedback sections. Missing fields handled gracefully.",
+      "details": "buildRevisionPrompt() produces structured markdown. When hasSessionId=true, only feedback is sent. When hasSessionId=false and originalPrompt provided, the original prompt is prepended before the ## Revision Required section."
+    },
+    "VAL-REV-017": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-017: shutdown between revision attempts stops further spawns' passes. loop.requestShutdown() called before run(), result.completed=false, result.reason contains 'Shutdown'.",
+      "details": "The revision while-loop checks _shutdownRequested before each iteration. When set, emits workflowInterrupted with 'Shutdown requested during revision' and returns early."
+    },
+    "VAL-REV-018": {
+      "status": "pass",
+      "evidence": "Test 'VAL-REV-018: phases complete normally without evaluator transport regardless of max_revisions' passes. No evaluator:invoked or evaluator:revision-requested events. result.completed=true.",
+      "details": "The evaluator guard `this.evaluatorTransport && ...` is false when no transport provided. Entire evaluator + revision block is skipped."
+    },
+    "VAL-CROSS-001": {
+      "status": "pass",
+      "evidence": "Test 'VAL-CROSS-001: evaluator runs once per attempt (no internal retry on passed:false), then revision triggers' passes. callCount=2 (one per attempt), spawner.calls.length=2. Source: invoke.ts returns immediately on valid passed:false (no retry), execution-loop.ts decides to revise.",
+      "details": "Evaluator.evaluate() returns immediately on valid passed:false (no retry loop for valid verdicts). The execution loop's while-loop drives revisions. Evaluator called exactly once per worker execution."
+    }
+  },
+  "testsRun": [
+    {
+      "command": "bun test tests/revision-loop.test.ts",
+      "exitCode": 0,
+      "output": "19 pass, 0 fail, 65 expect() calls. Ran 19 tests across 1 file. [137.00ms]"
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 15 assertions: all 15 passed. All 19 unit tests in tests/revision-loop.test.ts pass with 65 expect() calls. Source code inspection confirms implementation matches validation contract requirements for revision loop, prompt assembly, session resume, edge cases (shutdown, timeout, crash, no transport, skip_evaluation, max_revisions=0), and cross-area interaction with evaluator retry fix."
+}
