@@ -83,6 +83,7 @@ import { createSessionViewport, type SessionViewport } from "./session-viewport"
 import { isResumable } from "../../session/state-machine"
 import { deriveHeaderInfo } from "./session-header-logic"
 import { autoDetectTransport } from "../../dispatcher/auto-detect"
+import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { killAllActiveProcesses } from "../../worker/process-lifecycle"
 import { createStageLoop } from "../../controller/stage-loop-factory"
 import { Log } from "../../utils/log"
@@ -619,6 +620,25 @@ export function FlywheelShell() {
         })
       }
 
+      // Create engine-aware evaluator transport (same engine/model config as dispatcher).
+      let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
+      if (!deps.config.skip_evaluation) {
+        try {
+          const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
+          const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
+          evaluatorTransport = createEvaluatorTransport({
+            spawner: deps.spawner,
+            engineName: deps.config.engine,
+            evaluatorModel: evalModel,
+          })
+          log.info("evaluator transport created", { engine: deps.config.engine })
+        } catch (err) {
+          log.warn("evaluator transport creation failed, evaluation will be skipped", {
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
+
       // Create stage runner — unified path for all workflow types, dispatcher always wired.
       const stageRunner = createShellStageRunner({
         session,
@@ -630,6 +650,7 @@ export function FlywheelShell() {
         onLoopCreated: (loop: ExecutionLoop) => { activeLoop = loop },
         contextIndexer: pipelineContextIndexer,
         dispatcherTransport,
+        evaluatorTransport,
         // onSessionName: update persisted session + refresh sidebar when dispatcher returns a name
         onSessionName: capturedSessionId ? (name: string) => {
           try {
@@ -1010,6 +1031,20 @@ export function FlywheelShell() {
         dispatcherTransport = resolved.transport
       } catch { /* fallback to static prompts */ }
 
+      // Create engine-aware evaluator transport for the resumed session
+      let resumeEvaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
+      if (!deps.config.skip_evaluation) {
+        try {
+          const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
+          const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
+          resumeEvaluatorTransport = createEvaluatorTransport({
+            spawner: deps.spawner,
+            engineName: deps.config.engine,
+            evaluatorModel: evalModel,
+          })
+        } catch { /* evaluation will be skipped */ }
+      }
+
       try {
         const handle = createStageLoop({
           workflow: "work",
@@ -1020,6 +1055,7 @@ export function FlywheelShell() {
           ui: session.adapter,
           eventBus: session.eventBus,
           dispatcherTransport,
+          evaluatorTransport: resumeEvaluatorTransport,
         })
         activeLoop = handle.loop
 

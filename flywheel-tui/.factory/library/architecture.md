@@ -13,7 +13,7 @@ The engine system has three layers:
 2. **Engine Providers** (`src/engines/providers/{name}/index.ts`) — build CLI commands via `buildCommand(options)`
 3. **Transports** (dispatcher + evaluator) — spawn subprocesses using engine-built commands
 
-The dispatcher transport now uses the engine registry to build commands with appropriate flags per engine. The evaluator transport has been similarly refactored but is not yet wired into the production execution pipeline (invoke.ts still uses the legacy path). Both transports support Claude Code and OpenCode engines with per-engine optimization flags (tools disabled, fast model, no session persistence for Claude; model flag for OpenCode).
+Both the dispatcher and evaluator transports now use the engine registry to build commands with appropriate flags per engine. Both are wired into the production execution pipeline: the dispatcher via `autoDetectTransport()` and the evaluator via `createEvaluatorTransport()` in `src/evaluator/create-transport.ts`. The evaluator transport is threaded through `StageLoopOptions` → `ExecutionLoop` → phase execution. Both transports support Claude Code and OpenCode engines with per-engine optimization flags (tools disabled, fast model, no session persistence for Claude; model flag for OpenCode). Both transports use the shared `extractTextFromNDJSON()` utility from `src/utils/ndjson-text-extractor.ts`.
 
 ### Engine-specific system prompt handling
 

@@ -18,6 +18,7 @@ import { DispatcherDecisionSchema } from "../schemas/dispatcher";
 import { createEnvFilter } from "../worker/env-filter";
 import { getEngine } from "../engines/core/registry";
 import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prompt";
+import { extractTextFromNDJSON } from "../utils/ndjson-text-extractor";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "dispatcher-subprocess" });
@@ -28,28 +29,6 @@ const log = Log.create({ service: "dispatcher-subprocess" });
 
 const CLI_TIMEOUT_MS = 60_000;
 const MAX_RETRIES = 1;
-
-/**
- * Extract AI response text from NDJSON output produced by `opencode run --format json`.
- * Parses each line as JSON and concatenates `part.text` from events with `type === "text"`.
- * Returns empty string if no text events found (caller falls back to raw output).
- */
-function extractTextFromNDJSON(output: string): string {
-  const parts: string[] = [];
-  for (const line of output.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      const event = JSON.parse(trimmed);
-      if (event?.type === "text" && typeof event.part?.text === "string") {
-        parts.push(event.part.text);
-      }
-    } catch {
-      // Not JSON — skip
-    }
-  }
-  return parts.join("");
-}
 
 // ---------------------------------------------------------------------------
 // SubprocessTransport

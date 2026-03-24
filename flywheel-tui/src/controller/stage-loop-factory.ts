@@ -23,6 +23,7 @@ import type { BudgetTracker } from "../session/budget-tracker";
 import type { BudgetLimits } from "../schemas/shared";
 import type { ContextIndexer } from "../memory/indexer";
 import type { DispatcherTransport } from "../dispatcher/transport";
+import type { EvaluatorTransport } from "../evaluator/transport";
 import type { QuestionService } from "./question-service";
 import type { OnStepCompleteHook, PromptBuilder, ShouldSkipPhaseHook } from "./execution-loop";
 import type { WorkflowType } from "./workflow-pipeline";
@@ -65,6 +66,8 @@ export interface StageLoopOptions {
   contextIndexer?: ContextIndexer;
   /** Dispatcher transport — when provided, the dispatcher is wired for every phase. */
   dispatcherTransport?: DispatcherTransport;
+  /** Evaluator transport — when provided, enables post-phase quality evaluation. */
+  evaluatorTransport?: EvaluatorTransport;
   /** Question service for interactive plan/review consolidation. */
   questionService?: QuestionService;
   /** Interactive overrides per workflow (plan, review). */
@@ -106,6 +109,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
     budgetLimits,
     contextIndexer,
     dispatcherTransport,
+    evaluatorTransport,
     questionService,
     interactiveOverrides,
     onSessionName,
@@ -136,6 +140,11 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
     log.info("dispatcher wired", { workflow, workflowId });
   }
 
+  // Log evaluator transport availability.
+  if (evaluatorTransport) {
+    log.info("evaluator transport wired", { workflow, workflowId });
+  }
+
   // Resolve workflow-specific configuration.
   if (workflow === "work") {
     return createWorkLoop({
@@ -149,6 +158,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
       budgetTracker,
       budgetLimits,
       contextIndexer,
+      evaluatorTransport,
       onSessionName,
       projectCwd,
     });
@@ -166,6 +176,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
     budgetTracker,
     budgetLimits,
     contextIndexer,
+    evaluatorTransport,
     questionService,
     interactiveOverrides,
     onSessionName,
@@ -188,6 +199,7 @@ interface WorkLoopParams {
   budgetTracker?: BudgetTracker;
   budgetLimits?: BudgetLimits;
   contextIndexer?: ContextIndexer;
+  evaluatorTransport?: EvaluatorTransport;
   onSessionName?: (name: string) => void;
   projectCwd: string;
 }
@@ -244,6 +256,7 @@ function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
     budgetTracker: params.budgetTracker,
     budgetLimits: params.budgetLimits,
     contextIndexer: params.contextIndexer,
+    evaluatorTransport: params.evaluatorTransport,
     onSessionName: params.onSessionName,
   });
   loop.setLoadedState(state);
@@ -271,6 +284,7 @@ interface GenericLoopParams {
   budgetTracker?: BudgetTracker;
   budgetLimits?: BudgetLimits;
   contextIndexer?: ContextIndexer;
+  evaluatorTransport?: EvaluatorTransport;
   questionService?: QuestionService;
   interactiveOverrides?: { plan?: boolean; review?: boolean };
   onSessionName?: (name: string) => void;
@@ -367,6 +381,7 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
     budgetTracker: params.budgetTracker,
     budgetLimits: params.budgetLimits,
     contextIndexer: params.contextIndexer,
+    evaluatorTransport: params.evaluatorTransport,
     onSessionName: params.onSessionName,
   });
 

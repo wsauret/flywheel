@@ -20,6 +20,7 @@ import type { BudgetTracker } from "../session/budget-tracker";
 import type { BudgetLimits, SessionBudgetStatus } from "../schemas/shared";
 import type { ContextIndexer, ContextQuery } from "../memory/indexer";
 import type { WorkflowType } from "./workflow-pipeline";
+import type { EvaluatorTransport } from "../evaluator/transport";
 import { readCachedFile } from "./templates";
 import { wrapCompletionInstruction } from "../worker/completion";
 import { enrichPromptWithContext } from "./context-enrichment";
@@ -129,6 +130,8 @@ export interface UnifiedExecutionLoopOptions {
   contextIndexer?: ContextIndexer;
   /** Callback invoked when the dispatcher generates a session name (first phase only). */
   onSessionName?: (name: string) => void;
+  /** Evaluator transport for post-phase quality checks. When provided, enables evaluation. */
+  evaluatorTransport?: EvaluatorTransport;
 }
 
 export interface ExecutionResult {
@@ -168,6 +171,7 @@ export class ExecutionLoop {
   private readonly budgetLimits?: BudgetLimits;
   private readonly contextIndexer?: ContextIndexer;
   private readonly onSessionName?: (name: string) => void;
+  private readonly evaluatorTransport?: EvaluatorTransport;
   private _sessionNameEmitted = false;
 
   private _shutdownRequested = false;
@@ -202,6 +206,7 @@ export class ExecutionLoop {
     this.budgetLimits = options.budgetLimits;
     this.contextIndexer = options.contextIndexer;
     this.onSessionName = options.onSessionName;
+    this.evaluatorTransport = options.evaluatorTransport;
   }
 
   /**

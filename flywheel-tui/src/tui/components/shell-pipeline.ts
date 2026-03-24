@@ -19,6 +19,7 @@ import type { BudgetTracker } from "../../session/budget-tracker";
 import type { BudgetLimits } from "../../schemas/shared";
 import type { ContextIndexer } from "../../memory/indexer";
 import type { DispatcherTransport } from "../../dispatcher/transport";
+import type { EvaluatorTransport } from "../../evaluator/transport";
 import type {
   PipelineStage,
   PipelineStageResult,
@@ -83,6 +84,8 @@ export interface StageRunnerOptions {
   contextIndexer?: ContextIndexer;
   /** Dispatcher transport — wired into every stage's ExecutionLoop. */
   dispatcherTransport?: DispatcherTransport;
+  /** Evaluator transport — wired into every stage's ExecutionLoop for post-phase quality checks. */
+  evaluatorTransport?: EvaluatorTransport;
   /** Called when the dispatcher generates a short session name (first phase of first stage). */
   onSessionName?: (name: string) => void;
 }
@@ -105,6 +108,7 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
     onLoopCreated,
     contextIndexer,
     dispatcherTransport,
+    evaluatorTransport,
     onSessionName,
   } = opts;
 
@@ -135,6 +139,7 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
         budgetLimits,
         contextIndexer,
         dispatcherTransport,
+        evaluatorTransport,
         questionService,
         interactiveOverrides,
         onSessionName,
