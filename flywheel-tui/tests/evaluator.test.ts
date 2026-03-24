@@ -100,10 +100,10 @@ describe("Evaluator — re-prompt cycles", () => {
     expect(callCount()).toBe(1);
   });
 
-  it("fails first, passes on second try — success", async () => {
+  it("valid passed:false returns immediately — no retry with identical input", async () => {
     const { transport, callCount } = createMockTransport([
       failingResult(),
-      passingResult(),
+      passingResult(), // should never be reached
     ]);
 
     const evaluator = new Evaluator({
@@ -118,17 +118,18 @@ describe("Evaluator — re-prompt cycles", () => {
       contextFiles: ["src/index.ts"],
     });
 
-    expect(result.passed).toBe(true);
-    expect(result.cyclesUsed).toBe(2);
+    // Valid passed:false returns immediately (no retry — identical input yields same verdict)
+    expect(result.passed).toBe(false);
+    expect(result.cyclesUsed).toBe(1);
     expect(result.skipped).toBe(false);
-    expect(callCount()).toBe(2);
+    expect(callCount()).toBe(1);
   });
 
-  it("exhausts all 3 default cycles — marks as failed", async () => {
+  it("valid passed:false on first cycle returns immediately with cyclesUsed:1", async () => {
     const { transport, callCount } = createMockTransport([
       failingResult({ reasoning: "Missing tests" }),
-      failingResult({ reasoning: "Still missing tests" }),
-      failingResult({ reasoning: "Third failure" }),
+      failingResult({ reasoning: "Still missing tests" }),  // never reached
+      failingResult({ reasoning: "Third failure" }),         // never reached
     ]);
 
     const evaluator = new Evaluator({
@@ -143,19 +144,20 @@ describe("Evaluator — re-prompt cycles", () => {
       contextFiles: ["src/index.ts"],
     });
 
+    // Valid passed:false returns immediately — no retry
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(3);
+    expect(result.cyclesUsed).toBe(1);
     expect(result.skipped).toBe(false);
-    expect(result.reason).toBe("Third failure");
-    expect(callCount()).toBe(3);
+    expect(result.reason).toBe("Missing tests");
+    expect(callCount()).toBe(1);
   });
 
-  it("does not attempt a fourth cycle after three default failures", async () => {
+  it("valid passed:false stops after 1 call even with maxCycles:3", async () => {
     const { transport, callCount } = createMockTransport([
       failingResult(),
-      failingResult(),
-      failingResult(),
-      passingResult(), // should never be reached
+      failingResult(),     // never reached
+      failingResult(),     // never reached
+      passingResult(),     // never reached
     ]);
 
     const evaluator = new Evaluator({
@@ -170,16 +172,19 @@ describe("Evaluator — re-prompt cycles", () => {
       contextFiles: [],
     });
 
+    // Valid passed:false returns immediately — only 1 call
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(3);
-    expect(callCount()).toBe(3); // fourth call never made
+    expect(result.cyclesUsed).toBe(1);
+    expect(callCount()).toBe(1);
   });
 
-  it("maxCycles: 3 — evaluator runs up to 3 cycles", async () => {
+  it("maxCycles: 3 — error retries up to 3 cycles, then passes", async () => {
+    const parseError = new Error("JSON parse error");
+
     const { transport, callCount } = createMockTransport([
-      failingResult(),
-      failingResult(),
-      passingResult(),
+      parseError,         // error retry 1
+      parseError,         // error retry 2
+      passingResult(),    // success on 3rd attempt
     ]);
 
     const evaluator = new Evaluator({
@@ -225,18 +230,18 @@ describe("Evaluator — re-prompt cycles", () => {
     expect(callCount()).toBe(1);
   });
 
-  it("without maxCycles — uses DEFAULT_MAX_CYCLES (3)", async () => {
+  it("without maxCycles — valid passed:false returns immediately (1 call)", async () => {
     const { transport, callCount } = createMockTransport([
       failingResult(),
-      failingResult(),
-      failingResult(),
+      failingResult(),     // never reached
+      failingResult(),     // never reached
     ]);
 
     const evaluator = new Evaluator({
       transport,
       emitter: createFlywheelEmitter(bus),
       workflowId: "test-wf",
-      // no maxCycles — uses default
+      // no maxCycles — uses default, but passed:false returns immediately
     });
 
     const result = await evaluator.evaluate({
@@ -246,17 +251,17 @@ describe("Evaluator — re-prompt cycles", () => {
     });
 
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(3);
-    expect(callCount()).toBe(3);
+    expect(result.cyclesUsed).toBe(1);
+    expect(callCount()).toBe(1);
   });
 
-  it("cyclesUsed reflects actual cycles used in mixed failure+error case", async () => {
+  it("cyclesUsed reflects actual cycles in error-then-pass case", async () => {
     const schemaError = new Error("Schema validation failed");
     schemaError.name = "SchemaError";
 
     const { transport, callCount } = createMockTransport([
-      failingResult(),   // cycle 1: failure (failureCount = 1)
-      schemaError,       // cycle 2: error (failureCount = 2)
+      schemaError,       // cycle 1: error → retry
+      schemaError,       // cycle 2: error → retry
       passingResult(),   // cycle 3: pass
     ]);
 
@@ -597,11 +602,11 @@ describe("Evaluator — failure definitions", () => {
     bus.subscribe((e) => events.push(e));
   });
 
-  it("passed: false counts as failure (increments cap)", async () => {
+  it("passed: false returns immediately — does NOT retry (1 call)", async () => {
     const { transport, callCount } = createMockTransport([
       failingResult(),
-      failingResult(),
-      failingResult(),
+      failingResult(),    // never reached
+      failingResult(),    // never reached
     ]);
 
     const evaluator = new Evaluator({
@@ -616,9 +621,10 @@ describe("Evaluator — failure definitions", () => {
       contextFiles: [],
     });
 
+    // Valid passed:false returns immediately — no retry
     expect(result.passed).toBe(false);
-    expect(result.cyclesUsed).toBe(3);
-    expect(callCount()).toBe(3);
+    expect(result.cyclesUsed).toBe(1);
+    expect(callCount()).toBe(1);
   });
 
   it("schema parse error counts as failure (increments cap)", async () => {
@@ -686,7 +692,7 @@ describe("Evaluator — event emission", () => {
     bus.subscribe((e) => events.push(e));
   });
 
-  it("emits evaluator:invoked before each evaluation", async () => {
+  it("emits evaluator:invoked exactly once per evaluation call", async () => {
     const { transport } = createMockTransport([failingResult(), passingResult()]);
 
     const evaluator = new Evaluator({
@@ -702,7 +708,7 @@ describe("Evaluator — event emission", () => {
     });
 
     const invokedEvents = events.filter((e) => e.type === "evaluator:invoked");
-    expect(invokedEvents).toHaveLength(2); // one per cycle
+    expect(invokedEvents).toHaveLength(1); // emitted once before retry loop
   });
 
   it("emits evaluator:completed after success", async () => {
@@ -725,11 +731,11 @@ describe("Evaluator — event emission", () => {
     expect((completedEvents[0] as any).result.passed).toBe(true);
   });
 
-  it("emits evaluator:completed after exhausting all cycles (with last result)", async () => {
+  it("emits evaluator:completed on valid passed:false (immediate return)", async () => {
     const { transport } = createMockTransport([
       failingResult({ reasoning: "first failure" }),
-      failingResult({ reasoning: "second failure" }),
-      failingResult({ reasoning: "third failure" }),
+      failingResult({ reasoning: "second failure" }),   // never reached
+      failingResult({ reasoning: "third failure" }),     // never reached
     ]);
 
     const evaluator = new Evaluator({
@@ -744,10 +750,11 @@ describe("Evaluator — event emission", () => {
       contextFiles: [],
     });
 
+    // Emits evaluator:completed with the first (and only) result
     const completedEvents = events.filter((e) => e.type === "evaluator:completed");
     expect(completedEvents).toHaveLength(1);
     expect((completedEvents[0] as any).result.passed).toBe(false);
-    expect((completedEvents[0] as any).result.reasoning).toBe("third failure");
+    expect((completedEvents[0] as any).result.reasoning).toBe("first failure");
   });
 
   it("emits evaluator:failed on timeout", async () => {

@@ -468,12 +468,13 @@ describe("Evaluator activation in execution loop", () => {
 
   describe("max_eval_cycles config", () => {
     it("max_eval_cycles config is passed through to Evaluator constructor", async () => {
-      // Use a failing evaluator that should retry up to max_eval_cycles times
+      // Use an error-throwing evaluator that should retry up to max_eval_cycles times.
+      // Valid passed:false returns immediately (no retry), so we use errors to test maxCycles.
       let invokeCount = 0;
       const transport: EvaluatorTransport = {
         invoke: async () => {
           invokeCount++;
-          return failingEvalResult("Still failing");
+          throw new Error("Schema parse error");
         },
       };
 
@@ -489,7 +490,7 @@ describe("Evaluator activation in execution loop", () => {
       const result = await loop.run();
 
       expect(result.completed).toBe(false);
-      // Evaluator should have been called max_eval_cycles (2) times
+      // Evaluator should have retried max_eval_cycles (2) times on errors
       expect(invokeCount).toBe(2);
     });
   });

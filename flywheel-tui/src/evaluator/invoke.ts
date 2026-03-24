@@ -82,6 +82,12 @@ export interface EvaluationResult {
   cyclesUsed: number;
   skipped: boolean;
   reason?: string;
+  /** Evaluator feedback text (populated on passed:false). */
+  feedback?: string;
+  /** Evaluator suggestions list (populated on passed:false). */
+  suggestions?: string[];
+  /** Evaluator reasoning (populated on passed:false). */
+  reasoning?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,12 +116,20 @@ export class Evaluator {
   }
 
   /**
-   * Evaluate worker output. Max evaluation cycles configurable via constructor, default 3.
-   * Timeouts don't count against the cycle cap.
+   * Evaluate worker output.
    *
-   * `validationCriteria` accepts both a plain string and a structured
-   * `ValidationCriteria` object (from DispatcherDecision). Objects are
-   * serialized to a string before being passed to the evaluator transport.
+   * Retry logic:
+   * - Valid `passed:false` → return immediately (re-sending identical input
+   *   would produce the same verdict).
+   * - Valid `passed:true` → return immediately.
+   * - Timeout → return `passed:true, skipped:true` immediately.
+   * - Transport/parse/schema errors → retry up to `maxCycles`.
+   *
+   * `evaluator:invoked` is emitted exactly once before the retry loop.
+   *
+   * `validationCriteria` accepts a structured `ValidationCriteria` object
+   * (from DispatcherDecision). Objects are serialized to a string before
+   * being passed to the evaluator transport.
    *
    * Additional optional fields (`acceptanceCriteria`, `artifactsProduced`,
    * `testsPassed`, `durationSeconds`) are forwarded to the evaluator input
@@ -145,13 +159,12 @@ export class Evaluator {
     const explicitCriteria = options.acceptanceCriteria ?? [];
     const mergedCriteria = [...new Set([...explicitCriteria, ...extractedCriteria])];
 
-    let failureCount = 0;
-    let lastResult: EvaluatorResult | undefined;
+    // Emit evaluator:invoked exactly once before the retry loop
+    this.emitter.evaluatorInvoked(this.workflowId, this.phaseIndex, this.stepIndex);
+
+    let lastErrorMessage: string | undefined;
 
     for (let cycle = 0; cycle < this.maxCycles; cycle++) {
-      // Emit evaluator:invoked before each evaluation
-      this.emitter.evaluatorInvoked(this.workflowId, this.phaseIndex, this.stepIndex);
-
       try {
         const result = await this.invokeWithTimeout(
           workerOutput,
@@ -163,10 +176,8 @@ export class Evaluator {
           durationSeconds ?? 0,
         );
 
-        lastResult = result;
-
         if (result.passed) {
-          // Success — emit completed and return
+          // Success — emit completed and return immediately
           this.emitter.evaluatorCompleted(this.workflowId, result);
           return {
             passed: true,
@@ -175,13 +186,19 @@ export class Evaluator {
           };
         }
 
-        // Failure — counts against the cap
-        failureCount++;
-        if (failureCount >= this.maxCycles) {
-          break;
-        }
-
-        // Will loop for another cycle
+        // Valid passed:false — return immediately (no retry; identical input
+        // would produce the same verdict). Populate feedback fields for the
+        // revision loop (next feature).
+        this.emitter.evaluatorCompleted(this.workflowId, result);
+        return {
+          passed: false,
+          cyclesUsed: cycle + 1,
+          skipped: false,
+          reason: result.reasoning,
+          feedback: result.feedback,
+          suggestions: result.suggestions,
+          reasoning: result.reasoning,
+        };
       } catch (error) {
         const err = error as Error;
 
@@ -196,31 +213,19 @@ export class Evaluator {
           };
         }
 
-        // Non-timeout error (schema parse error, etc.) — counts as failure
+        // Non-timeout error (schema parse error, etc.) — retry up to maxCycles
         this.emitter.evaluatorFailed(this.workflowId, err.message);
-        failureCount++;
-        if (failureCount >= this.maxCycles) {
-          // Exhausted all cycles with errors
-          return {
-            passed: false,
-            cyclesUsed: failureCount,
-            skipped: false,
-            reason: err.message,
-          };
-        }
+        lastErrorMessage = err.message;
+        // Continue to next cycle (retry)
       }
     }
 
-    // Exhausted all cycles via passed: false results
-    if (lastResult) {
-      this.emitter.evaluatorCompleted(this.workflowId, lastResult);
-    }
-
+    // Exhausted all error-retry cycles
     return {
       passed: false,
       cyclesUsed: this.maxCycles,
       skipped: false,
-      reason: lastResult?.reasoning,
+      reason: lastErrorMessage,
     };
   }
 
