@@ -39,3 +39,9 @@ export { buildShipPrompt } from "./ship/workflow.js";
 export { buildShipCompoundPrompt } from "./ship/compound.js";
 
 export { buildDebugPrompt } from "./debug/investigate.js";
+
+export {
+  buildResearchLocatePrompt,
+  buildResearchAnalyzePrompt,
+  buildResearchPersistPrompt,
+} from "./research/index.js";

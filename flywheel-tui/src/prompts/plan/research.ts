@@ -87,6 +87,10 @@ When multiple locator results come back, prioritize:
 3. Files that establish patterns to follow
 4. Files that document constraints or conventions
 
+## Persistence
+
+Write the research output to a \`.context.md\` file on disk. Name it \`<description-slug>.context.md\` in the working directory (e.g., \`user-authentication.context.md\`). The slug should be a kebab-case version of the research objective. This file will be consumed by the next planning step.
+
 ## Research Document Output Format
 
 \`\`\`yaml

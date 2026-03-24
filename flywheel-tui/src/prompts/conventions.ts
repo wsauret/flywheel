@@ -53,7 +53,7 @@ export const TOKEN_LIMITS = `## Token Limits
 
 - Locator output: max 500 tokens
 - Analyzer output: max 750 tokens
-- Research output: max 500 tokens
+- Research output: max 2000 tokens
 - Reviewer output: max 1000 tokens`;
 
 export const UNDERSTAND_ACT_VERIFY = `## Understand-Act-Verify

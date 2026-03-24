@@ -1,0 +1,101 @@
+import type { WorkflowStepContext } from "../index.js";
+import {
+  DOCUMENTARIAN_MODE,
+  FILE_LINE_DISCIPLINE,
+} from "../conventions.js";
+
+/**
+ * Builds a prompt for the research persist step (step 2 of standalone /research).
+ * Compiles analysis results into a comprehensive research document.
+ */
+export function buildResearchPersistPrompt(ctx: WorkflowStepContext): string {
+  const previousResult = ctx.previousResult ?? "_No analysis output available._";
+
+  return `# Research: Compile Document
+
+## Research Topic
+
+${ctx.planContent}
+
+${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+## Analysis Output (from previous step)
+
+${previousResult}
+
+---
+
+${DOCUMENTARIAN_MODE}
+
+${FILE_LINE_DISCIPLINE}
+
+## Persistence Instructions
+
+Write the research document to \`docs/research/YYYY-MM-DD-<topic-slug>.md\` where:
+- \`YYYY-MM-DD\` is today's date
+- \`<topic-slug>\` is a kebab-case slug derived from the research topic
+
+Create the \`docs/research/\` directory if it does not exist.
+
+## Document Template
+
+The research document MUST include the following YAML frontmatter and sections:
+
+\`\`\`markdown
+---
+date: <ISO date>
+topic: "<Research Topic>"
+status: complete
+tags: [research, <relevant-tags>]
+---
+
+# Research: <Topic>
+
+## Research Question
+
+<Original research topic/question>
+
+## Summary
+
+<High-level findings synthesized from all analysis — 3-5 sentences>
+
+## Detailed Findings
+
+### <Component/Area 1>
+
+<Findings with file:line references>
+
+### <Component/Area 2>
+
+<Additional findings with file:line references>
+
+### <More areas as needed>
+
+## Code References
+
+| File | Lines | Description |
+|------|-------|-------------|
+| \`path/to/file.ts\` | 42-67 | <what this code does> |
+| \`path/to/other.ts\` | 15-30 | <what this code does> |
+
+## Patterns Identified
+
+- **<Pattern Name>**: \`file.ts:42-67\` — <description of the pattern>
+- **<Pattern Name>**: \`other.ts:89-120\` — <description of the pattern>
+
+## Open Questions
+
+- <Question needing further investigation>
+- <Uncertainty about scope or behavior>
+\`\`\`
+
+## Quality Requirements
+
+- The document should be comprehensive — no artificial token limits on the output
+- Use file:line references throughout, not full code reproductions
+- Maintain documentarian mode: describe what IS, not what SHOULD BE
+- The Summary section must be 3-5 sentences synthesizing all findings
+- The Code References table must include at least 5 unique file:line references
+- Every Detailed Findings subsection must cite specific file:line references
+`;
+}
