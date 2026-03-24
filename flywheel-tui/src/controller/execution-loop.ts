@@ -22,6 +22,7 @@ import type { ContextIndexer, ContextQuery } from "../memory/indexer";
 import type { WorkflowType } from "./workflow-pipeline";
 import type { EvaluatorTransport } from "../evaluator/transport";
 import { Evaluator } from "../evaluator/invoke";
+import type { EvaluationResult } from "../evaluator/invoke";
 import { readCachedFile } from "./templates";
 import { wrapCompletionInstruction } from "../worker/completion";
 import { enrichPromptWithContext } from "./context-enrichment";
@@ -41,6 +42,73 @@ const MAX_PHASE_RESULT_CHARS = 200_000;
 
 const TRUNCATION_NOTICE =
   "\n\n[... output truncated for next phase — see full output above ...]\n";
+
+// ---------------------------------------------------------------------------
+// Revision prompt builder
+// ---------------------------------------------------------------------------
+
+export interface BuildRevisionPromptOptions {
+  /** Whether a sessionId is available for --resume */
+  hasSessionId: boolean;
+  /** Original prompt (prepended when no sessionId, i.e. fresh conversation) */
+  originalPrompt?: string;
+}
+
+/**
+ * Build a revision prompt from an EvaluationResult.
+ *
+ * When using --resume (hasSessionId=true): produces ONLY the evaluator
+ * feedback as markdown, since the worker already has full context.
+ *
+ * When fresh conversation (hasSessionId=false): prepends original prompt
+ * context + evaluator feedback.
+ *
+ * Format: ## Revision Required, ### Evaluator Reasoning, ### Feedback,
+ * ### Suggestions (bulleted)
+ */
+export function buildRevisionPrompt(
+  evalResult: EvaluationResult,
+  options: BuildRevisionPromptOptions,
+): string {
+  const sections: string[] = [];
+
+  // For fresh conversations without --resume, prepend original prompt
+  if (!options.hasSessionId && options.originalPrompt) {
+    sections.push(options.originalPrompt);
+    sections.push(""); // blank line separator
+  }
+
+  sections.push("## Revision Required");
+  sections.push("");
+
+  if (evalResult.reasoning) {
+    sections.push("### Evaluator Reasoning");
+    sections.push(evalResult.reasoning);
+    sections.push("");
+  }
+
+  if (evalResult.feedback) {
+    sections.push("### Feedback");
+    sections.push(evalResult.feedback);
+    sections.push("");
+  }
+
+  if (evalResult.suggestions && evalResult.suggestions.length > 0) {
+    sections.push("### Suggestions");
+    for (const suggestion of evalResult.suggestions) {
+      sections.push(`- ${suggestion}`);
+    }
+    sections.push("");
+  }
+
+  if (evalResult.reason && evalResult.reason !== evalResult.reasoning) {
+    sections.push("### Evaluation Reason");
+    sections.push(evalResult.reason);
+    sections.push("");
+  }
+
+  return sections.join("\n").trimEnd();
+}
 
 // ---------------------------------------------------------------------------
 // Unified types
@@ -428,12 +496,12 @@ export class ExecutionLoop {
       const executeOptions = this.buildExecuteOptions(phase, prompt, decision);
 
       try {
-        const result = await this.executor.execute(executeOptions);
+        let result = await this.executor.execute(executeOptions);
 
         // Increment invocation count after successful execution
         this.budgetTracker?.incrementInvocations();
 
-        // --- Evaluator: post-phase quality check ---
+        // --- Evaluator: post-phase quality check with revision loop ---
         // Guards: transport exists, dispatcher produced a decision with validation_criteria,
         // and skip_evaluation is not set.
         if (
@@ -452,7 +520,7 @@ export class ExecutionLoop {
             stepIndex: 0,
           });
 
-          const evalResult = await evaluator.evaluate({
+          let evalResult = await evaluator.evaluate({
             workerOutput: result.output,
             validationCriteria: decision.validation_criteria,
             contextFiles: decision.context_files ?? [],
@@ -461,15 +529,114 @@ export class ExecutionLoop {
             artifactsProduced: [],
           });
 
+          // --- Revision loop ---
+          // When evaluator returns passed:false, re-execute the phase with
+          // evaluator feedback, up to max_revisions times.
+          const maxRevisions = this.config.max_revisions ?? 0;
+          let revisionAttempt = 0;
+          const accumulatedFeedback: string[] = [];
+
+          while (!evalResult.passed && !evalResult.skipped && revisionAttempt < maxRevisions) {
+            // Check shutdown before each revision attempt
+            if (this._shutdownRequested) {
+              this.emitter.workflowInterrupted(
+                this.workflowId,
+                "Shutdown requested during revision",
+              );
+              return {
+                completed: false,
+                phasesCompleted,
+                phasesTotal,
+                reason: "Shutdown requested during revision",
+              };
+            }
+
+            revisionAttempt++;
+
+            // Accumulate feedback from failed attempt
+            if (evalResult.feedback || evalResult.reason) {
+              accumulatedFeedback.push(
+                `Attempt ${revisionAttempt}: ${evalResult.feedback ?? evalResult.reason ?? "evaluation failed"}`,
+              );
+            }
+
+            // Emit revision-requested event
+            this.emitter.evaluatorRevisionRequested(
+              this.workflowId,
+              phase.index,
+              revisionAttempt,
+              maxRevisions,
+              evalResult.reason ?? "Evaluation failed",
+            );
+
+            log.info("starting revision attempt", {
+              phaseIndex: phase.index,
+              revisionAttempt,
+              maxRevisions,
+              hasSessionId: !!result.sessionId,
+              reason: evalResult.reason,
+            });
+
+            // Build revision prompt from evaluator feedback
+            const hasSessionId = !!result.sessionId;
+            const revisionPrompt = buildRevisionPrompt(evalResult, {
+              hasSessionId,
+              originalPrompt: hasSessionId ? undefined : prompt,
+            });
+
+            if (!hasSessionId) {
+              log.warn("sessionId unavailable for revision, re-spawning without --resume", {
+                phaseIndex: phase.index,
+                revisionAttempt,
+              });
+            }
+
+            // Wrap revision prompt with completion marker
+            const wrappedRevisionPrompt = wrapCompletionInstruction(revisionPrompt);
+
+            // Re-invoke executor with revision prompt (and resume session if available)
+            const revisionOptions = this.buildExecuteOptions(phase, wrappedRevisionPrompt, decision);
+            if (result.sessionId) {
+              revisionOptions.resumeSessionId = result.sessionId;
+            }
+
+            // Execute revision — WorkerError propagates up to the catch block
+            result = await this.executor.execute(revisionOptions);
+
+            // Increment invocation count for revision
+            this.budgetTracker?.incrementInvocations();
+
+            // Evaluate revised output
+            evalResult = await evaluator.evaluate({
+              workerOutput: result.output,
+              validationCriteria: decision.validation_criteria,
+              contextFiles: decision.context_files ?? [],
+              durationSeconds: result.durationMs / 1000,
+              testsPassed: null,
+              artifactsProduced: [],
+            });
+          }
+
+          // After the loop: check if evaluation ultimately passed
           if (!evalResult.passed && !evalResult.skipped) {
-            const evalReason = evalResult.reason
-              ? `Evaluation failed: ${evalResult.reason}`
-              : "Evaluation failed: criteria not met";
+            // Accumulate the final failed attempt feedback
+            if (evalResult.feedback || evalResult.reason) {
+              accumulatedFeedback.push(
+                `Final attempt: ${evalResult.feedback ?? evalResult.reason ?? "evaluation failed"}`,
+              );
+            }
+
+            const evalReason = maxRevisions > 0
+              ? `Evaluation failed after ${revisionAttempt} revision(s): ${accumulatedFeedback.join(" | ")}`
+              : evalResult.reason
+                ? `Evaluation failed: ${evalResult.reason}`
+                : "Evaluation failed: criteria not met";
 
             log.info("evaluator rejected phase output", {
               phaseIndex: phase.index,
               cyclesUsed: evalResult.cyclesUsed,
               reason: evalResult.reason,
+              revisionAttempts: revisionAttempt,
             });
 
             // Update state if persistence exists
@@ -491,6 +658,7 @@ export class ExecutionLoop {
             passed: evalResult.passed,
             skipped: evalResult.skipped,
             cyclesUsed: evalResult.cyclesUsed,
+            revisionAttempts: revisionAttempt,
           });
         }
 

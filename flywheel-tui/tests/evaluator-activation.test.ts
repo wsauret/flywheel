@@ -406,6 +406,7 @@ describe("Evaluator activation in execution loop", () => {
         spawnerResults: [successResult()],
         evaluatorTransport: transport,
         decision,
+        config: { max_revisions: 0 }, // disable revision to test immediate failure
       });
 
       const result = await loop.run();
@@ -484,7 +485,7 @@ describe("Evaluator activation in execution loop", () => {
         spawnerResults: [successResult()],
         evaluatorTransport: transport,
         decision,
-        config: { max_eval_cycles: 2 },
+        config: { max_eval_cycles: 2, max_revisions: 0 }, // disable revision to isolate eval retry test
       });
 
       const result = await loop.run();
