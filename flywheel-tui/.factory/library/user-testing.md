@@ -54,6 +54,7 @@ Testing surface, required testing skills/tools, and resource cost classification
   - `tests/dispatcher.test.ts` — existing dispatcher tests
   - `tests/evaluator.test.ts` — existing evaluator tests
   - `tests/engines.test.ts` — engine registry tests
+  - `tests/evaluator-activation.test.ts` — evaluator activation in execution loop (VAL-EVALACT-001 through VAL-EVALACT-006)
 
 **What to check:**
 - All tests pass (`bun test` exit code 0)

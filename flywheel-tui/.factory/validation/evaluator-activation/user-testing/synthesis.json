@@ -1,0 +1,29 @@
+{
+  "milestone": "evaluator-activation",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-EVALACT-001",
+    "VAL-EVALACT-002",
+    "VAL-EVALACT-003",
+    "VAL-EVALACT-004",
+    "VAL-EVALACT-005",
+    "VAL-EVALACT-006"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added tests/evaluator-activation.test.ts to the relevant test files list in Flow Validator Guidance: Unit Tests section",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null
+}
