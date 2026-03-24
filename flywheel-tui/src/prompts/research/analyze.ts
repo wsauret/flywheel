@@ -1,6 +1,7 @@
 import type { WorkflowStepContext } from "../index.js";
 import {
   DOCUMENTARIAN_MODE,
+  LOCATOR_ANALYZER_PATTERN,
   FILE_LINE_DISCIPLINE,
   READ_FULLY_RULE,
 } from "../conventions.js";
@@ -25,6 +26,8 @@ ${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
 ${previousResult}
 
 ---
+
+${LOCATOR_ANALYZER_PATTERN}
 
 ${DOCUMENTARIAN_MODE}
 

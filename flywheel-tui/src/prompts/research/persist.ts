@@ -1,7 +1,9 @@
 import type { WorkflowStepContext } from "../index.js";
 import {
   DOCUMENTARIAN_MODE,
+  LOCATOR_ANALYZER_PATTERN,
   FILE_LINE_DISCIPLINE,
+  READ_FULLY_RULE,
 } from "../conventions.js";
 
 /**
@@ -25,7 +27,11 @@ ${previousResult}
 
 ---
 
+${LOCATOR_ANALYZER_PATTERN}
+
 ${DOCUMENTARIAN_MODE}
+
+${READ_FULLY_RULE}
 
 ${FILE_LINE_DISCIPLINE}
 
