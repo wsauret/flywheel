@@ -44,17 +44,22 @@ Testing surface, required testing skills/tools, and resource cost classification
 - Run `bun test` once from the repo root — do NOT run tests in parallel or from different directories
 - The test suite is self-contained; no external services or API calls required
 - Test files are in `tests/` directory at repo root
-- Relevant test files for this milestone:
+- Relevant test files for evaluator-retry-and-revision milestone:
+  - `tests/evaluator-retry.test.ts` — evaluator retry logic fix (VAL-RETRY-*)
+  - `tests/revision-infrastructure.test.ts` — config, events, sessionId, PhaseExecutor resumeSessionId (VAL-REV-002, 007, 009, 010)
+  - `tests/revision-loop.test.ts` — core revision loop in execution loop (VAL-REV-001, 003-006, 008, 011-018, VAL-CROSS-001)
+  - `tests/evaluator.test.ts` — existing evaluator tests (should still pass)
+  - `tests/evaluator-activation.test.ts` — existing evaluator activation tests (should still pass)
+- Relevant test files for evaluator-prompt-alignment milestone:
+  - `tests/evaluator-alignment.test.ts` — workflow criteria, task context, evaluator prompt (VAL-ALIGN-*)
+- Relevant test files from prior milestones (regression):
   - `tests/engine-dispatcher-commands.test.ts` — engine command construction
   - `tests/dispatcher-subprocess-transport.test.ts` — subprocess transport
   - `tests/dispatcher-sdk-transport.test.ts` — SDK transport
   - `tests/evaluator-transport.test.ts` — evaluator transport
   - `tests/evaluator-production-wiring.test.ts` — evaluator wiring
-  - `tests/verify-dispatcher.test.ts` — verify script tests
   - `tests/dispatcher.test.ts` — existing dispatcher tests
-  - `tests/evaluator.test.ts` — existing evaluator tests
   - `tests/engines.test.ts` — engine registry tests
-  - `tests/evaluator-activation.test.ts` — evaluator activation in execution loop (VAL-EVALACT-001 through VAL-EVALACT-006)
 
 **What to check:**
 - All tests pass (`bun test` exit code 0)
@@ -78,6 +83,38 @@ Testing surface, required testing skills/tools, and resource cost classification
 - `--dry-run` can verify assembly without API calls
 
 **Important:** Live API tests require the engine CLI to be installed and API keys configured. If an engine is not available, the script should fail gracefully.
+
+## Flow Validator Guidance: Research Output Validation
+
+**Isolation rules:**
+- Run from repo root: `cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui`
+- Validator script: `scripts/validate-research-output.ts`
+- Test harness: `scripts/test-research-harness.ts`
+- Fixtures in `tests/fixtures/research/`
+
+**What to check for research output validation (VAL-RQ-*):**
+- Validator script exists and runs: `bun run scripts/validate-research-output.ts <file> --variant plan|standalone`
+- Returns JSON with per-criterion pass/fail
+- Good fixtures pass; bad fixtures fail expected criteria
+- Test suite: `bun test tests/research-output-validation.test.ts`
+
+**What to check for real output validation (VAL-RO-*):**
+- Test harness exists and runs: `bun run scripts/test-research-harness.ts --mode plan --description '<text>' --cwd <path>`
+- Harness spawns real workers (MAKES REAL API CALLS)
+- Captures output and validates against the research output validator
+- Run against minimal fixture: `--cwd tests/fixtures/research-target/`
+- Run against flywheel-tui: `--cwd .`
+
+**Important:** Real output validation requires Claude or OpenCode CLI installed and API keys configured. Each run takes 2-5 minutes.
+
+**What to check for prompt template changes (VAL-RP-*):**
+- `bun test tests/workflows.test.ts` — prompt routing tests
+- `bun test tests/prompts.test.ts` — prompt content tests
+- Inspect prompt output for correct conventions and step-specific content
+
+**What to check for evaluator alignment (VAL-EA-*):**
+- `bun test tests/evaluator-alignment.test.ts` — alignment tests
+- Research workflow validationCriteria are research-oriented, task-adaptive
 
 ## Flow Validator Guidance: eval-prompts Script
 

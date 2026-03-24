@@ -34,6 +34,34 @@ Both dispatcher and evaluator follow the same transport pattern:
 - `SdkTransport` (dispatcher only) — uses OpenCode SDK singleton server
 - `autoDetectTransport()` — selects best available transport
 
+## Research Workflow Architecture
+
+The research functionality has two variants sharing a core engine:
+
+### Plan Research Phase (step 0 of plan workflow)
+- Single combined locate+analyze step
+- Prompt: `buildPlanResearchPrompt()` in `src/prompts/plan/research.ts`
+- Persists output as `.context.md` file alongside the plan
+- Consumed by the draft step via `parseContextFile()` in `src/controller/templates.ts`
+- Constrained scope: focused on the feature being planned
+
+### Standalone /research Command
+- Three-step workflow: locate → analyze → persist
+- Prompts: `src/prompts/research/{locate,analyze,persist}.ts`
+- Step chaining via `previousResult` (locate feeds analyze, analyze feeds persist)
+- Persists comprehensive document to `docs/research/YYYY-MM-DD-<topic-slug>.md`
+- Full-bodied research covering the complete research question
+
+### Shared Core
+Both variants use shared conventions from `src/prompts/conventions.ts`:
+- `DOCUMENTARIAN_MODE` — map what IS, not what SHOULD BE
+- `LOCATOR_ANALYZER_PATTERN` — locate WHERE, then analyze HOW
+- `FILE_LINE_DISCIPLINE` — cite as file:line, not copied code
+- `READ_FULLY_RULE` — read files fully to avoid hallucination
+- `TOKEN_LIMITS` — per-agent token budgets (locator: 500, analyzer: 750, research output: relaxed)
+
+Workers CAN dispatch sub-agents via the Task tool. The BLOCKING rule in research prompts enforces locate-first methodology.
+
 ## Output Parsing Differences
 
 - **OpenCode** outputs NDJSON (one JSON object per line). Parser reads lines, finds assistant message content.

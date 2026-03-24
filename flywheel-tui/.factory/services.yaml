@@ -5,5 +5,7 @@ commands:
   verify-dispatcher: bun run scripts/verify-dispatcher.ts
   verify-evaluator: bun run scripts/verify-evaluator.ts
   eval-prompts: bun run scripts/eval-prompts.ts
+  validate-research: bun run scripts/validate-research-output.ts
+  test-research-harness: bun run scripts/test-research-harness.ts
 
 services: {}

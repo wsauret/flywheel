@@ -1,7 +1,8 @@
 ---
 name: backend-worker
-description: Implements TypeScript backend features with TDD, targeting dispatcher/evaluator transport optimization
+description: Implements TypeScript backend features with TDD, targeting prompt templates, evaluator alignment, and validation infrastructure
 ---
+
 
 # Backend Worker
 
@@ -9,7 +10,7 @@ NOTE: Startup and cleanup are handled by `worker-base`. This skill defines the W
 
 ## When to Use This Skill
 
-Features involving TypeScript source changes to the dispatcher, evaluator, engine, or config subsystems. All features in this mission use this worker type.
+Features involving TypeScript source changes to prompt templates, evaluator alignment, validation scripts/tests, and research workflow infrastructure. All features in this mission use this worker type.
 
 ## Required Skills
 
@@ -21,7 +22,9 @@ None.
 
 Read the feature description, preconditions, expectedBehavior, and verificationSteps carefully. Then read all source files referenced in the feature description to understand the current state.
 
-Read `AGENTS.md` in the mission directory for architecture context, CLI flags per engine, and coding conventions. Read `.factory/library/architecture.md` for the transport pattern.
+Read `AGENTS.md` in the mission directory for architecture context, coding conventions, and the reference skill location. Read `.factory/library/architecture.md` for the transport pattern.
+
+For research-related features: read the reference skill at `/Users/wsauret/Documents/GitHub/flywheel/plugin/flywheel/skills/codebase-research/SKILL.md` and its `references/` directory to understand what good research output looks like.
 
 ### 2. Write Tests First (TDD Red Phase)
 
@@ -53,6 +56,16 @@ Run `bun test` and ensure ALL tests pass (2840+ existing + new tests). If existi
 For features that modify command construction:
 - Log or print the constructed command in a test to visually verify it looks correct
 - Verify that worker commands are NOT affected (check phase-executor still builds commands the same way)
+
+For features that modify prompt templates:
+- Verify the prompt output contains expected conventions (DOCUMENTARIAN_MODE, etc.)
+- Verify the prompt does NOT contain content from wrong step (e.g., locate prompt should not have analyzer templates)
+- Check that existing prompt tests still pass
+
+For features that create scripts:
+- Verify the script runs via `bun run scripts/<name>.ts --help` or equivalent
+- If the script makes real API calls, add a clear warning at startup
+- Handle missing dependencies gracefully (e.g., missing engine binary)
 
 For features that modify the verify-dispatcher script:
 - Run `bun run scripts/verify-dispatcher.ts --help` (or equivalent) to verify the script loads
