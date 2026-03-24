@@ -1,0 +1,45 @@
+{
+  "featureId": "dedicated-research-prompt-templates",
+  "reviewedAt": "2026-03-24T18:15:00.000Z",
+  "commitId": "226cca8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured implementation of three dedicated research prompt templates (locate, analyze, persist) for the standalone /research workflow, plus updates to plan research prompt and TOKEN_LIMITS. The code follows existing prompt builder patterns exactly — each function accepts WorkflowStepContext and returns a string. Step isolation is correctly enforced: locate has no analyzer/persist content, analyze has no locator/persist content, persist has no locator/analyzer content. The TOKEN_LIMITS change from 500→2000 for research output is safe — while TOKEN_LIMITS is also consumed by plan/review.ts and review/dispatch.ts, those templates only care about the 'Reviewer output: max 1000 tokens' line which is unchanged. The wiring in prompt-builder.ts correctly maps research step indices 0/1/2 to locate/analyze/persist. The barrel re-export in src/prompts/index.ts is consistent with existing patterns. 67 tests cover all validation assertions comprehensively including step isolation, conventions presence, orchestration leak checks, and TOKEN_LIMITS validation.",
+    "issues": [
+      {
+        "file": "src/prompts/research/analyze.ts",
+        "line": 36,
+        "severity": "non_blocking",
+        "description": "The filtering instructions mention 'Max 5 documentation paths for analyzer-docs' but there is no 'analyzer-docs' dispatch template defined in the analyze prompt — only analyzer-codebase and analyzer-patterns are defined. This is a minor inconsistency in the prompt text that could confuse the AI worker. The feature description only specifies analyzer-codebase and analyzer-patterns, so the reference to 'analyzer-docs' filtering is orphaned."
+      },
+      {
+        "file": "src/prompts/research/locate.ts",
+        "line": 1,
+        "severity": "non_blocking",
+        "description": "The locate prompt imports LOCATOR_ANALYZER_PATTERN from conventions.ts but the analyze and persist prompts do not. This is correct for step isolation (analyze/persist don't need the full pattern description), but it means analyze and persist workers won't see the overarching 'Locators find WHERE, Analyzers understand HOW' framing. This is by design per the feature spec, but worth noting that analyze workers only get the analyzer templates without the conceptual framing."
+      },
+      {
+        "file": "src/prompts/research/persist.ts",
+        "line": 63,
+        "severity": "non_blocking",
+        "description": "The persist prompt has a 'Code Block Rule' (keep ALL code blocks under 15 lines) but the document template itself contains a markdown code block spanning ~30 lines. While this code block is a template the worker should reproduce (not an example of output), an AI worker might be confused by the apparent contradiction. The plan research prompt has the same pattern, so this is consistent with existing behavior."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The worker correctly followed the TDD procedure from the backend-worker skill (red→green→verify) and adhered to all coding conventions in AGENTS.md (Bun runtime, Log module, WorkflowStepContext signature, convention constants from conventions.ts). No convention gaps observed.",
+      "evidence": "Transcript shows: tests written first (67 tests, confirmed failing), then implementation, then full suite verification. All imports follow existing patterns. No console.error/warn/debug usage."
+    },
+    {
+      "area": "conventions",
+      "observation": "The analyze prompt references 'analyzer-docs' in its filtering instructions (line 36: 'Max 5 documentation paths for analyzer-docs') but no analyzer-docs template is defined in the prompt. This is a minor prompt content inconsistency, not a coding convention violation. AGENTS.md doesn't currently document the expected set of analyzer sub-agent types for the standalone research workflow.",
+      "evidence": "src/prompts/research/analyze.ts:36 mentions 'analyzer-docs' but the Analyzer Dispatch Templates section only defines analyzer-codebase and analyzer-patterns. The feature description also only mentions these two."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The implementation is clean, well-tested (67 tests), and correctly implements the three-step standalone research prompt pipeline with proper step isolation. The TOKEN_LIMITS change is safe for non-research workflows. The prompt builders integrate correctly with prompt-builder.ts via the research step-index mapping. Two minor non-blocking issues: (1) orphaned 'analyzer-docs' reference in filtering instructions, (2) template code block exceeds the prompt's own 15-line rule. Neither blocks correctness."
+}

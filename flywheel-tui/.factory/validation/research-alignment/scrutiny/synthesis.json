@@ -1,0 +1,49 @@
+{
+  "milestone": "research-alignment",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "detail": "3275 tests pass across 127 files, 9482 expect() calls, 28.93s" },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "N/A", "exitCode": 0, "detail": "No lint script configured in package.json or services.yaml" }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Update backend-worker skill's TDD procedure to acknowledge that when the implementation IS a module that tests import, workers should create the module interface/skeleton first (so tests can import it), then write failing tests, then implement. Current 'write tests first' guidance causes parse/import failures for module-exporting scripts.",
+      "evidence": "Features research-output-validator-and-fixtures and research-test-harness-and-real-validation both deviated from TDD because the scripts/modules being created are the implementation that tests import — writing tests first causes import failures. Both workers noted this in skillFeedback.suggestedChanges.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Update backend-worker skill to note that scripts/tooling features may use their own execution as the acceptance test rather than requiring separate unit test files. Test harness scripts, CLI tools, and validation scripts can be verified by running them successfully rather than writing unit tests around them.",
+      "evidence": "Feature research-test-harness-and-real-validation deviated from TDD because the harness IS the test infrastructure — writing unit tests for a test harness is circular. Worker used harness execution itself as the acceptance test.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance about test harness output artifacts: transient output files from real API runs (e.g., validation JSON snapshots, captured worker output) should either be gitignored or have absolute paths stripped before committing, since they contain machine-specific paths that aren't portable.",
+      "evidence": "Feature research-test-harness-and-real-validation committed tests/fixtures/research/last-plan-output.validation.json containing hardcoded absolute path '/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui/...' which is machine-specific.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "services.yaml already has validate-research command entry",
+      "reason": "already-documented — the entry was added by a prior feature worker and is present in the current services.yaml"
+    },
+    {
+      "observation": "AGENTS.md doesn't document the expected set of analyzer sub-agent types for standalone research workflow",
+      "reason": "ambiguous — the sub-agent dispatch types are emergent from prompt templates and shouldn't be rigidly documented in AGENTS.md. The prompt templates themselves serve as the source of truth for which sub-agent types exist."
+    }
+  ],
+  "previousRound": null
+}

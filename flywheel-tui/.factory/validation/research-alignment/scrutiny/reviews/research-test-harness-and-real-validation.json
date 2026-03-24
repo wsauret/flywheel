@@ -1,0 +1,39 @@
+{
+  "featureId": "research-test-harness-and-real-validation",
+  "reviewedAt": "2026-03-24T19:45:00.000Z",
+  "commitId": "6a7edd7",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Well-structured test harness script (579 lines) that correctly wires into the existing flywheel infrastructure — buildWorkflowPrompt, BunProcessSpawner, NDJSONParser, TieredBuffer, engine registry — to spawn real workers and validate their output. The fixture codebase (10 files, 3 modules) is well-designed with realistic cross-module dependencies that provide a good research target. Prompt fixes (code block rule, type field, anti-prescriptive language) and validator fix (stripInlineCode) are targeted and correct. All 3 harness runs passed, all 3275 tests pass, typecheck clean. Two non-blocking issues noted.",
+    "issues": [
+      {
+        "file": "flywheel-tui/tests/fixtures/research/last-plan-output.validation.json",
+        "line": 3,
+        "severity": "non_blocking",
+        "description": "Committed validation JSON files contain hardcoded absolute paths (e.g., '/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui/tests/fixtures/research/last-plan-output.md'). These are snapshot artifacts from a specific run and won't affect functionality, but they make the committed files machine-specific. Consider adding these to .gitignore or stripping absolute paths before commit."
+      },
+      {
+        "file": "flywheel-tui/scripts/test-research-harness.ts",
+        "line": 310,
+        "severity": "non_blocking",
+        "description": "The TieredBuffer + NDJSONParser are instantiated in spawnWorker() but the parser output (tier1 content) is only used as a fallback when `result.output` is empty. For most engine outputs, the raw chunks captured by onStdout are what matters, and the NDJSON parsing path may not be exercised. The code still works correctly because extractResearchDocument() uses file-based extraction as the primary path, but the NDJSON parsing infrastructure is essentially dead code in this context — the real output comes from files the worker writes to disk."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The harness script commits output snapshot files (last-plan-output.md, last-standalone-output.md, and their .validation.json files) to the repository. These are transient artifacts from real API runs containing machine-specific absolute paths. AGENTS.md doesn't mention whether test harness output snapshots should be committed or gitignored.",
+      "evidence": "flywheel-tui/tests/fixtures/research/last-plan-output.validation.json line 3: absolute path '/Users/wsauret/Documents/GitHub/flywheel/...' is hardcoded in committed file."
+    },
+    {
+      "area": "conventions",
+      "observation": "Worker correctly deviated from TDD for this feature since it's a test script, not a library module. The skill feedback mentions this deviation. AGENTS.md could note that scripts/tooling features may use their own execution as the acceptance test rather than requiring separate unit tests.",
+      "evidence": "Handoff skillFeedback.deviations[0]: 'Created the harness script directly without writing failing tests first, since the harness IS the test infrastructure.'"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The test harness is well-implemented, correctly integrating with the existing flywheel infrastructure (prompt builder, engine registry, process spawner, NDJSON parser, validator). The minimal fixture codebase provides a realistic research target with cross-module dependencies. Prompt fixes are targeted and effective — adding code block length limits, the type field to frontmatter, and stripping inline code from prescriptive language scanning. All three verification runs passed (plan/fixture, plan/flywheel-tui, standalone/flywheel-tui), all 3275 existing tests pass, and typecheck is clean. Two non-blocking issues: hardcoded absolute paths in committed validation JSON snapshots, and NDJSON parsing infrastructure in the harness that is effectively unused since research output is extracted from worker-written files."
+}

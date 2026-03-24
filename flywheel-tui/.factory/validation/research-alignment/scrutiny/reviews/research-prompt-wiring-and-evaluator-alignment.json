@@ -1,0 +1,28 @@
+{
+  "featureId": "research-prompt-wiring-and-evaluator-alignment",
+  "reviewedAt": "2026-03-24T18:30:00.000Z",
+  "commitId": "80b7f70",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-scoped implementation. The worker correctly replaced the reused buildPlanResearchPrompt references with dedicated per-step prompt builders (locate/analyze/persist), updated research workflow validationCriteria to be research-oriented and task-adaptive, and added comprehensive test coverage (22 new tests across 2 files). The changes are minimal and focused — only 4 files touched with 383 insertions and 7 deletions. Import chain is correct: src/prompts/research/index.ts → src/prompts/index.ts → src/workflows/prompt-builder.ts. The validationCriteria updates use appropriate vocabulary (sources, findings, document, references) without debugging terms or rigid section headings. Plan step 0 remains correctly wired to buildPlanResearchPrompt and already references .context.md. The VAL-EA-006 tests properly verify taskContext propagation through the mock evaluator transport, matching the real execution-loop.ts pattern (line 524: taskContext = phase.description). Cross-cutting tests (VAL-CROSS-011/012/013) verify schema validation, previousResult chaining, and parseContextFile compatibility. No bugs, no missed edge cases, no convention violations found.",
+    "issues": [
+      {
+        "file": "flywheel-tui/tests/evaluator-alignment.test.ts",
+        "line": 449,
+        "severity": "non_blocking",
+        "description": "VAL-EA-001 test uses dynamic imports (`await import(...)`) for researchWorkflow which is a static export. All other existing tests in the file (Part A/B) use top-level imports. While this works fine, using `import { researchWorkflow } from '../src/workflows/research'` at the top level would be more consistent with the file's existing style and slightly cleaner. Low priority — functional behavior is identical."
+      },
+      {
+        "file": "flywheel-tui/tests/evaluator-alignment.test.ts",
+        "line": 590,
+        "severity": "non_blocking",
+        "description": "VAL-EA-006 'all 3 research steps' test creates 3 passingResult() responses but doesn't verify the task_context values are distinct per step (e.g. step 0 contains 'Locate', step 1 contains 'Analyze', step 2 contains 'Persist'). It only checks that task_context is truthy and non-empty. Adding step-specific content assertions would strengthen the test. Not blocking because the single-step test (line 570) already demonstrates content correctness for step 0."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Feature passes review. The implementation correctly wires 3 dedicated research prompt builders into the prompt-builder's researchPrompts array, replacing the prior pattern of reusing buildPlanResearchPrompt for all 3 steps. Research workflow validationCriteria are appropriately research-oriented and task-adaptive — no debugging vocabulary, no rigid section headings, no scanning mechanism prescription. Plan step 0 remains correctly wired and already references .context.md. Test coverage is comprehensive: 12 new evaluator-alignment tests (VAL-EA-001 through VAL-EA-006) and 10 new workflow tests covering prompt routing, schema validation, previousResult chaining, and parseContextFile compatibility. All changes respect the off-limits constraints (no evaluator transport/schema modifications, no plan.ts changes needed). Two non-blocking style suggestions noted but no blocking issues found."
+}
