@@ -5,7 +5,7 @@
  * Model uses provider/model format (e.g., "anthropic/claude-opus-4-6").
  */
 
-import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
+import type { DispatcherCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
 
 export const metadata: EngineMetadata = {
   id: "opencode",
@@ -68,6 +68,36 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     args,
     stdinPrompt: true,
     promptPrefix,
+  };
+}
+
+/** Default model for dispatcher/evaluator commands (fast Sonnet-class) */
+const DISPATCHER_DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
+
+/**
+ * Build a CLI command optimized for dispatcher/evaluator use.
+ *
+ * Flags:
+ * - `run` — non-interactive mode
+ * - `--format json` — NDJSON output
+ * - `--model <model>` — fast model (default: anthropic/claude-sonnet-4-6)
+ *
+ * Prompt is passed via stdin (existing OpenCode pattern).
+ * Tool restriction is not natively supported by OpenCode CLI.
+ */
+export function buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand {
+  const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+
+  const args: string[] = [
+    "run",
+    "--format", "json",
+    "--model", model,
+  ];
+
+  return {
+    command: metadata.cliBinary,
+    args,
+    stdinPrompt: true,
   };
 }
 
@@ -194,4 +224,4 @@ const FALLBACK_MODELS: ModelInfo[] = [
   { id: "anthropic/claude-haiku-4-5",  name: "Claude Haiku 4.5",  family: "haiku",  isAlias: true },
 ];
 
-export const opencodeEngine: Engine = { metadata, buildCommand, listModels };
+export const opencodeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, listModels };

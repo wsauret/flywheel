@@ -72,6 +72,21 @@ export interface EngineCommandOptions {
   toolScoping?: ToolScopingConfig;
 }
 
+/**
+ * Options for building a dispatcher/evaluator command.
+ *
+ * Dispatcher commands are optimized for speed: tools disabled, fast model,
+ * separate system prompt for caching, no session persistence.
+ */
+export interface DispatcherCommandOptions {
+  /** The user prompt to send */
+  prompt: string;
+  /** System prompt (separate from user prompt for caching) */
+  systemPrompt: string;
+  /** Model override — defaults to a Sonnet-class model per engine */
+  model?: string;
+}
+
 export interface ModelInfo {
   /** Model ID in the engine's native format (e.g., "opus", "anthropic/claude-opus-4-6") */
   id: string;
@@ -85,8 +100,15 @@ export interface ModelInfo {
 
 export interface Engine {
   metadata: EngineMetadata;
-  /** Build the CLI command + args for execution */
+  /** Build the CLI command + args for worker execution */
   buildCommand(options: EngineCommandOptions): EngineCommand;
+  /**
+   * Build a CLI command optimized for dispatcher/evaluator use.
+   *
+   * Dispatcher commands disable tools, use a fast model, pass a separate
+   * system prompt for caching, and disable session persistence.
+   */
+  buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand;
   /**
    * List available models.
    * @param provider - Optional provider filter (e.g., "anthropic"). If omitted, returns all.

@@ -5,7 +5,7 @@
  * Model can be a short name (opus, sonnet, haiku) or a full claude model ID.
  */
 
-import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
+import type { DispatcherCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
 
 export const metadata: EngineMetadata = {
   id: "claude",
@@ -66,6 +66,43 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   };
 }
 
+/** Default model for dispatcher/evaluator commands (fast Sonnet-class) */
+const DISPATCHER_DEFAULT_MODEL = "sonnet";
+
+/**
+ * Build a CLI command optimized for dispatcher/evaluator use.
+ *
+ * Flags:
+ * - `--print` — non-interactive output (plain text response)
+ * - `--tools ""` — disable all tools
+ * - `--model <model>` — fast model (default: sonnet)
+ * - `--system-prompt <prompt>` — separate system prompt for prompt caching
+ * - `--no-session-persistence` — skip writing session to disk
+ * - `--effort low` — reduced reasoning overhead
+ * - `-p <prompt>` — pass prompt directly (not via stdin)
+ * - `--dangerously-skip-permissions` — skip permission prompts
+ */
+export function buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand {
+  const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+
+  const args: string[] = [
+    "--print",
+    "--dangerously-skip-permissions",
+    "--no-session-persistence",
+    "--tools", "",
+    "--model", model,
+    "--system-prompt", options.systemPrompt,
+    "--effort", "low",
+    "-p", options.prompt,
+  ];
+
+  return {
+    command: metadata.cliBinary,
+    args,
+    stdinPrompt: false,
+  };
+}
+
 /**
  * Hardcoded model list for Claude Code.
  *
@@ -83,4 +120,4 @@ async function listModels(_provider?: string): Promise<ModelInfo[]> {
   return CLAUDE_MODELS;
 }
 
-export const claudeEngine: Engine = { metadata, buildCommand, listModels };
+export const claudeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, listModels };
