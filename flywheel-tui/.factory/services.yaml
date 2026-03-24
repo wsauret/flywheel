@@ -1,0 +1,7 @@
+commands:
+  install: bun install
+  test: bun test
+  typecheck: bunx tsc --noEmit
+  verify-dispatcher: bun run scripts/verify-dispatcher.ts
+
+services: {}
