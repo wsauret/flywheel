@@ -250,6 +250,175 @@ describe("buildWorkflowPrompt", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Research Prompt Routing (standalone /research uses dedicated per-step prompts)
+// ---------------------------------------------------------------------------
+
+describe("Research prompt routing", () => {
+  it("each standalone research step produces a distinct prompt", () => {
+    const prompts: string[] = [];
+    for (let i = 0; i < researchWorkflow.steps.length; i++) {
+      const prompt = buildWorkflowPrompt(i, researchWorkflow, {
+        topic: "Event bus architecture",
+      });
+      prompts.push(prompt);
+    }
+
+    // All 3 prompts should be different from each other
+    expect(prompts[0]).not.toBe(prompts[1]);
+    expect(prompts[1]).not.toBe(prompts[2]);
+    expect(prompts[0]).not.toBe(prompts[2]);
+  });
+
+  it("research step 0 (locate) produces a locate-specific prompt", () => {
+    const prompt = buildWorkflowPrompt(0, researchWorkflow, {
+      topic: "Event bus architecture",
+    });
+    expect(prompt).toContain("Research: Locate Sources");
+    expect(prompt).toContain("Locator Dispatch Templates");
+    expect(prompt).toContain("BLOCKING Rule");
+    // Should NOT contain analyzer or persist content
+    expect(prompt).not.toContain("Research: Analyze Sources");
+    expect(prompt).not.toContain("Research: Compile Document");
+  });
+
+  it("research step 1 (analyze) produces an analyze-specific prompt", () => {
+    const prompt = buildWorkflowPrompt(
+      1,
+      researchWorkflow,
+      { topic: "Event bus architecture" },
+      "Located files: src/events/event-bus.ts, src/events/types.ts",
+    );
+    expect(prompt).toContain("Research: Analyze Sources");
+    expect(prompt).toContain("Analyzer Dispatch Templates");
+    expect(prompt).toContain("Located files: src/events/event-bus.ts");
+    // Should NOT contain locator or persist content
+    expect(prompt).not.toContain("Research: Locate Sources");
+    expect(prompt).not.toContain("Research: Compile Document");
+  });
+
+  it("research step 2 (persist) produces a persist-specific prompt", () => {
+    const prompt = buildWorkflowPrompt(
+      2,
+      researchWorkflow,
+      { topic: "Event bus architecture" },
+      "Analysis results: EventBus uses pub/sub pattern...",
+    );
+    expect(prompt).toContain("Research: Compile Document");
+    expect(prompt).toContain("docs/research/");
+    expect(prompt).toContain("Analysis results: EventBus uses pub/sub pattern");
+    // Should NOT contain locator or analyzer content
+    expect(prompt).not.toContain("Research: Locate Sources");
+    expect(prompt).not.toContain("Research: Analyze Sources");
+  });
+
+  it("plan step 0 still produces the plan research prompt (not standalone locate)", () => {
+    const planPrompt = buildWorkflowPrompt(0, planWorkflow, {
+      description: "Build auth system",
+    });
+    const researchPrompt = buildWorkflowPrompt(0, researchWorkflow, {
+      topic: "Build auth system",
+    });
+
+    // Plan step 0 should NOT be the same as research step 0
+    expect(planPrompt).not.toBe(researchPrompt);
+    // Plan step 0 should contain plan-specific content (e.g. .context.md reference)
+    expect(planPrompt).toContain(".context.md");
+    // Research step 0 should contain standalone locate content
+    expect(researchPrompt).toContain("Research: Locate Sources");
+  });
+
+  it("researchPrompts array length matches researchWorkflow.steps.length", () => {
+    // Verify each step index produces a valid prompt (not a fallback)
+    for (let i = 0; i < researchWorkflow.steps.length; i++) {
+      const prompt = buildWorkflowPrompt(i, researchWorkflow, {
+        topic: "test",
+      });
+      // Should NOT be the generic fallback (which starts with "# research — Step")
+      expect(prompt).not.toMatch(/^# research — Step/);
+    }
+    // Going beyond should get fallback
+    const fallback = buildWorkflowPrompt(
+      researchWorkflow.steps.length,
+      researchWorkflow,
+      { topic: "test" },
+    );
+    expect(typeof fallback).toBe("string");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Research workflow cross-cutting assertions
+// ---------------------------------------------------------------------------
+
+describe("Research workflow cross-cutting (VAL-CROSS)", () => {
+  it("VAL-CROSS-011: WorkflowDefinitionSchema validates researchWorkflow", () => {
+    const result = WorkflowDefinitionSchema.safeParse(researchWorkflow);
+    expect(result.success).toBe(true);
+    // Step descriptions contain locate/analyze/persist
+    expect(researchWorkflow.steps[0].description).toContain("Locate");
+    expect(researchWorkflow.steps[1].description).toContain("Analyze");
+    expect(researchWorkflow.steps[2].description).toContain("Persist");
+  });
+
+  it("VAL-CROSS-012: research steps chain correctly via previousResult", () => {
+    // Step 1 receives step 0 output as previousResult
+    const locateOutput = "Found 10 relevant files in src/events/";
+    const step1Prompt = buildWorkflowPrompt(
+      1,
+      researchWorkflow,
+      { topic: "event bus" },
+      locateOutput,
+    );
+    expect(step1Prompt).toContain(locateOutput);
+
+    // Step 2 receives step 1 output as previousResult
+    const analyzeOutput = "EventBus implements pub/sub with 29 event types";
+    const step2Prompt = buildWorkflowPrompt(
+      2,
+      researchWorkflow,
+      { topic: "event bus" },
+      analyzeOutput,
+    );
+    expect(step2Prompt).toContain(analyzeOutput);
+  });
+
+  it("VAL-CROSS-013: plan research .context.md is compatible with parseContextFile", async () => {
+    const { parseContextFile } = await import("../src/controller/templates");
+
+    // Simulate a well-formed plan research output in .context.md format
+    const mockContextContent = [
+      "## Codebase Map",
+      "",
+      "- `src/events/event-bus.ts:1-50` — EventBus class definition",
+      "- `src/events/types.ts:10-30` — Event type definitions",
+      "- `src/controller/execution-loop.ts:100-200` — Event consumption",
+      "",
+      "## Relevant Code",
+      "",
+      "- `src/events/event-bus.ts:15` — emit() method",
+      "- `src/events/event-bus.ts:25` — subscribe() method",
+      "",
+      "## Patterns to Follow",
+      "",
+      "- Typed event emitter pattern using FlywheelEmitter",
+      "",
+      "## Constraints",
+      "",
+      "- Synchronous pub/sub (no async handlers)",
+      "",
+      "## Open Questions",
+      "",
+      "- How are events garbage-collected?",
+    ].join("\n");
+
+    const fileReferences = parseContextFile(mockContextContent);
+    expect(fileReferences.length).toBeGreaterThan(0);
+    // Should extract file paths from file:line references
+    expect(fileReferences.some((ref) => ref.includes("event-bus.ts"))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // parseArgs (simplified — all args go to TUI)
 // ---------------------------------------------------------------------------
 

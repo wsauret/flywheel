@@ -9,21 +9,21 @@ export const researchWorkflow: WorkflowDefinition = {
       dispatcherHint:
         "Identify and locate files, documentation, and references relevant to the research topic.",
       validationCriteria:
-        "Relevant files and references identified for the research objective",
+        "Relevant sources identified and ranked by relevance to the research objective",
     },
     {
       description: "Analyze located sources for key findings",
       dispatcherHint:
         "Analyze located sources for patterns, implementation details, and insights relevant to the research topic.",
       validationCriteria:
-        "Analysis of located sources relevant to the research topic",
+        "Findings extracted from sources with supporting references relevant to the research topic",
     },
     {
       description: "Persist structured research document",
       dispatcherHint:
         "Compile findings into a structured research document with YAML frontmatter.",
       validationCriteria:
-        "Structured research document covering the topic with relevant findings",
+        "Comprehensive research document persisted with findings and source references",
     },
   ],
 };

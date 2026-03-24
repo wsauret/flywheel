@@ -413,3 +413,208 @@ describe("VAL-ALIGN-008: Dispatcher system prompt doesn't prescribe fixed criter
     expect(systemPrompt).toContain("step_description");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Part C: Research workflow evaluator alignment
+// ---------------------------------------------------------------------------
+
+describe("VAL-EA-001: Research workflow validationCriteria reflect research output", () => {
+  it("all research step criteria contain research-oriented vocabulary", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const researchVocab = ["sources", "findings", "document", "research", "relevant", "references"];
+
+    for (const step of researchWorkflow.steps) {
+      const criteria = step.validationCriteria ?? "";
+      const hasResearchVocab = researchVocab.some((word) =>
+        criteria.toLowerCase().includes(word),
+      );
+      expect(hasResearchVocab).toBe(true);
+    }
+  });
+
+  it("all research step criteria contain zero debugging vocabulary", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const debuggingVocab = ["fix", "bug", "error", "stack trace", "debug", "crash", "exception"];
+
+    for (const step of researchWorkflow.steps) {
+      const criteria = step.validationCriteria ?? "";
+      for (const word of debuggingVocab) {
+        expect(criteria.toLowerCase()).not.toContain(word);
+      }
+    }
+  });
+});
+
+describe("VAL-EA-002: Research validationCriteria remain task-adaptive", () => {
+  it("no validationCriteria string contains specific markdown heading names", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const rigidHeadings = [
+      "## Codebase Map",
+      "## Findings",
+      "## Relevant Code",
+      "## Patterns",
+      "## Constraints",
+      "## Open Questions",
+      "## Research Question",
+      "## Summary",
+      "## Code References",
+    ];
+
+    for (const step of researchWorkflow.steps) {
+      const criteria = step.validationCriteria ?? "";
+      for (const heading of rigidHeadings) {
+        expect(criteria).not.toContain(heading);
+      }
+    }
+  });
+
+  it("no validationCriteria string contains ## heading markers at all", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+
+    for (const step of researchWorkflow.steps) {
+      const criteria = step.validationCriteria ?? "";
+      expect(criteria).not.toContain("##");
+    }
+  });
+});
+
+describe("VAL-EA-003: Plan step 0 validationCriteria reference .context.md", () => {
+  it("planWorkflow.steps[0].validationCriteria contains '.context.md'", async () => {
+    const { planWorkflow } = await import("../src/workflows/plan");
+    const criteria = planWorkflow.steps[0].validationCriteria ?? "";
+    expect(criteria).toContain(".context.md");
+  });
+
+  it("planWorkflow.steps[0].validationCriteria references file references or patterns", async () => {
+    const { planWorkflow } = await import("../src/workflows/plan");
+    const criteria = planWorkflow.steps[0].validationCriteria ?? "";
+    expect(criteria).toContain("file references");
+  });
+});
+
+describe("VAL-EA-005: New evaluator-alignment tests for research criteria", () => {
+  it("research step 0 criteria describe source identification", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const criteria = researchWorkflow.steps[0].validationCriteria ?? "";
+    expect(criteria.toLowerCase()).toContain("sources");
+  });
+
+  it("research step 1 criteria describe analysis of findings", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const criteria = researchWorkflow.steps[1].validationCriteria ?? "";
+    expect(criteria.toLowerCase()).toContain("findings");
+  });
+
+  it("research step 2 criteria describe a research document", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const criteria = researchWorkflow.steps[2].validationCriteria ?? "";
+    expect(criteria.toLowerCase()).toContain("document");
+  });
+
+  it("no research step criteria prescribe scanning mechanism", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const forbiddenPhrases = [
+      "parallel locator agents",
+      "file paths and line numbers",
+      "codebase file scanning",
+    ];
+
+    for (const step of researchWorkflow.steps) {
+      const criteria = step.validationCriteria ?? "";
+      for (const phrase of forbiddenPhrases) {
+        expect(criteria.toLowerCase()).not.toContain(phrase.toLowerCase());
+      }
+    }
+  });
+
+  it("no research step criteria prescribe rigid artifact format", async () => {
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const forbiddenArtifactPhrases = [
+      "code examples",
+      "file-by-file",
+    ];
+
+    for (const step of researchWorkflow.steps) {
+      const criteria = step.validationCriteria ?? "";
+      for (const phrase of forbiddenArtifactPhrases) {
+        expect(criteria.toLowerCase()).not.toContain(phrase.toLowerCase());
+      }
+    }
+  });
+});
+
+describe("VAL-EA-006: Evaluator task_context is populated for research phases", () => {
+  it("evaluator receives non-empty taskContext for a research workflow phase", async () => {
+    const { Evaluator } = await import("../src/evaluator/invoke");
+    const bus = new EventBus();
+    const { transport, inputs } = createMockTransport([passingResult()]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "research",
+    });
+
+    // Simulate the execution loop passing the research step description as taskContext
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const stepDescription = researchWorkflow.steps[0].description;
+
+    await evaluator.evaluate({
+      workerOutput: "Located 15 relevant files for the research topic",
+      validationCriteria: {
+        acceptance_criteria: [researchWorkflow.steps[0].validationCriteria ?? ""],
+        required_tests: false,
+        custom_checks: [],
+        required_outputs: [],
+      },
+      contextFiles: [],
+      taskContext: stepDescription,
+    });
+
+    expect(inputs()).toHaveLength(1);
+    const capturedInput = inputs()[0];
+    expect(capturedInput.task_context).toBeTruthy();
+    expect(capturedInput.task_context).toBe(stepDescription);
+    // Verify it's research-oriented content
+    expect(capturedInput.task_context).toContain("Locate");
+  });
+
+  it("evaluator receives non-empty taskContext for all 3 research steps", async () => {
+    const { Evaluator } = await import("../src/evaluator/invoke");
+    const { researchWorkflow } = await import("../src/workflows/research");
+    const bus = new EventBus();
+    const { transport, inputs } = createMockTransport([
+      passingResult(),
+      passingResult(),
+      passingResult(),
+    ]);
+
+    const evaluator = new Evaluator({
+      transport,
+      emitter: createFlywheelEmitter(bus),
+      workflowId: "research",
+    });
+
+    for (let i = 0; i < researchWorkflow.steps.length; i++) {
+      const step = researchWorkflow.steps[i];
+      await evaluator.evaluate({
+        workerOutput: `Step ${i} output`,
+        validationCriteria: {
+          acceptance_criteria: [step.validationCriteria ?? ""],
+          required_tests: false,
+          custom_checks: [],
+          required_outputs: [],
+        },
+        contextFiles: [],
+        taskContext: step.description,
+      });
+    }
+
+    expect(inputs()).toHaveLength(3);
+    for (let i = 0; i < 3; i++) {
+      expect(inputs()[i].task_context).toBeTruthy();
+      expect(typeof inputs()[i].task_context).toBe("string");
+      expect((inputs()[i].task_context as string).length).toBeGreaterThan(0);
+    }
+  });
+});

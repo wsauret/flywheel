@@ -19,6 +19,9 @@ import {
   buildShipPrompt,
   buildShipCompoundPrompt,
   buildDebugPrompt,
+  buildResearchLocatePrompt,
+  buildResearchAnalyzePrompt,
+  buildResearchPersistPrompt,
 } from "../prompts/index";
 
 // ---------------------------------------------------------------------------
@@ -60,10 +63,9 @@ const debugPrompts: PromptFn[] = [
 ];
 
 const researchPrompts: PromptFn[] = [
-  // Research reuses the plan research template for locating and analyzing
-  buildPlanResearchPrompt,
-  buildPlanResearchPrompt,
-  buildPlanResearchPrompt,
+  buildResearchLocatePrompt,   // Step 0: Locate relevant sources
+  buildResearchAnalyzePrompt,  // Step 1: Analyze located sources
+  buildResearchPersistPrompt,  // Step 2: Compile research document
 ];
 
 const workflowPromptMap: Record<string, PromptFn[]> = {
