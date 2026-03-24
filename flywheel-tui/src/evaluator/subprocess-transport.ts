@@ -179,12 +179,15 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
     sections.push(
       "## Instructions",
-      'Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this schema:',
-      '{ "passed": boolean, "reasoning": string, "suggestions": string[] }',
+      'Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this exact schema:',
+      '{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[] }',
       "",
       "- passed: true if the output meets all criteria, false otherwise",
-      "- reasoning: brief explanation of your evaluation",
-      "- suggestions: optional array of improvement suggestions (only if passed is false)",
+      "- reasoning: string explaining your assessment of the output",
+      "- suggestions: array of improvement suggestions (empty array [] if none)",
+      "- confidence: float between 0.0 and 1.0 indicating how confident you are in your evaluation (NOT 0-100, must be a decimal like 0.85)",
+      "- feedback: string with overall feedback about the work quality",
+      "- files_to_review: array of file paths that need further review (empty array [] if none)",
     );
 
     return sections.join("\n");

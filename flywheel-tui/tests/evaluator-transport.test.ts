@@ -734,6 +734,50 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   // Evaluator uses its OWN prompt (not dispatcher's system prompt)
   // -----------------------------------------------------------------------
 
+  it("buildPrompt includes all 6 EvaluatorResultSchema fields in instructions", async () => {
+    let capturedPrompt = "";
+
+    const mockSpawner: ProcessSpawner = {
+      async spawn(command, args, options) {
+        // For Claude, prompt is in -p flag
+        const pIdx = args.indexOf("-p");
+        if (pIdx > -1) {
+          capturedPrompt = args[pIdx + 1];
+        }
+        // For OpenCode, prompt is in stdin
+        if (options?.stdin) {
+          capturedPrompt = options.stdin;
+        }
+        return {
+          result: Promise.resolve({
+            output: JSON.stringify(validEvaluatorResult()),
+            exitCode: 0,
+            truncated: false,
+            durationMs: 100,
+          }),
+        };
+      },
+    };
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner: mockSpawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput());
+
+    // All 6 fields from EvaluatorResultSchema must be mentioned in the prompt
+    expect(capturedPrompt).toContain('"passed"');
+    expect(capturedPrompt).toContain('"reasoning"');
+    expect(capturedPrompt).toContain('"suggestions"');
+    expect(capturedPrompt).toContain('"confidence"');
+    expect(capturedPrompt).toContain('"feedback"');
+    expect(capturedPrompt).toContain('"files_to_review"');
+
+    // Confidence must be explicitly specified as 0.0-1.0, NOT 0-100
+    expect(capturedPrompt).toMatch(/0\.0.*1\.0/);
+    expect(capturedPrompt).toContain("NOT 0-100");
+  });
+
   it("evaluator prompt contains evaluator-specific content (not dispatcher content)", async () => {
     let spawnedArgs: string[] = [];
     let receivedStdin: string | undefined;
