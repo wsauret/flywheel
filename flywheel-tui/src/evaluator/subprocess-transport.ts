@@ -134,9 +134,9 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   // -------------------------------------------------------------------------
 
   private buildPrompt(input: EvaluatorInput): string {
+    // NOTE: Role framing is set in EVALUATOR_SYSTEM_PROMPT (passed via --system-prompt).
+    // Do NOT duplicate it here — the system prompt already establishes the evaluator role.
     const sections: string[] = [
-      "You are an evaluator checking whether worker output meets the validation criteria.",
-      "",
       "## Worker Output",
       input.worker_output,
       "",
@@ -169,23 +169,31 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       );
     }
 
+    // Informational only — tools are disabled so the model cannot read these files.
     if (input.context_files.length > 0) {
       sections.push(
-        `## Context Files`,
-        input.context_files.join("\n"),
+        "The worker was given access to these files:",
+        ...input.context_files.map((f) => `- ${f}`),
         "",
       );
     }
 
+    // Surface timing so the evaluator knows if work was rushed or thorough.
+    sections.push(
+      "## Timing",
+      `Phase took ${input.duration_seconds}s to complete.`,
+      "",
+    );
+
     sections.push(
       "## Instructions",
-      'Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this exact schema:',
+      "Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this exact schema:",
       '{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[] }',
       "",
-      "- passed: true if the output meets all criteria, false otherwise",
+      "- passed: Set passed to true if the output substantially meets the acceptance criteria. Minor omissions that don't affect functionality should not cause a failure. Set passed to false only if critical criteria are unmet or the output has significant issues.",
       "- reasoning: string explaining your assessment of the output",
       "- suggestions: array of improvement suggestions (empty array [] if none)",
-      "- confidence: float between 0.0 and 1.0 indicating how confident you are in your evaluation (NOT 0-100, must be a decimal like 0.85)",
+      "- confidence: float between 0.0 and 1.0 (NOT 0-100, must be a decimal like 0.85). confidence should reflect how certain you are about your pass/fail decision: 0.9+ means clear pass/fail, 0.5-0.7 means borderline, below 0.5 means you lack enough information to judge.",
       "- feedback: string with overall feedback about the work quality",
       "- files_to_review: array of file paths that need further review (empty array [] if none)",
     );

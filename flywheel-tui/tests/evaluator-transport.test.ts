@@ -814,3 +814,169 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(prompt).not.toContain("prompt engineering specialist");
   });
 });
+
+// ---------------------------------------------------------------------------
+// VAL-PROMPT-003: Evaluator prompt optimized for clarity
+// ---------------------------------------------------------------------------
+
+describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", () => {
+  let SubprocessEvaluatorTransport: typeof import("../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
+
+  /** Helper to capture the prompt text from the -p flag (Claude engine route). */
+  function createPromptCapturingSpawner(): { spawner: ProcessSpawner; getPrompt: () => string } {
+    let capturedPrompt = "";
+    const spawner: ProcessSpawner = {
+      async spawn(command, args, options) {
+        const pIdx = args.indexOf("-p");
+        if (pIdx > -1) {
+          capturedPrompt = args[pIdx + 1];
+        }
+        if (options?.stdin) {
+          capturedPrompt = options.stdin;
+        }
+        return {
+          result: Promise.resolve({
+            output: JSON.stringify(validEvaluatorResult()),
+            exitCode: 0,
+            truncated: false,
+            durationMs: 100,
+          }),
+        };
+      },
+    };
+    return { spawner, getPrompt: () => capturedPrompt };
+  }
+
+  beforeEach(async () => {
+    const mod = await import("../src/evaluator/subprocess-transport");
+    SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
+  });
+
+  // -----------------------------------------------------------------------
+  // 1. No duplicate role framing between system prompt and buildPrompt()
+  // -----------------------------------------------------------------------
+
+  it("buildPrompt() does NOT start with 'You are an evaluator' (role set via system prompt only)", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput());
+
+    const prompt = getPrompt();
+    // The prompt should NOT contain the role framing sentence — it's in the system prompt
+    expect(prompt).not.toContain("You are an evaluator");
+  });
+
+  // -----------------------------------------------------------------------
+  // 2. context_files section removed or changed to informational-only
+  // -----------------------------------------------------------------------
+
+  it("context_files section is informational-only (no '## Context Files' action-implying header)", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput({ context_files: ["src/foo.ts", "src/bar.ts"] }));
+
+    const prompt = getPrompt();
+    // Should NOT have the old actionable header
+    expect(prompt).not.toContain("## Context Files");
+    // Should have informational framing instead
+    expect(prompt).toContain("worker was given access to these files");
+    // The file paths should still appear
+    expect(prompt).toContain("src/foo.ts");
+    expect(prompt).toContain("src/bar.ts");
+  });
+
+  it("context_files informational section is omitted when no context files provided", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput({ context_files: [] }));
+
+    const prompt = getPrompt();
+    expect(prompt).not.toContain("worker was given access to these files");
+  });
+
+  // -----------------------------------------------------------------------
+  // 3. duration_seconds surfaced in the prompt
+  // -----------------------------------------------------------------------
+
+  it("surfaces duration_seconds in a Timing section", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput({ duration_seconds: 45 }));
+
+    const prompt = getPrompt();
+    expect(prompt).toContain("## Timing");
+    expect(prompt).toContain("45");
+  });
+
+  it("surfaces duration_seconds = 0 correctly", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput({ duration_seconds: 0 }));
+
+    const prompt = getPrompt();
+    // Should still show the timing section even if 0s
+    expect(prompt).toContain("## Timing");
+    expect(prompt).toContain("0s");
+  });
+
+  // -----------------------------------------------------------------------
+  // 4. Pass/fail threshold guidance added
+  // -----------------------------------------------------------------------
+
+  it("includes pass/fail threshold guidance about substantial compliance", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput());
+
+    const prompt = getPrompt();
+    // Should contain guidance about not being overly strict
+    expect(prompt).toContain("substantially meets");
+    expect(prompt).toContain("Minor omissions");
+    expect(prompt).toContain("critical criteria are unmet");
+  });
+
+  // -----------------------------------------------------------------------
+  // 5. Confidence scale guidance added
+  // -----------------------------------------------------------------------
+
+  it("includes confidence scale guidance with specific thresholds", async () => {
+    const { spawner, getPrompt } = createPromptCapturingSpawner();
+
+    const transport = new SubprocessEvaluatorTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseEvaluatorInput());
+
+    const prompt = getPrompt();
+    // Should contain confidence scale explanation
+    expect(prompt).toContain("0.9");
+    expect(prompt).toContain("clear pass/fail");
+    expect(prompt).toContain("borderline");
+    expect(prompt).toContain("lack enough information");
+  });
+});
