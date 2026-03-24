@@ -601,12 +601,18 @@ export function FlywheelShell() {
         } catch { /* silently fall back to empty context */ }
       }
 
-      // Auto-detect dispatcher transport (SDK preferred, CLI fallback).
+      // Auto-detect dispatcher transport (engine-aware: claude → CLI, opencode → SDK then CLI).
       let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
       try {
-        const resolved = await autoDetectTransport({ spawner: deps.spawner })
+        const { resolveModels } = await import("../../config/loader")
+        const { dispatcherModel } = resolveModels(deps.config)
+        const resolved = await autoDetectTransport({
+          spawner: deps.spawner,
+          engineName: deps.config.engine,
+          dispatcherModel,
+        })
         dispatcherTransport = resolved.transport
-        log.info("dispatcher transport resolved", { label: resolved.label })
+        log.info("dispatcher transport resolved", { label: resolved.label, engine: deps.config.engine })
       } catch (err) {
         log.warn("dispatcher transport auto-detect failed, phases will use static prompt builder", {
           error: err instanceof Error ? err.message : String(err),
@@ -991,10 +997,16 @@ export function FlywheelShell() {
     setAppState("working")
 
     queueMicrotask(async () => {
-      // Auto-detect dispatcher transport for the resumed session
+      // Auto-detect dispatcher transport for the resumed session (engine-aware)
       let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
       try {
-        const resolved = await autoDetectTransport({ spawner: deps.spawner })
+        const { resolveModels } = await import("../../config/loader")
+        const { dispatcherModel } = resolveModels(deps.config)
+        const resolved = await autoDetectTransport({
+          spawner: deps.spawner,
+          engineName: deps.config.engine,
+          dispatcherModel,
+        })
         dispatcherTransport = resolved.transport
       } catch { /* fallback to static prompts */ }
 
@@ -1701,7 +1713,7 @@ export function FlywheelShell() {
               </box>
             }
           >
-            <box flexDirection="column" width="100%">
+            <box flexDirection="column" width="100%" flexGrow={1}>
               <OutputWindow
                 outputBlocks={layoutState().outputBlocks}
                 workflowStatus={viewedSessionInfo()?.workflowStatus ?? layoutState().workflowStatus}

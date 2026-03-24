@@ -1,7 +1,9 @@
 /**
- * Auto-detect — starts an OpenCode API server via the SDK, then creates
- * an SdkTransport pointed at it. Falls back to SubprocessTransport if
- * the SDK is unavailable or the server fails to start.
+ * Auto-detect — selects the best available dispatcher transport based on engine config.
+ *
+ * Engine routing:
+ * - Claude: always uses SubprocessTransport (SDK is OpenCode-only)
+ * - OpenCode: tries SDK first, falls back to SubprocessTransport
  *
  * The server is owned by the returned handle — caller must call `dispose()`
  * to stop it when the pipeline finishes.
@@ -31,6 +33,10 @@ export interface AutoDetectOptions {
   spawner: ProcessSpawner;
   /** Server start timeout in ms (default: 10 000). */
   serverTimeoutMs?: number;
+  /** Engine name — "claude" or "opencode". Defaults to "opencode". */
+  engineName?: string;
+  /** Dispatcher model override — passed through to SubprocessTransport. */
+  dispatcherModel?: string;
 }
 
 // Server singleton — shared across all pipelines in the same process.
@@ -75,12 +81,28 @@ async function getOrStartServer(timeoutMs: number): Promise<{ url: string; close
 /**
  * Auto-detect the best available transport.
  *
- * 1. If @opencode-ai/sdk is available, start an API server and use SdkTransport
- * 2. Otherwise, fall back to SubprocessTransport (spawns `opencode run`)
+ * Engine-aware routing:
+ * - Claude: skip SDK entirely (it's OpenCode-only), use Claude Code subprocess
+ * - OpenCode: try SDK first, fall back to OpenCode subprocess
+ * - Default (no engine specified): existing behavior (try SDK → subprocess with opencode)
  */
 export async function autoDetectTransport(
   options: AutoDetectOptions,
 ): Promise<ResolvedTransport> {
+  const engineName = options.engineName ?? "opencode";
+
+  // Claude engine: skip SDK entirely — SDK is OpenCode-only
+  if (engineName === "claude") {
+    log.info("claude engine — using subprocess transport (SDK is OpenCode-only)");
+    const transport = new SubprocessTransport({
+      spawner: options.spawner,
+      engineName: "claude",
+      dispatcherModel: options.dispatcherModel,
+    });
+    return { transport, label: "cli", dispose: () => {} };
+  }
+
+  // OpenCode engine: try SDK first, fall back to subprocess
   if (SDK_AVAILABLE && _createOpencodeServer) {
     const server = await getOrStartServer(options.serverTimeoutMs ?? 10_000);
     if (server) {
@@ -97,6 +119,10 @@ export async function autoDetectTransport(
     log.warn("SDK available but server failed to start, falling back to subprocess");
   }
 
-  const transport = new SubprocessTransport({ spawner: options.spawner });
+  const transport = new SubprocessTransport({
+    spawner: options.spawner,
+    engineName,
+    dispatcherModel: options.dispatcherModel,
+  });
   return { transport, label: "cli", dispose: () => {} };
 }
