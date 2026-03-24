@@ -126,6 +126,7 @@ export interface FlywheelEmitter {
   evaluatorInvoked(workflowId: string, phaseIndex: number, stepIndex: number): void;
   evaluatorCompleted(workflowId: string, result: import("../schemas/evaluator").EvaluatorResult): void;
   evaluatorFailed(workflowId: string, reason: string): void;
+  evaluatorRevisionRequested(workflowId: string, phaseIndex: number, revisionAttempt: number, maxRevisions: number, reason: string): void;
   workerSpawned(workflowId: string, phaseIndex: number, stepIndex: number): void;
   workerCompleted(workflowId: string, result: import("../schemas/worker").WorkerResult): void;
   workerFailed(workflowId: string, failure: import("../schemas/worker").WorkerFailureReason): void;
@@ -174,6 +175,8 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "evaluator:completed", workflowId, result, timestamp: now() }),
     evaluatorFailed: (workflowId, reason) =>
       bus.emit({ type: "evaluator:failed", workflowId, reason, timestamp: now() }),
+    evaluatorRevisionRequested: (workflowId, phaseIndex, revisionAttempt, maxRevisions, reason) =>
+      bus.emit({ type: "evaluator:revision-requested", workflowId, phaseIndex, revisionAttempt, maxRevisions, reason, timestamp: Date.now() }),
     workerSpawned: (workflowId, phaseIndex, stepIndex) =>
       bus.emit({ type: "worker:spawned", workflowId, phaseIndex, stepIndex, timestamp: now() }),
     workerCompleted: (workflowId, result) =>

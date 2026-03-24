@@ -378,6 +378,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.pushSystemText(`⚠ Evaluator failed: ${event.reason}. Skipping.\n`, event.timestamp);
         break;
 
+      case "evaluator:revision-requested":
+        this.pushSystemText(
+          `🔄 Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions}) — re-running worker...\n`,
+          new Date(event.timestamp).toISOString(),
+        );
+        break;
+
       // Question events — handled by QuestionPrompt component, not adapter
       case "question:asked":
       case "question:replied":

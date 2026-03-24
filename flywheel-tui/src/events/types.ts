@@ -25,6 +25,7 @@ export type FlywheelEvent =
   | EvaluatorInvoked
   | EvaluatorCompleted
   | EvaluatorFailed
+  | EvaluatorRevisionRequested
   | WorkerSpawned
   | WorkerCompleted
   | WorkerFailed
@@ -171,6 +172,16 @@ export interface EvaluatorFailed {
   workflowId: string;
   reason: string;
   timestamp: string;
+}
+
+export interface EvaluatorRevisionRequested {
+  type: "evaluator:revision-requested";
+  workflowId: string;
+  phaseIndex: number;
+  revisionAttempt: number;
+  maxRevisions: number;
+  reason: string;
+  timestamp: number;
 }
 
 // -- Worker events --

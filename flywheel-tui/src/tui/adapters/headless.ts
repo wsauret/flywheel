@@ -195,6 +195,12 @@ export class HeadlessAdapter extends BaseUIAdapter {
         }
         break
 
+      case "evaluator:revision-requested":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Revision requested (attempt ${event.revisionAttempt}/${event.maxRevisions}): ${event.reason}`)
+        }
+        break
+
       // ── Approval events ──
       case "approval:requested":
         this.log(`  APPROVAL REQUIRED: ${event.description}`)

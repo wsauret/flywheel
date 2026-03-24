@@ -49,6 +49,9 @@ export const FlywheelConfigSchema = z.object({
   /** Max evaluator retry cycles per phase. 1 = single attempt (no retries). Default: 3. */
   max_eval_cycles: z.number().int().min(1).max(10).default(3),
 
+  /** Max revision attempts after evaluator failure. 0 = no revisions. Default: 1. */
+  max_revisions: z.number().int().min(0).max(5).default(1),
+
   /** Fallback engine IDs to try when the primary engine fails. Validated at runtime. */
   fallback_agents: z.array(z.string()).default([]),
 
@@ -91,6 +94,7 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   auto_ship: false,
   auto_chain: true,
   max_eval_cycles: 3,
+  max_revisions: 1,
   fallback_agents: [],
   budget: {
     max_invocations: 0,
@@ -168,6 +172,10 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   FLYWHEEL_MAX_EVAL_CYCLES: (val, config) => {
     const n = parseInt(val, 10);
     if (!isNaN(n)) config.max_eval_cycles = n;
+  },
+  FLYWHEEL_MAX_REVISIONS: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) config.max_revisions = n;
   },
   FLYWHEEL_FALLBACK_AGENTS: (val, config) => {
     config.fallback_agents = val.split(",").map((s) => s.trim()).filter(Boolean);

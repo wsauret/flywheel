@@ -78,6 +78,9 @@ export interface ExecutePhaseOptions {
   /** Abort signal — when fired, worker is interrupted (not retried) */
   signal?: AbortSignal;
 
+  /** Session ID to resume (for revision re-spawns) */
+  resumeSessionId?: string;
+
   // --- Dispatcher decision overrides (take precedence over FlywheelConfig) ---
 
   /** Override timeout in milliseconds (from dispatcher worker_config.timeout_minutes) */
@@ -179,11 +182,12 @@ export class PhaseExecutor {
     const {
       phaseIndex, prompt, cwd, onStdout, onStderr, signal,
       timeoutOverrideMs, modelOverride, maxRetriesOverride, toolScoping,
+      resumeSessionId,
     } = options;
 
     // Build command using the engine pattern — dispatcher model override takes precedence
     const model = modelOverride ?? this.config.worker?.model ?? this.config.model;
-    const engineCmd = engine.buildCommand({ prompt, model, toolScoping });
+    const engineCmd = engine.buildCommand({ prompt, model, toolScoping, resumeSessionId });
 
     // If the engine returned a promptPrefix (e.g. OpenCode prompt-based scoping),
     // prepend it to the prompt that will be sent via stdin.

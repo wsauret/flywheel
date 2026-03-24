@@ -216,6 +216,7 @@ export class BunProcessSpawner implements ProcessSpawner {
         truncated: buffer.truncated,
         durationMs,
         failure,
+        sessionId: ndjsonParser.sessionId ?? undefined,
       };
     };
 

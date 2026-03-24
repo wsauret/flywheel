@@ -53,6 +53,7 @@ export const WorkerResultSchema = z.object({
   truncated: z.boolean(),
   durationMs: z.number(),
   failure: WorkerFailureReasonSchema.optional(),
+  sessionId: z.string().optional(),
 });
 
 export type WorkerResult = z.infer<typeof WorkerResultSchema>;
