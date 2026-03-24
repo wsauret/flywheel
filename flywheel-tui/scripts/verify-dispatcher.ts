@@ -13,11 +13,14 @@
  * for post-hoc investigation.
  *
  * Usage:
- *   bun scripts/verify-dispatcher.ts                    # auto-detect transport
- *   bun scripts/verify-dispatcher.ts --transport=cli    # force subprocess
- *   bun scripts/verify-dispatcher.ts --transport=sdk    # force SDK
- *   bun scripts/verify-dispatcher.ts --verbose          # show full response
- *   bun scripts/verify-dispatcher.ts --dry-run          # show assembled input, skip LLM call
+ *   bun scripts/verify-dispatcher.ts                              # auto-detect engine + transport
+ *   bun scripts/verify-dispatcher.ts --engine=claude              # use Claude Code engine
+ *   bun scripts/verify-dispatcher.ts --engine=opencode            # use OpenCode engine
+ *   bun scripts/verify-dispatcher.ts --transport=cli              # force subprocess transport
+ *   bun scripts/verify-dispatcher.ts --transport=sdk              # force SDK transport
+ *   bun scripts/verify-dispatcher.ts --verbose                    # show full response
+ *   bun scripts/verify-dispatcher.ts --dry-run                    # show assembled input, skip LLM call
+ *   bun scripts/verify-dispatcher.ts --help                       # show usage
  */
 
 import * as fs from "node:fs";
@@ -73,7 +76,53 @@ function saveArtifact(name: string, content: string): string {
 const args = process.argv.slice(2);
 const verbose = args.includes("--verbose");
 const dryRun = args.includes("--dry-run");
+const helpFlag = args.includes("--help");
 const transportArg = args.find(a => a.startsWith("--transport="))?.split("=")[1] as "sdk" | "cli" | undefined;
+const engineArg = args.find(a => a.startsWith("--engine="))?.split("=")[1] as "claude" | "opencode" | undefined;
+
+// ---------------------------------------------------------------------------
+// --help
+// ---------------------------------------------------------------------------
+
+if (helpFlag) {
+  console.log(`
+${BOLD}verify-dispatcher.ts${RESET} — end-to-end verification of the dispatcher pipeline.
+
+${BOLD}Usage:${RESET}
+  bun scripts/verify-dispatcher.ts [options]
+
+${BOLD}Options:${RESET}
+  --engine=claude|opencode   Select which engine to test (default: auto-detect)
+  --transport=cli|sdk        Force a specific transport (default: auto-detect)
+  --verbose                  Show full task_content and composed prompt
+  --dry-run                  Assemble input and show it, skip the LLM call
+  --help                     Show this help message
+
+${BOLD}Engine Selection:${RESET}
+  --engine=claude    Use Claude Code CLI (subprocess transport only)
+  --engine=opencode  Use OpenCode CLI (tries SDK first, falls back to subprocess)
+  (omitted)          Auto-detect based on available engines
+
+${BOLD}Examples:${RESET}
+  bun scripts/verify-dispatcher.ts --engine=claude --verbose
+  bun scripts/verify-dispatcher.ts --engine=opencode --transport=cli
+  bun scripts/verify-dispatcher.ts --dry-run
+
+${BOLD}Artifacts:${RESET}
+  Results are saved to .flywheel/verify-dispatcher/ including:
+  - decision.json     Raw DispatcherDecision response
+  - timing.json       Wall-clock timing data
+  - task-content.md   Extracted task_content
+  - composed-prompt.md Final composed prompt
+`);
+  process.exit(0);
+}
+
+// Validate --engine flag
+if (engineArg && engineArg !== "claude" && engineArg !== "opencode") {
+  console.error(`${RED}ERROR${RESET}: Invalid --engine value "${engineArg}". Must be "claude" or "opencode".`);
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // Test plan — minimal, realistic
@@ -114,6 +163,12 @@ schema_version: 3
 // ---------------------------------------------------------------------------
 
 console.log(`\n${BOLD}=== Dispatcher Verification ===${RESET}\n`);
+
+if (engineArg) {
+  info(`Engine: ${engineArg} (from --engine flag)`);
+} else {
+  info("Engine: auto-detect (no --engine flag)");
+}
 
 const assembled = assembleDispatcherInput({
   planContent: TEST_PLAN,
@@ -174,6 +229,7 @@ console.log(`\n${BOLD}--- Step 1: Invoke Dispatcher ---${RESET}\n`);
 
 let decision: DispatcherDecision;
 let transportLabel: string;
+let dispatcherTimingMs: number;
 const startTime = performance.now();
 
 try {
@@ -185,6 +241,11 @@ try {
 
   let resolved;
   if (transportArg === "sdk") {
+    // SDK transport — OpenCode only
+    if (engineArg === "claude") {
+      fail("SDK transport is not available for Claude engine — use --transport=cli or omit --transport");
+      process.exit(1);
+    }
     const { SdkTransport, SDK_AVAILABLE } = await import("../src/dispatcher/sdk-transport");
     if (!SDK_AVAILABLE) {
       fail("SDK not available — install @opencode-ai/sdk");
@@ -193,54 +254,118 @@ try {
     // Check for existing server on port 4096 (started by OpenCode/TUI)
     const baseUrl = process.env.OPENCODE_BASE_URL ?? "http://localhost:4096";
     info(`SDK baseUrl: ${baseUrl}`);
-    resolved = { transport: new SdkTransport({ baseUrl }), label: "sdk" as const, dispose: () => {} };
+    resolved = { transport: new SdkTransport({ baseUrl, engineName: engineArg }), label: "sdk" as const, dispose: () => {} };
   } else if (transportArg === "cli") {
+    // Forced CLI transport — use specified engine or default
     const { SubprocessTransport } = await import("../src/dispatcher/subprocess-transport");
-    resolved = { transport: new SubprocessTransport({ spawner }), label: "cli" as const, dispose: () => {} };
-  } else {
-    // Auto-detect: try SDK with existing server first, then fall back to CLI
-    const { SdkTransport, SDK_AVAILABLE } = await import("../src/dispatcher/sdk-transport");
-    if (SDK_AVAILABLE) {
-      // Check if there's an existing OpenCode server (e.g. from a running OpenCode session)
-      const baseUrl = process.env.OPENCODE_BASE_URL ?? "http://localhost:4096";
-      try {
-        const healthCheck = await fetch(`${baseUrl}/session`, { method: "POST", body: "{}", signal: AbortSignal.timeout(3000) });
-        if (healthCheck.ok || healthCheck.status < 500) {
-          info(`Found existing OpenCode server at ${baseUrl}`);
-          resolved = { transport: new SdkTransport({ baseUrl }), label: "sdk" as const, dispose: () => {} };
-        }
-      } catch {
-        // Server not reachable, try auto-detect (which starts its own)
-      }
+    try {
+      resolved = {
+        transport: new SubprocessTransport({ spawner, engineName: engineArg }),
+        label: "cli" as const,
+        dispose: () => {},
+      };
+    } catch (err) {
+      // Graceful error when engine binary is not found
+      const message = err instanceof Error ? err.message : String(err);
+      fail(`Engine not available: ${message}`);
+      info("Install the engine CLI or use a different --engine flag.");
+      process.exit(1);
     }
-    if (!resolved) {
-      resolved = await autoDetectTransport({ spawner });
+  } else {
+    // Auto-detect transport — pass engine preference through
+    if (engineArg === "claude") {
+      // Claude: always subprocess (SDK is OpenCode-only)
+      const { SubprocessTransport } = await import("../src/dispatcher/subprocess-transport");
+      try {
+        resolved = {
+          transport: new SubprocessTransport({ spawner, engineName: "claude" }),
+          label: "cli" as const,
+          dispose: () => {},
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        fail(`Engine not available: ${message}`);
+        info("Install Claude Code CLI: npm install -g @anthropic-ai/claude-code");
+        process.exit(1);
+      }
+    } else {
+      // OpenCode or auto-detect: try SDK with existing server first, then fall back to CLI
+      const { SdkTransport, SDK_AVAILABLE } = await import("../src/dispatcher/sdk-transport");
+      if (SDK_AVAILABLE) {
+        // Check if there's an existing OpenCode server (e.g. from a running OpenCode session)
+        const baseUrl = process.env.OPENCODE_BASE_URL ?? "http://localhost:4096";
+        try {
+          const healthCheck = await fetch(`${baseUrl}/session`, { method: "POST", body: "{}", signal: AbortSignal.timeout(3000) });
+          if (healthCheck.ok || healthCheck.status < 500) {
+            info(`Found existing OpenCode server at ${baseUrl}`);
+            resolved = { transport: new SdkTransport({ baseUrl, engineName: engineArg }), label: "sdk" as const, dispose: () => {} };
+          }
+        } catch {
+          // Server not reachable, try auto-detect (which starts its own)
+        }
+      }
+      if (!resolved) {
+        try {
+          resolved = await autoDetectTransport({ spawner, engineName: engineArg });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          fail(`Engine not available: ${message}`);
+          info("Install the engine CLI or use a different --engine flag.");
+          process.exit(1);
+        }
+      }
     }
   }
 
   transportLabel = resolved.label;
   info(`Transport: ${resolved.label}`);
+  info(`Engine: ${engineArg ?? "auto-detect"}`);
   info("Calling dispatcher (this may take 30-120s)...");
 
+  const invokeStart = performance.now();
   decision = await resolved.transport.invoke(assembled.input);
-  const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+  dispatcherTimingMs = performance.now() - invokeStart;
+  const elapsed = (dispatcherTimingMs / 1000).toFixed(1);
 
-  pass(`Dispatcher returned in ${elapsed}s`);
+  console.log(`\n  ${GREEN}${BOLD}Dispatcher responded in ${elapsed}s${RESET}\n`);
 
   // Clean up
   resolved.dispose();
 } catch (err) {
-  const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-  fail(`Dispatcher call failed after ${elapsed}s`, err instanceof Error ? err.message : String(err));
+  dispatcherTimingMs = performance.now() - startTime;
+  const elapsed = (dispatcherTimingMs / 1000).toFixed(1);
+  const message = err instanceof Error ? err.message : String(err);
+
+  // Check if this is a missing binary error for graceful reporting
+  if (message.includes("CLI not found") || message.includes("not found")) {
+    fail(`Engine binary not available (${elapsed}s)`);
+    info(message);
+    info("Install the required engine CLI or use --engine to select a different engine.");
+  } else {
+    fail(`Dispatcher call failed after ${elapsed}s`, message);
+  }
   process.exit(1);
 }
 
 // ---------------------------------------------------------------------------
-// 3. Save raw response
+// 3. Save raw response + timing data
 // ---------------------------------------------------------------------------
 
 const savedDecision = saveArtifact("decision.json", JSON.stringify(decision, null, 2));
 info(`Saved raw decision to ${savedDecision}`);
+
+// Save timing data
+const timingData = {
+  timestamp: new Date().toISOString(),
+  engine: engineArg ?? "auto-detect",
+  transport: transportLabel!,
+  dispatcher_response_ms: Math.round(dispatcherTimingMs),
+  dispatcher_response_s: parseFloat((dispatcherTimingMs / 1000).toFixed(1)),
+  under_30s: dispatcherTimingMs < 30_000,
+  task_content_length: decision.task_content.length,
+};
+const savedTiming = saveArtifact("timing.json", JSON.stringify(timingData, null, 2));
+info(`Saved timing data to ${savedTiming}`);
 
 // ---------------------------------------------------------------------------
 // 4. Validate schema
@@ -372,7 +497,10 @@ info(`Saved composed prompt to ${savedComposed}`);
 console.log(`\n${BOLD}--- Summary ---${RESET}\n`);
 
 const totalElapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-info(`Total time: ${totalElapsed}s`);
+const dispatcherElapsed = (dispatcherTimingMs / 1000).toFixed(1);
+info(`Dispatcher wall-clock time: ${dispatcherElapsed}s${dispatcherTimingMs < 30_000 ? ` ${GREEN}(under 30s target)${RESET}` : ` ${YELLOW}(exceeds 30s target)${RESET}`}`);
+info(`Total script time: ${totalElapsed}s`);
+info(`Engine: ${engineArg ?? "auto-detect"}`);
 info(`Transport: ${transportLabel!}`);
 info(`task_content length: ${decision.task_content.length} chars`);
 info(`Template output length: ${templateOutput.length} chars`);
