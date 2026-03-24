@@ -1,0 +1,40 @@
+{
+  "featureId": "revision-config-and-events",
+  "reviewedAt": "2026-03-24T14:45:00.000Z",
+  "commitId": "e39c7dfd58468cf802be34fa84ac2d258f724132",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid infrastructure feature. All 6 areas (config, event type, emitter, WorkerResult.sessionId, PhaseExecutor resumeSessionId, TUI adapters) are implemented correctly and follow existing patterns. 18 tests cover all fulfilled assertions. One non-blocking consistency issue found: the EvaluatorRevisionRequested event uses `timestamp: number` (Date.now()) while all 33 other event types use `timestamp: string` (ISO 8601 from the `now()` helper). The OpenTUI adapter has to work around this with `new Date(event.timestamp).toISOString()`, which works but is an unnecessary deviation from the established convention.",
+    "issues": [
+      {
+        "file": "src/events/types.ts",
+        "line": 184,
+        "severity": "non_blocking",
+        "description": "EvaluatorRevisionRequested.timestamp is typed as `number` while all other 33 event types in the FlywheelEvent union use `timestamp: string` (ISO 8601). This breaks the implicit convention that all event timestamps are ISO strings produced by the `now()` helper in event-bus.ts."
+      },
+      {
+        "file": "src/events/event-bus.ts",
+        "line": 178,
+        "severity": "non_blocking",
+        "description": "The evaluatorRevisionRequested emitter uses `timestamp: Date.now()` instead of `timestamp: now()` like every other emitter method. This is the source of the number-vs-string inconsistency. Should use `now()` for consistency."
+      },
+      {
+        "file": "src/tui/adapters/opentui.ts",
+        "line": 383,
+        "severity": "non_blocking",
+        "description": "The OpenTUI adapter has to do `new Date(event.timestamp).toISOString()` to convert the numeric timestamp back to a string for pushSystemText(). All other event handlers pass event.timestamp directly (since those are already ISO strings). This is a workaround for the timestamp type inconsistency — would be unnecessary if the event used string timestamps like everything else."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "All FlywheelEvent types use `timestamp: string` (ISO 8601) except the new EvaluatorRevisionRequested which uses `timestamp: number`. The convention that event timestamps are always ISO strings produced by the `now()` helper is implicit — not documented in AGENTS.md. This could be documented to prevent future deviations.",
+      "evidence": "src/events/types.ts — 33 events have `timestamp: string`, 1 (line 184) has `timestamp: number`. src/events/event-bus.ts — the `now()` helper returns ISO strings, used by all emitters except evaluatorRevisionRequested which uses Date.now()."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature passes review. Config field (default 1, range 0-5, env FLYWHEEL_MAX_REVISIONS), event type with all required fields, emitter method, WorkerResult.sessionId from NDJSONParser, PhaseExecutor.resumeSessionId passthrough to engine.buildCommand(), and TUI adapter handlers are all implemented correctly following existing patterns. Test coverage is thorough at 18 tests covering all 4 fulfilled assertions (VAL-REV-002, VAL-REV-007, VAL-REV-009, VAL-REV-010). One non-blocking issue: the new event type uses `timestamp: number` instead of the `timestamp: string` convention used by all 33 other event types — this works but creates an inconsistency that the OpenTUI adapter has to work around."
+}

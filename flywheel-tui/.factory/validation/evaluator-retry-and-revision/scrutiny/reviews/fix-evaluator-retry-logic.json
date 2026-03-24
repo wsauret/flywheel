@@ -1,0 +1,34 @@
+{
+  "featureId": "fix-evaluator-retry-logic",
+  "reviewedAt": "2026-03-24T14:35:00.000Z",
+  "commitId": "df84501",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured fix to the evaluator retry logic. The core change correctly restructures the evaluate() method so that valid passed:false results return immediately (no pointless retry with identical input), while transport/parse/schema errors still retry up to maxCycles. The evaluator:invoked event emission was correctly moved before the for loop (emitted exactly once). EvaluationResult was properly extended with feedback, suggestions, and reasoning fields that map directly from the EvaluatorResult transport schema. The downstream consumer (buildRevisionPrompt in execution-loop.ts) already uses these fields, confirming the interface is correctly designed. All 21 new tests are well-organized by VAL assertion, use proper mock transport patterns, and cover the expected behaviors comprehensively. Existing test updates (9 in evaluator.test.ts, 1 in evaluator-activation.test.ts) correctly align old test expectations with the new behavior. No regressions (3047 tests pass, typecheck clean).",
+    "issues": [
+      {
+        "file": "src/evaluator/invoke.ts",
+        "line": 197,
+        "severity": "non_blocking",
+        "description": "On passed:false, both 'reason' and 'reasoning' are set to result.reasoning. This is intentional (reason is the legacy field, reasoning is the new extended field), but having two fields with identical values is slightly redundant. Consider documenting this in a comment or eventually deprecating 'reason' in favor of 'reasoning' once downstream consumers migrate."
+      },
+      {
+        "file": "src/evaluator/invoke.ts",
+        "line": 219,
+        "severity": "non_blocking",
+        "description": "The evaluator:failed event is emitted once per error retry cycle. While this is correct for observability, it means the TUI adapter could potentially show multiple failure messages before the final result. This is acceptable behavior but worth noting — the adapter should handle this gracefully if it doesn't already. (Not introduced by this feature — this was pre-existing behavior for errors.)"
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The EvaluationResult interface now has both 'reason' (legacy, always populated) and 'reasoning' (new, populated on passed:false). Future features should use 'reasoning' for the evaluator's reasoning text. AGENTS.md's architecture section on EvaluatorResult mentions 'Currently only has: passed, cyclesUsed, skipped, reason' — this is now stale since feedback, suggestions, reasoning were added.",
+      "evidence": "src/evaluator/invoke.ts lines 80-93: EvaluationResult interface with both reason? and reasoning? fields. Mission AGENTS.md 'Architecture Context > Evaluator System' section says 'NEEDS to be extended' — this is now done."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The fix-evaluator-retry-logic feature is correctly implemented. The retry loop restructuring is sound: valid passed:false returns immediately (1 transport call), errors retry up to maxCycles, evaluator:invoked emits once before the loop, timeout and passed:true behaviors are preserved. EvaluationResult extension with feedback/suggestions/reasoning fields is properly wired to the EvaluatorResult schema and consumed by buildRevisionPrompt. Test coverage is thorough with 21 new tests covering all 7 VAL-RETRY assertions plus feedback field scenarios. Two non-blocking observations noted: the reason/reasoning field duplication and per-error-retry evaluator:failed emission. No blocking issues found."
+}

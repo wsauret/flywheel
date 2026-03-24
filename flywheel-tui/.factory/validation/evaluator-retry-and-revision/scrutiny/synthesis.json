@@ -1,0 +1,42 @@
+{
+  "milestone": "evaluator-retry-and-revision",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0 },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document that all FlywheelEvent types must use `timestamp: string` (ISO 8601) produced by the `now()` helper in event-bus.ts. The new EvaluatorRevisionRequested event deviates by using `timestamp: number` (Date.now()). This implicit convention should be made explicit to prevent future deviations.",
+      "evidence": "Feature revision-config-and-events: src/events/types.ts has 33 events with `timestamp: string` and 1 (EvaluatorRevisionRequested) with `timestamp: number`. The OpenTUI adapter has to do `new Date(event.timestamp).toISOString()` as a workaround. Flagged by reviewer in all three issue entries for this feature.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "In the Configuration table, add a note for `max_revisions` that it defaults to 1, meaning evaluator failure now triggers a revision attempt by default (no longer terminal). Workers writing evaluator tests should set `max_revisions: 0` to get the old behavior where eval failure = phase failure.",
+      "evidence": "Feature revision-loop-in-execution-loop: two existing tests in evaluator-activation.test.ts needed `max_revisions: 0` added to preserve pre-revision behavior. The default of 1 is a behavioral change from the prior 'eval failure = phase failure' behavior.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "EvaluationResult has both 'reason' (legacy) and 'reasoning' (new) fields with identical values on passed:false. AGENTS.md architecture section mentions old EvaluatorResult shape.",
+      "reason": "Implementation detail that will naturally evolve. The duplicate fields serve backward compatibility and the architecture.md in .factory/library/ doesn't need to track individual interface field additions — this is better handled by inline code comments."
+    },
+    {
+      "observation": "buildRevisionPrompt exported from execution-loop.ts; file is 907 lines and growing. May need refactoring to a dedicated module.",
+      "reason": "Premature — 907 lines is within acceptable range for a core orchestration module. Refactoring recommendation is speculative and depends on future feature growth."
+    }
+  ],
+  "previousRound": null
+}

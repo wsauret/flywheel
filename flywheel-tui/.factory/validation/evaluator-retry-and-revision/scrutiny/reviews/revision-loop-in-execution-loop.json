@@ -1,0 +1,51 @@
+{
+  "featureId": "revision-loop-in-execution-loop",
+  "reviewedAt": "2026-03-24T15:15:00.000Z",
+  "commitId": "3a69949",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The revision loop implementation is solid and well-structured. The buildRevisionPrompt() function cleanly handles both resume (feedback-only) and fresh (original prompt + feedback) paths. The revision loop in the evaluator block correctly checks shutdown, emits events, builds prompts, re-invokes the executor with resumeSessionId, and evaluates revised output. All edge cases listed in the feature description are handled: max_revisions=0 (no loop entry), skip_evaluation (guard skips entire block), no evaluatorTransport (guard skips block), worker crash (WorkerError propagates to catch), evaluator timeout (skipped=true exits loop), shutdown (checked before each attempt), and missing sessionId (fallback without --resume + warning log). The accumulated feedback pattern is clear and the error message distinguishes between revision-exhausted vs. immediate failure. Tests are comprehensive with 19 cases covering all 15 VAL assertions. The evaluator-activation.test.ts changes are minimal and correct — just adding max_revisions:0 to preserve pre-revision test semantics.",
+    "issues": [
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 540,
+        "severity": "non_blocking",
+        "description": "The default value for max_revisions uses `this.config.max_revisions ?? 0` as a fallback. The config schema already has a default of 1, so the ?? 0 fallback would only trigger if someone explicitly set max_revisions to undefined/null after loading config. This is defensive coding, not a bug, but worth noting the semantic difference: if config loading works correctly, max_revisions will always be defined (default 1). The ?? 0 makes it behave as 'disabled' if config is somehow corrupt, which is a safe default."
+      },
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 555,
+        "severity": "non_blocking",
+        "description": "The accumulated feedback labeling uses `Attempt ${revisionAttempt}` where revisionAttempt is 1-based within the revision loop. This means the initial attempt (attempt 0 / the original execution) is not explicitly labeled in the accumulated feedback — only revision attempts are. The final failure block adds 'Final attempt' for the last one. The result is: 'Attempt 1: ... | Attempt 2: ... | Final attempt: ...' which is readable but could be slightly confusing since 'Attempt 1' actually refers to the feedback from the INITIAL execution that prompted the first revision. Minor UX clarity issue, not a logic bug."
+      },
+      {
+        "file": "tests/revision-loop.test.ts",
+        "line": 350,
+        "severity": "non_blocking",
+        "description": "The VAL-REV-017 shutdown test calls loop.requestShutdown() before loop.run(), which means the shutdown is detected at the outermost shutdown check (top of the run loop), not specifically within the revision loop. The test verifies shutdown behavior works but doesn't exercise the exact code path of 'shutdown requested BETWEEN revision attempts' as described in the validation contract. A more precise test would use event subscription to trigger shutdown after the first evaluator:revision-requested event. However, the implementation code at line 544-554 is correct and the early-shutdown path is a valid superset test."
+      },
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 598,
+        "severity": "non_blocking",
+        "description": "The revision options are built via buildExecuteOptions() which includes the original abort signal from this._shutdownController.signal. This is correct — the revision worker will be aborted if shutdown is requested during execution. However, note that the same onStdout/onStderr handlers from the original execution are reused, meaning revision output will be streamed to the same adapter pipeline. This is the desired behavior but could be explicitly documented."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The new max_revisions config default is 1 (not 0), which means revision is ON by default for all users. Existing tests that relied on evaluator failure being terminal needed max_revisions:0 to be explicitly set. This is a behavioral change that could surprise developers writing new evaluator tests. AGENTS.md mentions max_revisions in the config table but doesn't call out that evaluator failure is no longer terminal by default.",
+      "evidence": "src/config/loader.ts:53 — max_revisions default is 1. tests/evaluator-activation.test.ts changes at lines 409 and 488 — two existing tests needed max_revisions:0 added to preserve old behavior."
+    },
+    {
+      "area": "conventions",
+      "observation": "The buildRevisionPrompt function is exported from execution-loop.ts, making it available for direct testing. This follows the project pattern of exporting utility functions from their containing module rather than creating separate utility files. Good, but the execution-loop.ts file is getting large (907 lines). Future refactoring may benefit from extracting revision logic to a dedicated module.",
+      "evidence": "src/controller/execution-loop.ts — 907 total lines, buildRevisionPrompt exported at line 78."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The revision loop implementation is correct, comprehensive, and well-tested. The buildRevisionPrompt() function cleanly separates resume vs. fresh conversation paths. The loop handles all specified edge cases (shutdown, worker crash, evaluator timeout, missing sessionId, disabled revision, skip evaluation, no transport). 19 tests cover all 15 VAL assertions including cross-feature interaction with the evaluator retry fix. The only issues found are non-blocking: minor accumulated feedback labeling UX, defensive ?? 0 fallback, shutdown test precision, and the growing file size. The evaluator-activation.test.ts changes are minimal and correct. All 3084 tests pass and typecheck is clean per the handoff."
+}
