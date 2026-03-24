@@ -1,0 +1,43 @@
+{
+  "milestone": "dispatcher-evaluator-speed",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-DISP-001",
+    "VAL-DISP-002",
+    "VAL-DISP-003",
+    "VAL-DISP-004",
+    "VAL-DISP-005",
+    "VAL-DISP-006",
+    "VAL-DISP-007",
+    "VAL-DISP-008",
+    "VAL-SDK-001",
+    "VAL-SDK-002",
+    "VAL-SDK-003",
+    "VAL-EVAL-001",
+    "VAL-EVAL-002",
+    "VAL-CFG-001",
+    "VAL-CFG-002",
+    "VAL-CFG-003",
+    "VAL-SCRIPT-001",
+    "VAL-SCRIPT-002",
+    "VAL-CROSS-001",
+    "VAL-CROSS-002"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added Flow Validator Guidance sections for unit tests and verify-dispatcher script surfaces, documenting isolation rules, relevant test files, and testing approach",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null
+}
