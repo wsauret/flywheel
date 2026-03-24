@@ -1251,6 +1251,41 @@ describe("Dispatcher system prompt", () => {
     const prompt = buildDispatcherSystemPrompt();
     expect(prompt).not.toContain("relevant_learnings");
   });
+
+  // --- Prompt optimization tests (VAL-PROMPT-002) ---
+
+  it("documents validation_criteria as object-only (no string option)", () => {
+    const prompt = buildDispatcherSystemPrompt();
+    // Should NOT mention string|object or "plain string" as an option
+    expect(prompt).not.toContain("string|object");
+    expect(prompt).not.toContain("<string|object>");
+    expect(prompt).not.toContain("Fall back to a plain string");
+  });
+
+  it("includes a concrete output example with realistic JSON", () => {
+    const prompt = buildDispatcherSystemPrompt();
+    // Example should include all key fields
+    expect(prompt).toContain('"phase_index": 2');
+    expect(prompt).toContain('"context_files"');
+    expect(prompt).toContain('"context_to_inline"');
+    expect(prompt).toContain('"validation_criteria"');
+    expect(prompt).toContain('"session_name"');
+  });
+
+  it("is approximately 1200 tokens or less (chars/4 proxy)", () => {
+    const prompt = buildDispatcherSystemPrompt();
+    // Target ~1200 tokens; chars/4 is a rough proxy
+    const approxTokens = Math.round(prompt.length / 4);
+    expect(approxTokens).toBeLessThanOrEqual(1400); // generous upper bound
+    expect(approxTokens).toBeGreaterThan(800); // sanity lower bound
+  });
+
+  it("does not contain verbose worker_config documentation section", () => {
+    const prompt = buildDispatcherSystemPrompt();
+    // Should not contain the old detailed worker_config rules
+    expect(prompt).not.toContain("Set `model_override` for steps requiring stronger reasoning");
+    expect(prompt).not.toContain("Enable `parallel` with `parallel_variants` when a step can be split");
+  });
 });
 
 // ---------------------------------------------------------------------------
