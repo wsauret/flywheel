@@ -1,0 +1,117 @@
+{
+  "milestone": "dispatcher-evaluator-speed",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "details": "2942 tests pass across 117 files in 27.60s" },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "N/A", "exitCode": 0, "details": "No lint command configured in services.yaml or package.json" }
+  },
+  "reviewsSummary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "engine-dispatcher-command-building",
+      "severity": "non_blocking",
+      "description": "OpenCode buildDispatcherCommand() silently ignores systemPrompt parameter — works correctly via caller compensation but could benefit from a code comment"
+    },
+    {
+      "featureId": "engine-dispatcher-command-building",
+      "severity": "non_blocking",
+      "description": "Unused EngineCommandOptions import in test file (minor lint)"
+    },
+    {
+      "featureId": "engine-dispatcher-command-building",
+      "severity": "non_blocking",
+      "description": "No tool restriction attempted for OpenCode dispatcher (accepted limitation given OpenCode CLI doesn't easily support it)"
+    },
+    {
+      "featureId": "dispatcher-subprocess-transport-refactor",
+      "severity": "non_blocking",
+      "description": "VAL-DISP-008 test exercises registry lookup error path rather than the Bun.which() binary-not-found code path"
+    },
+    {
+      "featureId": "dispatcher-subprocess-transport-refactor",
+      "severity": "non_blocking",
+      "description": "Minor import style inconsistency: resolveModels uses dynamic import while autoDetectTransport is static in flywheel-shell.tsx"
+    },
+    {
+      "featureId": "dispatcher-sdk-transport-optimization",
+      "severity": "non_blocking",
+      "description": "parseModelString() does not validate empty string input — not practically exploitable"
+    },
+    {
+      "featureId": "dispatcher-sdk-transport-optimization",
+      "severity": "non_blocking",
+      "description": "Auto-detect test only verifies CLI fallback path (SDK path requires running server)"
+    },
+    {
+      "featureId": "evaluator-transport-refactor",
+      "severity": "non_blocking",
+      "description": "extractTextFromNDJSON duplicated verbatim between dispatcher and evaluator transports — DRY violation"
+    },
+    {
+      "featureId": "evaluator-transport-refactor",
+      "severity": "non_blocking",
+      "description": "Minor evaluator system prompt duplication between EVALUATOR_SYSTEM_PROMPT constant and buildPrompt() for Claude route"
+    },
+    {
+      "featureId": "evaluator-transport-refactor",
+      "severity": "non_blocking",
+      "description": "Evaluator transport is not yet wired into the production execution pipeline (invoke.ts still uses legacy path)"
+    },
+    {
+      "featureId": "verify-script-and-integration",
+      "severity": "non_blocking",
+      "description": "Type assertion on CLI engineArg input trusts string before runtime validation"
+    },
+    {
+      "featureId": "verify-script-and-integration",
+      "severity": "non_blocking",
+      "description": "Engine binary availability test has limited coverage when both engines are installed locally"
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Updated .factory/library/architecture.md: replaced stale 'currently transports bypass engine registry' text with current state (dispatcher uses registry, evaluator refactored but not yet wired). Added documentation for engine-specific system prompt handling (Claude via --system-prompt flag, OpenCode via manual stdin prepend). Added OpenCode SDK API surface knowledge (SessionPromptData.body model and tools fields).",
+      "sourceFeature": "dispatcher-subprocess-transport-refactor, dispatcher-sdk-transport-optimization, evaluator-transport-refactor"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add clarification that the 'no console.error/console.warn/console.debug' rule applies to production TUI code only, not standalone diagnostic scripts (scripts/). Scripts that output to terminal as their primary purpose should use console.log/console.error directly.",
+      "evidence": "scripts/verify-dispatcher.ts uses console.log and console.error for diagnostic output, which is appropriate for a CLI tool. The current AGENTS.md wording ('Never use console.error/console.warn/console.debug in production code') is slightly ambiguous about whether scripts count.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: when mirroring external SDK types (like @opencode-ai/sdk SessionPromptData), add a comment referencing the source type path so future workers can verify the mirror is still accurate when the SDK updates.",
+      "evidence": "dispatcher-sdk-transport-optimization created an inline SdkClient type that mirrors SessionPromptData.body shape from @opencode-ai/sdk. If the SDK types change, the inline mirror could silently diverge.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: shared utility functions that appear in both dispatcher and evaluator transports (e.g., extractTextFromNDJSON) should be extracted to a shared module (src/utils/ or src/worker/) rather than duplicated. This prevents drift when the NDJSON format changes.",
+      "evidence": "extractTextFromNDJSON is copy-pasted identically in src/dispatcher/subprocess-transport.ts:37 and src/evaluator/subprocess-transport.ts:42 (15 lines each). Both features' reviewers flagged this independently.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "services.yaml should document --engine and --help flags for verify-dispatcher command",
+      "reason": "services.yaml captures base commands only; flags are documented in the script's --help output. Adding flags to services.yaml creates a maintenance burden without clear value."
+    },
+    {
+      "observation": "Worker followed backend-worker skill procedure correctly (TDD, etc.)",
+      "reason": "Positive affirmation, not an actionable observation. Noted in individual review reports."
+    }
+  ],
+  "previousRound": null
+}

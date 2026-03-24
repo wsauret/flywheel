@@ -1,0 +1,45 @@
+{
+  "featureId": "dispatcher-subprocess-transport-refactor",
+  "reviewedAt": "2026-03-24T03:15:00.000Z",
+  "commitId": "6dab3c0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured refactoring of SubprocessTransport to be engine-aware. The implementation correctly uses the engine registry for command building, handles engine-specific output parsing (NDJSON for OpenCode, plain text for Claude), wires config.dispatcher.model through resolveModels() to the CLI --model flag, and checks binary availability in the constructor. Auto-detect routing is correct: Claude → CLI only, OpenCode → SDK then CLI. Both flywheel-shell.tsx code paths (initial start and resume) are updated. 27 tests provide good coverage of all validation contract items. No blocking issues found.",
+    "issues": [
+      {
+        "file": "tests/dispatcher-subprocess-transport.test.ts",
+        "line": 472,
+        "severity": "non_blocking",
+        "description": "VAL-DISP-008 test uses 'nonexistent-engine' which throws from getEngine() in the registry ('Unknown engine') rather than from the Bun.which() binary-not-found check. The test validates that an unknown engine name errors, but does not actually exercise the Bun.which() code path that produces the 'CLI not found — install it with...' error message. The Bun.which() code IS present in the constructor (line ~82 of subprocess-transport.ts), so the behavior is implemented — just the specific binary-not-found error path isn't tested. Mocking Bun.which() would be needed to properly test this."
+      },
+      {
+        "file": "src/dispatcher/subprocess-transport.ts",
+        "line": 121,
+        "severity": "non_blocking",
+        "description": "For OpenCode, the systemPrompt passed to buildDispatcherCommand() via options.systemPrompt is silently ignored by the OpenCode provider's buildDispatcherCommand() — it only uses options.model and options.prompt. The system prompt is instead manually concatenated into stdinContent on line 121. This works correctly but creates an implicit contract: the SubprocessTransport must know that OpenCode needs system prompt in stdin while Claude gets it via --system-prompt flag. The EngineCommand.stdinPrompt boolean partially signals this, but the system prompt concatenation is transport-level logic rather than engine-level."
+      },
+      {
+        "file": "src/tui/components/flywheel-shell.tsx",
+        "line": 1003,
+        "severity": "non_blocking",
+        "description": "The resume path uses a dynamic import for resolveModels: `const { resolveModels } = await import('../../config/loader')`. The initial start path (line 607) also uses a dynamic import. This is fine functionally, but the initial start path at the top of the file already has a static import of autoDetectTransport — it's slightly inconsistent that resolveModels uses dynamic import while autoDetectTransport is static. Not a bug, just a style note."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The OpenCode buildDispatcherCommand() silently ignores the systemPrompt parameter from DispatcherCommandOptions. The SubprocessTransport compensates by manually concatenating the system prompt into stdinContent for OpenCode. This implicit behavior should be documented somewhere — either in the DispatcherCommandOptions type comment or in a convention about how engines handle system prompts differently. Currently nothing in AGENTS.md or the type definitions warns future developers that OpenCode's dispatcher command builder ignores systemPrompt.",
+      "evidence": "src/engines/providers/opencode/index.ts:88-101 — buildDispatcherCommand() receives options.systemPrompt but never uses it. src/dispatcher/subprocess-transport.ts:120-121 — stdinContent manually includes systemPrompt for stdinPrompt=true engines."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The architecture.md library doc describes the pre-optimization state ('Currently (pre-optimization), the transports bypass the engine registry entirely'). Now that the dispatcher transport has been refactored to be engine-aware, this library entry is slightly stale. The evaluator transport still hardcodes opencode so the statement is partially true, but the 'currently' framing is no longer accurate for the dispatcher path.",
+      "evidence": ".factory/library/architecture.md — 'Currently (pre-optimization), the transports bypass the engine registry entirely and hardcode opencode run --format json.' This is no longer true for the dispatcher transport after commit 6dab3c0."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. The dispatcher SubprocessTransport refactoring is well-implemented. All 4 modified files (subprocess-transport.ts, auto-detect.ts, flywheel-shell.tsx, test file) are consistent and correct. The engine registry is properly used for command building, config.dispatcher.model flows through resolveModels() to the --model CLI flag, auto-detect routing correctly sends Claude to CLI-only and OpenCode to SDK-then-CLI, and output parsing handles both NDJSON and plain text formats. Three non-blocking issues identified: (1) the binary-not-found test exercises the wrong error path (registry lookup vs Bun.which), (2) OpenCode's buildDispatcherCommand silently ignores systemPrompt, and (3) minor import style inconsistency. None of these affect correctness or user-facing behavior."
+}

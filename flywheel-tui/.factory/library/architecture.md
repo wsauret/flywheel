@@ -13,7 +13,18 @@ The engine system has three layers:
 2. **Engine Providers** (`src/engines/providers/{name}/index.ts`) — build CLI commands via `buildCommand(options)`
 3. **Transports** (dispatcher + evaluator) — spawn subprocesses using engine-built commands
 
-Currently (pre-optimization), the transports bypass the engine registry entirely and hardcode `opencode run --format json`. The mission changes this so transports use the engine registry to build commands with appropriate flags per engine and per use-case (worker vs dispatcher/evaluator).
+The dispatcher transport now uses the engine registry to build commands with appropriate flags per engine. The evaluator transport has been similarly refactored but is not yet wired into the production execution pipeline (invoke.ts still uses the legacy path). Both transports support Claude Code and OpenCode engines with per-engine optimization flags (tools disabled, fast model, no session persistence for Claude; model flag for OpenCode).
+
+### Engine-specific system prompt handling
+
+- **Claude Code**: System prompt is passed via `--system-prompt` flag (enables prompt caching). The engine's `buildDispatcherCommand()` handles this.
+- **OpenCode**: System prompt is **not** handled by `buildDispatcherCommand()` — it is silently ignored. The SubprocessTransport manually prepends the system prompt to stdin content. This is by design since OpenCode doesn't have a separate system prompt CLI flag.
+
+### OpenCode SDK API surface
+
+The `@opencode-ai/sdk` `SessionPromptData.body` supports:
+- `model: { providerID: string; modelID: string }` — override the model for a session prompt
+- `tools: Record<string, boolean>` — enable/disable specific tools (not yet used in production)
 
 ## Transport Interface Pattern
 
