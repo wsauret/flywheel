@@ -21,6 +21,7 @@ import type { BudgetLimits, SessionBudgetStatus } from "../schemas/shared";
 import type { ContextIndexer, ContextQuery } from "../memory/indexer";
 import type { WorkflowType } from "./workflow-pipeline";
 import type { EvaluatorTransport } from "../evaluator/transport";
+import { Evaluator } from "../evaluator/invoke";
 import { readCachedFile } from "./templates";
 import { wrapCompletionInstruction } from "../worker/completion";
 import { enrichPromptWithContext } from "./context-enrichment";
@@ -431,6 +432,67 @@ export class ExecutionLoop {
 
         // Increment invocation count after successful execution
         this.budgetTracker?.incrementInvocations();
+
+        // --- Evaluator: post-phase quality check ---
+        // Guards: transport exists, dispatcher produced a decision with validation_criteria,
+        // and skip_evaluation is not set.
+        if (
+          this.evaluatorTransport &&
+          !this.config.skip_evaluation &&
+          decision &&
+          decision.validation_criteria
+        ) {
+          const evaluator = new Evaluator({
+            transport: this.evaluatorTransport,
+            emitter: this.emitter,
+            workflowId: this.workflowId,
+            skipEvaluation: this.config.skip_evaluation,
+            maxCycles: this.config.max_eval_cycles ?? 3,
+            phaseIndex: phase.index,
+            stepIndex: 0,
+          });
+
+          const evalResult = await evaluator.evaluate({
+            workerOutput: result.output,
+            validationCriteria: decision.validation_criteria,
+            contextFiles: decision.context_files ?? [],
+            durationSeconds: result.durationMs / 1000,
+            testsPassed: null,
+            artifactsProduced: [],
+          });
+
+          if (!evalResult.passed && !evalResult.skipped) {
+            const evalReason = evalResult.reason
+              ? `Evaluation failed: ${evalResult.reason}`
+              : "Evaluation failed: criteria not met";
+
+            log.info("evaluator rejected phase output", {
+              phaseIndex: phase.index,
+              cyclesUsed: evalResult.cyclesUsed,
+              reason: evalResult.reason,
+            });
+
+            // Update state if persistence exists
+            this.statePersistence?.updatePhase(this.loadedState!, phase.index, "pending", evalReason);
+
+            this.emitter.phaseFailed(this.workflowId, phase.index, evalReason);
+            this.emitter.workflowFailed(this.workflowId, evalReason);
+
+            return {
+              completed: false,
+              phasesCompleted,
+              phasesTotal,
+              reason: evalReason,
+            };
+          }
+
+          log.info("evaluator accepted phase output", {
+            phaseIndex: phase.index,
+            passed: evalResult.passed,
+            skipped: evalResult.skipped,
+            cyclesUsed: evalResult.cyclesUsed,
+          });
+        }
 
         // Chain result for next phase (truncated unless skipTruncation is set)
         previousResult = this.skipTruncation
