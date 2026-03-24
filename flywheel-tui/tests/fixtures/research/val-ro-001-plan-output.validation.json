@@ -1,6 +1,6 @@
 {
-  "file": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui/tests/fixtures/research/last-standalone-output.md",
-  "variant": "standalone",
+  "file": "tests/fixtures/research/val-ro-001-plan-output.md",
+  "variant": "plan",
   "passed": true,
   "criteria": [
     {
@@ -11,17 +11,17 @@
     {
       "criterion": "required_sections",
       "passed": true,
-      "details": "All 6 required sections present: Research Question, Summary, Detailed Findings, Code References, Patterns Identified, Open Questions"
+      "details": "All 5 required sections present: Codebase Map, Relevant Code, Patterns to Follow, Constraints, Open Questions"
     },
     {
       "criterion": "file_line_refs",
       "passed": true,
-      "details": "Found 23 unique file:line references (minimum 5 required)"
+      "details": "Found 19 unique file:line references (minimum 3 required)"
     },
     {
       "criterion": "code_block_length",
       "passed": true,
-      "details": "All 0 code block(s) are within 15-line limit"
+      "details": "All 1 code block(s) are within 15-line limit"
     },
     {
       "criterion": "no_prescriptive_language",

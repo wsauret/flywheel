@@ -16,7 +16,7 @@
     {
       "criterion": "file_line_refs",
       "passed": true,
-      "details": "Found 14 unique file:line references (minimum 3 required)"
+      "details": "Found 26 unique file:line references (minimum 3 required)"
     },
     {
       "criterion": "code_block_length",

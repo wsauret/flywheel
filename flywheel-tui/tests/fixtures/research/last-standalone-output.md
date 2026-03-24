@@ -3,203 +3,229 @@ type: research
 date: 2026-03-24
 topic: "How does the dispatcher assemble prompts?"
 status: complete
-tags: [research, dispatcher, prompts, pipeline, architecture]
+tags: [research, dispatcher, prompts, architecture, execution-loop]
 ---
 
 # Research: How Does the Dispatcher Assemble Prompts?
 
 ## Research Question
 
-How does the dispatcher assemble prompts? Trace the full pipeline from raw plan/state inputs through system prompt construction, transport delivery, and final worker prompt composition.
+How does the dispatcher assemble prompts? Trace the full pipeline from raw plan/state inputs through dispatcher invocation, template rendering, context inlining, and final worker-facing prompt construction.
 
 ## Summary
 
-The dispatcher prompt assembly is a multi-layered pipeline with two distinct paths (work vs. non-work workflows) that converge in the `ExecutionLoop`. The dispatcher acts as a **context distiller** — crafting WHAT to do via `task_content` — while **prompt templates** provide behavioral instructions (HOW to behave: TDD cycle, verification protocol, scope discipline). A refactor documented in `docs/plans/refactor-dispatcher-prompt-composition.md` (status: READY) separated these concerns; previously a successful dispatcher replaced the entire prompt and templates only ran as fallback. The current implementation follows a 10-step per-phase pipeline in `ExecutionLoop.run()`, starting with context gathering and dispatcher invocation, flowing through template rendering and context inlining, and ending with completion marker wrapping before worker execution.
+The dispatcher assembles prompts through a multi-layered pipeline that separates **what to do** (dispatcher's `task_content`) from **how to behave** (prompt templates from `src/prompts/`). Per phase, the execution loop follows a strict 7-step sequence: resolve L1 context metadata, invoke the dispatcher for a `DispatcherDecision`, resolve task content (dispatcher wins if non-empty, else fall back to `phase.description`), construct a `WorkflowStepContext`, render the prompt template unconditionally, optionally inline L2 file contents (8KB cap), and wrap with a completion marker. The dispatcher itself receives a structured `DispatcherInput` JSON (assembled from plan, state, context, config, and budget data) and returns a decision via one of two transports: an OpenCode SDK session or a subprocess CLI invocation.
 
 ## Detailed Findings
 
-### 1. The Per-Phase Assembly Pipeline
+### 1. Per-Phase Prompt Assembly Sequence (Execution Loop)
 
-The core prompt assembly pipeline executes per phase inside `ExecutionLoop.run()` at `src/controller/execution-loop.ts:434-493`. The 10 steps are:
+The core assembly pipeline lives in `src/controller/execution-loop.ts:434-493`. For each pending phase, the loop executes these steps in order:
 
-1. **Context gathering** — `contextIndexer.getRelevantContext()` queries for relevant conventions/standards/learnings (`:435`)
-2. **Dispatcher invocation** — `getDispatcherDecision()` (`:448`) delegates to `DispatcherOrchestrator.getPhaseDecision()` at `src/controller/dispatcher-orchestrator.ts:62`
-3. **Input assembly** — `assembleDispatcherInput()` at `src/dispatcher/assemble.ts:64` parses plan, state, and context files into a `DispatcherInput` JSON structure
-4. **Transport delivery** — `transport.invoke(input)` sends a system prompt + user content to the dispatcher LLM
-5. **Task content resolution** — `decision.task_content || phase.description` (`:461`) — dispatcher wins if non-empty
-6. **Context building** — `WorkflowStepContext` assembled with resolved content + accumulated extra + relevantContext (`:466-478`)
-7. **Template rendering** — `promptBuilder(phase, ctx)` **always** executes (`:481`) — no conditional branch
-8. **Level 2 context inlining** — `enrichPromptWithContext()` prepends file contents from `decision.context_to_inline` with an 8KB budget (`src/controller/context-enrichment.ts:33`)
-9. **Completion wrapping** — `wrapCompletionInstruction()` appends `<promise>COMPLETE</promise>` marker (`src/worker/completion.ts:73`)
-10. **Worker execution** — final prompt sent to worker via `PhaseExecutor.execute()` (`:496-499`)
+1. **L1 Context Resolution** (`:435-438`) — `contextIndexer.getRelevantContext()` gathers conventions, standards, and learnings metadata. The result is cached once per phase and reused for both the dispatcher's `availableContext` input and the template's `ctx.extra`.
+
+2. **Dispatcher Invocation** (`:448`) — `getDispatcherDecision()` calls the `DispatcherOrchestrator`, which may return `null` on failure or when no dispatcher is configured.
+
+3. **Session Name Extraction** (`:451-458`) — First dispatcher response's `session_name` is emitted once via `onSessionName` callback (fire-once guard at `:452`).
+
+4. **Task Content Resolution** (`:461-463`) — `decision.task_content` wins if non-empty after trimming; otherwise `phase.description` is used. This resolved value becomes `planContent` in the context object.
+
+5. **Context Object Construction** (`:466-478`) — A `WorkflowStepContext` is built with `planContent`, `keyDecisions`, `fileReferences`, `previousResult`, `projectCwd`, and an `extra` record merging the accumulated hook data with L1 context entries.
+
+6. **Template Rendering** (`:481`) — `promptBuilder(phase, ctx)` always runs unconditionally. The template is never bypassed by a successful dispatcher response.
+
+7. **L2 Context Inlining** (`:484-490`) — When `decision.context_to_inline` has entries, `enrichPromptWithContext()` prepends file contents to the composed prompt.
+
+8. **Completion Wrapping** (`:493`) — `wrapCompletionInstruction()` appends the completion marker.
+
+The loop then passes the fully assembled prompt to `executor.execute()` at `:499`.
 
 ### 2. Dispatcher Input Assembly
 
-The entry point is `assembleDispatcherInput()` at `src/dispatcher/assemble.ts:64-174`.
+`assembleDispatcherInput()` at `src/dispatcher/assemble.ts:64-174` transforms raw content into a structured `DispatcherInput` JSON object.
 
-**Interface** (`AssemblerInput` at `:27-52`):
-- Required: `planContent`, `stateContent`, `workflowContext`, `configContext`, `sessionBudget`, `availableContext`
-- Optional: `contextContent`, `lastWorkerResult`
+**Input shape** (`AssemblerInput` at `:27-52`):
+- `planContent: string` — raw markdown plan
+- `stateContent: string` — raw state file content
+- `contextContent?: string` — optional `.context.md` content
+- `lastWorkerResult?: string | LastWorkerResult | null` — previous step output
+- `workflowContext` — workflow ID, name, step number, total steps, step description
+- `configContext` — max eval cycles, worktree path, project CWD, worker/dispatcher models
+- `sessionBudget: SessionBudgetStatus` — remaining invocations, tokens, wall clock
+- `availableContext: AvailableContext` — conventions, standards, learnings arrays
 
-**Processing steps**:
-- Calls `parsePlan()` at `:66` to parse plan markdown into structured phases
-- Calls `parseStateFile()` at `:70` to parse state (or builds empty state)
-- Walks `state.phases` to compute `completedPhases[]` and `currentPhaseIndex` at `:74-89`
-- Parses context files via `parseContextFile()` at `:94`
-- Maps phases to `planPhases` array with name + steps at `:98-101`
-- Accepts `lastWorkerResult` as either structured `LastWorkerResult` objects or JSON strings; raw strings that fail parsing are dropped silently at `:110-122`
-- Builds `WorkflowInfo` and `DispatcherConfig` at `:126-140`
-- Assembles final `DispatcherInput` at `:143-158`
+**Processing** (`:66-167`):
+- Plan parsed via `parsePlan()` (`:66`)
+- State parsed via `parseStateFile()` with graceful empty fallback (`:69-71`)
+- Completed phases and current phase index derived from state phase statuses (`:74-90`)
+- Context files extracted via `parseContextFile()` (`:93-95`)
+- `lastWorkerResult` accepts structured objects or attempts JSON parse of legacy strings (`:108-123`)
+- `WorkflowInfo` and `DispatcherConfig` structs built (`:126-140`)
+- Final `DispatcherInput` assembled (`:143-158`)
 
-**Safety valve**: If `JSON.stringify(input)` exceeds 100KB (`BUDGET_TOTAL` at `:21`), `available_context` arrays are each sliced to 10 entries at `:161-167`.
+**Safety valve** (`:161-167`): If total JSON byte length exceeds `BUDGET_TOTAL` (100KB, defined at `:21`), `available_context` arrays are sliced to 10 entries each.
 
-**Output**: `AssembledInput` = `{ input: DispatcherInput, planTruncated, historyTruncated }`. Note: `planTruncated` and `historyTruncated` are initialized `false` at `:104-105` and never set to `true` in current code — the truncation note path in `system-prompt.ts:16` appears unreachable.
+### 3. Dispatcher System Prompt
 
-### 3. Plan Parsing
+`buildDispatcherSystemPrompt()` at `src/dispatcher/system-prompt.ts:37-127` is a pure function returning the same string every call, enabling prompt caching. The stable prefix describes:
 
-`parsePlan()` at `src/controller/plan-parser.ts:63-118` splits plan markdown on `### Phase N: Title` headings (regex at `:40`). It extracts top-level `- [ ]` checklist items as steps (`:43`), skips indented sub-items (`:46`), and cross-references status from an optional `ParsedStateFile`. `finalizePhase()` at `:194` joins description lines and calls `resolveStatus()` at `:220` which matches by index first, then title.
+- The dispatcher's role as a "prompt engineering specialist" (`:38`)
+- Input schema: `plan.phases[]`, `state`, `context.files[]`, `workflow`, `config`, `session_budget`, `available_context` (`:42-52`)
+- Three-level context injection rules (`:54-56`): L1 metadata in `available_context`, L2 targeted inline via `context_to_inline` (8KB cap, controller-injected), L3 on-demand via `context_files` (worker reads)
+- Output schema requiring `task_content`, `context_files`, `context_to_inline`, `validation_criteria`, plus optional `reasoning`, `warnings`, `session_name`, `worker_config` (`:62-90`)
+- Rules: `task_content` describes WHAT not HOW; behavioral instructions come from system templates (`:94`)
 
-### 4. System Prompt Construction
+`buildTruncationNotes()` at `:16-35` produces an optional `## Truncation Warnings` block when `plan_truncated` or `history_truncated` are true.
 
-`buildDispatcherSystemPrompt()` at `src/dispatcher/system-prompt.ts:37-127` is a **pure function** (no arguments) returning a static string. This design enables prompt caching — the stable prefix can be cached while per-call variable content goes in the user segment.
+### 4. Transports — Two Delivery Paths
 
-The system prompt instructs the dispatcher LLM on its role as a "prompt engineering specialist," defines the input JSON format (plan, state, context, workflow, config, budget, available_context), specifies the output JSON schema (`DispatcherDecision`), and provides rules: `task_content` describes WHAT not HOW, include file paths in `context_files`, output valid JSON only.
+**`DispatcherTransport` interface** at `src/dispatcher/transport.ts:9-11` — a single `invoke(input: DispatcherInput): Promise<DispatcherDecision>` method.
 
-`buildTruncationNotes()` at `:16-35` returns a markdown warning block when `plan_truncated` or `history_truncated` flags are true, or empty string otherwise.
+**SDK Transport** (`src/dispatcher/sdk-transport.ts:143-201`):
+- Prompt segments constructed at `:150-152`: `systemPrompt = buildDispatcherSystemPrompt()`, `truncationNotes = buildTruncationNotes(input)`, `userContent = truncationNotes + JSON.stringify(input)`
+- Delivered as `{ system: systemPrompt, model: modelSpec, parts: [{ type: "text", text: userContent }] }` at `:174-178` — system/user separation enables prompt caching
+- Response parsed via `extractTextFromResponse()` at `:208-231` (handles OpenCode SDK shape: `{ parts: [{ type: "text", text: "..." }] }`)
+- Decision validated via `DispatcherDecisionSchema.safeParse()` at `:247`
+- 120s timeout (`:58`); OpenCode-only guard (`:123-128`)
 
-### 5. Transport Layer
+**Subprocess Transport** (`src/dispatcher/subprocess-transport.ts:69-127`):
+- Same prompt construction at `:70-72`, with added `"Respond with valid JSON only."` suffix
+- Engine-specific command built via `engine.buildDispatcherCommand()` at `:82-86`
+- OpenCode stdin path (`:100-101`): `systemPrompt + "\n\n---\n\n" + userContent`
+- Claude Code `--print` path: system prompt passed as `--system-prompt` CLI arg; user content via `-p`
+- Output parsing at `:129-162`: OpenCode uses `extractTextFromNDJSON()`, Claude Code uses plain text; both extract JSON via regex `/{[\s\S]*}/`
+- 60s timeout (`:30`); one retry on parse failure (`:31`)
+- Environment sanitized via `createEnvFilter()` at `:47`
 
-The `DispatcherTransport` interface at `src/dispatcher/transport.ts:9` defines a single method: `invoke(input: DispatcherInput): Promise<DispatcherDecision>`.
+### 5. Orchestration Bridge
 
-**SDK Transport** (`src/dispatcher/sdk-transport.ts:116-201`):
-- OpenCode-only (guard at `:123`)
-- Creates a session via `client.session.create()` at `:161`
-- Separates stable system prompt into `body.system` for prompt caching, sends user content in `parts[0].text` at `:174-178`
-- User content: `${truncationNotes}${JSON.stringify(input)}` at `:152`
-- 120s timeout at `:58`
-- Parses response via `extractTextFromResponse()` at `:208` → regex `{...}` matching at `:235` → `DispatcherDecisionSchema.safeParse()` at `:247`
+`DispatcherOrchestrator.getPhaseDecision()` at `src/controller/dispatcher-orchestrator.ts:62-127`:
+- Emits `dispatcher:invoked` at `:71`
+- Calls `assembleDispatcherInput()` at `:79-88`
+- Invokes `transport.invoke(assembled.input)` at `:91`
+- Retries up to 2 times with linear backoff (1s, 2s) at `:115`
+- On final failure: emits `dispatcher:failed` and returns `null` at `:120-121`
+- On success: emits `dispatcher:completed` at `:103`, returns the decision
 
-**Subprocess Transport** (`src/dispatcher/subprocess-transport.ts:45-163`):
-- Engine-aware via registry at `:57`
-- User content: `${truncationNotes}Here is the dispatcher input:\n\n${JSON.stringify(input)}\n\nRespond with valid JSON only.` at `:72`
-- For Claude: system prompt via `--system-prompt` CLI flag (engine handles this)
-- For OpenCode stdin path: system and user content concatenated with `---` separator at `:101`
-- 60s timeout at `:30`, 1 retry with error feedback appended at `:77-79`
-- OpenCode NDJSON parsed via `extractTextFromNDJSON()` at `:137`; Claude plain text at `:141`
+The execution loop calls this via its private `getDispatcherDecision()` helper at `src/controller/execution-loop.ts:748-795`, which also reads fresh state content, resolves context, and builds the `PhasePromptOptions` payload.
 
-### 6. Orchestration and Retry
+### 6. Workflow Prompt Template Selection
 
-`DispatcherOrchestrator.getPhaseDecision()` at `src/controller/dispatcher-orchestrator.ts:62-127` wraps assembly + transport in a **3-attempt retry loop** (2 retries, 1s exponential backoff at `:115`). It emits `dispatcher:invoked` at `:71`, `dispatcher:completed` at `:103`, or `dispatcher:failed` at `:120`. Returns `null` on final failure — the caller falls through to its own prompt builder (graceful degradation).
-
-### 7. Prompt Builder Wiring (Two Paths)
-
-`createStageLoop()` at `src/controller/stage-loop-factory.ts:99` is the single entry point for stage execution. It branches into two paths:
-
-**Work path** — `createWorkLoop()` at `:207`:
-- Uses `buildWorkPhasePrompt` as `promptBuilder` at `:236-237`
-- Overrides `ctx.planContent` with `phase.description` (the plan phase's raw markdown)
-- Reads plan file, state file, context file from disk at `:215-234`
-- Wires `PlanFileProvider`, `FileStatePersistence`, `UIApprovalHandler`
-
-**Generic path** — `createGenericLoop()` at `:294`:
-- Uses `buildWorkflowPrompt` as `promptBuilder` at `:304-312`
-- Routes by workflow name + step index via `workflowPromptMap` at `src/workflows/prompt-builder.ts:71-77`
-- Synthesizes `fullPlanContent` from workflow step descriptions at `:357-365` to give the dispatcher context
-- Wires `WorkflowDefinitionProvider`, `onStepComplete` hooks, `shouldSkipPhase` hooks
-
-### 8. Workflow Prompt Routing
-
-`buildWorkflowPrompt()` at `src/workflows/prompt-builder.ts:94-142` maps `(stepIndex, workflow.name)` to a specific template function via `workflowPromptMap` at `:71-77`:
+**`buildWorkflowPrompt()`** at `src/workflows/prompt-builder.ts:94-142` maps `(workflowType, stepIndex)` to a `PromptFn` via `workflowPromptMap` (`:71-77`):
 
 | Workflow | Steps | Template Functions |
 |----------|-------|--------------------|
-| plan | 4 | research, draft, review, consolidate |
-| review | 4 | dispatch, dispatch, consolidate, fix |
-| ship | 4 | ship, ship, ship, compound |
-| debug | 3 | investigate ×3 |
-| research | 3 | locate, analyze, persist |
+| `plan` | 4 | `buildPlanResearchPrompt` → `buildPlanDraftPrompt` → `buildPlanReviewPrompt` → `buildPlanConsolidatePrompt` |
+| `review` | 4 | `buildReviewDispatchPrompt` (×2) → `buildReviewConsolidatePrompt` → `buildReviewFixPrompt` |
+| `ship` | 4 | `buildShipPrompt` (×3) → `buildShipCompoundPrompt` |
+| `debug` | 3 | `buildDebugPrompt` (×3) |
+| `research` | 3 | `buildResearchLocatePrompt` → `buildResearchAnalyzePrompt` → `buildResearchPersistPrompt` |
 
-All template functions receive a `WorkflowStepContext` (interface at `src/prompts/index.ts:10-23`): `planContent`, `keyDecisions`, `fileReferences`, `previousResult`, `projectCwd`, `extra`.
+Each template is a pure function `(ctx: WorkflowStepContext) => string`. The `WorkflowStepContext` interface at `src/prompts/index.ts:10-23` provides: `planContent`, `keyDecisions`, `fileReferences`, `previousResult`, `projectCwd`, `extra`.
 
-If no mapping exists for a step index, a generic markdown template is built from the step's description at `:119-141`.
+Fallback generic prompt at `:119-141` constructs markdown from `step.description`, `step.dispatcherHint`, and `step.validationCriteria`.
 
-### 9. Work Phase Template Composition
+### 7. L2 Context Inlining
 
-`buildWorkPhasePrompt()` at `src/prompts/work/phase-prompt.ts:19-108` composes the work prompt from:
+`enrichPromptWithContext()` at `src/controller/context-enrichment.ts:33-87`:
+- Reads files from `contextToInline` in dispatcher priority order (most critical first)
+- Greedy 8KB cap (`INLINE_CONTENT_BUDGET = 8192` at `:17`)
+- Path boundary validation via `isPathWithinBoundary()` at `:45`
+- If the first file alone exceeds the budget, it is truncated to fit via `truncateToByteLimit()` at `:70-71`
+- Subsequent files are skipped once budget is exceeded (`:75`)
+- Output format: `## Relevant Context (from project standards and learnings)\n\n### {filePath}\n{content}\n\n---\n\n{original prompt}`
 
-- **Variable content**: `ctx.planContent` (task), previous phase result, key decisions, file references, working directory, project context section (conventions/standards/learnings via `buildProjectContextSection` from `src/prompts/conventions.ts:85`), optional iteration budget instruction
-- **Behavioral constants** (from `src/prompts/conventions.ts`): `TDD_CYCLE` (`:12`), `SCOPE_DISCIPLINE` (`:41`), `UNDERSTAND_ACT_VERIFY` (`:59`), `VERIFICATION_BANNED_PHRASES` (`:69`), `THREE_STRIKE_PROTOCOL` (`:45`)
-- **Inline instructions**: Verification Protocol with evidence requirements table (`:69-88`), Two-Stage Review (`:90-95`), Completion section (`:101-107`)
+### 8. Shared Prompt Conventions
 
-### 10. Context Enrichment (Level 2 Inlining)
+`src/prompts/conventions.ts` exports composable string fragments used by domain-specific templates:
+- `SEVERITY_DEFINITIONS` (`:6-10`) — P1/P2/P3 severity levels
+- `TDD_CYCLE` (`:12-21`) — Red/Green/Refactor cycle instructions
+- `UNDERSTAND_ACT_VERIFY` (`:59-67`) — Three-step implementation loop
+- `SCOPE_DISCIPLINE` (`:41-43`) — YAGNI guidance
+- `THREE_STRIKE_PROTOCOL` (`:45-50`) — Escalation protocol
+- `VERIFICATION_BANNED_PHRASES` (`:69-73`) — Banned claim-without-evidence phrases
 
-`enrichPromptWithContext()` at `src/controller/context-enrichment.ts:33-87` reads files listed in `decision.context_to_inline` in dispatcher-priority order. It validates paths are within the project boundary via `isPathWithinBoundary()` at `:45`, accumulates file content up to `INLINE_CONTENT_BUDGET` (8192 bytes, `:17`), and prepends as a `## Relevant Context` block before the prompt at `:86`. If the first file alone exceeds the budget, it is truncated to fit via `truncateToByteLimit()` at `:93-98`.
+`buildProjectContextSection()` at `:85-116` formats L1 context entries (conventions, standards, learnings) as a Markdown section for templates.
 
-### 11. Completion Wrapping
+`buildIterationBudgetInstruction()` at `:122-129` creates an iteration budget message; throws on invalid budget.
 
-`wrapCompletionInstruction()` at `src/worker/completion.ts:73-75` appends `\n\nWhen you have finished, output the marker: <promise>COMPLETE</promise>` to the prompt. This is always the last transformation before the prompt is sent to the executor.
+### 9. Stage Loop Factory Wiring
 
-### 12. Schema Contracts
+`createStageLoop()` at `src/controller/stage-loop-factory.ts:99-185` wires the full pipeline:
 
-`DispatcherInputSchema` at `src/schemas/dispatcher.ts:49-66` defines: plan phases array, state (completed/current indices), context files, truncation booleans, workflow_id, workflow step info, last_worker_result (nullable), config, session_budget, available_context.
+**Dispatcher orchestrator** (`:132-141`): Instantiated when `dispatcherTransport` is provided.
 
-`DispatcherDecisionSchema` at `:73-88` defines: `schema_version: 1`, `phase_index`, `step_index`, `task_content` (required string), `context_files`, optional `context_to_inline`, `validation_criteria`, `reasoning`, `warnings`, `session_name`, `worker_config`.
+**Work path** (`createWorkLoop` at `:207-269`):
+- Reads plan file (`:224`), derives state/context paths (`:218-219`)
+- Loads `.context.md` via `readCachedFile()` + `parseContextFile()` (`:233-234`)
+- `promptBuilder` wraps `buildWorkPhasePrompt()` (`:236-237`)
+- Passes `planContent`, `statePath`, `contextPath` to `ExecutionLoop` (`:253-255`)
 
-### 13. Engine-Specific System Prompt Handling
+**Generic workflow path** (`createGenericLoop` at `:294-393`):
+- Synthesizes `planContent` from `workflowDef.steps` at `:357-365` so the dispatcher has context
+- Includes user's `description/topic` in the plan content at `:362-365`
+- `promptBuilder` wraps `buildWorkflowPrompt()` (`:304-312`)
+- Passes synthetic `planContent` to `ExecutionLoop` at `:380`
 
-Per `.factory/library/architecture.md:19-21`:
-- **Claude Code**: System prompt is passed via `--system-prompt` CLI flag (enables prompt caching). The engine's `buildDispatcherCommand()` handles this.
-- **OpenCode**: System prompt is NOT handled by `buildDispatcherCommand()` — it is silently ignored. The `SubprocessTransport` manually prepends the system prompt to stdin content at `subprocess-transport.ts:101`. This is by design since OpenCode lacks a separate system prompt CLI flag.
+### 10. Schema Definitions
+
+`src/schemas/dispatcher.ts` defines the Zod schemas:
+
+**`DispatcherInputSchema`** (`:49-66`): `plan`, `state`, `context`, `plan_truncated`, `history_truncated`, `workflow_id`, `workflow`, `last_worker_result`, `config`, `session_budget`, `available_context`
+
+**`DispatcherDecisionSchema`** (`:73-88`): `schema_version: 1`, `phase_index`, `step_index`, `task_content`, `context_files`, `context_to_inline?`, `validation_criteria`, `reasoning?`, `warnings?`, `worker_config?`, `session_name?`
+
+### 11. File Caching and Context Parsing
+
+`src/controller/templates.ts:26-74`:
+- `readCachedFile()` (`:26-41`): mtime-keyed in-memory `Map<string, CachedFile>`. Returns `null` on missing file. Re-reads on mtime change. Module-level cache with no TTL eviction.
+- `parseContextFile()` (`:58-74`): Extracts bullet lines (`- path`) stripping optional backtick wrapping. Returns `string[]` of file reference paths.
 
 ## Code References
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/dispatcher/assemble.ts` | 64-174 | Main assembly function — parses plan/state, builds DispatcherInput, applies 100KB safety valve |
-| `src/dispatcher/system-prompt.ts` | 37-127 | Pure-function system prompt (cacheable); truncation notes builder at :16-35 |
-| `src/dispatcher/sdk-transport.ts` | 143-201 | SDK transport — system/user split for prompt caching, 120s timeout |
-| `src/dispatcher/subprocess-transport.ts` | 69-127 | Subprocess transport — engine-aware, 60s timeout, 1 retry |
-| `src/dispatcher/transport.ts` | 9-11 | `DispatcherTransport` interface — single `invoke()` method |
-| `src/controller/dispatcher-orchestrator.ts` | 62-127 | Orchestrator — 3-attempt retry with exponential backoff, null-on-failure |
-| `src/controller/execution-loop.ts` | 434-493 | Per-phase prompt pipeline: context → dispatcher → resolve → template → enrich → wrap |
-| `src/controller/execution-loop.ts` | 748-794 | `getDispatcherDecision()` — builds workflow/config/budget context for orchestrator |
-| `src/controller/context-enrichment.ts` | 33-87 | Level 2 context inlining — reads files, 8KB budget, prepends to prompt |
-| `src/controller/stage-loop-factory.ts` | 236-237 | Work path promptBuilder wiring — `buildWorkPhasePrompt` |
-| `src/controller/stage-loop-factory.ts` | 304-312 | Generic path promptBuilder wiring — `buildWorkflowPrompt` |
-| `src/controller/stage-loop-factory.ts` | 357-365 | Synthetic plan content for non-work dispatcher context |
-| `src/workflows/prompt-builder.ts` | 71-77 | `workflowPromptMap` — step-index → template function routing |
-| `src/workflows/prompt-builder.ts` | 94-142 | `buildWorkflowPrompt()` — builds WorkflowStepContext, dispatches to template |
+| `src/controller/execution-loop.ts` | 434-493 | Per-phase prompt assembly sequence (7 steps) |
+| `src/controller/execution-loop.ts` | 748-795 | `getDispatcherDecision()` helper — reads state, resolves context, calls orchestrator |
+| `src/dispatcher/assemble.ts` | 64-174 | `assembleDispatcherInput()` — transforms raw content into `DispatcherInput` JSON |
+| `src/dispatcher/assemble.ts` | 161-167 | Safety valve: truncates `available_context` when total exceeds 100KB |
+| `src/dispatcher/system-prompt.ts` | 37-127 | `buildDispatcherSystemPrompt()` — static, cacheable system prompt |
+| `src/dispatcher/system-prompt.ts` | 16-35 | `buildTruncationNotes()` — optional truncation warnings |
+| `src/dispatcher/sdk-transport.ts` | 143-201 | `SdkTransport.invoke()` — OpenCode SDK delivery path |
+| `src/dispatcher/sdk-transport.ts` | 150-152 | Prompt segment construction (system/user split) |
+| `src/dispatcher/subprocess-transport.ts` | 69-127 | `SubprocessTransport.invoke()` — CLI delivery path |
+| `src/dispatcher/subprocess-transport.ts` | 100-101 | OpenCode stdin prompt construction |
+| `src/controller/dispatcher-orchestrator.ts` | 62-127 | `getPhaseDecision()` — retry logic, event emission, null fallback |
+| `src/workflows/prompt-builder.ts` | 71-77 | `workflowPromptMap` — step→template registry |
+| `src/workflows/prompt-builder.ts` | 94-142 | `buildWorkflowPrompt()` — template dispatch with fallback |
+| `src/controller/context-enrichment.ts` | 33-87 | `enrichPromptWithContext()` — L2 file content inlining (8KB cap) |
+| `src/controller/context-enrichment.ts` | 17 | `INLINE_CONTENT_BUDGET = 8192` constant |
+| `src/prompts/conventions.ts` | 85-116 | `buildProjectContextSection()` — L1 context entry formatter |
 | `src/prompts/index.ts` | 10-23 | `WorkflowStepContext` interface definition |
-| `src/prompts/conventions.ts` | 6-73 | Shared behavioral constants (TDD_CYCLE, SCOPE_DISCIPLINE, etc.) |
-| `src/prompts/conventions.ts` | 85-116 | `buildProjectContextSection()` — L1 context injection into templates |
-| `src/prompts/work/phase-prompt.ts` | 19-108 | Work phase template — task + behavioral instructions + verification protocol |
-| `src/worker/completion.ts` | 73-75 | `wrapCompletionInstruction()` — appends completion marker |
-| `src/schemas/dispatcher.ts` | 49-88 | Zod schemas for DispatcherInput and DispatcherDecision |
-| `src/controller/plan-parser.ts` | 63-118 | `parsePlan()` — markdown phase extraction consumed by assembler |
+| `src/schemas/dispatcher.ts` | 49-66 | `DispatcherInputSchema` — Zod schema for dispatcher input |
+| `src/schemas/dispatcher.ts` | 73-88 | `DispatcherDecisionSchema` — Zod schema for dispatcher output |
+| `src/controller/stage-loop-factory.ts` | 132-141 | Dispatcher orchestrator wiring |
+| `src/controller/stage-loop-factory.ts` | 354-365 | Synthetic plan content for non-work workflows |
+| `src/controller/templates.ts` | 26-41 | `readCachedFile()` — mtime-based file cache |
+| `src/controller/templates.ts` | 58-74 | `parseContextFile()` — bullet-line file reference extractor |
+| `src/dispatcher/transport.ts` | 9-11 | `DispatcherTransport` interface |
 
 ## Patterns Identified
 
-- **System/User Prompt Split**: `sdk-transport.ts:150-152`, `subprocess-transport.ts:70-72` — Both transports implement the same two-segment pattern: stable system prompt (cacheable prefix) + variable user content (truncation notes + JSON input). SDK uses `body.system` field; subprocess uses `--system-prompt` flag (Claude) or stdin concatenation (OpenCode).
-
-- **Dispatcher-Template Separation**: `execution-loop.ts:461-481` — The dispatcher provides WHAT (task_content) and the template provides HOW (behavioral instructions). Templates are oblivious to the dispatcher's existence; they receive resolved `planContent` regardless of source.
-
-- **Graceful Degradation**: `dispatcher-orchestrator.ts:119-121`, `execution-loop.ts:461-463` — If the dispatcher fails after retries, it returns `null`. The execution loop falls back to `phase.description` as the template's `planContent`. The worker still gets a well-formed prompt with behavioral instructions.
-
-- **Context Injection Levels**: Three levels traced across multiple files — **L1** (metadata): `available_context` in `DispatcherInput` for dispatcher awareness (`assemble.ts:157`). **L2** (inlined content): `enrichPromptWithContext()` reads files from `context_to_inline` with 8KB budget (`context-enrichment.ts:33`). **L3** (on-demand): `context_files` listed for worker to read during execution (`system-prompt.ts:56`).
-
-- **Pure Function System Prompt**: `system-prompt.ts:37` — `buildDispatcherSystemPrompt()` takes no arguments and returns the same string every time. This enables prompt caching across invocations.
-
-- **Safety Valve Truncation**: `assemble.ts:161-167` — Single 100KB cap on total serialized input. Only `available_context` arrays are truncated (to 10 entries each) as a last resort.
-
-- **Workflow-to-Template Routing**: `prompt-builder.ts:71-77` — Static arrays map step indices to template functions per workflow type. Falls back to a generic markdown template for unmapped indices.
-
-- **Two-Path PromptBuilder Wiring**: `stage-loop-factory.ts:236` vs `:304` — Work workflows use `buildWorkPhasePrompt` (rich behavioral instructions); non-work workflows use `buildWorkflowPrompt` (template routing by workflow name + step index).
-
-- **Completion Marker Pattern**: `completion.ts:73-75`, `execution-loop.ts:493` — Always applied last in the pipeline. The `CompletionDetector` class at `:31-68` checks for this marker or NDJSON success events during streaming.
+- **Dispatcher Augments, Never Replaces**: `execution-loop.ts:481` — The `promptBuilder(phase, ctx)` always runs unconditionally. The dispatcher's `task_content` feeds into `planContent` within the context object, which the template then renders. Templates are never bypassed by a successful dispatcher response.
+- **Three-Level Context Disclosure**: `system-prompt.ts:54-56` — L1 metadata (dispatcher input's `available_context`), L2 targeted inline (`context_to_inline` → `enrichPromptWithContext`, 8KB cap), L3 on-demand file reads (`context_files` in decision).
+- **Graceful Degradation on Dispatcher Failure**: `dispatcher-orchestrator.ts:106-121` — Two retries with linear backoff; on final failure returns `null`, and the execution loop falls through to `phase.description` as the task content.
+- **System/User Prompt Splitting for Cache**: `sdk-transport.ts:168-178` — The static system prompt goes in the `system` field (cacheable); variable per-call content (truncation notes + input JSON) goes in `parts` as user text.
+- **Safety Valve Budget Enforcement**: `assemble.ts:161-167` — Single 100KB cap on total input size; `available_context` arrays truncated to 10 entries as the overflow mitigation.
+- **Template Registry Pattern**: `prompt-builder.ts:71-77` — Workflow names map to ordered `PromptFn[]` arrays, where array index equals step index. Each function is a pure `(ctx: WorkflowStepContext) => string`.
+- **Composable Convention Fragments**: `conventions.ts:6-73` — Behavioral instruction strings (`TDD_CYCLE`, `UNDERSTAND_ACT_VERIFY`, etc.) are exported as constants, composed into domain-specific templates via import.
+- **Task Content Resolution Precedence**: `execution-loop.ts:461-463` — `decision.task_content` (non-empty, trimmed) takes precedence over `phase.description`. Empty strings are treated as absent.
+- **Synthetic Plan Content for Non-Work Workflows**: `stage-loop-factory.ts:357-365` — Non-work workflows synthesize `planContent` from `workflowDef.steps` descriptions so the dispatcher has context. Without this, the dispatcher is skipped (requires non-empty `planContent`).
 
 ## Open Questions
 
-- `planTruncated` and `historyTruncated` flags are initialized `false` at `assemble.ts:104-105` and never set to `true` in current code — is the truncation note path in `system-prompt.ts:16` intentionally unreachable, or is truncation logic incomplete?
-- The refactor plan at `docs/plans/refactor-dispatcher-prompt-composition.md` has `status: READY` — the code at `execution-loop.ts:460-493` matches the refactored flow described in the plan (template always runs, task_content resolution, enrichment in loop). Is this plan already implemented, or does the READY status indicate it is approved but not yet started?
-- `enrichPromptWithContext` at `context-enrichment.ts:67` stops reading files when the budget would be exceeded, but if the very first file exceeds 8KB it is truncated to fit. Is there a scenario where a single large file in `context_to_inline` provides insufficient context after truncation?
-- The `SubprocessTransport` at `subprocess-transport.ts:101` concatenates system prompt and user content for OpenCode stdin delivery. Does the `---` separator between them risk being parsed as markdown by the LLM, potentially affecting prompt interpretation?
+- What exact string does `wrapCompletionInstruction()` emit? The implementation lives in `src/worker/completion.ts` and was not analyzed.
+- How does `contextIndexer.getRelevantContext()` rank and filter context entries? The algorithm lives in `src/memory/indexer.ts` and was not analyzed.
+- Do `context_to_inline` paths in the dispatcher decision consistently use absolute or relative paths? The dispatcher LLM generates these from `available_context` metadata, and path resolution behavior depends on what `isPathWithinBoundary()` accepts.
+- `readCachedFile()` at `templates.ts:26` uses a module-level `Map` with no TTL eviction — behavior across long-running sessions with file edits depends entirely on mtime accuracy and stat timing.
+- The refactor plan at `docs/plans/refactor-dispatcher-prompt-composition.md` (status: READY, checklist unchecked as of 2026-03-23) documents the intended separation of `task_content` from `prompt` — but the current codebase already uses `task_content` in the schema and execution loop, indicating this refactor has been partially or fully applied.

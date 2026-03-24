@@ -5,119 +5,108 @@ date: 2026-03-24
 status: complete
 ---
 
-# Event Bus — Technical Research
+# Event Bus — How It Works
 
 ## Codebase Map
 
 ```
 src/events/
-  event-bus.ts    — EventBus class, FlywheelEmitter interface/factory
-  types.ts        — FlywheelEvent discriminated union (34 variants)
+  event-bus.ts    — EventBus class, FlywheelEmitter facade, factory
+  types.ts        — FlywheelEvent discriminated union (34 event types)
 ```
 
 ```
 src/controller/
-  stage-loop-factory.ts      — creates FlywheelEmitter from EventBus
-  execution-loop.ts          — emits workflow/phase/worker lifecycle events
-  dispatcher-orchestrator.ts — emits dispatcher lifecycle events
-  question-service.ts        — emits question events on raw EventBus
+  work.ts                  — EventBus instantiation site
+  stage-loop-factory.ts    — createFlywheelEmitter wrapping
+  execution-loop.ts        — Primary emitter consumer (workflow lifecycle)
+  dispatcher-orchestrator.ts — Dispatcher event emission
 ```
 
 ```
-src/tui/components/
-  flywheel-shell.tsx          — subscribes to pipeline/phase/question events
-src/tui/utils/
-  question-wiring.ts          — encapsulates question event subscriptions
+src/tui/
+  adapters/base.ts       — BaseUIAdapter subscribe/unsubscribe lifecycle
+  adapters/headless.ts   — Headless adapter (handleEvent impl)
+  adapters/opentui.ts    — OpenTUI adapter (handleEvent impl)
+  adapters/mock.ts       — Mock adapter for testing
+  utils/question-wiring.ts — Typed subscriptions for question events
 ```
 
 ## Relevant Code
 
 ### Core Implementation
 
-- `event-bus.ts:22-106` — `EventBus` class. Two subscriber tracks: `catchAll: Set<Listener>` (`:23`) and `typed: Map<FlywheelEvent["type"], Set<Listener>>` (`:24`).
-- `event-bus.ts:29-34` — `subscribe(listener)` adds to `catchAll`, returns unsubscribe closure.
-- `event-bus.ts:39-53` — `subscribeToType(type, listener)` lazily creates per-type Set in `typed` map.
-- `event-bus.ts:59-65` — `once(listener)` wraps subscribe; auto-removes after first invocation.
-- `event-bus.ts:85-105` — `emit(event)` iterates `catchAll` then matching `typed` set. Each listener invoked in `try/catch`; errors logged but never propagate. Delivery is synchronous.
-- `event-bus.ts:112-138` — `FlywheelEmitter` interface: 25 named methods, one per event type.
-- `event-bus.ts:144-197` — `createFlywheelEmitter(bus)` factory returns object literal where each method constructs a typed event payload and calls `bus.emit()`.
+- `event-bus.ts:22-24` — `EventBus` class stores `catchAll: Set<Listener>` and `typed: Map<string, Set<Listener>>`
+- `event-bus.ts:29` — `subscribe(listener)` adds to `catchAll`, returns `Unsubscribe` closure
+- `event-bus.ts:39` — `subscribeToType(type, listener)` adds to per-type `Set` in `typed` map
+- `event-bus.ts:59` — `once(listener)` wraps subscribe in self-removing closure
+- `event-bus.ts:70` — `onceType(type, listener)` same one-shot pattern for typed subscriptions
+- `event-bus.ts:85-103` — `emit(event)` iterates `catchAll` first, then `typed.get(event.type)`; each listener is individually try/caught — errors are logged but never propagate
+
+### FlywheelEmitter Facade
+
+- `event-bus.ts:112-138` — `FlywheelEmitter` interface with 26 named emit methods
+- `event-bus.ts:144-197` — `createFlywheelEmitter(bus)` factory returns an object literal where each method constructs a typed event with `type` string + `timestamp` and calls `bus.emit()`
+- `event-bus.ts:140` — `now()` helper produces ISO string timestamps via `new Date().toISOString()`
 
 ### Event Types
 
-- `types.ts:11-45` — `FlywheelEvent` discriminated union. 34 variants grouped by namespace: `workflow` (4), `phase` (3), `step` (3), `dispatcher` (3), `evaluator` (4), `worker` (6), `approval` (2), `question` (3), `pipeline` (4), `budget` (2).
-- All variants carry `timestamp: string` (ISO 8601) except `EvaluatorRevisionRequested` (`:184`) which uses `timestamp: number` (Unix ms).
-- `types.ts:337-339` — `assertNever(event: never)` exhaustiveness helper for switch statements.
+- `types.ts:11-45` — `FlywheelEvent` discriminated union across 10 namespaces, 34 members:
 
-### Creation & Injection
+| Namespace     | Events                                                  |
+|---------------|---------------------------------------------------------|
+| `workflow:`   | `started`, `completed`, `failed`, `interrupted`         |
+| `phase:`      | `started`, `completed`, `failed`                        |
+| `step:`       | `started`, `completed`, `failed`                        |
+| `dispatcher:` | `invoked`, `completed`, `failed`                        |
+| `evaluator:`  | `invoked`, `completed`, `failed`, `revision-requested`  |
+| `worker:`     | `spawned`, `completed`, `failed`, `retrying`, `output`, `injected` |
+| `approval:`   | `requested`, `received`                                 |
+| `question:`   | `asked`, `replied`, `rejected`                          |
+| `pipeline:`   | `started`, `completed`, `failed`, `stage-transition`    |
+| `budget:`     | `warning`, `exhausted`                                  |
 
-- `stage-loop-factory.ts:63` — `StageLoopOptions.eventBus` receives the raw `EventBus` from upstream.
-- `stage-loop-factory.ts:119` — `createFlywheelEmitter(eventBus)` wraps it into a typed facade.
-- `stage-loop-factory.ts:123-140` — `emitter` injected into `PhaseExecutor`, `DispatcherOrchestrator`, and `ExecutionLoop`.
+- `types.ts:337` — `assertNever(event: never)` enables compile-time exhaustiveness checking
 
-### Emission Sites
+### Instantiation & Wiring
 
-**ExecutionLoop** (`execution-loop.ts`):
-- `:337` — `workflowStarted`
-- `:346-356` — `workflowInterrupted` (shutdown)
-- `:428-432` — `phaseStarted`
-- `:567-574` — `evaluatorRevisionRequested`
-- `:650-651` — `phaseFailed` + `workflowFailed` (evaluator rejection)
-- `:684` — `phaseCompleted`
-- `:700-724` — `phaseFailed` + `workflowFailed`/`workflowInterrupted` (errors)
-- `:736` — `workflowCompleted`
-- `:835-836` — `workerOutput` (stdout/stderr callbacks)
+- `work.ts:67-73` — `WorkController` constructor creates `new EventBus()` (or accepts injected one), then calls `ui.connect(eventBus)` and `ui.start()`
+- `stage-loop-factory.ts:119` — `createStageLoop()` wraps the bus: `const emitter = createFlywheelEmitter(eventBus)`, passes only the `emitter` (not the raw bus) to internal components
+- `base.ts:21-36` — `BaseUIAdapter.connect(eventBus)` calls `eventBus.subscribe()` with catch-all handler, stores `Unsubscribe` token; `disconnect()` calls token and nulls refs; guards against double-connect
+- `base.ts:58` — Subclasses implement `abstract handleEvent(event: FlywheelEvent)` as their single dispatch point
+- `question-wiring.ts:36-69` — `createQuestionWiring()` uses `subscribeToType()` for `question:asked`, `question:replied`, `question:rejected`; returns idempotent `cleanup()` that unsubscribes all three and rejects pending questions
 
-**DispatcherOrchestrator** (`dispatcher-orchestrator.ts`):
-- `:71` — `dispatcherInvoked`
-- `:103` — `dispatcherCompleted`
-- `:120` — `dispatcherFailed`
+### Emission Lifecycle (Normal Flow)
 
-**QuestionService** (`question-service.ts`) — uses raw `EventBus.emit()`:
-- `:105-110` — `question:asked`
-- `:123-128` — `question:replied`
-- `:141-145` — `question:rejected`
+1. `execution-loop.ts:337` — `emitter.workflowStarted(workflowId, label)`
+2. Per phase:
+   - `execution-loop.ts:428-432` — `emitter.phaseStarted(workflowId, index, title)`
+   - `dispatcher-orchestrator.ts:71` — `emitter.dispatcherInvoked(workflowId, index, 0)`
+   - `dispatcher-orchestrator.ts:103` — `emitter.dispatcherCompleted(workflowId, decision)`
+   - `execution-loop.ts:835-836` — `emitter.workerOutput(workflowId, stream, chunk)` streamed during execution
+   - `execution-loop.ts:568-574` — `emitter.evaluatorRevisionRequested(...)` if evaluator fails
+   - `execution-loop.ts:684` — `emitter.phaseCompleted(workflowId, index)`
+3. `execution-loop.ts:736` — `emitter.workflowCompleted(workflowId)`
 
-### Subscription Sites (TUI)
-
-`flywheel-shell.tsx:532-577` — subscribes via `session.eventBus.subscribeToType()`:
-
-| Event | Handler Effect |
-|---|---|
-| `pipeline:started` | Sets `activePipelineInfo`, `activeWorkflowName` |
-| `pipeline:stage-transition` | Increments stage counter, updates workflow name |
-| `pipeline:completed` | Clears `activePipelineInfo`, flushes output |
-| `pipeline:failed` | Clears `activePipelineInfo` |
-| `phase:completed` | Schedules output persistence flush |
-
-Question events routed through `createQuestionWiring()` at `:533-537` → sets `pendingQuestion` state → renders `<QuestionPrompt>`.
-
-### Indirect Path: Worker Output → Store → TUI
-
-Worker output does NOT flow through direct subscriptions. Instead:
-1. `emitter.workerOutput()` → `EventBus.emit("worker:output")`
-2. `BaseUIAdapter.handleEvent()` receives the event and mutates `session.store`
-3. Store subscriber at `flywheel-shell.tsx:308-309` fires → `setWorkState(store.getState())` → SolidJS re-render
+Failure paths emit `phaseFailed` + one of `workflowFailed`, `workflowInterrupted`, or `workerFailed`.
 
 ## Patterns to Follow
 
-1. **Two-track dispatch**: `catchAll` for debugging/logging, `subscribeToType` for specific event handling.
-2. **Emitter facade**: Controller code never calls `bus.emit()` directly (except `QuestionService`). It uses the typed `FlywheelEmitter` methods.
-3. **Synchronous delivery**: All listeners run synchronously in emit order. No async, no queuing.
-4. **Error isolation**: Listener errors are caught and logged; never propagate to emitter or block other listeners.
-5. **Unsubscribe closures**: All subscribe methods return `() => void` closures. Cleaned up in `pipelineUnsubs` array.
-6. **Namespace:verb naming**: Event types follow `namespace:verb` convention (e.g., `workflow:started`, `phase:completed`).
+- **Emit-only facade**: Internal components never receive `EventBus` directly — they get `FlywheelEmitter` which has no subscribe methods. Only the top-level controller and UI layer touch the raw `EventBus`.
+- **Synchronous pub/sub**: No async channels. `emit()` calls listeners synchronously and in-order. Catch-all listeners fire before typed listeners.
+- **Per-listener error isolation**: Each listener is try/caught individually in `emit()`. One listener throwing cannot break others.
+- **Unsubscribe via closure**: All subscription methods return an `() => void` that removes the listener from its `Set`.
+- **UI adapters use catch-all subscribe**: `BaseUIAdapter` subscribes once to all events and dispatches internally via `handleEvent()`.
+- **Question wiring uses typed subscribe**: `createQuestionWiring()` subscribes to specific event types rather than catch-all.
+- **Discriminated union + assertNever**: Event consumers use `switch (event.type)` with `assertNever` for exhaustiveness.
 
 ## Constraints
 
-- **Synchronous only**: `emit()` blocks until all listeners complete. Long-running listeners would block the event loop.
-- **No event history/replay**: EventBus has no memory of past events. Late subscribers miss earlier emissions.
-- **Single bus per session**: The `EventBus` is created per workflow session and passed through `StageLoopOptions`.
-- **Timestamp inconsistency**: `EvaluatorRevisionRequested` uses `number` timestamp while all others use `string` ISO 8601.
-- **QuestionService bypasses facade**: Uses raw `bus.emit()` instead of `FlywheelEmitter` methods.
+- The bus is **synchronous** — `emit()` blocks until all listeners complete. Long-running listeners will block the emitter.
+- `FlywheelEmitter` facade covers 26 of the 34 event types. The remaining (`question:*`, `pipeline:*`, `budget:*`) must be emitted via raw `bus.emit()` with manually constructed event objects.
+- `evaluatorRevisionRequested` at `event-bus.ts:179` uses `Date.now()` (numeric ms) instead of the ISO string `now()` helper used by all other events — `EvaluatorRevisionRequested.timestamp` is `number`, not `string`.
+- UI adapters call `disconnect()` automatically on re-connect (double-connect guard at `base.ts:23-25`).
 
 ## Open Questions
 
-1. Where exactly is the `EventBus` instance constructed upstream before being passed into `createStageLoop()`? Likely in session bootstrap but not traced in this research.
-2. What is the full set of events `createQuestionWiring()` subscribes to? Only the callback interface was observed.
-3. Is the `EvaluatorRevisionRequested` timestamp type (`number` vs `string`) intentional or a divergence?
-4. Does `BaseUIAdapter.handleEvent()` subscribe to all worker events or only `worker:output`?
+- None — the event bus architecture is well-documented and straightforward.
