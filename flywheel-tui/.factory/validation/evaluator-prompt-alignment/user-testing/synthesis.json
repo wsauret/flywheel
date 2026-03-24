@@ -1,0 +1,30 @@
+{
+  "milestone": "evaluator-prompt-alignment",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-ALIGN-001",
+    "VAL-ALIGN-002",
+    "VAL-ALIGN-003",
+    "VAL-ALIGN-004",
+    "VAL-ALIGN-005",
+    "VAL-ALIGN-006",
+    "VAL-ALIGN-007",
+    "VAL-ALIGN-008",
+    "VAL-ALIGN-009",
+    "VAL-ALIGN-010",
+    "VAL-CROSS-002",
+    "VAL-CROSS-003",
+    "VAL-CROSS-004"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null
+}

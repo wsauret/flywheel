@@ -1,0 +1,84 @@
+{
+  "groupId": "cross-group",
+  "milestone": "evaluator-prompt-alignment",
+  "testedAt": "2026-03-24T15:19:17Z",
+  "isolation": {
+    "repoRoot": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testingTool": "bun test + bunx tsc --noEmit + code inspection"
+  },
+  "toolsUsed": ["bun test", "bunx tsc --noEmit", "code inspection"],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Task-aware criteria improve revision quality",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Read src/controller/execution-loop.ts — buildRevisionPrompt function (lines 56-104)",
+          "expected": "Revision prompt includes evaluator feedback fields (reasoning, feedback, suggestions)",
+          "observed": "buildRevisionPrompt accepts EvaluationResult and emits markdown with '### Evaluator Reasoning' (evalResult.reasoning), '### Feedback' (evalResult.feedback), and '### Suggestions' (bulleted evalResult.suggestions). For fresh conversations (no sessionId), the original prompt context is also prepended."
+        },
+        {
+          "action": "Read src/evaluator/invoke.ts — evaluate() method, passed:false return path (lines 162-172)",
+          "expected": "EvaluationResult populates feedback, suggestions, reasoning from EvaluatorResult transport response",
+          "observed": "On passed:false, evaluate() returns { feedback: result.feedback, suggestions: result.suggestions, reasoning: result.reasoning } — all fields from the transport's EvaluatorResult are passed through to EvaluationResult."
+        },
+        {
+          "action": "Read src/schemas/evaluator.ts — EvaluatorInputSchema",
+          "expected": "task_context field exists in EvaluatorInput schema",
+          "observed": "EvaluatorInputSchema includes task_context: z.string().optional(). This is populated with the phase description in execution-loop.ts (line ~370: const taskContext = phase.description || phase.title || ''). The evaluator receives the user's task context, so its feedback/reasoning/suggestions are task-relevant rather than generic."
+        },
+        {
+          "action": "Read src/controller/execution-loop.ts — revision loop (lines ~340-420)",
+          "expected": "Revision prompt built from evaluator result with task-relevant feedback, passed to worker",
+          "observed": "The revision loop calls buildRevisionPrompt(evalResult, { hasSessionId, originalPrompt }) which includes all evaluator feedback fields. The evaluator itself received task_context (the user's task description), meaning its feedback references the actual task. The revision prompt is then wrapped with completion instruction and passed to executor.execute()."
+        }
+      ],
+      "evidence": {
+        "codeInspection": [
+          "buildRevisionPrompt() at execution-loop.ts:56-104 — includes evalResult.reasoning, evalResult.feedback, evalResult.suggestions as separate markdown sections",
+          "Evaluator.evaluate() at invoke.ts:162-172 — populates EvaluationResult with feedback/suggestions/reasoning from transport response on passed:false",
+          "EvaluatorInputSchema at schemas/evaluator.ts — task_context: z.string().optional() field present",
+          "Execution loop at execution-loop.ts:~370 — taskContext populated from phase.description and passed to evaluator.evaluate({ taskContext })",
+          "Revision loop at execution-loop.ts:~380-420 — builds revision prompt from evalResult, includes task-specific evaluator feedback"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "title": "All existing tests continue to pass",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test from repo root",
+          "expected": "All 3026+ tests pass with exit code 0",
+          "observed": "3102 tests pass, 0 fail, 9054 expect() calls across 125 files. Exit code 0. No flaky test failures observed in this run."
+        }
+      ],
+      "evidence": {
+        "testOutput": "bun test v1.3.6 — 3102 pass, 0 fail, 9054 expect() calls, 125 files, completed in 28.83s. Exit code 0."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "title": "Typecheck passes with no errors",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bunx tsc --noEmit from repo root",
+          "expected": "Exit code 0, no output (zero type errors)",
+          "observed": "Command completed successfully with exit code 0 and no output. Zero type errors."
+        }
+      ],
+      "evidence": {
+        "typecheckOutput": "bunx tsc --noEmit — exit code 0, no errors, no output"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 3 assertions: 3 passed. VAL-CROSS-002 confirmed via code inspection that buildRevisionPrompt includes task-relevant evaluator feedback (reasoning, feedback, suggestions) and the evaluator receives task_context from the phase description. VAL-CROSS-003 confirmed 3102/3102 tests pass. VAL-CROSS-004 confirmed typecheck passes with zero errors."
+}
