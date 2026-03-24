@@ -1,0 +1,113 @@
+{
+  "groupId": "infra-schema",
+  "testedAt": "2026-03-24T05:30:00.000Z",
+  "isolation": {
+    "repoRoot": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "engine": "claude",
+    "evalScript": "scripts/eval-prompts.ts",
+    "fixtures": "scripts/eval-prompts-fixtures.ts",
+    "baselineData": ".flywheel/eval-prompts/baseline/summary.json",
+    "finalRunData": ".flywheel/eval-prompts/final/summary.json"
+  },
+  "toolsUsed": ["bun run", "bun test", "file inspection"],
+  "assertions": [
+    {
+      "id": "VAL-PROMPT-001",
+      "title": "Evaluation infrastructure with 3 scenarios",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Verify scripts/eval-prompts.ts exists",
+          "expected": "Script file exists with dispatcher and evaluator evaluation logic",
+          "observed": "File exists at scripts/eval-prompts.ts (450+ lines) with full dispatcher invocation, evaluator invocation, LLM-as-judge scoring, baseline capture, comparison mode, and artifact saving"
+        },
+        {
+          "action": "Verify scripts/eval-prompts-fixtures.ts exists with 3 scenarios",
+          "expected": "Fixture file with simple, complex, and edge scenarios",
+          "observed": "File exists with buildSimpleScenario(), buildComplexScenario(), buildEdgeScenario(), and buildAllScenarios(). Each scenario includes dispatcherInput and evaluatorInput with realistic test data"
+        },
+        {
+          "action": "Verify --help output shows all flags and scoring dimensions",
+          "expected": "--engine, --baseline, --compare, --verbose, --help flags listed; dispatcher (clarity/completeness/actionability) and evaluator (accuracy/thoroughness/usefulness) scoring dimensions",
+          "observed": "Help output shows all 5 flags, 3 scenarios (SIMPLE/COMPLEX/EDGE), and judge scoring dimensions for both dispatcher (Clarity, Completeness, Actionability) and evaluator (Accuracy, Thoroughness, Usefulness) on 1-5 scale"
+        },
+        {
+          "action": "Verify baseline summary.json contains all required fields",
+          "expected": "3 scenarios with timing, schema_valid, raw_output, parsed results, and judge scores for both dispatcher and evaluator",
+          "observed": "Baseline summary.json contains all 3 scenarios (simple, complex, edge). Each has dispatcher and evaluator sections with timing_ms, schema_valid, raw_output, parsed_decision/parsed_result. Judge scores present with dispatcher (clarity, completeness, actionability + reasons) and evaluator (accuracy, thoroughness, usefulness + reasons)"
+        },
+        {
+          "action": "Run live comparison: bun run scripts/eval-prompts.ts --engine=claude --compare",
+          "expected": "Script runs end-to-end, produces comparison output against baseline",
+          "observed": "Script completed successfully in 158.5s. Ran all 3 scenarios through dispatcher and evaluator, scored all outputs with LLM judge, printed results summary table and baseline comparison delta. All 6 schema validations passed. All 6 judge scores obtained"
+        },
+        {
+          "action": "Verify new artifacts saved to timestamped directory",
+          "expected": "New directory in .flywheel/eval-prompts/ with summary.json and related files",
+          "observed": "New directory .flywheel/eval-prompts/2026-03-24T05-27-14-375Z/ created with 5 files: summary.json (35KB), dispatcher-results.json, evaluator-results.json, judge-scores.json, scenarios.json"
+        },
+        {
+          "action": "Verify golden baselines exist in .flywheel/eval-prompts/baseline/",
+          "expected": "Baseline directory with summary.json containing golden outputs",
+          "observed": "Baseline directory exists with summary.json containing all 3 scenario results including timing, schema validity, raw outputs, parsed results, and judge scores. Timestamp: 2026-03-24T04:47:24.444Z"
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "terminalCaptures": [
+          "prompt-optimization/infra-schema/VAL-PROMPT-001-help-output.txt",
+          "prompt-optimization/infra-schema/VAL-PROMPT-001-live-compare-run.txt",
+          "prompt-optimization/infra-schema/VAL-PROMPT-001-unit-tests.txt"
+        ],
+        "consoleErrors": "none",
+        "network": "6 Claude API calls for dispatcher/evaluator (3 scenarios x 2 transports) + 6 Haiku judge calls"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROMPT-004",
+      "title": "No regression in schema compliance",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Check live run schema_valid fields (3 scenarios x 2 transports = 6 checks)",
+          "expected": "All 6 schema_valid fields are true",
+          "observed": "Live run (2026-03-24T05-27-14-375Z): simple dispatcher=true, simple evaluator=true, complex dispatcher=true, complex evaluator=true, edge dispatcher=true, edge evaluator=true. 6/6 passed"
+        },
+        {
+          "action": "Check final run (.flywheel/eval-prompts/final/summary.json) schema validity",
+          "expected": "All schema_valid fields true (post-optimization)",
+          "observed": "Final run: simple dispatcher=true, simple evaluator=true, complex dispatcher=true, complex evaluator=true, edge dispatcher=true, edge evaluator=true. 6/6 passed"
+        },
+        {
+          "action": "Check baseline (.flywheel/eval-prompts/baseline/summary.json) schema validity",
+          "expected": "Baseline may have had failures pre-optimization",
+          "observed": "Baseline: simple dispatcher=FALSE, simple evaluator=true, complex dispatcher=true, complex evaluator=true, edge dispatcher=true, edge evaluator=true. 5/6 passed. The simple scenario dispatcher had a schema failure pre-optimization (raw output was markdown-wrapped JSON that failed to parse as valid DispatcherDecision)"
+        },
+        {
+          "action": "Confirm post-optimization runs show 100% schema pass rate",
+          "expected": "Both final and new live run show 0 schema validation failures",
+          "observed": "Final run: 6/6 schema valid (100%). New live run: 6/6 schema valid (100%). The prompt optimization fixed the baseline's dispatcher schema failure on the simple scenario"
+        },
+        {
+          "action": "Run unit tests to verify no test regressions",
+          "expected": "All tests pass",
+          "observed": "3008 tests pass, 0 fail, 8808 expect() calls across 120 files in 28.42s"
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "terminalCaptures": [
+          "prompt-optimization/infra-schema/VAL-PROMPT-004-schema-validity-analysis.txt",
+          "prompt-optimization/infra-schema/VAL-PROMPT-001-live-compare-run.txt"
+        ],
+        "consoleErrors": "none",
+        "network": "Same API calls as VAL-PROMPT-001 (shared live run)"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 2 assertions: 2 passed. VAL-PROMPT-001: eval-prompts.ts script exists with all required flags (--engine, --baseline, --compare, --verbose, --help), 3 test scenarios (simple, complex, edge), golden baselines with timing/schema/raw output/judge scores, and successfully runs end-to-end producing comparison output and saving artifacts. VAL-PROMPT-004: Post-optimization schema compliance is 100% — all 6 checks (3 scenarios × 2 transports) pass in both the final run and a fresh live run, up from 5/6 in the pre-optimization baseline. All 3008 unit tests pass."
+}

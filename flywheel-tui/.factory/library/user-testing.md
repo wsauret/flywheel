@@ -77,3 +77,27 @@ Testing surface, required testing skills/tools, and resource cost classification
 - `--dry-run` can verify assembly without API calls
 
 **Important:** Live API tests require the engine CLI to be installed and API keys configured. If an engine is not available, the script should fail gracefully.
+
+## Flow Validator Guidance: eval-prompts Script
+
+**Isolation rules:**
+- Run from repo root: `cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui`
+- Script path: `scripts/eval-prompts.ts`
+- Run with `bun run scripts/eval-prompts.ts [flags]`
+- Artifacts saved to `.flywheel/eval-prompts/<run-id>/`
+- Each run is independent; no shared state between runs
+- Resource cost: moderate (6 LLM calls for 3 scenarios × 2 transports, plus 6 judge calls)
+- Max concurrent: 1 (serial scenario execution within the script)
+
+**What to check for VAL-PROMPT-001:**
+- Script exists at scripts/eval-prompts.ts with --engine, --baseline, --compare, --verbose, --help flags
+- Fixture file exists at scripts/eval-prompts-fixtures.ts with 3 scenarios (simple, complex, edge)
+- Running --baseline captures golden outputs to .flywheel/eval-prompts/baseline/
+- Running --compare loads baseline and prints comparison delta
+- Judge scores are captured for dispatcher (clarity, completeness, actionability) and evaluator (accuracy, thoroughness, usefulness)
+
+**What to check for VAL-PROMPT-004:**
+- All 3 scenarios produce schema_valid: true for both dispatcher and evaluator
+- The summary.json shows 0 schema validation failures
+
+**Important:** Live API tests require claude or opencode CLI installed and API keys configured.
