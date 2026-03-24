@@ -16,14 +16,14 @@ export const reviewWorkflow: WorkflowDefinition = {
       dispatcherHint:
         "Use review/dispatch prompt template. Dispatch parallel reviewer agents.",
       validationCriteria:
-        "Each reviewer returns findings categorized by severity",
+        "Each reviewer returns findings categorized by severity, or confirms no issues if changes are clean",
     },
     {
       description: "Consolidate findings into review document",
       dispatcherHint:
         "Deduplicate, rank by severity, and produce final review document.",
       validationCriteria:
-        "Review document with P1/P2/P3 findings and implementation order",
+        "Review document with P1/P2/P3 findings and implementation order, or clean summary if no significant issues found",
     },
     {
       description: "Implement review findings",

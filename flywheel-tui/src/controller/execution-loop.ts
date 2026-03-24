@@ -520,6 +520,9 @@ export class ExecutionLoop {
             stepIndex: 0,
           });
 
+          // Build task context for evaluator from phase description or resolved plan content
+          const taskContext = phase.description || phase.title || "";
+
           let evalResult = await evaluator.evaluate({
             workerOutput: result.output,
             validationCriteria: decision.validation_criteria,
@@ -527,6 +530,7 @@ export class ExecutionLoop {
             durationSeconds: result.durationMs / 1000,
             testsPassed: null,
             artifactsProduced: [],
+            taskContext: taskContext || undefined,
           });
 
           // --- Revision loop ---
@@ -614,6 +618,7 @@ export class ExecutionLoop {
               durationSeconds: result.durationMs / 1000,
               testsPassed: null,
               artifactsProduced: [],
+              taskContext: taskContext || undefined,
             });
           }
 

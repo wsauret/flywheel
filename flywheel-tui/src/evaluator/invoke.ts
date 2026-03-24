@@ -75,6 +75,8 @@ export interface EvaluateOptions {
   artifactsProduced?: string[];
   testsPassed?: boolean | null;
   durationSeconds?: number;
+  /** Task context (user's task description or phase description) for the evaluator. */
+  taskContext?: string;
 }
 
 export interface EvaluationResult {
@@ -149,6 +151,7 @@ export class Evaluator {
       artifactsProduced,
       testsPassed,
       durationSeconds,
+      taskContext,
     } = options;
 
     // Serialize structured ValidationCriteria to string for the evaluator transport
@@ -174,6 +177,7 @@ export class Evaluator {
           artifactsProduced ?? [],
           testsPassed ?? null,
           durationSeconds ?? 0,
+          taskContext,
         );
 
         if (result.passed) {
@@ -241,6 +245,7 @@ export class Evaluator {
     artifactsProduced: string[],
     testsPassed: boolean | null,
     durationSeconds: number,
+    taskContext?: string,
   ): Promise<EvaluatorResult> {
     const input: import("../schemas/evaluator").EvaluatorInput = {
       worker_output: workerOutput,
@@ -250,6 +255,7 @@ export class Evaluator {
       artifacts_produced: artifactsProduced,
       tests_passed: testsPassed,
       duration_seconds: durationSeconds,
+      task_context: taskContext,
     };
 
     // Race transport call against timeout

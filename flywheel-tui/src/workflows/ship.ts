@@ -29,7 +29,7 @@ export const shipWorkflow: WorkflowDefinition = {
       dispatcherHint:
         "Document what was learned during implementation for future reference.",
       validationCriteria:
-        "Learnings document created with categorized insights",
+        "Learnings document created with categorized insights, or explicit statement that no significant learnings apply",
     },
   ],
 };

@@ -5,25 +5,25 @@ export const researchWorkflow: WorkflowDefinition = {
   description: "Research a topic in the codebase",
   steps: [
     {
-      description: "Locate relevant files with parallel locator agents",
+      description: "Locate relevant sources for the research objective",
       dispatcherHint:
-        "Use plan/research locator patterns. Dispatch locator-codebase, locator-patterns, locator-docs.",
+        "Identify and locate files, documentation, and references relevant to the research topic.",
       validationCriteria:
-        "File paths and line numbers for all relevant code identified",
+        "Relevant files and references identified for the research objective",
     },
     {
-      description: "Analyze located files for implementation details",
+      description: "Analyze located sources for key findings",
       dispatcherHint:
-        "Dispatch analyzer agents for each file group. Document function signatures, data flow, patterns.",
+        "Analyze located sources for patterns, implementation details, and insights relevant to the research topic.",
       validationCriteria:
-        "Detailed analysis of each relevant file with code examples",
+        "Analysis of located sources relevant to the research topic",
     },
     {
-      description: "Persist research document",
+      description: "Persist structured research document",
       dispatcherHint:
         "Compile findings into a structured research document with YAML frontmatter.",
       validationCriteria:
-        "Research document with Codebase Map, Relevant Code, Patterns, Constraints, Open Questions",
+        "Structured research document covering the topic with relevant findings",
     },
   ],
 };

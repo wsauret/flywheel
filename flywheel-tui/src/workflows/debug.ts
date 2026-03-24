@@ -16,7 +16,7 @@ export const debugWorkflow: WorkflowDefinition = {
       dispatcherHint:
         "Apply smallest possible fix based on hypothesis. One logical change only.",
       validationCriteria:
-        "Fix applied with file:line references documenting the change",
+        "Fix applied with references documenting the change",
     },
     {
       description: "Verify: run verification command, confirm fix",

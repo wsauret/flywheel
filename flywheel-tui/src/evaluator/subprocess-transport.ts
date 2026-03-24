@@ -136,14 +136,26 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private buildPrompt(input: EvaluatorInput): string {
     // NOTE: Role framing is set in EVALUATOR_SYSTEM_PROMPT (passed via --system-prompt).
     // Do NOT duplicate it here — the system prompt already establishes the evaluator role.
-    const sections: string[] = [
+    const sections: string[] = [];
+
+    // Task context section (when present) — placed before worker output
+    // so the evaluator understands what the worker was trying to accomplish.
+    if (input.task_context) {
+      sections.push(
+        "## Task Context",
+        input.task_context,
+        "",
+      );
+    }
+
+    sections.push(
       "## Worker Output",
       input.worker_output,
       "",
       "## Validation Criteria",
       input.validation_criteria,
       "",
-    ];
+    );
 
     if (input.acceptance_criteria.length > 0) {
       sections.push(

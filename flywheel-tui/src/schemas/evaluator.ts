@@ -8,6 +8,7 @@ export const EvaluatorInputSchema = z.object({
   artifacts_produced: z.array(z.string()),
   tests_passed: z.boolean().nullable(),
   duration_seconds: z.number(),
+  task_context: z.string().optional(),
 }).strip();
 
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;
