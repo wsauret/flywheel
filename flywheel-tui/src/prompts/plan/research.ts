@@ -91,6 +91,10 @@ When multiple locator results come back, prioritize:
 
 Write the research output to a \`.context.md\` file on disk. Name it \`<description-slug>.context.md\` in the working directory (e.g., \`user-authentication.context.md\`). The slug should be a kebab-case version of the research objective. This file will be consumed by the next planning step.
 
+## Code Block Rule
+
+Keep ALL code blocks under 15 lines. If a listing (directory tree, code excerpt, etc.) would exceed 15 lines, split it into multiple smaller blocks or use inline \`file:line\` references instead. Directory trees should be flattened or split by module.
+
 ## Research Document Output Format
 
 \`\`\`yaml
@@ -104,7 +108,7 @@ status: complete
 
 ### Sections
 
-1. **Codebase Map** — Directory structure and key file roles
+1. **Codebase Map** — Directory structure and key file roles (use multiple small code blocks if needed, max 15 lines each)
 2. **Relevant Code** — file:line references with brief descriptions
 3. **Patterns to Follow** — Existing conventions the implementation should match
 4. **Constraints** — Hard limits, dependencies, compatibility requirements

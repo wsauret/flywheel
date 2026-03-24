@@ -219,8 +219,16 @@ export function getBodyExcludingOpenQuestions(body: string): string {
 }
 
 /**
+ * Strip inline code spans (backtick-quoted text) from a line.
+ * This prevents false positives from code references like `SHOULD_BE`.
+ */
+export function stripInlineCode(line: string): string {
+  return line.replace(/`[^`]+`/g, "");
+}
+
+/**
  * Scan text for pattern violations, returning line numbers and matched text.
- * Skips content inside fenced code blocks (``` delimiters).
+ * Skips content inside fenced code blocks (``` delimiters) and inline code spans.
  */
 export function scanForPatterns(
   text: string,
@@ -238,8 +246,10 @@ export function scanForPatterns(
       continue;
     }
     if (inCodeBlock) continue;
+    // Strip inline code spans before checking patterns
+    const textToCheck = stripInlineCode(lineText);
     for (const pattern of patterns) {
-      if (pattern.test(lineText)) {
+      if (pattern.test(textToCheck)) {
         violations.push({ line: i + 1, text: lineText.trim() });
         break; // Only report one violation per line
       }

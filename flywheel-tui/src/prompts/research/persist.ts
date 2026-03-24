@@ -43,6 +43,7 @@ The research document MUST include the following YAML frontmatter and sections:
 
 \`\`\`markdown
 ---
+type: research
 date: <ISO date>
 topic: "<Research Topic>"
 status: complete
@@ -89,13 +90,18 @@ tags: [research, <relevant-tags>]
 - <Uncertainty about scope or behavior>
 \`\`\`
 
+## Code Block Rule
+
+Keep ALL code blocks under 15 lines. If a listing (directory tree, code excerpt, etc.) exceeds 15 lines, split it into multiple smaller blocks or use inline \`file:line\` references instead.
+
 ## Quality Requirements
 
-- The document should be comprehensive — no artificial token limits on the output
+- The document is comprehensive — no artificial token limits on the output
 - Use file:line references throughout, not full code reproductions
-- Maintain documentarian mode: describe what IS, not what SHOULD BE
+- Maintain documentarian mode: describe what IS, never what ought to change
 - The Summary section must be 3-5 sentences synthesizing all findings
 - The Code References table must include at least 5 unique file:line references
 - Every Detailed Findings subsection must cite specific file:line references
+- Avoid prescriptive language (do not use "should", "recommend", "suggest", "consider" outside of Open Questions)
 `;
 }

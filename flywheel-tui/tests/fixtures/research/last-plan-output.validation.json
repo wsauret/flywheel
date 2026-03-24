@@ -1,0 +1,47 @@
+{
+  "file": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui/tests/fixtures/research/last-plan-output.md",
+  "variant": "plan",
+  "passed": true,
+  "criteria": [
+    {
+      "criterion": "yaml_frontmatter",
+      "passed": true,
+      "details": "Valid YAML frontmatter with type=\"research\", date=\"Mon Mar 23 2026 17:00:00 GMT-0700 (Pacific Daylight Time)\", status=\"complete\""
+    },
+    {
+      "criterion": "required_sections",
+      "passed": true,
+      "details": "All 5 required sections present: Codebase Map, Relevant Code, Patterns to Follow, Constraints, Open Questions"
+    },
+    {
+      "criterion": "file_line_refs",
+      "passed": true,
+      "details": "Found 14 unique file:line references (minimum 3 required)"
+    },
+    {
+      "criterion": "code_block_length",
+      "passed": true,
+      "details": "All 3 code block(s) are within 15-line limit"
+    },
+    {
+      "criterion": "no_prescriptive_language",
+      "passed": true,
+      "details": "No prescriptive language found outside Open Questions section"
+    },
+    {
+      "criterion": "no_evaluative_language",
+      "passed": true,
+      "details": "No evaluative language found"
+    },
+    {
+      "criterion": "no_debugging_language",
+      "passed": true,
+      "details": "No debugging language found"
+    },
+    {
+      "criterion": "no_plan_contamination",
+      "passed": true,
+      "details": "No plan/debugging contamination sections found"
+    }
+  ]
+}
