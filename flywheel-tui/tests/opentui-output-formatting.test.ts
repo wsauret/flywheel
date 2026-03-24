@@ -114,7 +114,7 @@ describe("OpenTUI Adapter — output formatting", () => {
       expect(textBlocks[0].content).toContain("hello world");
     });
 
-    it("extracts result text → TextBlock in outputBlocks", () => {
+    it("skips result event text (already streamed via assistant events)", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({
         type: "result",
@@ -128,10 +128,8 @@ describe("OpenTUI Adapter — output formatting", () => {
         timestamp: ts(),
       });
       const blocks = store.getState().outputBlocks;
-      expect(blocks.length).toBeGreaterThanOrEqual(1);
       const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
-      expect(textBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(textBlocks[0].content).toContain("Task done");
+      expect(textBlocks).toHaveLength(0);
     });
   });
 

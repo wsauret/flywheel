@@ -98,59 +98,53 @@ export function QuestionPrompt(props: QuestionPromptProps) {
     }
   }
 
+  // Handle input changes from the <input> element
+  function handleTextInput(value: string) {
+    setStore("custom", setCustomText(store.custom, store.tab, value))
+  }
+
+  // Handle special keys from the <input> element (escape, enter, ctrl+u)
+  function handleTextKeyDown(evt: { name?: string; ctrl?: boolean; preventDefault?: () => void }) {
+    if (evt.name === "escape") {
+      evt.preventDefault?.()
+      if (textOnly()) {
+        reject()
+      } else {
+        setStore("editing", false)
+      }
+      return
+    }
+    if (evt.ctrl && evt.name === "u") {
+      evt.preventDefault?.()
+      const text = input()
+      if (!text) {
+        setStore("editing", false)
+        return
+      }
+      setStore("custom", setCustomText(store.custom, store.tab, ""))
+      return
+    }
+    if (evt.name === "return") {
+      evt.preventDefault?.()
+      const result = commitCustom(store, questions(), input())
+      for (const [key, value] of Object.entries(result.patch)) {
+        setStore(key as keyof typeof store, value as never)
+      }
+      if (result.fastPath) {
+        const answers = result.patch.answers ?? store.answers
+        props.questionService.reply(props.request.id, answers as string[][])
+      }
+    }
+  }
+
   // Keyboard handler
   useKeyboard((evt) => {
     // Skip if a dialog is open
     if (dialog.isOpen()) return
 
-    // Editing mode: handle custom text input (and textOnly questions)
+    // Editing mode: the <input> element handles text editing, cursor, arrow keys.
+    // Only intercept keys not handled by handleTextKeyDown here.
     if (store.editing && !confirm()) {
-      if (evt.name === "escape") {
-        evt.preventDefault()
-        if (textOnly()) {
-          reject() // textOnly: Escape dismisses the question entirely
-        } else {
-          setStore("editing", false)
-        }
-        return
-      }
-      if (evt.ctrl && evt.name === "u") {
-        evt.preventDefault()
-        const text = input()
-        if (!text) {
-          setStore("editing", false)
-          return
-        }
-        setStore("custom", setCustomText(store.custom, store.tab, ""))
-        return
-      }
-      if (evt.name === "return") {
-        evt.preventDefault()
-        const result = commitCustom(store, questions(), input())
-        for (const [key, value] of Object.entries(result.patch)) {
-          setStore(key as keyof typeof store, value as never)
-        }
-        if (result.fastPath) {
-          const answers = result.patch.answers ?? store.answers
-          props.questionService.reply(props.request.id, answers as string[][])
-        }
-        return
-      }
-      // V1: simple character handling for custom text
-      if (evt.name === "backspace") {
-        evt.preventDefault()
-        const text = input()
-        if (text.length > 0) {
-          setStore("custom", setCustomText(store.custom, store.tab, text.slice(0, -1)))
-        }
-        return
-      }
-      // Single printable character
-      if (evt.sequence && evt.sequence.length === 1 && !evt.ctrl && !evt.meta) {
-        evt.preventDefault()
-        setStore("custom", setCustomText(store.custom, store.tab, input() + evt.sequence))
-        return
-      }
       return
     }
 
@@ -297,14 +291,22 @@ export function QuestionPrompt(props: QuestionPromptProps) {
 
             {/* Text-only mode: bare text input, no options */}
             <Show when={textOnly()}>
-              <box paddingLeft={1}>
-                <box flexDirection="row">
-                  <text fg={theme.primary}>{"▸ "}</text>
-                  <text fg={theme.text}>
-                    {input()}
-                    <span style={{ fg: theme.primary }}>▎</span>
-                  </text>
-                </box>
+              <box paddingLeft={1} flexDirection="row">
+                <text fg={theme.primary} flexShrink={0}>{"▸ "}</text>
+                <input
+                  value={input()}
+                  placeholder="Type your answer..."
+                  placeholderColor={theme.textMuted}
+                  onInput={handleTextInput}
+                  onKeyDown={handleTextKeyDown}
+                  focused={store.editing}
+                  textColor={theme.text}
+                  focusedTextColor={theme.text}
+                  cursorColor={theme.primary}
+                  backgroundColor="transparent"
+                  focusedBackgroundColor="transparent"
+                  flexGrow={1}
+                />
               </box>
             </Show>
 
@@ -361,13 +363,22 @@ export function QuestionPrompt(props: QuestionPromptProps) {
                         <text fg={theme.success}>{customPicked() ? " ✓" : ""}</text>
                       </Show>
                     </box>
-                    {/* V1: simple inline text display for custom editing */}
                     <Show when={store.editing}>
                       <box paddingLeft={3}>
-                        <text fg={theme.text}>
-                          {input()}
-                          <span style={{ fg: theme.primary }}>▎</span>
-                        </text>
+                        <input
+                          value={input()}
+                          placeholder="Type your answer..."
+                          placeholderColor={theme.textMuted}
+                          onInput={handleTextInput}
+                          onKeyDown={handleTextKeyDown}
+                          focused={true}
+                          textColor={theme.text}
+                          focusedTextColor={theme.text}
+                          cursorColor={theme.primary}
+                          backgroundColor="transparent"
+                          focusedBackgroundColor="transparent"
+                          flexGrow={1}
+                        />
                       </box>
                     </Show>
                     <Show when={!store.editing && input()}>

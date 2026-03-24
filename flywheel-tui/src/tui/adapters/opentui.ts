@@ -226,6 +226,10 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       case "workflow:completed":
         if (!this._pipelineMode) {
           this.timer.stop();
+        } else {
+          // Pipeline mode: mark the current stage as completed immediately
+          // so the spinner turns green before the next stage-transition event.
+          this.actions.completeStage(this._currentStageLabel);
         }
         // Final flush before completing
         this.flushBlocks();

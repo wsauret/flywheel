@@ -213,7 +213,7 @@ function StageHeader(props: StageHeaderProps) {
   }
 
   return (
-    <box paddingLeft={1} paddingRight={1} marginTop={0}>
+    <box flexDirection="row" paddingLeft={1} paddingRight={1} marginTop={0}>
       <Show
         when={props.status === "running"}
         fallback={

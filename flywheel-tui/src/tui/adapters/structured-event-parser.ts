@@ -83,13 +83,10 @@ export class StructuredEventParser {
     if (type === "assistant") {
       this.handleClaudeAssistant(data, now);
     } else if (type === "result") {
-      const result = data.result;
-      if (typeof result === "string" && result.length > 0) {
-        const cleaned = stripCompletionMarker(result);
-        if (cleaned.trim().length > 0) {
-          this.builder.pushText(cleaned + "\n", now);
-        }
-      }
+      // The result event contains the full accumulated text from the session.
+      // This text was already streamed via individual assistant events, so
+      // pushing it again would cause double printing. Skip display — the
+      // result event is handled by CompletionDetector for completion signaling.
     } else if (type === "tool_result") {
       // Tool results correlate with subagent completions
       const claudeMsg: ClaudeJsonlMessage = {
@@ -249,13 +246,8 @@ export class StructuredEventParser {
     if (type === "assistant") {
       this.handleClaudeAssistant(data, now);
     } else if (type === "result") {
-      const result = data.result;
-      if (typeof result === "string" && result.length > 0) {
-        const cleaned = stripCompletionMarker(result);
-        if (cleaned.trim().length > 0) {
-          this.builder.pushText(cleaned + "\n", now);
-        }
-      }
+      // Skip — same rationale as dispatchClaudeEvent: result text duplicates
+      // content already streamed via assistant events.
     } else if (type === "text") {
       // OpenCode text format
       const part = data.part as { text?: string } | undefined;
