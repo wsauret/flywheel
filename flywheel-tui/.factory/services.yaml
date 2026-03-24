@@ -3,5 +3,6 @@ commands:
   test: bun test
   typecheck: bunx tsc --noEmit
   verify-dispatcher: bun run scripts/verify-dispatcher.ts
+  verify-evaluator: bun run scripts/verify-evaluator.ts
 
 services: {}
