@@ -72,6 +72,8 @@ export interface SdkClient {
       path: { id: string };
       body: {
         system?: string;
+        model?: { providerID: string; modelID: string };
+        tools?: Record<string, boolean>;
         parts: Array<{ type: "text"; text: string }>;
       };
     }) => Promise<{ data?: unknown; error?: unknown }>;
@@ -79,14 +81,63 @@ export interface SdkClient {
 }
 
 // ---------------------------------------------------------------------------
+// Default model for OpenCode engine
+// ---------------------------------------------------------------------------
+
+const DEFAULT_OPENCODE_MODEL = "anthropic/claude-sonnet-4-6";
+
+/**
+ * Parse a model string like "anthropic/claude-sonnet-4-6" into { providerID, modelID }.
+ * If no "/" is present, defaults providerID to "anthropic".
+ */
+function parseModelString(model: string): { providerID: string; modelID: string } {
+  const slashIdx = model.indexOf("/");
+  if (slashIdx > 0) {
+    return {
+      providerID: model.slice(0, slashIdx),
+      modelID: model.slice(slashIdx + 1),
+    };
+  }
+  return { providerID: "anthropic", modelID: model };
+}
+
+// ---------------------------------------------------------------------------
 // SdkTransport
 // ---------------------------------------------------------------------------
 
+export interface SdkTransportOptions {
+  baseUrl?: string;
+  /** Engine name — must be "opencode" (or omitted). SDK is OpenCode-only. */
+  engineName?: string;
+  /** Dispatcher model override — e.g. "anthropic/claude-sonnet-4-6". Uses default when not set. */
+  dispatcherModel?: string;
+}
+
 export class SdkTransport implements DispatcherTransport {
   private readonly baseUrl: string;
+  private readonly modelSpec: { providerID: string; modelID: string };
 
-  constructor(options?: { baseUrl?: string }) {
+  constructor(options?: SdkTransportOptions) {
+    // Guard: SDK transport is exclusively for OpenCode
+    const engineName = options?.engineName ?? "opencode";
+    if (engineName !== "opencode") {
+      throw new Error(
+        `SDK transport is OpenCode-only — cannot be used with engine "${engineName}". ` +
+        `Use SubprocessTransport for non-opencode engines.`,
+      );
+    }
+
     this.baseUrl = options?.baseUrl ?? "";
+
+    // Resolve model: parse dispatcher model or use default
+    const modelStr = options?.dispatcherModel ?? DEFAULT_OPENCODE_MODEL;
+    this.modelSpec = parseModelString(modelStr);
+
+    log.debug("SDK transport initialized", {
+      engine: engineName,
+      providerID: this.modelSpec.providerID,
+      modelID: this.modelSpec.modelID,
+    });
   }
 
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
@@ -103,6 +154,7 @@ export class SdkTransport implements DispatcherTransport {
     log.debug("prompt segments", {
       systemLen: systemPrompt.length,
       userLen: userContent.length,
+      model: `${this.modelSpec.providerID}/${this.modelSpec.modelID}`,
     });
 
     // Create a session
@@ -116,10 +168,12 @@ export class SdkTransport implements DispatcherTransport {
     // Send prompt with system/user separation for prompt caching.
     // The stable system prompt goes in `system` (cacheable prefix).
     // Variable per-call content goes in `parts` as user text.
+    // Model is passed per the SDK's SessionPromptData.body.model spec.
     const promptPromise = client.session.prompt({
       path: { id: sessionId },
       body: {
         system: systemPrompt,
+        model: this.modelSpec,
         parts: [{ type: "text" as const, text: userContent }],
       },
     });

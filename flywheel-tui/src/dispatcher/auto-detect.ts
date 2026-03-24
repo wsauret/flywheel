@@ -106,7 +106,10 @@ export async function autoDetectTransport(
   if (SDK_AVAILABLE && _createOpencodeServer) {
     const server = await getOrStartServer(options.serverTimeoutMs ?? 10_000);
     if (server) {
-      const transport = new SdkTransport({ baseUrl: server.url });
+      const transport = new SdkTransport({
+        baseUrl: server.url,
+        dispatcherModel: options.dispatcherModel,
+      });
       return {
         transport,
         label: "sdk",
