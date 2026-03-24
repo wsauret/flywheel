@@ -1091,6 +1091,25 @@ export function FlywheelShell() {
         orchestrator.handleDeleteSession(sessionId).then(() => {
           toast.show({ message: `Deleted ${sessionName(sessionId)}`, variant: "info" })
           sessionCtx.refreshList()
+
+          // Evict any cached store for the deleted session
+          sessionStores.delete(sessionId)
+
+          // After deletion, open the next openable session at the selected
+          // index so the viewport stays in sync with the sidebar highlight.
+          const flatList = groupToFlatList(sessionCtx.sessions())
+          const idx = sidebarSelectedIndex()
+          const clampedIdx = Math.min(idx, flatList.length - 1)
+          if (clampedIdx >= 0) {
+            const nextSession = flatList[clampedIdx]
+            if (nextSession && getOpenAction(nextSession) !== null) {
+              setSidebarSelectedIndex(clampedIdx)
+              viewport.openSession(nextSession.id)
+              return
+            }
+          }
+          // No openable sessions left — return to idle
+          returnToIdle()
         })
         return
     }
