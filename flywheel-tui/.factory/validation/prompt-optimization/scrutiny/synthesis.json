@@ -1,0 +1,65 @@
+{
+  "milestone": "prompt-optimization",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun test",
+      "exitCode": 1,
+      "note": "3007/3008 pass. 1 known pre-existing flaky test (enrichPromptWithContext > truncates first file if it alone exceeds budget) documented in mission AGENTS.md. Not a regression."
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bunx tsc --noEmit",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "N/A",
+      "exitCode": 0,
+      "note": "No lint command configured in services.yaml or package.json"
+    }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "services.yaml",
+      "description": "Added eval-prompts command (bun run scripts/eval-prompts.ts) to services.yaml commands. This script was created by eval-infrastructure-and-baselines but not registered.",
+      "sourceFeature": "eval-infrastructure-and-baselines"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Add a note to the backend-worker skill that TDD (red-green-refactor) is optional for: (1) prompt optimization/engineering tasks where the natural flow is modify-then-verify, (2) pure data fixture or configuration code, and (3) validation-only features with no source code changes. The skill currently mandates 'Tests MUST fail initially (red phase)' which doesn't apply cleanly to these categories.",
+      "evidence": "Three out of four features in this milestone (eval-infrastructure-and-baselines, optimize-dispatcher-prompt, final-prompt-validation) independently noted in their skillFeedback that TDD doesn't map to prompt optimization or validation tasks. The optimize-evaluator-prompt worker was the only one that followed strict TDD, and that was because the evaluator changes were testable code changes (adding sections to buildPrompt).",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the evaluator's pass/fail threshold philosophy: 'Set passed to true if the output substantially meets the acceptance criteria. Minor omissions that don't affect functionality should not cause a failure.' This policy is now embedded in the evaluator prompt (src/evaluator/subprocess-transport.ts) but not captured as a project convention. Future evaluator modifications should preserve this nuanced threshold.",
+      "evidence": "optimize-evaluator-prompt feature added pass/fail guidance directly into the evaluator prompt. This represents a design decision about evaluation strictness that workers modifying the evaluator in the future should be aware of.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Establish a convention for validation-only features that produce no source code changes: workers should create an empty commit (git commit --allow-empty) with a descriptive message to provide a commitId for handoff. This avoids confusion about whether the feature was actually completed.",
+      "evidence": "final-prompt-validation feature created an empty commit (7277273) because it was a pure verification pass with no code changes. The worker's approach was reasonable but undocumented.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "validation_criteria type fix should be noted in future documentation (from optimize-dispatcher-prompt review)",
+      "reason": "No actual mismatch exists currently — AGENTS.md doesn't reference the validation_criteria type, and the code is correct. This is a hypothetical future concern, not an actionable observation."
+    }
+  ],
+  "previousRound": null
+}

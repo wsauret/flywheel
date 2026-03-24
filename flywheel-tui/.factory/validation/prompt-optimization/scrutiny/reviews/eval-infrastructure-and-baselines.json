@@ -1,0 +1,57 @@
+{
+  "featureId": "eval-infrastructure-and-baselines",
+  "reviewedAt": "2026-03-24T05:15:00.000Z",
+  "commitId": "5df8d02",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Well-structured prompt evaluation infrastructure with clean separation of concerns. The fixtures module is properly extracted for testability, all 3 scenarios validate against their Zod schemas, and the judge prompt design is concise and focused. The implementation correctly uses the engine registry rather than hardcoding commands. 18 unit tests cover fixture assembly, schema validation, judge prompt construction, CLI parsing, and delta calculation. Golden baselines were successfully captured. Several non-blocking issues identified around test coverage fidelity and defensive parsing.",
+    "issues": [
+      {
+        "file": "flywheel-tui/tests/eval-prompts.test.ts",
+        "line": 157,
+        "severity": "non_blocking",
+        "description": "CLI argument parsing tests re-implement parseEvalArgs inline rather than importing the actual parsing logic from the script. The tests validate a separate reimplementation, not the script's actual arg parsing. If someone changes the parsing in eval-prompts.ts, these tests would still pass."
+      },
+      {
+        "file": "flywheel-tui/scripts/eval-prompts.ts",
+        "line": 345,
+        "severity": "non_blocking",
+        "description": "runJudge uses `JSON.parse(jsonMatch[0]) as T` — a raw type assertion with no runtime validation of score ranges. An LLM could return scores outside 1-5 (e.g., 0, 10, negative) and they'd be silently accepted. A lightweight Zod schema or range check would make scoring more robust."
+      },
+      {
+        "file": "flywheel-tui/scripts/eval-prompts.ts",
+        "line": 238,
+        "severity": "non_blocking",
+        "description": "The evaluator prompt construction in runEvaluator() is built inline (with a comment 'same as SubprocessEvaluatorTransport.buildPrompt') rather than importing from the actual transport. If the real evaluator transport's prompt format changes, this will silently drift. Consider importing or extracting the shared prompt builder."
+      },
+      {
+        "file": "flywheel-tui/scripts/eval-prompts.ts",
+        "line": 206,
+        "severity": "non_blocking",
+        "description": "The greedy regex `/{[\\s\\S]*}/` for JSON extraction matches from the first '{' to the last '}'. If engine output contains multiple JSON objects or markdown fences with JSON, this could produce invalid JSON. A more targeted approach (e.g., extracting from code fences first, or using a balanced-brace parser) would be more robust."
+      },
+      {
+        "file": "flywheel-tui/scripts/eval-prompts.ts",
+        "line": 183,
+        "severity": "non_blocking",
+        "description": "_stderr is captured but never used or logged. If the engine subprocess fails, the error output is silently discarded. Consider logging stderr on non-zero exit or when output parsing fails, to aid debugging."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "services",
+      "observation": "The eval-prompts script is a new runnable script (bun run scripts/eval-prompts.ts) that was not added to .factory/services.yaml commands. The existing verify-dispatcher and verify-evaluator scripts are listed there but eval-prompts is missing.",
+      "evidence": ".factory/services.yaml lists verify-dispatcher and verify-evaluator commands but not eval-prompts. Worker created scripts/eval-prompts.ts as a new executable script with --help, --baseline, --compare flags."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker acknowledged in skillFeedback that strict TDD red-green-refactor doesn't apply cleanly to fixture/utility code. The skill says 'Tests MUST fail initially (red phase)' but the worker built tests and fixtures together. This is a reasonable deviation — the skill's rigid TDD requirement could be clarified to exclude pure data fixture tests.",
+      "evidence": "skillFeedback.suggestedChanges: 'The backend-worker skill says Tests MUST fail initially (red phase) but for fixture/utility code tests, the tests and implementation are naturally built together since the fixtures module is a direct dependency of the tests.'"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS — The eval-prompts infrastructure is well-implemented with 3 properly differentiated test scenarios (simple/complex/edge), a clean fixtures module, LLM-as-judge scoring on the correct 6 dimensions, golden baseline capture, and 18 unit tests. All scenarios validate against their Zod schemas. The implementation correctly uses the engine registry and transport patterns. Five non-blocking issues found: test arg parsing reimplementation rather than import, no runtime validation of judge scores, inline evaluator prompt construction that could drift, greedy JSON regex, and discarded stderr. None are blocking — the core functionality works as specified and baselines were successfully captured."
+}

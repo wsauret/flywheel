@@ -1,0 +1,34 @@
+{
+  "featureId": "optimize-evaluator-prompt",
+  "reviewedAt": "2026-03-24T05:30:00.000Z",
+  "commitId": "ff31d36",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-scoped implementation that addresses all 5 optimization requirements. The diff is minimal (22 insertions, 7 deletions in the source file) and every change maps directly to a feature requirement. The worker followed TDD properly (red→green), wrote 7 targeted tests covering all 5 changes plus edge cases, and ran all required verification commands (bun test, typecheck, eval-prompts --compare, verify-evaluator). No regressions: all 3008 tests pass, typecheck clean, eval quality >= baseline.",
+    "issues": [
+      {
+        "file": "flywheel-tui/src/evaluator/subprocess-transport.ts",
+        "line": 176,
+        "severity": "non_blocking",
+        "description": "The context_files section now uses bullet-point formatting ('- path') while the old version used plain newline-separated paths. This is an improvement for readability but is a minor formatting change not explicitly called out in the feature requirements. Not a problem — just noting the formatting enhancement."
+      },
+      {
+        "file": "flywheel-tui/tests/evaluator-transport.test.ts",
+        "line": 950,
+        "severity": "non_blocking",
+        "description": "The 'surfaces duration_seconds = 0 correctly' test checks for '0s' in the prompt. This works because the template produces 'Phase took 0s to complete.' — but the assertion `toContain('0s')` could also match other strings containing '0s' (e.g., '10s', '20s'). A more precise assertion like `toContain('Phase took 0s')` would be slightly more robust, but given the test input controls duration_seconds=0, false positives are extremely unlikely in practice."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The evaluator prompt now uses nuanced pass/fail threshold guidance ('substantially meets', 'Minor omissions should not cause failure'). This policy choice is embedded in source code but not documented in AGENTS.md or any standards file. If other features or future evaluator modifications need to maintain this philosophy, it should be captured as a project convention.",
+      "evidence": "src/evaluator/subprocess-transport.ts line 190 — the pass/fail guidance text is inline in buildPrompt(). No corresponding entry in AGENTS.md's evaluator section or mission AGENTS.md."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. All 5 feature requirements are fully implemented: (1) duplicate role framing removed from buildPrompt — system prompt handles it, (2) context_files changed from '## Context Files' to informational 'worker was given access to these files', (3) duration_seconds surfaced in a '## Timing' section, (4) pass/fail threshold guidance added with nuanced 'substantially meets' language, (5) confidence scale guidance added with 0.9+/0.5-0.7/below 0.5 thresholds. 7 new tests cover all changes. eval-prompts --compare confirmed quality >= baseline. verify-evaluator produced valid output in 4.4s. No blocking issues found."
+}

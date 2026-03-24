@@ -1,0 +1,45 @@
+{
+  "featureId": "optimize-dispatcher-prompt",
+  "reviewedAt": "2026-03-24T05:20:00.000Z",
+  "commitId": "7ca3132db681c543349cd1c50fe682330ce735bb",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "High-quality prompt optimization. The dispatcher system prompt was reduced from ~2150 tokens to ~1217 tokens (chars/4 proxy), a ~44% character reduction. All 6 requirements from the feature description are met: (1) bloat trimmed — worker_config docs, reasoning/warnings explanation rules, verbose crafting rules all removed; (2) schema mismatch fixed — validation_criteria now documented as object-only matching ValidationCriteriaSchema in src/schemas/shared.ts; (3) concrete JSON example added with realistic pagination task covering all key fields; (4) essential sections preserved — role framing, input fields, output schema, rules, example; (5) context injection condensed from ~200 to ~80 tokens; (6) eval-prompts comparison showed quality >= baseline (SIMPLE went from schema-invalid to 5/5/5, EDGE improved +1/+1/+1) and timing was comparable. The 4 new tests are well-targeted, covering the optimization requirements (object-only validation_criteria, concrete example presence, token count bounds, absence of verbose worker_config docs). All 83 non-flaky tests pass (the 1 flaky test is a known pre-existing issue documented in mission AGENTS.md). The approach of keeping schema field definitions in the schema block while removing verbose explanation rules is sound — the LLM can infer usage from the example and inline comments.",
+    "issues": [
+      {
+        "file": "flywheel-tui/src/dispatcher/system-prompt.ts",
+        "line": 63,
+        "severity": "non_blocking",
+        "description": "The 'Input' section lists all fields with their sub-fields in a dense bullet-point format. While this is more compact than the old version's 'Core fields' vs 'Extended fields' split, the distinction between always-present and optional fields is lost. The old prompt was explicit about which fields are 'always present' vs 'optional — present when the orchestrator provides them'. In practice this likely doesn't matter much since the LLM processes whatever JSON it receives, but it's a minor clarity reduction noted by the COMPLEX eval scenario's -1 clarity score."
+      },
+      {
+        "file": "flywheel-tui/src/dispatcher/system-prompt.ts",
+        "line": 97,
+        "severity": "non_blocking",
+        "description": "The example uses 'timeout_minutes': 30 in worker_config, which is the same as the default mentioned in the old prompt but no longer documented as a default in the new prompt. Without the default being documented, the dispatcher may set timeout_minutes unnecessarily. Minor concern — the model can infer defaults from the schema's optional marker."
+      },
+      {
+        "file": "flywheel-tui/tests/dispatcher.test.ts",
+        "line": 1271,
+        "severity": "non_blocking",
+        "description": "Token count test uses chars/4 as a rough proxy with bounds [800, 1400]. The upper bound of 1400 gives 200 tokens of headroom above the ~1200 target, which is generous but reasonable as a guardrail against prompt bloat creep. The test correctly documents this is a proxy metric."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Worker noted in skillFeedback.suggestedChanges that the backend-worker skill's 'Write Tests First (TDD Red Phase)' step doesn't map well to prompt optimization tasks. The natural flow for prompt engineering is to modify the prompt first then verify tests pass/update, not write failing tests first. The skill could acknowledge that TDD is optional for non-code artifacts like prompt templates.",
+      "evidence": "Handoff skillFeedback.suggestedChanges: 'The backend-worker skill says Write Tests First (TDD Red Phase) but for prompt optimization the natural flow is to modify the prompt first then verify tests pass/update. TDD doesn't map well to prompt engineering tasks.'"
+    },
+    {
+      "area": "conventions",
+      "observation": "The mission AGENTS.md documents the old prompt as having 'string|object' for validation_criteria. Now that the prompt is fixed to object-only, the AGENTS.md section 'Dispatcher System' may need updating if it references the old schema documentation. Currently AGENTS.md doesn't explicitly reference the validation_criteria type, so no actual mismatch exists — but any future documentation referencing the dispatcher prompt should note it's object-only.",
+      "evidence": "src/schemas/shared.ts:6 — ValidationCriteriaSchema is z.object({...}). Old prompt said '<string|object>', new prompt shows the object structure inline. src/schemas/dispatcher.ts:80 uses ValidationCriteriaSchema (object-only) with no string fallback."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. The dispatcher system prompt optimization is well-executed: ~44% character reduction (2150→1217 tokens), schema mismatch fixed (validation_criteria now object-only), concrete example added that fixed a real baseline schema validation failure. All 84 dispatcher tests pass (83 non-flaky + 1 known flaky pre-existing). Eval-prompts comparison shows quality improvements (SIMPLE scenario went from invalid to 5/5/5, EDGE improved across all dimensions). No blocking issues found. Two non-blocking observations: (1) the always-present vs optional field distinction is lost in the condensed input section, (2) timeout_minutes default is no longer documented. Both are minor and don't affect correctness."
+}
