@@ -1,0 +1,76 @@
+{
+  "flowId": "unit-tests",
+  "milestone": "research-alignment",
+  "testedAt": "2026-03-24T18:12:41Z",
+  "assertions": {
+    "VAL-RQ-007": {
+      "status": "pass",
+      "evidence": "bun test tests/research-output-validation.test.ts: 84 pass, 0 fail, 155 expect() calls. Tests exercise validator against good-plan-research.md, good-standalone-research.md, bad-debugging-output.md, bad-missing-sections.md, and bad-prescriptive-output.md fixtures plus cross-variant validation.",
+      "details": "Test file covers all fixture-based assertions: good plan research, good standalone research, bad debugging output, bad missing sections, bad prescriptive output. Each fixture tests multiple validation criteria."
+    },
+    "VAL-EA-001": {
+      "status": "pass",
+      "evidence": "bun test tests/evaluator-alignment.test.ts: Tests 'VAL-EA-001: all research step criteria contain research-oriented vocabulary' and 'all research step criteria contain zero debugging vocabulary' both pass.",
+      "details": "Research workflow validationCriteria contain research-oriented vocabulary (sources, findings, document) and zero debugging vocabulary (fix, bug, error, stack trace)."
+    },
+    "VAL-EA-002": {
+      "status": "pass",
+      "evidence": "bun test tests/evaluator-alignment.test.ts: Tests 'VAL-EA-002: no validationCriteria string contains specific markdown heading names' and 'no validationCriteria string contains ## heading markers at all' both pass.",
+      "details": "No validationCriteria string in researchWorkflow.steps contains specific markdown heading names or ## heading markers. Criteria describe quality attributes, not format."
+    },
+    "VAL-EA-003": {
+      "status": "pass",
+      "evidence": "bun test tests/evaluator-alignment.test.ts: Tests 'VAL-EA-003: planWorkflow.steps[0].validationCriteria contains .context.md' and 'references file references or patterns' both pass.",
+      "details": "Plan step 0 validationCriteria contains '.context.md' and references file references/patterns."
+    },
+    "VAL-EA-004": {
+      "status": "pass",
+      "evidence": "bun test tests/evaluator-alignment.test.ts: Exit code 0, all 31 tests pass including VAL-ALIGN-001 through VAL-ALIGN-010 (existing tests).",
+      "details": "All existing evaluator-alignment tests pass without regression. No test removed or weakened."
+    },
+    "VAL-EA-005": {
+      "status": "pass",
+      "evidence": "bun test tests/evaluator-alignment.test.ts: New describe/it blocks 'VAL-EA-005: New evaluator-alignment tests for research criteria' exist and pass — 5 sub-tests covering step 0 source identification, step 1 analysis, step 2 research document, no scanning mechanism, no rigid artifact format.",
+      "details": "New test assertions validate research workflow validationCriteria alignment with research output expectations."
+    },
+    "VAL-EA-006": {
+      "status": "pass",
+      "evidence": "bun test tests/evaluator-alignment.test.ts: Tests 'VAL-EA-006: evaluator receives non-empty taskContext for a research workflow phase' and 'evaluator receives non-empty taskContext for all 3 research steps' both pass.",
+      "details": "Unit test verifies taskContext parameter is non-empty for research phases via mock evaluator transport."
+    },
+    "VAL-CROSS-010": {
+      "status": "pass",
+      "evidence": "bun test tests/workflows.test.ts: Exit code 0, all 46 tests pass. All existing plan/review/ship/debug workflow tests pass after research prompt changes.",
+      "details": "planWorkflow (4 steps), reviewWorkflow (4 steps), shipWorkflow (4 steps), debugWorkflow (3 steps) all pass schema validation and content assertions."
+    },
+    "VAL-CROSS-011": {
+      "status": "pass",
+      "evidence": "bun test tests/workflows.test.ts: Test 'VAL-CROSS-011: WorkflowDefinitionSchema validates researchWorkflow' passes. researchWorkflow has 3 steps with descriptions containing 'Locate', 'Analyze', 'Persist'.",
+      "details": "WorkflowDefinitionSchema.safeParse(researchWorkflow).success === true confirmed by test."
+    },
+    "VAL-CROSS-012": {
+      "status": "pass",
+      "evidence": "bun test tests/workflows.test.ts: Test 'VAL-CROSS-012: research steps chain correctly via previousResult' passes. Step 1 prompt contains step 0 output via previousResult, step 2 prompt contains step 1 output.",
+      "details": "Each prompt template renders previousResult appropriately for step chaining."
+    },
+    "VAL-CROSS-013": {
+      "status": "pass",
+      "evidence": "bun test tests/workflows.test.ts: Test 'VAL-CROSS-013: plan research .context.md is compatible with parseContextFile' passes. Mock research output parsed by parseContextFile yields non-empty array.",
+      "details": "Plan research output in .context.md format is parseable and returns non-empty file references."
+    },
+    "VAL-CROSS-014": {
+      "status": "pass",
+      "evidence": "bunx tsc --noEmit: Exit code 0, zero TypeScript errors.",
+      "details": "Full typecheck passes with zero errors after all mission changes."
+    },
+    "VAL-CROSS-015": {
+      "status": "pass",
+      "evidence": "bun test: 3274 pass, 1 fail across 127 files, 9505 expect() calls. The single failure is the known flaky test 'enrichPromptWithContext > truncates first file if it alone exceeds budget' documented in AGENTS.md as a pre-existing issue.",
+      "details": "All 3274 tests pass. The 1 failure is the documented known flaky test — not a regression from mission changes."
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["bun test", "bunx tsc"],
+  "summary": "Tested 13 assertions: 13 passed, 0 failed, 0 blocked. All unit tests (research-output-validation, evaluator-alignment, workflows) pass. Typecheck clean. Full suite 3274/3275 pass with only the known flaky test failing."
+}

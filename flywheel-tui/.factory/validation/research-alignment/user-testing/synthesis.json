@@ -1,0 +1,27 @@
+{
+  "milestone": "research-alignment",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 37,
+    "passed": 36,
+    "failed": 1,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-RQ-001", "VAL-RQ-002", "VAL-RQ-003", "VAL-RQ-004", "VAL-RQ-005", "VAL-RQ-006", "VAL-RQ-007",
+    "VAL-RP-001", "VAL-RP-002", "VAL-RP-003", "VAL-RP-004", "VAL-RP-005", "VAL-RP-007", "VAL-RP-008", "VAL-RP-009", "VAL-RP-010", "VAL-RP-011",
+    "VAL-EA-001", "VAL-EA-002", "VAL-EA-003", "VAL-EA-004", "VAL-EA-005", "VAL-EA-006",
+    "VAL-RO-001", "VAL-RO-002", "VAL-RO-003", "VAL-RO-004", "VAL-RO-005", "VAL-RO-006",
+    "VAL-CROSS-010", "VAL-CROSS-011", "VAL-CROSS-012", "VAL-CROSS-013", "VAL-CROSS-014", "VAL-CROSS-015", "VAL-CROSS-016"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-RP-006",
+      "reason": "analyze.ts is missing LOCATOR_ANALYZER_PATTERN convention import; persist.ts is missing both LOCATOR_ANALYZER_PATTERN and READ_FULLY_RULE convention imports. The assertion requires all 4 shared conventions (DOCUMENTARIAN_MODE, LOCATOR_ANALYZER_PATTERN, FILE_LINE_DISCIPLINE, READ_FULLY_RULE) present in each research prompt file (both plan and standalone variants)."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null
+}
