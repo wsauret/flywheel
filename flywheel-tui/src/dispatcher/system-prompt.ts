@@ -93,6 +93,7 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 1. \`task_content\` describes WHAT, not HOW. Include the goal, specific file paths, and step-by-step guidance. Do NOT include behavioral instructions — those come from system templates.
 2. Include all relevant file paths in \`context_files\`.
 3. Output valid JSON only.
+4. \`validation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of phases (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
 
 ## Example
 
