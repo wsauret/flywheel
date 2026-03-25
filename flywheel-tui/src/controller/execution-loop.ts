@@ -801,7 +801,11 @@ export class ExecutionLoop {
               ...(cachedHandoff.artifacts?.files_modified ?? []),
             ],
             issues: [],  // Populated by evaluator-structured-issues feature (future)
-            skill_feedback: undefined,  // Populated by skill-feedback-schema feature (future)
+            skill_feedback: cachedHandoff.skillFeedback ? {
+              followedProcedure: cachedHandoff.skillFeedback.followedProcedure,
+              deviations: cachedHandoff.skillFeedback.deviations,
+              suggestedChanges: cachedHandoff.skillFeedback.suggestedChanges,
+            } : undefined,
           };
           this._stageContext = accumulatePhaseIntoContext(this._stageContext, phaseHandoff);
 

@@ -9,6 +9,8 @@ import {
   FindingCountsSchema,
   P3FindingSchema,
   CompoundDocSchema,
+  SkillDeviationSchema,
+  SkillFeedbackSchema,
   countSentences,
 } from "../../src/schemas/handoff";
 
@@ -732,6 +734,246 @@ describe("DispatcherDecisionHandoffSchema", () => {
 
   it("rejects missing required fields", () => {
     const result = DispatcherDecisionHandoffSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SkillDeviationSchema (VAL-FEEDBACK-002)
+// ---------------------------------------------------------------------------
+
+describe("SkillDeviationSchema", () => {
+  it("parses valid deviation with all required fields", () => {
+    const result = SkillDeviationSchema.parse({
+      step: "1.3 Baseline Validation",
+      whatIDidInstead: "Skipped baseline because tests were pre-broken",
+      why: "Pre-existing test failure unrelated to my feature",
+    });
+    expect(result.step).toBe("1.3 Baseline Validation");
+    expect(result.whatIDidInstead).toContain("Skipped baseline");
+    expect(result.why).toContain("Pre-existing");
+  });
+
+  it("rejects missing step field", () => {
+    const result = SkillDeviationSchema.safeParse({
+      whatIDidInstead: "Something",
+      why: "Because",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing whatIDidInstead field", () => {
+    const result = SkillDeviationSchema.safeParse({
+      step: "1.3",
+      why: "Because",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing why field", () => {
+    const result = SkillDeviationSchema.safeParse({
+      step: "1.3",
+      whatIDidInstead: "Something",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown fields (.strict())", () => {
+    const result = SkillDeviationSchema.safeParse({
+      step: "1.3",
+      whatIDidInstead: "Something",
+      why: "Because",
+      extra: "fail",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const unrecognized = result.error.issues.find(
+        (i) => i.code === "unrecognized_keys",
+      );
+      expect(unrecognized).toBeDefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SkillFeedbackSchema (VAL-FEEDBACK-001, VAL-FEEDBACK-002)
+// ---------------------------------------------------------------------------
+
+describe("SkillFeedbackSchema", () => {
+  it("parses valid feedback when procedure was followed", () => {
+    const result = SkillFeedbackSchema.parse({
+      followedProcedure: true,
+      deviations: [],
+    });
+    expect(result.followedProcedure).toBe(true);
+    expect(result.deviations).toEqual([]);
+    expect(result.suggestedChanges).toBeUndefined();
+  });
+
+  it("parses valid feedback with deviations", () => {
+    const result = SkillFeedbackSchema.parse({
+      followedProcedure: false,
+      deviations: [
+        {
+          step: "2. Write Tests First",
+          whatIDidInstead: "Wrote implementation first then tests",
+          why: "Feature was too exploratory for strict TDD",
+        },
+      ],
+    });
+    expect(result.followedProcedure).toBe(false);
+    expect(result.deviations).toHaveLength(1);
+    expect(result.deviations[0].step).toBe("2. Write Tests First");
+  });
+
+  it("parses valid feedback with suggestedChanges", () => {
+    const result = SkillFeedbackSchema.parse({
+      followedProcedure: true,
+      deviations: [],
+      suggestedChanges: [
+        "Add more examples to prompt",
+        "Clarify step 3 about test structure",
+      ],
+    });
+    expect(result.suggestedChanges).toHaveLength(2);
+  });
+
+  it("accepts empty suggestedChanges array", () => {
+    const result = SkillFeedbackSchema.parse({
+      followedProcedure: true,
+      deviations: [],
+      suggestedChanges: [],
+    });
+    expect(result.suggestedChanges).toEqual([]);
+  });
+
+  it("rejects missing followedProcedure", () => {
+    const result = SkillFeedbackSchema.safeParse({
+      deviations: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing deviations", () => {
+    const result = SkillFeedbackSchema.safeParse({
+      followedProcedure: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-boolean followedProcedure", () => {
+    const result = SkillFeedbackSchema.safeParse({
+      followedProcedure: "yes",
+      deviations: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown fields (.strict())", () => {
+    const result = SkillFeedbackSchema.safeParse({
+      followedProcedure: true,
+      deviations: [],
+      extra: "fail",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const unrecognized = result.error.issues.find(
+        (i) => i.code === "unrecognized_keys",
+      );
+      expect(unrecognized).toBeDefined();
+    }
+  });
+
+  it("validates deviation sub-schema strictly", () => {
+    const result = SkillFeedbackSchema.safeParse({
+      followedProcedure: false,
+      deviations: [
+        {
+          step: "1.3",
+          whatIDidInstead: "Something",
+          why: "Because",
+          extra: "fail",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WorkerHandoffSchema — skillFeedback field (VAL-FEEDBACK-001, VAL-FEEDBACK-003)
+// ---------------------------------------------------------------------------
+
+describe("WorkerHandoffSchema — skillFeedback", () => {
+  const validSummary = "Implemented feature X with full test coverage. All 42 tests pass. Typecheck clean.";
+
+  // VAL-FEEDBACK-001: Handoff schema accepts skillFeedback field
+  it("accepts handoff with valid skillFeedback", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      skillFeedback: {
+        followedProcedure: true,
+        deviations: [],
+        suggestedChanges: ["Add more examples"],
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skillFeedback).toBeDefined();
+      expect(result.data.skillFeedback!.followedProcedure).toBe(true);
+    }
+  });
+
+  it("accepts handoff with skillFeedback containing deviations", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      skillFeedback: {
+        followedProcedure: false,
+        deviations: [
+          {
+            step: "2. Write Tests First",
+            whatIDidInstead: "Wrote implementation first",
+            why: "Feature was too exploratory for TDD",
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skillFeedback!.deviations).toHaveLength(1);
+    }
+  });
+
+  // VAL-FEEDBACK-003: Skill feedback is backward compatible
+  it("accepts handoff without skillFeedback (backward compat)", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skillFeedback).toBeUndefined();
+    }
+  });
+
+  it("rejects invalid skillFeedback (missing followedProcedure)", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      skillFeedback: {
+        deviations: [],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects skillFeedback with unknown fields (.strict())", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      skillFeedback: {
+        followedProcedure: true,
+        deviations: [],
+        extra: "should fail",
+      },
+    });
     expect(result.success).toBe(false);
   });
 });

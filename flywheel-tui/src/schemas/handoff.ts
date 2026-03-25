@@ -71,6 +71,32 @@ export const CompoundDocSchema = z.object({
 export type CompoundDoc = z.infer<typeof CompoundDocSchema>;
 
 // ---------------------------------------------------------------------------
+// Skill feedback sub-schemas (adapted from Droid skillDeviationSchema / skillFeedbackSchema)
+// Reference: inspiration/droid/DROID-PROMPTS-AND-SKILLS-ANALYSIS.md §4
+// ---------------------------------------------------------------------------
+
+export const SkillDeviationSchema = z.object({
+  step: z.string().describe("Which skill step you deviated from"),
+  whatIDidInstead: z.string().describe("What you actually did"),
+  why: z.string().describe(
+    "Why you deviated (blocked, better approach, unclear instruction, etc.)",
+  ),
+}).strict();
+
+export type SkillDeviation = z.infer<typeof SkillDeviationSchema>;
+
+export const SkillFeedbackSchema = z.object({
+  followedProcedure: z.boolean()
+    .describe("Did you follow the skill procedure as written?"),
+  deviations: z.array(SkillDeviationSchema)
+    .describe("Where and why you deviated from the skill procedure. Empty if followedProcedure is true."),
+  suggestedChanges: z.array(z.string()).optional()
+    .describe("Suggestions for improving the skill (optional)"),
+}).strict();
+
+export type SkillFeedback = z.infer<typeof SkillFeedbackSchema>;
+
+// ---------------------------------------------------------------------------
 // WorkerHandoffSchema
 // Per-workflow fields, all optional except summary.
 // Content quality enforcement adapted from Droid's createSalientSummarySchema.
@@ -124,6 +150,8 @@ export const WorkerHandoffBaseSchema = z.object({
   finding_counts: FindingCountsSchema.optional(),
   p3_findings: z.array(P3FindingSchema).optional(),
   compound_docs: z.array(CompoundDocSchema).optional(),
+  skillFeedback: SkillFeedbackSchema.optional()
+    .describe("Feedback on the skill procedure. Fill this out to help improve future workers."),
 }).strict();
 
 /**
