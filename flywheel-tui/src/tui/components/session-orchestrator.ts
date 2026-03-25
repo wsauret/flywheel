@@ -19,6 +19,8 @@ import type { OutputSnapshot } from "../../schemas/output";
 import type { Session } from "../../schemas/session";
 import type { DeleteResult } from "../../session/persistence";
 import type { PipelineStageResult } from "../../controller/workflow-pipeline";
+import type { SessionLifecycleState } from "../../session/state-machine";
+import { safeUpdateState } from "../../session/safe-transition";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -146,8 +148,14 @@ export function createSessionOrchestrator(
     sessionId: string,
     stageResults: PipelineStageResult[],
   ): Promise<void> {
-    // 1. Always transition to completed
-    manager.updateState(sessionId, "completed");
+    // 1. Transition to completed — resilient to sessions stuck in intermediate states.
+    // If the session failed to transition through the proper lifecycle during startup
+    // (e.g., stuck in "new"), chain through the required intermediate states.
+    safeUpdateState(
+      (id, state) => manager.updateState(id, state),
+      sessionId,
+      "completed",
+    );
 
     // 2. Check if ship stage is present and completed
     const shipResult = stageResults.find((r) => r.workflow === "ship");
@@ -155,7 +163,11 @@ export function createSessionOrchestrator(
 
     if (shouldArchive) {
       // 3. Archive the session
-      manager.archive(sessionId);
+      try {
+        manager.archive(sessionId);
+      } catch {
+        // Best effort — don't crash on archive failure
+      }
 
       // 4. Clean up worktree (optional)
       if (worktreeManager) {

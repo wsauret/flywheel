@@ -72,6 +72,63 @@ export function isValidTransition(
 }
 
 // ---------------------------------------------------------------------------
+// Transition path finder
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the shortest valid transition path from `from` to `to` using BFS.
+ *
+ * Returns an array of intermediate states (excluding `from`, including `to`),
+ * or `null` if no path exists.
+ *
+ * Used by pipeline completion handlers to safely transition sessions that
+ * may be stuck in an intermediate state (e.g., "new") to a target state
+ * (e.g., "work:paused") by chaining through required intermediate states.
+ *
+ * @example
+ *   findTransitionPath("new", "work:paused")
+ *   // => ["plan:imported", "plan:approved", "work:active", "work:paused"]
+ *
+ *   findTransitionPath("work:active", "work:paused")
+ *   // => ["work:paused"]  (direct transition)
+ *
+ *   findTransitionPath("archived", "work:active")
+ *   // => null  (no path from terminal state)
+ */
+export function findTransitionPath(
+  from: SessionLifecycleState,
+  to: SessionLifecycleState,
+): SessionLifecycleState[] | null {
+  if (from === to) return [];
+
+  // Direct transition available — fast path
+  if (isValidTransition(from, to)) return [to];
+
+  // BFS to find shortest path
+  const visited = new Set<SessionLifecycleState>([from]);
+  const queue: { state: SessionLifecycleState; path: SessionLifecycleState[] }[] = [];
+
+  for (const next of VALID_TRANSITIONS[from]) {
+    visited.add(next);
+    queue.push({ state: next, path: [next] });
+  }
+
+  while (queue.length > 0) {
+    const { state, path } = queue.shift()!;
+    if (state === to) return path;
+
+    for (const next of VALID_TRANSITIONS[state]) {
+      if (!visited.has(next)) {
+        visited.add(next);
+        queue.push({ state: next, path: [...path, next] });
+      }
+    }
+  }
+
+  return null; // No path exists
+}
+
+// ---------------------------------------------------------------------------
 // State predicates
 // ---------------------------------------------------------------------------
 

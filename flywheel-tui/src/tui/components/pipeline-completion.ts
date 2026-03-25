@@ -21,6 +21,7 @@ import type {
   PipelineStageResult,
 } from "../../controller/workflow-pipeline";
 import type { SessionLifecycleState } from "../../session/state-machine";
+import { safeUpdateState } from "../../session/safe-transition";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +51,12 @@ export interface PipelineCompletionDeps {
  * or transition to work:paused for partial pipelines (no ship).
  *
  * Called from the shell's `queueMicrotask` block after `pipeline.run()` resolves.
+ *
+ * Resilient to state transition errors: if the session is stuck in an
+ * intermediate state (e.g., "new" because the startup transitions failed),
+ * this handler chains through the required intermediate states rather than
+ * throwing. This prevents the "Invalid state transition: new -> work:paused"
+ * error that was observed in E2E testing.
  */
 export async function handlePipelineCompletion(
   result: PipelineResult,
@@ -90,7 +97,9 @@ export async function handlePipelineCompletion(
     // Non-ship completion: session still has stages left (e.g. ship).
     // Transition to work:paused so it's resumable — only a pipeline that
     // includes ship (i.e. all possible stages) should mark "completed".
-    deps.updateState(deps.sessionId, "work:paused");
+    // Uses safeUpdateState to handle sessions stuck in intermediate states
+    // (e.g., "new") by chaining through required transitions.
+    safeUpdateState(deps.updateState, deps.sessionId, "work:paused");
     deps.refreshList();
   }
 }
