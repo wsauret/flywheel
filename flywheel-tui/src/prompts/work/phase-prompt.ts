@@ -117,6 +117,19 @@ ${VERIFICATION_BANNED_PHRASES}
 
 ${THREE_STRIKE_PROTOCOL}
 
+## Shared Knowledge Library
+
+Before starting work, read any existing files in \`.flywheel/library/\` for context from prior phases:
+- \`environment.md\` — ports, env vars, service configuration
+- \`architecture.md\` — architectural decisions, component relationships, design patterns
+
+Before completing your phase, write any critical discoveries to \`.flywheel/library/\`:
+- Ports, environment variables, or service configuration that future phases need
+- Architectural decisions or patterns that affect the broader system
+- Gotchas, workarounds, or non-obvious constraints discovered during implementation
+
+Create or update files by topic (e.g., \`environment.md\`, \`architecture.md\`). Keep entries concise and actionable.
+
 ${completionSection(ctx)}
 `;
 }

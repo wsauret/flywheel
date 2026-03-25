@@ -13,6 +13,7 @@
 export const FLYWHEEL_DIR = ".flywheel";
 export const SESSIONS_DIR = `${FLYWHEEL_DIR}/sessions`;
 export const HANDOFFS_DIR = `${FLYWHEEL_DIR}/handoffs`;
+export const LIBRARY_DIR = `${FLYWHEEL_DIR}/library`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
 export const CACHE_DIR = `${FLYWHEEL_DIR}/cache`;
 export const SES_DRAFTS_DIR = `${CACHE_DIR}/ses-drafts`;
@@ -67,4 +68,25 @@ export function resolveOutputPaths(configOverrides?: Partial<OutputPaths>): Outp
     solutions: configOverrides?.solutions ?? DEFAULT_SOLUTIONS_DIR,
     standards: configOverrides?.standards ?? DEFAULT_STANDARDS_DIR,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Directory creation helpers
+// ---------------------------------------------------------------------------
+
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+/**
+ * Ensure the shared knowledge library directory exists.
+ *
+ * Creates `.flywheel/library/` under `projectCwd` if it doesn't already exist.
+ * Uses `recursive: true` so the parent `.flywheel/` directory is also created
+ * if needed. Idempotent — safe to call multiple times.
+ *
+ * Adapts Droid's `.factory/library/` pattern for inter-worker knowledge sharing.
+ */
+export function ensureLibraryDir(projectCwd: string): void {
+  const libraryPath = path.resolve(projectCwd, LIBRARY_DIR);
+  fs.mkdirSync(libraryPath, { recursive: true });
 }

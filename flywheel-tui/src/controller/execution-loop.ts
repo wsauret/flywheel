@@ -9,7 +9,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
-import { HANDOFFS_DIR } from "../config/paths";
+import { HANDOFFS_DIR, LIBRARY_DIR } from "../config/paths";
 import type { IWorkflowUI } from "../tui/adapters/types";
 import type { ParsedStateFile } from "../state/reader";
 import type { PhaseInfo, PhaseProvider } from "./phase-provider";
@@ -367,6 +367,13 @@ export class ExecutionLoop {
       HANDOFFS_DIR,
     );
     fs.mkdirSync(handoffsDir, { recursive: true });
+
+    // Ensure shared knowledge library directory exists for inter-worker knowledge sharing
+    const libraryDir = path.resolve(
+      this.config.project_cwd ?? process.cwd(),
+      LIBRARY_DIR,
+    );
+    fs.mkdirSync(libraryDir, { recursive: true });
 
     const phasesTotal = phases.length;
     let phasesCompleted = phases.filter((p) => p.status === "completed").length;
