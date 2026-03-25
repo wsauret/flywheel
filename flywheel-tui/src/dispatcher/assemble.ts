@@ -10,6 +10,7 @@
 
 import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "../schemas/dispatcher";
 import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
+import type { StageContext } from "../controller/stage-context";
 import { parsePlan } from "../controller/plan-parser";
 import { parseStateFile } from "../state/reader";
 import { parseContextFile } from "../controller/templates";
@@ -49,6 +50,8 @@ export interface AssemblerInput {
   sessionBudget: SessionBudgetStatus;
   /** Available context (conventions, standards, learnings) */
   availableContext: AvailableContext;
+  /** Cumulative stage context from completed phases (optional) */
+  stageContext?: StageContext;
 }
 
 export interface AssembledInput {
@@ -140,6 +143,7 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     config: dispatcherConfig,
     session_budget: raw.sessionBudget,
     available_context: raw.availableContext,
+    stage_context: raw.stageContext,
   };
 
   // Safety valve — if total exceeds 100KB, truncate available_context as last resort

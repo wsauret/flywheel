@@ -1789,3 +1789,103 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
     expect(result!.task_content).toBe("Execute the setup phase");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Stage context in dispatcher input
+// ---------------------------------------------------------------------------
+
+describe("Stage context in DispatcherInput", () => {
+  let assembleDispatcherInput: typeof import("../src/dispatcher/assemble").assembleDispatcherInput;
+
+  beforeEach(async () => {
+    const mod = await import("../src/dispatcher/assemble");
+    assembleDispatcherInput = mod.assembleDispatcherInput;
+  });
+
+  it("includes stage_context when provided", () => {
+    const stageContext = {
+      cumulative_decisions: [
+        { phase_index: 0, phase_title: "Setup", decisions: ["Used TDD"] },
+      ],
+      cumulative_warnings: [],
+      cumulative_artifacts: [
+        { phase_index: 0, phase_title: "Setup", artifacts: ["src/index.ts"] },
+      ],
+      cumulative_issues: [],
+      skill_feedback: [],
+      phase_count: 1,
+    };
+
+    const result = assembleDispatcherInput(baseAssemblerInput({
+      stageContext,
+    }));
+
+    expect(result.input.stage_context).toBeDefined();
+    expect(result.input.stage_context!.phase_count).toBe(1);
+    expect(result.input.stage_context!.cumulative_decisions).toHaveLength(1);
+    expect(result.input.stage_context!.cumulative_decisions[0].decisions).toEqual(["Used TDD"]);
+  });
+
+  it("omits stage_context when not provided (backward compat)", () => {
+    const result = assembleDispatcherInput(baseAssemblerInput({}));
+
+    expect(result.input.stage_context).toBeUndefined();
+  });
+
+  it("passes multi-phase stage context through", () => {
+    const stageContext = {
+      cumulative_decisions: [
+        { phase_index: 0, phase_title: "Setup", decisions: ["Decision A"] },
+        { phase_index: 1, phase_title: "Implement", decisions: ["Decision B", "Decision C"] },
+      ],
+      cumulative_warnings: [
+        { phase_index: 1, phase_title: "Implement", warnings: ["Slow test detected"] },
+      ],
+      cumulative_artifacts: [
+        { phase_index: 0, phase_title: "Setup", artifacts: ["package.json"] },
+        { phase_index: 1, phase_title: "Implement", artifacts: ["src/core.ts", "tests/core.test.ts"] },
+      ],
+      cumulative_issues: [],
+      skill_feedback: [],
+      phase_count: 2,
+    };
+
+    const result = assembleDispatcherInput(baseAssemblerInput({
+      stageContext,
+    }));
+
+    expect(result.input.stage_context).toBeDefined();
+    expect(result.input.stage_context!.phase_count).toBe(2);
+    expect(result.input.stage_context!.cumulative_decisions).toHaveLength(2);
+    expect(result.input.stage_context!.cumulative_warnings).toHaveLength(1);
+    expect(result.input.stage_context!.cumulative_artifacts).toHaveLength(2);
+  });
+
+  it("validates stage_context against StageContextSchema", () => {
+    // This test ensures the schema is properly wired
+    const { DispatcherInputSchema } = require("../src/schemas/dispatcher");
+
+    const inputWithContext = baseDispatcherInput({
+      stage_context: {
+        cumulative_decisions: [],
+        cumulative_warnings: [],
+        cumulative_artifacts: [],
+        cumulative_issues: [],
+        skill_feedback: [],
+        phase_count: 0,
+      },
+    });
+
+    const parsed = DispatcherInputSchema.parse(inputWithContext);
+    expect(parsed.stage_context).toBeDefined();
+    expect(parsed.stage_context!.phase_count).toBe(0);
+  });
+
+  it("DispatcherInputSchema accepts input without stage_context (optional)", () => {
+    const { DispatcherInputSchema } = require("../src/schemas/dispatcher");
+
+    const inputWithoutContext = baseDispatcherInput();
+    const parsed = DispatcherInputSchema.parse(inputWithoutContext);
+    expect(parsed.stage_context).toBeUndefined();
+  });
+});

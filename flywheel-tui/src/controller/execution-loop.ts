@@ -34,6 +34,14 @@ import { WorkerHandoffSchema } from "../schemas/handoff";
 import type { WorkerHandoff } from "../schemas/handoff";
 import type { EvaluatorHandoffData } from "../schemas/evaluator";
 import { buildLastWorkerResult, buildPreviousResultFromHandoff } from "../handoff/consumers";
+import {
+  createEmptyStageContext,
+  accumulatePhaseIntoContext,
+  persistStageContext,
+  loadStageContext,
+  type StageContext,
+  type PhaseHandoffSummary,
+} from "./stage-context";
 import { Log } from "../utils/log";
 
 // ---------------------------------------------------------------------------
@@ -191,6 +199,12 @@ export interface UnifiedExecutionLoopOptions {
   evaluatorTransport?: EvaluatorTransport;
   /** Base directory for subprocess JSONL logging. When set, worker stdout/stderr is logged. */
   logBaseDir?: string;
+  /**
+   * Whether to load cumulative stage context from disk on construction.
+   * Set to `true` when resuming an interrupted pipeline stage.
+   * Defaults to `false` (starts with empty context for new stages).
+   */
+  resumeStageContext?: boolean;
 }
 
 export interface ExecutionResult {
@@ -248,6 +262,13 @@ export class ExecutionLoop {
    */
   private _lastWorkerResult?: LastWorkerResult;
 
+  /**
+   * Cumulative stage context that grows as phases complete.
+   * Fed to the dispatcher so each phase has visibility into prior decisions,
+   * warnings, artifacts, and issues. Persisted to disk after each phase.
+   */
+  private _stageContext: StageContext;
+
   constructor(options: UnifiedExecutionLoopOptions) {
     this.phaseProvider = options.phaseProvider;
     this.promptBuilder = options.promptBuilder;
@@ -272,6 +293,14 @@ export class ExecutionLoop {
     this.onSessionName = options.onSessionName;
     this.evaluatorTransport = options.evaluatorTransport;
     this.logBaseDir = options.logBaseDir;
+
+    // Load stage context from disk when resuming, otherwise start fresh
+    if (options.resumeStageContext) {
+      const projectCwd = this.config.project_cwd ?? process.cwd();
+      this._stageContext = loadStageContext(projectCwd) ?? createEmptyStageContext();
+    } else {
+      this._stageContext = createEmptyStageContext();
+    }
   }
 
   /**
@@ -753,6 +782,34 @@ export class ExecutionLoop {
           this._lastWorkerResult = undefined;
         }
 
+        // Accumulate phase data into cumulative stage context
+        if (cachedHandoff) {
+          const phaseHandoff: PhaseHandoffSummary = {
+            phase_index: phase.index,
+            phase_title: phase.title,
+            decisions: cachedHandoff.decisions ?? [],
+            warnings: cachedHandoff.warnings ?? [],
+            artifacts: [
+              ...(cachedHandoff.artifacts?.files_created ?? []),
+              ...(cachedHandoff.artifacts?.files_modified ?? []),
+            ],
+            issues: [],  // Populated by evaluator-structured-issues feature (future)
+            skill_feedback: undefined,  // Populated by skill-feedback-schema feature (future)
+          };
+          this._stageContext = accumulatePhaseIntoContext(this._stageContext, phaseHandoff);
+
+          // Persist stage context to disk for resume support
+          const projectCwd = this.config.project_cwd ?? process.cwd();
+          try {
+            persistStageContext(this._stageContext, projectCwd);
+          } catch (err) {
+            log.warn("failed to persist stage context", {
+              phaseIndex: phase.index,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+
         // Call onStepComplete hook with full result; merge returned data into accumulator
         if (this.onStepComplete) {
           const hookData = await this.onStepComplete(phase.index, result, { ...this._extraAccumulator });
@@ -871,8 +928,25 @@ export class ExecutionLoop {
         },
         sessionBudget: this.getSessionBudget(),
         availableContext,
+        stageContext: this._stageContext.phase_count > 0 ? this._stageContext : undefined,
       },
     );
+  }
+
+  /**
+   * Reset the cumulative stage context.
+   * Called when a new pipeline stage begins (e.g., transitioning from "work" to "review").
+   */
+  resetStageContext(): void {
+    this._stageContext = createEmptyStageContext();
+    log.info("stage context reset for new pipeline stage");
+  }
+
+  /**
+   * Get the current stage context (for testing/inspection).
+   */
+  getStageContext(): Readonly<StageContext> {
+    return this._stageContext;
   }
 
   /**

@@ -7,6 +7,7 @@ import {
   ValidationCriteriaSchema,
   WorkerConfigSchema,
 } from "./shared";
+import { StageContextSchema } from "../controller/stage-context";
 
 // REMOVED: full_content — use phases[] only
 const PlanPhaseStepSchema = WorkflowStepBaseSchema.strip();
@@ -63,6 +64,8 @@ export const DispatcherInputSchema = z.object({
   config: DispatcherConfigSchema,
   session_budget: SessionBudgetStatusSchema,
   available_context: AvailableContextSchema,
+  /** Cumulative stage context from completed phases. Optional for backward compat. */
+  stage_context: StageContextSchema.optional(),
 }).strip();
 
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;

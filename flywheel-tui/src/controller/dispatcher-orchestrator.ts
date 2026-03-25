@@ -11,6 +11,7 @@ import type { FlywheelConfig } from "../config/loader";
 import type { DispatcherTransport } from "../dispatcher/transport";
 import type { DispatcherDecision } from "../schemas/dispatcher";
 import type { LastWorkerResult } from "../schemas/shared";
+import type { StageContext } from "./stage-context";
 import type { PhaseInfo } from "./phase-provider";
 import type { AssemblerInput } from "../dispatcher/assemble";
 import { assembleDispatcherInput } from "../dispatcher/assemble";
@@ -33,6 +34,8 @@ export interface PhasePromptOptions {
   configContext: AssemblerInput["configContext"];
   sessionBudget: AssemblerInput["sessionBudget"];
   availableContext: AssemblerInput["availableContext"];
+  /** Cumulative stage context from completed phases (optional). */
+  stageContext?: StageContext;
 }
 
 const log = Log.create({ service: "dispatcher-orchestrator" });
@@ -86,6 +89,7 @@ export class DispatcherOrchestrator {
           configContext: options.configContext,
           sessionBudget: options.sessionBudget,
           availableContext: options.availableContext,
+          stageContext: options.stageContext,
         });
 
         // Call dispatcher
