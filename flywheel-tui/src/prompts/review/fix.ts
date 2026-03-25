@@ -14,6 +14,9 @@ import {
 // Main prompt builder
 // ---------------------------------------------------------------------------
 
+export const reviewFixValidationCriteria =
+  "All P1 findings addressed, P2 findings addressed where feasible, tests pass";
+
 /**
  * Builds a work-style implementation prompt for the review fix step.
  *

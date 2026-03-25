@@ -25,6 +25,10 @@ export interface CreateEvaluatorTransportOptions {
   engineName?: string;
   /** Evaluator model override — flows to --model CLI flag. Uses engine default when not set. */
   evaluatorModel?: string;
+  /** Called with each decoded stdout chunk as it arrives from the evaluator subprocess. */
+  onStdout?: (chunk: string) => void;
+  /** Called with each decoded stderr chunk as it arrives from the evaluator subprocess. */
+  onStderr?: (chunk: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,5 +55,7 @@ export function createEvaluatorTransport(
     spawner: options.spawner,
     engineName,
     evaluatorModel: options.evaluatorModel,
+    onStdout: options.onStdout,
+    onStderr: options.onStderr,
   });
 }

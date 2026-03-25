@@ -9,6 +9,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
+import { HANDOFFS_DIR } from "../config/paths";
 import type { IWorkflowUI } from "../tui/adapters/types";
 import type { ParsedStateFile } from "../state/reader";
 import type { PhaseInfo, PhaseProvider } from "./phase-provider";
@@ -330,8 +331,7 @@ export class ExecutionLoop {
     // Resolve handoffs directory and ensure it exists
     const handoffsDir = path.resolve(
       this.config.project_cwd ?? process.cwd(),
-      ".flywheel",
-      "handoffs",
+      HANDOFFS_DIR,
     );
     fs.mkdirSync(handoffsDir, { recursive: true });
 

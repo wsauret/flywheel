@@ -46,8 +46,8 @@ describe("Workflow Definitions", () => {
   });
 
   describe("reviewWorkflow", () => {
-    it("has 4 steps", () => {
-      expect(reviewWorkflow.steps).toHaveLength(4);
+    it("has 3 steps", () => {
+      expect(reviewWorkflow.steps).toHaveLength(3);
     });
 
     it("is named 'review'", () => {
@@ -59,11 +59,10 @@ describe("Workflow Definitions", () => {
       expect(result.success).toBe(true);
     });
 
-    it("steps cover diff, review, consolidate, fix", () => {
-      expect(reviewWorkflow.steps[0].description).toContain("diff");
-      expect(reviewWorkflow.steps[1].description).toContain("review");
-      expect(reviewWorkflow.steps[2].description).toContain("Consolidate");
-      expect(reviewWorkflow.steps[3].description.toLowerCase()).toMatch(/fix|implement/);
+    it("steps cover review, consolidate, fix", () => {
+      expect(reviewWorkflow.steps[0].description).toContain("review");
+      expect(reviewWorkflow.steps[1].description).toContain("Consolidate");
+      expect(reviewWorkflow.steps[2].description.toLowerCase()).toMatch(/fix|implement/);
     });
   });
 
@@ -304,7 +303,7 @@ describe("Research prompt routing", () => {
       "Analysis results: EventBus uses pub/sub pattern...",
     );
     expect(prompt).toContain("Research: Compile Document");
-    expect(prompt).toContain("docs/research/");
+    expect(prompt).toContain(".flywheel/research/");
     expect(prompt).toContain("Analysis results: EventBus uses pub/sub pattern");
     // Should NOT contain locator or analyzer content
     expect(prompt).not.toContain("Research: Locate Sources");

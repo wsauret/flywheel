@@ -1,5 +1,9 @@
 import type { WorkflowStepContext } from "../index.js";
 import { renderHandoffInstruction, SHIP_FIELDS } from "../../handoff/field-specs.js";
+import { DEFAULT_SOLUTIONS_DIR } from "../../config/paths.js";
+
+export const shipCompoundValidationCriteria =
+  "Learnings document created with categorized insights, or explicit statement that no significant learnings apply";
 
 /**
  * Builds a prompt for the compound learning extraction step of the ship workflow.
@@ -30,7 +34,7 @@ For each learning, output a compound doc block in the exact format below.
 
 ## Target Directory
 
-Write compound docs to \`docs/solutions/\`.
+Write compound docs to \`${DEFAULT_SOLUTIONS_DIR}/\`.
 
 **Before writing, check for existing solutions** in that directory. If a solution already covers the same problem, do NOT write a duplicate.
 
@@ -69,7 +73,7 @@ extraction_hash: "<SHA-256 of canonical JSON: {problem, solution, tags, title}>"
 
 ## Dedup
 
-The \`extraction_hash\` field ensures identical learnings are never written twice. If you identify a learning that already exists in \`docs/solutions/\` (same problem + solution), skip it.
+The \`extraction_hash\` field ensures identical learnings are never written twice. If you identify a learning that already exists in \`${DEFAULT_SOLUTIONS_DIR}/\` (same problem + solution), skip it.
 
 ## Output Rules
 

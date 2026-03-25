@@ -5,6 +5,7 @@ import type {
   ResolvedQuestion,
 } from "../../controller/question-service.js";
 import { renderHandoffInstruction, PLAN_CONSOLIDATE_FIELDS } from "../../handoff/field-specs.js";
+import { DEFAULT_PLANS_DIR } from "../../config/paths.js";
 
 /**
  * Format a single resolved question as a readable line.
@@ -59,6 +60,9 @@ ${lines}`;
   // No questions at all
   return `## Resolved Open Questions\n\n_No open questions._`;
 }
+
+export const planConsolidateValidationCriteria =
+  `Final plan written to ${DEFAULT_PLANS_DIR}/<type>-<name>.md with Implementation Checklist, all P1 items addressed`;
 
 /**
  * Builds a prompt for consolidating a reviewed plan into a final actionable plan.
@@ -161,14 +165,14 @@ Before finalizing, verify:
 ## IMPORTANT: Write the plan file to disk
 
 After consolidating, you MUST write the final plan to a file at:
-\`docs/plans/<type>-<description>.md\`
+\`${DEFAULT_PLANS_DIR}/<type>-<description>.md\`
 
 Where \`<type>\` is one of: feat, fix, refactor, chore, docs
 And \`<description>\` is a short kebab-case name for the feature.
 
-Example: \`docs/plans/feat-auth-jwt.md\`
+Example: \`${DEFAULT_PLANS_DIR}/feat-auth-jwt.md\`
 
-Create the \`docs/plans/\` directory if it does not exist.
+Create the \`${DEFAULT_PLANS_DIR}/\` directory if it does not exist.
 The filename MUST appear in your output so downstream tools can locate it.
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_CONSOLIDATE_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;

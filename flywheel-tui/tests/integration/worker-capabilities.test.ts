@@ -130,7 +130,6 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
   return {
     schema_version: 1,
     phase_index: 0,
-    step_index: 0,
     task_content: "Dispatcher-crafted prompt for the worker",
     context_files: ["src/index.ts"],
     validation_criteria: {
@@ -253,7 +252,7 @@ describe("Worker capabilities — full decision flow integration", () => {
     // Model override: "sonnet" should appear in the args (Claude engine uses --model flag)
     expect(spawnCall.args).toContain("sonnet");
 
-    // Tool scoping: Claude engine uses --allowedTools flags.
+    // Tool scoping: Claude engine uses --tools flags.
     // With read=true, bash/write/edit=false, only Read should be allowed.
     // The engine translates tool_scoping to CLI flags.
     const argsStr = spawnCall.args.join(" ");

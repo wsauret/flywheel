@@ -4,7 +4,11 @@ import {
   LOCATOR_ANALYZER_PATTERN,
   FILE_LINE_DISCIPLINE,
   READ_FULLY_RULE,
+  buildProjectContextSection,
 } from "../conventions.js";
+
+export const researchLocateValidationCriteria =
+  "Relevant sources identified and ranked by relevance to the research objective";
 
 /**
  * Builds a prompt for the research locate step (step 0 of standalone /research).
@@ -15,6 +19,8 @@ export function buildResearchLocatePrompt(ctx: WorkflowStepContext): string {
     ctx.fileReferences.length > 0
       ? ctx.fileReferences.map((f) => `- \`${f}\``).join("\n")
       : "_No initial file references._";
+
+  const projectContext = buildProjectContextSection(ctx.extra);
 
   return `# Research: Locate Sources
 
@@ -27,6 +33,8 @@ ${ctx.planContent}
 ${files}
 
 ${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+${projectContext}
 
 ---
 
@@ -41,6 +49,8 @@ ${FILE_LINE_DISCIPLINE}
 ## BLOCKING Rule
 
 Do NOT use Read/Grep/Glob for target codebase research directly. Dispatch locator Tasks first to find relevant files, then return the consolidated results.
+
+**Exception:** Files listed in the Project Context section above (conventions, standards) MUST be read directly before dispatching locators.
 
 ## Locator Dispatch Templates
 

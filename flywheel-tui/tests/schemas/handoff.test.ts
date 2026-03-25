@@ -427,7 +427,12 @@ describe("DispatcherDecisionHandoffSchema", () => {
     schema_version: 1 as const,
     phase_index: 0,
     task_content: "Implement feature X according to plan phase 1",
-    validation_criteria: "Tests pass, no lint errors",
+    validation_criteria: {
+      acceptance_criteria: ["Tests pass", "No lint errors"],
+      required_tests: true,
+      custom_checks: [],
+      required_outputs: [],
+    },
     context_files: ["src/foo.ts", "tests/foo.test.ts"],
     session_name: "work-session-1",
     reasoning: "Standard implementation phase",

@@ -19,6 +19,11 @@ bun test tests/foo.test.ts # single file
 
 Unit tests do NOT render OpenTUI components, so they don't need the `--conditions=browser` flag.
 
+**Git rules:**
+- **Never use `git stash`** — multiple processes work on this repo concurrently. Stashing can lose or conflict with their work.
+- **Fix failing tests, don't prove they're pre-existing.** If you find a failing test, fix it. Don't waste time trying to show it was already broken.
+- Always commit your changes alongside other processes' work.
+
 ## E2E pipeline test
 
 A full TUI-level end-to-end test lives at `tests/e2e/tui-pipeline.sh`. It starts the TUI in tmux, sends a `/start` command, and monitors state transitions through plan → work → review. This test uses real API calls.

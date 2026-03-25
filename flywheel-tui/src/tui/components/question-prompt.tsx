@@ -12,6 +12,7 @@
 import { createStore } from "solid-js/store"
 import { createMemo, For, Show } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
+import type { TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useDialog } from "@tui/shared/context/dialog"
 import type { QuestionRequest, QuestionService } from "../../controller/question-service"
@@ -98,12 +99,35 @@ export function QuestionPrompt(props: QuestionPromptProps) {
     }
   }
 
-  // Handle input changes from the <input> element
+  // Ref for the textarea in textOnly mode (for imperative clear)
+  let textareaRef: TextareaRenderable | undefined
+
+  // Handle input changes from the <input> element (custom option mode)
   function handleTextInput(value: string) {
     setStore("custom", setCustomText(store.custom, store.tab, value))
   }
 
-  // Handle special keys from the <input> element (escape, enter, ctrl+u)
+  // Handle content changes from the <textarea> element (textOnly mode)
+  // Note: onContentChange fires with {} (not the text), so read from ref
+  function handleTextareaChange() {
+    const text = textareaRef?.plainText ?? ""
+    setStore("custom", setCustomText(store.custom, store.tab, text))
+  }
+
+  // Handle submit from textarea (Enter key remapped to submit action)
+  function handleTextSubmit() {
+    const text = textareaRef?.plainText ?? ""
+    const result = commitCustom(store, questions(), text)
+    for (const [key, value] of Object.entries(result.patch)) {
+      setStore(key as keyof typeof store, value as never)
+    }
+    if (result.fastPath) {
+      const answers = result.patch.answers ?? store.answers
+      props.questionService.reply(props.request.id, answers as string[][])
+    }
+  }
+
+  // Handle special keys from the <input>/<textarea> element (escape, enter, ctrl+u)
   function handleTextKeyDown(evt: { name?: string; ctrl?: boolean; preventDefault?: () => void }) {
     if (evt.name === "escape") {
       evt.preventDefault?.()
@@ -116,12 +140,14 @@ export function QuestionPrompt(props: QuestionPromptProps) {
     }
     if (evt.ctrl && evt.name === "u") {
       evt.preventDefault?.()
-      const text = input()
+      // For textarea, read from ref since store may lag; for input, use store
+      const text = textOnly() ? (textareaRef?.plainText ?? "") : input()
       if (!text) {
         setStore("editing", false)
         return
       }
       setStore("custom", setCustomText(store.custom, store.tab, ""))
+      textareaRef?.clear()
       return
     }
     if (evt.name === "return") {
@@ -289,15 +315,19 @@ export function QuestionPrompt(props: QuestionPromptProps) {
               </text>
             </box>
 
-            {/* Text-only mode: bare text input, no options */}
+            {/* Text-only mode: textarea input, no options */}
             <Show when={textOnly()}>
               <box paddingLeft={1} flexDirection="row">
                 <text fg={theme.primary} flexShrink={0}>{"▸ "}</text>
-                <input
-                  value={input()}
+                <textarea
+                  ref={textareaRef}
+                  initialValue={input()}
                   placeholder="Type your answer..."
                   placeholderColor={theme.textMuted}
-                  onInput={handleTextInput}
+                  height={3}
+                  wrapMode="word"
+                  onContentChange={handleTextareaChange}
+                  onSubmit={handleTextSubmit}
                   onKeyDown={handleTextKeyDown}
                   focused={store.editing}
                   textColor={theme.text}
@@ -306,6 +336,7 @@ export function QuestionPrompt(props: QuestionPromptProps) {
                   backgroundColor="transparent"
                   focusedBackgroundColor="transparent"
                   flexGrow={1}
+                  keyBindings={[{ name: "return", action: "submit" as TextareaAction }]}
                 />
               </box>
             </Show>

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import type { DispatcherInput, DispatcherDecision } from "../src/schemas/dispatcher";
+import type { DispatcherDecisionHandoff } from "../src/schemas/handoff";
 import type { ProcessSpawner } from "../src/worker/spawner";
 import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
 
@@ -7,21 +8,19 @@ import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecision {
+function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): DispatcherDecisionHandoff {
   return {
     schema_version: 1,
     phase_index: 0,
-    step_index: 0,
     task_content: "Execute the setup phase by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
-      required_tests: true,
+      required_tests: false,
       custom_checks: [],
       required_outputs: [],
     },
     reasoning: "Standard setup phase execution",
-    warnings: [],
     ...overrides,
   };
 }
@@ -41,6 +40,44 @@ function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherIn
     available_context: { conventions: [], standards: [], learnings: [] },
     ...overrides,
   };
+}
+
+/**
+ * Extract the handoff path from a prompt text and write a handoff file there.
+ */
+async function writeHandoffFromPrompt(promptText: string, handoff: Record<string, unknown>): Promise<void> {
+  const pathMatch = promptText.match(/`([^`]+\.json)`/);
+  if (pathMatch) {
+    await Bun.write(pathMatch[1], JSON.stringify(handoff));
+  }
+}
+
+/**
+ * Create a mock SDK client that writes a handoff file when prompt is called.
+ * The handoff data is extracted from the prompt text (the path embedded in the handoff instruction).
+ */
+function createHandoffMockClient(
+  handoffOrFn: Record<string, unknown> | ((callCount: number) => Record<string, unknown> | null),
+  hooks?: {
+    onPrompt?: (opts: any) => void;
+  },
+): { client: any; callCount: () => number } {
+  let calls = 0;
+  const client = {
+    session: {
+      create: async () => ({ data: { id: `mock-session-${++calls}` } }),
+      prompt: async (opts: any) => {
+        hooks?.onPrompt?.(opts);
+        const promptText = opts.body.parts?.[0]?.text ?? "";
+        const handoff = typeof handoffOrFn === "function" ? handoffOrFn(calls) : handoffOrFn;
+        if (handoff) {
+          await writeHandoffFromPrompt(promptText, handoff);
+        }
+        return { data: {} };
+      },
+    },
+  };
+  return { client, callCount: () => calls };
 }
 
 // ---------------------------------------------------------------------------
@@ -63,18 +100,11 @@ describe("SdkTransport: model parameter", () => {
 
   it("passes model in session.prompt() body when dispatcherModel is provided", async () => {
     let capturedPromptOpts: any;
+    const { client } = createHandoffMockClient(validHandoff(), {
+      onPrompt: (opts) => { capturedPromptOpts = opts; },
+    });
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-model-1" } }),
-        prompt: async (opts: any) => {
-          capturedPromptOpts = opts;
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     const transport = new SdkTransport({ dispatcherModel: "anthropic/claude-sonnet-4-6" });
     await transport.invoke(baseDispatcherInput());
@@ -87,18 +117,11 @@ describe("SdkTransport: model parameter", () => {
 
   it("passes model with default sonnet when no dispatcherModel specified", async () => {
     let capturedPromptOpts: any;
+    const { client } = createHandoffMockClient(validHandoff(), {
+      onPrompt: (opts) => { capturedPromptOpts = opts; },
+    });
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-model-2" } }),
-        prompt: async (opts: any) => {
-          capturedPromptOpts = opts;
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     const transport = new SdkTransport();
     await transport.invoke(baseDispatcherInput());
@@ -112,18 +135,11 @@ describe("SdkTransport: model parameter", () => {
 
   it("parses compound model string (provider/model) into providerID and modelID", async () => {
     let capturedPromptOpts: any;
+    const { client } = createHandoffMockClient(validHandoff(), {
+      onPrompt: (opts) => { capturedPromptOpts = opts; },
+    });
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-model-3" } }),
-        prompt: async (opts: any) => {
-          capturedPromptOpts = opts;
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     const transport = new SdkTransport({ dispatcherModel: "openai/gpt-4o" });
     await transport.invoke(baseDispatcherInput());
@@ -136,18 +152,11 @@ describe("SdkTransport: model parameter", () => {
 
   it("handles model string without provider prefix by using 'anthropic' as default provider", async () => {
     let capturedPromptOpts: any;
+    const { client } = createHandoffMockClient(validHandoff(), {
+      onPrompt: (opts) => { capturedPromptOpts = opts; },
+    });
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-model-4" } }),
-        prompt: async (opts: any) => {
-          capturedPromptOpts = opts;
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     const transport = new SdkTransport({ dispatcherModel: "claude-sonnet-4-6" });
     await transport.invoke(baseDispatcherInput());
@@ -161,10 +170,10 @@ describe("SdkTransport: model parameter", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-SDK-002: SDK transport produces valid DispatcherDecision
+// VAL-SDK-002: SDK transport produces valid DispatcherDecision via handoff file
 // ---------------------------------------------------------------------------
 
-describe("SdkTransport: valid DispatcherDecision output", () => {
+describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
   let SdkTransport: typeof import("../src/dispatcher/sdk-transport").SdkTransport;
   let _setClientFactoryForTesting: typeof import("../src/dispatcher/sdk-transport")._setClientFactoryForTesting;
 
@@ -178,17 +187,11 @@ describe("SdkTransport: valid DispatcherDecision output", () => {
     _setClientFactoryForTesting(null);
   });
 
-  it("produces a valid DispatcherDecision with task_content", async () => {
-    const decision = validDecision({ task_content: "SDK-produced task content" });
+  it("produces a valid DispatcherDecision with task_content from handoff file", async () => {
+    const handoff = validHandoff({ task_content: "SDK-produced task content" });
+    const { client } = createHandoffMockClient(handoff);
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-valid-1" } }),
-        prompt: async () => ({ data: { text: JSON.stringify(decision) } }),
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     const transport = new SdkTransport();
     const result = await transport.invoke(baseDispatcherInput());
@@ -199,29 +202,122 @@ describe("SdkTransport: valid DispatcherDecision output", () => {
     expect(result.task_content).toBe("SDK-produced task content");
   });
 
-  it("produces valid decision from OpenCode parts response format", async () => {
-    const decision = validDecision({ task_content: "Parts format content" });
+  it("reads decision from handoff file, not from SDK response body", async () => {
+    const handoff = validHandoff({ task_content: "From handoff file" });
+    const { client } = createHandoffMockClient(handoff);
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-valid-2" } }),
-        prompt: async () => ({
-          data: {
-            info: { id: "msg-1" },
-            parts: [{ type: "text", text: JSON.stringify(decision) }],
-          },
-        }),
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     const transport = new SdkTransport();
     const result = await transport.invoke(baseDispatcherInput());
 
-    const parsed = DispatcherDecisionSchema.safeParse(result);
-    expect(parsed.success).toBe(true);
-    expect(result.task_content).toBe("Parts format content");
+    expect(result.task_content).toBe("From handoff file");
+    expect(result.phase_index).toBe(0);
+    expect(result.context_files).toEqual(["src/index.ts"]);
+  });
+
+  it("maps handoff fields correctly", async () => {
+    const handoff = validHandoff({
+      phase_index: 2,
+      task_content: "Phase 3 task",
+      context_files: ["a.ts", "b.ts"],
+      session_name: "test-session",
+    });
+    const { client } = createHandoffMockClient(handoff);
+
+    _setClientFactoryForTesting(() => client);
+
+    const transport = new SdkTransport();
+    const result = await transport.invoke(baseDispatcherInput());
+
+    expect(result.phase_index).toBe(2);
+    expect(result.task_content).toBe("Phase 3 task");
+    expect(result.context_files).toEqual(["a.ts", "b.ts"]);
+    expect(result.session_name).toBe("test-session");
+  });
+
+  it("includes handoff instruction in the user prompt text", async () => {
+    let capturedPromptText = "";
+    const { client } = createHandoffMockClient(validHandoff(), {
+      onPrompt: (opts) => {
+        capturedPromptText = opts.body.parts?.[0]?.text ?? "";
+      },
+    });
+
+    _setClientFactoryForTesting(() => client);
+
+    const transport = new SdkTransport();
+    await transport.invoke(baseDispatcherInput());
+
+    // The prompt should include the handoff instruction
+    expect(capturedPromptText).toContain("Dispatcher Handoff Instructions");
+    expect(capturedPromptText).toContain(".json");
+    expect(capturedPromptText).toContain("schema_version");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VAL-SDK-002b: SDK transport retry on handoff failure
+// ---------------------------------------------------------------------------
+
+describe("SdkTransport: handoff retry logic", () => {
+  let SdkTransport: typeof import("../src/dispatcher/sdk-transport").SdkTransport;
+  let _setClientFactoryForTesting: typeof import("../src/dispatcher/sdk-transport")._setClientFactoryForTesting;
+
+  beforeEach(async () => {
+    const mod = await import("../src/dispatcher/sdk-transport");
+    SdkTransport = mod.SdkTransport;
+    _setClientFactoryForTesting = mod._setClientFactoryForTesting;
+  });
+
+  afterEach(() => {
+    _setClientFactoryForTesting(null);
+  });
+
+  it("retries once when handoff file is missing, succeeds on second attempt", async () => {
+    const handoff = validHandoff();
+    // First call: don't write handoff; second call: write it
+    const { client, callCount } = createHandoffMockClient((n) => n >= 2 ? handoff : null);
+
+    _setClientFactoryForTesting(() => client);
+
+    const transport = new SdkTransport();
+    const result = await transport.invoke(baseDispatcherInput());
+
+    expect(callCount()).toBe(2);
+    expect(result.task_content).toBe(handoff.task_content);
+  });
+
+  it("throws after MAX_RETRIES+1 attempts when handoff always missing", async () => {
+    // Never write a handoff file
+    const { client } = createHandoffMockClient(() => null);
+
+    _setClientFactoryForTesting(() => client);
+
+    const transport = new SdkTransport();
+    await expect(transport.invoke(baseDispatcherInput())).rejects.toThrow(
+      /SDK dispatcher failed after 2 attempts/,
+    );
+  });
+
+  it("includes RETRY note in prompt on second attempt", async () => {
+    const capturedPrompts: string[] = [];
+    const handoff = validHandoff();
+    // First call: no handoff; second call: write it
+    const { client } = createHandoffMockClient((n) => n >= 2 ? handoff : null, {
+      onPrompt: (opts) => {
+        capturedPrompts.push(opts.body.parts?.[0]?.text ?? "");
+      },
+    });
+
+    _setClientFactoryForTesting(() => client);
+
+    const transport = new SdkTransport();
+    await transport.invoke(baseDispatcherInput());
+
+    expect(capturedPrompts).toHaveLength(2);
+    expect(capturedPrompts[0]).not.toContain("[RETRY]");
+    expect(capturedPrompts[1]).toContain("[RETRY]");
   });
 });
 
@@ -244,14 +340,8 @@ describe("SdkTransport: OpenCode-only guard", () => {
   });
 
   it("throws clear error when engine is 'claude' (SDK is OpenCode-only)", async () => {
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-guard-1" } }),
-        prompt: async () => ({ data: { text: JSON.stringify(validDecision()) } }),
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    const { client } = createHandoffMockClient(validHandoff());
+    _setClientFactoryForTesting(() => client);
 
     expect(() => {
       new SdkTransport({ engineName: "claude" });
@@ -259,14 +349,8 @@ describe("SdkTransport: OpenCode-only guard", () => {
   });
 
   it("throws clear error for any non-opencode engine", async () => {
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-guard-2" } }),
-        prompt: async () => ({ data: { text: JSON.stringify(validDecision()) } }),
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    const { client } = createHandoffMockClient(validHandoff());
+    _setClientFactoryForTesting(() => client);
 
     expect(() => {
       new SdkTransport({ engineName: "some-other-engine" });
@@ -274,14 +358,8 @@ describe("SdkTransport: OpenCode-only guard", () => {
   });
 
   it("does NOT throw when engine is 'opencode'", async () => {
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-guard-3" } }),
-        prompt: async () => ({ data: { text: JSON.stringify(validDecision()) } }),
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    const { client } = createHandoffMockClient(validHandoff());
+    _setClientFactoryForTesting(() => client);
 
     expect(() => {
       new SdkTransport({ engineName: "opencode" });
@@ -289,14 +367,8 @@ describe("SdkTransport: OpenCode-only guard", () => {
   });
 
   it("does NOT throw when engine is not specified (defaults to opencode)", async () => {
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-guard-4" } }),
-        prompt: async () => ({ data: { text: JSON.stringify(validDecision()) } }),
-      },
-    };
-
-    _setClientFactoryForTesting(() => mockClient);
+    const { client } = createHandoffMockClient(validHandoff());
+    _setClientFactoryForTesting(() => client);
 
     expect(() => {
       new SdkTransport();

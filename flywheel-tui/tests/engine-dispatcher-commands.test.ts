@@ -23,7 +23,7 @@ describe("Claude engine: buildDispatcherCommand", () => {
     expect(cmd.args[cmd.args.indexOf("--effort") + 1]).toBe("low");
   });
 
-  it("disables all tools with --tools ''", () => {
+  it("allows only Write tool via --tools for handoff file writing", () => {
     const cmd = claudeEngine.buildDispatcherCommand({
       prompt: "dispatch this task",
       systemPrompt: "You are a dispatcher.",
@@ -31,7 +31,7 @@ describe("Claude engine: buildDispatcherCommand", () => {
 
     expect(cmd.args).toContain("--tools");
     const toolsIdx = cmd.args.indexOf("--tools");
-    expect(cmd.args[toolsIdx + 1]).toBe("");
+    expect(cmd.args[toolsIdx + 1]).toBe("Write");
   });
 
   it("passes system prompt via --system-prompt flag", () => {
@@ -91,7 +91,7 @@ describe("Claude engine: buildDispatcherCommand", () => {
     expect(cmd.args).not.toContain("stream-json");
   });
 
-  it("does NOT include --allowedTools (uses --tools '' instead)", () => {
+  it("does NOT include --allowedTools (uses --tools instead)", () => {
     const cmd = claudeEngine.buildDispatcherCommand({
       prompt: "dispatch this task",
       systemPrompt: "You are a dispatcher.",

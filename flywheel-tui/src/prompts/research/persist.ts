@@ -4,7 +4,12 @@ import {
   LOCATOR_ANALYZER_PATTERN,
   FILE_LINE_DISCIPLINE,
   READ_FULLY_RULE,
+  buildProjectContextSection,
 } from "../conventions.js";
+import { DEFAULT_RESEARCH_DIR } from "../../config/paths.js";
+
+export const researchPersistValidationCriteria =
+  "Comprehensive research document persisted with findings and source references";
 
 /**
  * Builds a prompt for the research persist step (step 2 of standalone /research).
@@ -12,6 +17,7 @@ import {
  */
 export function buildResearchPersistPrompt(ctx: WorkflowStepContext): string {
   const previousResult = ctx.previousResult ?? "_No analysis output available._";
+  const projectContext = buildProjectContextSection(ctx.extra);
 
   return `# Research: Compile Document
 
@@ -20,6 +26,8 @@ export function buildResearchPersistPrompt(ctx: WorkflowStepContext): string {
 ${ctx.planContent}
 
 ${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+${projectContext}
 
 ## Analysis Output (from previous step)
 
@@ -37,11 +45,11 @@ ${FILE_LINE_DISCIPLINE}
 
 ## Persistence Instructions
 
-Write the research document to \`docs/research/YYYY-MM-DD-<topic-slug>.md\` where:
+Write the research document to \`${DEFAULT_RESEARCH_DIR}/YYYY-MM-DD-<topic-slug>.md\` where:
 - \`YYYY-MM-DD\` is today's date
 - \`<topic-slug>\` is a kebab-case slug derived from the research topic
 
-Create the \`docs/research/\` directory if it does not exist.
+Create the \`${DEFAULT_RESEARCH_DIR}/\` directory if it does not exist.
 
 ## Document Template
 

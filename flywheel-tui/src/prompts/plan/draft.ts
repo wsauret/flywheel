@@ -2,6 +2,9 @@ import type { WorkflowStepContext } from "../index.js";
 import { SCOPE_DISCIPLINE, FILE_LINE_DISCIPLINE } from "../conventions.js";
 import { renderHandoffInstruction, PLAN_DRAFT_FIELDS } from "../../handoff/field-specs.js";
 
+export const planDraftValidationCriteria =
+  "Produces a plan draft with phases, checklist items, and technical reference";
+
 /**
  * Builds a prompt for drafting an implementation plan from research results.
  */

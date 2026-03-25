@@ -701,7 +701,7 @@ describe("createShipOnStepComplete", () => {
     expect(result.learningsFailed).toBe(0);
 
     // Verify file was written
-    const files = await readdir(join(base, "docs", "solutions"));
+    const files = await readdir(join(base, ".flywheel", "solutions"));
     expect(files.length).toBe(1);
     expect(files[0]).toContain("fix-test-flakiness");
   });

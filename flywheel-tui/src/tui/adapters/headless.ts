@@ -268,6 +268,12 @@ export class HeadlessAdapter extends BaseUIAdapter {
         }
         break
 
+      // Dispatcher/evaluator output streaming events
+      case "dispatcher:output":
+      case "evaluator:output":
+        // Streaming output from dispatcher/evaluator subprocesses — no-op in headless mode
+        break
+
       default:
         assertNever(event)
     }

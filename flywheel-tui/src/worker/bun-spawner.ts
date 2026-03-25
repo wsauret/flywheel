@@ -27,6 +27,7 @@ import { NDJSONParser } from "./ndjson-parser";
 import { categorizeFailure } from "./errors";
 import { registerProcess, gracefulKill, type ChildHandle } from "./process-lifecycle";
 import { createWorkerTimeout, minutesToMs, clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES } from "./timeout";
+import { HANDOFFS_DIR } from "../config/paths";
 
 /**
  * Shell metacharacter regex — reject args that could cause shell injection.
@@ -184,7 +185,7 @@ export class BunProcessSpawner implements ProcessSpawner {
 
     // Resolve handoff path from invocationId + cwd
     const handoffPath = options?.invocationId
-      ? path.resolve(options.cwd ?? process.cwd(), ".flywheel", "handoffs", `${options.invocationId}.json`)
+      ? path.resolve(options.cwd ?? process.cwd(), HANDOFFS_DIR, `${options.invocationId}.json`)
       : "";
 
     // Build the WorkerResult from completion state (shared between pipe and non-pipe paths)

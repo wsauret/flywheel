@@ -8,12 +8,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { SessionSchema, migrateSession, type Session } from "../schemas/session";
 import { writeFileAtomic } from "../utils/atomic-write";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const SESSIONS_DIR = ".flywheel/sessions";
+import { SESSIONS_DIR } from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // Helpers

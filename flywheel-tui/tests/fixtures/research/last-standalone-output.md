@@ -173,7 +173,7 @@ Fallback generic prompt at `:119-141` constructs markdown from `step.description
 
 **`DispatcherInputSchema`** (`:49-66`): `plan`, `state`, `context`, `plan_truncated`, `history_truncated`, `workflow_id`, `workflow`, `last_worker_result`, `config`, `session_budget`, `available_context`
 
-**`DispatcherDecisionSchema`** (`:73-88`): `schema_version: 1`, `phase_index`, `step_index`, `task_content`, `context_files`, `context_to_inline?`, `validation_criteria`, `reasoning?`, `warnings?`, `worker_config?`, `session_name?`
+**`DispatcherDecisionSchema`** (`:73-88`): `schema_version: 1`, `phase_index`, `task_content`, `context_files`, `context_to_inline?`, `validation_criteria`, `reasoning?`, `warnings?`, `worker_config?`, `session_name?`
 
 ### 11. File Caching and Context Parsing
 

@@ -17,6 +17,12 @@ import { SESMemoryRetriever } from "./retrieve";
 import type { LearningEntry } from "./retrieve";
 import type { AvailableContext, ContextEntry } from "../schemas/shared";
 import type { WorkflowType } from "../controller/workflow-pipeline";
+import {
+  DEFAULT_SOLUTIONS_DIR,
+  DEFAULT_STANDARDS_DIR,
+  DEFAULT_CONVENTION_FILES,
+  CONFIG_DIRS,
+} from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,17 +45,11 @@ export interface ContextIndexerOptions {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_CONVENTION_FILES = ["AGENTS.md", "CONTRIBUTING.md", "DEVELOPMENT.md"];
-const DEFAULT_SOLUTIONS_DIR = "docs/solutions/";
-const DEFAULT_STANDARDS_DIR = "docs/standards/";
 const DEFAULT_REFRESH_CADENCE_MS = 60_000;
 
 const HARDCODED_SUMMARIES: Record<string, string> = {
   "AGENTS.md": "Project architecture, commands, TUI states, and developer conventions",
 };
-
-/** Config directories to scan for convention-like files. */
-const CONFIG_DIRS = [".claude/", ".opencode/"];
 
 const STOPWORDS = new Set([
   "the", "and", "for", "with", "from", "into", "this", "that",

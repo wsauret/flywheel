@@ -30,12 +30,12 @@ import {
   createDebouncedWriter,
   type DebouncedWriter,
 } from "../utils/debounced-writer";
+import { SESSIONS_DIR } from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const SESSIONS_DIR = ".flywheel/sessions";
 const DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const DEFAULT_FLUSH_INTERVAL_MS = 5000; // 5 seconds
 

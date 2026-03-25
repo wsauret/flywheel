@@ -40,7 +40,6 @@ describe("DispatcherDecisionSchema", () => {
   const validDecision = {
     schema_version: 1 as const,
     phase_index: 0,
-    step_index: 0,
     task_content: "Implement feature X",
     context_files: ["src/foo.ts"],
     validation_criteria: {
@@ -1741,7 +1740,6 @@ status: in_progress
   const fullDecision = {
     schema_version: 1 as const,
     phase_index: 1,
-    step_index: 0,
     task_content: "Implement the core feature with proper error handling and tests.",
     context_files: ["src/index.ts", "src/utils.ts"],
     validation_criteria: {
@@ -2025,7 +2023,6 @@ status: in_progress
     const rawLlmDecision = {
       schema_version: 1 as const,
       phase_index: 1,
-      step_index: 0,
       task_content: "Build feature X based on the plan.",
       context_files: ["src/index.ts"],
       validation_criteria: {
@@ -2078,7 +2075,7 @@ status: in_progress
       emitter,
       workflowId: "wf-pipeline-test",
       phaseIndex: decision.phase_index,
-      stepIndex: decision.step_index,
+      stepIndex: 0,
     });
 
     const evalResult = await evaluator.evaluate({

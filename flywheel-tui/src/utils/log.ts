@@ -21,6 +21,7 @@
 
 import path from "path"
 import { mkdirSync, readdirSync, unlinkSync, statSync, createWriteStream } from "node:fs"
+import { LOG_DIR } from "../config/paths"
 
 export namespace Log {
   export type Level = "DEBUG" | "INFO" | "WARN" | "ERROR"
@@ -75,7 +76,7 @@ export namespace Log {
 
   export async function init(options: Options) {
     if (options.level) level = options.level
-    const logDir = path.join(options.dir, ".flywheel", "log")
+    const logDir = path.join(options.dir, LOG_DIR)
     mkdirSync(logDir, { recursive: true })
     cleanup(logDir)
     if (options.print) return

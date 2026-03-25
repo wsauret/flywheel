@@ -54,7 +54,7 @@ async function writeSolution(
   name: string,
   opts: { title: string; tags: string[]; hash: string; content: string },
 ) {
-  const dir = join(projectCwd, "docs", "solutions");
+  const dir = join(projectCwd, ".flywheel", "solutions");
   await mkdir(dir, { recursive: true });
   const tagsYaml = `[${opts.tags.join(", ")}]`;
   const doc = [
@@ -131,7 +131,7 @@ describe("Context Indexer Integration", () => {
       expect(ctx.learnings.length).toBeGreaterThanOrEqual(1);
       const retry = ctx.learnings.find((l) => l.name === "Retry Pattern");
       expect(retry).toBeDefined();
-      expect(retry!.path).toBe("docs/solutions/retry-pattern.md");
+      expect(retry!.path).toBe(".flywheel/solutions/retry-pattern.md");
 
       indexer.dispose();
     });

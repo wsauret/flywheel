@@ -341,7 +341,7 @@ describe("OpenTUIAdapter", () => {
 
     // -- Dispatcher events --
 
-    it("dispatcher:invoked produces SystemBlock", () => {
+    it("dispatcher:invoked produces AgentBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "dispatcher:invoked",
@@ -352,10 +352,12 @@ describe("OpenTUIAdapter", () => {
       });
       const blocks = store.getState().outputBlocks;
       expect(blocks.length).toBeGreaterThanOrEqual(1);
-      const systemBlocks = blocks.filter((b: any) => b.kind === "system");
-      expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
-      const text = systemBlocks.map((b: any) => b.message).join("");
-      expect(text).toContain("Dispatcher: analyzing phase and crafting worker prompt");
+      const agentBlocks = blocks.filter((b: any) => b.kind === "agent");
+      expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
+      const agent = agentBlocks[0] as any;
+      expect(agent.agentLabel).toBe("Dispatcher");
+      expect(agent.description).toBe("Analyzing phase and crafting worker prompt");
+      expect(agent.status).toBe("active");
     });
 
     it("dispatcher:completed produces SystemBlock", () => {
@@ -393,7 +395,7 @@ describe("OpenTUIAdapter", () => {
 
     // -- Evaluator events --
 
-    it("evaluator:invoked produces SystemBlock", () => {
+    it("evaluator:invoked produces AgentBlock", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "evaluator:invoked",
@@ -404,10 +406,12 @@ describe("OpenTUIAdapter", () => {
       });
       const blocks = store.getState().outputBlocks;
       expect(blocks.length).toBeGreaterThanOrEqual(1);
-      const systemBlocks = blocks.filter((b: any) => b.kind === "system");
-      expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
-      const text = systemBlocks.map((b: any) => b.message).join("");
-      expect(text).toContain("Evaluator: checking output quality");
+      const agentBlocks = blocks.filter((b: any) => b.kind === "agent");
+      expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
+      const agent = agentBlocks[0] as any;
+      expect(agent.agentLabel).toBe("Evaluator");
+      expect(agent.description).toBe("Checking output quality");
+      expect(agent.status).toBe("active");
     });
 
     it("evaluator:completed (passed) produces SystemBlock", () => {

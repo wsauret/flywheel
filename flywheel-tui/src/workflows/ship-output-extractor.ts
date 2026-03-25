@@ -13,6 +13,7 @@ import type { ExtractionInput, ExtractionResult } from "../memory/extract";
 import { readHandoff } from "../handoff/reader";
 import { WorkerHandoffSchema } from "../schemas/handoff";
 import type { CompoundDoc as HandoffCompoundDoc } from "../schemas/handoff";
+import { DEFAULT_SOLUTIONS_DIR, SES_DRAFTS_DIR } from "../config/paths";
 
 const log = Log.create({ service: "ship-hook" });
 
@@ -59,8 +60,8 @@ export function createShipOnStepComplete(
   projectCwd: string,
   knownHashes?: Set<string>,
 ): OnStepCompleteHook {
-  const solutionsDir = `${projectCwd}/docs/solutions`;
-  const draftsDir = `${projectCwd}/.flywheel/cache/ses-drafts`;
+  const solutionsDir = `${projectCwd}/${DEFAULT_SOLUTIONS_DIR}`;
+  const draftsDir = `${projectCwd}/${SES_DRAFTS_DIR}`;
 
   return async (
     stepIndex: number,

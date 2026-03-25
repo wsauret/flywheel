@@ -78,7 +78,6 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
   return {
     schema_version: 1,
     phase_index: 0,
-    step_index: 0,
     task_content: "Execute the setup phase by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
@@ -175,7 +174,12 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
     phase_index: 0,
     task_content: "Execute the setup phase by creating directory layout",
     context_files: ["src/index.ts"],
-    validation_criteria: "Tests pass",
+    validation_criteria: {
+      acceptance_criteria: ["Tests pass"],
+      required_tests: false,
+      custom_checks: [],
+      required_outputs: [],
+    },
     reasoning: "Standard setup phase execution",
     ...overrides,
   };
@@ -253,7 +257,6 @@ describe("DispatcherDecisionSchema", () => {
     const obj = {
       schema_version: 1,
       phase_index: 0,
-      step_index: 0,
       task_content: "Execute the setup phase",
       context_files: ["src/index.ts"],
       validation_criteria: {
@@ -271,7 +274,6 @@ describe("DispatcherDecisionSchema", () => {
     const obj = {
       schema_version: 1,
       phase_index: 0,
-      step_index: 0,
       // no task_content
       context_files: ["src/index.ts"],
       validation_criteria: {
@@ -600,6 +602,29 @@ describe("SdkTransport", () => {
     }
   });
 
+  /** Create a mock SDK client that writes a handoff file extracted from the prompt. */
+  function createSdkHandoffClient(
+    handoffOrFn: Record<string, unknown> | ((n: number) => Record<string, unknown> | null),
+    hooks?: { onPrompt?: (opts: any) => void },
+  ): { client: any; callCount: () => number } {
+    let calls = 0;
+    const client = {
+      session: {
+        create: async () => ({ data: { id: `mock-sdk-${++calls}` } }),
+        prompt: async (opts: any) => {
+          hooks?.onPrompt?.(opts);
+          const promptText = opts.body.parts?.[0]?.text ?? "";
+          const handoff = typeof handoffOrFn === "function" ? handoffOrFn(calls) : handoffOrFn;
+          if (handoff) {
+            await writeHandoffFromPrompt(promptText, handoff);
+          }
+          return { data: {} };
+        },
+      },
+    };
+    return { client, callCount: () => calls };
+  }
+
   it("exports SDK_AVAILABLE flag", async () => {
     const mod = await import("../src/dispatcher/sdk-transport");
     expect(typeof mod.SDK_AVAILABLE).toBe("boolean");
@@ -627,17 +652,11 @@ describe("SdkTransport", () => {
   it("sends system prompt as separate `system` field, not concatenated into user content", async () => {
     let capturedPromptOpts: { path: { id: string }; body: { system?: string; parts: Array<{ type: string; text: string }> } } | undefined;
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-123" } }),
-        prompt: async (opts: any) => {
-          capturedPromptOpts = opts;
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
+    const { client } = createSdkHandoffClient(validHandoff(), {
+      onPrompt: (opts) => { capturedPromptOpts = opts; },
+    });
 
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     try {
       const transport = new SdkTransport();
@@ -671,17 +690,11 @@ describe("SdkTransport", () => {
   it("includes truncation notes in user content, not in system field", async () => {
     let capturedPromptOpts: any;
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-456" } }),
-        prompt: async (opts: any) => {
-          capturedPromptOpts = opts;
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
+    const { client } = createSdkHandoffClient(validHandoff(), {
+      onPrompt: (opts) => { capturedPromptOpts = opts; },
+    });
 
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     try {
       const transport = new SdkTransport();
@@ -703,17 +716,11 @@ describe("SdkTransport", () => {
   it("system prompt is identical across invocations (cache-stable)", async () => {
     const capturedSystems: string[] = [];
 
-    const mockClient = {
-      session: {
-        create: async () => ({ data: { id: "mock-session-789" } }),
-        prompt: async (opts: any) => {
-          capturedSystems.push(opts.body.system);
-          return { data: { text: JSON.stringify(validDecision()) } };
-        },
-      },
-    };
+    const { client } = createSdkHandoffClient(validHandoff(), {
+      onPrompt: (opts) => { capturedSystems.push(opts.body.system); },
+    });
 
-    _setClientFactoryForTesting(() => mockClient);
+    _setClientFactoryForTesting(() => client);
 
     try {
       const transport = new SdkTransport();

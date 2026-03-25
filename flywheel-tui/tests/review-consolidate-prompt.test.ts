@@ -181,9 +181,9 @@ describe("buildReviewConsolidatePrompt general content", () => {
     expect(result).toContain("Implementation Order");
   });
 
-  it("contains file output instruction with docs/reviews/ path", () => {
+  it("contains file output instruction with .flywheel/reviews/ path", () => {
     const result = buildReviewConsolidatePrompt(baseCtx);
-    expect(result).toContain("docs/reviews/");
+    expect(result).toContain(".flywheel/reviews/");
     expect(result).toContain("YYYY-MM-DD");
   });
 

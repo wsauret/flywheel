@@ -38,13 +38,11 @@ const planPrompts: PromptFn[] = [
 ];
 
 const reviewPrompts: PromptFn[] = [
-  // Step 0: Collect diff — uses the review dispatch template with just the diff
+  // Step 0: Multi-agent review (collect diff + dispatch reviewers)
   buildReviewDispatchPrompt,
-  // Step 1: Multi-agent review — same template, dispatches reviewers
-  buildReviewDispatchPrompt,
-  // Step 2: Consolidate — uses review consolidate template with P3 triage data
+  // Step 1: Consolidate — uses review consolidate template with P3 triage data
   buildReviewConsolidatePrompt,
-  // Step 3: Implement findings — uses review fix template
+  // Step 2: Implement findings — uses review fix template
   buildReviewFixPrompt,
 ];
 

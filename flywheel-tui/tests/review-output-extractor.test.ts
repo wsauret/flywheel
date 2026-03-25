@@ -97,16 +97,16 @@ function writeHandoffWithConsolidation(
 // ---------------------------------------------------------------------------
 
 describe("review-output-extractor constants", () => {
-  it("REVIEW_MULTI_AGENT_STEP_INDEX is 1", () => {
-    expect(REVIEW_MULTI_AGENT_STEP_INDEX).toBe(1);
+  it("REVIEW_MULTI_AGENT_STEP_INDEX is 0", () => {
+    expect(REVIEW_MULTI_AGENT_STEP_INDEX).toBe(0);
   });
 
   it("REVIEW_P3_DIRECTIVE is 'include-non-cosmetic'", () => {
     expect(REVIEW_P3_DIRECTIVE).toBe("include-non-cosmetic");
   });
 
-  it("REVIEW_CONSOLIDATION_STEP_INDEX is 2", () => {
-    expect(REVIEW_CONSOLIDATION_STEP_INDEX).toBe(2);
+  it("REVIEW_CONSOLIDATION_STEP_INDEX is 1", () => {
+    expect(REVIEW_CONSOLIDATION_STEP_INDEX).toBe(1);
   });
 });
 
@@ -259,7 +259,7 @@ describe("createReviewOnStepComplete — P3 triage (handoff-based)", () => {
 
   it("non-review step returns empty object", async () => {
     const hook = createReviewOnStepComplete({ interactive: false });
-    const result = await hook(0, workerResult("Some output"), {});
+    const result = await hook(99, workerResult("Some output"), {});
     expect(result).toEqual({});
   });
 });

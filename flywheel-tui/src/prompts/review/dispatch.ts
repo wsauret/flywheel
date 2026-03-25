@@ -6,6 +6,9 @@ import {
 } from "../conventions.js";
 import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
+export const reviewDispatchValidationCriteria =
+  "Each reviewer returns findings categorized by severity, or confirms no issues if changes are clean";
+
 /**
  * Builds a prompt for multi-agent code review dispatch.
  */

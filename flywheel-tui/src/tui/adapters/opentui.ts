@@ -88,6 +88,17 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Interval handle for stale agent checks (1s). */
   private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
 
+  // ── Dispatcher/evaluator agent block tracking ──
+
+  private _dispatcherBlockId: string | null = null;
+  private _dispatcherStartedAt: number = 0;
+  private _evaluatorBlockId: string | null = null;
+  private _evaluatorStartedAt: number = 0;
+
+  /** Separate NDJSON parsers for dispatcher/evaluator (isolate from worker pipeline). */
+  private dispatcherNdjsonParser: NDJSONParser;
+  private evaluatorNdjsonParser: NDJSONParser;
+
   constructor(options: OpenTUIAdapterOptions) {
     super();
     this.actions = options.actions;
@@ -131,6 +142,20 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.builder.pushText(text + "\n", Date.now());
       }
     };
+
+    // Dispatcher NDJSON parser — routes tool events into the dispatcher agent block
+    this.dispatcherNdjsonParser = new NDJSONParser();
+    this.dispatcherNdjsonParser.onEvent = (event) => {
+      this.handleDispatcherNdjsonEvent(event);
+    };
+    this.dispatcherNdjsonParser.onRawText = () => {}; // Discard raw text from dispatcher
+
+    // Evaluator NDJSON parser — routes tool events into the evaluator agent block
+    this.evaluatorNdjsonParser = new NDJSONParser();
+    this.evaluatorNdjsonParser.onEvent = (event) => {
+      this.handleEvaluatorNdjsonEvent(event);
+    };
+    this.evaluatorNdjsonParser.onRawText = () => {}; // Discard raw text from evaluator
 
     // Start batched flush interval
     this.flushInterval = setInterval(() => {
@@ -345,11 +370,25 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       // Dispatcher events
-      case "dispatcher:invoked":
-        this.pushSystemText(`⚡ Dispatcher: analyzing phase and crafting worker prompt...\n`, event.timestamp);
+      case "dispatcher:invoked": {
+        const blockId = `dispatcher_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        this._dispatcherBlockId = blockId;
+        this._dispatcherStartedAt = Date.now();
+        this.dispatcherNdjsonParser.flush();
+        this.builder.startAgent(blockId, "Dispatcher", "Analyzing phase and crafting worker prompt", Date.now());
+        this.flushBlocks();
         break;
+      }
 
       case "dispatcher:completed": {
+        if (this._dispatcherBlockId) {
+          const elapsed = Date.now() - this._dispatcherStartedAt;
+          this.dispatcherNdjsonParser.flush();
+          this.builder.completeAgent(this._dispatcherBlockId, elapsed, 0);
+          this._dispatcherBlockId = null;
+          this.flushBlocks();
+        }
+        // Follow-up system message with summary (outside the agent block)
         const warnings = event.decision.warnings;
         const warningText = warnings && warnings.length > 0
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
@@ -358,29 +397,70 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
       }
 
-      case "dispatcher:failed":
+      case "dispatcher:failed": {
+        if (this._dispatcherBlockId) {
+          this.dispatcherNdjsonParser.flush();
+          this.builder.errorAgent(this._dispatcherBlockId, event.reason);
+          this._dispatcherBlockId = null;
+          this.flushBlocks();
+        }
         this.pushSystemText(`⚠ Dispatcher unavailable: ${event.reason}. Using static prompt.\n`, event.timestamp);
         break;
+      }
 
       // Evaluator events
-      case "evaluator:invoked":
-        this.pushSystemText(`🔍 Evaluator: checking output quality...\n`, event.timestamp);
+      case "evaluator:invoked": {
+        const blockId = `evaluator_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        this._evaluatorBlockId = blockId;
+        this._evaluatorStartedAt = Date.now();
+        this.evaluatorNdjsonParser.flush();
+        this.builder.startAgent(blockId, "Evaluator", "Checking output quality", Date.now());
+        this.flushBlocks();
         break;
+      }
 
-      case "evaluator:completed":
-        this.pushSystemText(`🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`, event.timestamp);
+      case "evaluator:completed": {
+        if (this._evaluatorBlockId) {
+          const elapsed = Date.now() - this._evaluatorStartedAt;
+          this.evaluatorNdjsonParser.flush();
+          this.builder.completeAgent(this._evaluatorBlockId, elapsed, 0);
+          this._evaluatorBlockId = null;
+          this.flushBlocks();
+        }
+        // Follow-up system message with the verdict (outside the agent block)
+        this.pushSystemText(
+          `🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`,
+          event.timestamp,
+        );
         break;
+      }
 
-      case "evaluator:failed":
+      case "evaluator:failed": {
+        if (this._evaluatorBlockId) {
+          this.evaluatorNdjsonParser.flush();
+          this.builder.errorAgent(this._evaluatorBlockId, event.reason);
+          this._evaluatorBlockId = null;
+          this.flushBlocks();
+        }
         this.pushSystemText(`⚠ Evaluator failed: ${event.reason}. Skipping.\n`, event.timestamp);
         break;
+      }
 
-      case "evaluator:revision-requested":
+      case "evaluator:revision-requested": {
+        // Complete the current evaluator block first (it's done evaluating)
+        if (this._evaluatorBlockId) {
+          const elapsed = Date.now() - this._evaluatorStartedAt;
+          this.evaluatorNdjsonParser.flush();
+          this.builder.completeAgent(this._evaluatorBlockId, elapsed, 0);
+          this._evaluatorBlockId = null;
+          this.flushBlocks();
+        }
         this.pushSystemText(
           `🔄 Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions}) — re-running worker...\n`,
           new Date(event.timestamp).toISOString(),
         );
         break;
+      }
 
       // Question events — handled by QuestionPrompt component, not adapter
       case "question:asked":
@@ -450,6 +530,21 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.pushSystemText(`↳ Injected: ${event.message.slice(0, 100)}${event.message.length > 100 ? "..." : ""}\n`, event.timestamp);
         break;
 
+      // Dispatcher/evaluator output streaming events
+      case "dispatcher:output":
+        if (event.stream === "stdout") {
+          this.dispatcherNdjsonParser.write(event.data);
+          this.flushBlocks();
+        }
+        break;
+
+      case "evaluator:output":
+        if (event.stream === "stdout") {
+          this.evaluatorNdjsonParser.write(event.data);
+          this.flushBlocks();
+        }
+        break;
+
       default:
         assertNever(event);
     }
@@ -504,6 +599,78 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
     // Immediate flush if builder has changes (responsive for small batches)
     this.flushBlocks();
+  }
+
+  /**
+   * Handle NDJSON event from dispatcher subprocess.
+   * Routes tool-use events to the dispatcher agent block as latestChild updates.
+   */
+  private handleDispatcherNdjsonEvent(event: import("../../worker/ndjson-parser").NDJSONEvent): void {
+    if (!this._dispatcherBlockId) return;
+    const toolInfo = this.extractToolInfo(event.data);
+    if (toolInfo) {
+      this.builder.pushToolToAgent(this._dispatcherBlockId, toolInfo.name, toolInfo.detail, Date.now());
+      this.flushBlocks();
+    }
+  }
+
+  /**
+   * Handle NDJSON event from evaluator subprocess.
+   */
+  private handleEvaluatorNdjsonEvent(event: import("../../worker/ndjson-parser").NDJSONEvent): void {
+    if (!this._evaluatorBlockId) return;
+    const toolInfo = this.extractToolInfo(event.data);
+    if (toolInfo) {
+      this.builder.pushToolToAgent(this._evaluatorBlockId, toolInfo.name, toolInfo.detail, Date.now());
+      this.flushBlocks();
+    }
+  }
+
+  /**
+   * Extract tool name and detail from a Claude NDJSON event data payload.
+   * Returns null if the event is not a tool-use event.
+   */
+  private extractToolInfo(data: Record<string, unknown>): { name: string; detail: string } | null {
+    // Claude assistant message with tool_use content blocks
+    if (data.type === "assistant" && Array.isArray(data.content)) {
+      for (const block of data.content as Record<string, unknown>[]) {
+        if (block.type === "tool_use" && typeof block.name === "string") {
+          const input = block.input as Record<string, unknown> | undefined;
+          const detail = this.extractToolDetail(block.name, input);
+          return { name: block.name, detail };
+        }
+      }
+    }
+
+    // Claude tool_use event (direct)
+    if (data.type === "tool_use" && typeof data.name === "string") {
+      const input = data.input as Record<string, unknown> | undefined;
+      const detail = this.extractToolDetail(data.name, input);
+      return { name: data.name, detail };
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract a short detail string from tool input for display.
+   */
+  private extractToolDetail(toolName: string, input?: Record<string, unknown>): string {
+    if (!input) return "";
+    // For Write/Edit tools, show the file path
+    if (input.file_path && typeof input.file_path === "string") {
+      return input.file_path;
+    }
+    // For Read tools, show the file path
+    if (input.path && typeof input.path === "string") {
+      return input.path;
+    }
+    // For Bash tools, show truncated command
+    if (input.command && typeof input.command === "string") {
+      const cmd = input.command as string;
+      return cmd.length > 60 ? cmd.slice(0, 57) + "..." : cmd;
+    }
+    return "";
   }
 
   /**

@@ -34,13 +34,13 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** The multi-agent review step index in the review workflow (0-based). */
-export const REVIEW_MULTI_AGENT_STEP_INDEX = 1;
+export const REVIEW_MULTI_AGENT_STEP_INDEX = 0;
 
 /** The consolidation step index in the review workflow (0-based). */
-export const REVIEW_CONSOLIDATION_STEP_INDEX = 2;
+export const REVIEW_CONSOLIDATION_STEP_INDEX = 1;
 
 /** The fix/implementation step index in the review workflow (0-based). */
-export const REVIEW_FIX_STEP_INDEX = 3;
+export const REVIEW_FIX_STEP_INDEX = 2;
 
 /** Directive sent when P3 findings are auto-included (non-interactive or dismissed). */
 export const REVIEW_P3_DIRECTIVE = "include-non-cosmetic" as const;

@@ -6,6 +6,9 @@ import {
 } from "../conventions.js";
 import { renderHandoffInstruction, PLAN_REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
+export const planReviewValidationCriteria =
+  "Plan Review Summary produced with P1/P2/P3 categorized findings and Open Questions section";
+
 /**
  * Builds a prompt for reviewing a plan via multi-reviewer dispatch.
  */

@@ -26,6 +26,7 @@ import {
   destroyWorkflowSession,
 } from "./components/workflow-session"
 import { loadConfig } from "../config/loader"
+import { CONFIG_FILES } from "../config/paths"
 
 export interface TUIOptions {
   mode?: "dark" | "light"
@@ -48,7 +49,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     // Load config (best-effort: falls back to defaults on error)
     let config: import("../config/loader").FlywheelConfig | undefined
     try {
-      const configPath = ["flywheel.toml", ".flywheel.toml"].find(
+      const configPath = CONFIG_FILES.find(
         (p) => require("node:fs").existsSync(p),
       )
       config = loadConfig(configPath).config

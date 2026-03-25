@@ -192,7 +192,6 @@ describe("verify-dispatcher: schema validation", () => {
     const decision = {
       schema_version: 1,
       phase_index: 0,
-      step_index: 0,
       task_content: "Execute the setup phase by creating directory layout",
       context_files: ["src/index.ts"],
       validation_criteria: {
@@ -213,7 +212,6 @@ describe("verify-dispatcher: schema validation", () => {
     const decision = {
       schema_version: 1,
       phase_index: 0,
-      step_index: 0,
       task_content: "Create a GET /hello endpoint that returns JSON { message: 'hello world' }. Write tests first.",
       context_files: [],
       validation_criteria: {

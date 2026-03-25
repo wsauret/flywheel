@@ -119,7 +119,6 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
   return {
     schema_version: 1,
     phase_index: 0,
-    step_index: 0,
     task_content: "Execute the phase",
     context_files: [],
     validation_criteria: {

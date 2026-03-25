@@ -27,6 +27,7 @@ import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handof
 import { EvaluatorVerdictSchema } from "../schemas/handoff";
 import type { EvaluatorVerdict } from "../schemas/handoff";
 import { Log } from "../utils/log";
+import { HANDOFFS_DIR } from "../config/paths";
 
 const log = Log.create({ service: "evaluator-subprocess" });
 
@@ -52,6 +53,10 @@ export interface SubprocessEvaluatorTransportOptions {
   engineName?: string;
   /** Evaluator model override — flows to --model CLI flag. Uses engine default when not set. */
   evaluatorModel?: string;
+  /** Called with each decoded stdout chunk as it arrives from the evaluator subprocess. */
+  onStdout?: (chunk: string) => void;
+  /** Called with each decoded stderr chunk as it arrives from the evaluator subprocess. */
+  onStderr?: (chunk: string) => void;
 }
 
 export class SubprocessEvaluatorTransport implements EvaluatorTransport {
@@ -59,10 +64,14 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private readonly envFilter = createEnvFilter();
   private readonly engine: Engine;
   private readonly evaluatorModel: string | undefined;
+  private readonly onStdout?: (chunk: string) => void;
+  private readonly onStderr?: (chunk: string) => void;
 
   constructor(options: SubprocessEvaluatorTransportOptions) {
     this.spawner = options.spawner;
     this.evaluatorModel = options.evaluatorModel;
+    this.onStdout = options.onStdout;
+    this.onStderr = options.onStderr;
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -82,8 +91,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     const invocationId = crypto.randomUUID();
     const handoffsDir = nodePath.resolve(
       process.cwd(),
-      ".flywheel",
-      "handoffs",
+      HANDOFFS_DIR,
     );
     fs.mkdirSync(handoffsDir, { recursive: true });
     const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
@@ -131,6 +139,8 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
           timeoutMs: CLI_TIMEOUT_MS,
           stdin: stdinContent,
           env,
+          onStdout: this.onStdout,
+          onStderr: this.onStderr,
         },
       );
       await resultPromise;

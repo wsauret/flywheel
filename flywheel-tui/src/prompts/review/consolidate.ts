@@ -2,6 +2,7 @@ import type { WorkflowStepContext } from "../index.js";
 import { SEVERITY_DEFINITIONS, SCOPE_DISCIPLINE } from "../conventions.js";
 import type { P3Finding } from "../../workflows/review-output-extractor.js";
 import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
+import { DEFAULT_REVIEWS_DIR } from "../../config/paths.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,6 +76,9 @@ Triage P3 findings yourself. Include non-cosmetic P3 findings that are worth fix
 // ---------------------------------------------------------------------------
 // Main prompt builder
 // ---------------------------------------------------------------------------
+
+export const reviewConsolidateValidationCriteria =
+  "Review document written to disk with P1/P2/P3 findings and implementation order (file path appears in output), or clean summary if no significant issues found";
 
 /**
  * Builds a prompt for the review consolidation step.
@@ -156,13 +160,13 @@ The review document must be consumable as an implementation plan. A developer sh
 ## IMPORTANT: Write the review document to disk
 
 After consolidating, you MUST write the final review document to a file at:
-\`docs/reviews/YYYY-MM-DD-<slug>.md\`
+\`${DEFAULT_REVIEWS_DIR}/YYYY-MM-DD-<slug>.md\`
 
 Where \`<slug>\` is a short kebab-case name describing the review scope.
 
-Example: \`docs/reviews/2024-01-15-auth-jwt.md\`
+Example: \`${DEFAULT_REVIEWS_DIR}/2024-01-15-auth-jwt.md\`
 
-Create the \`docs/reviews/\` directory if it does not exist.
+Create the \`${DEFAULT_REVIEWS_DIR}/\` directory if it does not exist.
 The filename MUST appear in your output so downstream tools can locate it.
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;

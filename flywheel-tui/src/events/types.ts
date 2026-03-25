@@ -22,10 +22,12 @@ export type FlywheelEvent =
   | DispatcherInvoked
   | DispatcherCompleted
   | DispatcherFailed
+  | DispatcherOutput
   | EvaluatorInvoked
   | EvaluatorCompleted
   | EvaluatorFailed
   | EvaluatorRevisionRequested
+  | EvaluatorOutput
   | WorkerSpawned
   | WorkerCompleted
   | WorkerFailed
@@ -150,6 +152,15 @@ export interface DispatcherFailed {
   timestamp: string;
 }
 
+export interface DispatcherOutput {
+  type: "dispatcher:output";
+  workflowId: string;
+  stream: "stdout" | "stderr";
+  data: string;
+  engineName: string;
+  timestamp: number;
+}
+
 // -- Evaluator events --
 
 export interface EvaluatorInvoked {
@@ -181,6 +192,15 @@ export interface EvaluatorRevisionRequested {
   revisionAttempt: number;
   maxRevisions: number;
   reason: string;
+  timestamp: number;
+}
+
+export interface EvaluatorOutput {
+  type: "evaluator:output";
+  workflowId: string;
+  stream: "stdout" | "stderr";
+  data: string;
+  engineName: string;
   timestamp: number;
 }
 

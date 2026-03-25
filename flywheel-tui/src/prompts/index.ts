@@ -22,7 +22,7 @@ export interface WorkflowStepContext {
   extra?: Record<string, unknown>;
 }
 
-// ── Re-exports ──────────────────────────────────────────────────
+// ── Re-exports: prompt builders ─────────────────────────────────
 
 export { buildWorkPhasePrompt } from "./work/phase-prompt.js";
 
@@ -45,3 +45,23 @@ export {
   buildResearchAnalyzePrompt,
   buildResearchPersistPrompt,
 } from "./research/index.js";
+
+// ── Re-exports: colocated validation criteria ───────────────────
+
+export { planResearchValidationCriteria } from "./plan/research.js";
+export { planDraftValidationCriteria } from "./plan/draft.js";
+export { planReviewValidationCriteria } from "./plan/review.js";
+export { planConsolidateValidationCriteria } from "./plan/consolidate.js";
+
+export { reviewDispatchValidationCriteria } from "./review/dispatch.js";
+export { reviewConsolidateValidationCriteria } from "./review/consolidate.js";
+export { reviewFixValidationCriteria } from "./review/fix.js";
+
+export { shipStageValidationCriteria, shipCommitValidationCriteria, shipPRValidationCriteria } from "./ship/workflow.js";
+export { shipCompoundValidationCriteria } from "./ship/compound.js";
+
+export { debugInvestigateValidationCriteria, debugFixValidationCriteria, debugVerifyValidationCriteria } from "./debug/investigate.js";
+
+export { researchLocateValidationCriteria } from "./research/locate.js";
+export { researchAnalyzeValidationCriteria } from "./research/analyze.js";
+export { researchPersistValidationCriteria } from "./research/persist.js";

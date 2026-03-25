@@ -21,7 +21,7 @@ export const metadata: EngineMetadata = {
 
 /**
  * Map ToolScopingConfig booleans to Claude CLI tool names.
- * Only tools with `true` are included in the --allowedTools list.
+ * Only tools with `true` are included in the --tools list.
  */
 const TOOL_NAME_MAP: Record<string, string> = {
   read: "Read",
@@ -46,7 +46,7 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     args.push("--model", options.model.trim());
   }
 
-  // Tool scoping: use --allowedTools to restrict available tools
+  // Tool scoping: use --tools to restrict available tools
   if (options.toolScoping) {
     const allowed: string[] = [];
     for (const [key, cliName] of Object.entries(TOOL_NAME_MAP)) {
@@ -55,7 +55,7 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
       }
     }
     if (allowed.length > 0) {
-      args.push("--allowedTools", allowed.join(","));
+      args.push("--tools", allowed.join(","));
     }
   }
 
@@ -74,7 +74,7 @@ const DISPATCHER_DEFAULT_MODEL = "sonnet";
  *
  * Flags:
  * - `--print` — non-interactive output (plain text response)
- * - `--tools ""` — disable all tools
+ * - `--tools Write` — only allow file writing (needed for handoff file)
  * - `--model <model>` — fast model (default: sonnet)
  * - `--system-prompt <prompt>` — separate system prompt for prompt caching
  * - `--no-session-persistence` — skip writing session to disk
@@ -89,7 +89,7 @@ export function buildDispatcherCommand(options: DispatcherCommandOptions): Engin
     "--print",
     "--dangerously-skip-permissions",
     "--no-session-persistence",
-    "--tools", "",
+    "--tools", "Write",
     "--model", model,
     "--system-prompt", options.systemPrompt,
     "--effort", "low",

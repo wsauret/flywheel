@@ -1084,7 +1084,6 @@ describe("ExecutionLoop (unified)", () => {
           return {
             schema_version: 1,
             phase_index: 0,
-            step_index: 0,
             task_content: "dispatched prompt",
             context_files: [],
             validation_criteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
@@ -1154,7 +1153,6 @@ describe("ExecutionLoop (unified)", () => {
           return {
             schema_version: 1,
             phase_index: 0,
-            step_index: 0,
             task_content: "dispatched prompt",
             context_files: [],
             validation_criteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
@@ -1203,7 +1201,6 @@ describe("ExecutionLoop (unified)", () => {
       return {
         schema_version: 1,
         phase_index: 0,
-        step_index: 0,
         task_content: "Dispatcher-crafted prompt for the worker",
         context_files: ["src/index.ts"],
         validation_criteria: {
@@ -1819,7 +1816,6 @@ describe("ExecutionLoop (unified)", () => {
       return {
         schema_version: 1,
         phase_index: 0,
-        step_index: 0,
         task_content: "Dispatcher task instructions",
         context_files: [],
         validation_criteria: {

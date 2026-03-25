@@ -5,7 +5,11 @@ import {
   TOKEN_LIMITS,
   READ_FULLY_RULE,
   FILE_LINE_DISCIPLINE,
+  buildProjectContextSection,
 } from "../conventions.js";
+
+export const planResearchValidationCriteria =
+  "Produces a .context.md file with file references and patterns";
 
 /**
  * Builds a prompt for the plan research phase (locator → analyzer dispatch).
@@ -15,6 +19,8 @@ export function buildPlanResearchPrompt(ctx: WorkflowStepContext): string {
     ctx.fileReferences.length > 0
       ? ctx.fileReferences.map((f) => `- \`${f}\``).join("\n")
       : "_No initial file references._";
+
+  const projectContext = buildProjectContextSection(ctx.extra);
 
   return `# Plan Research
 
@@ -27,6 +33,8 @@ ${ctx.planContent}
 ${files}
 
 ${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+${projectContext}
 
 ---
 
@@ -43,6 +51,8 @@ ${TOKEN_LIMITS}
 ## BLOCKING Rule
 
 Do NOT use Read/Grep/Glob for target codebase research directly. Dispatch locator Tasks first to find relevant files, then dispatch analyzer Tasks to understand them.
+
+**Exception:** Files listed in the Project Context section above (conventions, standards) MUST be read directly before dispatching locators.
 
 ## Locator Dispatch Templates
 

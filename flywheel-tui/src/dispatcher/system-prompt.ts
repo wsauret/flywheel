@@ -63,7 +63,6 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 {
   "schema_version": 1,
   "phase_index": <number>,
-  "step_index": <number>,
   "task_content": <string>,        // WHAT to accomplish — goal, file paths, steps. No behavioral instructions.
   "context_files": [<string>],     // Files worker can read on demand
   "context_to_inline": [<string>], // (optional) Paths from available_context to inject; most critical first
@@ -101,7 +100,6 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 {
   "schema_version": 1,
   "phase_index": 2,
-  "step_index": 0,
   "task_content": "Implement pagination for the GET /users endpoint.\\n\\n1. Read src/routes/users.ts and add page/limit query parameters (default page=1, limit=20).\\n2. Update the database query in src/db/queries.ts to support OFFSET and LIMIT.\\n3. Return paginated response with { data, total, page, limit } shape.\\n4. Add tests in tests/routes/users.test.ts covering: default pagination, custom page/limit, out-of-range page returns empty array.\\n\\nThe User model is already defined in src/models/user.ts (from phase 1). All 5 existing model tests pass.",
   "context_files": ["src/routes/users.ts", "src/db/queries.ts", "src/models/user.ts", "tests/routes/users.test.ts"],
   "context_to_inline": ["docs/standards/api.md"],

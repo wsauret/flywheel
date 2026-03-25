@@ -74,6 +74,15 @@ export const FlywheelConfigSchema = z.object({
     /** Grace period (ms) before trashed session worktrees are cleaned up. Default: 300000 (5 min). */
     grace_period_ms: z.number().int().min(0).default(300_000),
   }).default({}),
+
+  /** User-facing output directory overrides. */
+  paths: z.object({
+    plans: z.string().optional(),
+    research: z.string().optional(),
+    reviews: z.string().optional(),
+    solutions: z.string().optional(),
+    standards: z.string().optional(),
+  }).default({}),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
@@ -106,6 +115,7 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
     auto_remove: false,
     grace_period_ms: 300_000,
   },
+  paths: {},
 };
 
 // ---------------------------------------------------------------------------

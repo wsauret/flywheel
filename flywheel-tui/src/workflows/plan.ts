@@ -1,4 +1,8 @@
 import type { WorkflowDefinition } from "../schemas/workflow";
+import { planResearchValidationCriteria } from "../prompts/plan/research";
+import { planDraftValidationCriteria } from "../prompts/plan/draft";
+import { planReviewValidationCriteria } from "../prompts/plan/review";
+import { planConsolidateValidationCriteria } from "../prompts/plan/consolidate";
 
 export const planWorkflow: WorkflowDefinition = {
   name: "plan",
@@ -8,29 +12,25 @@ export const planWorkflow: WorkflowDefinition = {
       description: "Research the codebase for relevant files and patterns",
       dispatcherHint:
         "Use plan/research prompt template. Run parallel locators then analyzers.",
-      validationCriteria:
-        "Produces a .context.md file with file references and patterns",
+      validationCriteria: planResearchValidationCriteria,
     },
     {
       description: "Draft the plan document",
       dispatcherHint:
         "Use plan/draft prompt template. Include research results.",
-      validationCriteria:
-        "Produces a plan.md with phases, checklist items, and technical reference",
+      validationCriteria: planDraftValidationCriteria,
     },
     {
       description: "Review the plan with all reviewer agents",
       dispatcherHint:
         "Use plan/review prompt template. Single worker dispatches 5 reviewer subagents.",
-      validationCriteria:
-        "Review findings appended to plan with P1/P2/P3 categorization",
+      validationCriteria: planReviewValidationCriteria,
     },
     {
       description: "Consolidate review findings into actionable plan",
       dispatcherHint:
         "Use plan/consolidate prompt template. Resolve open questions.",
-      validationCriteria:
-        "Final plan.md with Implementation Checklist, all P1 items addressed",
+      validationCriteria: planConsolidateValidationCriteria,
     },
   ],
 };

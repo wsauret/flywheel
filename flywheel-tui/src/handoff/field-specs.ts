@@ -92,7 +92,7 @@ export const PLAN_CONSOLIDATE_FIELDS: HandoffFieldSpec[] = [
   {
     key: "plan_file_path",
     description: "Path to the final consolidated plan file",
-    example: '"docs/plans/auth-plan.md"',
+    example: '".flywheel/plans/auth-plan.md"',
   },
   {
     key: "decisions",
@@ -111,7 +111,7 @@ export const REVIEW_FIELDS: HandoffFieldSpec[] = [
   {
     key: "review_file_path",
     description: "Path to the full review document",
-    example: '"docs/reviews/auth-review.md"',
+    example: '".flywheel/reviews/auth-review.md"',
   },
   {
     key: "finding_counts",
@@ -221,8 +221,10 @@ The JSON must include these fields:
   Example: "Implement feature X according to the plan."
 - **context_files** (REQUIRED): File paths the worker should reference. Array of strings.
   Example: ["src/foo.ts", "tests/foo.test.ts"]
-- **validation_criteria** (optional): Criteria for evaluating the worker's output.
-  Example: "Tests pass, no lint errors"
+- **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance, most critical first; 8 KB cap. Array of strings.
+  Example: ["docs/standards/api.md", "docs/standards/testing.md"]
+- **validation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: acceptance_criteria (string[]), required_tests (boolean), custom_checks (string[]), required_outputs (string[]).
+  Example: {"acceptance_criteria": ["Tests pass", "No lint errors"], "required_tests": true, "custom_checks": [], "required_outputs": []}
 - **session_name** (optional): Name for the worker session.
   Example: "work-session-phase-1"
 - **reasoning** (optional): Why this dispatch decision was made.

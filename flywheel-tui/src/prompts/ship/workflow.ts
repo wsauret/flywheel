@@ -1,5 +1,12 @@
 import type { WorkflowStepContext } from "../index.js";
 
+export const shipStageValidationCriteria =
+  "Changes are staged with specific paths";
+export const shipCommitValidationCriteria =
+  "Branch created with descriptive name, commit with imperative mood message";
+export const shipPRValidationCriteria =
+  "PR created with concise title and body, no AI attribution";
+
 /**
  * Builds a prompt for the ship workflow (branch → commit → PR → compound).
  */

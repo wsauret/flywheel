@@ -73,7 +73,6 @@ export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 export const DispatcherDecisionSchema = z.object({
   schema_version: z.literal(1),
   phase_index: z.number(),
-  step_index: z.number(),
   task_content: z.string(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),

@@ -285,14 +285,14 @@ describe("buildWorkPhasePrompt", () => {
       ...baseCtx,
       extra: {
         learnings: [
-          { name: "Retry Pattern", path: "docs/solutions/retry-pattern.md", summary: "Retry pattern for flaky network calls" },
+          { name: "Retry Pattern", path: ".flywheel/solutions/retry-pattern.md", summary: "Retry pattern for flaky network calls" },
         ],
       },
     };
     const result = buildWorkPhasePrompt(ctx);
     expect(result).toContain("## Project Context");
     expect(result).toContain("### Learnings");
-    expect(result).toContain("`docs/solutions/retry-pattern.md`");
+    expect(result).toContain("`.flywheel/solutions/retry-pattern.md`");
     expect(result).toContain("Retry pattern for flaky network calls");
   });
 
@@ -307,7 +307,7 @@ describe("buildWorkPhasePrompt", () => {
           { name: "Testing", path: "docs/standards/testing.md", summary: "Testing patterns" },
         ],
         learnings: [
-          { name: "Retry", path: "docs/solutions/retry.md", summary: "Retry pattern" },
+          { name: "Retry", path: ".flywheel/solutions/retry.md", summary: "Retry pattern" },
         ],
       },
     };
@@ -753,9 +753,9 @@ describe("buildShipCompoundPrompt", () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it("includes target directory docs/solutions/", () => {
+  it("includes target directory .flywheel/solutions/", () => {
     const result = buildShipCompoundPrompt(baseCtx);
-    expect(result).toContain("docs/solutions/");
+    expect(result).toContain(".flywheel/solutions/");
   });
 
   it("includes complete YAML frontmatter format", () => {

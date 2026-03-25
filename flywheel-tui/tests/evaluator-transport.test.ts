@@ -251,7 +251,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(spawnedArgs).toContain("--no-session-persistence");
     expect(spawnedArgs).toContain("--tools");
     const toolsIdx = spawnedArgs.indexOf("--tools");
-    expect(spawnedArgs[toolsIdx + 1]).toBe(""); // tools disabled
+    expect(spawnedArgs[toolsIdx + 1]).toBe("Write"); // only Write tool for handoff files
     expect(spawnedArgs).toContain("--model");
     expect(spawnedArgs).toContain("--effort");
     const effortIdx = spawnedArgs.indexOf("--effort");

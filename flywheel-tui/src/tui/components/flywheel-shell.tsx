@@ -602,6 +602,16 @@ export function FlywheelShell() {
         } catch { /* silently fall back to empty context */ }
       }
 
+      // Track current workflowId for dispatcher/evaluator output events.
+      // Updated by workflow:started events; closures below capture this mutable reference.
+      let currentWorkflowId = "unknown"
+      const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
+        currentWorkflowId = ev.workflowId
+      })
+      pipelineUnsubs.push(workflowIdUnsub)
+
+      const pipelineEngineName = deps.config.engine
+
       // Auto-detect dispatcher transport (engine-aware: claude → CLI, opencode → SDK then CLI).
       let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
       try {
@@ -611,6 +621,8 @@ export function FlywheelShell() {
           spawner: deps.spawner,
           engineName: deps.config.engine,
           dispatcherModel,
+          onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
+          onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
         })
         dispatcherTransport = resolved.transport
         log.info("dispatcher transport resolved", { label: resolved.label, engine: deps.config.engine })
@@ -630,6 +642,8 @@ export function FlywheelShell() {
             spawner: deps.spawner,
             engineName: deps.config.engine,
             evaluatorModel: evalModel,
+            onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
+            onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
           })
           log.info("evaluator transport created", { engine: deps.config.engine })
         } catch (err) {
@@ -1018,6 +1032,13 @@ export function FlywheelShell() {
     setAppState("working")
 
     queueMicrotask(async () => {
+      // Track current workflowId for dispatcher/evaluator output events.
+      let resumeCurrentWorkflowId = "unknown"
+      const resumeWorkflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
+        resumeCurrentWorkflowId = ev.workflowId
+      })
+      const resumeEngineName = deps.config.engine
+
       // Auto-detect dispatcher transport for the resumed session (engine-aware)
       let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
       try {
@@ -1027,6 +1048,8 @@ export function FlywheelShell() {
           spawner: deps.spawner,
           engineName: deps.config.engine,
           dispatcherModel,
+          onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
+          onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
         })
         dispatcherTransport = resolved.transport
       } catch { /* fallback to static prompts */ }
@@ -1041,6 +1064,8 @@ export function FlywheelShell() {
             spawner: deps.spawner,
             engineName: deps.config.engine,
             evaluatorModel: evalModel,
+            onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
+            onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
           })
         } catch { /* evaluation will be skipped */ }
       }
@@ -1068,6 +1093,8 @@ export function FlywheelShell() {
         sessionControllers.delete(sessionId)
       } catch {
         sessionControllers.delete(sessionId)
+      } finally {
+        resumeWorkflowIdUnsub()
       }
     })
   }

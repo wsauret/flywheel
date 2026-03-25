@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerConfigSchema } from "../schemas/shared";
+import { ValidationCriteriaSchema, WorkerConfigSchema } from "../schemas/shared";
 
 // ---------------------------------------------------------------------------
 // Sub-schemas (all .strict() — LLM typos should cause retries)
@@ -100,8 +100,9 @@ export const DispatcherDecisionHandoffSchema = z.object({
   schema_version: z.literal(1),
   phase_index: z.number(),
   task_content: z.string(),
-  validation_criteria: z.string().optional(),
+  validation_criteria: ValidationCriteriaSchema.optional(),
   context_files: z.array(z.string()),
+  context_to_inline: z.array(z.string()).optional(),
   session_name: z.string().optional(),
   reasoning: z.string().optional(),
   worker_config: WorkerConfigSchema.optional(),

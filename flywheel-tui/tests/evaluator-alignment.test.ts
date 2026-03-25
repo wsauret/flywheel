@@ -102,18 +102,18 @@ describe("VAL-ALIGN-001: Research workflow step descriptions are task-adaptive",
 });
 
 describe("VAL-ALIGN-002: Review workflow handles 'no issues found' as valid outcome", () => {
-  it("step 2 validationCriteria permits zero findings", async () => {
+  it("step 1 (multi-agent review) validationCriteria permits zero findings", async () => {
     const { reviewWorkflow } = await import("../src/workflows/review");
-    const step2 = reviewWorkflow.steps[1]; // multi-agent review
+    const step1 = reviewWorkflow.steps[0]; // multi-agent review
 
-    expect(step2.validationCriteria).toContain("no issues");
+    expect(step1.validationCriteria).toContain("no issues");
   });
 
-  it("step 3 validationCriteria permits clean summary", async () => {
+  it("step 2 (consolidate) validationCriteria permits clean summary", async () => {
     const { reviewWorkflow } = await import("../src/workflows/review");
-    const step3 = reviewWorkflow.steps[2]; // consolidate findings
+    const step2 = reviewWorkflow.steps[1]; // consolidate findings
 
-    expect(step3.validationCriteria).toContain("no significant issues");
+    expect(step2.validationCriteria).toContain("no significant issues");
   });
 });
 
@@ -139,22 +139,27 @@ describe("VAL-ALIGN-004: Debug workflow handles non-code fixes", () => {
 });
 
 describe("VAL-ALIGN-009: Plan workflow step descriptions remain unchanged", () => {
-  it("plan workflow steps have not been modified", async () => {
+  it("plan workflow steps have correct descriptions", async () => {
     const { planWorkflow } = await import("../src/workflows/plan");
     const steps = planWorkflow.steps;
 
-    // These should match the original plan.ts content exactly
     expect(steps[0].description).toBe("Research the codebase for relevant files and patterns");
-    expect(steps[0].validationCriteria).toBe("Produces a .context.md file with file references and patterns");
-
     expect(steps[1].description).toBe("Draft the plan document");
-    expect(steps[1].validationCriteria).toBe("Produces a plan.md with phases, checklist items, and technical reference");
-
     expect(steps[2].description).toBe("Review the plan with all reviewer agents");
-    expect(steps[2].validationCriteria).toBe("Review findings appended to plan with P1/P2/P3 categorization");
-
     expect(steps[3].description).toBe("Consolidate review findings into actionable plan");
-    expect(steps[3].validationCriteria).toBe("Final plan.md with Implementation Checklist, all P1 items addressed");
+  });
+
+  it("plan workflow criteria are imported from prompt files (not hardcoded)", async () => {
+    const { planWorkflow } = await import("../src/workflows/plan");
+    const { planResearchValidationCriteria } = await import("../src/prompts/plan/research");
+    const { planDraftValidationCriteria } = await import("../src/prompts/plan/draft");
+    const { planReviewValidationCriteria } = await import("../src/prompts/plan/review");
+    const { planConsolidateValidationCriteria } = await import("../src/prompts/plan/consolidate");
+
+    expect(planWorkflow.steps[0].validationCriteria).toBe(planResearchValidationCriteria);
+    expect(planWorkflow.steps[1].validationCriteria).toBe(planDraftValidationCriteria);
+    expect(planWorkflow.steps[2].validationCriteria).toBe(planReviewValidationCriteria);
+    expect(planWorkflow.steps[3].validationCriteria).toBe(planConsolidateValidationCriteria);
   });
 });
 

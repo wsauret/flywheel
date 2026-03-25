@@ -37,6 +37,10 @@ export interface AutoDetectOptions {
   engineName?: string;
   /** Dispatcher model override — passed through to SubprocessTransport. */
   dispatcherModel?: string;
+  /** Called with each decoded stdout chunk as it arrives from the dispatcher subprocess. */
+  onStdout?: (chunk: string) => void;
+  /** Called with each decoded stderr chunk as it arrives from the dispatcher subprocess. */
+  onStderr?: (chunk: string) => void;
 }
 
 // Server singleton — shared across all pipelines in the same process.
@@ -98,6 +102,8 @@ export async function autoDetectTransport(
       spawner: options.spawner,
       engineName: "claude",
       dispatcherModel: options.dispatcherModel,
+      onStdout: options.onStdout,
+      onStderr: options.onStderr,
     });
     return { transport, label: "cli", dispose: () => {} };
   }
@@ -126,6 +132,8 @@ export async function autoDetectTransport(
     spawner: options.spawner,
     engineName,
     dispatcherModel: options.dispatcherModel,
+    onStdout: options.onStdout,
+    onStderr: options.onStderr,
   });
   return { transport, label: "cli", dispose: () => {} };
 }

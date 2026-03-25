@@ -123,10 +123,12 @@ export interface FlywheelEmitter {
   dispatcherInvoked(workflowId: string, phaseIndex: number, stepIndex: number): void;
   dispatcherCompleted(workflowId: string, decision: import("../schemas/dispatcher").DispatcherDecision): void;
   dispatcherFailed(workflowId: string, reason: string): void;
+  dispatcherOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
   evaluatorInvoked(workflowId: string, phaseIndex: number, stepIndex: number): void;
   evaluatorCompleted(workflowId: string, result: import("../schemas/evaluator").EvaluatorResult): void;
   evaluatorFailed(workflowId: string, reason: string): void;
   evaluatorRevisionRequested(workflowId: string, phaseIndex: number, revisionAttempt: number, maxRevisions: number, reason: string): void;
+  evaluatorOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
   workerSpawned(workflowId: string, phaseIndex: number, stepIndex: number): void;
   workerCompleted(workflowId: string, result: import("../schemas/worker").WorkerResult): void;
   workerFailed(workflowId: string, failure: import("../schemas/worker").WorkerFailureReason): void;
@@ -169,6 +171,8 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "dispatcher:completed", workflowId, decision, timestamp: now() }),
     dispatcherFailed: (workflowId, reason) =>
       bus.emit({ type: "dispatcher:failed", workflowId, reason, timestamp: now() }),
+    dispatcherOutput: (workflowId, stream, data, engineName) =>
+      bus.emit({ type: "dispatcher:output", workflowId, stream, data, engineName, timestamp: Date.now() }),
     evaluatorInvoked: (workflowId, phaseIndex, stepIndex) =>
       bus.emit({ type: "evaluator:invoked", workflowId, phaseIndex, stepIndex, timestamp: now() }),
     evaluatorCompleted: (workflowId, result) =>
@@ -177,6 +181,8 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "evaluator:failed", workflowId, reason, timestamp: now() }),
     evaluatorRevisionRequested: (workflowId, phaseIndex, revisionAttempt, maxRevisions, reason) =>
       bus.emit({ type: "evaluator:revision-requested", workflowId, phaseIndex, revisionAttempt, maxRevisions, reason, timestamp: Date.now() }),
+    evaluatorOutput: (workflowId, stream, data, engineName) =>
+      bus.emit({ type: "evaluator:output", workflowId, stream, data, engineName, timestamp: Date.now() }),
     workerSpawned: (workflowId, phaseIndex, stepIndex) =>
       bus.emit({ type: "worker:spawned", workflowId, phaseIndex, stepIndex, timestamp: now() }),
     workerCompleted: (workflowId, result) =>

@@ -2,7 +2,7 @@
  * SubprocessTransport — engine-aware dispatcher invocation via subprocess.
  *
  * Uses the engine registry to build commands with per-engine optimization flags.
- * - Claude Code: --print, --tools "", --system-prompt, --no-session-persistence, --effort low, -p
+ * - Claude Code: --print, --tools Write, --system-prompt, --no-session-persistence, --effort low, -p
  * - OpenCode: run --format json, --model, stdin prompt delivery
  *
  * Uses ProcessSpawner (DI seam, same pattern as worker).
@@ -26,7 +26,9 @@ import { renderDispatcherHandoffInstruction } from "../handoff/field-specs";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
 import { DispatcherDecisionHandoffSchema } from "../schemas/handoff";
 import type { DispatcherDecisionHandoff } from "../schemas/handoff";
+import { mapHandoffToDecision } from "./map-handoff";
 import { Log } from "../utils/log";
+import { HANDOFFS_DIR } from "../config/paths";
 
 const log = Log.create({ service: "dispatcher-subprocess" });
 
@@ -47,6 +49,10 @@ export interface SubprocessTransportOptions {
   engineName?: string;
   /** Dispatcher model override — flows to --model CLI flag. Uses engine default when not set. */
   dispatcherModel?: string;
+  /** Called with each decoded stdout chunk as it arrives from the dispatcher subprocess. */
+  onStdout?: (chunk: string) => void;
+  /** Called with each decoded stderr chunk as it arrives from the dispatcher subprocess. */
+  onStderr?: (chunk: string) => void;
 }
 
 export class SubprocessTransport implements DispatcherTransport {
@@ -54,10 +60,14 @@ export class SubprocessTransport implements DispatcherTransport {
   private readonly envFilter = createEnvFilter();
   private readonly engine: Engine;
   private readonly dispatcherModel: string | undefined;
+  private readonly onStdout?: (chunk: string) => void;
+  private readonly onStderr?: (chunk: string) => void;
 
   constructor(options: SubprocessTransportOptions) {
     this.spawner = options.spawner;
     this.dispatcherModel = options.dispatcherModel;
+    this.onStdout = options.onStdout;
+    this.onStderr = options.onStderr;
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -77,8 +87,7 @@ export class SubprocessTransport implements DispatcherTransport {
     const invocationId = crypto.randomUUID();
     const handoffsDir = nodePath.resolve(
       process.cwd(),
-      ".flywheel",
-      "handoffs",
+      HANDOFFS_DIR,
     );
     fs.mkdirSync(handoffsDir, { recursive: true });
     const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
@@ -129,6 +138,8 @@ export class SubprocessTransport implements DispatcherTransport {
           timeoutMs: CLI_TIMEOUT_MS,
           stdin: stdinContent,
           env,
+          onStdout: this.onStdout,
+          onStderr: this.onStderr,
         },
       );
       await resultPromise;
@@ -160,23 +171,4 @@ export class SubprocessTransport implements DispatcherTransport {
   }
 }
 
-// ---------------------------------------------------------------------------
-// mapHandoffToDecision — convert DispatcherDecisionHandoff to DispatcherDecision
-// ---------------------------------------------------------------------------
 
-function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {
-  return {
-    schema_version: handoff.schema_version,
-    phase_index: handoff.phase_index,
-    step_index: 0, // handoff schema lacks step_index — default to 0
-    task_content: handoff.task_content,
-    context_files: handoff.context_files,
-    // context_to_inline: undefined — handoff schema lacks this field
-    validation_criteria: handoff.validation_criteria
-      ? { acceptance_criteria: [handoff.validation_criteria], required_tests: false, custom_checks: [], required_outputs: [] }
-      : { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
-    reasoning: handoff.reasoning,
-    worker_config: handoff.worker_config,
-    session_name: handoff.session_name,
-  };
-}

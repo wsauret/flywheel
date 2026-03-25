@@ -36,7 +36,7 @@ async function writeSolution(
   name: string,
   opts: { title: string; tags: string[]; content: string },
 ) {
-  const dir = join(projectCwd, "docs", "solutions");
+  const dir = join(projectCwd, ".flywheel", "solutions");
   await mkdir(dir, { recursive: true });
   const tagsYaml = `[${opts.tags.join(", ")}]`;
   const doc = [
@@ -324,7 +324,7 @@ describe("ContextIndexer", () => {
       expect(ctx.learnings.length).toBeGreaterThanOrEqual(1);
       const learning = ctx.learnings.find((l) => l.name === "Docker Fix");
       expect(learning).toBeDefined();
-      expect(learning!.path).toBe("docs/solutions/docker-fix.md");
+      expect(learning!.path).toBe(".flywheel/solutions/docker-fix.md");
       indexer.dispose();
     });
 

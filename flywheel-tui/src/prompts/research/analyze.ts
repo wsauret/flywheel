@@ -4,7 +4,11 @@ import {
   LOCATOR_ANALYZER_PATTERN,
   FILE_LINE_DISCIPLINE,
   READ_FULLY_RULE,
+  buildProjectContextSection,
 } from "../conventions.js";
+
+export const researchAnalyzeValidationCriteria =
+  "Findings extracted from sources with supporting references relevant to the research topic";
 
 /**
  * Builds a prompt for the research analyze step (step 1 of standalone /research).
@@ -12,6 +16,7 @@ import {
  */
 export function buildResearchAnalyzePrompt(ctx: WorkflowStepContext): string {
   const previousResult = ctx.previousResult ?? "_No locator output available._";
+  const projectContext = buildProjectContextSection(ctx.extra);
 
   return `# Research: Analyze Sources
 
@@ -20,6 +25,8 @@ export function buildResearchAnalyzePrompt(ctx: WorkflowStepContext): string {
 ${ctx.planContent}
 
 ${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+${projectContext}
 
 ## Locator Output (from previous step)
 

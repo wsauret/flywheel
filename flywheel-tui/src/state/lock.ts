@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { LOCK_DIR } from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,7 +30,6 @@ export interface AcquireOptions {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_STALE_THRESHOLD_MS = 300_000; // 5 minutes
-const LOCK_DIR = ".flywheel";
 
 // ---------------------------------------------------------------------------
 // Public API

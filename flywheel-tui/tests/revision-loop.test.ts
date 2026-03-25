@@ -144,7 +144,6 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
   return {
     schema_version: 1,
     phase_index: 0,
-    step_index: 0,
     task_content: "Dispatcher-crafted prompt for the worker",
     context_files: ["src/index.ts"],
     validation_criteria: validCriteria(),

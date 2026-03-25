@@ -18,7 +18,12 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
     phase_index: 0,
     task_content: "Execute the setup phase by creating directory layout",
     context_files: ["src/index.ts"],
-    validation_criteria: "Tests pass",
+    validation_criteria: {
+      acceptance_criteria: ["Tests pass"],
+      required_tests: false,
+      custom_checks: [],
+      required_outputs: [],
+    },
     reasoning: "Standard setup phase execution",
     ...overrides,
   };
@@ -32,7 +37,6 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
   return {
     schema_version: 1,
     phase_index: 0,
-    step_index: 0,
     task_content: "Execute the setup phase by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
@@ -408,8 +412,14 @@ describe("SubprocessTransport: engine-aware command building", () => {
   // Handoff → Decision mapping
   // -----------------------------------------------------------------------
 
-  it("maps handoff validation_criteria string to structured ValidationCriteria", async () => {
-    const handoff = validHandoff({ validation_criteria: "All tests must pass" });
+  it("passes through handoff validation_criteria object to DispatcherDecision", async () => {
+    const criteria = {
+      acceptance_criteria: ["All tests must pass"],
+      required_tests: true,
+      custom_checks: ["lint clean"],
+      required_outputs: ["src/feature.ts"],
+    };
+    const handoff = validHandoff({ validation_criteria: criteria });
     const { spawner } = createHandoffSpawner(handoff);
 
     const transport = new SubprocessTransport({
@@ -418,12 +428,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
     });
     const result = await transport.invoke(baseDispatcherInput());
 
-    expect(result.validation_criteria).toEqual({
-      acceptance_criteria: ["All tests must pass"],
-      required_tests: false,
-      custom_checks: [],
-      required_outputs: [],
-    });
+    expect(result.validation_criteria).toEqual(criteria);
   });
 
   it("maps missing validation_criteria to empty acceptance_criteria", async () => {
@@ -443,18 +448,6 @@ describe("SubprocessTransport: engine-aware command building", () => {
       custom_checks: [],
       required_outputs: [],
     });
-  });
-
-  it("defaults step_index to 0 (not in handoff schema)", async () => {
-    const { spawner } = createHandoffSpawner(validHandoff());
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "claude",
-    });
-    const result = await transport.invoke(baseDispatcherInput());
-
-    expect(result.step_index).toBe(0);
   });
 
   // -----------------------------------------------------------------------
