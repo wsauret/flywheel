@@ -83,6 +83,16 @@ export const FlywheelConfigSchema = z.object({
     solutions: z.string().optional(),
     standards: z.string().optional(),
   }).default({}),
+
+  /** Mission boundaries — constraints workers must never violate. */
+  boundaries: z.object({
+    /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
+    port_ranges: z.array(z.string()).optional(),
+    /** Directories workers must not modify. */
+    off_limits_dirs: z.array(z.string()).optional(),
+    /** External services workers should be aware of. */
+    external_services: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;

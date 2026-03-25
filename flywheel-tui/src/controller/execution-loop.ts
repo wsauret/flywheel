@@ -519,6 +519,7 @@ export class ExecutionLoop {
           learnings: relevantContext?.learnings ?? [],
           handoffPath,
           invocationId,
+          ...(this.config.boundaries ? { boundaries: this.config.boundaries } : {}),
         },
       };
 

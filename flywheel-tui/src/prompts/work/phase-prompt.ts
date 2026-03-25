@@ -11,6 +11,56 @@ import {
 import { renderHandoffInstruction, WORK_PHASE_FIELDS } from "../../handoff/field-specs.js";
 
 // ---------------------------------------------------------------------------
+// Boundaries section
+// ---------------------------------------------------------------------------
+
+interface BoundariesConfig {
+  port_ranges?: string[];
+  off_limits_dirs?: string[];
+  external_services?: string[];
+}
+
+/**
+ * Build a "Mission Boundaries" section from boundaries config in ctx.extra.
+ * Returns an empty string if no boundaries are configured or all fields are empty.
+ */
+function buildBoundariesSection(extra?: Record<string, unknown>): string {
+  if (!extra) return "";
+
+  const boundaries = extra.boundaries as BoundariesConfig | undefined;
+  if (!boundaries) return "";
+
+  const subsections: string[] = [];
+
+  if (boundaries.port_ranges && boundaries.port_ranges.length > 0) {
+    subsections.push(
+      `### Port Ranges\n${boundaries.port_ranges.map((r) => `- ${r}`).join("\n")}`,
+    );
+  }
+
+  if (boundaries.off_limits_dirs && boundaries.off_limits_dirs.length > 0) {
+    subsections.push(
+      `### Off-Limits Directories\n${boundaries.off_limits_dirs.map((d) => `- \`${d}\``).join("\n")}`,
+    );
+  }
+
+  if (boundaries.external_services && boundaries.external_services.length > 0) {
+    subsections.push(
+      `### External Services\n${boundaries.external_services.map((s) => `- ${s}`).join("\n")}`,
+    );
+  }
+
+  // If all fields are empty/missing, skip the section entirely
+  if (subsections.length === 0) return "";
+
+  return `## Mission Boundaries
+
+**NEVER violate these boundaries.** If you cannot complete your work within these constraints, return to the orchestrator immediately with a description of what is blocked and why.
+
+${subsections.join("\n\n")}`;
+}
+
+// ---------------------------------------------------------------------------
 // Completion / Handoff section
 // ---------------------------------------------------------------------------
 
@@ -56,6 +106,7 @@ export function buildWorkPhasePrompt(ctx: WorkflowStepContext): string {
       : "";
 
   const projectContext = buildProjectContextSection(ctx.extra);
+  const boundariesSection = buildBoundariesSection(ctx.extra);
 
   return `# Work Phase Execution
 
@@ -76,6 +127,8 @@ ${files}
 ${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
 
 ${projectContext}
+
+${boundariesSection}
 
 ---
 
