@@ -7,6 +7,7 @@ import {
   FILE_LINE_DISCIPLINE,
   buildProjectContextSection,
 } from "../conventions.js";
+import { renderHandoffInstruction, PLAN_RESEARCH_FIELDS } from "../../handoff/field-specs.js";
 
 export const planResearchValidationCriteria =
   "Produces a .context.md file with file references and patterns";
@@ -123,5 +124,6 @@ status: complete
 3. **Patterns to Follow** — Existing conventions the implementation should match
 4. **Constraints** — Hard limits, dependencies, compatibility requirements
 5. **Open Questions** — Anything unclear that needs user input before planning
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_RESEARCH_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

@@ -946,8 +946,8 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const prompt = getPrompt();
     // Should contain guidance about not being overly strict
     expect(prompt).toContain("substantially meets");
-    expect(prompt).toContain("Minor omissions");
-    expect(prompt).toContain("critical criteria are unmet");
+    expect(prompt).toContain("minor omissions");
+    expect(prompt).toContain("critical criteria are completely unmet");
   });
 
   // -----------------------------------------------------------------------
