@@ -599,3 +599,72 @@ describe("budget config section", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Skip validation config flags
+// ---------------------------------------------------------------------------
+
+describe("skip_scrutiny and skip_validation config flags", () => {
+  it("defaults skip_scrutiny to false", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skip_scrutiny).toBe(false);
+    }
+  });
+
+  it("defaults skip_validation to false", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skip_validation).toBe(false);
+    }
+  });
+
+  it("accepts skip_scrutiny: true", () => {
+    const result = FlywheelConfigSchema.safeParse({ skip_scrutiny: true });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skip_scrutiny).toBe(true);
+    }
+  });
+
+  it("accepts skip_validation: true", () => {
+    const result = FlywheelConfigSchema.safeParse({ skip_validation: true });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skip_validation).toBe(true);
+    }
+  });
+
+  it("both flags are independent", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      skip_scrutiny: true,
+      skip_validation: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.skip_scrutiny).toBe(true);
+      expect(result.data.skip_validation).toBe(false);
+    }
+  });
+
+  it("env var FLYWHEEL_SKIP_SCRUTINY overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_SKIP_SCRUTINY: "true",
+    });
+    expect(config.skip_scrutiny).toBe(true);
+  });
+
+  it("env var FLYWHEEL_SKIP_VALIDATION overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_SKIP_VALIDATION: "true",
+    });
+    expect(config.skip_validation).toBe(true);
+  });
+
+  it("CONFIG_DEFAULTS includes skip flags", () => {
+    expect(CONFIG_DEFAULTS.skip_scrutiny).toBe(false);
+    expect(CONFIG_DEFAULTS.skip_validation).toBe(false);
+  });
+});

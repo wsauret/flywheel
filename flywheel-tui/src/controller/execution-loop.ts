@@ -42,6 +42,7 @@ import {
   type StageContext,
   type PhaseHandoffSummary,
 } from "./stage-context";
+import { MilestoneTracker, type MilestonePhase } from "./milestone-tracker";
 import { Log } from "../utils/log";
 
 // ---------------------------------------------------------------------------
@@ -205,6 +206,15 @@ export interface UnifiedExecutionLoopOptions {
    * Defaults to `false` (starts with empty context for new stages).
    */
   resumeStageContext?: boolean;
+  /**
+   * Milestone tracker for detecting milestone completion and auto-injecting
+   * validation phases (scrutiny + behavioral). When provided, enables
+   * milestone-aware execution with auto-injection of validation phases
+   * at milestone boundaries.
+   *
+   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`.
+   */
+  milestoneTracker?: MilestoneTracker;
 }
 
 export interface ExecutionResult {
@@ -245,6 +255,7 @@ export class ExecutionLoop {
   private readonly onSessionName?: (name: string) => void;
   private readonly evaluatorTransport?: EvaluatorTransport;
   private readonly logBaseDir?: string;
+  private readonly milestoneTracker?: MilestoneTracker;
   private _sessionNameEmitted = false;
 
   private _shutdownRequested = false;
@@ -299,6 +310,7 @@ export class ExecutionLoop {
     this.onSessionName = options.onSessionName;
     this.evaluatorTransport = options.evaluatorTransport;
     this.logBaseDir = options.logBaseDir;
+    this.milestoneTracker = options.milestoneTracker;
 
     // Load stage context from disk when resuming, otherwise start fresh
     if (options.resumeStageContext) {
@@ -381,12 +393,18 @@ export class ExecutionLoop {
     );
     fs.mkdirSync(libraryDir, { recursive: true });
 
-    const phasesTotal = phases.length;
+    // Use a mutable phases array to support dynamic validation phase injection.
+    // phasesTotal tracks the growing total (initial + injected).
+    let phasesTotal = phases.length;
     let phasesCompleted = phases.filter((p) => p.status === "completed").length;
     let previousResult: string | undefined;
 
-    // Iterate over phases
-    for (const phase of phases) {
+    // Index-based loop to support dynamic phase injection at milestone boundaries.
+    // When milestone completion is detected, validation phases are spliced in
+    // right after the current phase, and the loop naturally picks them up.
+    let phaseIdx = 0;
+    while (phaseIdx < phases.length) {
+      const phase = phases[phaseIdx];
       if (this._shutdownRequested) {
         this.emitter.workflowInterrupted(
           this.workflowId,
@@ -415,6 +433,7 @@ export class ExecutionLoop {
       if (phase.status === "completed") {
         this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
         this.emitter.phaseCompleted(this.workflowId, phase.index);
+        phaseIdx++;
         continue;
       }
 
@@ -442,17 +461,31 @@ export class ExecutionLoop {
           };
         }
         // Approval granted — mark as completed
+        (phase as { status: string }).status = "completed";
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
         this.emitter.phaseCompleted(this.workflowId, phase.index);
+        // Check milestone injection after approval-completed phase
+        if (this.milestoneTracker) {
+          const injected = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
+          if (injected > 0) phasesTotal += injected;
+        }
+        phaseIdx++;
         continue;
       }
 
       // Auto-approve in_progress phases when no approval handler (non-work)
       if (phase.status === "in_progress" && !this.approvalHandler) {
         this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
+        (phase as { status: string }).status = "completed";
         this.emitter.phaseCompleted(this.workflowId, phase.index);
         phasesCompleted++;
+        // Check milestone injection after auto-approved phase
+        if (this.milestoneTracker) {
+          const injected = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
+          if (injected > 0) phasesTotal += injected;
+        }
+        phaseIdx++;
         continue;
       }
 
@@ -463,9 +496,16 @@ export class ExecutionLoop {
           title: phase.title,
         });
         this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
+        (phase as { status: string }).status = "completed";
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
         this.emitter.phaseCompleted(this.workflowId, phase.index);
+        // Check milestone injection after skipped phase
+        if (this.milestoneTracker) {
+          const injected = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
+          if (injected > 0) phasesTotal += injected;
+        }
+        phaseIdx++;
         continue;
       }
 
@@ -915,10 +955,24 @@ export class ExecutionLoop {
           Object.assign(this._extraAccumulator, hookData);
         }
 
-        // Success: update state if persistence exists
+        // Success: update in-memory status and persist
+        (phase as { status: string }).status = "completed";
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
         this.emitter.phaseCompleted(this.workflowId, phase.index);
+
+        // --- Milestone completion check and validation phase injection ---
+        // After each phase completes, check if any milestone's implementation
+        // phases are now all complete. If so, inject validation phases at the
+        // top of the remaining queue (right after the current position).
+        //
+        // Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`.
+        if (this.milestoneTracker) {
+          const injectedPhases = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
+          if (injectedPhases > 0) {
+            phasesTotal += injectedPhases;
+          }
+        }
       } catch (error) {
         // Failure
         const reason =
@@ -967,11 +1021,87 @@ export class ExecutionLoop {
           reason,
         };
       }
+
+      phaseIdx++;
     }
 
     // All phases complete
     this.emitter.workflowCompleted(this.workflowId);
     return { completed: true, phasesCompleted, phasesTotal };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Milestone validation injection
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Check for milestone completion and inject validation phases into the
+   * phases array right after the current position.
+   *
+   * This preserves relative order of existing pending phases — injected
+   * validation phases run before any remaining implementation phases.
+   *
+   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`:
+   * - Scrutiny is inserted first (runs first)
+   * - Behavioral validation is inserted second (runs after scrutiny)
+   *
+   * @param phases - Mutable phases array (will be spliced if injection needed)
+   * @param currentIdx - Index of the phase that just completed
+   * @returns Number of phases injected (0 if none)
+   */
+  private injectValidationPhasesIfNeeded(
+    phases: PhaseInfo[],
+    currentIdx: number,
+  ): number {
+    if (!this.milestoneTracker) return 0;
+
+    // Project PhaseInfo[] into MilestonePhase[] for the tracker
+    const milestonePhases: MilestonePhase[] = phases.map((p) => ({
+      index: p.index,
+      title: p.title,
+      // Map PhaseInfo status to MilestonePhase status (cancelled maps to cancelled)
+      status: p.status === "completed" ? "completed" : p.status === "in_progress" ? "in_progress" : "pending",
+      milestone: p.milestone,
+      // Detect validation phases by title prefix (Scrutiny: or Validation:)
+      isValidation: p.title.startsWith("Scrutiny: ") || p.title.startsWith("Validation: "),
+    }));
+
+    const injections = this.milestoneTracker.checkAndCreateValidationPhases(
+      milestonePhases,
+      phases.length, // Start numbering after existing phases
+      {
+        skipScrutiny: this.config.skip_scrutiny,
+        skipValidation: this.config.skip_validation,
+      },
+    );
+
+    if (injections.length === 0) return 0;
+
+    // Collect all validation phases to inject
+    const allNewPhases: PhaseInfo[] = [];
+    for (const injection of injections) {
+      allNewPhases.push(...injection.phases);
+      log.info("milestone validation triggered", {
+        milestone: injection.milestone,
+        phasesInjected: injection.phases.length,
+        phaseNames: injection.phases.map((p) => p.title),
+      });
+    }
+
+    if (allNewPhases.length === 0) return 0;
+
+    // Re-index: validation phases get sequential indices starting after current max
+    const maxIndex = phases.reduce((max, p) => Math.max(max, p.index), -1);
+    for (let i = 0; i < allNewPhases.length; i++) {
+      allNewPhases[i].index = maxIndex + 1 + i;
+    }
+
+    // Splice validation phases right after the current position.
+    // This prepends them to the remaining queue while preserving
+    // the relative order of existing pending phases.
+    phases.splice(currentIdx + 1, 0, ...allNewPhases);
+
+    return allNewPhases.length;
   }
 
   // ---------------------------------------------------------------------------

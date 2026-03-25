@@ -101,6 +101,12 @@ export const FlywheelConfigSchema = z.object({
 
   /** Mission boundaries — constraints workers must never violate. */
   boundaries: BoundariesSchema.optional(),
+
+  /** Skip scrutiny validation phase injection at milestone boundaries. Default: false. */
+  skip_scrutiny: z.boolean().default(false),
+
+  /** Skip behavioral validation phase injection at milestone boundaries. Default: false. */
+  skip_validation: z.boolean().default(false),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
@@ -134,6 +140,8 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
     grace_period_ms: 300_000,
   },
   paths: {},
+  skip_scrutiny: false,
+  skip_validation: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -236,6 +244,12 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   FLYWHEEL_WORKTREE_AUTO_REMOVE: (val, config) => {
     if (!config.worktree) config.worktree = {};
     (config.worktree as Record<string, unknown>).auto_remove = val === "true" || val === "1";
+  },
+  FLYWHEEL_SKIP_SCRUTINY: (val, config) => {
+    config.skip_scrutiny = val === "true" || val === "1";
+  },
+  FLYWHEEL_SKIP_VALIDATION: (val, config) => {
+    config.skip_validation = val === "true" || val === "1";
   },
 };
 

@@ -14,6 +14,7 @@
  * validation phases after a milestone has been sealed.
  */
 
+import type { PhaseInfo } from "./phase-provider";
 import { Log } from "../utils/log";
 
 // ---------------------------------------------------------------------------
@@ -229,5 +230,127 @@ export class MilestoneTracker {
     }
 
     return newlyCompleted;
+  }
+
+  /**
+   * Create validation phases for a completed milestone and return them
+   * in the order they should be injected (scrutiny first, then behavioral).
+   *
+   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`:
+   * - Scrutiny phase: runs test/typecheck/lint + per-phase code review
+   * - Behavioral validation phase: tests assertions from fulfills fields
+   *
+   * Skip flags control which phases are created:
+   * - `skipScrutiny`: omit scrutiny phase
+   * - `skipValidation`: omit behavioral validation phase
+   *
+   * When both are skipped, returns empty array and still marks milestone sealed.
+   *
+   * @param milestoneName - The milestone that just completed
+   * @param startIndex - Starting 0-based index for the new phases
+   * @param options - Skip flags for scrutiny and/or behavioral validation
+   * @returns Array of PhaseInfo objects to prepend to the phase queue
+   */
+  createValidationPhases(
+    milestoneName: string,
+    startIndex: number,
+    options: { skipScrutiny?: boolean; skipValidation?: boolean } = {},
+  ): PhaseInfo[] {
+    const { skipScrutiny = false, skipValidation = false } = options;
+
+    if (skipScrutiny && skipValidation) {
+      log.info("both validation types skipped for milestone", { milestone: milestoneName });
+      return [];
+    }
+
+    const phases: PhaseInfo[] = [];
+    let idx = startIndex;
+
+    // Scrutiny validation phase (runs first)
+    if (!skipScrutiny) {
+      phases.push({
+        index: idx++,
+        title: `Scrutiny: ${milestoneName}`,
+        description: [
+          `Scrutiny validation for milestone "${milestoneName}".`,
+          "Run the project's test suite, typecheck, and lint as hard gates.",
+          "Review each completed phase in the milestone for code quality, correctness, and test coverage.",
+          "Synthesize findings into a scrutiny report.",
+        ].join(" "),
+        status: "pending",
+        steps: [
+          "Run test suite",
+          "Run typecheck",
+          "Run lint",
+          "Review completed phases",
+          "Synthesize findings",
+        ],
+        milestone: milestoneName,
+      });
+    }
+
+    // Behavioral validation phase (runs after scrutiny)
+    if (!skipValidation) {
+      phases.push({
+        index: idx++,
+        title: `Validation: ${milestoneName}`,
+        description: [
+          `Behavioral validation for milestone "${milestoneName}".`,
+          "Read the validation contract and identify assertions from completed phases' fulfills fields.",
+          "Verify each assertion's behavioral description is satisfied.",
+          "Update validation-state.json with pass/fail/blocked per assertion.",
+        ].join(" "),
+        status: "pending",
+        steps: [
+          "Read validation contract",
+          "Identify testable assertions from fulfills",
+          "Verify each assertion",
+          "Update validation-state.json",
+        ],
+        milestone: milestoneName,
+      });
+    }
+
+    return phases;
+  }
+
+  /**
+   * Check for milestone completion and create validation phases to inject.
+   *
+   * This is the main entry point for the execution loop to call after
+   * a phase completes. It combines milestone detection, skip flag handling,
+   * and phase creation.
+   *
+   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`.
+   *
+   * @param phases - Current phase list (as MilestonePhase projections)
+   * @param startIndex - Index at which to start numbering injected phases
+   * @param options - Skip flags
+   * @returns Object with milestone name and phases to inject, or null if nothing to inject
+   */
+  checkAndCreateValidationPhases(
+    phases: readonly MilestonePhase[],
+    startIndex: number,
+    options: { skipScrutiny?: boolean; skipValidation?: boolean } = {},
+  ): Array<{ milestone: string; phases: PhaseInfo[] }> {
+    const completedMilestones = this.checkCompletedMilestones(phases);
+    if (completedMilestones.length === 0) return [];
+
+    const results: Array<{ milestone: string; phases: PhaseInfo[] }> = [];
+    let currentIndex = startIndex;
+
+    for (const milestone of completedMilestones) {
+      const validationPhases = this.createValidationPhases(milestone, currentIndex, options);
+
+      // Mark milestone as sealed (even if all phases were skipped)
+      this.markValidationPlanned(milestone);
+
+      if (validationPhases.length > 0) {
+        results.push({ milestone, phases: validationPhases });
+        currentIndex += validationPhases.length;
+      }
+    }
+
+    return results;
   }
 }
