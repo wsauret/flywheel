@@ -41,6 +41,8 @@ export interface AutoDetectOptions {
   onStdout?: (chunk: string) => void;
   /** Called with each decoded stderr chunk as it arrives from the dispatcher subprocess. */
   onStderr?: (chunk: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 // Server singleton — shared across all pipelines in the same process.
@@ -104,6 +106,7 @@ export async function autoDetectTransport(
       dispatcherModel: options.dispatcherModel,
       onStdout: options.onStdout,
       onStderr: options.onStderr,
+      logBaseDir: options.logBaseDir,
     });
     return { transport, label: "cli", dispose: () => {} };
   }
@@ -134,6 +137,7 @@ export async function autoDetectTransport(
     dispatcherModel: options.dispatcherModel,
     onStdout: options.onStdout,
     onStderr: options.onStderr,
+    logBaseDir: options.logBaseDir,
   });
   return { transport, label: "cli", dispose: () => {} };
 }

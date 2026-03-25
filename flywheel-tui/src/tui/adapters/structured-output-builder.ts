@@ -196,13 +196,21 @@ export class StructuredOutputBuilder {
     this.onAgentLifecycle?.("error", id);
   }
 
+  /**
+   * Update the latestChild display text on an agent block without adding a child.
+   * Used for status updates like thinking text that shouldn't accumulate as tool entries.
+   * Also triggers onAgentActivity to keep the stale-agent tracker alive.
+   */
   updateAgentLatestChild(id: string, childDisplay: string): void {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
     const agent = this.blocks[idx] as AgentBlock;
+    if (agent.kind !== "agent" || agent.status !== "active") return;
+
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
     this.markDirty();
+    this.onAgentActivity?.(id);
   }
 
   getBlocks(): AnyBlock[] {

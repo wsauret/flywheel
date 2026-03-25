@@ -28,6 +28,7 @@ import { DispatcherDecisionHandoffSchema } from "../schemas/handoff";
 import type { DispatcherDecisionHandoff } from "../schemas/handoff";
 import { mapHandoffToDecision } from "./map-handoff";
 import { Log } from "../utils/log";
+import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
 import { HANDOFFS_DIR } from "../config/paths";
 
 const log = Log.create({ service: "dispatcher-subprocess" });
@@ -53,6 +54,8 @@ export interface SubprocessTransportOptions {
   onStdout?: (chunk: string) => void;
   /** Called with each decoded stderr chunk as it arrives from the dispatcher subprocess. */
   onStderr?: (chunk: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 export class SubprocessTransport implements DispatcherTransport {
@@ -62,12 +65,14 @@ export class SubprocessTransport implements DispatcherTransport {
   private readonly dispatcherModel: string | undefined;
   private readonly onStdout?: (chunk: string) => void;
   private readonly onStderr?: (chunk: string) => void;
+  private readonly logBaseDir?: string;
 
   constructor(options: SubprocessTransportOptions) {
     this.spawner = options.spawner;
     this.dispatcherModel = options.dispatcherModel;
     this.onStdout = options.onStdout;
     this.onStderr = options.onStderr;
+    this.logBaseDir = options.logBaseDir;
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -100,74 +105,86 @@ export class SubprocessTransport implements DispatcherTransport {
     const handoffInstruction = renderDispatcherHandoffInstruction(handoffPath);
     const fullPrompt = `${userContent}\n\n${handoffInstruction}`;
 
+    // Create subprocess logger if logBaseDir is configured (OUTSIDE retry loop)
+    const spLogger = this.logBaseDir
+      ? new SubprocessLogger({ baseDir: this.logBaseDir, role: "dispatcher", invocationId })
+      : null;
+    const { onStdout: effectiveOnStdout, onStderr: effectiveOnStderr } = spLogger
+      ? createLoggedCallbacks(spLogger, { onStdout: this.onStdout, onStderr: this.onStderr })
+      : { onStdout: this.onStdout, onStderr: this.onStderr };
+
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const retryNote = attempt > 0
-        ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
-        : "";
+    try {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const retryNote = attempt > 0
+          ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
+          : "";
 
-      // Build the engine-specific command via the registry
-      const engineCmd = this.engine.buildDispatcherCommand({
-        prompt: fullPrompt + retryNote,
-        systemPrompt,
-        model: this.dispatcherModel,
-      });
+        // Build the engine-specific command via the registry
+        const engineCmd = this.engine.buildDispatcherCommand({
+          prompt: fullPrompt + retryNote,
+          systemPrompt,
+          model: this.dispatcherModel,
+        });
 
-      log.info("spawning dispatcher", {
-        engine: this.engine.metadata.id,
-        command: engineCmd.command,
-        attempt: attempt + 1,
-        model: this.dispatcherModel ?? "(default)",
-        handoffPath,
-      });
-
-      const env = this.envFilter.filter(
-        process.env as Record<string, string | undefined>,
-      );
-
-      // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
-      const stdinContent = engineCmd.stdinPrompt
-        ? `${systemPrompt}\n\n---\n\n${fullPrompt}${retryNote}`
-        : undefined;
-
-      const { result: resultPromise } = await this.spawner.spawn(
-        engineCmd.command,
-        engineCmd.args,
-        {
-          timeoutMs: CLI_TIMEOUT_MS,
-          stdin: stdinContent,
-          env,
-          onStdout: this.onStdout,
-          onStderr: this.onStderr,
-        },
-      );
-      await resultPromise;
-
-      // Read decision from handoff file (not stdout)
-      try {
-        const handoff: DispatcherDecisionHandoff = await readHandoff(
+        log.info("spawning dispatcher", {
+          engine: this.engine.metadata.id,
+          command: engineCmd.command,
+          attempt: attempt + 1,
+          model: this.dispatcherModel ?? "(default)",
           handoffPath,
-          DispatcherDecisionHandoffSchema,
-        );
-        return mapHandoffToDecision(handoff);
-      } catch (err) {
-        if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
-          lastError = err;
-          log.warn("dispatcher handoff read failed, retrying", {
-            attempt: attempt + 1,
-            error: err.message,
-          });
-          continue;
-        }
-        // Unexpected error — propagate
-        throw err;
-      }
-    }
+        });
 
-    throw new Error(
-      `Dispatcher subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
-    );
+        const env = this.envFilter.filter(
+          process.env as Record<string, string | undefined>,
+        );
+
+        // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
+        const stdinContent = engineCmd.stdinPrompt
+          ? `${systemPrompt}\n\n---\n\n${fullPrompt}${retryNote}`
+          : undefined;
+
+        const { result: resultPromise } = await this.spawner.spawn(
+          engineCmd.command,
+          engineCmd.args,
+          {
+            timeoutMs: CLI_TIMEOUT_MS,
+            stdin: stdinContent,
+            env,
+            onStdout: effectiveOnStdout,
+            onStderr: effectiveOnStderr,
+          },
+        );
+        await resultPromise;
+
+        // Read decision from handoff file (not stdout)
+        try {
+          const handoff: DispatcherDecisionHandoff = await readHandoff(
+            handoffPath,
+            DispatcherDecisionHandoffSchema,
+          );
+          return mapHandoffToDecision(handoff);
+        } catch (err) {
+          if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
+            lastError = err;
+            log.warn("dispatcher handoff read failed, retrying", {
+              attempt: attempt + 1,
+              error: err.message,
+            });
+            continue;
+          }
+          // Unexpected error — propagate
+          throw err;
+        }
+      }
+
+      throw new Error(
+        `Dispatcher subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
+      );
+    } finally {
+      spLogger?.close();
+    }
   }
 }
 

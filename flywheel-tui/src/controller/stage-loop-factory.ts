@@ -74,6 +74,8 @@ export interface StageLoopOptions {
   interactiveOverrides?: { plan?: boolean; review?: boolean };
   /** Callback when the dispatcher returns a session_name on the first phase. */
   onSessionName?: (name: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, worker stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 export interface StageLoopHandle {
@@ -113,6 +115,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
     questionService,
     interactiveOverrides,
     onSessionName,
+    logBaseDir,
   } = options;
 
   const workflowId = `${workflow}-${crypto.randomUUID().slice(0, 8)}`;
@@ -161,6 +164,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
       evaluatorTransport,
       onSessionName,
       projectCwd,
+      logBaseDir,
     });
   }
 
@@ -181,6 +185,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
     interactiveOverrides,
     onSessionName,
     projectCwd,
+    logBaseDir,
   });
 }
 
@@ -202,6 +207,7 @@ interface WorkLoopParams {
   evaluatorTransport?: EvaluatorTransport;
   onSessionName?: (name: string) => void;
   projectCwd: string;
+  logBaseDir?: string;
 }
 
 function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
@@ -258,6 +264,7 @@ function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
     contextIndexer: params.contextIndexer,
     evaluatorTransport: params.evaluatorTransport,
     onSessionName: params.onSessionName,
+    logBaseDir: params.logBaseDir,
   });
   loop.setLoadedState(state);
 
@@ -289,6 +296,7 @@ interface GenericLoopParams {
   interactiveOverrides?: { plan?: boolean; review?: boolean };
   onSessionName?: (name: string) => void;
   projectCwd: string;
+  logBaseDir?: string;
 }
 
 function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
@@ -382,6 +390,7 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
     contextIndexer: params.contextIndexer,
     evaluatorTransport: params.evaluatorTransport,
     onSessionName: params.onSessionName,
+    logBaseDir: params.logBaseDir,
   });
 
   return {

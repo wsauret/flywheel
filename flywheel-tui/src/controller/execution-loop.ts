@@ -189,6 +189,8 @@ export interface UnifiedExecutionLoopOptions {
   onSessionName?: (name: string) => void;
   /** Evaluator transport for post-phase quality checks. When provided, enables evaluation. */
   evaluatorTransport?: EvaluatorTransport;
+  /** Base directory for subprocess JSONL logging. When set, worker stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 export interface ExecutionResult {
@@ -228,6 +230,7 @@ export class ExecutionLoop {
   private readonly contextIndexer?: ContextIndexer;
   private readonly onSessionName?: (name: string) => void;
   private readonly evaluatorTransport?: EvaluatorTransport;
+  private readonly logBaseDir?: string;
   private _sessionNameEmitted = false;
 
   private _shutdownRequested = false;
@@ -268,6 +271,7 @@ export class ExecutionLoop {
     this.contextIndexer = options.contextIndexer;
     this.onSessionName = options.onSessionName;
     this.evaluatorTransport = options.evaluatorTransport;
+    this.logBaseDir = options.logBaseDir;
   }
 
   /**
@@ -916,6 +920,7 @@ export class ExecutionLoop {
       toolScoping: workerConfig?.tool_scoping,
       iterationBudget: workerConfig?.iteration_budget,
       invocationId,
+      logBaseDir: this.logBaseDir,
     };
   }
 

@@ -27,6 +27,7 @@ import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handof
 import { EvaluatorVerdictSchema } from "../schemas/handoff";
 import type { EvaluatorVerdict } from "../schemas/handoff";
 import { Log } from "../utils/log";
+import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
 import { HANDOFFS_DIR } from "../config/paths";
 
 const log = Log.create({ service: "evaluator-subprocess" });
@@ -57,6 +58,8 @@ export interface SubprocessEvaluatorTransportOptions {
   onStdout?: (chunk: string) => void;
   /** Called with each decoded stderr chunk as it arrives from the evaluator subprocess. */
   onStderr?: (chunk: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 export class SubprocessEvaluatorTransport implements EvaluatorTransport {
@@ -66,12 +69,14 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private readonly evaluatorModel: string | undefined;
   private readonly onStdout?: (chunk: string) => void;
   private readonly onStderr?: (chunk: string) => void;
+  private readonly logBaseDir?: string;
 
   constructor(options: SubprocessEvaluatorTransportOptions) {
     this.spawner = options.spawner;
     this.evaluatorModel = options.evaluatorModel;
     this.onStdout = options.onStdout;
     this.onStderr = options.onStderr;
+    this.logBaseDir = options.logBaseDir;
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -101,79 +106,91 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     const handoffInstruction = renderEvaluatorHandoffInstruction(handoffPath);
     const fullPrompt = `${userMessage}\n\n${handoffInstruction}`;
 
+    // Create subprocess logger if logBaseDir is configured (OUTSIDE retry loop)
+    const spLogger = this.logBaseDir
+      ? new SubprocessLogger({ baseDir: this.logBaseDir, role: "evaluator", invocationId })
+      : null;
+    const { onStdout: effectiveOnStdout, onStderr: effectiveOnStderr } = spLogger
+      ? createLoggedCallbacks(spLogger, { onStdout: this.onStdout, onStderr: this.onStderr })
+      : { onStdout: this.onStdout, onStderr: this.onStderr };
+
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const retryNote = attempt > 0
-        ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
-        : "";
+    try {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const retryNote = attempt > 0
+          ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
+          : "";
 
-      // Build the engine-specific command via the registry
-      const engineCmd = this.engine.buildDispatcherCommand({
-        prompt: fullPrompt + retryNote,
-        systemPrompt: EVALUATOR_SYSTEM_PROMPT,
-        model: this.evaluatorModel,
-      });
+        // Build the engine-specific command via the registry
+        const engineCmd = this.engine.buildDispatcherCommand({
+          prompt: fullPrompt + retryNote,
+          systemPrompt: EVALUATOR_SYSTEM_PROMPT,
+          model: this.evaluatorModel,
+        });
 
-      log.info("spawning evaluator", {
-        engine: this.engine.metadata.id,
-        command: engineCmd.command,
-        attempt: attempt + 1,
-        model: this.evaluatorModel ?? "(default)",
-        handoffPath,
-      });
+        log.info("spawning evaluator", {
+          engine: this.engine.metadata.id,
+          command: engineCmd.command,
+          attempt: attempt + 1,
+          model: this.evaluatorModel ?? "(default)",
+          handoffPath,
+        });
 
-      const env = this.envFilter.filter(
-        process.env as Record<string, string | undefined>,
-      );
+        const env = this.envFilter.filter(
+          process.env as Record<string, string | undefined>,
+        );
 
-      // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
-      const stdinContent = engineCmd.stdinPrompt
-        ? `${EVALUATOR_SYSTEM_PROMPT}\n\n---\n\n${fullPrompt}${retryNote}`
-        : undefined;
+        // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
+        const stdinContent = engineCmd.stdinPrompt
+          ? `${EVALUATOR_SYSTEM_PROMPT}\n\n---\n\n${fullPrompt}${retryNote}`
+          : undefined;
 
-      const { result: resultPromise } = await this.spawner.spawn(
-        engineCmd.command,
-        engineCmd.args,
-        {
-          timeoutMs: CLI_TIMEOUT_MS,
-          stdin: stdinContent,
-          env,
-          onStdout: this.onStdout,
-          onStderr: this.onStderr,
-        },
-      );
-      await resultPromise;
+        const { result: resultPromise } = await this.spawner.spawn(
+          engineCmd.command,
+          engineCmd.args,
+          {
+            timeoutMs: CLI_TIMEOUT_MS,
+            stdin: stdinContent,
+            env,
+            onStdout: effectiveOnStdout,
+            onStderr: effectiveOnStderr,
+          },
+        );
+        await resultPromise;
 
-      // Read verdict from handoff file (not stdout)
-      try {
-        const verdict: EvaluatorVerdict = await readHandoff(handoffPath, EvaluatorVerdictSchema);
-        // Map EvaluatorVerdict to EvaluatorResult (same fields; suggestions is required in verdict, optional in result)
-        return {
-          passed: verdict.passed,
-          reasoning: verdict.reasoning,
-          suggestions: verdict.suggestions,
-          confidence: verdict.confidence,
-          feedback: verdict.feedback,
-          files_to_review: verdict.files_to_review,
-        };
-      } catch (err) {
-        if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
-          lastError = err;
-          log.warn("evaluator handoff read failed, retrying", {
-            attempt: attempt + 1,
-            error: err.message,
-          });
-          continue;
+        // Read verdict from handoff file (not stdout)
+        try {
+          const verdict: EvaluatorVerdict = await readHandoff(handoffPath, EvaluatorVerdictSchema);
+          // Map EvaluatorVerdict to EvaluatorResult (same fields; suggestions is required in verdict, optional in result)
+          return {
+            passed: verdict.passed,
+            reasoning: verdict.reasoning,
+            suggestions: verdict.suggestions,
+            confidence: verdict.confidence,
+            feedback: verdict.feedback,
+            files_to_review: verdict.files_to_review,
+          };
+        } catch (err) {
+          if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
+            lastError = err;
+            log.warn("evaluator handoff read failed, retrying", {
+              attempt: attempt + 1,
+              error: err.message,
+            });
+            continue;
+          }
+          // Unexpected error — propagate
+          throw err;
         }
-        // Unexpected error — propagate
-        throw err;
       }
-    }
 
-    throw new Error(
-      `Evaluator subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
-    );
+      throw new Error(
+        `Evaluator subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
+      );
+    } finally {
+      spLogger?.close();
+    }
   }
 
   // -------------------------------------------------------------------------

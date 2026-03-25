@@ -73,7 +73,8 @@ const DISPATCHER_DEFAULT_MODEL = "sonnet";
  * Build a CLI command optimized for dispatcher/evaluator use.
  *
  * Flags:
- * - `--print` — non-interactive output (plain text response)
+ * - `--print` — non-interactive output
+ * - `--output-format stream-json` — NDJSON output for TUI streaming
  * - `--tools Write` — only allow file writing (needed for handoff file)
  * - `--model <model>` — fast model (default: sonnet)
  * - `--system-prompt <prompt>` — separate system prompt for prompt caching
@@ -87,6 +88,7 @@ export function buildDispatcherCommand(options: DispatcherCommandOptions): Engin
 
   const args: string[] = [
     "--print",
+    "--output-format", "stream-json",
     "--dangerously-skip-permissions",
     "--no-session-persistence",
     "--tools", "Write",

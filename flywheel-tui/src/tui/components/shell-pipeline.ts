@@ -88,6 +88,8 @@ export interface StageRunnerOptions {
   evaluatorTransport?: EvaluatorTransport;
   /** Called when the dispatcher generates a short session name (first phase of first stage). */
   onSessionName?: (name: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, all subprocess stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 /**
@@ -110,6 +112,7 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
     dispatcherTransport,
     evaluatorTransport,
     onSessionName,
+    logBaseDir,
   } = opts;
 
   return async (
@@ -143,6 +146,7 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
         questionService,
         interactiveOverrides,
         onSessionName,
+        logBaseDir,
       });
 
       // Expose the loop for mid-execution stdin injection

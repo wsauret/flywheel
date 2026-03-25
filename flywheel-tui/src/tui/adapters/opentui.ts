@@ -603,41 +603,59 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
   /**
    * Handle NDJSON event from dispatcher subprocess.
-   * Routes tool-use events to the dispatcher agent block as latestChild updates.
+   * Routes tool-use events as agent children; thinking text as status-only updates.
    */
   private handleDispatcherNdjsonEvent(event: import("../../worker/ndjson-parser").NDJSONEvent): void {
     if (!this._dispatcherBlockId) return;
-    const toolInfo = this.extractToolInfo(event.data);
-    if (toolInfo) {
-      this.builder.pushToolToAgent(this._dispatcherBlockId, toolInfo.name, toolInfo.detail, Date.now());
-      this.flushBlocks();
+    const activity = this.extractActivityInfo(event.data);
+    if (!activity) return;
+
+    if (activity.name === "Thinking") {
+      this.builder.updateAgentLatestChild(this._dispatcherBlockId, `Thinking: ${activity.detail}`);
+    } else {
+      this.builder.pushToolToAgent(this._dispatcherBlockId, activity.name, activity.detail, Date.now());
     }
+    this.flushBlocks();
   }
 
   /**
    * Handle NDJSON event from evaluator subprocess.
+   * Routes tool-use events as agent children; thinking text as status-only updates.
    */
   private handleEvaluatorNdjsonEvent(event: import("../../worker/ndjson-parser").NDJSONEvent): void {
     if (!this._evaluatorBlockId) return;
-    const toolInfo = this.extractToolInfo(event.data);
-    if (toolInfo) {
-      this.builder.pushToolToAgent(this._evaluatorBlockId, toolInfo.name, toolInfo.detail, Date.now());
-      this.flushBlocks();
+    const activity = this.extractActivityInfo(event.data);
+    if (!activity) return;
+
+    if (activity.name === "Thinking") {
+      this.builder.updateAgentLatestChild(this._evaluatorBlockId, `Thinking: ${activity.detail}`);
+    } else {
+      this.builder.pushToolToAgent(this._evaluatorBlockId, activity.name, activity.detail, Date.now());
     }
+    this.flushBlocks();
   }
 
   /**
-   * Extract tool name and detail from a Claude NDJSON event data payload.
-   * Returns null if the event is not a tool-use event.
+   * Extract activity info from a Claude NDJSON event data payload.
+   * Returns tool-use info OR thinking text from assistant messages.
+   * Returns null if the event contains no actionable activity.
    */
-  private extractToolInfo(data: Record<string, unknown>): { name: string; detail: string } | null {
-    // Claude assistant message with tool_use content blocks
+  private extractActivityInfo(data: Record<string, unknown>): { name: string; detail: string } | null {
+    // Claude assistant message with content blocks (tool_use or text)
     if (data.type === "assistant" && Array.isArray(data.content)) {
+      // Prefer tool_use blocks over text blocks
       for (const block of data.content as Record<string, unknown>[]) {
         if (block.type === "tool_use" && typeof block.name === "string") {
           const input = block.input as Record<string, unknown> | undefined;
           const detail = this.extractToolDetail(block.name, input);
           return { name: block.name, detail };
+        }
+      }
+      // Fall back to text blocks for thinking content
+      for (const block of data.content as Record<string, unknown>[]) {
+        if (block.type === "text" && typeof block.text === "string") {
+          const line = this.extractLastMeaningfulLine(block.text);
+          if (line) return { name: "Thinking", detail: line };
         }
       }
     }
@@ -649,6 +667,30 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       return { name: data.name, detail };
     }
 
+    // Claude streaming content_block_delta with text_delta
+    if (data.type === "content_block_delta") {
+      const delta = data.delta as Record<string, unknown> | undefined;
+      if (delta && delta.type === "text_delta" && typeof delta.text === "string") {
+        const line = this.extractLastMeaningfulLine(delta.text);
+        if (line) return { name: "Thinking", detail: line };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract the last non-empty, meaningful line from text, truncated to 80 chars.
+   * Skips lines that are only whitespace or punctuation.
+   */
+  private extractLastMeaningfulLine(text: string): string | null {
+    const lines = text.split("\n");
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const trimmed = lines[i].trim();
+      // Skip empty or whitespace/punctuation-only lines
+      if (trimmed.length === 0 || /^[\s\p{P}]+$/u.test(trimmed)) continue;
+      return trimmed.length > 80 ? trimmed.slice(0, 77) + "..." : trimmed;
+    }
     return null;
   }
 

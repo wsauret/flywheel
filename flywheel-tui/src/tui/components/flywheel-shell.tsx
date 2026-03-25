@@ -87,6 +87,7 @@ import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { killAllActiveProcesses } from "../../worker/process-lifecycle"
 import { createStageLoop } from "../../controller/stage-loop-factory"
 import { Log } from "../../utils/log"
+import { SubprocessLogger } from "../../utils/subprocess-logger.js"
 
 const log = Log.create({ service: "shell" })
 
@@ -602,6 +603,10 @@ export function FlywheelShell() {
         } catch { /* silently fall back to empty context */ }
       }
 
+      // Prune old subprocess log directories (best-effort, fire-and-forget)
+      const pipelineLogBaseDir = deps.config.project_cwd ?? process.cwd()
+      try { SubprocessLogger.cleanup(pipelineLogBaseDir) } catch { /* best-effort */ }
+
       // Track current workflowId for dispatcher/evaluator output events.
       // Updated by workflow:started events; closures below capture this mutable reference.
       let currentWorkflowId = "unknown"
@@ -623,6 +628,7 @@ export function FlywheelShell() {
           dispatcherModel,
           onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
           onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
+          logBaseDir: pipelineLogBaseDir,
         })
         dispatcherTransport = resolved.transport
         log.info("dispatcher transport resolved", { label: resolved.label, engine: deps.config.engine })
@@ -644,6 +650,7 @@ export function FlywheelShell() {
             evaluatorModel: evalModel,
             onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
             onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
+            logBaseDir: pipelineLogBaseDir,
           })
           log.info("evaluator transport created", { engine: deps.config.engine })
         } catch (err) {
@@ -672,6 +679,7 @@ export function FlywheelShell() {
             sessionCtx.refreshList()
           } catch { /* best-effort */ }
         } : undefined,
+        logBaseDir: pipelineLogBaseDir,
       })
 
       // Create pipeline now that stageRunner is ready
@@ -1050,6 +1058,7 @@ export function FlywheelShell() {
           dispatcherModel,
           onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
           onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
+          logBaseDir: deps.config.project_cwd ?? process.cwd(),
         })
         dispatcherTransport = resolved.transport
       } catch { /* fallback to static prompts */ }
@@ -1066,6 +1075,7 @@ export function FlywheelShell() {
             evaluatorModel: evalModel,
             onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
             onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
+            logBaseDir: deps.config.project_cwd ?? process.cwd(),
           })
         } catch { /* evaluation will be skipped */ }
       }
@@ -1081,6 +1091,7 @@ export function FlywheelShell() {
           eventBus: session.eventBus,
           dispatcherTransport,
           evaluatorTransport: resumeEvaluatorTransport,
+          logBaseDir: deps.config.project_cwd ?? process.cwd(),
         })
         activeLoop = handle.loop
 

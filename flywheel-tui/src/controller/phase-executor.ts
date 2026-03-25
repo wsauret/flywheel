@@ -17,6 +17,7 @@ import { isRetryable } from "../worker/errors";
 import { RATE_LIMIT_RETRY_OPTIONS } from "../worker/rate-limit";
 import { retry } from "../utils/retry";
 import { Log } from "../utils/log";
+import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
 
 const log = Log.create({ service: "phase-executor" });
 
@@ -95,6 +96,8 @@ export interface ExecutePhaseOptions {
   iterationBudget?: number;
   /** Unique invocation ID for handoff file path construction */
   invocationId?: string;
+  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +187,7 @@ export class PhaseExecutor {
     const {
       phaseIndex, prompt, cwd, onStdout, onStderr, signal,
       timeoutOverrideMs, modelOverride, maxRetriesOverride, toolScoping,
-      resumeSessionId, invocationId,
+      resumeSessionId, invocationId, logBaseDir,
     } = options;
 
     // Build command using the engine pattern — dispatcher model override takes precedence
@@ -234,103 +237,115 @@ export class PhaseExecutor {
       });
     }
 
+    // Create subprocess logger if logBaseDir is configured
+    const spLogger = logBaseDir && invocationId
+      ? new SubprocessLogger({ baseDir: logBaseDir, role: "worker", invocationId })
+      : null;
+    const { onStdout: effectiveOnStdout, onStderr: effectiveOnStderr } = spLogger
+      ? createLoggedCallbacks(spLogger, { onStdout, onStderr })
+      : { onStdout, onStderr };
+
     // Emit worker spawned for the initial attempt
     this.emitter.workerSpawned(this.workflowId, phaseIndex, 0);
 
-    const retryResult = await retry<WorkerResult>(
-      async () => {
-        let workerResult: WorkerResult;
-        try {
-          const spawnResult = await this.spawner.spawn(
-            engineCmd.command,
-            engineCmd.args,
-            {
-              cwd,
-              timeoutMs,
-              stdin: engineCmd.stdinPrompt ? effectivePrompt : undefined,
-              onStdout,
-              onStderr,
-              signal,
-              stdinPipe: useStreamingInput,
-              invocationId,
-            },
-          );
-          // Store stdin handle for this spawn (replaced on retry).
-          // For streaming input engines, wrap with formatting layer.
-          this._currentStdinHandle = spawnResult.stdinHandle
-            ? createFormattingStdinHandle(spawnResult.stdinHandle, engine)
-            : spawnResult.stdinHandle;
-          workerResult = await spawnResult.result;
-        } catch (error) {
-          const err = error as { code?: string; message?: string };
-          const isNotFound =
-            err?.code === "ENOENT" ||
-            /command not found/i.test(err?.message ?? "") ||
-            /not recognized/i.test(err?.message ?? "");
-
-          if (isNotFound) {
-            const meta = engine.metadata;
-            throw new Error(
-              `'${meta.cliBinary}' is not available on this system. Install ${meta.name}:\n  ${meta.installCommand}`,
+    try {
+      const retryResult = await retry<WorkerResult>(
+        async () => {
+          let workerResult: WorkerResult;
+          try {
+            const spawnResult = await this.spawner.spawn(
+              engineCmd.command,
+              engineCmd.args,
+              {
+                cwd,
+                timeoutMs,
+                stdin: engineCmd.stdinPrompt ? effectivePrompt : undefined,
+                onStdout: effectiveOnStdout,
+                onStderr: effectiveOnStderr,
+                signal,
+                stdinPipe: useStreamingInput,
+                invocationId,
+              },
             );
-          }
-          throw error;
-        }
+            // Store stdin handle for this spawn (replaced on retry).
+            // For streaming input engines, wrap with formatting layer.
+            this._currentStdinHandle = spawnResult.stdinHandle
+              ? createFormattingStdinHandle(spawnResult.stdinHandle, engine)
+              : spawnResult.stdinHandle;
+            workerResult = await spawnResult.result;
+          } catch (error) {
+            const err = error as { code?: string; message?: string };
+            const isNotFound =
+              err?.code === "ENOENT" ||
+              /command not found/i.test(err?.message ?? "") ||
+              /not recognized/i.test(err?.message ?? "");
 
-        // If there's a failure, throw to trigger retry logic
-        if (workerResult.failure) {
-          const err = new WorkerError(workerResult);
-          throw err;
-        }
-
-        return workerResult;
-      },
-      {
-        maxRetries,
-        backoff: "exponential",
-        baseDelayMs: 1000,
-        maxDelayMs: RATE_LIMIT_RETRY_OPTIONS.maxDelayMs,
-        jitter: true,
-        isRetryable: (error) => {
-          if (error instanceof WorkerError && error.result.failure) {
-            return isRetryable(error.result.failure);
+            if (isNotFound) {
+              const meta = engine.metadata;
+              throw new Error(
+                `'${meta.cliBinary}' is not available on this system. Install ${meta.name}:\n  ${meta.installCommand}`,
+              );
+            }
+            throw error;
           }
-          return false;
+
+          // If there's a failure, throw to trigger retry logic
+          if (workerResult.failure) {
+            const err = new WorkerError(workerResult);
+            throw err;
+          }
+
+          return workerResult;
         },
-        onRetry: (attempt, error, delayMs) => {
-          const reason =
-            error instanceof WorkerError && error.result.failure
-              ? error.result.failure.message
-              : String(error);
+        {
+          maxRetries,
+          backoff: "exponential",
+          baseDelayMs: 1000,
+          maxDelayMs: RATE_LIMIT_RETRY_OPTIONS.maxDelayMs,
+          jitter: true,
+          isRetryable: (error) => {
+            if (error instanceof WorkerError && error.result.failure) {
+              return isRetryable(error.result.failure);
+            }
+            return false;
+          },
+          onRetry: (attempt, error, delayMs) => {
+            const reason =
+              error instanceof WorkerError && error.result.failure
+                ? error.result.failure.message
+                : String(error);
 
-          if (error instanceof WorkerError && error.result.failure?.kind === "rate_limited") {
-            log.info("rate-limited, retrying with exponential backoff", {
+            if (error instanceof WorkerError && error.result.failure?.kind === "rate_limited") {
+              log.info("rate-limited, retrying with exponential backoff", {
+                attempt,
+                delayMs,
+                rateLimitBaseDelayMs: RATE_LIMIT_RETRY_OPTIONS.baseDelayMs,
+              });
+            }
+
+            this.emitter.workerRetrying(
+              this.workflowId,
               attempt,
-              delayMs,
-              rateLimitBaseDelayMs: RATE_LIMIT_RETRY_OPTIONS.baseDelayMs,
-            });
-          }
-
-          this.emitter.workerRetrying(
-            this.workflowId,
-            attempt,
-            maxRetries,
-            reason,
-          );
+              maxRetries,
+              reason,
+            );
+          },
         },
-      },
-    );
+      );
 
-    // Unwrap RetryResult — re-throw on failure to preserve PhaseExecutor contract
-    if (!retryResult.success) {
-      throw retryResult.error;
+      // Unwrap RetryResult — re-throw on failure to preserve PhaseExecutor contract
+      if (!retryResult.success) {
+        throw retryResult.error;
+      }
+
+      const result = retryResult.value!;
+
+      // Emit worker completed
+      this.emitter.workerCompleted(this.workflowId, result);
+      return result;
+    } finally {
+      spLogger?.close();
     }
-
-    const result = retryResult.value!;
-
-    // Emit worker completed
-    this.emitter.workerCompleted(this.workflowId, result);
-    return result;
   }
 
   /**

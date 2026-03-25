@@ -29,6 +29,8 @@ export interface CreateEvaluatorTransportOptions {
   onStdout?: (chunk: string) => void;
   /** Called with each decoded stderr chunk as it arrives from the evaluator subprocess. */
   onStderr?: (chunk: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
+  logBaseDir?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,5 +59,6 @@ export function createEvaluatorTransport(
     evaluatorModel: options.evaluatorModel,
     onStdout: options.onStdout,
     onStderr: options.onStderr,
+    logBaseDir: options.logBaseDir,
   });
 }

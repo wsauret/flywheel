@@ -16,6 +16,7 @@ export const HANDOFFS_DIR = `${FLYWHEEL_DIR}/handoffs`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
 export const CACHE_DIR = `${FLYWHEEL_DIR}/cache`;
 export const SES_DRAFTS_DIR = `${CACHE_DIR}/ses-drafts`;
+export const SUBPROCESS_LOG_DIR = `${FLYWHEEL_DIR}/subprocess-logs`;
 export const LOCK_DIR = FLYWHEEL_DIR;
 
 // ---------------------------------------------------------------------------

@@ -80,15 +80,16 @@ describe("Claude engine: buildDispatcherCommand", () => {
     expect(cmd.args[modelIdx + 1]).toBe("haiku");
   });
 
-  it("does NOT include --output-format or --input-format (not stream-json)", () => {
+  it("includes --output-format stream-json but NOT --input-format", () => {
     const cmd = claudeEngine.buildDispatcherCommand({
       prompt: "dispatch this task",
       systemPrompt: "You are a dispatcher.",
     });
 
-    expect(cmd.args).not.toContain("--output-format");
+    expect(cmd.args).toContain("--output-format");
+    const fmtIdx = cmd.args.indexOf("--output-format");
+    expect(cmd.args[fmtIdx + 1]).toBe("stream-json");
     expect(cmd.args).not.toContain("--input-format");
-    expect(cmd.args).not.toContain("stream-json");
   });
 
   it("does NOT include --allowedTools (uses --tools instead)", () => {
