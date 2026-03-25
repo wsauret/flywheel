@@ -20,6 +20,8 @@ export interface PhaseInfo {
   status: "completed" | "pending" | "in_progress";
   /** Top-level checklist items (work path only) */
   steps?: string[];
+  /** Milestone this phase belongs to (from `## Milestone: <name>` markers in plan) */
+  milestone?: string;
 }
 
 export interface PhaseProvider {

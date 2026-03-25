@@ -25,6 +25,8 @@ export interface PlanPhase {
   steps: string[];
   /** Status from state file cross-reference, or "pending" if no state */
   status: "completed" | "pending" | "in_progress";
+  /** Milestone this phase belongs to (from `## Milestone: <name>` markers) */
+  milestone?: string;
 }
 
 /** Discriminated union for plan validation results. */
@@ -48,6 +50,9 @@ const INDENTED_RE = /^(?:\s{2,}|\t)/;
 /** Matches acceptance-criteria-like section headings */
 const ACCEPTANCE_CRITERIA_RE =
   /^##\s+(Acceptance\s+Criteria|Success\s+Criteria|Verification|Done\s+When)\s*$/i;
+
+/** Matches exactly `## Milestone: <name>` (H2, capital M, colon-space, then name) */
+const MILESTONE_RE = /^## Milestone: (.+)$/;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -73,9 +78,28 @@ export function parsePlan(
     title: string;
     descriptionLines: string[];
     steps: string[];
+    milestone?: string;
   } | null = null;
 
+  /** Tracks the current milestone scope (set by `## Milestone: <name>`) */
+  let currentMilestone: string | undefined;
+
   for (const line of lines) {
+    // Check for milestone marker before phase heading
+    const milestoneMatch = line.match(MILESTONE_RE);
+    if (milestoneMatch) {
+      // Flush previous phase before switching milestone
+      if (currentPhase) {
+        phases.push(finalizePhase(currentPhase, phases.length, state));
+        currentPhase = null;
+      }
+
+      const name = milestoneMatch[1].trim();
+      // Only set milestone if name is non-empty after trimming
+      currentMilestone = name.length > 0 ? name : undefined;
+      continue;
+    }
+
     const headingMatch = line.match(PHASE_HEADING_RE);
 
     if (headingMatch) {
@@ -89,6 +113,7 @@ export function parsePlan(
         title: headingMatch[2].trim(),
         descriptionLines: [],
         steps: [],
+        milestone: currentMilestone,
       };
       continue;
     }
@@ -197,6 +222,7 @@ function finalizePhase(
     title: string;
     descriptionLines: string[];
     steps: string[];
+    milestone?: string;
   },
   index: number,
   state?: ParsedStateFile | null,
@@ -204,13 +230,19 @@ function finalizePhase(
   const description = raw.descriptionLines.join("\n").trim();
   const status = resolveStatus(raw.title, index, state);
 
-  return {
+  const phase: PlanPhase = {
     index,
     title: raw.title,
     description,
     steps: raw.steps,
     status,
   };
+
+  if (raw.milestone !== undefined) {
+    phase.milestone = raw.milestone;
+  }
+
+  return phase;
 }
 
 /**

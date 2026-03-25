@@ -43,13 +43,19 @@ export class PlanFileProvider implements PhaseProvider {
     if (this.cachedPhases) return this.cachedPhases;
 
     const planPhases = parsePlan(this.planContent, this.state);
-    this.cachedPhases = planPhases.map((p) => ({
-      index: p.index,
-      title: p.title,
-      description: p.description,
-      status: p.status,
-      steps: p.steps,
-    }));
+    this.cachedPhases = planPhases.map((p) => {
+      const phase: PhaseInfo = {
+        index: p.index,
+        title: p.title,
+        description: p.description,
+        status: p.status,
+        steps: p.steps,
+      };
+      if (p.milestone !== undefined) {
+        phase.milestone = p.milestone;
+      }
+      return phase;
+    });
     return this.cachedPhases;
   }
 
