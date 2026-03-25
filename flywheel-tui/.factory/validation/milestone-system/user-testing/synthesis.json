@@ -1,0 +1,30 @@
+{
+  "milestone": "milestone-system",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-MILE-001",
+    "VAL-MILE-002",
+    "VAL-MILE-003",
+    "VAL-MILE-004",
+    "VAL-MILE-005",
+    "VAL-MILE-006",
+    "VAL-MILE-007",
+    "VAL-CONTRACT-001",
+    "VAL-CONTRACT-002",
+    "VAL-CONTRACT-003",
+    "VAL-CONTRACT-004",
+    "VAL-CONTRACT-005",
+    "VAL-CONTRACT-006"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null
+}

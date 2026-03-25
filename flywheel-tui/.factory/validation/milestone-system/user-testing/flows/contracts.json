@@ -1,0 +1,235 @@
+{
+  "groupId": "contracts",
+  "testedAt": "2026-03-25T16:28:00Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "noExternalServices": true,
+    "noSharedState": true
+  },
+  "toolsUsed": ["bun test", "source code inspection"],
+  "assertions": [
+    {
+      "id": "VAL-CONTRACT-001",
+      "title": "Plan workflow generates validation contract",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/plan-generates-contract.test.ts",
+          "expected": "All 12 tests pass covering both buildPlanDraftPrompt and buildPlanConsolidatePrompt",
+          "observed": "12 pass, 0 fail (16 expect() calls)"
+        },
+        {
+          "action": "Inspect src/prompts/plan/draft.ts for validation contract instructions",
+          "expected": "Prompt instructs planner to generate validation-contract.md with assertion IDs, descriptions, and evidence",
+          "observed": "Draft prompt contains full 'Validation Contract Output' section with template, assertion structure, contract rules, and filename derivation instructions"
+        },
+        {
+          "action": "Inspect src/prompts/plan/consolidate.ts for validation contract instructions",
+          "expected": "Consolidation prompt also instructs generation of validation-contract.md",
+          "observed": "Consolidate prompt contains 'IMPORTANT: Generate the validation contract' section with VAL-<AREA>-<NNN> format, Area grouping, Cross-Area Flows, and fulfills annotation requirements"
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/plan-generates-contract.test.ts",
+        "testNames": [
+          "buildPlanDraftPrompt — validation contract instructions > instructs planner to generate validation-contract.md",
+          "buildPlanDraftPrompt — validation contract instructions > includes the assertion ID format VAL-AREA-NNN",
+          "buildPlanDraftPrompt — validation contract instructions > includes the assertion structure (ID, title, behavioral description, evidence)",
+          "buildPlanDraftPrompt — validation contract instructions > instructs inclusion of cross-area flow assertions",
+          "buildPlanDraftPrompt — validation contract instructions > instructs generation of milestone markers in the plan",
+          "buildPlanDraftPrompt — validation contract instructions > instructs adding fulfills annotations to plan phases",
+          "buildPlanDraftPrompt — validation contract instructions > includes per-area assertion grouping instructions",
+          "buildPlanDraftPrompt — validation contract instructions > includes complete validation contract template example",
+          "buildPlanConsolidatePrompt — validation contract instructions > instructs planner to generate validation-contract.md alongside plan",
+          "buildPlanConsolidatePrompt — validation contract instructions > includes milestone marker format instructions",
+          "buildPlanConsolidatePrompt — validation contract instructions > includes fulfills annotation format in consolidated plan template",
+          "buildPlanConsolidatePrompt — validation contract instructions > includes assertion ID format in contract instructions"
+        ],
+        "sourceFiles": ["src/prompts/plan/draft.ts", "src/prompts/plan/consolidate.ts"],
+        "savedEvidence": "milestone-system/contracts/VAL-CONTRACT-001-002-test-output.txt"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTRACT-002",
+      "title": "Contract assertions have stable IDs",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect src/prompts/plan/draft.ts for ID format specification",
+          "expected": "Prompt specifies VAL-<AREA>-<NNN> format with examples",
+          "observed": "Draft prompt contains: 'Use stable IDs with an area prefix: `VAL-<AREA>-<NNN>`' with examples VAL-AUTH-001, VAL-API-003, VAL-UI-012. Also specifies AREA as short uppercase tag and NNN as zero-padded three-digit number."
+        },
+        {
+          "action": "Inspect src/prompts/plan/consolidate.ts for ID format specification",
+          "expected": "Consolidation prompt also includes ID format",
+          "observed": "Consolidate prompt includes: 'validation contract defines testable assertions using the `VAL-<AREA>-<NNN>` ID format (e.g., `VAL-AUTH-001`, `VAL-API-003`)'"
+        },
+        {
+          "action": "Run test that verifies ID format in prompt",
+          "expected": "Test confirms VAL-AREA-NNN pattern in prompt output",
+          "observed": "Test 'includes the assertion ID format VAL-AREA-NNN' passes — uses regex /VAL-[A-Z]+-\\d{3}/ to verify"
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/plan-generates-contract.test.ts",
+        "testNames": [
+          "buildPlanDraftPrompt — validation contract instructions > includes the assertion ID format VAL-AREA-NNN",
+          "buildPlanConsolidatePrompt — validation contract instructions > includes assertion ID format in contract instructions"
+        ],
+        "sourceFiles": ["src/prompts/plan/draft.ts", "src/prompts/plan/consolidate.ts"],
+        "savedEvidence": "milestone-system/contracts/VAL-CONTRACT-001-002-test-output.txt"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTRACT-003",
+      "title": "Phases have fulfills field",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect PhaseInfo type in src/controller/phase-provider.ts",
+          "expected": "PhaseInfo has optional fulfills: string[] field",
+          "observed": "PhaseInfo type includes `fulfills?: string[]` with JSDoc: 'Validation contract assertion IDs this phase fulfills (from `<!-- fulfills: ... -->` annotations)'"
+        },
+        {
+          "action": "Run bun test tests/validation-state.test.ts (PhaseInfo fulfills and parser sections)",
+          "expected": "All fulfills-related tests pass",
+          "observed": "All 10 fulfills-related tests pass: type tests (2), parser extraction tests (8 including backward compat and PlanFileProvider passthrough)"
+        },
+        {
+          "action": "Run bun test tests/plan-parser.test.ts",
+          "expected": "Existing plan parser tests still pass (backward compat)",
+          "observed": "18 pass, 0 fail — existing parser tests unaffected"
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/validation-state.test.ts",
+        "testNames": [
+          "PhaseInfo fulfills field > PhaseInfo type supports optional fulfills string array",
+          "PhaseInfo fulfills field > PhaseInfo fulfills is optional (undefined when not set)",
+          "Plan parser fulfills extraction > extracts fulfills from HTML comment annotation",
+          "Plan parser fulfills extraction > extracts fulfills with single assertion ID",
+          "Plan parser fulfills extraction > fulfills is undefined when no annotation present",
+          "Plan parser fulfills extraction > handles multiple phases with different fulfills",
+          "Plan parser fulfills extraction > handles extra whitespace in fulfills annotation",
+          "Plan parser fulfills extraction > fulfills annotation is not included in phase description content",
+          "Plan parser fulfills extraction > PlanFileProvider passes fulfills through to PhaseInfo",
+          "Plan parser fulfills extraction > backward compat: existing plans without fulfills parse unchanged"
+        ],
+        "sourceFiles": ["src/controller/phase-provider.ts", "src/controller/plan-parser.ts"],
+        "savedEvidence": "milestone-system/contracts/VAL-CONTRACT-003-004-005-006-test-output.txt"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTRACT-004",
+      "title": "Validation state tracks assertion status",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/validation-state.test.ts (readValidationState/writeValidationState and initializeValidationState sections)",
+          "expected": "All read/write/initialize tests pass",
+          "observed": "All 9 read/write/init tests pass: writes and reads back, validates schema on load/write, returns null on missing file, uses atomicWrite, handles concurrent writes, initializes all as pending, handles empty IDs, creates parent dirs"
+        },
+        {
+          "action": "Inspect src/controller/validation-state.ts for initializeValidationState",
+          "expected": "Function creates validation-state.json with all assertions as 'pending'",
+          "observed": "initializeValidationState() iterates assertion IDs, sets each to {status: 'pending'}, calls writeValidationState() which uses atomicWrite"
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/validation-state.test.ts",
+        "testNames": [
+          "readValidationState / writeValidationState > writes and reads back a validation state file",
+          "readValidationState / writeValidationState > read validates schema on load (rejects invalid data)",
+          "readValidationState / writeValidationState > write validates schema before writing (rejects invalid data)",
+          "readValidationState / writeValidationState > returns null when file does not exist",
+          "readValidationState / writeValidationState > uses atomicWrite for safety (creates parent directories)",
+          "readValidationState / writeValidationState > handles concurrent writes safely (atomicWrite)",
+          "initializeValidationState > creates a validation-state.json with all assertions as pending",
+          "initializeValidationState > handles empty assertion IDs",
+          "initializeValidationState > creates parent directories if needed"
+        ],
+        "sourceFiles": ["src/controller/validation-state.ts", "src/schemas/validation.ts"],
+        "savedEvidence": "milestone-system/contracts/VAL-CONTRACT-003-004-005-006-test-output.txt"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTRACT-005",
+      "title": "Coverage check - every assertion claimed",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/validation-state.test.ts (checkAssertionCoverage section)",
+          "expected": "All 8 coverage check tests pass",
+          "observed": "All 8 pass: complete coverage, orphaned detection, duplicate detection, phases without fulfills, empty contract, empty phases, combined orphaned+duplicates, unclaimed extras"
+        },
+        {
+          "action": "Inspect src/controller/validation-state.ts checkAssertionCoverage function",
+          "expected": "Function checks every contract assertion is claimed by exactly one phase, reports orphaned and duplicate assertions",
+          "observed": "checkAssertionCoverage() builds a claimedBy map, identifies orphaned (in contract but not claimed), duplicates (claimed by >1 phase), unclaimed (claimed but not in contract), and sets isComplete when orphaned and duplicates are both empty"
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/validation-state.test.ts",
+        "testNames": [
+          "checkAssertionCoverage > reports no issues when every assertion is claimed by exactly one phase",
+          "checkAssertionCoverage > reports orphaned assertions (not claimed by any phase)",
+          "checkAssertionCoverage > reports duplicate assertions (claimed by multiple phases)",
+          "checkAssertionCoverage > handles phases without fulfills (they claim nothing)",
+          "checkAssertionCoverage > handles empty contract assertions",
+          "checkAssertionCoverage > handles empty phases",
+          "checkAssertionCoverage > detects both orphaned and duplicates in same report",
+          "checkAssertionCoverage > reports extra assertions claimed by phases but not in contract"
+        ],
+        "sourceFiles": ["src/controller/validation-state.ts"],
+        "savedEvidence": "milestone-system/contracts/VAL-CONTRACT-003-004-005-006-test-output.txt"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTRACT-006",
+      "title": "Validation state JSON schema",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect src/schemas/validation.ts Zod schema definition",
+          "expected": "Schema matches: { assertions: { <ID>: { status: pending|passed|failed|blocked, lastChecked?: string, evidence?: string } } }",
+          "observed": "Schema defines AssertionStatusEnum with z.enum(['pending','passed','failed','blocked']), AssertionStatusSchema with status (required), lastChecked (optional string), evidence (optional string), and ValidationStateSchema with assertions as z.record(z.string(), AssertionStatusSchema). Matches spec exactly."
+        },
+        {
+          "action": "Run bun test tests/validation-state.test.ts (ValidationStateSchema section)",
+          "expected": "All 9 schema validation tests pass",
+          "observed": "All 9 pass: valid state with all statuses, minimal empty state, all four status values accepted, invalid rejected, optional lastChecked accepted, optional evidence accepted, no optional fields accepted, missing status rejected, missing assertions key rejected"
+        },
+        {
+          "action": "Verify read/write functions use Zod validation",
+          "expected": "readValidationState uses ValidationStateSchema.parse, writeValidationState validates before writing",
+          "observed": "readValidationState: calls ValidationStateSchema.parse(parsed). writeValidationState: calls ValidationStateSchema.parse(state) before atomicWrite. Both confirmed with tests proving invalid data is rejected."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/validation-state.test.ts",
+        "testNames": [
+          "ValidationStateSchema > parses a valid validation state with all statuses",
+          "ValidationStateSchema > parses a minimal validation state (empty assertions)",
+          "ValidationStateSchema > accepts all four status values: pending, passed, failed, blocked",
+          "ValidationStateSchema > rejects invalid status values",
+          "ValidationStateSchema > accepts lastChecked as optional ISO string",
+          "ValidationStateSchema > accepts evidence as optional string",
+          "ValidationStateSchema > accepts assertion with no optional fields",
+          "ValidationStateSchema > rejects missing status field",
+          "ValidationStateSchema > rejects missing assertions key"
+        ],
+        "sourceFiles": ["src/schemas/validation.ts", "src/controller/validation-state.ts"],
+        "savedEvidence": "milestone-system/contracts/VAL-CONTRACT-003-004-005-006-test-output.txt"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 6 assertions: 6 passed, 0 failed. All 66 relevant unit tests pass across 3 test files (plan-generates-contract.test.ts: 12 pass, validation-state.test.ts: 36 pass, plan-parser.test.ts: 18 pass). Source code and prompt template inspection confirms all behavioral requirements are implemented correctly."
+}
