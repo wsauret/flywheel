@@ -178,3 +178,64 @@ export function checkAssertionCoverage(
 
   return { orphaned, duplicates, unclaimed, isComplete };
 }
+
+// ---------------------------------------------------------------------------
+// Update assertion statuses (used after validation phases)
+// ---------------------------------------------------------------------------
+
+/**
+ * Status update for a single assertion.
+ */
+export interface AssertionStatusUpdate {
+  /** New status for the assertion */
+  status: "passed" | "failed" | "blocked";
+  /** Evidence or reason for the status */
+  evidence?: string;
+}
+
+/**
+ * Update assertion statuses in a `validation-state.json` file.
+ *
+ * Reads the existing state (or creates a new one if the file doesn't exist),
+ * applies the provided updates, and writes the result atomically.
+ *
+ * - `lastChecked` is automatically set to the current ISO timestamp for
+ *   each updated assertion.
+ * - Assertions not included in the `updates` map are preserved unchanged.
+ * - If the file does not exist, a new state is created with only the
+ *   updated assertions.
+ *
+ * @param filePath - Absolute path to validation-state.json
+ * @param updates - Map of assertion ID → status update
+ */
+export function updateAssertionStatuses(
+  filePath: string,
+  updates: Record<string, AssertionStatusUpdate>,
+): void {
+  const updateKeys = Object.keys(updates);
+  if (updateKeys.length === 0) return;
+
+  // Load existing state or create empty
+  let state = readValidationState(filePath);
+  if (!state) {
+    state = { assertions: {} };
+  }
+
+  const now = new Date().toISOString();
+
+  for (const [id, update] of Object.entries(updates)) {
+    state.assertions[id] = {
+      ...state.assertions[id],
+      status: update.status,
+      lastChecked: now,
+      ...(update.evidence !== undefined ? { evidence: update.evidence } : {}),
+    };
+  }
+
+  writeValidationState(filePath, state);
+  log.info("updated assertion statuses", {
+    path: filePath,
+    updatedCount: updateKeys.length,
+    statuses: updateKeys.map((id) => `${id}:${updates[id].status}`).join(", "),
+  });
+}

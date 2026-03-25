@@ -36,6 +36,13 @@ import { WorkflowDefinitionProvider } from "./workflow-def-provider";
 import { DispatcherOrchestrator } from "./dispatcher-orchestrator";
 import { buildWorkPhasePrompt } from "../prompts/work/phase-prompt";
 import { buildScrutinyPrompt } from "../prompts/work/scrutiny";
+import {
+  buildBehavioralValidationPrompt,
+  collectAssertionsForMilestone,
+  type ContractAssertion,
+  type BehavioralValidationContext,
+} from "../prompts/work/behavioral-validation";
+import { readValidationState } from "./validation-state";
 import { workflowRegistry, buildWorkflowPrompt } from "../workflows/index";
 import { createPlanOnStepComplete } from "../workflows/plan-output-extractor";
 import { createReviewOnStepComplete, REVIEW_FIX_STEP_INDEX } from "../workflows/review-output-extractor";
@@ -268,6 +275,50 @@ function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
         completedPhases,
         commands: config.commands,
         projectCwd,
+      });
+    }
+
+    // Behavioral validation phases have title "Validation: <milestoneName>"
+    if (phase.title.startsWith("Validation: ")) {
+      const milestoneName = phase.title.slice("Validation: ".length);
+      const allPhases = phaseProvider.getPhases();
+
+      // Collect assertion IDs from completed phases' fulfills in this milestone
+      const assertionIds = collectAssertionsForMilestone(allPhases, milestoneName);
+
+      // Build assertion objects from IDs (minimal: the worker reads the contract for details)
+      const assertions: ContractAssertion[] = assertionIds.map((id) => ({
+        id,
+        title: id, // Title will be the ID itself; the worker reads the contract for full details
+        description: `Verify assertion ${id} from the validation contract.`,
+        evidence: "Examine code, run tests, check behavior",
+      }));
+
+      // Resolve validation-state.json path (project root)
+      const validationStatePath = path.resolve(projectCwd, "validation-state.json");
+
+      // Read prior results for re-validation support (VAL-EXEC-010)
+      let priorResults: BehavioralValidationContext["priorResults"];
+      const existingState = readValidationState(validationStatePath);
+      if (existingState) {
+        // Extract only the assertions relevant to this milestone
+        const relevantPrior: NonNullable<BehavioralValidationContext["priorResults"]> = {};
+        for (const id of assertionIds) {
+          if (existingState.assertions[id]) {
+            relevantPrior[id] = existingState.assertions[id];
+          }
+        }
+        if (Object.keys(relevantPrior).length > 0) {
+          priorResults = relevantPrior;
+        }
+      }
+
+      return buildBehavioralValidationPrompt({
+        milestoneName,
+        assertions,
+        validationStatePath,
+        projectCwd,
+        priorResults,
       });
     }
 
