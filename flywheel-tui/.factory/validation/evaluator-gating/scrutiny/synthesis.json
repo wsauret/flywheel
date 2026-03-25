@@ -1,0 +1,78 @@
+{
+  "milestone": "evaluator-gating",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "details": "3539 tests passed across 138 files in 25.31s" },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": null, "exitCode": null, "details": "No lint command configured in services.yaml — skipped (warn)" }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "evaluator-structured-issues",
+      "severity": "non_blocking",
+      "description": "Redundant nullish coalescing: `verdict.issues ?? []` in subprocess-transport.ts:170 is unnecessary because EvaluatorVerdictSchema uses `.default([])`, guaranteeing issues is always an array after parsing.",
+      "file": "src/evaluator/subprocess-transport.ts",
+      "line": 170
+    },
+    {
+      "featureId": "evaluator-structured-issues",
+      "severity": "non_blocking",
+      "description": "Changed type annotation style from `const verdict: EvaluatorVerdict = ...` to `const verdict = ... as EvaluatorVerdict`. The `as` cast is slightly less safe than a type annotation. Both work correctly here but the original annotation style was preferable.",
+      "file": "src/evaluator/subprocess-transport.ts",
+      "line": 164
+    },
+    {
+      "featureId": "issue-gating-execution-loop",
+      "severity": "non_blocking",
+      "description": "Deep nesting (~200 lines) in the `!transportError` else block in execution-loop.ts:634. An early-return/continue pattern would improve readability.",
+      "file": "src/controller/execution-loop.ts",
+      "line": 634
+    },
+    {
+      "featureId": "issue-gating-execution-loop",
+      "severity": "non_blocking",
+      "description": "Misleading log message: when non-blocking issues are staged into `_pendingNonBlockingIssues`, the log says 'accumulated' but they're only truly accumulated into StageContext later (~line 886).",
+      "file": "src/controller/execution-loop.ts",
+      "line": 804
+    },
+    {
+      "featureId": "issue-gating-execution-loop",
+      "severity": "non_blocking",
+      "description": "Potential double-prefix in UIApprovalHandler.requestIssueApproval: delegates to requestApproval which adds `Phase N:` prefix, but the description parameter already contains the phase prefix and issue details, potentially showing `Phase 1: Phase 1: ...` in the approval UI.",
+      "file": "src/controller/ui-approval-handler.ts",
+      "line": 53
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the behavioral contract change in the execution loop: evaluator transport failures (timeout, error) now trigger graceful degradation — the pipeline continues instead of failing. Previously, exhausting evaluator retries was a hard failure. This is intentional and workers should expect pipeline continuation on evaluator transport errors.",
+      "evidence": "Feature issue-gating-execution-loop (commit 411c376) changed tests/evaluator-activation.test.ts from `expect(result.completed).toBe(false)` to `expect(result.completed).toBe(true)` for transport error scenarios. The change is documented in .factory/library/architecture.md but not in AGENTS.md.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Type assertion style (`as EvaluatorVerdict` vs `: EvaluatorVerdict`) differs from existing codebase pattern",
+      "reason": "Too minor and ambiguous — both patterns are valid TypeScript and the current usage works correctly. Not worth codifying a convention for."
+    },
+    {
+      "observation": "Library file properly updated with issue gating details",
+      "reason": "Positive observation, not actionable — no shared state change needed."
+    },
+    {
+      "observation": "Worker followed skill procedure correctly",
+      "reason": "Positive observation, informational only — no shared state change needed."
+    }
+  ],
+  "previousRound": null
+}

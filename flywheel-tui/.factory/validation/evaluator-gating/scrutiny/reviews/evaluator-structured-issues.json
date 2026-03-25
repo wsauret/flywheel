@@ -1,0 +1,34 @@
+{
+  "featureId": "evaluator-structured-issues",
+  "reviewedAt": "2026-03-25T16:05:00.000Z",
+  "commitId": "3548ad1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid implementation. The feature correctly extends EvaluatorVerdictSchema with a structured issues array (description, severity enum, category enum), updates the evaluator prompt with comprehensive Issue Extraction Guidelines, propagates issues through EvaluatorResultSchema and EvaluationResult interface, and ensures backward compatibility via .default([]). All 8 expectedBehavior items are met. The downstream consumption in execution-loop.ts (blocking/non-blocking gating) and stage-context.ts (cumulative issues accumulation) correctly integrates with the new field. 45 tests provide thorough coverage of schema validation, enum strictness, backward compat, prompt content, and handoff instruction. One minor redundancy noted (verdict.issues ?? [] after Zod .default([]) guarantees non-null), and the type annotation change from `: EvaluatorVerdict` to `as EvaluatorVerdict` is stylistic but harmless.",
+    "issues": [
+      {
+        "file": "src/evaluator/subprocess-transport.ts",
+        "line": 170,
+        "severity": "non_blocking",
+        "description": "Redundant nullish coalescing: `verdict.issues ?? []` is unnecessary because EvaluatorVerdictSchema uses `.default([])`, which guarantees `issues` is always an array after parsing. The `?? []` is dead code that obscures the `.default([])` guarantee."
+      },
+      {
+        "file": "src/evaluator/subprocess-transport.ts",
+        "line": 164,
+        "severity": "non_blocking",
+        "description": "Changed type annotation style from `const verdict: EvaluatorVerdict = ...` to `const verdict = ... as EvaluatorVerdict`. The `as` cast is slightly less safe than a type annotation since it suppresses type mismatches. readHandoff<T> already returns Promise<T> inferred from the schema, so the cast is redundant. Both patterns work correctly here, but the original annotation style was preferable."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The worker used `as EvaluatorVerdict` type assertion instead of the existing codebase pattern of `: EvaluatorVerdict` type annotation. The codebase doesn't have a documented convention for preferring type annotations over type assertions, but the original code consistently used annotations for readHandoff return values.",
+      "evidence": "src/evaluator/subprocess-transport.ts:164 — changed from `const verdict: EvaluatorVerdict = await readHandoff(...)` to `const verdict = await readHandoff(...) as EvaluatorVerdict`. Compare to the original pattern in the same file."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature passes review. The implementation correctly adds EvaluatorIssueSchema with description/severity/category to EvaluatorVerdictSchema, uses .default([]) for backward compat, updates the evaluator prompt with comprehensive Issue Extraction Guidelines (severity/category classification, checks for tests/typecheck/secrets, concrete JSON examples), propagates issues through EvaluatorResultSchema and EvaluationResult interface, and updates the handoff instruction. Two non-blocking style issues found: a redundant `?? []` after Zod's .default([]) guarantee, and a type annotation style change to `as` cast. Both are cosmetic and don't affect correctness. All 6 VAL-EVAL assertions are covered by 45 well-structured tests."
+}

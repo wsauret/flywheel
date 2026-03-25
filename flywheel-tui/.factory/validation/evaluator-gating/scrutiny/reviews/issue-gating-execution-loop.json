@@ -1,0 +1,50 @@
+{
+  "featureId": "issue-gating-execution-loop",
+  "reviewedAt": "2026-03-25T16:05:00.000Z",
+  "commitId": "411c376",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid implementation of evaluator issue gating in the execution loop. The feature correctly wires structured issues (blocking and non-blocking) from the evaluator verdict into the pipeline control flow. Blocking issues halt the pipeline and surface through an optional `requestIssueApproval` method on the ApprovalHandler interface. Non-blocking issues accumulate in StageContext via `_pendingNonBlockingIssues`. The evaluator transport failure graceful degradation path is well-implemented — when `transportError` is true, both the revision loop and issue gating are cleanly skipped. The stage context accumulation block was correctly refactored from a `cachedHandoff`-guarded conditional to an unconditional block, using optional chaining for null safety, ensuring non-blocking issues are accumulated even when handoff is unavailable. EvaluatorInput was extended with `stage_context` so the evaluator for phase N receives cumulative context from prior phases. 18 comprehensive tests cover all expected behaviors including the edge case of mixed blocking/non-blocking issues, pass/fail independence, and backward compatibility with undefined issues arrays.",
+    "issues": [
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 634,
+        "severity": "non_blocking",
+        "description": "The `else` block for `!transportError` wraps ~200 lines (revision loop + issue gating). While functionally correct, this creates deep nesting and the closing brace at line 852 (`} // end else (not transportError)`) followed immediately by `} // end evaluator guard` can be hard to follow. An early-return or early-continue pattern (e.g., skipping to phase chaining on transportError) would improve readability. Not a bug, but a maintainability concern."
+      },
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 804,
+        "severity": "non_blocking",
+        "description": "When there are only non-blocking issues and no blocking issues, `_pendingNonBlockingIssues` is assigned but the log message says 'accumulated' which is slightly misleading — they are staged at this point and only truly accumulated into StageContext later (~line 886). Minor naming/logging clarity issue."
+      },
+      {
+        "file": "src/controller/ui-approval-handler.ts",
+        "line": 53,
+        "severity": "non_blocking",
+        "description": "The `requestIssueApproval` method delegates to `requestApproval(phaseIndex, description)` where `description` is a multi-line string including issue details. The existing `requestApproval` method emits an `approvalRequested` event with `Phase ${phaseIndex + 1}: ${title}` as the description. When called from `requestIssueApproval`, the `title` parameter already contains the phase prefix and issue details, so the event will contain a redundant `Phase N:` prefix wrapping the already-formatted description. This won't cause a bug but the approval UI may show slightly malformed text like 'Phase 1: Phase 1: Some title\\n\\nBlocking issues found:...'."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The architecture.md library file was properly updated with issue gating details (step 8.5, 9.5, and a dedicated 'Issue Gating Details' section). This is a good practice that other workers should follow.",
+      "evidence": "Diff of .factory/library/architecture.md shows comprehensive additions documenting the new control flow steps and issue gating behavior."
+    },
+    {
+      "area": "conventions",
+      "observation": "The existing evaluator-activation test was modified to change expected behavior: transport errors now cause `result.completed` to be `true` instead of `false`. This is a behavioral contract change for the execution loop — previously exhausting evaluator retries was a hard failure, now it's graceful degradation. AGENTS.md and architecture docs were updated to reflect this, but the test comment is the only documentation of the old behavior being intentionally changed.",
+      "evidence": "tests/evaluator-activation.test.ts line 491-494: changed from `expect(result.completed).toBe(false)` to `expect(result.completed).toBe(true)` with comment 'Transport errors trigger graceful degradation — pipeline continues'"
+    },
+    {
+      "area": "skills",
+      "observation": "Worker followed the skill procedure correctly: read Droid reference first, wrote tests (TDD), implemented, ran full suite, ran typecheck, and updated knowledge library. skillFeedback confirms followedProcedure=true with no deviations.",
+      "evidence": "Handoff verification shows: 18 new tests in issue-gating.test.ts, bun test 3539 pass, bunx tsc --noEmit clean, .factory/library/architecture.md updated."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The issue-gating-execution-loop feature is well-implemented. It correctly wires evaluator structured issues into the execution loop with deterministic gating: blocking issues halt the pipeline and surface via the approval gate, non-blocking issues accumulate in stage context, and the behavior is additive to existing pass/fail evaluation. Transport failure graceful degradation is cleanly handled. All 8 expected behaviors from the feature spec are covered by 18 tests. Three non-blocking issues identified: deep nesting from the transportError else block, a slightly misleading log message about issue accumulation timing, and potential double-prefixing in the UIApprovalHandler's issue approval delegation. None are blocking — the implementation is correct and complete."
+}
