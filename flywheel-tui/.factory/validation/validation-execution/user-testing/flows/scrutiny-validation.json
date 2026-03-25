@@ -1,0 +1,179 @@
+{
+  "groupId": "scrutiny-validation",
+  "testedAt": "2026-03-25T00:00:00.000Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testRunner": "bun test",
+    "testFile": "tests/scrutiny-validation.test.ts"
+  },
+  "toolsUsed": ["bun test"],
+  "assertions": [
+    {
+      "id": "VAL-EXEC-003",
+      "title": "Scrutiny phase runs test/typecheck/lint",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/scrutiny-validation.test.ts",
+          "expected": "All 24 tests pass",
+          "observed": "24 pass, 0 fail, 59 expect() calls"
+        },
+        {
+          "action": "Inspect test: 'prompt contains hard gate section with all three command types'",
+          "expected": "Prompt includes bun test, bunx tsc --noEmit, eslint src/ when all three configured",
+          "observed": "Test passes — prompt contains all three command strings"
+        },
+        {
+          "action": "Inspect test: 'prompt instructs test/typecheck/lint as hard gates'",
+          "expected": "Prompt contains 'hard gate' language indicating failure stops validation",
+          "observed": "Test passes — prompt.toLowerCase() contains 'hard gate'"
+        },
+        {
+          "action": "Inspect test: 'configured command failure means validation fails'",
+          "expected": "Prompt conveys that configured command failure fails the scrutiny phase",
+          "observed": "Test passes — prompt.toLowerCase() contains 'fail'"
+        },
+        {
+          "action": "Inspect source: buildHardGatesSection() in src/prompts/work/scrutiny.ts",
+          "expected": "Each configured command rendered as hard gate with failure semantics",
+          "observed": "Source confirms: each command rendered with 'If it exits with a non-zero exit code, the scrutiny validation fails immediately'"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/scrutiny-validation/test-output.txt",
+        "sourceFile": "src/prompts/work/scrutiny.ts",
+        "relevantTests": [
+          "buildScrutinyPrompt — content > prompt contains hard gate section with all three command types",
+          "buildScrutinyPrompt — content > prompt instructs test/typecheck/lint as hard gates",
+          "buildScrutinyPrompt — missing commands > configured command failure means validation fails"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "title": "Scrutiny phase triggers per-phase review",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/scrutiny-validation.test.ts",
+          "expected": "All 24 tests pass",
+          "observed": "24 pass, 0 fail, 59 expect() calls"
+        },
+        {
+          "action": "Inspect test: 'prompt instructs worker to review each completed phase'",
+          "expected": "Prompt references all 3 completed phase titles",
+          "observed": "Test passes — prompt contains 'Add user model', 'Add login endpoint', 'Add session middleware'"
+        },
+        {
+          "action": "Inspect test: 'prompt covers code quality, correctness, and test coverage'",
+          "expected": "Prompt mentions code quality, correctness, and test coverage as review criteria",
+          "observed": "Test passes — prompt.toLowerCase() contains all three terms"
+        },
+        {
+          "action": "Inspect test: 'includes phase descriptions in review instructions'",
+          "expected": "Each phase's description included for review context",
+          "observed": "Test passes — prompt contains 'Create user schema and DB migration', 'POST /api/auth/login', 'JWT verification middleware'"
+        },
+        {
+          "action": "Inspect test: 'lists all completed phases for review'",
+          "expected": "Phase numbers (Phase 1, Phase 2, Phase 3) listed",
+          "observed": "Test passes — prompt contains Phase 1, Phase 2, Phase 3"
+        },
+        {
+          "action": "Inspect test: 'handles empty completed phases list'",
+          "expected": "Prompt still valid with 0 phases",
+          "observed": "Test passes — prompt is truthy and contains milestone name"
+        },
+        {
+          "action": "Inspect test: 'handles single completed phase'",
+          "expected": "Works with exactly 1 phase",
+          "observed": "Test passes — prompt contains the single phase title and description"
+        },
+        {
+          "action": "Inspect source: buildPhaseReviewSection() in src/prompts/work/scrutiny.ts",
+          "expected": "Generates per-phase review instructions with quality/correctness/coverage criteria",
+          "observed": "Source confirms: function iterates completedPhases array, generates review section with 3 criteria (code quality, correctness, test coverage)"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/scrutiny-validation/test-output.txt",
+        "sourceFile": "src/prompts/work/scrutiny.ts",
+        "relevantTests": [
+          "buildScrutinyPrompt — content > prompt instructs worker to review each completed phase",
+          "buildScrutinyPrompt — content > prompt covers code quality, correctness, and test coverage",
+          "buildScrutinyPrompt — per-phase review > lists all completed phases for review",
+          "buildScrutinyPrompt — per-phase review > includes phase descriptions in review instructions",
+          "buildScrutinyPrompt — per-phase review > handles empty completed phases list",
+          "buildScrutinyPrompt — per-phase review > handles single completed phase"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-011",
+      "title": "Scrutiny reads commands from config",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/scrutiny-validation.test.ts",
+          "expected": "All 24 tests pass",
+          "observed": "24 pass, 0 fail, 59 expect() calls"
+        },
+        {
+          "action": "Inspect test: 'uses exact command strings from config'",
+          "expected": "Custom commands (pytest, mypy, ruff) appear in prompt; hardcoded defaults (bun test, tsc) do NOT appear",
+          "observed": "Test passes — prompt contains 'pytest -xvs tests/', 'mypy src/', 'ruff check .' and does NOT contain 'bun test' or 'tsc --noEmit'"
+        },
+        {
+          "action": "Inspect test: 'only includes configured commands in hard gates'",
+          "expected": "Only configured command (npm test) appears as hard gate; unconfigured types noted separately",
+          "observed": "Test passes — prompt contains 'npm test'"
+        },
+        {
+          "action": "Inspect config schema tests: 'parses config with all commands configured'",
+          "expected": "FlywheelConfigSchema accepts commands section with test/typecheck/lint",
+          "observed": "Test passes — schema parses and returns exact command strings"
+        },
+        {
+          "action": "Inspect config schema tests: 'parses config without commands section (optional)'",
+          "expected": "Missing commands section is optional, config parses successfully",
+          "observed": "Test passes — commands is undefined"
+        },
+        {
+          "action": "Inspect missing commands tests: warns for each missing command type",
+          "expected": "Missing test/typecheck/lint each produce 'not configured' warning, not failure",
+          "observed": "Tests pass — 5 tests verify warnings for missing test, typecheck, lint, all missing, and undefined commands"
+        },
+        {
+          "action": "Inspect source: buildHardGatesSection() in src/prompts/work/scrutiny.ts",
+          "expected": "Commands read from CommandsConfig parameter, not hardcoded strings",
+          "observed": "Source confirms: function reads commands?.[type] from config parameter, no hardcoded command strings"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/scrutiny-validation/test-output.txt",
+        "sourceFile": "src/prompts/work/scrutiny.ts",
+        "relevantTests": [
+          "FlywheelConfigSchema — commands section > parses config with all commands configured",
+          "FlywheelConfigSchema — commands section > parses config with partial commands (only test)",
+          "FlywheelConfigSchema — commands section > parses config without commands section (optional)",
+          "FlywheelConfigSchema — commands section > parses config with empty commands section",
+          "FlywheelConfigSchema — commands section > commands are string values (not arrays or objects)",
+          "FlywheelConfigSchema — commands section > commands section does not affect other config defaults",
+          "buildScrutinyPrompt — commands from config (VAL-EXEC-011) > uses exact command strings from config",
+          "buildScrutinyPrompt — commands from config (VAL-EXEC-011) > only includes configured commands in hard gates",
+          "buildScrutinyPrompt — missing commands > warns when test command is not configured",
+          "buildScrutinyPrompt — missing commands > warns when typecheck command is not configured",
+          "buildScrutinyPrompt — missing commands > warns when lint command is not configured",
+          "buildScrutinyPrompt — missing commands > warns when all commands are missing",
+          "buildScrutinyPrompt — missing commands > warns when commands is undefined"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 3 assertions: 3 passed, 0 failed. All 24 unit tests in tests/scrutiny-validation.test.ts pass (59 expect() calls). VAL-EXEC-003 confirmed via hard gate prompt tests and source inspection. VAL-EXEC-004 confirmed via per-phase review tests covering all criteria (code quality, correctness, test coverage) with edge cases. VAL-EXEC-011 confirmed via config schema tests, custom-command-string tests proving no hardcoding, and missing-command warning tests."
+}

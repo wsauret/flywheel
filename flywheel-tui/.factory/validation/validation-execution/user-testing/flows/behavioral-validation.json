@@ -1,0 +1,180 @@
+{
+  "groupId": "behavioral-validation",
+  "testedAt": "2026-03-25T17:41:26Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testRunner": "bun test"
+  },
+  "toolsUsed": ["bun test"],
+  "assertions": [
+    {
+      "id": "VAL-EXEC-005",
+      "title": "Behavioral validation checks assertions",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/behavioral-validation.test.ts",
+          "expected": "All 33 tests pass, covering prompt content, assertion collection, and routing",
+          "observed": "33 pass, 0 fail, 67 expect() calls"
+        },
+        {
+          "action": "Inspect test names in 'buildBehavioralValidationPrompt — content' describe block (9 tests)",
+          "expected": "Tests verify prompt lists assertion IDs/titles, behavioral descriptions, evidence requirements, and instructs independent verification",
+          "observed": "All 9 content tests pass: prompt contains milestone name, lists each assertion ID and title, contains behavioral descriptions, instructs independent verification (not trusting self-reports), includes evidence requirements, instructs update of validation-state.json, instructs pass/fail/blocked per assertion, includes working directory, handles empty assertions list"
+        },
+        {
+          "action": "Inspect test names in 'collectAssertionsForMilestone' describe block (6 tests)",
+          "expected": "Tests verify extraction of assertion IDs from phases' fulfills for a given milestone",
+          "observed": "All 6 tests pass: collects assertion IDs from matching milestone phases, excludes other milestones, handles no match/empty fulfills, deduplicates, only includes completed phases"
+        },
+        {
+          "action": "Inspect source code src/prompts/work/behavioral-validation.ts",
+          "expected": "buildBehavioralValidationPrompt reads assertions from context, includes each assertion's ID, title, behavioral description and evidence in prompt",
+          "observed": "Implementation confirmed: builds sections with assertion ID, title, behavioral description, evidence requirements. Instructs independent verification with 'Do not trust prior self-reports' warning."
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/behavioral-validation/behavioral-validation-test-output.txt",
+        "sourceFiles": ["src/prompts/work/behavioral-validation.ts"],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-006",
+      "title": "Validation state updated after validation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/behavioral-validation.test.ts (updateAssertionStatuses tests)",
+          "expected": "Tests verify validation-state.json is updated with pass/fail/blocked status",
+          "observed": "All 5 updateAssertionStatuses tests pass: updates statuses, sets lastChecked timestamp, preserves untouched assertions, creates file if needed, handles empty update"
+        },
+        {
+          "action": "Run bun test tests/validation-state.test.ts (readValidationState/writeValidationState and schema tests)",
+          "expected": "Tests verify schema accepts all 4 statuses, read/write round-trips correctly, validates on load/write",
+          "observed": "All 15 read/write + schema tests pass: valid state parsing, all status values accepted, invalid rejected, atomicWrite used, concurrent writes safe"
+        },
+        {
+          "action": "Inspect source code src/controller/validation-state.ts updateAssertionStatuses()",
+          "expected": "Function reads existing state, applies status updates with lastChecked timestamp, writes atomically",
+          "observed": "Implementation confirmed: reads state (or creates empty), sets lastChecked to new Date().toISOString() for each update, preserves unchanged assertions, uses writeValidationState (atomic)"
+        }
+      ],
+      "evidence": {
+        "testOutput": [
+          "validation-execution/behavioral-validation/behavioral-validation-test-output.txt",
+          "validation-execution/behavioral-validation/validation-state-test-output.txt"
+        ],
+        "sourceFiles": ["src/controller/validation-state.ts", "src/schemas/validation.ts"],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-010",
+      "title": "Re-validation only checks what failed",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/behavioral-validation.test.ts (re-validation describe block, 4 tests)",
+          "expected": "Tests verify re-run prompt mentions re-validation, marks passed as skip, highlights failed/blocked for re-check",
+          "observed": "All 4 re-validation tests pass: prompt mentions re-validation on re-run, indicates passed assertions to skip, highlights failed/blocked for re-check, first run includes all assertions"
+        },
+        {
+          "action": "Run bun test tests/behavioral-validation.test.ts (filterAssertionsForRevalidation describe block, 4 tests)",
+          "expected": "Tests verify filtering logic: all assertions on first run, only failed/blocked/pending on re-run, handles missing prior results, empty when all passed",
+          "observed": "All 4 filterAssertionsForRevalidation tests pass: returns all when no prior results, filters out passed (keeps failed/blocked/pending), handles assertions not in prior results (treat as needing validation), returns empty toValidate when all passed"
+        },
+        {
+          "action": "Inspect source code filterAssertionsForRevalidation() and buildBehavioralValidationPrompt()",
+          "expected": "filterAssertionsForRevalidation splits into toValidate/alreadyPassed; prompt builder uses this to generate re-validation-specific sections",
+          "observed": "Implementation confirmed: filterAssertionsForRevalidation returns {toValidate, alreadyPassed} based on prior status. Prompt builder calls it, generates 'Re-Validation Mode' section with 'Previously Passed (skip these)' and 'Needs Re-Check' sub-sections."
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/behavioral-validation/behavioral-validation-test-output.txt",
+        "sourceFiles": ["src/prompts/work/behavioral-validation.ts"],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-006",
+      "title": "Plan-to-contract-to-fulfills-to-validation chain",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/behavioral-validation.test.ts ('plan-to-contract-to-fulfills-to-validation chain' describe block, 2 tests)",
+          "expected": "Tests verify end-to-end chain: phases with fulfills → collectAssertionsForMilestone → build prompt; new assertion in fulfills causes it to be tested",
+          "observed": "Both integration tests pass: (1) assertion IDs from phases' fulfills are collected and all appear in prompt (2) new assertion added to contract and referenced in fulfills is included in collection"
+        },
+        {
+          "action": "Run bun test tests/validation-state.test.ts ('Plan parser fulfills extraction' describe block, 8 tests)",
+          "expected": "Tests verify plan parser extracts fulfills HTML comment annotations from plan markdown into PhaseInfo objects",
+          "observed": "All 8 tests pass: extracts fulfills from HTML comment, single/multiple IDs, undefined when absent, handles multiple phases, extra whitespace, annotation excluded from description, PlanFileProvider passes through, backward compat with existing plans"
+        },
+        {
+          "action": "Run bun test tests/validation-state.test.ts ('checkAssertionCoverage' describe block, 8 tests)",
+          "expected": "Tests verify coverage checking: orphaned, duplicate, unclaimed assertion detection",
+          "observed": "All 8 tests pass: reports clean when every assertion claimed once, orphaned when unclaimed, duplicates when multi-claimed, handles phases without fulfills, empty contracts, empty phases, both orphaned+duplicates, extra assertions not in contract"
+        },
+        {
+          "action": "Verify chain continuity in source: plan parser → fulfills → collectAssertionsForMilestone → buildBehavioralValidationPrompt",
+          "expected": "Complete chain from plan markdown to validation prompt is implemented",
+          "observed": "Confirmed: parsePlan() extracts fulfills from <!-- fulfills: ... --> annotations, PlanFileProvider passes them to PhaseInfo, collectAssertionsForMilestone() collects IDs from completed phases by milestone, buildBehavioralValidationPrompt() generates prompt with those assertions"
+        }
+      ],
+      "evidence": {
+        "testOutput": [
+          "validation-execution/behavioral-validation/behavioral-validation-test-output.txt",
+          "validation-execution/behavioral-validation/validation-state-test-output.txt"
+        ],
+        "sourceFiles": [
+          "src/prompts/work/behavioral-validation.ts",
+          "src/controller/validation-state.ts",
+          "src/controller/plan-parser.ts"
+        ],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "title": "Validation failure triggers fix then re-validation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/behavioral-validation.test.ts (re-validation tests + filterAssertionsForRevalidation)",
+          "expected": "Tests verify that on re-run, prior results are read and only failed/blocked/pending assertions are re-checked",
+          "observed": "All 8 tests across re-validation and filterAssertionsForRevalidation pass. The re-validation prompt explicitly mentions re-validation mode, highlights failed/blocked for re-check, skips passed."
+        },
+        {
+          "action": "Verify the updateAssertionStatuses function preserves prior results",
+          "expected": "When validation runs again after fix, only updated assertions change; passed assertions are preserved",
+          "observed": "Test 'preserves assertions not included in the update' confirms: updating VAL-1 to passed leaves VAL-2 as pending with no lastChecked. Source code confirms: only entries in the updates map are modified."
+        },
+        {
+          "action": "Inspect prompt builder re-validation flow for fix→re-validate chain support",
+          "expected": "The prompt includes prior failure evidence so the re-validation worker knows what failed and can verify fixes",
+          "observed": "Confirmed: buildRevalidationSection() includes prior evidence strings for failed/blocked assertions (e.g., '❌ VAL-AUTH-002: title (failed — Test failed)'), giving the re-validation worker full context on what to re-check"
+        }
+      ],
+      "evidence": {
+        "testOutput": [
+          "validation-execution/behavioral-validation/behavioral-validation-test-output.txt",
+          "validation-execution/behavioral-validation/validation-state-test-output.txt"
+        ],
+        "sourceFiles": [
+          "src/prompts/work/behavioral-validation.ts",
+          "src/controller/validation-state.ts"
+        ],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 assertions: 5 passed, 0 failed. All 80 unit tests (33 in behavioral-validation.test.ts + 47 in validation-state.test.ts) pass with 0 failures. Source code inspection confirms the implementations match the contract specifications. The behavioral validation prompt builder correctly reads assertions from fulfills, instructs independent verification, supports re-validation filtering, and updates validation-state.json. The full plan-to-contract-to-fulfills-to-validation chain is verified end-to-end."
+}

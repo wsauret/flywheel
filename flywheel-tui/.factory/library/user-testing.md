@@ -50,3 +50,9 @@ This mission modifies internal engine code (schemas, execution loop, evaluator, 
 - Evaluator structured issues: `tests/evaluator-structured-issues.test.ts`, `tests/evaluator.test.ts`
 - Issue gating: `tests/issue-gating.test.ts`, `tests/unified-execution-loop.test.ts`
 - Cross-cutting (evaluator-gating): `tests/integration/handoff-flow.test.ts`, `tests/issue-gating.test.ts`, `tests/unified-execution-loop.test.ts`
+- Validation auto-injection: `tests/milestone-tracker.test.ts`, `tests/execution-loop-milestone-injection.test.ts`
+- Scrutiny validation: `tests/scrutiny-validation.test.ts`
+- Behavioral validation: `tests/behavioral-validation.test.ts`
+- Validation state: `tests/validation-state.test.ts`
+- End-of-session gate: `tests/validation-state.test.ts` (checkEndOfSessionGate tests)
+- Cross-cutting (validation-execution): `tests/execution-loop-milestone-injection.test.ts`, `tests/behavioral-validation.test.ts`, `tests/validation-state.test.ts`

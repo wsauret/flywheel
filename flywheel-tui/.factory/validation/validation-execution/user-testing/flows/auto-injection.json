@@ -1,0 +1,182 @@
+{
+  "groupId": "auto-injection",
+  "testedAt": "2026-03-25T17:41:46Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testRunner": "bun test"
+  },
+  "toolsUsed": ["bun test"],
+  "assertions": [
+    {
+      "id": "VAL-EXEC-001",
+      "title": "Scrutiny phases auto-inject at milestone completion",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/milestone-tracker.test.ts",
+          "expected": "Tests in 'VAL-EXEC-001: scrutiny phase auto-injection' describe block pass",
+          "observed": "2 tests pass: 'creates a scrutiny validation phase when milestone completes' and 'scrutiny phase is first in the injection order'"
+        },
+        {
+          "action": "Run bun test tests/execution-loop-milestone-injection.test.ts",
+          "expected": "Tests in 'VAL-EXEC-001/002: auto-injection at milestone completion' describe block pass",
+          "observed": "2 tests pass: 'injects scrutiny and behavioral validation phases when milestone completes' (verifies 4 phases total = 2 original + 2 injected) and 'injected phases run between milestone and next milestone phases' (verifies 7 phases for 3 original across 2 milestones)"
+        },
+        {
+          "action": "Inspect test assertions for correctness",
+          "expected": "Tests verify scrutiny phase is created with 'Scrutiny: <milestone>' title, pending status, correct milestone association, and is first in injection order",
+          "observed": "Tests confirm: createValidationPhases('auth', 0) returns phases where first is 'Scrutiny: auth' with status 'pending' and milestone 'auth'. ExecutionLoop integration confirms 4 spawner calls (2 impl + 2 validation) when 2-phase M1 milestone completes"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/auto-injection/milestone-tracker-test-output.txt",
+        "testOutput2": "validation-execution/auto-injection/execution-loop-injection-test-output.txt",
+        "consoleErrors": "none",
+        "testFiles": ["tests/milestone-tracker.test.ts (lines 207-222)", "tests/execution-loop-milestone-injection.test.ts (lines 102-131)"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-002",
+      "title": "Behavioral validation phases auto-inject",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/milestone-tracker.test.ts",
+          "expected": "Tests in 'VAL-EXEC-002: behavioral validation phase auto-injection' describe block pass",
+          "observed": "2 tests pass: 'creates a behavioral validation phase when milestone completes' and 'behavioral validation phase comes after scrutiny'"
+        },
+        {
+          "action": "Run bun test tests/execution-loop-milestone-injection.test.ts",
+          "expected": "Execution loop integration tests confirm behavioral phase is injected after scrutiny",
+          "observed": "Test 'injects scrutiny and behavioral validation phases when milestone completes' verifies 4 total phases (2 impl + scrutiny + behavioral). Log output confirms: phaseNames=[\"Scrutiny: M1\",\"Validation: M1\"]"
+        },
+        {
+          "action": "Inspect test assertions for correctness",
+          "expected": "Tests verify behavioral phase is created with 'Validation: <milestone>' title, pending status, and comes after scrutiny",
+          "observed": "Tests confirm: createValidationPhases returns phases[1] as 'Validation: auth' with status 'pending', milestone 'auth'. phases.length == 2 with scrutiny at index 0 and behavioral at index 1"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/auto-injection/milestone-tracker-test-output.txt",
+        "testOutput2": "validation-execution/auto-injection/execution-loop-injection-test-output.txt",
+        "consoleErrors": "none",
+        "testFiles": ["tests/milestone-tracker.test.ts (lines 224-242)", "tests/execution-loop-milestone-injection.test.ts (lines 102-131)"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-008",
+      "title": "Skip flags bypass validation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/milestone-tracker.test.ts",
+          "expected": "Tests in 'VAL-EXEC-008: skip flags' describe block pass",
+          "observed": "4 tests pass: 'skip_scrutiny prevents scrutiny phase injection' (1 phase: Validation only), 'skip_validation prevents behavioral validation phase injection' (1 phase: Scrutiny only), 'both skip flags prevent all validation phase injection' (0 phases), 'skip flags are independent — can skip one but not the other'"
+        },
+        {
+          "action": "Run bun test tests/execution-loop-milestone-injection.test.ts",
+          "expected": "Execution loop integration tests confirm skip flags work end-to-end",
+          "observed": "3 tests pass: 'skip_scrutiny prevents scrutiny phase injection' (3 spawner calls = 2 impl + 1 behavioral), 'skip_validation prevents behavioral validation phase injection' (3 calls = 2 impl + 1 scrutiny), 'both skip flags prevent all validation injection' (2 calls = only impl)"
+        },
+        {
+          "action": "Inspect config flag usage",
+          "expected": "skip_scrutiny and skip_validation config flags are read and passed through",
+          "observed": "ExecutionLoop reads config.skip_scrutiny and config.skip_validation, passes them to createValidationPhases as {skipScrutiny, skipValidation}. MilestoneTracker.createValidationPhases conditionally omits scrutiny/behavioral phases based on these flags"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/auto-injection/milestone-tracker-test-output.txt",
+        "testOutput2": "validation-execution/auto-injection/execution-loop-injection-test-output.txt",
+        "consoleErrors": "none",
+        "testFiles": ["tests/milestone-tracker.test.ts (lines 272-302)", "tests/execution-loop-milestone-injection.test.ts (lines 148-193)"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-009",
+      "title": "Validation phases have correct metadata",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/milestone-tracker.test.ts",
+          "expected": "Tests in 'VAL-EXEC-009: validation phase metadata' describe block pass",
+          "observed": "5 tests pass: 'scrutiny phase has descriptive name with milestone' (title 'Scrutiny: checkout-flow'), 'behavioral phase has descriptive name with milestone' (title 'Validation: checkout-flow'), 'phases have appropriate descriptions' (descriptions contain 'Scrutiny validation' / 'Behavioral validation' + milestone name), 'phases have step checklists' (steps array non-empty), 'phases are assigned sequential indices from startIndex' (indices 10 and 11 from startIndex=10)"
+        },
+        {
+          "action": "Inspect metadata assertions",
+          "expected": "Phase names follow 'Scrutiny: <milestone>' / 'Validation: <milestone>' pattern, have descriptions, steps, and sequential indices",
+          "observed": "All metadata properties verified: title includes milestone name, description references validation type and milestone, steps array has >0 items, indices are sequential from startIndex. Phases are distinguishable from implementation phases via isValidation=true flag and naming convention"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/auto-injection/milestone-tracker-test-output.txt",
+        "consoleErrors": "none",
+        "testFiles": ["tests/milestone-tracker.test.ts (lines 244-270)"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EXEC-012",
+      "title": "Injection preserves phase ordering",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/milestone-tracker.test.ts",
+          "expected": "Tests in 'VAL-EXEC-012: injection preserves ordering' describe block pass",
+          "observed": "2 tests pass: 'checkAndCreateValidationPhases returns phases in correct order' (scrutiny before behavioral, correct milestone association) and 'multiple milestones produce independent injections' (separate injection objects per milestone)"
+        },
+        {
+          "action": "Run bun test tests/execution-loop-milestone-injection.test.ts",
+          "expected": "Execution loop integration test confirms ordering preserved end-to-end",
+          "observed": "Test 'validation phases are injected before remaining pending phases' passes — with M1 (1 phase) and M2 (1 phase), after M1 completes, validation is injected before M2's pending phase. Total 6 spawner calls = 2 impl + 2 M1 val + 2 M2 val. Log output confirms injection order: 'Scrutiny: M1' then 'Validation: M1' injected before M2 phase executes"
+        },
+        {
+          "action": "Verify prepend behavior (never reorders)",
+          "expected": "Injection prepends validation phases at top of remaining queue without reordering existing pending phases",
+          "observed": "Test confirms: after M1's single phase completes, 2 validation phases are injected, then M2's original phase runs next (maintaining its position). Multiple milestone test shows M1 and M2 validations each injected independently with phases array preserved in order"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/auto-injection/milestone-tracker-test-output.txt",
+        "testOutput2": "validation-execution/auto-injection/execution-loop-injection-test-output.txt",
+        "consoleErrors": "none",
+        "testFiles": ["tests/milestone-tracker.test.ts (lines 304-328)", "tests/execution-loop-milestone-injection.test.ts (lines 133-146)"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "title": "Skip flags propagate through entire chain",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/milestone-tracker.test.ts",
+          "expected": "Tests in 'VAL-CROSS-007: skip flags propagation' describe block pass",
+          "observed": "3 tests pass: 'skip_scrutiny prevents scrutiny injection but allows behavioral' (1 phase: 'Validation: M1'), 'skip_validation prevents behavioral injection but allows scrutiny' (1 phase: 'Scrutiny: M1'), 'both skipped marks milestone as sealed with no phases' (0 injections, milestone still sealed)"
+        },
+        {
+          "action": "Run bun test tests/execution-loop-milestone-injection.test.ts",
+          "expected": "Execution loop integration tests confirm skip flags propagate through entire pipeline chain",
+          "observed": "3 skip-flag tests pass in execution loop: skip_scrutiny → only behavioral injected (3 spawner calls), skip_validation → only scrutiny injected (3 spawner calls), both → no validation injected (2 spawner calls). Flags propagate from config through ExecutionLoop to MilestoneTracker.createValidationPhases"
+        },
+        {
+          "action": "Verify flag independence",
+          "expected": "skip_scrutiny and skip_validation are independent — each only affects its own validation type",
+          "observed": "Confirmed: skip_scrutiny=true only removes scrutiny phases, behavioral still injected. skip_validation=true only removes behavioral phases, scrutiny still injected. Both flags can be set independently with no interaction"
+        }
+      ],
+      "evidence": {
+        "testOutput": "validation-execution/auto-injection/milestone-tracker-test-output.txt",
+        "testOutput2": "validation-execution/auto-injection/execution-loop-injection-test-output.txt",
+        "consoleErrors": "none",
+        "testFiles": ["tests/milestone-tracker.test.ts (lines 346-384)", "tests/execution-loop-milestone-injection.test.ts (lines 148-193)"]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 6 assertions: 6 passed, 0 failed. All 57 tests (46 in milestone-tracker.test.ts + 11 in execution-loop-milestone-injection.test.ts) pass with 0 failures. Tests comprehensively cover scrutiny auto-injection (VAL-EXEC-001), behavioral validation auto-injection (VAL-EXEC-002), skip flags bypass (VAL-EXEC-008), validation phase metadata (VAL-EXEC-009), injection ordering preservation (VAL-EXEC-012), and skip flag propagation through the chain (VAL-CROSS-007)."
+}
