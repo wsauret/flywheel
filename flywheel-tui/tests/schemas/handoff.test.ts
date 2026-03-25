@@ -28,6 +28,60 @@ describe("ArtifactsSchema", () => {
     expect(result.files_created).toEqual(["src/foo.ts"]);
   });
 
+  it("parses artifacts with only files_created", () => {
+    const result = ArtifactsSchema.safeParse({
+      files_created: ["src/new.ts"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.files_created).toEqual(["src/new.ts"]);
+      expect(result.data.files_modified).toBeUndefined();
+      expect(result.data.commands_run).toBeUndefined();
+    }
+  });
+
+  it("parses artifacts with only files_modified", () => {
+    const result = ArtifactsSchema.safeParse({
+      files_modified: ["src/changed.ts"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.files_modified).toEqual(["src/changed.ts"]);
+      expect(result.data.files_created).toBeUndefined();
+      expect(result.data.commands_run).toBeUndefined();
+    }
+  });
+
+  it("parses artifacts with only commands_run", () => {
+    const result = ArtifactsSchema.safeParse({
+      commands_run: ["bun test"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.commands_run).toEqual(["bun test"]);
+      expect(result.data.files_created).toBeUndefined();
+      expect(result.data.files_modified).toBeUndefined();
+    }
+  });
+
+  it("parses empty artifacts object (no fields)", () => {
+    const result = ArtifactsSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it("parses artifacts with two of three fields", () => {
+    const result = ArtifactsSchema.safeParse({
+      files_created: ["src/a.ts"],
+      commands_run: ["bun test"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.files_created).toEqual(["src/a.ts"]);
+      expect(result.data.commands_run).toEqual(["bun test"]);
+      expect(result.data.files_modified).toBeUndefined();
+    }
+  });
+
   it("rejects unknown fields (.strict())", () => {
     const result = ArtifactsSchema.safeParse({
       files_created: [],
@@ -284,6 +338,42 @@ describe("WorkerHandoffSchema", () => {
       );
       expect(unrecognized).toBeDefined();
     }
+  });
+
+  it("parses handoff with partial artifacts (only files_created)", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      artifacts: {
+        files_created: ["src/new.ts"],
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.artifacts!.files_created).toEqual(["src/new.ts"]);
+      expect(result.data.artifacts!.files_modified).toBeUndefined();
+      expect(result.data.artifacts!.commands_run).toBeUndefined();
+    }
+  });
+
+  it("parses handoff with partial artifacts (only commands_run)", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      artifacts: {
+        commands_run: ["bun test", "bunx tsc --noEmit"],
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.artifacts!.commands_run).toEqual(["bun test", "bunx tsc --noEmit"]);
+    }
+  });
+
+  it("parses handoff with empty artifacts object", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      artifacts: {},
+    });
+    expect(result.success).toBe(true);
   });
 
   it("validates nested sub-schemas strictly", () => {

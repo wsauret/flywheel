@@ -233,17 +233,19 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       }
 
       if (input.handoff.artifacts) {
-        const a = input.handoff.artifacts;
-        if (a.files_created.length > 0 || a.files_modified.length > 0 || a.commands_run.length > 0) {
+        const filesCreated = input.handoff.artifacts.files_created ?? [];
+        const filesModified = input.handoff.artifacts.files_modified ?? [];
+        const commandsRun = input.handoff.artifacts.commands_run ?? [];
+        if (filesCreated.length > 0 || filesModified.length > 0 || commandsRun.length > 0) {
           sections.push("## Artifacts");
-          if (a.files_created.length > 0) {
-            sections.push("Files created:", ...a.files_created.map((f) => `- ${f}`));
+          if (filesCreated.length > 0) {
+            sections.push("Files created:", ...filesCreated.map((f) => `- ${f}`));
           }
-          if (a.files_modified.length > 0) {
-            sections.push("Files modified:", ...a.files_modified.map((f) => `- ${f}`));
+          if (filesModified.length > 0) {
+            sections.push("Files modified:", ...filesModified.map((f) => `- ${f}`));
           }
-          if (a.commands_run.length > 0) {
-            sections.push("Commands run:", ...a.commands_run.map((c) => `- ${c}`));
+          if (commandsRun.length > 0) {
+            sections.push("Commands run:", ...commandsRun.map((c) => `- ${c}`));
           }
           sections.push("");
         }

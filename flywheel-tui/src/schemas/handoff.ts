@@ -21,9 +21,9 @@ export function countSentences(text: string): number {
 // ---------------------------------------------------------------------------
 
 export const ArtifactsSchema = z.object({
-  files_created: z.array(z.string()),
-  files_modified: z.array(z.string()),
-  commands_run: z.array(z.string()),
+  files_created: z.array(z.string()).optional(),
+  files_modified: z.array(z.string()).optional(),
+  commands_run: z.array(z.string()).optional(),
 }).strict();
 
 export type Artifacts = z.infer<typeof ArtifactsSchema>;

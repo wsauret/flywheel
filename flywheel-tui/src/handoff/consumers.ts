@@ -73,7 +73,9 @@ export function buildPreviousResultFromHandoff(handoff: WorkerHandoff): string {
 
   // Artifacts
   if (handoff.artifacts) {
-    const { files_created, files_modified, commands_run } = handoff.artifacts;
+    const files_created = handoff.artifacts.files_created ?? [];
+    const files_modified = handoff.artifacts.files_modified ?? [];
+    const commands_run = handoff.artifacts.commands_run ?? [];
     const hasArtifacts =
       files_created.length > 0 || files_modified.length > 0 || commands_run.length > 0;
 
