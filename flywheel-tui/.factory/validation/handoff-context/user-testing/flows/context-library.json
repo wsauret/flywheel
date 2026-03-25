@@ -1,0 +1,234 @@
+{
+  "groupId": "context-library",
+  "testedAt": "2026-03-25T14:53:30.000Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "services": "none — unit test + code inspection only"
+  },
+  "toolsUsed": ["bun test", "code inspection"],
+  "assertions": [
+    {
+      "id": "VAL-CONTEXT-001",
+      "title": "Stage context accumulates decisions across phases",
+      "status": "pass",
+      "steps": [
+        { "action": "Found test file tests/stage-context.test.ts", "expected": "Test file exists with relevant tests", "observed": "File found with 21 tests covering accumulation" },
+        { "action": "Ran bun test tests/stage-context.test.ts", "expected": "Tests pass", "observed": "21/21 tests pass, 0 fail" },
+        { "action": "Verified test 'accumulates decisions from a phase'", "expected": "Tests decision accumulation", "observed": "Confirms cumulative_decisions grows with phase_index, phase_title, and decisions array" },
+        { "action": "Verified test 'accumulates across multiple phases'", "expected": "Multi-phase accumulation works", "observed": "3 phases accumulated, cumulative_decisions has length 3, each with correct phase_title" }
+      ],
+      "evidence": {
+        "testOutput": "21 pass, 0 fail, 68 expect() calls",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/stage-context.test.ts",
+      "testNames": [
+        "accumulatePhaseIntoContext > accumulates decisions from a phase",
+        "accumulatePhaseIntoContext > accumulates across multiple phases"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTEXT-002",
+      "title": "Stage context accumulates warnings across phases",
+      "status": "pass",
+      "steps": [
+        { "action": "Found test 'accumulates warnings from a phase' in tests/stage-context.test.ts", "expected": "Test exists and passes", "observed": "Test passes, verifies cumulative_warnings grows with warnings from each phase" },
+        { "action": "Verified multi-phase test includes warnings", "expected": "Warnings accumulate across phases", "observed": "'accumulates across multiple phases' test checks cumulative_warnings has length 2 after 3 phases (2 phases had non-empty warnings)" }
+      ],
+      "evidence": {
+        "testOutput": "21 pass, 0 fail",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/stage-context.test.ts",
+      "testNames": [
+        "accumulatePhaseIntoContext > accumulates warnings from a phase",
+        "accumulatePhaseIntoContext > accumulates across multiple phases"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTEXT-003",
+      "title": "Stage context carries cumulative artifacts",
+      "status": "pass",
+      "steps": [
+        { "action": "Found test 'accumulates artifacts from a phase' in tests/stage-context.test.ts", "expected": "Test exists and passes", "observed": "Test passes, verifies cumulative_artifacts grows with artifacts from each phase" },
+        { "action": "Verified multi-phase test includes artifacts", "expected": "Artifacts accumulate across phases", "observed": "'accumulates across multiple phases' checks cumulative_artifacts has length 1 (only 1 phase had non-empty artifacts)" }
+      ],
+      "evidence": {
+        "testOutput": "21 pass, 0 fail",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/stage-context.test.ts",
+      "testNames": [
+        "accumulatePhaseIntoContext > accumulates artifacts from a phase",
+        "accumulatePhaseIntoContext > accumulates across multiple phases"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTEXT-004",
+      "title": "Dispatcher receives stage context",
+      "status": "pass",
+      "steps": [
+        { "action": "Found dispatcher stage context tests in tests/dispatcher.test.ts", "expected": "Tests exist for dispatcher receiving stage context", "observed": "5 dedicated tests in 'Stage context in DispatcherInput' describe block" },
+        { "action": "Ran bun test tests/dispatcher.test.ts --test-name-pattern 'stage_context'", "expected": "Tests pass", "observed": "4 pass, 0 fail" },
+        { "action": "Ran bun test --test-name-pattern 'multi-phase stage context'", "expected": "Multi-phase test passes", "observed": "1 pass, verifies 2-phase context with decisions, warnings, artifacts flows through to dispatcher input" },
+        { "action": "Inspected src/dispatcher/assemble.ts", "expected": "stage_context field wired through", "observed": "AssemblerInput has stageContext? field, mapped to input.stage_context at line 146" },
+        { "action": "Verified DispatcherInputSchema accepts stage_context", "expected": "Schema includes stage_context", "observed": "Test 'validates stage_context against StageContextSchema' confirms schema wiring" }
+      ],
+      "evidence": {
+        "testOutput": "5 pass, 0 fail across stage_context and multi-phase tests",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/dispatcher.test.ts",
+      "testNames": [
+        "Stage context in DispatcherInput > includes stage_context when provided",
+        "Stage context in DispatcherInput > omits stage_context when not provided (backward compat)",
+        "Stage context in DispatcherInput > passes multi-phase stage context through",
+        "Stage context in DispatcherInput > validates stage_context against StageContextSchema",
+        "Stage context in DispatcherInput > DispatcherInputSchema accepts input without stage_context (optional)"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTEXT-005",
+      "title": "Stage context resets between pipeline stages",
+      "status": "pass",
+      "steps": [
+        { "action": "Inspected ExecutionLoop constructor in src/controller/execution-loop.ts:297-303", "expected": "Each new ExecutionLoop starts with empty context", "observed": "Constructor calls createEmptyStageContext() when resumeStageContext is false (default)" },
+        { "action": "Verified pipeline stage creation in src/controller/stage-loop-factory.ts", "expected": "Each stage creates a new ExecutionLoop", "observed": "Lines 245 and 375 show new ExecutionLoop() instantiation per stage" },
+        { "action": "Read comment in tests/stage-context.test.ts lines 367-370", "expected": "Reset behavior documented", "observed": "Comment confirms: 'verified by construction — each new ExecutionLoop starts with createEmptyStageContext()'" }
+      ],
+      "evidence": {
+        "codeInspection": "ExecutionLoop constructor at line 302: this._stageContext = createEmptyStageContext(); stage-loop-factory.ts creates new ExecutionLoop per stage at lines 245 and 375",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/stage-context.test.ts",
+      "testNames": [
+        "(verified by construction — comment at line 367-370)"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTEXT-006",
+      "title": "Stage context handles many phases",
+      "status": "pass",
+      "steps": [
+        { "action": "Found test 'accumulates 50 phases without errors' in tests/stage-context.test.ts", "expected": "50+ phases accumulate without errors", "observed": "Test passes: 50 phases, 50 decisions, 10 warnings (every 5th), 50 artifacts, data integrity verified" },
+        { "action": "Found test 'accumulates 100 phases without errors'", "expected": "100 phases work too", "observed": "Test passes: 100 phases, 100 decisions accumulated correctly" }
+      ],
+      "evidence": {
+        "testOutput": "Both 50-phase and 100-phase tests pass",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/stage-context.test.ts",
+      "testNames": [
+        "stage context with 50+ phases > accumulates 50 phases without errors",
+        "stage context with 50+ phases > accumulates 100 phases without errors"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-CONTEXT-007",
+      "title": "Stage context persists to disk",
+      "status": "pass",
+      "steps": [
+        { "action": "Found persistence tests in tests/stage-context.test.ts", "expected": "Persistence tests exist and cover persist/load cycle", "observed": "7 persistence tests covering: persist to disk, load from disk, null on missing file, null on invalid JSON, null on schema failure, overwrite, parent dir creation" },
+        { "action": "Ran tests", "expected": "All persistence tests pass", "observed": "All 7 persistence tests pass" },
+        { "action": "Inspected src/controller/stage-context.ts persistStageContext()", "expected": "Uses atomicWrite", "observed": "Uses writeFileAtomic from utils/atomic-write.ts at correct path .flywheel/stage-context.json" },
+        { "action": "Inspected loadStageContext()", "expected": "Recovers from disk with schema validation", "observed": "Reads file, parses JSON, validates with StageContextSchema.parse(), returns null on any failure" }
+      ],
+      "evidence": {
+        "testOutput": "7 persistence tests pass",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/stage-context.test.ts",
+      "testNames": [
+        "stage context persistence > persists stage context to disk",
+        "stage context persistence > loads stage context from disk",
+        "stage context persistence > returns null when no stage context file exists",
+        "stage context persistence > returns null when stage context file is invalid JSON",
+        "stage context persistence > returns null when stage context file fails schema validation",
+        "stage context persistence > overwrites existing stage context on persist",
+        "stage context persistence > creates parent directories if they don't exist"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-LIBRARY-001",
+      "title": "Library directory created during session setup",
+      "status": "pass",
+      "steps": [
+        { "action": "Found test file tests/shared-knowledge-library.test.ts", "expected": "Tests exist for library directory creation", "observed": "3 tests in 'Library directory creation in ExecutionLoop' describe block" },
+        { "action": "Ran bun test tests/shared-knowledge-library.test.ts", "expected": "Tests pass", "observed": "11/11 tests pass, 0 fail" },
+        { "action": "Verified test '.flywheel/library/ is created if it does not exist'", "expected": "Creates directory when missing", "observed": "Test calls ensureLibraryDir(tmpDir) and verifies directory exists and isDirectory()" },
+        { "action": "Verified production code in src/controller/execution-loop.ts:371-376", "expected": "Library dir created during pipeline run()", "observed": "execution-loop.ts creates libraryDir using LIBRARY_DIR constant with fs.mkdirSync recursive:true" },
+        { "action": "Verified LIBRARY_DIR constant in src/config/paths.ts", "expected": "Equals .flywheel/library", "observed": "LIBRARY_DIR = '.flywheel/library'" }
+      ],
+      "evidence": {
+        "testOutput": "11 pass, 0 fail, 18 expect() calls",
+        "codeInspection": "execution-loop.ts:371-376 creates library dir; paths.ts LIBRARY_DIR='.flywheel/library'",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/shared-knowledge-library.test.ts",
+      "testNames": [
+        "LIBRARY_DIR constant > is defined and equals .flywheel/library",
+        "Library directory creation in ExecutionLoop > .flywheel/library/ is created if it does not exist",
+        "Library directory creation in ExecutionLoop > does not fail if library directory already exists",
+        "Library directory creation in ExecutionLoop > creates parent .flywheel/ directory if needed"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-LIBRARY-002",
+      "title": "Worker prompts reference the library",
+      "status": "pass",
+      "steps": [
+        { "action": "Found library prompt tests in tests/shared-knowledge-library.test.ts", "expected": "Tests verify prompt references", "observed": "6 tests in 'Work prompt library references' describe block" },
+        { "action": "Verified test 'prompt includes reference to .flywheel/library/'", "expected": "Prompt contains path", "observed": "Test passes: buildWorkPhasePrompt output contains '.flywheel/library/'" },
+        { "action": "Verified test 'prompt includes instruction to read from library before starting'", "expected": "Read instruction present", "observed": "Test passes: prompt matches /read.*library|library.*read/i" },
+        { "action": "Verified test 'prompt references specific filenames: environment.md, architecture.md'", "expected": "Filenames referenced", "observed": "Test passes: prompt contains 'environment.md' and 'architecture.md'" },
+        { "action": "Inspected src/prompts/work/phase-prompt.ts", "expected": "Knowledge Library section in prompt", "observed": "Prompt has '## Shared Knowledge Library' section with read/write instructions at lines 120-131" }
+      ],
+      "evidence": {
+        "testOutput": "6 prompt reference tests pass",
+        "codeInspection": "phase-prompt.ts contains '## Shared Knowledge Library' section with read before starting + write before completing instructions",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/shared-knowledge-library.test.ts",
+      "testNames": [
+        "Work prompt library references > prompt includes reference to .flywheel/library/",
+        "Work prompt library references > prompt includes instruction to read from library before starting",
+        "Work prompt library references > prompt includes instruction to write discoveries to library before completing",
+        "Work prompt library references > prompt references specific filenames: environment.md, architecture.md",
+        "Work prompt library references > prompt contains a Knowledge Library section header",
+        "Work prompt library references > prompt with minimal context still includes library reference"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-LIBRARY-003",
+      "title": "Handoff instructions reference library writes",
+      "status": "pass",
+      "steps": [
+        { "action": "Found test 'prompt includes instruction to write discoveries to library before completing'", "expected": "Write instruction present", "observed": "Test passes: prompt matches /write.*library|library.*write/i" },
+        { "action": "Inspected src/prompts/work/phase-prompt.ts Knowledge Library section", "expected": "Explicit write instructions", "observed": "Prompt says: 'Before completing your phase, write any critical discoveries to .flywheel/library/: Ports, environment variables, or service configuration... Architectural decisions... Gotchas, workarounds...'" },
+        { "action": "Verified instruction mentions specific write targets", "expected": "Concrete filenames listed", "observed": "Prompt references environment.md and architecture.md as files to create/update" }
+      ],
+      "evidence": {
+        "testOutput": "Test passes",
+        "codeInspection": "phase-prompt.ts lines 126-131: 'Before completing your phase, write any critical discoveries to .flywheel/library/: - Ports, environment variables, or service configuration that future phases need - Architectural decisions or patterns that affect the broader system - Gotchas, workarounds, or non-obvious constraints discovered during implementation'",
+        "consoleErrors": "none"
+      },
+      "testFile": "tests/shared-knowledge-library.test.ts",
+      "testNames": [
+        "Work prompt library references > prompt includes instruction to write discoveries to library before completing"
+      ],
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 10 assertions: 10 passed, 0 failed, 0 blocked. All stage context assertions (VAL-CONTEXT-001 through VAL-CONTEXT-007) verified via 21 passing unit tests in tests/stage-context.test.ts plus 5 passing dispatcher tests in tests/dispatcher.test.ts. VAL-CONTEXT-005 (reset between stages) verified by code inspection of ExecutionLoop constructor. All library assertions (VAL-LIBRARY-001 through VAL-LIBRARY-003) verified via 11 passing unit tests in tests/shared-knowledge-library.test.ts plus source code inspection of execution-loop.ts and phase-prompt.ts."
+}

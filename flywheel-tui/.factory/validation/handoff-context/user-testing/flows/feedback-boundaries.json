@@ -1,0 +1,239 @@
+{
+  "groupId": "feedback-boundaries",
+  "testedAt": "2026-03-25T14:54:00Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "services": "none",
+    "testRunner": "bun test"
+  },
+  "toolsUsed": ["bun test", "code inspection"],
+  "assertions": [
+    {
+      "id": "VAL-FEEDBACK-001",
+      "title": "Handoff schema accepts skillFeedback field",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspected src/schemas/handoff.ts for SkillFeedbackSchema and skillFeedback field on WorkerHandoffBaseSchema",
+          "expected": "WorkerHandoffSchema includes optional skillFeedback with followedProcedure (boolean), deviations (array), suggestedChanges (array of strings)",
+          "observed": "Line 153: `skillFeedback: SkillFeedbackSchema.optional()` — SkillFeedbackSchema (line 88) has followedProcedure (z.boolean), deviations (z.array(SkillDeviationSchema)), suggestedChanges (z.array(z.string()).optional()). All .strict()."
+        },
+        {
+          "action": "Ran bun test tests/schemas/handoff.test.ts — checked SkillFeedbackSchema and WorkerHandoffSchema — skillFeedback describe blocks",
+          "expected": "Tests pass for accepting valid skillFeedback with all sub-fields",
+          "observed": "All 87 tests pass. Key tests: 'accepts handoff with valid skillFeedback', 'accepts handoff with skillFeedback containing deviations', 'parses valid feedback when procedure was followed', 'parses valid feedback with deviations', 'parses valid feedback with suggestedChanges'."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/schemas/handoff.test.ts",
+        "testNames": [
+          "WorkerHandoffSchema — skillFeedback > accepts handoff with valid skillFeedback",
+          "WorkerHandoffSchema — skillFeedback > accepts handoff with skillFeedback containing deviations",
+          "SkillFeedbackSchema > parses valid feedback when procedure was followed",
+          "SkillFeedbackSchema > parses valid feedback with deviations",
+          "SkillFeedbackSchema > parses valid feedback with suggestedChanges",
+          "SkillFeedbackSchema > accepts empty suggestedChanges array"
+        ],
+        "sourceFiles": [
+          "src/schemas/handoff.ts (lines 88-97, 153)"
+        ],
+        "evidenceFiles": [
+          "handoff-context/feedback-boundaries/handoff-schema-tests.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-FEEDBACK-002",
+      "title": "Skill feedback deviations have structure",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspected src/schemas/handoff.ts SkillDeviationSchema (line 78)",
+          "expected": "Each deviation has step (string), whatIDidInstead (string), why (string)",
+          "observed": "SkillDeviationSchema is z.object({ step: z.string(), whatIDidInstead: z.string(), why: z.string() }).strict() — matches exactly."
+        },
+        {
+          "action": "Ran bun test tests/schemas/handoff.test.ts — checked SkillDeviationSchema describe block",
+          "expected": "Tests verify all three required fields and reject missing/unknown fields",
+          "observed": "All deviation tests pass: 'parses valid deviation with all required fields', 'rejects missing step field', 'rejects missing whatIDidInstead field', 'rejects missing why field', 'rejects unknown fields (.strict())'."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/schemas/handoff.test.ts",
+        "testNames": [
+          "SkillDeviationSchema > parses valid deviation with all required fields",
+          "SkillDeviationSchema > rejects missing step field",
+          "SkillDeviationSchema > rejects missing whatIDidInstead field",
+          "SkillDeviationSchema > rejects missing why field",
+          "SkillDeviationSchema > rejects unknown fields (.strict())"
+        ],
+        "sourceFiles": [
+          "src/schemas/handoff.ts (lines 78-86)"
+        ],
+        "evidenceFiles": [
+          "handoff-context/feedback-boundaries/handoff-schema-tests.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-FEEDBACK-003",
+      "title": "Skill feedback is backward compatible",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspected src/schemas/handoff.ts — skillFeedback field is .optional()",
+          "expected": "Handoffs without skillFeedback still parse correctly",
+          "observed": "Line 153: `skillFeedback: SkillFeedbackSchema.optional()` — field is optional, so handoffs without it parse fine."
+        },
+        {
+          "action": "Ran bun test tests/schemas/handoff.test.ts — backward compat test",
+          "expected": "Test 'accepts handoff without skillFeedback (backward compat)' passes",
+          "observed": "Test passes. Also verified: 'existing valid handoffs still parse correctly (backward compat)' in the content quality enforcement section passes."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/schemas/handoff.test.ts",
+        "testNames": [
+          "WorkerHandoffSchema — skillFeedback > accepts handoff without skillFeedback (backward compat)",
+          "WorkerHandoffSchema > content quality enforcement > existing valid handoffs still parse correctly (backward compat)"
+        ],
+        "sourceFiles": [
+          "src/schemas/handoff.ts (line 153)"
+        ],
+        "evidenceFiles": [
+          "handoff-context/feedback-boundaries/handoff-schema-tests.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-FEEDBACK-004",
+      "title": "Accumulated skill feedback flows to dispatcher",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspected src/controller/execution-loop.ts — skillFeedback extraction from handoff into stage context (lines 805-808)",
+          "expected": "Execution loop extracts skillFeedback from cached handoff and passes it to accumulatePhaseIntoContext",
+          "observed": "Lines 805-808: `skill_feedback: cachedHandoff.skillFeedback ? { followedProcedure, deviations, suggestedChanges } : undefined` — correctly maps skillFeedback from handoff into PhaseHandoffSummary."
+        },
+        {
+          "action": "Inspected src/controller/execution-loop.ts line 943 — stage context passed to dispatcher",
+          "expected": "Stage context (containing accumulated skill_feedback) is passed to assembleDispatcherInput",
+          "observed": "Line 943: `stageContext: this._stageContext.phase_count > 0 ? this._stageContext : undefined` — stage context flows to dispatcher when non-empty."
+        },
+        {
+          "action": "Ran bun test tests/stage-context.test.ts — skill_feedback accumulation test",
+          "expected": "Test confirms skill_feedback accumulates from phases into stage context",
+          "observed": "Test 'accumulates skill_feedback from a phase' passes — verifies followedProcedure and suggestedChanges are accumulated."
+        },
+        {
+          "action": "Ran bun test tests/dispatcher.test.ts --grep stage_context — dispatcher receives stage_context",
+          "expected": "Dispatcher receives stage_context containing skill_feedback field",
+          "observed": "4 tests pass: 'includes stage_context when provided', 'passes multi-phase stage context through', 'validates stage_context against StageContextSchema'. The stage_context schema includes skill_feedback array."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/stage-context.test.ts, tests/dispatcher.test.ts",
+        "testNames": [
+          "accumulatePhaseIntoContext > accumulates skill_feedback from a phase",
+          "Stage context in DispatcherInput > includes stage_context when provided",
+          "Stage context in DispatcherInput > passes multi-phase stage context through",
+          "Stage context in DispatcherInput > validates stage_context against StageContextSchema"
+        ],
+        "sourceFiles": [
+          "src/controller/execution-loop.ts (lines 805-808, 943)",
+          "src/controller/stage-context.ts (lines 59-76)",
+          "src/schemas/dispatcher.ts"
+        ],
+        "evidenceFiles": [
+          "handoff-context/feedback-boundaries/stage-context-tests.txt",
+          "handoff-context/feedback-boundaries/dispatcher-stage-context-tests.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-BOUNDS-001",
+      "title": "Boundaries configurable in flywheel.toml",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspected src/config/loader.ts — BoundariesSchema definition (lines 22-29)",
+          "expected": "Config schema includes boundaries section with port_ranges, off_limits_dirs, external_services",
+          "observed": "BoundariesSchema is z.object({ port_ranges: z.array(z.string()).optional(), off_limits_dirs: z.array(z.string()).optional(), external_services: z.array(z.string()).optional() }). FlywheelConfigSchema has `boundaries: BoundariesSchema.optional()` at line 103."
+        },
+        {
+          "action": "Ran bun test tests/config-boundaries.test.ts — config schema tests",
+          "expected": "Tests verify boundaries with port_ranges, off_limits_dirs, external_services, empty object, and type validation",
+          "observed": "22 tests pass. Key: 'accepts a full boundaries section with all fields', 'accepts boundaries with only port_ranges', 'accepts boundaries with only off_limits_dirs', 'accepts boundaries with only external_services', 'accepts empty boundaries object', 'CONFIG_DEFAULTS does not include boundaries (optional section)', 'loads without boundaries when not specified', 'does not error when config file lacks boundaries section'."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/config-boundaries.test.ts",
+        "testNames": [
+          "FlywheelConfigSchema — boundaries section > defaults to undefined when not provided",
+          "FlywheelConfigSchema — boundaries section > accepts a full boundaries section with all fields",
+          "FlywheelConfigSchema — boundaries section > accepts boundaries with only port_ranges",
+          "FlywheelConfigSchema — boundaries section > accepts boundaries with only off_limits_dirs",
+          "FlywheelConfigSchema — boundaries section > accepts boundaries with only external_services",
+          "FlywheelConfigSchema — boundaries section > accepts empty boundaries object",
+          "FlywheelConfigSchema — boundaries section > rejects non-string arrays in port_ranges",
+          "FlywheelConfigSchema — boundaries section > CONFIG_DEFAULTS does not include boundaries (optional section)",
+          "loadConfig: boundaries section > loads without boundaries when not specified",
+          "loadConfig: boundaries section > does not error when config file lacks boundaries section"
+        ],
+        "sourceFiles": [
+          "src/config/loader.ts (lines 22-31, 103)"
+        ],
+        "evidenceFiles": [
+          "handoff-context/feedback-boundaries/config-boundaries-tests.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-BOUNDS-002",
+      "title": "Boundaries injected into worker prompts",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspected src/prompts/work/phase-prompt.ts — buildBoundariesSection function (lines 19-54)",
+          "expected": "When boundaries are configured, worker prompt includes 'Mission Boundaries' section with port ranges, off-limits dirs, external services, and 'NEVER violate' instruction",
+          "observed": "buildBoundariesSection reads boundaries from ctx.extra, builds subsections for each configured type, and adds: '**NEVER violate these boundaries.** If you cannot complete your work within these constraints, return to the orchestrator immediately with a description of what is blocked and why.' Section is injected into buildWorkPhasePrompt at line 126."
+        },
+        {
+          "action": "Ran bun test tests/config-boundaries.test.ts — prompt injection tests",
+          "expected": "Tests verify Mission Boundaries section appears with correct content and warnings",
+          "observed": "All 10 prompt injection tests pass: 'includes Mission Boundaries section when boundaries are configured', 'includes port ranges in boundaries section', 'includes off-limits directories in boundaries section', 'includes external services in boundaries section', 'tells workers to never violate boundaries', 'tells workers to return to orchestrator if blocked by boundaries', 'does NOT include boundaries section when boundaries are not in extra', 'does NOT include boundaries section when extra is undefined', 'does NOT include boundaries section when boundaries is empty object', 'only includes subsections for configured boundary types'."
+        }
+      ],
+      "evidence": {
+        "testFile": "tests/config-boundaries.test.ts",
+        "testNames": [
+          "buildWorkPhasePrompt — boundaries injection > includes Mission Boundaries section when boundaries are configured",
+          "buildWorkPhasePrompt — boundaries injection > includes port ranges in boundaries section",
+          "buildWorkPhasePrompt — boundaries injection > includes off-limits directories in boundaries section",
+          "buildWorkPhasePrompt — boundaries injection > includes external services in boundaries section",
+          "buildWorkPhasePrompt — boundaries injection > tells workers to never violate boundaries",
+          "buildWorkPhasePrompt — boundaries injection > tells workers to return to orchestrator if blocked by boundaries",
+          "buildWorkPhasePrompt — boundaries injection > does NOT include boundaries section when boundaries are not in extra",
+          "buildWorkPhasePrompt — boundaries injection > does NOT include boundaries section when extra is undefined",
+          "buildWorkPhasePrompt — boundaries injection > does NOT include boundaries section when boundaries is empty object",
+          "buildWorkPhasePrompt — boundaries injection > only includes subsections for configured boundary types"
+        ],
+        "sourceFiles": [
+          "src/prompts/work/phase-prompt.ts (lines 19-54, 104, 126)"
+        ],
+        "evidenceFiles": [
+          "handoff-context/feedback-boundaries/config-boundaries-tests.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 6 assertions: all 6 passed. VAL-FEEDBACK-001/002/003 verified through handoff schema tests (87 tests, 0 failures). VAL-FEEDBACK-004 verified through stage-context accumulation tests (21 tests) + dispatcher stage_context integration tests (4 tests). VAL-BOUNDS-001/002 verified through config-boundaries tests (22 tests, 0 failures) covering schema validation, config loading, and prompt injection."
+}

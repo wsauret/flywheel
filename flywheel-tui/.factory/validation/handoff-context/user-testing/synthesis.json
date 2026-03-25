@@ -1,0 +1,103 @@
+{
+  "milestone": "handoff-context",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-HANDOFF-001",
+    "VAL-HANDOFF-002",
+    "VAL-HANDOFF-003",
+    "VAL-HANDOFF-004",
+    "VAL-HANDOFF-005",
+    "VAL-HANDOFF-006",
+    "VAL-HANDOFF-007",
+    "VAL-HANDOFF-008",
+    "VAL-QUALITY-001",
+    "VAL-QUALITY-002",
+    "VAL-QUALITY-003",
+    "VAL-QUALITY-004",
+    "VAL-QUALITY-005",
+    "VAL-CONTEXT-001",
+    "VAL-CONTEXT-002",
+    "VAL-CONTEXT-003",
+    "VAL-CONTEXT-004",
+    "VAL-CONTEXT-005",
+    "VAL-CONTEXT-006",
+    "VAL-CONTEXT-007",
+    "VAL-LIBRARY-001",
+    "VAL-LIBRARY-002",
+    "VAL-LIBRARY-003",
+    "VAL-FEEDBACK-001",
+    "VAL-FEEDBACK-002",
+    "VAL-FEEDBACK-003",
+    "VAL-FEEDBACK-004",
+    "VAL-BOUNDS-001",
+    "VAL-BOUNDS-002"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added Flow Validator Guidance: Unit Tests section with isolation rules, shared state boundaries, key test file locations, and step-by-step verification approach for unit test assertions",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null,
+  "flowReports": [
+    {
+      "groupId": "handoff-quality",
+      "assertionCount": 13,
+      "passed": 13,
+      "failed": 0,
+      "blocked": 0,
+      "testFilesUsed": [
+        "tests/handoff/widened-projections.test.ts",
+        "tests/handoff/consumers.test.ts",
+        "tests/schemas/handoff.test.ts",
+        "tests/integration/handoff-flow.test.ts",
+        "tests/handoff/execution-loop-consumers.test.ts"
+      ],
+      "totalTestsRun": 174
+    },
+    {
+      "groupId": "context-library",
+      "assertionCount": 10,
+      "passed": 10,
+      "failed": 0,
+      "blocked": 0,
+      "testFilesUsed": [
+        "tests/stage-context.test.ts",
+        "tests/shared-knowledge-library.test.ts",
+        "tests/dispatcher.test.ts"
+      ],
+      "totalTestsRun": 37
+    },
+    {
+      "groupId": "feedback-boundaries",
+      "assertionCount": 6,
+      "passed": 6,
+      "failed": 0,
+      "blocked": 0,
+      "testFilesUsed": [
+        "tests/schemas/handoff.test.ts",
+        "tests/config-boundaries.test.ts",
+        "tests/stage-context.test.ts",
+        "tests/dispatcher.test.ts"
+      ],
+      "totalTestsRun": 134
+    }
+  ],
+  "environment": {
+    "testRunner": "bun test",
+    "totalSuiteTests": 3476,
+    "totalSuiteResult": "all passing",
+    "typecheckResult": "clean (0 errors)",
+    "noServicesRequired": true
+  }
+}
