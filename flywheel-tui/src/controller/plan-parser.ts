@@ -27,6 +27,8 @@ export interface PlanPhase {
   status: "completed" | "pending" | "in_progress";
   /** Milestone this phase belongs to (from `## Milestone: <name>` markers) */
   milestone?: string;
+  /** Validation contract assertion IDs this phase fulfills (from `<!-- fulfills: ... -->` annotations) */
+  fulfills?: string[];
 }
 
 /** Discriminated union for plan validation results. */
@@ -54,6 +56,9 @@ const ACCEPTANCE_CRITERIA_RE =
 /** Matches exactly `## Milestone: <name>` (H2, capital M, colon-space, then name) */
 const MILESTONE_RE = /^## Milestone: (.+)$/;
 
+/** Matches `<!-- fulfills: VAL-AUTH-001, VAL-AUTH-002 -->` HTML comment annotations */
+const FULFILLS_RE = /^<!--\s*fulfills:\s*(.+?)\s*-->$/;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -79,6 +84,7 @@ export function parsePlan(
     descriptionLines: string[];
     steps: string[];
     milestone?: string;
+    fulfills?: string[];
   } | null = null;
 
   /** Tracks the current milestone scope (set by `## Milestone: <name>`) */
@@ -119,6 +125,20 @@ export function parsePlan(
     }
 
     if (currentPhase) {
+      // Check for fulfills annotation (HTML comment)
+      const fulfillsMatch = line.match(FULFILLS_RE);
+      if (fulfillsMatch) {
+        const ids = fulfillsMatch[1]
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (ids.length > 0) {
+          currentPhase.fulfills = ids;
+        }
+        // Do NOT add to description — fulfills annotations are metadata
+        continue;
+      }
+
       // Skip indented lines (sub-items) for step extraction
       if (INDENTED_RE.test(line)) {
         currentPhase.descriptionLines.push(line);
@@ -223,6 +243,7 @@ function finalizePhase(
     descriptionLines: string[];
     steps: string[];
     milestone?: string;
+    fulfills?: string[];
   },
   index: number,
   state?: ParsedStateFile | null,
@@ -240,6 +261,10 @@ function finalizePhase(
 
   if (raw.milestone !== undefined) {
     phase.milestone = raw.milestone;
+  }
+
+  if (raw.fulfills !== undefined) {
+    phase.fulfills = raw.fulfills;
   }
 
   return phase;

@@ -54,6 +54,9 @@ export class PlanFileProvider implements PhaseProvider {
       if (p.milestone !== undefined) {
         phase.milestone = p.milestone;
       }
+      if (p.fulfills !== undefined) {
+        phase.fulfills = p.fulfills;
+      }
       return phase;
     });
     return this.cachedPhases;

@@ -22,6 +22,8 @@ export interface PhaseInfo {
   steps?: string[];
   /** Milestone this phase belongs to (from `## Milestone: <name>` markers in plan) */
   milestone?: string;
+  /** Validation contract assertion IDs this phase fulfills (from `<!-- fulfills: ... -->` annotations) */
+  fulfills?: string[];
 }
 
 export interface PhaseProvider {
