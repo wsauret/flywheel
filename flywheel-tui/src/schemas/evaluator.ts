@@ -10,6 +10,8 @@ export const EvaluatorHandoffDataSchema = WorkerHandoffSchema.pick({
   verification: true,
   artifacts: true,
   files_to_review: true,
+  warnings: true,
+  decisions: true,
 });
 
 export type EvaluatorHandoffData = z.infer<typeof EvaluatorHandoffDataSchema>;

@@ -559,6 +559,8 @@ export class ExecutionLoop {
                 verification: cachedHandoff.verification,
                 artifacts: cachedHandoff.artifacts,
                 files_to_review: cachedHandoff.files_to_review,
+                warnings: cachedHandoff.warnings,
+                decisions: cachedHandoff.decisions,
               }
             : undefined;
 
@@ -668,6 +670,8 @@ export class ExecutionLoop {
                   verification: cachedHandoff.verification,
                   artifacts: cachedHandoff.artifacts,
                   files_to_review: cachedHandoff.files_to_review,
+                  warnings: cachedHandoff.warnings,
+                  decisions: cachedHandoff.decisions,
                 }
               : undefined;
 

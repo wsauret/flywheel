@@ -118,7 +118,7 @@ describe("EvaluatorHandoffDataSchema", () => {
   it("rejects fields not in pick set (inherits strict from WorkerHandoff)", () => {
     const data = {
       summary: "A".repeat(100),
-      decisions: ["not in pick set"],
+      plan_file_path: "not in pick set",
     };
     const result = EvaluatorHandoffDataSchema.safeParse(data);
     // pick on a .strict() schema retains strictness — unlisted fields are rejected

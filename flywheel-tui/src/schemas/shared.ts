@@ -108,6 +108,10 @@ export const LastWorkerResultSchema = z.object({
   artifacts_produced: z.array(z.string()),
   tests_passed: z.boolean().nullable(),
   duration_seconds: z.number(),
+  decisions: z.array(z.string()).optional(),
+  warnings: z.array(z.string()).optional(),
+  commands_run: z.array(z.string()).optional(),
+  files_to_review: z.array(z.string()).optional(),
 }).strip();
 
 export type LastWorkerResult = z.infer<typeof LastWorkerResultSchema>;

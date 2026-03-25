@@ -39,6 +39,10 @@ export function buildLastWorkerResult(
     artifacts_produced: [...filesCreated, ...filesModified],
     tests_passed: handoff.verification?.tests_passed ?? null,
     duration_seconds: durationMs / 1000,
+    decisions: handoff.decisions ?? [],
+    warnings: handoff.warnings ?? [],
+    commands_run: handoff.artifacts?.commands_run ?? [],
+    files_to_review: handoff.files_to_review ?? [],
   };
 }
 

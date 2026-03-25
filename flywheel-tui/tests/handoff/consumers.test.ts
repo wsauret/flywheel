@@ -128,6 +128,15 @@ describe("buildLastWorkerResult", () => {
       ],
       tests_passed: true,
       duration_seconds: 120,
+      decisions: [
+        "Used RS256 for JWT signing instead of HS256 for better security",
+        "Added rate limiting middleware at the router level",
+      ],
+      warnings: [
+        "JWT secret should be rotated in production",
+      ],
+      commands_run: ["bun test", "bun run build"],
+      files_to_review: ["src/auth/jwt.ts"],
     });
   });
 });
