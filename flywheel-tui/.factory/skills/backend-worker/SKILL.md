@@ -34,7 +34,10 @@ Read `.factory/library/architecture.md` for existing patterns.
 
 ### 2. Write Tests First (TDD Red Phase)
 
-Before writing any implementation code:
+**For new behavior:** Write failing tests before implementation.
+**For refactoring/cleanup with no new behavior:** Existing tests serve as the safety net. Verify they pass before AND after changes. You may skip writing new tests if no new behavior is being added.
+
+Before writing any implementation code (when adding new behavior):
 - Create or update test files in `tests/` following existing patterns
 - Write tests that cover each item in `expectedBehavior`
 - Tests MUST fail initially (red phase) — verify by running `bun test <test-file>`

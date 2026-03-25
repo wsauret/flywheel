@@ -53,7 +53,7 @@ export class UIApprovalHandler implements ApprovalHandler {
     const issueDescriptions = issues
       .map((issue) => `• [${issue.category}] ${issue.description}`)
       .join("\n");
-    const description = `Phase ${phaseIndex + 1}: ${title}\n\nBlocking issues found:\n${issueDescriptions}`;
+    const description = `${title}\n\nBlocking issues found:\n${issueDescriptions}`;
 
     // Delegate to the standard approval mechanism with the enriched description
     return this.requestApproval(phaseIndex, description);

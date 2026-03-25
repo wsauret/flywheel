@@ -170,7 +170,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
             confidence: verdict.confidence,
             feedback: verdict.feedback,
             files_to_review: verdict.files_to_review,
-            issues: verdict.issues ?? [],
+            issues: verdict.issues,
           };
         } catch (err) {
           if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {

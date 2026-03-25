@@ -260,6 +260,8 @@ The `EventBus` is a synchronous pub/sub system. `FlywheelEmitter` is a typed fac
 
 Six workflow types: `"work" | "plan" | "review" | "ship" | "debug" | "research"`.
 
+**Evaluator transport error graceful degradation:** When the evaluator subprocess fails due to a transport or infrastructure error (timeout, binary not found, handoff parse failure after retries), the execution loop treats the failure as non-fatal. It logs a warning and continues execution as if no evaluator were configured — the revision loop and issue gating are skipped entirely for that phase. This prevents infrastructure flakiness from blocking the pipeline.
+
 ### Dispatcher and evaluator
 
 | Layer | Key files |

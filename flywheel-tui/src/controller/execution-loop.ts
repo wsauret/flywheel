@@ -631,7 +631,11 @@ export class ExecutionLoop {
             });
             // Skip evaluation entirely — treat as if evaluator was not configured
             // (no revision loop, no issue gating, just continue)
-          } else {
+          }
+
+          // --- Revision loop + Issue gating ---
+          // Only run when evaluator returned a genuine verdict (not a transport error).
+          if (!evalResult.transportError) {
 
           // --- Revision loop ---
           // When evaluator returns passed:false, re-execute the phase with
@@ -849,7 +853,7 @@ export class ExecutionLoop {
               count: blockingIssues.length,
             });
           }
-        } // end else (not transportError)
+        } // end if (!transportError)
         } // end evaluator guard
 
         // Chain result for next phase:
