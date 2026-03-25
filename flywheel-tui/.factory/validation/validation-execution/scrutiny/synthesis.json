@@ -1,0 +1,102 @@
+{
+  "milestone": "validation-execution",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "details": "3761 tests pass across 146 files" },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": null, "command": null, "exitCode": null, "details": "No lint command configured in services.yaml or package.json" }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "validation-phase-auto-injection",
+      "severity": "non_blocking",
+      "description": "Misleading comment in execution-loop.ts about cancelled status mapping — PhaseInfo has no cancelled status, comment should reflect this"
+    },
+    {
+      "featureId": "validation-phase-auto-injection",
+      "severity": "non_blocking",
+      "description": "Duplicated 4-site milestone injection check pattern in execution-loop.ts could be extracted to a helper"
+    },
+    {
+      "featureId": "validation-phase-auto-injection",
+      "severity": "non_blocking",
+      "description": "Minor double-indexing inefficiency — createValidationPhases assigns indices that are immediately recalculated by injectValidationPhasesIfNeeded"
+    },
+    {
+      "featureId": "scrutiny-validation-phase",
+      "severity": "non_blocking",
+      "description": "String prefix constants ('Scrutiny: ', 'Validation: ') for phase detection could be shared between milestone-tracker.ts and stage-loop-factory.ts"
+    },
+    {
+      "featureId": "scrutiny-validation-phase",
+      "severity": "non_blocking",
+      "description": "Test 'only includes configured commands in hard gates' has incomplete assertions — doesn't verify unconfigured commands are absent from hard gate sections"
+    },
+    {
+      "featureId": "scrutiny-validation-phase",
+      "severity": "non_blocking",
+      "description": "CommandsSchema in loader.ts does not apply shell metacharacter validation (defense-in-depth, not a security risk since commands are executed by workers)"
+    },
+    {
+      "featureId": "behavioral-validation-phase",
+      "severity": "non_blocking",
+      "description": "Production integration builds ContractAssertion objects with generic titles/descriptions from bare IDs rather than parsing validation-contract.md — worker must read the contract independently"
+    },
+    {
+      "featureId": "behavioral-validation-phase",
+      "severity": "non_blocking",
+      "description": "Stage-loop-factory routing tests are structural (string prefix matching) rather than integration-level, consistent with existing patterns but wouldn't catch factory wiring regressions"
+    },
+    {
+      "featureId": "end-of-session-gate",
+      "severity": "non_blocking",
+      "description": "FailedAssertion.status typed as string rather than narrower union type ('pending' | 'failed' | 'blocked')"
+    },
+    {
+      "featureId": "end-of-session-gate",
+      "severity": "non_blocking",
+      "description": "Gate failure reason string uses \\n formatting that may render oddly in some UI contexts"
+    },
+    {
+      "featureId": "end-of-session-gate",
+      "severity": "non_blocking",
+      "description": "checkEndOfSessionGate is synchronous but EndOfSessionGateCheck type requires async wrapping — small adapter gap, only used in tests currently"
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add skip_scrutiny and skip_validation config flags to the Configuration table with their env var overrides (FLYWHEEL_SKIP_SCRUTINY, FLYWHEEL_SKIP_VALIDATION) and the commands section (test, typecheck, lint)",
+      "evidence": "Features validation-phase-auto-injection and scrutiny-validation-phase added these config options but they are not documented in the user-facing AGENTS.md configuration reference",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add validation phase title prefix convention ('Scrutiny: ' and 'Validation: ') to the Plan File Format or Pipeline section, explaining that these prefixes trigger special prompt routing in stage-loop-factory.ts",
+      "evidence": "Features scrutiny-validation-phase and behavioral-validation-phase both use string prefix matching for routing, but this convention is not documented anywhere",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the end-of-session gate as a new pipeline gate category (post-all-stages, pre-completion) in the Pipeline and execution section. Note that the EndOfSessionGateCheck callback in PipelineOptions is infrastructure-ready but not yet wired into production TUI code paths.",
+      "evidence": "Feature end-of-session-gate adds a new gate type that is distinct from inter-stage gates, but the pipeline documentation only describes inter-stage gates",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "services.yaml has no lint entry vs flywheel.toml commands section",
+      "reason": "These are different systems (Factory services.yaml vs Flywheel config). The parallel was noted by the reviewer but no action is needed since they serve different purposes."
+    }
+  ],
+  "previousRound": null
+}

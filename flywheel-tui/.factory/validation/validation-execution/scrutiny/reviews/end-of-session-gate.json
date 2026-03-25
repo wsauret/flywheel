@@ -1,0 +1,29 @@
+{
+  "featureId": "end-of-session-gate",
+  "status": "pass",
+  "codeQualityIssues": [
+    {
+      "severity": "non_blocking",
+      "description": "FailedAssertion.status is typed as `string` rather than a union type like `\"pending\" | \"failed\" | \"blocked\"`. The ValidationState schema already constrains statuses to a Zod enum, so the gate function will only ever encounter those values. Using a narrow union type would provide better compile-time safety and documentation. File: src/controller/validation-state.ts, line ~193."
+    },
+    {
+      "severity": "non_blocking",
+      "description": "The gate failure reason string format uses `\\n` with indentation (`  VAL-ID (status)`) which works well for log output but may render oddly in UI contexts (e.g., toast notifications, status bars). The pipeline consumer is responsible for formatting, so this is acceptable, but worth noting if the reason string is ever displayed directly in the TUI."
+    },
+    {
+      "severity": "non_blocking",
+      "description": "The `checkEndOfSessionGate` function is synchronous (reads file with `fs.readFileSync` via `readValidationState`) but the `EndOfSessionGateCheck` type signature in workflow-pipeline.ts is `() => Promise<EndOfSessionGateResult>`, meaning callers must wrap it in an async function. This is a reasonable design choice (allows future async implementations) but means the current pure function is never called directly from the pipeline — there's a small adapter gap where the caller must wire `checkEndOfSessionGate` into an async closure that provides the filePath and options. This wiring is not yet implemented in any production code path (only in tests)."
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "target": "AGENTS.md",
+      "observation": "The project AGENTS.md (architecture quick reference) doesn't mention the end-of-session gate or the `EndOfSessionGateCheck` callback in the Pipeline section. The pipeline documentation says gates are between stages, but the end-of-session gate is a new category of gate (post-all-stages, pre-completion). Future workers may not know this exists when modifying pipeline behavior."
+    },
+    {
+      "target": "AGENTS.md",
+      "observation": "The `PipelineOptions.endOfSessionGate` is optional and currently not wired in any production code path (e.g., shell-pipeline.ts, session-runtime.ts, or flywheel-shell.tsx don't pass endOfSessionGate when creating WorkflowPipeline). The gate infrastructure is fully tested but not yet integrated into the actual TUI pipeline startup. This is likely intentional (to be wired in a later feature), but worth documenting so it's not forgotten."
+    }
+  ],
+  "summary": "The end-of-session gate implementation is clean, well-tested (18 new tests: 11 unit + 7 integration), and correctly handles all expected behaviors: file-not-found passes, all-passed passes, failed/pending/blocked reported, skip flags respected for pending but not for failed/blocked, pipeline integration with proper event emission. The code follows existing codebase conventions (pure functions in validation-state.ts, type imports in workflow-pipeline.ts, Bun test patterns). The only notable gap is that the gate is not yet wired into any production code path — it's purely infrastructure ready for future integration. No blocking issues found."
+}

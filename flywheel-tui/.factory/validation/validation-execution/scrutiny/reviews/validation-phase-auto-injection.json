@@ -1,0 +1,25 @@
+{
+  "featureId": "validation-phase-auto-injection",
+  "status": "pass",
+  "codeQualityIssues": [
+    {
+      "severity": "non_blocking",
+      "description": "Misleading comment in execution-loop.ts line 1062: '// Map PhaseInfo status to MilestonePhase status (cancelled maps to cancelled)' — but the ternary chain actually maps any non-completed, non-in_progress status (including a hypothetical 'cancelled') to 'pending', not 'cancelled'. PhaseInfo doesn't have a 'cancelled' status variant, so this is dead logic, but the comment is misleading. Should read: '// PhaseInfo has no cancelled status; non-completed/non-in_progress maps to pending'."
+    },
+    {
+      "severity": "non_blocking",
+      "description": "Repeated milestone injection check pattern: the same 4-line block `if (this.milestoneTracker) { const injected = this.injectValidationPhasesIfNeeded(phases, phaseIdx); if (injected > 0) phasesTotal += injected; }` appears 4 times (after approval-completed, auto-approved, skipped, and normal-completed). The worker's own skillFeedback notes this and suggests extracting a helper. While not a bug, it increases maintenance burden if the injection pattern changes."
+    },
+    {
+      "severity": "non_blocking",
+      "description": "Double re-indexing: createValidationPhases() assigns indices starting at startIndex, but injectValidationPhasesIfNeeded() immediately recalculates indices based on maxIndex in the phases array. The startIndex passed to checkAndCreateValidationPhases (phases.length) is therefore wasted work. Not a bug — the re-indexing is correct — but the initial index assignment in createValidationPhases is dead code in the execution-loop context."
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "target": "AGENTS.md",
+      "observation": "Project AGENTS.md configuration table should be updated to include the new skip_scrutiny and skip_validation config flags with their env var overrides (FLYWHEEL_SKIP_SCRUTINY, FLYWHEEL_SKIP_VALIDATION). These are user-facing configuration knobs but are not documented in the configuration table."
+    }
+  ],
+  "summary": "Solid implementation that faithfully adapts Droid's checkMilestoneCompletionAndInjectValidation pattern. The for-of → index-based while loop refactor in ExecutionLoop.run() correctly enables dynamic phase splicing. MilestoneTracker.createValidationPhases() and checkAndCreateValidationPhases() cleanly separate phase creation from milestone state management. Config flags (skip_scrutiny, skip_validation) are properly independent with env var overrides. 39 new tests across 3 files comprehensively cover all 9 expectedBehavior items and all 6 VAL assertions. All 3761 tests pass, typecheck clean. Three non-blocking observations: a misleading comment about cancelled status mapping, duplicated injection-check boilerplate (4 call sites), and a minor double-indexing inefficiency."
+}
