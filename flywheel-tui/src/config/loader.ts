@@ -31,6 +31,21 @@ export const BoundariesSchema = z.object({
 export type BoundariesConfig = z.infer<typeof BoundariesSchema>;
 
 /**
+ * Commands sub-schema — project commands for scrutiny validation.
+ * Extracted so the type can be shared with prompt builders (e.g. scrutiny.ts).
+ */
+export const CommandsSchema = z.object({
+  /** Command to run the test suite. */
+  test: z.string().optional(),
+  /** Command to run typecheck. */
+  typecheck: z.string().optional(),
+  /** Command to run the linter. */
+  lint: z.string().optional(),
+});
+
+export type CommandsConfig = z.infer<typeof CommandsSchema>;
+
+/**
  * Full config schema for the TOML loader.
  * Extends the base ConfigSchema with additional fields.
  */
@@ -101,6 +116,9 @@ export const FlywheelConfigSchema = z.object({
 
   /** Mission boundaries — constraints workers must never violate. */
   boundaries: BoundariesSchema.optional(),
+
+  /** Project commands for scrutiny validation (test, typecheck, lint). */
+  commands: CommandsSchema.optional(),
 
   /** Skip scrutiny validation phase injection at milestone boundaries. Default: false. */
   skip_scrutiny: z.boolean().default(false),

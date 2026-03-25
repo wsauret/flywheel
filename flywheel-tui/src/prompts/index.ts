@@ -25,6 +25,7 @@ export interface WorkflowStepContext {
 // ── Re-exports: prompt builders ─────────────────────────────────
 
 export { buildWorkPhasePrompt } from "./work/phase-prompt.js";
+export { buildScrutinyPrompt } from "./work/scrutiny.js";
 
 export { buildPlanResearchPrompt } from "./plan/research.js";
 export { buildPlanDraftPrompt } from "./plan/draft.js";

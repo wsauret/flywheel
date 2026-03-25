@@ -35,6 +35,7 @@ import { UIApprovalHandler } from "./ui-approval-handler";
 import { WorkflowDefinitionProvider } from "./workflow-def-provider";
 import { DispatcherOrchestrator } from "./dispatcher-orchestrator";
 import { buildWorkPhasePrompt } from "../prompts/work/phase-prompt";
+import { buildScrutinyPrompt } from "../prompts/work/scrutiny";
 import { workflowRegistry, buildWorkflowPrompt } from "../workflows/index";
 import { createPlanOnStepComplete } from "../workflows/plan-output-extractor";
 import { createReviewOnStepComplete, REVIEW_FIX_STEP_INDEX } from "../workflows/review-output-extractor";
@@ -239,8 +240,40 @@ function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
   const contextContent = readCachedFile(contextPath);
   const fileReferences = contextContent ? parseContextFile(contextContent) : [];
 
-  const promptBuilder: PromptBuilder = (phase, ctx) =>
-    buildWorkPhasePrompt({ ...ctx, planContent: phase.description });
+  // Prompt builder: detect scrutiny validation phases by title prefix
+  // and use the scrutiny-specific prompt template.
+  const promptBuilder: PromptBuilder = (phase, ctx) => {
+    // Scrutiny phases have title "Scrutiny: <milestoneName>"
+    if (phase.title.startsWith("Scrutiny: ")) {
+      const milestoneName = phase.title.slice("Scrutiny: ".length);
+      // Collect completed phases belonging to this milestone
+      const allPhases = phaseProvider.getPhases();
+      const completedPhases = allPhases
+        .filter(
+          (p) =>
+            p.milestone === milestoneName &&
+            p.status === "completed" &&
+            // Exclude validation phases themselves
+            !p.title.startsWith("Scrutiny: ") &&
+            !p.title.startsWith("Validation: "),
+        )
+        .map((p) => ({
+          index: p.index,
+          title: p.title,
+          description: p.description,
+        }));
+
+      return buildScrutinyPrompt({
+        milestoneName,
+        completedPhases,
+        commands: config.commands,
+        projectCwd,
+      });
+    }
+
+    // Default: use the standard work phase prompt
+    return buildWorkPhasePrompt({ ...ctx, planContent: phase.description });
+  };
 
   const loop = new ExecutionLoop({
     phaseProvider,
