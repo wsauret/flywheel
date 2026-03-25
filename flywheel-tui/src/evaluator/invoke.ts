@@ -92,6 +92,8 @@ export interface EvaluationResult {
   suggestions?: string[];
   /** Evaluator reasoning (populated on passed:false). */
   reasoning?: string;
+  /** Structured issues extracted by the evaluator. Empty array when no issues or skipped. */
+  issues?: import("../schemas/handoff").EvaluatorIssue[];
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +193,7 @@ export class Evaluator {
             passed: true,
             cyclesUsed: cycle + 1,
             skipped: false,
+            issues: result.issues,
           };
         }
 
@@ -206,6 +209,7 @@ export class Evaluator {
           feedback: result.feedback,
           suggestions: result.suggestions,
           reasoning: result.reasoning,
+          issues: result.issues,
         };
       } catch (error) {
         const err = error as Error;

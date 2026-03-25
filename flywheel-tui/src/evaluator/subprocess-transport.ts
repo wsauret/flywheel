@@ -161,7 +161,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
         // Read verdict from handoff file (not stdout)
         try {
-          const verdict: EvaluatorVerdict = await readHandoff(handoffPath, EvaluatorVerdictSchema);
+          const verdict = await readHandoff(handoffPath, EvaluatorVerdictSchema) as EvaluatorVerdict;
           // Map EvaluatorVerdict to EvaluatorResult (same fields; suggestions is required in verdict, optional in result)
           return {
             passed: verdict.passed,
@@ -170,6 +170,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
             confidence: verdict.confidence,
             feedback: verdict.feedback,
             files_to_review: verdict.files_to_review,
+            issues: verdict.issues ?? [],
           };
         } catch (err) {
           if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
@@ -313,7 +314,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     sections.push(
       "## Instructions",
       "Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this exact schema:",
-      '{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[] }',
+      '{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[], "issues": Issue[] }',
       "",
       "- passed: Set passed to true if the output substantially meets the acceptance criteria. Minor omissions that don't affect functionality should not cause a failure. Set passed to false only if critical criteria are unmet or the output has significant issues.",
       "- reasoning: string explaining your assessment of the output",
@@ -321,6 +322,50 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       "- confidence: float between 0.0 and 1.0 (NOT 0-100, must be a decimal like 0.85). confidence should reflect how certain you are about your pass/fail decision: 0.9+ means clear pass/fail, 0.5-0.7 means borderline, below 0.5 means you lack enough information to judge.",
       "- feedback: string with overall feedback about the work quality",
       "- files_to_review: array of file paths that need further review (empty array [] if none)",
+      "- issues: array of structured issues found in the worker output. Each issue is an object with:",
+      '  - description: string describing the issue (must not be empty)',
+      '  - severity: "blocking" or "non_blocking"',
+      '  - category: one of "test_failure", "type_error", "security", "regression", "incomplete", "other"',
+      "",
+      "## Issue Extraction Guidelines",
+      "",
+      "Extract and classify ALL issues you find in the worker output into the `issues` array. If no issues are found, use an empty array `[]`.",
+      "",
+      "### Severity Classification",
+      '- **blocking**: Issues that MUST be fixed before proceeding. These halt the pipeline.',
+      '- **non_blocking**: Issues that should be addressed but don\'t prevent progress.',
+      "",
+      "### Category Classification",
+      '- **test_failure**: Unit tests, integration tests, or E2E tests are failing. BLOCKING if the worker claimed tests passed but evidence shows otherwise, or if required tests are missing.',
+      '- **type_error**: TypeScript compilation errors, type mismatches, or missing type definitions. BLOCKING if typecheck was required and fails.',
+      '- **security**: API keys, passwords, credentials, or secrets found in source code, logs, or output. Always BLOCKING.',
+      '- **regression**: Previously working functionality is now broken. BLOCKING.',
+      '- **incomplete**: Acceptance criteria partially met, missing edge cases, or incomplete implementation. May be blocking or non-blocking depending on severity.',
+      '- **other**: Issues that don\'t fit other categories (style, performance, documentation).',
+      "",
+      "### Checks to Perform",
+      "1. **Test/typecheck results**: If the worker handoff indicates tests failed or typecheck has errors, classify as blocking test_failure or type_error.",
+      "2. **Secrets/credentials**: Look for patterns like API keys (AKIA..., sk-..., ghp_...), passwords, tokens, or connection strings in the worker output. Classify as blocking security.",
+      "3. **Regression indicators**: If the worker mentions breaking existing functionality or existing tests now failing, classify as blocking regression.",
+      "4. **Completeness**: Compare worker output against acceptance criteria. Missing critical criteria are blocking incomplete; minor gaps are non_blocking incomplete.",
+      "",
+      "### Examples",
+      '```json',
+      '// Worker reported failing tests → blocking test_failure',
+      '{"description": "3 unit tests in auth.test.ts are failing: testLogin, testLogout, testRefresh", "severity": "blocking", "category": "test_failure"}',
+      "",
+      '// API key found in source → blocking security',
+      '{"description": "AWS access key found in src/config.ts: AKIA...", "severity": "blocking", "category": "security"}',
+      "",
+      '// TypeScript compilation error → blocking type_error',
+      '{"description": "Type error in src/utils.ts:42 — Property \'name\' does not exist on type \'unknown\'", "severity": "blocking", "category": "type_error"}',
+      "",
+      '// Missing edge case handling → non_blocking incomplete',
+      '{"description": "No error handling for network timeout in fetchUser()", "severity": "non_blocking", "category": "incomplete"}',
+      "",
+      '// Existing API broken → blocking regression',
+      '{"description": "GET /api/users endpoint returns 500 after changes — was working before", "severity": "blocking", "category": "regression"}',
+      '```',
     );
 
     return sections.join("\n");

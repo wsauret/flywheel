@@ -176,7 +176,35 @@ export const WorkerHandoffSchema = WorkerHandoffBaseSchema.superRefine((data, ct
 export type WorkerHandoff = z.infer<typeof WorkerHandoffSchema>;
 
 // ---------------------------------------------------------------------------
-// EvaluatorVerdictSchema (fixed fields)
+// Evaluator issue sub-schemas
+// (adapted from Droid's discoveredIssues pattern — RESEARCH-REPORT.md rec 5)
+// ---------------------------------------------------------------------------
+
+export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"]);
+export type EvaluatorIssueSeverity = z.infer<typeof EvaluatorIssueSeverityEnum>;
+
+export const EvaluatorIssueCategoryEnum = z.enum([
+  "test_failure",
+  "type_error",
+  "security",
+  "regression",
+  "incomplete",
+  "other",
+]);
+export type EvaluatorIssueCategory = z.infer<typeof EvaluatorIssueCategoryEnum>;
+
+export const EvaluatorIssueSchema = z.object({
+  description: z.string().min(1, {
+    message: "Issue description must not be empty.",
+  }),
+  severity: EvaluatorIssueSeverityEnum,
+  category: EvaluatorIssueCategoryEnum,
+}).strict();
+
+export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>;
+
+// ---------------------------------------------------------------------------
+// EvaluatorVerdictSchema (fixed fields + structured issues)
 // ---------------------------------------------------------------------------
 
 export const EvaluatorVerdictSchema = z.object({
@@ -186,6 +214,8 @@ export const EvaluatorVerdictSchema = z.object({
   confidence: z.number().min(0).max(1),
   feedback: z.string(),
   files_to_review: z.array(z.string()),
+  /** Structured issues extracted from worker output. Defaults to empty array for backward compat. */
+  issues: z.array(EvaluatorIssueSchema).default([]),
 }).strict();
 
 export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;

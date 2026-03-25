@@ -197,6 +197,11 @@ The JSON must include ALL of these fields:
   Example: "Consider adding error handling for the API timeout case."
 - **files_to_review** (REQUIRED): Files that should be reviewed. Empty array if none.
   Example: ["src/feature.ts", "tests/feature.test.ts"]
+- **issues** (REQUIRED): Structured issues found during evaluation. Empty array if none. Each issue has:
+  - description (string): What the issue is
+  - severity ("blocking" | "non_blocking"): Whether it must be fixed before proceeding
+  - category ("test_failure" | "type_error" | "security" | "regression" | "incomplete" | "other"): Classification
+  Example: [{"description": "Tests failing in auth.test.ts", "severity": "blocking", "category": "test_failure"}]
 
 Do NOT include fields not listed above — unknown fields will cause a validation error.`;
 }

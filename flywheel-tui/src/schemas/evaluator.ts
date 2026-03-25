@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerHandoffBaseSchema } from "./handoff";
+import { WorkerHandoffBaseSchema, EvaluatorIssueSchema } from "./handoff";
 
 /**
  * Subset of WorkerHandoff fields projected for evaluator consumption.
@@ -42,6 +42,8 @@ export const EvaluatorResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   feedback: z.string(),
   files_to_review: z.array(z.string()),
+  /** Structured issues from evaluator verdict. Defaults to empty array for backward compat. */
+  issues: z.array(EvaluatorIssueSchema).default([]),
 }).strip();
 
 export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>;
