@@ -16,6 +16,21 @@ function noShellMetachars(fieldName: string) {
 }
 
 /**
+ * Boundaries sub-schema — constraints workers must never violate.
+ * Extracted so the type can be shared with prompt builders (e.g. phase-prompt.ts).
+ */
+export const BoundariesSchema = z.object({
+  /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
+  port_ranges: z.array(z.string()).optional(),
+  /** Directories workers must not modify. */
+  off_limits_dirs: z.array(z.string()).optional(),
+  /** External services workers should be aware of. */
+  external_services: z.array(z.string()).optional(),
+});
+
+export type BoundariesConfig = z.infer<typeof BoundariesSchema>;
+
+/**
  * Full config schema for the TOML loader.
  * Extends the base ConfigSchema with additional fields.
  */
@@ -85,14 +100,7 @@ export const FlywheelConfigSchema = z.object({
   }).default({}),
 
   /** Mission boundaries — constraints workers must never violate. */
-  boundaries: z.object({
-    /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
-    port_ranges: z.array(z.string()).optional(),
-    /** Directories workers must not modify. */
-    off_limits_dirs: z.array(z.string()).optional(),
-    /** External services workers should be aware of. */
-    external_services: z.array(z.string()).optional(),
-  }).optional(),
+  boundaries: BoundariesSchema.optional(),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;

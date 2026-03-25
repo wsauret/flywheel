@@ -946,15 +946,6 @@ export class ExecutionLoop {
   }
 
   /**
-   * Reset the cumulative stage context.
-   * Called when a new pipeline stage begins (e.g., transitioning from "work" to "review").
-   */
-  resetStageContext(): void {
-    this._stageContext = createEmptyStageContext();
-    log.info("stage context reset for new pipeline stage");
-  }
-
-  /**
    * Get the current stage context (for testing/inspection).
    */
   getStageContext(): Readonly<StageContext> {

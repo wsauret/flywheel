@@ -17,6 +17,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { writeFileAtomic } from "../utils/atomic-write";
 import { Log } from "../utils/log";
+import type { SkillFeedback } from "../schemas/handoff";
 
 const log = Log.create({ service: "stage-context" });
 
@@ -82,12 +83,6 @@ export type StageContext = z.infer<typeof StageContextSchema>;
 // PhaseHandoffSummary — the per-phase data fed into the accumulator
 // ---------------------------------------------------------------------------
 
-export interface SkillFeedbackData {
-  followedProcedure: boolean;
-  deviations: Array<{ step: string; whatIDidInstead: string; why: string }>;
-  suggestedChanges?: string[];
-}
-
 export interface PhaseHandoffSummary {
   phase_index: number;
   phase_title: string;
@@ -95,7 +90,7 @@ export interface PhaseHandoffSummary {
   warnings: string[];
   artifacts: string[];
   issues: string[];
-  skill_feedback?: SkillFeedbackData;
+  skill_feedback?: SkillFeedback;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,14 +109,6 @@ export function createEmptyStageContext(): StageContext {
     skill_feedback: [],
     phase_count: 0,
   };
-}
-
-/**
- * Reset stage context — alias for createEmptyStageContext.
- * Called when a new pipeline stage begins.
- */
-export function resetStageContext(): StageContext {
-  return createEmptyStageContext();
 }
 
 // ---------------------------------------------------------------------------

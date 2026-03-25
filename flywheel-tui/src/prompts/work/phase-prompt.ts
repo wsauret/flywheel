@@ -9,16 +9,11 @@ import {
   buildProjectContextSection,
 } from "../conventions.js";
 import { renderHandoffInstruction, WORK_PHASE_FIELDS } from "../../handoff/field-specs.js";
+import type { BoundariesConfig } from "../../config/loader.js";
 
 // ---------------------------------------------------------------------------
 // Boundaries section
 // ---------------------------------------------------------------------------
-
-interface BoundariesConfig {
-  port_ranges?: string[];
-  off_limits_dirs?: string[];
-  external_services?: string[];
-}
 
 /**
  * Build a "Mission Boundaries" section from boundaries config in ctx.extra.

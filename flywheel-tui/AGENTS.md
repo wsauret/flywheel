@@ -251,6 +251,7 @@ The `EventBus` is a synchronous pub/sub system. `FlywheelEmitter` is a typed fac
 | Pipeline orchestration | `src/controller/workflow-pipeline.ts` |
 | Phase execution | `src/controller/phase-executor.ts` |
 | Execution loop | `src/controller/execution-loop.ts` |
+| Stage context accumulator | `src/controller/stage-context.ts` |
 | Dispatcher orchestrator | `src/controller/dispatcher-orchestrator.ts` |
 | Approval handling | `src/controller/approval-handler.ts`, `src/controller/ui-approval-handler.ts` |
 | Question service | `src/controller/question-service.ts` |

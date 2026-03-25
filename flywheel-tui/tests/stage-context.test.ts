@@ -9,7 +9,6 @@ import {
   accumulatePhaseIntoContext,
   persistStageContext,
   loadStageContext,
-  resetStageContext,
   STAGE_CONTEXT_FILE,
   type StageContext,
   type PhaseHandoffSummary,
@@ -365,21 +364,8 @@ describe("stage context persistence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// resetStageContext (VAL-CONTEXT-005)
+// Stage context reset (VAL-CONTEXT-005) — verified by construction:
+// Each new ExecutionLoop starts with createEmptyStageContext() in its
+// constructor, so stage context resets automatically between pipeline stages.
+// The standalone resetStageContext() function was removed as dead code.
 // ---------------------------------------------------------------------------
-
-describe("resetStageContext", () => {
-  it("returns a fresh empty context", () => {
-    let ctx = createEmptyStageContext();
-    ctx = accumulatePhaseIntoContext(ctx, makePhaseHandoff({
-      phase_index: 0,
-      phase_title: "Setup",
-      decisions: ["Decision A"],
-    }));
-    expect(ctx.phase_count).toBe(1);
-
-    const reset = resetStageContext();
-    expect(reset.phase_count).toBe(0);
-    expect(reset.cumulative_decisions).toEqual([]);
-  });
-});
