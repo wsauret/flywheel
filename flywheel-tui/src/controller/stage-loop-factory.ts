@@ -455,8 +455,19 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
   // Synthesize plan content from the workflow definition so the dispatcher
   // has context for prompt crafting. Without this, the dispatcher is skipped
   // because ExecutionLoop requires planContent to be non-empty.
+  // Include dispatcherHint and validationCriteria so the dispatcher can
+  // generate accurate validation_criteria for the evaluator.
   const syntheticPlanContent = workflowDef.steps
-    .map((step, i) => `## Phase ${i + 1}: ${step.description}`)
+    .map((step, i) => {
+      const parts = [`## Phase ${i + 1}: ${step.description}`];
+      if (step.dispatcherHint) {
+        parts.push(`\nApproach: ${step.dispatcherHint}`);
+      }
+      if (step.validationCriteria) {
+        parts.push(`\nSuccess criteria: ${step.validationCriteria}`);
+      }
+      return parts.join("");
+    })
     .join("\n\n");
 
   // Include the user's description/topic in the plan content for richer dispatcher context.

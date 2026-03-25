@@ -16,7 +16,7 @@ export const reviewWorkflow: WorkflowDefinition = {
     {
       description: "Consolidate findings into review document",
       dispatcherHint:
-        "Deduplicate, rank by severity, and produce final review document.",
+        "Deduplicate, rank by severity, and produce final review document. Worker writes to .flywheel/reviews/<date>-<slug>.md.",
       validationCriteria: reviewConsolidateValidationCriteria,
     },
     {

@@ -161,16 +161,41 @@ export function renderHandoffInstruction(
     return `- **${f.key}**${req}: ${f.description}\n  Example: ${f.example}`;
   });
 
+  // Build a concrete JSON example showing the structure
+  const exampleObj: Record<string, string> = {};
+  for (const f of allFields) {
+    exampleObj[f.key] = `<${f.key}>`;
+  }
+  const exampleKeys = allFields.map((f) => `  "${f.key}": ${f.example}`).join(",\n");
+
   return `## Handoff Instructions
 
-When you are finished, write a JSON file to:
+**CRITICAL:** Before you finish, you MUST write a valid JSON handoff file. This is how the pipeline tracks your work. If you skip this step or produce invalid JSON, the pipeline will retry the entire phase.
+
+Write a JSON file to:
 \`${handoffPath}\`
 
-The JSON must include these fields:
+### Required format
+
+The file must contain a single JSON object (not wrapped in markdown code fences). Use this exact structure:
+
+\`\`\`json
+{
+${exampleKeys}
+}
+\`\`\`
+
+### Field reference
 
 ${fieldLines.join("\n\n")}
 
-The \`summary\` field is required (100-5000 characters). All other fields are optional but encouraged when applicable. Do NOT include fields not listed above — unknown fields will cause a validation error and retry.`;
+### Rules
+
+1. The \`summary\` field is REQUIRED (100-5000 characters, single paragraph, no newlines).
+2. All other fields are optional but strongly encouraged — they improve downstream quality assessment.
+3. Do NOT include fields not listed above — unknown fields cause a validation error and the phase will be retried.
+4. Write the file using your file-writing tool (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
+5. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,30 +205,43 @@ The \`summary\` field is required (100-5000 characters). All other fields are op
 export function renderEvaluatorHandoffInstruction(handoffPath: string): string {
   return `## Evaluator Handoff Instructions
 
-When you are finished evaluating, write a JSON file to:
+**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the pipeline reads your verdict. If missing or invalid, the evaluation will be retried.
+
+Write a JSON file to:
 \`${handoffPath}\`
 
-The JSON must include ALL of these fields:
+### Required format
+
+\`\`\`json
+{
+  "passed": true,
+  "reasoning": "All acceptance criteria met, tests pass, code is clean.",
+  "suggestions": [],
+  "confidence": 0.92,
+  "feedback": "",
+  "files_to_review": [],
+  "issues": []
+}
+\`\`\`
+
+### Field reference
 
 - **passed** (REQUIRED): Whether the phase output meets acceptance criteria. Boolean.
-  Example: true
-- **reasoning** (REQUIRED): Explanation of the evaluation decision.
-  Example: "All acceptance criteria met, tests pass, code is clean."
-- **suggestions** (REQUIRED): List of improvement suggestions. Empty array if none.
-  Example: ["Add edge case tests for null input"]
-- **confidence** (REQUIRED): Confidence in the verdict, 0.0 to 1.0.
-  Example: 0.92
-- **feedback** (REQUIRED): Actionable feedback for the worker if retrying.
-  Example: "Consider adding error handling for the API timeout case."
-- **files_to_review** (REQUIRED): Files that should be reviewed. Empty array if none.
-  Example: ["src/feature.ts", "tests/feature.test.ts"]
-- **issues** (REQUIRED): Structured issues found during evaluation. Empty array if none. Each issue has:
-  - description (string): What the issue is
-  - severity ("blocking" | "non_blocking"): Whether it must be fixed before proceeding
-  - category ("test_failure" | "type_error" | "security" | "regression" | "incomplete" | "other"): Classification
-  Example: [{"description": "Tests failing in auth.test.ts", "severity": "blocking", "category": "test_failure"}]
+- **reasoning** (REQUIRED): Explanation of the evaluation decision. String.
+- **suggestions** (REQUIRED): List of improvement suggestions. Empty array \`[]\` if none.
+- **confidence** (REQUIRED): Confidence in the verdict, 0.0 to 1.0. Number.
+- **feedback** (REQUIRED): Actionable feedback for the worker if retrying. String (empty string if passed).
+- **files_to_review** (REQUIRED): Files that should be reviewed. Empty array \`[]\` if none.
+- **issues** (REQUIRED): Structured issues found. Empty array \`[]\` if none. Each issue:
+  \`{"description": "...", "severity": "blocking"|"non_blocking", "category": "test_failure"|"type_error"|"security"|"regression"|"incomplete"|"other"}\`
 
-Do NOT include fields not listed above — unknown fields will cause a validation error.`;
+### Rules
+
+1. ALL fields are required — do not omit any field.
+2. Use empty arrays \`[]\` and empty strings \`""\` for fields with no data — do not use \`null\`.
+3. Do NOT include fields not listed above — unknown fields cause a validation error.
+4. Write valid JSON — no trailing commas, no comments, no markdown wrapping.
+5. Write the file using your file-writing tool, not stdout.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -213,29 +251,44 @@ Do NOT include fields not listed above — unknown fields will cause a validatio
 export function renderDispatcherHandoffInstruction(handoffPath: string): string {
   return `## Dispatcher Handoff Instructions
 
-When you are finished, write a JSON file to:
+**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the pipeline reads your dispatch decision. If missing or invalid, the dispatch will be retried.
+
+Write a JSON file to:
 \`${handoffPath}\`
 
-The JSON must include these fields:
+### Required format
 
-- **schema_version** (REQUIRED): Must be 1. Literal number.
-  Example: 1
+\`\`\`json
+{
+  "schema_version": 1,
+  "phase_index": 0,
+  "task_content": "Implement feature X according to the plan.",
+  "context_files": ["src/foo.ts", "tests/foo.test.ts"],
+  "validation_criteria": {
+    "acceptance_criteria": ["Tests pass", "No lint errors"],
+    "required_tests": true,
+    "custom_checks": [],
+    "required_outputs": []
+  }
+}
+\`\`\`
+
+### Field reference
+
+- **schema_version** (REQUIRED): Must be \`1\`. Literal number.
 - **phase_index** (REQUIRED): Zero-based index of the phase being dispatched.
-  Example: 0
 - **task_content** (REQUIRED): The task prompt to send to the worker.
-  Example: "Implement feature X according to the plan."
 - **context_files** (REQUIRED): File paths the worker should reference. Array of strings.
-  Example: ["src/foo.ts", "tests/foo.test.ts"]
-- **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance, most critical first; 8 KB cap. Array of strings.
-  Example: ["docs/standards/api.md", "docs/standards/testing.md"]
-- **validation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: acceptance_criteria (string[]), required_tests (boolean), custom_checks (string[]), required_outputs (string[]).
-  Example: {"acceptance_criteria": ["Tests pass", "No lint errors"], "required_tests": true, "custom_checks": [], "required_outputs": []}
-- **session_name** (optional): Name for the worker session.
-  Example: "work-session-phase-1"
+- **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance; 8 KB cap.
+- **validation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: \`acceptance_criteria\` (string[]), \`required_tests\` (boolean), \`custom_checks\` (string[]), \`required_outputs\` (string[]).
+- **session_name** (optional): Name for the worker session (2-5 words).
 - **reasoning** (optional): Why this dispatch decision was made.
-  Example: "Standard implementation phase, no special handling needed."
 - **worker_config** (optional): Override worker configuration.
-  Example: {"model_override": null, "timeout_minutes": 30}
 
-Do NOT include fields not listed above — unknown fields will cause a validation error.`;
+### Rules
+
+1. ALL required fields must be present.
+2. Do NOT include fields not listed above — unknown fields cause a validation error.
+3. Write valid JSON — no trailing commas, no comments, no markdown wrapping.
+4. Write the file using your file-writing tool, not stdout.`;
 }

@@ -186,7 +186,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     // Prompt should contain the evaluator handoff instruction
     expect(capturedPrompt).toContain("Evaluator Handoff Instructions");
-    expect(capturedPrompt).toContain("write a JSON file to:");
+    expect(capturedPrompt).toContain("Write a JSON file to:");
     expect(capturedPrompt).toContain(".json");
   });
 

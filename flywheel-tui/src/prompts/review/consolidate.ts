@@ -78,7 +78,7 @@ Triage P3 findings yourself. Include non-cosmetic P3 findings that are worth fix
 // ---------------------------------------------------------------------------
 
 export const reviewConsolidateValidationCriteria =
-  "Review document written to disk with P1/P2/P3 findings and implementation order (file path appears in output), or clean summary if no significant issues found";
+  "Review document written to .flywheel/reviews/<date>-<slug>.md with P1/P2/P3 findings and implementation order. The file path must appear in worker output. Accept any file under .flywheel/reviews/ matching this pattern. If no significant issues, a clean summary is acceptable.";
 
 /**
  * Builds a prompt for the review consolidation step.
