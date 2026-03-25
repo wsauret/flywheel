@@ -278,17 +278,23 @@ The dispatcher assembles prompts and routes them to workers via CLI or SDK trans
 
 Each workflow type has a runner in `src/workflows/` (plan, review, ship, debug, research) and prompt templates in `src/prompts/<type>/`. The prompt builder (`src/workflows/prompt-builder.ts`) and output extractors (`plan-output-extractor.ts`, `review-output-extractor.ts`) handle assembly and parsing. Shared conventions in `src/prompts/conventions.ts`.
 
+**Prompt alignment convention:** Workflow definitions, prompt templates, and evaluator validation criteria must agree on output paths and expected artifacts. When a workflow tells the worker to produce a file (e.g., a review document, handoff JSON, plan file), the evaluator criteria must expect that same file path or pattern. If the worker prompt says "write to `X`" but the evaluator checks for `Y`, the pipeline enters a revision loop that can never converge. Before modifying any prompt template, verify that: (1) the worker prompt's output instructions, (2) the handoff field specs in `src/handoff/field-specs.ts`, and (3) the evaluator's validation criteria in the dispatcher prompt all reference consistent paths and field names.
+
 ### Engine system
 
 Registry: `src/engines/core/registry.ts`. Types: `src/engines/core/types.ts`. Two engines registered by default:
 - **claude** — binary `"claude"`, defaultModel `"opus"`, order 2
 - **opencode** — binary `"opencode"`, defaultModel `"anthropic/claude-opus-4-6"`, order 1
 
+**Note:** The engine system (`src/engines/`) is generally off-limits for modification. The exception is tool scoping — engine command builders (e.g., `src/engines/claude/command.ts`) may be modified to adjust which tools are allowed or disallowed for workers, since tool availability directly affects whether workers can write required output files (handoff JSON, review documents, etc.).
+
 ### Session management
 
 State machine (`src/session/state-machine.ts`), persistence (`src/session/persistence.ts`), manager (`src/session/manager.ts`), cost tracker (`src/session/cost-tracker.ts`), worktree manager (`src/session/worktree-manager.ts`), output persistence (`src/session/output-persistence.ts`). Schema: `src/schemas/session.ts`.
 
 Plan state is tracked in `.state.md` files alongside plan files via `src/state/` (reader, writer, lock). Plan markdown is parsed into structured phases by `src/controller/plan-parser.ts` (milestone markers, fulfills annotations, phase headings, checklist items).
+
+**`safeUpdateState` convention:** Use `safeUpdateState()` from `src/session/safe-transition.ts` instead of `manager.updateState()` in all pipeline completion and failure paths. `safeUpdateState` chains through intermediate lifecycle states when a direct transition is invalid (e.g., session stuck in `"new"` when pipeline completion tries to set `"work:paused"`). Use direct `manager.updateState()` only during normal forward lifecycle transitions (e.g., `new → plan:imported`) where the current state is known and the transition is guaranteed valid. All error/crash/completion handlers should use `safeUpdateState` to avoid `"Invalid state transition"` errors. When all recovery paths fail, `safeUpdateState` logs a warning and returns without throwing.
 
 ### Plan file format
 

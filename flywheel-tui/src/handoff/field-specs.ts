@@ -180,11 +180,6 @@ export function renderHandoffInstruction(
     return `- **${f.key}**${req}: ${f.description}\n  Example: ${f.example}`;
   });
 
-  // Build a concrete JSON example showing the structure
-  const exampleObj: Record<string, string> = {};
-  for (const f of allFields) {
-    exampleObj[f.key] = `<${f.key}>`;
-  }
   const exampleKeys = allFields.map((f) => `  "${f.key}": ${f.example}`).join(",\n");
 
   return `## Handoff Instructions

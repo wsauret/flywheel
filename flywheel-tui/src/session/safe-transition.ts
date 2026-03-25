@@ -16,6 +16,9 @@ import {
   findTransitionPath,
   type SessionLifecycleState,
 } from "./state-machine";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "session.safe-transition" });
 
 /**
  * Attempt a state transition, recovering from invalid transition errors
@@ -64,6 +67,10 @@ export function safeUpdateState(
         }
       }
     }
-    // All recovery attempts failed — silently swallow.
+    // All recovery attempts failed — log a warning so operators can diagnose.
+    log.warn("safeUpdateState: all recovery paths failed", {
+      sessionId,
+      targetState,
+    });
   }
 }

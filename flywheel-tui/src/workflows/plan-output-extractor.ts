@@ -30,7 +30,12 @@ import type { OpenQuestion as HandoffOpenQuestion } from "../schemas/handoff";
 export const PLAN_QUESTION_DIRECTIVE = "resolve-best-judgment" as const;
 
 /** File suffixes to exclude from scan results (metadata companions, not actual plans). */
-export const EXCLUDED_SUFFIXES = [".context.md", ".state.md", ".baseline.md"];
+export const EXCLUDED_SUFFIXES = [
+  ".context.md",
+  ".state.md",
+  ".baseline.md",
+  ".validation-contract.md",
+];
 
 // ---------------------------------------------------------------------------
 // Hook factory
@@ -202,30 +207,36 @@ export function createPlanOnStepComplete(
       }
     }
 
-    // Fallback: scan .flywheel/plans/ for any plan files written by the worker
+    // Fallback: scan .flywheel/plans/ for recently-modified plan files.
+    // Only consider files modified within the last 5 minutes to avoid picking
+    // up stale plans from prior sessions.
+    const RECENCY_THRESHOLD_MS = 5 * 60 * 1000;
     try {
       const plansDir = path.join(projectCwd, ".flywheel", "plans");
       const entries = await fs.readdir(plansDir).catch(() => [] as string[]);
-      const planFiles = entries.filter(
+      const planCandidates = entries.filter(
         (f) =>
           f.endsWith(".md") &&
           !EXCLUDED_SUFFIXES.some((suffix) => f.endsWith(suffix)),
       );
 
-      if (planFiles.length > 0) {
-        // Pick the most recently modified plan file
-        let bestFile = planFiles[0];
+      if (planCandidates.length > 0) {
+        // Pick the most recently modified plan file, but only if recent
+        const now = Date.now();
+        let bestFile: string | null = null;
         let bestMtime = 0;
-        for (const f of planFiles) {
+        for (const f of planCandidates) {
           const stat = await fs.stat(path.join(plansDir, f)).catch(() => null);
-          if (stat && stat.mtimeMs > bestMtime) {
+          if (stat && stat.mtimeMs > bestMtime && now - stat.mtimeMs < RECENCY_THRESHOLD_MS) {
             bestMtime = stat.mtimeMs;
             bestFile = f;
           }
         }
-        const resolvedPath = path.join(plansDir, bestFile);
-        log.info("found plan file via directory scan fallback", { planFilePath: resolvedPath });
-        return { planFilePath: resolvedPath, planFileName: bestFile };
+        if (bestFile) {
+          const resolvedPath = path.join(plansDir, bestFile);
+          log.info("found plan file via directory scan fallback", { planFilePath: resolvedPath });
+          return { planFilePath: resolvedPath, planFileName: bestFile };
+        }
       }
     } catch {
       // Scan failed — continue to warning
