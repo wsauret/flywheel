@@ -6,63 +6,59 @@ Architectural decisions, patterns discovered, and design notes.
 
 ---
 
-## Engine → Transport → Command Flow
+## Engine -> Transport -> Command Flow
 
 The engine system has three layers:
 1. **Engine Registry** (`src/engines/core/registry.ts`) — looks up engines by name
 2. **Engine Providers** (`src/engines/providers/{name}/index.ts`) — build CLI commands via `buildCommand(options)`
 3. **Transports** (dispatcher + evaluator) — spawn subprocesses using engine-built commands
 
-Both the dispatcher and evaluator transports now use the engine registry to build commands with appropriate flags per engine. Both are wired into the production execution pipeline: the dispatcher via `autoDetectTransport()` and the evaluator via `createEvaluatorTransport()` in `src/evaluator/create-transport.ts`. The evaluator transport is threaded through `StageLoopOptions` → `ExecutionLoop` → phase execution. Both transports support Claude Code and OpenCode engines with per-engine optimization flags (tools disabled, fast model, no session persistence for Claude; model flag for OpenCode). Both transports use the shared `extractTextFromNDJSON()` utility from `src/utils/ndjson-text-extractor.ts`.
+Both the dispatcher and evaluator transports use the engine registry to build commands. Both are wired into the production pipeline: dispatcher via `autoDetectTransport()`, evaluator via `createEvaluatorTransport()`.
 
-### Engine-specific system prompt handling
+## Handoff Data Flow
 
-- **Claude Code**: System prompt is passed via `--system-prompt` flag (enables prompt caching). The engine's `buildDispatcherCommand()` handles this.
-- **OpenCode**: System prompt is **not** handled by `buildDispatcherCommand()` — it is silently ignored. The SubprocessTransport manually prepends the system prompt to stdin content. This is by design since OpenCode doesn't have a separate system prompt CLI flag.
+```
+Worker writes JSON -> .flywheel/handoffs/<uuid>.json
+  -> readHandoff() in execution-loop.ts (once, cached)
+    -> EvaluatorHandoffData projection (src/handoff/consumers.ts)
+    -> LastWorkerResult projection (src/handoff/consumers.ts)  
+    -> previousResult markdown (src/handoff/consumers.ts)
+```
 
-### OpenCode SDK API surface
+Key files:
+- `src/schemas/handoff.ts` — WorkerHandoffSchema, EvaluatorVerdictSchema, DispatcherDecisionHandoffSchema
+- `src/schemas/evaluator.ts` — EvaluatorHandoffData, EvaluatorInput, EvaluatorResult
+- `src/schemas/shared.ts` — LastWorkerResultSchema, ValidationCriteria
+- `src/handoff/consumers.ts` — buildLastWorkerResult(), buildPreviousResultFromHandoff()
+- `src/handoff/reader.ts` — readHandoff() generic reader
+- `src/handoff/field-specs.ts` — field documentation
 
-The `@opencode-ai/sdk` `SessionPromptData.body` supports:
-- `model: { providerID: string; modelID: string }` — override the model for a session prompt
-- `tools: Record<string, boolean>` — enable/disable specific tools (not yet used in production)
+## Execution Loop Phase Iteration
+
+The execution loop in `src/controller/execution-loop.ts` iterates phases:
+1. Check shutdown, budget
+2. Skip completed phases
+3. Resolve context from ContextIndexer
+4. Get dispatcher decision (may be null)
+5. Build prompt via promptBuilder
+6. Execute phase via PhaseExecutor
+7. Read worker handoff (once, best-effort)
+8. Evaluator check (if transport + validation_criteria)
+9. Revision loop (if evaluator fails)
+10. Chain result: build previousResult and _lastWorkerResult from handoff
+11. Call onStepComplete hook
+12. Update state, emit events
+
+## Plan File Format
+
+Plans are markdown with `### Phase N: Title` headings and `- [ ]` checklists.
+State tracked in `.state.md` files with YAML frontmatter and `## Progress` section.
+Phase statuses: `[x]` completed, `[ ]` pending, `[~]` in_progress.
 
 ## Transport Interface Pattern
 
-Both dispatcher and evaluator follow the same transport pattern:
-- `IDispatcherTransport` / `IEvaluatorTransport` — DI interface
-- `SubprocessTransport` — spawns engine CLI as subprocess
-- `SdkTransport` (dispatcher only) — uses OpenCode SDK singleton server
-- `autoDetectTransport()` — selects best available transport
-
-## Research Workflow Architecture
-
-The research functionality has two variants sharing a core engine:
-
-### Plan Research Phase (step 0 of plan workflow)
-- Single combined locate+analyze step
-- Prompt: `buildPlanResearchPrompt()` in `src/prompts/plan/research.ts`
-- Persists output as `.context.md` file alongside the plan
-- Consumed by the draft step via `parseContextFile()` in `src/controller/templates.ts`
-- Constrained scope: focused on the feature being planned
-
-### Standalone /research Command
-- Three-step workflow: locate → analyze → persist
-- Prompts: `src/prompts/research/{locate,analyze,persist}.ts`
-- Step chaining via `previousResult` (locate feeds analyze, analyze feeds persist)
-- Persists comprehensive document to `docs/research/YYYY-MM-DD-<topic-slug>.md`
-- Full-bodied research covering the complete research question
-
-### Shared Core
-Both variants use shared conventions from `src/prompts/conventions.ts`:
-- `DOCUMENTARIAN_MODE` — map what IS, not what SHOULD BE
-- `LOCATOR_ANALYZER_PATTERN` — locate WHERE, then analyze HOW
-- `FILE_LINE_DISCIPLINE` — cite as file:line, not copied code
-- `READ_FULLY_RULE` — read files fully to avoid hallucination
-- `TOKEN_LIMITS` — per-agent token budgets (locator: 500, analyzer: 750, research output: relaxed)
-
-Workers CAN dispatch sub-agents via the Task tool. The BLOCKING rule in research prompts enforces locate-first methodology.
-
-## Output Parsing Differences
-
-- **OpenCode** outputs NDJSON (one JSON object per line). Parser reads lines, finds assistant message content.
-- **Claude Code** with `--print` outputs plain text (the raw response). For JSON tasks, the output should be parseable JSON directly.
+Both dispatcher and evaluator follow:
+- Interface (DI contract)
+- SubprocessTransport (spawns engine CLI)
+- SdkTransport (dispatcher only, uses OpenCode SDK)
+- autoDetectTransport() (selects best available)

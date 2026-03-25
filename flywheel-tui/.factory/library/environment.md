@@ -8,16 +8,19 @@ Environment variables, external dependencies, and setup notes.
 ---
 
 ## Runtime
-- Bun (not Node) — all commands use `bun` not `npm`/`node`
-- macOS (darwin 25.3.0), 36GB RAM, 11 cores
+- **Bun** (not Node) — use `Bun.file()`, `Bun.write()`, etc.
+- **SolidJS** requires `--conditions=browser` flag (handled by `bin/flywheel` wrapper)
+- Unit tests do NOT need `--conditions=browser`
 
-## Engine Dependencies
-- Claude Code CLI (`claude`) — must be on PATH for Claude engine
-- OpenCode CLI (`opencode`) — must be on PATH for OpenCode engine
-- At least one engine must be available for the dispatcher/evaluator to work
+## Key Paths
+- Handoffs: `.flywheel/handoffs/<uuid>.json`
+- Logs: `.flywheel/log/*.log`
+- Sessions: `.flywheel/sessions/`
+- Plans: `.flywheel/plan*.md`
+- State: alongside plan files as `<plan>.state.md`
 
-## Config
-- `flywheel.toml` — main config file (TOML format)
-- `FLYWHEEL_ENGINE` — override engine selection
-- `FLYWHEEL_DISPATCHER_MODEL` — override dispatcher model
-- `FLYWHEEL_LOG_LEVEL` — override log level (default: INFO)
+## Test Infrastructure
+- Framework: Bun built-in (`bun test`)
+- 132 test files, 3359+ tests
+- No external test dependencies
+- Typecheck: `bunx tsc --noEmit`
