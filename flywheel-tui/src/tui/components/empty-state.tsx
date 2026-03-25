@@ -39,7 +39,7 @@ export function EmptyState() {
       gap={0}
     >
       {/* ASCII Logo */}
-      <box flexDirection="column" alignItems="center">
+      <box flexDirection="column" alignItems="flex-start">
         <For each={FULL_LOGO}>
           {(line) => (
             <text fg={themeCtx.theme.primary}>{line}</text>
