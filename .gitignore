@@ -79,6 +79,8 @@ Cargo.lock
 .worktrees/
 .beads/
 .ralph-tui/
+.factory/
+flywheel-tui/.factory/
 docs/
 plugin/docs/
 flywheel-tui/docs/
