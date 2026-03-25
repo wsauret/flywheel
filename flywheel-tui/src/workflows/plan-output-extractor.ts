@@ -202,6 +202,54 @@ export function createPlanOnStepComplete(
       }
     }
 
+    // Fallback: scan .flywheel/plans/ for any plan files written by the worker
+    try {
+      const plansDir = path.join(projectCwd, ".flywheel", "plans");
+      const entries = await fs.readdir(plansDir).catch(() => [] as string[]);
+      const planFiles = entries.filter(
+        (f) =>
+          f.endsWith(".md") &&
+          !EXCLUDED_SUFFIXES.some((suffix) => f.endsWith(suffix)),
+      );
+
+      if (planFiles.length > 0) {
+        // Pick the most recently modified plan file
+        let bestFile = planFiles[0];
+        let bestMtime = 0;
+        for (const f of planFiles) {
+          const stat = await fs.stat(path.join(plansDir, f)).catch(() => null);
+          if (stat && stat.mtimeMs > bestMtime) {
+            bestMtime = stat.mtimeMs;
+            bestFile = f;
+          }
+        }
+        const resolvedPath = path.join(plansDir, bestFile);
+        log.info("found plan file via directory scan fallback", { planFilePath: resolvedPath });
+        return { planFilePath: resolvedPath, planFileName: bestFile };
+      }
+    } catch {
+      // Scan failed — continue to warning
+    }
+
+    // Also scan project root for plan files (worker might write there)
+    try {
+      const rootEntries = await fs.readdir(projectCwd);
+      const rootPlanFiles = rootEntries.filter(
+        (f) =>
+          f.endsWith(".plan.md") ||
+          (f.endsWith(".md") &&
+            f.startsWith("plan") &&
+            !EXCLUDED_SUFFIXES.some((suffix) => f.endsWith(suffix))),
+      );
+      if (rootPlanFiles.length > 0) {
+        const resolvedPath = path.join(projectCwd, rootPlanFiles[0]);
+        log.info("found plan file in project root via fallback scan", { planFilePath: resolvedPath });
+        return { planFilePath: resolvedPath, planFileName: rootPlanFiles[0] };
+      }
+    } catch {
+      // Scan failed — continue to warning
+    }
+
     // No plan file found — warn but don't halt the pipeline
     return { planFileWarning: "Could not locate plan file on disk after consolidation" };
   };
