@@ -53,11 +53,29 @@ The execution loop in `src/controller/execution-loop.ts` iterates phases:
 6. Execute phase via PhaseExecutor
 7. Read worker handoff (once, best-effort)
 8. Evaluator check (if transport + validation_criteria)
-9. Revision loop (if evaluator fails)
+8.5. Evaluator transport failure → graceful degradation (continue, log warning)
+9. Revision loop (if evaluator fails with genuine passed:false verdict)
+9.5. **Issue gating** (after evaluator accepts):
+   - Blocking issues → halt pipeline, surface via approval gate (`requestIssueApproval`)
+   - Non-blocking issues → accumulate in StageContext `cumulative_issues`
+   - Independent of pass/fail: passed:true + blocking issues still halts
 10. Chain result: build previousResult and _lastWorkerResult from handoff
-10.5. Accumulate phase handoff into StageContext (decisions, warnings, artifacts, skill_feedback) and persist to `.flywheel/stage-context.json`
+10.5. Accumulate phase handoff into StageContext (decisions, warnings, artifacts, issues, skill_feedback) and persist to `.flywheel/stage-context.json`
 11. Call onStepComplete hook
 12. Update state, emit events
+
+### Issue Gating Details
+
+Issue gating is additive to existing evaluator pass/fail behavior. The evaluator's `issues` array (from `EvaluatorVerdictSchema`) is inspected after evaluation:
+- `severity: "blocking"` → pipeline halts, surfaces via `ApprovalHandler.requestIssueApproval()`
+- `severity: "non_blocking"` → appended to `StageContext.cumulative_issues`, pipeline continues
+- Empty issues array or undefined → no gating, normal continuation
+
+The `ApprovalHandler` interface has an optional `requestIssueApproval(phaseIndex, title, issues)` method. `UIApprovalHandler` implements it by formatting blocking issue descriptions and delegating to the standard approval UI. If no approval handler is present, blocking issues always halt.
+
+Stage context now feeds the evaluator: `EvaluatorInput.stage_context` carries cumulative context from phases 1..N-1 so the evaluator for phase N can reference prior decisions and warnings.
+
+Evaluator transport failures (timeout, connection errors) are handled with graceful degradation via `EvaluationResult.transportError`. When set, the execution loop skips the evaluation entirely and continues.
 
 ## Boundaries Config -> Prompt Injection
 

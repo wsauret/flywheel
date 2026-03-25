@@ -79,6 +79,8 @@ export interface EvaluateOptions {
   taskContext?: string;
   /** Structured handoff data from worker (optional; when present, forwarded to transport). */
   handoff?: import("../schemas/evaluator").EvaluatorHandoffData;
+  /** Cumulative stage context from prior phases (optional; evaluator for phase N sees 1..N-1). */
+  stageContext?: import("../controller/stage-context").StageContext;
 }
 
 export interface EvaluationResult {
@@ -94,6 +96,13 @@ export interface EvaluationResult {
   reasoning?: string;
   /** Structured issues extracted by the evaluator. Empty array when no issues or skipped. */
   issues?: import("../schemas/handoff").EvaluatorIssue[];
+  /**
+   * True when evaluation failed due to transport/infrastructure error
+   * (as opposed to a genuine evaluator verdict of passed:false).
+   * When true, the execution loop should treat this as graceful degradation
+   * and continue (not enter the revision loop).
+   */
+  transportError?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,6 +166,7 @@ export class Evaluator {
       durationSeconds,
       taskContext,
       handoff,
+      stageContext,
     } = options;
 
     // Serialize structured ValidationCriteria to string for the evaluator transport
@@ -184,6 +194,7 @@ export class Evaluator {
           durationSeconds ?? 0,
           taskContext,
           handoff,
+          stageContext,
         );
 
         if (result.passed) {
@@ -232,12 +243,13 @@ export class Evaluator {
       }
     }
 
-    // Exhausted all error-retry cycles
+    // Exhausted all error-retry cycles — transport/infrastructure failure
     return {
       passed: false,
       cyclesUsed: this.maxCycles,
       skipped: false,
       reason: lastErrorMessage,
+      transportError: true,
     };
   }
 
@@ -255,6 +267,7 @@ export class Evaluator {
     durationSeconds: number,
     taskContext?: string,
     handoff?: import("../schemas/evaluator").EvaluatorHandoffData,
+    stageContext?: import("../controller/stage-context").StageContext,
   ): Promise<EvaluatorResult> {
     const input: import("../schemas/evaluator").EvaluatorInput = {
       worker_output: workerOutput,
@@ -266,6 +279,7 @@ export class Evaluator {
       duration_seconds: durationSeconds,
       task_context: taskContext,
       handoff,
+      stage_context: stageContext,
     };
 
     // Race transport call against timeout

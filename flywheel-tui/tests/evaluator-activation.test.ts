@@ -491,7 +491,8 @@ describe("Evaluator activation in execution loop", () => {
 
       const result = await loop.run();
 
-      expect(result.completed).toBe(false);
+      // Transport errors trigger graceful degradation — pipeline continues
+      expect(result.completed).toBe(true);
       // Evaluator should have retried max_eval_cycles (2) times on errors
       expect(invokeCount).toBe(2);
     });

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { WorkerHandoffBaseSchema, EvaluatorIssueSchema } from "./handoff";
+import { StageContextSchema } from "../controller/stage-context";
 
 /**
  * Subset of WorkerHandoff fields projected for evaluator consumption.
@@ -30,6 +31,8 @@ export const EvaluatorInputSchema = z.object({
   task_context: z.string().optional(),
   /** Structured handoff data from worker (optional; when present, used instead of worker_output). */
   handoff: EvaluatorHandoffDataSchema.optional(),
+  /** Cumulative stage context from prior phases. Evaluator for phase N sees context from 1..N-1. */
+  stage_context: StageContextSchema.optional(),
 }).strip();
 
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;

@@ -14,6 +14,7 @@ import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { IWorkflowUI } from "../tui/adapters/types";
 import type { ApprovalHandler } from "./approval-handler";
+import type { EvaluatorIssue } from "../schemas/handoff";
 
 // ---------------------------------------------------------------------------
 // UIApprovalHandler
@@ -41,6 +42,21 @@ export class UIApprovalHandler implements ApprovalHandler {
 
   get skipRemainingGates(): boolean {
     return this._skipRemainingGates;
+  }
+
+  async requestIssueApproval(
+    phaseIndex: number,
+    title: string,
+    issues: EvaluatorIssue[],
+  ): Promise<boolean> {
+    // Build a description string from the blocking issues
+    const issueDescriptions = issues
+      .map((issue) => `• [${issue.category}] ${issue.description}`)
+      .join("\n");
+    const description = `Phase ${phaseIndex + 1}: ${title}\n\nBlocking issues found:\n${issueDescriptions}`;
+
+    // Delegate to the standard approval mechanism with the enriched description
+    return this.requestApproval(phaseIndex, description);
   }
 
   async requestApproval(phaseIndex: number, title: string): Promise<boolean> {

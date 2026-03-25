@@ -31,7 +31,7 @@ import type { WorkerResult } from "../schemas/worker";
 import { PhaseExecutor, WorkerError } from "./phase-executor";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
 import { WorkerHandoffSchema } from "../schemas/handoff";
-import type { WorkerHandoff } from "../schemas/handoff";
+import type { WorkerHandoff, EvaluatorIssue } from "../schemas/handoff";
 import type { EvaluatorHandoffData } from "../schemas/evaluator";
 import { buildLastWorkerResult, buildPreviousResultFromHandoff } from "../handoff/consumers";
 import {
@@ -268,6 +268,12 @@ export class ExecutionLoop {
    * warnings, artifacts, and issues. Persisted to disk after each phase.
    */
   private _stageContext: StageContext;
+
+  /**
+   * Non-blocking issues from the evaluator for the current phase.
+   * Accumulated into stage context after the phase completes.
+   */
+  private _pendingNonBlockingIssues: string[] = [];
 
   constructor(options: UnifiedExecutionLoopOptions) {
     this.phaseProvider = options.phaseProvider;
@@ -610,7 +616,22 @@ export class ExecutionLoop {
             artifactsProduced: [],
             taskContext: taskContext || undefined,
             handoff: evaluatorHandoff,
+            stageContext: this._stageContext.phase_count > 0 ? this._stageContext : undefined,
           });
+
+          // --- Evaluator transport failure: graceful degradation ---
+          // When the evaluator fails due to transport/infrastructure error
+          // (not a genuine verdict), continue execution. Log warning but do not
+          // enter revision loop or halt the pipeline.
+          if (evalResult.transportError) {
+            log.warn("evaluator transport failed, continuing with graceful degradation", {
+              phaseIndex: phase.index,
+              reason: evalResult.reason,
+              cyclesUsed: evalResult.cyclesUsed,
+            });
+            // Skip evaluation entirely — treat as if evaluator was not configured
+            // (no revision loop, no issue gating, just continue)
+          } else {
 
           // --- Revision loop ---
           // When evaluator returns passed:false, re-execute the phase with
@@ -722,6 +743,7 @@ export class ExecutionLoop {
               artifactsProduced: [],
               taskContext: taskContext || undefined,
               handoff: revisionHandoff,
+              stageContext: this._stageContext.phase_count > 0 ? this._stageContext : undefined,
             });
           }
 
@@ -768,7 +790,67 @@ export class ExecutionLoop {
             cyclesUsed: evalResult.cyclesUsed,
             revisionAttempts: revisionAttempt,
           });
-        }
+
+          // --- Issue gating (additive to pass/fail) ---
+          // After evaluator accepted the output, check structured issues.
+          // Blocking issues halt the pipeline and surface via approval gate.
+          // Non-blocking issues accumulate in stage context.
+          const evaluatorIssues: EvaluatorIssue[] = evalResult.issues ?? [];
+          const blockingIssues = evaluatorIssues.filter((i) => i.severity === "blocking");
+          const nonBlockingIssues = evaluatorIssues.filter((i) => i.severity === "non_blocking");
+
+          // Accumulate non-blocking issues into stage context
+          if (nonBlockingIssues.length > 0) {
+            this._pendingNonBlockingIssues = nonBlockingIssues.map((i) => i.description);
+            log.info("non-blocking evaluator issues accumulated", {
+              phaseIndex: phase.index,
+              count: nonBlockingIssues.length,
+            });
+          }
+
+          // Gate on blocking issues
+          if (blockingIssues.length > 0) {
+            log.warn("blocking evaluator issues detected", {
+              phaseIndex: phase.index,
+              count: blockingIssues.length,
+              descriptions: blockingIssues.map((i) => i.description),
+            });
+
+            // Surface through approval gate if handler supports it
+            let approved = false;
+            if (this.approvalHandler?.requestIssueApproval) {
+              approved = await this.approvalHandler.requestIssueApproval(
+                phase.index,
+                phase.title,
+                blockingIssues,
+              );
+            }
+
+            if (!approved) {
+              const issueDescriptions = blockingIssues
+                .map((i) => `[${i.category}] ${i.description}`)
+                .join("; ");
+              const gateReason = `Pipeline halted: ${blockingIssues.length} blocking issue(s) — ${issueDescriptions}`;
+
+              this.statePersistence?.updatePhase(this.loadedState!, phase.index, "pending", gateReason);
+              this.emitter.phaseFailed(this.workflowId, phase.index, gateReason);
+              this.emitter.workflowFailed(this.workflowId, gateReason);
+
+              return {
+                completed: false,
+                phasesCompleted,
+                phasesTotal,
+                reason: gateReason,
+              };
+            }
+
+            log.info("blocking issues approved by user, continuing", {
+              phaseIndex: phase.index,
+              count: blockingIssues.length,
+            });
+          }
+        } // end else (not transportError)
+        } // end evaluator guard
 
         // Chain result for next phase:
         // - When handoff is available: build structured previousResult from handoff fields
@@ -791,23 +873,24 @@ export class ExecutionLoop {
         }
 
         // Accumulate phase data into cumulative stage context
-        if (cachedHandoff) {
+        {
           const phaseHandoff: PhaseHandoffSummary = {
             phase_index: phase.index,
             phase_title: phase.title,
-            decisions: cachedHandoff.decisions ?? [],
-            warnings: cachedHandoff.warnings ?? [],
+            decisions: cachedHandoff?.decisions ?? [],
+            warnings: cachedHandoff?.warnings ?? [],
             artifacts: [
-              ...(cachedHandoff.artifacts?.files_created ?? []),
-              ...(cachedHandoff.artifacts?.files_modified ?? []),
+              ...(cachedHandoff?.artifacts?.files_created ?? []),
+              ...(cachedHandoff?.artifacts?.files_modified ?? []),
             ],
-            issues: [],  // Populated by evaluator-structured-issues feature (future)
-            skill_feedback: cachedHandoff.skillFeedback ? {
+            issues: this._pendingNonBlockingIssues,
+            skill_feedback: cachedHandoff?.skillFeedback ? {
               followedProcedure: cachedHandoff.skillFeedback.followedProcedure,
               deviations: cachedHandoff.skillFeedback.deviations,
               suggestedChanges: cachedHandoff.skillFeedback.suggestedChanges,
             } : undefined,
           };
+          this._pendingNonBlockingIssues = []; // Reset for next phase
           this._stageContext = accumulatePhaseIntoContext(this._stageContext, phaseHandoff);
 
           // Persist stage context to disk for resume support
