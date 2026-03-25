@@ -1,0 +1,89 @@
+{
+  "groupId": "evaluator-schema",
+  "milestone": "evaluator-gating",
+  "testedAt": "2026-03-25T15:42:05Z",
+  "assertions": {
+    "VAL-EVAL-001": {
+      "status": "pass",
+      "evidence": "EvaluatorVerdictSchema in src/schemas/handoff.ts includes `issues: z.array(EvaluatorIssueSchema).default([])`. EvaluatorIssueSchema is a strict Zod object with `description` (string, min 1), `severity` (enum: 'blocking' | 'non_blocking'), and `category` (enum: 'test_failure' | 'type_error' | 'security' | 'regression' | 'incomplete' | 'other'). All 12 tests in the VAL-EVAL-001 describe block pass: valid parsing with empty array, blocking/non-blocking issues, multiple issues, and rejection of invalid severity, category, missing fields, and unknown fields (.strict()).",
+      "testFiles": ["tests/evaluator-structured-issues.test.ts"],
+      "testNames": [
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > parses verdict with empty issues array",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > parses verdict with a blocking test_failure issue",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > parses verdict with a non_blocking incomplete issue",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > parses verdict with multiple issues of different severities and categories",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > rejects invalid severity value",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > accepts both valid severity values: blocking and non_blocking",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > accepts all valid category values",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > rejects invalid category value",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > rejects issue missing description",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > rejects issue missing severity",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > rejects issue missing category",
+        "EvaluatorVerdictSchema — structured issues (VAL-EVAL-001) > rejects issue with unknown fields (.strict())"
+      ],
+      "observations": "Schema correctly enforces all three required fields (description, severity, category) with proper enum validation and .strict() to reject unknown fields. EvaluatorIssueSeverityEnum and EvaluatorIssueCategoryEnum standalone tests also pass (6 additional tests)."
+    },
+    "VAL-EVAL-002": {
+      "status": "pass",
+      "evidence": "The evaluator prompt (built in SubprocessEvaluatorTransport.buildPrompt()) contains a full 'Issue Extraction Guidelines' section with severity classification ('blocking' vs 'non_blocking'), category classification (all 6 categories with descriptions), checks to perform (test/typecheck, secrets, regression, completeness), and JSON examples for each category. 5 prompt-capture tests pass, verifying the prompt includes issues schema description, severity enums, all category enums, examples, and the Guidelines section. Additionally, renderEvaluatorHandoffInstruction includes issues field with severity and category values (3 more tests pass).",
+      "testFiles": ["tests/evaluator-structured-issues.test.ts"],
+      "testNames": [
+        "Evaluator prompt — issue extraction instructions (VAL-EVAL-002) > prompt includes issues in the JSON schema description",
+        "Evaluator prompt — issue extraction instructions (VAL-EVAL-002) > prompt describes severity enum values",
+        "Evaluator prompt — issue extraction instructions (VAL-EVAL-002) > prompt describes all category enum values",
+        "Evaluator prompt — issue extraction instructions (VAL-EVAL-002) > prompt includes examples of issue extraction",
+        "Evaluator prompt — issue extraction instructions (VAL-EVAL-002) > prompt contains Issue Extraction Guidelines section",
+        "renderEvaluatorHandoffInstruction — includes issues field > includes issues field in handoff instruction",
+        "renderEvaluatorHandoffInstruction — includes issues field > handoff instruction mentions severity values",
+        "renderEvaluatorHandoffInstruction — includes issues field > handoff instruction mentions category values"
+      ],
+      "observations": "Source code inspection of subprocess-transport.ts confirms the prompt contains detailed Issue Extraction Guidelines section with severity/category classification, checks to perform, and JSON examples for test_failure, security, type_error, incomplete, and regression categories."
+    },
+    "VAL-EVAL-003": {
+      "status": "pass",
+      "evidence": "The evaluator prompt in SubprocessEvaluatorTransport.buildPrompt() includes 'Checks to Perform' section with item 1: 'Test/typecheck results: If the worker handoff indicates tests failed or typecheck has errors, classify as blocking test_failure or type_error.' The category descriptions also state: 'test_failure: ... BLOCKING if the worker claimed tests passed but evidence shows otherwise' and 'type_error: TypeScript compilation errors... BLOCKING if typecheck was required and fails.' Two prompt-capture tests pass verifying these instructions.",
+      "testFiles": ["tests/evaluator-structured-issues.test.ts"],
+      "testNames": [
+        "Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003) > prompt instructs evaluator to check test results",
+        "Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003) > prompt mentions classifying test failures as blocking test_failure"
+      ],
+      "observations": "The prompt explicitly instructs the evaluator to check test/typecheck results and classify failures as blocking test_failure or type_error. Example JSON in the prompt shows: 'Type error in src/utils.ts:42 — Property name does not exist on type unknown' with severity: blocking, category: type_error."
+    },
+    "VAL-EVAL-004": {
+      "status": "pass",
+      "evidence": "The evaluator prompt includes 'Checks to Perform' item 2: 'Secrets/credentials: Look for patterns like API keys (AKIA..., sk-..., ghp_...), passwords, tokens, or connection strings in the worker output. Classify as blocking security.' Category classification states: 'security: API keys, passwords, credentials, or secrets found in source code, logs, or output. Always BLOCKING.' Example JSON shows: 'AWS access key found in src/config.ts: AKIA...' with severity: blocking, category: security. Three prompt-capture tests pass.",
+      "testFiles": ["tests/evaluator-structured-issues.test.ts"],
+      "testNames": [
+        "Evaluator prompt — secrets/credentials check (VAL-EVAL-004) > prompt instructs evaluator to check for secrets patterns",
+        "Evaluator prompt — secrets/credentials check (VAL-EVAL-004) > prompt classifies secrets as blocking security",
+        "Evaluator prompt — secrets/credentials check (VAL-EVAL-004) > prompt mentions common secret patterns (API keys, tokens)"
+      ],
+      "observations": "Source code shows specific secret patterns listed: AKIA..., sk-..., ghp_..., passwords, tokens, connection strings. Security category is described as 'Always BLOCKING'."
+    },
+    "VAL-EVAL-005": {
+      "status": "pass",
+      "evidence": "EvaluatorVerdictSchema defines issues as `z.array(EvaluatorIssueSchema).default([])`. The `.default([])` ensures that when the field is omitted from input, it defaults to an empty array (not null/undefined). Two tests verify: (1) parsing a verdict without issues field produces issues: [], (2) after parsing, issues is not null and not undefined. Both pass.",
+      "testFiles": ["tests/evaluator-structured-issues.test.ts"],
+      "testNames": [
+        "EvaluatorVerdictSchema — issues defaults to empty array (VAL-EVAL-005) > issues field defaults to empty array when omitted",
+        "EvaluatorVerdictSchema — issues defaults to empty array (VAL-EVAL-005) > issues is never null or undefined after parsing"
+      ],
+      "observations": "Schema inspection confirms `.default([])` on the issues field. EvaluatorResultSchema in src/schemas/evaluator.ts also uses `.default([])` for the issues field, ensuring consistency across both verdict and result schemas."
+    },
+    "VAL-EVAL-006": {
+      "status": "pass",
+      "evidence": "Three backward compatibility tests verify: (1) old verdict without issues field parses successfully with issues defaulting to [], (2) old verdict with passed:false and no issues field still parses, (3) existing verdict format with all required fields still works. The `.default([])` on the Zod schema ensures verdicts missing the issues field are handled gracefully. The execution loop's EvaluationResult type has `issues?: EvaluatorIssue[]` (optional), so even if issues is absent, the pipeline won't crash.",
+      "testFiles": ["tests/evaluator-structured-issues.test.ts"],
+      "testNames": [
+        "EvaluatorVerdictSchema — backward compatibility (VAL-EVAL-006) > old verdict without issues field parses successfully",
+        "EvaluatorVerdictSchema — backward compatibility (VAL-EVAL-006) > old verdict with passed:false and no issues field still parses",
+        "EvaluatorVerdictSchema — backward compatibility (VAL-EVAL-006) > existing tests still pass — verdict with all required fields"
+      ],
+      "observations": "Full backward compatibility confirmed. Both the Zod schema default and the optional typing in EvaluationResult ensure the pipeline handles missing issues fields gracefully."
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["bun test", "code inspection"],
+  "summary": "Tested 6 assertions: all 6 passed. 82 tests across 2 test files (45 in evaluator-structured-issues.test.ts, 37 in evaluator.test.ts) — 0 failures. Schema inspection confirmed EvaluatorIssueSchema has correct fields (description, severity, category) with proper enums and .strict(). Evaluator prompt inspection confirmed Issue Extraction Guidelines with severity/category classification, test/typecheck checks, secrets detection, and JSON examples. Backward compatibility confirmed via .default([]) on issues field."
+}

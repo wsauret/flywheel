@@ -47,3 +47,6 @@ This mission modifies internal engine code (schemas, execution loop, evaluator, 
 - Knowledge library: Look for `library` or `knowledge` in test filenames, also check prompt builder tests
 - Skill feedback: `tests/schemas/handoff.test.ts`
 - Boundaries: Look for `boundaries` or `config` in test filenames, also check prompt tests
+- Evaluator structured issues: `tests/evaluator-structured-issues.test.ts`, `tests/evaluator.test.ts`
+- Issue gating: `tests/issue-gating.test.ts`, `tests/unified-execution-loop.test.ts`
+- Cross-cutting (evaluator-gating): `tests/integration/handoff-flow.test.ts`, `tests/issue-gating.test.ts`, `tests/unified-execution-loop.test.ts`
