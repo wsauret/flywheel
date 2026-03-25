@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { WorkerHandoffSchema } from "./handoff";
+import { WorkerHandoffBaseSchema } from "./handoff";
 
 /**
  * Subset of WorkerHandoff fields projected for evaluator consumption.
  * Used when structured handoff data is available (Phase 3+).
+ * Uses WorkerHandoffBaseSchema (the z.object) for .pick() support;
+ * cross-field refinements from WorkerHandoffSchema don't apply here
+ * since this is a projection, not full handoff validation.
  */
-export const EvaluatorHandoffDataSchema = WorkerHandoffSchema.pick({
+export const EvaluatorHandoffDataSchema = WorkerHandoffBaseSchema.pick({
   summary: true,
   verification: true,
   artifacts: true,

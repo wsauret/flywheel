@@ -335,11 +335,11 @@ describe("Invalid handoff recovery", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Summary under 100 chars → schema failure, retried
+// 4. Summary quality enforcement — min 20 chars, sentence count, no newlines
 // ---------------------------------------------------------------------------
 
 describe("Summary length validation", () => {
-  it("rejects summary under 100 characters", async () => {
+  it("rejects summary under 20 characters", async () => {
     const hp = handoffPath("short-summary-001");
     fs.writeFileSync(hp, JSON.stringify({ summary: "Too short" }));
 
@@ -352,9 +352,10 @@ describe("Summary length validation", () => {
     }
   });
 
-  it("rejects summary of exactly 99 characters", async () => {
-    const hp = handoffPath("boundary-99-001");
-    fs.writeFileSync(hp, JSON.stringify({ summary: "A".repeat(99) }));
+  it("rejects summary of exactly 19 characters", async () => {
+    const hp = handoffPath("boundary-19-001");
+    // Exactly 19 chars, 1 sentence
+    fs.writeFileSync(hp, JSON.stringify({ summary: "Nineteen chars here" }));
 
     try {
       await readHandoff(hp, WorkerHandoffSchema);
@@ -364,16 +365,28 @@ describe("Summary length validation", () => {
     }
   });
 
-  it("accepts summary of exactly 100 characters", async () => {
-    const hp = handoffPath("boundary-100-001");
-    fs.writeFileSync(hp, JSON.stringify({ summary: "A".repeat(100) }));
+  it("accepts summary at boundary (20+ chars, 1 sentence)", async () => {
+    const hp = handoffPath("boundary-20-001");
+    // Valid summary: >= 20 chars, 1 sentence, no newlines
+    const summary = "Implemented the feature successfully.";
+    fs.writeFileSync(hp, JSON.stringify({ summary }));
 
     const parsed = await readHandoff(hp, WorkerHandoffSchema);
-    expect(parsed.summary.length).toBe(100);
+    expect(parsed.summary.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("accepts summary of 100+ characters (backward compat)", async () => {
+    const hp = handoffPath("boundary-100-compat-001");
+    const summary = "Implemented the full authentication middleware with JWT validation and all tests pass with coverage.";
+    fs.writeFileSync(hp, JSON.stringify({ summary }));
+
+    const parsed = await readHandoff(hp, WorkerHandoffSchema);
+    expect(parsed.summary.length).toBeGreaterThanOrEqual(20);
   });
 
   it("rejects summary over 5000 characters", async () => {
     const hp = handoffPath("long-summary-001");
+    // Single long sentence to avoid sentence count issues
     fs.writeFileSync(hp, JSON.stringify({ summary: "A".repeat(5001) }));
 
     try {
@@ -395,10 +408,10 @@ describe("Summary length validation", () => {
       /* expected */
     }
 
-    // Retry: correct length
+    // Retry: correct length with proper sentences
     fs.writeFileSync(hp, JSON.stringify(validWorkerHandoff()));
     const parsed = await readHandoff(hp, WorkerHandoffSchema);
-    expect(parsed.summary.length).toBeGreaterThanOrEqual(100);
+    expect(parsed.summary.length).toBeGreaterThanOrEqual(20);
   });
 });
 

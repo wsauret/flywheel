@@ -9,6 +9,7 @@ import {
   FindingCountsSchema,
   P3FindingSchema,
   CompoundDocSchema,
+  countSentences,
 } from "../../src/schemas/handoff";
 
 // ---------------------------------------------------------------------------
@@ -180,8 +181,11 @@ describe("CompoundDocSchema", () => {
 // ---------------------------------------------------------------------------
 
 describe("WorkerHandoffSchema", () => {
+  // A valid summary: >= 20 chars, 1-6 sentences, no newlines
+  const validSummary = "Implemented feature X with full test coverage. All 42 tests pass. Typecheck clean.";
+
   const validFull = {
-    summary: "A".repeat(100), // exactly 100 chars — at min boundary
+    summary: validSummary,
     artifacts: {
       files_created: ["src/new.ts"],
       files_modified: ["src/existing.ts"],
@@ -191,7 +195,7 @@ describe("WorkerHandoffSchema", () => {
     warnings: ["Large file detected"],
     verification: {
       tests_passed: true,
-      test_output_summary: "12/12 pass",
+      test_output_summary: "12/12 pass with coverage report showing 95% line coverage.",
     },
     files_to_review: ["src/new.ts"],
     plan_file_path: "docs/plans/plan.md",
@@ -216,7 +220,7 @@ describe("WorkerHandoffSchema", () => {
   };
 
   const validMinimal = {
-    summary: "A".repeat(100),
+    summary: validSummary,
   };
 
   it("parses valid full handoff", () => {
@@ -240,25 +244,28 @@ describe("WorkerHandoffSchema", () => {
     }
   });
 
-  it("enforces .min(100) on summary", () => {
+  it("enforces .min(20) on summary", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(99), // 1 char too short
+      summary: "Too short string.", // < 20 chars
     });
     expect(result.success).toBe(false);
   });
 
   it("enforces .max(5000) on summary", () => {
+    // Single very long sentence to avoid sentence count issues
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(5001), // 1 char too long
+      summary: "A".repeat(5001),
     });
     expect(result.success).toBe(false);
   });
 
-  it("accepts summary at exact boundaries (100 and 5000)", () => {
-    const atMin = WorkerHandoffSchema.safeParse({ summary: "A".repeat(100) });
+  it("accepts summary at exact boundaries (20 and 5000)", () => {
+    // 20 chars, 1 sentence — valid
+    const atMin = WorkerHandoffSchema.safeParse({ summary: "This is twenty chars." });
     expect(atMin.success).toBe(true);
 
-    const atMax = WorkerHandoffSchema.safeParse({ summary: "A".repeat(5000) });
+    // 5000 chars, 1 sentence (no periods except at end) — valid
+    const atMax = WorkerHandoffSchema.safeParse({ summary: "A".repeat(4999) + "." });
     expect(atMax.success).toBe(true);
   });
 
@@ -279,7 +286,7 @@ describe("WorkerHandoffSchema", () => {
 
   it("validates nested sub-schemas strictly", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(100),
+      summary: validSummary,
       artifacts: {
         files_created: [],
         files_modified: [],
@@ -292,7 +299,7 @@ describe("WorkerHandoffSchema", () => {
 
   it("validates open_questions sub-schema strictly", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(100),
+      summary: validSummary,
       open_questions: [
         { question: "Q?", options: ["A"], extra: "fail" },
       ],
@@ -302,9 +309,10 @@ describe("WorkerHandoffSchema", () => {
 
   it("validates verification sub-schema strictly", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(100),
+      summary: validSummary,
       verification: {
         tests_passed: true,
+        test_output_summary: "All tests pass across 42 files.",
         extra: "fail",
       },
     });
@@ -313,7 +321,7 @@ describe("WorkerHandoffSchema", () => {
 
   it("validates finding_counts sub-schema strictly", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(100),
+      summary: validSummary,
       finding_counts: {
         p1_critical: 0,
         p2_important: 0,
@@ -326,7 +334,7 @@ describe("WorkerHandoffSchema", () => {
 
   it("validates p3_findings sub-schema strictly", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(100),
+      summary: validSummary,
       p3_findings: [
         { description: "d", suggestion: "s", extra: "fail" },
       ],
@@ -336,12 +344,248 @@ describe("WorkerHandoffSchema", () => {
 
   it("validates compound_docs sub-schema strictly", () => {
     const result = WorkerHandoffSchema.safeParse({
-      summary: "A".repeat(100),
+      summary: validSummary,
       compound_docs: [
         { title: "t", type: "ty", tags: [], problem: "p", solution: "s", extra: "fail" },
       ],
     });
     expect(result.success).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // Content quality enforcement (VAL-QUALITY-001 through VAL-QUALITY-005)
+  // -------------------------------------------------------------------------
+
+  describe("content quality enforcement", () => {
+    // VAL-QUALITY-001: Summary minimum length enforced (20 chars)
+    it("rejects summary shorter than 20 chars with descriptive error", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Short summary.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msg = result.error.issues.map(i => i.message).join(" ");
+        // Error must include field name, constraint, and fix instruction
+        expect(msg).toContain("summary");
+        expect(msg).toContain("20");
+      }
+    });
+
+    // VAL-QUALITY-005: Summary must not contain newlines
+    it("rejects summary containing \\n with instruction to remove them", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "First line of summary.\nSecond line of summary here.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msg = result.error.issues.map(i => i.message).join(" ");
+        expect(msg.toLowerCase()).toContain("newline");
+      }
+    });
+
+    it("rejects summary containing \\r\\n with instruction to remove them", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "First line of summary.\r\nSecond line of summary here.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msg = result.error.issues.map(i => i.message).join(" ");
+        expect(msg.toLowerCase()).toContain("newline");
+      }
+    });
+
+    // VAL-QUALITY-003: Sentence counting (1-6 sentences)
+    it("accepts summary with exactly 1 sentence", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Implemented the full feature with comprehensive test coverage and type checking.",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts summary with exactly 6 sentences", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "First sentence done. Second sentence done. Third sentence done. Fourth sentence done. Fifth sentence done. Sixth sentence done.",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects summary with more than 6 sentences with error stating count and range", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "One. Two. Three. Four. Five. Six. Seven sentences total.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msg = result.error.issues.map(i => i.message).join(" ");
+        // Error must state count and allowed range
+        expect(msg).toContain("summary");
+        expect(msg).toMatch(/[1-6]/);
+      }
+    });
+
+    it("rejects summary with 0 sentences (empty-ish content)", () => {
+      // A string of spaces/punctuation with >= 20 chars but 0 detectable sentences
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "                              ",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    // VAL-QUALITY-002: Verification required for success claims
+    it("requires test_output_summary >= 10 chars when tests_passed is true", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Implemented feature with full test coverage and type safety.",
+        verification: {
+          tests_passed: true,
+          test_output_summary: "pass", // only 4 chars — too short
+        },
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msg = result.error.issues.map(i => i.message).join(" ");
+        expect(msg).toContain("test_output_summary");
+        expect(msg).toContain("10");
+      }
+    });
+
+    it("requires test_output_summary when tests_passed is true (missing field)", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Implemented feature with full test coverage and type safety.",
+        verification: {
+          tests_passed: true,
+          // test_output_summary is missing
+        },
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msg = result.error.issues.map(i => i.message).join(" ");
+        expect(msg).toContain("test_output_summary");
+      }
+    });
+
+    it("allows missing test_output_summary when tests_passed is false", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Implemented feature but tests are currently failing.",
+        verification: {
+          tests_passed: false,
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("allows missing test_output_summary when tests_passed is null", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Implemented feature and tests were not applicable here.",
+        verification: {
+          tests_passed: null,
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts test_output_summary with >= 10 chars when tests_passed is true", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Implemented feature with full test coverage and type safety.",
+        verification: {
+          tests_passed: true,
+          test_output_summary: "42 tests passing across 8 files.",
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    // VAL-QUALITY-004: All quality errors include field name, constraint, and fix instruction
+    it("summary min-length error includes field name, constraint, and fix", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "Way too short.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msgs = result.error.issues.map(i => i.message);
+        const combined = msgs.join(" ");
+        expect(combined).toContain("summary");
+        expect(combined).toContain("20");
+        expect(combined).toContain("character");
+      }
+    });
+
+    it("sentence count error includes field name, constraint, and range", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "One. Two. Three. Four. Five. Six. Seven. This has too many sentences overall.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msgs = result.error.issues.map(i => i.message);
+        const combined = msgs.join(" ");
+        expect(combined).toContain("summary");
+        expect(combined).toMatch(/1.*6|6.*1/); // mentions both bounds
+      }
+    });
+
+    it("newline error includes instruction to remove line breaks", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "First part of summary.\nSecond part continues here.",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const msgs = result.error.issues.map(i => i.message);
+        const combined = msgs.join(" ");
+        expect(combined.toLowerCase()).toContain("newline");
+        expect(combined.toLowerCase()).toContain("remove");
+      }
+    });
+
+    // Backward compatibility: existing valid handoffs still parse
+    it("existing valid handoffs still parse correctly (backward compat)", () => {
+      const result = WorkerHandoffSchema.safeParse(validFull);
+      expect(result.success).toBe(true);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// countSentences helper
+// ---------------------------------------------------------------------------
+
+describe("countSentences", () => {
+  it("counts simple sentences ending with period", () => {
+    expect(countSentences("One sentence. Two sentences.")).toBe(2);
+  });
+
+  it("counts sentences ending with exclamation mark", () => {
+    expect(countSentences("Hello! World!")).toBe(2);
+  });
+
+  it("counts sentences ending with question mark", () => {
+    expect(countSentences("What? How? Why?")).toBe(3);
+  });
+
+  it("handles mixed punctuation", () => {
+    expect(countSentences("First. Second! Third?")).toBe(3);
+  });
+
+  it("returns 0 for empty string", () => {
+    expect(countSentences("")).toBe(0);
+  });
+
+  it("returns 0 for whitespace only", () => {
+    expect(countSentences("   ")).toBe(0);
+  });
+
+  it("returns 1 for single sentence without trailing punctuation", () => {
+    expect(countSentences("Just one sentence")).toBe(1);
+  });
+
+  it("normalizes multiple spaces", () => {
+    expect(countSentences("One.   Two.   Three.")).toBe(3);
+  });
+
+  it("handles trailing punctuation without trailing space", () => {
+    expect(countSentences("One. Two.")).toBe(2);
+  });
+
+  it("handles multiple punctuation marks (e.g., '...')", () => {
+    // "One... Two." — the '...' split should count as one separator
+    expect(countSentences("One... Two.")).toBe(2);
   });
 });
 

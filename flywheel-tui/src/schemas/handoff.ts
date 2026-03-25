@@ -2,6 +2,21 @@ import { z } from "zod";
 import { ValidationCriteriaSchema, WorkerConfigSchema } from "../schemas/shared";
 
 // ---------------------------------------------------------------------------
+// Content quality helpers (adapted from Droid createSalientSummarySchema)
+// ---------------------------------------------------------------------------
+
+/**
+ * Count sentences in text. Normalizes whitespace, strips trailing punctuation,
+ * then splits on sentence-ending punctuation followed by whitespace.
+ * Adapted from Droid's countSentences (ZY8) in droid-diagnostics-marketplace.js.
+ */
+export function countSentences(text: string): number {
+  const normalized = text.replace(/\s+/g, " ").trim().replace(/[.!?]+\s*$/, "");
+  if (!normalized) return 0;
+  return normalized.split(/[.!?]+\s+/).filter(Boolean).length;
+}
+
+// ---------------------------------------------------------------------------
 // Sub-schemas (all .strict() — LLM typos should cause retries)
 // ---------------------------------------------------------------------------
 
@@ -58,10 +73,46 @@ export type CompoundDoc = z.infer<typeof CompoundDocSchema>;
 // ---------------------------------------------------------------------------
 // WorkerHandoffSchema
 // Per-workflow fields, all optional except summary.
+// Content quality enforcement adapted from Droid's createSalientSummarySchema.
 // ---------------------------------------------------------------------------
 
-export const WorkerHandoffSchema = z.object({
-  summary: z.string().min(100).max(5000),
+const SUMMARY_MIN_LENGTH = 20;
+const SUMMARY_MAX_LENGTH = 5000;
+const SUMMARY_MAX_SENTENCES = 6;
+const TEST_OUTPUT_MIN_LENGTH = 10;
+
+/**
+ * Base object schema for WorkerHandoff without cross-field refinements.
+ * Exported so consumers can use .pick() / .omit() for projections
+ * (e.g., EvaluatorHandoffDataSchema). The full WorkerHandoffSchema
+ * adds superRefine cross-field checks on top.
+ */
+export const WorkerHandoffBaseSchema = z.object({
+  summary: z.string()
+    .min(SUMMARY_MIN_LENGTH, {
+      message: `summary must be at least ${SUMMARY_MIN_LENGTH} characters. Provide a more detailed summary describing what was accomplished.`,
+    })
+    .max(SUMMARY_MAX_LENGTH, {
+      message: `summary must be at most ${SUMMARY_MAX_LENGTH} characters. Shorten the summary to be more concise.`,
+    })
+    .refine(
+      (s) => !s.includes("\n") && !s.includes("\r"),
+      {
+        message: "summary must not contain newline characters (\\n or \\r\\n). Remove all line breaks and write the summary as a single paragraph.",
+      },
+    )
+    .refine(
+      (s) => {
+        const count = countSentences(s);
+        return count >= 1 && count <= SUMMARY_MAX_SENTENCES;
+      },
+      (s) => {
+        const count = countSentences(s);
+        return {
+          message: `summary has ${count} sentence(s) but must contain between 1 and ${SUMMARY_MAX_SENTENCES} sentences. Adjust the summary to have 1–${SUMMARY_MAX_SENTENCES} sentences.`,
+        };
+      },
+    ),
   artifacts: ArtifactsSchema.optional(),
   decisions: z.array(z.string()).optional(),
   warnings: z.array(z.string()).optional(),
@@ -74,6 +125,25 @@ export const WorkerHandoffSchema = z.object({
   p3_findings: z.array(P3FindingSchema).optional(),
   compound_docs: z.array(CompoundDocSchema).optional(),
 }).strict();
+
+/**
+ * Full WorkerHandoffSchema with cross-field quality refinements.
+ * This is the schema used for validation at handoff time.
+ */
+export const WorkerHandoffSchema = WorkerHandoffBaseSchema.superRefine((data, ctx) => {
+  // VAL-QUALITY-002: When tests_passed is true, test_output_summary must be
+  // present and at least TEST_OUTPUT_MIN_LENGTH characters.
+  if (data.verification?.tests_passed === true) {
+    const summary = data.verification.test_output_summary;
+    if (!summary || summary.length < TEST_OUTPUT_MIN_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["verification", "test_output_summary"],
+        message: `test_output_summary must be at least ${TEST_OUTPUT_MIN_LENGTH} characters when tests_passed is true. Describe what tests passed and their output.`,
+      });
+    }
+  }
+});
 
 export type WorkerHandoff = z.infer<typeof WorkerHandoffSchema>;
 
