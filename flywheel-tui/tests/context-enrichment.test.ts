@@ -154,12 +154,17 @@ describe("enrichPromptWithContext", () => {
     expect(result).toContain("[truncated]");
     // Original prompt should still be present
     expect(result).toContain("Original prompt");
-    // The included content should be at most ~8KB of X's
-    const headerAndContext = result.split("---\n\n")[0];
-    // Content bytes should be around the budget (with some overhead for headers)
-    const xCount = (headerAndContext.match(/X/g) || []).length;
-    expect(xCount).toBeLessThanOrEqual(INLINE_CONTENT_BUDGET);
-    expect(xCount).toBeGreaterThan(0);
+    // Extract the file content section between the file path header and [truncated] marker.
+    // This avoids counting X characters that may appear in the random temp dir path.
+    const fileHeader = `### ${bigFile}\n`;
+    const headerStart = result.indexOf(fileHeader);
+    const contentStart = headerStart + fileHeader.length;
+    const truncatedMarker = result.indexOf("\n[truncated]", contentStart);
+    const fileContent = result.substring(contentStart, truncatedMarker);
+    // Content bytes should be at most the budget
+    const contentBytes = Buffer.byteLength(fileContent, "utf-8");
+    expect(contentBytes).toBeLessThanOrEqual(INLINE_CONTENT_BUDGET);
+    expect(contentBytes).toBeGreaterThan(0);
   });
 
   it("reads files with subdirectory paths within projectCwd", async () => {
