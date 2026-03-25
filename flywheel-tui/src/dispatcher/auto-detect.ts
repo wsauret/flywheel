@@ -2,16 +2,19 @@
  * Auto-detect — selects the best available dispatcher transport based on engine config.
  *
  * Engine routing:
- * - Claude: always uses SubprocessTransport (SDK is OpenCode-only)
- * - OpenCode: tries SDK first, falls back to SubprocessTransport
+ * - Claude: always uses SubprocessTransport with BunProcessSpawner
+ * - OpenCode: tries SdkSpawner first (full streaming via SDK), falls back to SubprocessTransport
  *
- * The server is owned by the returned handle — caller must call `dispose()`
- * to stop it when the pipeline finishes.
+ * When SDK is available, a SdkSpawner is created and passed to SubprocessTransport.
+ * This gives full streaming (thinking text, tool use events) through the same
+ * infrastructure the worker already uses, replacing the old synchronous SdkTransport.
+ *
+ * The SdkSpawner owns its server lifecycle — caller must call `dispose()` to stop it.
  */
 
 import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
-import { SDK_AVAILABLE, SdkTransport, _createOpencodeServer } from "./sdk-transport";
+import { SDK_AVAILABLE } from "./sdk-transport";
 import { SubprocessTransport } from "./subprocess-transport";
 import { Log } from "../utils/log";
 
@@ -45,39 +48,42 @@ export interface AutoDetectOptions {
   logBaseDir?: string;
 }
 
-// Server singleton — shared across all pipelines in the same process.
-// Started once, reused until process exit.
-let _serverInstance: { url: string; close(): void } | null = null;
-let _serverStarting: Promise<{ url: string; close(): void } | null> | null = null;
+// SdkSpawner singleton — shared across all pipelines in the same process.
+// Created once, reused until process exit.
+let _sdkSpawner: ProcessSpawner & { dispose(): void } | null = null;
+let _sdkSpawnerCreating: Promise<(ProcessSpawner & { dispose(): void }) | null> | null = null;
 
 /**
- * Get or start the shared OpenCode API server.
- * Returns null if the server cannot be started.
+ * Get or create the shared SdkSpawner instance.
+ * Returns null if the SDK is not available or the spawner cannot be created.
+ *
+ * Exported so the evaluator transport can share the same singleton.
  */
-async function getOrStartServer(timeoutMs: number): Promise<{ url: string; close(): void } | null> {
-  if (_serverInstance) return _serverInstance;
+export async function getOrCreateSdkSpawner(): Promise<(ProcessSpawner & { dispose(): void }) | null> {
+  if (_sdkSpawner) return _sdkSpawner;
 
   // Deduplicate concurrent calls
-  if (_serverStarting) return _serverStarting;
+  if (_sdkSpawnerCreating) return _sdkSpawnerCreating;
 
-  _serverStarting = (async () => {
-    if (!_createOpencodeServer) return null;
+  _sdkSpawnerCreating = (async () => {
     try {
-      const server = await _createOpencodeServer({ timeout: timeoutMs });
-      _serverInstance = server;
-      log.info("opencode API server started", { url: server.url });
-      return server;
+      // Dynamic import — only loaded when SDK is available
+      const { SdkSpawner } = await import("../worker/sdk-spawner");
+      const spawner = new SdkSpawner();
+      _sdkSpawner = spawner;
+      log.info("SdkSpawner created for dispatcher (streaming mode)");
+      return spawner;
     } catch (err) {
-      log.warn("failed to start opencode API server", {
+      log.warn("failed to create SdkSpawner for dispatcher", {
         error: err instanceof Error ? err.message : String(err),
       });
       return null;
     } finally {
-      _serverStarting = null;
+      _sdkSpawnerCreating = null;
     }
   })();
 
-  return _serverStarting;
+  return _sdkSpawnerCreating;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +95,7 @@ async function getOrStartServer(timeoutMs: number): Promise<{ url: string; close
  *
  * Engine-aware routing:
  * - Claude: skip SDK entirely (it's OpenCode-only), use Claude Code subprocess
- * - OpenCode: try SDK first, fall back to OpenCode subprocess
+ * - OpenCode: try SdkSpawner first (streaming via SDK), fall back to CLI subprocess
  * - Default (no engine specified): existing behavior (try SDK → subprocess with opencode)
  */
 export async function autoDetectTransport(
@@ -111,24 +117,29 @@ export async function autoDetectTransport(
     return { transport, label: "cli", dispose: () => {} };
   }
 
-  // OpenCode engine: try SDK first, fall back to subprocess
-  if (SDK_AVAILABLE && _createOpencodeServer) {
-    const server = await getOrStartServer(options.serverTimeoutMs ?? 10_000);
-    if (server) {
-      const transport = new SdkTransport({
-        baseUrl: server.url,
+  // OpenCode engine: try SdkSpawner first, fall back to subprocess
+  if (SDK_AVAILABLE) {
+    const sdkSpawner = await getOrCreateSdkSpawner();
+    if (sdkSpawner) {
+      log.info("using SdkSpawner with SubprocessTransport for dispatcher (streaming mode)");
+      const transport = new SubprocessTransport({
+        spawner: sdkSpawner,
+        engineName,
         dispatcherModel: options.dispatcherModel,
+        onStdout: options.onStdout,
+        onStderr: options.onStderr,
+        logBaseDir: options.logBaseDir,
       });
       return {
         transport,
         label: "sdk",
         dispose: () => {
-          // Server is a singleton — don't close it here, it's shared.
+          // SdkSpawner is a singleton — don't dispose it here, it's shared.
           // It will be cleaned up on process exit.
         },
       };
     }
-    log.warn("SDK available but server failed to start, falling back to subprocess");
+    log.warn("SDK available but SdkSpawner creation failed, falling back to subprocess");
   }
 
   const transport = new SubprocessTransport({

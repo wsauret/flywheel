@@ -641,18 +641,30 @@ export class OpenTUIAdapter extends BaseUIAdapter {
    * Returns null if the event contains no actionable activity.
    */
   private extractActivityInfo(data: Record<string, unknown>): { name: string; detail: string } | null {
-    // Claude assistant message with content blocks (tool_use or text)
-    if (data.type === "assistant" && Array.isArray(data.content)) {
-      // Prefer tool_use blocks over text blocks
-      for (const block of data.content as Record<string, unknown>[]) {
+    // Claude assistant message — content may be at data.content or data.message.content
+    const content =
+      (Array.isArray(data.content) ? data.content : null) ??
+      (data.message && typeof data.message === "object"
+        ? (Array.isArray((data.message as Record<string, unknown>).content)
+            ? (data.message as Record<string, unknown>).content as unknown[]
+            : null)
+        : null);
+
+    if (data.type === "assistant" && content) {
+      // Prefer tool_use blocks over text/thinking blocks
+      for (const block of content as Record<string, unknown>[]) {
         if (block.type === "tool_use" && typeof block.name === "string") {
           const input = block.input as Record<string, unknown> | undefined;
           const detail = this.extractToolDetail(block.name, input);
           return { name: block.name, detail };
         }
       }
-      // Fall back to text blocks for thinking content
-      for (const block of data.content as Record<string, unknown>[]) {
+      // Fall back to thinking blocks, then text blocks
+      for (const block of content as Record<string, unknown>[]) {
+        if (block.type === "thinking" && typeof block.thinking === "string") {
+          const line = this.extractLastMeaningfulLine(block.thinking);
+          if (line) return { name: "Thinking", detail: line };
+        }
         if (block.type === "text" && typeof block.text === "string") {
           const line = this.extractLastMeaningfulLine(block.text);
           if (line) return { name: "Thinking", detail: line };
@@ -667,12 +679,18 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       return { name: data.name, detail };
     }
 
-    // Claude streaming content_block_delta with text_delta
+    // Claude streaming content_block_delta with text_delta or thinking_delta
     if (data.type === "content_block_delta") {
       const delta = data.delta as Record<string, unknown> | undefined;
-      if (delta && delta.type === "text_delta" && typeof delta.text === "string") {
-        const line = this.extractLastMeaningfulLine(delta.text);
-        if (line) return { name: "Thinking", detail: line };
+      if (delta) {
+        if (delta.type === "thinking_delta" && typeof delta.thinking === "string") {
+          const line = this.extractLastMeaningfulLine(delta.thinking);
+          if (line) return { name: "Thinking", detail: line };
+        }
+        if (delta.type === "text_delta" && typeof delta.text === "string") {
+          const line = this.extractLastMeaningfulLine(delta.text);
+          if (line) return { name: "Thinking", detail: line };
+        }
       }
     }
 

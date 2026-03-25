@@ -49,8 +49,8 @@ describe("createEvaluatorTransport", () => {
     createEvaluatorTransport = mod.createEvaluatorTransport;
   });
 
-  it("creates a transport with claude engine", () => {
-    const transport = createEvaluatorTransport({
+  it("creates a transport with claude engine", async () => {
+    const transport = await createEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
     });
@@ -58,8 +58,8 @@ describe("createEvaluatorTransport", () => {
     expect(typeof transport.invoke).toBe("function");
   });
 
-  it("creates a transport with opencode engine", () => {
-    const transport = createEvaluatorTransport({
+  it("creates a transport with opencode engine", async () => {
+    const transport = await createEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "opencode",
     });
@@ -67,8 +67,8 @@ describe("createEvaluatorTransport", () => {
     expect(typeof transport.invoke).toBe("function");
   });
 
-  it("defaults to opencode when no engine specified", () => {
-    const transport = createEvaluatorTransport({
+  it("defaults to opencode when no engine specified", async () => {
+    const transport = await createEvaluatorTransport({
       spawner: mockSpawner,
     });
     expect(transport).toBeDefined();
@@ -97,7 +97,7 @@ describe("createEvaluatorTransport", () => {
       },
     };
 
-    const transport = createEvaluatorTransport({
+    const transport = await createEvaluatorTransport({
       spawner: capturingSpawner,
       engineName: "claude",
       evaluatorModel: "haiku",
@@ -140,7 +140,7 @@ describe("createEvaluatorTransport", () => {
       },
     };
 
-    const transport = createEvaluatorTransport({
+    const transport = await createEvaluatorTransport({
       spawner: capturingSpawner,
       engineName: "claude",
     });
@@ -158,13 +158,13 @@ describe("createEvaluatorTransport", () => {
     expect(spawnedCommand).toBe("claude");
   });
 
-  it("throws when engine binary not found (nonexistent engine)", () => {
-    expect(() =>
+  it("throws when engine binary not found (nonexistent engine)", async () => {
+    await expect(
       createEvaluatorTransport({
         spawner: mockSpawner,
         engineName: "nonexistent-engine",
       }),
-    ).toThrow("nonexistent-engine");
+    ).rejects.toThrow("nonexistent-engine");
   });
 });
 

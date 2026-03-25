@@ -639,12 +639,13 @@ export function FlywheelShell() {
       }
 
       // Create engine-aware evaluator transport (same engine/model config as dispatcher).
+      // Uses SdkSpawner when available for OpenCode (shared singleton with dispatcher).
       let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
       if (!deps.config.skip_evaluation) {
         try {
           const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
           const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
-          evaluatorTransport = createEvaluatorTransport({
+          evaluatorTransport = await createEvaluatorTransport({
             spawner: deps.spawner,
             engineName: deps.config.engine,
             evaluatorModel: evalModel,
@@ -1063,13 +1064,14 @@ export function FlywheelShell() {
         dispatcherTransport = resolved.transport
       } catch { /* fallback to static prompts */ }
 
-      // Create engine-aware evaluator transport for the resumed session
+      // Create engine-aware evaluator transport for the resumed session.
+      // Uses SdkSpawner when available for OpenCode (shared singleton with dispatcher).
       let resumeEvaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
       if (!deps.config.skip_evaluation) {
         try {
           const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
           const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
-          resumeEvaluatorTransport = createEvaluatorTransport({
+          resumeEvaluatorTransport = await createEvaluatorTransport({
             spawner: deps.spawner,
             engineName: deps.config.engine,
             evaluatorModel: evalModel,
