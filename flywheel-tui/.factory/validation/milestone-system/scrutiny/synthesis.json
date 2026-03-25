@@ -1,0 +1,100 @@
+{
+  "milestone": "milestone-system",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun test",
+      "exitCode": 0,
+      "details": "3647 tests passed, 0 failures, 10324 expect() calls across 143 files in 26.22s"
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bunx tsc --noEmit",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": null,
+      "command": null,
+      "exitCode": null,
+      "details": "No lint command configured in services.yaml or package.json"
+    }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added 'Validation Contract and State' section to .factory/library/architecture.md documenting validation-contract.md naming convention, validation-state.json schema, plan workflow lifecycle (draft → review → consolidate), and milestone/fulfills annotation formats. Also documented that plan content parsing lives in src/controller/plan-parser.ts, not src/state/reader.ts.",
+      "sourceFeature": "plan-generates-contract, validation-contract-format, milestone-plan-markers"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Update the Architecture quick reference 'Key Files to Modify' section: under Milestones, change 'src/state/reader.ts — Parse milestone markers' to 'src/controller/plan-parser.ts — Parse milestone markers, fulfills annotations'. The state reader.ts handles .state.md files, not plan content parsing.",
+      "evidence": "Feature milestone-plan-markers was described with 'Key files: src/state/reader.ts (plan parsing)' but the actual implementation correctly lives in src/controller/plan-parser.ts. The reviewer for milestone-plan-markers flagged this mismatch.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add a brief note about the state file annotation system in the Plan File Format section: 'State file annotations use (key=value) syntax in parentheses after phase checkboxes (e.g., `- [x] Phase 1: Setup (milestone=setup)`). The generic ANNOTATION_RE regex in src/state/reader.ts handles all key-value pairs.' This is an extensible mechanism that future workers should be aware of.",
+      "evidence": "Feature milestone-state-tracking worker discovered the existing annotation system and correctly leveraged it instead of modifying reader/writer code. The reviewer noted this capability is undocumented in AGENTS.md.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add src/controller/milestone-tracker.ts to the Pipeline and execution table in the Architecture quick reference section.",
+      "evidence": "New file created by milestone-state-tracking feature, integral to the pipeline's milestone detection and validation injection flow.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Droid reference uses flat map for validation-state.json but implementation uses wrapped {assertions: {...}} format",
+      "reason": "Intentional design — the wrapped format was explicitly specified in the feature description and validation contract. Downstream features already implement against it."
+    },
+    {
+      "observation": "Field name divergence from Droid (lastChecked/evidence vs validatedAtMilestone/issues)",
+      "reason": "Intentional adaptation — the feature spec explicitly defines these field names as the Flywheel convention, diverging from Droid's naming. Both downstream features and the validation-state.json in the mission already use the Flywheel convention."
+    },
+    {
+      "observation": "Skill procedure should note 'verify existing infrastructure first before writing new code'",
+      "reason": "While a valid suggestion, this is too generic for a specific skill procedure change. It's a general engineering principle that applies to all features, not a skill-specific procedural gap."
+    }
+  ],
+  "nonBlockingIssues": [
+    {
+      "featureId": "milestone-state-tracking",
+      "description": "VALIDATION_SKILL_NAMES uses Object.freeze() instead of 'as const' for narrower TypeScript types",
+      "severity": "non_blocking"
+    },
+    {
+      "featureId": "validation-contract-format",
+      "description": "lastChecked field lacks z.string().datetime() validation — any arbitrary string accepted as timestamp",
+      "severity": "non_blocking"
+    },
+    {
+      "featureId": "validation-contract-format",
+      "description": "ValidationStateSchema and AssertionStatusSchema do not use .strict() — could miss unexpected fields from LLM-generated state",
+      "severity": "non_blocking"
+    },
+    {
+      "featureId": "plan-generates-contract",
+      "description": "Contract filename hardcoded to shared path — concurrent sessions writing to same plans dir could overwrite each other",
+      "severity": "non_blocking"
+    },
+    {
+      "featureId": "plan-generates-contract",
+      "description": "Plan review prompt (review.ts) has no awareness of validation contract or fulfills — reviewers won't check contract completeness",
+      "severity": "non_blocking"
+    }
+  ],
+  "previousRound": null
+}

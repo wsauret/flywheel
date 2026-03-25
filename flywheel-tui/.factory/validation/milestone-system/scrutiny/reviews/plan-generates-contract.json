@@ -1,0 +1,45 @@
+{
+  "featureId": "plan-generates-contract",
+  "reviewedAt": "2026-03-25T16:30:00.000Z",
+  "commitId": "33cddeb",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean implementation that adds validation contract generation instructions to both the plan draft and consolidate prompts. All 6 expectedBehavior items are covered: contract generation instruction, VAL-AREA-NNN ID format, assertion structure (ID/title/behavioral description/evidence), cross-area flow assertions, milestone markers, and fulfills annotations. The draft prompt includes a comprehensive template with examples. The consolidate prompt adds milestone/fulfills format to the plan template, quality checks for completeness, and a separate contract generation section. 12 new tests cover all requirements. No regressions (3647 tests pass, typecheck clean).",
+    "issues": [
+      {
+        "file": "src/prompts/plan/consolidate.ts",
+        "line": 202,
+        "severity": "non_blocking",
+        "description": "The contract output path is hardcoded to `${DEFAULT_PLANS_DIR}/validation-contract.md` (a fixed filename). If multiple plans are generated in the same plans directory, they would share/overwrite the same validation contract. Consider making the contract filename match the plan filename (e.g., `feat-auth-jwt.validation-contract.md`) or placing it alongside the plan file. This is acceptable for now since plans are typically one-per-session, but could cause issues with concurrent sessions writing to the same plans dir."
+      },
+      {
+        "file": "src/prompts/plan/draft.ts",
+        "line": 130,
+        "severity": "non_blocking",
+        "description": "The draft prompt says 'After the plan, generate a validation-contract.md file' but doesn't specify a file path for writing (unlike the consolidate prompt which specifies `${DEFAULT_PLANS_DIR}/validation-contract.md`). The draft prompt is used in the initial plan drafting phase where the AI may not write files to disk (file writing happens in consolidate), so this is likely intentional — the draft produces content and the consolidate writes it. However, the asymmetry could confuse an AI that tries to write the contract during the draft phase."
+      },
+      {
+        "file": "src/prompts/plan/review.ts",
+        "line": null,
+        "severity": "non_blocking",
+        "description": "The plan review prompt (review.ts) has no awareness of the validation contract or fulfills annotations. When reviewers assess the plan, they won't check whether the contract is well-formed or whether fulfills annotations are complete. This is a gap in the review pipeline but is outside the scope of this specific feature."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The validation contract file naming convention (validation-contract.md in the plans dir) is not documented in AGENTS.md or any convention file. Future workers modifying plan-related features won't know this convention exists unless they read the prompt templates directly.",
+      "evidence": "src/prompts/plan/consolidate.ts:202 hardcodes `${DEFAULT_PLANS_DIR}/validation-contract.md` but this convention appears nowhere in AGENTS.md or .factory/library/"
+    },
+    {
+      "area": "knowledge",
+      "observation": "The plan workflow has a three-step process (draft → review → consolidate) where the draft generates content and the consolidate writes to disk. The validation contract follows this pattern (draft describes the format, consolidate specifies the output path). This multi-step plan workflow lifecycle is not documented in .factory/library/ but is important for anyone modifying plan prompts.",
+      "evidence": "draft.ts says 'generate a validation-contract.md file' (no path), consolidate.ts says 'Write it to: ${DEFAULT_PLANS_DIR}/validation-contract.md' (explicit path). The asymmetry is intentional per the workflow lifecycle."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. The implementation cleanly adds validation contract generation instructions to both plan workflow prompts (draft and consolidate). All 6 expectedBehavior items are satisfied with good coverage. The draft prompt includes comprehensive format specification with assertion ID convention (VAL-AREA-NNN), assertion structure, per-area grouping, cross-area flows section, and a complete template example. The consolidate prompt integrates milestone markers and fulfills annotations into the plan template, adds quality checks for completeness, and includes an explicit contract file generation instruction. 12 well-structured tests verify all requirements. No blocking issues found; 3 non-blocking observations noted (shared contract filename, draft/consolidate path asymmetry, review prompt not updated)."
+}

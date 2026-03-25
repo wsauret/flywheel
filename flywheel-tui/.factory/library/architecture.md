@@ -87,6 +87,31 @@ Plans are markdown with `### Phase N: Title` headings and `- [ ]` checklists.
 State tracked in `.state.md` files with YAML frontmatter and `## Progress` section.
 Phase statuses: `[x]` completed, `[ ]` pending, `[~]` in_progress.
 
+## Validation Contract and State
+
+The plan workflow generates a `validation-contract.md` file alongside the plan. The naming convention is:
+- Contract file: `${DEFAULT_PLANS_DIR}/validation-contract.md` (set in consolidate prompt, `src/prompts/plan/consolidate.ts`)
+- Validation state: `validation-state.json` in the project root (read/write via `src/controller/validation-state.ts`)
+
+Validation state uses a wrapped schema: `{ assertions: { [id]: { status, lastChecked?, evidence? } } }` (defined in `src/schemas/validation.ts`). Status values: `pending | passed | failed | blocked`.
+
+### Plan Workflow Lifecycle (Draft → Review → Consolidate)
+
+The plan workflow has a three-step process:
+1. **Draft** (`src/prompts/plan/draft.ts`) — AI generates plan content and validation contract format specification. No file paths are specified; this is content generation only.
+2. **Review** (`src/prompts/plan/review.ts`) — Plan is assessed for quality. Currently does not validate contract or fulfills completeness.
+3. **Consolidate** (`src/prompts/plan/consolidate.ts`) — Writes the final plan and contract to disk with explicit file paths. Adds milestone markers, fulfills annotations, and quality checks.
+
+This lifecycle means content and file writing are separated: draft describes *what*, consolidate specifies *where*.
+
+### Milestone and Fulfills Annotations
+
+- Milestone markers: `## Milestone: <name>` (H2 header, strict format) parsed by `src/controller/plan-parser.ts`
+- Fulfills annotations: `<!-- fulfills: VAL-AUTH-001, VAL-AUTH-002 -->` HTML comments parsed by `src/controller/plan-parser.ts`
+- State file annotations: `(milestone=name)` key-value pairs in parentheses, handled by generic `ANNOTATION_RE` in `src/state/reader.ts` (line 52)
+
+**Important:** Plan content parsing lives in `src/controller/plan-parser.ts`, NOT `src/state/reader.ts`. The state reader handles `.state.md` files, not plan markdown.
+
 ## Transport Interface Pattern
 
 Both dispatcher and evaluator follow:
