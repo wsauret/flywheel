@@ -112,12 +112,22 @@ feature: <short name>
 
 ## Implementation Checklist
 
+## Milestone: <Milestone Name>
+
 ### Phase 1: <Name>
+<!-- fulfills: VAL-AREA-001, VAL-AREA-002 -->
 - [ ] **1.1 Test**: ...
 - [ ] **1.2 Implement**: ...
 ...
 
+### Phase 2: <Name>
+<!-- fulfills: VAL-AREA-003 -->
+...
+
+## Milestone: <Next Milestone>
+
 ### Phase N: <Name>
+<!-- fulfills: VAL-OTHER-001 -->
 ...
 
 ## Technical Reference
@@ -132,6 +142,14 @@ feature: <short name>
 
 <Supporting research, alternatives considered, risk analysis>
 \`\`\`
+
+### Milestone Markers
+
+Group related phases under \`## Milestone: <Name>\` headers. Each milestone should be an independently verifiable deliverable. Milestones enable automatic validation at completion boundaries.
+
+### Fulfills Annotations
+
+Each phase MUST include a \`<!-- fulfills: VAL-AREA-NNN, ... -->\` HTML comment immediately after the phase heading. This links phases to validation contract assertions. Every assertion must be claimed by exactly one phase.
 
 ## Synthesis Principles
 
@@ -161,6 +179,9 @@ Before finalizing, verify:
 - [ ] All file references use file:line format where possible
 - [ ] Open questions are all resolved (none remaining)
 - [ ] The plan can be executed phase-by-phase without ambiguity
+- [ ] Every phase has a \`<!-- fulfills: ... -->\` annotation
+- [ ] Every assertion in the validation contract is claimed by exactly one phase
+- [ ] Phases are grouped under \`## Milestone:\` markers
 
 ## IMPORTANT: Write the plan file to disk
 
@@ -174,6 +195,20 @@ Example: \`${DEFAULT_PLANS_DIR}/feat-auth-jwt.md\`
 
 Create the \`${DEFAULT_PLANS_DIR}/\` directory if it does not exist.
 The filename MUST appear in your output so downstream tools can locate it.
+
+## IMPORTANT: Generate the validation contract
+
+You MUST also generate a \`validation-contract.md\` file alongside the plan. Write it to:
+\`${DEFAULT_PLANS_DIR}/validation-contract.md\`
+
+The validation contract defines testable assertions using the \`VAL-<AREA>-<NNN>\` ID format (e.g., \`VAL-AUTH-001\`, \`VAL-API-003\`). Each assertion has:
+- An ID and title
+- A behavioral description of the expected system behavior
+- Evidence requirements (how to verify)
+
+Group assertions under \`## Area: <Name>\` sections matching the plan's functional areas. Include a \`## Cross-Area Flows\` section for assertions spanning multiple areas (using \`VAL-CROSS-NNN\` IDs).
+
+Every assertion must be referenced by exactly one phase's \`<!-- fulfills: ... -->\` annotation in the plan.
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_CONSOLIDATE_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }
