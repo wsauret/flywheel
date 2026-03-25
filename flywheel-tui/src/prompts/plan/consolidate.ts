@@ -198,8 +198,13 @@ The filename MUST appear in your output so downstream tools can locate it.
 
 ## IMPORTANT: Generate the validation contract
 
-You MUST also generate a \`validation-contract.md\` file alongside the plan. Write it to:
-\`${DEFAULT_PLANS_DIR}/validation-contract.md\`
+You MUST also generate a \`validation-contract.md\` file alongside the plan. The filename MUST be derived from the plan filename to prevent concurrent session overwrites. If the plan is \`<type>-<description>.md\`, the contract MUST be \`<type>-<description>.validation-contract.md\`.
+
+Write it to:
+\`${DEFAULT_PLANS_DIR}/<type>-<description>.validation-contract.md\`
+
+Example: If the plan is \`feat-auth-jwt.md\`, the contract is \`feat-auth-jwt.validation-contract.md\`.
+Both files go in the same \`${DEFAULT_PLANS_DIR}/\` directory.
 
 The validation contract defines testable assertions using the \`VAL-<AREA>-<NNN>\` ID format (e.g., \`VAL-AUTH-001\`, \`VAL-API-003\`). Each assertion has:
 - An ID and title

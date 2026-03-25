@@ -153,7 +153,8 @@ findings: { p1: <count>, p2: <count>, p3: <count> }
 2. **Critical Findings (P1)** — Table: finding, file:line, reviewer, required action
 3. **Important Findings (P2)** — Table: finding, file:line, reviewer, recommended action
 4. **Minor Findings (P3)** — Bulleted list with deferred items noted
-5. **Implementation Order** — Ordered list of fixes grouped by file, respecting dependencies
+5. **Validation Contract Compliance** — If a validation contract exists alongside the plan, include: coverage completeness (all assertions claimed?), orphaned assertion IDs, duplicate claims, and any \`<!-- fulfills: ... -->\` annotations referencing non-existent assertions. Omit this section if no contract is present.
+6. **Implementation Order** — Ordered list of fixes grouped by file, respecting dependencies
 
 The review document must be consumable as an implementation plan. A developer should be able to go through it top-to-bottom and address every finding.
 

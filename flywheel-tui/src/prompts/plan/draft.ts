@@ -127,7 +127,7 @@ Every assertion ID in the validation contract must be claimed by exactly one pha
 
 ## Validation Contract Output
 
-After the plan, generate a \`validation-contract.md\` file that defines the acceptance criteria as testable assertions. This contract is the formal specification of what "done" means.
+After the plan, generate a validation contract file that defines the acceptance criteria as testable assertions. This contract is the formal specification of what "done" means. The filename MUST be derived from the plan filename: if the plan is \`<type>-<description>.md\`, the contract MUST be \`<type>-<description>.validation-contract.md\` in the same directory. This ensures concurrent sessions do not overwrite each other's contracts.
 
 ### Assertion ID Format
 

@@ -172,7 +172,7 @@ ls -t .flywheel/log/*.log | head -1 | xargs cat | grep -E '^(ERROR|WARN)'
 src/
 ├── cli/           # CLI entry point, arg parsing
 ├── config/        # Config loading (TOML), schema, defaults
-├── controller/    # Work controller, pipeline, phase execution, approval
+├── controller/    # Work controller, pipeline, phase execution, approval, plan parsing, milestone tracking
 ├── dispatcher/    # Prompt assembly, CLI/SDK transports, auto-detection
 ├── engines/       # Engine registry, Claude + OpenCode providers
 ├── evaluator/     # Phase output evaluation
@@ -252,6 +252,9 @@ The `EventBus` is a synchronous pub/sub system. `FlywheelEmitter` is a typed fac
 | Phase execution | `src/controller/phase-executor.ts` |
 | Execution loop | `src/controller/execution-loop.ts` |
 | Stage context accumulator | `src/controller/stage-context.ts` |
+| Milestone tracker | `src/controller/milestone-tracker.ts` |
+| Plan parser | `src/controller/plan-parser.ts` |
+| Validation state | `src/controller/validation-state.ts` |
 | Dispatcher orchestrator | `src/controller/dispatcher-orchestrator.ts` |
 | Approval handling | `src/controller/approval-handler.ts`, `src/controller/ui-approval-handler.ts` |
 | Question service | `src/controller/question-service.ts` |
@@ -285,7 +288,17 @@ Registry: `src/engines/core/registry.ts`. Types: `src/engines/core/types.ts`. Tw
 
 State machine (`src/session/state-machine.ts`), persistence (`src/session/persistence.ts`), manager (`src/session/manager.ts`), cost tracker (`src/session/cost-tracker.ts`), worktree manager (`src/session/worktree-manager.ts`), output persistence (`src/session/output-persistence.ts`). Schema: `src/schemas/session.ts`.
 
-Plan state is tracked in `.state.md` files alongside plan files via `src/state/` (reader, writer, lock).
+Plan state is tracked in `.state.md` files alongside plan files via `src/state/` (reader, writer, lock). Plan markdown is parsed into structured phases by `src/controller/plan-parser.ts` (milestone markers, fulfills annotations, phase headings, checklist items).
+
+### Plan file format
+
+Plan files use markdown with special annotation syntax recognized by the plan parser:
+
+- **Phase headings:** `### Phase N: Title` — parsed into structured `PlanPhase` objects with index, title, description, and steps.
+- **Milestone markers:** `## Milestone: <name>` — groups subsequent phases under that milestone until the next marker. Only exact H2 format with capital M and colon-space is recognized.
+- **Fulfills annotations:** `<!-- fulfills: VAL-AREA-001, VAL-AREA-002 -->` — HTML comment linking a phase to validation contract assertion IDs. Placed immediately after the phase heading.
+- **Checklist items:** `- [ ] Step description` — top-level checklist items become phase steps. Indented sub-items are ignored for step extraction.
+- **Validation contract:** A `validation-contract.md` file is generated alongside the plan, containing testable assertions with `VAL-<AREA>-<NNN>` IDs. The contract path is session-specific (stored alongside the plan file in `.flywheel/plans/`).
 
 ### TUI components
 
