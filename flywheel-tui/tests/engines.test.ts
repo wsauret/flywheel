@@ -160,7 +160,7 @@ describe("Engine metadata", () => {
 // ---------------------------------------------------------------------------
 
 describe("Engine: claude — tool scoping", () => {
-  it("adds --tools with only allowed tools when toolScoping provided", () => {
+  it("adds --tools with only allowed tools when toolScoping provided (Write always included for handoff)", () => {
     const cmd = claudeEngine.buildCommand({
       prompt: "do stuff",
       toolScoping: { read: true, bash: false, write: false, edit: false },
@@ -169,7 +169,8 @@ describe("Engine: claude — tool scoping", () => {
     expect(cmd.args).toContain("--tools");
     const flagIdx = cmd.args.indexOf("--tools");
     const toolsArg = cmd.args[flagIdx + 1];
-    expect(toolsArg).toBe("Read");
+    // Write is always included for handoff file writing, even when write:false
+    expect(toolsArg).toBe("Read,Write");
   });
 
   it("includes all tools when all scoping booleans are true", () => {
@@ -188,7 +189,7 @@ describe("Engine: claude — tool scoping", () => {
     expect(toolsArg).toContain("Edit");
   });
 
-  it("lists multiple allowed tools comma-separated", () => {
+  it("lists multiple allowed tools comma-separated (Write always appended for handoff)", () => {
     const cmd = claudeEngine.buildCommand({
       prompt: "do stuff",
       toolScoping: { read: true, bash: true, write: false, edit: false },
@@ -196,7 +197,8 @@ describe("Engine: claude — tool scoping", () => {
 
     const flagIdx = cmd.args.indexOf("--tools");
     const toolsArg = cmd.args[flagIdx + 1];
-    expect(toolsArg).toBe("Read,Bash");
+    // Write is always included for handoff file writing
+    expect(toolsArg).toBe("Read,Bash,Write");
   });
 
   it("omits --tools when toolScoping is undefined (backward compat)", () => {

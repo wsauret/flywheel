@@ -47,12 +47,17 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   }
 
   // Tool scoping: use --tools to restrict available tools
+  // Write is ALWAYS included — workers must be able to write the handoff file.
   if (options.toolScoping) {
     const allowed: string[] = [];
     for (const [key, cliName] of Object.entries(TOOL_NAME_MAP)) {
       if (options.toolScoping[key as keyof typeof options.toolScoping]) {
         allowed.push(cliName);
       }
+    }
+    // Ensure Write is always available for handoff file writing
+    if (!allowed.includes("Write")) {
+      allowed.push("Write");
     }
     if (allowed.length > 0) {
       args.push("--tools", allowed.join(","));
