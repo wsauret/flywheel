@@ -9,6 +9,7 @@ import {
   buildIterationBudgetInstruction,
   buildProjectContextSection,
 } from "../conventions.js";
+import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
 // ---------------------------------------------------------------------------
 // Main prompt builder
@@ -123,11 +124,11 @@ ${THREE_STRIKE_PROTOCOL}
 - Do not add features, documentation, or improvements beyond what the findings require.
 - If a finding is ambiguous, implement the most conservative fix.
 
-## Completion
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : `## Completion
 
 When the phase is done, provide:
 - Summary of what was fixed (by finding ID/severity)
 - Evidence of verification (command outputs)
-- Any findings that could not be addressed and why
+- Any findings that could not be addressed and why`}
 `;
 }
