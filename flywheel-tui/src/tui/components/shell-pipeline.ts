@@ -8,6 +8,7 @@
  * All workflow types flow through one code path via `createStageLoop()`.
  */
 
+import * as path from "node:path";
 import { createFlywheelEmitter } from "../../events/event-bus";
 import { createStageLoop } from "../../controller/stage-loop-factory";
 import type { ExecutionLoop } from "../../controller/execution-loop";
@@ -20,6 +21,8 @@ import type { BudgetLimits } from "../../schemas/shared";
 import type { ContextIndexer } from "../../memory/indexer";
 import type { DispatcherTransport } from "../../dispatcher/transport";
 import type { EvaluatorTransport } from "../../evaluator/transport";
+import { checkEndOfSessionGate } from "../../controller/validation-state";
+import type { EndOfSessionGateCheck } from "../../controller/workflow-pipeline";
 import type {
   PipelineStage,
   PipelineStageResult,
@@ -187,5 +190,35 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
         reason: String(err),
       };
     }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// End-of-session gate factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Create an end-of-session gate check function for the WorkflowPipeline.
+ *
+ * The gate reads `validation-state.json` from the project root and verifies
+ * that all assertions have passed before declaring pipeline completion.
+ *
+ * Respects `skip_scrutiny` and `skip_validation` config flags — when either
+ * is set, "pending" assertions are tolerated (the validation that would have
+ * checked them was intentionally skipped).
+ *
+ * Returns `undefined` when no gate is needed (no validation system configured).
+ */
+export function createEndOfSessionGate(
+  config: FlywheelConfig,
+  projectCwd: string,
+): EndOfSessionGateCheck {
+  const validationStatePath = path.resolve(projectCwd, "validation-state.json");
+
+  return async () => {
+    return checkEndOfSessionGate(validationStatePath, {
+      skipScrutiny: config.skip_scrutiny,
+      skipValidation: config.skip_validation,
+    });
   };
 }

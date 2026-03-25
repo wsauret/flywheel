@@ -47,6 +47,7 @@ import { workflowRegistry, buildWorkflowPrompt } from "../workflows/index";
 import { createPlanOnStepComplete } from "../workflows/plan-output-extractor";
 import { createReviewOnStepComplete, REVIEW_FIX_STEP_INDEX } from "../workflows/review-output-extractor";
 import { createShipOnStepComplete } from "../workflows/ship-output-extractor";
+import { MilestoneTracker } from "./milestone-tracker";
 import { readCachedFile, parseContextFile } from "./templates";
 import { Log } from "../utils/log";
 
@@ -326,6 +327,13 @@ function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
     return buildWorkPhasePrompt({ ...ctx, planContent: phase.description });
   };
 
+  // MilestoneTracker: enables milestone-aware execution with auto-injection
+  // of validation phases (scrutiny + behavioral) at milestone boundaries.
+  // The tracker starts fresh — sealed milestones are tracked in-memory during
+  // the execution loop run and prevent duplicate validation injection.
+  const milestoneTracker = new MilestoneTracker();
+  log.info("milestone tracker created for work loop", { workflowId });
+
   const loop = new ExecutionLoop({
     phaseProvider,
     promptBuilder,
@@ -349,6 +357,7 @@ function createWorkLoop(params: WorkLoopParams): StageLoopHandle {
     evaluatorTransport: params.evaluatorTransport,
     onSessionName: params.onSessionName,
     logBaseDir: params.logBaseDir,
+    milestoneTracker,
   });
   loop.setLoadedState(state);
 

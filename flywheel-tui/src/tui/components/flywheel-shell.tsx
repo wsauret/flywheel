@@ -58,7 +58,7 @@ import type { QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
-import { buildPipelineStages, createShellStageRunner } from "./shell-pipeline"
+import { buildPipelineStages, createShellStageRunner, createEndOfSessionGate } from "./shell-pipeline"
 import { buildCustomPipeline, modeHasReview, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
 import { parseCommand } from "../utils/command-parser"
 import { createQuestionWiring, type QuestionWiring } from "../utils/question-wiring"
@@ -684,6 +684,8 @@ export function FlywheelShell() {
       })
 
       // Create pipeline now that stageRunner is ready
+      const projectCwd = deps.config.project_cwd || process.cwd()
+      const endOfSessionGate = createEndOfSessionGate(deps.config, projectCwd)
       const pipeline = new WorkflowPipeline({
         stages,
         args,
@@ -691,6 +693,7 @@ export function FlywheelShell() {
         stageRunner,
         questionService,
         eventBus: session.eventBus,
+        endOfSessionGate,
       })
       activePipeline = pipeline
 
