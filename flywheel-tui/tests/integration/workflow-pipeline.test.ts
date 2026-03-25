@@ -11,6 +11,9 @@
  */
 
 import { describe, it, expect } from "bun:test";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import { EventBus } from "../../src/events/event-bus";
 import { QuestionService } from "../../src/controller/question-service";
 import { CONFIG_DEFAULTS } from "../../src/config/loader";
@@ -20,6 +23,7 @@ import {
   type PipelineStage,
   type PipelineStageResult,
   type StageRunner,
+  type EndOfSessionGateCheck,
 } from "../../src/controller/workflow-pipeline";
 import type { FlywheelEvent } from "../../src/events/types";
 
@@ -962,5 +966,230 @@ describe("Integration: end-to-end /plan pipeline scenario", () => {
     expect(result.completed).toBe(true);
     expect(result.stagesCompleted).toBe(3);
     expect(stagesRun).toEqual(["plan", "work", "review"]);
+  });
+});
+
+// ===========================================================================
+// 6. End-of-session gate checks validation-state.json before completion
+// ===========================================================================
+
+describe("Integration: end-of-session gate", () => {
+  it("pipeline completes normally when end-of-session gate passes", async () => {
+    const bus = new EventBus();
+    const events = collectPipelineEvents(bus);
+
+    const gate: EndOfSessionGateCheck = async () => ({
+      passed: true,
+      failedAssertions: [],
+      totalAssertions: 5,
+      passedCount: 5,
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: realisticStageRunner(),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      endOfSessionGate: gate,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stagesCompleted).toBe(3);
+
+    // Should emit pipeline:completed
+    const types = events.map((e) => e.type);
+    expect(types).toContain("pipeline:completed");
+    expect(types).not.toContain("pipeline:failed");
+  });
+
+  it("pipeline reports failure when end-of-session gate fails", async () => {
+    const bus = new EventBus();
+    const events = collectPipelineEvents(bus);
+
+    const gate: EndOfSessionGateCheck = async () => ({
+      passed: false,
+      failedAssertions: [
+        { id: "VAL-AUTH-001", title: "User login works", status: "failed" },
+        { id: "VAL-API-002", title: "API returns 200", status: "pending" },
+      ],
+      totalAssertions: 5,
+      passedCount: 3,
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: realisticStageRunner(),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      endOfSessionGate: gate,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stagesCompleted).toBe(3); // stages ran, gate failed
+    expect(result.reason).toContain("validation gate");
+    expect(result.reason).toContain("VAL-AUTH-001");
+    expect(result.reason).toContain("VAL-API-002");
+
+    // Should emit pipeline:failed, not pipeline:completed
+    const types = events.map((e) => e.type);
+    expect(types).toContain("pipeline:failed");
+    expect(types).not.toContain("pipeline:completed");
+  });
+
+  it("end-of-session gate is not called when a stage fails", async () => {
+    const bus = new EventBus();
+    let gateCalled = false;
+
+    const gate: EndOfSessionGateCheck = async () => {
+      gateCalled = true;
+      return { passed: true, failedAssertions: [], totalAssertions: 0, passedCount: 0 };
+    };
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: realisticStageRunner({ failAt: "work" }),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      endOfSessionGate: gate,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(false);
+    // Gate should not be called when stages fail
+    expect(gateCalled).toBe(false);
+  });
+
+  it("pipeline completes normally when no end-of-session gate is provided", async () => {
+    const bus = new EventBus();
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: realisticStageRunner(),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      // No endOfSessionGate provided
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stagesCompleted).toBe(3);
+  });
+
+  it("gate failure includes each failed assertion's ID, title, and status in reason", async () => {
+    const bus = new EventBus();
+
+    const gate: EndOfSessionGateCheck = async () => ({
+      passed: false,
+      failedAssertions: [
+        { id: "VAL-CHECKOUT-001", title: "Checkout flow", status: "failed" },
+        { id: "VAL-DASHBOARD-002", title: "Dashboard renders", status: "blocked" },
+      ],
+      totalAssertions: 10,
+      passedCount: 8,
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: realisticStageRunner(),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      endOfSessionGate: gate,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(false);
+    // Reason should contain assertion details
+    expect(result.reason).toContain("VAL-CHECKOUT-001");
+    expect(result.reason).toContain("failed");
+    expect(result.reason).toContain("VAL-DASHBOARD-002");
+    expect(result.reason).toContain("blocked");
+  });
+
+  it("end-of-session gate is not called when pipeline is aborted", async () => {
+    const bus = new EventBus();
+    let gateCalled = false;
+
+    const gate: EndOfSessionGateCheck = async () => {
+      gateCalled = true;
+      return { passed: true, failedAssertions: [], totalAssertions: 0, passedCount: 0 };
+    };
+
+    const runner: StageRunner = async (stage, _args, signal) => {
+      return new Promise<PipelineStageResult>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve({ workflow: stage.workflow, completed: true });
+        }, 300);
+
+        signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          resolve({ workflow: stage.workflow, completed: false, reason: "aborted" });
+        });
+      });
+    };
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: runner,
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      endOfSessionGate: gate,
+    });
+
+    const resultPromise = pipeline.run();
+    await new Promise((r) => setTimeout(r, 50));
+    pipeline.requestShutdown();
+    const result = await resultPromise;
+
+    expect(result.completed).toBe(false);
+    expect(gateCalled).toBe(false);
+  });
+
+  it("stageResults are populated even when gate fails", async () => {
+    const bus = new EventBus();
+
+    const gate: EndOfSessionGateCheck = async () => ({
+      passed: false,
+      failedAssertions: [{ id: "VAL-1", title: "Test", status: "failed" }],
+      totalAssertions: 1,
+      passedCount: 0,
+    });
+
+    const pipeline = new WorkflowPipeline({
+      stages: planPipelineStages(),
+      args: {},
+      config: makeConfig(),
+      stageRunner: realisticStageRunner(),
+      questionService: new QuestionService(bus),
+      eventBus: bus,
+      endOfSessionGate: gate,
+    });
+
+    const result = await pipeline.run();
+
+    expect(result.completed).toBe(false);
+    // All 3 stages should have run and completed
+    expect(result.stageResults).toHaveLength(3);
+    expect(result.stageResults.every((r) => r.completed)).toBe(true);
+    // But the overall pipeline failed due to gate
+    expect(result.stagesCompleted).toBe(3);
   });
 });

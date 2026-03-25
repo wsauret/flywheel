@@ -180,6 +180,143 @@ export function checkAssertionCoverage(
 }
 
 // ---------------------------------------------------------------------------
+// End-of-session gate
+// ---------------------------------------------------------------------------
+
+/**
+ * A failed assertion reported by the end-of-session gate.
+ */
+export interface FailedAssertion {
+  /** Assertion ID (e.g., "VAL-AUTH-001") */
+  id: string;
+  /** Human-readable title (falls back to ID if no title map provided) */
+  title: string;
+  /** Current status: "pending", "failed", or "blocked" */
+  status: string;
+}
+
+/**
+ * Result of the end-of-session validation gate check.
+ */
+export interface EndOfSessionGateResult {
+  /** Whether all relevant assertions passed */
+  passed: boolean;
+  /** Assertions that did not pass (empty when passed is true) */
+  failedAssertions: FailedAssertion[];
+  /** Total number of assertions in the state file */
+  totalAssertions: number;
+  /** Number of assertions with status "passed" */
+  passedCount: number;
+}
+
+/**
+ * Options for the end-of-session gate check.
+ */
+export interface EndOfSessionGateOptions {
+  /** Map of assertion ID → human-readable title. When provided, titles are used in failure reports. */
+  assertionTitles?: Record<string, string>;
+  /** If true, "pending" assertions are not treated as failures (scrutiny was skipped). */
+  skipScrutiny?: boolean;
+  /** If true, "pending" assertions are not treated as failures (behavioral validation was skipped). */
+  skipValidation?: boolean;
+}
+
+/**
+ * Check the validation state before declaring pipeline completion.
+ *
+ * This is the **end-of-session gate** — the final quality check before
+ * a pipeline is declared complete. It reads `validation-state.json` and
+ * verifies that all assertions have passed.
+ *
+ * Behavior:
+ * - If the file does not exist (no milestones / no validation contract),
+ *   the gate passes — there's nothing to check.
+ * - If all assertions are "passed", the gate passes.
+ * - If any assertions are "failed" or "blocked", those are reported as failures.
+ * - If any assertions are "pending":
+ *   - With no skip flags: "pending" is treated as a failure (validation didn't run).
+ *   - With `skipScrutiny` or `skipValidation` true: "pending" is tolerated
+ *     because the validation that would have updated them was intentionally skipped.
+ * - "blocked" is always treated as a failure regardless of skip flags.
+ * - "failed" is always treated as a failure regardless of skip flags.
+ *
+ * Adapted from Droid's end-of-session quality gate concept
+ * (see inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §5).
+ *
+ * Fulfills: VAL-EXEC-007
+ *
+ * @param filePath - Absolute path to validation-state.json
+ * @param options - Optional configuration (titles, skip flags)
+ * @returns Gate result with pass/fail and details of any failures
+ */
+export function checkEndOfSessionGate(
+  filePath: string,
+  options: EndOfSessionGateOptions = {},
+): EndOfSessionGateResult {
+  const { assertionTitles = {}, skipScrutiny = false, skipValidation = false } = options;
+
+  // If the file doesn't exist, there's nothing to validate — pass
+  const state = readValidationState(filePath);
+  if (!state) {
+    log.info("end-of-session gate: no validation state file, passing", { path: filePath });
+    return { passed: true, failedAssertions: [], totalAssertions: 0, passedCount: 0 };
+  }
+
+  const entries = Object.entries(state.assertions);
+  const totalAssertions = entries.length;
+
+  // Empty assertions map — nothing to validate
+  if (totalAssertions === 0) {
+    log.info("end-of-session gate: no assertions, passing", { path: filePath });
+    return { passed: true, failedAssertions: [], totalAssertions: 0, passedCount: 0 };
+  }
+
+  const anySkipActive = skipScrutiny || skipValidation;
+  const failedAssertions: FailedAssertion[] = [];
+  let passedCount = 0;
+
+  for (const [id, assertion] of entries) {
+    if (assertion.status === "passed") {
+      passedCount++;
+      continue;
+    }
+
+    // "pending" is tolerable when validation was skipped (the assertion was
+    // never checked because the validation type that checks it was skipped)
+    if (assertion.status === "pending" && anySkipActive) {
+      continue;
+    }
+
+    // "failed", "blocked", or "pending" without skip flags — report as failure
+    failedAssertions.push({
+      id,
+      title: assertionTitles[id] ?? id,
+      status: assertion.status,
+    });
+  }
+
+  const passed = failedAssertions.length === 0;
+
+  if (passed) {
+    log.info("end-of-session gate: all assertions passed", {
+      path: filePath,
+      total: totalAssertions,
+      passed: passedCount,
+    });
+  } else {
+    log.warn("end-of-session gate: assertions not passed", {
+      path: filePath,
+      total: totalAssertions,
+      passed: passedCount,
+      failed: failedAssertions.length,
+      failedIds: failedAssertions.map((a) => `${a.id}:${a.status}`).join(", "),
+    });
+  }
+
+  return { passed, failedAssertions, totalAssertions, passedCount };
+}
+
+// ---------------------------------------------------------------------------
 // Update assertion statuses (used after validation phases)
 // ---------------------------------------------------------------------------
 

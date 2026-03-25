@@ -20,6 +20,8 @@ import {
   initializeValidationState,
   type CoverageReport,
   checkAssertionCoverage,
+  checkEndOfSessionGate,
+  type EndOfSessionGateResult,
 } from "../src/controller/validation-state";
 
 import { parsePlan } from "../src/controller/plan-parser";
@@ -504,5 +506,223 @@ describe("checkAssertionCoverage", () => {
 
     // VAL-EXTRA-001 is not in the contract — it should be reported as unclaimed
     expect(report.unclaimed).toEqual(["VAL-EXTRA-001"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VAL-EXEC-007: End-of-session gate checks assertions
+// ---------------------------------------------------------------------------
+
+describe("checkEndOfSessionGate", () => {
+  it("returns passed when all assertions are passed", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "passed", lastChecked: "2026-03-25T10:00:00Z" },
+        "VAL-AUTH-002": { status: "passed", lastChecked: "2026-03-25T10:00:00Z" },
+        "VAL-API-001": { status: "passed", lastChecked: "2026-03-25T10:00:00Z" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath);
+
+    expect(result.passed).toBe(true);
+    expect(result.failedAssertions).toEqual([]);
+    expect(result.totalAssertions).toBe(3);
+    expect(result.passedCount).toBe(3);
+  });
+
+  it("returns passed when validation-state.json does not exist (no milestones)", () => {
+    const nonexistentPath = path.join(tmpDir, "nonexistent-validation-state.json");
+
+    const result = checkEndOfSessionGate(nonexistentPath);
+
+    expect(result.passed).toBe(true);
+    expect(result.failedAssertions).toEqual([]);
+    expect(result.totalAssertions).toBe(0);
+    expect(result.passedCount).toBe(0);
+  });
+
+  it("returns failed when some assertions are not passed", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "passed" },
+        "VAL-AUTH-002": { status: "failed", evidence: "Login form missing" },
+        "VAL-API-001": { status: "pending" },
+        "VAL-API-002": { status: "blocked", evidence: "Depends on VAL-AUTH-002" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath);
+
+    expect(result.passed).toBe(false);
+    expect(result.totalAssertions).toBe(4);
+    expect(result.passedCount).toBe(1);
+    expect(result.failedAssertions).toHaveLength(3);
+
+    // Check each failed assertion includes ID, title, and status
+    const failedIds = result.failedAssertions.map((a) => a.id);
+    expect(failedIds).toContain("VAL-AUTH-002");
+    expect(failedIds).toContain("VAL-API-001");
+    expect(failedIds).toContain("VAL-API-002");
+
+    const auth002 = result.failedAssertions.find((a) => a.id === "VAL-AUTH-002");
+    expect(auth002!.status).toBe("failed");
+    expect(auth002!.id).toBe("VAL-AUTH-002");
+
+    const api001 = result.failedAssertions.find((a) => a.id === "VAL-API-001");
+    expect(api001!.status).toBe("pending");
+
+    const api002 = result.failedAssertions.find((a) => a.id === "VAL-API-002");
+    expect(api002!.status).toBe("blocked");
+  });
+
+  it("reports assertion title from the assertion ID when no contract titles provided", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "failed" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath);
+
+    expect(result.failedAssertions[0].title).toBe("VAL-AUTH-001");
+  });
+
+  it("uses contract titles when assertionTitles map is provided", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "failed" },
+        "VAL-AUTH-002": { status: "passed" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const titles: Record<string, string> = {
+      "VAL-AUTH-001": "User can log in with valid credentials",
+      "VAL-AUTH-002": "Login rejects invalid credentials",
+    };
+
+    const result = checkEndOfSessionGate(filePath, { assertionTitles: titles });
+
+    expect(result.failedAssertions).toHaveLength(1);
+    expect(result.failedAssertions[0].title).toBe("User can log in with valid credentials");
+  });
+
+  it("returns passed when empty assertions (no contract generated)", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {},
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath);
+
+    expect(result.passed).toBe(true);
+    expect(result.failedAssertions).toEqual([]);
+    expect(result.totalAssertions).toBe(0);
+  });
+
+  // Skip flags tests
+
+  it("skips pending assertions when skip_validation is true", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "passed" },
+        "VAL-AUTH-002": { status: "pending" }, // never validated because validation was skipped
+        "VAL-API-001": { status: "pending" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath, { skipValidation: true });
+
+    // pending assertions should be ignored when validation is skipped
+    expect(result.passed).toBe(true);
+    expect(result.failedAssertions).toEqual([]);
+  });
+
+  it("still fails on explicitly failed assertions even when skip_validation is true", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "passed" },
+        "VAL-AUTH-002": { status: "failed", evidence: "Explicitly failed" },
+        "VAL-API-001": { status: "pending" }, // would be ignored
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath, { skipValidation: true });
+
+    // failed assertions still cause gate failure even with skip
+    expect(result.passed).toBe(false);
+    expect(result.failedAssertions).toHaveLength(1);
+    expect(result.failedAssertions[0].id).toBe("VAL-AUTH-002");
+    expect(result.failedAssertions[0].status).toBe("failed");
+  });
+
+  it("skips pending assertions when skip_scrutiny is true", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "passed" },
+        "VAL-AUTH-002": { status: "pending" }, // never checked because scrutiny was skipped
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath, { skipScrutiny: true });
+
+    // pending assertions should be ignored when scrutiny is skipped
+    expect(result.passed).toBe(true);
+  });
+
+  it("skips all pending when both skip_scrutiny and skip_validation are true", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "pending" },
+        "VAL-AUTH-002": { status: "pending" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath, {
+      skipScrutiny: true,
+      skipValidation: true,
+    });
+
+    // All assertions are pending and all validation was skipped — gate passes
+    expect(result.passed).toBe(true);
+  });
+
+  it("blocked assertions cause failure even with skip flags", () => {
+    const filePath = stateFilePath();
+    const state: ValidationState = {
+      assertions: {
+        "VAL-AUTH-001": { status: "blocked", evidence: "Dependency broken" },
+        "VAL-AUTH-002": { status: "pending" },
+      },
+    };
+    writeValidationState(filePath, state);
+
+    const result = checkEndOfSessionGate(filePath, {
+      skipScrutiny: true,
+      skipValidation: true,
+    });
+
+    // blocked is an explicit failure — not ignored by skip flags
+    expect(result.passed).toBe(false);
+    expect(result.failedAssertions).toHaveLength(1);
+    expect(result.failedAssertions[0].id).toBe("VAL-AUTH-001");
+    expect(result.failedAssertions[0].status).toBe("blocked");
   });
 });

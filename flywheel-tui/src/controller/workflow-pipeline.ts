@@ -14,6 +14,7 @@
 import type { EventBus } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { QuestionService, QuestionRejectedError } from "./question-service";
+import type { EndOfSessionGateResult, FailedAssertion } from "./validation-state";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +55,15 @@ export type StageRunner = (
   signal: AbortSignal,
 ) => Promise<PipelineStageResult>;
 
+/**
+ * End-of-session gate check function.
+ * Called after all stages complete successfully, before declaring pipeline completion.
+ * Returns the gate result indicating whether all validation assertions passed.
+ *
+ * Fulfills: VAL-EXEC-007
+ */
+export type EndOfSessionGateCheck = () => Promise<EndOfSessionGateResult>;
+
 export interface PipelineOptions {
   stages: PipelineStage[];
   args: Record<string, string>;
@@ -65,6 +75,14 @@ export interface PipelineOptions {
     workflow: WorkflowType,
     result: PipelineStageResult,
   ) => Promise<void>;
+  /**
+   * Optional end-of-session gate check.
+   * Called after all stages complete successfully, before declaring pipeline completion.
+   * If the gate fails (assertions not passed), the pipeline reports failure with details.
+   *
+   * When not provided, the pipeline completes normally after all stages succeed.
+   */
+  endOfSessionGate?: EndOfSessionGateCheck;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +104,7 @@ export class WorkflowPipeline {
   private readonly questionService: QuestionService;
   private readonly eventBus: EventBus;
   private readonly onStageComplete?: PipelineOptions["onStageComplete"];
+  private readonly endOfSessionGate?: EndOfSessionGateCheck;
   private readonly abortController = new AbortController();
   private readonly pipelineId = crypto.randomUUID();
   private hasRun = false;
@@ -97,6 +116,7 @@ export class WorkflowPipeline {
     this.questionService = options.questionService;
     this.eventBus = options.eventBus;
     this.onStageComplete = options.onStageComplete;
+    this.endOfSessionGate = options.endOfSessionGate;
   }
 
   /**
@@ -281,7 +301,34 @@ export class WorkflowPipeline {
       }
     }
 
-    // All stages completed successfully
+    // End-of-session gate: check validation state before declaring completion
+    if (this.endOfSessionGate) {
+      const gateResult = await this.endOfSessionGate();
+      if (!gateResult.passed) {
+        const failureDetails = gateResult.failedAssertions
+          .map((a) => `  ${a.id} (${a.status})`)
+          .join("\n");
+        const reason = `End-of-session validation gate failed: ${gateResult.failedAssertions.length} assertion(s) not passed (${gateResult.passedCount}/${gateResult.totalAssertions} passed)\n${failureDetails}`;
+
+        this.eventBus.emit({
+          type: "pipeline:failed",
+          pipelineId: this.pipelineId,
+          reason,
+          stagesCompleted,
+          timestamp: now(),
+        });
+
+        return {
+          completed: false,
+          stagesCompleted,
+          stagesTotal: this.stages.length,
+          reason,
+          stageResults,
+        };
+      }
+    }
+
+    // All stages completed successfully and gate passed (or not configured)
     this.eventBus.emit({
       type: "pipeline:completed",
       pipelineId: this.pipelineId,
