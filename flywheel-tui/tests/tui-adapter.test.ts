@@ -229,42 +229,22 @@ describe("OpenTUIAdapter", () => {
       expect(text).toContain("Worker failed: timed out");
     });
 
-    // -- Completion marker filtering --
+    // -- Raw text passthrough (completion marker stripping removed) --
 
-    it("raw text containing <promise>COMPLETE</promise> is stripped from output", () => {
+    it("raw text is passed through without modification", () => {
       const { bus, store } = createHarness();
       bus.emit({
         type: "worker:output",
         workflowId: "w1",
         stream: "stdout",
-        data: "some output <promise>COMPLETE</promise>\n",
+        data: "some output text\n",
         timestamp: "2025-01-01T00:00:00Z",
       });
       const blocks = store.getState().outputBlocks;
-      // The completion marker should be stripped; "some output" should remain
       const textBlocks = blocks.filter((b: any) => b.kind === "text");
       if (textBlocks.length > 0) {
         const content = textBlocks.map((b: any) => b.content).join("");
-        expect(content).not.toContain("<promise>COMPLETE</promise>");
-        expect(content).toContain("some output");
-      }
-    });
-
-    it("raw text that is only a completion marker produces no output blocks", () => {
-      const { bus, store } = createHarness();
-      bus.emit({
-        type: "worker:output",
-        workflowId: "w1",
-        stream: "stdout",
-        data: "<promise>COMPLETE</promise>\n",
-        timestamp: "2025-01-01T00:00:00Z",
-      });
-      const blocks = store.getState().outputBlocks;
-      // Should be empty — the marker-only line is skipped entirely
-      const textBlocks = blocks.filter((b: any) => b.kind === "text");
-      // Either no blocks at all, or if any exist, they don't contain the marker
-      for (const b of textBlocks) {
-        expect((b as any).content).not.toContain("<promise>COMPLETE</promise>");
+        expect(content).toContain("some output text");
       }
     });
 

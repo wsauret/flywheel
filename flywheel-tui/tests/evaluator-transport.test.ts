@@ -39,6 +39,68 @@ function wrapNDJSON(text: string): string {
   return `{"type":"text","part":{"type":"text","text":${JSON.stringify(text)}}}\n`;
 }
 
+/**
+ * Extract the handoff path from an evaluator prompt and write a verdict file.
+ * The evaluator transport now reads verdicts from handoff files, not stdout.
+ */
+async function writeVerdictFromPrompt(prompt: string, verdict: Record<string, unknown>): Promise<void> {
+  const pathMatch = prompt.match(/`([^`]+\.json)`/);
+  if (pathMatch) {
+    await Bun.write(pathMatch[1], JSON.stringify(verdict));
+  }
+}
+
+/**
+ * Extract the prompt from spawner args (Claude: -p flag, OpenCode: stdin).
+ */
+function extractPromptFromArgs(args: string[], options?: { stdin?: string }): string {
+  const pIdx = args.indexOf("-p");
+  if (pIdx > -1) return args[pIdx + 1];
+  if (options?.stdin) return options.stdin;
+  return "";
+}
+
+/**
+ * Create a mock spawner that auto-writes a verdict handoff file.
+ * Wraps any existing spawn function to also extract the handoff path from
+ * the prompt and write the verdict JSON file.
+ *
+ * @param verdictOrFn - static verdict object, or a function(callCount) => verdict | null.
+ *   When null, no verdict is written (simulating handoff-missing).
+ * @param hooks - optional hooks for capturing args, env, stdin, etc.
+ */
+function createHandoffSpawner(
+  verdictOrFn: Record<string, unknown> | ((callCount: number) => Record<string, unknown> | null),
+  hooks?: {
+    onSpawn?: (command: string, args: string[], options?: SpawnOptions) => void;
+  },
+): { spawner: ProcessSpawner; callCount: () => number } {
+  let calls = 0;
+  const spawner: ProcessSpawner = {
+    async spawn(command, args, options) {
+      calls++;
+      hooks?.onSpawn?.(command, args, options);
+
+      const prompt = extractPromptFromArgs(args, options);
+      const verdict = typeof verdictOrFn === "function" ? verdictOrFn(calls) : verdictOrFn;
+      if (verdict) {
+        await writeVerdictFromPrompt(prompt, verdict);
+      }
+
+      return {
+        result: Promise.resolve({
+          output: "",
+          exitCode: 0,
+          truncated: false,
+          durationMs: 100,
+          handoffPath: "/tmp/unused",
+        }),
+      };
+    },
+  };
+  return { spawner, callCount: () => calls };
+}
+
 // ---------------------------------------------------------------------------
 // SubprocessEvaluatorTransport — engine-aware tests
 // ---------------------------------------------------------------------------
@@ -63,12 +125,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       async spawn(command, args, options) {
         spawnedCommand = command;
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -95,12 +159,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       async spawn(command, args, options) {
         spawnedCommand = command;
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -123,15 +189,17 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedCommand = command;
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -156,14 +224,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -192,14 +262,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -227,12 +299,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       async spawn(command, args, options) {
         spawnedArgs = args;
         receivedStdin = options?.stdin;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -253,14 +327,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -281,12 +357,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const mockSpawner: ProcessSpawner = {
       async spawn(command, args, options) {
         receivedStdin = options?.stdin ?? "";
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -311,14 +389,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -340,14 +420,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -372,14 +454,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -401,14 +485,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -439,6 +525,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -460,98 +547,35 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   // Output parsing: both engines
   // -----------------------------------------------------------------------
 
-  it("OpenCode NDJSON output parsed correctly", async () => {
-    const result = validEvaluatorResult({ reasoning: "NDJSON parsed evaluator result" });
-    const ndjsonOutput = wrapNDJSON(JSON.stringify(result));
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: ndjsonOutput,
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("verdict read from handoff file (opencode route)", async () => {
+    const verdict = validEvaluatorResult({ reasoning: "Handoff-based verdict (opencode)" });
+    const { spawner } = createHandoffSpawner(verdict);
 
     const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(evalResult.reasoning).toBe("NDJSON parsed evaluator result");
+    expect(evalResult.reasoning).toBe("Handoff-based verdict (opencode)");
   });
 
-  it("Claude Code plain text output parsed correctly", async () => {
-    const result = validEvaluatorResult({ reasoning: "Claude text parsed evaluator result" });
-    const plainTextOutput = JSON.stringify(result);
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: plainTextOutput,
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("verdict read from handoff file (claude route)", async () => {
+    const verdict = validEvaluatorResult({ reasoning: "Handoff-based verdict (claude)" });
+    const { spawner } = createHandoffSpawner(verdict);
 
     const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(evalResult.reasoning).toBe("Claude text parsed evaluator result");
-  });
-
-  it("Claude Code output with surrounding text is still parsed", async () => {
-    const result = validEvaluatorResult({ reasoning: "Wrapped evaluator result" });
-    const output = `Here is my evaluation:\n${JSON.stringify(result)}\nDone.`;
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output,
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      engineName: "claude",
-    });
-    const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(evalResult.reasoning).toBe("Wrapped evaluator result");
+    expect(evalResult.reasoning).toBe("Handoff-based verdict (claude)");
   });
 
   it("response validates against EvaluatorResultSchema (claude route)", async () => {
-    const result = validEvaluatorResult();
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(result),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validEvaluatorResult());
 
     const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
@@ -561,22 +585,10 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   });
 
   it("response validates against EvaluatorResultSchema (opencode route)", async () => {
-    const result = validEvaluatorResult();
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(result)),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validEvaluatorResult());
 
     const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
@@ -586,62 +598,29 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   });
 
   // -----------------------------------------------------------------------
-  // Existing behavior preserved
+  // Existing behavior preserved (handoff-based retry)
   // -----------------------------------------------------------------------
 
-  it("retries once on parse failure then succeeds", async () => {
-    let callCount = 0;
-    const result = validEvaluatorResult();
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            result: Promise.resolve({
-              output: "not valid json {{{",
-              exitCode: 0,
-              truncated: false,
-              durationMs: 100,
-            }),
-          };
-        }
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(result),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("retries once on handoff missing then succeeds", async () => {
+    const verdict = validEvaluatorResult();
+    // First call: no verdict file; second call: verdict written
+    const { spawner, callCount } = createHandoffSpawner((n) => n >= 2 ? verdict : null);
 
     const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(callCount).toBe(2);
+    expect(callCount()).toBe(2);
     expect(evalResult.passed).toBe(true);
   });
 
-  it("throws after second parse failure", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: "still not valid json",
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("throws after both handoff reads fail", async () => {
+    // Never write a verdict file
+    const { spawner } = createHandoffSpawner(() => null);
 
     const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     await expect(transport.invoke(baseEvaluatorInput())).rejects.toThrow();
@@ -653,12 +632,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const mockSpawner: ProcessSpawner = {
       async spawn(command, args, options) {
         receivedTimeout = options?.timeoutMs;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -676,14 +657,16 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     let spawnedCommand = "";
 
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedCommand = command;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -702,12 +685,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const mockSpawner: ProcessSpawner = {
       async spawn(_command, _args, options) {
         receivedEnv = options?.env;
+        await writeVerdictFromPrompt(extractPromptFromArgs(_args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -748,12 +733,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
         if (options?.stdin) {
           capturedPrompt = options.stdin;
         }
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -786,12 +773,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       async spawn(command, args, options) {
         spawnedArgs = args;
         receivedStdin = options?.stdin;
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -834,12 +823,14 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
         if (options?.stdin) {
           capturedPrompt = options.stdin;
         }
+        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
         return {
           result: Promise.resolve({
             output: JSON.stringify(validEvaluatorResult()),
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },

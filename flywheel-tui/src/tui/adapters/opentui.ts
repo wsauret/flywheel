@@ -28,7 +28,6 @@ import { SubagentTraceParser } from "./subagent-tracing/parser";
 import { StructuredOutputBuilder } from "./structured-output-builder";
 import { StructuredEventParser } from "./structured-event-parser";
 import { Log } from "../../utils/log";
-import { COMPLETION_REGEX } from "../../worker/completion";
 
 /** Flush interval for batched block updates (ms). */
 const FLUSH_INTERVAL_MS = 16;
@@ -127,11 +126,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     };
 
     // Raw text lines (non-JSON) → push as text blocks
-    // Strip completion markers before they reach the output window.
     this.ndjsonParser.onRawText = (text) => {
-      const cleaned = text.replace(COMPLETION_REGEX, "");
-      if (cleaned.trim().length > 0) {
-        this.builder.pushText(cleaned + "\n", Date.now());
+      if (text.trim().length > 0) {
+        this.builder.pushText(text + "\n", Date.now());
       }
     };
 

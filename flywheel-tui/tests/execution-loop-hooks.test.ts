@@ -26,6 +26,7 @@ function successResult(output: string = "<promise>COMPLETE</promise>"): WorkerRe
     truncated: false,
     durationMs: 1000,
     failure: undefined,
+    handoffPath: "",
   };
 }
 
@@ -83,7 +84,6 @@ function createLoopWithHook(opts: {
   spawnerResults?: WorkerResult[];
   onStepComplete?: UnifiedExecutionLoopOptions["onStepComplete"];
   shouldSkipPhase?: ShouldSkipPhaseHook;
-  skipTruncation?: boolean;
   promptBuilder?: PromptBuilder;
 }) {
   const bus = new EventBus();
@@ -127,7 +127,6 @@ function createLoopWithHook(opts: {
     workflowLabel: "test-hooks",
     onStepComplete: opts.onStepComplete,
     shouldSkipPhase: opts.shouldSkipPhase,
-    skipTruncation: opts.skipTruncation,
   });
 
   return { loop, bus, emitter, adapter, spawner, config };
@@ -245,13 +244,16 @@ describe("ExecutionLoop onStepComplete hook", () => {
       await loop.run();
 
       // Context entries are always populated (empty arrays when no indexer)
+      // Also contains handoffPath + invocationId (UUIDs, dynamic per run)
       const emptyContext = { conventions: [], standards: [], learnings: [] };
-      // Phase 1 prompt: no extra yet (accumulator starts empty) + context entries
-      expect(capturedExtras[0]).toEqual({ ...emptyContext });
-      // Phase 2 prompt: extra from step 0 + context entries
-      expect(capturedExtras[1]).toEqual({ fromStep0: "data0", ...emptyContext });
-      // Phase 3 prompt: extra from step 0 + step 1 + context entries
-      expect(capturedExtras[2]).toEqual({ fromStep0: "data0", fromStep1: "data1", ...emptyContext });
+      // Phase 1 prompt: no extra yet (accumulator starts empty) + context entries + handoff
+      expect(capturedExtras[0]).toMatchObject({ ...emptyContext });
+      expect(capturedExtras[0]).toHaveProperty("handoffPath");
+      expect(capturedExtras[0]).toHaveProperty("invocationId");
+      // Phase 2 prompt: extra from step 0 + context entries + handoff
+      expect(capturedExtras[1]).toMatchObject({ fromStep0: "data0", ...emptyContext });
+      // Phase 3 prompt: extra from step 0 + step 1 + context entries + handoff
+      expect(capturedExtras[2]).toMatchObject({ fromStep0: "data0", fromStep1: "data1", ...emptyContext });
     });
 
     it("works without onStepComplete hook (no crash, empty extra)", async () => {
@@ -272,15 +274,15 @@ describe("ExecutionLoop onStepComplete hook", () => {
       const result = await loop.run();
 
       expect(result.completed).toBe(true);
-      // Extra should contain context entries (empty arrays when no indexer)
+      // Extra should contain context entries (empty arrays when no indexer) + handoff
       const emptyContext = { conventions: [], standards: [], learnings: [] };
-      expect(capturedExtras[0]).toEqual({ ...emptyContext });
-      expect(capturedExtras[1]).toEqual({ ...emptyContext });
+      expect(capturedExtras[0]).toMatchObject({ ...emptyContext });
+      expect(capturedExtras[1]).toMatchObject({ ...emptyContext });
     });
   });
 
-  describe("skipTruncation option", () => {
-    it("passes full previousResult when skipTruncation is true", async () => {
+  describe("previousResult passthrough (no truncation)", () => {
+    it("passes full previousResult without truncation when no handoff", async () => {
       const capturedCtx: WorkflowStepContext[] = [];
 
       const customBuilder: PromptBuilder = (phase, ctx) => {
@@ -294,40 +296,14 @@ describe("ExecutionLoop onStepComplete hook", () => {
         phases: makePhases(2),
         spawnerResults: [successResult(largeOutput), successResult("done")],
         promptBuilder: customBuilder,
-        skipTruncation: true,
       });
 
       await loop.run();
 
-      // With skipTruncation, the full output should be passed as previousResult
+      // Without handoff, raw output is passed directly (no truncation)
       const prevResult = capturedCtx[1]?.previousResult ?? "";
       expect(prevResult.length).toBe(300_000);
       expect(prevResult).not.toContain("truncated");
-    });
-
-    it("truncates previousResult when skipTruncation is false (default)", async () => {
-      const capturedCtx: WorkflowStepContext[] = [];
-
-      const customBuilder: PromptBuilder = (phase, ctx) => {
-        capturedCtx.push({ ...ctx });
-        return `Phase ${phase.index + 1}`;
-      };
-
-      const largeOutput = "y".repeat(300_000);
-
-      const { loop } = createLoopWithHook({
-        phases: makePhases(2),
-        spawnerResults: [successResult(largeOutput), successResult("done")],
-        promptBuilder: customBuilder,
-        // skipTruncation defaults to false
-      });
-
-      await loop.run();
-
-      // Without skipTruncation, the output should be truncated
-      const prevResult = capturedCtx[1]?.previousResult ?? "";
-      expect(prevResult.length).toBeLessThanOrEqual(200_100);
-      expect(prevResult).toContain("truncated");
     });
   });
 

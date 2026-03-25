@@ -17,6 +17,7 @@
  * - Integrates: buffer, completion, env-filter, NDJSON parser, error categorization
  */
 
+import * as path from "node:path";
 import type { ProcessSpawner, SpawnOptions, SpawnResult, StdinHandle } from "./spawner";
 import type { WorkerResult } from "../schemas/worker";
 import { TieredBuffer } from "./buffer";
@@ -181,6 +182,11 @@ export class BunProcessSpawner implements ProcessSpawner {
       workerTimeout.interrupt();
     }
 
+    // Resolve handoff path from invocationId + cwd
+    const handoffPath = options?.invocationId
+      ? path.resolve(options.cwd ?? process.cwd(), ".flywheel", "handoffs", `${options.invocationId}.json`)
+      : "";
+
     // Build the WorkerResult from completion state (shared between pipe and non-pipe paths)
     const buildWorkerResult = (exitCode: number): WorkerResult => {
       // Flush NDJSON parser
@@ -217,6 +223,7 @@ export class BunProcessSpawner implements ProcessSpawner {
         durationMs,
         failure,
         sessionId: ndjsonParser.sessionId ?? undefined,
+        handoffPath,
       };
     };
 
@@ -233,6 +240,7 @@ export class BunProcessSpawner implements ProcessSpawner {
           kind: "transient",
           message: error instanceof Error ? error.message : String(error),
         },
+        handoffPath,
       };
     };
 

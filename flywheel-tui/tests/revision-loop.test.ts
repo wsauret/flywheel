@@ -43,6 +43,7 @@ function successResult(output: string = "<promise>COMPLETE</promise>", sessionId
     durationMs: 2000,
     failure: undefined,
     sessionId,
+    handoffPath: "",
   };
 }
 
@@ -53,6 +54,7 @@ function failureResult(failure: WorkerFailureReason): WorkerResult {
     truncated: false,
     durationMs: 500,
     failure,
+    handoffPath: "",
   };
 }
 

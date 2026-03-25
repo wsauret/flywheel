@@ -64,6 +64,7 @@ function successResult(output: string = "<promise>COMPLETE</promise>"): WorkerRe
     truncated: false,
     durationMs: 100,
     failure: undefined,
+    handoffPath: "",
   };
 }
 

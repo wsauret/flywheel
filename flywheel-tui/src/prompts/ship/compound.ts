@@ -1,4 +1,5 @@
 import type { WorkflowStepContext } from "../index.js";
+import { renderHandoffInstruction, SHIP_FIELDS } from "../../handoff/field-specs.js";
 
 /**
  * Builds a prompt for the compound learning extraction step of the ship workflow.
@@ -76,5 +77,6 @@ The \`extraction_hash\` field ensures identical learnings are never written twic
 - If there are no learnings worth extracting, output: "No new learnings to extract."
 - Do NOT output partial docs or docs missing required fields.
 - Focus on learnings that are **reusable across sessions** — not one-off debugging steps.
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(SHIP_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

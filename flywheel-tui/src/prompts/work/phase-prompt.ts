@@ -8,6 +8,25 @@ import {
   buildIterationBudgetInstruction,
   buildProjectContextSection,
 } from "../conventions.js";
+import { renderHandoffInstruction, WORK_PHASE_FIELDS } from "../../handoff/field-specs.js";
+
+// ---------------------------------------------------------------------------
+// Completion / Handoff section
+// ---------------------------------------------------------------------------
+
+function completionSection(ctx: WorkflowStepContext): string {
+  const handoffPath = ctx.extra?.handoffPath;
+  if (typeof handoffPath === "string" && handoffPath.length > 0) {
+    return renderHandoffInstruction(WORK_PHASE_FIELDS, handoffPath);
+  }
+  // Backward-compatible fallback when no handoffPath is available
+  return `## Completion
+
+When the phase is done, provide:
+- Summary of what was implemented
+- Evidence of verification (command outputs)
+- Any decisions made that affect future phases`;
+}
 
 // ---------------------------------------------------------------------------
 // Main prompt builder
@@ -98,11 +117,6 @@ ${VERIFICATION_BANNED_PHRASES}
 
 ${THREE_STRIKE_PROTOCOL}
 
-## Completion
-
-When the phase is done, provide:
-- Summary of what was implemented
-- Evidence of verification (command outputs)
-- Any decisions made that affect future phases
+${completionSection(ctx)}
 `;
 }

@@ -10,6 +10,7 @@ import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { DispatcherTransport } from "../dispatcher/transport";
 import type { DispatcherDecision } from "../schemas/dispatcher";
+import type { LastWorkerResult } from "../schemas/shared";
 import type { PhaseInfo } from "./phase-provider";
 import type { AssemblerInput } from "../dispatcher/assemble";
 import { assembleDispatcherInput } from "../dispatcher/assemble";
@@ -64,7 +65,7 @@ export class DispatcherOrchestrator {
     planContent: string,
     stateContent: string,
     contextContent: string | undefined,
-    lastWorkerResult: string | undefined,
+    lastWorkerResult: LastWorkerResult | undefined,
     options: PhasePromptOptions,
   ): Promise<DispatcherDecision | null> {
     // Emit dispatcher:invoked

@@ -1,9 +1,8 @@
 /**
- * ShipOutputExtractor — parses compound doc blocks from ship step 3
- * (learning extraction) and persists them via extractLearning().
+ * ShipOutputExtractor — reads compound doc blocks from ship step 3
+ * (learning extraction) via handoff and persists them via extractLearning().
  *
- * Follows the same hook pattern as plan-output-extractor.ts and
- * review-output-extractor.ts.
+ * Handoff is the ONLY path. No fallback to stdout parsing.
  */
 
 import type { WorkerResult } from "../schemas/worker";
@@ -11,8 +10,9 @@ import type { OnStepCompleteHook } from "../controller/execution-loop";
 import { Log } from "../utils/log";
 import { extractLearning, CompoundDocSchema } from "../memory/extract";
 import type { ExtractionInput, ExtractionResult } from "../memory/extract";
-import { parseFrontmatter } from "../utils/frontmatter";
-import { extractTextFromOutput } from "./output-text-extractor";
+import { readHandoff } from "../handoff/reader";
+import { WorkerHandoffSchema } from "../schemas/handoff";
+import type { CompoundDoc as HandoffCompoundDoc } from "../schemas/handoff";
 
 const log = Log.create({ service: "ship-hook" });
 
@@ -23,128 +23,20 @@ const log = Log.create({ service: "ship-hook" });
 /** The compound extraction step index in the ship workflow (0-based). */
 export const COMPOUND_STEP_INDEX = 3;
 
-// ---------------------------------------------------------------------------
-// Compound doc parser
-// ---------------------------------------------------------------------------
-
 /**
- * Parse compound doc blocks from worker output text.
- *
- * Splits on frontmatter delimiters (`---`) and looks for blocks where
- * `type: compound` is present in the YAML frontmatter. Extracts the
- * title, problem, solution, tags, and context fields.
- *
- * Returns an array of ExtractionInput objects (validated against
- * CompoundDocSchema). Invalid blocks are silently skipped.
+ * Map handoff CompoundDoc to ExtractionInput.
+ * Handoff has: { title, type, tags, problem, solution, context? }
+ * ExtractionInput has: { title, tags, problem, solution, context? }
+ * The `type` field is dropped (not needed by extractLearning).
  */
-export function parseCompoundDocs(output: string): ExtractionInput[] {
-  if (!output.trim()) return [];
-
-  const results: ExtractionInput[] = [];
-
-  // Split on `---` line boundaries to find frontmatter-delimited blocks.
-  // A compound doc block looks like:
-  //   ---
-  //   type: compound
-  //   title: "..."
-  //   ...
-  //   ---
-  //   ## Problem
-  //   ...
-  //   ## Solution
-  //   ...
-  //
-  // Strategy: find all `---` delimited blocks and check if they contain type: compound.
-  const blocks = splitFrontmatterBlocks(output);
-
-  for (const block of blocks) {
-    const parsed = parseFrontmatter(block);
-    if (!parsed) continue;
-
-    const { frontmatter, body } = parsed;
-
-    // Only process compound type docs
-    if (frontmatter.type !== "compound") continue;
-
-    const input: ExtractionInput = {
-      title: String(frontmatter.title ?? ""),
-      tags: Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : [],
-      problem: extractSection(body, "Problem"),
-      solution: extractSection(body, "Solution"),
-      context: extractSection(body, "Context") || undefined,
-    };
-
-    // Validate before returning
-    const validation = CompoundDocSchema.safeParse(input);
-    if (validation.success) {
-      results.push(input);
-    }
-  }
-
-  return results;
-}
-
-/**
- * Split output text into potential frontmatter-delimited blocks.
- *
- * Looks for lines that are exactly `---` and reconstructs complete
- * frontmatter blocks (from `---` to `---` plus trailing body content).
- */
-function splitFrontmatterBlocks(text: string): string[] {
-  const blocks: string[] = [];
-  const lines = text.split("\n");
-
-  let i = 0;
-  while (i < lines.length) {
-    // Look for opening `---`
-    if (lines[i].trim() === "---") {
-      // Find the closing `---`
-      let j = i + 1;
-      while (j < lines.length && lines[j].trim() !== "---") {
-        j++;
-      }
-
-      if (j < lines.length) {
-        // Found closing delimiter — collect body until next `---` or end
-        let k = j + 1;
-        while (k < lines.length && lines[k].trim() !== "---") {
-          k++;
-        }
-
-        // Reconstruct the full block: frontmatter + body
-        const block = lines.slice(i, k).join("\n");
-        blocks.push(block);
-        i = k; // Continue from next potential block
-      } else {
-        i = j;
-      }
-    } else {
-      i++;
-    }
-  }
-
-  return blocks;
-}
-
-/**
- * Extract the content under a `## <heading>` section.
- * Returns the text between the heading and the next `## ` heading (or end of string).
- */
-function extractSection(body: string, heading: string): string {
-  const pattern = new RegExp(`^## ${heading}\\s*$`, "im");
-  const match = body.match(pattern);
-  if (!match || match.index === undefined) return "";
-
-  const start = match.index + match[0].length;
-  const rest = body.slice(start);
-
-  // Find next ## heading
-  const nextHeading = rest.match(/^## /m);
-  const sectionText = nextHeading?.index !== undefined
-    ? rest.slice(0, nextHeading.index)
-    : rest;
-
-  return sectionText.trim();
+function mapHandoffCompoundDocs(docs: HandoffCompoundDoc[]): ExtractionInput[] {
+  return docs.map((d) => ({
+    title: d.title,
+    tags: d.tags,
+    problem: d.problem,
+    solution: d.solution,
+    context: d.context,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -154,11 +46,10 @@ function extractSection(body: string, heading: string): string {
 /**
  * Create an `onStepComplete` hook for the ship workflow.
  *
- * After step 3 (compound extraction), parses worker output for compound doc
- * blocks and persists each one via `extractLearning()`.
+ * After step 3 (compound extraction), reads compound docs from handoff
+ * and persists each one via `extractLearning()`.
  *
- * Only processes step 3 (COMPOUND_STEP_INDEX). Returns empty object for
- * all other steps.
+ * Handoff is the only path. No fallback to stdout parsing.
  *
  * @param projectCwd - The project root directory
  * @param knownHashes - Optional pre-built hash set for fast dedup (from SESMemoryRetriever.getHashes())
@@ -181,12 +72,25 @@ export function createShipOnStepComplete(
     }
 
     try {
-      // Extract clean text from NDJSON-wrapped output
-      const cleanText = extractTextFromOutput(result.output);
-      const compoundDocs = parseCompoundDocs(cleanText);
+      let compoundDocs: ExtractionInput[] = [];
+
+      if (result.handoffPath) {
+        try {
+          const handoff = await readHandoff(result.handoffPath, WorkerHandoffSchema);
+          if (handoff.compound_docs && handoff.compound_docs.length > 0) {
+            compoundDocs = mapHandoffCompoundDocs(handoff.compound_docs);
+            log.info("read compound_docs from handoff", { count: compoundDocs.length });
+          }
+        } catch (err) {
+          log.warn("handoff read failed for compound_docs, returning zero", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return { learningsExtracted: 0 };
+        }
+      }
 
       if (compoundDocs.length === 0) {
-        log.info("no compound docs found in ship output");
+        log.info("no compound docs found in ship handoff");
         return { learningsExtracted: 0 };
       }
 

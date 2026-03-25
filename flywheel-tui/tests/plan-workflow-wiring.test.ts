@@ -37,6 +37,7 @@ function successResult(output: string = "<promise>COMPLETE</promise>"): WorkerRe
     truncated: false,
     durationMs: 1000,
     failure: undefined,
+    handoffPath: "",
   };
 }
 
@@ -127,7 +128,7 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
       workflowId: "test-plan-wiring",
       workflowLabel: "plan",
       onStepComplete: hook,
-      skipTruncation: true,
+
     });
 
     const result = await loop.run();
@@ -182,7 +183,7 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
       workflowId: "test-plan-scan",
       workflowLabel: "plan",
       onStepComplete: hook,
-      skipTruncation: true,
+
     });
 
     // Create the plan file just before running (simulates worker creating it)
@@ -245,7 +246,7 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
       workflowId: "test-plan-no-file",
       workflowLabel: "plan",
       onStepComplete: hook,
-      skipTruncation: true,
+
     });
 
     // The plan should still complete — the hook logs a warning but doesn't halt
@@ -309,7 +310,7 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
       workflowId: "test-plan-step3-only",
       workflowLabel: "plan",
       onStepComplete: hook,
-      skipTruncation: true,
+
     });
 
     const result = await loop.run();
@@ -320,20 +321,22 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
     const emptyContext = { conventions: [], standards: [], learnings: [] };
     // Steps 0-1 should not have any extra data beyond context entries.
     // Step 2 (review) returns empty object when no questions are parsed.
-    expect(extraSnapshots[0]).toEqual({ ...emptyContext }); // Phase 0: no prior extra
-    expect(extraSnapshots[1]).toEqual({ ...emptyContext }); // Phase 1: step 0 returned {}
-    expect(extraSnapshots[2]).toEqual({ ...emptyContext }); // Phase 2: step 1 returned {}
+    expect(extraSnapshots[0]).toMatchObject({ ...emptyContext }); // Phase 0: no prior extra
+    expect(extraSnapshots[1]).toMatchObject({ ...emptyContext }); // Phase 1: step 0 returned {}
+    expect(extraSnapshots[2]).toMatchObject({ ...emptyContext }); // Phase 2: step 1 returned {}
     // Phase 3 sees step 2's output: no questions parsed → empty object
-    expect(extraSnapshots[3]).toEqual({ ...emptyContext });
+    expect(extraSnapshots[3]).toMatchObject({ ...emptyContext });
     // The hook extracts planFilePath on step 3, so it would be in accumulator
     // AFTER step 3 completes. Since there's no step 4, we verify the
     // workflow completed and that the hook ran by checking completion.
   });
 
-  it("parses open questions from review step (step 2) output", async () => {
+  it("reads open questions from review step (step 2) handoff", async () => {
     const dir = ensureTmpDir();
     const plansDir = path.join(dir, "docs", "plans");
+    const handoffsDir = path.join(dir, ".flywheel", "handoffs");
     fs.mkdirSync(plansDir, { recursive: true });
+    fs.mkdirSync(handoffsDir, { recursive: true });
     fs.writeFileSync(path.join(plansDir, "feat-auth.md"), "# Auth Plan");
 
     const bus = new EventBus();
@@ -342,23 +345,22 @@ describe("Plan workflow wiring with PlanOutputExtractor", () => {
     adapter.connect(bus);
     adapter.start();
 
-    const reviewOutput = `# Plan Review Summary
-
-## Open Questions
-
-1. Should \`auto_chain\` default to \`true\` or \`false\`?
-2. How should sessions be managed across stages?
-
-## Critical (P1)
-
-No critical findings.
-`;
+    // Write handoff for the review step (step 2) with open questions
+    const reviewHandoffPath = path.join(handoffsDir, "review-handoff.json");
+    const VALID_SUMMARY = "The plan review identified two open questions that need resolution before consolidation. The review covered architecture, security, and session management design decisions.";
+    fs.writeFileSync(reviewHandoffPath, JSON.stringify({
+      summary: VALID_SUMMARY,
+      open_questions: [
+        { question: "Should `auto_chain` default to `true` or `false`?", options: ["true", "false"] },
+        { question: "How should sessions be managed across stages?", options: [] },
+      ],
+    }));
 
     const spawner = new MockSpawner();
     spawner.results = [
       successResult("Research complete."),
       successResult("Draft written."),
-      successResult(reviewOutput),
+      { output: "Review done.", exitCode: 0, truncated: false, durationMs: 1000, failure: undefined, handoffPath: reviewHandoffPath },
       successResult("Consolidated to docs/plans/feat-auth.md"),
     ];
 
@@ -391,13 +393,13 @@ No critical findings.
       workflowId: "test-plan-questions",
       workflowLabel: "plan",
       onStepComplete: hook,
-      skipTruncation: true,
+
     });
 
     const result = await loop.run();
     expect(result.completed).toBe(true);
 
-    // Phase 3 (consolidation) should receive parsed questions from step 2.
+    // Phase 3 (consolidation) should receive questions from step 2 handoff.
     // With no questionService/interactive, questions are forwarded as unresolved.
     const consolidationExtra = extraSnapshots[3];
     expect(consolidationExtra).toBeDefined();
@@ -414,7 +416,7 @@ No critical findings.
     expect(consolidationExtra.questionDirective).toBe("resolve-best-judgment");
   });
 
-  it("auto-resolves questions with first option when options exist", async () => {
+  it("no handoff on review step → no questions forwarded", async () => {
     const dir = ensureTmpDir();
     const plansDir = path.join(dir, "docs", "plans");
     fs.mkdirSync(plansDir, { recursive: true });
@@ -426,20 +428,11 @@ No critical findings.
     adapter.connect(bus);
     adapter.start();
 
-    const reviewOutput = `# Plan Review Summary
-
-## Open Questions
-
-| # | Question | Options | Source(s) |
-|---|----------|---------|-----------|
-| 1 | Should \`auto_chain\` default to \`true\` or \`false\`? | A: \`true\` B: \`false\` C: Split flags | reviewer-architecture |
-`;
-
     const spawner = new MockSpawner();
     spawner.results = [
       successResult("Research complete."),
       successResult("Draft written."),
-      successResult(reviewOutput),
+      successResult("Review with questions in stdout (but no handoff)."),
       successResult("Consolidated to docs/plans/feat-config.md"),
     ];
 
@@ -449,7 +442,7 @@ No critical findings.
       emitter,
       config,
       engine: claudeEngine,
-      workflowId: "test-plan-auto-resolve",
+      workflowId: "test-plan-no-handoff",
     });
 
     const provider = new WorkflowDefinitionProvider(planWorkflow);
@@ -469,23 +462,18 @@ No critical findings.
       emitter,
       config,
       ui: adapter,
-      workflowId: "test-plan-auto-resolve",
+      workflowId: "test-plan-no-handoff",
       workflowLabel: "plan",
       onStepComplete: hook,
-      skipTruncation: true,
+
     });
 
     const result = await loop.run();
     expect(result.completed).toBe(true);
 
-    // With no questionService/interactive, questions are forwarded as unresolved with directive
+    // Without handoff, no questions are forwarded (handoff-only path)
     const consolidationExtra = extraSnapshots[3];
-    const unresolvedQuestions = consolidationExtra.unresolvedQuestions as Array<{ question: string; options: Array<{ label: string }> }>;
-    expect(unresolvedQuestions).toHaveLength(1);
-    expect(unresolvedQuestions[0].question).toBe(
-      "Should `auto_chain` default to `true` or `false`?"
-    );
-    expect(unresolvedQuestions[0].options[0].label).toBe("true");
-    expect(consolidationExtra.questionDirective).toBe("resolve-best-judgment");
+    expect(consolidationExtra.unresolvedQuestions).toBeUndefined();
+    expect(consolidationExtra.questionDirective).toBeUndefined();
   });
 });

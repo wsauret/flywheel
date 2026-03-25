@@ -8,17 +8,24 @@
  * Uses ProcessSpawner (DI seam, same pattern as worker).
  * Applies createEnvFilter() for env sanitization.
  * 60s timeout. On parse failure: retry ONCE with error feedback.
+ *
+ * Decision is read from a handoff file (not stdout parsing).
+ * The dispatcher LLM writes a JSON decision to a file path included in the prompt.
  */
 
+import * as nodePath from "node:path";
+import * as fs from "node:fs";
 import type { DispatcherInput, DispatcherDecision } from "../schemas/dispatcher";
 import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
-import type { Engine, EngineCommand } from "../engines/core/types";
-import { DispatcherDecisionSchema } from "../schemas/dispatcher";
+import type { Engine } from "../engines/core/types";
 import { createEnvFilter } from "../worker/env-filter";
 import { getEngine } from "../engines/core/registry";
 import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prompt";
-import { extractTextFromNDJSON } from "../utils/ndjson-text-extractor";
+import { renderDispatcherHandoffInstruction } from "../handoff/field-specs";
+import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
+import { DispatcherDecisionHandoffSchema } from "../schemas/handoff";
+import type { DispatcherDecisionHandoff } from "../schemas/handoff";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "dispatcher-subprocess" });
@@ -67,20 +74,33 @@ export class SubprocessTransport implements DispatcherTransport {
   }
 
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
+    const invocationId = crypto.randomUUID();
+    const handoffsDir = nodePath.resolve(
+      process.cwd(),
+      ".flywheel",
+      "handoffs",
+    );
+    fs.mkdirSync(handoffsDir, { recursive: true });
+    const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
+
     const systemPrompt = buildDispatcherSystemPrompt();
     const truncationNotes = buildTruncationNotes(input);
     const userContent = `${truncationNotes}Here is the dispatcher input:\n\n${JSON.stringify(input)}\n\nRespond with valid JSON only.`;
+
+    // Append handoff instruction so the dispatcher writes its decision to a file
+    const handoffInstruction = renderDispatcherHandoffInstruction(handoffPath);
+    const fullPrompt = `${userContent}\n\n${handoffInstruction}`;
 
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const retryNote = attempt > 0
-        ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please output valid JSON matching the schema.`
+        ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
         : "";
 
       // Build the engine-specific command via the registry
       const engineCmd = this.engine.buildDispatcherCommand({
-        prompt: userContent + retryNote,
+        prompt: fullPrompt + retryNote,
         systemPrompt,
         model: this.dispatcherModel,
       });
@@ -90,6 +110,7 @@ export class SubprocessTransport implements DispatcherTransport {
         command: engineCmd.command,
         attempt: attempt + 1,
         model: this.dispatcherModel ?? "(default)",
+        handoffPath,
       });
 
       const env = this.envFilter.filter(
@@ -98,7 +119,7 @@ export class SubprocessTransport implements DispatcherTransport {
 
       // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
       const stdinContent = engineCmd.stdinPrompt
-        ? `${systemPrompt}\n\n---\n\n${userContent}${retryNote}`
+        ? `${systemPrompt}\n\n---\n\n${fullPrompt}${retryNote}`
         : undefined;
 
       const { result: resultPromise } = await this.spawner.spawn(
@@ -110,54 +131,52 @@ export class SubprocessTransport implements DispatcherTransport {
           env,
         },
       );
-      const result = await resultPromise;
+      await resultPromise;
 
-      // Parse output using engine-appropriate strategy
-      const parseResult = this.parseOutput(result.output);
-      if (parseResult.success) {
-        return parseResult.data;
+      // Read decision from handoff file (not stdout)
+      try {
+        const handoff: DispatcherDecisionHandoff = await readHandoff(
+          handoffPath,
+          DispatcherDecisionHandoffSchema,
+        );
+        return mapHandoffToDecision(handoff);
+      } catch (err) {
+        if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
+          lastError = err;
+          log.warn("dispatcher handoff read failed, retrying", {
+            attempt: attempt + 1,
+            error: err.message,
+          });
+          continue;
+        }
+        // Unexpected error — propagate
+        throw err;
       }
-
-      lastError = new Error(parseResult.error);
     }
 
     throw new Error(
       `Dispatcher subprocess failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`,
     );
   }
+}
 
-  private parseOutput(output: string): { success: true; data: DispatcherDecision } | { success: false; error: string } {
-    // Engine-specific output parsing:
-    // - OpenCode outputs NDJSON (newline-delimited JSON events)
-    // - Claude Code --print outputs plain text (raw response)
-    const isOpenCode = this.engine.metadata.id === "opencode";
+// ---------------------------------------------------------------------------
+// mapHandoffToDecision — convert DispatcherDecisionHandoff to DispatcherDecision
+// ---------------------------------------------------------------------------
 
-    let source: string;
-    if (isOpenCode) {
-      const textContent = extractTextFromNDJSON(output);
-      source = textContent || output;
-    } else {
-      // Claude Code --print: output is plain text, may contain JSON directly
-      source = output;
-    }
-
-    const jsonMatch = source.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { success: false, error: `No JSON found in output: ${source.slice(0, 200)}` };
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      return { success: false, error: `Invalid JSON: ${jsonMatch[0].slice(0, 200)}` };
-    }
-
-    const result = DispatcherDecisionSchema.safeParse(parsed);
-    if (!result.success) {
-      return { success: false, error: `Schema validation failed: ${result.error.message}` };
-    }
-
-    return { success: true, data: result.data };
-  }
+function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {
+  return {
+    schema_version: handoff.schema_version,
+    phase_index: handoff.phase_index,
+    step_index: 0, // handoff schema lacks step_index — default to 0
+    task_content: handoff.task_content,
+    context_files: handoff.context_files,
+    // context_to_inline: undefined — handoff schema lacks this field
+    validation_criteria: handoff.validation_criteria
+      ? { acceptance_criteria: [handoff.validation_criteria], required_tests: false, custom_checks: [], required_outputs: [] }
+      : { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+    reasoning: handoff.reasoning,
+    worker_config: handoff.worker_config,
+    session_name: handoff.session_name,
+  };
 }

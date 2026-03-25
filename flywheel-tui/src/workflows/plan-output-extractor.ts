@@ -1,12 +1,8 @@
 /**
- * PlanOutputExtractor — extracts and verifies plan file paths from worker output.
+ * PlanOutputExtractor — extracts plan file paths and open questions from
+ * worker handoff data.
  *
- * Three strategies, tried in order:
- *   1. Regex extraction of `<type>-<description>.md` from output text
- *   2. Disk verification via `fs.promises.access`
- *   3. Fallback scan of `docs/plans/` for recently modified matching files
- *
- * All I/O is async (fs.promises.*).
+ * Handoff is the ONLY path. No fallback parsing of stdout.
  */
 
 import * as fs from "node:fs/promises";
@@ -17,15 +13,14 @@ import { Log } from "../utils/log";
 
 const log = Log.create({ service: "plan-hook" });
 import {
-  parseOpenQuestions,
-  type OpenQuestion,
-  type ResolvedQuestion,
-} from "./question-parser";
-import {
   QuestionRejectedError,
   type QuestionService,
+  type OpenQuestion,
+  type ResolvedQuestion,
 } from "../controller/question-service";
-import { extractTextFromOutput } from "./output-text-extractor";
+import { readHandoff } from "../handoff/reader";
+import { WorkerHandoffSchema } from "../schemas/handoff";
+import type { OpenQuestion as HandoffOpenQuestion } from "../schemas/handoff";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -34,117 +29,8 @@ import { extractTextFromOutput } from "./output-text-extractor";
 /** Directive sent to consolidation when open questions are forwarded unresolved. */
 export const PLAN_QUESTION_DIRECTIVE = "resolve-best-judgment" as const;
 
-/** Valid plan type prefixes (matches buildPlanDraftPrompt naming convention). */
-const PLAN_TYPES = ["feat", "fix", "refactor", "chore", "docs"] as const;
-
-/** Regex to match plan filenames: <type>-<description>.md (global, for String.match). */
-const PLAN_FILENAME_PATTERN = new RegExp(
-  `(?:${PLAN_TYPES.join("|")})-[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\\.md`,
-  "g",
-);
-
-/** Non-global variant for single-match testing (avoids lastIndex statefulness). */
-const PLAN_FILENAME_TEST = new RegExp(
-  `(?:${PLAN_TYPES.join("|")})-[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\\.md`,
-);
-
 /** File suffixes to exclude from scan results (metadata companions, not actual plans). */
 export const EXCLUDED_SUFFIXES = [".context.md", ".state.md", ".baseline.md"];
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Extract a plan filename from worker output text.
- *
- * Scans for patterns like `feat-auth-jwt.md`, `fix-memory-leak.md`, etc.
- * Returns the last match (most likely the final/consolidated version).
- *
- * @returns The filename (e.g. `feat-auth-jwt.md`) or null if none found.
- */
-export async function extractPlanPath(
-  workerOutput: string,
-): Promise<string | null> {
-  if (!workerOutput) return null;
-
-  const matches = workerOutput.match(PLAN_FILENAME_PATTERN);
-  if (!matches || matches.length === 0) return null;
-
-  // Return the last match — most likely the final/consolidated filename
-  return matches[matches.length - 1];
-}
-
-/**
- * Verify that a plan file exists on disk at `docs/plans/<filename>`.
- *
- * @param projectCwd - The project root directory
- * @param filename - The plan filename (e.g. `feat-auth-jwt.md`)
- * @returns The full path if the file exists, or null.
- */
-export async function verifyPlanFile(
-  projectCwd: string,
-  filename: string,
-): Promise<string | null> {
-  const fullPath = path.join(projectCwd, "docs", "plans", filename);
-  try {
-    await fs.access(fullPath);
-    return fullPath;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Scan `docs/plans/` for plan files created after `beforeTimestamp`.
- *
- * Fallback strategy when regex extraction fails. Finds the most recently
- * modified `.md` file matching the `<type>-*.md` pattern.
- *
- * @param projectCwd - The project root directory
- * @param beforeTimestamp - Only consider files modified after this time (ms since epoch)
- * @returns The filename of the newest matching plan file, or null.
- */
-export async function scanForNewPlan(
-  projectCwd: string,
-  beforeTimestamp: number,
-): Promise<string | null> {
-  const plansDir = path.join(projectCwd, "docs", "plans");
-
-  let entries: string[];
-  try {
-    entries = await fs.readdir(plansDir);
-  } catch {
-    return null;
-  }
-
-  // Filter entries: must match plan pattern and NOT be excluded metadata files
-  const matchingEntries = entries.filter((entry) => {
-    if (EXCLUDED_SUFFIXES.some((suffix) => entry.endsWith(suffix))) return false;
-    return PLAN_FILENAME_TEST.test(entry);
-  });
-
-  // Parallelize fs.stat calls
-  const statPromises = matchingEntries.map(async (entry) => {
-    try {
-      const stat = await fs.stat(path.join(plansDir, entry));
-      return stat.mtimeMs > beforeTimestamp
-        ? { filename: entry, mtimeMs: stat.mtimeMs }
-        : null;
-    } catch {
-      return null;
-    }
-  });
-  const candidates = (await Promise.all(statPromises)).filter(
-    (c): c is { filename: string; mtimeMs: number } => c !== null,
-  );
-
-  if (candidates.length === 0) return null;
-
-  // Return the most recently modified file
-  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
-  return candidates[0].filename;
-}
 
 // ---------------------------------------------------------------------------
 // Hook factory
@@ -165,6 +51,19 @@ export interface PlanHookOptions {
 }
 
 /**
+ * Map handoff OpenQuestion (from schema) to local OpenQuestion.
+ * Handoff has: { question, options: string[], header? }
+ * Local has: { question, header, options: QuestionOption[] }
+ */
+function mapHandoffQuestions(handoffQuestions: HandoffOpenQuestion[]): OpenQuestion[] {
+  return handoffQuestions.map((hq) => ({
+    question: hq.question,
+    header: hq.header ?? hq.question.slice(0, 30),
+    options: hq.options.map((opt) => ({ label: opt, description: "" })),
+  }));
+}
+
+/**
  * Handle open questions from the review step.
  *
  * Three modes:
@@ -172,17 +71,31 @@ export interface PlanHookOptions {
  *   2. interactive + user dismisses (QuestionRejectedError) → return unresolvedQuestions + directive
  *   3. non-interactive (no questionService or interactive=false) → return unresolvedQuestions + directive
  *
- * Returns empty object when no questions are parsed.
+ * Reads from worker handoff only. No fallback to stdout parsing.
+ * Returns empty object when handoff has no questions or read fails.
  */
 async function handleReviewQuestions(
-  output: string,
+  result: WorkerResult,
   options: PlanHookOptions,
 ): Promise<Record<string, unknown>> {
-  // Extract clean text from NDJSON-wrapped output before parsing
-  const cleanText = extractTextFromOutput(output);
-  const openQuestions = parseOpenQuestions(cleanText);
+  let openQuestions: OpenQuestion[] = [];
 
-  // No questions parsed → nothing to do
+  if (result.handoffPath) {
+    try {
+      const handoff = await readHandoff(result.handoffPath, WorkerHandoffSchema);
+      if (handoff.open_questions && handoff.open_questions.length > 0) {
+        openQuestions = mapHandoffQuestions(handoff.open_questions);
+        log.info("read open_questions from handoff", { count: openQuestions.length });
+      }
+    } catch (err) {
+      log.warn("handoff read failed for open_questions, returning empty", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return {};
+    }
+  }
+
+  // No questions → nothing to do
   if (openQuestions.length === 0) {
     return {};
   }
@@ -225,30 +138,19 @@ async function handleReviewQuestions(
 /**
  * Create an `onStepComplete` hook for the plan workflow.
  *
- * After the review step (step 2), handles open questions in three modes:
- *   - Interactive + user answers → resolvedQuestions with source: "user"
- *   - Interactive + user dismisses → unresolvedQuestions + directive
- *   - Non-interactive → unresolvedQuestions + directive (auto-forward)
+ * After the review step (step 2), handles open questions from handoff.
+ * After the consolidation step (step 3), reads plan_file_path from handoff.
  *
- * After the consolidation step (step 3), extracts the plan file path from
- * the worker output using three strategies:
- *   1. Regex extraction from output text
- *   2. Disk verification of the extracted filename
- *   3. Fallback scan for recently created plan files
- *
- * Stores the result as `planFilePath` in the extra accumulator.
+ * Handoff is the only path. No fallback parsing of stdout.
  *
  * @param projectCwd - The project root directory (for disk verification)
- * @param options - Optional question service and interactive flag. When omitted,
- *   falls back to non-interactive auto-forward behavior (backward-compatible).
+ * @param options - Optional question service and interactive flag.
  * @returns An OnStepCompleteHook suitable for ExecutionLoop
  */
 export function createPlanOnStepComplete(
   projectCwd: string,
   options?: PlanHookOptions,
 ): OnStepCompleteHook {
-  // Record the time before the workflow starts, used for fallback scan
-  const workflowStartTime = Date.now();
   const hookOptions: PlanHookOptions = options ?? {};
 
    return async (
@@ -259,7 +161,7 @@ export function createPlanOnStepComplete(
     // After the review step: handle open questions
     if (stepIndex === REVIEW_STEP_INDEX) {
       try {
-        return await handleReviewQuestions(result.output, hookOptions);
+        return await handleReviewQuestions(result, hookOptions);
       } catch (err) {
         // Outer catch: unexpected errors don't abort the pipeline
         log.error("unexpected error handling review questions", { error: err instanceof Error ? err : String(err) });
@@ -272,28 +174,35 @@ export function createPlanOnStepComplete(
       return {};
     }
 
-    // Strategy 1: Regex extraction
-    const filename = await extractPlanPath(result.output);
-
-    if (filename) {
-      // Strategy 2: Verify file exists on disk
-      const fullPath = await verifyPlanFile(projectCwd, filename);
-      if (fullPath) {
-        return { planFilePath: fullPath, planFileName: filename };
+    // Read plan_file_path from handoff
+    if (result.handoffPath) {
+      try {
+        const handoff = await readHandoff(result.handoffPath, WorkerHandoffSchema);
+        if (handoff.plan_file_path) {
+          // Resolve relative paths against projectCwd
+          const resolvedPath = path.isAbsolute(handoff.plan_file_path)
+            ? handoff.plan_file_path
+            : path.join(projectCwd, handoff.plan_file_path);
+          // Verify file exists on disk (handoff data is LLM-produced, may be wrong)
+          try {
+            await fs.access(resolvedPath);
+            const planFileName = path.basename(resolvedPath);
+            log.info("read plan_file_path from handoff", { planFilePath: resolvedPath });
+            return { planFilePath: resolvedPath, planFileName };
+          } catch {
+            log.warn("handoff plan_file_path does not exist on disk", {
+              path: resolvedPath,
+            });
+          }
+        }
+      } catch (err) {
+        log.warn("handoff read failed for plan_file_path", {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
-      // File mentioned but not found — warn but continue
-      // (worker may have written to a different location)
-    }
-
-    // Strategy 3: Fallback — scan docs/plans/ for newly created files
-    const scannedFilename = await scanForNewPlan(projectCwd, workflowStartTime);
-    if (scannedFilename) {
-      const fullPath = path.join(projectCwd, "docs", "plans", scannedFilename);
-      return { planFilePath: fullPath, planFileName: scannedFilename };
     }
 
     // No plan file found — warn but don't halt the pipeline
-    // The plan content is still available in the worker output
     return { planFileWarning: "Could not locate plan file on disk after consolidation" };
   };
 }

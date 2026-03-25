@@ -64,4 +64,6 @@ export interface SpawnOptions {
    * When false or absent, preserves the current pre-encoded Uint8Array behavior.
    */
   stdinPipe?: boolean;
+  /** Unique invocation ID for handoff file path construction */
+  invocationId?: string;
 }

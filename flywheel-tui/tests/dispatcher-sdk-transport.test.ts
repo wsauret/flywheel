@@ -321,10 +321,11 @@ describe("Auto-detect: never uses SDK for claude engine", () => {
       async spawn() {
         return {
           result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 0,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -343,10 +344,11 @@ describe("Auto-detect: never uses SDK for claude engine", () => {
       async spawn() {
         return {
           result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 0,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -368,15 +370,34 @@ describe("Auto-detect: never uses SDK for claude engine", () => {
     // the SubprocessTransport fallback receives dispatcherModel
     let spawnedArgs: string[] = [];
 
+    const handoff = {
+      schema_version: 1,
+      phase_index: 0,
+      task_content: "Execute the setup phase by creating directory layout",
+      context_files: ["src/index.ts"],
+      reasoning: "Standard setup phase execution",
+    };
+
     const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        // Write handoff file from prompt
+        const prompt = (() => {
+          const pIdx = args.indexOf("-p");
+          if (pIdx > -1) return args[pIdx + 1];
+          return options?.stdin ?? "";
+        })();
+        const pathMatch = prompt.match(/`([^`]+\.json)`/);
+        if (pathMatch) {
+          await Bun.write(pathMatch[1], JSON.stringify(handoff));
+        }
         return {
           result: Promise.resolve({
-            output: `{"type":"text","part":{"type":"text","text":"${JSON.stringify(validDecision()).replace(/"/g, '\\"')}"}}\n`,
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 0,
+            handoffPath: "/tmp/unused",
           }),
         };
       },

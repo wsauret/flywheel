@@ -11,16 +11,34 @@
  */
 
 import type { EventBus } from "../events/event-bus";
-import type {
-  QuestionOption,
-  OpenQuestion,
-} from "../workflows/question-parser";
+
+// ---------------------------------------------------------------------------
+// Types — formerly in question-parser.ts, now canonical home
+// ---------------------------------------------------------------------------
+
+export interface QuestionOption {
+  label: string;
+  description: string;
+}
+
+export interface OpenQuestion {
+  question: string;
+  header: string;
+  options: QuestionOption[];
+  multiple?: boolean;
+  source?: string;
+  default?: string;
+}
+
+export interface ResolvedQuestion {
+  question: string;
+  answers: string[];
+  source: "user" | "auto";
+}
 
 // ---------------------------------------------------------------------------
 // Types — QuestionInfo extends OpenQuestion with `custom` for TUI prompts
 // ---------------------------------------------------------------------------
-
-export type { QuestionOption, OpenQuestion };
 
 export type QuestionInfo = OpenQuestion & {
   custom?: boolean;

@@ -93,6 +93,8 @@ export interface ExecutePhaseOptions {
   toolScoping?: ToolScoping;
   /** Iteration budget for this phase (from dispatcher worker_config.iteration_budget) */
   iterationBudget?: number;
+  /** Unique invocation ID for handoff file path construction */
+  invocationId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -182,7 +184,7 @@ export class PhaseExecutor {
     const {
       phaseIndex, prompt, cwd, onStdout, onStderr, signal,
       timeoutOverrideMs, modelOverride, maxRetriesOverride, toolScoping,
-      resumeSessionId,
+      resumeSessionId, invocationId,
     } = options;
 
     // Build command using the engine pattern — dispatcher model override takes precedence
@@ -250,6 +252,7 @@ export class PhaseExecutor {
               onStderr,
               signal,
               stdinPipe: useStreamingInput,
+              invocationId,
             },
           );
           // Store stdin handle for this spawn (replaced on retry).

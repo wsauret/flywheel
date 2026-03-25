@@ -31,7 +31,7 @@ import type { DispatcherDecision } from "../src/schemas/dispatcher";
 import { buildDispatcherSystemPrompt } from "../src/dispatcher/system-prompt";
 import { buildWorkPhasePrompt } from "../src/prompts/work/phase-prompt";
 import { enrichPromptWithContext } from "../src/controller/context-enrichment";
-import { wrapCompletionInstruction } from "../src/worker/completion";
+// wrapCompletionInstruction removed — handoff files replace completion markers
 import type { WorkflowStepContext } from "../src/prompts/index";
 
 // ---------------------------------------------------------------------------
@@ -474,13 +474,8 @@ if (!taskHasTDD && !taskHasUAV) {
   if (taskHasUAV) warn("  - Contains 'Understand-Act-Verify'");
 }
 
-// Wrap completion instruction
-const finalPrompt = wrapCompletionInstruction(templateOutput);
-if (finalPrompt.includes("<promise>COMPLETE</promise>")) {
-  pass("Completion instruction applied");
-} else {
-  fail("Completion instruction missing");
-}
+// Completion instruction removed — handoff files replace completion markers
+const finalPrompt = templateOutput;
 
 info(`Final composed prompt: ${finalPrompt.length} chars`);
 

@@ -18,99 +18,24 @@ function validEvaluatorResult(overrides?: Partial<EvaluatorResult>): EvaluatorRe
   };
 }
 
-function wrapNDJSON(text: string): string {
-  return `{"type":"text","part":{"type":"text","text":${JSON.stringify(text)}}}\n`;
-}
-
 const mockSpawner: ProcessSpawner = {
-  async spawn(command, args) {
-    const isOpenCode = command === "opencode";
-    const output = isOpenCode
-      ? wrapNDJSON(JSON.stringify(validEvaluatorResult()))
-      : JSON.stringify(validEvaluatorResult());
+  async spawn(command, args, options) {
+    // Write verdict to handoff file (evaluator transport reads from file, not stdout)
+    const pIdx = args.indexOf("-p");
+    const prompt = pIdx > -1 ? args[pIdx + 1] : options?.stdin ?? "";
+    const match = prompt.match(/`([^`]+\.json)`/);
+    if (match) await Bun.write(match[1], JSON.stringify(validEvaluatorResult()));
     return {
       result: Promise.resolve({
-        output,
+        output: "",
         exitCode: 0,
         truncated: false,
         durationMs: 100,
+        handoffPath: "/tmp/unused",
       }),
     };
   },
 };
-
-// ---------------------------------------------------------------------------
-// Shared NDJSON text extractor
-// ---------------------------------------------------------------------------
-
-describe("extractTextFromNDJSON (shared utility)", () => {
-  let extractTextFromNDJSON: typeof import("../src/utils/ndjson-text-extractor").extractTextFromNDJSON;
-
-  beforeEach(async () => {
-    const mod = await import("../src/utils/ndjson-text-extractor");
-    extractTextFromNDJSON = mod.extractTextFromNDJSON;
-  });
-
-  it("extracts text from valid NDJSON text events", () => {
-    const output = [
-      '{"type":"text","part":{"type":"text","text":"Hello "}}',
-      '{"type":"text","part":{"type":"text","text":"world"}}',
-    ].join("\n");
-
-    expect(extractTextFromNDJSON(output)).toBe("Hello world");
-  });
-
-  it("returns empty string when no text events found", () => {
-    const output = '{"type":"tool_use","data":{"name":"bash"}}\n';
-    expect(extractTextFromNDJSON(output)).toBe("");
-  });
-
-  it("skips non-JSON lines gracefully", () => {
-    const output = [
-      "some random log output",
-      '{"type":"text","part":{"type":"text","text":"extracted"}}',
-      "more garbage",
-    ].join("\n");
-
-    expect(extractTextFromNDJSON(output)).toBe("extracted");
-  });
-
-  it("handles empty input", () => {
-    expect(extractTextFromNDJSON("")).toBe("");
-  });
-
-  it("handles input with only whitespace lines", () => {
-    expect(extractTextFromNDJSON("\n  \n  \n")).toBe("");
-  });
-
-  it("concatenates text without separator", () => {
-    const output = [
-      '{"type":"text","part":{"type":"text","text":"abc"}}',
-      '{"type":"text","part":{"type":"text","text":"def"}}',
-    ].join("\n");
-
-    expect(extractTextFromNDJSON(output)).toBe("abcdef");
-  });
-
-  it("ignores events with wrong type", () => {
-    const output = [
-      '{"type":"tool_use","part":{"type":"text","text":"should not appear"}}',
-      '{"type":"step_finish","data":{}}',
-      '{"type":"text","part":{"type":"text","text":"only this"}}',
-    ].join("\n");
-
-    expect(extractTextFromNDJSON(output)).toBe("only this");
-  });
-
-  it("ignores text events where part.text is not a string", () => {
-    const output = [
-      '{"type":"text","part":{"type":"text","text":123}}',
-      '{"type":"text","part":{"type":"text","text":"valid"}}',
-    ].join("\n");
-
-    expect(extractTextFromNDJSON(output)).toBe("valid");
-  });
-});
 
 // ---------------------------------------------------------------------------
 // createEvaluatorTransport factory
@@ -153,14 +78,20 @@ describe("createEvaluatorTransport", () => {
   it("passes evaluatorModel through to the transport", async () => {
     let spawnedArgs: string[] = [];
     const capturingSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedArgs = args;
+        // Write verdict to handoff file
+        const pIdx = args.indexOf("-p");
+        const prompt = pIdx > -1 ? args[pIdx + 1] : options?.stdin ?? "";
+        const match = prompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(validEvaluatorResult()));
         return {
           result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -190,14 +121,20 @@ describe("createEvaluatorTransport", () => {
   it("created transport uses engine for command building", async () => {
     let spawnedCommand = "";
     const capturingSpawner: ProcessSpawner = {
-      async spawn(command, args) {
+      async spawn(command, args, options) {
         spawnedCommand = command;
+        // Write verdict to handoff file
+        const pIdx = args.indexOf("-p");
+        const prompt = pIdx > -1 ? args[pIdx + 1] : options?.stdin ?? "";
+        const match = prompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(validEvaluatorResult()));
         return {
           result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -349,52 +286,46 @@ describe("Config → evaluator transport model flow", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Dispatcher and evaluator transports share the same extractTextFromNDJSON
+// Dispatcher and evaluator transports share handoff-based file reading
 // ---------------------------------------------------------------------------
 
-describe("shared extractTextFromNDJSON used by both transports", () => {
-  it("dispatcher transport uses shared utility", async () => {
-    // Verify that the dispatcher transport imports from the shared utility
-    // by checking it works correctly with NDJSON output
+describe("shared handoff-based reading used by both transports", () => {
+  it("dispatcher transport reads decision from handoff file (not stdout)", async () => {
+    // Verify that the dispatcher transport uses handoff files for decision reading
     const mod = await import("../src/dispatcher/subprocess-transport");
     const SubprocessTransport = mod.SubprocessTransport;
 
-    let spawnedOutput = "";
+    const handoff = {
+      schema_version: 1,
+      phase_index: 0,
+      task_content: "Test task via handoff",
+      context_files: [],
+    };
+
     const capturingSpawner: ProcessSpawner = {
-      async spawn() {
+      async spawn(command, args, options) {
+        // Write handoff file from prompt
+        const pIdx = args.indexOf("-p");
+        const prompt = pIdx > -1 ? args[pIdx + 1] : options?.stdin ?? "";
+        const match = prompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(handoff));
         return {
           result: Promise.resolve({
-            output: spawnedOutput,
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
     };
 
-    // Create with opencode engine (uses NDJSON parsing)
+    // Create with opencode engine
     const transport = new SubprocessTransport({
       spawner: capturingSpawner,
       engineName: "opencode",
     });
-
-    // Set output to NDJSON with valid dispatcher decision
-    const decision = {
-      schema_version: 1,
-      phase_index: 0,
-      step_index: 0,
-      task_content: "Test task",
-      context_files: [],
-      context_to_inline: [],
-      validation_criteria: {
-        acceptance_criteria: [],
-        required_tests: false,
-        custom_checks: [],
-        required_outputs: [],
-      },
-    };
-    spawnedOutput = wrapNDJSON(JSON.stringify(decision));
 
     const result = await transport.invoke({
       workflow_id: "test",
@@ -404,23 +335,30 @@ describe("shared extractTextFromNDJSON used by both transports", () => {
       config: { max_eval_cycles: 3, worktree_path: "", project_cwd: ".", worker_model: "opus", dispatcher_model: "sonnet" },
       session_budget: { invocations_remaining: null, token_budget_remaining: null, wall_clock_deadline: null },
       available_context: { conventions: [], standards: [], learnings: [] },
-    });
+    } as any);
 
-    expect(result.task_content).toBe("Test task");
+    expect(result.task_content).toBe("Test task via handoff");
   });
 
-  it("evaluator transport uses shared utility", async () => {
+  it("evaluator transport reads verdict from handoff file (not stdout)", async () => {
     const mod = await import("../src/evaluator/subprocess-transport");
     const SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
 
+    const verdict = validEvaluatorResult({ reasoning: "handoff verdict works" });
     const capturingSpawner: ProcessSpawner = {
-      async spawn() {
+      async spawn(command, args, options) {
+        // Write verdict to handoff file
+        const pIdx = args.indexOf("-p");
+        const prompt = pIdx > -1 ? args[pIdx + 1] : options?.stdin ?? "";
+        const match = prompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(verdict));
         return {
           result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult({ reasoning: "shared util works" }))),
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },
@@ -441,6 +379,6 @@ describe("shared extractTextFromNDJSON used by both transports", () => {
       duration_seconds: 10,
     });
 
-    expect(result.reasoning).toBe("shared util works");
+    expect(result.reasoning).toBe("handoff verdict works");
   });
 });

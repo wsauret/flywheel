@@ -6,11 +6,11 @@ import { extractLearning, computeHash, CompoundDocSchema } from "../src/memory/e
 import { SESMemoryRetriever } from "../src/memory/retrieve";
 import type { ExtractionInput } from "../src/memory/extract";
 import {
-  parseCompoundDocs,
   createShipOnStepComplete,
   COMPOUND_STEP_INDEX,
 } from "../src/workflows/ship-output-extractor";
 import type { WorkerResult } from "../src/schemas/worker";
+import type { CompoundDoc } from "../src/schemas/handoff";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -623,211 +623,79 @@ describe("extractLearning with knownHashes", () => {
 });
 
 // ---------------------------------------------------------------------------
-// parseCompoundDocs
-// ---------------------------------------------------------------------------
-
-describe("parseCompoundDocs", () => {
-  it("parses a single compound doc block", () => {
-    const output = `Some preamble text.
-
----
-type: compound
-title: "Fix Docker Volumes"
-tags: [docker, macos]
-date: "2026-03-22"
-extraction_hash: "abc123"
----
-
-## Problem
-Docker volume mounts fail on macOS.
-
-## Solution
-Add :delegated flag to volume mounts.
-
-## Context
-macOS with Docker Desktop 4.x.
-`;
-
-    const docs = parseCompoundDocs(output);
-    expect(docs.length).toBe(1);
-    expect(docs[0].title).toBe("Fix Docker Volumes");
-    expect(docs[0].tags).toEqual(["docker", "macos"]);
-    expect(docs[0].problem).toContain("Docker volume mounts fail");
-    expect(docs[0].solution).toContain(":delegated");
-    expect(docs[0].context).toContain("macOS with Docker Desktop");
-  });
-
-  it("parses multiple compound doc blocks", () => {
-    const output = `---
-type: compound
-title: "Fix A"
-tags: [a]
-date: "2026-03-22"
-extraction_hash: "h1"
----
-
-## Problem
-Problem A
-
-## Solution
-Solution A
-
----
-type: compound
-title: "Fix B"
-tags: [b]
-date: "2026-03-22"
-extraction_hash: "h2"
----
-
-## Problem
-Problem B
-
-## Solution
-Solution B
-`;
-
-    const docs = parseCompoundDocs(output);
-    expect(docs.length).toBe(2);
-    expect(docs[0].title).toBe("Fix A");
-    expect(docs[1].title).toBe("Fix B");
-  });
-
-  it("returns empty array for empty output", () => {
-    expect(parseCompoundDocs("")).toEqual([]);
-    expect(parseCompoundDocs("  ")).toEqual([]);
-  });
-
-  it("returns empty array for output with no compound docs", () => {
-    const output = "No new learnings to extract.";
-    expect(parseCompoundDocs(output)).toEqual([]);
-  });
-
-  it("skips blocks that are not type: compound", () => {
-    const output = `---
-type: note
-title: "Not compound"
-tags: [test]
----
-
-## Problem
-p
-
-## Solution
-s
-`;
-    expect(parseCompoundDocs(output)).toEqual([]);
-  });
-
-  it("skips blocks with missing required fields", () => {
-    const output = `---
-type: compound
-title: ""
-tags: []
-date: "2026-03-22"
-extraction_hash: "abc"
----
-
-## Problem
-
-
-## Solution
-s
-`;
-    // Empty title and empty tags should fail CompoundDocSchema validation
-    expect(parseCompoundDocs(output)).toEqual([]);
-  });
-
-  it("handles compound docs without Context section", () => {
-    const output = `---
-type: compound
-title: "No Context"
-tags: [test]
-date: "2026-03-22"
-extraction_hash: "abc"
----
-
-## Problem
-A problem
-
-## Solution
-A solution
-`;
-
-    const docs = parseCompoundDocs(output);
-    expect(docs.length).toBe(1);
-    expect(docs[0].context).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// createShipOnStepComplete
+// createShipOnStepComplete (handoff-based)
 // ---------------------------------------------------------------------------
 
 describe("createShipOnStepComplete", () => {
   let base: string;
+  let handoffsDir: string;
 
   beforeEach(async () => {
     base = await setupDirs();
-    // Also create nested dirs the hook expects
+    handoffsDir = join(base, ".flywheel", "handoffs");
     await mkdir(join(base, "docs", "solutions"), { recursive: true });
     await mkdir(join(base, ".flywheel", "cache", "ses-drafts"), { recursive: true });
+    await mkdir(handoffsDir, { recursive: true });
   });
 
   afterEach(async () => {
     await rm(base, { recursive: true, force: true });
   });
 
-  function makeWorkerResult(output: string): WorkerResult {
+  /** Write a handoff file and return a WorkerResult pointing to it. */
+  async function makeHandoffResult(handoff: Record<string, unknown>): Promise<WorkerResult> {
+    const id = crypto.randomUUID();
+    const handoffPath = join(handoffsDir, `${id}.json`);
+    await writeFile(handoffPath, JSON.stringify(handoff));
     return {
-      output,
+      output: "",
       exitCode: 0,
       truncated: false,
       durationMs: 1000,
+      handoffPath,
+    };
+  }
+
+  function makeWorkerResult(): WorkerResult {
+    return {
+      output: "",
+      exitCode: 0,
+      truncated: false,
+      durationMs: 1000,
+      handoffPath: "",
     };
   }
 
   it("returns empty object for steps other than COMPOUND_STEP_INDEX", async () => {
     const hook = createShipOnStepComplete(base);
-    const result = await hook(0, makeWorkerResult("anything"), {});
+    const result = await hook(0, makeWorkerResult(), {});
     expect(result).toEqual({});
   });
 
-  it("returns learningsExtracted: 0 when no compound docs in output", async () => {
+  it("returns learningsExtracted: 0 when handoff has no compound_docs", async () => {
     const hook = createShipOnStepComplete(base);
-    const result = await hook(
-      COMPOUND_STEP_INDEX,
-      makeWorkerResult("No new learnings to extract."),
-      {},
-    );
+    const wr = await makeHandoffResult({
+      summary: "a".repeat(100),
+    });
+    const result = await hook(COMPOUND_STEP_INDEX, wr, {});
     expect(result.learningsExtracted).toBe(0);
   });
 
-  it("extracts and writes compound docs from output", async () => {
+  it("extracts and writes compound docs from handoff", async () => {
     const hook = createShipOnStepComplete(base);
-    const output = `---
-type: compound
-title: "Fix Test Flakiness"
-tags: [testing, flaky]
-date: "2026-03-22"
-extraction_hash: "abc"
----
+    const wr = await makeHandoffResult({
+      summary: "a".repeat(100),
+      compound_docs: [{
+        title: "Fix Test Flakiness",
+        type: "bug-fix",
+        tags: ["testing", "flaky"],
+        problem: "Tests were flaky due to timing.",
+        solution: "Added retry logic with exponential backoff.",
+        context: "CI environment with limited resources.",
+      }],
+    });
 
-## Problem
-Tests were flaky due to timing.
-
-## Solution
-Added retry logic with exponential backoff.
-
-## Context
-CI environment with limited resources.
-`;
-
-    const result = await hook(
-      COMPOUND_STEP_INDEX,
-      makeWorkerResult(output),
-      {},
-    );
+    const result = await hook(COMPOUND_STEP_INDEX, wr, {});
     expect(result.learningsExtracted).toBe(1);
     expect(result.learningsDuplicate).toBe(0);
     expect(result.learningsFailed).toBe(0);
@@ -840,36 +708,26 @@ CI environment with limited resources.
 
   it("handles duplicate compound docs gracefully", async () => {
     const hook = createShipOnStepComplete(base);
-    const output = `---
-type: compound
-title: "Same Learning"
-tags: [test]
-date: "2026-03-22"
-extraction_hash: "abc"
----
-
-## Problem
-A problem
-
-## Solution
-A solution
-`;
+    const doc: CompoundDoc = {
+      title: "Same Learning",
+      type: "bug-fix",
+      tags: ["test"],
+      problem: "A problem",
+      solution: "A solution",
+    };
 
     // First call writes
-    await hook(COMPOUND_STEP_INDEX, makeWorkerResult(output), {});
+    const wr1 = await makeHandoffResult({ summary: "a".repeat(100), compound_docs: [doc] });
+    await hook(COMPOUND_STEP_INDEX, wr1, {});
 
     // Second call should detect duplicate
-    const result = await hook(
-      COMPOUND_STEP_INDEX,
-      makeWorkerResult(output),
-      {},
-    );
+    const wr2 = await makeHandoffResult({ summary: "a".repeat(100), compound_docs: [doc] });
+    const result = await hook(COMPOUND_STEP_INDEX, wr2, {});
     expect(result.learningsExtracted).toBe(0);
     expect(result.learningsDuplicate).toBe(1);
   });
 
   it("uses knownHashes for dedup when provided", async () => {
-    // Pre-compute the hash that would be generated for this input
     const hash = computeHash({
       title: "Known Learning",
       problem: "A problem",
@@ -879,31 +737,30 @@ A solution
     const knownHashes = new Set([hash]);
 
     const hook = createShipOnStepComplete(base, knownHashes);
-    const output = `---
-type: compound
-title: "Known Learning"
-tags: [test]
-date: "2026-03-22"
-extraction_hash: "abc"
----
+    const wr = await makeHandoffResult({
+      summary: "a".repeat(100),
+      compound_docs: [{
+        title: "Known Learning",
+        type: "bug-fix",
+        tags: ["test"],
+        problem: "A problem",
+        solution: "A solution",
+      }],
+    });
 
-## Problem
-A problem
-
-## Solution
-A solution
-`;
-
-    const result = await hook(
-      COMPOUND_STEP_INDEX,
-      makeWorkerResult(output),
-      {},
-    );
+    const result = await hook(COMPOUND_STEP_INDEX, wr, {});
     expect(result.learningsExtracted).toBe(0);
     expect(result.learningsDuplicate).toBe(1);
 
     // Nothing should be written to disk
     const files = await readdir(join(base, "docs", "solutions"));
     expect(files.length).toBe(0);
+  });
+
+  it("returns learningsExtracted: 0 when handoff read fails", async () => {
+    const hook = createShipOnStepComplete(base);
+    // Empty handoffPath means missing handoff
+    const result = await hook(COMPOUND_STEP_INDEX, makeWorkerResult(), {});
+    expect(result.learningsExtracted).toBe(0);
   });
 });

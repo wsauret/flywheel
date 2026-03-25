@@ -28,7 +28,7 @@ export interface AssemblerInput {
   planContent: string;
   stateContent: string;
   contextContent?: string;
-  lastWorkerResult?: string | LastWorkerResult | null;
+  lastWorkerResult?: LastWorkerResult | null;
   /** Workflow step context for the dispatcher */
   workflowContext: {
     workflowId: string;
@@ -104,23 +104,8 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
   let planTruncated = false;
   let historyTruncated = false;
 
-  // Parse lastWorkerResult — accept structured object or skip raw strings
-  let lastWorkerResultObj: LastWorkerResult | null = null;
-  if (raw.lastWorkerResult != null) {
-    if (typeof raw.lastWorkerResult === "string") {
-      // Legacy string path: try to parse as JSON, otherwise skip
-      try {
-        const parsed = JSON.parse(raw.lastWorkerResult);
-        if (parsed && typeof parsed === "object" && "step" in parsed && "status" in parsed) {
-          lastWorkerResultObj = parsed as LastWorkerResult;
-        }
-      } catch {
-        // Not parseable — drop silently (raw strings can't populate the structured schema)
-      }
-    } else {
-      lastWorkerResultObj = raw.lastWorkerResult;
-    }
-  }
+  // Structured lastWorkerResult (from handoff) or null
+  const lastWorkerResultObj: LastWorkerResult | null = raw.lastWorkerResult ?? null;
 
   // Build workflow info (required)
   const workflowInfo: WorkflowInfo = {

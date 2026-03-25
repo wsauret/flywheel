@@ -5,6 +5,7 @@ import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
 import type { WorkerResult } from "../src/schemas/worker";
 import type { FlywheelEvent } from "../src/events/types";
 import type { FlywheelConfig } from "../src/config/loader";
+import type { DispatcherDecisionHandoff } from "../src/schemas/handoff";
 import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import { CONFIG_DEFAULTS } from "../src/config/loader";
@@ -165,6 +166,76 @@ function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherIn
   };
 }
 
+/**
+ * Valid DispatcherDecisionHandoff — the shape the LLM writes to the handoff file.
+ */
+function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): DispatcherDecisionHandoff {
+  return {
+    schema_version: 1,
+    phase_index: 0,
+    task_content: "Execute the setup phase by creating directory layout",
+    context_files: ["src/index.ts"],
+    validation_criteria: "Tests pass",
+    reasoning: "Standard setup phase execution",
+    ...overrides,
+  };
+}
+
+/**
+ * Extract the handoff path from a prompt and write a handoff file.
+ */
+async function writeHandoffFromPrompt(prompt: string, handoff: Record<string, unknown>): Promise<void> {
+  const pathMatch = prompt.match(/`([^`]+\.json)`/);
+  if (pathMatch) {
+    await Bun.write(pathMatch[1], JSON.stringify(handoff));
+  }
+}
+
+/**
+ * Extract the prompt from spawner args (Claude: -p flag, OpenCode: stdin).
+ */
+function extractPromptFromArgs(args: string[], options?: { stdin?: string }): string {
+  const pIdx = args.indexOf("-p");
+  if (pIdx > -1) return args[pIdx + 1];
+  if (options?.stdin) return options.stdin;
+  return "";
+}
+
+/**
+ * Create a mock spawner that auto-writes a dispatcher handoff file.
+ */
+function createDispatcherHandoffSpawner(
+  handoffOrFn: Record<string, unknown> | ((callCount: number) => Record<string, unknown> | null),
+  hooks?: {
+    onSpawn?: (command: string, args: string[], options?: SpawnOptions) => void;
+  },
+): { spawner: ProcessSpawner; callCount: () => number } {
+  let calls = 0;
+  const spawner: ProcessSpawner = {
+    async spawn(command, args, options) {
+      calls++;
+      hooks?.onSpawn?.(command, args, options);
+
+      const prompt = extractPromptFromArgs(args, options);
+      const handoff = typeof handoffOrFn === "function" ? handoffOrFn(calls) : handoffOrFn;
+      if (handoff) {
+        await writeHandoffFromPrompt(prompt, handoff);
+      }
+
+      return {
+        result: Promise.resolve({
+          output: "",
+          exitCode: 0,
+          truncated: false,
+          durationMs: 100,
+          handoffPath: "/tmp/unused",
+        }),
+      };
+    },
+  };
+  return { spawner, callCount: () => calls };
+}
+
 /** Base PhasePromptOptions for dispatcher orchestrator tests */
 const basePhasePromptOptions = {
   workflowContext: baseWorkflowContext,
@@ -307,18 +378,12 @@ describe("DispatcherInput assembler", () => {
     expect(result.input.context.files).toEqual(["src/index.ts", "tests/main.test.ts"]);
   });
 
-  it("drops unparseable string lastWorkerResult (null result)", () => {
-    const bigResult = "B".repeat(2000);
+  it("passes null last_worker_result when lastWorkerResult is undefined", () => {
     const result = assembleDispatcherInput(baseAssemblerInput({
       stateContent: STATE_CONTENT_PHASE1_DONE,
-      lastWorkerResult: bigResult,
     }));
 
-    // Raw string can't be parsed as LastWorkerResult — should be null
     expect(result.input.last_worker_result).toBeNull();
-    // Total stays within budget
-    const serialized = JSON.stringify(result.input);
-    expect(serialized.length).toBeLessThanOrEqual(102400);
   });
 
   it("populates last_worker_result from structured LastWorkerResult input", () => {
@@ -341,25 +406,6 @@ describe("DispatcherInput assembler", () => {
     expect(result.input.last_worker_result!.artifacts_produced).toEqual(["src/index.ts"]);
     expect(result.input.last_worker_result!.tests_passed).toBe(true);
     expect(result.input.last_worker_result!.duration_seconds).toBe(45);
-  });
-
-  it("parses JSON string lastWorkerResult into structured last_worker_result", () => {
-    const structured = {
-      step: 1,
-      status: "completed",
-      output_summary: "Implemented validation layer",
-      artifacts_produced: ["src/validate.ts"],
-      tests_passed: null,
-      duration_seconds: 120,
-    };
-    const result = assembleDispatcherInput(baseAssemblerInput({
-      stateContent: STATE_CONTENT_PHASE1_DONE,
-      lastWorkerResult: JSON.stringify(structured),
-    }));
-
-    expect(result.input.last_worker_result).toBeDefined();
-    expect(result.input.last_worker_result!.step).toBe(1);
-    expect(result.input.last_worker_result!.status).toBe("completed");
   });
 
   it("populates required fields: workflowContext, configContext, sessionBudget, availableContext", () => {
@@ -694,72 +740,38 @@ describe("SubprocessTransport", () => {
     SubprocessTransport = mod.SubprocessTransport;
   });
 
-  it("spawns process and parses DispatcherDecision from stdout", async () => {
-    const decision = validDecision();
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        return { result: Promise.resolve({
-          output: JSON.stringify(decision),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 1000,
-        }) };
-      },
-    };
+  it("spawns process and reads DispatcherDecision from handoff file", async () => {
+    const handoff = validHandoff();
+    const { spawner } = createDispatcherHandoffSpawner(handoff);
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput();
 
     const result = await transport.invoke(input);
-    expect(result.task_content).toBe(decision.task_content);
-    expect(result.phase_index).toBe(decision.phase_index);
+    expect(result.task_content).toBe(handoff.task_content);
+    expect(result.phase_index).toBe(handoff.phase_index);
   });
 
-  it("falls back on parse error after 1 retry", async () => {
-    let callCount = 0;
-    const decision = validDecision();
+  it("falls back on handoff missing after 1 retry", async () => {
+    const handoff = validHandoff();
+    // First call: no handoff written; second call: handoff written
+    const { spawner, callCount } = createDispatcherHandoffSpawner(
+      (n) => n >= 2 ? handoff : null,
+    );
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        callCount++;
-        if (callCount === 1) {
-          return { result: Promise.resolve({
-            output: "not valid json {{{",
-            exitCode: 0,
-            truncated: false,
-            durationMs: 500,
-          }) };
-        }
-        return { result: Promise.resolve({
-          output: JSON.stringify(decision),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 500,
-        }) };
-      },
-    };
-
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput();
 
     const result = await transport.invoke(input);
-    expect(callCount).toBe(2);
-    expect(result.task_content).toBe(decision.task_content);
+    expect(callCount()).toBe(2);
+    expect(result.task_content).toBe(handoff.task_content);
   });
 
-  it("returns null (throws) on second parse failure", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return { result: Promise.resolve({
-          output: "still not valid json",
-          exitCode: 0,
-          truncated: false,
-          durationMs: 500,
-        }) };
-      },
-    };
+  it("returns null (throws) on second handoff failure", async () => {
+    // Never write a handoff file
+    const { spawner } = createDispatcherHandoffSpawner(() => null);
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput();
 
     await expect(transport.invoke(input)).rejects.toThrow();
@@ -768,19 +780,13 @@ describe("SubprocessTransport", () => {
   it("respects 60s timeout", async () => {
     let receivedTimeout: number | undefined;
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
         receivedTimeout = options?.timeoutMs;
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
       },
-    };
+    });
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput();
 
     await transport.invoke(input);
@@ -790,19 +796,13 @@ describe("SubprocessTransport", () => {
   it("applies env filter via createEnvFilter()", async () => {
     let receivedEnv: Record<string, string> | undefined;
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
         receivedEnv = options?.env;
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
       },
-    };
+    });
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput();
 
     await transport.invoke(input);
@@ -834,7 +834,7 @@ describe("Auto-detect transport", () => {
   it("returns a resolved transport with a label", async () => {
     const mockSpawner: ProcessSpawner = {
       async spawn() {
-        return { result: Promise.resolve({ output: "", exitCode: 0, truncated: false, durationMs: 0 }) };
+        return { result: Promise.resolve({ output: "", exitCode: 0, truncated: false, durationMs: 0, handoffPath: "" }) };
       },
     };
 
@@ -847,7 +847,7 @@ describe("Auto-detect transport", () => {
   it("falls back to CLI when SDK is unavailable or fails", async () => {
     const mockSpawner: ProcessSpawner = {
       async spawn() {
-        return { result: Promise.resolve({ output: "", exitCode: 0, truncated: false, durationMs: 0 }) };
+        return { result: Promise.resolve({ output: "", exitCode: 0, truncated: false, durationMs: 0, handoffPath: "" }) };
       },
     };
 
@@ -1348,19 +1348,14 @@ describe("Cache-stable prompt structure", () => {
 
   it("SubprocessTransport sends system prompt and user content as structurally distinct segments", async () => {
     let capturedStdin = "";
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        capturedStdin = options?.stdin ?? "";
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
-      },
-    };
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
+        capturedStdin = options?.stdin ?? "";
+      },
+    });
+
+    const transport = new SubprocessTransport({ spawner });
     await transport.invoke(baseDispatcherInput());
 
     // Should contain a --- separator between system and user content
@@ -1382,19 +1377,14 @@ describe("Cache-stable prompt structure", () => {
 
   it("system prompt is identical across multiple invocations (no per-step data)", async () => {
     const capturedStdins: string[] = [];
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        capturedStdins.push(options?.stdin ?? "");
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
-      },
-    };
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
+        capturedStdins.push(options?.stdin ?? "");
+      },
+    });
+
+    const transport = new SubprocessTransport({ spawner });
 
     // First invocation: no truncation
     await transport.invoke(baseDispatcherInput({ plan_truncated: false, history_truncated: false }));
@@ -1413,19 +1403,14 @@ describe("Cache-stable prompt structure", () => {
 
   it("per-step DispatcherInput JSON is in user segment only", async () => {
     let capturedStdin = "";
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        capturedStdin = options?.stdin ?? "";
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
-      },
-    };
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
+        capturedStdin = options?.stdin ?? "";
+      },
+    });
+
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput({ workflow_id: "wf-unique-marker-123" });
     await transport.invoke(input);
 
@@ -1441,19 +1426,14 @@ describe("Cache-stable prompt structure", () => {
 
   it("truncation warnings appear in user segment, not system segment", async () => {
     let capturedStdin = "";
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        capturedStdin = options?.stdin ?? "";
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
-      },
-    };
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
+        capturedStdin = options?.stdin ?? "";
+      },
+    });
+
+    const transport = new SubprocessTransport({ spawner });
     await transport.invoke(baseDispatcherInput({ plan_truncated: true, history_truncated: true }));
 
     const parts = capturedStdin.split("\n\n---\n\n");
@@ -1470,19 +1450,14 @@ describe("Cache-stable prompt structure", () => {
 
   it("uses compact JSON.stringify (no pretty-printing) for input payload", async () => {
     let capturedStdin = "";
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        capturedStdin = options?.stdin ?? "";
-        return { result: Promise.resolve({
-          output: JSON.stringify(validDecision()),
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-        }) };
-      },
-    };
 
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const { spawner } = createDispatcherHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
+        capturedStdin = options?.stdin ?? "";
+      },
+    });
+
+    const transport = new SubprocessTransport({ spawner });
     const input = baseDispatcherInput();
     await transport.invoke(input);
 

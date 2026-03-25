@@ -4,6 +4,7 @@ import {
   TOKEN_LIMITS,
   FILE_LINE_DISCIPLINE,
 } from "../conventions.js";
+import { renderHandoffInstruction, PLAN_REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
 /**
  * Builds a prompt for reviewing a plan via multi-reviewer dispatch.
@@ -95,5 +96,6 @@ You MUST use the exact headings below. The headings are parsed by downstream too
 \`\`\`
 
 **CRITICAL:** The \`## Open Questions\` section MUST be present as an H2 heading even if there are no open questions (write "None." as the body). Questions found under any other heading will be missed by the pipeline.
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

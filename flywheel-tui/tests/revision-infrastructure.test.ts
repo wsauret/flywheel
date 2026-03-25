@@ -157,6 +157,7 @@ describe("WorkerResult.sessionId field", () => {
       truncated: false,
       durationMs: 1000,
       sessionId: "session-abc-123",
+      handoffPath: "",
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -170,6 +171,7 @@ describe("WorkerResult.sessionId field", () => {
       exitCode: 0,
       truncated: false,
       durationMs: 1000,
+      handoffPath: "",
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -235,6 +237,7 @@ describe("PhaseExecutor resumeSessionId", () => {
           exitCode: 0,
           truncated: false,
           durationMs: 100,
+          handoffPath: "",
         }),
       }),
     };

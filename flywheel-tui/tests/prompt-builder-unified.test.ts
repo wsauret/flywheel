@@ -7,7 +7,6 @@ import { buildWorkPhasePrompt } from "../src/prompts/work/phase-prompt";
 // buildPhasePrompt has been deleted — tests for PhaseInfo compatibility with
 // the static template are no longer needed since buildWorkPhasePrompt is the
 // primary prompt builder for the work path.
-import { wrapCompletionInstruction } from "../src/worker/completion";
 import { buildWorkflowPrompt } from "../src/workflows/prompt-builder";
 import { planWorkflow } from "../src/workflows/plan";
 
@@ -179,37 +178,35 @@ describe("Unified PromptBuilder contract", () => {
     });
   });
 
-  describe("wrapCompletionInstruction", () => {
-    it("appends completion marker to any prompt", () => {
-      const raw = "Do some work";
-      const wrapped = wrapCompletionInstruction(raw);
-      expect(wrapped).toContain(raw);
-      expect(wrapped).toContain("<promise>COMPLETE</promise>");
+  describe("handoff instruction in work prompt", () => {
+    it("includes handoff instruction when handoffPath is in ctx.extra", () => {
+      const ctxWithHandoff: WorkflowStepContext = {
+        ...sampleCtx,
+        extra: { handoffPath: "/tmp/.flywheel/handoffs/abc-123.json" },
+      };
+      const prompt = buildWorkPhasePrompt({ ...ctxWithHandoff, planContent: samplePhase.description });
+      expect(prompt).toContain("## Handoff Instructions");
+      expect(prompt).toContain("/tmp/.flywheel/handoffs/abc-123.json");
+      expect(prompt).not.toContain("<promise>COMPLETE</promise>");
     });
 
-    it("can be applied to work prompt builder output", () => {
-      const workBuilder: PromptBuilder = (phase, ctx) =>
-        buildWorkPhasePrompt({ ...ctx, planContent: phase.description });
-
-      const rawPrompt = workBuilder(samplePhase, sampleCtx);
-      const wrappedPrompt = wrapCompletionInstruction(rawPrompt);
-
-      // The rich template already has its own "Completion" section,
-      // but the loop adds the machine-readable marker via wrapCompletionInstruction
-      expect(wrappedPrompt).toContain("<promise>COMPLETE</promise>");
+    it("falls back to old Completion section when no handoffPath", () => {
+      const prompt = buildWorkPhasePrompt({ ...sampleCtx, planContent: samplePhase.description });
+      expect(prompt).toContain("## Completion");
+      expect(prompt).not.toContain("## Handoff Instructions");
     });
 
-    it("is idempotent when applied in the loop (not in builders)", () => {
-      // The plan: move wrapCompletionInstruction INTO ExecutionLoop.run()
-      // so individual builders don't need to call it themselves.
-      // The work builder does NOT call wrapCompletionInstruction internally.
-      const workBuilder: PromptBuilder = (phase, ctx) =>
-        buildWorkPhasePrompt({ ...ctx, planContent: phase.description });
-
-      const rawPrompt = workBuilder(samplePhase, sampleCtx);
-      // Raw prompt from buildWorkPhasePrompt has its own completion section
-      // but NOT the wrapCompletionInstruction marker format
-      expect(rawPrompt).toContain("## Completion");
+    it("uses only work-phase field set (summary, artifacts, verification, etc.)", () => {
+      const ctxWithHandoff: WorkflowStepContext = {
+        ...sampleCtx,
+        extra: { handoffPath: "/tmp/handoff.json" },
+      };
+      const prompt = buildWorkPhasePrompt({ ...ctxWithHandoff, planContent: samplePhase.description });
+      expect(prompt).toContain("**summary**");
+      expect(prompt).toContain("**artifacts**");
+      expect(prompt).toContain("**verification**");
+      // Should NOT include plan-only fields
+      expect(prompt).not.toContain("**plan_file_path**");
     });
   });
 

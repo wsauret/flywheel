@@ -77,6 +77,8 @@ export interface EvaluateOptions {
   durationSeconds?: number;
   /** Task context (user's task description or phase description) for the evaluator. */
   taskContext?: string;
+  /** Structured handoff data from worker (optional; when present, forwarded to transport). */
+  handoff?: import("../schemas/evaluator").EvaluatorHandoffData;
 }
 
 export interface EvaluationResult {
@@ -152,6 +154,7 @@ export class Evaluator {
       testsPassed,
       durationSeconds,
       taskContext,
+      handoff,
     } = options;
 
     // Serialize structured ValidationCriteria to string for the evaluator transport
@@ -178,6 +181,7 @@ export class Evaluator {
           testsPassed ?? null,
           durationSeconds ?? 0,
           taskContext,
+          handoff,
         );
 
         if (result.passed) {
@@ -246,6 +250,7 @@ export class Evaluator {
     testsPassed: boolean | null,
     durationSeconds: number,
     taskContext?: string,
+    handoff?: import("../schemas/evaluator").EvaluatorHandoffData,
   ): Promise<EvaluatorResult> {
     const input: import("../schemas/evaluator").EvaluatorInput = {
       worker_output: workerOutput,
@@ -256,6 +261,7 @@ export class Evaluator {
       tests_passed: testsPassed,
       duration_seconds: durationSeconds,
       task_context: taskContext,
+      handoff,
     };
 
     // Race transport call against timeout

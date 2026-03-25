@@ -2,11 +2,32 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import type { DispatcherInput, DispatcherDecision } from "../src/schemas/dispatcher";
 import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
 import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
+import type { DispatcherDecisionHandoff } from "../src/schemas/handoff";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Valid DispatcherDecisionHandoff — the shape the LLM writes to the handoff file.
+ * This is the handoff schema (not the full DispatcherDecision).
+ */
+function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): DispatcherDecisionHandoff {
+  return {
+    schema_version: 1,
+    phase_index: 0,
+    task_content: "Execute the setup phase by creating directory layout",
+    context_files: ["src/index.ts"],
+    validation_criteria: "Tests pass",
+    reasoning: "Standard setup phase execution",
+    ...overrides,
+  };
+}
+
+/**
+ * Valid DispatcherDecision — the mapped output after handoff → decision conversion.
+ * Used for schema validation assertions.
+ */
 function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecision {
   return {
     schema_version: 1,
@@ -16,12 +37,11 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
-      required_tests: true,
+      required_tests: false,
       custom_checks: [],
       required_outputs: [],
     },
     reasoning: "Standard setup phase execution",
-    warnings: [],
     ...overrides,
   };
 }
@@ -43,8 +63,69 @@ function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherIn
   };
 }
 
+/**
+ * Extract the handoff path from a dispatcher prompt and write a handoff file.
+ * The dispatcher transport now reads decisions from handoff files, not stdout.
+ */
+async function writeHandoffFromPrompt(prompt: string, handoff: Record<string, unknown>): Promise<void> {
+  const pathMatch = prompt.match(/`([^`]+\.json)`/);
+  if (pathMatch) {
+    await Bun.write(pathMatch[1], JSON.stringify(handoff));
+  }
+}
+
+/**
+ * Extract the prompt from spawner args (Claude: -p flag, OpenCode: stdin).
+ */
+function extractPromptFromArgs(args: string[], options?: { stdin?: string }): string {
+  const pIdx = args.indexOf("-p");
+  if (pIdx > -1) return args[pIdx + 1];
+  if (options?.stdin) return options.stdin;
+  return "";
+}
+
+/**
+ * Create a mock spawner that auto-writes a dispatcher handoff file.
+ * Extracts the handoff path from the prompt and writes the handoff JSON file.
+ *
+ * @param handoffOrFn - static handoff object, or a function(callCount) => handoff | null.
+ *   When null, no handoff is written (simulating handoff-missing).
+ * @param hooks - optional hooks for capturing args, env, stdin, etc.
+ */
+function createHandoffSpawner(
+  handoffOrFn: Record<string, unknown> | ((callCount: number) => Record<string, unknown> | null),
+  hooks?: {
+    onSpawn?: (command: string, args: string[], options?: SpawnOptions) => void;
+  },
+): { spawner: ProcessSpawner; callCount: () => number } {
+  let calls = 0;
+  const spawner: ProcessSpawner = {
+    async spawn(command, args, options) {
+      calls++;
+      hooks?.onSpawn?.(command, args, options);
+
+      const prompt = extractPromptFromArgs(args, options);
+      const handoff = typeof handoffOrFn === "function" ? handoffOrFn(calls) : handoffOrFn;
+      if (handoff) {
+        await writeHandoffFromPrompt(prompt, handoff);
+      }
+
+      return {
+        result: Promise.resolve({
+          output: "",
+          exitCode: 0,
+          truncated: false,
+          durationMs: 100,
+          handoffPath: "/tmp/unused",
+        }),
+      };
+    },
+  };
+  return { spawner, callCount: () => calls };
+}
+
 // ---------------------------------------------------------------------------
-// SubprocessTransport — engine-aware tests
+// SubprocessTransport — engine-aware tests (handoff-based)
 // ---------------------------------------------------------------------------
 
 describe("SubprocessTransport: engine-aware command building", () => {
@@ -63,23 +144,15 @@ describe("SubprocessTransport: engine-aware command building", () => {
     let spawnedCommand = "";
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (command, args) => {
         spawnedCommand = command;
         spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
       },
-    };
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     await transport.invoke(baseDispatcherInput());
@@ -95,23 +168,15 @@ describe("SubprocessTransport: engine-aware command building", () => {
     let spawnedCommand = "";
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (command, args) => {
         spawnedCommand = command;
         spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validDecision())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
       },
-    };
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     await transport.invoke(baseDispatcherInput());
@@ -129,22 +194,12 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("Claude route includes --system-prompt flag (not concatenated)", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     await transport.invoke(baseDispatcherInput());
@@ -161,23 +216,15 @@ describe("SubprocessTransport: engine-aware command building", () => {
     let spawnedArgs: string[] = [];
     let receivedStdin: string | undefined;
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args, options) => {
         spawnedArgs = args;
         receivedStdin = options?.stdin;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
       },
-    };
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     await transport.invoke(baseDispatcherInput());
@@ -194,22 +241,14 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("OpenCode route passes prompt via stdin", async () => {
     let receivedStdin = "";
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
         receivedStdin = options?.stdin ?? "";
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validDecision())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
       },
-    };
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     await transport.invoke(baseDispatcherInput());
@@ -226,22 +265,12 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("config.dispatcher.model flows through to --model CLI flag", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
       dispatcherModel: "haiku",
     });
@@ -255,22 +284,12 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("config.dispatcher.model flows through to --model for opencode", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validDecision())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
       dispatcherModel: "anthropic/claude-haiku-4-5",
     });
@@ -288,22 +307,12 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("defaults to 'sonnet' model for claude when not configured", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
       // No dispatcherModel — should use engine default
     });
@@ -317,22 +326,12 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("defaults to 'anthropic/claude-sonnet-4-6' model for opencode when not configured", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validDecision())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     await transport.invoke(baseDispatcherInput());
@@ -343,141 +342,119 @@ describe("SubprocessTransport: engine-aware command building", () => {
   });
 
   // -----------------------------------------------------------------------
-  // VAL-DISP-005: Dispatcher produces valid decision
+  // VAL-DISP-005: Dispatcher produces valid decision (handoff → decision mapping)
   // -----------------------------------------------------------------------
 
   it("response validates against DispatcherDecisionSchema (claude route)", async () => {
-    const decision = validDecision();
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(decision),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const handoff = validHandoff();
+    const { spawner } = createHandoffSpawner(handoff);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const result = await transport.invoke(baseDispatcherInput());
 
-    // Should be a valid DispatcherDecision
+    // Should be a valid DispatcherDecision after handoff mapping
     const parsed = DispatcherDecisionSchema.safeParse(result);
     expect(parsed.success).toBe(true);
-    expect(result.task_content).toBe(decision.task_content);
+    expect(result.task_content).toBe(handoff.task_content);
   });
 
   it("response validates against DispatcherDecisionSchema (opencode route)", async () => {
-    const decision = validDecision();
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(decision)),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const handoff = validHandoff();
+    const { spawner } = createHandoffSpawner(handoff);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     const result = await transport.invoke(baseDispatcherInput());
 
     const parsed = DispatcherDecisionSchema.safeParse(result);
     expect(parsed.success).toBe(true);
-    expect(result.task_content).toBe(decision.task_content);
+    expect(result.task_content).toBe(handoff.task_content);
   });
 
   // -----------------------------------------------------------------------
-  // VAL-DISP-007: Engine-specific output parsing
+  // VAL-DISP-007: Handoff-based output reading (replaces stdout parsing)
   // -----------------------------------------------------------------------
 
-  it("OpenCode NDJSON output parsed correctly", async () => {
-    const decision = validDecision({ task_content: "NDJSON parsed content" });
-    const ndjsonOutput = wrapNDJSON(JSON.stringify(decision));
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: ndjsonOutput,
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("decision read from handoff file (opencode route)", async () => {
+    const handoff = validHandoff({ task_content: "Handoff-based decision (opencode)" });
+    const { spawner } = createHandoffSpawner(handoff);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
     const result = await transport.invoke(baseDispatcherInput());
-    expect(result.task_content).toBe("NDJSON parsed content");
+    expect(result.task_content).toBe("Handoff-based decision (opencode)");
   });
 
-  it("Claude Code plain text output parsed correctly", async () => {
-    const decision = validDecision({ task_content: "Claude text parsed content" });
-    // Claude --print outputs plain text (the JSON response directly)
-    const plainTextOutput = JSON.stringify(decision);
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: plainTextOutput,
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("decision read from handoff file (claude route)", async () => {
+    const handoff = validHandoff({ task_content: "Handoff-based decision (claude)" });
+    const { spawner } = createHandoffSpawner(handoff);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const result = await transport.invoke(baseDispatcherInput());
-    expect(result.task_content).toBe("Claude text parsed content");
+    expect(result.task_content).toBe("Handoff-based decision (claude)");
   });
 
-  it("Claude Code output with surrounding text is still parsed", async () => {
-    const decision = validDecision({ task_content: "Wrapped in text" });
-    // Claude might output some extra text around the JSON
-    const output = `Here is the response:\n${JSON.stringify(decision)}\nDone.`;
+  // -----------------------------------------------------------------------
+  // Handoff → Decision mapping
+  // -----------------------------------------------------------------------
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output,
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("maps handoff validation_criteria string to structured ValidationCriteria", async () => {
+    const handoff = validHandoff({ validation_criteria: "All tests must pass" });
+    const { spawner } = createHandoffSpawner(handoff);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const result = await transport.invoke(baseDispatcherInput());
-    expect(result.task_content).toBe("Wrapped in text");
+
+    expect(result.validation_criteria).toEqual({
+      acceptance_criteria: ["All tests must pass"],
+      required_tests: false,
+      custom_checks: [],
+      required_outputs: [],
+    });
+  });
+
+  it("maps missing validation_criteria to empty acceptance_criteria", async () => {
+    const handoff = validHandoff();
+    delete (handoff as any).validation_criteria;
+    const { spawner } = createHandoffSpawner(handoff);
+
+    const transport = new SubprocessTransport({
+      spawner,
+      engineName: "claude",
+    });
+    const result = await transport.invoke(baseDispatcherInput());
+
+    expect(result.validation_criteria).toEqual({
+      acceptance_criteria: [],
+      required_tests: false,
+      custom_checks: [],
+      required_outputs: [],
+    });
+  });
+
+  it("defaults step_index to 0 (not in handoff schema)", async () => {
+    const { spawner } = createHandoffSpawner(validHandoff());
+
+    const transport = new SubprocessTransport({
+      spawner,
+      engineName: "claude",
+    });
+    const result = await transport.invoke(baseDispatcherInput());
+
+    expect(result.step_index).toBe(0);
   });
 
   // -----------------------------------------------------------------------
@@ -485,27 +462,12 @@ describe("SubprocessTransport: engine-aware command building", () => {
   // -----------------------------------------------------------------------
 
   it("throws clear error when engine binary not found (claude)", async () => {
-    // Use the real binary check path — without a real spawner but with
-    // the binary check running first. We need to test with a mock that
-    // simulates Bun.which() returning null.
-    // Instead, we test by passing an engine that does not exist.
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff());
 
     // Use a fake engine name that won't match any registered engine
     try {
       const transport = new SubprocessTransport({
-        spawner: mockSpawner,
+        spawner,
         engineName: "nonexistent-engine",
       });
       await transport.invoke(baseDispatcherInput());
@@ -517,62 +479,29 @@ describe("SubprocessTransport: engine-aware command building", () => {
   });
 
   // -----------------------------------------------------------------------
-  // Existing behavior: retry-once-on-parse-failure
+  // Existing behavior: retry-once-on-handoff-failure
   // -----------------------------------------------------------------------
 
-  it("retries once on parse failure then succeeds", async () => {
-    let callCount = 0;
-    const decision = validDecision();
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            result: Promise.resolve({
-              output: "not valid json {{{",
-              exitCode: 0,
-              truncated: false,
-              durationMs: 100,
-            }),
-          };
-        }
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(decision),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("retries once on handoff missing then succeeds", async () => {
+    const handoff = validHandoff();
+    // First call: no handoff file; second call: handoff written
+    const { spawner, callCount } = createHandoffSpawner((n) => n >= 2 ? handoff : null);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     const result = await transport.invoke(baseDispatcherInput());
-    expect(callCount).toBe(2);
-    expect(result.task_content).toBe(decision.task_content);
+    expect(callCount()).toBe(2);
+    expect(result.task_content).toBe(handoff.task_content);
   });
 
-  it("throws after second parse failure", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: "still not valid json",
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+  it("throws after both handoff reads fail", async () => {
+    // Never write a handoff file
+    const { spawner } = createHandoffSpawner(() => null);
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     await expect(transport.invoke(baseDispatcherInput())).rejects.toThrow();
@@ -581,22 +510,14 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("respects 60s timeout", async () => {
     let receivedTimeout: number | undefined;
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, _args, options) => {
         receivedTimeout = options?.timeoutMs;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
       },
-    };
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
     await transport.invoke(baseDispatcherInput());
@@ -610,25 +531,41 @@ describe("SubprocessTransport: engine-aware command building", () => {
   it("backward compat: no engineName defaults to legacy opencode behavior", async () => {
     let spawnedCommand = "";
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
-        spawnedCommand = command;
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validDecision())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (command) => { spawnedCommand = command; },
+    });
 
     // Construct without engineName — should still work like before
-    const transport = new SubprocessTransport({ spawner: mockSpawner });
+    const transport = new SubprocessTransport({ spawner });
     await transport.invoke(baseDispatcherInput());
 
     expect(spawnedCommand).toBe("opencode");
+  });
+
+  // -----------------------------------------------------------------------
+  // Prompt includes handoff instruction
+  // -----------------------------------------------------------------------
+
+  it("prompt includes dispatcher handoff instruction with file path", async () => {
+    let capturedPrompt = "";
+
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args, options) => {
+        capturedPrompt = extractPromptFromArgs(args, options);
+      },
+    });
+
+    const transport = new SubprocessTransport({
+      spawner,
+      engineName: "claude",
+    });
+    await transport.invoke(baseDispatcherInput());
+
+    expect(capturedPrompt).toContain("Dispatcher Handoff Instructions");
+    expect(capturedPrompt).toContain(".flywheel/handoffs/");
+    expect(capturedPrompt).toContain(".json");
+    expect(capturedPrompt).toContain("schema_version");
+    expect(capturedPrompt).toContain("task_content");
   });
 });
 
@@ -649,21 +586,11 @@ describe("Auto-detect transport: engine-aware", () => {
   // -----------------------------------------------------------------------
 
   it("skips SDK for claude engine — always uses CLI", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 0,
-          }),
-        };
-      },
-    };
+    // Auto-detect only checks transport type, doesn't invoke — no handoff needed
+    const { spawner } = createHandoffSpawner(validHandoff());
 
     const result = await autoDetectTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
 
@@ -672,21 +599,10 @@ describe("Auto-detect transport: engine-aware", () => {
   });
 
   it("tries SDK first for opencode engine (existing behavior)", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: "",
-            exitCode: 0,
-            truncated: false,
-            durationMs: 0,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff());
 
     const result = await autoDetectTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
     });
 
@@ -695,23 +611,10 @@ describe("Auto-detect transport: engine-aware", () => {
   });
 
   it("passes engineName through to SubprocessTransport on fallback", async () => {
-    // When SDK fails, the CLI fallback should pass the engine name through
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command) {
-        // Record what command was used
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 0,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff());
 
     const result = await autoDetectTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
 
@@ -723,22 +626,12 @@ describe("Auto-detect transport: engine-aware", () => {
   it("passes dispatcherModel through to SubprocessTransport", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 0,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const result = await autoDetectTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
       dispatcherModel: "haiku",
     });
@@ -756,21 +649,10 @@ describe("Auto-detect transport: engine-aware", () => {
   // -----------------------------------------------------------------------
 
   it("never attempts SDK for claude engine even when SDK is available", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 0,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff());
 
     const result = await autoDetectTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
     });
 
@@ -798,22 +680,12 @@ describe("Config model flow through transport chain", () => {
   it("dispatcher.model in config changes the --model flag (claude)", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validDecision()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "claude",
       dispatcherModel: "opus",
     });
@@ -827,22 +699,12 @@ describe("Config model flow through transport chain", () => {
   it("dispatcher.model in config changes the --model flag (opencode)", async () => {
     let spawnedArgs: string[] = [];
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args) {
-        spawnedArgs = args;
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validDecision())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-          }),
-        };
-      },
-    };
+    const { spawner } = createHandoffSpawner(validHandoff(), {
+      onSpawn: (_cmd, args) => { spawnedArgs = args; },
+    });
 
     const transport = new SubprocessTransport({
-      spawner: mockSpawner,
+      spawner,
       engineName: "opencode",
       dispatcherModel: "anthropic/claude-opus-4-6",
     });
@@ -869,11 +731,3 @@ describe("Worker spawn path unaffected", () => {
     expect((mod as any).PhaseExecutor).toBeUndefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Helper: wrap text as NDJSON output (mimicking opencode run --format json)
-// ---------------------------------------------------------------------------
-
-function wrapNDJSON(text: string): string {
-  return `{"type":"text","part":{"type":"text","text":${JSON.stringify(text)}}}\n`;
-}

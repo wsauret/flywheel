@@ -3,7 +3,8 @@ import { SEVERITY_DEFINITIONS, SCOPE_DISCIPLINE } from "../conventions.js";
 import type {
   OpenQuestion,
   ResolvedQuestion,
-} from "../../workflows/question-parser.js";
+} from "../../controller/question-service.js";
+import { renderHandoffInstruction, PLAN_CONSOLIDATE_FIELDS } from "../../handoff/field-specs.js";
 
 /**
  * Format a single resolved question as a readable line.
@@ -169,5 +170,6 @@ Example: \`docs/plans/feat-auth-jwt.md\`
 
 Create the \`docs/plans/\` directory if it does not exist.
 The filename MUST appear in your output so downstream tools can locate it.
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_CONSOLIDATE_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

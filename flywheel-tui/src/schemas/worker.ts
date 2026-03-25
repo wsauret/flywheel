@@ -1,16 +1,12 @@
 import { z } from "zod";
 
 /**
- * WorkerFailureReasonSchema — discriminated union with 7 kinds.
+ * WorkerFailureReasonSchema — discriminated union of failure kinds.
  */
 export const WorkerFailureReasonSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("timeout"),
     timeoutMs: z.number(),
-    message: z.string(),
-  }),
-  z.object({
-    kind: z.literal("completion_not_detected"),
     message: z.string(),
   }),
   z.object({
@@ -38,6 +34,14 @@ export const WorkerFailureReasonSchema = z.discriminatedUnion("kind", [
     kind: z.literal("interrupted"),
     message: z.string(),
   }),
+  z.object({
+    kind: z.literal("handoff_missing"),
+    message: z.string(),
+  }),
+  z.object({
+    kind: z.literal("handoff_invalid"),
+    message: z.string(),
+  }),
 ]);
 
 export type WorkerFailureReason = z.infer<typeof WorkerFailureReasonSchema>;
@@ -54,6 +58,7 @@ export const WorkerResultSchema = z.object({
   durationMs: z.number(),
   failure: WorkerFailureReasonSchema.optional(),
   sessionId: z.string().optional(),
+  handoffPath: z.string(),
 });
 
 export type WorkerResult = z.infer<typeof WorkerResultSchema>;

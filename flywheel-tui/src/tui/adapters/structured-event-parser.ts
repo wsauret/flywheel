@@ -20,7 +20,6 @@ import {
 } from "./subagent-tracing/opencode-adapter";
 import type { OpenCodeJsonlMessage } from "./subagent-tracing/opencode-adapter";
 import { getToolDetail } from "./output-formatter";
-import { COMPLETION_REGEX } from "../../worker/completion";
 
 // ── Types ──
 
@@ -30,11 +29,6 @@ export interface StructuredEventParserOptions {
 }
 
 // ── Parser ──
-
-/** Strip completion markers from text before display. */
-function stripCompletionMarker(text: string): string {
-  return text.replace(COMPLETION_REGEX, "");
-}
 
 export class StructuredEventParser {
   private traceParser: SubagentTraceParser;
@@ -124,9 +118,8 @@ export class StructuredEventParser {
       if (blockType === "text" && typeof block.text === "string") {
         // Text inside a child message: skip (agent text is not useful for display)
         if (!parentAgentId) {
-          const cleaned = stripCompletionMarker(block.text);
-          if (cleaned.length > 0) {
-            this.builder.pushText(cleaned, now);
+          if (block.text.length > 0) {
+            this.builder.pushText(block.text as string, now);
           }
         }
       } else if (blockType === "tool_use") {
@@ -180,11 +173,8 @@ export class StructuredEventParser {
 
     if (type === "text") {
       const part = data.part as { text?: string } | undefined;
-      if (part?.text) {
-        const cleaned = stripCompletionMarker(part.text);
-        if (cleaned.length > 0) {
-          this.builder.pushText(cleaned, now);
-        }
+      if (part?.text && part.text.length > 0) {
+        this.builder.pushText(part.text, now);
       }
     } else if (type === "tool_use") {
       this.handleOpenCodeToolUse(data, now);
@@ -251,11 +241,8 @@ export class StructuredEventParser {
     } else if (type === "text") {
       // OpenCode text format
       const part = data.part as { text?: string } | undefined;
-      if (part?.text) {
-        const cleaned = stripCompletionMarker(part.text);
-        if (cleaned.length > 0) {
-          this.builder.pushText(cleaned, now);
-        }
+      if (part?.text && part.text.length > 0) {
+        this.builder.pushText(part.text, now);
       }
     } else if (type === "tool_use") {
       // Could be OpenCode tool_use

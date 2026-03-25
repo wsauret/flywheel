@@ -4,6 +4,7 @@ import {
   FILE_LINE_DISCIPLINE,
   TOKEN_LIMITS,
 } from "../conventions.js";
+import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
 /**
  * Builds a prompt for multi-agent code review dispatch.
@@ -138,5 +139,6 @@ Ordered list of fixes grouped by file, respecting dependencies.
 **CRITICAL:** The \`## Findings\` table MUST include a "Severity" column with values P1/P2/P3. The \`## Minor Findings\` section MUST use the exact heading. P3 bullets MUST start with \`- P3:\` or \`- P3 (deferred):\`. These formats are parsed by downstream tooling — do NOT deviate.
 
 The review document must be consumable as an implementation plan. A developer should be able to go through it top-to-bottom and address every finding.
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

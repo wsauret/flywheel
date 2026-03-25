@@ -375,7 +375,6 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
     workflowLabel: workflowDef.name,
     onStepComplete,
     shouldSkipPhase,
-    skipTruncation: isPlan,
     dispatcherOrchestrator: params.dispatcherOrchestrator,
     planContent: fullPlanContent,
     budgetTracker: params.budgetTracker,

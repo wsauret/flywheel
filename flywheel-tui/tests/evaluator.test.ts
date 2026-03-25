@@ -850,21 +850,33 @@ describe("Evaluator — event emission", () => {
 describe("SubprocessEvaluatorTransport", () => {
   let SubprocessEvaluatorTransport: typeof import("../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
 
+  /** Helper: extract handoff path from prompt and write verdict file */
+  async function writeVerdictToHandoff(args: string[], options: any, verdict: Record<string, unknown>): Promise<void> {
+    let prompt = "";
+    const pIdx = args.indexOf("-p");
+    if (pIdx > -1) prompt = args[pIdx + 1];
+    if (options?.stdin) prompt = options.stdin;
+    const match = prompt.match(/`([^`]+\.json)`/);
+    if (match) await Bun.write(match[1], JSON.stringify(verdict));
+  }
+
   beforeEach(async () => {
     const mod = await import("../src/evaluator/subprocess-transport");
     SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
   });
 
-  it("spawns process and parses EvaluatorResult from stdout", async () => {
-    const result = passingResult({ reasoning: "Code looks good" });
+  it("spawns process and reads EvaluatorResult from handoff file", async () => {
+    const verdict = passingResult({ reasoning: "Code looks good" });
 
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
-      async spawn() {
+      async spawn(command, args, options) {
+        await writeVerdictToHandoff(args, options, verdict);
         return { result: Promise.resolve({
-          output: JSON.stringify(result),
+          output: "",
           exitCode: 0,
           truncated: false,
           durationMs: 1000,
+          handoffPath: "/tmp/unused",
         }) };
       },
     };
@@ -884,26 +896,23 @@ describe("SubprocessEvaluatorTransport", () => {
     expect(evalResult.reasoning).toBe("Code looks good");
   });
 
-  it("retries once on parse failure", async () => {
+  it("retries once on handoff missing then succeeds", async () => {
     let callCount = 0;
-    const validResult = passingResult();
+    const verdict = passingResult();
 
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
-      async spawn() {
+      async spawn(command, args, options) {
         callCount++;
-        if (callCount === 1) {
-          return { result: Promise.resolve({
-            output: "not valid json {{{",
-            exitCode: 0,
-            truncated: false,
-            durationMs: 500,
-          }) };
+        // First call: don't write handoff; second: write
+        if (callCount >= 2) {
+          await writeVerdictToHandoff(args, options, verdict);
         }
         return { result: Promise.resolve({
-          output: JSON.stringify(validResult),
+          output: "",
           exitCode: 0,
           truncated: false,
           durationMs: 500,
+          handoffPath: "/tmp/unused",
         }) };
       },
     };
@@ -923,14 +932,16 @@ describe("SubprocessEvaluatorTransport", () => {
     expect(result.passed).toBe(true);
   });
 
-  it("throws after two parse failures", async () => {
+  it("throws after two handoff failures", async () => {
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn() {
+        // Never write a handoff file
         return { result: Promise.resolve({
-          output: "garbage output",
+          output: "",
           exitCode: 0,
           truncated: false,
           durationMs: 500,
+          handoffPath: "/tmp/unused",
         }) };
       },
     };
@@ -956,11 +967,19 @@ describe("SubprocessEvaluatorTransport", () => {
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn(_command, _args, options) {
         receivedEnv = options?.env;
+        // Write verdict to handoff file
+        let prompt = "";
+        const pIdx = _args.indexOf("-p");
+        if (pIdx > -1) prompt = _args[pIdx + 1];
+        if (options?.stdin) prompt = options.stdin;
+        const match = prompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(passingResult()));
         return { result: Promise.resolve({
-          output: JSON.stringify(passingResult()),
+          output: "",
           exitCode: 0,
           truncated: false,
           durationMs: 100,
+          handoffPath: "/tmp/unused",
         }) };
       },
     };
@@ -993,11 +1012,18 @@ describe("SubprocessEvaluatorTransport", () => {
     const mockSpawner: import("../src/worker/spawner").ProcessSpawner = {
       async spawn(_command, _args, options) {
         receivedTimeout = options?.timeoutMs;
+        let prompt = "";
+        const pIdx = _args.indexOf("-p");
+        if (pIdx > -1) prompt = _args[pIdx + 1];
+        if (options?.stdin) prompt = options.stdin;
+        const match = prompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(passingResult()));
         return { result: Promise.resolve({
-          output: JSON.stringify(passingResult()),
+          output: "",
           exitCode: 0,
           truncated: false,
           durationMs: 100,
+          handoffPath: "/tmp/unused",
         }) };
       },
     };

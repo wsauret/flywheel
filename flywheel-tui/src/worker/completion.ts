@@ -1,17 +1,15 @@
 /**
  * Completion detection for worker output streams.
  *
- * Three signals indicate completion (any one is sufficient):
- *   1. `<promise>COMPLETE</promise>` marker in output text (legacy, prompt-injected)
- *   2. NDJSON `{"type":"result","subtype":"success"}` event (Claude Code stream-json)
- *   3. Clean exit (exit code 0) — the process ending successfully IS completion
+ * Two signals indicate completion (either one is sufficient):
+ *   1. NDJSON `{"type":"result","subtype":"success"}` event (Claude Code stream-json)
+ *   2. Clean exit (exit code 0) — the process ending successfully IS completion
  *
- * Signal 3 is checked in `categorizeFailure` (errors.ts), not here.
- * This class tracks signals 1 and 2 incrementally during streaming.
+ * Signal 2 is checked in `categorizeFailure` (errors.ts), not here.
+ * This class tracks signal 1 incrementally during streaming.
  */
 
-/** Regex for the legacy completion marker. Case-insensitive, allows whitespace. */
-export const COMPLETION_REGEX = /<promise>\s*COMPLETE\s*<\/promise>/i;
+import * as fs from "node:fs";
 
 /**
  * Regex for NDJSON result event indicating successful completion.
@@ -25,8 +23,7 @@ export const FALLBACK_CHECK_SIZE = 32_768;
 /**
  * Tracks completion detection incrementally during streaming.
  *
- * Checks both the legacy `<promise>COMPLETE</promise>` marker and
- * the NDJSON `{"type":"result","subtype":"success"}` event.
+ * Checks the NDJSON `{"type":"result","subtype":"success"}` event.
  */
 export class CompletionDetector {
   private _hasSeenCompletion = false;
@@ -42,7 +39,7 @@ export class CompletionDetector {
    */
   check(chunk: string): boolean {
     if (this._hasSeenCompletion) return true;
-    if (COMPLETION_REGEX.test(chunk) || NDJSON_RESULT_REGEX.test(chunk)) {
+    if (NDJSON_RESULT_REGEX.test(chunk)) {
       this._hasSeenCompletion = true;
     }
     return this._hasSeenCompletion;
@@ -55,21 +52,27 @@ export class CompletionDetector {
   checkFallback(fullOutput: string): boolean {
     if (this._hasSeenCompletion) return true;
     const tail = fullOutput.slice(-FALLBACK_CHECK_SIZE);
-    if (COMPLETION_REGEX.test(tail) || NDJSON_RESULT_REGEX.test(tail)) {
+    if (NDJSON_RESULT_REGEX.test(tail)) {
       this._hasSeenCompletion = true;
     }
     return this._hasSeenCompletion;
+  }
+
+  /**
+   * Check if a handoff file exists at the given path.
+   * Returns true if the file exists, false otherwise.
+   */
+  checkHandoffFile(handoffPath: string): boolean {
+    if (!handoffPath) return false;
+    try {
+      return fs.existsSync(handoffPath);
+    } catch {
+      return false;
+    }
   }
 
   /** Reset state (for testing or re-use). */
   reset(): void {
     this._hasSeenCompletion = false;
   }
-}
-
-/**
- * Wraps a completion instruction into a prompt.
- */
-export function wrapCompletionInstruction(prompt: string): string {
-  return `${prompt}\n\nWhen you have finished, output the marker: <promise>COMPLETE</promise>`;
 }

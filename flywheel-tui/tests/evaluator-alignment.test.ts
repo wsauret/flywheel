@@ -281,7 +281,7 @@ describe("VAL-ALIGN-005: EvaluatorInput schema includes task_context field", () 
 });
 
 describe("VAL-ALIGN-006: Evaluator buildPrompt includes task context section", () => {
-  /** Helper to capture the prompt text from the -p flag (Claude engine route). */
+  /** Helper to capture the prompt text and write verdict handoff file. */
   function createPromptCapturingSpawner(): { spawner: ProcessSpawner; getPrompt: () => string } {
     let capturedPrompt = "";
     const spawner: ProcessSpawner = {
@@ -293,12 +293,16 @@ describe("VAL-ALIGN-006: Evaluator buildPrompt includes task context section", (
         if (options?.stdin) {
           capturedPrompt = options.stdin;
         }
+        // Write verdict to handoff file so transport can read it
+        const match = capturedPrompt.match(/`([^`]+\.json)`/);
+        if (match) await Bun.write(match[1], JSON.stringify(passingResult()));
         return {
           result: Promise.resolve({
-            output: JSON.stringify(passingResult()),
+            output: "",
             exitCode: 0,
             truncated: false,
             durationMs: 100,
+            handoffPath: "/tmp/unused",
           }),
         };
       },

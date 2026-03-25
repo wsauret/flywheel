@@ -53,6 +53,7 @@ function successResult(output: string = "<promise>COMPLETE</promise>"): WorkerRe
     truncated: false,
     durationMs: 1000,
     failure: undefined,
+    handoffPath: "",
   };
 }
 
@@ -63,6 +64,7 @@ function failureResult(failure: WorkerFailureReason): WorkerResult {
     truncated: false,
     durationMs: 500,
     failure,
+    handoffPath: "",
   };
 }
 
@@ -343,7 +345,7 @@ describe("ExecutionLoop (unified)", () => {
       expect(capturedPrompts[1]).toContain("[prev: output from phase 1]");
     });
 
-    it("truncates large previousResult to 200K chars", async () => {
+    it("passes full previousResult without truncation when no handoff", async () => {
       const capturedCtx: WorkflowStepContext[] = [];
       const customBuilder: PromptBuilder = (phase, ctx) => {
         capturedCtx.push({ ...ctx });
@@ -383,10 +385,10 @@ describe("ExecutionLoop (unified)", () => {
 
       await loop.run();
 
-      // Second phase's previousResult should be truncated
+      // Without handoff, raw output is passed directly (no truncation)
       const prevResult = capturedCtx[1]?.previousResult ?? "";
-      expect(prevResult.length).toBeLessThanOrEqual(200_100); // 200K + truncation notice
-      expect(prevResult).toContain("truncated");
+      expect(prevResult.length).toBe(300_000);
+      expect(prevResult).not.toContain("truncated");
     });
   });
 
@@ -776,8 +778,8 @@ describe("ExecutionLoop (unified)", () => {
     });
   });
 
-  describe("completion marker", () => {
-    it("applies wrapCompletionInstruction to all prompts", async () => {
+  describe("handoff path in prompt", () => {
+    it("does NOT include <promise>COMPLETE</promise> marker (removed)", async () => {
       const spawner = new MockSpawner();
       spawner.results = [successResult()];
 
@@ -807,17 +809,10 @@ describe("ExecutionLoop (unified)", () => {
 
       await loop.run();
 
-      // The spawner should have received a prompt with the completion marker
+      // The spawner should have received a prompt WITHOUT the completion marker
       expect(spawner.calls).toHaveLength(1);
-      const stdinPrompt = spawner.calls[0].options?.stdin;
-      // The prompt goes through the engine which passes it via stdin
-      // Check the args or the stdin content
-      // The prompt is built and passed to executor.execute({ prompt })
-      // which builds engine command. Let's check the args contain our text.
-      const allArgs = spawner.calls[0].args.join(" ");
-      // The completion instruction is in the prompt passed via stdin
-      // Since Claude engine passes prompt via stdin, check that
-      expect(spawner.calls[0].options?.stdin).toContain("<promise>COMPLETE</promise>");
+      const stdinPrompt = spawner.calls[0].options?.stdin ?? "";
+      expect(stdinPrompt).not.toContain("<promise>COMPLETE</promise>");
     });
   });
 

@@ -9,16 +9,23 @@
  * Uses ProcessSpawner (DI seam, same pattern as worker).
  * Applies createEnvFilter() for env sanitization.
  * 30s timeout. On parse failure: retry ONCE with error feedback.
+ *
+ * Verdict is read from a handoff file (not stdout parsing).
+ * The evaluator LLM writes a JSON verdict to a file path included in the prompt.
  */
 
+import * as nodePath from "node:path";
+import * as fs from "node:fs";
 import type { EvaluatorInput, EvaluatorResult } from "../schemas/evaluator";
 import type { EvaluatorTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
 import type { Engine } from "../engines/core/types";
-import { EvaluatorResultSchema } from "../schemas/evaluator";
 import { createEnvFilter } from "../worker/env-filter";
 import { getEngine } from "../engines/core/registry";
-import { extractTextFromNDJSON } from "../utils/ndjson-text-extractor";
+import { renderEvaluatorHandoffInstruction } from "../handoff/field-specs";
+import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
+import { EvaluatorVerdictSchema } from "../schemas/handoff";
+import type { EvaluatorVerdict } from "../schemas/handoff";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "evaluator-subprocess" });
@@ -72,18 +79,30 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   }
 
   async invoke(input: EvaluatorInput): Promise<EvaluatorResult> {
+    const invocationId = crypto.randomUUID();
+    const handoffsDir = nodePath.resolve(
+      process.cwd(),
+      ".flywheel",
+      "handoffs",
+    );
+    fs.mkdirSync(handoffsDir, { recursive: true });
+    const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
+
     const userMessage = this.buildPrompt(input);
+    // Append handoff instruction so the evaluator writes its verdict to a file
+    const handoffInstruction = renderEvaluatorHandoffInstruction(handoffPath);
+    const fullPrompt = `${userMessage}\n\n${handoffInstruction}`;
 
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const retryNote = attempt > 0
-        ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please output valid JSON matching the schema.`
+        ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
         : "";
 
       // Build the engine-specific command via the registry
       const engineCmd = this.engine.buildDispatcherCommand({
-        prompt: userMessage + retryNote,
+        prompt: fullPrompt + retryNote,
         systemPrompt: EVALUATOR_SYSTEM_PROMPT,
         model: this.evaluatorModel,
       });
@@ -93,6 +112,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
         command: engineCmd.command,
         attempt: attempt + 1,
         model: this.evaluatorModel ?? "(default)",
+        handoffPath,
       });
 
       const env = this.envFilter.filter(
@@ -101,7 +121,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
       // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
       const stdinContent = engineCmd.stdinPrompt
-        ? `${EVALUATOR_SYSTEM_PROMPT}\n\n---\n\n${userMessage}${retryNote}`
+        ? `${EVALUATOR_SYSTEM_PROMPT}\n\n---\n\n${fullPrompt}${retryNote}`
         : undefined;
 
       const { result: resultPromise } = await this.spawner.spawn(
@@ -113,15 +133,32 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
           env,
         },
       );
-      const result = await resultPromise;
+      await resultPromise;
 
-      // Parse output using engine-appropriate strategy
-      const parseResult = this.parseOutput(result.output);
-      if (parseResult.success) {
-        return parseResult.data;
+      // Read verdict from handoff file (not stdout)
+      try {
+        const verdict: EvaluatorVerdict = await readHandoff(handoffPath, EvaluatorVerdictSchema);
+        // Map EvaluatorVerdict to EvaluatorResult (same fields; suggestions is required in verdict, optional in result)
+        return {
+          passed: verdict.passed,
+          reasoning: verdict.reasoning,
+          suggestions: verdict.suggestions,
+          confidence: verdict.confidence,
+          feedback: verdict.feedback,
+          files_to_review: verdict.files_to_review,
+        };
+      } catch (err) {
+        if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
+          lastError = err;
+          log.warn("evaluator handoff read failed, retrying", {
+            attempt: attempt + 1,
+            error: err.message,
+          });
+          continue;
+        }
+        // Unexpected error — propagate
+        throw err;
       }
-
-      lastError = new Error(parseResult.error);
     }
 
     throw new Error(
@@ -148,10 +185,59 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       );
     }
 
+    // When structured handoff data is available, render it instead of raw worker_output
+    if (input.handoff) {
+      sections.push(
+        "## Worker Summary",
+        input.handoff.summary,
+        "",
+      );
+
+      if (input.handoff.verification) {
+        sections.push(
+          "## Verification",
+          `Tests passed: ${input.handoff.verification.tests_passed === null ? "unknown" : input.handoff.verification.tests_passed ? "yes" : "no"}`,
+        );
+        if (input.handoff.verification.test_output_summary) {
+          sections.push(input.handoff.verification.test_output_summary);
+        }
+        sections.push("");
+      }
+
+      if (input.handoff.artifacts) {
+        const a = input.handoff.artifacts;
+        if (a.files_created.length > 0 || a.files_modified.length > 0 || a.commands_run.length > 0) {
+          sections.push("## Artifacts");
+          if (a.files_created.length > 0) {
+            sections.push("Files created:", ...a.files_created.map((f) => `- ${f}`));
+          }
+          if (a.files_modified.length > 0) {
+            sections.push("Files modified:", ...a.files_modified.map((f) => `- ${f}`));
+          }
+          if (a.commands_run.length > 0) {
+            sections.push("Commands run:", ...a.commands_run.map((c) => `- ${c}`));
+          }
+          sections.push("");
+        }
+      }
+
+      if (input.handoff.files_to_review && input.handoff.files_to_review.length > 0) {
+        sections.push(
+          "## Files to Review",
+          ...input.handoff.files_to_review.map((f) => `- ${f}`),
+          "",
+        );
+      }
+    } else {
+      // Backward compat: render raw worker_output when no handoff data
+      sections.push(
+        "## Worker Output",
+        input.worker_output,
+        "",
+      );
+    }
+
     sections.push(
-      "## Worker Output",
-      input.worker_output,
-      "",
       "## Validation Criteria",
       input.validation_criteria,
       "",
@@ -211,53 +297,5 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     );
 
     return sections.join("\n");
-  }
-
-  private parseOutput(
-    output: string,
-  ):
-    | { success: true; data: EvaluatorResult }
-    | { success: false; error: string } {
-    // Engine-specific output parsing:
-    // - OpenCode outputs NDJSON (newline-delimited JSON events)
-    // - Claude Code --print outputs plain text (raw response)
-    const isOpenCode = this.engine.metadata.id === "opencode";
-
-    let source: string;
-    if (isOpenCode) {
-      const textContent = extractTextFromNDJSON(output);
-      source = textContent || output;
-    } else {
-      // Claude Code --print: output is plain text, may contain JSON directly
-      source = output;
-    }
-
-    const jsonMatch = source.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return {
-        success: false,
-        error: `No JSON found in output: ${source.slice(0, 200)}`,
-      };
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      return {
-        success: false,
-        error: `Invalid JSON: ${jsonMatch[0].slice(0, 200)}`,
-      };
-    }
-
-    const result = EvaluatorResultSchema.safeParse(parsed);
-    if (!result.success) {
-      return {
-        success: false,
-        error: `Schema validation failed: ${result.error.message}`,
-      };
-    }
-
-    return { success: true, data: result.data };
   }
 }

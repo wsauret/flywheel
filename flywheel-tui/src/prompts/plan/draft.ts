@@ -1,5 +1,6 @@
 import type { WorkflowStepContext } from "../index.js";
 import { SCOPE_DISCIPLINE, FILE_LINE_DISCIPLINE } from "../conventions.js";
+import { renderHandoffInstruction, PLAN_DRAFT_FIELDS } from "../../handoff/field-specs.js";
 
 /**
  * Builds a prompt for drafting an implementation plan from research results.
@@ -102,5 +103,6 @@ Sections:
 - **File Map:** Every file the plan touches, with its role
 - **Dependencies:** External packages or services required
 - **Risk Areas:** Parts most likely to need iteration
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_DRAFT_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

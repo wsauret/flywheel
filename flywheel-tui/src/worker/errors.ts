@@ -75,14 +75,15 @@ const RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
   "api_error",
   "rate_limited",
   "transient",
+  "handoff_missing",
 ]);
 
 /** Failure kinds that are NOT retryable. */
 const NON_RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
   "exit_code",
   "schema_error",
-  "completion_not_detected",
   "interrupted",
+  "handoff_invalid",
 ]);
 
 /**

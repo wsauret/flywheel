@@ -1,6 +1,7 @@
 import type { WorkflowStepContext } from "../index.js";
 import { SEVERITY_DEFINITIONS, SCOPE_DISCIPLINE } from "../conventions.js";
 import type { P3Finding } from "../../workflows/review-output-extractor.js";
+import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,5 +164,6 @@ Example: \`docs/reviews/2024-01-15-auth-jwt.md\`
 
 Create the \`docs/reviews/\` directory if it does not exist.
 The filename MUST appear in your output so downstream tools can locate it.
+${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }

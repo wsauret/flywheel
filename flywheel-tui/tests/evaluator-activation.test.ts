@@ -36,6 +36,7 @@ function successResult(output: string = "<promise>COMPLETE</promise>"): WorkerRe
     truncated: false,
     durationMs: 2000,
     failure: undefined,
+    handoffPath: "",
   };
 }
 
@@ -46,6 +47,7 @@ function failureResult(failure: WorkerFailureReason): WorkerResult {
     truncated: false,
     durationMs: 500,
     failure,
+    handoffPath: "",
   };
 }
 

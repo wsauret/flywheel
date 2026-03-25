@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { CompletionDetector, COMPLETION_REGEX, wrapCompletionInstruction } from "../src/worker/completion";
+import { CompletionDetector } from "../src/worker/completion";
 import { createEnvFilter, DEFAULT_EXCLUDE_PATTERNS } from "../src/worker/env-filter";
 import {
   activeProcesses,
@@ -41,25 +41,10 @@ describe("CompletionDetector", () => {
     detector = new CompletionDetector();
   });
 
-  it("detects <promise>COMPLETE</promise> in stdout stream", () => {
+  it("does not detect <promise>COMPLETE</promise> marker (removed from check)", () => {
     expect(detector.hasSeenCompletion).toBe(false);
     detector.check("some output <promise>COMPLETE</promise> more output");
-    expect(detector.hasSeenCompletion).toBe(true);
-  });
-
-  it("case insensitive matching", () => {
-    detector.check("<PROMISE>complete</PROMISE>");
-    expect(detector.hasSeenCompletion).toBe(true);
-  });
-
-  it("allows whitespace around COMPLETE", () => {
-    detector.check("<promise>  COMPLETE  </promise>");
-    expect(detector.hasSeenCompletion).toBe(true);
-  });
-
-  it("short-circuits after first detection", () => {
-    detector.check("<promise>COMPLETE</promise>");
-    expect(detector.check("no marker here")).toBe(true); // still true
+    expect(detector.hasSeenCompletion).toBe(false);
   });
 
   it("returns false when no marker present", () => {
@@ -67,43 +52,44 @@ describe("CompletionDetector", () => {
     expect(detector.hasSeenCompletion).toBe(false);
   });
 
-  it("fallback checks last 32KB of stdout", () => {
-    const bigOutput = "A".repeat(100_000) + "<promise>COMPLETE</promise>";
+  it("short-circuits after first detection", () => {
+    const ndjson = '{"type":"result","subtype":"success"}';
+    detector.check(ndjson);
+    expect(detector.check("no marker here")).toBe(true); // still true
+  });
+
+  it("fallback checks last 32KB of stdout for NDJSON", () => {
+    const bigOutput = "A".repeat(100_000) + '{"type":"result","subtype":"success"}';
     expect(detector.checkFallback(bigOutput)).toBe(true);
     expect(detector.hasSeenCompletion).toBe(true);
   });
 
   it("fallback guard: skips slice if already detected", () => {
-    detector.check("<promise>COMPLETE</promise>");
+    const ndjson = '{"type":"result","subtype":"success"}';
+    detector.check(ndjson);
     // Fallback should short-circuit
     expect(detector.checkFallback("no marker")).toBe(true);
   });
 
-  it("fallback returns false when marker not in last 32KB", () => {
-    // Marker is buried far before the last 32KB
-    const output = "<promise>COMPLETE</promise>" + "X".repeat(50_000);
-    // The fallback checks last 32KB, marker is at beginning
+  it("fallback returns false when NDJSON not in last 32KB", () => {
+    const output = '{"type":"result","subtype":"success"}' + "X".repeat(50_000);
     expect(detector.checkFallback(output)).toBe(false);
   });
 
   it("reset clears state", () => {
-    detector.check("<promise>COMPLETE</promise>");
+    const ndjson = '{"type":"result","subtype":"success"}';
+    detector.check(ndjson);
     expect(detector.hasSeenCompletion).toBe(true);
     detector.reset();
     expect(detector.hasSeenCompletion).toBe(false);
   });
 
-  it("COMPLETION_REGEX matches expected patterns", () => {
-    expect(COMPLETION_REGEX.test("<promise>COMPLETE</promise>")).toBe(true);
-    expect(COMPLETION_REGEX.test("<promise> COMPLETE </promise>")).toBe(true);
-    expect(COMPLETION_REGEX.test("<PROMISE>COMPLETE</PROMISE>")).toBe(true);
-    expect(COMPLETION_REGEX.test("no marker")).toBe(false);
+  it("checkHandoffFile returns false for empty path", () => {
+    expect(detector.checkHandoffFile("")).toBe(false);
   });
 
-  it("wrapCompletionInstruction adds marker instruction to prompt", () => {
-    const wrapped = wrapCompletionInstruction("Do the thing");
-    expect(wrapped).toContain("Do the thing");
-    expect(wrapped).toContain("<promise>COMPLETE</promise>");
+  it("checkHandoffFile returns false for non-existent file", () => {
+    expect(detector.checkHandoffFile("/tmp/nonexistent-handoff-" + Date.now() + ".json")).toBe(false);
   });
 
   it("detects NDJSON result event with subtype success", () => {
@@ -473,8 +459,12 @@ describe("isRetryable", () => {
     expect(isRetryable({ kind: "schema_error", message: "parse error" })).toBe(false);
   });
 
-  it("completion_not_detected is NOT retryable", () => {
-    expect(isRetryable({ kind: "completion_not_detected", message: "no marker" })).toBe(false);
+  it("handoff_missing is retryable", () => {
+    expect(isRetryable({ kind: "handoff_missing", message: "no handoff file" })).toBe(true);
+  });
+
+  it("handoff_invalid is NOT retryable", () => {
+    expect(isRetryable({ kind: "handoff_invalid", message: "bad json" })).toBe(false);
   });
 });
 
@@ -548,13 +538,17 @@ describe("categorizeFailure", () => {
     expect(result).toBeUndefined();
   });
 
-  it("WorkerFailureReason correctly categorizes all 7 kinds", () => {
-    // Verify all 7 kinds exist and are handled
-    const kinds = ["timeout", "completion_not_detected", "exit_code", "schema_error", "api_error", "rate_limited", "transient"];
+  it("WorkerFailureReason correctly categorizes all 9 kinds", () => {
+    // Verify all 9 kinds exist and are handled
+    const kinds = [
+      "timeout", "exit_code", "schema_error",
+      "api_error", "rate_limited", "transient", "interrupted",
+      "handoff_missing", "handoff_invalid",
+    ];
     for (const kind of kinds) {
       expect(typeof kind).toBe("string");
     }
-    expect(kinds).toHaveLength(7);
+    expect(kinds).toHaveLength(9);
   });
 });
 
@@ -918,6 +912,7 @@ describe("Fallback Agent Chain", () => {
       exitCode: 0,
       truncated: false,
       durationMs: 100,
+      handoffPath: "",
     };
   }
 
@@ -931,6 +926,7 @@ describe("Fallback Agent Chain", () => {
       exitCode: 1,
       truncated: false,
       durationMs: 100,
+      handoffPath: "",
     };
     switch (kind) {
       case "timeout":

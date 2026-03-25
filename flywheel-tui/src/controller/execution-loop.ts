@@ -6,6 +6,7 @@
  */
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { IWorkflowUI } from "../tui/adapters/types";
@@ -17,31 +18,22 @@ import type { DispatcherOrchestrator } from "./dispatcher-orchestrator";
 import type { DispatcherDecision } from "../schemas/dispatcher";
 import type { WorkflowStepContext } from "../prompts/index";
 import type { BudgetTracker } from "../session/budget-tracker";
-import type { BudgetLimits, SessionBudgetStatus } from "../schemas/shared";
+import type { BudgetLimits, LastWorkerResult, SessionBudgetStatus } from "../schemas/shared";
 import type { ContextIndexer, ContextQuery } from "../memory/indexer";
 import type { WorkflowType } from "./workflow-pipeline";
 import type { EvaluatorTransport } from "../evaluator/transport";
 import { Evaluator } from "../evaluator/invoke";
 import type { EvaluationResult } from "../evaluator/invoke";
 import { readCachedFile } from "./templates";
-import { wrapCompletionInstruction } from "../worker/completion";
 import { enrichPromptWithContext } from "./context-enrichment";
 import type { WorkerResult } from "../schemas/worker";
 import { PhaseExecutor, WorkerError } from "./phase-executor";
+import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
+import { WorkerHandoffSchema } from "../schemas/handoff";
+import type { WorkerHandoff } from "../schemas/handoff";
+import type { EvaluatorHandoffData } from "../schemas/evaluator";
+import { buildLastWorkerResult, buildPreviousResultFromHandoff } from "../handoff/consumers";
 import { Log } from "../utils/log";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/**
- * Maximum size of previousResult passed between phases.
- * Caps at 200K chars (~50K tokens) to stay within model limits.
- */
-const MAX_PHASE_RESULT_CHARS = 200_000;
-
-const TRUNCATION_NOTICE =
-  "\n\n[... output truncated for next phase — see full output above ...]\n";
 
 // ---------------------------------------------------------------------------
 // Revision prompt builder
@@ -117,9 +109,9 @@ export function buildRevisionPrompt(
 /**
  * Prompt builder callback for the unified ExecutionLoop.
  *
- * Called for each phase to construct the prompt. The loop wraps the
- * result with `wrapCompletionInstruction` — builders should NOT
- * add the completion marker themselves.
+ * Called for each phase to construct the prompt. Builders receive
+ * `ctx.extra.handoffPath` and should include handoff instructions
+ * when available.
  */
 export type PromptBuilder = (phase: PhaseInfo, ctx: WorkflowStepContext) => string;
 
@@ -186,11 +178,6 @@ export interface UnifiedExecutionLoopOptions {
    * from previous steps (e.g. skip review fix when no actionable findings).
    */
   shouldSkipPhase?: ShouldSkipPhaseHook;
-  /**
-   * When true, previousResult is NOT truncated between phases.
-   * Useful for plan workflows where the full output is needed.
-   */
-  skipTruncation?: boolean;
   /** Budget tracker for monitoring cost/invocation/token usage. */
   budgetTracker?: BudgetTracker;
   /** Budget limits to check against. Both tracker and limits must be provided together. */
@@ -235,7 +222,6 @@ export class ExecutionLoop {
   private readonly contextPath?: string;
   private readonly onStepComplete?: OnStepCompleteHook;
   private readonly shouldSkipPhase?: ShouldSkipPhaseHook;
-  private readonly skipTruncation: boolean;
   private readonly budgetTracker?: BudgetTracker;
   private readonly budgetLimits?: BudgetLimits;
   private readonly contextIndexer?: ContextIndexer;
@@ -251,6 +237,12 @@ export class ExecutionLoop {
    * Hoisted to instance level so callers can read accumulated data after run().
    */
   private readonly _extraAccumulator: Record<string, unknown> = {};
+
+  /**
+   * Structured LastWorkerResult from the most recent worker handoff.
+   * Passed to the dispatcher for the next phase.
+   */
+  private _lastWorkerResult?: LastWorkerResult;
 
   constructor(options: UnifiedExecutionLoopOptions) {
     this.phaseProvider = options.phaseProvider;
@@ -270,7 +262,6 @@ export class ExecutionLoop {
     this.contextPath = options.contextPath;
     this.onStepComplete = options.onStepComplete;
     this.shouldSkipPhase = options.shouldSkipPhase;
-    this.skipTruncation = options.skipTruncation ?? false;
     this.budgetTracker = options.budgetTracker;
     this.budgetLimits = options.budgetLimits;
     this.contextIndexer = options.contextIndexer;
@@ -335,6 +326,14 @@ export class ExecutionLoop {
 
     // Emit workflow started
     this.emitter.workflowStarted(this.workflowId, this.workflowLabel);
+
+    // Resolve handoffs directory and ensure it exists
+    const handoffsDir = path.resolve(
+      this.config.project_cwd ?? process.cwd(),
+      ".flywheel",
+      "handoffs",
+    );
+    fs.mkdirSync(handoffsDir, { recursive: true });
 
     const phasesTotal = phases.length;
     let phasesCompleted = phases.filter((p) => p.status === "completed").length;
@@ -462,7 +461,11 @@ export class ExecutionLoop {
         ? decision.task_content
         : phase.description;
 
-      // 5. Build context — template sees resolved planContent + accumulated extra + context entries
+      // 5. Generate invocationId and handoffPath before building context
+      const invocationId = crypto.randomUUID();
+      const handoffPath = path.resolve(handoffsDir, `${invocationId}.json`);
+
+      // 6. Build context — template sees resolved planContent + accumulated extra + context entries + handoff
       const ctx: WorkflowStepContext = {
         planContent: resolvedPlanContent,
         keyDecisions: this.keyDecisions,
@@ -474,13 +477,15 @@ export class ExecutionLoop {
           conventions: relevantContext?.conventions ?? [],
           standards: relevantContext?.standards ?? [],
           learnings: relevantContext?.learnings ?? [],
+          handoffPath,
+          invocationId,
         },
       };
 
-      // 6. Template ALWAYS runs
+      // 7. Template ALWAYS runs
       let prompt = this.promptBuilder(phase, ctx);
 
-      // 7. Level 2 context inlining (from dispatcher decision, applied to composed prompt)
+      // 8. Level 2 context inlining (from dispatcher decision, applied to composed prompt)
       if (decision?.context_to_inline && decision.context_to_inline.length > 0) {
         prompt = await enrichPromptWithContext(
           prompt,
@@ -489,17 +494,37 @@ export class ExecutionLoop {
         );
       }
 
-      // 8. Completion marker
-      prompt = wrapCompletionInstruction(prompt);
-
-      // Extract worker_config overrides from dispatcher decision
-      const executeOptions = this.buildExecuteOptions(phase, prompt, decision);
+      const executeOptions = this.buildExecuteOptions(phase, prompt, decision, invocationId);
 
       try {
         let result = await this.executor.execute(executeOptions);
 
         // Increment invocation count after successful execution
         this.budgetTracker?.incrementInvocations();
+
+        // --- Read worker handoff ONCE (best-effort, used by ALL consumers) ---
+        let cachedHandoff: WorkerHandoff | undefined;
+        try {
+          cachedHandoff = await readHandoff(result.handoffPath, WorkerHandoffSchema);
+        } catch (err) {
+          if (err instanceof HandoffMissingError) {
+            log.warn("worker handoff missing, consumers will use raw output", {
+              phaseIndex: phase.index,
+              path: result.handoffPath,
+            });
+          } else if (err instanceof HandoffInvalidError) {
+            log.warn("worker handoff invalid, consumers will use raw output", {
+              phaseIndex: phase.index,
+              path: result.handoffPath,
+              error: err.message,
+            });
+          } else {
+            log.warn("unexpected error reading worker handoff, consumers will use raw output", {
+              phaseIndex: phase.index,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
 
         // --- Evaluator: post-phase quality check with revision loop ---
         // Guards: transport exists, dispatcher produced a decision with validation_criteria,
@@ -523,6 +548,16 @@ export class ExecutionLoop {
           // Build task context for evaluator from phase description or resolved plan content
           const taskContext = phase.description || phase.title || "";
 
+          // Project evaluator handoff from cached worker handoff
+          const evaluatorHandoff: EvaluatorHandoffData | undefined = cachedHandoff
+            ? {
+                summary: cachedHandoff.summary,
+                verification: cachedHandoff.verification,
+                artifacts: cachedHandoff.artifacts,
+                files_to_review: cachedHandoff.files_to_review,
+              }
+            : undefined;
+
           let evalResult = await evaluator.evaluate({
             workerOutput: result.output,
             validationCriteria: decision.validation_criteria,
@@ -531,6 +566,7 @@ export class ExecutionLoop {
             testsPassed: null,
             artifactsProduced: [],
             taskContext: taskContext || undefined,
+            handoff: evaluatorHandoff,
           });
 
           // --- Revision loop ---
@@ -595,11 +631,12 @@ export class ExecutionLoop {
               });
             }
 
-            // Wrap revision prompt with completion marker
-            const wrappedRevisionPrompt = wrapCompletionInstruction(revisionPrompt);
+            // Generate new invocationId and handoffPath for revision
+            const revisionInvocationId = crypto.randomUUID();
+            const revisionHandoffPath = path.resolve(handoffsDir, `${revisionInvocationId}.json`);
 
             // Re-invoke executor with revision prompt (and resume session if available)
-            const revisionOptions = this.buildExecuteOptions(phase, wrappedRevisionPrompt, decision);
+            const revisionOptions = this.buildExecuteOptions(phase, revisionPrompt, decision, revisionInvocationId);
             if (result.sessionId) {
               revisionOptions.resumeSessionId = result.sessionId;
             }
@@ -610,6 +647,26 @@ export class ExecutionLoop {
             // Increment invocation count for revision
             this.budgetTracker?.incrementInvocations();
 
+            // Read revised worker handoff (best-effort) — update cachedHandoff
+            try {
+              cachedHandoff = await readHandoff(result.handoffPath, WorkerHandoffSchema);
+            } catch {
+              cachedHandoff = undefined;
+              log.warn("revision worker handoff read failed, evaluator will use raw output", {
+                phaseIndex: phase.index,
+                revisionAttempt,
+              });
+            }
+
+            const revisionHandoff: EvaluatorHandoffData | undefined = cachedHandoff
+              ? {
+                  summary: cachedHandoff.summary,
+                  verification: cachedHandoff.verification,
+                  artifacts: cachedHandoff.artifacts,
+                  files_to_review: cachedHandoff.files_to_review,
+                }
+              : undefined;
+
             // Evaluate revised output
             evalResult = await evaluator.evaluate({
               workerOutput: result.output,
@@ -619,6 +676,7 @@ export class ExecutionLoop {
               testsPassed: null,
               artifactsProduced: [],
               taskContext: taskContext || undefined,
+              handoff: revisionHandoff,
             });
           }
 
@@ -667,10 +725,25 @@ export class ExecutionLoop {
           });
         }
 
-        // Chain result for next phase (truncated unless skipTruncation is set)
-        previousResult = this.skipTruncation
-          ? result.output
-          : truncateForNextPhase(result.output);
+        // Chain result for next phase:
+        // - When handoff is available: build structured previousResult from handoff fields
+        // - When handoff is missing: use raw output directly (no truncation)
+        if (cachedHandoff) {
+          previousResult = buildPreviousResultFromHandoff(cachedHandoff);
+        } else {
+          previousResult = result.output;
+        }
+
+        // Build structured lastWorkerResult from handoff (for dispatcher on next phase)
+        if (cachedHandoff) {
+          this._lastWorkerResult = buildLastWorkerResult(
+            cachedHandoff,
+            phase.index,
+            result.durationMs,
+          );
+        } else {
+          this._lastWorkerResult = undefined;
+        }
 
         // Call onStepComplete hook with full result; merge returned data into accumulator
         if (this.onStepComplete) {
@@ -772,7 +845,7 @@ export class ExecutionLoop {
         ? fs.readFileSync(this.statePath, "utf-8")
         : "",
       this.contextPath ? readCachedFile(this.contextPath) ?? undefined : undefined,
-      previousResult,
+      this._lastWorkerResult,
       {
         workflowContext: {
           workflowId: this.workflowId,
@@ -802,6 +875,7 @@ export class ExecutionLoop {
     phase: PhaseInfo,
     prompt: string,
     decision: DispatcherDecision | null,
+    invocationId?: string,
   ): import("./phase-executor").ExecutePhaseOptions {
     const workerConfig = decision?.worker_config;
 
@@ -841,6 +915,7 @@ export class ExecutionLoop {
       maxRetriesOverride: workerConfig?.max_retries,
       toolScoping: workerConfig?.tool_scoping,
       iterationBudget: workerConfig?.iteration_budget,
+      invocationId,
     };
   }
 
@@ -895,17 +970,5 @@ export class ExecutionLoop {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers (unified)
-// ---------------------------------------------------------------------------
-
-/**
- * Truncate phase output so the next phase's prompt stays within model limits.
- * Keeps the tail (most recent content) which is typically the summary/conclusion.
- */
-function truncateForNextPhase(output: string): string {
-  if (output.length <= MAX_PHASE_RESULT_CHARS) return output;
-  return TRUNCATION_NOTICE + output.slice(output.length - MAX_PHASE_RESULT_CHARS);
-}
 
 

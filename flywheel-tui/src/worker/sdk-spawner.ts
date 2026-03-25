@@ -205,6 +205,7 @@ export class SdkSpawner implements ProcessSpawner {
                     truncated: false,
                     durationMs: Date.now() - startTime,
                     failure: undefined,
+                    handoffPath: "",
                   });
                   // Cancel the SSE reader
                   sseReader.cancel().catch(() => {});
@@ -241,6 +242,7 @@ export class SdkSpawner implements ProcessSpawner {
                     kind: "transient",
                     message: err instanceof Error ? err.message : String(err),
                   },
+              handoffPath: "",
             });
           }
         }

@@ -774,17 +774,18 @@ describe("migrateStateFile", () => {
 describe("WorkerFailureReasonSchema", () => {
   const allKinds = [
     "timeout",
-    "completion_not_detected",
     "exit_code",
     "schema_error",
     "api_error",
     "rate_limited",
     "transient",
     "interrupted",
+    "handoff_missing",
+    "handoff_invalid",
   ] as const;
 
-  it("validates all 8 kind strings", () => {
-    expect(allKinds.length).toBe(8);
+  it("validates all 9 kind strings", () => {
+    expect(allKinds.length).toBe(9);
   });
 
   it("parses timeout kind with timeoutMs", () => {
@@ -850,6 +851,7 @@ describe("WorkerResultSchema", () => {
       exitCode: 0,
       truncated: false,
       durationMs: 5000,
+      handoffPath: "/tmp/handoffs/abc.json",
     });
     expect(result.success).toBe(true);
   });
@@ -860,6 +862,7 @@ describe("WorkerResultSchema", () => {
       exitCode: 0,
       truncated: true,
       durationMs: 5000,
+      handoffPath: "",
     });
     expect(parsed.truncated).toBe(true);
   });
@@ -869,8 +872,41 @@ describe("WorkerResultSchema", () => {
       output: "some output",
       exitCode: 0,
       durationMs: 5000,
+      handoffPath: "",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("includes handoffPath field", () => {
+    const parsed = WorkerResultSchema.parse({
+      output: "some output",
+      exitCode: 0,
+      truncated: false,
+      durationMs: 5000,
+      handoffPath: "/tmp/.flywheel/handoffs/abc-123.json",
+    });
+    expect(parsed.handoffPath).toBe("/tmp/.flywheel/handoffs/abc-123.json");
+  });
+
+  it("rejects missing handoffPath field", () => {
+    const result = WorkerResultSchema.safeParse({
+      output: "some output",
+      exitCode: 0,
+      truncated: false,
+      durationMs: 5000,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts empty string handoffPath", () => {
+    const result = WorkerResultSchema.safeParse({
+      output: "some output",
+      exitCode: 0,
+      truncated: false,
+      durationMs: 5000,
+      handoffPath: "",
+    });
+    expect(result.success).toBe(true);
   });
 });
 
