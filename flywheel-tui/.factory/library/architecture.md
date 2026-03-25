@@ -112,6 +112,19 @@ This lifecycle means content and file writing are separated: draft describes *wh
 
 **Important:** Plan content parsing lives in `src/controller/plan-parser.ts`, NOT `src/state/reader.ts`. The state reader handles `.state.md` files, not plan markdown.
 
+## Evaluator/Dispatcher Prompt Alignment
+
+**Critical pattern:** The dispatcher generates `validation_criteria` that the evaluator uses to judge worker output. These criteria must be:
+1. **Achievable** by the worker given its tools and permissions
+2. **Verifiable** from the worker's text output alone (the evaluator cannot inspect the filesystem)
+3. **Aligned** with the worker's prompt instructions on output paths and deliverables
+
+**Common failure mode:** The dispatcher generates criteria referencing specific file paths (e.g., "created file at X"), but the worker writes to a different path. Or criteria require filesystem inspection (file existence checks) that the evaluator can't perform. This triggers expensive evaluator revision loops.
+
+**Fix pattern:** The dispatcher system prompt (in `src/dispatcher/assemble.ts`) includes rule 4: "validation_criteria must be ACHIEVABLE and VERIFIABLE from the worker's output alone." Workflow definitions in `stage-loop-factory.ts` include `dispatcherHint` and `validationCriteria` to give the dispatcher accurate context.
+
+**Write tool scoping gotcha:** Workers need the Write tool to create handoff JSON files. If `toolScoping.write: false`, the worker can't write handoffs. The Claude engine provider (`src/engines/providers/claude/index.ts`) always injects Write into scoping to prevent this.
+
 ## Transport Interface Pattern
 
 Both dispatcher and evaluator follow:
