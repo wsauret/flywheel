@@ -1,0 +1,45 @@
+{
+  "featureId": "handoff-content-quality",
+  "reviewedAt": "2026-03-25T14:30:00.000Z",
+  "commitId": "bf9c333",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured implementation that faithfully adapts Droid's createSalientSummarySchema pattern to Flywheel's WorkerHandoffSchema. The countSentences helper is a near-verbatim port of Droid's ZY8 function. The WorkerHandoffBaseSchema / WorkerHandoffSchema split is a smart architectural choice that enables .pick()/.omit() projections (used by EvaluatorHandoffDataSchema) while keeping cross-field superRefine checks on the full validation path. All six expectedBehavior items are covered with 26 new tests. Error messages are self-correcting with field name, constraint, and fix instruction. The evaluator.ts change to use WorkerHandoffBaseSchema.pick() instead of WorkerHandoffSchema.pick() is correct and well-documented with a comment explaining why cross-field refinements don't apply to projections.",
+    "issues": [
+      {
+        "file": "src/schemas/handoff.ts",
+        "line": 134,
+        "severity": "non_blocking",
+        "description": "Droid's createSalientSummarySchema also checks for \\r via .includes('\\r'), but the Flywheel implementation already handles this correctly in the refine callback: `!s.includes('\\n') && !s.includes('\\r')`. However, Droid's error message says 'no newlines' while Flywheel's says 'newline characters (\\n or \\r\\n)' — the Flywheel version is more helpful. No action needed, just noting the divergence is intentional and beneficial."
+      },
+      {
+        "file": "src/schemas/handoff.ts",
+        "line": 113,
+        "severity": "non_blocking",
+        "description": "SUMMARY_MAX_LENGTH is 5000 vs Droid's 750 (handoff) / 500 (compact). This is intentional since Flywheel's summary field serves a broader purpose than Droid's salientSummary. The constants are well-named and centralized at the top of the schema section, making future tuning straightforward."
+      },
+      {
+        "file": "tests/schemas/handoff.test.ts",
+        "line": 369,
+        "severity": "non_blocking",
+        "description": "The '0 sentences' test uses a string of spaces ('                              ') which passes min(20) but fails the sentence count check. This is a reasonable edge case test, though it's somewhat indirect — the spaces pass min-length but get trimmed to empty by countSentences. The behavior is correct but could be more explicitly documented in the test name (e.g., 'rejects whitespace-only summary that passes length check')."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The worker introduced a WorkerHandoffBaseSchema / WorkerHandoffSchema split pattern to support .pick()/.omit() on the base z.object while keeping superRefine cross-field checks separate. This is a reusable pattern for any Zod schema that needs both projections and cross-field validation. The architecture.md library file doesn't mention this pattern yet.",
+      "evidence": "src/schemas/handoff.ts:118-155 — WorkerHandoffBaseSchema (z.object) exported for projections, WorkerHandoffSchema = WorkerHandoffBaseSchema.superRefine(...) for full validation. src/schemas/evaluator.ts:11 now imports WorkerHandoffBaseSchema instead of WorkerHandoffSchema."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker's skillFeedback notes that the TDD red phase sometimes produces module-level import errors instead of individual test failures (when adding new exports). The backend-worker skill could clarify that the red phase may manifest as compile/import errors rather than assertion failures when new functions are being exported.",
+      "evidence": "Handoff skillFeedback.suggestedChanges: 'The backend-worker skill says to write tests first (TDD red) and verify they fail. In practice, the import of countSentences caused a module-level error rather than individual test failures, so the red phase was more of a compile error than individual failing assertions.'"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The implementation faithfully ports Droid's createSalientSummarySchema pattern with improvements (more descriptive error messages, explicit \\r handling). The WorkerHandoffBaseSchema split cleanly solves the .pick() compatibility issue with superRefine. All 6 expectedBehavior items are satisfied with 26 comprehensive tests. The evaluator.ts update is correct. No blocking issues found. Three non-blocking observations noted: intentional divergence from Droid error messages (beneficial), higher max length (intentional), and a minor test naming suggestion."
+}

@@ -1,0 +1,57 @@
+{
+  "featureId": "cumulative-stage-context",
+  "reviewedAt": "2026-03-25T15:45:00.000Z",
+  "commitId": "383fe9b",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured implementation of the StageContext accumulator. The stage-context.ts module defines a Zod schema, factory/reset functions, an immutable accumulation function, and persistence via atomicWrite. Integration into ExecutionLoop is correct: context is accumulated after each phase's handoff is read, persisted to disk with try/catch error handling, and passed to the dispatcher only when non-empty (phase_count > 0). The 'reset between stages' requirement is met by each new ExecutionLoop starting with createEmptyStageContext(). Tests are comprehensive (22 stage-context + 5 dispatcher), covering schema validation, single/multi/50+/100 phase accumulation, immutability, persistence roundtrips, and error handling. The code follows existing project conventions (Zod schemas, Log module, atomicWrite, TypeScript strict mode).",
+    "issues": [
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 952,
+        "severity": "non_blocking",
+        "description": "resetStageContext() method is defined but never called anywhere in the codebase. The reset-between-stages behavior works because each pipeline stage creates a new ExecutionLoop instance (which initializes with empty context), making this method dead code. It's harmless but could mislead future maintainers into thinking it needs to be called explicitly."
+      },
+      {
+        "file": "src/controller/stage-context.ts",
+        "line": 123,
+        "severity": "non_blocking",
+        "description": "The standalone resetStageContext() function is also unused — it's just an alias for createEmptyStageContext(). Since ExecutionLoop.resetStageContext() already exists as a method AND each new loop starts fresh, this top-level function adds no value. Minor redundancy."
+      },
+      {
+        "file": "src/controller/execution-loop.ts",
+        "line": 816,
+        "severity": "non_blocking",
+        "description": "The stage-context.json file on disk is never cleaned up when a new stage begins. Currently safe because resumeStageContext defaults to false and is never passed as true, but if resume support is enabled later, a new stage could accidentally load stale context from a completed previous stage. A cleanup step (delete file) when starting a new ExecutionLoop without resumeStageContext would be more defensive."
+      },
+      {
+        "file": "src/controller/stage-context.ts",
+        "line": 36,
+        "severity": "non_blocking",
+        "description": "The PhaseDecisionsSchema, PhaseWarningsSchema, PhaseArtifactsSchema, and PhaseIssuesSchema all share the same shape (phase_index + phase_title + array-of-strings field). This is fine for clarity but could be DRY-ed with a generic helper. Very minor style observation."
+      },
+      {
+        "file": "src/controller/stage-context.ts",
+        "line": 66,
+        "severity": "non_blocking",
+        "description": "SkillFeedbackEntrySchema re-defines the deviation shape inline rather than importing SkillDeviationSchema from src/schemas/handoff.ts. The shapes match currently, but if the handoff schema evolves, these could drift apart. Consider importing from the canonical source for DRY-ness."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The architecture.md library file documents the Execution Loop Phase Iteration (12 steps) but does not include the new step 10.5: 'Accumulate phase handoff into StageContext and persist to disk'. Future workers modifying the execution loop flow may not be aware of this accumulation step.",
+      "evidence": ".factory/library/architecture.md § 'Execution Loop Phase Iteration' lists 12 steps ending at 'Update state, emit events'. The new accumulation step between handoff-chaining and onStepComplete hook is not documented."
+    },
+    {
+      "area": "conventions",
+      "observation": "AGENTS.md in the mission directory documents 'Cumulative stage context' key files but the project-level AGENTS.md does not mention stage-context.ts or the StageContext concept in its architecture quick reference. Workers on future missions may not discover this component.",
+      "evidence": "Project AGENTS.md § 'Core layers' table and § 'Pipeline and execution' table do not reference stage-context.ts. The file is only described in the mission-level AGENTS.md."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. The cumulative stage context feature is well-implemented and fully covers the expected behaviors: StageContext type with all required fields, immutable accumulation after each phase, persistence to disk via atomicWrite, resume support (opt-in), DispatcherInput wiring, reset between stages (via new ExecutionLoop instances), and 50+/100 phase stress tests. Five non-blocking issues identified: dead code (resetStageContext method/function never called), no disk cleanup between stages, minor schema duplication. All issues are cosmetic or future-proofing concerns — no functional bugs or blocking problems found."
+}

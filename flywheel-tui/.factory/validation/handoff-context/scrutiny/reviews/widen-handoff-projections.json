@@ -1,0 +1,44 @@
+{
+  "featureId": "widen-handoff-projections",
+  "reviewedAt": "2026-03-25T14:15:00.000Z",
+  "commitId": "b8053721d5785c7ebe8c0acc480f7cfe5c0ddc65",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured implementation that widens both the evaluator and dispatcher handoff projections. The worker followed TDD (red-green-refactor), wrote 22 new tests covering all 8 VAL-HANDOFF assertions, and all 3381 tests pass with clean typecheck. Schema changes are additive (all new fields are optional), preserving full backward compatibility. The execution-loop changes correctly propagate warnings and decisions through both the initial evaluation and revision loop paths. The buildLastWorkerResult consumer correctly defaults new fields to empty arrays when absent. The evaluator pick-set test was correctly updated to use a field (plan_file_path) that is genuinely not in the pick set. No bugs or missing edge cases found.",
+    "issues": [
+      {
+        "file": "src/handoff/consumers.ts",
+        "line": 42,
+        "severity": "non_blocking",
+        "description": "buildLastWorkerResult always populates decisions/warnings/commands_run/files_to_review as concrete arrays (via ?? []), but LastWorkerResultSchema declares these fields as optional. This means the consumer always produces values that exceed the schema's minimum contract. Not a bug — the schema correctly accepts both — but there's a subtle asymmetry: code consuming LastWorkerResult via the TypeScript type will see these as possibly-undefined, but in practice buildLastWorkerResult never produces undefined for them. A minor improvement would be to make the fields required in LastWorkerResultSchema with .default([]), or to add a JSDoc note on buildLastWorkerResult clarifying the always-present guarantee."
+      },
+      {
+        "file": "tests/handoff/widened-projections.test.ts",
+        "line": 310,
+        "severity": "non_blocking",
+        "description": "VAL-HANDOFF-008 tests for 'graceful fallback on invalid handoffs' test the undefined-handoff path by manually checking (cachedHandoff ? ... : undefined), which replicates the execution-loop pattern but doesn't actually exercise the execution-loop's error handling code (the try/catch around readHandoff). A more thorough test would mock readHandoff to throw HandoffInvalidError and verify the execution loop handles it. However, this is acceptable because the execution-loop's error handling is already covered by tests in tests/handoff/reader.test.ts and tests/unified-execution-loop.test.ts."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Worker used git stash during development to verify a pre-existing flaky test, despite AGENTS.md explicitly stating 'Never use git stash — multiple processes work on this repo concurrently'. The stash was short-lived and immediately popped, so no harm was done, but the convention was violated.",
+      "evidence": "Transcript skeleton shows: 'git stash && bun test tests/context-enrichment.test.ts 2>&1 | tail -10; git stash pop'. AGENTS.md says: 'Never use git stash — multiple processes work on this repo concurrently.'"
+    },
+    {
+      "area": "conventions",
+      "observation": "The flaky test 'enrichPromptWithContext > truncates first file if it alone exceeds budget' was already documented in AGENTS.md as a known pre-existing issue. The worker correctly noted it and did not attempt to fix it. The AGENTS.md documentation is accurate here.",
+      "evidence": "Handoff discoveredIssues mentions the flaky test. AGENTS.md 'Known Pre-Existing Issues' section already documents it."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker reported followedProcedure: true with no deviations. Transcript confirms TDD flow: wrote failing tests first, then implemented, then ran full suite + typecheck. Skill procedure was followed accurately.",
+      "evidence": "Transcript shows: test creation → red phase verification → implementation → green phase verification → full suite. Matches backend-worker SKILL.md steps 2-5."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The widen-handoff-projections feature is correctly implemented with clean, minimal changes across 4 source files and 3 test files. All 8 VAL-HANDOFF assertions are covered by 22 well-structured tests. Schema changes are properly additive (optional fields), preserving backward compatibility. The execution-loop correctly propagates new fields in both initial and revision evaluation paths. Two non-blocking observations: (1) the consumer always produces concrete arrays while the schema allows undefined — a minor type-level asymmetry, and (2) the VAL-HANDOFF-008 resilience tests replicate the execution-loop pattern rather than testing the execution loop's actual error handling, though this is acceptable given existing test coverage elsewhere. One convention note: the worker used git stash briefly despite AGENTS.md prohibiting it."
+}
