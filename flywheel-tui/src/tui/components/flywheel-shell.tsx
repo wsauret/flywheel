@@ -70,6 +70,7 @@ import type { BudgetLimits } from "../../schemas/shared"
 import { fromSnapshot, snapshotToBlocks } from "../../schemas/output"
 import { createSessionOrchestrator, type SessionOrchestrator } from "./session-orchestrator"
 import { handlePipelineCompletion } from "./pipeline-completion"
+import { safeUpdateState } from "../../session/safe-transition"
 import { ContextIndexer } from "../../memory/indexer"
 import { injectOutputBlocks } from "./resume-utils"
 import type { PipelineStageInfo } from "../utils/format"
@@ -741,10 +742,14 @@ export function FlywheelShell() {
           }
 
           // Persist lifecycle state as work:paused (failure ≠ completed)
+          // Uses safeUpdateState to handle sessions stuck in intermediate states
+          // (e.g., "new" when startup transitions failed)
           if (pipelineSessionId) {
-            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch (stateErr) {
-              log.error("state transition failed (failure path)", { session: pipelineSessionId, error: stateErr instanceof Error ? stateErr : String(stateErr) })
-            }
+            safeUpdateState(
+              (id, s) => sessionCtx.manager.updateState(id, s),
+              pipelineSessionId,
+              "work:paused",
+            )
             sessionCtx.refreshList()
           }
           if (isStillViewed()) setAppState("completed")
@@ -753,10 +758,14 @@ export function FlywheelShell() {
         if (!_userInitiatedPause) {
           activeStore()?.setError(String(err))
           // Persist lifecycle state as work:paused (crash ≠ completed)
+          // Uses safeUpdateState to handle sessions stuck in intermediate states
+          // (e.g., "new" when startup transitions failed)
           if (pipelineSessionId) {
-            try { sessionCtx.manager.updateState(pipelineSessionId, "work:paused") } catch (stateErr) {
-              log.error("state transition failed (crash path)", { session: pipelineSessionId, error: stateErr instanceof Error ? stateErr : String(stateErr) })
-            }
+            safeUpdateState(
+              (id, s) => sessionCtx.manager.updateState(id, s),
+              pipelineSessionId,
+              "work:paused",
+            )
             sessionCtx.refreshList()
           }
           if (isStillViewed()) setAppState("completed")
