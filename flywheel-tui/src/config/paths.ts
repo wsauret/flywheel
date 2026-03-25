@@ -84,7 +84,7 @@ import * as path from "node:path";
  * Uses `recursive: true` so the parent `.flywheel/` directory is also created
  * if needed. Idempotent — safe to call multiple times.
  *
- * Adapts Droid's `.factory/library/` pattern for inter-worker knowledge sharing.
+ * Adapted from multi-agent mission system inter-worker knowledge sharing patterns.
  */
 export function ensureLibraryDir(projectCwd: string): void {
   const libraryPath = path.resolve(projectCwd, LIBRARY_DIR);

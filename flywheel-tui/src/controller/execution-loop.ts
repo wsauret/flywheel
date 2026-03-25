@@ -212,7 +212,7 @@ export interface UnifiedExecutionLoopOptions {
    * milestone-aware execution with auto-injection of validation phases
    * at milestone boundaries.
    *
-   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`.
+   * Adapted from multi-agent mission system patterns.
    */
   milestoneTracker?: MilestoneTracker;
 }
@@ -966,7 +966,7 @@ export class ExecutionLoop {
         // phases are now all complete. If so, inject validation phases at the
         // top of the remaining queue (right after the current position).
         //
-        // Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`.
+        // Adapted from multi-agent mission system patterns.
         if (this.milestoneTracker) {
           const injectedPhases = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
           if (injectedPhases > 0) {
@@ -1041,7 +1041,7 @@ export class ExecutionLoop {
    * This preserves relative order of existing pending phases — injected
    * validation phases run before any remaining implementation phases.
    *
-   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`:
+   * Adapted from multi-agent mission system patterns:
    * - Scrutiny is inserted first (runs first)
    * - Behavioral validation is inserted second (runs after scrutiny)
    *

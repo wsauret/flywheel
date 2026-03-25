@@ -12,7 +12,7 @@
         "file": "src/schemas/validation.ts",
         "line": 49,
         "severity": "non_blocking",
-        "description": "The `lastChecked` field is typed as `z.string().optional()` without ISO date validation (e.g., `z.string().datetime().optional()`). This means any arbitrary string is accepted as a timestamp. The Droid reference also lacked validation here, so this matches the source pattern, but adding `.datetime()` would catch malformed timestamps early."
+        "description": "The `lastChecked` field is typed as `z.string().optional()` without ISO date validation (e.g., `z.string().datetime().optional()`). This means any arbitrary string is accepted as a timestamp. The reference implementation also lacked validation here, so this matches the source pattern, but adding `.datetime()` would catch malformed timestamps early."
       },
       {
         "file": "src/schemas/validation.ts",
@@ -30,22 +30,22 @@
         "file": "src/schemas/validation.ts",
         "line": 32,
         "severity": "non_blocking",
-        "description": "Minor naming inconsistency: the type and schema names use 'Assertion' spelling (AssertionStatusEnum, AssertionStatusSchema) but the Droid reference and validation contract use 'assertion' consistently. The word 'assertion' is the correct English spelling — 'assertio' is not standard. However, the spelling is internally consistent within the implementation, so this is cosmetic only."
+        "description": "Minor naming inconsistency: the type and schema names use 'Assertion' spelling (AssertionStatusEnum, AssertionStatusSchema) but the reference implementation and validation contract use 'assertion' consistently. The word 'assertion' is the correct English spelling — 'assertio' is not standard. However, the spelling is internally consistent within the implementation, so this is cosmetic only."
       }
     ]
   },
   "sharedStateObservations": [
     {
       "area": "conventions",
-      "observation": "The Droid reference validation-state.json uses a flat map structure ({ 'VAL-AUTH-001': { status: 'pending' } }) without a wrapping 'assertions' key, while the implementation uses a wrapped structure ({ assertions: { ... } }). The feature description explicitly specifies the wrapped format, so the worker correctly followed the feature spec rather than the Droid source. This divergence should be documented so future features (user-testing-validator, end-of-session gate) know which format to expect.",
-      "evidence": "inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §5 shows flat map; feature expectedBehavior[0] specifies '{ assertions: { [id]: { ... } } }'; src/schemas/validation.ts line 59 implements the wrapped format."
+      "observation": "The reference implementation validation-state.json uses a flat map structure ({ 'VAL-AUTH-001': { status: 'pending' } }) without a wrapping 'assertions' key, while the implementation uses a wrapped structure ({ assertions: { ... } }). The feature description explicitly specifies the wrapped format, so the worker correctly followed the feature spec rather than the reference source. This divergence should be documented so future features (user-testing-validator, end-of-session gate) know which format to expect.",
+      "evidence": "Reference implementation shows flat map; feature expectedBehavior[0] specifies '{ assertions: { [id]: { ... } } }'; src/schemas/validation.ts line 59 implements the wrapped format."
     },
     {
       "area": "conventions",
-      "observation": "The Droid reference validation-state.json uses 'validatedAtMilestone' and 'issues' fields, while the implementation uses 'lastChecked' and 'evidence'. This is an intentional adaptation specified in the feature description, but downstream features (VAL-EXEC-006, VAL-EXEC-010) that update validation-state.json need to know the actual field names.",
-      "evidence": "inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §5 shows { status, validatedAtMilestone, issues }; feature expectedBehavior[0] specifies { status, lastChecked?, evidence? }; src/schemas/validation.ts lines 45-51."
+      "observation": "The reference implementation validation-state.json uses 'validatedAtMilestone' and 'issues' fields, while the implementation uses 'lastChecked' and 'evidence'. This is an intentional adaptation specified in the feature description, but downstream features (VAL-EXEC-006, VAL-EXEC-010) that update validation-state.json need to know the actual field names.",
+      "evidence": "Reference implementation shows { status, validatedAtMilestone, issues }; feature expectedBehavior[0] specifies { status, lastChecked?, evidence? }; src/schemas/validation.ts lines 45-51."
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Feature validation-contract-format passes review. All seven expectedBehavior items are implemented and tested: (1) Zod schema for validation-state.json with pending/passed/failed/blocked statuses, (2) Zod validation on both read and write, (3) atomicWrite used for file safety, (4) PhaseInfo has optional fulfills: string[], (5) plan parser extracts <!-- fulfills: ... --> HTML comment annotations, (6) coverage check utility reports orphaned/duplicate/unclaimed assertions, (7) 36 tests verify all behaviors including backward compatibility. Four non-blocking issues noted: missing datetime validation on lastChecked, no .strict() on schemas, sync fs usage (matches codebase convention), and a minor spelling inconsistency (Assertio vs Assertion). Two shared state observations about intentional divergences from Droid reference format that downstream features should be aware of."
+  "summary": "Feature validation-contract-format passes review. All seven expectedBehavior items are implemented and tested: (1) Zod schema for validation-state.json with pending/passed/failed/blocked statuses, (2) Zod validation on both read and write, (3) atomicWrite used for file safety, (4) PhaseInfo has optional fulfills: string[], (5) plan parser extracts <!-- fulfills: ... --> HTML comment annotations, (6) coverage check utility reports orphaned/duplicate/unclaimed assertions, (7) 36 tests verify all behaviors including backward compatibility. Four non-blocking issues noted: missing datetime validation on lastChecked, no .strict() on schemas, sync fs usage (matches codebase convention), and a minor spelling inconsistency (Assertio vs Assertion). Two shared state observations about intentional divergences from reference implementation format that downstream features should be aware of."
 }

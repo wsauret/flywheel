@@ -5,8 +5,7 @@
  * pass/fail/blocked status across milestones. Uses atomic writes
  * for safety (concurrent pipeline access).
  *
- * Adapted from Droid's validation-state.json pattern
- * (see inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §5).
+ * Adapted from multi-agent mission system validation patterns.
  */
 
 import * as fs from "node:fs";
@@ -240,8 +239,7 @@ export interface EndOfSessionGateOptions {
  * - "blocked" is always treated as a failure regardless of skip flags.
  * - "failed" is always treated as a failure regardless of skip flags.
  *
- * Adapted from Droid's end-of-session quality gate concept
- * (see inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §5).
+ * Adapted from multi-agent mission system end-of-session quality gate concept.
  *
  * Fulfills: VAL-EXEC-007
  *

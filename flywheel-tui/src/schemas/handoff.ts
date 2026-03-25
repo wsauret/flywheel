@@ -2,13 +2,13 @@ import { z } from "zod";
 import { ValidationCriteriaSchema, WorkerConfigSchema } from "../schemas/shared";
 
 // ---------------------------------------------------------------------------
-// Content quality helpers (adapted from Droid createSalientSummarySchema)
+// Content quality helpers
 // ---------------------------------------------------------------------------
 
 /**
  * Count sentences in text. Normalizes whitespace, strips trailing punctuation,
  * then splits on sentence-ending punctuation followed by whitespace.
- * Adapted from Droid's countSentences (ZY8) in droid-diagnostics-marketplace.js.
+ * Adapted from multi-agent mission system patterns.
  */
 export function countSentences(text: string): number {
   const normalized = text.replace(/\s+/g, " ").trim().replace(/[.!?]+\s*$/, "");
@@ -71,8 +71,7 @@ export const CompoundDocSchema = z.object({
 export type CompoundDoc = z.infer<typeof CompoundDocSchema>;
 
 // ---------------------------------------------------------------------------
-// Skill feedback sub-schemas (adapted from Droid skillDeviationSchema / skillFeedbackSchema)
-// Reference: inspiration/droid/DROID-PROMPTS-AND-SKILLS-ANALYSIS.md §4
+// Skill feedback sub-schemas
 // ---------------------------------------------------------------------------
 
 export const SkillDeviationSchema = z.object({
@@ -99,7 +98,7 @@ export type SkillFeedback = z.infer<typeof SkillFeedbackSchema>;
 // ---------------------------------------------------------------------------
 // WorkerHandoffSchema
 // Per-workflow fields, all optional except summary.
-// Content quality enforcement adapted from Droid's createSalientSummarySchema.
+// Content quality enforcement for summary fields.
 // ---------------------------------------------------------------------------
 
 const SUMMARY_MIN_LENGTH = 20;
@@ -177,7 +176,7 @@ export type WorkerHandoff = z.infer<typeof WorkerHandoffSchema>;
 
 // ---------------------------------------------------------------------------
 // Evaluator issue sub-schemas
-// (adapted from Droid's discoveredIssues pattern — RESEARCH-REPORT.md rec 5)
+// Structured evaluator issue tracking
 // ---------------------------------------------------------------------------
 
 export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"]);

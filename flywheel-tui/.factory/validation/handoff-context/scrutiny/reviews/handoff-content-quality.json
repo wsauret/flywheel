@@ -6,19 +6,19 @@
   "diffReviewed": true,
   "status": "pass",
   "codeReview": {
-    "summary": "Clean, well-structured implementation that faithfully adapts Droid's createSalientSummarySchema pattern to Flywheel's WorkerHandoffSchema. The countSentences helper is a near-verbatim port of Droid's ZY8 function. The WorkerHandoffBaseSchema / WorkerHandoffSchema split is a smart architectural choice that enables .pick()/.omit() projections (used by EvaluatorHandoffDataSchema) while keeping cross-field superRefine checks on the full validation path. All six expectedBehavior items are covered with 26 new tests. Error messages are self-correcting with field name, constraint, and fix instruction. The evaluator.ts change to use WorkerHandoffBaseSchema.pick() instead of WorkerHandoffSchema.pick() is correct and well-documented with a comment explaining why cross-field refinements don't apply to projections.",
+    "summary": "Clean, well-structured implementation that faithfully adapts multi-agent mission system createSalientSummarySchema pattern to Flywheel's WorkerHandoffSchema. The countSentences helper is a near-verbatim port of reference sentence counting logic. The WorkerHandoffBaseSchema / WorkerHandoffSchema split is a smart architectural choice that enables .pick()/.omit() projections (used by EvaluatorHandoffDataSchema) while keeping cross-field superRefine checks on the full validation path. All six expectedBehavior items are covered with 26 new tests. Error messages are self-correcting with field name, constraint, and fix instruction. The evaluator.ts change to use WorkerHandoffBaseSchema.pick() instead of WorkerHandoffSchema.pick() is correct and well-documented with a comment explaining why cross-field refinements don't apply to projections.",
     "issues": [
       {
         "file": "src/schemas/handoff.ts",
         "line": 134,
         "severity": "non_blocking",
-        "description": "Droid's createSalientSummarySchema also checks for \\r via .includes('\\r'), but the Flywheel implementation already handles this correctly in the refine callback: `!s.includes('\\n') && !s.includes('\\r')`. However, Droid's error message says 'no newlines' while Flywheel's says 'newline characters (\\n or \\r\\n)' — the Flywheel version is more helpful. No action needed, just noting the divergence is intentional and beneficial."
+        "description": "The reference createSalientSummarySchema also checks for \\r via .includes('\\r'), but the Flywheel implementation already handles this correctly in the refine callback: `!s.includes('\\n') && !s.includes('\\r')`. However, the reference error message says 'no newlines' while Flywheel's says 'newline characters (\\n or \\r\\n)' — the Flywheel version is more helpful. No action needed, just noting the divergence is intentional and beneficial."
       },
       {
         "file": "src/schemas/handoff.ts",
         "line": 113,
         "severity": "non_blocking",
-        "description": "SUMMARY_MAX_LENGTH is 5000 vs Droid's 750 (handoff) / 500 (compact). This is intentional since Flywheel's summary field serves a broader purpose than Droid's salientSummary. The constants are well-named and centralized at the top of the schema section, making future tuning straightforward."
+        "description": "SUMMARY_MAX_LENGTH is 5000 vs reference implementation's 750 (handoff) / 500 (compact). This is intentional since Flywheel's summary field serves a broader purpose than the reference salientSummary. The constants are well-named and centralized at the top of the schema section, making future tuning straightforward."
       },
       {
         "file": "tests/schemas/handoff.test.ts",
@@ -41,5 +41,5 @@
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Pass. The implementation faithfully ports Droid's createSalientSummarySchema pattern with improvements (more descriptive error messages, explicit \\r handling). The WorkerHandoffBaseSchema split cleanly solves the .pick() compatibility issue with superRefine. All 6 expectedBehavior items are satisfied with 26 comprehensive tests. The evaluator.ts update is correct. No blocking issues found. Three non-blocking observations noted: intentional divergence from Droid error messages (beneficial), higher max length (intentional), and a minor test naming suggestion."
+  "summary": "Pass. The implementation faithfully ports the multi-agent mission system createSalientSummarySchema pattern with improvements (more descriptive error messages, explicit \\r handling). The WorkerHandoffBaseSchema split cleanly solves the .pick() compatibility issue with superRefine. All 6 expectedBehavior items are satisfied with 26 comprehensive tests. The evaluator.ts update is correct. No blocking issues found. Three non-blocking observations noted: intentional divergence from reference error messages (beneficial), higher max length (intentional), and a minor test naming suggestion."
 }

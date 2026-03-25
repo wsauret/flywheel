@@ -4,8 +4,7 @@
  * Defines the Zod schema for `validation-state.json`, which tracks
  * assertion pass/fail/blocked status across milestones.
  *
- * Adapted from Droid's validation-state.json pattern
- * (see inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §5).
+ * Adapted from multi-agent mission system validation patterns.
  *
  * Schema:
  * ```json

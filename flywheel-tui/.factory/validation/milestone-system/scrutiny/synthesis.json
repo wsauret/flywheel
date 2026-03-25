@@ -57,12 +57,12 @@
   ],
   "rejectedObservations": [
     {
-      "observation": "Droid reference uses flat map for validation-state.json but implementation uses wrapped {assertions: {...}} format",
+      "observation": "Reference implementation uses flat map for validation-state.json but implementation uses wrapped {assertions: {...}} format",
       "reason": "Intentional design — the wrapped format was explicitly specified in the feature description and validation contract. Downstream features already implement against it."
     },
     {
-      "observation": "Field name divergence from Droid (lastChecked/evidence vs validatedAtMilestone/issues)",
-      "reason": "Intentional adaptation — the feature spec explicitly defines these field names as the Flywheel convention, diverging from Droid's naming. Both downstream features and the validation-state.json in the mission already use the Flywheel convention."
+      "observation": "Field name divergence from reference implementation (lastChecked/evidence vs validatedAtMilestone/issues)",
+      "reason": "Intentional adaptation — the feature spec explicitly defines these field names as the Flywheel convention, diverging from the reference naming. Both downstream features and the validation-state.json in the mission already use the Flywheel convention."
     },
     {
       "observation": "Skill procedure should note 'verify existing infrastructure first before writing new code'",

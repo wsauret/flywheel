@@ -9,8 +9,7 @@
  *    and test coverage
  * 3. Synthesize findings into a scrutiny report
  *
- * Adapted from Droid's scrutiny-validator skill/prompt
- * (see inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §7).
+ * Adapted from multi-agent mission system scrutiny validation patterns.
  *
  * Fulfills: VAL-EXEC-003, VAL-EXEC-004, VAL-EXEC-011
  */
@@ -180,7 +179,7 @@ function buildPhaseReviewSection(
 /**
  * Build the complete scrutiny validation prompt.
  *
- * Adapted from Droid's scrutiny-validator skill prompt (lZ8 in droid_pretty.js).
+ * Adapted from multi-agent mission system scrutiny validation patterns.
  *
  * @param ctx - Scrutiny prompt context with milestone, phases, and commands
  * @returns Complete prompt string

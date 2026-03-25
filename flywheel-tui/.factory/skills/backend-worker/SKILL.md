@@ -21,14 +21,7 @@ None.
 
 Read the feature description, preconditions, expectedBehavior, and verificationSteps carefully.
 
-**CRITICAL — Read the Droid source reference FIRST:**
-- Read `AGENTS.md` in the mission directory for the Droid reference table
-- For the feature you're implementing, find the corresponding Droid reference file and read the relevant section
-- Read `inspiration/droid/DROID-PROMPTS-AND-SKILLS-ANALYSIS.md` and `inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md` as applicable
-- Understand Droid's implementation BEFORE writing any code
-- Port Droid's patterns to Flywheel's TypeScript/Bun/Zod stack — do NOT reinvent
-
-Then read all source files referenced in the feature description and the AGENTS.md architecture notes to understand the current state.
+Read all source files referenced in the feature description and the AGENTS.md architecture notes to understand the current state.
 
 Read `.factory/library/architecture.md` for existing patterns.
 
@@ -50,7 +43,6 @@ Name test files following the existing pattern: `tests/<feature-area>.test.ts`
 ### 3. Implement the Feature (TDD Green Phase)
 
 Write the minimum code to make tests pass:
-- **Steal from Droid:** Directly adapt Droid's code patterns, schemas, and logic. Translate from minified JS to clean TypeScript.
 - Follow existing patterns in the codebase (transport interfaces, schema patterns, execution loop hooks)
 - Use Zod for all schema definitions, following `.strict()` pattern for handoff schemas
 - Use the `Log` module for logging — NEVER use console.error/warn/debug
@@ -121,5 +113,4 @@ If you discovered ports, env vars, gotchas, or architectural patterns during imp
 - Feature depends on code from a feature that hasn't been implemented yet (precondition not met)
 - Existing test suite has failures unrelated to your changes (pre-existing failures)
 - Schema changes would break backward compatibility in ways not covered by the feature description
-- The Droid reference code uses a pattern that doesn't map cleanly to Flywheel's architecture
 - The feature is too large for a single session and needs splitting

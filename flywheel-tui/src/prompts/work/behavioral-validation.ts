@@ -13,8 +13,7 @@
  * On re-run (when `priorResults` is provided), only failed/blocked/pending
  * assertions are re-validated; previously passed assertions are skipped.
  *
- * Adapted from Droid's user-testing-validator skill/prompt
- * (see inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §7).
+ * Adapted from multi-agent mission system behavioral validation patterns.
  *
  * Fulfills: VAL-EXEC-005, VAL-EXEC-006, VAL-EXEC-010, VAL-CROSS-006
  */
@@ -248,8 +247,7 @@ function buildRevalidationSection(
 /**
  * Build the complete behavioral validation prompt.
  *
- * Adapted from Droid's user-testing-validator skill prompt
- * (bZ8 in droid_pretty.js).
+ * Adapted from multi-agent mission system behavioral validation patterns.
  *
  * @param ctx - Behavioral validation context
  * @returns Complete prompt string

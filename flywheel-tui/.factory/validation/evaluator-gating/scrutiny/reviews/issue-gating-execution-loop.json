@@ -41,7 +41,7 @@
     },
     {
       "area": "skills",
-      "observation": "Worker followed the skill procedure correctly: read Droid reference first, wrote tests (TDD), implemented, ran full suite, ran typecheck, and updated knowledge library. skillFeedback confirms followedProcedure=true with no deviations.",
+      "observation": "Worker followed the skill procedure correctly: read reference implementation first, wrote tests (TDD), implemented, ran full suite, ran typecheck, and updated knowledge library. skillFeedback confirms followedProcedure=true with no deviations.",
       "evidence": "Handoff verification shows: 18 new tests in issue-gating.test.ts, bun test 3539 pass, bunx tsc --noEmit clean, .factory/library/architecture.md updated."
     }
   ],

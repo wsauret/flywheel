@@ -8,8 +8,6 @@
  *
  * Persisted to disk via atomicWrite so pipeline restart/resume can
  * reload accumulated state. Resets between pipeline stages.
- *
- * Reference: inspiration/droid/RESEARCH-REPORT.md recommendation 2b
  */
 
 import { z } from "zod";

@@ -1,9 +1,8 @@
 /**
  * MilestoneTracker — tracks milestone completion and validation injection state.
  *
- * Adapted from Droid's `isMilestoneImplementationComplete` and
- * `milestonesWithValidationPlanned` tracking (see
- * inspiration/droid/extracted/VALIDATION-SYSTEM-ANALYSIS.md §2-3).
+ * Adapted from multi-agent mission system milestone completion and
+ * validation planning patterns.
  *
  * A milestone is "implementation complete" when all non-validation phases
  * in that milestone are either "completed" or "cancelled". Validation-type
@@ -25,7 +24,7 @@ import { Log } from "../utils/log";
  * Skill names that indicate validation-type phases.
  * These are excluded from milestone completion checks.
  *
- * Matches Droid's `validatorDroidNames` = ["scrutiny-validator", "user-testing-validator"]
+ * Matches the validation system's validator skill names.
  */
 export const VALIDATION_SKILL_NAMES: readonly string[] = Object.freeze([
   "scrutiny-validator",
@@ -72,12 +71,7 @@ const log = Log.create({ service: "milestone-tracker" });
  * 1. There is at least one non-validation phase in the milestone
  * 2. All non-validation phases have status "completed" or "cancelled"
  *
- * Directly adapted from Droid's `isMilestoneImplementationComplete`:
- * ```js
- * let R = T.filter((A) => !rIH.includes(A.skillName));
- * if (R.length === 0) return false;
- * return R.every((A) => A.status === "completed" || A.status === "cancelled");
- * ```
+ * Adapted from multi-agent mission system milestone completion detection.
  *
  * @param phases - All phases (including from other milestones)
  * @param milestoneName - The milestone to check
@@ -128,7 +122,7 @@ export class MilestoneTracker {
    * Milestones that have already had validation phases injected.
    * Prevents re-injection after fix phases cause re-completion.
    *
-   * Adapted from Droid's `milestonesWithValidationPlanned` state field.
+   * Prevents re-injection after fix phases cause re-completion.
    */
   private readonly _sealedMilestones: Set<string>;
 
@@ -174,12 +168,7 @@ export class MilestoneTracker {
    * 1. The milestone's implementation phases are all complete
    * 2. Validation has NOT already been planned for this milestone
    *
-   * This is the combined guard from Droid's
-   * `checkMilestoneCompletionAndInjectValidation`:
-   * ```js
-   * if (!(await this.missionFileService.isMilestoneImplementationComplete(milestone))) return;
-   * if (await this.missionFileService.hasValidationPlannerRun(milestone)) return;
-   * ```
+   * Combined guard: checks implementation completeness and sealed state.
    */
   shouldInjectValidation(phases: readonly MilestonePhase[], milestoneName: string): boolean {
     if (this._sealedMilestones.has(milestoneName)) return false;
@@ -217,7 +206,7 @@ export class MilestoneTracker {
    * 1. Implementation complete (all non-validation phases done)
    * 2. Not yet sealed (validation not yet planned)
    *
-   * Adapted from Droid's `checkAllMilestonesForValidation`.
+   * Scans all milestones and returns those ready for validation injection.
    */
   checkCompletedMilestones(phases: readonly MilestonePhase[]): string[] {
     const milestoneNames = this.getMilestoneNames(phases);
@@ -236,7 +225,7 @@ export class MilestoneTracker {
    * Create validation phases for a completed milestone and return them
    * in the order they should be injected (scrutiny first, then behavioral).
    *
-   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`:
+   * Adapted from multi-agent mission system validation injection patterns:
    * - Scrutiny phase: runs test/typecheck/lint + per-phase code review
    * - Behavioral validation phase: tests assertions from fulfills fields
    *
@@ -321,7 +310,7 @@ export class MilestoneTracker {
    * a phase completes. It combines milestone detection, skip flag handling,
    * and phase creation.
    *
-   * Adapted from Droid's `checkMilestoneCompletionAndInjectValidation`.
+   * Adapted from multi-agent mission system validation injection patterns.
    *
    * @param phases - Current phase list (as MilestonePhase projections)
    * @param startIndex - Index at which to start numbering injected phases
