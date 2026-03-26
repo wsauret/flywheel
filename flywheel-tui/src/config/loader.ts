@@ -126,6 +126,14 @@ export const FlywheelConfigSchema = z.object({
   /** Skip behavioral validation phase injection at milestone boundaries. Default: false. */
   skip_validation: z.boolean().default(false),
 
+  /** Queue execution engine configuration. */
+  queue: z.object({
+    /** Maximum number of steps allowed in a single queue. Default: 50. */
+    max_steps: z.number().int().min(1).max(1000).default(50),
+    /** Persist queue state to disk for crash recovery. Default: true. */
+    persist_queue: z.boolean().default(true),
+  }).default({}),
+
   /** Sprint mode configuration. */
   sprint: z.object({
     /** Max sprint iterations before escalation. Default: 5. */
@@ -174,6 +182,10 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   paths: {},
   skip_scrutiny: false,
   skip_validation: false,
+  queue: {
+    max_steps: 50,
+    persist_queue: true,
+  },
   sprint: {
     max_iterations: 5,
     verification_timeout_ms: 30_000,
@@ -289,6 +301,17 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   },
   FLYWHEEL_SKIP_VALIDATION: (val, config) => {
     config.skip_validation = val === "true" || val === "1";
+  },
+  FLYWHEEL_QUEUE_MAX_STEPS: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      if (!config.queue) config.queue = {};
+      (config.queue as Record<string, unknown>).max_steps = n;
+    }
+  },
+  FLYWHEEL_QUEUE_PERSIST_QUEUE: (val, config) => {
+    if (!config.queue) config.queue = {};
+    (config.queue as Record<string, unknown>).persist_queue = val === "true" || val === "1";
   },
   FLYWHEEL_SPRINT_MAX_ITERATIONS: (val, config) => {
     const n = parseInt(val, 10);
