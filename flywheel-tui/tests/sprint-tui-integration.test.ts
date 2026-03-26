@@ -1,9 +1,8 @@
 import { describe, it, expect } from "bun:test"
 import {
-  buildCustomPipeline,
-  modeHasReview,
-  PIPELINE_MODE_OPTIONS,
-  type PipelineMode,
+  workflowHasReview,
+  WORKFLOW_OPTIONS,
+  type WorkflowName,
 } from "../src/tui/components/start-command"
 import {
   buildPipelineStages,
@@ -39,85 +38,86 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
 // VAL-TUI-001: Sprint is an option in /start mode picker
 // ===========================================================================
 
-describe("VAL-TUI-001: Sprint is 5th option in /start mode picker", () => {
-  it("PIPELINE_MODE_OPTIONS has 5 entries", () => {
-    expect(PIPELINE_MODE_OPTIONS).toHaveLength(5)
+describe("VAL-TUI-001: Sprint is 5th option in /start workflow picker", () => {
+  it("WORKFLOW_OPTIONS has 5 entries", () => {
+    expect(WORKFLOW_OPTIONS).toHaveLength(5)
   })
 
   it("Sprint is the 5th option (index 4)", () => {
-    const fifth = PIPELINE_MODE_OPTIONS[4]
+    const fifth = WORKFLOW_OPTIONS[4]
     expect(fifth.value).toBe("sprint")
   })
 
   it('Sprint option has label "Sprint"', () => {
-    const sprint = PIPELINE_MODE_OPTIONS.find((o) => o.value === "sprint")
+    const sprint = WORKFLOW_OPTIONS.find((o) => o.value === "sprint")
     expect(sprint).toBeDefined()
     expect(sprint!.label).toBe("Sprint")
   })
 
   it('Sprint option has correct description', () => {
-    const sprint = PIPELINE_MODE_OPTIONS.find((o) => o.value === "sprint")
+    const sprint = WORKFLOW_OPTIONS.find((o) => o.value === "sprint")
     expect(sprint).toBeDefined()
     expect(sprint!.description).toContain("Fast iteration")
   })
 
-  it("PipelineMode union accepts 'sprint'", () => {
-    // Type-level test: this wouldn't compile if sprint wasn't in PipelineMode
-    const mode: PipelineMode = "sprint"
-    expect(mode).toBe("sprint")
+  it("WorkflowName union accepts 'sprint'", () => {
+    // Type-level test: this wouldn't compile if sprint wasn't in WorkflowName
+    const workflow: WorkflowName = "sprint"
+    expect(workflow).toBe("sprint")
   })
 
-  it("mode options are ordered: plan-only, plan-work, plan-work-review, full, sprint", () => {
-    const values = PIPELINE_MODE_OPTIONS.map((o) => o.value)
+  it("workflow options are ordered: plan-only, plan-work, plan-work-review, full, sprint", () => {
+    const values = WORKFLOW_OPTIONS.map((o) => o.value)
     expect(values).toEqual(["plan-only", "plan-work", "plan-work-review", "full", "sprint"])
   })
 
-  it("modeHasReview returns false for sprint (sprint has no review stage)", () => {
-    expect(modeHasReview("sprint" as PipelineMode)).toBe(false)
+  it("workflowHasReview returns false for sprint (sprint has no review step)", () => {
+    expect(workflowHasReview("sprint")).toBe(false)
   })
 })
 
 // ===========================================================================
-// VAL-TUI-002: buildCustomPipeline("sprint") returns correct stages
+// VAL-TUI-002: Sprint queue template returns correct steps
 // ===========================================================================
 
-describe("VAL-TUI-002: buildCustomPipeline('sprint') returns correct stages", () => {
-  it("returns a single sprint stage", () => {
-    const stages = buildCustomPipeline("sprint")
-    expect(stages).toEqual([{ workflow: "sprint" }])
+describe("VAL-TUI-002: Sprint queue template returns correct steps", () => {
+  it("sprint template creates work + verify steps", async () => {
+    const { buildQueue } = await import("../src/tui/components/shell-queue")
+    const { CONFIG_DEFAULTS } = await import("../src/config/loader")
+    const queue = buildQueue("sprint", { ...CONFIG_DEFAULTS, interactive_consolidation: false })
+    expect(queue.steps).toHaveLength(2)
+    expect(queue.steps[0].type).toBe("work")
+    expect(queue.steps[1].type).toBe("verify")
   })
 
-  it("sprint pipeline has exactly 1 stage", () => {
-    const stages = buildCustomPipeline("sprint")
-    expect(stages).toHaveLength(1)
+  it("sprint queue does not include plan, review, or ship steps", async () => {
+    const { buildQueue } = await import("../src/tui/components/shell-queue")
+    const { CONFIG_DEFAULTS } = await import("../src/config/loader")
+    const queue = buildQueue("sprint", { ...CONFIG_DEFAULTS, interactive_consolidation: false })
+    const types = queue.steps.map((s) => s.type)
+    expect(types).not.toContain("plan")
+    expect(types).not.toContain("review")
+    expect(types).not.toContain("ship")
   })
 
-  it("sprint pipeline does not include plan, work, review, or ship", () => {
-    const stages = buildCustomPipeline("sprint")
-    const workflows = stages.map((s) => s.workflow)
-    expect(workflows).not.toContain("plan")
-    expect(workflows).not.toContain("work")
-    expect(workflows).not.toContain("review")
-    expect(workflows).not.toContain("ship")
-  })
+  it("all other workflow templates still produce correct queues", async () => {
+    const { buildQueue } = await import("../src/tui/components/shell-queue")
+    const { CONFIG_DEFAULTS } = await import("../src/config/loader")
+    const config = { ...CONFIG_DEFAULTS, interactive_consolidation: false }
 
-  it("all other pipeline modes still work correctly", () => {
-    expect(buildCustomPipeline("plan-only")).toEqual([{ workflow: "plan" }])
-    expect(buildCustomPipeline("plan-work")).toEqual([
-      { workflow: "plan" },
-      { workflow: "work" },
-    ])
-    expect(buildCustomPipeline("plan-work-review")).toEqual([
-      { workflow: "plan" },
-      { workflow: "work" },
-      { workflow: "review" },
-    ])
-    expect(buildCustomPipeline("full")).toEqual([
-      { workflow: "plan" },
-      { workflow: "work" },
-      { workflow: "review" },
-      { workflow: "ship" },
-    ])
+    const planOnly = buildQueue("plan-only", config)
+    expect(planOnly.steps[0].type).toBe("plan")
+
+    const planWork = buildQueue("plan-work", config)
+    expect(planWork.steps[0].type).toBe("plan")
+
+    const planWorkReview = buildQueue("plan-work-review", config)
+    expect(planWorkReview.steps[0].type).toBe("plan")
+    expect(planWorkReview.steps[planWorkReview.steps.length - 1].type).toBe("review")
+
+    const full = buildQueue("full", config)
+    expect(full.steps[0].type).toBe("plan")
+    expect(full.steps[full.steps.length - 1].type).toBe("ship")
   })
 })
 

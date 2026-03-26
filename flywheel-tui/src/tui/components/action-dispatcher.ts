@@ -23,12 +23,12 @@ export interface WorkflowMeta {
 }
 
 const WORKFLOW_META: Record<WorkflowType, WorkflowMeta> = {
-  work:     { stepLabel: "Phase",  workflowName: "work" },
-  plan:     { stepLabel: "Step",   workflowName: "plan" },
-  review:   { stepLabel: "Step",   workflowName: "review" },
-  ship:     { stepLabel: "Step",   workflowName: "ship" },
-  debug:    { stepLabel: "Cycle",  workflowName: "debug" },
-  research: { stepLabel: "Step",   workflowName: "research" },
+  work:     { stepLabel: "Step",      workflowName: "work" },
+  plan:     { stepLabel: "Step",      workflowName: "plan" },
+  review:   { stepLabel: "Step",      workflowName: "review" },
+  ship:     { stepLabel: "Step",      workflowName: "ship" },
+  debug:    { stepLabel: "Step",      workflowName: "debug" },
+  research: { stepLabel: "Step",      workflowName: "research" },
   sprint:   { stepLabel: "Iteration", workflowName: "sprint" },
 }
 

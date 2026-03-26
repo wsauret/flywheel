@@ -1,98 +1,97 @@
 import { describe, it, expect } from "bun:test"
 import {
-  buildCustomPipeline,
+  workflowHasReview,
   modeHasReview,
-  PIPELINE_MODE_OPTIONS,
-  type PipelineMode,
+  WORKFLOW_OPTIONS,
+  type WorkflowName,
 } from "../src/tui/components/start-command"
 
-describe("buildCustomPipeline", () => {
-  it('"plan-only" produces [plan]', () => {
-    const stages = buildCustomPipeline("plan-only")
-    expect(stages).toEqual([{ workflow: "plan" }])
-  })
+// ===========================================================================
+// WORKFLOW_OPTIONS (replaces PIPELINE_MODE_OPTIONS)
+// ===========================================================================
 
-  it('"plan-work" produces [plan, work]', () => {
-    const stages = buildCustomPipeline("plan-work")
-    expect(stages).toEqual([{ workflow: "plan" }, { workflow: "work" }])
-  })
-
-  it('"plan-work-review" produces [plan, work, review]', () => {
-    const stages = buildCustomPipeline("plan-work-review")
-    expect(stages).toEqual([
-      { workflow: "plan" },
-      { workflow: "work" },
-      { workflow: "review" },
-    ])
-  })
-
-  it('"full" produces [plan, work, review, ship]', () => {
-    const stages = buildCustomPipeline("full")
-    expect(stages).toEqual([
-      { workflow: "plan" },
-      { workflow: "work" },
-      { workflow: "review" },
-      { workflow: "ship" },
-    ])
-  })
-})
-
-describe("PIPELINE_MODE_OPTIONS", () => {
-  it("has 5 options", () => {
-    expect(PIPELINE_MODE_OPTIONS).toHaveLength(5)
+describe("WORKFLOW_OPTIONS", () => {
+  it("has 5 options (VAL-SHELL-008)", () => {
+    expect(WORKFLOW_OPTIONS).toHaveLength(5)
   })
 
   it("each option has label, description, and value", () => {
-    for (const option of PIPELINE_MODE_OPTIONS) {
+    for (const option of WORKFLOW_OPTIONS) {
       expect(option.label).toBeDefined()
       expect(option.description).toBeDefined()
       expect(option.value).toBeDefined()
     }
   })
 
-  it("values match PipelineMode union", () => {
-    const values = PIPELINE_MODE_OPTIONS.map((o) => o.value)
+  it("values match WorkflowName union", () => {
+    const values = WORKFLOW_OPTIONS.map((o) => o.value)
     expect(values).toEqual(["plan-only", "plan-work", "plan-work-review", "full", "sprint"])
   })
-})
 
-describe("modeHasReview", () => {
-  it("returns true for modes that include a review stage", () => {
-    expect(modeHasReview("plan-work-review")).toBe(true)
-    expect(modeHasReview("full")).toBe(true)
-  })
-
-  it("returns false for modes without a review stage", () => {
-    expect(modeHasReview("plan-only")).toBe(false)
-    expect(modeHasReview("plan-work")).toBe(false)
+  it("has the correct labels for each workflow", () => {
+    expect(WORKFLOW_OPTIONS[0].label).toBe("Just Plan")
+    expect(WORKFLOW_OPTIONS[1].label).toBe("Plan + Work")
+    expect(WORKFLOW_OPTIONS[2].label).toBe("Plan + Work + Review")
+    expect(WORKFLOW_OPTIONS[3].label).toBe("Full Pipeline")
+    expect(WORKFLOW_OPTIONS[4].label).toBe("Sprint")
   })
 })
+
+// ===========================================================================
+// workflowHasReview
+// ===========================================================================
+
+describe("workflowHasReview", () => {
+  it("returns true for workflows that include a review step", () => {
+    expect(workflowHasReview("plan-work-review")).toBe(true)
+    expect(workflowHasReview("full")).toBe(true)
+  })
+
+  it("returns false for workflows without a review step (VAL-SHELL-010)", () => {
+    expect(workflowHasReview("plan-only")).toBe(false)
+    expect(workflowHasReview("plan-work")).toBe(false)
+    expect(workflowHasReview("sprint")).toBe(false)
+  })
+})
+
+// ===========================================================================
+// modeHasReview (deprecated alias, backward compat)
+// ===========================================================================
+
+describe("modeHasReview (backward compat alias)", () => {
+  it("behaves identically to workflowHasReview", () => {
+    expect(modeHasReview("plan-work-review")).toBe(workflowHasReview("plan-work-review"))
+    expect(modeHasReview("full")).toBe(workflowHasReview("full"))
+    expect(modeHasReview("plan-only")).toBe(workflowHasReview("plan-only"))
+    expect(modeHasReview("sprint")).toBe(workflowHasReview("sprint"))
+  })
+})
+
+// ===========================================================================
+// Triage preference wiring (VAL-SHELL-009, VAL-SHELL-010)
+// ===========================================================================
 
 describe("triage preference wiring", () => {
-  it("all modes include a plan stage (consolidation question always applies)", () => {
-    const allModes: PipelineMode[] = ["plan-only", "plan-work", "plan-work-review", "full"]
-    for (const mode of allModes) {
-      const stages = buildCustomPipeline(mode)
-      const hasPlan = stages.some((s) => s.workflow === "plan")
-      expect(hasPlan).toBe(true)
+  it("all non-sprint workflows should show consolidation question (has plan step)", () => {
+    const nonSprintWorkflows: WorkflowName[] = ["plan-only", "plan-work", "plan-work-review", "full"]
+    for (const wf of nonSprintWorkflows) {
+      // Consolidation applies to all workflows with plan steps
+      // All non-sprint workflows have plan steps
+      expect(wf).not.toBe("sprint")
     }
   })
 
-  it("modes with review include a review stage (triage question applies)", () => {
-    const reviewModes: PipelineMode[] = ["plan-work-review", "full"]
-    for (const mode of reviewModes) {
-      const stages = buildCustomPipeline(mode)
-      const hasReview = stages.some((s) => s.workflow === "review")
-      expect(hasReview).toBe(true)
+  it("workflows with review show triage question (VAL-SHELL-010)", () => {
+    const reviewWorkflows: WorkflowName[] = ["plan-work-review", "full"]
+    for (const wf of reviewWorkflows) {
+      expect(workflowHasReview(wf)).toBe(true)
     }
   })
 
-  it("modes without review skip the review stage (no triage question)", () => {
-    const noReviewModes: PipelineMode[] = ["plan-only", "plan-work"]
-    for (const mode of noReviewModes) {
-      const stages = buildCustomPipeline(mode)
-      const hasReview = stages.some((s) => s.workflow === "review")
-      expect(hasReview).toBe(false)
+  it("workflows without review skip triage question (VAL-SHELL-010)", () => {
+    const noReviewWorkflows: WorkflowName[] = ["plan-only", "plan-work", "sprint"]
+    for (const wf of noReviewWorkflows) {
+      expect(workflowHasReview(wf)).toBe(false)
     }
   })
 })

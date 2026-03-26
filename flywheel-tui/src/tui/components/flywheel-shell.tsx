@@ -59,9 +59,9 @@ import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner, createEndOfSessionGate } from "./shell-pipeline"
-import { buildCustomPipeline, modeHasReview, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
-import { buildQueue, buildQueueForSlashCommand, type QueueProgressInfo, formatQueueProgress, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
-import { buildQueueFromTemplate, type WorkflowName } from "../../queue/templates"
+import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "./start-command"
+import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, formatQueueProgress, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
+import { buildQueueFromTemplate } from "../../queue/templates"
 import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
 import { createFlywheelEmitter } from "../../events/event-bus"
 import { createQueuePersistence } from "../../queue/persistence"
@@ -1745,7 +1745,8 @@ export function FlywheelShell() {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
 
-    const queue = buildQueueForSlashCommand("work", deps.config)
+    // Parse the plan file and create work steps from its phases
+    const queue = buildQueueFromPlan(planPath, deps.config)
     startQueueExecution(queue, { planPath }, deps)
   }
 
@@ -1794,29 +1795,29 @@ export function FlywheelShell() {
         }
       }
 
-      // Step 2: Pick pipeline mode
-      const modeAnswers = await startQS.ask([{
-        question: "How far should the pipeline go?",
-        header: "Pipeline Mode",
-        options: PIPELINE_MODE_OPTIONS.map((o) => ({
+      // Step 2: Pick workflow type
+      const workflowAnswers = await startQS.ask([{
+        question: "How far should the workflow go?",
+        header: "Workflow",
+        options: WORKFLOW_OPTIONS.map((o) => ({
           label: o.label,
           description: o.description,
         })),
         custom: false,
         default: "Plan + Work + Review",
       }])
-      const selectedLabel = modeAnswers[0]?.[0]
+      const selectedLabel = workflowAnswers[0]?.[0]
       if (!selectedLabel) {
         // User dismissed
         cleanupQuestionSubscriptions()
         return
       }
 
-      // Map label back to PipelineMode value
-      const selectedOption = PIPELINE_MODE_OPTIONS.find((o) => o.label === selectedLabel)
-      const mode: PipelineMode = selectedOption?.value ?? "plan-work-review"
+      // Map label back to WorkflowName value
+      const selectedOption = WORKFLOW_OPTIONS.find((o) => o.label === selectedLabel)
+      const workflow: WorkflowName = selectedOption?.value ?? "plan-work-review"
 
-      // Step 2.5a: Consolidation preference (all modes include plan)
+      // Step 3: Consolidation preference (all non-sprint workflows include plan)
       const consolidationAnswers = await startQS.ask([{
         question: "Do you want to participate in plan consolidation?",
         header: "Consolidation",
@@ -1834,9 +1835,9 @@ export function FlywheelShell() {
       }
       const planInteractive = consolidationLabel === "Yes, let me review"
 
-      // Step 2.5b: Review triage preference (only if mode includes review)
+      // Step 4: Review triage preference (only if workflow includes review)
       let reviewInteractive = false
-      if (modeHasReview(mode)) {
+      if (workflowHasReview(workflow)) {
         const triageAnswers = await startQS.ask([{
           question: "Do you want to triage review findings?",
           header: "Review Triage",
@@ -1855,25 +1856,18 @@ export function FlywheelShell() {
         reviewInteractive = triageLabel === "Yes, let me triage"
       }
 
-      // Clean up question subscriptions before starting pipeline
-      // (pipeline will create its own QuestionService)
+      // Clean up question subscriptions before starting queue
+      // (queue execution will create its own QuestionService)
       cleanupQuestionSubscriptions()
 
-      // Step 3: Build queue from workflow template and start execution
-      const workflowNameMap: Record<PipelineMode, WorkflowName> = {
-        "plan-only": "plan-only",
-        "plan-work": "plan-work",
-        "plan-work-review": "plan-work-review",
-        "full": "full",
-        "sprint": "sprint",
-      }
+      // Step 5: Build queue from workflow template and start execution
+      // HITL preferences are stored as queue-level metadata and passed to step configs
       const startDeps = getDepsOrWarn()
       if (!startDeps) {
         cleanupQuestionSubscriptions()
         return
       }
-      const workflowName = workflowNameMap[mode]
-      const startFlowQueue = buildQueue(workflowName, startDeps.config)
+      const startFlowQueue = buildQueue(workflow, startDeps.config)
       startQueueExecution(startFlowQueue, { description }, startDeps, {
         plan: planInteractive,
         review: reviewInteractive,

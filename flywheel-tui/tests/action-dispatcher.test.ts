@@ -77,7 +77,7 @@ describe("createActionDispatcher", () => {
     const dispatch = createActionDispatcher(deps)
     const result = dispatch("work", { planPath: "my-plan.md" })
 
-    expect(result).toEqual({ stepLabel: "Phase", workflowName: "work" })
+    expect(result).toEqual({ stepLabel: "Step", workflowName: "work" })
     expect(deps.launchWorkWorkflow).toHaveBeenCalledTimes(1)
   })
 

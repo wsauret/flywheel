@@ -225,7 +225,7 @@ describe("ActionDispatcher", () => {
       const { deps } = createFakeDeps({ fileExists: true })
       const dispatch = createActionDispatcher(deps)
       const meta = dispatch("work", { planPath: "/tmp/plan.md" })
-      expect(meta).toEqual({ stepLabel: "Phase", workflowName: "work" })
+      expect(meta).toEqual({ stepLabel: "Step", workflowName: "work" })
     })
 
     it("returns meta for plan workflow", () => {

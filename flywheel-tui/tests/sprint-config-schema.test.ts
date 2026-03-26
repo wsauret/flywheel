@@ -11,8 +11,7 @@ import {
   renderHandoffInstruction,
 } from "../src/handoff/field-specs";
 import {
-  PIPELINE_MODE_OPTIONS,
-  buildCustomPipeline,
+  WORKFLOW_OPTIONS,
 } from "../src/tui/components/start-command";
 import type { WorkflowType } from "../src/controller/workflow-pipeline";
 
@@ -292,26 +291,26 @@ describe("Sprint tool scoping (VAL-SCHEMA-006)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-SCHEMA-008: PipelineMode type includes "sprint" value
+// VAL-SCHEMA-008: WorkflowName type includes "sprint" value
 // ---------------------------------------------------------------------------
 
-describe("PipelineMode includes sprint (VAL-SCHEMA-008)", () => {
-  it("PIPELINE_MODE_OPTIONS includes sprint option", () => {
-    const sprintOption = PIPELINE_MODE_OPTIONS.find((opt) => opt.value === "sprint");
+describe("WorkflowName includes sprint (VAL-SCHEMA-008)", () => {
+  it("WORKFLOW_OPTIONS includes sprint option", () => {
+    const sprintOption = WORKFLOW_OPTIONS.find((opt) => opt.value === "sprint");
     expect(sprintOption).toBeDefined();
     expect(sprintOption!.label).toBeTruthy();
     expect(sprintOption!.description).toBeTruthy();
   });
 
-  it("buildCustomPipeline('sprint') returns valid stages", () => {
-    const stages = buildCustomPipeline("sprint" as any);
-    expect(stages).toBeDefined();
-    expect(Array.isArray(stages)).toBe(true);
-    expect(stages.length).toBeGreaterThan(0);
+  it("WORKFLOW_OPTIONS has 5 entries", () => {
+    expect(WORKFLOW_OPTIONS).toHaveLength(5);
   });
 
-  it("buildCustomPipeline('sprint') does not throw", () => {
-    expect(() => buildCustomPipeline("sprint" as any)).not.toThrow();
+  it("sprint option has correct label and description", () => {
+    const sprintOption = WORKFLOW_OPTIONS.find((opt) => opt.value === "sprint");
+    expect(sprintOption).toBeDefined();
+    expect(sprintOption!.label).toBe("Sprint");
+    expect(sprintOption!.description).toContain("Fast iteration");
   });
 });
 

@@ -16,12 +16,14 @@
  */
 
 import * as path from "node:path";
+import * as fs from "node:fs";
 import { buildQueueFromTemplate, type WorkflowName } from "../../queue/templates";
-import type { Queue, StepType } from "../../queue/types";
+import type { Queue, Step, StepType } from "../../queue/types";
 import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
 import { checkEndOfSessionGate } from "../../controller/validation-state";
 import type { EndOfSessionGateCheck } from "../../controller/workflow-pipeline";
+import { parsePlan } from "../../controller/plan-parser";
 import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------
@@ -134,6 +136,79 @@ export function buildQueueForSlashCommand(command: string, config: FlywheelConfi
     title: `Execute ${command}`,
     status: "pending",
   }], { maxSteps: config.queue?.max_steps });
+}
+
+// ---------------------------------------------------------------------------
+// buildQueueFromPlan — parse plan file and create work steps from phases
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a Queue from a plan file path by parsing its phases into work steps.
+ *
+ * Each phase in the plan becomes a work step in the queue.
+ * Pending phases are included; completed phases are skipped.
+ *
+ * VAL-SHELL-033: /work <planPath> parses plan into work steps
+ *
+ * @param planPath Path to the plan markdown file
+ * @param config FlywheelConfig
+ * @returns A new Queue with work steps from the plan
+ */
+export function buildQueueFromPlan(planPath: string, config: FlywheelConfig): Queue {
+  let planContent: string;
+  try {
+    planContent = fs.readFileSync(planPath, "utf-8");
+  } catch {
+    // If plan file can't be read, fall back to a single work step
+    return createQueue([{
+      id: randomUUID(),
+      type: "work" as StepType,
+      title: "Execute work",
+      status: "pending",
+    }], { maxSteps: config.queue?.max_steps });
+  }
+
+  const phases = parsePlan(planContent);
+
+  if (phases.length === 0) {
+    // Empty plan — fall back to single work step
+    return createQueue([{
+      id: randomUUID(),
+      type: "work" as StepType,
+      title: "Execute work",
+      status: "pending",
+    }], { maxSteps: config.queue?.max_steps });
+  }
+
+  // Convert each plan phase to a work step
+  const steps: Step[] = phases.map((phase) => ({
+    id: randomUUID(),
+    type: "work" as StepType,
+    title: phase.title,
+    status: "pending" as const,
+    milestone: phase.milestone,
+    fulfills: phase.fulfills,
+  }));
+
+  // If auto_chain is on, add review (and ship if auto_ship) after work steps
+  if (config.auto_chain) {
+    steps.push({
+      id: randomUUID(),
+      type: "review" as StepType,
+      title: "Review changes",
+      status: "pending",
+    });
+    if (config.auto_ship) {
+      steps.push({
+        id: randomUUID(),
+        type: "ship" as StepType,
+        title: "Ship changes",
+        status: "pending",
+      });
+    }
+  }
+
+  return createQueue(steps, { maxSteps: config.queue?.max_steps });
 }
 
 // ---------------------------------------------------------------------------

@@ -1,34 +1,36 @@
 /**
- * Start Command — Pipeline mode picker logic
+ * Start Command — Workflow picker logic for /start wizard
  *
  * Pure functions and data for the `/start` guided workflow launcher.
- * The `/start` command collects a description and a pipeline mode,
- * then composes the appropriate PipelineStage[] for startPipeline().
+ * The `/start` command collects a description and a workflow type,
+ * then builds the appropriate Queue for startQueueExecution().
  *
- * This is intentionally separate from `shell-pipeline.ts`, which handles
- * auto_chain config-driven pipeline composition. `/start` always uses
- * pipeline mode regardless of config.
+ * Terminology:
+ *   Workflow — named template that generates an initial queue
+ *   Step     — single unit of work (replaces "phase")
+ *   Queue    — mutable, ordered list of steps
  */
 
-import type { PipelineStage } from "../../controller/workflow-pipeline"
+import type { WorkflowName } from "../../queue/templates"
+
+// Re-export WorkflowName so consumers can import from start-command
+export type { WorkflowName }
 
 // ---------------------------------------------------------------------------
-// Pipeline mode types
+// Workflow option types
 // ---------------------------------------------------------------------------
 
-export type PipelineMode = "plan-only" | "plan-work" | "plan-work-review" | "full" | "sprint"
-
-export interface PipelineModeOption {
+export interface WorkflowOption {
   label: string
   description: string
-  value: PipelineMode
+  value: WorkflowName
 }
 
 // ---------------------------------------------------------------------------
-// Mode options (displayed in the question prompt)
+// Workflow options (displayed in the question prompt)
 // ---------------------------------------------------------------------------
 
-export const PIPELINE_MODE_OPTIONS: PipelineModeOption[] = [
+export const WORKFLOW_OPTIONS: WorkflowOption[] = [
   {
     label: "Just Plan",
     description: "Create a plan only",
@@ -57,43 +59,19 @@ export const PIPELINE_MODE_OPTIONS: PipelineModeOption[] = [
 ]
 
 // ---------------------------------------------------------------------------
-// Mode helpers
+// Workflow helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Returns true when the given pipeline mode includes a review stage.
+ * Returns true when the given workflow includes a review step.
  * Used to decide whether to show the "triage review findings" question.
  */
-export function modeHasReview(mode: PipelineMode): boolean {
-  return mode === "plan-work-review" || mode === "full"
+export function workflowHasReview(workflow: WorkflowName): boolean {
+  return workflow === "plan-work-review" || workflow === "full"
 }
-
-// ---------------------------------------------------------------------------
-// Pipeline builder (pure function)
-// ---------------------------------------------------------------------------
 
 /**
- * Build a PipelineStage[] from a user-selected pipeline mode.
- *
- * Unlike `buildPipelineStages` in shell-pipeline.ts (which reads config),
- * this function always returns exactly the stages the user chose.
+ * @deprecated Use workflowHasReview instead. Kept for backward compatibility
+ * during the transition period.
  */
-export function buildCustomPipeline(mode: PipelineMode): PipelineStage[] {
-  switch (mode) {
-    case "plan-only":
-      return [{ workflow: "plan" }]
-    case "plan-work":
-      return [{ workflow: "plan" }, { workflow: "work" }]
-    case "plan-work-review":
-      return [{ workflow: "plan" }, { workflow: "work" }, { workflow: "review" }]
-    case "full":
-      return [
-        { workflow: "plan" },
-        { workflow: "work" },
-        { workflow: "review" },
-        { workflow: "ship" },
-      ]
-    case "sprint":
-      return [{ workflow: "sprint" }]
-  }
-}
+export const modeHasReview = workflowHasReview

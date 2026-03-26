@@ -81,19 +81,19 @@ describe("TelemetryBar display text", () => {
 // ── WorkShell defaults verification ──
 
 describe("WorkShell defaults", () => {
-  it("WorkShell would pass stepLabel='Phase' and workflowName='work' to WorkflowView", () => {
+  it("WorkShell would pass stepLabel='Step' and workflowName='work' to WorkflowView", () => {
     // This validates the contract: WorkShell hardcodes these values.
     // We verify by checking the expected defaults match the PhaseProgress/TelemetryBar logic.
-    const stepLabel = "Phase";
+    const stepLabel = "Step";
     const workflowName = "work";
 
-    // PhaseProgress with stepLabel="Phase"
+    // PhaseProgress with stepLabel="Step"
     const label = stepLabel;
     const unit = stepLabel.toLowerCase();
-    expect(`${label} Progress (3 ${unit}s)`).toBe("Phase Progress (3 phases)");
+    expect(`${label} Progress (3 ${unit}s)`).toBe("Step Progress (3 steps)");
 
-    // TelemetryBar with stepLabel="Phase"
-    expect(`${stepLabel} 2/5`).toBe("Phase 2/5");
+    // TelemetryBar with stepLabel="Step"
+    expect(`${stepLabel} 2/5`).toBe("Step 2/5");
 
     // workflowName is passed through
     expect(workflowName).toBe("work");
