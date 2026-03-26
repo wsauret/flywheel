@@ -23,7 +23,7 @@ export const planWorkflow: WorkflowDefinition = {
     {
       description: "Review the plan with all reviewer agents",
       dispatcherHint:
-        "Use plan/review prompt template. Single worker dispatches 5 reviewer subagents.",
+        "Use plan/review prompt template. Single worker dispatches 6 reviewer subagents and produces annotated JSON.",
       validationCriteria: planReviewValidationCriteria,
     },
     {

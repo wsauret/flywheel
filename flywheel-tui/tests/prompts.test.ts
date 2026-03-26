@@ -486,7 +486,7 @@ describe("buildPlanReviewPrompt", () => {
     for (const kw of [
       "Do NOT write to any files",
       "Dedup",
-      "Open Question",
+      "openQuestions",
       "P1",
       "P2",
       "P3",
@@ -495,10 +495,10 @@ describe("buildPlanReviewPrompt", () => {
     }
   });
 
-  it("instructs agent to use exact ## Open Questions heading", () => {
+  it("instructs producing annotated JSON with openQuestions", () => {
     const result = buildPlanReviewPrompt(baseCtx);
-    expect(result).toContain("## Open Questions");
-    expect(result).toContain("MUST be present as an H2 heading");
+    expect(result).toContain("openQuestions");
+    expect(result).toContain("annotated JSON");
   });
 
   it("has no orchestration leaks", () => {
