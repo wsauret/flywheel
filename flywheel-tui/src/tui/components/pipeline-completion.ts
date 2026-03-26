@@ -94,12 +94,10 @@ export async function handlePipelineCompletion(
       variant: "info",
     });
   } else {
-    // Non-ship completion: session still has stages left (e.g. ship).
-    // Transition to work:paused so it's resumable — only a pipeline that
-    // includes ship (i.e. all possible stages) should mark "completed".
+    // Queue completed successfully but no ship step — mark as completed.
     // Uses safeUpdateState to handle sessions stuck in intermediate states
     // (e.g., "new") by chaining through required transitions.
-    safeUpdateState(deps.updateState, deps.sessionId, "work:paused");
+    safeUpdateState(deps.updateState, deps.sessionId, "completed");
     deps.refreshList();
   }
 }

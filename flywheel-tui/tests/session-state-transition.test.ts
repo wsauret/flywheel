@@ -152,8 +152,8 @@ describe("handlePipelineCompletion — state transition resilience", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    // Session should end up in work:paused, having transitioned through intermediate states
-    expect(manager.currentState).toBe("work:paused");
+    // Session should end up in completed, having transitioned through intermediate states
+    expect(manager.currentState).toBe("completed");
   });
 
   it("transitions through intermediate states when session is in 'plan:imported' state", async () => {
@@ -171,7 +171,7 @@ describe("handlePipelineCompletion — state transition resilience", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    expect(manager.currentState).toBe("work:paused");
+    expect(manager.currentState).toBe("completed");
   });
 
   it("transitions through intermediate states when session is in 'plan:approved' state", async () => {
@@ -189,7 +189,7 @@ describe("handlePipelineCompletion — state transition resilience", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    expect(manager.currentState).toBe("work:paused");
+    expect(manager.currentState).toBe("completed");
   });
 
   it("works normally when session is already in 'work:active' state", async () => {
@@ -207,8 +207,8 @@ describe("handlePipelineCompletion — state transition resilience", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    expect(manager.currentState).toBe("work:paused");
-    expect(manager.transitions).toEqual(["work:active -> work:paused"]);
+    expect(manager.currentState).toBe("completed");
+    expect(manager.transitions).toEqual(["work:active -> completed"]);
   });
 });
 

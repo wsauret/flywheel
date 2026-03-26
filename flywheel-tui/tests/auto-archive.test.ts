@@ -9,7 +9,7 @@
  * - Does NOT call auto-archive for non-ship completions
  * - Shows "Session shipped and archived" toast on auto-archive
  * - Disposes the output flusher in all completion paths
- * - Transitions non-ship completions to "work:paused" (resumable)
+ * - Transitions non-ship completions to "completed" (queue-based)
  */
 
 import { describe, it, expect } from "bun:test";
@@ -134,7 +134,7 @@ describe("handlePipelineCompletion — auto-archive", () => {
 // ---------------------------------------------------------------------------
 
 describe("handlePipelineCompletion — non-ship completions", () => {
-  it("transitions plan+work+review pipeline to work:paused (not completed)", async () => {
+  it("transitions plan+work+review pipeline to completed (queue-based)", async () => {
     const { deps, calls } = makeMockDeps();
     const result = makePipelineResult({
       completed: true,
@@ -149,9 +149,9 @@ describe("handlePipelineCompletion — non-ship completions", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    // Ship was not part of the pipeline → session is not truly done
-    expect(calls).toContain("updateState:session-1:work:paused");
-    expect(calls).not.toContain("updateState:session-1:completed");
+    // Queue completed all steps (no ship) → session is completed
+    expect(calls).toContain("updateState:session-1:completed");
+    expect(calls).not.toContain("updateState:session-1:work:paused");
     expect(calls).not.toContain("handleAutoArchive:session-1");
   });
 
@@ -170,7 +170,7 @@ describe("handlePipelineCompletion — non-ship completions", () => {
     expect(calls).not.toContain("handleAutoArchive:session-1");
   });
 
-  it("transitions to 'work:paused' for non-ship completions (partial pipeline)", async () => {
+  it("transitions to 'completed' for non-ship completions (queue-based)", async () => {
     const { deps, calls } = makeMockDeps();
     const result = makePipelineResult({
       completed: true,
@@ -181,7 +181,7 @@ describe("handlePipelineCompletion — non-ship completions", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    expect(calls).toContain("updateState:session-1:work:paused");
+    expect(calls).toContain("updateState:session-1:completed");
     expect(calls).toContain("refreshList");
   });
 
@@ -395,8 +395,8 @@ describe("handlePipelineCompletion — edge cases", () => {
 
     await handlePipelineCompletion(result, deps);
 
-    // No ship stage → non-ship completion path → work:paused
-    expect(calls).toContain("updateState:session-1:work:paused");
+    // No ship stage → non-ship completion path → completed (queue-based)
+    expect(calls).toContain("updateState:session-1:completed");
     expect(calls).not.toContain("handleAutoArchive:session-1");
   });
 });

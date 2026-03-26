@@ -17,6 +17,7 @@
 
 import type { OutputSnapshot } from "../../schemas/output";
 import type { Session } from "../../schemas/session";
+import type { Queue } from "../../queue/types";
 import type { DeleteResult } from "../../session/persistence";
 import type { PipelineStageResult } from "../../controller/workflow-pipeline";
 import type { SessionLifecycleState } from "../../session/state-machine";
@@ -32,11 +33,18 @@ export interface ResumeResult {
   outputBlocks: OutputSnapshot[];
   planPath: string;
   worktreePath?: string;
+  /** Queue state loaded from .queue.json (null if not found or corrupt). */
+  queue: Queue | null;
 }
 
 /** Minimal OutputPersistence interface — only the load we need. */
 interface OutputPersistenceReader {
   load(): Promise<OutputSnapshot[]>;
+}
+
+/** Minimal QueuePersistence interface — only the load we need. */
+interface QueuePersistenceReader {
+  load(): Promise<Queue | null>;
 }
 
 /** Minimal SessionManager interface — only the methods we need. */
@@ -59,6 +67,9 @@ export interface SessionOrchestratorDeps {
 
   /** Factory to create an output persistence reader for a given session. */
   createOutputPersistence: (sessionId: string) => OutputPersistenceReader;
+
+  /** Factory to create a queue persistence reader for a given session. */
+  createQueuePersistence?: (sessionId: string) => QueuePersistenceReader;
 
   /** Validate and filter raw snapshot data. */
   fromSnapshot: (snapshots: unknown[]) => OutputSnapshot[];
@@ -135,12 +146,24 @@ export function createSessionOrchestrator(
     // 3. Validate via fromSnapshot
     const outputBlocks = fromSnapshot(rawSnapshots);
 
-    // 4. Return structured result
+    // 4. Load queue state from .queue.json (if available)
+    let queue: Queue | null = null;
+    if (deps.createQueuePersistence) {
+      try {
+        const queuePersistence = deps.createQueuePersistence(sessionId);
+        queue = await queuePersistence.load();
+      } catch {
+        // Best-effort — queue file may not exist for older sessions
+      }
+    }
+
+    // 5. Return structured result
     return {
       session,
       outputBlocks,
       planPath: session.planPath ?? session.label,
       worktreePath: session.worktreePath,
+      queue,
     };
   }
 
