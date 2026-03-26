@@ -438,9 +438,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         );
         break;
 
-      // Queue lifecycle events (stub handlers — full implementation in shell-integration milestone)
+      // Queue lifecycle events — populate store with queue step display state
       case "queue:initialized":
         log.info("Queue initialized", { workflowId: event.workflowId, steps: event.stepIds.length });
+        // Steps will be populated by queue:step-started events; initialize with IDs as pending
+        // The shell wires queue steps from the Queue object before starting execution
         break;
 
       case "queue:completed":
@@ -451,26 +453,34 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         break;
 
-      // Queue step lifecycle events
+      // Queue step lifecycle events — update store for panel display
       case "queue:step-started":
         log.info("Queue step started", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
+        this.actions.startQueueStep(event.stepId);
         break;
 
       case "queue:step-completed":
         log.info("Queue step completed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
+        this.actions.completeQueueStep(event.stepId);
         break;
 
       case "queue:step-failed":
         log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
+        this.actions.failQueueStep(event.stepId, event.reason);
         break;
 
-      // Queue mutation events
+      // Queue mutation events — update store for dynamic insertion display
       case "queue:step-inserted":
         log.info("Queue step inserted", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, afterStepId: event.afterStepId });
+        this.actions.insertQueueStep(
+          { id: event.stepId, type: event.stepType, title: event.stepTitle, status: "pending" },
+          event.afterStepId,
+        );
         break;
 
       case "queue:step-removed":
         log.info("Queue step removed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType });
+        this.actions.removeQueueStep(event.stepId);
         break;
 
       default:

@@ -547,6 +547,14 @@ export function FlywheelShell() {
     subscribeToTimer(session.timer)
     setAppState("working")
 
+    // Populate queue step display state for workflow panel
+    session.store.setQueueSteps(queue.steps.map((s) => ({
+      id: s.id,
+      type: s.type,
+      title: s.title,
+      status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+    })))
+
     // Config loaded once at queue start
     let deps: WorkflowDeps
     if (preloadedDeps) {
@@ -1138,6 +1146,14 @@ export function FlywheelShell() {
 
       // Inject restored output blocks
       injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
+
+      // Populate queue step display state for workflow panel (resume)
+      session.store.setQueueSteps(result.queue.steps.map((s) => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+      })))
 
       setFocusedSessionId(sessionId)
       setViewedSessionId(sessionId)
@@ -2040,6 +2056,7 @@ export function FlywheelShell() {
     workflowStatus: "idle",
     phases: [],
     stages: [],
+    queueSteps: [],
     outputLines: [],
     outputBlocks: [],
     error: undefined,

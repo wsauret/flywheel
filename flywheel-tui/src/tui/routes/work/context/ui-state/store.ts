@@ -14,6 +14,7 @@ import { createPhaseActions } from "./actions/phase-actions";
 import { createWorkflowActions } from "./actions/workflow-actions";
 import { createNavigationActions } from "./actions/navigation-actions";
 import { createStageActions } from "./actions/stage-actions";
+import { createQueueStepActions } from "./actions/queue-step-actions";
 
 const THROTTLE_MS = 16;
 
@@ -25,6 +26,7 @@ function createInitialState(planName: string): WorkState {
     workflowStatus: "idle",
     phases: [],
     stages: [],
+    queueSteps: [],
     outputLines: [],
     outputBlocks: [],
     approvalState: { pending: false },
@@ -74,6 +76,7 @@ function createStoreInternal(planName: string) {
   const ctx = { getState, setState, notify, notifyImmediate };
   const phaseActions = createPhaseActions(ctx);
   const stageActions = createStageActions(ctx);
+  const queueStepActions = createQueueStepActions(ctx);
   const workflowActions = createWorkflowActions(ctx);
   const navigationActions = createNavigationActions(ctx);
 
@@ -83,6 +86,7 @@ function createStoreInternal(planName: string) {
     reset,
     ...phaseActions,
     ...stageActions,
+    ...queueStepActions,
     ...workflowActions,
     ...navigationActions,
   } satisfies UIActions;

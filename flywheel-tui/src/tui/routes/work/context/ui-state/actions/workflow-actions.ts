@@ -21,6 +21,7 @@ export function createWorkflowActions(ctx: StoreContext) {
         workflowStatus: "running",
         phases: [],
         stages: [],
+        queueSteps: [],
         outputLines: [],
         outputBlocks: [],
         approvalState: { pending: false },
