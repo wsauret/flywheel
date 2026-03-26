@@ -32,6 +32,7 @@ import {
 } from "../utils/debounced-writer";
 import { SESSIONS_DIR } from "../config/paths";
 import type { Queue } from "./types";
+import type { AccumulatorState } from "./context-accumulator";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -75,6 +76,10 @@ export interface QueuePersistence {
   delete(): Promise<boolean>;
   /** Create a debounced flusher that saves queue state on a schedule. */
   createFlusher(opts?: QueueFlusherOpts): QueueFlusher;
+  /** Save accumulator state alongside queue state. */
+  saveAccumulatorState(state: AccumulatorState): void;
+  /** Load accumulator state. Returns null on missing/corrupt/disabled. */
+  loadAccumulatorState(): Promise<AccumulatorState | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +120,10 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
 
   function queueFilePath(): string {
     return path.join(baseDir, SESSIONS_DIR, `${sessionId}.queue.json`);
+  }
+
+  function accumulatorFilePath(): string {
+    return path.join(baseDir, SESSIONS_DIR, `${sessionId}.context.json`);
   }
 
   function save(queue: Queue): void {
@@ -198,10 +207,39 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
     };
   }
 
+  function saveAccumulatorState(state: AccumulatorState): void {
+    if (!persistQueue) return;
+    const json = JSON.stringify(state);
+    writeFileAtomic(accumulatorFilePath(), json);
+  }
+
+  async function loadAccumulatorState(): Promise<AccumulatorState | null> {
+    if (!persistQueue) return null;
+
+    const filePath = accumulatorFilePath();
+    try {
+      const file = Bun.file(filePath);
+      const exists = await file.exists();
+      if (!exists) return null;
+
+      const raw = await file.text();
+      const parsed = JSON.parse(raw);
+
+      // Basic shape validation: must have entries array
+      if (!parsed || !Array.isArray(parsed.entries)) return null;
+
+      return parsed as AccumulatorState;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     save,
     load,
     delete: del,
     createFlusher,
+    saveAccumulatorState,
+    loadAccumulatorState,
   };
 }

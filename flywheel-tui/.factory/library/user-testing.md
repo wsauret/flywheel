@@ -99,3 +99,21 @@ tags: [testing, validation, user-testing]
 ### Boundaries
 - Do not modify any source files
 - Only read and scan source code
+
+## Validation Concurrency
+
+### TUI Surface (tmux/tuistory)
+- **Max concurrent validators:** 1 (TUI is single-instance)
+- **Resource cost:** ~60 MB per TUI instance + tmux overhead
+- **Rationale:** Only one flywheel TUI can run at a time in a tmux session. Multiple concurrent validators would conflict.
+
+### Unit Test Surface (bun test)
+- **Max concurrent validators:** 5
+- **Resource cost:** ~280 MB per bun test run (burst, settles quickly)
+- **Rationale:** 36 GB RAM, 11 CPU cores. Each test run is ~280 MB peak. 5 concurrent = ~1.4 GB, well within 70% of ~24 GB headroom.
+
+### Machine Profile
+- **Total RAM:** 36 GB
+- **CPU cores:** 11
+- **Baseline usage:** ~12 GB (VS Code, Docker, DataGrip, other processes)
+- **Available headroom:** ~24 GB * 0.7 = ~17 GB usable

@@ -58,12 +58,44 @@ export interface Step {
   /** Current lifecycle status. */
   status: StepStatus;
 
-  // --- Optional fields ---
+  // --- Execution configuration (ADR-004 Decision 2) ---
 
-  /** IDs of steps this step depends on (future DAG support). */
-  dependsOn?: string[];
+  /** Longer description of what this step should accomplish. */
+  description?: string;
+  /** Guidance for the dispatcher's prompt strategy. */
+  dispatcherHint?: string;
+  /** Tool permission scoping for the worker. */
+  toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean };
+  /**
+   * Evaluator rubric — how to assess this step's output.
+   * Set by templates for non-work steps; for work steps the dispatcher
+   * derives criteria from acceptanceCriteria.
+   */
+  evaluationCriteria?: string;
+
+  // --- Work content (populated for work steps from plan output) ---
+
+  /** What the work must achieve (substance). Included in worker prompt. */
+  acceptanceCriteria?: string[];
+  /** Files relevant to this step's work. */
+  fileReferences?: string[];
+
+  // --- Human-in-the-loop component ---
+
+  /**
+   * Optional HITL component. When enabled, worker pauses mid-step
+   * to present information and wait for user input.
+   */
+  hitl?: { prompt: string; enabled: boolean };
+
+  // --- Grouping ---
+
+  /** Groups related steps for feature boundary detection. */
+  feature?: string;
   /** Validation contract assertion IDs this step fulfills. */
   fulfills?: string[];
+  /** IDs of steps this step depends on (future DAG support). */
+  dependsOn?: string[];
   /** Milestone this step belongs to. */
   milestone?: string;
 }

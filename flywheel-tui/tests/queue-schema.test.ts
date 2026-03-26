@@ -247,6 +247,177 @@ describe("StepSchema", () => {
     const result = StepSchema.safeParse(step);
     expect(result.success).toBe(false);
   });
+
+  // ---------------------------------------------------------------------------
+  // VAL-EXEC-011: Step carries all ADR-004 Decision 2 fields
+  // ---------------------------------------------------------------------------
+
+  test("accepts optional description string", () => {
+    const step = validStep({ description: "Implement GET /hello endpoint" });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBe("Implement GET /hello endpoint");
+    }
+  });
+
+  test("accepts optional dispatcherHint string", () => {
+    const step = validStep({ dispatcherHint: "Focus on error handling" });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dispatcherHint).toBe("Focus on error handling");
+    }
+  });
+
+  test("accepts optional toolScoping object", () => {
+    const scoping = { read: true, bash: true, write: true, edit: false };
+    const step = validStep({ toolScoping: scoping });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.toolScoping).toEqual(scoping);
+    }
+  });
+
+  test("rejects toolScoping with missing fields", () => {
+    const step = { ...validStep(), toolScoping: { read: true, bash: true } };
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects toolScoping with extra fields", () => {
+    const step = {
+      ...validStep(),
+      toolScoping: { read: true, bash: true, write: true, edit: true, extra: true },
+    };
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts optional evaluationCriteria string", () => {
+    const step = validStep({ evaluationCriteria: "Produces a .context.md file" });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.evaluationCriteria).toBe("Produces a .context.md file");
+    }
+  });
+
+  test("accepts optional acceptanceCriteria array", () => {
+    const criteria = ["GET /hello returns 200", "Response includes timestamp"];
+    const step = validStep({ acceptanceCriteria: criteria });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.acceptanceCriteria).toEqual(criteria);
+    }
+  });
+
+  test("accepts optional fileReferences array", () => {
+    const refs = ["src/server/index.ts", "tests/server.test.ts"];
+    const step = validStep({ fileReferences: refs });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fileReferences).toEqual(refs);
+    }
+  });
+
+  test("accepts optional hitl object with prompt and enabled", () => {
+    const hitl = { prompt: "Review these findings", enabled: true };
+    const step = validStep({ hitl });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.hitl).toEqual(hitl);
+    }
+  });
+
+  test("accepts hitl with enabled=false", () => {
+    const hitl = { prompt: "Resolve autonomously", enabled: false };
+    const step = validStep({ hitl });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.hitl?.enabled).toBe(false);
+    }
+  });
+
+  test("rejects hitl missing prompt field", () => {
+    const step = { ...validStep(), hitl: { enabled: true } };
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects hitl missing enabled field", () => {
+    const step = { ...validStep(), hitl: { prompt: "Review" } };
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects hitl with extra fields", () => {
+    const step = { ...validStep(), hitl: { prompt: "Review", enabled: true, extra: "bad" } };
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts optional feature string", () => {
+    const step = validStep({ feature: "auth" });
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.feature).toBe("auth");
+    }
+  });
+
+  test("accepts step with ALL ADR-004 fields populated", () => {
+    const step = {
+      ...validStep(),
+      description: "Implement auth module",
+      dispatcherHint: "Focus on security",
+      toolScoping: { read: true, bash: true, write: true, edit: true },
+      evaluationCriteria: "Tests pass, files exist",
+      acceptanceCriteria: ["Auth middleware works", "Tests added"],
+      fileReferences: ["src/auth/middleware.ts"],
+      hitl: { prompt: "Review security", enabled: true },
+      feature: "auth",
+      fulfills: ["VAL-AUTH-001"],
+      dependsOn: ["step-uuid-1"],
+      milestone: "core-execution",
+    };
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBe("Implement auth module");
+      expect(result.data.dispatcherHint).toBe("Focus on security");
+      expect(result.data.toolScoping).toEqual({ read: true, bash: true, write: true, edit: true });
+      expect(result.data.evaluationCriteria).toBe("Tests pass, files exist");
+      expect(result.data.acceptanceCriteria).toEqual(["Auth middleware works", "Tests added"]);
+      expect(result.data.fileReferences).toEqual(["src/auth/middleware.ts"]);
+      expect(result.data.hitl).toEqual({ prompt: "Review security", enabled: true });
+      expect(result.data.feature).toBe("auth");
+      expect(result.data.fulfills).toEqual(["VAL-AUTH-001"]);
+      expect(result.data.dependsOn).toEqual(["step-uuid-1"]);
+      expect(result.data.milestone).toBe("core-execution");
+    }
+  });
+
+  test("step without optional ADR-004 fields is valid", () => {
+    const step = validStep();
+    const result = StepSchema.safeParse(step);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeUndefined();
+      expect(result.data.dispatcherHint).toBeUndefined();
+      expect(result.data.toolScoping).toBeUndefined();
+      expect(result.data.evaluationCriteria).toBeUndefined();
+      expect(result.data.acceptanceCriteria).toBeUndefined();
+      expect(result.data.fileReferences).toBeUndefined();
+      expect(result.data.hitl).toBeUndefined();
+      expect(result.data.feature).toBeUndefined();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

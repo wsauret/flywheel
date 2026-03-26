@@ -40,6 +40,28 @@ export const StepStatusSchema = z.enum([
 // Step
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// HitlSchema — human-in-the-loop component
+// ---------------------------------------------------------------------------
+
+export const HitlSchema = z.object({
+  /** What to present to the user. */
+  prompt: z.string(),
+  /** Whether HITL is active. When false the worker proceeds autonomously. */
+  enabled: z.boolean(),
+}).strict();
+
+// ---------------------------------------------------------------------------
+// ToolScopingStepSchema — per-step tool permission scoping
+// ---------------------------------------------------------------------------
+
+export const ToolScopingStepSchema = z.object({
+  read: z.boolean(),
+  bash: z.boolean(),
+  write: z.boolean(),
+  edit: z.boolean(),
+}).strict();
+
 export const StepSchema = z.object({
   /** Unique identifier (UUID). */
   id: z.string(),
@@ -50,11 +72,33 @@ export const StepSchema = z.object({
   /** Current lifecycle status. */
   status: StepStatusSchema,
 
-  // --- Optional fields ---
-  /** IDs of steps this step depends on (future DAG support). */
-  dependsOn: z.array(z.string()).optional(),
+  // --- Execution configuration (ADR-004 Decision 2) ---
+  /** Longer description of what this step should accomplish. */
+  description: z.string().optional(),
+  /** Guidance for the dispatcher's prompt strategy. */
+  dispatcherHint: z.string().optional(),
+  /** Tool permission scoping for the worker. */
+  toolScoping: ToolScopingStepSchema.optional(),
+  /** Evaluator rubric — how to assess this step's output. */
+  evaluationCriteria: z.string().optional(),
+
+  // --- Work content ---
+  /** What the work must achieve (substance). */
+  acceptanceCriteria: z.array(z.string()).optional(),
+  /** Files relevant to this step's work. */
+  fileReferences: z.array(z.string()).optional(),
+
+  // --- Human-in-the-loop ---
+  /** Optional HITL component. */
+  hitl: HitlSchema.optional(),
+
+  // --- Grouping ---
+  /** Groups related steps for feature boundary detection. */
+  feature: z.string().optional(),
   /** Validation contract assertion IDs this step fulfills. */
   fulfills: z.array(z.string()).optional(),
+  /** IDs of steps this step depends on (future DAG support). */
+  dependsOn: z.array(z.string()).optional(),
   /** Milestone this step belongs to. */
   milestone: z.string().optional(),
 }).strict();

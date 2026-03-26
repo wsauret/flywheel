@@ -24,32 +24,35 @@ None.
 1. **Read the feature description carefully.** Understand preconditions, expected behavior, and verification steps. Read any files mentioned in the description.
 
 2. **Read existing patterns.** Before writing new code, read the closest existing analog:
+   - For queue/execution: `src/queue/executor.ts`, `src/queue/types.ts`, `src/queue/queue.ts`
    - For schemas: `src/schemas/session.ts`, `src/schemas/handoff.ts`
-   - For persistence: `src/session/output-persistence.ts`, `src/session/budget-tracker.ts`
-   - For execution: `src/controller/execution-loop.ts`, `src/controller/phase-executor.ts`
+   - For persistence: `src/queue/persistence.ts`, `src/session/output-persistence.ts`
    - For events: `src/events/types.ts`, `src/events/event-bus.ts`
    - For config: `src/config/loader.ts`
+   - For prompts: `src/prompts/plan/` directory
    Match existing patterns exactly (factory functions, DI, Zod schemas, atomic writes).
 
-3. **Write failing tests first (RED).** Create test file in `tests/`. Write tests covering all expected behaviors from the feature description. Run `bun test <file>` to confirm they fail.
+3. **Read ADR-004** at `docs/decisions/004-queue-execution-adr.md` if the feature involves execution model decisions. Read `.factory/library/json-plan-migration.md` if the feature involves plan prompts.
 
-4. **Implement to make tests pass (GREEN).** Write the minimal implementation. Follow existing code conventions:
+4. **Write failing tests first (RED).** Create test file in `tests/`. Write tests covering all expected behaviors from the feature description. Run `bun test <file>` to confirm they fail.
+
+5. **Implement to make tests pass (GREEN).** Write the minimal implementation. Follow existing code conventions:
    - Factory functions (`createQueue()`, `createStepExecutor()`) over classes
    - Zod schemas for all data structures
    - `Log` module for logging (never console.*)
    - Atomic writes for persistence
    - DI for testability (pass dependencies as options)
 
-5. **Run full test suite and typecheck:**
+6. **Run full test suite and typecheck:**
    ```bash
    bun test
    bun run typecheck
    ```
    Both must pass with zero errors.
 
-6. **When deleting dead code:** If the feature description says to remove old modules, delete them and update all imports. Run typecheck to catch broken references. Fix all errors.
+7. **When deleting dead code:** If the feature description says to remove old modules, delete them and update all imports. Run typecheck to catch broken references. Fix all errors. NO fallback paths — when you replace something, delete the old thing completely. No conditional imports, no backwards compatibility.
 
-7. **Commit your work** with a descriptive message.
+8. **Commit your work** with a descriptive message.
 
 ## Terminology Enforcement
 
