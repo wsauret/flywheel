@@ -110,13 +110,6 @@ export class EventBus {
 // ---------------------------------------------------------------------------
 
 export interface FlywheelEmitter {
-  workflowStarted(workflowId: string, planPath: string): void;
-  workflowCompleted(workflowId: string): void;
-  workflowFailed(workflowId: string, reason: string): void;
-  workflowInterrupted(workflowId: string, reason: string): void;
-  stepStarted(workflowId: string, stepIndex: number, description: string): void;
-  stepCompleted(workflowId: string, stepIndex: number): void;
-  stepFailed(workflowId: string, stepIndex: number, reason: string): void;
   dispatcherInvoked(workflowId: string, stepIndex: number): void;
   dispatcherCompleted(workflowId: string, decision: import("../schemas/dispatcher").DispatcherDecision): void;
   dispatcherFailed(workflowId: string, reason: string): void;
@@ -153,20 +146,6 @@ function now(): string {
 
 export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
   return {
-    workflowStarted: (workflowId, planPath) =>
-      bus.emit({ type: "workflow:started", workflowId, planPath, timestamp: now() }),
-    workflowCompleted: (workflowId) =>
-      bus.emit({ type: "workflow:completed", workflowId, timestamp: now() }),
-    workflowFailed: (workflowId, reason) =>
-      bus.emit({ type: "workflow:failed", workflowId, reason, timestamp: now() }),
-    workflowInterrupted: (workflowId, reason) =>
-      bus.emit({ type: "workflow:interrupted", workflowId, reason, timestamp: now() }),
-    stepStarted: (workflowId, stepIndex, description) =>
-      bus.emit({ type: "step:started", workflowId, stepIndex, description, timestamp: now() }),
-    stepCompleted: (workflowId, stepIndex) =>
-      bus.emit({ type: "step:completed", workflowId, stepIndex, timestamp: now() }),
-    stepFailed: (workflowId, stepIndex, reason) =>
-      bus.emit({ type: "step:failed", workflowId, stepIndex, reason, timestamp: now() }),
     dispatcherInvoked: (workflowId, stepIndex) =>
       bus.emit({ type: "dispatcher:invoked", workflowId, stepIndex, timestamp: now() }),
     dispatcherCompleted: (workflowId, decision) =>

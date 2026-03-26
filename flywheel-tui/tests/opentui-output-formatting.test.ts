@@ -197,7 +197,7 @@ describe("OpenTUI Adapter — output formatting", () => {
       expect(allText).toContain("second");
     });
 
-    it("resets buffer on new workflow:started", () => {
+    it("resets buffer on new startWorkflow", () => {
       const { bus, store } = createHarness();
       // Send an incomplete chunk
       bus.emit({
@@ -212,13 +212,8 @@ describe("OpenTUI Adapter — output formatting", () => {
         (b) => b.kind === "text" && (b as TextBlock).content.includes("assistant"),
       )).toHaveLength(0);
 
-      // Start a new workflow — should reset buffer and builder
-      bus.emit({
-        type: "workflow:started",
-        workflowId: "w2",
-        planPath: "plan.md",
-        timestamp: ts(),
-      });
+      // Start a new workflow via store action — should reset output
+      store.startWorkflow("plan.md");
 
       // Send a fresh complete line
       const ndjson = JSON.stringify({

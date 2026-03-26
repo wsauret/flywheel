@@ -515,7 +515,7 @@ describe("Structured Adapter Integration", () => {
   // ── Phase reset ──
 
   describe("phase reset", () => {
-    it("blocks are cleared on new workflow:started", async () => {
+    it("blocks are cleared on new startWorkflow", async () => {
       const { bus, store } = createHarness();
 
       // Emit some output
@@ -524,13 +524,8 @@ describe("Structured Adapter Integration", () => {
 
       expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
-      // Start a new workflow
-      bus.emit({
-        type: "workflow:started",
-        workflowId: "w2",
-        planPath: "plan2.md",
-        timestamp: ts(),
-      });
+      // Start a new workflow via store action (clears output)
+      store.startWorkflow("plan2.md");
 
       await wait();
 

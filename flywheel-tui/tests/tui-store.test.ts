@@ -16,7 +16,7 @@ describe("Work Store", () => {
       const state = store.getState();
       expect(state.planName).toBe("test-plan");
       expect(state.workflowStatus).toBe("idle");
-      expect(state.phases).toEqual([]);
+      expect(state.queueSteps).toEqual([]);
       expect(state.outputLines).toEqual([]);
       expect(state.approvalState).toEqual({ pending: false });
       expect(state.selectedPhaseIndex).toBe(0);
@@ -42,13 +42,13 @@ describe("Work Store", () => {
 
       // Mutate store A
       storeA.startWorkflow("plan-a");
-      storeA.startPhase(0, "Phase 0");
+      storeA.setQueueSteps([{ id: "s1", type: "work", title: "Step 0", status: "pending" }]);
       storeA.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
       storeA.setApprovalPending("Approve?");
 
       // Store B must be completely unaffected
       expect(storeB.getState().workflowStatus).toBe("idle");
-      expect(storeB.getState().phases).toHaveLength(0);
+      expect(storeB.getState().queueSteps).toHaveLength(0);
       expect(storeB.getState().outputLines).toHaveLength(0);
       expect(storeB.getState().approvalState.pending).toBe(false);
       expect(storeB.getState().planName).toBe("b");
@@ -97,10 +97,11 @@ describe("Work Store", () => {
       expect(store.getState().workflowStatus).toBe("running");
     });
 
-    it("startPhase uses notifyImmediate", () => {
+    it("startQueueStep uses notifyImmediate", () => {
       let notified = 0;
+      store.setQueueSteps([{ id: "s1", type: "work", title: "Step 0", status: "pending" }]);
       store.subscribe(() => { notified++; });
-      store.startPhase(0, "Phase 0");
+      store.startQueueStep("s1");
       expect(notified).toBeGreaterThanOrEqual(1);
     });
   });
@@ -110,7 +111,7 @@ describe("Work Store", () => {
   describe("reset", () => {
     it("resets state to initial with new planName", () => {
       store.startWorkflow("old-plan");
-      store.startPhase(0, "Phase 0");
+      store.setQueueSteps([{ id: "s1", type: "work", title: "Step 0", status: "running" }]);
       store.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
 
       store.reset("new-plan");
@@ -118,7 +119,7 @@ describe("Work Store", () => {
       const state = store.getState();
       expect(state.planName).toBe("new-plan");
       expect(state.workflowStatus).toBe("idle");
-      expect(state.phases).toEqual([]);
+      expect(state.queueSteps).toEqual([]);
       expect(state.outputLines).toEqual([]);
     });
 
@@ -130,73 +131,89 @@ describe("Work Store", () => {
     });
   });
 
-  // ── Phase Actions ──
+  // ── Queue Step Actions ──
 
-  describe("phase actions", () => {
-    it("addPhase appends a new phase with pending status", () => {
-      store.addPhase({ index: 0, name: "Setup" });
-      const phases = store.getState().phases;
-      expect(phases).toHaveLength(1);
-      expect(phases[0].index).toBe(0);
-      expect(phases[0].name).toBe("Setup");
-      expect(phases[0].status).toBe("pending");
+  describe("queue step actions", () => {
+    it("setQueueSteps replaces step list", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Setup", status: "pending" },
+      ]);
+      const steps = store.getState().queueSteps;
+      expect(steps).toHaveLength(1);
+      expect(steps[0].id).toBe("s1");
+      expect(steps[0].title).toBe("Setup");
+      expect(steps[0].status).toBe("pending");
     });
 
-    it("startPhase creates phase if not existing and sets running", () => {
-      store.startPhase(0, "Build");
-      const phases = store.getState().phases;
-      expect(phases).toHaveLength(1);
-      expect(phases[0].status).toBe("running");
-      expect(phases[0].startTime).toBeDefined();
-      expect(phases[0].name).toBe("Build");
+    it("startQueueStep transitions step to running", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Build", status: "pending" },
+      ]);
+      store.startQueueStep("s1");
+      const step = store.getState().queueSteps[0];
+      expect(step.status).toBe("running");
+      expect(step.startTime).toBeDefined();
     });
 
-    it("startPhase updates existing phase to running", () => {
-      store.addPhase({ index: 0, name: "Setup" });
-      store.startPhase(0, "Setup");
-      const phases = store.getState().phases;
-      expect(phases).toHaveLength(1);
-      expect(phases[0].status).toBe("running");
+    it("completeQueueStep transitions step to completed with duration", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Build", status: "pending" },
+      ]);
+      store.startQueueStep("s1");
+      store.completeQueueStep("s1");
+      const step = store.getState().queueSteps[0];
+      expect(step.status).toBe("completed");
+      expect(step.endTime).toBeDefined();
+      expect(step.duration).toBeDefined();
+      expect(step.duration!).toBeGreaterThanOrEqual(0);
     });
 
-    it("startPhase auto-selects the started phase", () => {
-      store.startPhase(0, "Phase 0");
-      store.startPhase(1, "Phase 1");
-      expect(store.getState().selectedPhaseIndex).toBe(1);
+    it("failQueueStep transitions step to failed with error", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Build", status: "pending" },
+      ]);
+      store.startQueueStep("s1");
+      store.failQueueStep("s1", "Build error");
+      const step = store.getState().queueSteps[0];
+      expect(step.status).toBe("failed");
+      expect(step.error).toBe("Build error");
     });
 
-    it("completePhase sets status to completed with duration", () => {
-      store.startPhase(0, "Build");
-      store.completePhase(0);
-      const phase = store.getState().phases[0];
-      expect(phase.status).toBe("completed");
-      expect(phase.endTime).toBeDefined();
-      expect(phase.duration).toBeDefined();
-      expect(phase.duration!).toBeGreaterThanOrEqual(0);
+    it("insertQueueStep adds step after specified position", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "First", status: "completed" },
+        { id: "s3", type: "review", title: "Third", status: "pending" },
+      ]);
+      store.insertQueueStep(
+        { id: "s2", type: "work", title: "Second", status: "pending" },
+        "s1",
+      );
+      const steps = store.getState().queueSteps;
+      expect(steps).toHaveLength(3);
+      expect(steps[1].id).toBe("s2");
     });
 
-    it("failPhase sets status to failed with error", () => {
-      store.startPhase(0, "Build");
-      store.failPhase(0, "Build error");
-      const phase = store.getState().phases[0];
-      expect(phase.status).toBe("failed");
-      expect(phase.error).toBe("Build error");
+    it("removeQueueStep removes step by ID", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "First", status: "pending" },
+        { id: "s2", type: "work", title: "Second", status: "pending" },
+      ]);
+      store.removeQueueStep("s1");
+      const steps = store.getState().queueSteps;
+      expect(steps).toHaveLength(1);
+      expect(steps[0].id).toBe("s2");
     });
 
-    it("skipPhase sets status to skipped", () => {
-      store.addPhase({ index: 0, name: "Optional" });
-      store.skipPhase(0);
-      expect(store.getState().phases[0].status).toBe("skipped");
+    it("completeQueueStep is no-op for unknown step ID", () => {
+      store.setQueueSteps([]);
+      store.completeQueueStep("nonexistent");
+      expect(store.getState().queueSteps).toHaveLength(0);
     });
 
-    it("completePhase is no-op for unknown phase index", () => {
-      store.completePhase(99);
-      expect(store.getState().phases).toHaveLength(0);
-    });
-
-    it("failPhase is no-op for unknown phase index", () => {
-      store.failPhase(99, "error");
-      expect(store.getState().phases).toHaveLength(0);
+    it("failQueueStep is no-op for unknown step ID", () => {
+      store.setQueueSteps([]);
+      store.failQueueStep("nonexistent", "error");
+      expect(store.getState().queueSteps).toHaveLength(0);
     });
   });
 
@@ -211,12 +228,12 @@ describe("Work Store", () => {
       expect(state.startTime).toBeDefined();
     });
 
-    it("startWorkflow resets phases and output", () => {
-      store.startPhase(0, "Old Phase");
+    it("startWorkflow resets queueSteps and output", () => {
+      store.setQueueSteps([{ id: "s1", type: "work", title: "Old Step", status: "running" }]);
       store.appendOutput({ stream: "stdout", data: "old\n", timestamp: "t1" });
       store.startWorkflow("fresh-plan");
       const state = store.getState();
-      expect(state.phases).toEqual([]);
+      expect(state.queueSteps).toEqual([]);
       expect(state.outputLines).toEqual([]);
     });
 
@@ -271,7 +288,6 @@ describe("Work Store", () => {
       store.startWorkflow("stage-1-plan");
       store.appendOutput({ stream: "stdout", data: "stage 1 output\n", timestamp: "t1" });
       store.setOutputBlocks([{ kind: "text", content: "block1", timestamp: Date.now() }]);
-      store.startPhase(0, "Phase A");
 
       store.continueStage("stage-2-plan");
 
@@ -283,8 +299,6 @@ describe("Work Store", () => {
       // Output must be preserved (not wiped)
       expect(state.outputLines).toHaveLength(1);
       expect(state.outputBlocks).toHaveLength(1);
-      // Phases must be preserved
-      expect(state.phases).toHaveLength(1);
       // startTime must be preserved (not reset)
       expect(state.startTime).toBeDefined();
     });
@@ -307,50 +321,60 @@ describe("Work Store", () => {
 
   describe("navigation actions", () => {
     it("selectNext increments selectedPhaseIndex", () => {
-      store.startPhase(0, "Phase 0");
-      store.startPhase(1, "Phase 1");
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Step 0", status: "pending" },
+        { id: "s2", type: "work", title: "Step 1", status: "pending" },
+      ]);
       store.selectPhase(0);
       store.selectNext();
       expect(store.getState().selectedPhaseIndex).toBe(1);
     });
 
-    it("selectNext clamps to last phase", () => {
-      store.startPhase(0, "Phase 0");
-      store.startPhase(1, "Phase 1");
+    it("selectNext clamps to last step", () => {
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Step 0", status: "pending" },
+        { id: "s2", type: "work", title: "Step 1", status: "pending" },
+      ]);
       store.selectPhase(1);
       store.selectNext();
       expect(store.getState().selectedPhaseIndex).toBe(1);
     });
 
     it("selectPrevious decrements selectedPhaseIndex", () => {
-      store.startPhase(0, "Phase 0");
-      store.startPhase(1, "Phase 1");
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Step 0", status: "pending" },
+        { id: "s2", type: "work", title: "Step 1", status: "pending" },
+      ]);
       store.selectPhase(1);
       store.selectPrevious();
       expect(store.getState().selectedPhaseIndex).toBe(0);
     });
 
     it("selectPrevious clamps to 0", () => {
-      store.startPhase(0, "Phase 0");
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Step 0", status: "pending" },
+      ]);
       store.selectPhase(0);
       store.selectPrevious();
       expect(store.getState().selectedPhaseIndex).toBe(0);
     });
 
     it("selectPhase sets index directly", () => {
-      store.startPhase(0, "Phase 0");
-      store.startPhase(1, "Phase 1");
-      store.startPhase(2, "Phase 2");
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Step 0", status: "pending" },
+        { id: "s2", type: "work", title: "Step 1", status: "pending" },
+        { id: "s3", type: "work", title: "Step 2", status: "pending" },
+      ]);
       store.selectPhase(2);
       expect(store.getState().selectedPhaseIndex).toBe(2);
     });
 
-    it("selectNext is no-op when no phases", () => {
+    it("selectNext is no-op when no steps", () => {
       store.selectNext();
       expect(store.getState().selectedPhaseIndex).toBe(0);
     });
 
-    it("selectPrevious is no-op when no phases", () => {
+    it("selectPrevious is no-op when no steps", () => {
       store.selectPrevious();
       expect(store.getState().selectedPhaseIndex).toBe(0);
     });

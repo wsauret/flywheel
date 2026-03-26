@@ -40,7 +40,7 @@ describe("Workflow Lifecycle", () => {
       adapter1.start();
 
       // Simulate workflow activity
-      bus1.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-1", timestamp: ts() });
+      store1.startWorkflow("plan-1");
       bus1.emit({
         type: "worker:output",
         workflowId: "w1",
@@ -62,7 +62,7 @@ describe("Workflow Lifecycle", () => {
 
       const store2 = createStore("plan-2");
       expect(store2.getState().workflowStatus).toBe("idle");
-      expect(store2.getState().phases).toHaveLength(0);
+      expect(store2.getState().queueSteps).toHaveLength(0);
       expect(store2.getState().outputLines).toHaveLength(0);
       expect(store2.getState().planName).toBe("plan-2");
     });
@@ -80,7 +80,8 @@ describe("Workflow Lifecycle", () => {
       adapter.connect(bus);
       adapter.start();
 
-      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "test-plan", timestamp: ts() });
+      store.startWorkflow("test-plan");
+      bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("running");
       expect(adapter.isConnected()).toBe(true);
       expect(adapter.isRunning()).toBe(true);
@@ -101,7 +102,8 @@ describe("Workflow Lifecycle", () => {
       adapter.start();
 
       // Start workflow
-      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "integration-plan", timestamp: ts() });
+      store.startWorkflow("integration-plan");
+      bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("running");
 
       // Some output
@@ -116,7 +118,7 @@ describe("Workflow Lifecycle", () => {
       expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
       // Workflow completes
-      bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      bus.emit({ type: "queue:completed", workflowId: "w1", stepsCompleted: 1, timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("completed");
 
       adapter.stop();
@@ -140,7 +142,7 @@ describe("Workflow Lifecycle", () => {
       });
 
       // This should trigger a notification (throttled, 16ms)
-      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "sub-plan", timestamp: ts() });
+      store.startWorkflow("sub-plan");
 
       // Wait for throttled notification
       setTimeout(() => {
@@ -166,7 +168,8 @@ describe("Workflow Lifecycle", () => {
       adapter.connect(bus);
       adapter.start();
 
-      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "stop-plan", timestamp: ts() });
+      store.startWorkflow("stop-plan");
+      bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("running");
 
       // Stop and disconnect (simulates stopWorkflow cleanup)
@@ -177,7 +180,7 @@ describe("Workflow Lifecycle", () => {
       expect(adapter.isConnected()).toBe(false);
 
       // Events after disconnect should not update store
-      bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      bus.emit({ type: "queue:completed", workflowId: "w1", stepsCompleted: 1, timestamp: ts() });
       // Store still shows 'running' because adapter is disconnected
       expect(store.getState().workflowStatus).toBe("running");
     });
@@ -228,7 +231,8 @@ describe("Workflow Lifecycle", () => {
       adapter1.connect(bus1);
       adapter1.start();
 
-      bus1.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A", timestamp: ts() });
+      store1.startWorkflow("plan-A");
+      bus1.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       bus1.emit({
         type: "worker:output",
         workflowId: "w1",
@@ -236,7 +240,7 @@ describe("Workflow Lifecycle", () => {
         data: "first workflow output\n",
         timestamp: ts(),
       });
-      bus1.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      bus1.emit({ type: "queue:completed", workflowId: "w1", stepsCompleted: 1, timestamp: ts() });
 
       // Verify first workflow had state
       expect(store1.getState().workflowStatus).toBe("completed");
@@ -257,13 +261,14 @@ describe("Workflow Lifecycle", () => {
 
       // Verify clean state before events
       expect(store2.getState().workflowStatus).toBe("idle");
-      expect(store2.getState().phases).toHaveLength(0);
+      expect(store2.getState().queueSteps).toHaveLength(0);
       expect(store2.getState().outputLines).toHaveLength(0);
       expect(store2.getState().planName).toBe("plan-B");
       expect(adapter2.timer.getStatus()).toBe("idle");
 
       // Second workflow starts fresh
-      bus2.emit({ type: "workflow:started", workflowId: "w2", planPath: "plan-B", timestamp: ts() });
+      store2.startWorkflow("plan-B");
+      bus2.emit({ type: "queue:initialized", workflowId: "w2", stepIds: ["s1"], timestamp: ts() });
       expect(store2.getState().workflowStatus).toBe("running");
       expect(store2.getState().planName).toBe("plan-B");
 
@@ -287,7 +292,8 @@ describe("Workflow Lifecycle", () => {
       adapterB.start();
 
       // Only send events to store A
-      busA.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A", timestamp: ts() });
+      storeA.startWorkflow("plan-A");
+      busA.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
 
       // Store A has state
       expect(storeA.getState().workflowStatus).toBe("running");
@@ -331,7 +337,8 @@ describe("Workflow Lifecycle", () => {
       expect(adapter.isRunning()).toBe(true);
 
       // Now events flow
-      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "lifecycle-plan", timestamp: ts() });
+      store.startWorkflow("lifecycle-plan");
+      bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("running");
 
       adapter.stop();
@@ -345,7 +352,8 @@ describe("Workflow Lifecycle", () => {
       adapter.connect(bus);
       adapter.start();
 
-      bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "stop-lifecycle-plan", timestamp: ts() });
+      store.startWorkflow("stop-lifecycle-plan");
+      bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("running");
       expect(adapter.timer.isRunning()).toBe(true);
 

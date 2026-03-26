@@ -7,7 +7,7 @@
  */
 
 import type { QueueStepState } from "../../../state/types";
-import type { StoreContext } from "./phase-actions";
+import type { StoreContext } from "./workflow-actions";
 
 export function createQueueStepActions(ctx: StoreContext) {
   const { getState, setState, notify, notifyImmediate } = ctx;

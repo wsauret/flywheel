@@ -12,15 +12,27 @@ import { useTheme } from "@tui/shared/context/theme"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer"
-import type { WorkflowStatus, PhaseStatus, AnyBlock } from "../state/types"
-import { getStatusIcon, getStatusColor } from "./status-utils"
+import type { RGBA } from "@opentui/core"
+import type { WorkflowStatus, QueueStepStatus, AnyBlock } from "../state/types"
+import { getStepStatusIcon } from "../../../components/workflow-panel-logic"
 
 const MIN_WIDTH_FOR_INLINE_STATUS = 75
+
+/** Get color for a queue step status. */
+function getStepStatusColor(status: QueueStepStatus, theme: ReturnType<typeof useTheme>["theme"]): RGBA {
+  switch (status) {
+    case "completed": return theme.success
+    case "running":   return theme.primary
+    case "failed":    return theme.error
+    case "skipped":   return theme.textMuted
+    default:          return theme.text
+  }
+}
 
 export interface CurrentPhaseInfo {
   index: number
   name: string
-  status: PhaseStatus
+  status: QueueStepStatus
 }
 
 export interface OutputWindowProps {
@@ -79,7 +91,7 @@ export function OutputWindow(props: OutputWindowProps) {
         </box>
       }>
         {(phase) => {
-          const statusColor = () => getStatusColor(phase().status, themeCtx.theme)
+          const statusColor = () => getStepStatusColor(phase().status, themeCtx.theme)
 
           return (
             <Show when={isWide()} fallback={
@@ -97,7 +109,7 @@ export function OutputWindow(props: OutputWindowProps) {
                 <box flexDirection="row">
                   <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
                   <Show when={phase().status === "running"} fallback={
-                    <text fg={statusColor()}>{getStatusIcon(phase().status)} {phase().status}</text>
+                    <text fg={statusColor()}>{getStepStatusIcon(phase().status)} {phase().status}</text>
                   }>
                     <Spinner color={statusColor()} />
                     <text fg={statusColor()}> {phase().status}</text>
@@ -138,7 +150,7 @@ export function OutputWindow(props: OutputWindowProps) {
                   </box>
                   <box flexDirection="row">
                     <Show when={phase().status === "running"} fallback={
-                      <text fg={statusColor()}>{getStatusIcon(phase().status)} {phase().status}</text>
+                      <text fg={statusColor()}>{getStepStatusIcon(phase().status)} {phase().status}</text>
                     }>
                       <Spinner color={statusColor()} />
                       <text fg={statusColor()}> {phase().status}</text>

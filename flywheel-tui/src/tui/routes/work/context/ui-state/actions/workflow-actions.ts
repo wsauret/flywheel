@@ -5,7 +5,13 @@
  */
 
 import type { WorkState, OutputLine, AnyBlock } from "../../../state/types";
-import type { StoreContext } from "./phase-actions";
+
+export interface StoreContext {
+  getState(): WorkState;
+  setState(s: WorkState): void;
+  notify(): void;
+  notifyImmediate(): void;
+}
 
 const OUTPUT_LINES_CAP = 5000;
 
@@ -19,8 +25,6 @@ export function createWorkflowActions(ctx: StoreContext) {
         version: getState().version,
         startTime: Date.now(),
         workflowStatus: "running",
-        phases: [],
-        stages: [],
         queueSteps: [],
         outputLines: [],
         outputBlocks: [],

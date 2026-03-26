@@ -273,12 +273,12 @@ describe("Output flusher isolation", () => {
 
     // Mutate store A
     storeA.startWorkflow("plan-A");
-    storeA.addPhase({ index: 0, name: "Phase 1" });
+    storeA.setQueueSteps([{ id: "s1", type: "work", title: "Step 1", status: "pending" }]);
 
     // Store B should be unaffected
-    expect(storeB.getState().phases).toHaveLength(0);
+    expect(storeB.getState().queueSteps).toHaveLength(0);
     expect(storeB.getState().workflowStatus).toBe("idle");
-    expect(storeA.getState().phases).toHaveLength(1);
+    expect(storeA.getState().queueSteps).toHaveLength(1);
     expect(storeA.getState().workflowStatus).toBe("running");
   });
 

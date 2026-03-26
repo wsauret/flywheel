@@ -243,11 +243,12 @@ describe("Persistent Session Integration", () => {
       expect(session1.adapter.isConnected()).toBe(true);
       expect(session1.adapter.isRunning()).toBe(true);
 
-      // Simulate workflow events through the session's eventBus
+      // Start workflow via store action + queue event through the session's eventBus
+      session1.store.startWorkflow("plans/build.md");
       session1.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plans/build.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session1.store.getState().workflowStatus).toBe("running");
@@ -264,8 +265,9 @@ describe("Persistent Session Integration", () => {
 
       // Workflow completes
       session1.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w1",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
       expect(session1.store.getState().workflowStatus).toBe("completed");
@@ -284,19 +286,21 @@ describe("Persistent Session Integration", () => {
       const session2 = shell.activeSession!;
       expect(session2).not.toBe(session1);
       expect(session2.store.getState().workflowStatus).toBe("idle");
-      expect(session2.store.getState().phases).toHaveLength(0);
+      expect(session2.store.getState().queueSteps).toHaveLength(0);
       expect(session2.store.getState().outputLines).toHaveLength(0);
 
       // Complete second workflow
+      session2.store.startWorkflow("plans/deploy.md");
       session2.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w2",
-        planPath: "plans/deploy.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       session2.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w2",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
       expect(session2.store.getState().workflowStatus).toBe("completed");
@@ -308,10 +312,11 @@ describe("Persistent Session Integration", () => {
       expect(shell.shellState).toBe("working");
 
       const session = shell.activeSession!;
+      session.store.startWorkflow("plans/test.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plans/test.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -339,7 +344,8 @@ describe("Persistent Session Integration", () => {
       shell.handleSubmit("plan-A.md");
       const session1 = shell.activeSession!;
 
-      session1.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A.md", timestamp: ts() });
+      session1.store.startWorkflow("plan-A.md");
+      session1.eventBus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
       for (let i = 0; i < 10; i++) {
         session1.eventBus.emit({
           type: "worker:output",
@@ -349,7 +355,7 @@ describe("Persistent Session Integration", () => {
           timestamp: ts(),
         });
       }
-      session1.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      session1.eventBus.emit({ type: "queue:completed", workflowId: "w1", stepsCompleted: 1, timestamp: ts() });
 
       // Verify first session has accumulated state
       // Stdout worker:output now goes to structured outputBlocks, not outputLines
@@ -365,7 +371,7 @@ describe("Persistent Session Integration", () => {
 
       // Second session must be completely clean
       expect(session2.store.getState().workflowStatus).toBe("idle");
-      expect(session2.store.getState().phases).toHaveLength(0);
+      expect(session2.store.getState().queueSteps).toHaveLength(0);
       expect(session2.store.getState().outputLines).toHaveLength(0);
       expect(session2.store.getState().planName).toBe("plan-B.md");
       expect(session2.timer.getStatus()).toBe("idle");
@@ -375,10 +381,11 @@ describe("Persistent Session Integration", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
 
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session.store.getState().workflowStatus).toBe("running");
@@ -389,8 +396,9 @@ describe("Persistent Session Integration", () => {
 
       // Events on the old event bus should not update the store
       session.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w1",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
       // Store still shows 'running' because adapter is disconnected
@@ -405,10 +413,11 @@ describe("Persistent Session Integration", () => {
       // First session
       shell.handleSubmit("plan-1.md");
       const session1 = shell.activeSession!;
+      session1.store.startWorkflow("plan-1.md");
       session1.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan-1.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session1.timer.isRunning()).toBe(true);
@@ -424,10 +433,11 @@ describe("Persistent Session Integration", () => {
       expect(session2.timer.getStatus()).toBe("idle");
 
       // Start events on second session
+      session2.store.startWorkflow("plan-2.md");
       session2.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w2",
-        planPath: "plan-2.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session2.timer.isRunning()).toBe(true);
@@ -440,10 +450,11 @@ describe("Persistent Session Integration", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
 
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       session.timer.registerAgent("phase-0");
@@ -476,10 +487,11 @@ describe("Persistent Session Integration", () => {
     it("/new during working stops and resets to idle", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(shell.shellState).toBe("working");
@@ -493,15 +505,17 @@ describe("Persistent Session Integration", () => {
     it("/new during completed clears runs and resets to idle", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       session.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w1",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
 
@@ -554,8 +568,9 @@ describe("Persistent Session Integration", () => {
     it("Esc when completed triggers exit", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
-      session.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan.md", timestamp: ts() });
-      session.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      session.store.startWorkflow("plan.md");
+      session.eventBus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
+      session.eventBus.emit({ type: "queue:completed", workflowId: "w1", stepsCompleted: 1, timestamp: ts() });
 
       // shellState transitions to completed via store subscription,
       // but subscription is throttled (16ms). Manually set for this test.
@@ -568,10 +583,11 @@ describe("Persistent Session Integration", () => {
     it("single Esc when working shows hint, does not stop", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(shell.shellState).toBe("working");
@@ -585,10 +601,11 @@ describe("Persistent Session Integration", () => {
     it("double Esc when working stops the workflow", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(shell.shellState).toBe("working");
@@ -607,10 +624,11 @@ describe("Persistent Session Integration", () => {
     it("Esc hint resets after timeout, requires fresh double-Esc", async () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -631,21 +649,23 @@ describe("Persistent Session Integration", () => {
   // ── Store subscription drives shell state transitions ──
 
   describe("store subscription state transitions", () => {
-    it("workflow:completed transitions shell to completed", (done) => {
+    it("queue:completed transitions shell to completed", (done) => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
 
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(shell.shellState).toBe("working");
 
       session.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w1",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
 
@@ -658,21 +678,23 @@ describe("Persistent Session Integration", () => {
       }, 50);
     });
 
-    it("workflow:failed transitions shell to completed", (done) => {
+    it("queue:failed transitions shell to completed", (done) => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
 
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
       session.eventBus.emit({
-        type: "workflow:failed",
+        type: "queue:failed",
         workflowId: "w1",
-        error: "Something went wrong",
+        reason: "Something went wrong",
+        stepsCompleted: 0,
         timestamp: ts(),
       });
 
@@ -689,8 +711,9 @@ describe("Persistent Session Integration", () => {
 
       // Complete first
       const s1 = shell.activeSession!;
-      s1.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "first-plan.md", timestamp: ts() });
-      s1.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      s1.store.startWorkflow("first-plan.md");
+      s1.eventBus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
+      s1.eventBus.emit({ type: "queue:completed", workflowId: "w1", stepsCompleted: 1, timestamp: ts() });
 
       // Throttled subscription — set shell state explicitly for sync test
       shell.shellState = "completed";
@@ -709,10 +732,11 @@ describe("Persistent Session Integration", () => {
     it("double-Esc during pipeline sets session state to work:paused", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -732,24 +756,26 @@ describe("Persistent Session Integration", () => {
       expect(session.adapter.suppressPipelineError).toBe(true);
     });
 
-    it("workflow:failed is NOT turned into ErrorModal when suppressPipelineError is set", () => {
+    it("queue:failed is NOT turned into ErrorModal when suppressPipelineError is set", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
       // Set suppress flag on adapter (as pause would)
       session.adapter.suppressPipelineError = true;
 
-      // Emit workflow:failed (happens internally when shutdown is requested)
+      // Emit queue:failed (happens internally when shutdown is requested)
       session.eventBus.emit({
-        type: "workflow:failed",
+        type: "queue:failed",
         workflowId: "w1",
         reason: "Pipeline shut down",
+        stepsCompleted: 0,
         timestamp: ts(),
       });
 
@@ -760,10 +786,11 @@ describe("Persistent Session Integration", () => {
     it("pause pushes system text to output", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -780,10 +807,11 @@ describe("Persistent Session Integration", () => {
     it("userInitiatedPause flag distinguishes pause from failure", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -796,10 +824,11 @@ describe("Persistent Session Integration", () => {
     it("userInitiatedPause is true only for double-Esc during pipeline", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -815,10 +844,11 @@ describe("Persistent Session Integration", () => {
     it("userInitiatedPause resets when starting a new workflow", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       shell.isPipelineRunning = true;
@@ -840,10 +870,11 @@ describe("Persistent Session Integration", () => {
     it("starting workflow while another is running destroys the first", () => {
       shell.handleSubmit("plan-1.md");
       const session1 = shell.activeSession!;
+      session1.store.startWorkflow("plan-1.md");
       session1.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan-1.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -878,10 +909,11 @@ describe("Persistent Session Integration", () => {
     it("multiple /stop calls are idempotent", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
+      session.store.startWorkflow("plan.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
 
@@ -908,7 +940,7 @@ describe("Persistent Session Integration", () => {
       expect(shell.shellState).toBe("working");
       const session = shell.activeSession!;
       expect(session.store.getState().workflowStatus).toBe("idle");
-      expect(session.store.getState().phases).toHaveLength(0);
+      expect(session.store.getState().queueSteps).toHaveLength(0);
       expect(session.store.getState().outputLines).toHaveLength(0);
     });
   });

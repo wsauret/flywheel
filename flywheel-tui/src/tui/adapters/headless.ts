@@ -73,40 +73,6 @@ export class HeadlessAdapter extends BaseUIAdapter {
 
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      // ── Workflow lifecycle ──
-      case "workflow:started":
-        this.log(`Workflow started: ${event.planPath}`)
-        break
-
-      case "workflow:completed":
-        this.log("Workflow completed")
-        break
-
-      case "workflow:failed":
-        this.log(`Workflow FAILED: ${event.reason}`)
-        break
-
-      case "workflow:interrupted":
-        this.log(`Workflow interrupted: ${event.reason}`)
-        break
-
-      // ── Step events (normal+) ──
-      case "step:started":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Step ${event.stepIndex}: ${event.description}`)
-        }
-        break
-
-      case "step:completed":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Step ${event.stepIndex} — done`)
-        }
-        break
-
-      case "step:failed":
-        this.log(`  Step ${event.stepIndex} — FAILED: ${event.reason}`)
-        break
-
       // ── Worker events (normal+) ──
       case "worker:spawned":
         if (this.logLevel !== "minimal") {

@@ -204,36 +204,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      case "workflow:started":
-        // Full reset — fresh timer, fresh store.
-        this.timer.reset();
-        this.timer.start();
-        this.actions.startWorkflow(event.planPath);
-        this.actions.addStage("work");
-        this.actions.startStage("work");
-        break;
-
-      case "workflow:completed":
-        this.timer.stop();
-        // Final flush before completing
-        this.flushBlocks();
-        this.actions.stopWorkflow("completed");
-        break;
-
-      case "workflow:failed":
-        this.timer.stop();
-        this.flushBlocks();
-        if (!this.suppressPipelineError) {
-          this.actions.setError(event.reason);
-        }
-        break;
-
-      case "workflow:interrupted":
-        this.timer.stop();
-        this.flushBlocks();
-        this.actions.stopWorkflow("interrupted");
-        break;
-
       case "worker:output":
         this.handleWorkerOutput(event.stream, event.data, event.timestamp, event.engineId);
         break;
@@ -262,19 +232,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "worker:failed":
         this.pushSystemText(`◉ Worker failed: ${event.failure.message}\n`, event.timestamp);
-        break;
-
-      // Step events
-      case "step:started":
-        this.pushSystemText(`▸ Step ${event.stepIndex}: ${event.description}\n`, event.timestamp);
-        break;
-
-      case "step:completed":
-        this.pushSystemText(`✓ Step ${event.stepIndex} complete\n`, event.timestamp);
-        break;
-
-      case "step:failed":
-        this.pushSystemText(`✗ Step ${event.stepIndex} failed: ${event.reason}\n`, event.timestamp);
         break;
 
       // Dispatcher events
@@ -407,19 +364,28 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         }
         break;
 
-      // Queue lifecycle events — populate store with queue step display state
+      // Queue lifecycle events — timer lifecycle + store state
       case "queue:initialized":
         log.info("Queue initialized", { workflowId: event.workflowId, steps: event.stepIds.length });
-        // Steps will be populated by queue:step-started events; initialize with IDs as pending
-        // The shell wires queue steps from the Queue object before starting execution
+        // Start timer when queue execution begins
+        this.timer.reset();
+        this.timer.start();
         break;
 
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
+        this.timer.stop();
+        this.flushBlocks();
+        this.actions.stopWorkflow("completed");
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
+        this.timer.stop();
+        this.flushBlocks();
+        if (!this.suppressPipelineError) {
+          this.actions.setError(event.reason);
+        }
         break;
 
       // Queue step lifecycle events — update store for panel display

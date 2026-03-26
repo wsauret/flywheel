@@ -9,13 +9,6 @@ import type { QuestionInfo, QuestionAnswer } from "../controller/question-servic
 // ---------------------------------------------------------------------------
 
 export type FlywheelEvent =
-  | WorkflowStarted
-  | WorkflowCompleted
-  | WorkflowFailed
-  | WorkflowInterrupted
-  | StepStarted
-  | StepCompleted
-  | StepFailed
   | DispatcherInvoked
   | DispatcherCompleted
   | DispatcherFailed
@@ -46,60 +39,6 @@ export type FlywheelEvent =
   | QueueStepFailed
   | QueueStepInserted
   | QueueStepRemoved;
-
-// -- Workflow events --
-
-export interface WorkflowStarted {
-  type: "workflow:started";
-  workflowId: string;
-  planPath: string;
-  timestamp: string;
-}
-
-export interface WorkflowCompleted {
-  type: "workflow:completed";
-  workflowId: string;
-  timestamp: string;
-}
-
-export interface WorkflowFailed {
-  type: "workflow:failed";
-  workflowId: string;
-  reason: string;
-  timestamp: string;
-}
-
-export interface WorkflowInterrupted {
-  type: "workflow:interrupted";
-  workflowId: string;
-  reason: string;
-  timestamp: string;
-}
-
-// -- Step events --
-
-export interface StepStarted {
-  type: "step:started";
-  workflowId: string;
-  stepIndex: number;
-  description: string;
-  timestamp: string;
-}
-
-export interface StepCompleted {
-  type: "step:completed";
-  workflowId: string;
-  stepIndex: number;
-  timestamp: string;
-}
-
-export interface StepFailed {
-  type: "step:failed";
-  workflowId: string;
-  stepIndex: number;
-  reason: string;
-  timestamp: string;
-}
 
 // -- Dispatcher events --
 

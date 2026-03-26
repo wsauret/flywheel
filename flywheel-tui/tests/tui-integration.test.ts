@@ -46,7 +46,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const emitter = createFlywheelEmitter(bus);
 
       // 1. Start workflow
-      emitter.workflowStarted(wfId, "plan.md");
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
       expect(store.getState().workflowStatus).toBe("running");
       expect(store.getState().planName).toBe("plan.md");
 
@@ -63,7 +64,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       expect(stderrText).toContain("warning: deprecated package");
 
       // 3. Complete workflow
-      emitter.workflowCompleted(wfId);
+      emitter.queueCompleted(wfId, 1);
       expect(store.getState().workflowStatus).toBe("completed");
     });
 
@@ -71,7 +72,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const wfId = "wf-multi";
       const emitter = createFlywheelEmitter(bus);
 
-      emitter.workflowStarted(wfId, "multi-plan.md");
+      store.startWorkflow("multi-plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
 
       emitter.workerOutput(wfId, "stdout", "compiling...\n");
       emitter.workerOutput(wfId, "stdout", "linking...\n");
@@ -84,7 +86,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 
       emitter.workerOutput(wfId, "stdout", "deploying...\n");
 
-      emitter.workflowCompleted(wfId);
+      emitter.queueCompleted(wfId, 1);
 
       // Verify final state
       const state = store.getState();
@@ -99,7 +101,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const wfId = "wf-approval";
       const emitter = createFlywheelEmitter(bus);
 
-      emitter.workflowStarted(wfId, "plan.md");
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
 
       // Request approval
       emitter.approvalRequested(wfId, 0, "Delete production database?");
@@ -116,7 +119,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const wfId = "wf-approval-deny";
       const emitter = createFlywheelEmitter(bus);
 
-      emitter.workflowStarted(wfId, "plan.md");
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
 
       emitter.approvalRequested(wfId, 0, "Continue?");
       expect(store.getState().approvalState.pending).toBe(true);
@@ -129,7 +133,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const wfId = "wf-approval-skip";
       const emitter = createFlywheelEmitter(bus);
 
-      emitter.workflowStarted(wfId, "plan.md");
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
 
       emitter.approvalRequested(wfId, 0, "Auto-approve?");
       expect(store.getState().approvalState.pending).toBe(true);
@@ -142,28 +147,18 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
   // ── Error Flow ──
 
   describe("error flow", () => {
-    it("workflow:failed → store has error state", () => {
+    it("queue:failed → store has error state", () => {
       const wfId = "wf-fail";
       const emitter = createFlywheelEmitter(bus);
 
-      emitter.workflowStarted(wfId, "plan.md");
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
 
-      emitter.workflowFailed(wfId, "Out of memory");
+      emitter.queueFailed(wfId, "Out of memory", 0);
 
       const state = store.getState();
       expect(state.workflowStatus).toBe("failed");
       expect(state.error).toBe("Out of memory");
-    });
-
-    it("workflow:interrupted sets interrupted status", () => {
-      const wfId = "wf-interrupt";
-      const emitter = createFlywheelEmitter(bus);
-
-      emitter.workflowStarted(wfId, "plan.md");
-
-      emitter.workflowInterrupted(wfId, "User pressed Ctrl+C");
-
-      expect(store.getState().workflowStatus).toBe("interrupted");
     });
   });
 
@@ -174,7 +169,8 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const wfId = "wf-retry";
       const emitter = createFlywheelEmitter(bus);
 
-      emitter.workflowStarted(wfId, "plan.md");
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
 
       emitter.workerRetrying(wfId, 1, 3, "Connection timeout");
       emitter.workerRetrying(wfId, 2, 3, "Connection timeout");
@@ -196,12 +192,13 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const wfId = "wf-timer";
       const emitter = createFlywheelEmitter(bus);
 
-      // Timer starts on workflow:started
-      emitter.workflowStarted(wfId, "plan.md");
+      // Timer starts on queue:initialized
+      store.startWorkflow("plan.md");
+      emitter.queueInitialized(wfId, ["s1"]);
       expect(adapter.timer.isRunning()).toBe(true);
 
-      // Timer stops on workflow completion
-      emitter.workflowCompleted(wfId);
+      // Timer stops on queue completion
+      emitter.queueCompleted(wfId, 1);
       expect(adapter.timer.isStopped()).toBe(true);
     });
   });
@@ -219,11 +216,12 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       adapter.disconnect();
       expect(adapter.isConnected()).toBe(false);
 
-      // Events after disconnect should not affect store
+      // Events after disconnect should not affect store — queue:initialized alone
+      // doesn't change workflowStatus (startWorkflow is a store action)
       bus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w-after-disconnect",
-        planPath: "plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(store.getState().workflowStatus).toBe("idle");
@@ -234,10 +232,11 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       adapter.disconnect();
       adapter.connect(bus2);
 
+      store.startWorkflow("reconnected-plan.md");
       bus2.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w-new-bus",
-        planPath: "reconnected-plan.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(store.getState().workflowStatus).toBe("running");
@@ -297,8 +296,9 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     const emitter = createFlywheelEmitter(bus);
     const wfId = "chain-wf-1";
 
-    // Use the named emitter (same way WorkController does)
-    emitter.workflowStarted(wfId, "chain-plan.md");
+    // Use the store action to start workflow, then queue:initialized
+    store.startWorkflow("chain-plan.md");
+    emitter.queueInitialized(wfId, ["s1"]);
     expect(store.getState().workflowStatus).toBe("running");
 
     emitter.workerSpawned(wfId, 0);
@@ -320,7 +320,7 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     } as any);
     // worker:completed is suppressed from TUI output (only logged to file)
 
-    emitter.workflowCompleted(wfId);
+    emitter.queueCompleted(wfId, 1);
     expect(store.getState().workflowStatus).toBe("completed");
 
     adapter.stop();

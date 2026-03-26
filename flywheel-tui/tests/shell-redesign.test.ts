@@ -11,7 +11,7 @@ import {
   type AppState,
 } from "../src/tui/components/shell-modes";
 import {
-  computeProgress,
+  computeQueueProgress,
   statusLabel,
 } from "../src/tui/components/workflow-panel-logic";
 import {
@@ -150,48 +150,48 @@ describe("assertNever", () => {
 // WorkflowPanel -- computeProgress
 // ---------------------------------------------------------------------------
 
-describe("computeProgress", () => {
-  it("counts all phase statuses correctly", () => {
-    const phases = [
-      { index: 0, name: "A", status: "completed" as const, steps: [] },
-      { index: 1, name: "B", status: "running" as const, steps: [] },
-      { index: 2, name: "C", status: "failed" as const, steps: [] },
-      { index: 3, name: "D", status: "pending" as const, steps: [] },
+describe("computeQueueProgress", () => {
+  it("counts all step statuses correctly", () => {
+    const steps = [
+      { id: "s1", type: "work", title: "A", status: "completed" as const },
+      { id: "s2", type: "work", title: "B", status: "running" as const },
+      { id: "s3", type: "work", title: "C", status: "failed" as const },
+      { id: "s4", type: "work", title: "D", status: "pending" as const },
     ];
-    const result = computeProgress(phases);
+    const result = computeQueueProgress(steps);
     expect(result.completed).toBe(1);
     expect(result.running).toBe(1);
     expect(result.failed).toBe(1);
     expect(result.total).toBe(4);
   });
 
-  it("returns zeros for empty phases", () => {
-    const result = computeProgress([]);
+  it("returns zeros for empty steps", () => {
+    const result = computeQueueProgress([]);
     expect(result.completed).toBe(0);
     expect(result.running).toBe(0);
     expect(result.failed).toBe(0);
     expect(result.total).toBe(0);
   });
 
-  it("counts all completed phases", () => {
-    const phases = [
-      { index: 0, name: "A", status: "completed" as const, steps: [] },
-      { index: 1, name: "B", status: "completed" as const, steps: [] },
+  it("counts all completed steps", () => {
+    const steps = [
+      { id: "s1", type: "work", title: "A", status: "completed" as const },
+      { id: "s2", type: "work", title: "B", status: "completed" as const },
     ];
-    const result = computeProgress(phases);
+    const result = computeQueueProgress(steps);
     expect(result.completed).toBe(2);
     expect(result.total).toBe(2);
     expect(result.running).toBe(0);
     expect(result.failed).toBe(0);
   });
 
-  it("handles skipped phases (not counted as completed, running, or failed)", () => {
-    const phases = [
-      { index: 0, name: "A", status: "completed" as const, steps: [] },
-      { index: 1, name: "B", status: "skipped" as const, steps: [] },
-      { index: 2, name: "C", status: "pending" as const, steps: [] },
+  it("handles skipped steps (not counted as completed, running, or failed)", () => {
+    const steps = [
+      { id: "s1", type: "work", title: "A", status: "completed" as const },
+      { id: "s2", type: "work", title: "B", status: "skipped" as const },
+      { id: "s3", type: "work", title: "C", status: "pending" as const },
     ];
-    const result = computeProgress(phases);
+    const result = computeQueueProgress(steps);
     expect(result.completed).toBe(1);
     expect(result.total).toBe(3);
     expect(result.running).toBe(0);

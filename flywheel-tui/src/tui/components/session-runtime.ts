@@ -39,7 +39,7 @@ export interface RunningRuntime {
   budgetTracker: BudgetTracker
   storeUnsub: () => void
   questionCleanup: () => void
-  pipelineCleanup: () => void
+  queueCleanup: () => void
   contextIndexer: ContextIndexer | null
   workerPid: number | null
   /** Queue-based execution: step executor replaces pipeline for queue mode. */
@@ -181,8 +181,8 @@ export function createSessionRuntimeManager(
         log.warn("questionCleanup failed", { session: id, error: e instanceof Error ? e : String(e) })
       }
 
-      try { runtime.pipelineCleanup() } catch (e) {
-        log.warn("pipelineCleanup failed", { session: id, error: e instanceof Error ? e : String(e) })
+      try { runtime.queueCleanup() } catch (e) {
+        log.warn("queueCleanup failed", { session: id, error: e instanceof Error ? e : String(e) })
       }
 
       // Shut down step executor if present

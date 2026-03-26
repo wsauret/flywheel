@@ -99,14 +99,12 @@ describe("SessionRuntime discriminated union", () => {
       kind: "running",
       sessionId: "sess-2",
       session,
-      controller: {} as RunningRuntime["controller"],
-      loop: {} as RunningRuntime["loop"],
-      pipeline: {} as RunningRuntime["pipeline"],
+
       flusher,
       budgetTracker: budget,
       storeUnsub: () => {},
       questionCleanup: () => {},
-      pipelineCleanup: () => {},
+      queueCleanup: () => {},
       contextIndexer: null,
       workerPid: null,
     };
@@ -131,14 +129,12 @@ describe("SessionRuntime discriminated union", () => {
       kind: "running",
       sessionId: "sess-2",
       session: mockSession(),
-      controller: {} as RunningRuntime["controller"],
-      loop: {} as RunningRuntime["loop"],
-      pipeline: {} as RunningRuntime["pipeline"],
+
       flusher: mockFlusher(),
       budgetTracker: mockBudgetTracker(),
       storeUnsub: () => {},
       questionCleanup: () => {},
-      pipelineCleanup: () => {},
+      queueCleanup: () => {},
       contextIndexer: null,
       workerPid: null,
     };
@@ -173,14 +169,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s2",
         session: mockSession(),
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       };
@@ -215,14 +209,12 @@ describe("createSessionRuntimeManager", () => {
       manager.register("s1", { kind: "pending", sessionId: "s1", session });
 
       const fields = {
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       };
@@ -237,14 +229,11 @@ describe("createSessionRuntimeManager", () => {
     it("throws when promoting a non-existent ID", () => {
       expect(() =>
         manager.promote("nonexistent", {
-          controller: {} as RunningRuntime["controller"],
-          loop: {} as RunningRuntime["loop"],
-          pipeline: {} as RunningRuntime["pipeline"],
           flusher: mockFlusher(),
           budgetTracker: mockBudgetTracker(),
           storeUnsub: () => {},
           questionCleanup: () => {},
-          pipelineCleanup: () => {},
+          queueCleanup: () => {},
           contextIndexer: null,
           workerPid: null,
         })
@@ -259,14 +248,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s2",
         session: mockSession(),
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });
@@ -291,14 +278,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s1",
         session,
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });
@@ -316,14 +301,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s1",
         session,
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });
@@ -361,14 +344,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s1",
         session,
-        controller: { shutdown: async () => {} } as unknown as RunningRuntime["controller"],
-        loop: { requestShutdown: () => {} } as unknown as RunningRuntime["loop"],
-        pipeline: { requestShutdown: () => {} } as unknown as RunningRuntime["pipeline"],
+
         flusher,
         budgetTracker: budget,
         storeUnsub: () => { storeUnsubbed = true; },
         questionCleanup: () => { questionCleaned = true; },
-        pipelineCleanup: () => { pipelineCleaned = true; },
+        queueCleanup: () => { pipelineCleaned = true; },
         contextIndexer: null,
         workerPid: null,
       });
@@ -396,14 +377,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: id,
         session,
-        controller: { shutdown: async () => {} } as unknown as RunningRuntime["controller"],
-        loop: { requestShutdown: () => {} } as unknown as RunningRuntime["loop"],
-        pipeline: { requestShutdown: () => {} } as unknown as RunningRuntime["pipeline"],
+
         flusher,
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });
@@ -461,14 +440,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s1",
         session,
-        controller: { shutdown: async () => {} } as unknown as RunningRuntime["controller"],
-        loop: { requestShutdown: () => {} } as unknown as RunningRuntime["loop"],
-        pipeline: { requestShutdown: () => {} } as unknown as RunningRuntime["pipeline"],
+
         flusher: throwingFlusher,
         budgetTracker: budget,
         storeUnsub: () => {},
         questionCleanup: () => { questionCleaned = true; },
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });
@@ -492,14 +469,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s1",
         session,
-        controller: { shutdown: async () => {} } as unknown as RunningRuntime["controller"],
-        loop: { requestShutdown: () => {} } as unknown as RunningRuntime["loop"],
-        pipeline: { requestShutdown: () => {} } as unknown as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: fakeIndexer as any,
         workerPid: null,
       });
@@ -518,14 +493,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "a",
         session: sessionA,
-        controller: { shutdown: async () => {} } as unknown as RunningRuntime["controller"],
-        loop: { requestShutdown: () => {} } as unknown as RunningRuntime["loop"],
-        pipeline: { requestShutdown: () => {} } as unknown as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });
@@ -556,14 +529,12 @@ describe("createSessionRuntimeManager", () => {
 
       // Promote one
       manager.promote("s2", {
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: 1234,
       });
@@ -585,14 +556,12 @@ describe("createSessionRuntimeManager", () => {
         kind: "running",
         sessionId: "s1",
         session,
-        controller: {} as RunningRuntime["controller"],
-        loop: {} as RunningRuntime["loop"],
-        pipeline: {} as RunningRuntime["pipeline"],
+
         flusher,
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
         questionCleanup: () => {},
-        pipelineCleanup: () => {},
+        queueCleanup: () => {},
         contextIndexer: null,
         workerPid: null,
       });

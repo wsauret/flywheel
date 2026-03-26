@@ -45,7 +45,7 @@ describe("Shell Lifecycle (workflow-session)", () => {
 
       // Store should be clean
       expect(session.store.getState().workflowStatus).toBe("idle");
-      expect(session.store.getState().phases).toHaveLength(0);
+      expect(session.store.getState().queueSteps).toHaveLength(0);
       expect(session.store.getState().outputLines).toHaveLength(0);
 
       destroyWorkflowSession(session);
@@ -69,14 +69,13 @@ describe("Shell Lifecycle (workflow-session)", () => {
     it("events flow through session's event bus to store", () => {
       const session = createWorkflowSession("event-flow.md");
 
+      session.store.startWorkflow("event-flow.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "event-flow.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
-
-      expect(session.store.getState().workflowStatus).toBe("running");
 
       expect(session.store.getState().workflowStatus).toBe("running");
 
@@ -89,10 +88,11 @@ describe("Shell Lifecycle (workflow-session)", () => {
       const session = createWorkflowSession("destroy-test.md");
 
       // Start workflow to get timer running
+      session.store.startWorkflow("destroy-test.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "destroy-test.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session.timer.isRunning()).toBe(true);
@@ -108,10 +108,11 @@ describe("Shell Lifecycle (workflow-session)", () => {
     it("events after destroy do not reach store", () => {
       const session = createWorkflowSession("post-destroy.md");
 
+      session.store.startWorkflow("post-destroy.md");
       session.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "post-destroy.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session.store.getState().workflowStatus).toBe("running");
@@ -120,8 +121,9 @@ describe("Shell Lifecycle (workflow-session)", () => {
 
       // Events after destroy should not update store
       session.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w1",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
       // Store still shows 'running' because adapter is disconnected
@@ -133,10 +135,11 @@ describe("Shell Lifecycle (workflow-session)", () => {
     it("second session starts with completely clean state", () => {
       // First session
       const session1 = createWorkflowSession("plan-A.md");
+      session1.store.startWorkflow("plan-A.md");
       session1.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "plan-A.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       session1.eventBus.emit({
@@ -147,8 +150,9 @@ describe("Shell Lifecycle (workflow-session)", () => {
         timestamp: ts(),
       });
       session1.eventBus.emit({
-        type: "workflow:completed",
+        type: "queue:completed",
         workflowId: "w1",
+        stepsCompleted: 1,
         timestamp: ts(),
       });
 
@@ -160,16 +164,17 @@ describe("Shell Lifecycle (workflow-session)", () => {
       const session2 = createWorkflowSession("plan-B.md");
 
       expect(session2.store.getState().workflowStatus).toBe("idle");
-      expect(session2.store.getState().phases).toHaveLength(0);
+      expect(session2.store.getState().queueSteps).toHaveLength(0);
       expect(session2.store.getState().outputLines).toHaveLength(0);
       expect(session2.store.getState().planName).toBe("plan-B.md");
       expect(session2.timer.getStatus()).toBe("idle");
 
       // Second session works independently
+      session2.store.startWorkflow("plan-B.md");
       session2.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w2",
-        planPath: "plan-B.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       expect(session2.store.getState().workflowStatus).toBe("running");
@@ -179,10 +184,11 @@ describe("Shell Lifecycle (workflow-session)", () => {
 
     it("destroying one session does not affect a fresh session", () => {
       const session1 = createWorkflowSession("old.md");
+      session1.store.startWorkflow("old.md");
       session1.eventBus.emit({
-        type: "workflow:started",
+        type: "queue:initialized",
         workflowId: "w1",
-        planPath: "old.md",
+        stepIds: ["s1"],
         timestamp: ts(),
       });
       destroyWorkflowSession(session1);

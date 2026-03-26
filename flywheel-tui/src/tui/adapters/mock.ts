@@ -21,15 +21,6 @@ export class MockAdapter extends BaseUIAdapter {
 
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      // Workflow lifecycle
-      case "workflow:started":
-      case "workflow:completed":
-      case "workflow:failed":
-      case "workflow:interrupted":
-      // Step events
-      case "step:started":
-      case "step:completed":
-      case "step:failed":
       // Dispatcher events
       case "dispatcher:invoked":
       case "dispatcher:completed":

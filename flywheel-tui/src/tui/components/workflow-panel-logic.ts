@@ -5,7 +5,7 @@
  * Handles: progress computation, status labels, step icons, step type labels.
  */
 
-import type { PhaseState, StageGroup, QueueStepState, QueueStepStatus } from "../routes/work/state/types"
+import type { QueueStepState, QueueStepStatus } from "../routes/work/state/types"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,44 +16,6 @@ export interface PanelProgress {
   total: number
   running: number
   failed: number
-}
-
-// ---------------------------------------------------------------------------
-// computeProgress (legacy phases)
-// ---------------------------------------------------------------------------
-
-/** Compute progress summary from phase states. */
-export function computeProgress(phases: readonly PhaseState[]): PanelProgress {
-  let completed = 0
-  let running = 0
-  let failed = 0
-  for (const p of phases) {
-    if (p.status === "completed") completed++
-    else if (p.status === "running") running++
-    else if (p.status === "failed") failed++
-  }
-  return { completed, total: phases.length, running, failed }
-}
-
-// ---------------------------------------------------------------------------
-// computeStageProgress (legacy stages)
-// ---------------------------------------------------------------------------
-
-/** Compute progress summary across all stages (flattens stage phases). */
-export function computeStageProgress(stages: readonly StageGroup[]): PanelProgress {
-  let completed = 0
-  let running = 0
-  let failed = 0
-  let total = 0
-  for (const stage of stages) {
-    for (const p of stage.phases) {
-      total++
-      if (p.status === "completed") completed++
-      else if (p.status === "running") running++
-      else if (p.status === "failed") failed++
-    }
-  }
-  return { completed, total, running, failed }
 }
 
 // ---------------------------------------------------------------------------

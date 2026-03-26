@@ -10,10 +10,10 @@ describe("EventBus", () => {
     bus = new EventBus();
   });
 
-  const makeEvent = (type: FlywheelEvent["type"] = "workflow:started"): FlywheelEvent => ({
-    type: "workflow:started",
+  const makeEvent = (type: FlywheelEvent["type"] = "queue:initialized"): FlywheelEvent => ({
+    type: "queue:initialized",
     workflowId: "test-id",
-    planPath: "test.md",
+    stepIds: ["s1"],
     timestamp: new Date().toISOString(),
   });
 
@@ -76,22 +76,23 @@ describe("EventBus", () => {
 
   it("typed listener receives only matching events", () => {
     const received: FlywheelEvent[] = [];
-    bus.subscribeToType("workflow:started", (e) => received.push(e));
+    bus.subscribeToType("queue:initialized", (e) => received.push(e));
 
     bus.emit(makeEvent());
     bus.emit({
-      type: "workflow:completed",
+      type: "queue:completed",
       workflowId: "test-id",
+      stepsCompleted: 1,
       timestamp: new Date().toISOString(),
     });
 
     expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("workflow:started");
+    expect(received[0].type).toBe("queue:initialized");
   });
 
   it("typed listener unsubscribe works", () => {
     const received: FlywheelEvent[] = [];
-    const unsub = bus.subscribeToType("workflow:started", (e) => received.push(e));
+    const unsub = bus.subscribeToType("queue:initialized", (e) => received.push(e));
     bus.emit(makeEvent());
     expect(received).toHaveLength(1);
     unsub();
@@ -103,7 +104,7 @@ describe("EventBus", () => {
 
   it("onceType fires only once for matching type", () => {
     const received: FlywheelEvent[] = [];
-    bus.onceType("workflow:started", (e) => received.push(e));
+    bus.onceType("queue:initialized", (e) => received.push(e));
     bus.emit(makeEvent());
     bus.emit(makeEvent());
     expect(received).toHaveLength(1);
@@ -124,7 +125,7 @@ describe("EventBus", () => {
 
   it("error in typed listener does not prevent catch-all", () => {
     const received: FlywheelEvent[] = [];
-    bus.subscribeToType("workflow:started", () => {
+    bus.subscribeToType("queue:initialized", () => {
       throw new Error("bad typed listener");
     });
     bus.subscribe((e) => received.push(e));
@@ -138,19 +139,19 @@ describe("EventBus", () => {
 // ---------------------------------------------------------------------------
 
 describe("createFlywheelEmitter", () => {
-  it("emits workflow:started with correct fields", () => {
+  it("emits queue:initialized with correct fields", () => {
     const bus = new EventBus();
     const emitter = createFlywheelEmitter(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.workflowStarted("wf-1", "plan.md");
+    emitter.queueInitialized("wf-1", ["s1", "s2"]);
 
     expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("workflow:started");
-    if (received[0].type === "workflow:started") {
+    expect(received[0].type).toBe("queue:initialized");
+    if (received[0].type === "queue:initialized") {
       expect(received[0].workflowId).toBe("wf-1");
-      expect(received[0].planPath).toBe("plan.md");
+      expect(received[0].stepIds).toEqual(["s1", "s2"]);
       expect(received[0].timestamp).toBeTruthy();
     }
   });
@@ -188,27 +189,28 @@ describe("MockAdapter", () => {
   it("records events after connect", () => {
     adapter.connect(bus);
     bus.emit({
-      type: "workflow:started",
+      type: "queue:initialized",
       workflowId: "test",
-      planPath: "test.md",
+      stepIds: ["s1"],
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(1);
-    expect(adapter.events[0].type).toBe("workflow:started");
+    expect(adapter.events[0].type).toBe("queue:initialized");
   });
 
   it("stops recording after disconnect", () => {
     adapter.connect(bus);
     bus.emit({
-      type: "workflow:started",
+      type: "queue:initialized",
       workflowId: "test",
-      planPath: "test.md",
+      stepIds: ["s1"],
       timestamp: new Date().toISOString(),
     });
     adapter.disconnect();
     bus.emit({
-      type: "workflow:completed",
+      type: "queue:completed",
       workflowId: "test",
+      stepsCompleted: 1,
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(1);
@@ -217,9 +219,9 @@ describe("MockAdapter", () => {
   it("reset clears events and re-subscribes", () => {
     adapter.connect(bus);
     bus.emit({
-      type: "workflow:started",
+      type: "queue:initialized",
       workflowId: "test",
-      planPath: "test.md",
+      stepIds: ["s1"],
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(1);
@@ -229,8 +231,9 @@ describe("MockAdapter", () => {
 
     // Should still receive events after reset
     bus.emit({
-      type: "workflow:completed",
+      type: "queue:completed",
       workflowId: "test",
+      stepsCompleted: 1,
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(1);
@@ -255,9 +258,9 @@ describe("MockAdapter", () => {
   it("connect guards against double-connect", () => {
     adapter.connect(bus);
     bus.emit({
-      type: "workflow:started",
+      type: "queue:initialized",
       workflowId: "test",
-      planPath: "test.md",
+      stepIds: ["s1"],
       timestamp: new Date().toISOString(),
     });
 
@@ -267,17 +270,18 @@ describe("MockAdapter", () => {
 
     // Old bus should not trigger events
     bus.emit({
-      type: "workflow:completed",
+      type: "queue:completed",
       workflowId: "test",
+      stepsCompleted: 1,
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(1); // only the first event before reconnect
 
     // New bus should work
     bus2.emit({
-      type: "workflow:started",
+      type: "queue:initialized",
       workflowId: "test-2",
-      planPath: "plan.md",
+      stepIds: ["s2"],
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(2);

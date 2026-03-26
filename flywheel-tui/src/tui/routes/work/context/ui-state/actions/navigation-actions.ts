@@ -4,7 +4,7 @@
  * Factory that takes store context and returns navigation mutation functions.
  */
 
-import type { StoreContext } from "./phase-actions";
+import type { StoreContext } from "./workflow-actions";
 
 export function createNavigationActions(ctx: StoreContext) {
   const { getState, setState, notify } = ctx;
@@ -12,7 +12,7 @@ export function createNavigationActions(ctx: StoreContext) {
   return {
     selectNext(): void {
       const state = getState();
-      const maxIndex = Math.max(0, state.phases.length - 1);
+      const maxIndex = Math.max(0, state.queueSteps.length - 1);
       const next = Math.min(state.selectedPhaseIndex + 1, maxIndex);
       setState({
         ...state,

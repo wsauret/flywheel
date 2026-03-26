@@ -5,11 +5,7 @@
  * These are the "source of truth" shapes used by the store and actions.
  */
 
-export type PhaseStatus = "pending" | "running" | "completed" | "failed" | "skipped" | "manual-review";
-
 export type WorkflowStatus = "idle" | "running" | "completed" | "failed" | "interrupted" | "stopping";
-
-export type StageStatus = "pending" | "running" | "completed" | "failed";
 
 // ---------------------------------------------------------------------------
 // Queue step display state (used by workflow panel to show queue progress)
@@ -34,22 +30,6 @@ export interface QueueStepState {
   endTime?: number;
   /** Duration in seconds. */
   duration?: number;
-}
-
-export interface StageGroup {
-  label: string;           // "plan", "work", "review", "ship"
-  status: StageStatus;
-  phases: PhaseState[];
-}
-
-export interface PhaseState {
-  index: number;
-  name: string;
-  status: PhaseStatus;
-  startTime?: number;
-  endTime?: number;
-  duration?: number;
-  error?: string;
 }
 
 export interface WorkerState {
@@ -120,9 +100,6 @@ export interface WorkState {
   startTime: number;
   endTime?: number;
   workflowStatus: WorkflowStatus;
-  phases: PhaseState[];
-  /** Hierarchical stage groups for pipeline mode. Empty for standalone workflows. */
-  stages: StageGroup[];
   /** Queue step display states for the workflow panel. */
   queueSteps: QueueStepState[];
   /**

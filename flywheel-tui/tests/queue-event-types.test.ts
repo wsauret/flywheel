@@ -46,7 +46,7 @@ describe("Queue event types", () => {
       const specific: FlywheelEvent[] = [];
       bus.subscribeToType("queue:initialized", (e) => specific.push(e));
       emitter.queueInitialized("wf-1", ["s1"]);
-      emitter.workflowStarted("wf-1", "/some/plan");
+      emitter.workerSpawned("wf-1", 0);
       expect(specific).toHaveLength(1);
       expect(specific[0].type).toBe("queue:initialized");
     });
@@ -166,16 +166,10 @@ describe("Queue event types", () => {
   // ── Existing events still work ──
 
   describe("existing events preserved", () => {
-    it("old step events still emit correctly", () => {
-      bus.emit({
-        type: "step:started",
-        workflowId: "wf-1",
-        stepIndex: 0,
-        description: "Old step",
-        timestamp: new Date().toISOString(),
-      });
+    it("queue step events still emit correctly", () => {
+      emitter.queueStepStarted("wf-1", "step-0", "work", "Old step");
       expect(received).toHaveLength(1);
-      expect(received[0].type).toBe("step:started");
+      expect(received[0].type).toBe("queue:step-started");
     });
   });
 });

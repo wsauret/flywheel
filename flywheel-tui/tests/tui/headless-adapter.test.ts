@@ -40,23 +40,23 @@ describe("HeadlessAdapter", () => {
       adapter.start()
     })
 
-    it("logs workflow started", () => {
-      emit({ type: "workflow:started", workflowId: wfId, planPath: "/tmp/plan.md", timestamp: ts })
-      expect(logs.some((l) => l.includes("Workflow started"))).toBe(true)
+    it("logs queue initialized", () => {
+      emit({ type: "queue:initialized", workflowId: wfId, stepIds: ["s1"], timestamp: ts })
+      expect(logs.some((l) => l.includes("Queue initialized"))).toBe(true)
     })
 
-    it("logs workflow completed", () => {
-      emit({ type: "workflow:completed", workflowId: wfId, timestamp: ts })
-      expect(logs.some((l) => l.includes("Workflow completed"))).toBe(true)
+    it("logs queue completed", () => {
+      emit({ type: "queue:completed", workflowId: wfId, stepsCompleted: 1, timestamp: ts })
+      expect(logs.some((l) => l.includes("Queue completed"))).toBe(true)
     })
 
-    it("logs workflow failed", () => {
-      emit({ type: "workflow:failed", workflowId: wfId, reason: "boom", timestamp: ts })
+    it("logs queue failed", () => {
+      emit({ type: "queue:failed", workflowId: wfId, reason: "boom", stepsCompleted: 0, timestamp: ts })
       expect(logs.some((l) => l.includes("FAILED") && l.includes("boom"))).toBe(true)
     })
 
-    it("does NOT log step:started in minimal mode", () => {
-      emit({ type: "step:started", workflowId: wfId, stepIndex: 0, description: "Install", timestamp: ts })
+    it("does NOT log queue:step-started in minimal mode", () => {
+      emit({ type: "queue:step-started", workflowId: wfId, stepId: "s1", stepType: "work", stepTitle: "Install", timestamp: ts })
       expect(logs.some((l) => l.includes("Install"))).toBe(false)
     })
 
@@ -79,8 +79,8 @@ describe("HeadlessAdapter", () => {
       adapter.start()
     })
 
-    it("logs step:started", () => {
-      emit({ type: "step:started", workflowId: wfId, stepIndex: 0, description: "Install deps", timestamp: ts })
+    it("logs queue:step-started", () => {
+      emit({ type: "queue:step-started", workflowId: wfId, stepId: "s1", stepType: "work", stepTitle: "Install deps", timestamp: ts })
       expect(logs.some((l) => l.includes("Install deps"))).toBe(true)
     })
 
@@ -144,7 +144,7 @@ describe("HeadlessAdapter", () => {
       })
       adapter.connect(bus)
       adapter.start()
-      emit({ type: "workflow:completed", workflowId: wfId, timestamp: ts })
+      emit({ type: "queue:completed", workflowId: wfId, stepsCompleted: 1, timestamp: ts })
       expect(logs.some((l) => /\[\d{4}-\d{2}-\d{2}T/.test(l))).toBe(true)
     })
 
@@ -155,7 +155,7 @@ describe("HeadlessAdapter", () => {
       })
       adapter.connect(bus)
       adapter.start()
-      emit({ type: "workflow:completed", workflowId: wfId, timestamp: ts })
+      emit({ type: "queue:completed", workflowId: wfId, stepsCompleted: 1, timestamp: ts })
       expect(logs.every((l) => !l.startsWith("["))).toBe(true)
     })
   })

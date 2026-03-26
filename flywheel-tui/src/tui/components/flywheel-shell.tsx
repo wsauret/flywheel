@@ -407,15 +407,15 @@ export function FlywheelShell() {
   const currentPhase = createMemo((): CurrentPhaseInfo | null => {
     const state = workState()
     if (!state) return null
-    const phases = state.phases
-    const running = phases.find((p) => p.status === "running")
+    const steps = state.queueSteps
+    const running = steps.find((s) => s.status === "running")
     if (running) {
-      return { index: running.index, name: running.name, status: running.status }
+      return { index: steps.indexOf(running), name: running.title, status: running.status }
     }
-    for (let i = phases.length - 1; i >= 0; i--) {
-      const p = phases[i]
-      if (p.status === "completed" || p.status === "failed") {
-        return { index: p.index, name: p.name, status: p.status }
+    for (let i = steps.length - 1; i >= 0; i--) {
+      const s = steps[i]
+      if (s.status === "completed" || s.status === "failed") {
+        return { index: i, name: s.title, status: s.status }
       }
     }
     return null
@@ -779,7 +779,7 @@ export function FlywheelShell() {
 
       // Track current workflowId
       const workflowIdRef = { current: `queue-${queueSessionId ?? "unknown"}` }
-      const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
+      const workflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
         workflowIdRef.current = ev.workflowId
       })
       pipelineUnsubs.push(workflowIdUnsub)
@@ -900,7 +900,7 @@ export function FlywheelShell() {
           budgetTracker: queueBudgetTracker!,
           storeUnsub: storeUnsub!,
           questionCleanup: () => cleanupQuestionSubscriptions(),
-          pipelineCleanup: () => cleanupPipelineSubscriptions(),
+          queueCleanup: () => cleanupPipelineSubscriptions(),
           contextIndexer: queueContextIndexer,
           workerPid: null,
           stepExecutor: stepExec,
@@ -1369,7 +1369,7 @@ export function FlywheelShell() {
 
         const queueLogBaseDir = deps.config.project_cwd ?? process.cwd()
         const workflowIdRef = { current: `queue-resume-${sessionId}` }
-        const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
+        const workflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
           workflowIdRef.current = ev.workflowId
         })
         pipelineUnsubs.push(workflowIdUnsub)
@@ -1479,7 +1479,7 @@ export function FlywheelShell() {
           budgetTracker: resumeBudgetTracker!,
           storeUnsub: storeUnsub!,
           questionCleanup: () => cleanupQuestionSubscriptions(),
-          pipelineCleanup: () => cleanupPipelineSubscriptions(),
+          queueCleanup: () => cleanupPipelineSubscriptions(),
           contextIndexer: queueContextIndexer,
           workerPid: null,
           stepExecutor: stepExec,
@@ -1585,7 +1585,7 @@ export function FlywheelShell() {
 
     queueMicrotask(async () => {
       let resumeCurrentWorkflowId = "unknown"
-      const resumeWorkflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
+      const resumeWorkflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
         resumeCurrentWorkflowId = ev.workflowId
       })
       const resumeEngineName = deps.config.engine
@@ -2243,8 +2243,6 @@ export function FlywheelShell() {
     version: "0.0.1",
     startTime: 0,
     workflowStatus: "idle",
-    phases: [],
-    stages: [],
     queueSteps: [],
     outputLines: [],
     outputBlocks: [],

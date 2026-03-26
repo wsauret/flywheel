@@ -5,7 +5,7 @@
  * Re-exports WorkState types for convenience.
  */
 
-import type { WorkState, OutputLine, AnyBlock, WorkflowStatus as WfStatus, PhaseStatus, PhaseState, QueueStepState } from "../../state/types";
+import type { WorkState, OutputLine, AnyBlock, WorkflowStatus as WfStatus, QueueStepState } from "../../state/types";
 
 export type Listener = () => void;
 
@@ -13,23 +13,6 @@ export type Listener = () => void;
 export interface UIActions {
   getState(): WorkState;
   subscribe(fn: Listener): () => void;
-
-  // Phase actions
-  addPhase(phase: { index: number; name: string }): void;
-  startPhase(index: number, name: string): void;
-  completePhase(index: number): void;
-  failPhase(index: number, reason: string): void;
-  skipPhase(index: number): void;
-
-  // Stage actions (hierarchical pipeline tracking)
-  addStage(label: string): void;
-  startStage(label: string): void;
-  completeStage(label: string): void;
-  failStage(label: string): void;
-  addPhaseToStage(stageLabel: string, phase: PhaseState): void;
-  startPhaseInStage(stageLabel: string, phaseIndex: number, name: string): void;
-  completePhaseInStage(stageLabel: string, phaseIndex: number): void;
-  failPhaseInStage(stageLabel: string, phaseIndex: number, reason: string): void;
 
   // Workflow actions
   startWorkflow(planName: string): void;
@@ -65,7 +48,5 @@ export interface UIActions {
 }
 
 // Re-export for backward compatibility with existing index.ts
-// The existing index.ts exports: UIActions, WorkflowState, AgentStatus, WorkflowStatus
 export type WorkflowState = WorkState;
-export type AgentStatus = PhaseStatus;
 export type { WfStatus as WorkflowStatus };
