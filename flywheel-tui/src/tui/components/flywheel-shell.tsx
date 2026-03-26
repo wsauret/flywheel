@@ -171,6 +171,12 @@ export function FlywheelShell() {
   const [activeQueueInfo, setActiveQueueInfo] = createSignal<QueueProgressInfo | null>(null)
   // Sprint iteration tracking for telemetry bar
   const [activeSprintInfo, setActiveSprintInfo] = createSignal<SprintIterationInfo | null>(null)
+
+  // Direct reactive queue steps signal for WorkflowPanel.
+  // Bypasses the store → workState signal chain which breaks SolidJS fine-grained
+  // reactivity for nested array properties at runtime. Updated directly from
+  // event bus subscriptions, matching the proven pattern of activeQueueInfo.
+  const [shellQueueSteps, setShellQueueSteps] = createSignal<import("../routes/work/state/types").QueueStepState[]>([])
   let pipelineUnsubs: Unsubscribe[] = []
 
   // Track the active session's timer for the status bar runtime display.
@@ -548,12 +554,15 @@ export function FlywheelShell() {
     setAppState("working")
 
     // Populate queue step display state for workflow panel
-    session.store.setQueueSteps(queue.steps.map((s) => ({
+    const initialQueueStepStates = queue.steps.map((s) => ({
       id: s.id,
       type: s.type,
       title: s.title,
       status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-    })))
+    }))
+    session.store.setQueueSteps(initialQueueStepStates)
+    // Also update the direct reactive signal (bypasses store → workState chain)
+    setShellQueueSteps(initialQueueStepStates)
 
     // Config loaded once at queue start
     let deps: WorkflowDeps
@@ -688,6 +697,53 @@ export function FlywheelShell() {
           // Non-sprint step (escalation: plan/review) — clear sprint info
           setActiveSprintInfo(null)
         }
+      }),
+      // Direct reactive queue steps signal updates (bypasses store → workState chain).
+      // These mirror the adapter's store mutations but update the dedicated signal
+      // so the WorkflowPanel gets reliable fine-grained reactivity.
+      session.eventBus.subscribeToType("queue:step-started", (e) => {
+        setShellQueueSteps((prev) =>
+          prev.map((s) =>
+            s.id === e.stepId
+              ? { ...s, status: "running" as const, startTime: Date.now() }
+              : s,
+          ),
+        )
+      }),
+      session.eventBus.subscribeToType("queue:step-completed", (e) => {
+        setShellQueueSteps((prev) =>
+          prev.map((s) => {
+            if (s.id !== e.stepId) return s
+            const now = Date.now()
+            const duration = s.startTime ? (now - s.startTime) / 1000 : 0
+            return { ...s, status: "completed" as const, endTime: now, duration }
+          }),
+        )
+      }),
+      session.eventBus.subscribeToType("queue:step-failed", (e) => {
+        setShellQueueSteps((prev) =>
+          prev.map((s) => {
+            if (s.id !== e.stepId) return s
+            const now = Date.now()
+            return { ...s, status: "failed" as const, endTime: now, error: e.reason }
+          }),
+        )
+      }),
+      session.eventBus.subscribeToType("queue:step-inserted", (e) => {
+        setShellQueueSteps((prev) => {
+          const idx = prev.findIndex((s) => s.id === e.afterStepId)
+          const insertIdx = idx >= 0 ? idx + 1 : prev.length
+          const newStep: import("../routes/work/state/types").QueueStepState = {
+            id: e.stepId,
+            type: e.stepType,
+            title: e.stepTitle,
+            status: "pending",
+          }
+          return [...prev.slice(0, insertIdx), newStep, ...prev.slice(insertIdx)]
+        })
+      }),
+      session.eventBus.subscribeToType("queue:step-removed", (e) => {
+        setShellQueueSteps((prev) => prev.filter((s) => s.id !== e.stepId))
       }),
     )
 
@@ -945,6 +1001,7 @@ export function FlywheelShell() {
     for (const unsub of pipelineUnsubs) unsub()
     pipelineUnsubs = []
     setActiveQueueInfo(null)
+    setShellQueueSteps([])
     _isPipelineRunning = false
   }
 
@@ -1160,12 +1217,15 @@ export function FlywheelShell() {
       injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
 
       // Populate queue step display state for workflow panel (resume)
-      session.store.setQueueSteps(result.queue.steps.map((s) => ({
+      const resumeQueueStepStates = result.queue.steps.map((s) => ({
         id: s.id,
         type: s.type,
         title: s.title,
         status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-      })))
+      }))
+      session.store.setQueueSteps(resumeQueueStepStates)
+      // Also update the direct reactive signal (bypasses store → workState chain)
+      setShellQueueSteps(resumeQueueStepStates)
 
       setFocusedSessionId(sessionId)
       setViewedSessionId(sessionId)
@@ -1233,6 +1293,51 @@ export function FlywheelShell() {
         }),
         session.eventBus.subscribeToType("queue:step-completed", () => {
           if (activeFlusher) activeFlusher.schedule()
+        }),
+        // Direct reactive queue steps signal updates for resume path
+        session.eventBus.subscribeToType("queue:step-started", (e) => {
+          setShellQueueSteps((prev) =>
+            prev.map((s) =>
+              s.id === e.stepId
+                ? { ...s, status: "running" as const, startTime: Date.now() }
+                : s,
+            ),
+          )
+        }),
+        session.eventBus.subscribeToType("queue:step-completed", (e) => {
+          setShellQueueSteps((prev) =>
+            prev.map((s) => {
+              if (s.id !== e.stepId) return s
+              const now = Date.now()
+              const duration = s.startTime ? (now - s.startTime) / 1000 : 0
+              return { ...s, status: "completed" as const, endTime: now, duration }
+            }),
+          )
+        }),
+        session.eventBus.subscribeToType("queue:step-failed", (e) => {
+          setShellQueueSteps((prev) =>
+            prev.map((s) => {
+              if (s.id !== e.stepId) return s
+              const now = Date.now()
+              return { ...s, status: "failed" as const, endTime: now, error: e.reason }
+            }),
+          )
+        }),
+        session.eventBus.subscribeToType("queue:step-inserted", (e) => {
+          setShellQueueSteps((prev) => {
+            const idx = prev.findIndex((s) => s.id === e.afterStepId)
+            const insertIdx = idx >= 0 ? idx + 1 : prev.length
+            const newStep: import("../routes/work/state/types").QueueStepState = {
+              id: e.stepId,
+              type: e.stepType,
+              title: e.stepTitle,
+              status: "pending",
+            }
+            return [...prev.slice(0, insertIdx), newStep, ...prev.slice(insertIdx)]
+          })
+        }),
+        session.eventBus.subscribeToType("queue:step-removed", (e) => {
+          setShellQueueSteps((prev) => prev.filter((s) => s.id !== e.stepId))
         }),
       )
 
@@ -2159,6 +2264,7 @@ export function FlywheelShell() {
               state={layoutState()}
               stepLabel={activeStepLabel()}
               selectedPhaseIndex={layoutState().selectedPhaseIndex}
+              queueSteps={shellQueueSteps()}
             />
           ) : undefined
         }

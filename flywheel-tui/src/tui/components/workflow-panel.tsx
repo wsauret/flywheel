@@ -54,6 +54,19 @@ export interface WorkflowPanelProps {
   stepLabel?: string
   /** Index of the currently selected phase (for keyboard navigation). */
   selectedPhaseIndex?: number
+  /**
+   * Direct reactive queue steps override.
+   *
+   * When provided, this signal-backed accessor is used instead of
+   * props.state.queueSteps for all panel rendering. This bypasses the
+   * store → workState signal chain which can break SolidJS fine-grained
+   * reactivity for nested array properties at runtime.
+   *
+   * The shell maintains this as a dedicated signal updated directly from
+   * event bus subscriptions, matching the proven pattern used by
+   * activeQueueInfo (telemetry bar).
+   */
+  queueSteps?: QueueStepState[]
 }
 
 // ---------------------------------------------------------------------------
@@ -65,10 +78,14 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
   const timer = useTimer()
   const label = () => props.stepLabel ?? "Step"
 
-  const hasQueueSteps = () => props.state.queueSteps.length > 0
+  // Use the direct reactive override when available (fixes SolidJS reactivity
+  // for nested array properties that break through the store → workState chain).
+  const queueSteps = () => props.queueSteps ?? props.state.queueSteps
+
+  const hasQueueSteps = () => queueSteps().length > 0
   const progress = () =>
     hasQueueSteps()
-      ? computeQueueProgress(props.state.queueSteps)
+      ? computeQueueProgress(queueSteps())
       : computeProgress(props.state.phases)
 
   const statusColor = () => {
@@ -83,7 +100,7 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
 
   // Track the index of the running step for auto-scroll
   const runningIndex = createMemo(() => {
-    const steps = props.state.queueSteps
+    const steps = queueSteps()
     for (let i = 0; i < steps.length; i++) {
       if (steps[i].status === "running") return i
     }
@@ -195,7 +212,7 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
                 </For>
               }
             >
-              <For each={props.state.queueSteps}>
+              <For each={queueSteps()}>
                 {(step) => (
                   <QueueStepRow
                     step={step}
