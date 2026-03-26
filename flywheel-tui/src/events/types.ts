@@ -87,7 +87,6 @@ export interface WorkflowInterrupted {
 export interface StepStarted {
   type: "step:started";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   description: string;
   timestamp: string;
@@ -96,7 +95,6 @@ export interface StepStarted {
 export interface StepCompleted {
   type: "step:completed";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   timestamp: string;
 }
@@ -104,7 +102,6 @@ export interface StepCompleted {
 export interface StepFailed {
   type: "step:failed";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   reason: string;
   timestamp: string;
@@ -115,7 +112,6 @@ export interface StepFailed {
 export interface DispatcherInvoked {
   type: "dispatcher:invoked";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   timestamp: string;
 }
@@ -148,7 +144,6 @@ export interface DispatcherOutput {
 export interface EvaluatorInvoked {
   type: "evaluator:invoked";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   timestamp: string;
 }
@@ -170,7 +165,7 @@ export interface EvaluatorFailed {
 export interface EvaluatorRevisionRequested {
   type: "evaluator:revision-requested";
   workflowId: string;
-  phaseIndex: number;
+  stepIndex: number;
   revisionAttempt: number;
   maxRevisions: number;
   reason: string;
@@ -191,7 +186,6 @@ export interface EvaluatorOutput {
 export interface WorkerSpawned {
   type: "worker:spawned";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   timestamp: string;
 }
@@ -241,7 +235,6 @@ export interface WorkerInjected {
 export interface ApprovalRequested {
   type: "approval:requested";
   workflowId: string;
-  phaseIndex: number;
   stepIndex: number;
   description: string;
   timestamp: string;

@@ -182,8 +182,8 @@ describe("UIApprovalHandler", () => {
       expect(requested).toBeDefined();
       expect(requested!.type).toBe("approval:requested");
       if (requested!.type === "approval:requested") {
-        expect(requested!.description).toBe("Phase 3: Manual verification");
-        expect(requested!.phaseIndex).toBe(2);
+        expect(requested!.description).toBe("Step 3: Manual verification");
+        expect(requested!.stepIndex).toBe(2);
       }
     });
 

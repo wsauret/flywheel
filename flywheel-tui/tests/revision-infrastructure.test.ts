@@ -87,7 +87,7 @@ describe("evaluator:revision-requested event type", () => {
     const event: FlywheelEvent = {
       type: "evaluator:revision-requested",
       workflowId: "wf-1",
-      phaseIndex: 0,
+      stepIndex: 0,
       revisionAttempt: 1,
       maxRevisions: 2,
       reason: "Output quality insufficient",
@@ -107,7 +107,7 @@ describe("evaluator:revision-requested event type", () => {
     bus.emit({
       type: "evaluator:revision-requested",
       workflowId: "wf-1",
-      phaseIndex: 0,
+      stepIndex: 0,
       revisionAttempt: 1,
       maxRevisions: 2,
       reason: "Needs improvement",
@@ -117,7 +117,7 @@ describe("evaluator:revision-requested event type", () => {
     expect(received).toHaveLength(1);
     if (received[0].type === "evaluator:revision-requested") {
       expect(received[0].workflowId).toBe("wf-1");
-      expect(received[0].phaseIndex).toBe(0);
+      expect(received[0].stepIndex).toBe(0);
       expect(received[0].revisionAttempt).toBe(1);
       expect(received[0].maxRevisions).toBe(2);
       expect(received[0].reason).toBe("Needs improvement");
@@ -137,7 +137,7 @@ describe("evaluator:revision-requested event type", () => {
     expect(received[0].type).toBe("evaluator:revision-requested");
     if (received[0].type === "evaluator:revision-requested") {
       expect(received[0].workflowId).toBe("wf-1");
-      expect(received[0].phaseIndex).toBe(0);
+      expect(received[0].stepIndex).toBe(0);
       expect(received[0].revisionAttempt).toBe(1);
       expect(received[0].maxRevisions).toBe(2);
       expect(received[0].reason).toBe("Needs revision");

@@ -56,12 +56,12 @@ describe("HeadlessAdapter", () => {
     })
 
     it("does NOT log step:started in minimal mode", () => {
-      emit({ type: "step:started", workflowId: wfId, phaseIndex: 0, stepIndex: 0, description: "Install", timestamp: ts })
+      emit({ type: "step:started", workflowId: wfId, stepIndex: 0, description: "Install", timestamp: ts })
       expect(logs.some((l) => l.includes("Install"))).toBe(false)
     })
 
     it("logs approval requests in minimal mode", () => {
-      emit({ type: "approval:requested", workflowId: wfId, phaseIndex: 0, stepIndex: 0, description: "Deploy?", timestamp: ts })
+      emit({ type: "approval:requested", workflowId: wfId, stepIndex: 0, description: "Deploy?", timestamp: ts })
       expect(logs.some((l) => l.includes("APPROVAL") && l.includes("Deploy?"))).toBe(true)
     })
   })
@@ -80,7 +80,7 @@ describe("HeadlessAdapter", () => {
     })
 
     it("logs step:started", () => {
-      emit({ type: "step:started", workflowId: wfId, phaseIndex: 0, stepIndex: 0, description: "Install deps", timestamp: ts })
+      emit({ type: "step:started", workflowId: wfId, stepIndex: 0, description: "Install deps", timestamp: ts })
       expect(logs.some((l) => l.includes("Install deps"))).toBe(true)
     })
 
@@ -90,7 +90,7 @@ describe("HeadlessAdapter", () => {
     })
 
     it("does NOT log dispatcher:invoked in normal mode", () => {
-      emit({ type: "dispatcher:invoked", workflowId: wfId, phaseIndex: 0, stepIndex: 0, timestamp: ts })
+      emit({ type: "dispatcher:invoked", workflowId: wfId, stepIndex: 0, timestamp: ts })
       expect(logs.some((l) => l.includes("Dispatcher invoked"))).toBe(false)
     })
   })
@@ -109,7 +109,7 @@ describe("HeadlessAdapter", () => {
     })
 
     it("logs dispatcher:invoked", () => {
-      emit({ type: "dispatcher:invoked", workflowId: wfId, phaseIndex: 0, stepIndex: 0, timestamp: ts })
+      emit({ type: "dispatcher:invoked", workflowId: wfId, stepIndex: 0, timestamp: ts })
       expect(logs.some((l) => l.includes("Dispatcher invoked"))).toBe(true)
     })
 

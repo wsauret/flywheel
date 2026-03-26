@@ -15,7 +15,7 @@ export interface PhaseProgressProps {
   phases: PhaseState[]
   selectedIndex: number
   availableWidth?: number
-  stepLabel?: string  // "Phase" | "Step" | "Cycle" — defaults to "Phase"
+  stepLabel?: string  // "Step" | "Cycle" — defaults to "Step"
 }
 
 export function PhaseProgress(props: PhaseProgressProps) {
@@ -25,7 +25,7 @@ export function PhaseProgress(props: PhaseProgressProps) {
     <box flexDirection="column" width="100%">
       <box paddingLeft={1} paddingRight={1} paddingTop={1} paddingBottom={1}>
         <text fg={themeCtx.theme.text} attributes={1}>
-          {props.stepLabel ?? "Plan"} Progress ({props.phases.length} {props.phases.length === 1 ? (props.stepLabel?.toLowerCase() ?? "phase") : (props.stepLabel?.toLowerCase() ?? "phase") + "s"})
+          {props.stepLabel ?? "Step"} Progress ({props.phases.length} {props.phases.length === 1 ? (props.stepLabel?.toLowerCase() ?? "step") : (props.stepLabel?.toLowerCase() ?? "step") + "s"})
         </text>
       </box>
 
@@ -33,7 +33,7 @@ export function PhaseProgress(props: PhaseProgressProps) {
         when={props.phases.length > 0}
         fallback={
           <box paddingLeft={1}>
-            <text fg={themeCtx.theme.textMuted}>No phases yet.</text>
+            <text fg={themeCtx.theme.textMuted}>No steps yet.</text>
           </box>
         }
       >

@@ -170,7 +170,6 @@ describe("Queue event types", () => {
       bus.emit({
         type: "step:started",
         workflowId: "wf-1",
-        phaseIndex: 0,
         stepIndex: 0,
         description: "Old step",
         timestamp: new Date().toISOString(),

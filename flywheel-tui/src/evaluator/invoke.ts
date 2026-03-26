@@ -178,7 +178,7 @@ export class Evaluator {
     const mergedCriteria = [...new Set([...explicitCriteria, ...extractedCriteria])];
 
     // Emit evaluator:invoked exactly once before the retry loop
-    this.emitter.evaluatorInvoked(this.workflowId, this.phaseIndex, this.stepIndex);
+    this.emitter.evaluatorInvoked(this.workflowId, this.stepIndex);
 
     let lastErrorMessage: string | undefined;
 

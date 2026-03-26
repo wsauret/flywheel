@@ -160,7 +160,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "worker:spawned",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         timestamp: "2025-01-01T00:00:00Z",
       });
@@ -222,7 +221,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "approval:requested",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         description: "Delete database?",
         timestamp: ts(),
@@ -236,7 +234,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "approval:requested",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         description: "Delete?",
         timestamp: ts(),
@@ -258,7 +255,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "step:started",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         description: "Run tests",
         timestamp: "2025-01-01T00:00:00Z",
@@ -276,7 +272,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "step:completed",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         timestamp: "2025-01-01T00:00:00Z",
       });
@@ -293,7 +288,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "step:failed",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         reason: "assertion failed",
         timestamp: "2025-01-01T00:00:00Z",
@@ -313,7 +307,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "dispatcher:invoked",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 2,
         timestamp: "2025-01-01T00:00:00Z",
       });
@@ -367,7 +360,6 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "evaluator:invoked",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         timestamp: "2025-01-01T00:00:00Z",
       });

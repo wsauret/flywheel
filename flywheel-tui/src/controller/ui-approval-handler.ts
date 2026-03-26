@@ -70,8 +70,7 @@ export class UIApprovalHandler implements ApprovalHandler {
       this.emitter.approvalRequested(
         this.workflowId,
         phaseIndex,
-        0,
-        `Phase ${phaseIndex + 1}: ${title}`,
+        `Step ${phaseIndex + 1}: ${title}`,
       );
       this.emitter.approvalReceived(this.workflowId, true, true);
       return true;
@@ -86,8 +85,7 @@ export class UIApprovalHandler implements ApprovalHandler {
         this.emitter.approvalRequested(
           this.workflowId,
           phaseIndex,
-          0,
-          `Phase ${phaseIndex + 1}: ${title}`,
+          `Step ${phaseIndex + 1}: ${title}`,
         );
         this.emitter.approvalReceived(this.workflowId, true, true);
         resolve(true);
@@ -112,8 +110,7 @@ export class UIApprovalHandler implements ApprovalHandler {
       this.emitter.approvalRequested(
         this.workflowId,
         phaseIndex,
-        0,
-        `Phase ${phaseIndex + 1}: ${title}`,
+        `Step ${phaseIndex + 1}: ${title}`,
       );
     });
   }

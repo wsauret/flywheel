@@ -246,7 +246,7 @@ export class PhaseExecutor {
       : { onStdout, onStderr };
 
     // Emit worker spawned for the initial attempt
-    this.emitter.workerSpawned(this.workflowId, phaseIndex, 0);
+    this.emitter.workerSpawned(this.workflowId, phaseIndex);
 
     try {
       const retryResult = await retry<WorkerResult>(

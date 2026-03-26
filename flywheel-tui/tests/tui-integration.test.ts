@@ -102,7 +102,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       emitter.workflowStarted(wfId, "plan.md");
 
       // Request approval
-      emitter.approvalRequested(wfId, 0, 0, "Delete production database?");
+      emitter.approvalRequested(wfId, 0, "Delete production database?");
       expect(store.getState().approvalState.pending).toBe(true);
       expect(store.getState().approvalState.description).toBe("Delete production database?");
 
@@ -118,7 +118,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 
       emitter.workflowStarted(wfId, "plan.md");
 
-      emitter.approvalRequested(wfId, 0, 0, "Continue?");
+      emitter.approvalRequested(wfId, 0, "Continue?");
       expect(store.getState().approvalState.pending).toBe(true);
 
       emitter.approvalReceived(wfId, false, false);
@@ -131,7 +131,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 
       emitter.workflowStarted(wfId, "plan.md");
 
-      emitter.approvalRequested(wfId, 0, 0, "Auto-approve?");
+      emitter.approvalRequested(wfId, 0, "Auto-approve?");
       expect(store.getState().approvalState.pending).toBe(true);
 
       emitter.approvalReceived(wfId, true, true);
@@ -301,7 +301,7 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     emitter.workflowStarted(wfId, "chain-plan.md");
     expect(store.getState().workflowStatus).toBe("running");
 
-    emitter.workerSpawned(wfId, 0, 0);
+    emitter.workerSpawned(wfId, 0);
     // worker:spawned is suppressed from TUI output (only logged to file)
     const spawnBlocks = store.getState().outputBlocks;
     expect(spawnBlocks).toHaveLength(0);

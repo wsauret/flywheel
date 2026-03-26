@@ -406,7 +406,7 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
           const evalPrompt = buildSprintEvaluatorPrompt(evalInput);
 
           // Use evaluator transport directly
-          emitter.evaluatorInvoked(workflowId, 0, 0);
+          emitter.evaluatorInvoked(workflowId, 0);
 
           const evalResult = await evaluatorTransport.invoke({
             worker_output: workerHandoff?.summary ?? "",

@@ -53,8 +53,8 @@ export class StepExecutor {
   /**
    * Execute a single step by delegating to PhaseExecutor.
    *
-   * The step index maps to phaseIndex in the event system so the TUI
-   * can track progress using the same infrastructure as work phases.
+   * The step index maps to the executor's internal phase index so the TUI
+   * can track progress using the same infrastructure as work steps.
    */
   async executeStep(options: ExecuteStepOptions): Promise<WorkerResult> {
     return this.phaseExecutor.execute({

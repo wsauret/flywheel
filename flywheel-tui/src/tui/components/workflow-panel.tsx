@@ -36,7 +36,7 @@ export interface WorkflowPanelProps {
   state: WorkState
   /** Whether the panel is collapsed (hidden by user). */
   collapsed?: boolean
-  /** Step label override (e.g., "Phase", "Step", "Cycle"). */
+  /** Step label override (e.g., "Step", "Cycle"). */
   stepLabel?: string
   /** Index of the currently selected phase (for keyboard navigation). */
   selectedPhaseIndex?: number
@@ -49,7 +49,7 @@ export interface WorkflowPanelProps {
 export function WorkflowPanel(props: WorkflowPanelProps) {
   const themeCtx = useTheme()
   const timer = useTimer()
-  const label = () => props.stepLabel ?? "Phase"
+  const label = () => props.stepLabel ?? "Step"
 
   const hasStages = () => props.state.stages.length > 0
   const progress = () =>

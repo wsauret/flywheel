@@ -599,7 +599,6 @@ describe("Structured Adapter Integration", () => {
       bus.emit({
         type: "worker:spawned",
         workflowId: "w1",
-        phaseIndex: 0,
         stepIndex: 0,
         timestamp: ts(),
       });

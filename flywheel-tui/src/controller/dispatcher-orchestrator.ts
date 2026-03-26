@@ -72,7 +72,7 @@ export class DispatcherOrchestrator {
     options: PhasePromptOptions,
   ): Promise<DispatcherDecision | null> {
     // Emit dispatcher:invoked
-    this.emitter.dispatcherInvoked(this.workflowId, phase.index, 0);
+    this.emitter.dispatcherInvoked(this.workflowId, phase.index);
 
     const MAX_RETRIES = 2;
     const BACKOFF_MS = 1_000;

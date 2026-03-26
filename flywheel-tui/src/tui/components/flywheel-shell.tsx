@@ -116,7 +116,7 @@ export function FlywheelShell() {
   const [escHint, setEscHint] = createSignal("")
 
   // Active workflow metadata
-  const [activeStepLabel, setActiveStepLabel] = createSignal("Phase")
+  const [activeStepLabel, setActiveStepLabel] = createSignal("Step")
   const [activeWorkflowName, setActiveWorkflowName] = createSignal("work")
 
   // Active workflow store as signal — drives the idle/work view switch
@@ -257,6 +257,57 @@ export function FlywheelShell() {
 
   /** Convenience: get project_cwd from cached deps (or "." on failure). */
   const getProjectCwd = (): string => getDepsOrWarn()?.config.project_cwd ?? "."
+
+  /**
+   * Resolve dispatcher and evaluator transports for queue execution.
+   * Shared between startQueueExecution and resumeSession queue paths.
+   */
+  async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string) {
+    const engineName = deps.config.engine
+
+    let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
+    try {
+      const { resolveModels } = await import("../../config/loader")
+      const { dispatcherModel } = resolveModels(deps.config)
+      const resolved = await autoDetectTransport({
+        spawner: deps.spawner,
+        engineName,
+        dispatcherModel,
+        onStdout: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
+        onStderr: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
+        logBaseDir,
+      })
+      dispatcherTransport = resolved.transport
+      log.info("queue dispatcher transport resolved", { label: resolved.label, engine: engineName })
+    } catch (err) {
+      log.warn("queue dispatcher transport auto-detect failed", {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+
+    let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
+    if (!deps.config.skip_evaluation) {
+      try {
+        const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
+        const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
+        evaluatorTransport = await createEvaluatorTransport({
+          spawner: deps.spawner,
+          engineName,
+          evaluatorModel: evalModel,
+          onStdout: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
+          onStderr: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
+          logBaseDir,
+        })
+        log.info("queue evaluator transport created", { engine: engineName })
+      } catch (err) {
+        log.warn("queue evaluator transport creation failed", {
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
+    return { dispatcherTransport, evaluatorTransport }
+  }
 
   /**
    * Get deps or return to idle on failure.
@@ -653,58 +704,18 @@ export function FlywheelShell() {
       try { SubprocessLogger.cleanup(queueLogBaseDir) } catch { /* best-effort */ }
 
       // Track current workflowId
-      let currentWorkflowId = `queue-${queueSessionId ?? "unknown"}`
+      const workflowIdRef = { current: `queue-${queueSessionId ?? "unknown"}` }
       const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
-        currentWorkflowId = ev.workflowId
+        workflowIdRef.current = ev.workflowId
       })
       pipelineUnsubs.push(workflowIdUnsub)
 
-      const queueEngineName = deps.config.engine
+      // Resolve dispatcher and evaluator transports
+      const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
+        deps, session.eventBus, workflowIdRef, queueLogBaseDir,
+      )
 
-      // Auto-detect dispatcher transport
-      let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
-      try {
-        const { resolveModels } = await import("../../config/loader")
-        const { dispatcherModel } = resolveModels(deps.config)
-        const resolved = await autoDetectTransport({
-          spawner: deps.spawner,
-          engineName: deps.config.engine,
-          dispatcherModel,
-          onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-          onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-          logBaseDir: queueLogBaseDir,
-        })
-        dispatcherTransport = resolved.transport
-        log.info("queue dispatcher transport resolved", { label: resolved.label, engine: deps.config.engine })
-      } catch (err) {
-        log.warn("queue dispatcher transport auto-detect failed", {
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-
-      // Create evaluator transport
-      let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
-      if (!deps.config.skip_evaluation) {
-        try {
-          const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
-          const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
-          evaluatorTransport = await createEvaluatorTransport({
-            spawner: deps.spawner,
-            engineName: deps.config.engine,
-            evaluatorModel: evalModel,
-            onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-            onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-            logBaseDir: queueLogBaseDir,
-          })
-          log.info("queue evaluator transport created", { engine: deps.config.engine })
-        } catch (err) {
-          log.warn("queue evaluator transport creation failed", {
-            error: err instanceof Error ? err.message : String(err),
-          })
-        }
-      }
-
-      // Create stage runner for backward compatibility — step executor delegates to
+      // Step executor delegates to
       // createStageLoop for each step, which is what the shell stage runner does.
       const emitter = createFlywheelEmitter(session.eventBus)
 
@@ -716,7 +727,7 @@ export function FlywheelShell() {
       // the queue and wire it into the session.
       const stepExec = createStepExecutor({
         queue,
-        workflowId: currentWorkflowId,
+        workflowId: workflowIdRef.current,
         emitter,
         dispatcher: async (step, context) => {
           // Stub dispatcher — real integration uses dispatcher transport
@@ -737,6 +748,7 @@ export function FlywheelShell() {
             contextIndexer: queueContextIndexer,
             dispatcherTransport,
             evaluatorTransport,
+            interactiveOverrides,
             onSessionName: capturedSessionId ? (name: string) => {
               try {
                 updateSession(capturedSessionId, { name, label: name }, capturedProjectCwd)
@@ -1213,53 +1225,23 @@ export function FlywheelShell() {
         }
 
         const queueLogBaseDir = deps.config.project_cwd ?? process.cwd()
-        let currentWorkflowId = `queue-resume-${sessionId}`
+        const workflowIdRef = { current: `queue-resume-${sessionId}` }
         const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
-          currentWorkflowId = ev.workflowId
+          workflowIdRef.current = ev.workflowId
         })
         pipelineUnsubs.push(workflowIdUnsub)
 
-        const queueEngineName = deps.config.engine
-
-        // Auto-detect dispatcher transport
-        let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
-        try {
-          const { resolveModels } = await import("../../config/loader")
-          const { dispatcherModel } = resolveModels(deps.config)
-          const resolved = await autoDetectTransport({
-            spawner: deps.spawner,
-            engineName: deps.config.engine,
-            dispatcherModel,
-            onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-            onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-            logBaseDir: queueLogBaseDir,
-          })
-          dispatcherTransport = resolved.transport
-        } catch { /* fallback */ }
-
-        // Create evaluator transport
-        let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
-        if (!deps.config.skip_evaluation) {
-          try {
-            const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
-            const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
-            evaluatorTransport = await createEvaluatorTransport({
-              spawner: deps.spawner,
-              engineName: deps.config.engine,
-              evaluatorModel: evalModel,
-              onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-              onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
-              logBaseDir: queueLogBaseDir,
-            })
-          } catch { /* evaluation will be skipped */ }
-        }
+        // Resolve dispatcher and evaluator transports
+        const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
+          deps, session.eventBus, workflowIdRef, queueLogBaseDir,
+        )
 
         const emitter = createFlywheelEmitter(session.eventBus)
         const resumeQueue = result.queue!
 
         const stepExec = createStepExecutor({
           queue: resumeQueue,
-          workflowId: currentWorkflowId,
+          workflowId: workflowIdRef.current,
           emitter,
           dispatcher: async (step, context) => {
             return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }

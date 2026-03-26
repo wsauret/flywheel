@@ -431,8 +431,6 @@ export class ExecutionLoop {
 
       // Skip completed phases (but emit events so TUI shows them)
       if (phase.status === "completed") {
-        // phase event removed: this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
-        // phase event removed: this.emitter.phaseCompleted(this.workflowId, phase.index);
         phaseIdx++;
         continue;
       }
@@ -448,7 +446,6 @@ export class ExecutionLoop {
             "in_progress",
             `Phase ${phase.index + 1} approval rejected`,
           );
-          // phase event removed: phaseFailed (approval rejected)
           return {
             completed: false,
             phasesCompleted,
@@ -460,7 +457,6 @@ export class ExecutionLoop {
         (phase as { status: string }).status = "completed";
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
-        // phase event removed: this.emitter.phaseCompleted(this.workflowId, phase.index);
         // Check milestone injection after approval-completed phase
         if (this.milestoneTracker) {
           const injected = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
@@ -472,9 +468,7 @@ export class ExecutionLoop {
 
       // Auto-approve in_progress phases when no approval handler (non-work)
       if (phase.status === "in_progress" && !this.approvalHandler) {
-        // phase event removed: this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
         (phase as { status: string }).status = "completed";
-        // phase event removed: this.emitter.phaseCompleted(this.workflowId, phase.index);
         phasesCompleted++;
         // Check milestone injection after auto-approved phase
         if (this.milestoneTracker) {
@@ -491,11 +485,9 @@ export class ExecutionLoop {
           phaseIndex: phase.index,
           title: phase.title,
         });
-        // phase event removed: this.emitter.phaseStarted(this.workflowId, phase.index, phase.title);
         (phase as { status: string }).status = "completed";
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
-        // phase event removed: this.emitter.phaseCompleted(this.workflowId, phase.index);
         // Check milestone injection after skipped phase
         if (this.milestoneTracker) {
           const injected = this.injectValidationPhasesIfNeeded(phases, phaseIdx);
@@ -506,7 +498,6 @@ export class ExecutionLoop {
       }
 
       // Execute the phase
-      // phase event removed: phaseStarted
 
       // 1. Cache context once per phase (reuse for both dispatcher and template)
       const relevantContext = this.contextIndexer?.getRelevantContext({
@@ -808,7 +799,6 @@ export class ExecutionLoop {
             // Update state if persistence exists
             this.statePersistence?.updatePhase(this.loadedState!, phase.index, "pending", evalReason);
 
-            // phase event removed: this.emitter.phaseFailed(this.workflowId, phase.index, evalReason);
             this.emitter.workflowFailed(this.workflowId, evalReason);
 
             return {
@@ -869,7 +859,6 @@ export class ExecutionLoop {
               const gateReason = `Pipeline halted: ${blockingIssues.length} blocking issue(s) — ${issueDescriptions}`;
 
               this.statePersistence?.updatePhase(this.loadedState!, phase.index, "pending", gateReason);
-              // phase event removed: this.emitter.phaseFailed(this.workflowId, phase.index, gateReason);
               this.emitter.workflowFailed(this.workflowId, gateReason);
 
               return {
@@ -951,7 +940,6 @@ export class ExecutionLoop {
         (phase as { status: string }).status = "completed";
         this.statePersistence?.updatePhase(this.loadedState!, phase.index, "completed");
         phasesCompleted++;
-        // phase event removed: this.emitter.phaseCompleted(this.workflowId, phase.index);
 
         // --- Milestone completion check and validation phase injection ---
         // After each phase completes, check if any milestone's implementation
@@ -980,7 +968,6 @@ export class ExecutionLoop {
         // Rate limit exhaustion: treat as interruption (resumable), not failure
         if (error instanceof WorkerError && error.result.failure?.kind === "rate_limited") {
           const rateLimitReason = "Rate limit exhausted — workflow paused for resumption";
-          // phase event removed: this.emitter.phaseFailed(this.workflowId, phase.index, reason);
           this.emitter.workflowInterrupted(this.workflowId, rateLimitReason);
 
           if (error.result.failure) {
@@ -995,7 +982,6 @@ export class ExecutionLoop {
           };
         }
 
-        // phase event removed: this.emitter.phaseFailed(this.workflowId, phase.index, reason);
         // Emit workflowFailed on all paths (not just non-work)
         this.emitter.workflowFailed(this.workflowId, reason);
 

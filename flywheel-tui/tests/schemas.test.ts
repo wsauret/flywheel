@@ -1912,7 +1912,7 @@ status: in_progress
     const evalInvoked = events.find((e) => e.type === "evaluator:invoked");
     expect(evalInvoked).toBeDefined();
     expect((evalInvoked as any).workflowId).toBe("wf-integration-eval");
-    expect((evalInvoked as any).phaseIndex).toBe(1);
+    expect((evalInvoked as any).stepIndex).toBe(0);
 
     const evalCompleted = events.find((e) => e.type === "evaluator:completed");
     expect(evalCompleted).toBeDefined();
