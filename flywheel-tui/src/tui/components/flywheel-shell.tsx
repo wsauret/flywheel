@@ -551,9 +551,10 @@ export function FlywheelShell() {
     setActiveStore(session.store)
     subscribeToStore(session.store)
     subscribeToTimer(session.timer)
-    setAppState("working")
 
-    // Populate queue step display state for workflow panel
+    // Populate queue step display state for workflow panel BEFORE setting
+    // appState to "working". This ensures the panel has step data available
+    // on its first render (avoids "Steps: 0/0" / "No steps yet" flash).
     const initialQueueStepStates = queue.steps.map((s) => ({
       id: s.id,
       type: s.type,
@@ -563,6 +564,8 @@ export function FlywheelShell() {
     session.store.setQueueSteps(initialQueueStepStates)
     // Also update the direct reactive signal (bypasses store → workState chain)
     setShellQueueSteps(initialQueueStepStates)
+
+    setAppState("working")
 
     // Config loaded once at queue start
     let deps: WorkflowDeps

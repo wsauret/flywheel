@@ -103,7 +103,7 @@ export type SkillFeedback = z.infer<typeof SkillFeedbackSchema>;
 
 const SUMMARY_MIN_LENGTH = 20;
 const SUMMARY_MAX_LENGTH = 5000;
-const SUMMARY_MAX_SENTENCES = 6;
+const SUMMARY_MAX_SENTENCES = 10;
 const TEST_OUTPUT_MIN_LENGTH = 10;
 
 /**

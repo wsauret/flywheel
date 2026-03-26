@@ -237,7 +237,7 @@ describe("CompoundDocSchema", () => {
 // ---------------------------------------------------------------------------
 
 describe("WorkerHandoffSchema", () => {
-  // A valid summary: >= 20 chars, 1-6 sentences, no newlines
+  // A valid summary: >= 20 chars, 1-10 sentences, no newlines
   const validSummary = "Implemented feature X with full test coverage. All 42 tests pass. Typecheck clean.";
 
   const validFull = {
@@ -486,7 +486,7 @@ describe("WorkerHandoffSchema", () => {
       }
     });
 
-    // VAL-QUALITY-003: Sentence counting (1-6 sentences)
+    // VAL-QUALITY-003: Sentence counting (1-10 sentences)
     it("accepts summary with exactly 1 sentence", () => {
       const result = WorkerHandoffSchema.safeParse({
         summary: "Implemented the full feature with comprehensive test coverage and type checking.",
@@ -494,23 +494,30 @@ describe("WorkerHandoffSchema", () => {
       expect(result.success).toBe(true);
     });
 
-    it("accepts summary with exactly 6 sentences", () => {
+    it("accepts summary with exactly 10 sentences", () => {
       const result = WorkerHandoffSchema.safeParse({
-        summary: "First sentence done. Second sentence done. Third sentence done. Fourth sentence done. Fifth sentence done. Sixth sentence done.",
+        summary: "First sentence done. Second sentence done. Third sentence done. Fourth sentence done. Fifth sentence done. Sixth sentence done. Seventh sentence done. Eighth sentence done. Ninth sentence done. Tenth sentence done.",
       });
       expect(result.success).toBe(true);
     });
 
-    it("rejects summary with more than 6 sentences with error stating count and range", () => {
+    it("accepts summary with 7-8 sentences (previously rejected at max 6)", () => {
       const result = WorkerHandoffSchema.safeParse({
         summary: "One. Two. Three. Four. Five. Six. Seven sentences total.",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects summary with more than 10 sentences with error stating count and range", () => {
+      const result = WorkerHandoffSchema.safeParse({
+        summary: "One. Two. Three. Four. Five. Six. Seven. Eight. Nine. Ten. Eleven sentences total.",
       });
       expect(result.success).toBe(false);
       if (!result.success) {
         const msg = result.error.issues.map(i => i.message).join(" ");
         // Error must state count and allowed range
         expect(msg).toContain("summary");
-        expect(msg).toMatch(/[1-6]/);
+        expect(msg).toMatch(/10/);
       }
     });
 
@@ -602,14 +609,14 @@ describe("WorkerHandoffSchema", () => {
 
     it("sentence count error includes field name, constraint, and range", () => {
       const result = WorkerHandoffSchema.safeParse({
-        summary: "One. Two. Three. Four. Five. Six. Seven. This has too many sentences overall.",
+        summary: "One. Two. Three. Four. Five. Six. Seven. Eight. Nine. Ten. Eleven sentences is too many overall.",
       });
       expect(result.success).toBe(false);
       if (!result.success) {
         const msgs = result.error.issues.map(i => i.message);
         const combined = msgs.join(" ");
         expect(combined).toContain("summary");
-        expect(combined).toMatch(/1.*6|6.*1/); // mentions both bounds
+        expect(combined).toMatch(/1.*10|10.*1/); // mentions both bounds
       }
     });
 
