@@ -48,6 +48,10 @@ export {
   buildResearchPersistPrompt,
 } from "./research/index.js";
 
+export { buildSprintPhasePrompt } from "./sprint/phase-prompt.js";
+export { buildSprintRevisionPrompt } from "./sprint/revision-prompt.js";
+export { buildSprintEvaluatorPrompt, SPRINT_EVALUATOR_SYSTEM_PROMPT } from "./sprint/evaluator-prompt.js";
+
 // ── Re-exports: colocated validation criteria ───────────────────
 
 export { planResearchValidationCriteria } from "./plan/research.js";
