@@ -1,9 +1,8 @@
 commands:
   install: bun install
   test: bun test
-  typecheck: bunx tsc --noEmit
-  build: bun run scripts/build.ts
-  verify-dispatcher: bun run scripts/verify-dispatcher.ts
-  verify-evaluator: bun run scripts/verify-evaluator.ts
+  typecheck: bun run typecheck
+  build: bun run build
+  dev: bun --conditions=browser run src/cli/index.ts
 
 services: {}

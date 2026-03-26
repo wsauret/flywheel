@@ -8,19 +8,21 @@ Environment variables, external dependencies, and setup notes.
 ---
 
 ## Runtime
-- **Bun** (not Node) — use `Bun.file()`, `Bun.write()`, etc.
-- **SolidJS** requires `--conditions=browser` flag (handled by `bin/flywheel` wrapper)
-- Unit tests do NOT need `--conditions=browser`
 
-## Key Paths
-- Handoffs: `.flywheel/handoffs/<uuid>.json`
-- Logs: `.flywheel/log/*.log`
-- Sessions: `.flywheel/sessions/`
-- Plans: `.flywheel/plan*.md`
-- State: alongside plan files as `<plan>.state.md`
+- **Bun** v1.3.6+ (not Node)
+- SolidJS requires `--conditions=browser` flag for TUI rendering (handled by `bin/flywheel`)
+- Unit tests do NOT need the conditions flag
 
-## Test Infrastructure
-- Framework: Bun built-in (`bun test`)
-- 132 test files, 3359+ tests
-- No external test dependencies
-- Typecheck: `bunx tsc --noEmit`
+## Dependencies
+
+All managed via `bun install`. No new dependencies needed for this mission.
+Key libraries: zod (schemas), solid-js (reactivity), @opentui/core + @opentui/solid (TUI rendering).
+
+## File Paths
+
+- `.flywheel/` — runtime data directory (sessions, handoffs, logs, plans)
+- `.flywheel/sessions/<id>.json` — session metadata
+- `.flywheel/sessions/<id>.queue.json` — queue state (NEW)
+- `.flywheel/sessions/<id>.output.json` — output block snapshots
+- `.flywheel/handoffs/<invocationId>.json` — worker handoff files
+- `.flywheel/log/` — rotating log files (10 max)

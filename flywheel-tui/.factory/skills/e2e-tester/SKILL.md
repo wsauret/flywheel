@@ -1,6 +1,6 @@
 ---
 name: e2e-tester
-description: Runs end-to-end pipeline tests via tmux with zero-tolerance for errors
+description: Writes and runs comprehensive E2E tests via tmux, covering all workflow configurations and edge cases
 ---
 
 # E2E Tester
@@ -9,167 +9,98 @@ NOTE: Startup and cleanup are handled by `worker-base`. This skill defines the W
 
 ## When to Use This Skill
 
-Features requiring end-to-end validation of the Flywheel pipeline via tmux. You are testing that EVERYTHING works — not just features you added, but the entire pipeline end to end. Zero tolerance for errors.
+Features that involve writing or running end-to-end tests for the TUI. These tests exercise the full stack: user input → queue creation → step execution → TUI rendering → session persistence.
 
 ## Required Skills
 
-None. This worker uses tmux directly per the project's AGENTS.md testing instructions.
+None. (tmux testing done via Execute tool)
 
-## ZERO TOLERANCE POLICY
+## File Writing Rule (CRITICAL)
 
-You are NOT an observer. You are a quality enforcer. If ANYTHING goes wrong during the E2E run — ANY error in the log, ANY handoff that fails to parse, ANY warning that indicates a bug, ANY state transition error, ANY degraded fallback — it is a BLOCKING issue. Do NOT dismiss problems as "unrelated", "pre-existing", "review-stage issue", or "not a failure of the quality systems being tested." EVERYTHING is being tested. Report every single problem as a blocking discoveredIssue with root cause analysis and a concrete suggestedFix.
-
-The run is not done until it is FLAWLESS.
+**Never write files longer than 100 lines in a single Create tool call.** Split large files: create the first ~100 lines with Create, then use sequential Edit calls to append remaining sections. This applies to all file types (.ts, .tsx, .test.ts, .sh, .md). If a write fails or is cancelled, break it into smaller pieces — do NOT retry the same large write.
 
 ## Work Procedure
 
-### 1. Understand the Test Objectives
+1. **Read the feature description.** Understand which scenarios to test and what pass/fail criteria apply.
 
-Read the feature description carefully. Read `AGENTS.md` in the mission directory and the project root `AGENTS.md` for tmux testing instructions. Every expectedBehavior item must pass with zero exceptions.
+2. **Read existing E2E patterns.** Check `tests/e2e/tui-pipeline.sh` for the existing tmux-based test pattern. Follow the same structure but adapted for queue-based execution.
 
-### 2. Prepare Test Environment
+3. **Write the E2E test script.** Create bash scripts in `tests/e2e/` that:
+   - Start TUI in tmux with specific dimensions
+   - Send keystrokes to exercise a workflow
+   - Capture screen at key points
+   - Assert expected content in captures
+   - Check log files for errors
+   - Clean up tmux session
 
-```bash
-# Clean slate
-rm -rf /tmp/flywheel-e2e-test /tmp/e2e-evidence
-mkdir -p /tmp/flywheel-e2e-test /tmp/e2e-evidence
+4. **Test helper pattern:**
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+   
+   PASS=0; FAIL=0
+   assert_contains() {
+     if echo "$1" | grep -q "$2"; then
+       ((PASS++)); echo "  ✓ Found: $2"
+     else
+       ((FAIL++)); echo "  ✗ Missing: $2"
+     fi
+   }
+   
+   # Start TUI
+   tmux kill-session -t test 2>/dev/null || true
+   tmux new-session -d -s test -x 120 -y 40 \
+     'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && bin/flywheel'
+   sleep 3
+   
+   # Test...
+   SCREEN=$(tmux capture-pane -t test -p)
+   assert_contains "$SCREEN" "FLYWHEEL"
+   
+   # Cleanup
+   tmux kill-session -t test 2>/dev/null || true
+   echo "Results: $PASS passed, $FAIL failed"
+   [ $FAIL -eq 0 ] || exit 1
+   ```
 
-# Create simple test project
-cd /tmp/flywheel-e2e-test
-git init
-cat > hello.py << 'EOF'
-def hello(name):
-    return f"Hello, {name}!"
+5. **Run each test and verify it passes.** Fix any bugs found. If bugs require code changes beyond the test script, document them in discoveredIssues.
 
-if __name__ == "__main__":
-    print(hello("World"))
-EOF
-git add . && git commit -m "initial"
-```
+6. **Run full test suite** to ensure E2E tests didn't break anything:
+   ```bash
+   bun test
+   bun run typecheck
+   ```
 
-- Ensure the Flywheel binary is available at `bin/flywheel`
-- Create a `flywheel.toml` config with commands section (test, typecheck if applicable)
+7. **Commit test scripts and any bug fixes.**
 
-### 3. Run the Pipeline via tmux
-
-```bash
-tmux kill-session -t flywheel-e2e 2>/dev/null
-tmux new-session -d -s flywheel-e2e -x 120 -y 40 \
-  'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && FLYWHEEL_PROJECT_CWD=/tmp/flywheel-e2e-test bin/flywheel'
-sleep 3
-tmux capture-pane -t flywheel-e2e -p > /tmp/e2e-evidence/01-idle.txt
-
-tmux send-keys -t flywheel-e2e '/start implement a simple python hello world function' Enter
-sleep 2
-# Select plan+work+review mode
-tmux send-keys -t flywheel-e2e '3'
-sleep 5
-```
-
-### 4. Monitor and Capture Evidence
-
-Capture screen at EVERY transition. Poll every 30-60 seconds. Save ALL evidence.
-
-### 5. Post-Run Verification (EXHAUSTIVE)
-
-After the pipeline completes, check EVERYTHING:
-
-```bash
-# 1. Log file — ZERO errors, ZERO bug-indicating warnings
-LOG=$(ls -t /tmp/flywheel-e2e-test/.flywheel/log/*.log | head -1)
-grep -E '^ERROR' "$LOG"        # Must be EMPTY
-grep -E '^WARN' "$LOG"         # Review EVERY warning — any bug indicator is blocking
-
-# 2. Handoff files — ALL must parse cleanly
-for f in /tmp/flywheel-e2e-test/.flywheel/handoffs/*.json; do
-  echo "=== $f ==="
-  cat "$f" | python3 -c "import json,sys; json.load(sys.stdin); print('VALID JSON')"
-done
-
-# 3. Stage context — must exist with real data
-cat /tmp/flywheel-e2e-test/.flywheel/stage-context.json
-
-# 4. Validation contract — must exist with VAL-* IDs
-cat /tmp/flywheel-e2e-test/.flywheel/plans/*.validation-contract.md 2>/dev/null || \
-  cat /tmp/flywheel-e2e-test/validation-contract.md 2>/dev/null
-
-# 5. Plan — must have ## Milestone: markers
-grep '## Milestone:' /tmp/flywheel-e2e-test/.flywheel/plans/*.md 2>/dev/null
-
-# 6. Validation phases — check state file for injection
-cat /tmp/flywheel-e2e-test/.flywheel/plans/*.state.md 2>/dev/null
-
-# 7. validation-state.json — must exist
-cat /tmp/flywheel-e2e-test/validation-state.json 2>/dev/null || \
-  cat /tmp/flywheel-e2e-test/.flywheel/validation-state.json 2>/dev/null
-```
-
-### 6. Assess Results with Zero Tolerance
-
-For EACH check above:
-- If it passes: record the evidence
-- If it fails: diagnose WHY. Read source code if needed. Report as blocking discoveredIssue with:
-  - Exact error/symptom
-  - Root cause (which file, which function, what's wrong)
-  - Concrete suggestedFix (what code change would fix it)
-
-Do NOT:
-- Say "this is unrelated to our changes"
-- Say "this is a pre-existing issue"
-- Say "this is cosmetic / non-blocking"
-- Wave away any failure for any reason
-
-### 7. Clean Up
-
-```bash
-tmux kill-session -t flywheel-e2e 2>/dev/null
-# Keep /tmp/e2e-evidence for the handoff
-```
-
-## Example Handoff (PASSING)
+## Example Handoff
 
 ```json
 {
-  "summary": "Full E2E pipeline completed flawlessly via tmux. Zero errors, zero warnings indicating bugs, all handoffs parsed cleanly, stage context accumulated from all phases, validation contract generated with 5 assertions, 2 milestone markers in plan, scrutiny validation auto-injected and executed, validation-state.json shows 5/5 passed.",
-  "artifacts": {
-    "files_created": ["/tmp/e2e-evidence/"],
-    "files_modified": [],
-    "commands_run": ["tmux commands", "evidence collection"]
-  },
-  "decisions": ["Used /start plan+work+review mode"],
-  "warnings": [],
+  "salientSummary": "Created E2E test for sprint workflow via tmux. Tests sprint start → verify fail → retry → verify pass → completion. Found and fixed a bug where sprint iteration count wasn't displayed in telemetry bar. All 3 E2E scenarios pass. bun test (52 passing), typecheck (0 errors).",
+  "whatWasImplemented": "tests/e2e/test-sprint-queue.sh (sprint iteration E2E), tests/e2e/test-queue-basic.sh (basic queue lifecycle E2E), fixed src/tui/routes/work/components/telemetry-bar.tsx (sprint iteration display)",
+  "whatWasLeftUndone": "",
   "verification": {
-    "tests_passed": true,
-    "test_output_summary": "ALL 7 E2E assertions pass. Zero ERROR lines in log. Zero bug-indicating WARN lines. All handoffs valid JSON. Stage context has cumulative data from 6 phases. validation-contract.md has 5 VAL-* assertions. Plan has 2 milestones. Scrutiny phase auto-injected. validation-state.json exists with results."
+    "commandsRun": [
+      { "command": "./tests/e2e/test-queue-basic.sh", "exitCode": 0, "observation": "8 assertions passed: idle screen, /start wizard, queue execution, completion" },
+      { "command": "./tests/e2e/test-sprint-queue.sh", "exitCode": 0, "observation": "6 assertions passed: sprint start, verify fail, retry, verify pass, completion" },
+      { "command": "bun test", "exitCode": 0, "observation": "52 tests passing" },
+      { "command": "bun run typecheck", "exitCode": 0, "observation": "No type errors" }
+    ],
+    "interactiveChecks": [
+      { "action": "Ran sprint E2E test with --attach flag", "observed": "Watched full sprint cycle: work step executed, verify failed, retry pair inserted, second verify passed, queue completed" }
+    ]
   },
-  "files_to_review": [],
-  "discoveredIssues": []
-}
-```
-
-## Example Handoff (FAILING — correct behavior)
-
-```json
-{
-  "summary": "E2E pipeline completed but with 3 blocking issues. Log shows 2 ERROR lines (state transition failure, handoff parse error). Stage context missing work-phase data due to handoff schema mismatch.",
+  "tests": { "added": [] },
   "discoveredIssues": [
-    {
-      "severity": "blocking",
-      "description": "ERROR in log: Invalid state transition new -> work:paused at pipeline completion. Root cause: session-orchestrator.ts line 142 calls pauseSession() without first transitioning through plan:imported -> plan:approved -> work:active.",
-      "suggestedFix": "In session-orchestrator.ts, add proper state transitions before pauseSession() call, or guard the pause with a state check."
-    },
-    {
-      "severity": "blocking",
-      "description": "WARN: handoff invalid for work phase 2 — artifacts.files_created Required. Causes stage context to lose all structured data for that phase. Root cause: WorkerHandoffSchema requires files_created but worker only modified files.",
-      "suggestedFix": "Make files_created optional in ArtifactsSchema in src/schemas/handoff.ts."
-    }
+    { "severity": "p3", "description": "Sprint iteration display format inconsistent with telemetry bar style — uses 'Sprint 2/5' instead of 'Iteration 2/5'. Minor cosmetic issue." }
   ]
 }
 ```
 
 ## When to Return to Orchestrator
 
-- The Flywheel TUI crashes on startup (environment issue)
-- The pipeline hangs for more than 20 minutes on a single phase
-- API key or engine binary is not available
-- You have identified blocking issues that need code fixes before re-running
+- TUI crashes on startup — cannot run E2E tests
+- E2E test reveals a fundamental architectural issue (not just a bug)
+- Cannot test a scenario because the feature isn't implemented yet
+- Test requires real API calls that would incur cost
