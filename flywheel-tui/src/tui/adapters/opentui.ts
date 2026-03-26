@@ -545,6 +545,37 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         }
         break;
 
+      // Sprint events
+      case "sprint:started":
+        this.pushSystemText(`🏃 Sprint started: ${event.taskDescription.slice(0, 100)}${event.taskDescription.length > 100 ? "..." : ""} (max ${event.maxIterations} iterations)\n`, event.timestamp);
+        break;
+
+      case "sprint:iteration-started":
+        this.pushSystemText(`▸ Sprint iteration ${event.iteration}/${event.maxIterations}\n`, event.timestamp);
+        break;
+
+      case "sprint:verification-started":
+        this.pushSystemText(`🔍 Running verification: ${event.scriptPath}\n`, event.timestamp);
+        break;
+
+      case "sprint:iteration-completed":
+        this.pushSystemText(
+          `${event.passed ? "✓" : "✗"} Iteration ${event.iteration} ${event.passed ? "passed" : "failed"}${event.reason ? `: ${event.reason}` : ""}\n`,
+          event.timestamp,
+        );
+        break;
+
+      case "sprint:escalated":
+        this.pushSystemText(`⚠ Sprint escalating after ${event.iterationsUsed} iteration(s): ${event.reason}\n`, event.timestamp);
+        break;
+
+      case "sprint:completed":
+        this.pushSystemText(
+          `${event.completed ? "✓" : "○"} Sprint ${event.completed ? "completed" : "stopped"} (${event.iterationsUsed} iteration${event.iterationsUsed !== 1 ? "s" : ""})${event.escalated ? " — escalated" : ""}${event.reason ? `: ${event.reason}` : ""}\n`,
+          event.timestamp,
+        );
+        break;
+
       default:
         assertNever(event);
     }

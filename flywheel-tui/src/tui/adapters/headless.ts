@@ -274,6 +274,37 @@ export class HeadlessAdapter extends BaseUIAdapter {
         // Streaming output from dispatcher/evaluator subprocesses — no-op in headless mode
         break
 
+      // Sprint events
+      case "sprint:started":
+        this.log(`Sprint started (max ${event.maxIterations} iterations)`)
+        break
+
+      case "sprint:iteration-started":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Sprint iteration ${event.iteration}/${event.maxIterations}`)
+        }
+        break
+
+      case "sprint:verification-started":
+        if (this.logLevel === "verbose") {
+          this.log(`  Running verification: ${event.scriptPath}`)
+        }
+        break
+
+      case "sprint:iteration-completed":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Iteration ${event.iteration} ${event.passed ? "passed" : "failed"}${event.reason ? `: ${event.reason}` : ""}`)
+        }
+        break
+
+      case "sprint:escalated":
+        this.log(`  Sprint ESCALATED after ${event.iterationsUsed} iterations: ${event.reason}`)
+        break
+
+      case "sprint:completed":
+        this.log(`Sprint ${event.completed ? "completed" : "stopped"} (${event.iterationsUsed} iterations)${event.escalated ? " — escalated" : ""}`)
+        break
+
       default:
         assertNever(event)
     }

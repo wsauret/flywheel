@@ -49,6 +49,7 @@ import { createReviewOnStepComplete, REVIEW_FIX_STEP_INDEX } from "../workflows/
 import { createShipOnStepComplete } from "../workflows/ship-output-extractor";
 import { MilestoneTracker } from "./milestone-tracker";
 import { readCachedFile, parseContextFile } from "./templates";
+import { createSprintLoop, type SprintLoopHandle } from "../sprint/sprint-loop";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "stage-loop-factory" });
@@ -173,6 +174,21 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
       evaluatorTransport,
       onSessionName,
       projectCwd,
+      logBaseDir,
+    });
+  }
+
+  if (workflow === "sprint") {
+    return createSprintStageLoop({
+      workflowId,
+      emitter,
+      executor,
+      config,
+      ui,
+      args,
+      budgetTracker,
+      budgetLimits,
+      evaluatorTransport,
       logBaseDir,
     });
   }
@@ -501,5 +517,116 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
     loop,
     shutdown: () => loop.requestShutdown(),
     getAccumulatedExtra: () => loop.getAccumulatedExtra(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sprint loop configuration
+// ---------------------------------------------------------------------------
+
+interface SprintLoopParams {
+  workflowId: string;
+  emitter: FlywheelEmitter;
+  executor: PhaseExecutor;
+  config: FlywheelConfig;
+  ui: IWorkflowUI;
+  args: Record<string, string>;
+  budgetTracker?: BudgetTracker;
+  budgetLimits?: BudgetLimits;
+  evaluatorTransport?: EvaluatorTransport;
+  logBaseDir?: string;
+}
+
+/**
+ * Create a StageLoopHandle that wraps the SprintLoop.
+ *
+ * Sprint uses its own execution model (iterate-verify-escalate) rather than
+ * the ExecutionLoop's phase-based model. This wrapper adapts SprintLoop to
+ * the StageLoopHandle interface expected by the pipeline.
+ */
+function createSprintStageLoop(params: SprintLoopParams): StageLoopHandle {
+  const {
+    workflowId,
+    emitter,
+    executor,
+    config,
+    ui,
+    args,
+    budgetTracker,
+    budgetLimits,
+    evaluatorTransport,
+    logBaseDir,
+  } = params;
+
+  const taskDescription = args.description || args.topic || "";
+  if (!taskDescription) {
+    throw new Error("Sprint workflow requires a description argument.");
+  }
+
+  const sprintHandle = createSprintLoop({
+    taskDescription,
+    config,
+    executor,
+    emitter,
+    ui,
+    workflowId,
+    evaluatorTransport,
+    budgetTracker,
+    budgetLimits,
+    logBaseDir,
+  });
+
+  // Accumulated extra stores sprint result for escalation carry-forward
+  const extraAccumulator: Record<string, unknown> = {};
+
+  // Create an ExecutionLoop-compatible wrapper
+  const loopAdapter = {
+    async run(): Promise<ExecutionResult> {
+      // Emit workflow started (adapts to the pipeline event model)
+      emitter.workflowStarted(workflowId, `sprint: ${taskDescription.slice(0, 80)}`);
+
+      try {
+        const sprintResult = await sprintHandle.run();
+
+        // Store sprint result for escalation carry-forward
+        extraAccumulator.sprintResult = sprintResult;
+        extraAccumulator.iterationHistory = sprintResult.iterationHistory;
+
+        if (sprintResult.completed) {
+          emitter.workflowCompleted(workflowId);
+          return {
+            completed: true,
+            phasesCompleted: sprintResult.iterationsUsed,
+            phasesTotal: config.sprint.max_iterations,
+          };
+        }
+
+        const reason = sprintResult.reason ?? (sprintResult.escalated ? "Escalated" : "Sprint failed");
+        emitter.workflowCompleted(workflowId);
+        return {
+          completed: true, // Stage "completed" even if escalated — the pipeline decides what happens next
+          phasesCompleted: sprintResult.iterationsUsed,
+          phasesTotal: config.sprint.max_iterations,
+          reason,
+        };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        emitter.workflowFailed(workflowId, reason);
+        return {
+          completed: false,
+          phasesCompleted: 0,
+          phasesTotal: config.sprint.max_iterations,
+          reason,
+        };
+      }
+    },
+    requestShutdown: () => sprintHandle.requestShutdown(),
+    getAccumulatedExtra: () => ({ ...extraAccumulator }),
+  } as unknown as ExecutionLoop;
+
+  return {
+    loop: loopAdapter,
+    shutdown: () => sprintHandle.requestShutdown(),
+    getAccumulatedExtra: () => ({ ...extraAccumulator }),
   };
 }
