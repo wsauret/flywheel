@@ -13,9 +13,6 @@ export type FlywheelEvent =
   | WorkflowCompleted
   | WorkflowFailed
   | WorkflowInterrupted
-  | PhaseStarted
-  | PhaseCompleted
-  | PhaseFailed
   | StepStarted
   | StepCompleted
   | StepFailed
@@ -39,10 +36,6 @@ export type FlywheelEvent =
   | QuestionAsked
   | QuestionReplied
   | QuestionRejected
-  | PipelineStarted
-  | PipelineCompleted
-  | PipelineFailed
-  | PipelineStageTransition
   | BudgetWarning
   | BudgetExhausted
   | SprintStarted
@@ -85,31 +78,6 @@ export interface WorkflowFailed {
 export interface WorkflowInterrupted {
   type: "workflow:interrupted";
   workflowId: string;
-  reason: string;
-  timestamp: string;
-}
-
-// -- Phase events --
-
-export interface PhaseStarted {
-  type: "phase:started";
-  workflowId: string;
-  phaseIndex: number;
-  phaseName: string;
-  timestamp: string;
-}
-
-export interface PhaseCompleted {
-  type: "phase:completed";
-  workflowId: string;
-  phaseIndex: number;
-  timestamp: string;
-}
-
-export interface PhaseFailed {
-  type: "phase:failed";
-  workflowId: string;
-  phaseIndex: number;
   reason: string;
   timestamp: string;
 }
@@ -306,38 +274,6 @@ export interface QuestionReplied {
 export interface QuestionRejected {
   type: "question:rejected";
   requestId: string;
-  timestamp: string;
-}
-
-// -- Pipeline events --
-
-export interface PipelineStarted {
-  type: "pipeline:started";
-  pipelineId: string;
-  stages: string[];
-  timestamp: string;
-}
-
-export interface PipelineCompleted {
-  type: "pipeline:completed";
-  pipelineId: string;
-  stagesCompleted: number;
-  timestamp: string;
-}
-
-export interface PipelineFailed {
-  type: "pipeline:failed";
-  pipelineId: string;
-  reason: string;
-  stagesCompleted: number;
-  timestamp: string;
-}
-
-export interface PipelineStageTransition {
-  type: "pipeline:stage-transition";
-  pipelineId: string;
-  from: string;
-  to: string;
   timestamp: string;
 }
 

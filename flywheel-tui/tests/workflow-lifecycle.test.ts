@@ -41,7 +41,6 @@ describe("Workflow Lifecycle", () => {
 
       // Simulate workflow activity
       bus1.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-1", timestamp: ts() });
-      bus1.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Build", timestamp: ts() });
       bus1.emit({
         type: "worker:output",
         workflowId: "w1",
@@ -51,7 +50,6 @@ describe("Workflow Lifecycle", () => {
       });
 
       expect(store1.getState().workflowStatus).toBe("running");
-      expect(store1.getState().phases).toHaveLength(1);
       // Stdout goes to structured outputBlocks now, not outputLines
       expect(store1.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
@@ -106,11 +104,6 @@ describe("Workflow Lifecycle", () => {
       bus.emit({ type: "workflow:started", workflowId: "w1", planPath: "integration-plan", timestamp: ts() });
       expect(store.getState().workflowStatus).toBe("running");
 
-      // Phase 0 starts
-      bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Setup", timestamp: ts() });
-      expect(store.getState().phases).toHaveLength(1);
-      expect(store.getState().phases[0].status).toBe("running");
-
       // Some output
       bus.emit({
         type: "worker:output",
@@ -121,15 +114,6 @@ describe("Workflow Lifecycle", () => {
       });
       // Stdout goes to structured outputBlocks now
       expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
-
-      // Phase 0 completes
-      bus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 0, timestamp: ts() });
-      expect(store.getState().phases[0].status).toBe("completed");
-
-      // Phase 1 starts and completes
-      bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 1, phaseName: "Build", timestamp: ts() });
-      bus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 1, timestamp: ts() });
-      expect(store.getState().phases).toHaveLength(2);
 
       // Workflow completes
       bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
@@ -193,8 +177,9 @@ describe("Workflow Lifecycle", () => {
       expect(adapter.isConnected()).toBe(false);
 
       // Events after disconnect should not update store
-      bus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Ghost", timestamp: ts() });
-      expect(store.getState().phases).toHaveLength(0);
+      bus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
+      // Store still shows 'running' because adapter is disconnected
+      expect(store.getState().workflowStatus).toBe("running");
     });
 
     it("timerService.reset() clears all timer state", () => {
@@ -244,7 +229,6 @@ describe("Workflow Lifecycle", () => {
       adapter1.start();
 
       bus1.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A", timestamp: ts() });
-      bus1.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Build", timestamp: ts() });
       bus1.emit({
         type: "worker:output",
         workflowId: "w1",
@@ -252,12 +236,10 @@ describe("Workflow Lifecycle", () => {
         data: "first workflow output\n",
         timestamp: ts(),
       });
-      bus1.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 0, timestamp: ts() });
       bus1.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
 
       // Verify first workflow had state
       expect(store1.getState().workflowStatus).toBe("completed");
-      expect(store1.getState().phases).toHaveLength(1);
       // Stdout goes to structured outputBlocks now
       expect(store1.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
@@ -306,15 +288,12 @@ describe("Workflow Lifecycle", () => {
 
       // Only send events to store A
       busA.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A", timestamp: ts() });
-      busA.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Build", timestamp: ts() });
 
       // Store A has state
       expect(storeA.getState().workflowStatus).toBe("running");
-      expect(storeA.getState().phases).toHaveLength(1);
 
       // Store B is untouched
       expect(storeB.getState().workflowStatus).toBe("idle");
-      expect(storeB.getState().phases).toHaveLength(0);
 
       adapterA.stop();
       adapterA.disconnect();

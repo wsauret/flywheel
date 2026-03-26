@@ -90,23 +90,6 @@ export class HeadlessAdapter extends BaseUIAdapter {
         this.log(`Workflow interrupted: ${event.reason}`)
         break
 
-      // ── Phase events (normal+) ──
-      case "phase:started":
-        if (this.logLevel !== "minimal") {
-          this.log(`Phase ${event.phaseIndex}: ${event.phaseName} — started`)
-        }
-        break
-
-      case "phase:completed":
-        if (this.logLevel !== "minimal") {
-          this.log(`Phase ${event.phaseIndex} — completed`)
-        }
-        break
-
-      case "phase:failed":
-        this.log(`Phase ${event.phaseIndex} — FAILED: ${event.reason}`)
-        break
-
       // ── Step events (normal+) ──
       case "step:started":
         if (this.logLevel !== "minimal") {
@@ -228,25 +211,6 @@ export class HeadlessAdapter extends BaseUIAdapter {
       case "question:rejected":
         if (this.logLevel !== "minimal") {
           this.log(`  Question rejected`)
-        }
-        break
-
-      // ── Pipeline events ──
-      case "pipeline:started":
-        this.log(`Pipeline started: ${event.stages.join(" → ")}`)
-        break
-
-      case "pipeline:completed":
-        this.log(`Pipeline completed (${event.stagesCompleted} stages)`)
-        break
-
-      case "pipeline:failed":
-        this.log(`Pipeline FAILED: ${event.reason} (${event.stagesCompleted} stages completed)`)
-        break
-
-      case "pipeline:stage-transition":
-        if (this.logLevel !== "minimal") {
-          this.log(`Pipeline stage: ${event.from} → ${event.to}`)
         }
         break
 

@@ -174,8 +174,8 @@ const eventSequence = adapter.events.map((e: FlywheelEvent) => e.type);
 // Expected event pattern for 2 successful phases
 const expectedPattern = [
   "workflow:started",
-  "phase:started", "worker:spawned", "worker:completed", "phase:completed",
-  "phase:started", "worker:spawned", "worker:completed", "phase:completed",
+  "worker:spawned", "worker:completed",
+  "worker:spawned", "worker:completed",
   "workflow:completed",
 ];
 

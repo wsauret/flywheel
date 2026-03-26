@@ -515,31 +515,29 @@ describe("Structured Adapter Integration", () => {
   // ── Phase reset ──
 
   describe("phase reset", () => {
-    it("blocks are cleared on phase:started", async () => {
+    it("blocks are cleared on new workflow:started", async () => {
       const { bus, store } = createHarness();
 
       // Emit some output
-      emitOutput(bus, claudeTextLine("Phase 0 output"), "claude");
+      emitOutput(bus, claudeTextLine("First workflow output"), "claude");
       await wait();
 
       expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
 
-      // Start a new phase
+      // Start a new workflow
       bus.emit({
-        type: "phase:started",
-        workflowId: "w1",
-        phaseIndex: 1,
-        phaseName: "Phase 1",
+        type: "workflow:started",
+        workflowId: "w2",
+        planPath: "plan2.md",
         timestamp: ts(),
       });
 
       await wait();
 
-      // Blocks should be cleared (or at minimum, old blocks are gone)
+      // Blocks should be cleared (startWorkflow resets output)
       const blocks = store.getState().outputBlocks;
-      // After phase reset, we may have 0 blocks or only new ones
       const textBlocks = blocks.filter((b) => b.kind === "text") as TextBlock[];
-      const oldContent = textBlocks.some((b) => b.content.includes("Phase 0 output"));
+      const oldContent = textBlocks.some((b) => b.content.includes("First workflow output"));
       expect(oldContent).toBe(false);
     });
   });

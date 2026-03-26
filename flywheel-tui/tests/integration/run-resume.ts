@@ -77,11 +77,11 @@ try {
     console.log(`  ${event.type}`);
   }
 
-  // Verify: only 1 phase:started (Phase 2), not 2
-  const phaseStarts = adapter.events.filter(e => e.type === "phase:started").length;
-  console.log(`\nPhase starts: ${phaseStarts} (expected: 1 -- Phase 1 was skipped)`);
+  // Verify: only 1 worker:spawned (Phase 2), not 2 — Phase 1 was skipped
+  const workerSpawns = adapter.events.filter(e => e.type === "worker:spawned").length;
+  console.log(`\nWorker spawns: ${workerSpawns} (expected: 1 -- Phase 1 was skipped)`);
 
-  if (phaseStarts === 1 && result.completed) {
+  if (workerSpawns === 1 && result.completed) {
     console.log("\n=== PASS: Resume correctly skipped Phase 1 ===");
   } else {
     console.log("\n=== FAIL ===");

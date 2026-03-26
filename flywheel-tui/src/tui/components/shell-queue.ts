@@ -27,7 +27,7 @@ import { parsePlan } from "../../controller/plan-parser";
 import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------
-// QueueProgressInfo — replaces PipelineStageInfo for telemetry bar
+// QueueProgressInfo — queue progress tracking for telemetry bar
 // ---------------------------------------------------------------------------
 
 export interface QueueProgressInfo {
@@ -40,7 +40,7 @@ export interface QueueProgressInfo {
 }
 
 // ---------------------------------------------------------------------------
-// formatQueueProgress — replaces formatPipelineStage
+// formatQueueProgress — format queue progress string for display
 // ---------------------------------------------------------------------------
 
 /**

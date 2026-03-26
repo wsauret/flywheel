@@ -7,7 +7,7 @@
 
 import { Show, createMemo } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { formatPipelineStage, formatSprintIteration, type PipelineStageInfo, type SprintIterationInfo } from "../../../utils/format"
+import { formatStageProgress, formatSprintIteration, type StageProgressInfo, type SprintIterationInfo } from "../../../utils/format"
 import type { WorkflowStatus } from "../state/types"
 
 export interface TelemetryBarProps {
@@ -18,7 +18,7 @@ export interface TelemetryBarProps {
   totalPhases?: number
   workflowLabel?: string  // "work" | "plan" | "review" etc.
   stepLabel?: string      // "Phase" | "Step" | "Cycle"
-  pipelineInfo?: PipelineStageInfo | null
+  pipelineInfo?: StageProgressInfo | null
   sprintInfo?: SprintIterationInfo | null
 }
 
@@ -28,7 +28,7 @@ export interface TelemetryBarProps {
 export function TelemetryBar(props: TelemetryBarProps) {
   const themeCtx = useTheme()
 
-  const pipelineStageText = createMemo(() => formatPipelineStage(props.pipelineInfo))
+  const pipelineStageText = createMemo(() => formatStageProgress(props.pipelineInfo))
   const sprintIterationText = createMemo(() => formatSprintIteration(props.sprintInfo))
 
   const showStatus = () => props.status === "stopping" || props.status === "interrupted" || props.status === "failed"

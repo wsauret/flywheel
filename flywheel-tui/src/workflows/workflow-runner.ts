@@ -105,7 +105,7 @@ export class WorkflowRunner {
       const step = steps[i];
 
       // Emit phase started (step maps to phase in the event model)
-      this.emitter.phaseStarted(this.workflowId, i, step.description);
+      // phase event removed: this.emitter.phaseStarted(this.workflowId, i, step.description);
 
       // Build the prompt for this step
       const prompt = this.promptBuilder(i, this.workflow, previousResult);
@@ -125,12 +125,12 @@ export class WorkflowRunner {
         // Capture output for next step's context
         previousResult = result.output;
         stepsCompleted++;
-        this.emitter.phaseCompleted(this.workflowId, i);
+        // phase event removed: this.emitter.phaseCompleted(this.workflowId, i);
       } catch (error) {
         const reason =
           error instanceof Error ? error.message : String(error);
 
-        this.emitter.phaseFailed(this.workflowId, i, reason);
+        // phase event removed: this.emitter.phaseFailed(this.workflowId, i, reason);
         this.emitter.workflowFailed(this.workflowId, reason);
 
         return {

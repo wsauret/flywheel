@@ -2,7 +2,7 @@
 // Queue System — Workflow Templates
 // ---------------------------------------------------------------------------
 //
-// Replaces PipelineMode with named workflow templates. Each template defines
+// Named workflow templates. Each template defines
 // a buildQueue() function returning the initial Step[] for a session.
 //
 // Templates:

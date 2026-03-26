@@ -275,10 +275,9 @@ describe("MockAdapter", () => {
 
     // New bus should work
     bus2.emit({
-      type: "phase:started",
-      workflowId: "test",
-      phaseIndex: 0,
-      phaseName: "Phase 1",
+      type: "workflow:started",
+      workflowId: "test-2",
+      planPath: "plan.md",
       timestamp: new Date().toISOString(),
     });
     expect(adapter.events).toHaveLength(2);

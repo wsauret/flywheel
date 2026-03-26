@@ -137,16 +137,8 @@ describe("E2E Integration", () => {
     // Verify events were emitted (via MockAdapter)
     const eventTypes = adapter.events.map((e: FlywheelEvent) => e.type);
     expect(eventTypes).toContain("workflow:started");
-    expect(eventTypes).toContain("phase:started");
     expect(eventTypes).toContain("worker:spawned");
-    expect(eventTypes).toContain("phase:completed");
     expect(eventTypes).toContain("workflow:completed");
-
-    // Count phase events
-    const phaseStarts = eventTypes.filter((t: string) => t === "phase:started");
-    const phaseCompletions = eventTypes.filter((t: string) => t === "phase:completed");
-    expect(phaseStarts.length).toBe(2);
-    expect(phaseCompletions.length).toBe(2);
 
     // Verify worker completed events
     const workerCompleted = adapter.events.filter(
@@ -199,17 +191,6 @@ describe("E2E Integration", () => {
     const result2 = await controller2.run(PLAN_PATH);
     expect(result2.completed).toBe(true);
     expect(result2.phasesCompleted).toBe(2);
-
-    // Already-completed phases still emit started+completed events (for TUI display)
-    const phaseStarts = adapter2.events.filter(
-      (e: FlywheelEvent) => e.type === "phase:started"
-    );
-    expect(phaseStarts.length).toBe(2);
-
-    const phaseCompletes = adapter2.events.filter(
-      (e: FlywheelEvent) => e.type === "phase:completed"
-    );
-    expect(phaseCompletes.length).toBe(2);
 
     // workflow:started and workflow:completed should still fire
     const workflowEvents = adapter2.events.filter(

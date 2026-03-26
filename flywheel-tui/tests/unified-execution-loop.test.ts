@@ -269,20 +269,6 @@ describe("ExecutionLoop (unified)", () => {
       expect(completed).toBeDefined();
     });
 
-    it("emits phase:started and phase:completed for each phase", async () => {
-      const { loop, adapter } = createUnifiedLoop({
-        spawnerResults: [successResult(), successResult()],
-      });
-
-      await loop.run();
-
-      const phaseStarted = adapter.events.filter((e) => e.type === "phase:started");
-      const phaseCompleted = adapter.events.filter((e) => e.type === "phase:completed");
-
-      expect(phaseStarted).toHaveLength(2);
-      expect(phaseCompleted).toHaveLength(2);
-    });
-
     it("returns empty result for provider with no phases", async () => {
       const { loop } = createUnifiedLoop({
         phases: [],
@@ -411,15 +397,11 @@ describe("ExecutionLoop (unified)", () => {
       expect(result.phasesCompleted).toBe(3);
       // Only one spawn call (the pending phase)
       expect(spawner.calls).toHaveLength(1);
-
-      // All three phases should emit events
-      const phaseStarted = adapter.events.filter((e) => e.type === "phase:started");
-      expect(phaseStarted).toHaveLength(3);
     });
   });
 
   describe("failure handling", () => {
-    it("emits phaseFailed + workflowFailed on phase failure", async () => {
+    it("emits workflowFailed on phase failure", async () => {
       const { loop, adapter } = createUnifiedLoop({
         spawnerResults: [
           failureResult(nonRetryableError("Worker crashed")),
@@ -431,10 +413,7 @@ describe("ExecutionLoop (unified)", () => {
       expect(result.completed).toBe(false);
       expect(result.reason).toContain("Worker crashed");
 
-      const phaseFailed = adapter.events.find((e) => e.type === "phase:failed");
       const workflowFailed = adapter.events.find((e) => e.type === "workflow:failed");
-
-      expect(phaseFailed).toBeDefined();
       expect(workflowFailed).toBeDefined();
     });
 
@@ -1482,20 +1461,6 @@ describe("ExecutionLoop (unified)", () => {
 
       expect(interrupted).toBeDefined();
       expect(failed).toBeUndefined();
-    });
-
-    it("still emits phase:failed for the rate-limited phase", async () => {
-      const { loop, adapter } = createUnifiedLoop({
-        spawnerResults: [
-          failureResult(rateLimitedError("Rate limited by API")),
-        ],
-        config: { max_retries: 0 },
-      });
-
-      await loop.run();
-
-      const phaseFailed = adapter.events.find((e) => e.type === "phase:failed");
-      expect(phaseFailed).toBeDefined();
     });
 
     it("still emits worker:failed for the rate-limited worker", async () => {

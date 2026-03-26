@@ -3,7 +3,7 @@
  *
  * Contains `buildPipelineStages` (pure function to compute stages from
  * config) and `createShellStageRunner` (factory for the StageRunner used
- * by WorkflowPipeline when running within the shell).
+ * by the queue step executor when running within the shell).
  *
  * All workflow types flow through one code path via `createStageLoop()`.
  */
@@ -210,7 +210,7 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
 // ---------------------------------------------------------------------------
 
 /**
- * Create an end-of-session gate check function for the WorkflowPipeline.
+ * Create an end-of-session gate check function for the queue executor.
  *
  * The gate reads `validation-state.json` from the project root and verifies
  * that all assertions have passed before declaring pipeline completion.

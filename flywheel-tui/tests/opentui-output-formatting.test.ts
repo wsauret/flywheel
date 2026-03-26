@@ -197,7 +197,7 @@ describe("OpenTUI Adapter — output formatting", () => {
       expect(allText).toContain("second");
     });
 
-    it("resets buffer on phase:started", () => {
+    it("resets buffer on new workflow:started", () => {
       const { bus, store } = createHarness();
       // Send an incomplete chunk
       bus.emit({
@@ -212,12 +212,11 @@ describe("OpenTUI Adapter — output formatting", () => {
         (b) => b.kind === "text" && (b as TextBlock).content.includes("assistant"),
       )).toHaveLength(0);
 
-      // Start a new phase — should reset buffer and builder
+      // Start a new workflow — should reset buffer and builder
       bus.emit({
-        type: "phase:started",
-        workflowId: "w1",
-        phaseIndex: 0,
-        phaseName: "Build",
+        type: "workflow:started",
+        workflowId: "w2",
+        planPath: "plan.md",
         timestamp: ts(),
       });
 

@@ -51,20 +51,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** When true, pass raw output without NDJSON parsing */
   private _rawMode = false;
 
-  /** When true, we're inside a multi-stage pipeline — skip timer reset on workflow:started */
-  private _pipelineMode = false;
-
-  /** When true, pipeline:failed skips setError (user-initiated pause). */
+  /** When true, queue:failed skips setError (user-initiated pause). */
   public suppressPipelineError = false;
-
-  /** Elapsed time (ms) for each completed pipeline stage, recorded at stage transitions */
-  private _stageTimings: number[] = [];
-
-  /** Timestamp when the current pipeline stage started (for computing per-stage elapsed) */
-  private _stageStartedAt: number = 0;
-
-  /** Current stage label for routing phase events to the correct StageGroup. */
-  private _currentStageLabel: string = "work";
 
   /** Current engine ID for routing events. Updated per worker:output event. */
   private currentEngineId: string | undefined;
@@ -179,16 +167,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     return this._rawMode;
   }
 
-  /** Check if we're inside a multi-stage pipeline. */
-  get isPipelineMode(): boolean {
-    return this._pipelineMode;
-  }
-
-  /** Per-stage elapsed times (ms) recorded at each stage transition. */
-  get pipelineStageTimings(): number[] {
-    return this._stageTimings;
-  }
-
   /** Clean up intervals on disconnect. */
   override disconnect(): void {
     super.disconnect();
@@ -227,41 +205,23 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "workflow:started":
-        if (!this._pipelineMode) {
-          // Standalone workflow: full reset — fresh timer, fresh store.
-          this.timer.reset();
-          this.timer.start();
-          this.actions.startWorkflow(event.planPath);
-          // Create a single "work" stage for standalone mode
-          this._currentStageLabel = "work";
-          this.actions.addStage("work");
-          this.actions.startStage("work");
-        } else {
-          // Pipeline mode: new stage starting within an ongoing session.
-          // The output log is continuous — only update metadata, don't wipe blocks.
-          this.actions.continueStage(event.planPath);
-          // Start the current stage (already created by pipeline:started)
-          this.actions.startStage(this._currentStageLabel);
-        }
+        // Full reset — fresh timer, fresh store.
+        this.timer.reset();
+        this.timer.start();
+        this.actions.startWorkflow(event.planPath);
+        this.actions.addStage("work");
+        this.actions.startStage("work");
         break;
 
       case "workflow:completed":
-        if (!this._pipelineMode) {
-          this.timer.stop();
-        } else {
-          // Pipeline mode: mark the current stage as completed immediately
-          // so the spinner turns green before the next stage-transition event.
-          this.actions.completeStage(this._currentStageLabel);
-        }
+        this.timer.stop();
         // Final flush before completing
         this.flushBlocks();
         this.actions.stopWorkflow("completed");
         break;
 
       case "workflow:failed":
-        if (!this._pipelineMode) {
-          this.timer.stop();
-        }
+        this.timer.stop();
         this.flushBlocks();
         if (!this.suppressPipelineError) {
           this.actions.setError(event.reason);
@@ -269,61 +229,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "workflow:interrupted":
-        if (!this._pipelineMode) {
-          this.timer.stop();
-        }
+        this.timer.stop();
         this.flushBlocks();
         this.actions.stopWorkflow("interrupted");
-        break;
-
-      case "phase:started": {
-        // Dynamic phase discovery: if phase doesn't exist yet, add it
-        if (event.phaseIndex >= this.actions.getState().phases.length) {
-          this.actions.addPhase({
-            index: event.phaseIndex,
-            name: event.phaseName,
-          });
-        }
-
-        // Reset worker-level tracking (agent IDs, tool-use mappings, partial buffers).
-        // These are per-worker-process and invalid across phase boundaries.
-        this.traceParser.reset();
-        this.eventParser.reset();
-        this.ndjsonParser.flush();
-
-        if (this._pipelineMode) {
-          // Pipeline mode: keep accumulated blocks, reset only tracking state.
-          // The output log is continuous across stages/phases.
-          this.builder.resetTracking();
-        } else {
-          // Standalone: each phase starts with a clean output slate.
-          this.builder.reset();
-          this.actions.setOutputBlocks(this.builder.getBlocks());
-        }
-
-        this.timer.registerAgent(`phase-${event.phaseIndex}`);
-        this.actions.startPhase(event.phaseIndex, event.phaseName);
-
-        // Also populate stage-scoped phases
-        this.actions.startPhaseInStage(this._currentStageLabel, event.phaseIndex, event.phaseName);
-        break;
-      }
-
-      case "phase:completed":
-        // Final flush for this phase
-        this.ndjsonParser.flush();
-        this.flushBlocks();
-        this.timer.completeAgent(`phase-${event.phaseIndex}`);
-        this.actions.completePhase(event.phaseIndex);
-        this.actions.completePhaseInStage(this._currentStageLabel, event.phaseIndex);
-        break;
-
-      case "phase:failed":
-        this.ndjsonParser.flush();
-        this.flushBlocks();
-        this.timer.completeAgent(`phase-${event.phaseIndex}`);
-        this.actions.failPhase(event.phaseIndex, event.reason);
-        this.actions.failPhaseInStage(this._currentStageLabel, event.phaseIndex, event.reason);
         break;
 
       case "worker:output":
@@ -466,52 +374,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       case "question:asked":
       case "question:replied":
       case "question:rejected":
-        break;
-
-      // Pipeline events
-      case "pipeline:started":
-        this._pipelineMode = true;
-        this._stageTimings = [];
-        this._stageStartedAt = Date.now();
-        // Start the session timer once at pipeline start (not per-stage).
-        this.timer.reset();
-        this.timer.start();
-        // Pre-create all stage groups with pending status
-        for (const stage of event.stages) {
-          this.actions.addStage(stage);
-        }
-        // Set the first stage as current (will be started on workflow:started)
-        this._currentStageLabel = event.stages[0] ?? "work";
-        this.pushSystemText(`▶ Pipeline started: ${event.stages.join(" → ")}\n`, event.timestamp);
-        break;
-      case "pipeline:stage-transition": {
-        const now = Date.now();
-        if (this._stageStartedAt > 0) {
-          this._stageTimings.push(now - this._stageStartedAt);
-        }
-        this._stageStartedAt = now;
-        // Complete the outgoing stage and buffer the incoming stage label
-        this.actions.completeStage(event.from);
-        this._currentStageLabel = event.to;
-        this.pushSystemText(`◈ ${event.from} complete. Starting ${event.to}...\n`, event.timestamp);
-        break;
-      }
-      case "pipeline:completed":
-        // Complete the final stage
-        this.actions.completeStage(this._currentStageLabel);
-        this._pipelineMode = false;
-        this.timer.stop();
-        this.pushSystemText(`✓ Pipeline complete (${event.stagesCompleted} stages)\n`, event.timestamp);
-        break;
-      case "pipeline:failed":
-        // Fail the current stage
-        this.actions.failStage(this._currentStageLabel);
-        this._pipelineMode = false;
-        this.timer.stop();
-        this.pushSystemText(`✗ Pipeline failed: ${event.reason}\n`, event.timestamp);
-        if (!this.suppressPipelineError) {
-          this.actions.setError(event.reason);
-        }
         break;
 
       // Budget events

@@ -50,13 +50,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       expect(store.getState().workflowStatus).toBe("running");
       expect(store.getState().planName).toBe("plan.md");
 
-      // 2. Start phase 0
-      emitter.phaseStarted(wfId, 0, "Setup environment");
-      expect(store.getState().phases).toHaveLength(1);
-      expect(store.getState().phases[0].status).toBe("running");
-      expect(store.getState().phases[0].name).toBe("Setup environment");
-
-      // 3. Worker output — stdout now goes to structured outputBlocks
+      // 2. Worker output — stdout now goes to structured outputBlocks
       emitter.workerOutput(wfId, "stdout", "Installing dependencies...\n");
       expect(store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
       const textBlocks = store.getState().outputBlocks.filter((b: any) => b.kind === "text");
@@ -68,22 +62,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const stderrText = blocksAfterStderr.filter((b: any) => b.kind === "system").map((b: any) => b.message).join("");
       expect(stderrText).toContain("warning: deprecated package");
 
-      // 4. Complete phase 0
-      emitter.phaseCompleted(wfId, 0);
-      expect(store.getState().phases[0].status).toBe("completed");
-      expect(store.getState().phases[0].endTime).toBeDefined();
-      expect(store.getState().phases[0].duration).toBeDefined();
-
-      // 5. Start phase 1
-      emitter.phaseStarted(wfId, 1, "Run tests");
-      expect(store.getState().phases).toHaveLength(2);
-      expect(store.getState().phases[1].status).toBe("running");
-
-      // 6. Complete phase 1
-      emitter.phaseCompleted(wfId, 1);
-      expect(store.getState().phases[1].status).toBe("completed");
-
-      // 7. Complete workflow
+      // 3. Complete workflow
       emitter.workflowCompleted(wfId);
       expect(store.getState().workflowStatus).toBe("completed");
     });
@@ -94,38 +73,22 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
 
       emitter.workflowStarted(wfId, "multi-plan.md");
 
-      // Phase 0
-      emitter.phaseStarted(wfId, 0, "Build");
       emitter.workerOutput(wfId, "stdout", "compiling...\n");
       emitter.workerOutput(wfId, "stdout", "linking...\n");
-      emitter.phaseCompleted(wfId, 0);
-
-      // Phase 1
-      emitter.phaseStarted(wfId, 1, "Test");
       emitter.workerOutput(wfId, "stdout", "running tests...\n");
       emitter.workerOutput(wfId, "stderr", "1 deprecation warning\n");
 
-      // Verify stderr appears in blocks during the phase it was emitted (as SystemBlock)
-      const phase1Text = store.getState().outputBlocks.filter((b: any) => b.kind === "system").map((b: any) => b.message).join("");
-      expect(phase1Text).toContain("1 deprecation warning");
+      // Verify stderr appears in blocks (as SystemBlock)
+      const stderrText = store.getState().outputBlocks.filter((b: any) => b.kind === "system").map((b: any) => b.message).join("");
+      expect(stderrText).toContain("1 deprecation warning");
 
-      emitter.phaseCompleted(wfId, 1);
-
-      // Phase 2 — blocks reset on phase:started
-      emitter.phaseStarted(wfId, 2, "Deploy");
       emitter.workerOutput(wfId, "stdout", "deploying...\n");
-      emitter.phaseCompleted(wfId, 2);
 
       emitter.workflowCompleted(wfId);
 
       // Verify final state
       const state = store.getState();
       expect(state.workflowStatus).toBe("completed");
-      expect(state.phases).toHaveLength(3);
-      expect(state.phases.every((p) => p.status === "completed")).toBe(true);
-      // Final blocks contain only Phase 2's output (blocks reset per phase)
-      const finalText = state.outputBlocks.filter((b: any) => b.kind === "text").map((b: any) => b.content).join("");
-      expect(finalText).toContain("deploying...");
     });
   });
 
@@ -137,7 +100,6 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const emitter = createFlywheelEmitter(bus);
 
       emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Dangerous operation");
 
       // Request approval
       emitter.approvalRequested(wfId, 0, 0, "Delete production database?");
@@ -155,7 +117,6 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const emitter = createFlywheelEmitter(bus);
 
       emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Risky op");
 
       emitter.approvalRequested(wfId, 0, 0, "Continue?");
       expect(store.getState().approvalState.pending).toBe(true);
@@ -169,7 +130,6 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const emitter = createFlywheelEmitter(bus);
 
       emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Auto-approved op");
 
       emitter.approvalRequested(wfId, 0, 0, "Auto-approve?");
       expect(store.getState().approvalState.pending).toBe(true);
@@ -187,7 +147,6 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const emitter = createFlywheelEmitter(bus);
 
       emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Build");
 
       emitter.workflowFailed(wfId, "Out of memory");
 
@@ -196,26 +155,11 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       expect(state.error).toBe("Out of memory");
     });
 
-    it("phase:failed sets phase error, workflow can still complete later phases", () => {
-      const wfId = "wf-phase-fail";
-      const emitter = createFlywheelEmitter(bus);
-
-      emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Flaky phase");
-      emitter.phaseFailed(wfId, 0, "Compilation error");
-
-      expect(store.getState().phases[0].status).toBe("failed");
-      expect(store.getState().phases[0].error).toBe("Compilation error");
-      // Workflow is still running (phase failure != workflow failure)
-      expect(store.getState().workflowStatus).toBe("running");
-    });
-
     it("workflow:interrupted sets interrupted status", () => {
       const wfId = "wf-interrupt";
       const emitter = createFlywheelEmitter(bus);
 
       emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Long running");
 
       emitter.workflowInterrupted(wfId, "User pressed Ctrl+C");
 
@@ -231,7 +175,6 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       const emitter = createFlywheelEmitter(bus);
 
       emitter.workflowStarted(wfId, "plan.md");
-      emitter.phaseStarted(wfId, 0, "Network phase");
 
       emitter.workerRetrying(wfId, 1, 3, "Connection timeout");
       emitter.workerRetrying(wfId, 2, 3, "Connection timeout");
@@ -249,34 +192,13 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
   // ── Timer Integration ──
 
   describe("timer integration through pipeline", () => {
-    it("timer tracks workflow and phase lifecycle", () => {
+    it("timer tracks workflow lifecycle", () => {
       const wfId = "wf-timer";
       const emitter = createFlywheelEmitter(bus);
 
       // Timer starts on workflow:started
       emitter.workflowStarted(wfId, "plan.md");
       expect(adapter.timer.isRunning()).toBe(true);
-
-      // Phase registers agent
-      emitter.phaseStarted(wfId, 0, "Phase A");
-      expect(adapter.timer.hasAgent("phase-0")).toBe(true);
-
-      // Phase completion removes agent
-      emitter.phaseCompleted(wfId, 0);
-      expect(adapter.timer.hasAgent("phase-0")).toBe(false);
-
-      // Multiple phases tracked simultaneously
-      emitter.phaseStarted(wfId, 1, "Phase B");
-      emitter.phaseStarted(wfId, 2, "Phase C");
-      expect(adapter.timer.hasAgent("phase-1")).toBe(true);
-      expect(adapter.timer.hasAgent("phase-2")).toBe(true);
-
-      emitter.phaseCompleted(wfId, 1);
-      expect(adapter.timer.hasAgent("phase-1")).toBe(false);
-      expect(adapter.timer.hasAgent("phase-2")).toBe(true);
-
-      emitter.phaseFailed(wfId, 2, "failed");
-      expect(adapter.timer.hasAgent("phase-2")).toBe(false);
 
       // Timer stops on workflow completion
       emitter.workflowCompleted(wfId);
@@ -323,27 +245,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
     });
   });
 
-  // ── Navigation State ──
 
-  describe("navigation state during workflow", () => {
-    it("auto-selects latest started phase", () => {
-      const wfId = "wf-nav";
-      const emitter = createFlywheelEmitter(bus);
-
-      emitter.workflowStarted(wfId, "plan.md");
-
-      emitter.phaseStarted(wfId, 0, "Phase 0");
-      expect(store.getState().selectedPhaseIndex).toBe(0);
-
-      emitter.phaseCompleted(wfId, 0);
-      emitter.phaseStarted(wfId, 1, "Phase 1");
-      expect(store.getState().selectedPhaseIndex).toBe(1);
-
-      emitter.phaseCompleted(wfId, 1);
-      emitter.phaseStarted(wfId, 2, "Phase 2");
-      expect(store.getState().selectedPhaseIndex).toBe(2);
-    });
-  });
 });
 
 // ── CLI Arg Parsing → Adapter Selection ──
@@ -399,12 +301,8 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
     emitter.workflowStarted(wfId, "chain-plan.md");
     expect(store.getState().workflowStatus).toBe("running");
 
-    emitter.phaseStarted(wfId, 0, "Chain Phase");
-    expect(store.getState().phases[0].name).toBe("Chain Phase");
-
     emitter.workerSpawned(wfId, 0, 0);
     // worker:spawned is suppressed from TUI output (only logged to file)
-    expect(store.getState().phases).toHaveLength(1);
     const spawnBlocks = store.getState().outputBlocks;
     expect(spawnBlocks).toHaveLength(0);
 
@@ -421,10 +319,6 @@ describe("FlywheelEmitter → EventBus → OpenTUIAdapter → Store (full chain)
       truncated: false,
     } as any);
     // worker:completed is suppressed from TUI output (only logged to file)
-    expect(store.getState().phases[0].status).toBe("running");
-
-    emitter.phaseCompleted(wfId, 0);
-    expect(store.getState().phases[0].status).toBe("completed");
 
     emitter.workflowCompleted(wfId);
     expect(store.getState().workflowStatus).toBe("completed");

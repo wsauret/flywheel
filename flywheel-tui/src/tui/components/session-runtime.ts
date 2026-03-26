@@ -12,7 +12,7 @@
 import { Log } from "../../utils/log"
 import type { WorkflowSession } from "./workflow-session"
 import type { ExecutionLoop } from "../../controller/execution-loop"
-import type { WorkflowPipeline } from "../../controller/workflow-pipeline"
+// Pipeline class was removed — pipeline field retained as null for type compat
 import type { StepExecutor } from "../../queue/executor"
 import type { Queue } from "../../queue/types"
 import type { OutputFlusher } from "../../session/output-persistence"
@@ -40,7 +40,8 @@ export interface RunningRuntime {
   /** @deprecated — field retained for type compatibility; not actively used. */
   controller: null
   loop: ExecutionLoop
-  pipeline: WorkflowPipeline
+  /** @deprecated Pipeline was removed. Always null in queue-based execution. */
+  pipeline: null
   flusher: OutputFlusher
   budgetTracker: BudgetTracker
   storeUnsub: () => void
@@ -189,10 +190,6 @@ export function createSessionRuntimeManager(
 
       try { runtime.pipelineCleanup() } catch (e) {
         log.warn("pipelineCleanup failed", { session: id, error: e instanceof Error ? e : String(e) })
-      }
-
-      try { runtime.pipeline.requestShutdown() } catch (e) {
-        log.warn("pipeline shutdown failed", { session: id, error: e instanceof Error ? e : String(e) })
       }
 
       try { runtime.loop.requestShutdown() } catch (e) {

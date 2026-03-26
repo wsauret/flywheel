@@ -55,19 +55,9 @@ describe("HeadlessAdapter", () => {
       expect(logs.some((l) => l.includes("FAILED") && l.includes("boom"))).toBe(true)
     })
 
-    it("does NOT log phase:started in minimal mode", () => {
-      emit({ type: "phase:started", workflowId: wfId, phaseIndex: 0, phaseName: "Build", timestamp: ts })
-      expect(logs.some((l) => l.includes("Build"))).toBe(false)
-    })
-
     it("does NOT log step:started in minimal mode", () => {
       emit({ type: "step:started", workflowId: wfId, phaseIndex: 0, stepIndex: 0, description: "Install", timestamp: ts })
       expect(logs.some((l) => l.includes("Install"))).toBe(false)
-    })
-
-    it("still logs phase:failed in minimal mode (errors always visible)", () => {
-      emit({ type: "phase:failed", workflowId: wfId, phaseIndex: 0, reason: "broken", timestamp: ts })
-      expect(logs.some((l) => l.includes("FAILED") && l.includes("broken"))).toBe(true)
     })
 
     it("logs approval requests in minimal mode", () => {
@@ -87,11 +77,6 @@ describe("HeadlessAdapter", () => {
       })
       adapter.connect(bus)
       adapter.start()
-    })
-
-    it("logs phase:started", () => {
-      emit({ type: "phase:started", workflowId: wfId, phaseIndex: 0, phaseName: "Build", timestamp: ts })
-      expect(logs.some((l) => l.includes("Build"))).toBe(true)
     })
 
     it("logs step:started", () => {

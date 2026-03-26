@@ -166,29 +166,6 @@ describe("Queue event types", () => {
   // ── Existing events still work ──
 
   describe("existing events preserved", () => {
-    it("pipeline events still emit correctly", () => {
-      bus.emit({
-        type: "pipeline:started",
-        pipelineId: "p1",
-        stages: ["plan", "work"],
-        timestamp: new Date().toISOString(),
-      });
-      expect(received).toHaveLength(1);
-      expect(received[0].type).toBe("pipeline:started");
-    });
-
-    it("phase events still emit correctly", () => {
-      bus.emit({
-        type: "phase:started",
-        workflowId: "wf-1",
-        phaseIndex: 0,
-        phaseName: "Phase 1",
-        timestamp: new Date().toISOString(),
-      });
-      expect(received).toHaveLength(1);
-      expect(received[0].type).toBe("phase:started");
-    });
-
     it("old step events still emit correctly", () => {
       bus.emit({
         type: "step:started",

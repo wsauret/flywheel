@@ -114,9 +114,6 @@ export interface FlywheelEmitter {
   workflowCompleted(workflowId: string): void;
   workflowFailed(workflowId: string, reason: string): void;
   workflowInterrupted(workflowId: string, reason: string): void;
-  phaseStarted(workflowId: string, phaseIndex: number, phaseName: string): void;
-  phaseCompleted(workflowId: string, phaseIndex: number): void;
-  phaseFailed(workflowId: string, phaseIndex: number, reason: string): void;
   stepStarted(workflowId: string, phaseIndex: number, stepIndex: number, description: string): void;
   stepCompleted(workflowId: string, phaseIndex: number, stepIndex: number): void;
   stepFailed(workflowId: string, phaseIndex: number, stepIndex: number, reason: string): void;
@@ -170,12 +167,6 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "workflow:failed", workflowId, reason, timestamp: now() }),
     workflowInterrupted: (workflowId, reason) =>
       bus.emit({ type: "workflow:interrupted", workflowId, reason, timestamp: now() }),
-    phaseStarted: (workflowId, phaseIndex, phaseName) =>
-      bus.emit({ type: "phase:started", workflowId, phaseIndex, phaseName, timestamp: now() }),
-    phaseCompleted: (workflowId, phaseIndex) =>
-      bus.emit({ type: "phase:completed", workflowId, phaseIndex, timestamp: now() }),
-    phaseFailed: (workflowId, phaseIndex, reason) =>
-      bus.emit({ type: "phase:failed", workflowId, phaseIndex, reason, timestamp: now() }),
     stepStarted: (workflowId, phaseIndex, stepIndex, description) =>
       bus.emit({ type: "step:started", workflowId, phaseIndex, stepIndex, description, timestamp: now() }),
     stepCompleted: (workflowId, phaseIndex, stepIndex) =>

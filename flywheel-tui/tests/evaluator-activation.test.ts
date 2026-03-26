@@ -415,10 +415,6 @@ describe("Evaluator activation in execution loop", () => {
       expect(result.completed).toBe(false);
       expect(result.reason).toContain("Worker did not implement all acceptance criteria");
 
-      // Phase failed events should be emitted
-      const phaseFailed = adapter.events.find((e) => e.type === "phase:failed");
-      expect(phaseFailed).toBeDefined();
-
       // Workflow failed events should be emitted
       const workflowFailed = adapter.events.find((e) => e.type === "workflow:failed");
       expect(workflowFailed).toBeDefined();

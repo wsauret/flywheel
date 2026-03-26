@@ -78,16 +78,7 @@ describe("Shell Lifecycle (workflow-session)", () => {
 
       expect(session.store.getState().workflowStatus).toBe("running");
 
-      session.eventBus.emit({
-        type: "phase:started",
-        workflowId: "w1",
-        phaseIndex: 0,
-        phaseName: "Build",
-        timestamp: ts(),
-      });
-
-      expect(session.store.getState().phases).toHaveLength(1);
-      expect(session.store.getState().phases[0].status).toBe("running");
+      expect(session.store.getState().workflowStatus).toBe("running");
 
       destroyWorkflowSession(session);
     });
@@ -129,13 +120,12 @@ describe("Shell Lifecycle (workflow-session)", () => {
 
       // Events after destroy should not update store
       session.eventBus.emit({
-        type: "phase:started",
+        type: "workflow:completed",
         workflowId: "w1",
-        phaseIndex: 0,
-        phaseName: "Ghost",
         timestamp: ts(),
       });
-      expect(session.store.getState().phases).toHaveLength(0);
+      // Store still shows 'running' because adapter is disconnected
+      expect(session.store.getState().workflowStatus).toBe("running");
     });
   });
 
@@ -147,13 +137,6 @@ describe("Shell Lifecycle (workflow-session)", () => {
         type: "workflow:started",
         workflowId: "w1",
         planPath: "plan-A.md",
-        timestamp: ts(),
-      });
-      session1.eventBus.emit({
-        type: "phase:started",
-        workflowId: "w1",
-        phaseIndex: 0,
-        phaseName: "Build",
         timestamp: ts(),
       });
       session1.eventBus.emit({
@@ -170,7 +153,6 @@ describe("Shell Lifecycle (workflow-session)", () => {
       });
 
       expect(session1.store.getState().workflowStatus).toBe("completed");
-      expect(session1.store.getState().phases).toHaveLength(1);
 
       destroyWorkflowSession(session1);
 

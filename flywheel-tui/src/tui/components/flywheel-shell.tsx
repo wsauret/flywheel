@@ -53,12 +53,12 @@ import { ExecutionLoop } from "../../controller/execution-loop"
 import { prepareWorkflowDeps } from "../../controller/workflow-deps"
 import type { WorkflowDeps } from "../../controller/workflow-deps"
 import { EventBus } from "../../events/event-bus"
-import { WorkflowPipeline } from "../../controller/workflow-pipeline"
+import type { PipelineResult, PipelineStageResult } from "../../controller/workflow-pipeline"
 import type { QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
-import { buildPipelineStages, createShellStageRunner, createEndOfSessionGate } from "./shell-pipeline"
+// shell-pipeline.ts imports removed — legacy pipeline code deleted
 import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "./start-command"
 import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, formatQueueProgress, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
 import { buildQueueFromTemplate } from "../../queue/templates"
@@ -79,7 +79,7 @@ import { handlePipelineCompletion } from "./pipeline-completion"
 import { safeUpdateState } from "../../session/safe-transition"
 import { ContextIndexer } from "../../memory/indexer"
 import { injectOutputBlocks } from "./resume-utils"
-import type { PipelineStageInfo, SprintIterationInfo } from "../utils/format"
+import type { SprintIterationInfo } from "../utils/format"
 import type { WorkflowSession } from "./workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 import type { WorkState } from "../routes/work/state/types"
@@ -167,9 +167,7 @@ export function FlywheelShell() {
   const [pendingQuestion, setPendingQuestion] = createSignal<QuestionRequest | null>(null)
   let activeQuestionWiring: QuestionWiring | null = null
 
-  // Pipeline stage indicator tracking
-  const [activePipelineInfo, setActivePipelineInfo] = createSignal<PipelineStageInfo | null>(null)
-  // Queue progress indicator tracking (replaces pipeline info for queue-based execution)
+  // Queue progress indicator tracking
   const [activeQueueInfo, setActiveQueueInfo] = createSignal<QueueProgressInfo | null>(null)
   // Sprint iteration tracking for telemetry bar
   const [activeSprintInfo, setActiveSprintInfo] = createSignal<SprintIterationInfo | null>(null)
@@ -204,7 +202,6 @@ export function FlywheelShell() {
   let activeSession: WorkflowSession | null = null
   // activeController was removed — shutdown is now via activeLoop.requestShutdown()
   let activeLoop: ExecutionLoop | null = null
-  let activePipeline: WorkflowPipeline | null = null
   let activeStepExecutor: StepExecutor | null = null
   let activeQueue: Queue | null = null
   let activeFlusher: OutputFlusher | null = null
@@ -423,430 +420,23 @@ export function FlywheelShell() {
 
   // ── Workflow Lifecycle ──
 
-  const startPipeline = (
-    stages: import("../../controller/workflow-pipeline").PipelineStage[],
-    args: Record<string, string>,
-    preloadedDeps?: WorkflowDeps,
-    interactiveOverrides?: { plan?: boolean; review?: boolean },
-  ) => {
-    // Background previous session (don't destroy — allow concurrent pipelines)
-    const prevFocused = focusedSessionId()
-    if (prevFocused && runtimes.has(prevFocused)) {
-      runtimes.background(prevFocused)
-      // Detach local refs WITHOUT destroying — the pipeline continues running
-      // in the background, tracked by runtimes. The pipeline's async closure
-      // captured its own local references and will clean up on completion.
-      activeSession = null
-      activeLoop = null
-      activePipeline = null
-      activeFlusher = null
-      activeBudgetTracker = null
-      if (storeUnsub) {
-        storeUnsub()
-        storeUnsub = null
-      }
-      cleanupQuestionSubscriptions()
-      cleanupPipelineSubscriptions()
-      setActiveStore(null)
-      setWorkState(null)
-    } else if (activeSession) {
-      // No previous session in runtimes — full destroy (legacy path)
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-      activeLoop = null
-      activePipeline = null
-      if (activeFlusher) {
-        activeFlusher.dispose()
-        activeFlusher = null
-      }
-      if (activeBudgetTracker) {
-        activeBudgetTracker.dispose()
-        activeBudgetTracker = null
-      }
-      setActiveStore(null)
-      setWorkState(null)
-    }
-
-    // Create fresh session
-    const sessionLabel = stages.map((s) => s.workflow).join(" -> ")
-    const session = createWorkflowSession(sessionLabel)
-    activeSession = session
-    setActiveStore(session.store)
-    subscribeToStore(session.store)
-    subscribeToTimer(session.timer)
-    setAppState("working")
-
-    // Config loaded once at pipeline start
-    let deps: WorkflowDeps
-    if (preloadedDeps) {
-      deps = preloadedDeps
-    } else {
-      const resolved = getDepsOrReturnIdle()
-      if (!resolved) return
-      deps = resolved
-    }
-
-    // Create persistent Session for pause/resume support
-    const planPathForSession = args.planPath ?? stages.map((s) => s.workflow).join(" -> ")
-    // Use the raw description as a placeholder name. The dispatcher LLM will
-    // generate a short 2-5 word session name on its first call and update it.
-    const placeholderName = args.description || args.topic || undefined
-    let persistedSessionId: string | null = null
-    try {
-      persistedSessionId = sessionCtx.manager.create(planPathForSession, placeholderName)
-
-      // Set outputPath on the session
-      const projectCwd = deps.config.project_cwd ?? "."
-      updateSession(persistedSessionId, { outputPath: `${persistedSessionId}.output.json` }, projectCwd)
-
-      // Transition to work:active (new -> plan:imported -> plan:approved -> work:active)
-      sessionCtx.manager.updateState(persistedSessionId, "plan:imported")
-      sessionCtx.manager.updateState(persistedSessionId, "plan:approved")
-      sessionCtx.manager.updateState(persistedSessionId, "work:active")
-
-      // Start output flusher — captures session's own store directly (NOT activeStore() signal)
-      const persistence = createOutputPersistence({
-        sessionId: persistedSessionId,
-        baseDir: projectCwd,
-      })
-      const sessionStore = session.store
-      const getOutputBlocks = () => (sessionStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
-      activeFlusher = persistence.createFlusher(getOutputBlocks, { intervalMs: 5000 })
-
-      // Register in session maps
-      sessionStores.set(persistedSessionId, session.store)
-
-      sessionCtx.refreshList()
-    } catch (err) {
-      // Best effort — don't block pipeline start on persistence failure
-      toast.show({
-        message: `Session persistence failed: ${err instanceof Error ? err.message : String(err)}`,
-        variant: "warning",
-      })
-    }
-
-    // Create BudgetTracker for the pipeline.
-    // Read budgetLimits from the persisted session (set by SessionManager.create()
-    // from config.budget). If no session was persisted, budgetLimits stays null
-    // and the tracker is not created — budget enforcement is silently skipped.
-    let pipelineBudgetTracker: BudgetTracker | null = null
-    let pipelineBudgetLimits: BudgetLimits | null = null
-    const pipelineSessionId_ = persistedSessionId
-    if (pipelineSessionId_) {
-      const projectCwd = deps.config.project_cwd ?? "."
-      const persistedSession = readSession(pipelineSessionId_, projectCwd)
-      if (persistedSession) {
-        pipelineBudgetLimits = persistedSession.budgetLimits
-        pipelineBudgetTracker = createBudgetTracker({
-          sessionId: pipelineSessionId_,
-          baseDir: projectCwd,
-        })
-        activeBudgetTracker = pipelineBudgetTracker
-      }
-    }
-
-    // Create question wiring for pipeline gates (DRY: extracted to createQuestionWiring)
-    cleanupQuestionSubscriptions()
-    const questionWiring = createQuestionWiring({
-      eventBus: session.eventBus,
-      onQuestion: (q) => setPendingQuestion(q),
-      onClear: () => setPendingQuestion(null),
-    })
-    activeQuestionWiring = questionWiring
-    const questionService = questionWiring.service
-
-    // Pipeline stage indicator subscriptions
-    cleanupPipelineSubscriptions()
-    pipelineUnsubs.push(
-      session.eventBus.subscribeToType("pipeline:started", (e) => {
-        setActivePipelineInfo({
-          stage: 1,
-          total: e.stages.length,
-          stageName: e.stages[0],
-        })
-        setActiveWorkflowName(e.stages[0])
-      }),
-      session.eventBus.subscribeToType("pipeline:stage-transition", (e) => {
-        setActivePipelineInfo((prev) => prev ? {
-          stage: prev.stage + 1,
-          total: prev.total,
-          stageName: e.to,
-        } : null)
-        setActiveWorkflowName(e.to)
-      }),
-      session.eventBus.subscribeToType("pipeline:completed", () => {
-        setActivePipelineInfo(null)
-        setActiveSprintInfo(null)
-        // Final flush on pipeline completion
-        if (activeFlusher) {
-          activeFlusher.schedule()
-          activeFlusher.flush().catch(() => {})
-        }
-      }),
-      session.eventBus.subscribeToType("pipeline:failed", () => {
-        setActivePipelineInfo(null)
-        setActiveSprintInfo(null)
-      }),
-      // Event-driven flush: persist output after each phase completes
-      session.eventBus.subscribeToType("phase:completed", () => {
-        if (activeFlusher) {
-          activeFlusher.schedule()
-        }
-      }),
-      // Sprint iteration tracking for telemetry bar
-      session.eventBus.subscribeToType("sprint:started", (e) => {
-        setActiveSprintInfo({ iteration: 0, maxIterations: e.maxIterations })
-      }),
-      session.eventBus.subscribeToType("sprint:iteration-started", (e) => {
-        setActiveSprintInfo({ iteration: e.iteration, maxIterations: e.maxIterations })
-      }),
-      session.eventBus.subscribeToType("sprint:completed", () => {
-        setActiveSprintInfo(null)
-      }),
-      session.eventBus.subscribeToType("sprint:escalated", () => {
-        setActiveSprintInfo(null)
-      }),
-    )
-
-    // Shared context indexer (one per project_cwd, lazy-init)
-    const pipelineContextIndexer = getOrCreateContextIndexer()
-
-    const capturedSessionId = persistedSessionId
-    const capturedProjectCwd = deps.config.project_cwd ?? "."
-    const pipelineSessionId = persistedSessionId
-    _isPipelineRunning = true
-    _userInitiatedPause = false
-
-    // Capture local references for the async closure — these survive backgrounding
-    // (backgrounding nulls the shell-level `let` refs but the closure keeps its own)
-    const capturedFlusher = activeFlusher
-
-    queueMicrotask(async () => {
-      // Check if this session is still the one the user is viewing.
-      // If backgrounded, we should persist state but NOT force UI transitions.
-      const isStillViewed = () => viewedSessionId() === pipelineSessionId
-
-      // Start context indexing (shared — only runs once, subsequent calls are no-ops)
-      if (!_indexerStarted) {
-        try {
-          await pipelineContextIndexer.startIndexing()
-          _indexerStarted = true
-        } catch { /* silently fall back to empty context */ }
-      }
-
-      // Prune old subprocess log directories (best-effort, fire-and-forget)
-      const pipelineLogBaseDir = deps.config.project_cwd ?? process.cwd()
-      try { SubprocessLogger.cleanup(pipelineLogBaseDir) } catch { /* best-effort */ }
-
-      // Track current workflowId for dispatcher/evaluator output events.
-      // Updated by workflow:started events; closures below capture this mutable reference.
-      let currentWorkflowId = "unknown"
-      const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
-        currentWorkflowId = ev.workflowId
-      })
-      pipelineUnsubs.push(workflowIdUnsub)
-
-      const pipelineEngineName = deps.config.engine
-
-      // Auto-detect dispatcher transport (engine-aware: claude → CLI, opencode → SDK then CLI).
-      let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
-      try {
-        const { resolveModels } = await import("../../config/loader")
-        const { dispatcherModel } = resolveModels(deps.config)
-        const resolved = await autoDetectTransport({
-          spawner: deps.spawner,
-          engineName: deps.config.engine,
-          dispatcherModel,
-          onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
-          onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
-          logBaseDir: pipelineLogBaseDir,
-        })
-        dispatcherTransport = resolved.transport
-        log.info("dispatcher transport resolved", { label: resolved.label, engine: deps.config.engine })
-      } catch (err) {
-        log.warn("dispatcher transport auto-detect failed, phases will use static prompt builder", {
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-
-      // Create engine-aware evaluator transport (same engine/model config as dispatcher).
-      // Uses SdkSpawner when available for OpenCode (shared singleton with dispatcher).
-      let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
-      if (!deps.config.skip_evaluation) {
-        try {
-          const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
-          const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
-          evaluatorTransport = await createEvaluatorTransport({
-            spawner: deps.spawner,
-            engineName: deps.config.engine,
-            evaluatorModel: evalModel,
-            onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
-            onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: pipelineEngineName, timestamp: Date.now() }),
-            logBaseDir: pipelineLogBaseDir,
-          })
-          log.info("evaluator transport created", { engine: deps.config.engine })
-        } catch (err) {
-          log.warn("evaluator transport creation failed, evaluation will be skipped", {
-            error: err instanceof Error ? err.message : String(err),
-          })
-        }
-      }
-
-      // Create stage runner — unified path for all workflow types, dispatcher always wired.
-      const stageRunner = createShellStageRunner({
-        session,
-        deps,
-        questionService,
-        interactiveOverrides,
-        budgetTracker: pipelineBudgetTracker ?? undefined,
-        budgetLimits: pipelineBudgetLimits ?? undefined,
-        onLoopCreated: (loop: ExecutionLoop) => { activeLoop = loop },
-        contextIndexer: pipelineContextIndexer,
-        dispatcherTransport,
-        evaluatorTransport,
-        // onSessionName: update persisted session + refresh sidebar when dispatcher returns a name
-        onSessionName: capturedSessionId ? (name: string) => {
-          try {
-            updateSession(capturedSessionId, { name, label: name }, capturedProjectCwd)
-            sessionCtx.refreshList()
-          } catch { /* best-effort */ }
-        } : undefined,
-        logBaseDir: pipelineLogBaseDir,
-      })
-
-      // Create pipeline now that stageRunner is ready
-      const projectCwd = deps.config.project_cwd || process.cwd()
-      const endOfSessionGate = createEndOfSessionGate(deps.config, projectCwd)
-      const pipeline = new WorkflowPipeline({
-        stages,
-        args,
-        config: deps.config,
-        stageRunner,
-        questionService,
-        eventBus: session.eventBus,
-        endOfSessionGate,
-      })
-      activePipeline = pipeline
-
-      // Register pipeline in sessionControllers (uniform shutdown interface)
-      if (pipelineSessionId) {
-        sessionControllers.set(pipelineSessionId, {
-          shutdown: async () => { pipeline.requestShutdown() },
-        })
-        setViewedSessionId(pipelineSessionId)
-
-        // Register in runtimes manager
-        runtimes.register(pipelineSessionId, {
-          kind: "running" as const,
-          sessionId: pipelineSessionId,
-          session,
-          controller: null,
-          loop: null as any, // Set via onLoopCreated callback
-          pipeline,
-          flusher: activeFlusher!,
-          budgetTracker: pipelineBudgetTracker!,
-          storeUnsub: storeUnsub!,
-          questionCleanup: () => cleanupQuestionSubscriptions(),
-          pipelineCleanup: () => cleanupPipelineSubscriptions(),
-          contextIndexer: pipelineContextIndexer,
-          workerPid: null,
-        })
-        setFocusedSessionId(pipelineSessionId)
-      }
-
-      let pipelineResult: import("../../controller/workflow-pipeline").PipelineResult | undefined
-      try {
-        pipelineResult = await pipeline.run()
-        if (!pipelineResult.completed && !_userInitiatedPause) {
-          const isRateLimitPause = /rate limit/i.test(pipelineResult.reason ?? "")
-
-          if (isRateLimitPause) {
-            // Rate limit exhaustion: show toast warning, skip ErrorModal
-            toast.show({
-              message: "Workflow paused — rate limit reached. Resume when limits lift.",
-              variant: "warning",
-              duration: 5000,
-            })
-          } else {
-            activeStore()?.setError(pipelineResult.reason ?? "Pipeline failed")
-          }
-
-          // Persist lifecycle state as work:paused (failure ≠ completed)
-          // Uses safeUpdateState to handle sessions stuck in intermediate states
-          // (e.g., "new" when startup transitions failed)
-          if (pipelineSessionId) {
-            safeUpdateState(
-              (id, s) => sessionCtx.manager.updateState(id, s),
-              pipelineSessionId,
-              "work:paused",
-            )
-            sessionCtx.refreshList()
-          }
-          if (isStillViewed()) setAppState("completed")
-        }
-      } catch (err) {
-        if (!_userInitiatedPause) {
-          activeStore()?.setError(String(err))
-          // Persist lifecycle state as work:paused (crash ≠ completed)
-          // Uses safeUpdateState to handle sessions stuck in intermediate states
-          // (e.g., "new" when startup transitions failed)
-          if (pipelineSessionId) {
-            safeUpdateState(
-              (id, s) => sessionCtx.manager.updateState(id, s),
-              pipelineSessionId,
-              "work:paused",
-            )
-            sessionCtx.refreshList()
-          }
-          if (isStillViewed()) setAppState("completed")
-        }
-      } finally {
-        _isPipelineRunning = false
-
-        // Note: shared context indexer is NOT disposed per-pipeline.
-        // It stays alive for the shell's lifetime and is disposed in onCleanup.
-
-        // Dispose budget tracker (flushes pending cost/usage data to session file)
-        if (pipelineBudgetTracker) {
-          pipelineBudgetTracker.dispose()
-          if (activeBudgetTracker === pipelineBudgetTracker) {
-            activeBudgetTracker = null
-          }
-        }
-
-        // Remove from sessionControllers and runtimes on completion
-        // (keep in sessionStores for cached viewing).
-        // Use remove() (not teardown()) — pipeline resources are already cleaned up.
-        if (pipelineSessionId) {
-          sessionControllers.delete(pipelineSessionId)
-          runtimes.remove(pipelineSessionId)
-        }
-
-        // Handle auto-archive or completion — errors must stay in the output
-        // pane, never leak to stderr where they overlay the TUI chrome.
-        if (pipelineResult && !_userInitiatedPause) {
-          try {
-            await handlePipelineCompletion(pipelineResult, {
-              orchestrator,
-              sessionId: pipelineSessionId ?? null,
-              flusher: capturedFlusher,
-              toast,
-              updateState: (id, s) => sessionCtx.manager.updateState(id, s),
-              refreshList: () => sessionCtx.refreshList(),
-            })
-          } catch (completionErr) {
-            log.error("pipeline completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
-          }
-        }
-      }
-    })
-  }
+  // NOTE: startPipeline was removed — all execution now goes through startQueueExecution.
 
   /**
    * Start queue-based execution. Creates a new session, builds the queue,
    * wires events, and runs the step executor.
    *
-   * This is the queue-based replacement for startPipeline().
+   * VAL-SHELL-013: Shell transitions idle→working on queue start
+   * VAL-SHELL-014: Shell transitions working→completed on queue success
+   * VAL-SHELL-015: Shell transitions working→completed on queue failure
+   * VAL-SHELL-019: Session created when queue starts
+   * VAL-SHELL-020: Session lifecycle follows queue progression
+   * VAL-SHELL-035: Output blocks render during step execution
+   */
+  /**
+   * Start queue-based execution. Creates a new session, builds the queue,
+   * wires events, and runs the step executor.
+   *
    * VAL-SHELL-013: Shell transitions idle→working on queue start
    * VAL-SHELL-014: Shell transitions working→completed on queue success
    * VAL-SHELL-015: Shell transitions working→completed on queue failure
@@ -866,7 +456,6 @@ export function FlywheelShell() {
       runtimes.background(prevFocused)
       activeSession = null
       activeLoop = null
-      activePipeline = null
       activeStepExecutor = null
       activeQueue = null
       activeFlusher = null
@@ -883,7 +472,6 @@ export function FlywheelShell() {
       destroyWorkflowSession(activeSession)
       activeSession = null
       activeLoop = null
-      activePipeline = null
       activeStepExecutor = null
       activeQueue = null
       if (activeFlusher) {
@@ -1324,7 +912,6 @@ export function FlywheelShell() {
   const cleanupPipelineSubscriptions = () => {
     for (const unsub of pipelineUnsubs) unsub()
     pipelineUnsubs = []
-    setActivePipelineInfo(null)
     setActiveQueueInfo(null)
     _isPipelineRunning = false
   }
@@ -1337,10 +924,6 @@ export function FlywheelShell() {
    * pausePipeline() (partial cleanup — keeps store/adapter alive).
    */
   const _clearPipelineRuntime = (): Promise<void> | undefined => {
-    if (activePipeline) {
-      activePipeline.requestShutdown()
-      activePipeline = null
-    }
     if (activeStepExecutor) {
       activeStepExecutor.requestShutdown()
       activeStepExecutor = null
@@ -1991,11 +1574,10 @@ export function FlywheelShell() {
     // The pipeline will clean up sessionControllers when it finishes.
     activeSession = null
     activeLoop = null
-    activePipeline = null
     activeFlusher = null
     activeBudgetTracker = null
 
-    // Clear question/pipeline UI subscriptions (the pipeline itself doesn't need
+    // Clear question/queue UI subscriptions (the queue executor itself doesn't need
     // these signals to function — they only drive UI state like pendingQuestion).
     cleanupQuestionSubscriptions()
     cleanupPipelineSubscriptions()
@@ -2655,11 +2237,11 @@ export function FlywheelShell() {
           totalPhases={layoutState().phases.length}
           workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
           stepLabel={hasActiveWorkflow() ? activeStepLabel() : undefined}
-          pipelineInfo={activePipelineInfo() ?? (activeQueueInfo() ? {
+          pipelineInfo={activeQueueInfo() ? {
             stage: activeQueueInfo()!.currentStep,
             total: activeQueueInfo()!.totalSteps,
             stageName: activeQueueInfo()!.stepName,
-          } : null)}
+          } : null}
           sprintInfo={activeSprintInfo()}
         />
       </box>

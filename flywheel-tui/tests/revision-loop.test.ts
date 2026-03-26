@@ -287,9 +287,9 @@ describe("VAL-REV-005: Successful revision passes evaluation and completes phase
     expect(spawner.calls.length).toBe(2);
     // Evaluator called twice (initial + revision)
     expect(callCount()).toBe(2);
-    // Phase completed event emitted
-    const phaseCompleted = adapter.events.filter((e) => e.type === "phase:completed");
-    expect(phaseCompleted).toHaveLength(1);
+    // Workflow completed event emitted
+    const workflowCompleted = adapter.events.filter((e) => e.type === "workflow:completed");
+    expect(workflowCompleted).toHaveLength(1);
   });
 });
 
@@ -326,9 +326,7 @@ describe("VAL-REV-006: Phase fails with accumulated feedback when max_revisions 
     expect(spawner.calls.length).toBe(3);
     // Evaluator called 3 times
     expect(callCount()).toBe(3);
-    // Phase failed + workflow failed events
-    const phaseFailed = adapter.events.filter((e) => e.type === "phase:failed");
-    expect(phaseFailed).toHaveLength(1);
+    // Workflow failed event
     const workflowFailed = adapter.events.filter((e) => e.type === "workflow:failed");
     expect(workflowFailed).toHaveLength(1);
   });

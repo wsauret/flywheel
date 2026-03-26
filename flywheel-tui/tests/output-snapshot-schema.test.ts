@@ -266,7 +266,7 @@ describe("round-trip serialization", () => {
         duration: 1234,
       }),
       contextGroupBlock([toolBlock("grep", "pattern")]),
-      systemBlock("phase:started"),
+      systemBlock("workflow:started"),
     ];
 
     const json = JSON.stringify(toSnapshot(original));

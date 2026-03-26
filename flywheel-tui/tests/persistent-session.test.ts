@@ -252,19 +252,7 @@ describe("Persistent Session Integration", () => {
       });
       expect(session1.store.getState().workflowStatus).toBe("running");
 
-      // Phase 0: Setup
-      session1.eventBus.emit({
-        type: "phase:started",
-        workflowId: "w1",
-        phaseIndex: 0,
-        phaseName: "Setup",
-        timestamp: ts(),
-      });
-      expect(session1.store.getState().phases).toHaveLength(1);
-      expect(session1.store.getState().phases[0].name).toBe("Setup");
-      expect(session1.store.getState().phases[0].status).toBe("running");
-
-      // Output during phase 0 — stdout now goes to structured outputBlocks
+      // Output — stdout now goes to structured outputBlocks
       session1.eventBus.emit({
         type: "worker:output",
         workflowId: "w1",
@@ -273,40 +261,6 @@ describe("Persistent Session Integration", () => {
         timestamp: ts(),
       });
       expect(session1.store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
-
-      // Phase 0 completes
-      session1.eventBus.emit({
-        type: "phase:completed",
-        workflowId: "w1",
-        phaseIndex: 0,
-        timestamp: ts(),
-      });
-      expect(session1.store.getState().phases[0].status).toBe("completed");
-
-      // Phase 1: Build
-      session1.eventBus.emit({
-        type: "phase:started",
-        workflowId: "w1",
-        phaseIndex: 1,
-        phaseName: "Build",
-        timestamp: ts(),
-      });
-      session1.eventBus.emit({
-        type: "worker:output",
-        workflowId: "w1",
-        stream: "stdout",
-        data: "Compiling...\n",
-        timestamp: ts(),
-      });
-      session1.eventBus.emit({
-        type: "phase:completed",
-        workflowId: "w1",
-        phaseIndex: 1,
-        timestamp: ts(),
-      });
-      expect(session1.store.getState().phases).toHaveLength(2);
-      // Stdout worker:output goes to structured outputBlocks, not outputLines
-      // (outputBlocks are reset per phase, so check existence not count)
 
       // Workflow completes
       session1.eventBus.emit({
@@ -338,19 +292,6 @@ describe("Persistent Session Integration", () => {
         type: "workflow:started",
         workflowId: "w2",
         planPath: "plans/deploy.md",
-        timestamp: ts(),
-      });
-      session2.eventBus.emit({
-        type: "phase:started",
-        workflowId: "w2",
-        phaseIndex: 0,
-        phaseName: "Deploy",
-        timestamp: ts(),
-      });
-      session2.eventBus.emit({
-        type: "phase:completed",
-        workflowId: "w2",
-        phaseIndex: 0,
         timestamp: ts(),
       });
       session2.eventBus.emit({
@@ -399,7 +340,6 @@ describe("Persistent Session Integration", () => {
       const session1 = shell.activeSession!;
 
       session1.eventBus.emit({ type: "workflow:started", workflowId: "w1", planPath: "plan-A.md", timestamp: ts() });
-      session1.eventBus.emit({ type: "phase:started", workflowId: "w1", phaseIndex: 0, phaseName: "Phase-A", timestamp: ts() });
       for (let i = 0; i < 10; i++) {
         session1.eventBus.emit({
           type: "worker:output",
@@ -409,11 +349,9 @@ describe("Persistent Session Integration", () => {
           timestamp: ts(),
         });
       }
-      session1.eventBus.emit({ type: "phase:completed", workflowId: "w1", phaseIndex: 0, timestamp: ts() });
       session1.eventBus.emit({ type: "workflow:completed", workflowId: "w1", timestamp: ts() });
 
       // Verify first session has accumulated state
-      expect(session1.store.getState().phases).toHaveLength(1);
       // Stdout worker:output now goes to structured outputBlocks, not outputLines
       expect(session1.store.getState().outputBlocks.length).toBeGreaterThanOrEqual(1);
       expect(session1.store.getState().workflowStatus).toBe("completed");
@@ -451,13 +389,12 @@ describe("Persistent Session Integration", () => {
 
       // Events on the old event bus should not update the store
       session.eventBus.emit({
-        type: "phase:started",
+        type: "workflow:completed",
         workflowId: "w1",
-        phaseIndex: 0,
-        phaseName: "Ghost",
         timestamp: ts(),
       });
-      expect(session.store.getState().phases).toHaveLength(0);
+      // Store still shows 'running' because adapter is disconnected
+      expect(session.store.getState().workflowStatus).toBe("running");
     });
   });
 
@@ -795,7 +732,7 @@ describe("Persistent Session Integration", () => {
       expect(session.adapter.suppressPipelineError).toBe(true);
     });
 
-    it("pipeline:failed is NOT turned into ErrorModal for user-initiated pauses", () => {
+    it("workflow:failed is NOT turned into ErrorModal when suppressPipelineError is set", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
       session.eventBus.emit({
@@ -808,12 +745,11 @@ describe("Persistent Session Integration", () => {
       // Set suppress flag on adapter (as pause would)
       session.adapter.suppressPipelineError = true;
 
-      // Emit pipeline:failed (happens internally when shutdown is requested)
+      // Emit workflow:failed (happens internally when shutdown is requested)
       session.eventBus.emit({
-        type: "pipeline:failed",
-        pipelineId: "p1",
+        type: "workflow:failed",
+        workflowId: "w1",
         reason: "Pipeline shut down",
-        stagesCompleted: 0,
         timestamp: ts(),
       });
 

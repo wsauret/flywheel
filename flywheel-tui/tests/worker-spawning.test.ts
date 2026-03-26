@@ -705,8 +705,6 @@ describe("ENOENT → install instructions", () => {
     return {
       workflowStarted: () => {},
       workflowCompleted: () => {},
-      phaseStarted: () => {},
-      phaseCompleted: () => {},
       workerSpawned: () => {},
       workerCompleted: () => {},
       workerOutput: () => {},
@@ -876,8 +874,6 @@ describe("Fallback Agent Chain", () => {
     return {
       workflowStarted: () => {},
       workflowCompleted: () => {},
-      phaseStarted: () => {},
-      phaseCompleted: () => {},
       workerSpawned: () => {},
       workerCompleted: () => {},
       workerOutput: () => {},

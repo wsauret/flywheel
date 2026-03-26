@@ -26,10 +26,6 @@ export class MockAdapter extends BaseUIAdapter {
       case "workflow:completed":
       case "workflow:failed":
       case "workflow:interrupted":
-      // Phase events
-      case "phase:started":
-      case "phase:completed":
-      case "phase:failed":
       // Step events
       case "step:started":
       case "step:completed":
@@ -59,11 +55,6 @@ export class MockAdapter extends BaseUIAdapter {
       case "question:asked":
       case "question:replied":
       case "question:rejected":
-      // Pipeline events
-      case "pipeline:started":
-      case "pipeline:completed":
-      case "pipeline:failed":
-      case "pipeline:stage-transition":
       // Budget events
       case "budget:warning":
       case "budget:exhausted":

@@ -279,50 +279,5 @@ describe("HeadlessAdapter — budget events", () => {
       ).not.toThrow()
     })
 
-    it("handles pipeline:started without throwing", () => {
-      expect(() =>
-        emit({
-          type: "pipeline:started",
-          pipelineId: "p-1",
-          stages: ["plan", "work"],
-          timestamp: ts,
-        })
-      ).not.toThrow()
-    })
-
-    it("handles pipeline:completed without throwing", () => {
-      expect(() =>
-        emit({
-          type: "pipeline:completed",
-          pipelineId: "p-1",
-          stagesCompleted: 2,
-          timestamp: ts,
-        })
-      ).not.toThrow()
-    })
-
-    it("handles pipeline:failed without throwing", () => {
-      expect(() =>
-        emit({
-          type: "pipeline:failed",
-          pipelineId: "p-1",
-          reason: "boom",
-          stagesCompleted: 1,
-          timestamp: ts,
-        })
-      ).not.toThrow()
-    })
-
-    it("handles pipeline:stage-transition without throwing", () => {
-      expect(() =>
-        emit({
-          type: "pipeline:stage-transition",
-          pipelineId: "p-1",
-          from: "plan",
-          to: "work",
-          timestamp: ts,
-        })
-      ).not.toThrow()
-    })
   })
 })
