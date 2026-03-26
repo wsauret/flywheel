@@ -17,55 +17,62 @@ const baseCtx: WorkflowStepContext = {
 };
 
 // ---------------------------------------------------------------------------
-// Plan Draft Prompt — Validation Contract Instructions
+// Plan Draft Prompt — Behavioral Contract Instructions (JSON)
 // ---------------------------------------------------------------------------
 
-describe("buildPlanDraftPrompt — validation contract instructions", () => {
-  it("instructs planner to generate validation-contract.md", () => {
+describe("buildPlanDraftPrompt — behavioral contract instructions (JSON)", () => {
+  it("instructs planner to embed behavioralContract in JSON plan", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    expect(result).toContain("validation-contract.md");
+    expect(result).toContain("behavioralContract");
   });
 
-  it("includes the assertion ID format VAL-AREA-NNN", () => {
+  it("includes the assertion ID format BC-AREA-NNN", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    expect(result).toContain("VAL-");
-    // Should reference the format convention like VAL-AREA-NNN or VAL-<AREA>-NNN
-    expect(result).toMatch(/VAL-[A-Z]+-\d{3}/);
+    expect(result).toContain("BC-");
+    // Should reference the format convention like BC-AREA-NNN or BC-{AREA}-{NNN}
+    expect(result).toMatch(/BC-[A-Z]+-\d{3}/);
   });
 
-  it("includes the assertion structure (ID, title, behavioral description, evidence)", () => {
+  it("includes the assertion structure fields (id, title, description, evidence, area)", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    // The prompt must explain the assertion structure with these fields
-    expect(result).toContain("Behavioral description");
-    expect(result).toContain("Evidence");
+    // JSON schema rules describe each field
+    expect(result).toContain('"id"');
+    expect(result).toContain('"title"');
+    expect(result).toContain('"description"');
+    expect(result).toContain('"evidence"');
+    expect(result).toContain('"area"');
   });
 
-  it("instructs inclusion of cross-area flow assertions", () => {
+  it("includes behavioral not structural principle", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    expect(result).toContain("Cross-Area");
+    expect(result).toContain("Behavioral, not structural");
   });
 
-  it("instructs generation of milestone markers in the plan", () => {
-    const result = buildPlanDraftPrompt(baseCtx);
-    expect(result).toContain("## Milestone:");
-  });
-
-  it("instructs adding fulfills annotations to plan phases", () => {
+  it("instructs fulfills field links steps to assertions", () => {
     const result = buildPlanDraftPrompt(baseCtx);
     expect(result).toContain("fulfills");
-    // Should reference the HTML comment format for fulfills
-    expect(result).toContain("<!-- fulfills:");
+    // JSON fulfills field, not HTML comment annotation
+    expect(result).toContain('"fulfills"');
   });
 
-  it("includes per-area assertion grouping instructions", () => {
+  it("includes area field for assertion grouping", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    expect(result).toContain("## Area:");
+    expect(result).toContain('"area"');
+    expect(result).toContain("Area grouping");
   });
 
-  it("includes complete validation contract template example", () => {
+  it("includes complete behavioral contract example in JSON", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    // Should have a template or example showing the contract format
-    expect(result).toContain("# Validation Contract");
+    // Should have a JSON example showing the contract format
+    expect(result).toContain('"behavioralContract"');
+    expect(result).toContain("BC-SERVER-001");
+  });
+
+  it("does NOT instruct generating a separate validation-contract.md file", () => {
+    const result = buildPlanDraftPrompt(baseCtx);
+    // The contract is embedded in JSON, not a separate markdown file
+    expect(result).not.toContain("## Validation Contract Output");
+    expect(result).not.toContain("# Validation Contract");
   });
 });
 

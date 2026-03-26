@@ -3,10 +3,13 @@ import { SCOPE_DISCIPLINE, FILE_LINE_DISCIPLINE } from "../conventions.js";
 import { renderHandoffInstruction, PLAN_DRAFT_FIELDS } from "../../handoff/field-specs.js";
 
 export const planDraftValidationCriteria =
-  "Produces a plan draft with phases, checklist items, and technical reference";
+  "Produces a JSON plan file (.plan.json) with steps[], behavioralContract[], decisions[], and risks[]";
 
 /**
  * Builds a prompt for drafting an implementation plan from research results.
+ *
+ * The worker produces a single JSON file at .flywheel/plans/<type>-<description>.plan.json
+ * containing {steps[], behavioralContract[], decisions[], risks[]}.
  */
 export function buildPlanDraftPrompt(ctx: WorkflowStepContext): string {
   const research = ctx.previousResult
@@ -36,166 +39,113 @@ ${SCOPE_DISCIPLINE}
 
 ${FILE_LINE_DISCIPLINE}
 
-## Plan Template (MORE format)
+## Output Format
 
-Structure the plan using this template:
+You MUST produce a structured JSON plan. Write a single JSON file to:
+\`.flywheel/plans/{type}-{description}.plan.json\`
 
-### Status Section
+Where \`{type}\` is one of: feat, fix, refactor, chore, docs
+And \`{description}\` is a short kebab-case name for the feature.
 
-\`\`\`
-Status: DRAFT
-Created: <ISO date>
-Feature: <short name>
-\`\`\`
+Create the \`.flywheel/plans/\` directory if it does not exist.
 
-### Executive Summary
+### JSON Structure
 
-1-3 sentences: what this plan achieves and why.
+The file must contain a valid JSON object with this exact schema:
 
-### Implementation Checklist
-
-Organize into phases. Each phase has test steps BEFORE implementation steps.
-
-\`\`\`markdown
-## Phase 1: <Phase Name>
-
-- [ ] **1.1 Test**: Write failing test for <behavior>
-- [ ] **1.2 Implement**: <minimum code to pass>
-- [ ] **1.3 Test**: Write failing test for <next behavior>
-- [ ] **1.4 Implement**: <minimum code to pass>
-- [ ] **1.5 Verify**: Run full test suite, confirm green
-
-## Phase 2: <Phase Name>
-...
+\`\`\`json
+${JSON_EXAMPLE}
 \`\`\`
 
-### Technical Reference
+### Schema Rules
 
-- File paths referenced in the plan
-- External dependencies or APIs
-- Architecture decisions with rationale
+${SCHEMA_RULES}
 
-## Phase Decomposition Rules
+### Step Decomposition Rules
 
-1. **Test-first ordering:** Every implementation step is preceded by its test step.
-2. **Single Responsibility:** Each phase has one clear goal. If a phase description needs "and", split it.
-3. **Dedup across phases:** If two phases touch the same file for the same reason, merge them.
-4. **Dependencies flow forward:** Phase N never depends on Phase N+1.
+${STEP_DECOMPOSITION_RULES}
 
-## Formatting Rules
+### Behavioral Contract Rules
 
-- **Filename:** \`<type>-<description>.md\` (kebab-case). Examples: \`feat-auth-jwt.md\`, \`fix-memory-leak.md\`
-- **Phase headings:** Always \`### Phase N: <Name>\`
-- **Checklist items:** \`- [ ] **N.M <Step Type>**: Description\`
-- **References:** Include file:line references for every file mentioned in the plan
-- **Be specific:** "Implement auth" is bad. "Create JWT token generation in \`src/auth/tokens.ts\`" is good.
+${BEHAVIORAL_CONTRACT_RULES}
 
-## Milestone Markers
+### What NOT to produce
 
-Group related phases into milestones using \`## Milestone:\` markers. Place them before the first phase of each milestone:
-
-\`\`\`markdown
-## Milestone: Foundation
-
-### Phase 1: <Name>
-...
-
-### Phase 2: <Name>
-...
-
-## Milestone: Core Features
-
-### Phase 3: <Name>
-...
-\`\`\`
-
-Milestones group phases into logical deliverables. Each milestone should be independently verifiable. Use short, descriptive names (e.g., "Foundation", "Auth System", "API Layer").
-
-## Fulfills Annotations
-
-Each phase MUST include a \`<!-- fulfills: ... -->\` HTML comment listing the validation contract assertion IDs that the phase satisfies. Place it immediately after the phase heading:
-
-\`\`\`markdown
-### Phase 1: JWT Token Helpers
-<!-- fulfills: VAL-AUTH-001, VAL-AUTH-002 -->
-
-- [ ] **1.1 Test**: Write failing test for token generation
-...
-\`\`\`
-
-Every assertion ID in the validation contract must be claimed by exactly one phase. No orphaned assertions, no duplicates.
-
-## Validation Contract Output
-
-After the plan, generate a validation contract file that defines the acceptance criteria as testable assertions. This contract is the formal specification of what "done" means. The filename MUST be derived from the plan filename: if the plan is \`<type>-<description>.md\`, the contract MUST be \`<type>-<description>.validation-contract.md\` in the same directory. This ensures concurrent sessions do not overwrite each other's contracts.
-
-### Assertion ID Format
-
-Use stable IDs with an area prefix: \`VAL-<AREA>-<NNN>\`
-
-- \`<AREA>\` is a short uppercase tag for the functional area (e.g., AUTH, API, UI, DB)
-- \`<NNN>\` is a zero-padded three-digit number starting at 001
-- Examples: \`VAL-AUTH-001\`, \`VAL-API-003\`, \`VAL-UI-012\`
-
-### Assertion Structure
-
-Each assertion has:
-- **ID and title** on the heading line (e.g., \`### VAL-AUTH-001: User can log in with valid credentials\`)
-- **Behavioral description** — a plain-English statement of the expected user-visible behavior. Describe what the system does, not how it's implemented.
-- **Evidence** — how to verify the assertion (e.g., "unit test output", "API response inspection", "browser screenshot")
-
-### Contract Template
-
-\`\`\`markdown
-# Validation Contract — <Feature Name>
-
-## Area: <Area Name>
-
-### VAL-AREA-001: <Title>
-<Behavioral description of what the system does when this assertion is true.>
-Evidence: <how to verify>
-
-### VAL-AREA-002: <Title>
-<Behavioral description.>
-Evidence: <how to verify>
-
-## Area: <Another Area>
-
-### VAL-OTHER-001: <Title>
-<Behavioral description.>
-Evidence: <how to verify>
-
-## Cross-Area Flows
-
-### VAL-CROSS-001: <End-to-end flow title>
-<Behavioral description of a flow that spans multiple areas.>
-Evidence: <how to verify>
-\`\`\`
-
-### Contract Rules
-
-1. **Per-area grouping:** Group assertions under \`## Area: <Name>\` headings matching the functional areas of the plan.
-2. **Cross-Area Flows:** Add a \`## Cross-Area Flows\` section for assertions that span multiple areas (e.g., "user registers then receives welcome email"). Use \`VAL-CROSS-NNN\` IDs.
-3. **Behavioral, not structural:** Describe what the user or system sees, not internal implementation details.
-4. **Complete coverage:** Every phase in the plan must fulfill at least one assertion. Every assertion must be fulfilled by exactly one phase.
-5. **Testable:** Each assertion must be independently verifiable with the stated evidence method.
-
-## Context File Output
-
-After the plan and validation contract, generate a context file with:
-
-\`\`\`yaml
----
-type: plan-context
-plan: <plan filename>
----
-\`\`\`
-
-Sections:
-- **Key Decisions:** Numbered list of architectural choices made
-- **File Map:** Every file the plan touches, with its role
-- **Dependencies:** External packages or services required
-- **Risk Areas:** Parts most likely to need iteration
+- Do NOT produce a markdown plan file
+- Do NOT produce a separate validation-contract.md file (it's embedded in the JSON as behavioralContract)
+- Do NOT produce a separate .context.md file (context info goes in decisions and risks)
+- Do NOT use phase headings, checklist syntax, or milestone markers
+- Do NOT use HTML comments for fulfills annotations
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_DRAFT_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }
+
+// ---------------------------------------------------------------------------
+// JSON example and schema documentation (kept as constants for clarity)
+// ---------------------------------------------------------------------------
+
+const JSON_EXAMPLE = `{
+  "steps": [
+    {
+      "title": "Create server module with Bun.serve()",
+      "description": "Implement GET /hello endpoint returning JSON {greeting, timestamp}. Bind to 127.0.0.1:3000. Use Bun.serve() API with fetch handler.",
+      "acceptanceCriteria": [
+        "GET /hello returns 200 with JSON body containing greeting and timestamp",
+        "Server binds to 127.0.0.1:3000",
+        "Response Content-Type is application/json"
+      ],
+      "fileReferences": ["src/server/index.ts", "tests/server.test.ts"],
+      "feature": "server",
+      "fulfills": ["BC-SERVER-001", "BC-SERVER-002"],
+      "milestone": "Foundation",
+      "estimatedComplexity": "low"
+    }
+  ],
+  "behavioralContract": [
+    {
+      "id": "BC-SERVER-001",
+      "title": "Hello endpoint returns greeting",
+      "description": "GET /hello returns 200 with JSON body containing a greeting string and ISO timestamp",
+      "evidence": "curl http://localhost:3000/hello returns 200, body has greeting and timestamp fields",
+      "area": "Server"
+    }
+  ],
+  "decisions": [
+    "Using Bun.serve() native API instead of Express for zero-dependency server"
+  ],
+  "risks": [
+    "Port 3000 may conflict with other services"
+  ]
+}`;
+
+const SCHEMA_RULES = `**steps[]** (required, min 1):
+- \`title\` (required): Short, specific action. "Implement auth middleware" not "Do auth".
+- \`description\` (required): Detailed description. Include file:line references. Be specific enough that a developer reading only this field knows exactly what to build.
+- \`acceptanceCriteria\` (required, min 1): Testable pass/fail criteria. Each criterion must be independently verifiable.
+- \`fileReferences\` (required): All files to create or modify. Include test files.
+- \`feature\` (optional): Groups related steps. Steps with the same feature trigger a quality check when all complete.
+- \`fulfills\` (optional): Behavioral contract assertion IDs this step satisfies. Every assertion must be claimed by exactly one step.
+- \`milestone\` (optional): Groups steps into deliverable milestones.
+- \`estimatedComplexity\` (optional): "trivial" | "low" | "medium" | "high" | "critical"
+
+**behavioralContract[]** (required, min 1):
+- \`id\` (required): Format \`BC-{AREA}-{NNN}\` (e.g., BC-AUTH-001). Area is uppercase, number is zero-padded.
+- \`title\` (required): Short description of the behavior.
+- \`description\` (required): Behavioral pass/fail description. Describe what the system DOES, not how it's built.
+- \`evidence\` (required): How to verify — "unit test output", "curl command", "API response".
+- \`area\` (required): Functional area name (e.g., "Auth", "API", "Server").
+
+**decisions[]** (required, may be empty): Architectural decisions made during planning.
+
+**risks[]** (required, may be empty): Identified risks and concerns.`;
+
+const STEP_DECOMPOSITION_RULES = `1. **Test-first pairing**: Each implementation step should include its tests in the same step's acceptanceCriteria and fileReferences. Do NOT make separate "write test" and "implement" steps — a single step does both.
+2. **Single responsibility**: One step, one clear goal. If description needs "and" for unrelated things, split.
+3. **Dependencies flow forward**: Step N never depends on Step N+1.
+4. **Feature grouping**: Related steps share a \`feature\` value. Quality checks fire at feature boundaries.
+5. **Milestone grouping**: Steps in the same milestone form a deliverable unit.`;
+
+const BEHAVIORAL_CONTRACT_RULES = `1. **Complete coverage**: Every step should fulfill at least one assertion. Every assertion should be fulfilled by exactly one step.
+2. **Behavioral, not structural**: Describe what the user or system sees, not implementation details.
+3. **Independently testable**: Each assertion can be verified in isolation.
+4. **Area grouping**: Use consistent area names across assertions.`;

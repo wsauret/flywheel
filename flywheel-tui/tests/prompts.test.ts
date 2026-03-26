@@ -440,8 +440,9 @@ describe("buildPlanDraftPrompt", () => {
   it("contains domain-specific content", () => {
     const result = buildPlanDraftPrompt(baseCtx);
     for (const kw of [
-      "Implementation Checklist",
-      "Phase N:",
+      ".plan.json",
+      "steps",
+      "behavioralContract",
       "Test-first",
       "kebab-case",
     ]) {
