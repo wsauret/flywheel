@@ -15,6 +15,12 @@ Features involving TypeScript source changes to schemas, execution logic, prompt
 
 None.
 
+## CRITICAL: File Size Limit
+
+**Never create files with more than 100 lines in a single Create call.** The tool WILL fail with empty content if output is too large.
+
+Strategy: Create file with imports + 2-3 items (under 80 lines), then use Edit to append more in small batches. This applies to ALL new files.
+
 ## Work Procedure
 
 ### 1. Understand the Feature
