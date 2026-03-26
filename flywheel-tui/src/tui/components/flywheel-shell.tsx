@@ -73,7 +73,7 @@ import { handlePipelineCompletion } from "./pipeline-completion"
 import { safeUpdateState } from "../../session/safe-transition"
 import { ContextIndexer } from "../../memory/indexer"
 import { injectOutputBlocks } from "./resume-utils"
-import type { PipelineStageInfo } from "../utils/format"
+import type { PipelineStageInfo, SprintIterationInfo } from "../utils/format"
 import type { WorkflowSession } from "./workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 import type { WorkState } from "../routes/work/state/types"
@@ -163,6 +163,8 @@ export function FlywheelShell() {
 
   // Pipeline stage indicator tracking
   const [activePipelineInfo, setActivePipelineInfo] = createSignal<PipelineStageInfo | null>(null)
+  // Sprint iteration tracking for telemetry bar
+  const [activeSprintInfo, setActiveSprintInfo] = createSignal<SprintIterationInfo | null>(null)
   let pipelineUnsubs: Unsubscribe[] = []
 
   // Track the active session's timer for the status bar runtime display.
@@ -561,6 +563,7 @@ export function FlywheelShell() {
       }),
       session.eventBus.subscribeToType("pipeline:completed", () => {
         setActivePipelineInfo(null)
+        setActiveSprintInfo(null)
         // Final flush on pipeline completion
         if (activeFlusher) {
           activeFlusher.schedule()
@@ -569,12 +572,26 @@ export function FlywheelShell() {
       }),
       session.eventBus.subscribeToType("pipeline:failed", () => {
         setActivePipelineInfo(null)
+        setActiveSprintInfo(null)
       }),
       // Event-driven flush: persist output after each phase completes
       session.eventBus.subscribeToType("phase:completed", () => {
         if (activeFlusher) {
           activeFlusher.schedule()
         }
+      }),
+      // Sprint iteration tracking for telemetry bar
+      session.eventBus.subscribeToType("sprint:started", (e) => {
+        setActiveSprintInfo({ iteration: 0, maxIterations: e.maxIterations })
+      }),
+      session.eventBus.subscribeToType("sprint:iteration-started", (e) => {
+        setActiveSprintInfo({ iteration: e.iteration, maxIterations: e.maxIterations })
+      }),
+      session.eventBus.subscribeToType("sprint:completed", () => {
+        setActiveSprintInfo(null)
+      }),
+      session.eventBus.subscribeToType("sprint:escalated", () => {
+        setActiveSprintInfo(null)
       }),
     )
 
@@ -1866,6 +1883,7 @@ export function FlywheelShell() {
           workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
           stepLabel={hasActiveWorkflow() ? activeStepLabel() : undefined}
           pipelineInfo={activePipelineInfo()}
+          sprintInfo={activeSprintInfo()}
         />
       </box>
 

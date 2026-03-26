@@ -7,7 +7,7 @@
 
 import { Show, createMemo } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { formatPipelineStage, type PipelineStageInfo } from "../../../utils/format"
+import { formatPipelineStage, formatSprintIteration, type PipelineStageInfo, type SprintIterationInfo } from "../../../utils/format"
 import type { WorkflowStatus } from "../state/types"
 
 export interface TelemetryBarProps {
@@ -19,6 +19,7 @@ export interface TelemetryBarProps {
   workflowLabel?: string  // "work" | "plan" | "review" etc.
   stepLabel?: string      // "Phase" | "Step" | "Cycle"
   pipelineInfo?: PipelineStageInfo | null
+  sprintInfo?: SprintIterationInfo | null
 }
 
 /**
@@ -28,6 +29,7 @@ export function TelemetryBar(props: TelemetryBarProps) {
   const themeCtx = useTheme()
 
   const pipelineStageText = createMemo(() => formatPipelineStage(props.pipelineInfo))
+  const sprintIterationText = createMemo(() => formatSprintIteration(props.sprintInfo))
 
   const showStatus = () => props.status === "stopping" || props.status === "interrupted" || props.status === "failed"
 
@@ -76,6 +78,10 @@ export function TelemetryBar(props: TelemetryBarProps) {
         <Show when={pipelineStageText()}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
           <text wrapMode="none" fg={themeCtx.theme.secondary}>{pipelineStageText()}</text>
+        </Show>
+        <Show when={sprintIterationText()}>
+          <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
+          <text wrapMode="none" fg={themeCtx.theme.primary}>{sprintIterationText()}</text>
         </Show>
         <Show when={props.totalPhases && props.totalPhases > 0}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
