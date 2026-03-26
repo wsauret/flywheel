@@ -798,6 +798,10 @@ export function FlywheelShell() {
       // createStageLoop for each step, which is what the shell stage runner does.
       const emitter = createFlywheelEmitter(session.eventBus)
 
+      // Track plan path discovered during plan step execution.
+      // Used to pass planPath to dynamically inserted work steps.
+      let discoveredPlanPath: string | null = null
+
       // Create step executor with real dependencies
       // Note: For this feature, we wire the step executor with stub functions
       // that delegate to the existing stage loop infrastructure. The full
@@ -813,10 +817,16 @@ export function FlywheelShell() {
           return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
         },
         worker: async (step, prompt) => {
+          // Build step-specific args: work steps use the discovered plan path
+          const stageArgs: Record<string, string> = { ...args }
+          if (step.type === "work" && discoveredPlanPath) {
+            stageArgs.planPath = discoveredPlanPath
+          }
+
           // Delegate to createStageLoop for the actual execution
           const handle = createStageLoop({
             workflow: step.type as any,
-            args: { ...args },
+            args: stageArgs,
             config: deps.config,
             spawner: deps.spawner,
             engine: deps.engine,
@@ -840,6 +850,15 @@ export function FlywheelShell() {
           activeLoop = handle.loop
 
           const result = await handle.loop.run()
+
+          // Capture plan path from plan step completion for work step insertion
+          if (step.type === "plan" && result.completed) {
+            const extra = handle.getAccumulatedExtra()
+            if (extra.planFilePath && typeof extra.planFilePath === "string") {
+              discoveredPlanPath = extra.planFilePath
+            }
+          }
+
           return {
             output: result.completed ? "completed" : (result.reason ?? "failed"),
             handoffPath: "",
@@ -868,6 +887,36 @@ export function FlywheelShell() {
           getContext: () => ({}),
         },
         maxRevisions: 0, // Revisions handled within createStageLoop
+        onStepCompleted: async (step, status, q) => {
+          // When a plan step completes, insert a work step into the queue
+          if (step.type === "plan" && status === "completed" && discoveredPlanPath) {
+            const { insertWorkStepsFromPlanOutput } = await import("../../queue/plan-integration")
+            const protoSteps = [{
+              title: "Execute plan",
+              description: "Execute the generated plan",
+              acceptanceCriteria: ["Plan executed successfully"],
+            }]
+            const result = insertWorkStepsFromPlanOutput(q, step.id, protoSteps)
+            if (result.success) {
+              // Emit step:inserted events for TUI updates
+              const insertedSteps = q.steps.filter(s =>
+                s.type === "work" && s.status === "pending" && s.title === "Execute plan"
+              )
+              for (const ws of insertedSteps) {
+                emitter.queueStepInserted(workflowIdRef.current, ws.id, ws.type, ws.title, step.id)
+              }
+              // Update queue step display state for workflow panel
+              const updatedQueueStepStates = q.steps.map(s => ({
+                id: s.id,
+                type: s.type,
+                title: s.title,
+                status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+              }))
+              setShellQueueSteps(updatedQueueStepStates)
+            }
+          }
+          return { continueExecution: false }
+        },
       })
 
       activeStepExecutor = stepExec
@@ -1375,6 +1424,10 @@ export function FlywheelShell() {
         const emitter = createFlywheelEmitter(session.eventBus)
         const resumeQueue = result.queue!
 
+        // Track plan path discovered during plan step execution (resume path).
+        // Initialized from the persisted plan path if available.
+        let discoveredPlanPath: string | null = result.planPath ?? null
+
         const stepExec = createStepExecutor({
           queue: resumeQueue,
           workflowId: workflowIdRef.current,
@@ -1383,9 +1436,15 @@ export function FlywheelShell() {
             return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
           },
           worker: async (step, prompt) => {
+            // Build step-specific args: work steps use the discovered plan path
+            const stageArgs: Record<string, string> = { planPath: result.planPath }
+            if (step.type === "work" && discoveredPlanPath) {
+              stageArgs.planPath = discoveredPlanPath
+            }
+
             const handle = createStageLoop({
               workflow: step.type as any,
-              args: { planPath: result.planPath },
+              args: stageArgs,
               config: deps.config,
               spawner: deps.spawner,
               engine: deps.engine,
@@ -1400,6 +1459,15 @@ export function FlywheelShell() {
             })
             activeLoop = handle.loop
             const loopResult = await handle.loop.run()
+
+            // Capture plan path from plan step completion for work step insertion
+            if (step.type === "plan" && loopResult.completed) {
+              const extra = handle.getAccumulatedExtra()
+              if (extra.planFilePath && typeof extra.planFilePath === "string") {
+                discoveredPlanPath = extra.planFilePath
+              }
+            }
+
             return {
               output: loopResult.completed ? "completed" : (loopResult.reason ?? "failed"),
               handoffPath: "",
@@ -1421,6 +1489,36 @@ export function FlywheelShell() {
           },
           accumulator: { accumulate: () => {}, getContext: () => ({}) },
           maxRevisions: 0,
+          onStepCompleted: async (step, status, q) => {
+            // When a plan step completes, insert a work step into the queue
+            if (step.type === "plan" && status === "completed" && discoveredPlanPath) {
+              const { insertWorkStepsFromPlanOutput } = await import("../../queue/plan-integration")
+              const protoSteps = [{
+                title: "Execute plan",
+                description: "Execute the generated plan",
+                acceptanceCriteria: ["Plan executed successfully"],
+              }]
+              const insertResult = insertWorkStepsFromPlanOutput(q, step.id, protoSteps)
+              if (insertResult.success) {
+                // Emit step:inserted events for TUI updates
+                const insertedSteps = q.steps.filter(s =>
+                  s.type === "work" && s.status === "pending" && s.title === "Execute plan"
+                )
+                for (const ws of insertedSteps) {
+                  emitter.queueStepInserted(workflowIdRef.current, ws.id, ws.type, ws.title, step.id)
+                }
+                // Update queue step display state for workflow panel
+                const updatedQueueStepStates = q.steps.map(s => ({
+                  id: s.id,
+                  type: s.type,
+                  title: s.title,
+                  status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+                }))
+                setShellQueueSteps(updatedQueueStepStates)
+              }
+            }
+            return { continueExecution: false }
+          },
         })
 
         activeStepExecutor = stepExec
