@@ -4,6 +4,43 @@
  * Shared formatting functions for TUI display strings.
  */
 
+// ---------------------------------------------------------------------------
+// Queue step progress info (replaces StageProgressInfo)
+// ---------------------------------------------------------------------------
+
+export interface QueueStepProgressInfo {
+  /** 1-based index of the current step. */
+  currentStep: number;
+  /** Total number of steps in the queue. */
+  totalSteps: number;
+  /** Name/type of the current step (e.g. "plan", "work", "review"). */
+  stepName: string;
+}
+
+/**
+ * Format a queue step progress indicator string: "Step N/M".
+ *
+ * @example formatQueueStepProgress({ currentStep: 1, totalSteps: 3, stepName: "plan" }) → "Step 1/3"
+ */
+export function formatQueueStepProgress(info: QueueStepProgressInfo | null | undefined): string {
+  if (!info || !info.currentStep || !info.totalSteps) return "";
+  return `Step ${info.currentStep}/${info.totalSteps}`;
+}
+
+/**
+ * Format the current step name, capitalized.
+ *
+ * @example formatQueueStepName({ currentStep: 1, totalSteps: 3, stepName: "plan" }) → "Plan"
+ */
+export function formatQueueStepName(info: QueueStepProgressInfo | null | undefined): string {
+  if (!info || !info.stepName) return "";
+  return info.stepName.charAt(0).toUpperCase() + info.stepName.slice(1);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy stage progress info (kept for backward compatibility in tests)
+// ---------------------------------------------------------------------------
+
 export interface StageProgressInfo {
   stage: number;
   total: number;

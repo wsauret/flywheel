@@ -2,33 +2,39 @@
 /**
  * Telemetry Bar Component
  *
- * Show plan info, status, and phase progress in footer
+ * Show queue step progress, current step name/type, and runtime timer.
+ * VAL-TUI-010: Step N/M display
+ * VAL-TUI-011: Current step name/type
+ * VAL-TUI-012: Runtime timer
+ * VAL-TUI-013: Updates on step transitions
  */
 
 import { Show, createMemo } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { formatStageProgress, formatSprintIteration, type StageProgressInfo, type SprintIterationInfo } from "../../../utils/format"
+import { formatQueueStepProgress, formatQueueStepName, formatSprintIteration, type QueueStepProgressInfo, type SprintIterationInfo } from "../../../utils/format"
 import type { WorkflowStatus } from "../state/types"
 
 export interface TelemetryBarProps {
+  /** Session or plan name displayed in the bar. */
   planName: string
+  /** Formatted runtime string (e.g. "03:42"). Increments during execution. */
   runtime: string
+  /** Current workflow status for status indicator. */
   status: WorkflowStatus
-  currentPhase?: number
-  totalPhases?: number
-  workflowLabel?: string  // "work" | "plan" | "review" etc.
-  stepLabel?: string      // "Step" | "Cycle"
-  pipelineInfo?: StageProgressInfo | null
+  /** Queue progress info: currentStep, totalSteps, stepName. */
+  queueProgress?: QueueStepProgressInfo | null
+  /** Sprint iteration info (optional, for sprint workflows). */
   sprintInfo?: SprintIterationInfo | null
 }
 
 /**
- * Show plan info, status, and phase progress in footer
+ * Show queue step progress, current step name/type, and runtime in footer.
  */
 export function TelemetryBar(props: TelemetryBarProps) {
   const themeCtx = useTheme()
 
-  const pipelineStageText = createMemo(() => formatStageProgress(props.pipelineInfo))
+  const stepProgressText = createMemo(() => formatQueueStepProgress(props.queueProgress))
+  const stepNameText = createMemo(() => formatQueueStepName(props.queueProgress))
   const sprintIterationText = createMemo(() => formatSprintIteration(props.sprintInfo))
 
   const showStatus = () => props.status === "stopping" || props.status === "interrupted" || props.status === "failed"
@@ -70,22 +76,22 @@ export function TelemetryBar(props: TelemetryBarProps) {
       {/* Separator to prevent left/right merging */}
       <text fg={themeCtx.theme.textMuted}> • </text>
 
-      {/* Right side: plan name, pipeline stage, phase progress, status */}
+      {/* Right side: plan name, step progress, step name, sprint info, status */}
       <box flexDirection="row" flexShrink={1} overflow="hidden">
         <text wrapMode="none" fg={themeCtx.theme.text} attributes={1}>
           {props.planName}
         </text>
-        <Show when={pipelineStageText()}>
+        <Show when={stepProgressText()}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
-          <text wrapMode="none" fg={themeCtx.theme.secondary}>{pipelineStageText()}</text>
+          <text wrapMode="none" fg={themeCtx.theme.primary}>{stepProgressText()}</text>
+        </Show>
+        <Show when={stepNameText()}>
+          <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
+          <text wrapMode="none" fg={themeCtx.theme.secondary}>{stepNameText()}</text>
         </Show>
         <Show when={sprintIterationText()}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
           <text wrapMode="none" fg={themeCtx.theme.primary}>{sprintIterationText()}</text>
-        </Show>
-        <Show when={props.totalPhases && props.totalPhases > 0}>
-          <text wrapMode="none" fg={themeCtx.theme.text}> • </text>
-          <text wrapMode="none" fg={themeCtx.theme.primary}>{props.stepLabel ?? "Step"} {props.currentPhase ?? 0}/{props.totalPhases}</text>
         </Show>
         <Show when={showStatus()}>
           <text wrapMode="none" fg={themeCtx.theme.text}> • </text>

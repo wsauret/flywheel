@@ -2,12 +2,20 @@
 /**
  * Status Footer Component
  *
- * Show context-sensitive keyboard shortcuts at bottom of screen
+ * Show context-sensitive keyboard shortcuts at bottom of screen.
+ * During working state: queue-relevant shortcuts (Esc stop, navigate, etc.)
+ * During idle/completed: standard shortcuts.
+ *
+ * VAL-TUI-014: Footer shows queue shortcuts during working state
  */
 
 import { useTheme } from "@tui/shared/context/theme"
+import { resolveFooterShortcuts } from "../../../utils/footer-shortcuts"
+import type { AppState } from "../../../components/shell-modes"
 
 export interface StatusFooterProps {
+  /** Current app state — determines which shortcut set to display. */
+  appState?: AppState
   approvalPending?: boolean
   isPromptFocused?: boolean
   sidebarFocused?: boolean
@@ -21,26 +29,20 @@ export interface StatusFooterProps {
 
 /**
  * Show keyboard shortcuts at bottom of screen.
- * Content adapts based on current interaction mode.
+ * Content adapts based on current app state and interaction mode.
  */
 export function StatusFooter(props: StatusFooterProps) {
   const themeCtx = useTheme()
 
-  const shortcutText = () => {
-    if (props.sidebarFocused) {
-      return "[\u2191\u2193] Navigate  [Enter] Select  [Del] Delete  [Esc/Tab] Exit Sidebar"
-    }
-    if (props.isPromptFocused) {
-      return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw"
-    }
-    const sidebarHint = props.sidebarVisible ? "[Tab] Sidebar  " : ""
-    const resumeHint = props.isSessionResumable ? "[R] Resume  " : ""
-    const bgHint = props.isWorking ? "[Ctrl+B] Background  " : ""
-    if (props.approvalPending) {
-      return `[Right] Focus Prompt  ${sidebarHint}${bgHint}[\u2191\u2193] Navigate  [Ctrl+D] Raw  [Esc] Stop`
-    }
-    return `${resumeHint}${sidebarHint}${bgHint}[\u2191\u2193] Navigate  [Ctrl+D] Raw  [Esc] Stop`
-  }
+  const shortcutText = () => resolveFooterShortcuts({
+    appState: props.appState ?? (props.isWorking ? "working" : "idle"),
+    approvalPending: props.approvalPending,
+    isPromptFocused: props.isPromptFocused,
+    sidebarFocused: props.sidebarFocused,
+    sidebarVisible: props.sidebarVisible,
+    isSessionResumable: props.isSessionResumable,
+    isWorking: props.isWorking,
+  })
 
   return (
     <box paddingLeft={1} paddingRight={1}>

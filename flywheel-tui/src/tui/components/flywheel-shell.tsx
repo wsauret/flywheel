@@ -60,7 +60,7 @@ import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 // shell-pipeline.ts imports removed — legacy pipeline code deleted
 import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "./start-command"
-import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, formatQueueProgress, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
+import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
 import { buildQueueFromTemplate } from "../../queue/templates"
 import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
 import { createFlywheelEmitter } from "../../events/event-bus"
@@ -2068,15 +2068,6 @@ export function FlywheelShell() {
 
   const layoutState = () => workState() ?? defaultWorkState
 
-  const runningPhaseIndex = () => {
-    const state = layoutState()
-    const running = state.phases.findIndex((p) => p.status === "running")
-    if (running >= 0) return running + 1
-    for (let i = state.phases.length - 1; i >= 0; i--) {
-      if (state.phases[i].status !== "pending") return i + 1
-    }
-    return 0
-  }
 
   // ── Unified prompt (Input + Overlay split for z-ordering) ──
 
@@ -2232,21 +2223,14 @@ export function FlywheelShell() {
           planName={viewedSessionInfo()?.sessionName ?? layoutState().planName}
           runtime={runtime()}
           status={viewedSessionInfo()?.workflowStatus ?? layoutState().workflowStatus}
-          currentPhase={runningPhaseIndex()}
-          totalPhases={layoutState().phases.length}
-          workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
-          stepLabel={hasActiveWorkflow() ? activeStepLabel() : undefined}
-          pipelineInfo={activeQueueInfo() ? {
-            stage: activeQueueInfo()!.currentStep,
-            total: activeQueueInfo()!.totalSteps,
-            stageName: activeQueueInfo()!.stepName,
-          } : null}
+          queueProgress={activeQueueInfo()}
           sprintInfo={activeSprintInfo()}
         />
       </box>
 
       {/* Status footer — always at the very bottom */}
       <StatusFooter
+        appState={appState()}
         approvalPending={approvalPending()}
         isPromptFocused={isPromptFocused()}
         sidebarFocused={sidebarFocused()}
