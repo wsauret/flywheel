@@ -456,6 +456,67 @@ describe("VAL-QUEUE-023: crash recovery marks running steps as failed", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Bug fix: maxSteps survives serialization round-trip
+// ---------------------------------------------------------------------------
+
+describe("maxSteps survives queue serialization round-trip", () => {
+  it("maxSteps is persisted and loaded correctly", async () => {
+    const sessionId = "test-maxsteps-roundtrip";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const queue = makeQueue({
+      steps: [makeStep({ id: "s1" }), makeStep({ id: "s2" })],
+      cursor: 0,
+      status: "idle",
+    });
+    // Set maxSteps on the queue
+    (queue as any).maxSteps = 10;
+
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.maxSteps).toBe(10);
+  });
+
+  it("queue without maxSteps loads without the field", async () => {
+    const sessionId = "test-no-maxsteps";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const queue = makeQueue({
+      steps: [makeStep({ id: "s1" })],
+      cursor: 0,
+      status: "idle",
+    });
+    // No maxSteps set
+
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.maxSteps).toBeUndefined();
+  });
+
+  it("maxSteps=50 round-trips correctly via JSON serialization", async () => {
+    const sessionId = "test-maxsteps-50";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const queue = makeQueue({
+      steps: [makeStep({ id: "s1" })],
+      cursor: 0,
+      status: "idle",
+    });
+    (queue as any).maxSteps = 50;
+
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.maxSteps).toBe(50);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // persist_queue=false — no-op behavior
 // ---------------------------------------------------------------------------
 

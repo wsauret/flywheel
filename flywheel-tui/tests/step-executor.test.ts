@@ -843,6 +843,102 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
 });
 
 // ===========================================================================
+// Bug fix: validationCriteria forwarded to evaluator function
+// ===========================================================================
+
+describe("validationCriteria forwarded to evaluator", () => {
+  test("evaluator receives validationCriteria from dispatcher", async () => {
+    const criteria = {
+      acceptance: ["has tests", "no lint errors"],
+      required_files: ["src/index.ts"],
+    };
+
+    const dispatcher: DispatcherFn = async () => ({
+      prompt: "do the work",
+      validationCriteria: criteria,
+    });
+
+    let receivedCriteria: unknown | null | undefined = undefined;
+    const evaluator: EvaluatorFn = async (_step, _output, validationCriteria) => {
+      receivedCriteria = validationCriteria;
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({ queue, dispatcher, evaluator });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(receivedCriteria).toEqual(criteria);
+  });
+
+  test("evaluator receives null validationCriteria when dispatcher returns null", async () => {
+    const dispatcher: DispatcherFn = async () => ({
+      prompt: "do the work",
+      validationCriteria: null,
+    });
+
+    let receivedCriteria: unknown | null | undefined = "NOT_SET";
+    const evaluator: EvaluatorFn = async (_step, _output, validationCriteria) => {
+      receivedCriteria = validationCriteria;
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({ queue, dispatcher, evaluator });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(receivedCriteria).toBeNull();
+  });
+
+  test("validationCriteria forwarded through revision loop", async () => {
+    const criteria = { rules: ["must have unit tests"] };
+
+    const dispatcher: DispatcherFn = async () => ({
+      prompt: "do the work",
+      validationCriteria: criteria,
+    });
+
+    const receivedCriteriaList: Array<unknown | null | undefined> = [];
+    let evalCallCount = 0;
+    const evaluator: EvaluatorFn = async (_step, _output, validationCriteria) => {
+      evalCallCount++;
+      receivedCriteriaList.push(validationCriteria);
+      if (evalCallCount === 1) {
+        return {
+          passed: false, skipped: false, transportError: false,
+          reason: "not good", feedback: "fix it", suggestions: ["add tests"],
+          cyclesUsed: 1,
+        };
+      }
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok now", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({
+      queue, dispatcher, evaluator, maxRevisions: 1,
+    });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Both evaluator calls (initial + revision) should receive the same criteria
+    expect(receivedCriteriaList).toHaveLength(2);
+    expect(receivedCriteriaList[0]).toEqual(criteria);
+    expect(receivedCriteriaList[1]).toEqual(criteria);
+  });
+});
+
+// ===========================================================================
 // Queue events (VAL-QUEUE-030, VAL-QUEUE-031 — covered here for integration)
 // ===========================================================================
 

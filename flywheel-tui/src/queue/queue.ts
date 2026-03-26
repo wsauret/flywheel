@@ -70,14 +70,14 @@ export function createQueue(
   steps: Step[],
   opts?: QueueOptions,
 ): Queue {
-  const queue: Queue & { _maxSteps?: number } = {
+  const queue: Queue = {
     steps: steps.map((s) => ({ ...s, status: "pending" as const })),
     cursor: 0,
     status: "idle",
     mutationLog: [],
   };
   if (opts?.maxSteps !== undefined) {
-    queue._maxSteps = opts.maxSteps;
+    queue.maxSteps = opts.maxSteps;
   }
   return queue;
 }
@@ -87,7 +87,7 @@ export function createQueue(
 // ---------------------------------------------------------------------------
 
 function getMaxSteps(queue: Queue): number | undefined {
-  return (queue as Queue & { _maxSteps?: number })._maxSteps;
+  return queue.maxSteps;
 }
 
 function logMutation(
@@ -214,7 +214,14 @@ export function insertAfter(
   }
 
   // Insert after the target index
-  queue.steps.splice(idx + 1, 0, ...newSteps);
+  const insertionIndex = idx + 1;
+  queue.steps.splice(insertionIndex, 0, ...newSteps);
+
+  // Adjust cursor when inserting steps before current cursor position
+  // (similar to how removeStep already adjusts cursor)
+  if (insertionIndex <= queue.cursor) {
+    queue.cursor += newSteps.length;
+  }
 
   logMutation(
     queue,

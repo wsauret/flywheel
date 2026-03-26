@@ -109,6 +109,8 @@ export interface Queue {
   status: QueueStatus;
   /** Provenance log of all mutations applied to this queue. */
   mutationLog: MutationLogEntry[];
+  /** Maximum number of steps allowed. Inserts exceeding this are rejected. */
+  maxSteps?: number;
 }
 
 // ---------------------------------------------------------------------------

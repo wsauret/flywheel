@@ -387,6 +387,100 @@ describe("insertAfter", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Bug fix: insertAfter adjusts cursor when inserting before cursor position
+// ---------------------------------------------------------------------------
+
+describe("insertAfter cursor adjustment", () => {
+  test("adjusts cursor when inserting steps before current cursor position", () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const s3 = makeStep({ title: "Step 3" });
+    const q = makeQueue([s1, s2, s3]);
+    // Simulate: s1 completed, s2 completed, cursor at s3 (index 2)
+    q.steps[0].status = "completed";
+    q.steps[1].status = "completed";
+    q.cursor = 2;
+
+    const newStep = makeStep({ title: "Inserted after Step 1" });
+    const result = insertAfter(q, s1.id, [newStep], {
+      actor: "executor",
+      reason: "inserting before cursor",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Cursor should have been incremented by 1 (1 step inserted before cursor)
+      expect(result.queue.cursor).toBe(3);
+      // Step 3 should still be at the cursor position
+      expect(result.queue.steps[result.queue.cursor].id).toBe(s3.id);
+    }
+  });
+
+  test("adjusts cursor when inserting multiple steps before cursor", () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const q = makeQueue([s1, s2]);
+    q.steps[0].status = "completed";
+    q.cursor = 1; // cursor at s2
+
+    const new1 = makeStep({ title: "New 1" });
+    const new2 = makeStep({ title: "New 2" });
+    const new3 = makeStep({ title: "New 3" });
+    const result = insertAfter(q, s1.id, [new1, new2, new3], {
+      actor: "executor",
+      reason: "inserting 3 steps before cursor",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Cursor should have been incremented by 3
+      expect(result.queue.cursor).toBe(4);
+      // s2 should still be at cursor
+      expect(result.queue.steps[4].id).toBe(s2.id);
+    }
+  });
+
+  test("does not adjust cursor when inserting after cursor position", () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const s3 = makeStep({ title: "Step 3" });
+    const q = makeQueue([s1, s2, s3]);
+    q.cursor = 0; // cursor at s1
+
+    const newStep = makeStep({ title: "Inserted after Step 2" });
+    const result = insertAfter(q, s2.id, [newStep], {
+      actor: "executor",
+      reason: "inserting after cursor",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Cursor should remain at 0 — insert was after cursor
+      expect(result.queue.cursor).toBe(0);
+    }
+  });
+
+  test("adjusts cursor when inserting at exactly the cursor position", () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const q = makeQueue([s1, s2]);
+    q.steps[0].status = "completed";
+    q.cursor = 1; // cursor at s2
+
+    // Insert after s1 (index 0), insertion index = 1 which equals cursor
+    const newStep = makeStep({ title: "Inserted at cursor" });
+    const result = insertAfter(q, s1.id, [newStep], {
+      actor: "executor",
+      reason: "inserting at cursor position",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Cursor should have been incremented — insertion is at cursor
+      expect(result.queue.cursor).toBe(2);
+      // s2 should still be at cursor
+      expect(result.queue.steps[2].id).toBe(s2.id);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // VAL-QUEUE-017: Max steps limit enforced
 // ---------------------------------------------------------------------------
 

@@ -448,6 +448,36 @@ describe("QueueSchema", () => {
     const result = QueueSchema.safeParse(queue);
     expect(result.success).toBe(false);
   });
+
+  test("accepts optional maxSteps field", () => {
+    const queue = { ...validQueue(), maxSteps: 50 };
+    const result = QueueSchema.safeParse(queue);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxSteps).toBe(50);
+    }
+  });
+
+  test("accepts queue without maxSteps (undefined)", () => {
+    const queue = validQueue();
+    const result = QueueSchema.safeParse(queue);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxSteps).toBeUndefined();
+    }
+  });
+
+  test("rejects maxSteps less than 1", () => {
+    const queue = { ...validQueue(), maxSteps: 0 };
+    const result = QueueSchema.safeParse(queue);
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects non-integer maxSteps", () => {
+    const queue = { ...validQueue(), maxSteps: 3.5 };
+    const result = QueueSchema.safeParse(queue);
+    expect(result.success).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

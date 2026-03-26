@@ -76,6 +76,7 @@ export type DispatcherFn = (
 export type EvaluatorFn = (
   step: Step,
   workerOutput: string,
+  validationCriteria?: unknown | null,
 ) => Promise<EvalResult>;
 
 /** Worker: executes a step with a prompt */
@@ -297,9 +298,12 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         });
       }
 
+      // Capture validationCriteria from dispatcher for evaluator
+      const validationCriteria = dispatcherResult.validationCriteria;
+
       // (6) Invoke evaluator for quality check (if configured)
       if (evaluator) {
-        let evalResult = await evaluator(step, workerOutput.output);
+        let evalResult = await evaluator(step, workerOutput.output, validationCriteria);
 
         // Handle transport error: skip evaluation, continue
         if (evalResult.transportError) {
@@ -334,8 +338,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
               handoffData = null;
             }
 
-            // Re-evaluate
-            evalResult = await evaluator(step, workerOutput.output);
+            // Re-evaluate (pass validationCriteria through revision loop)
+            evalResult = await evaluator(step, workerOutput.output, validationCriteria);
 
             // Transport error during revision: break out and continue
             if (evalResult.transportError) {

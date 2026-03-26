@@ -101,6 +101,8 @@ export const QueueSchema = z.object({
   status: QueueStatusSchema,
   /** Provenance log of all mutations. */
   mutationLog: z.array(MutationLogEntrySchema),
+  /** Maximum number of steps allowed. Inserts exceeding this are rejected. */
+  maxSteps: z.number().int().min(1).optional(),
 }).strict();
 
 // ---------------------------------------------------------------------------
