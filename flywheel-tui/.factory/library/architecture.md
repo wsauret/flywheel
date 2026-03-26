@@ -125,6 +125,46 @@ This lifecycle means content and file writing are separated: draft describes *wh
 
 **Write tool scoping gotcha:** Workers need the Write tool to create handoff JSON files. If `toolScoping.write: false`, the worker can't write handoffs. The Claude engine provider (`src/engines/providers/claude/index.ts`) always injects Write into scoping to prevent this.
 
+## Sprint Mode Architecture
+
+Sprint mode is a new WorkflowType that provides fast iteration without planning overhead.
+
+### Sprint Execution Flow
+```
+Task description + ContextIndexer context
+  → Sprint worker prompt (iteration 1: explore + implement + write verify script)
+    → Worker spawns via PhaseExecutor
+      → Worker writes code + verification script to .flywheel/verify/
+      → Worker writes handoff JSON with verification_script_path
+    → Verification runner spawns script, captures output
+    → Adversarial evaluator reviews implementation + script quality
+      → Pass → Done
+      → Fail → Retry with cumulative context (all previous feedback)
+    → Hard cap reached → Escalate to full pipeline (carry forward)
+```
+
+### Key Components
+- `src/sprint/sprint-loop.ts` — Core iterate-verify-escalate loop
+- `src/sprint/verification-runner.ts` — Spawns verification scripts, captures output
+- `src/prompts/sprint/phase-prompt.ts` — Worker prompt (iteration 1 + retry)
+- `src/prompts/sprint/evaluator-prompt.ts` — Adversarial evaluator prompt
+- `src/workflows/sprint.ts` — Sprint workflow definition
+- `src/handoff/field-specs.ts` — SPRINT_FIELDS array
+
+### Sprint Evaluator vs Standard Evaluator
+The standard evaluator (`SubprocessEvaluatorTransport`) has a "Bias Toward Passing" system prompt. Sprint needs an adversarial evaluator that:
+- Reviews BOTH implementation quality AND script quality
+- Detects script weakening across iterations
+- Provides dual-channel feedback (implementation + script)
+- Does NOT bias toward passing
+
+### Verification Script Runner
+- Spawns .ts via `bun run`, .sh via `bash`
+- Captures stdout/stderr/exit code
+- Enforces timeout from `sprint.verification_timeout_ms`
+- Path security: scripts must be within project boundary
+- Scripts persist in `.flywheel/verify/` for regression
+
 ## Transport Interface Pattern
 
 Both dispatcher and evaluator follow:

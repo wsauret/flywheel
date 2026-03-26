@@ -51,7 +51,7 @@ Write the minimum code to make tests pass:
 
 ### 4. Run Full Test Suite
 
-Run `bun test` and ensure ALL tests pass (3359+ existing + new tests). If existing tests break, your changes have unintended side effects — fix them.
+Run `bun test` and ensure ALL tests pass (3842+ existing + new tests). If existing tests break, your changes have unintended side effects — fix them.
 
 ### 5. Run Typecheck
 

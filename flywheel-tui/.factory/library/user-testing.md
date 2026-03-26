@@ -56,3 +56,79 @@ This mission modifies internal engine code (schemas, execution loop, evaluator, 
 - Validation state: `tests/validation-state.test.ts`
 - End-of-session gate: `tests/validation-state.test.ts` (checkEndOfSessionGate tests)
 - Cross-cutting (validation-execution): `tests/execution-loop-milestone-injection.test.ts`, `tests/behavioral-validation.test.ts`, `tests/validation-state.test.ts`
+
+## Flow Validator Guidance: Sprint E2E Testing (tmux)
+
+**Testing approach:** Sprint E2E assertions (VAL-E2E-001 through VAL-E2E-005) are verified by running Flywheel in Sprint mode via tmux on a simple test project and inspecting timing, artifacts, and logs.
+
+**Setup:**
+1. Create a clean git project in `/tmp/flywheel-sprint-val/` with `package.json`, `tsconfig.json`, `README.md`, `flywheel.toml`
+2. Configure `flywheel.toml` with `skip_approval_gates = true`, sonnet model, and `[sprint]` section with desired max_iterations
+3. Kill any existing tmux sessions before starting
+
+**Running sprint mode:**
+1. Start Flywheel TUI in tmux: `tmux new-session -d -s flywheel-sprint -x 120 -y 40 'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && FLYWHEEL_PROJECT_CWD=/tmp/flywheel-sprint-val FLYWHEEL_SKIP_APPROVAL_GATES=true bin/flywheel'`
+2. Wait 3s, verify launcher screen appears
+3. Send `/start add a hello world function with tests` Enter
+4. Wait 2s, select option 5 (Sprint)
+5. Record start timestamp
+6. Poll every 10s for completion
+7. Record end timestamp, calculate total duration
+
+**Artifact locations (all relative to `/tmp/flywheel-sprint-val/`):**
+- Verification scripts: `.flywheel/verify/*.sh` or `.flywheel/verify/*.ts`
+- Handoff files: `.flywheel/handoffs/*.json` (check for `verification_script_path` and `iteration_number`)
+- Log files: `.flywheel/log/*.log`
+
+**What to check per assertion:**
+- VAL-E2E-001: Sprint completed within 5 minutes, verification script exists and passed
+- VAL-E2E-002: Sprint iterated (>1 handoff file), second attempt incorporated feedback
+- VAL-E2E-003: Sprint exhausted iterations, escalated to full pipeline (check log for escalation events)
+- VAL-E2E-004: User cancellation (send Escape twice), clean shutdown, no orphaned processes
+- VAL-E2E-005: Log file has zero ERROR lines after successful sprint
+
+**Latency optimization:** The E2E milestone focuses on minimizing sprint latency. Measure and report total wall-clock time for trivial features. Target: under 5 minutes. If exceeding target, investigate prompt size, evaluator overhead, and worker startup time.
+
+## Flow Validator Guidance: E2E Pipeline (tmux)
+
+**Testing approach:** E2E assertions (VAL-E2E-001 through VAL-E2E-007) are verified by running a full Flywheel pipeline (plan → work → review) via tmux on a simple test project and then inspecting the produced artifacts.
+
+**Setup:**
+1. Create a clean git project in `/tmp/flywheel-e2e-val/` with `package.json`, `README.md`, `flywheel.toml`
+2. Configure `flywheel.toml` with `skip_approval_gates = true`, sonnet model, short timeouts
+3. Kill any existing `flywheel-e2e-val` tmux sessions before starting
+
+**Running the pipeline:**
+1. Start Flywheel TUI in tmux: `tmux new-session -d -s flywheel-e2e-val -x 120 -y 40 'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && FLYWHEEL_PROJECT_CWD=/tmp/flywheel-e2e-val FLYWHEEL_SKIP_APPROVAL_GATES=true bin/flywheel'`
+2. Wait 3s, verify launcher screen appears
+3. Send `/start create a simple hello world function in hello.ts with tests in hello.test.ts` Enter
+4. Wait 2s, select option 3 (Plan + Work + Review)
+5. Poll every 15s for completion (look for "Completed" or idle state)
+6. Timeout at 25 minutes
+
+**Artifact locations (all relative to `/tmp/flywheel-e2e-val/`):**
+- Handoff files: `.flywheel/handoffs/*.json`
+- Stage context: `.flywheel/stage-context.json`
+- Validation contract: `.flywheel/plans/*validation-contract.md`
+- Plan files: `.flywheel/plans/*.md` (check for `## Milestone:` markers)
+- State files: `.flywheel/plans/*.state.md`
+- Validation state: `validation-state.json` (project root)
+- Log files: `.flywheel/log/*.log`
+
+**What to check per assertion:**
+- VAL-E2E-001: Pipeline completed (saw plan, work, review states), no ERROR lines in log
+- VAL-E2E-002: At least one handoff JSON has `decisions` or `warnings` field
+- VAL-E2E-003: `.flywheel/stage-context.json` exists and has cumulative data arrays
+- VAL-E2E-004: A `*validation-contract.md` file exists with `VAL-` prefixed IDs
+- VAL-E2E-005: A plan `.md` file contains `## Milestone:` marker
+- VAL-E2E-006: Log file contains "milestone validation triggered" or "Scrutiny:" or "Validation:" phase names
+- VAL-E2E-007: `validation-state.json` exists with `assertions` object
+
+**Isolation:** Only one E2E pipeline can run at a time (single tmux session). Uses `/tmp/flywheel-e2e-val/` as isolated project directory. Does not modify the flywheel-tui source.
+
+**Gotchas:**
+- The TUI uses Claude Code workers — requires valid claude CLI auth (OAuth, not API key)
+- Pipeline takes 10-25 minutes depending on API response times
+- Handoff file content depends on worker behavior — not all handoffs will have all fields (review handoffs use different schema)
+- If the pipeline stalls, check the log file for WARN/ERROR lines
+- The `FLYWHEEL_PROJECT_CWD` env var tells Flywheel to operate on the test project instead of its own directory
