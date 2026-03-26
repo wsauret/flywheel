@@ -55,6 +55,21 @@ const log = Log.create({ service: "sprint-loop" });
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Injectable function to read a worker handoff file.
+ * Default: uses readHandoff from handoff/reader.
+ */
+export type HandoffReader = (handoffPath: string) => Promise<WorkerHandoff>;
+
+/**
+ * Injectable function to run a verification script.
+ * Default: uses runVerificationScript from verification-runner.
+ */
+export type VerificationScriptRunner = (
+  scriptPath: string,
+  options: { projectCwd: string; timeoutMs: number },
+) => Promise<VerificationResult>;
+
 export interface SprintLoopOptions {
   /** Task description for the sprint. */
   taskDescription: string;
@@ -70,6 +85,10 @@ export interface SprintLoopOptions {
   budgetLimits?: BudgetLimits;
   /** Base directory for subprocess JSONL logging. */
   logBaseDir?: string;
+  /** DI: override handoff reader (for testing). */
+  _readHandoff?: HandoffReader;
+  /** DI: override verification runner (for testing). */
+  _runVerification?: VerificationScriptRunner;
 }
 
 export interface SprintLoopResult {
@@ -121,7 +140,15 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
     budgetTracker,
     budgetLimits,
     logBaseDir,
+    _readHandoff: readHandoffOverride,
+    _runVerification: runVerificationOverride,
   } = options;
+
+  // DI: use overrides or default implementations
+  const doReadHandoff: HandoffReader = readHandoffOverride ??
+    ((hp: string) => readHandoff(hp, WorkerHandoffSchema));
+  const doRunVerification: VerificationScriptRunner = runVerificationOverride ??
+    runVerificationScript;
 
   const sprintConfig = config.sprint;
   const maxIterations = sprintConfig.max_iterations;
@@ -218,7 +245,7 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
 
         // Read worker handoff
         try {
-          workerHandoff = await readHandoff(workerResult.handoffPath, WorkerHandoffSchema);
+          workerHandoff = await doReadHandoff(workerResult.handoffPath);
           record.workerSummary = workerHandoff.summary;
         } catch (err) {
           if (err instanceof HandoffMissingError) {
@@ -311,7 +338,7 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
 
       emitter.sprintVerificationStarted(workflowId, iteration, scriptPath);
 
-      verificationResult = await runVerificationScript(scriptPath, {
+      verificationResult = await doRunVerification(scriptPath, {
         projectCwd,
         timeoutMs: sprintConfig.verification_timeout_ms,
       });
