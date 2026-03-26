@@ -1,0 +1,492 @@
+// ---------------------------------------------------------------------------
+// Step Executor — Queue-Based Execution Engine
+// ---------------------------------------------------------------------------
+//
+// Processes queue steps sequentially. Replaces ExecutionLoop for queue-based
+// execution. Uses DI for all dependencies (dispatcher, worker, evaluator,
+// persistence, budget, accumulator) to enable testability.
+//
+// For each pending step:
+//   (1) check budget via budgetChecker.isExhausted()
+//   (2) transition step to running
+//   (3) invoke dispatcher for prompt assembly
+//   (4) spawn worker via worker function
+//   (5) read handoff
+//   (6) invoke evaluator for quality check (if configured)
+//   (7) handle revision loop (up to max_revisions)
+//   (8) accumulate context via accumulator
+//   (9) transition step to completed/failed
+//   (10) emit step events
+//   (11) persist queue
+//   (12) advance cursor
+//
+// Handles:
+//   - Worker crash (step→failed, no throw)
+//   - Evaluator transport failure (skip eval, continue)
+//   - Budget exhaustion (stop before next step)
+//   - Abort signal (finish current step, stop)
+//
+// Terminology:
+//   Step   — single unit of work (replaces "phase")
+//   Queue  — mutable, ordered list of steps
+// ---------------------------------------------------------------------------
+
+import type { Step, Queue } from "./types";
+import type { FlywheelEmitter } from "../events/event-bus";
+import {
+  transitionStep,
+  advanceCursor,
+  isFinished,
+  type Provenance,
+} from "./queue";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "step-executor" });
+
+// ---------------------------------------------------------------------------
+// Types — Dependency Injection interfaces
+// ---------------------------------------------------------------------------
+
+/** Result from worker execution */
+export interface WorkerOutput {
+  output: string;
+  handoffPath: string;
+  durationMs: number;
+  sessionId?: string;
+}
+
+/** Result from evaluator */
+export interface EvalResult {
+  passed: boolean;
+  skipped: boolean;
+  transportError: boolean;
+  reason: string | null;
+  feedback: string | null;
+  suggestions: string[];
+  cyclesUsed: number;
+}
+
+/** Dispatcher: assembles prompt for a step */
+export type DispatcherFn = (
+  step: Step,
+  context: Record<string, unknown>,
+) => Promise<{ prompt: string; validationCriteria: unknown | null }>;
+
+/** Evaluator: assesses step output quality */
+export type EvaluatorFn = (
+  step: Step,
+  workerOutput: string,
+) => Promise<EvalResult>;
+
+/** Worker: executes a step with a prompt */
+export type WorkerFn = (
+  step: Step,
+  prompt: string,
+) => Promise<WorkerOutput>;
+
+/** Handoff reader: reads handoff data from path */
+export type HandoffReaderFn = (
+  path: string,
+) => Promise<Record<string, unknown> | null>;
+
+/** Budget checker: checks if budget is exhausted */
+export interface BudgetChecker {
+  isExhausted(): boolean;
+}
+
+/** Persist function: saves queue state to disk */
+export type PersistFn = (queue: Queue) => Promise<void>;
+
+/** Stage context accumulator: accumulates handoff data across steps */
+export interface StageContextAccumulator {
+  accumulate(data: unknown): void;
+  getContext(): Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// StepExecutorOptions — all dependencies injected
+// ---------------------------------------------------------------------------
+
+export interface StepExecutorOptions {
+  /** The queue to execute */
+  queue: Queue;
+  /** Unique workflow identifier */
+  workflowId: string;
+  /** Event emitter for lifecycle events */
+  emitter: FlywheelEmitter;
+  /** Dispatcher for prompt assembly */
+  dispatcher: DispatcherFn;
+  /** Worker for step execution */
+  worker: WorkerFn;
+  /** Evaluator for quality checks (null = no evaluation) */
+  evaluator: EvaluatorFn | null;
+  /** Handoff reader for reading worker output */
+  handoffReader: HandoffReaderFn;
+  /** Budget checker */
+  budgetChecker: BudgetChecker;
+  /** Queue persistence function */
+  persist: PersistFn;
+  /** Stage context accumulator */
+  accumulator: StageContextAccumulator;
+  /** Maximum revision attempts per step (0 = no revisions) */
+  maxRevisions: number;
+}
+
+// ---------------------------------------------------------------------------
+// StepExecutorResult — what run() returns
+// ---------------------------------------------------------------------------
+
+export interface StepExecutorResult {
+  /** Whether all steps completed successfully */
+  completed: boolean;
+  /** Number of steps that completed */
+  stepsCompleted: number;
+  /** Total number of steps in the queue */
+  stepsTotal: number;
+  /** Reason for stopping if not all steps completed */
+  reason?: string;
+}
+
+// ---------------------------------------------------------------------------
+// StepExecutor interface — returned by factory
+// ---------------------------------------------------------------------------
+
+export interface StepExecutor {
+  /** Run the queue to completion (or until stopped) */
+  run(): Promise<StepExecutorResult>;
+  /** Request graceful shutdown — finish current step, then stop */
+  requestShutdown(): void;
+}
+
+// ---------------------------------------------------------------------------
+// Provenance helper
+// ---------------------------------------------------------------------------
+
+const EXECUTOR_PROVENANCE: Provenance = {
+  actor: "executor",
+  reason: "step lifecycle transition",
+};
+
+function makeProvenance(reason: string): Provenance {
+  return { actor: "executor", reason };
+}
+
+// ---------------------------------------------------------------------------
+// Revision prompt builder
+// ---------------------------------------------------------------------------
+
+function buildRevisionPrompt(
+  originalPrompt: string,
+  evalResult: EvalResult,
+): string {
+  const sections: string[] = [originalPrompt, "", "## Revision Required", ""];
+
+  if (evalResult.reason) {
+    sections.push("### Evaluator Reasoning");
+    sections.push(evalResult.reason);
+    sections.push("");
+  }
+
+  if (evalResult.feedback) {
+    sections.push("### Feedback");
+    sections.push(evalResult.feedback);
+    sections.push("");
+  }
+
+  if (evalResult.suggestions.length > 0) {
+    sections.push("### Suggestions");
+    for (const suggestion of evalResult.suggestions) {
+      sections.push(`- ${suggestion}`);
+    }
+    sections.push("");
+  }
+
+  return sections.join("\n").trimEnd();
+}
+
+// ---------------------------------------------------------------------------
+// createStepExecutor — factory function
+// ---------------------------------------------------------------------------
+
+export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
+  const {
+    queue,
+    workflowId,
+    emitter,
+    dispatcher,
+    worker,
+    evaluator,
+    handoffReader,
+    budgetChecker,
+    persist,
+    accumulator,
+    maxRevisions,
+  } = options;
+
+  let shutdownRequested = false;
+  /** Last handoff data from the most recently completed step (for chaining) */
+  let previousHandoff: Record<string, unknown> | null = null;
+
+  /**
+   * Persist queue state (best-effort — log on failure, don't throw).
+   */
+  async function persistQueue(): Promise<void> {
+    try {
+      await persist(queue);
+    } catch (err) {
+      log.warn("failed to persist queue state", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  /**
+   * Transition a step and persist. Returns false if transition failed.
+   */
+  async function safeTransition(
+    stepId: string,
+    newStatus: "running" | "completed" | "failed" | "skipped",
+    reason: string,
+  ): Promise<boolean> {
+    const result = transitionStep(queue, stepId, newStatus, makeProvenance(reason));
+    if (!result.success) {
+      log.warn("step transition failed", {
+        stepId,
+        newStatus,
+        error: "error" in result ? result.error : "unknown",
+      });
+      return false;
+    }
+    await persistQueue();
+    return true;
+  }
+
+  /**
+   * Execute a single step: dispatcher → worker → handoff → evaluator → accumulate.
+   * Returns true if step completed, false if failed.
+   */
+  async function executeStep(step: Step): Promise<boolean> {
+    // (2) Transition step to running
+    emitter.queueStepStarted(workflowId, step.id, step.type, step.title);
+    const transitioned = await safeTransition(step.id, "running", "starting step execution");
+    if (!transitioned) {
+      emitter.queueStepFailed(workflowId, step.id, step.type, step.title, "Failed to transition to running");
+      return false;
+    }
+
+    try {
+      // (3) Invoke dispatcher for prompt assembly
+      const dispatcherContext: Record<string, unknown> = {
+        ...accumulator.getContext(),
+        ...(previousHandoff ? { previousHandoff } : {}),
+      };
+      const dispatcherResult = await dispatcher(step, dispatcherContext);
+      let currentPrompt = dispatcherResult.prompt;
+
+      // (4) Spawn worker
+      let workerOutput = await worker(step, currentPrompt);
+
+      // (5) Read handoff (best-effort)
+      let handoffData: Record<string, unknown> | null = null;
+      try {
+        handoffData = await handoffReader(workerOutput.handoffPath);
+      } catch (err) {
+        log.warn("handoff read failed", {
+          stepId: step.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      // (6) Invoke evaluator for quality check (if configured)
+      if (evaluator) {
+        let evalResult = await evaluator(step, workerOutput.output);
+
+        // Handle transport error: skip evaluation, continue
+        if (evalResult.transportError) {
+          log.warn("evaluator transport failed, continuing with graceful degradation", {
+            stepId: step.id,
+            reason: evalResult.reason,
+          });
+          // Skip evaluation entirely — treat as pass
+        } else {
+          // (7) Handle revision loop (up to max_revisions)
+          let revisionAttempt = 0;
+          while (!evalResult.passed && !evalResult.skipped && revisionAttempt < maxRevisions) {
+            revisionAttempt++;
+
+            log.info("starting revision attempt", {
+              stepId: step.id,
+              revisionAttempt,
+              maxRevisions,
+              reason: evalResult.reason,
+            });
+
+            // Build revision prompt with evaluator feedback
+            currentPrompt = buildRevisionPrompt(currentPrompt, evalResult);
+
+            // Re-execute worker with revision prompt
+            workerOutput = await worker(step, currentPrompt);
+
+            // Read revised handoff
+            try {
+              handoffData = await handoffReader(workerOutput.handoffPath);
+            } catch {
+              handoffData = null;
+            }
+
+            // Re-evaluate
+            evalResult = await evaluator(step, workerOutput.output);
+
+            // Transport error during revision: break out and continue
+            if (evalResult.transportError) {
+              log.warn("evaluator transport failed during revision, skipping further evaluation", {
+                stepId: step.id,
+                revisionAttempt,
+              });
+              break;
+            }
+          }
+
+          // After revision loop: check if evaluation passed
+          if (!evalResult.passed && !evalResult.skipped && !evalResult.transportError) {
+            const failReason = maxRevisions > 0
+              ? `Evaluation failed after ${revisionAttempt} revision(s): ${evalResult.reason}`
+              : `Evaluation failed: ${evalResult.reason}`;
+
+            await safeTransition(step.id, "failed", failReason);
+            emitter.queueStepFailed(workflowId, step.id, step.type, step.title, failReason);
+            return false;
+          }
+        }
+      }
+
+      // (8) Accumulate context and chain handoff
+      if (handoffData) {
+        previousHandoff = handoffData;
+        accumulator.accumulate({
+          stepId: step.id,
+          stepType: step.type,
+          stepTitle: step.title,
+          handoff: handoffData,
+        });
+      } else {
+        previousHandoff = null;
+      }
+
+      // (9) Transition step to completed
+      await safeTransition(step.id, "completed", "step execution completed successfully");
+      emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+
+      return true;
+    } catch (error) {
+      // Worker crash or other error: mark step failed, don't throw
+      const reason = error instanceof Error ? error.message : String(error);
+      log.warn("step execution failed", { stepId: step.id, reason });
+
+      await safeTransition(step.id, "failed", reason);
+      emitter.queueStepFailed(workflowId, step.id, step.type, step.title, reason);
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // run() — main execution loop
+  // ---------------------------------------------------------------------------
+
+  async function run(): Promise<StepExecutorResult> {
+    const stepsTotal = queue.steps.length;
+    let stepsCompleted = queue.steps.filter((s) => s.status === "completed").length;
+
+    // Emit queue:initialized
+    emitter.queueInitialized(workflowId, queue.steps.map((s) => s.id));
+
+    // Handle empty queue
+    if (stepsTotal === 0 || isFinished(queue)) {
+      emitter.queueCompleted(workflowId, stepsCompleted);
+      return { completed: true, stepsCompleted, stepsTotal };
+    }
+
+    // Set queue status to running
+    queue.status = "running";
+
+    // Advance cursor to first pending step (skip completed/failed/skipped)
+    advanceCursor(queue);
+
+    // Main loop: process steps sequentially
+    while (queue.cursor < queue.steps.length) {
+      const step = queue.steps[queue.cursor];
+
+      // Skip non-pending steps
+      if (step.status !== "pending") {
+        queue.cursor++;
+        continue;
+      }
+
+      // Check shutdown request before starting next step
+      if (shutdownRequested) {
+        const reason = "Shutdown requested";
+        queue.status = "paused";
+        await persistQueue();
+        emitter.queueFailed(workflowId, reason, stepsCompleted);
+        return {
+          completed: false,
+          stepsCompleted,
+          stepsTotal,
+          reason,
+        };
+      }
+
+      // (1) Check budget before starting step
+      if (budgetChecker.isExhausted()) {
+        const reason = "Budget exhausted";
+        queue.status = "paused";
+        await persistQueue();
+        emitter.queueFailed(workflowId, reason, stepsCompleted);
+        return {
+          completed: false,
+          stepsCompleted,
+          stepsTotal,
+          reason,
+        };
+      }
+
+      // Execute the step
+      const success = await executeStep(step);
+
+      if (success) {
+        stepsCompleted++;
+        // (12) Advance cursor
+        advanceCursor(queue);
+      } else {
+        // Step failed — stop execution
+        queue.status = "failed";
+        await persistQueue();
+        const failedReason = `Step "${step.title}" failed`;
+        emitter.queueFailed(workflowId, failedReason, stepsCompleted);
+        return {
+          completed: false,
+          stepsCompleted,
+          stepsTotal,
+          reason: failedReason,
+        };
+      }
+    }
+
+    // All steps completed
+    queue.status = "completed";
+    await persistQueue();
+    emitter.queueCompleted(workflowId, stepsCompleted);
+    return { completed: true, stepsCompleted, stepsTotal };
+  }
+
+  // ---------------------------------------------------------------------------
+  // requestShutdown()
+  // ---------------------------------------------------------------------------
+
+  function requestShutdown(): void {
+    shutdownRequested = true;
+    log.info("shutdown requested", { workflowId });
+  }
+
+  return { run, requestShutdown };
+}

@@ -1,0 +1,993 @@
+// ---------------------------------------------------------------------------
+// Step Executor — Unit Tests
+// ---------------------------------------------------------------------------
+//
+// Tests for createStepExecutor(), the queue-based replacement for ExecutionLoop.
+// Covers VAL-QUEUE-024..029, 032..034.
+// ---------------------------------------------------------------------------
+
+import { describe, expect, test, mock, beforeEach } from "bun:test";
+import { randomUUID } from "crypto";
+
+import { createQueue, transitionStep, advanceCursor } from "../src/queue/queue";
+import type { Step, Queue } from "../src/queue/types";
+import type { FlywheelEmitter } from "../src/events/event-bus";
+import type { FlywheelEvent } from "../src/events/types";
+import {
+  createStepExecutor,
+  type StepExecutorOptions,
+  type StepExecutorResult,
+  type DispatcherFn,
+  type EvaluatorFn,
+  type WorkerFn,
+  type HandoffReaderFn,
+  type BudgetChecker,
+  type PersistFn,
+  type StageContextAccumulator,
+} from "../src/queue/executor";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeStep(overrides: Partial<Step> = {}): Step {
+  return {
+    id: randomUUID(),
+    type: "work",
+    title: "Test step",
+    status: "pending",
+    ...overrides,
+  };
+}
+
+/** Minimal no-op emitter that records events */
+function createMockEmitter(): FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> } {
+  const events: Array<{ method: string; args: unknown[] }> = [];
+  const handler = {
+    get(_target: unknown, prop: string) {
+      if (prop === "events") return events;
+      return (...args: unknown[]) => {
+        events.push({ method: prop, args });
+      };
+    },
+  };
+  return new Proxy({} as FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> }, handler);
+}
+
+/** Default successful worker that returns output */
+function createSuccessWorker(output = "done"): WorkerFn {
+  return async (_step, _prompt) => ({
+    output,
+    handoffPath: `/tmp/handoff-${randomUUID()}.json`,
+    durationMs: 100,
+    sessionId: randomUUID(),
+  });
+}
+
+/** Worker that crashes (throws) */
+function createCrashingWorker(errorMsg = "worker crashed"): WorkerFn {
+  return async () => {
+    throw new Error(errorMsg);
+  };
+}
+
+/** Default dispatcher that returns a prompt */
+function createSimpleDispatcher(prompt = "do the work"): DispatcherFn {
+  return async (_step, _context) => ({
+    prompt,
+    validationCriteria: null,
+  });
+}
+
+/** Evaluator that always passes */
+function createPassingEvaluator(): EvaluatorFn {
+  return async () => ({
+    passed: true,
+    skipped: false,
+    transportError: false,
+    reason: "looks good",
+    feedback: null,
+    suggestions: [],
+    cyclesUsed: 1,
+  });
+}
+
+/** Evaluator that always fails */
+function createFailingEvaluator(): EvaluatorFn {
+  return async () => ({
+    passed: false,
+    skipped: false,
+    transportError: false,
+    reason: "not good enough",
+    feedback: "needs more work",
+    suggestions: ["fix thing A"],
+    cyclesUsed: 1,
+  });
+}
+
+/** Evaluator with transport error */
+function createTransportErrorEvaluator(): EvaluatorFn {
+  return async () => ({
+    passed: false,
+    skipped: false,
+    transportError: true,
+    reason: "transport failed",
+    feedback: null,
+    suggestions: [],
+    cyclesUsed: 0,
+  });
+}
+
+/** Handoff reader that returns structured data */
+function createHandoffReader(data: Record<string, unknown> = { summary: "done" }): HandoffReaderFn {
+  return async (_path) => data;
+}
+
+/** Handoff reader that returns null (missing) */
+function createMissingHandoffReader(): HandoffReaderFn {
+  return async () => null;
+}
+
+/** Budget checker that is never exhausted */
+function createUnlimitedBudget(): BudgetChecker {
+  return { isExhausted: () => false };
+}
+
+/** Budget checker that is always exhausted */
+function createExhaustedBudget(): BudgetChecker {
+  return { isExhausted: () => true };
+}
+
+/** Budget checker that exhausts after N steps */
+function createLimitedBudget(maxSteps: number): BudgetChecker {
+  let count = 0;
+  return {
+    isExhausted: () => {
+      count++;
+      return count > maxSteps;
+    },
+  };
+}
+
+/** No-op persist function */
+function createNoopPersist(): PersistFn {
+  return async () => {};
+}
+
+/** Persist function that records calls */
+function createRecordingPersist(): PersistFn & { calls: Queue[] } {
+  const calls: Queue[] = [];
+  const fn = async (queue: Queue) => {
+    calls.push(JSON.parse(JSON.stringify(queue)));
+  };
+  (fn as any).calls = calls;
+  return fn as PersistFn & { calls: Queue[] };
+}
+
+/** No-op stage context accumulator */
+function createNoopAccumulator(): StageContextAccumulator {
+  return {
+    accumulate: () => {},
+    getContext: () => ({}),
+  };
+}
+
+/** Recording stage context accumulator */
+function createRecordingAccumulator(): StageContextAccumulator & { accumulated: unknown[] } {
+  const accumulated: unknown[] = [];
+  return {
+    accumulate: (data: unknown) => { accumulated.push(data); },
+    getContext: () => ({ previousSteps: accumulated }),
+    accumulated,
+  };
+}
+
+function createDefaultOptions(overrides: Partial<StepExecutorOptions> = {}): StepExecutorOptions {
+  const steps = overrides.queue?.steps
+    ? []
+    : [makeStep({ title: "Step 1" }), makeStep({ title: "Step 2" })];
+  return {
+    queue: overrides.queue ?? createQueue(steps),
+    workflowId: overrides.workflowId ?? randomUUID(),
+    emitter: overrides.emitter ?? createMockEmitter(),
+    dispatcher: overrides.dispatcher ?? createSimpleDispatcher(),
+    worker: overrides.worker ?? createSuccessWorker(),
+    evaluator: overrides.evaluator ?? null,
+    handoffReader: overrides.handoffReader ?? createMissingHandoffReader(),
+    budgetChecker: overrides.budgetChecker ?? createUnlimitedBudget(),
+    persist: overrides.persist ?? createNoopPersist(),
+    accumulator: overrides.accumulator ?? createNoopAccumulator(),
+    maxRevisions: overrides.maxRevisions ?? 0,
+  };
+}
+
+// ===========================================================================
+// VAL-QUEUE-024: Steps processed sequentially
+// ===========================================================================
+
+describe("VAL-QUEUE-024: Steps processed sequentially", () => {
+  test("steps processed one at a time in queue order", async () => {
+    const executionOrder: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      executionOrder.push(step.id);
+      return {
+        output: `done ${step.title}`,
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const s1 = makeStep({ title: "First" });
+    const s2 = makeStep({ title: "Second" });
+    const s3 = makeStep({ title: "Third" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(3);
+    expect(executionOrder).toEqual([s1.id, s2.id, s3.id]);
+  });
+
+  test("next step doesn't start until current completes", async () => {
+    let concurrent = 0;
+    let maxConcurrent = 0;
+
+    const worker: WorkerFn = async (step) => {
+      concurrent++;
+      maxConcurrent = Math.max(maxConcurrent, concurrent);
+      await new Promise((r) => setTimeout(r, 10));
+      concurrent--;
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 10,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep(), makeStep(), makeStep()]);
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(maxConcurrent).toBe(1);
+  });
+
+  test("completed steps are not re-executed on resume", async () => {
+    const executionOrder: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      executionOrder.push(step.id);
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const s1 = makeStep({ title: "Done already", status: "completed" as any });
+    const s2 = makeStep({ title: "Still pending" });
+    // Manually set s1 as completed before creating queue
+    const queue = createQueue([s1, s2]);
+    // Override first step status to completed (simulating resume)
+    queue.steps[0].status = "completed";
+    queue.cursor = 1; // cursor should be at second step
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(executionOrder).toEqual([s2.id]);
+    expect(executionOrder).not.toContain(s1.id);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-025: Dispatcher invoked for prompt assembly per step
+// ===========================================================================
+
+describe("VAL-QUEUE-025: Dispatcher invoked per step for prompt assembly", () => {
+  test("dispatcher called once per step", async () => {
+    const dispatcherCalls: string[] = [];
+    const dispatcher: DispatcherFn = async (step, _context) => {
+      dispatcherCalls.push(step.id);
+      return { prompt: `prompt for ${step.title}`, validationCriteria: null };
+    };
+
+    const s1 = makeStep({ title: "A" });
+    const s2 = makeStep({ title: "B" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, dispatcher });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(dispatcherCalls).toEqual([s1.id, s2.id]);
+  });
+
+  test("dispatcher receives step info", async () => {
+    let receivedStep: Step | null = null;
+    const dispatcher: DispatcherFn = async (step, _context) => {
+      receivedStep = step;
+      return { prompt: "go", validationCriteria: null };
+    };
+
+    const step = makeStep({ type: "plan", title: "Create plan" });
+    const queue = createQueue([step]);
+
+    const opts = createDefaultOptions({ queue, dispatcher });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(receivedStep).not.toBeNull();
+    expect(receivedStep!.type).toBe("plan");
+    expect(receivedStep!.title).toBe("Create plan");
+  });
+
+  test("worker receives prompt from dispatcher", async () => {
+    const dispatcher: DispatcherFn = async () => ({
+      prompt: "SPECIFIC_PROMPT_CONTENT",
+      validationCriteria: null,
+    });
+
+    let receivedPrompt: string | null = null;
+    const worker: WorkerFn = async (_step, prompt) => {
+      receivedPrompt = prompt;
+      return {
+        output: "done",
+        handoffPath: `/tmp/test.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({ queue, dispatcher, worker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(receivedPrompt).toBe("SPECIFIC_PROMPT_CONTENT");
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-026: Evaluator invoked after step completion
+// ===========================================================================
+
+describe("VAL-QUEUE-026: Evaluator invoked after step completion", () => {
+  test("evaluator called after each step when provided", async () => {
+    const evalCalls: string[] = [];
+    const evaluator: EvaluatorFn = async (step, _output) => {
+      evalCalls.push(step.id);
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    const s1 = makeStep({ title: "A" });
+    const s2 = makeStep({ title: "B" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, evaluator });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(evalCalls).toEqual([s1.id, s2.id]);
+  });
+
+  test("evaluator not called when null (no evaluator configured)", async () => {
+    const worker = createSuccessWorker();
+    const queue = createQueue([makeStep(), makeStep()]);
+    const opts = createDefaultOptions({ queue, evaluator: null });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(2);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-027: Worker crash does not crash the queue
+// ===========================================================================
+
+describe("VAL-QUEUE-027: Worker crash does not crash executor", () => {
+  test("worker crash marks step failed, does not throw", async () => {
+    const crashWorker = createCrashingWorker("kaboom");
+    const s1 = makeStep({ title: "Crasher" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, worker: crashWorker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    // Executor should NOT throw — it returns a result
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+    expect(queue.steps[0].status).toBe("failed");
+  });
+
+  test("worker crash on step N doesn't prevent result return", async () => {
+    let callCount = 0;
+    const worker: WorkerFn = async (step) => {
+      callCount++;
+      if (callCount === 2) throw new Error("crash on step 2");
+      return {
+        output: "ok",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const s1 = makeStep({ title: "OK" });
+    const s2 = makeStep({ title: "Crasher" });
+    const s3 = makeStep({ title: "Never reached" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(1);
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("failed");
+    expect(queue.steps[2].status).toBe("pending");
+  });
+
+  test("queue state remains consistent after crash", async () => {
+    const crashWorker = createCrashingWorker("kaboom");
+    const s1 = makeStep();
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, worker: crashWorker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Queue should be in a consistent state
+    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.mutationLog.length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-028: Evaluator transport failure graceful degradation
+// ===========================================================================
+
+describe("VAL-QUEUE-028: Evaluator transport failure graceful degradation", () => {
+  test("evaluator transport error skips eval, step still completes", async () => {
+    const transportErrorEval = createTransportErrorEvaluator();
+    const s1 = makeStep({ title: "Step with eval failure" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, evaluator: transportErrorEval });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(1);
+    expect(queue.steps[0].status).toBe("completed");
+  });
+
+  test("evaluator transport error mid-queue doesn't stop execution", async () => {
+    let evalCallCount = 0;
+    const evaluator: EvaluatorFn = async () => {
+      evalCallCount++;
+      if (evalCallCount === 1) {
+        // First call: transport error
+        return {
+          passed: false, skipped: false, transportError: true,
+          reason: "transport failed", feedback: null, suggestions: [], cyclesUsed: 0,
+        };
+      }
+      // Second call: passes
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    const queue = createQueue([makeStep({ title: "A" }), makeStep({ title: "B" })]);
+    const opts = createDefaultOptions({ queue, evaluator });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(2);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-029: Budget check before each step
+// ===========================================================================
+
+describe("VAL-QUEUE-029: Budget check before each step", () => {
+  test("budget exhaustion stops before next step", async () => {
+    const budget = createLimitedBudget(1); // Only 1 step allowed
+    const s1 = makeStep({ title: "Runs" });
+    const s2 = makeStep({ title: "Blocked by budget" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, budgetChecker: budget });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(1);
+    expect(result.reason?.toLowerCase()).toContain("budget");
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+
+  test("budget already exhausted stops immediately", async () => {
+    const budget = createExhaustedBudget();
+    const queue = createQueue([makeStep()]);
+
+    const opts = createDefaultOptions({ queue, budgetChecker: budget });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+    expect(result.reason?.toLowerCase()).toContain("budget");
+  });
+
+  test("unlimited budget processes all steps", async () => {
+    const budget = createUnlimitedBudget();
+    const queue = createQueue([makeStep(), makeStep(), makeStep()]);
+
+    const opts = createDefaultOptions({ queue, budgetChecker: budget });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(3);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-032: Graceful shutdown on request
+// ===========================================================================
+
+describe("VAL-QUEUE-032: Graceful shutdown on request", () => {
+  test("shutdown request finishes current step then stops", async () => {
+    let stepCount = 0;
+    const worker: WorkerFn = async (step) => {
+      stepCount++;
+      // Request shutdown during second step
+      if (stepCount === 1) {
+        executor.requestShutdown();
+      }
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const s1 = makeStep({ title: "First" });
+    const s2 = makeStep({ title: "Second — should not run" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(1);
+    expect(result.reason?.toLowerCase()).toContain("shutdown");
+    // First step completes, second stays pending
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+
+  test("shutdown before any step starts", async () => {
+    const queue = createQueue([makeStep(), makeStep()]);
+    const opts = createDefaultOptions({ queue });
+    const executor = createStepExecutor(opts);
+    executor.requestShutdown(); // shutdown before run()
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+    expect(result.reason?.toLowerCase()).toContain("shutdown");
+  });
+
+  test("queue state persisted after shutdown", async () => {
+    const persist = createRecordingPersist();
+    let stepCount = 0;
+    const worker: WorkerFn = async (step) => {
+      stepCount++;
+      if (stepCount === 1) {
+        executor.requestShutdown();
+      }
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep(), makeStep()]);
+    const opts = createDefaultOptions({ queue, worker, persist });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Persist should have been called
+    expect(persist.calls.length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-033: Evaluator revision loop within a step
+// ===========================================================================
+
+describe("VAL-QUEUE-033: Evaluator revision loop", () => {
+  test("revision retries on evaluator rejection, then passes", async () => {
+    let evalCallCount = 0;
+    const evaluator: EvaluatorFn = async () => {
+      evalCallCount++;
+      if (evalCallCount === 1) {
+        return {
+          passed: false, skipped: false, transportError: false,
+          reason: "not good", feedback: "fix it", suggestions: ["do X"],
+          cyclesUsed: 1,
+        };
+      }
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok now", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    let workerCallCount = 0;
+    const worker: WorkerFn = async (step, prompt) => {
+      workerCallCount++;
+      return {
+        output: `attempt ${workerCallCount}`,
+        handoffPath: `/tmp/${step.id}-${workerCallCount}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({
+      queue,
+      evaluator,
+      worker,
+      maxRevisions: 3,
+    });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(1);
+    // Worker called twice: first attempt + revision
+    expect(workerCallCount).toBe(2);
+    // Evaluator called twice
+    expect(evalCallCount).toBe(2);
+  });
+
+  test("revision loop exhausts max_revisions, step fails", async () => {
+    const evaluator = createFailingEvaluator();
+    let workerCallCount = 0;
+    const worker: WorkerFn = async (step) => {
+      workerCallCount++;
+      return {
+        output: `attempt ${workerCallCount}`,
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({
+      queue,
+      evaluator,
+      worker,
+      maxRevisions: 2,
+    });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(queue.steps[0].status).toBe("failed");
+    // 1 initial + 2 revisions = 3 worker calls
+    expect(workerCallCount).toBe(3);
+  });
+
+  test("revision prompt includes evaluator feedback", async () => {
+    let evalCallCount = 0;
+    const evaluator: EvaluatorFn = async () => {
+      evalCallCount++;
+      if (evalCallCount === 1) {
+        return {
+          passed: false, skipped: false, transportError: false,
+          reason: "MISSING_TESTS", feedback: "ADD_UNIT_TESTS",
+          suggestions: ["WRITE_JEST_TEST"], cyclesUsed: 1,
+        };
+      }
+      return {
+        passed: true, skipped: false, transportError: false,
+        reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
+      };
+    };
+
+    const prompts: string[] = [];
+    const worker: WorkerFn = async (step, prompt) => {
+      prompts.push(prompt);
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({
+      queue, evaluator, worker, maxRevisions: 1,
+    });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Second prompt (revision) should contain evaluator feedback
+    expect(prompts.length).toBe(2);
+    expect(prompts[1]).toContain("MISSING_TESTS");
+  });
+
+  test("no revision loop when maxRevisions is 0", async () => {
+    const evaluator = createFailingEvaluator();
+    let workerCallCount = 0;
+    const worker: WorkerFn = async (step) => {
+      workerCallCount++;
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({
+      queue, evaluator, worker, maxRevisions: 0,
+    });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(workerCallCount).toBe(1); // No revisions
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-034: Handoff data chaining between steps
+// ===========================================================================
+
+describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
+  test("handoff data from step N available to dispatcher for step N+1", async () => {
+    const handoffReader: HandoffReaderFn = async (_path) => ({
+      summary: "I created the API endpoint",
+      decisions: ["used REST over GraphQL"],
+      warnings: ["no rate limiting yet"],
+    });
+
+    const dispatcherContexts: Array<Record<string, unknown>> = [];
+    const dispatcher: DispatcherFn = async (step, context) => {
+      dispatcherContexts.push({ ...context });
+      return { prompt: `work on ${step.title}`, validationCriteria: null };
+    };
+
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, dispatcher, handoffReader });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // First step should have no prior handoff
+    expect(dispatcherContexts[0].previousHandoff).toBeUndefined();
+    // Second step should receive handoff from first step
+    expect(dispatcherContexts[1].previousHandoff).toBeDefined();
+    expect((dispatcherContexts[1].previousHandoff as any).summary).toBe(
+      "I created the API endpoint",
+    );
+  });
+
+  test("accumulated context grows across steps", async () => {
+    const accumulator = createRecordingAccumulator();
+    const handoffReader: HandoffReaderFn = async () => ({
+      summary: "step done",
+      decisions: ["decision A"],
+    });
+
+    const queue = createQueue([makeStep(), makeStep(), makeStep()]);
+    const opts = createDefaultOptions({ queue, handoffReader, accumulator });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Accumulator should have been called 3 times
+    expect(accumulator.accumulated.length).toBe(3);
+  });
+
+  test("missing handoff passes null to next dispatcher", async () => {
+    const missingReader = createMissingHandoffReader();
+
+    const dispatcherContexts: Array<Record<string, unknown>> = [];
+    const dispatcher: DispatcherFn = async (_step, context) => {
+      dispatcherContexts.push({ ...context });
+      return { prompt: "go", validationCriteria: null };
+    };
+
+    const queue = createQueue([makeStep(), makeStep()]);
+    const opts = createDefaultOptions({ queue, dispatcher, handoffReader: missingReader });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Second step should have undefined/null previousHandoff
+    expect(dispatcherContexts[1].previousHandoff).toBeUndefined();
+  });
+});
+
+// ===========================================================================
+// Queue events (VAL-QUEUE-030, VAL-QUEUE-031 — covered here for integration)
+// ===========================================================================
+
+describe("Queue and step events emitted", () => {
+  test("emits queue:initialized at start and queue:completed at end", async () => {
+    const emitter = createMockEmitter();
+    const queue = createQueue([makeStep()]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const methods = emitter.events.map((e) => e.method);
+    expect(methods).toContain("queueInitialized");
+    expect(methods).toContain("queueCompleted");
+  });
+
+  test("emits queue:failed when step fails", async () => {
+    const emitter = createMockEmitter();
+    const crashWorker = createCrashingWorker();
+    const queue = createQueue([makeStep()]);
+
+    const opts = createDefaultOptions({ queue, emitter, worker: crashWorker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const methods = emitter.events.map((e) => e.method);
+    expect(methods).toContain("queueFailed");
+  });
+
+  test("emits step:started and step:completed for each step", async () => {
+    const emitter = createMockEmitter();
+    const s1 = makeStep({ title: "A" });
+    const s2 = makeStep({ title: "B" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const stepStarted = emitter.events.filter((e) => e.method === "queueStepStarted");
+    const stepCompleted = emitter.events.filter((e) => e.method === "queueStepCompleted");
+    expect(stepStarted.length).toBe(2);
+    expect(stepCompleted.length).toBe(2);
+  });
+
+  test("emits step:failed on worker crash", async () => {
+    const emitter = createMockEmitter();
+    const crashWorker = createCrashingWorker();
+    const queue = createQueue([makeStep()]);
+
+    const opts = createDefaultOptions({ queue, emitter, worker: crashWorker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const stepFailed = emitter.events.filter((e) => e.method === "queueStepFailed");
+    expect(stepFailed.length).toBe(1);
+  });
+});
+
+// ===========================================================================
+// Queue persistence after each step transition
+// ===========================================================================
+
+describe("Queue persisted after each step transition", () => {
+  test("persist called for each step transition", async () => {
+    const persist = createRecordingPersist();
+    const queue = createQueue([makeStep(), makeStep()]);
+
+    const opts = createDefaultOptions({ queue, persist });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // At minimum: running + completed for each step = 4 calls
+    expect(persist.calls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test("persist called on step failure", async () => {
+    const persist = createRecordingPersist();
+    const crashWorker = createCrashingWorker();
+    const queue = createQueue([makeStep()]);
+
+    const opts = createDefaultOptions({ queue, persist, worker: crashWorker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // At minimum: running + failed = 2 calls
+    expect(persist.calls.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ===========================================================================
+// Edge cases
+// ===========================================================================
+
+describe("Edge cases", () => {
+  test("empty queue completes immediately", async () => {
+    const queue = createQueue([]);
+    const opts = createDefaultOptions({ queue });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(0);
+  });
+
+  test("all steps pre-completed completes immediately", async () => {
+    const s1 = makeStep({ status: "completed" as any });
+    const s2 = makeStep({ status: "completed" as any });
+    const queue = createQueue([s1, s2]);
+    queue.steps[0].status = "completed";
+    queue.steps[1].status = "completed";
+    queue.cursor = 2;
+
+    const opts = createDefaultOptions({ queue });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+  });
+
+  test("skipped steps are not executed", async () => {
+    const executionOrder: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      executionOrder.push(step.id);
+      return {
+        output: "done",
+        handoffPath: `/tmp/${step.id}.json`,
+        durationMs: 50,
+        sessionId: randomUUID(),
+      };
+    };
+
+    const s1 = makeStep({ title: "Active" });
+    const s2 = makeStep({ title: "Skipped" });
+    const s3 = makeStep({ title: "Active too" });
+    const queue = createQueue([s1, s2, s3]);
+    queue.steps[1].status = "skipped"; // Pre-skipped
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(executionOrder).toEqual([s1.id, s3.id]);
+    expect(executionOrder).not.toContain(s2.id);
+  });
+});
