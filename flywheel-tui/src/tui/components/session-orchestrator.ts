@@ -19,7 +19,7 @@ import type { OutputSnapshot } from "../../schemas/output";
 import type { Session } from "../../schemas/session";
 import type { Queue } from "../../queue/types";
 import type { DeleteResult } from "../../session/persistence";
-import type { PipelineStageResult } from "../../controller/workflow-pipeline";
+import type { CompletedStepResult } from "../../controller/workflow-pipeline";
 import type { SessionLifecycleState } from "../../session/state-machine";
 import { safeUpdateState } from "../../session/safe-transition";
 
@@ -98,7 +98,7 @@ export interface SessionOrchestrator {
   /** Auto-archive: transition to completed, optionally archive if ship stage completed. */
   handleAutoArchive(
     sessionId: string,
-    stageResults: PipelineStageResult[],
+    stageResults: CompletedStepResult[],
   ): Promise<void>;
 
   /** Delete a session: trash, cleanup worktree, refresh list. */
@@ -169,7 +169,7 @@ export function createSessionOrchestrator(
 
   async function handleAutoArchive(
     sessionId: string,
-    stageResults: PipelineStageResult[],
+    stageResults: CompletedStepResult[],
   ): Promise<void> {
     // 1. Transition to completed — resilient to sessions stuck in intermediate states.
     // If the session failed to transition through the proper lifecycle during startup

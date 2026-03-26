@@ -23,7 +23,7 @@ import {
 } from "../src/tui/components/session-orchestrator";
 import type {
   PipelineResult,
-  PipelineStageResult,
+  CompletedStepResult,
 } from "../src/controller/workflow-pipeline";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import { isValidTransition } from "../src/session/state-machine";
@@ -69,7 +69,7 @@ function makeMockDeps(
   const calls: string[] = [];
   const deps: PipelineCompletionDeps = {
     orchestrator: {
-      handleAutoArchive: async (id: string, _results: PipelineStageResult[]) => {
+      handleAutoArchive: async (id: string, _results: CompletedStepResult[]) => {
         calls.push(`handleAutoArchive:${id}`);
       },
     },

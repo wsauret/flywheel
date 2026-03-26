@@ -16,9 +16,7 @@ import {
   type SessionLifecycleState,
 } from "../src/session/state-machine"
 import {
-  formatPipelineStage,
   formatSprintIteration,
-  type PipelineStageInfo,
   type SprintIterationInfo,
 } from "../src/tui/utils/format"
 

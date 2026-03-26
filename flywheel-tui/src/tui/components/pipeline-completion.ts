@@ -18,7 +18,7 @@
 
 import type {
   PipelineResult,
-  PipelineStageResult,
+  CompletedStepResult,
 } from "../../controller/workflow-pipeline";
 import type { SessionLifecycleState } from "../../session/state-machine";
 import { safeUpdateState } from "../../session/safe-transition";
@@ -32,7 +32,7 @@ export interface PipelineCompletionDeps {
   orchestrator: {
     handleAutoArchive(
       id: string,
-      results: PipelineStageResult[],
+      results: CompletedStepResult[],
     ): Promise<void>;
   };
   sessionId: string | null;

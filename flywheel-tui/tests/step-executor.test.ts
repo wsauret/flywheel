@@ -24,6 +24,7 @@ import {
   type BudgetChecker,
   type PersistFn,
   type StageContextAccumulator,
+  type GateQuestionService,
 } from "../src/queue/executor";
 
 // ---------------------------------------------------------------------------
@@ -1085,5 +1086,217 @@ describe("Edge cases", () => {
     expect(result.completed).toBe(true);
     expect(executionOrder).toEqual([s1.id, s3.id]);
     expect(executionOrder).not.toContain(s2.id);
+  });
+});
+
+// ===========================================================================
+// VAL-QUEUE-035: Gate step pauses for user approval
+// ===========================================================================
+
+describe("VAL-QUEUE-035: Gate step pauses for user approval", () => {
+  /** Mock QuestionService that returns a fixed answer */
+  function createMockQuestionService(answer: string): GateQuestionService {
+    return {
+      ask: async (_questions) => [[answer]],
+    };
+  }
+
+  /** Mock QuestionService that rejects (user dismissed) */
+  function createRejectingQuestionService(): GateQuestionService {
+    return {
+      ask: async () => {
+        throw new Error("The user dismissed this question");
+      },
+    };
+  }
+
+  /** Mock QuestionService that records questions asked */
+  function createRecordingQuestionService(answer = "Continue"): GateQuestionService & { calls: unknown[] } {
+    const calls: unknown[] = [];
+    return {
+      ask: async (questions) => {
+        calls.push(questions);
+        return [[answer]];
+      },
+      calls,
+    };
+  }
+
+  test("gate step with 'Continue' answer completes and advances", async () => {
+    const qs = createMockQuestionService("Continue");
+    const workerCalls: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "", durationMs: 0, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ type: "work", title: "Work step" });
+    const s2 = makeStep({ type: "gate", title: "Approval gate" });
+    const s3 = makeStep({ type: "review", title: "Review step" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(3);
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("completed"); // gate completed
+    expect(queue.steps[2].status).toBe("completed");
+    // Worker should NOT be called for the gate step
+    expect(workerCalls).toEqual([s1.id, s3.id]);
+  });
+
+  test("gate step with 'Stop' answer fails and stops queue", async () => {
+    const qs = createMockQuestionService("Stop");
+    const workerCalls: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "", durationMs: 0, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ type: "work", title: "Work step" });
+    const s2 = makeStep({ type: "gate", title: "Approval gate" });
+    const s3 = makeStep({ type: "review", title: "Review step" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(1);
+    expect(result.reason).toContain("User stopped at gate");
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("failed");
+    expect(queue.steps[2].status).toBe("pending");
+    // Worker should NOT be called for gate or the step after gate
+    expect(workerCalls).toEqual([s1.id]);
+  });
+
+  test("gate step with 'Pause' answer completes gate then stops", async () => {
+    const qs = createMockQuestionService("Pause");
+    const workerCalls: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "", durationMs: 0, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ type: "work", title: "Work step" });
+    const s2 = makeStep({ type: "gate", title: "Approval gate" });
+    const s3 = makeStep({ type: "review", title: "Review step" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(2); // work + gate completed
+    expect(result.reason?.toLowerCase()).toContain("shutdown");
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("completed"); // gate completed (not failed)
+    expect(queue.steps[2].status).toBe("pending"); // review not started
+    expect(workerCalls).toEqual([s1.id]); // only work step executed via worker
+  });
+
+  test("gate step dismissed (QuestionRejectedError) treats as stop", async () => {
+    const qs = createRejectingQuestionService();
+
+    const s1 = makeStep({ type: "gate", title: "Approval gate" });
+    const s2 = makeStep({ type: "work", title: "Work step" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+
+  test("gate step without questionService auto-resolves as continue", async () => {
+    const workerCalls: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "", durationMs: 0, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ type: "gate", title: "Auto-resolve gate" });
+    const s2 = makeStep({ type: "work", title: "Work step" });
+    const queue = createQueue([s1, s2]);
+
+    // No questionService set
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(2);
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("completed");
+    // Worker NOT called for gate step
+    expect(workerCalls).toEqual([s2.id]);
+  });
+
+  test("gate step presents question with correct options", async () => {
+    const qs = createRecordingQuestionService("Continue");
+
+    const s1 = makeStep({ type: "gate", title: "Review approval" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    expect(qs.calls.length).toBe(1);
+    const questions = qs.calls[0] as Array<{ question: string; options: Array<{ label: string }> }>;
+    expect(questions[0].question).toBe("Review approval");
+    expect(questions[0].options).toHaveLength(3);
+    expect(questions[0].options.map((o) => o.label)).toEqual(["Continue", "Stop", "Pause"]);
+  });
+
+  test("gate step emits step events correctly on continue", async () => {
+    const emitter = createMockEmitter();
+    const qs = createMockQuestionService("Continue");
+
+    const s1 = makeStep({ type: "gate", title: "Gate" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const methods = emitter.events.map((e) => e.method);
+    expect(methods).toContain("queueStepStarted");
+    expect(methods).toContain("queueStepCompleted");
+    expect(methods).not.toContain("queueStepFailed");
+  });
+
+  test("gate step emits step events correctly on stop", async () => {
+    const emitter = createMockEmitter();
+    const qs = createMockQuestionService("Stop");
+
+    const s1 = makeStep({ type: "gate", title: "Gate" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const methods = emitter.events.map((e) => e.method);
+    expect(methods).toContain("queueStepStarted");
+    expect(methods).toContain("queueStepFailed");
+    expect(methods).not.toContain("queueStepCompleted");
   });
 });

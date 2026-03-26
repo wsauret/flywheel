@@ -6,7 +6,7 @@ import {
 } from "../src/tui/components/session-orchestrator";
 import type { Session } from "../src/schemas/session";
 import type { OutputSnapshot } from "../src/schemas/output";
-import type { PipelineStageResult } from "../src/controller/workflow-pipeline";
+import type { CompletedStepResult } from "../src/controller/workflow-pipeline";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -200,7 +200,7 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: PipelineStageResult[] = [
+    const stageResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "review", completed: true },
       { workflow: "ship", completed: true },
@@ -218,7 +218,7 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: PipelineStageResult[] = [
+    const stageResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "review", completed: true },
     ];
@@ -235,7 +235,7 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: PipelineStageResult[] = [
+    const stageResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "ship", completed: false, reason: "cancelled" },
     ];
@@ -252,7 +252,7 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     deps.worktreeManager = undefined;
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: PipelineStageResult[] = [
+    const stageResults: CompletedStepResult[] = [
       { workflow: "ship", completed: true },
     ];
 

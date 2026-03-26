@@ -41,6 +41,25 @@ import {
 } from "./queue";
 import { Log } from "../utils/log";
 
+// ---------------------------------------------------------------------------
+// Gate step — QuestionService interface (minimal, for DI)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal QuestionService interface for gate steps.
+ * Mirrors the `ask` method from `src/controller/question-service.ts`.
+ * The full QuestionService type is not imported to avoid coupling the
+ * queue engine to the controller layer.
+ */
+export interface GateQuestionService {
+  ask(questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description: string }>;
+    custom?: boolean;
+  }>): Promise<Array<string[]>>;
+}
+
 const log = Log.create({ service: "step-executor" });
 
 // ---------------------------------------------------------------------------
@@ -131,6 +150,14 @@ export interface StepExecutorOptions {
   accumulator: StageContextAccumulator;
   /** Maximum revision attempts per step (0 = no revisions) */
   maxRevisions: number;
+  /**
+   * QuestionService for gate steps. When a step of type `gate` is encountered,
+   * the executor uses this service to present continue/stop/pause options
+   * instead of invoking dispatcher→worker.
+   *
+   * When null/undefined, gate steps are auto-resolved as "Continue".
+   */
+  questionService?: GateQuestionService | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,6 +249,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     persist,
     accumulator,
     maxRevisions,
+    questionService,
   } = options;
 
   let shutdownRequested = false;
@@ -260,6 +288,55 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     }
     await persistQueue();
     return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Gate step constants
+  // -------------------------------------------------------------------------
+
+  const GATE_CONTINUE = "Continue";
+  const GATE_STOP = "Stop";
+  const GATE_PAUSE = "Pause";
+
+  /**
+   * Handle a gate step: pause execution and present a question to the user
+   * via QuestionService (continue/stop/pause).
+   *
+   * Returns:
+   *   "continue" — mark step completed, advance cursor
+   *   "stop"     — mark step failed, stop queue
+   *   "pause"    — mark step completed, request shutdown
+   *
+   * When no QuestionService is provided, auto-resolves as "continue".
+   */
+  async function handleGateStep(step: Step): Promise<"continue" | "stop" | "pause"> {
+    if (!questionService) {
+      log.info("gate step auto-resolved (no question service)", { stepId: step.id });
+      return "continue";
+    }
+
+    try {
+      const answers = await questionService.ask([{
+        question: step.title || "Approval gate",
+        header: "Gate",
+        options: [
+          { label: GATE_CONTINUE, description: "Continue to next step" },
+          { label: GATE_STOP, description: "Stop execution" },
+          { label: GATE_PAUSE, description: "Pause execution (can resume later)" },
+        ],
+      }]);
+
+      // answers is an array of QuestionAnswer[] — each element is string[]
+      const answer = answers?.[0]?.[0] ?? GATE_CONTINUE;
+
+      if (answer === GATE_STOP) return "stop";
+      if (answer === GATE_PAUSE) return "pause";
+      return "continue";
+    } catch (err) {
+      // QuestionRejectedError (user dismissed) → treat as stop
+      log.info("gate step dismissed by user", { stepId: step.id });
+      return "stop";
+    }
   }
 
   /**
@@ -454,7 +531,47 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         };
       }
 
-      // Execute the step
+      // Gate steps: pause execution and present user with continue/stop/pause
+      if (step.type === "gate") {
+        // Transition to running (so UI shows it as active)
+        emitter.queueStepStarted(workflowId, step.id, step.type, step.title);
+        await safeTransition(step.id, "running", "gate step awaiting user decision");
+
+        const decision = await handleGateStep(step);
+
+        if (decision === "continue") {
+          await safeTransition(step.id, "completed", "user approved gate");
+          emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+          stepsCompleted++;
+          advanceCursor(queue);
+          continue;
+        }
+
+        if (decision === "pause") {
+          await safeTransition(step.id, "completed", "user paused at gate");
+          emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+          stepsCompleted++;
+          advanceCursor(queue);
+          // Request shutdown so the executor stops after this step
+          shutdownRequested = true;
+          continue;
+        }
+
+        // decision === "stop"
+        await safeTransition(step.id, "failed", "user stopped at gate");
+        emitter.queueStepFailed(workflowId, step.id, step.type, step.title, "User stopped at gate");
+        queue.status = "failed";
+        await persistQueue();
+        emitter.queueFailed(workflowId, "User stopped at gate", stepsCompleted);
+        return {
+          completed: false,
+          stepsCompleted,
+          stepsTotal,
+          reason: "User stopped at gate",
+        };
+      }
+
+      // Execute the step (non-gate)
       const success = await executeStep(step);
 
       if (success) {

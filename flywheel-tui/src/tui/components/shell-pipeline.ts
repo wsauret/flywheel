@@ -22,15 +22,35 @@ import type { ContextIndexer } from "../../memory/indexer";
 import type { DispatcherTransport } from "../../dispatcher/transport";
 import type { EvaluatorTransport } from "../../evaluator/transport";
 import { checkEndOfSessionGate } from "../../controller/validation-state";
-import type { EndOfSessionGateCheck } from "../../controller/workflow-pipeline";
-import type {
-  PipelineStage,
-  PipelineStageResult,
-  StageRunner,
-  WorkflowType,
-} from "../../controller/workflow-pipeline";
+import type { EndOfSessionGateCheck, WorkflowType } from "../../controller/workflow-pipeline";
 import { buildEscalationContext } from "../../sprint/escalation-context";
 import type { SprintLoopResult } from "../../sprint/sprint-loop";
+
+// ---------------------------------------------------------------------------
+// Local stage types — inline replacements for removed PipelineStage/Result
+// ---------------------------------------------------------------------------
+
+/** A single stage in a legacy pipeline (used only by buildPipelineStages). */
+export interface ShellStage {
+  workflow: WorkflowType;
+  gateBeforeNext?: boolean;
+}
+
+/** Result from executing a single stage via the shell stage runner. */
+export interface ShellStageResult {
+  workflow: WorkflowType;
+  completed: boolean;
+  planPath?: string;
+  reason?: string;
+  escalationContext?: import("../../sprint/escalation-context").EscalationContext;
+}
+
+/** Function that executes a single stage. */
+export type ShellStageRunner = (
+  stage: ShellStage,
+  args: Record<string, string>,
+  signal: AbortSignal,
+) => Promise<ShellStageResult>;
 
 // ---------------------------------------------------------------------------
 // Stage composition
@@ -50,13 +70,13 @@ import type { SprintLoopResult } from "../../sprint/sprint-loop";
 export function buildPipelineStages(
   workflow: string,
   config: FlywheelConfig,
-): PipelineStage[] | null {
+): ShellStage[] | null {
   if (!config.auto_chain) return null;
 
   // Only "plan" and "work" trigger pipeline mode
   if (workflow !== "plan" && workflow !== "work") return null;
 
-  const stages: PipelineStage[] = [];
+  const stages: ShellStage[] = [];
 
   if (workflow === "plan") {
     stages.push({ workflow: "plan" });
@@ -104,7 +124,7 @@ export interface StageRunnerOptions {
  * one factory, one code path. The dispatcher is wired when `dispatcherTransport`
  * is provided.
  */
-export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
+export function createShellStageRunner(opts: StageRunnerOptions): ShellStageRunner {
   const {
     session,
     deps,
@@ -121,10 +141,10 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
   } = opts;
 
   return async (
-    stage: PipelineStage,
+    stage: ShellStage,
     args: Record<string, string>,
     signal: AbortSignal,
-  ): Promise<PipelineStageResult> => {
+  ): Promise<ShellStageResult> => {
     // Validate work stage has a planPath
     if (stage.workflow === "work" && !args.planPath) {
       return {
@@ -180,7 +200,7 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
       }
 
       // Sprint escalation: extract escalation context from sprint result
-      let escalationContext: PipelineStageResult["escalationContext"];
+      let escalationContext: ShellStageResult["escalationContext"];
       if (stage.workflow === "sprint") {
         const sprintResult = extra.sprintResult as SprintLoopResult | undefined;
         if (sprintResult?.escalated) {

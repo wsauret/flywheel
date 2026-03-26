@@ -17,7 +17,7 @@ import {
   handlePipelineCompletion,
   type PipelineCompletionDeps,
 } from "../src/tui/components/pipeline-completion";
-import type { PipelineResult, PipelineStageResult } from "../src/controller/workflow-pipeline";
+import type { PipelineResult, CompletedStepResult } from "../src/controller/workflow-pipeline";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,7 +41,7 @@ function makeMockDeps(overrides?: Partial<PipelineCompletionDeps>): {
 
   const deps: PipelineCompletionDeps = {
     orchestrator: {
-      handleAutoArchive: async (id: string, results: PipelineStageResult[]) => {
+      handleAutoArchive: async (id: string, results: CompletedStepResult[]) => {
         calls.push(`handleAutoArchive:${id}`);
       },
     },
@@ -108,7 +108,7 @@ describe("handlePipelineCompletion — auto-archive", () => {
   });
 
   it("passes stageResults to orchestrator.handleAutoArchive", async () => {
-    let receivedResults: PipelineStageResult[] = [];
+    let receivedResults: CompletedStepResult[] = [];
     const { deps } = makeMockDeps({
       orchestrator: {
         handleAutoArchive: async (_id, results) => {
@@ -116,7 +116,7 @@ describe("handlePipelineCompletion — auto-archive", () => {
         },
       },
     });
-    const stageResults: PipelineStageResult[] = [
+    const stageResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "ship", completed: true },
     ];

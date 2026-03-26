@@ -22,7 +22,7 @@ import { groupSessions, type SessionGroupKey } from "../src/tui/components/sideb
 import type { Session } from "../src/schemas/session";
 import type { OutputSnapshot } from "../src/schemas/output";
 import type { Queue } from "../src/queue/types";
-import type { PipelineResult, PipelineStageResult } from "../src/controller/workflow-pipeline";
+import type { PipelineResult, CompletedStepResult } from "../src/controller/workflow-pipeline";
 import type { SessionSummary } from "../src/session/manager";
 
 // ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ describe("handlePipelineCompletion — queue completion", () => {
     const calls: string[] = [];
     const deps: PipelineCompletionDeps = {
       orchestrator: {
-        handleAutoArchive: async (id: string, results: PipelineStageResult[]) => {
+        handleAutoArchive: async (id: string, results: CompletedStepResult[]) => {
           calls.push(`autoArchive:${id}`);
         },
       },
