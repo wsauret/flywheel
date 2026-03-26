@@ -1,0 +1,97 @@
+{
+  "groupId": "cross-area-events-context",
+  "testedAt": "2026-03-26T04:57:15.000Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testCommand": "bun test tests/sprint-cross-area-events-context.test.ts",
+    "services": "none — pure unit tests",
+    "externalDependencies": "none"
+  },
+  "toolsUsed": ["bun test"],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-004",
+      "title": "Sprint events update TUI adapters",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/sprint-cross-area-events-context.test.ts",
+          "expected": "All VAL-CROSS-004 tests pass (5 tests across 3 adapter describe blocks)",
+          "observed": "All 5 tests passed: Headless adapter (3 tests for verbose/minimal/normal log levels), OpenTUI adapter (1 test for system block formatting), MockAdapter (1 test for event recording)"
+        },
+        {
+          "action": "Verify test coverage: Headless adapter receives all 6 sprint event types and logs at appropriate levels",
+          "expected": "Tests emit all 6 sprint event types via EventBus and verify Headless adapter logs them with correct formatting per log level",
+          "observed": "Test creates EventBus, connects HeadlessAdapter, emits all 6 events (sprint:started, sprint:iteration-started, sprint:verification-started, sprint:iteration-completed, sprint:escalated, sprint:completed), verifies log output includes expected messages. Three log levels tested: verbose (all 6), normal (4 of 6), minimal (3 of 6)"
+        },
+        {
+          "action": "Verify test coverage: OpenTUI adapter renders sprint-specific system blocks",
+          "expected": "Tests verify OpenTUI adapter produces system blocks with sprint-specific emoji formatting for all 6 event types",
+          "observed": "Test creates mock UIActions, connects OpenTUIAdapter to EventBus, emits all 6 events, waits 50ms for flush interval, verifies system blocks contain sprint-specific prefixes: 🏃 (started), ▸ (iteration-started), 🔍 (verification-started), ✓ (iteration-completed), ⚠ (escalated), ✓ (completed)"
+        },
+        {
+          "action": "Verify test coverage: MockAdapter records all 6 event types",
+          "expected": "Tests verify MockAdapter records all 6 sprint events in its events array via explicit switch cases",
+          "observed": "Test creates MockAdapter, connects to EventBus, emits all 6 events, verifies adapter.events contains all 6 sprint event types"
+        },
+        {
+          "action": "Read test file to verify assertion alignment",
+          "expected": "Test file correctly tests what VAL-CROSS-004 claims: sprint loop events emitted on EventBus propagate to both OpenTUI and Headless adapters",
+          "observed": "Test file creates real EventBus instances, connects real adapter implementations, emits events through the bus (not directly calling handleEvent), and verifies adapter-specific output. This confirms the full event propagation path from EventBus.emit → adapter.handleEvent → adapter-specific rendering."
+        }
+      ],
+      "evidence": {
+        "testOutput": "sprint-fixes-and-integration/cross-area-events-context/bun-test-output.txt",
+        "consoleErrors": "none",
+        "testResults": "5 pass, 0 fail, 46 expect() calls total (shared with VAL-CROSS-006)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-006",
+      "title": "ContextIndexer feeds sprint worker",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/sprint-cross-area-events-context.test.ts",
+          "expected": "All VAL-CROSS-006 tests pass (4 tests)",
+          "observed": "All 4 tests passed: getRelevantContext called with workflowType 'sprint', returned context appears in sprint prompt, prompt contains Project Context section, no context section when indexer not provided"
+        },
+        {
+          "action": "Verify test coverage: getRelevantContext is called with workflowType 'sprint'",
+          "expected": "Test creates mock ContextIndexer, passes to SprintLoop via options, runs loop, verifies getRelevantContext was called with query containing workflowType: 'sprint'",
+          "observed": "Test creates a mock ContextIndexer that captures queries, passes it via createTestOptions({contextIndexer}), runs createSprintLoop().run(), and asserts capturedQueries contains a query with workflowType === 'sprint'"
+        },
+        {
+          "action": "Verify test coverage: returned context appears in sprint phase prompt",
+          "expected": "Test verifies that context entries (conventions, standards, learnings) returned by getRelevantContext appear in the assembled sprint prompt",
+          "observed": "Test provides mock context with specific entries (TEST_CONVENTION.md, docs/standards/testing.md, docs/solutions/sprint-gotcha.md), uses promptCapturingExecutor to capture the assembled prompt, then verifies all entry names and summaries appear in the prompt text"
+        },
+        {
+          "action": "Verify test coverage: Project Context section present when indexer provides entries",
+          "expected": "Test verifies the prompt includes structured section headers (## Project Context, ### Conventions, ### Standards)",
+          "observed": "Test provides mock context with conventions and standards, verifies prompt contains '## Project Context', '### Conventions', and '### Standards' section headers"
+        },
+        {
+          "action": "Verify test coverage: no context section when indexer is not provided",
+          "expected": "Test verifies that without a ContextIndexer, the prompt does not contain a Project Context section",
+          "observed": "Test runs SprintLoop without contextIndexer option, captures prompt, verifies it does NOT contain '## Project Context'"
+        },
+        {
+          "action": "Read test file to verify assertion alignment",
+          "expected": "Test file correctly tests what VAL-CROSS-006 claims: ContextIndexer.getRelevantContext() is called during prompt assembly and its output is included in the sprint phase prompt",
+          "observed": "Tests use DI to inject mock ContextIndexer into SprintLoop, run the real loop execution path, capture the assembled prompt via promptCapturingExecutor, and verify context entries flow from indexer → prompt builder → final prompt string. Both positive (context present) and negative (no indexer → no context) paths tested."
+        }
+      ],
+      "evidence": {
+        "testOutput": "sprint-fixes-and-integration/cross-area-events-context/bun-test-output.txt",
+        "consoleErrors": "none",
+        "testResults": "4 pass, 0 fail, 46 expect() calls total (shared with VAL-CROSS-004)"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 2 assertions: 2 passed. VAL-CROSS-004 confirmed all 6 sprint event types propagate through EventBus to Headless (with 3 log levels), OpenTUI (with emoji-formatted system blocks), and Mock adapters. VAL-CROSS-006 confirmed ContextIndexer.getRelevantContext() is called with workflowType 'sprint' during prompt assembly and its output (conventions, standards, learnings) appears in the final sprint prompt. All 9 tests passed with 46 expect() calls in 82ms."
+}

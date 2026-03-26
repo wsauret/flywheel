@@ -1,0 +1,131 @@
+{
+  "groupId": "cross-area-config-handoff",
+  "testedAt": "2026-03-26T04:57:17Z",
+  "isolation": {
+    "workingDirectory": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "testCommand": "bun test tests/sprint-cross-area-integration.test.ts",
+    "noServicesRequired": true
+  },
+  "toolsUsed": ["bun test"],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "title": "Config flows to sprint execution",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/sprint-cross-area-integration.test.ts",
+          "expected": "3 tests in VAL-CROSS-001 describe block pass",
+          "observed": "All 3 tests passed: (1) custom max_iterations=2 causes loop to stop after 2 iterations [2.83ms], (2) custom verification_timeout_ms flows to verification runner [0.22ms], (3) config values propagate through createStageLoop factory [0.81ms]"
+        },
+        {
+          "action": "Verify test 1: max_iterations=2 stops loop after 2 iterations",
+          "expected": "SprintLoop with max_iterations=2 and failing evaluator stops after exactly 2 iterations and escalates",
+          "observed": "result.iterationsUsed=2, result.escalated=true, result.completed=false, result.iterationHistory.length=2"
+        },
+        {
+          "action": "Verify test 2: verification_timeout_ms=7500 flows to verification runner",
+          "expected": "Verification runner receives timeoutMs=7500 from config",
+          "observed": "capturedTimeoutMs === 7500 confirmed via DI mock callback"
+        },
+        {
+          "action": "Verify test 3: createStageLoop factory propagates config",
+          "expected": "createStageLoop with sprint workflow and max_iterations=2 creates SprintLoop that respects the config",
+          "observed": "result.phasesTotal=2 confirming the factory-created loop uses the custom max_iterations value"
+        },
+        {
+          "action": "Read test source to verify coverage matches assertion definition",
+          "expected": "Tests create SprintLoop with custom config, verify behavior changes (max_iterations limits loop, verification_timeout_ms reaches runner)",
+          "observed": "Test code constructs defaultConfig with custom sprint overrides, injects via createTestOptions DI, and asserts on captured values and result fields"
+        }
+      ],
+      "evidence": {
+        "testOutput": "sprint-fixes-and-integration/cross-area-config-handoff/bun-test-output.txt",
+        "consoleErrors": "none (WARN entries are expected from mock engine missing metadata in factory test)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Handoff flows worker through evaluator",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/sprint-cross-area-integration.test.ts",
+          "expected": "3 tests in VAL-CROSS-002 describe block pass",
+          "observed": "All 3 tests passed: (1) worker handoff verification_script_path reaches verification runner [0.17ms], (2) evaluator receives handoff fields + verification output + iteration number [0.25ms], (3) iteration number comes from loop counter, not worker handoff [0.21ms]"
+        },
+        {
+          "action": "Verify test 1: verification_script_path flows from handoff to verification runner",
+          "expected": "Mock _readHandoff returns handoff with verification_script_path, _runVerification receives that path",
+          "observed": "capturedScriptPath === '.flywheel/verify/my-sprint-test.ts' confirmed"
+        },
+        {
+          "action": "Verify test 2: evaluator receives handoff fields + verification output + iteration number",
+          "expected": "Evaluator input contains worker_output (summary), artifacts_produced, tests_passed, verification stdout/stderr in validation_criteria, and 'Iteration 1 of' in prompt",
+          "observed": "capturedEvalInput has worker_output=summary, artifacts contain src/hello.ts and src/app.ts, tests_passed=true, validation_criteria contains 'FAIL: expected 200 got 404', 'Error in test', and 'Iteration 1 of'"
+        },
+        {
+          "action": "Verify test 3: iteration number comes from loop counter not worker handoff",
+          "expected": "Worker reports iteration_number: 99 but evaluator prompts show 'Iteration 1 of 3' and 'Iteration 2 of 3' from loop counter",
+          "observed": "evalPrompts[0] contains 'Iteration 1 of 3', evalPrompts[1] contains 'Iteration 2 of 3', result.iterationsUsed=2"
+        },
+        {
+          "action": "Read test source to verify coverage matches assertion definition",
+          "expected": "Tests mock the full DI chain: worker returns handoff → verification runner called with script path → evaluator called with handoff fields + verification output + iteration number",
+          "observed": "Test code uses createTestOptions with DI overrides for _readHandoff, _runVerification, and evaluatorTransport, capturing all values passed through the chain"
+        }
+      ],
+      "evidence": {
+        "testOutput": "sprint-fixes-and-integration/cross-area-config-handoff/bun-test-output.txt",
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "title": "Prompt and evaluator path alignment",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run bun test tests/sprint-cross-area-integration.test.ts",
+          "expected": "4 tests in VAL-CROSS-003 describe block pass",
+          "observed": "All 4 tests passed: (1) SPRINT_FIELDS keys are all present in phase prompt handoff section [0.06ms], (2) SPRINT_FIELDS keys match renderHandoffInstruction output [0.01ms], (3) evaluator prompt references same fields as worker handoff, (4) no field in SPRINT_FIELDS is missing from rendered handoff instructions"
+        },
+        {
+          "action": "Verify test 1: SPRINT_FIELDS keys present in phase prompt",
+          "expected": "buildSprintPhasePrompt output contains **key** for every key in SPRINT_FIELDS",
+          "observed": "All field keys found as **key** patterns in the phase prompt output"
+        },
+        {
+          "action": "Verify test 2: SPRINT_FIELDS keys match renderHandoffInstruction output, including needs_plan",
+          "expected": "renderHandoffInstruction output contains **key** for each SPRINT_FIELDS entry, and needs_plan is in SPRINT_FIELDS",
+          "observed": "All keys present, fieldKeys includes 'needs_plan', rendered output contains '**needs_plan**'"
+        },
+        {
+          "action": "Verify test 3: evaluator prompt references same fields as worker handoff",
+          "expected": "buildSprintEvaluatorPrompt output contains section headers matching handoff concepts: Worker Summary, Verification Script Result, Artifacts, Implementation Quality, Verification Script Quality",
+          "observed": "All expected section headers found in the evaluator prompt"
+        },
+        {
+          "action": "Verify test 4: no field missing from rendered handoff and no extra fields",
+          "expected": "Set equality between SPRINT_FIELDS keys and bold-formatted keys in renderHandoffInstruction output",
+          "observed": "Regex extraction of **word** patterns matches SPRINT_FIELDS keys exactly — no missing and no extra fields"
+        },
+        {
+          "action": "Read test source to verify needs_plan inclusion after VAL-FIX-001",
+          "expected": "Tests explicitly check that needs_plan is in SPRINT_FIELDS and rendered in handoff instructions",
+          "observed": "Test 2 has explicit expect(fieldKeys).toContain('needs_plan') and expect(rendered).toContain('**needs_plan**')"
+        }
+      ],
+      "evidence": {
+        "testOutput": "sprint-fixes-and-integration/cross-area-config-handoff/bun-test-output.txt",
+        "consoleErrors": "none"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 3 assertions (VAL-CROSS-001, VAL-CROSS-002, VAL-CROSS-003): all 3 passed. 10 tests across 3 describe blocks ran in 37ms with 59 expect() calls and 0 failures. Config propagation, handoff data flow through the evaluator chain, and prompt/evaluator field alignment are all verified, including the needs_plan field added by VAL-FIX-001."
+}
