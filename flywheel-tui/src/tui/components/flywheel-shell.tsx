@@ -951,7 +951,7 @@ export function FlywheelShell() {
         queueResult = await stepExec.run()
 
         if (!queueResult.completed && !_userInitiatedPause) {
-          const isBudgetExhausted = /budget exhausted/i.test(queueResult.reason ?? "")
+          const isBudgetExhausted = /budget[_ ]exhausted/i.test(queueResult.reason ?? "")
           const isRateLimitPause = /rate limit/i.test(queueResult.reason ?? "")
           if (isRateLimitPause) {
             toast.show({
@@ -1548,7 +1548,7 @@ export function FlywheelShell() {
         try {
           queueResult = await stepExec.run()
           if (!queueResult.completed && !_userInitiatedPause) {
-            const isBudgetExhausted = /budget exhausted/i.test(queueResult.reason ?? "")
+            const isBudgetExhausted = /budget[_ ]exhausted/i.test(queueResult.reason ?? "")
             if (isBudgetExhausted) {
               toast.show({ message: "Queue stopped — budget exhausted.", variant: "warning", duration: 5000 })
             } else {

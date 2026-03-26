@@ -619,3 +619,241 @@ describe("delete removes queue file", () => {
     expect(result).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// VAL-EXEC-014: Crash recovery marks running steps as failed with crash_recovery reason
+// ---------------------------------------------------------------------------
+
+describe("VAL-EXEC-014: Crash recovery marks running steps as failed with crash_recovery", () => {
+  it("running step gets status 'failed' after crash recovery load", async () => {
+    const sessionId = "test-crash-reason";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan", status: "completed" });
+    const step2 = makeStep({ id: "s2", type: "work", title: "Work", status: "running" });
+    const step3 = makeStep({ id: "s3", type: "review", title: "Review", status: "pending" });
+
+    const queue = makeQueue({ steps: [step1, step2, step3], cursor: 1, status: "running" });
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.steps[1].status).toBe("failed");
+  });
+
+  it("crash recovery mutation log contains 'crash_recovery' reason", async () => {
+    const sessionId = "test-crash-recovery-reason";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const step1 = makeStep({ id: "s1", status: "running" });
+    const queue = makeQueue({ steps: [step1], cursor: 0, status: "running" });
+
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded).not.toBeNull();
+    const recoveryEntries = loaded!.mutationLog.filter(
+      (e) => e.action === "crash-recovery",
+    );
+    expect(recoveryEntries.length).toBe(1);
+    expect(recoveryEntries[0].reason).toContain("crash recovery");
+    expect(recoveryEntries[0].actor).toBe("persistence");
+    expect(recoveryEntries[0].stepIds).toContain("s1");
+  });
+
+  it("completed and pending steps are unaffected by crash recovery", async () => {
+    const sessionId = "test-crash-unaffected";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const step1 = makeStep({ id: "s1", status: "completed" });
+    const step2 = makeStep({ id: "s2", status: "running" });
+    const step3 = makeStep({ id: "s3", status: "pending" });
+
+    const queue = makeQueue({ steps: [step1, step2, step3], cursor: 1, status: "running" });
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded!.steps[0].status).toBe("completed");
+    expect(loaded!.steps[1].status).toBe("failed");
+    expect(loaded!.steps[2].status).toBe("pending");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VAL-CROSS-007: Queue state survives session resume
+// ---------------------------------------------------------------------------
+
+describe("VAL-CROSS-007: Queue state survives session resume", () => {
+  it("completed steps remain completed after reload", async () => {
+    const sessionId = "test-resume-completed";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan research", status: "completed" });
+    const step2 = makeStep({ id: "s2", type: "plan", title: "Plan draft", status: "completed" });
+    const step3 = makeStep({ id: "s3", type: "work", title: "Implement feature", status: "pending" });
+
+    const queue = makeQueue({ steps: [step1, step2, step3], cursor: 2, status: "paused" });
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.steps[0].status).toBe("completed");
+    expect(loaded!.steps[1].status).toBe("completed");
+    expect(loaded!.steps[2].status).toBe("pending");
+  });
+
+  it("cursor position is restored at correct position", async () => {
+    const sessionId = "test-resume-cursor";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const steps = [
+      makeStep({ id: "s1", status: "completed" }),
+      makeStep({ id: "s2", status: "completed" }),
+      makeStep({ id: "s3", status: "pending" }),
+      makeStep({ id: "s4", status: "pending" }),
+    ];
+
+    const queue = makeQueue({ steps, cursor: 2, status: "paused" });
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded!.cursor).toBe(2);
+  });
+
+  it("accumulated context is restored alongside queue state", async () => {
+    const sessionId = "test-resume-context";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    // Save accumulator state
+    const accState = {
+      entries: [
+        {
+          stepId: "s1",
+          stepType: "plan" as const,
+          stepTitle: "Plan research",
+          handoff: { summary: "researched codebase", decisions: ["use REST"] },
+        },
+        {
+          stepId: "s2",
+          stepType: "plan" as const,
+          stepTitle: "Plan draft",
+          handoff: { summary: "drafted plan", artifacts: ["plan.json"] },
+        },
+      ],
+    };
+    persistence.saveAccumulatorState(accState);
+
+    // Save queue state
+    const queue = makeQueue({
+      steps: [
+        makeStep({ id: "s1", status: "completed" }),
+        makeStep({ id: "s2", status: "completed" }),
+        makeStep({ id: "s3", status: "pending" }),
+      ],
+      cursor: 2,
+      status: "paused",
+    });
+    persistence.save(queue);
+
+    // Reload both
+    const loadedQueue = await persistence.load();
+    const loadedAcc = await persistence.loadAccumulatorState();
+
+    expect(loadedQueue).not.toBeNull();
+    expect(loadedQueue!.cursor).toBe(2);
+    expect(loadedQueue!.steps[0].status).toBe("completed");
+    expect(loadedQueue!.steps[1].status).toBe("completed");
+    expect(loadedQueue!.steps[2].status).toBe("pending");
+
+    expect(loadedAcc).not.toBeNull();
+    expect(loadedAcc!.entries).toHaveLength(2);
+    expect(loadedAcc!.entries[0].stepId).toBe("s1");
+    expect(loadedAcc!.entries[0].handoff.summary).toBe("researched codebase");
+    expect(loadedAcc!.entries[1].stepId).toBe("s2");
+    expect(loadedAcc!.entries[1].handoff.artifacts).toEqual(["plan.json"]);
+  });
+
+  it("mutation log is preserved on resume", async () => {
+    const sessionId = "test-resume-mutations";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    const queue = makeQueue({
+      steps: [
+        makeStep({ id: "s1", status: "completed" }),
+        makeStep({ id: "s2", status: "pending" }),
+      ],
+      cursor: 1,
+      status: "paused",
+      mutationLog: [
+        {
+          timestamp: "2026-01-01T00:00:00.000Z",
+          action: "status-change",
+          actor: "executor",
+          reason: "step completed",
+          stepIds: ["s1"],
+        },
+        {
+          timestamp: "2026-01-01T00:01:00.000Z",
+          action: "insert",
+          actor: "plan-hook",
+          reason: "work steps from plan",
+          stepIds: ["s3", "s4"],
+        },
+      ],
+    });
+    persistence.save(queue);
+    const loaded = await persistence.load();
+
+    expect(loaded!.mutationLog).toHaveLength(2);
+    expect(loaded!.mutationLog[0].actor).toBe("executor");
+    expect(loaded!.mutationLog[1].actor).toBe("plan-hook");
+  });
+
+  it("full resume flow: persist → crash recovery → resume with accumulated context", async () => {
+    const sessionId = "test-full-resume-flow";
+    const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
+
+    // Simulate a session that crashed mid-execution
+    const queue = makeQueue({
+      steps: [
+        makeStep({ id: "s1", status: "completed" }),
+        makeStep({ id: "s2", status: "running" }), // was running when crash occurred
+        makeStep({ id: "s3", status: "pending" }),
+      ],
+      cursor: 1,
+      status: "running",
+    });
+
+    const accState = {
+      entries: [
+        {
+          stepId: "s1",
+          stepType: "work" as const,
+          stepTitle: "First work step",
+          handoff: { summary: "completed first task", decisions: ["chose REST over GraphQL"] },
+        },
+      ],
+    };
+
+    persistence.save(queue);
+    persistence.saveAccumulatorState(accState);
+
+    // Reload (simulating app restart after crash)
+    const loadedQueue = await persistence.load();
+    const loadedAcc = await persistence.loadAccumulatorState();
+
+    // Crash recovery should have marked s2 as failed
+    expect(loadedQueue!.steps[0].status).toBe("completed");
+    expect(loadedQueue!.steps[1].status).toBe("failed"); // crash recovery
+    expect(loadedQueue!.steps[2].status).toBe("pending");
+
+    // Accumulated context from before the crash should be available
+    expect(loadedAcc!.entries).toHaveLength(1);
+    expect(loadedAcc!.entries[0].handoff.decisions).toEqual(["chose REST over GraphQL"]);
+
+    // Mutation log should contain crash-recovery entry
+    const crashEntries = loadedQueue!.mutationLog.filter(e => e.action === "crash-recovery");
+    expect(crashEntries.length).toBe(1);
+    expect(crashEntries[0].stepIds).toContain("s2");
+  });
+});

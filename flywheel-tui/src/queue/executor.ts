@@ -225,6 +225,14 @@ export interface StepExecutor {
   run(): Promise<StepExecutorResult>;
   /** Request graceful shutdown — finish current step, then stop */
   requestShutdown(): void;
+  /**
+   * Abort execution immediately — terminate the current worker process,
+   * mark the running step as failed, and return cleanly.
+   *
+   * Unlike `requestShutdown()` which waits for the current step to finish,
+   * `abort()` interrupts mid-step execution.
+   */
+  abort(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +246,36 @@ const EXECUTOR_PROVENANCE: Provenance = {
 
 function makeProvenance(reason: string): Provenance {
   return { actor: "executor", reason };
+}
+
+// ---------------------------------------------------------------------------
+// Abort helper — races a promise against an AbortSignal
+// ---------------------------------------------------------------------------
+
+/**
+ * Races a promise against an AbortSignal. If the signal is already aborted
+ * or fires before the promise settles, rejects with an AbortError.
+ */
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err);
+      },
+    );
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +333,9 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   } = options;
 
   let shutdownRequested = false;
+  /** AbortController for mid-step abort. When abort() is called, the
+   *  current step's promise is rejected via this controller's signal. */
+  let abortController = new AbortController();
   /** Last handoff data from the most recently completed step (for chaining) */
   let previousHandoff: Record<string, unknown> | null = null;
   /** Last evaluator assessment from the most recently completed step */
@@ -438,8 +479,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       const dispatcherResult = await dispatcher(step, dispatcherContext);
       let currentPrompt = dispatcherResult.prompt;
 
-      // (4) Spawn worker
-      let workerOutput = await worker(step, currentPrompt);
+      // (4) Spawn worker — race against abort signal
+      let workerOutput = await raceAbort(worker(step, currentPrompt), abortController.signal);
 
       // (5) Read handoff (best-effort)
       let handoffData: Record<string, unknown> | null = null;
@@ -486,8 +527,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
             // Build revision prompt with evaluator feedback
             currentPrompt = buildRevisionPrompt(currentPrompt, evalResult);
 
-            // Re-execute worker with revision prompt
-            workerOutput = await worker(step, currentPrompt);
+            // Re-execute worker with revision prompt — race against abort signal
+            workerOutput = await raceAbort(worker(step, currentPrompt), abortController.signal);
 
             // Read revised handoff
             try {
@@ -626,7 +667,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       // (1) Check budget before starting step
       if (budgetChecker.isExhausted()) {
-        const reason = "Budget exhausted";
+        const reason = "budget_exhausted";
         queue.status = "paused";
         await persistQueue();
         emitter.queueFailed(workflowId, reason, stepsCompleted);
@@ -720,5 +761,15 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     log.info("shutdown requested", { workflowId });
   }
 
-  return { run, requestShutdown };
+  // ---------------------------------------------------------------------------
+  // abort() — immediate interruption of current step
+  // ---------------------------------------------------------------------------
+
+  function abort(): void {
+    shutdownRequested = true;
+    abortController.abort();
+    log.info("abort requested — terminating current worker", { workflowId });
+  }
+
+  return { run, requestShutdown, abort };
 }

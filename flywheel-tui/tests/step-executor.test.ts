@@ -2356,3 +2356,206 @@ describe("VAL-HOOK-003: Hook continueExecution overrides failure behavior", () =
     expect(queue.steps[1].status).toBe("completed");
   });
 });
+
+// ===========================================================================
+// VAL-EXEC-003: Failed step stops execution by default
+// ===========================================================================
+
+describe("VAL-EXEC-003: Failed step stops execution by default", () => {
+  test("failed step stops execution with reason referencing the failed step", async () => {
+    let callCount = 0;
+    const worker: WorkerFn = async (step) => {
+      callCount++;
+      if (callCount === 2) throw new Error("step 2 crashed");
+      return { output: "ok", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ title: "Succeeds" });
+    const s2 = makeStep({ title: "Fails here" });
+    const s3 = makeStep({ title: "Should not run" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(result.reason).toContain("Fails here");
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("failed");
+    expect(queue.steps[2].status).toBe("pending");
+  });
+
+  test("no subsequent pending steps execute after failure", async () => {
+    const workerCalls: string[] = [];
+    let callCount = 0;
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.title);
+      callCount++;
+      if (callCount === 1) throw new Error("first step fails");
+      return { output: "ok", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ title: "Will fail" });
+    const s2 = makeStep({ title: "Should not run" });
+    const s3 = makeStep({ title: "Also should not run" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const result = await createStepExecutor(opts).run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+    expect(workerCalls).toEqual(["Will fail"]);
+    expect(queue.steps[1].status).toBe("pending");
+    expect(queue.steps[2].status).toBe("pending");
+  });
+
+  test("failed step returns completed:false", async () => {
+    const queue = createQueue([makeStep({ title: "Crasher" })]);
+    const opts = createDefaultOptions({ queue, worker: createCrashingWorker() });
+    const result = await createStepExecutor(opts).run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-005: Budget enforcement stops execution with 'budget_exhausted'
+// ===========================================================================
+
+describe("VAL-EXEC-005: Budget enforcement stops execution with budget_exhausted", () => {
+  test("budget exhaustion returns reason 'budget_exhausted'", async () => {
+    const budget = createLimitedBudget(1);
+    const s1 = makeStep({ title: "Runs" });
+    const s2 = makeStep({ title: "Blocked" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, budgetChecker: budget });
+    const result = await createStepExecutor(opts).run();
+
+    expect(result.completed).toBe(false);
+    expect(result.reason).toBe("budget_exhausted");
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+
+  test("budget already exhausted before first step returns budget_exhausted", async () => {
+    const budget = createExhaustedBudget();
+    const queue = createQueue([makeStep({ title: "Never runs" })]);
+
+    const opts = createDefaultOptions({ queue, budgetChecker: budget });
+    const result = await createStepExecutor(opts).run();
+
+    expect(result.completed).toBe(false);
+    expect(result.stepsCompleted).toBe(0);
+    expect(result.reason).toBe("budget_exhausted");
+  });
+
+  test("no further steps execute after budget exhaustion", async () => {
+    const workerCalls: string[] = [];
+    const budget = createLimitedBudget(1);
+
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.title);
+      return { output: "ok", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const s3 = makeStep({ title: "Step 3" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker, budgetChecker: budget });
+    const result = await createStepExecutor(opts).run();
+
+    expect(result.completed).toBe(false);
+    expect(result.reason).toBe("budget_exhausted");
+    expect(workerCalls).toEqual(["Step 1"]); // only first step runs
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-006: Graceful shutdown on abort signal
+// ===========================================================================
+
+describe("VAL-EXEC-006: Graceful shutdown on abort signal", () => {
+  test("abort during execution terminates worker and marks step failed", async () => {
+    let executorRef: StepExecutor | null = null;
+
+    const worker: WorkerFn = async (step) => {
+      // Simulate a long-running worker; abort mid-execution
+      return new Promise((_resolve, reject) => {
+        const timer = setTimeout(() => {
+          _resolve({ output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 1000, sessionId: randomUUID() });
+        }, 5000);
+
+        // Request abort shortly after worker starts
+        setTimeout(() => {
+          executorRef?.abort();
+        }, 50);
+      });
+    };
+
+    const s1 = makeStep({ title: "Long running step" });
+    const s2 = makeStep({ title: "Should not run" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    executorRef = executor;
+    const result = await executor.run();
+
+    expect(result.completed).toBe(false);
+    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+
+  test("abort returns cleanly without throwing", async () => {
+    let executorRef: StepExecutor | null = null;
+
+    const worker: WorkerFn = async (step) => {
+      return new Promise((_resolve) => {
+        setTimeout(() => {
+          _resolve({ output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 100, sessionId: randomUUID() });
+        }, 5000);
+        setTimeout(() => executorRef?.abort(), 20);
+      });
+    };
+
+    const queue = createQueue([makeStep({ title: "Aborting" })]);
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    executorRef = executor;
+
+    // Should not throw
+    const result = await executor.run();
+    expect(result.completed).toBe(false);
+    expect(typeof result.stepsCompleted).toBe("number");
+  });
+
+  test("abort persists queue state", async () => {
+    const persist = createRecordingPersist();
+    let executorRef: StepExecutor | null = null;
+
+    const worker: WorkerFn = async (step) => {
+      return new Promise((_resolve) => {
+        setTimeout(() => {
+          _resolve({ output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 100, sessionId: randomUUID() });
+        }, 5000);
+        setTimeout(() => executorRef?.abort(), 20);
+      });
+    };
+
+    const queue = createQueue([makeStep({ title: "Aborting" })]);
+    const opts = createDefaultOptions({ queue, worker, persist });
+    const executor = createStepExecutor(opts);
+    executorRef = executor;
+
+    await executor.run();
+
+    // Persist should have been called (at least for running → failed)
+    expect(persist.calls.length).toBeGreaterThan(0);
+  });
+});
