@@ -60,6 +60,12 @@ import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { buildPipelineStages, createShellStageRunner, createEndOfSessionGate } from "./shell-pipeline"
 import { buildCustomPipeline, modeHasReview, PIPELINE_MODE_OPTIONS, type PipelineMode } from "./start-command"
+import { buildQueue, buildQueueForSlashCommand, type QueueProgressInfo, formatQueueProgress, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
+import { buildQueueFromTemplate, type WorkflowName } from "../../queue/templates"
+import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
+import { createFlywheelEmitter } from "../../events/event-bus"
+import { createQueuePersistence } from "../../queue/persistence"
+import type { Queue } from "../../queue/types"
 import { parseCommand } from "../utils/command-parser"
 import { createQuestionWiring, type QuestionWiring } from "../utils/question-wiring"
 import { SIDEBAR_WIDTH } from "./shell-modes"
@@ -163,6 +169,8 @@ export function FlywheelShell() {
 
   // Pipeline stage indicator tracking
   const [activePipelineInfo, setActivePipelineInfo] = createSignal<PipelineStageInfo | null>(null)
+  // Queue progress indicator tracking (replaces pipeline info for queue-based execution)
+  const [activeQueueInfo, setActiveQueueInfo] = createSignal<QueueProgressInfo | null>(null)
   // Sprint iteration tracking for telemetry bar
   const [activeSprintInfo, setActiveSprintInfo] = createSignal<SprintIterationInfo | null>(null)
   let pipelineUnsubs: Unsubscribe[] = []
@@ -197,6 +205,8 @@ export function FlywheelShell() {
   // activeController was removed — shutdown is now via activeLoop.requestShutdown()
   let activeLoop: ExecutionLoop | null = null
   let activePipeline: WorkflowPipeline | null = null
+  let activeStepExecutor: StepExecutor | null = null
+  let activeQueue: Queue | null = null
   let activeFlusher: OutputFlusher | null = null
   let activeBudgetTracker: BudgetTracker | null = null
   let storeUnsub: (() => void) | null = null
@@ -829,6 +839,468 @@ export function FlywheelShell() {
     })
   }
 
+  /**
+   * Start queue-based execution. Creates a new session, builds the queue,
+   * wires events, and runs the step executor.
+   *
+   * This is the queue-based replacement for startPipeline().
+   * VAL-SHELL-013: Shell transitions idle→working on queue start
+   * VAL-SHELL-014: Shell transitions working→completed on queue success
+   * VAL-SHELL-015: Shell transitions working→completed on queue failure
+   * VAL-SHELL-019: Session created when queue starts
+   * VAL-SHELL-020: Session lifecycle follows queue progression
+   * VAL-SHELL-035: Output blocks render during step execution
+   */
+  const startQueueExecution = (
+    queue: Queue,
+    args: Record<string, string>,
+    preloadedDeps?: WorkflowDeps,
+    interactiveOverrides?: { plan?: boolean; review?: boolean },
+  ) => {
+    // Background previous session (don't destroy — allow concurrent pipelines)
+    const prevFocused = focusedSessionId()
+    if (prevFocused && runtimes.has(prevFocused)) {
+      runtimes.background(prevFocused)
+      activeSession = null
+      activeLoop = null
+      activePipeline = null
+      activeStepExecutor = null
+      activeQueue = null
+      activeFlusher = null
+      activeBudgetTracker = null
+      if (storeUnsub) {
+        storeUnsub()
+        storeUnsub = null
+      }
+      cleanupQuestionSubscriptions()
+      cleanupPipelineSubscriptions()
+      setActiveStore(null)
+      setWorkState(null)
+    } else if (activeSession) {
+      destroyWorkflowSession(activeSession)
+      activeSession = null
+      activeLoop = null
+      activePipeline = null
+      activeStepExecutor = null
+      activeQueue = null
+      if (activeFlusher) {
+        activeFlusher.dispose()
+        activeFlusher = null
+      }
+      if (activeBudgetTracker) {
+        activeBudgetTracker.dispose()
+        activeBudgetTracker = null
+      }
+      setActiveStore(null)
+      setWorkState(null)
+    }
+
+    // Create fresh session
+    const sessionLabel = queue.steps.map((s) => s.type).join(" → ")
+    const session = createWorkflowSession(sessionLabel)
+    activeSession = session
+    activeQueue = queue
+    setActiveStore(session.store)
+    subscribeToStore(session.store)
+    subscribeToTimer(session.timer)
+    setAppState("working")
+
+    // Config loaded once at queue start
+    let deps: WorkflowDeps
+    if (preloadedDeps) {
+      deps = preloadedDeps
+    } else {
+      const resolved = getDepsOrReturnIdle()
+      if (!resolved) return
+      deps = resolved
+    }
+
+    // Create persistent Session for pause/resume support
+    const planPathForSession = args.planPath ?? sessionLabel
+    const placeholderName = args.description || args.topic || undefined
+    let persistedSessionId: string | null = null
+    try {
+      persistedSessionId = sessionCtx.manager.create(planPathForSession, placeholderName)
+
+      const projectCwd = deps.config.project_cwd ?? "."
+      updateSession(persistedSessionId, { outputPath: `${persistedSessionId}.output.json` }, projectCwd)
+
+      // Transition to work:active
+      sessionCtx.manager.updateState(persistedSessionId, "plan:imported")
+      sessionCtx.manager.updateState(persistedSessionId, "plan:approved")
+      sessionCtx.manager.updateState(persistedSessionId, "work:active")
+
+      // Start output flusher
+      const persistence = createOutputPersistence({
+        sessionId: persistedSessionId,
+        baseDir: projectCwd,
+      })
+      const sessionStore = session.store
+      const getOutputBlocks = () => (sessionStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
+      activeFlusher = persistence.createFlusher(getOutputBlocks, { intervalMs: 5000 })
+
+      sessionStores.set(persistedSessionId, session.store)
+      sessionCtx.refreshList()
+    } catch (err) {
+      toast.show({
+        message: `Session persistence failed: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "warning",
+      })
+    }
+
+    // Create BudgetTracker
+    let queueBudgetTracker: BudgetTracker | null = null
+    let queueBudgetLimits: import("../../schemas/shared").BudgetLimits | null = null
+    if (persistedSessionId) {
+      const projectCwd = deps.config.project_cwd ?? "."
+      const persistedSession = readSession(persistedSessionId, projectCwd)
+      if (persistedSession) {
+        queueBudgetLimits = persistedSession.budgetLimits
+        queueBudgetTracker = createBudgetTracker({
+          sessionId: persistedSessionId,
+          baseDir: projectCwd,
+        })
+        activeBudgetTracker = queueBudgetTracker
+      }
+    }
+
+    // Question wiring
+    cleanupQuestionSubscriptions()
+    const questionWiring = createQuestionWiring({
+      eventBus: session.eventBus,
+      onQuestion: (q) => setPendingQuestion(q),
+      onClear: () => setPendingQuestion(null),
+    })
+    activeQuestionWiring = questionWiring
+
+    // Queue event subscriptions (replaces pipeline event subscriptions)
+    cleanupPipelineSubscriptions()
+    let stepCounter = 0
+    pipelineUnsubs.push(
+      session.eventBus.subscribeToType("queue:initialized", (e) => {
+        stepCounter = 0
+        setActiveQueueInfo({
+          currentStep: 1,
+          totalSteps: e.stepIds.length,
+          stepName: queue.steps[0]?.type ?? "step",
+        })
+        setActiveWorkflowName(queue.steps[0]?.type ?? "work")
+      }),
+      session.eventBus.subscribeToType("queue:step-started", (e) => {
+        stepCounter++
+        setActiveQueueInfo({
+          currentStep: stepCounter,
+          totalSteps: queue.steps.length,
+          stepName: e.stepType,
+        })
+        setActiveWorkflowName(e.stepType)
+      }),
+      session.eventBus.subscribeToType("queue:completed", () => {
+        setActiveQueueInfo(null)
+        setActiveSprintInfo(null)
+        // Final flush on queue completion
+        if (activeFlusher) {
+          activeFlusher.schedule()
+          activeFlusher.flush().catch(() => {})
+        }
+      }),
+      session.eventBus.subscribeToType("queue:failed", () => {
+        setActiveQueueInfo(null)
+        setActiveSprintInfo(null)
+      }),
+      // Event-driven flush: persist output after each step completes
+      session.eventBus.subscribeToType("queue:step-completed", () => {
+        if (activeFlusher) {
+          activeFlusher.schedule()
+        }
+      }),
+      // Sprint iteration tracking for telemetry bar
+      session.eventBus.subscribeToType("sprint:started", (e) => {
+        setActiveSprintInfo({ iteration: 0, maxIterations: e.maxIterations })
+      }),
+      session.eventBus.subscribeToType("sprint:iteration-started", (e) => {
+        setActiveSprintInfo({ iteration: e.iteration, maxIterations: e.maxIterations })
+      }),
+      session.eventBus.subscribeToType("sprint:completed", () => {
+        setActiveSprintInfo(null)
+      }),
+      session.eventBus.subscribeToType("sprint:escalated", () => {
+        setActiveSprintInfo(null)
+      }),
+    )
+
+    // Shared context indexer
+    const queueContextIndexer = getOrCreateContextIndexer()
+
+    const capturedSessionId = persistedSessionId
+    const capturedProjectCwd = deps.config.project_cwd ?? "."
+    const queueSessionId = persistedSessionId
+    _isPipelineRunning = true
+    _userInitiatedPause = false
+
+    const capturedFlusher = activeFlusher
+
+    // Register in runtimes and sessionControllers BEFORE the async execution starts
+    if (queueSessionId) {
+      setViewedSessionId(queueSessionId)
+      setFocusedSessionId(queueSessionId)
+    }
+
+    queueMicrotask(async () => {
+      const isStillViewed = () => viewedSessionId() === queueSessionId
+
+      // Start context indexing
+      if (!_indexerStarted) {
+        try {
+          await queueContextIndexer.startIndexing()
+          _indexerStarted = true
+        } catch { /* silently fall back to empty context */ }
+      }
+
+      // Prune old subprocess log dirs
+      const queueLogBaseDir = deps.config.project_cwd ?? process.cwd()
+      try { SubprocessLogger.cleanup(queueLogBaseDir) } catch { /* best-effort */ }
+
+      // Track current workflowId
+      let currentWorkflowId = `queue-${queueSessionId ?? "unknown"}`
+      const workflowIdUnsub = session.eventBus.subscribeToType("workflow:started", (ev) => {
+        currentWorkflowId = ev.workflowId
+      })
+      pipelineUnsubs.push(workflowIdUnsub)
+
+      const queueEngineName = deps.config.engine
+
+      // Auto-detect dispatcher transport
+      let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
+      try {
+        const { resolveModels } = await import("../../config/loader")
+        const { dispatcherModel } = resolveModels(deps.config)
+        const resolved = await autoDetectTransport({
+          spawner: deps.spawner,
+          engineName: deps.config.engine,
+          dispatcherModel,
+          onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
+          onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
+          logBaseDir: queueLogBaseDir,
+        })
+        dispatcherTransport = resolved.transport
+        log.info("queue dispatcher transport resolved", { label: resolved.label, engine: deps.config.engine })
+      } catch (err) {
+        log.warn("queue dispatcher transport auto-detect failed", {
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+
+      // Create evaluator transport
+      let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
+      if (!deps.config.skip_evaluation) {
+        try {
+          const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
+          const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
+          evaluatorTransport = await createEvaluatorTransport({
+            spawner: deps.spawner,
+            engineName: deps.config.engine,
+            evaluatorModel: evalModel,
+            onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stdout", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
+            onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: currentWorkflowId, stream: "stderr", data: chunk, engineName: queueEngineName, timestamp: Date.now() }),
+            logBaseDir: queueLogBaseDir,
+          })
+          log.info("queue evaluator transport created", { engine: deps.config.engine })
+        } catch (err) {
+          log.warn("queue evaluator transport creation failed", {
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
+
+      // Create stage runner for backward compatibility — step executor delegates to
+      // createStageLoop for each step, which is what the shell stage runner does.
+      const emitter = createFlywheelEmitter(session.eventBus)
+
+      // Create step executor with real dependencies
+      // Note: For this feature, we wire the step executor with stub functions
+      // that delegate to the existing stage loop infrastructure. The full
+      // integration (dispatcher → worker → evaluator per step) is already
+      // implemented in the step executor. Here we create the executor with
+      // the queue and wire it into the session.
+      const stepExec = createStepExecutor({
+        queue,
+        workflowId: currentWorkflowId,
+        emitter,
+        dispatcher: async (step, context) => {
+          // Stub dispatcher — real integration uses dispatcher transport
+          return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
+        },
+        worker: async (step, prompt) => {
+          // Delegate to createStageLoop for the actual execution
+          const handle = createStageLoop({
+            workflow: step.type as any,
+            args: { ...args },
+            config: deps.config,
+            spawner: deps.spawner,
+            engine: deps.engine,
+            ui: session.adapter,
+            eventBus: session.eventBus,
+            budgetTracker: queueBudgetTracker ?? undefined,
+            budgetLimits: queueBudgetLimits ?? undefined,
+            contextIndexer: queueContextIndexer,
+            dispatcherTransport,
+            evaluatorTransport,
+            onSessionName: capturedSessionId ? (name: string) => {
+              try {
+                updateSession(capturedSessionId, { name, label: name }, capturedProjectCwd)
+                sessionCtx.refreshList()
+              } catch { /* best-effort */ }
+            } : undefined,
+            logBaseDir: queueLogBaseDir,
+          })
+
+          activeLoop = handle.loop
+
+          const result = await handle.loop.run()
+          return {
+            output: result.completed ? "completed" : (result.reason ?? "failed"),
+            handoffPath: "",
+            durationMs: 0,
+          }
+        },
+        evaluator: null, // Evaluator is handled within createStageLoop
+        handoffReader: async () => null,
+        budgetChecker: queueBudgetTracker && queueBudgetLimits
+          ? { isExhausted: () => queueBudgetTracker!.isExhausted(queueBudgetLimits!) }
+          : { isExhausted: () => false },
+        persist: async (q) => {
+          // Queue persistence
+          if (queueSessionId && deps.config.queue?.persist_queue !== false) {
+            try {
+              const queuePersistence = createQueuePersistence({
+                sessionId: queueSessionId,
+                baseDir: capturedProjectCwd,
+              })
+              await queuePersistence.save(q)
+            } catch { /* best-effort */ }
+          }
+        },
+        accumulator: {
+          accumulate: () => {},
+          getContext: () => ({}),
+        },
+        maxRevisions: 0, // Revisions handled within createStageLoop
+      })
+
+      activeStepExecutor = stepExec
+
+      // Register in sessionControllers
+      if (queueSessionId) {
+        sessionControllers.set(queueSessionId, {
+          shutdown: async () => { stepExec.requestShutdown() },
+        })
+
+        runtimes.register(queueSessionId, {
+          kind: "running" as const,
+          sessionId: queueSessionId,
+          session,
+          controller: null,
+          loop: null as any,
+          pipeline: null as any,
+          flusher: activeFlusher!,
+          budgetTracker: queueBudgetTracker!,
+          storeUnsub: storeUnsub!,
+          questionCleanup: () => cleanupQuestionSubscriptions(),
+          pipelineCleanup: () => cleanupPipelineSubscriptions(),
+          contextIndexer: queueContextIndexer,
+          workerPid: null,
+          stepExecutor: stepExec,
+          queue,
+        })
+      }
+
+      let queueResult: StepExecutorResult | undefined
+      try {
+        queueResult = await stepExec.run()
+
+        if (!queueResult.completed && !_userInitiatedPause) {
+          const isRateLimitPause = /rate limit/i.test(queueResult.reason ?? "")
+          if (isRateLimitPause) {
+            toast.show({
+              message: "Queue paused — rate limit reached. Resume when limits lift.",
+              variant: "warning",
+              duration: 5000,
+            })
+          } else {
+            activeStore()?.setError(queueResult.reason ?? "Queue execution failed")
+          }
+
+          if (queueSessionId) {
+            safeUpdateState(
+              (id, s) => sessionCtx.manager.updateState(id, s),
+              queueSessionId,
+              "work:paused",
+            )
+            sessionCtx.refreshList()
+          }
+          if (isStillViewed()) setAppState("completed")
+        }
+      } catch (err) {
+        if (!_userInitiatedPause) {
+          activeStore()?.setError(String(err))
+          if (queueSessionId) {
+            safeUpdateState(
+              (id, s) => sessionCtx.manager.updateState(id, s),
+              queueSessionId,
+              "work:paused",
+            )
+            sessionCtx.refreshList()
+          }
+          if (isStillViewed()) setAppState("completed")
+        }
+      } finally {
+        _isPipelineRunning = false
+
+        if (queueBudgetTracker) {
+          queueBudgetTracker.dispose()
+          if (activeBudgetTracker === queueBudgetTracker) {
+            activeBudgetTracker = null
+          }
+        }
+
+        if (queueSessionId) {
+          sessionControllers.delete(queueSessionId)
+          runtimes.remove(queueSessionId)
+        }
+
+        // Handle completion
+        if (queueResult && !_userInitiatedPause) {
+          try {
+            // Convert queue result to pipeline result format for handlePipelineCompletion
+            const pipelineResultCompat: import("../../controller/workflow-pipeline").PipelineResult = {
+              completed: queueResult.completed,
+              stagesCompleted: queueResult.stepsCompleted,
+              stagesTotal: queueResult.stepsTotal,
+              reason: queueResult.reason,
+              stageResults: queue.steps
+                .filter((s) => s.status === "completed")
+                .map((s) => ({
+                  workflow: s.type as any,
+                  completed: true,
+                })),
+            }
+            await handlePipelineCompletion(pipelineResultCompat, {
+              orchestrator,
+              sessionId: queueSessionId ?? null,
+              flusher: capturedFlusher,
+              toast,
+              updateState: (id, s) => sessionCtx.manager.updateState(id, s),
+              refreshList: () => sessionCtx.refreshList(),
+            })
+          } catch (completionErr) {
+            log.error("queue completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
+          }
+        }
+      }
+    })
+  }
+
   const cleanupQuestionSubscriptions = () => {
     if (activeQuestionWiring) {
       activeQuestionWiring.cleanup()
@@ -841,6 +1313,7 @@ export function FlywheelShell() {
     for (const unsub of pipelineUnsubs) unsub()
     pipelineUnsubs = []
     setActivePipelineInfo(null)
+    setActiveQueueInfo(null)
     _isPipelineRunning = false
   }
 
@@ -856,6 +1329,11 @@ export function FlywheelShell() {
       activePipeline.requestShutdown()
       activePipeline = null
     }
+    if (activeStepExecutor) {
+      activeStepExecutor.requestShutdown()
+      activeStepExecutor = null
+    }
+    activeQueue = null
     if (activeLoop) {
       activeLoop.requestShutdown()
       activeLoop = null
@@ -1267,18 +1745,16 @@ export function FlywheelShell() {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
 
-    const stages = buildPipelineStages("work", deps.config)
-      ?? [{ workflow: "work" as const }]
-    startPipeline(stages, { planPath }, deps)
+    const queue = buildQueueForSlashCommand("work", deps.config)
+    startQueueExecution(queue, { planPath }, deps)
   }
 
   const launchGenericWithPipeline = (name: string, args: Record<string, string>) => {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
 
-    const stages = buildPipelineStages(name, deps.config)
-      ?? [{ workflow: name as import("../../controller/workflow-pipeline").WorkflowType }]
-    startPipeline(stages, args, deps)
+    const queue = buildQueueForSlashCommand(name, deps.config)
+    startQueueExecution(queue, args, deps)
   }
 
   /**
@@ -1383,9 +1859,22 @@ export function FlywheelShell() {
       // (pipeline will create its own QuestionService)
       cleanupQuestionSubscriptions()
 
-      // Step 3: Build stages and start pipeline
-      const stages = buildCustomPipeline(mode)
-      startPipeline(stages, { description }, undefined, {
+      // Step 3: Build queue from workflow template and start execution
+      const workflowNameMap: Record<PipelineMode, WorkflowName> = {
+        "plan-only": "plan-only",
+        "plan-work": "plan-work",
+        "plan-work-review": "plan-work-review",
+        "full": "full",
+        "sprint": "sprint",
+      }
+      const startDeps = getDepsOrWarn()
+      if (!startDeps) {
+        cleanupQuestionSubscriptions()
+        return
+      }
+      const workflowName = workflowNameMap[mode]
+      const startFlowQueue = buildQueue(workflowName, startDeps.config)
+      startQueueExecution(startFlowQueue, { description }, startDeps, {
         plan: planInteractive,
         review: reviewInteractive,
       })
@@ -1882,7 +2371,11 @@ export function FlywheelShell() {
           totalPhases={layoutState().phases.length}
           workflowLabel={hasActiveWorkflow() ? activeWorkflowName() : undefined}
           stepLabel={hasActiveWorkflow() ? activeStepLabel() : undefined}
-          pipelineInfo={activePipelineInfo()}
+          pipelineInfo={activePipelineInfo() ?? (activeQueueInfo() ? {
+            stage: activeQueueInfo()!.currentStep,
+            total: activeQueueInfo()!.totalSteps,
+            stageName: activeQueueInfo()!.stepName,
+          } : null)}
           sprintInfo={activeSprintInfo()}
         />
       </box>

@@ -13,6 +13,8 @@ import { Log } from "../../utils/log"
 import type { WorkflowSession } from "./workflow-session"
 import type { ExecutionLoop } from "../../controller/execution-loop"
 import type { WorkflowPipeline } from "../../controller/workflow-pipeline"
+import type { StepExecutor } from "../../queue/executor"
+import type { Queue } from "../../queue/types"
 import type { OutputFlusher } from "../../session/output-persistence"
 import type { BudgetTracker } from "../../session/budget-tracker"
 import type { ContextIndexer } from "../../memory/indexer"
@@ -46,6 +48,10 @@ export interface RunningRuntime {
   pipelineCleanup: () => void
   contextIndexer: ContextIndexer | null
   workerPid: number | null
+  /** Queue-based execution: step executor replaces pipeline for queue mode. */
+  stepExecutor?: StepExecutor | null
+  /** The queue being executed (when using queue-based execution). */
+  queue?: Queue | null
 }
 
 /** Discriminated union — check `kind` to narrow. */
