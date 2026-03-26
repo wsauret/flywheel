@@ -83,6 +83,8 @@ export interface EvalResult {
   feedback: string | null;
   suggestions: string[];
   cyclesUsed: number;
+  /** Structured verification results from trust-but-verify evaluator (when available) */
+  verificationResults?: import("../evaluator/trust-verify").VerificationResults;
 }
 
 /** Dispatcher: assembles prompt for a step */
@@ -91,11 +93,16 @@ export type DispatcherFn = (
   context: Record<string, unknown>,
 ) => Promise<{ prompt: string; validationCriteria: unknown | null }>;
 
-/** Evaluator: assesses step output quality */
+/**
+ * Evaluator: assesses step output quality.
+ * Receives the step, worker output, validation criteria, and handoff data.
+ * The handoff data enables trust-but-verify: re-running commands, checking files, etc.
+ */
 export type EvaluatorFn = (
   step: Step,
   workerOutput: string,
   validationCriteria?: unknown | null,
+  handoffData?: Record<string, unknown> | null,
 ) => Promise<EvalResult>;
 
 /** Worker: executes a step with a prompt */
@@ -447,7 +454,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       // (6) Invoke evaluator for quality check (if configured)
       if (evaluator) {
-        let evalResult = await evaluator(step, workerOutput.output, validationCriteria);
+        let evalResult = await evaluator(step, workerOutput.output, validationCriteria, handoffData);
 
         // Handle transport error: skip evaluation, continue
         if (evalResult.transportError) {
@@ -482,8 +489,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
               handoffData = null;
             }
 
-            // Re-evaluate (pass validationCriteria through revision loop)
-            evalResult = await evaluator(step, workerOutput.output, validationCriteria);
+            // Re-evaluate (pass validationCriteria and handoff through revision loop)
+            evalResult = await evaluator(step, workerOutput.output, validationCriteria, handoffData);
 
             // Transport error during revision: break out and continue
             if (evalResult.transportError) {
