@@ -1,0 +1,45 @@
+{
+  "featureId": "telemetry-and-footer",
+  "reviewedAt": "2026-03-26T09:15:00.000Z",
+  "commitId": "56e6a0b490de07a5631937b43b8f9d7f4c6e1b2d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean implementation that replaces pipeline-based telemetry with queue step progress. The telemetry bar now shows 'Step N/M' and capitalized step name. Footer shortcut logic was properly extracted into a pure testable function (footer-shortcuts.ts) with clear priority hierarchy. All old pipeline/stage props were removed from TelemetryBar and replaced with a single queueProgress prop. The StatusFooter now receives appState to differentiate working vs idle/completed shortcuts. 29 tests cover all VAL assertions. All tests pass, typecheck clean.",
+    "issues": [
+      {
+        "file": "src/tui/utils/format.ts",
+        "line": 11,
+        "severity": "non_blocking",
+        "description": "QueueStepProgressInfo duplicates the structurally identical QueueProgressInfo from shell-queue.ts. Both have {currentStep, totalSteps, stepName}. The telemetry bar imports QueueStepProgressInfo but receives QueueProgressInfo from flywheel-shell.tsx. Works due to structural typing but creates two canonical sources for the same shape. Consider consolidating to a single type."
+      },
+      {
+        "file": "src/tui/utils/format.ts",
+        "line": 44,
+        "severity": "non_blocking",
+        "description": "StageProgressInfo and formatStageProgress are marked 'kept for backward compatibility in tests' but are dead code in src/ — only referenced from tests/format-utils.test.ts. Could be removed when those legacy tests are cleaned up."
+      },
+      {
+        "file": "src/tui/components/flywheel-shell.tsx",
+        "line": 2238,
+        "severity": "non_blocking",
+        "description": "isWorking={appState() === 'working'} is redundant since appState is already passed. resolveFooterShortcuts checks ctx.appState === 'working' directly. The isWorking prop only serves the fallback path (when appState is undefined), which cannot happen here since appState() is always provided."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The mission AGENTS.md enforces 'phase is eliminated from the codebase' and the feature properly removed all phase references from modified files. However, format.ts still exports StageProgressInfo and formatStageProgress as 'backward compatibility' — these legacy types with stage/pipeline naming persist in the codebase. Not a violation by this feature (it was deliberate), but a convention gap that should be tracked for future cleanup.",
+      "evidence": "src/tui/utils/format.ts:44 — StageProgressInfo interface and formatStageProgress function still exported, only consumed by tests/format-utils.test.ts"
+    },
+    {
+      "area": "conventions",
+      "observation": "Two structurally identical types exist for queue step progress: QueueProgressInfo (in shell-queue.ts, used by flywheel-shell.tsx signals) and QueueStepProgressInfo (in format.ts, used by telemetry-bar.tsx props). No convention exists in AGENTS.md about canonical type locations for TUI display types vs shell state types.",
+      "evidence": "src/tui/components/shell-queue.ts:33 defines QueueProgressInfo; src/tui/utils/format.ts:11 defines QueueStepProgressInfo — same fields {currentStep, totalSteps, stepName}"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature passes review. The telemetry bar correctly shows 'Step N/M' with capitalized step name, replacing all old pipeline stage props. Footer shortcuts are cleanly extracted into a pure function with proper working/idle/completed state differentiation. Runtime timer display is preserved through existing prop wiring. 29 well-structured tests cover all 5 VAL assertions (010-014). Three non-blocking issues found: duplicated type definition, legacy dead code kept for test backward compat, and a redundant isWorking prop. No blocking issues."
+}

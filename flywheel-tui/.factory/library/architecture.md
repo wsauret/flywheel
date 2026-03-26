@@ -37,3 +37,12 @@ Future: dispatcher intelligence epic will upgrade to LLM-based formalization.
 Queue events: queue:initialized, queue:completed, queue:failed, queue:step-inserted, queue:step-removed
 Step events: step:started, step:completed, step:failed (replace phase:* events)
 Sprint events retained for backward compat or replaced by step events with sprint metadata.
+
+## OpenTUI ScrollBox API
+
+When using `<scrollbox>` components in OpenTUI:
+- Type the ref as `ScrollBoxRenderable` from `@opentui/core`, not `any`
+- Use `createSignal<ScrollBoxRenderable | undefined>()` for ref signals
+- For scrolling: use `scrollBy(dx, dy)` or set `scrollTop` property — do NOT use `scrollTo(x, y)` (not part of the ScrollBoxRenderable API)
+- Examples: `output-window.tsx` (scrollBy), `prompt/index.tsx` (scrollBy)
+- Auto-scroll calculations should account for variable row heights (e.g., error messages adding extra lines)

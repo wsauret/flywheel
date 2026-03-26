@@ -1,0 +1,40 @@
+{
+  "featureId": "queue-panel-display",
+  "reviewedAt": "2026-03-26T09:10:00.000Z",
+  "commitId": "c1dda37a3d58983e8b87ea2e2e7ef84b4e9b9db9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid implementation that correctly redesigns the workflow panel from pipeline stages to queue steps. The QueueStepState type, store actions (set/start/complete/fail/insert/remove), adapter event wiring, and panel rendering are all well-structured. The component follows the established tsx+logic.ts separation pattern. Progress computation (computeQueueProgress) correctly counts statuses. All 5 status icons are distinct. The LegacyPhaseRow fallback for non-queue workflows is a reasonable safeguard. Tests cover all store mutations, progress computation edge cases, icon mapping, and type labels (28 tests total). Both adapters (OpenTUI and Headless) handle all queue:step-* events. The flywheel-shell wires queueSteps on both start and resume paths.",
+    "issues": [
+      {
+        "file": "src/tui/components/workflow-panel.tsx",
+        "line": 94,
+        "severity": "non_blocking",
+        "description": "Scrollbox ref typed as `any` instead of `ScrollBoxRenderable` from @opentui/core. Other components (output-window.tsx:37, prompt/index.tsx:13) use the proper typed ref. The `scrollTo` call is guarded with a typeof check so it won't crash, but the scroll may silently fail if the ScrollBoxRenderable API uses `scrollBy` rather than `scrollTo(x, y)`. The auto-scroll to running step (VAL-TUI-008) might not work at runtime despite the guard."
+      },
+      {
+        "file": "src/tui/components/workflow-panel.tsx",
+        "line": 102,
+        "severity": "non_blocking",
+        "description": "Auto-scroll calculation `ref.scrollTo(0, Math.max(0, idx * 2 - 2))` assumes each step row is ~2 lines tall, but failed steps with error messages add an extra row (the error <box>). For queues with multiple failed steps, the scroll offset calculation will drift and the running step may not be fully visible. A more robust approach would use actual child dimensions or the scrollbox's built-in viewport tracking."
+      },
+      {
+        "file": "src/tui/components/flywheel-shell.tsx",
+        "line": 550,
+        "severity": "non_blocking",
+        "description": "The status cast `s.status as 'pending' | 'running' | 'completed' | 'failed' | 'skipped'` appears on both start and resume paths (lines 550, 1153). This bypasses type checking — if the queue Step type ever adds a new status, this cast silently narrows it. A shared mapping function or a Zod parse would be safer, though the risk is low given both types are controlled within this codebase."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The scrollbox auto-scroll pattern in workflow-panel.tsx uses `any` typed ref and `scrollTo(x, y)`, while the established codebase pattern (output-window.tsx, prompt/index.tsx) uses `ScrollBoxRenderable` type and `scrollBy`/`scrollTop` properties. AGENTS.md doesn't document the correct OpenTUI scrollbox API pattern, which could lead to future workers making the same mistake.",
+      "evidence": "workflow-panel.tsx:94 uses `createSignal<any>(null)` and `ref.scrollTo(0, ...)`, while output-window.tsx:37 uses `createSignal<ScrollBoxRenderable | undefined>()` and prompt/index.tsx:92 uses `scrollRef.scrollBy(...)`"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The queue-panel-display feature is well-implemented and passes review. It correctly adds QueueStepState types, 6 store actions, adapter event wiring for all queue:step-* events, a redesigned WorkflowPanel with QueueStepRow rendering, and comprehensive tests (28 total). All 8 validation assertions (VAL-TUI-001 through 005, 007, 008, 015) are addressed by the implementation. Three non-blocking issues noted: (1) scrollbox ref typed as `any` instead of `ScrollBoxRenderable`, (2) auto-scroll offset calculation doesn't account for variable row heights from error messages, (3) status type cast on queue-to-display mapping could be safer. None of these block the feature — the panel renders correctly, progress is accurate, all status icons are distinct, and the event-driven live update flow is sound."
+}

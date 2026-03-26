@@ -1,0 +1,49 @@
+{
+  "milestone": "tui-queue-panel",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "detail": "4460 tests pass, 0 fail, 12241 expect() calls across 174 files" },
+    "typecheck": { "passed": true, "command": "bun run typecheck", "exitCode": 0 },
+    "lint": { "passed": true, "command": "n/a", "exitCode": 0, "detail": "No lint command configured in services.yaml or package.json" }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added OpenTUI ScrollBox API pattern to architecture.md — documents correct typed ref usage (ScrollBoxRenderable) and scrollBy vs scrollTo, preventing future workers from using any-typed refs",
+      "sourceFeature": "queue-panel-display"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Add a 'verification-only feature' workflow variant to the tui-worker skill. When a feature is purely about writing tests for already-implemented functionality, skip the RED-GREEN TDD cycle and go straight to test authoring. The current procedure assumes every feature has an implementation phase.",
+      "evidence": "Feature dynamic-insertion-display was a pure test-writing task. Worker deviated from skill steps 3-4 (RED/GREEN TDD) because all underlying code was already implemented by prior features. Worker's skillFeedback.suggestedChanges noted: 'Consider adjusting feature descriptions to reflect when prior features have already implemented the underlying functionality.'",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention for adapter testing: adapter tests should instantiate the actual adapter class (OpenTUIAdapter/HeadlessAdapter) with mock UIActions and verify handleEvent() delegates correctly. Tests that call store actions directly are store tests, not adapter tests. Label them accordingly.",
+      "evidence": "Feature dynamic-insertion-display: tests/dynamic-insertion-display.test.ts lines 197-249 has a describe block named 'adapter event handling for dynamic insertion' but tests store.insertQueueStep/removeQueueStep directly without instantiating any adapter. This pattern could mislead future workers about test coverage.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Legacy StageProgressInfo and formatStageProgress types persist in format.ts for backward test compatibility despite 'phase eliminated' mission goal",
+      "reason": "Already acknowledged as deliberate by the worker. These are quarantined in format.ts and only consumed by legacy tests. Will be cleaned up as part of natural code hygiene, not a convention gap."
+    },
+    {
+      "observation": "Two structurally identical types QueueProgressInfo (shell-queue.ts) and QueueStepProgressInfo (format.ts) exist with no canonical location convention",
+      "reason": "Too specific to this feature to warrant a convention change. Structural typing makes this harmless. The consolidation is a minor code quality cleanup, not a systemic pattern."
+    }
+  ],
+  "previousRound": null
+}
