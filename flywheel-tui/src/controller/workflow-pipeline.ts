@@ -15,6 +15,7 @@ import type { EventBus } from "../events/event-bus";
 import type { FlywheelConfig } from "../config/loader";
 import type { QuestionService, QuestionRejectedError } from "./question-service";
 import type { EndOfSessionGateResult, FailedAssertion } from "./validation-state";
+import type { EscalationContext } from "../sprint/escalation-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +35,8 @@ export interface PipelineStageResult {
   completed: boolean;
   planPath?: string;
   reason?: string;
+  /** Escalation context from sprint stage — when present, triggers escalation logic. */
+  escalationContext?: EscalationContext;
 }
 
 export interface PipelineResult {
@@ -98,8 +101,10 @@ const GATE_PAUSE = "Pause";
 // ---------------------------------------------------------------------------
 
 export class WorkflowPipeline {
+  /** Mutable: escalation can append stages dynamically. */
   private readonly stages: PipelineStage[];
   private readonly args: Record<string, string>;
+  private readonly config: FlywheelConfig;
   private readonly stageRunner: StageRunner;
   private readonly questionService: QuestionService;
   private readonly eventBus: EventBus;
@@ -110,8 +115,9 @@ export class WorkflowPipeline {
   private hasRun = false;
 
   constructor(options: PipelineOptions) {
-    this.stages = options.stages;
+    this.stages = [...options.stages]; // copy so we can push escalation stages
     this.args = { ...options.args };
+    this.config = options.config;
     this.stageRunner = options.stageRunner;
     this.questionService = options.questionService;
     this.eventBus = options.eventBus;
@@ -221,6 +227,40 @@ export class WorkflowPipeline {
       // Thread stage result data into args for next stage
       if (result.planPath) {
         currentArgs.planPath = result.planPath;
+      }
+
+      // Sprint escalation: when a sprint stage completes with escalationContext,
+      // dynamically append plan→work→review stages (or fail if escalate_to_full=false).
+      if (result.escalationContext && stage.workflow === "sprint") {
+        if (this.config.sprint.escalate_to_full) {
+          // Append escalation stages to the pipeline
+          const escalationStages: PipelineStage[] = [
+            { workflow: "plan" },
+            { workflow: "work" },
+            { workflow: "review" },
+          ];
+          this.stages.push(...escalationStages);
+
+          // Thread sprint escalation context into args for the planner
+          currentArgs.sprintEscalationContext = JSON.stringify(result.escalationContext);
+        } else {
+          // Terminal failure: sprint exhausted and escalation disabled
+          const reason = "Sprint exhausted iterations and escalate_to_full is disabled — terminal failure";
+          this.eventBus.emit({
+            type: "pipeline:failed",
+            pipelineId: this.pipelineId,
+            reason,
+            stagesCompleted,
+            timestamp: now(),
+          });
+          return {
+            completed: false,
+            stagesCompleted,
+            stagesTotal: this.stages.length,
+            reason,
+            stageResults,
+          };
+        }
       }
 
       // Gate: ask user whether to continue (only if there IS a next stage)

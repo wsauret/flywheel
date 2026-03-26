@@ -29,6 +29,8 @@ import type {
   StageRunner,
   WorkflowType,
 } from "../../controller/workflow-pipeline";
+import { buildEscalationContext } from "../../sprint/escalation-context";
+import type { SprintLoopResult } from "../../sprint/sprint-loop";
 
 // ---------------------------------------------------------------------------
 // Stage composition
@@ -177,11 +179,21 @@ export function createShellStageRunner(opts: StageRunnerOptions): StageRunner {
         }
       }
 
+      // Sprint escalation: extract escalation context from sprint result
+      let escalationContext: PipelineStageResult["escalationContext"];
+      if (stage.workflow === "sprint") {
+        const sprintResult = extra.sprintResult as SprintLoopResult | undefined;
+        if (sprintResult?.escalated) {
+          escalationContext = buildEscalationContext(sprintResult);
+        }
+      }
+
       return {
         workflow: stage.workflow as WorkflowType,
         completed: result.completed,
         reason: result.reason,
         planPath: planFilePath,
+        escalationContext,
       };
     } catch (err) {
       return {
