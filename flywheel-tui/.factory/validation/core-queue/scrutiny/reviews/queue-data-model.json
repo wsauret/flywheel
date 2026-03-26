@@ -1,0 +1,51 @@
+{
+  "featureId": "queue-data-model",
+  "reviewedAt": "2026-03-26T05:35:00.000Z",
+  "commitId": "ebd64b2",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid implementation of the Queue factory and mutation API. All 15 validation contract assertions (VAL-QUEUE-002 through VAL-QUEUE-018) are covered by 52 well-structured tests. The code follows project conventions (Bun, no console.*, proper terminology). Two non-blocking issues identified: (1) _maxSteps is stored as a hidden property that won't survive serialization, and (2) insertAfter doesn't adjust the cursor when inserting before the cursor position. Both are acceptable for this feature's scope since persistence and execution are handled by downstream features.",
+    "issues": [
+      {
+        "file": "src/queue/queue.ts",
+        "line": 80,
+        "severity": "non_blocking",
+        "description": "_maxSteps is stored as a hidden property via type assertion (Queue & { _maxSteps?: number }). This circumvents TypeScript's type system and the value will be lost during JSON serialization/deserialization. When queue persistence (VAL-QUEUE-019) serializes queue state to .queue.json, _maxSteps will silently disappear on reload. The persistence feature should either add maxSteps to the Queue interface/schema or store it alongside the queue."
+      },
+      {
+        "file": "src/queue/queue.ts",
+        "line": 217,
+        "severity": "non_blocking",
+        "description": "insertAfter does not adjust the cursor when inserting steps before the current cursor position. If steps are inserted at index 1 and cursor is at index 3, cursor should become 3+N (N = inserted steps) since all subsequent steps shift. removeStep correctly handles this (line 252), but insertAfter doesn't. This could cause the cursor to point at the wrong step after dynamic insertions."
+      },
+      {
+        "file": "src/queue/queue.ts",
+        "line": 192,
+        "severity": "non_blocking",
+        "description": "JSDoc says 'All inserted steps must be pending' but no runtime validation enforces this. A caller could pass steps with status 'running' or 'completed' and they would be inserted as-is. createQueue forces all steps to pending, but insertAfter bypasses this. Low risk since callers are internal, but inconsistent with the documented contract."
+      },
+      {
+        "file": "src/queue/queue.ts",
+        "line": 306,
+        "severity": "non_blocking",
+        "description": "reorderSteps docstring says 'must include all pending steps in the queue' but this invariant is not enforced. A partial list of pending step IDs is accepted, leaving unmentioned pending steps at their original positions. This could lead to subtle ordering bugs if callers assume completeness is enforced."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The _maxSteps hidden property pattern (storing extra data via type assertion on an interface) has no documented convention in AGENTS.md. This pattern is fragile for persistence. Future workers implementing queue persistence need to know that Queue objects may carry undeclared properties. AGENTS.md should document whether hidden properties are acceptable or if all state must live in the declared interface.",
+      "evidence": "src/queue/queue.ts:80 — `const queue: Queue & { _maxSteps?: number }` stores maxSteps outside the Queue interface. getMaxSteps() at line 92 casts back to retrieve it. This won't roundtrip through JSON.parse(JSON.stringify())."
+    },
+    {
+      "area": "conventions",
+      "observation": "The cursor adjustment convention is inconsistently applied across mutation operations. removeStep adjusts cursor but insertAfter does not. There's no documented convention in AGENTS.md about when cursor adjustment is required for mutations that change step indices.",
+      "evidence": "src/queue/queue.ts:252 — removeStep adjusts cursor with `if (idx < queue.cursor) queue.cursor = Math.max(0, queue.cursor - 1)`. src/queue/queue.ts:217 — insertAfter does `queue.steps.splice(idx + 1, 0, ...newSteps)` without any cursor adjustment."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature passes review. The Queue factory and mutation API is well-implemented with comprehensive test coverage (52 tests, 114 assertions). All 15 validation contract assertions are satisfied. Code follows project conventions and terminology. Four non-blocking issues identified: (1) _maxSteps hidden property won't survive serialization — the persistence feature (VAL-QUEUE-019) will need to address this, (2) missing cursor adjustment in insertAfter, (3) no runtime validation that inserted steps are pending, (4) reorderSteps doesn't enforce completeness invariant. None of these block the feature's own scope; they are natural follow-ups for downstream features."
+}

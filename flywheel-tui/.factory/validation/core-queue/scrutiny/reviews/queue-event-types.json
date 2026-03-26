@@ -1,0 +1,39 @@
+{
+  "featureId": "queue-event-types",
+  "reviewedAt": "2026-03-26T06:15:00.000Z",
+  "commitId": "8702049",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid implementation of 8 new queue/step lifecycle event types. All events correctly added to FlywheelEvent union, FlywheelEmitter interface and implementation, and all 3 adapters (opentui, headless, mock). The worker correctly identified a naming collision with existing StepStarted/StepCompleted/StepFailed types (which use step:started/step:completed/step:failed discriminants with phaseIndex/stepIndex payloads) and chose QueueStepStarted/queue:step-started etc. to avoid breaking the discriminated union — a necessary and well-reasoned deviation from the feature description's literal naming. Exhaustiveness checks pass. Existing events preserved. Tests cover all 8 new types plus 3 existing event preservation checks (12 tests total). Two non-blocking issues found.",
+    "issues": [
+      {
+        "file": "src/events/types.ts",
+        "line": 449,
+        "severity": "non_blocking",
+        "description": "stepType field uses 'string' instead of StepType from src/queue/types.ts. This applies to all 5 queue step event interfaces (QueueStepStarted, QueueStepCompleted, QueueStepFailed, QueueStepInserted, QueueStepRemoved). Using the StepType union ('plan' | 'work' | 'review' | 'ship' | 'debug' | 'research' | 'verify' | 'gate') would provide compile-time safety and prevent callers from passing arbitrary strings. The corresponding emitter method signatures in event-bus.ts would also need updating."
+      },
+      {
+        "file": "src/tui/adapters/opentui.ts",
+        "line": 600,
+        "severity": "non_blocking",
+        "description": "queue:step-failed handler omits stepTitle from log metadata ({workflowId, stepId, stepType, reason}) while queue:step-started and queue:step-completed both include it ({workflowId, stepId, stepType, stepTitle}). stepTitle is arguably more useful in failure logs for debugging. Should be consistent across all three handlers."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The worker chose QueueStepStarted/queue:step-started naming instead of the feature description's StepStarted/step:started to avoid discriminated union collision with existing types. This naming convention (prefixing with Queue* and queue:* namespace for queue-related events) should be documented so future features follow the same pattern consistently rather than re-discovering the collision.",
+      "evidence": "src/events/types.ts lines 113-130 define existing StepStarted/StepCompleted/StepFailed with step:started/step:completed/step:failed discriminants and phaseIndex/stepIndex payloads. New QueueStepStarted etc. at lines 445-493 use queue:step-started etc. Worker transcript shows detailed analysis of the collision before choosing the naming."
+    },
+    {
+      "area": "conventions",
+      "observation": "Event interfaces use 'string' for stepType field instead of the StepType union from src/queue/types.ts. The events module (src/events/) doesn't import from src/queue/types.ts. There's no documented convention about whether event interfaces should use domain-specific types or keep loose typing for forward compatibility. This should be decided and documented.",
+      "evidence": "src/events/types.ts lines 449, 458, 467, 479, 490 all use 'stepType: string' while src/queue/types.ts lines 26-35 defines StepType as a strict union."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. Clean implementation of 8 queue/step lifecycle event types with correct union integration, emitter methods, and exhaustive adapter handling. The worker made a sound judgment call renaming step events to queue:step-* namespace to avoid colliding with existing step:* events. Two non-blocking issues: stepType should use StepType union instead of string for type safety, and queue:step-failed log in OpenTUI adapter is missing stepTitle. All tests pass (4312 total, 12 new), typecheck clean."
+}
