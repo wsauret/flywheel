@@ -158,7 +158,41 @@ export interface StepExecutorOptions {
    * When null/undefined, gate steps are auto-resolved as "Continue".
    */
   questionService?: GateQuestionService | null;
+
+  /**
+   * Hook called after a step completes or fails. Allows external logic
+   * (e.g., sprint handler) to inspect results and mutate the queue
+   * (insert retry pairs, escalation steps, etc.).
+   *
+   * Return `{ continueExecution: true }` from a failed step to override
+   * the default "stop on failure" behavior — the executor will advance
+   * the cursor and continue processing instead of stopping.
+   *
+   * Called with the step, its final status, and the queue for mutation.
+   */
+  onStepCompleted?: OnStepCompletedHook | null;
 }
+
+// ---------------------------------------------------------------------------
+// OnStepCompleted hook type
+// ---------------------------------------------------------------------------
+
+export interface OnStepCompletedResult {
+  /** When true for a failed step, the executor continues instead of stopping. */
+  continueExecution: boolean;
+}
+
+/**
+ * Hook called after a step transitions to completed or failed.
+ * Receives the step, its final status, the queue (for mutation),
+ * and the handoff data (if available).
+ */
+export type OnStepCompletedHook = (
+  step: Step,
+  status: "completed" | "failed",
+  queue: Queue,
+  handoffData: Record<string, unknown> | null,
+) => Promise<OnStepCompletedResult>;
 
 // ---------------------------------------------------------------------------
 // StepExecutorResult — what run() returns
@@ -250,6 +284,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     accumulator,
     maxRevisions,
     questionService,
+    onStepCompleted,
   } = options;
 
   let shutdownRequested = false;
@@ -341,15 +376,18 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
   /**
    * Execute a single step: dispatcher → worker → handoff → evaluator → accumulate.
-   * Returns true if step completed, false if failed.
+   * Returns:
+   *   "completed" — step executed successfully
+   *   "failed"    — step failed and execution should stop
+   *   "handled"   — step failed but onStepCompleted hook handled it; continue
    */
-  async function executeStep(step: Step): Promise<boolean> {
+  async function executeStep(step: Step): Promise<"completed" | "failed" | "handled"> {
     // (2) Transition step to running
     emitter.queueStepStarted(workflowId, step.id, step.type, step.title);
     const transitioned = await safeTransition(step.id, "running", "starting step execution");
     if (!transitioned) {
       emitter.queueStepFailed(workflowId, step.id, step.type, step.title, "Failed to transition to running");
-      return false;
+      return "failed";
     }
 
     try {
@@ -436,7 +474,16 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
             await safeTransition(step.id, "failed", failReason);
             emitter.queueStepFailed(workflowId, step.id, step.type, step.title, failReason);
-            return false;
+
+            // Call onStepCompleted hook for evaluation failure
+            if (onStepCompleted) {
+              const hookResult = await onStepCompleted(step, "failed", queue, handoffData);
+              if (hookResult.continueExecution) {
+                return "handled";
+              }
+            }
+
+            return "failed";
           }
         }
       }
@@ -458,7 +505,12 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       await safeTransition(step.id, "completed", "step execution completed successfully");
       emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
 
-      return true;
+      // Call onStepCompleted hook
+      if (onStepCompleted) {
+        await onStepCompleted(step, "completed", queue, handoffData);
+      }
+
+      return "completed";
     } catch (error) {
       // Worker crash or other error: mark step failed, don't throw
       const reason = error instanceof Error ? error.message : String(error);
@@ -466,7 +518,16 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       await safeTransition(step.id, "failed", reason);
       emitter.queueStepFailed(workflowId, step.id, step.type, step.title, reason);
-      return false;
+
+      // Call onStepCompleted hook (with failed status)
+      if (onStepCompleted) {
+        const hookResult = await onStepCompleted(step, "failed", queue, null);
+        if (hookResult.continueExecution) {
+          return "handled";
+        }
+      }
+
+      return "failed";
     }
   }
 
@@ -475,16 +536,15 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   // ---------------------------------------------------------------------------
 
   async function run(): Promise<StepExecutorResult> {
-    const stepsTotal = queue.steps.length;
     let stepsCompleted = queue.steps.filter((s) => s.status === "completed").length;
 
     // Emit queue:initialized
     emitter.queueInitialized(workflowId, queue.steps.map((s) => s.id));
 
     // Handle empty queue
-    if (stepsTotal === 0 || isFinished(queue)) {
+    if (queue.steps.length === 0 || isFinished(queue)) {
       emitter.queueCompleted(workflowId, stepsCompleted);
-      return { completed: true, stepsCompleted, stepsTotal };
+      return { completed: true, stepsCompleted, stepsTotal: queue.steps.length };
     }
 
     // Set queue status to running
@@ -512,7 +572,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         return {
           completed: false,
           stepsCompleted,
-          stepsTotal,
+          stepsTotal: queue.steps.length,
           reason,
         };
       }
@@ -526,7 +586,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         return {
           completed: false,
           stepsCompleted,
-          stepsTotal,
+          stepsTotal: queue.steps.length,
           reason,
         };
       }
@@ -566,17 +626,21 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         return {
           completed: false,
           stepsCompleted,
-          stepsTotal,
+          stepsTotal: queue.steps.length,
           reason: "User stopped at gate",
         };
       }
 
       // Execute the step (non-gate)
-      const success = await executeStep(step);
+      const stepResult = await executeStep(step);
 
-      if (success) {
+      if (stepResult === "completed") {
         stepsCompleted++;
         // (12) Advance cursor
+        advanceCursor(queue);
+      } else if (stepResult === "handled") {
+        // Step failed but was handled by onStepCompleted hook
+        // (e.g., sprint retry insertion). Advance cursor to next pending step.
         advanceCursor(queue);
       } else {
         // Step failed — stop execution
@@ -587,7 +651,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         return {
           completed: false,
           stepsCompleted,
-          stepsTotal,
+          stepsTotal: queue.steps.length,
           reason: failedReason,
         };
       }
@@ -597,7 +661,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     queue.status = "completed";
     await persistQueue();
     emitter.queueCompleted(workflowId, stepsCompleted);
-    return { completed: true, stepsCompleted, stepsTotal };
+    return { completed: true, stepsCompleted, stepsTotal: queue.steps.length };
   }
 
   // ---------------------------------------------------------------------------
