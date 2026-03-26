@@ -75,7 +75,7 @@ export interface SessionManagerDeps {
 }
 
 /** Workflow type for a session. */
-export type SessionWorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research";
+export type SessionWorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research" | "sprint";
 
 /** The SessionManager interface. */
 export interface SessionManager {

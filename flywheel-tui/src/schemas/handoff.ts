@@ -151,6 +151,10 @@ export const WorkerHandoffBaseSchema = z.object({
   compound_docs: z.array(CompoundDocSchema).optional(),
   skillFeedback: SkillFeedbackSchema.optional()
     .describe("Feedback on the skill procedure. Fill this out to help improve future workers."),
+  /** Path to the verification script written by the sprint worker. */
+  verification_script_path: z.string().optional(),
+  /** Current sprint iteration number. */
+  iteration_number: z.number().optional(),
 }).strict();
 
 /**

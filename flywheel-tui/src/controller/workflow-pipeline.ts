@@ -21,7 +21,7 @@ import type { EndOfSessionGateResult, FailedAssertion } from "./validation-state
 // ---------------------------------------------------------------------------
 
 /** Valid workflow types (matches action-dispatcher.ts WorkflowType). */
-export type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research";
+export type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research" | "sprint";
 
 export interface PipelineStage {
   workflow: WorkflowType;

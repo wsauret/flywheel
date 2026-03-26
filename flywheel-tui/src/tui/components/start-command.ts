@@ -16,7 +16,7 @@ import type { PipelineStage } from "../../controller/workflow-pipeline"
 // Pipeline mode types
 // ---------------------------------------------------------------------------
 
-export type PipelineMode = "plan-only" | "plan-work" | "plan-work-review" | "full"
+export type PipelineMode = "plan-only" | "plan-work" | "plan-work-review" | "full" | "sprint"
 
 export interface PipelineModeOption {
   label: string
@@ -48,6 +48,11 @@ export const PIPELINE_MODE_OPTIONS: PipelineModeOption[] = [
     label: "Full Pipeline",
     description: "Create, execute, review, and ship",
     value: "full",
+  },
+  {
+    label: "Sprint",
+    description: "Fast iteration — implement, verify, retry",
+    value: "sprint",
   },
 ]
 
@@ -88,5 +93,7 @@ export function buildCustomPipeline(mode: PipelineMode): PipelineStage[] {
         { workflow: "review" },
         { workflow: "ship" },
       ]
+    case "sprint":
+      return [{ workflow: "sprint" }]
   }
 }

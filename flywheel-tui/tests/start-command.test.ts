@@ -38,8 +38,8 @@ describe("buildCustomPipeline", () => {
 })
 
 describe("PIPELINE_MODE_OPTIONS", () => {
-  it("has 4 options", () => {
-    expect(PIPELINE_MODE_OPTIONS).toHaveLength(4)
+  it("has 5 options", () => {
+    expect(PIPELINE_MODE_OPTIONS).toHaveLength(5)
   })
 
   it("each option has label, description, and value", () => {
@@ -52,7 +52,7 @@ describe("PIPELINE_MODE_OPTIONS", () => {
 
   it("values match PipelineMode union", () => {
     const values = PIPELINE_MODE_OPTIONS.map((o) => o.value)
-    expect(values).toEqual(["plan-only", "plan-work", "plan-work-review", "full"])
+    expect(values).toEqual(["plan-only", "plan-work", "plan-work-review", "full", "sprint"])
   })
 })
 

@@ -34,7 +34,7 @@ export const SessionSchema = z.object({
   /** Accumulated budget usage for this session. Uses .strip() for forward-compat. */
   budgetUsage: BudgetUsageSchema.strip(),
   /** The workflow type that initiated this session. */
-  workflowType: z.enum(["work", "plan", "review", "ship", "debug", "research"]),
+  workflowType: z.enum(["work", "plan", "review", "ship", "debug", "research", "sprint"]),
 }).strict();
 
 export type Session = z.infer<typeof SessionSchema>;

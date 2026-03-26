@@ -25,6 +25,7 @@ export const DEFAULT_TOOL_SCOPING: Record<WorkflowType, ToolScoping> = {
   research: { read: true, bash: true, write: false, edit: false },
   ship:     { read: true, bash: true, write: true, edit: false },
   debug:    { read: true, bash: true, write: true, edit: true },
+  sprint:   { read: true, bash: true, write: true, edit: true },
 };
 
 /**

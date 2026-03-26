@@ -125,6 +125,20 @@ export const FlywheelConfigSchema = z.object({
 
   /** Skip behavioral validation phase injection at milestone boundaries. Default: false. */
   skip_validation: z.boolean().default(false),
+
+  /** Sprint mode configuration. */
+  sprint: z.object({
+    /** Max sprint iterations before escalation. Default: 5. */
+    max_iterations: z.number().int().min(1).max(10).default(5),
+    /** Timeout (ms) for verification script execution. Default: 30000. */
+    verification_timeout_ms: z.number().int().min(1000).default(30000),
+    /** Escalate to full pipeline when sprint exhausts iterations. Default: true. */
+    escalate_to_full: z.boolean().default(true),
+    /** Allow worker to signal escalation via needs_plan. Default: false. */
+    worker_can_escalate: z.boolean().default(false),
+    /** Escalate early on repeated identical verification failures. Default: false. */
+    escalate_on_stuck: z.boolean().default(false),
+  }).default({}),
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
@@ -160,6 +174,13 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   paths: {},
   skip_scrutiny: false,
   skip_validation: false,
+  sprint: {
+    max_iterations: 5,
+    verification_timeout_ms: 30_000,
+    escalate_to_full: true,
+    worker_can_escalate: false,
+    escalate_on_stuck: false,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -268,6 +289,24 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   },
   FLYWHEEL_SKIP_VALIDATION: (val, config) => {
     config.skip_validation = val === "true" || val === "1";
+  },
+  FLYWHEEL_SPRINT_MAX_ITERATIONS: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      if (!config.sprint) config.sprint = {};
+      (config.sprint as Record<string, unknown>).max_iterations = n;
+    }
+  },
+  FLYWHEEL_SPRINT_VERIFICATION_TIMEOUT_MS: (val, config) => {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      if (!config.sprint) config.sprint = {};
+      (config.sprint as Record<string, unknown>).verification_timeout_ms = n;
+    }
+  },
+  FLYWHEEL_SPRINT_ESCALATE_TO_FULL: (val, config) => {
+    if (!config.sprint) config.sprint = {};
+    (config.sprint as Record<string, unknown>).escalate_to_full = val === "true" || val === "1";
   },
 };
 

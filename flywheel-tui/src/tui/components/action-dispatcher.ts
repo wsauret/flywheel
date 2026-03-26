@@ -15,7 +15,7 @@ import os from "node:os"
 // Workflow metadata
 // ---------------------------------------------------------------------------
 
-type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research"
+type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research" | "sprint"
 
 export interface WorkflowMeta {
   stepLabel: string
@@ -29,6 +29,7 @@ const WORKFLOW_META: Record<WorkflowType, WorkflowMeta> = {
   ship:     { stepLabel: "Step",   workflowName: "ship" },
   debug:    { stepLabel: "Cycle",  workflowName: "debug" },
   research: { stepLabel: "Step",   workflowName: "research" },
+  sprint:   { stepLabel: "Iteration", workflowName: "sprint" },
 }
 
 function isWorkflowType(s: string): s is WorkflowType {
