@@ -131,13 +131,14 @@ describe("Workflow Definitions", () => {
   });
 
   describe("workflowRegistry", () => {
-    it("contains all 5 non-work workflows", () => {
-      expect(Object.keys(workflowRegistry)).toHaveLength(5);
+    it("contains all 6 non-work workflows", () => {
+      expect(Object.keys(workflowRegistry)).toHaveLength(6);
       expect(workflowRegistry.plan).toBeDefined();
       expect(workflowRegistry.review).toBeDefined();
       expect(workflowRegistry.ship).toBeDefined();
       expect(workflowRegistry.debug).toBeDefined();
       expect(workflowRegistry.research).toBeDefined();
+      expect(workflowRegistry.sprint).toBeDefined();
     });
 
     it("all registry entries conform to schema", () => {
