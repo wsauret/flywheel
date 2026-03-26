@@ -200,6 +200,11 @@ export const SPRINT_FIELDS: HandoffFieldSpec[] = [
     description: "Files that should be reviewed by the evaluator",
     example: '["src/hello.ts", ".flywheel/verify/sprint-hello-world.ts"]',
   },
+  {
+    key: "needs_plan",
+    description: "Set to true if the task is too complex for sprint and requires full planning (only when worker_can_escalate is enabled)",
+    example: "false",
+  },
 ];
 
 // ---------------------------------------------------------------------------

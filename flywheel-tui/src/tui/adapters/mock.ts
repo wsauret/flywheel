@@ -1,5 +1,6 @@
 import type { EventBus } from "../../events/event-bus";
 import type { FlywheelEvent } from "../../events/types";
+import { assertNever } from "../../events/types";
 import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 
@@ -8,6 +9,9 @@ import { BaseUIAdapter } from "./base";
  *
  * Public `events` field (no getter — matches CodeMachine pattern).
  * `reset()`: clears events AND re-subscribes (prevents test isolation bug).
+ *
+ * Uses exhaustive switch for compile-time safety — adding a new event type
+ * without a case here causes a compile-time error (matches OpenTUI/Headless pattern).
  */
 export class MockAdapter extends BaseUIAdapter {
   readonly adapterType: AdapterType = "mock";
@@ -16,7 +20,65 @@ export class MockAdapter extends BaseUIAdapter {
   events: FlywheelEvent[] = [];
 
   protected handleEvent(event: FlywheelEvent): void {
-    this.events.push(event);
+    switch (event.type) {
+      // Workflow lifecycle
+      case "workflow:started":
+      case "workflow:completed":
+      case "workflow:failed":
+      case "workflow:interrupted":
+      // Phase events
+      case "phase:started":
+      case "phase:completed":
+      case "phase:failed":
+      // Step events
+      case "step:started":
+      case "step:completed":
+      case "step:failed":
+      // Dispatcher events
+      case "dispatcher:invoked":
+      case "dispatcher:completed":
+      case "dispatcher:failed":
+      case "dispatcher:output":
+      // Evaluator events
+      case "evaluator:invoked":
+      case "evaluator:completed":
+      case "evaluator:failed":
+      case "evaluator:revision-requested":
+      case "evaluator:output":
+      // Worker events
+      case "worker:spawned":
+      case "worker:completed":
+      case "worker:failed":
+      case "worker:retrying":
+      case "worker:output":
+      case "worker:injected":
+      // Approval events
+      case "approval:requested":
+      case "approval:received":
+      // Question events
+      case "question:asked":
+      case "question:replied":
+      case "question:rejected":
+      // Pipeline events
+      case "pipeline:started":
+      case "pipeline:completed":
+      case "pipeline:failed":
+      case "pipeline:stage-transition":
+      // Budget events
+      case "budget:warning":
+      case "budget:exhausted":
+      // Sprint events
+      case "sprint:started":
+      case "sprint:iteration-started":
+      case "sprint:verification-started":
+      case "sprint:iteration-completed":
+      case "sprint:escalated":
+      case "sprint:completed":
+        this.events.push(event);
+        break;
+      default:
+        assertNever(event);
+    }
   }
 
   /**

@@ -308,6 +308,14 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
     if (!config.sprint) config.sprint = {};
     (config.sprint as Record<string, unknown>).escalate_to_full = val === "true" || val === "1";
   },
+  FLYWHEEL_SPRINT_WORKER_CAN_ESCALATE: (val, config) => {
+    if (!config.sprint) config.sprint = {};
+    (config.sprint as Record<string, unknown>).worker_can_escalate = val === "true" || val === "1";
+  },
+  FLYWHEEL_SPRINT_ESCALATE_ON_STUCK: (val, config) => {
+    if (!config.sprint) config.sprint = {};
+    (config.sprint as Record<string, unknown>).escalate_on_stuck = val === "true" || val === "1";
+  },
 };
 
 // ---------------------------------------------------------------------------
