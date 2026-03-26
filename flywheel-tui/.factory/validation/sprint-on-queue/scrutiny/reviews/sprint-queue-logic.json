@@ -1,0 +1,49 @@
+{
+  "featureId": "sprint-queue-logic",
+  "milestone": "sprint-on-queue",
+  "reviewedAt": "2026-03-26T10:16:00.000Z",
+  "commitId": "bc49eee8a21a9ae751fb8dc416fe1389fa0478d2",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReviewIssues": [
+    {
+      "severity": "non_blocking",
+      "description": "In handleWorkStepCompleted(), verify step status is mutated directly (nextStep.status = 'skipped') instead of using transitionStep() or skipStep() from queue.ts. This bypasses mutation log recording and cursor advancement logic. While functionally correct (pending→skipped is a valid transition), it creates inconsistency — other transitions in the codebase go through transitionStep(). The mutation log won't record this skip, making queue history incomplete.",
+      "file": "src/queue/sprint.ts",
+      "line": 430
+    },
+    {
+      "severity": "non_blocking",
+      "description": "The sprintConfig interface omits worker_can_escalate from the config schema. The main config (src/config/loader.ts) defines sprint.worker_can_escalate and the handoff schema includes needs_plan, but the queue sprint handler never checks if a worker's handoff contains needs_plan=true for self-initiated escalation. This is a pre-existing gap (the old sprint loop also didn't handle it), but the queue rewrite was an opportunity to wire it in.",
+      "file": "src/queue/sprint.ts",
+      "line": 66
+    },
+    {
+      "severity": "suggestion",
+      "description": "handleWorkStepCompleted returns Promise.resolve() (synchronous path wrapped in a promise) while handleVerifyStepCompleted is declared async. Both return Promise<OnStepCompletedResult>. For consistency, either both should be async or both should use Promise.resolve. Minor style nit.",
+      "file": "src/queue/sprint.ts",
+      "line": 398
+    },
+    {
+      "severity": "suggestion",
+      "description": "The handleVerifyFailure function reads scriptContent by resolving the path and using fs.existsSync + fs.readFileSync synchronously. Since this is within an async flow, using fs.promises.readFile would be more consistent with the async patterns elsewhere in the codebase.",
+      "file": "src/queue/sprint.ts",
+      "line": 513
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "target": "AGENTS.md",
+      "description": "AGENTS.md documents the sprint config options (max_iterations, verification_timeout_ms, escalate_to_full, escalate_on_stuck, worker_can_escalate) but doesn't mention that sprint mode is now queue-based (src/queue/sprint.ts). The architecture section still references src/sprint/ as the sprint home. The queue system section in AGENTS.md should document the sprint queue handler and the onStepCompleted hook pattern.",
+      "evidence": "AGENTS.md Sprint section references src/sprint/ directory. The new src/queue/sprint.ts is the primary sprint implementation but isn't mentioned in AGENTS.md."
+    },
+    {
+      "target": "AGENTS.md",
+      "description": "The onStepCompleted hook is a new extension point in the step executor (src/queue/executor.ts) that enables external queue mutation after step completion. This is a significant architectural pattern (used by sprint, potentially by other dynamic queue workflows) that should be documented in the architecture quick reference.",
+      "evidence": "src/queue/executor.ts exports OnStepCompletedHook and OnStepCompletedResult types, with 3 integration points in executeStep() (success, eval failure, worker crash). No documentation of this hook pattern exists."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Solid implementation. Sprint mode is cleanly reimplemented as queue steps with a well-factored handler (createSprintQueueHandler) and an executor hook extension (onStepCompleted). All 13 VAL-SPRINT assertions are covered by 30 tests with 123 expect() calls. Two non-blocking issues: direct status mutation bypasses queue mutation log, and worker_can_escalate config is not wired. Code quality is high with good DI patterns and thorough error handling."
+}

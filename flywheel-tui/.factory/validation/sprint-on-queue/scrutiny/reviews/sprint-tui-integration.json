@@ -1,0 +1,38 @@
+{
+  "featureId": "sprint-tui-integration",
+  "milestone": "sprint-on-queue",
+  "reviewedAt": "2026-03-26T10:30:00.000Z",
+  "commitId": "8e3c36dbd44f47bdf13d0c517912d5a4b50c30a1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReviewIssues": [
+    {
+      "severity": "non_blocking",
+      "description": "Two separate subscribeToType('queue:step-started', ...) handlers are registered in the same pipelineUnsubs array — one for queue progress tracking and one for sprint iteration tracking. While functionally correct (EventBus supports multiple subscribers), combining them into a single handler would be cleaner and avoid the mild confusion of two handlers for the same event type.",
+      "file": "src/tui/components/flywheel-shell.tsx",
+      "line": 682
+    },
+    {
+      "severity": "non_blocking",
+      "description": "The e2e test 'tests/e2e/sprint-pipeline.sh' detect_sprint_state() function greps for system messages like 'Sprint started', 'Sprint completed', 'Sprint escalating' which were previously emitted by the OpenTUI adapter's sprint:* event handlers (now removed). These patterns will no longer match during live sprint runs. The telemetry bar 'Sprint N/M' pattern still works, and the script falls through to standard pipeline state detection, so this is unlikely to cause false failures — but the sprint-specific detection paths are now dead code in the e2e script.",
+      "file": "tests/e2e/sprint-pipeline.sh",
+      "line": 49
+    },
+    {
+      "severity": "suggestion",
+      "description": "Headless adapter sprint label detection relies on stepTitle containing the substring 'Sprint' (case-sensitive) to append '(sprint iteration)' label. If the sprint queue template's step title format ever changes (e.g., lowercase 'sprint'), the headless adapter would silently stop labeling sprint work steps. A more robust approach would be to pass a flag or use stepType-based detection consistently (like verify steps already do).",
+      "file": "src/tui/adapters/headless.ts",
+      "line": 258
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "target": "AGENTS.md",
+      "description": "AGENTS.md line 189 still describes the sprint/ directory as 'Sprint execution loop, verification runner, escalation context'. With sprint-loop.ts deleted, the description should be updated to reflect the current contents: 'Sprint types, verification runner, escalation context'. The execution loop comment is now misleading.",
+      "evidence": "AGENTS.md line 189: '├── sprint/        # Sprint execution loop, verification runner, escalation context' — but src/sprint/ now contains only types.ts, verification-runner.ts, escalation-context.ts (no execution loop)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Clean, well-executed feature. sprint-loop.ts and createSprintStageLoop adapter deleted, all 6 sprint:* event types removed from events/types.ts, event-bus.ts, and all 3 adapters (opentui, headless, mock). Shared types extracted to sprint/types.ts with import updates across 4 files. Sprint iteration tracking re-wired through queue:step-started events in flywheel-shell.tsx with verify-step-based sprint detection. Headless adapter enhanced with sprint context labels. 42 tests cover all expected behaviors. Only minor observations: dual queue:step-started subscription, stale e2e script patterns, and one string-matching fragility in headless adapter."
+}
