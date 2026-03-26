@@ -576,6 +576,41 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         );
         break;
 
+      // Queue lifecycle events (stub handlers — full implementation in shell-integration milestone)
+      case "queue:initialized":
+        log.info("Queue initialized", { workflowId: event.workflowId, steps: event.stepIds.length });
+        break;
+
+      case "queue:completed":
+        log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
+        break;
+
+      case "queue:failed":
+        log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
+        break;
+
+      // Queue step lifecycle events
+      case "queue:step-started":
+        log.info("Queue step started", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
+        break;
+
+      case "queue:step-completed":
+        log.info("Queue step completed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
+        break;
+
+      case "queue:step-failed":
+        log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
+        break;
+
+      // Queue mutation events
+      case "queue:step-inserted":
+        log.info("Queue step inserted", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, afterStepId: event.afterStepId });
+        break;
+
+      case "queue:step-removed":
+        log.info("Queue step removed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType });
+        break;
+
       default:
         assertNever(event);
     }

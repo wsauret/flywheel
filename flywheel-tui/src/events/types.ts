@@ -50,7 +50,15 @@ export type FlywheelEvent =
   | SprintVerificationStarted
   | SprintIterationCompleted
   | SprintEscalated
-  | SprintCompleted;
+  | SprintCompleted
+  | QueueInitialized
+  | QueueCompleted
+  | QueueFailed
+  | QueueStepStarted
+  | QueueStepCompleted
+  | QueueStepFailed
+  | QueueStepInserted
+  | QueueStepRemoved;
 
 // -- Workflow events --
 
@@ -402,6 +410,85 @@ export interface SprintCompleted {
   iterationsUsed: number;
   escalated: boolean;
   reason?: string;
+  timestamp: string;
+}
+
+// -- Queue lifecycle events --
+
+export interface QueueInitialized {
+  type: "queue:initialized";
+  workflowId: string;
+  /** IDs of all steps in the initial queue. */
+  stepIds: string[];
+  timestamp: string;
+}
+
+export interface QueueCompleted {
+  type: "queue:completed";
+  workflowId: string;
+  /** Number of steps that completed successfully. */
+  stepsCompleted: number;
+  timestamp: string;
+}
+
+export interface QueueFailed {
+  type: "queue:failed";
+  workflowId: string;
+  reason: string;
+  /** Number of steps that completed before the failure. */
+  stepsCompleted: number;
+  timestamp: string;
+}
+
+// -- Queue step lifecycle events --
+
+export interface QueueStepStarted {
+  type: "queue:step-started";
+  workflowId: string;
+  stepId: string;
+  stepType: string;
+  stepTitle: string;
+  timestamp: string;
+}
+
+export interface QueueStepCompleted {
+  type: "queue:step-completed";
+  workflowId: string;
+  stepId: string;
+  stepType: string;
+  stepTitle: string;
+  timestamp: string;
+}
+
+export interface QueueStepFailed {
+  type: "queue:step-failed";
+  workflowId: string;
+  stepId: string;
+  stepType: string;
+  stepTitle: string;
+  reason: string;
+  timestamp: string;
+}
+
+// -- Queue mutation events --
+
+export interface QueueStepInserted {
+  type: "queue:step-inserted";
+  workflowId: string;
+  stepId: string;
+  stepType: string;
+  stepTitle: string;
+  /** ID of the step after which this step was inserted. */
+  afterStepId: string;
+  timestamp: string;
+}
+
+export interface QueueStepRemoved {
+  type: "queue:step-removed";
+  workflowId: string;
+  stepId: string;
+  stepType: string;
+  stepTitle: string;
   timestamp: string;
 }
 

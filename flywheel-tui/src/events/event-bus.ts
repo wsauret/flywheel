@@ -143,6 +143,17 @@ export interface FlywheelEmitter {
   sprintIterationCompleted(workflowId: string, iteration: number, passed: boolean, reason?: string): void;
   sprintEscalated(workflowId: string, iterationsUsed: number, reason: string): void;
   sprintCompleted(workflowId: string, completed: boolean, iterationsUsed: number, escalated: boolean, reason?: string): void;
+  // Queue lifecycle events
+  queueInitialized(workflowId: string, stepIds: string[]): void;
+  queueCompleted(workflowId: string, stepsCompleted: number): void;
+  queueFailed(workflowId: string, reason: string, stepsCompleted: number): void;
+  // Queue step lifecycle events
+  queueStepStarted(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
+  queueStepCompleted(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
+  queueStepFailed(workflowId: string, stepId: string, stepType: string, stepTitle: string, reason: string): void;
+  // Queue mutation events
+  queueStepInserted(workflowId: string, stepId: string, stepType: string, stepTitle: string, afterStepId: string): void;
+  queueStepRemoved(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
 }
 
 function now(): string {
@@ -217,5 +228,24 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "sprint:escalated", workflowId, iterationsUsed, reason, timestamp: now() }),
     sprintCompleted: (workflowId, completed, iterationsUsed, escalated, reason?) =>
       bus.emit({ type: "sprint:completed", workflowId, completed, iterationsUsed, escalated, ...(reason !== undefined ? { reason } : {}), timestamp: now() }),
+    // Queue lifecycle events
+    queueInitialized: (workflowId, stepIds) =>
+      bus.emit({ type: "queue:initialized", workflowId, stepIds, timestamp: now() }),
+    queueCompleted: (workflowId, stepsCompleted) =>
+      bus.emit({ type: "queue:completed", workflowId, stepsCompleted, timestamp: now() }),
+    queueFailed: (workflowId, reason, stepsCompleted) =>
+      bus.emit({ type: "queue:failed", workflowId, reason, stepsCompleted, timestamp: now() }),
+    // Queue step lifecycle events
+    queueStepStarted: (workflowId, stepId, stepType, stepTitle) =>
+      bus.emit({ type: "queue:step-started", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
+    queueStepCompleted: (workflowId, stepId, stepType, stepTitle) =>
+      bus.emit({ type: "queue:step-completed", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
+    queueStepFailed: (workflowId, stepId, stepType, stepTitle, reason) =>
+      bus.emit({ type: "queue:step-failed", workflowId, stepId, stepType, stepTitle, reason, timestamp: now() }),
+    // Queue mutation events
+    queueStepInserted: (workflowId, stepId, stepType, stepTitle, afterStepId) =>
+      bus.emit({ type: "queue:step-inserted", workflowId, stepId, stepType, stepTitle, afterStepId, timestamp: now() }),
+    queueStepRemoved: (workflowId, stepId, stepType, stepTitle) =>
+      bus.emit({ type: "queue:step-removed", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
   };
 }

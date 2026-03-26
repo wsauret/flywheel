@@ -74,6 +74,17 @@ export class MockAdapter extends BaseUIAdapter {
       case "sprint:iteration-completed":
       case "sprint:escalated":
       case "sprint:completed":
+      // Queue lifecycle events
+      case "queue:initialized":
+      case "queue:completed":
+      case "queue:failed":
+      // Queue step events
+      case "queue:step-started":
+      case "queue:step-completed":
+      case "queue:step-failed":
+      // Queue mutation events
+      case "queue:step-inserted":
+      case "queue:step-removed":
         this.events.push(event);
         break;
       default:

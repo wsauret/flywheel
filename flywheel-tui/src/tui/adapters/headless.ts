@@ -305,6 +305,49 @@ export class HeadlessAdapter extends BaseUIAdapter {
         this.log(`Sprint ${event.completed ? "completed" : "stopped"} (${event.iterationsUsed} iterations)${event.escalated ? " — escalated" : ""}`)
         break
 
+      // ── Queue lifecycle events ──
+      case "queue:initialized":
+        this.log(`Queue initialized (${event.stepIds.length} steps)`)
+        break
+
+      case "queue:completed":
+        this.log(`Queue completed (${event.stepsCompleted} steps)`)
+        break
+
+      case "queue:failed":
+        this.log(`Queue FAILED: ${event.reason} (${event.stepsCompleted} steps completed)`)
+        break
+
+      // ── Queue step events (normal+) ──
+      case "queue:step-started":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Queue step started: [${event.stepType}] ${event.stepTitle}`)
+        }
+        break
+
+      case "queue:step-completed":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Queue step completed: [${event.stepType}] ${event.stepTitle}`)
+        }
+        break
+
+      case "queue:step-failed":
+        this.log(`  Queue step FAILED: [${event.stepType}] ${event.stepTitle} — ${event.reason}`)
+        break
+
+      // ── Queue mutation events (normal+) ──
+      case "queue:step-inserted":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Queue step inserted: [${event.stepType}] ${event.stepTitle} (after ${event.afterStepId})`)
+        }
+        break
+
+      case "queue:step-removed":
+        if (this.logLevel !== "minimal") {
+          this.log(`  Queue step removed: [${event.stepType}] ${event.stepTitle}`)
+        }
+        break
+
       default:
         assertNever(event)
     }
