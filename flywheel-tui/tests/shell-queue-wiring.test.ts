@@ -20,12 +20,12 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
 // ===========================================================================
 
 describe("buildQueue", () => {
-  it("returns a Queue for plan-only template", async () => {
+  it("returns a Queue for plan-only template with granular plan steps", async () => {
     const { buildQueue } = await import("../src/tui/components/shell-queue");
     const queue = buildQueue("plan-only", makeConfig());
 
     expect(queue).toBeDefined();
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(4); // 4 granular plan sub-steps
     expect(queue.steps[0].type).toBe("plan");
     expect(queue.steps[0].status).toBe("pending");
     expect(queue.cursor).toBe(0);

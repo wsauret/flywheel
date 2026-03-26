@@ -150,12 +150,16 @@ describe("VAL-SHELL-010: Review triage appears conditionally", () => {
 // ===========================================================================
 
 describe("VAL-SHELL-011: Queue created from each workflow selection", () => {
-  it("plan-only creates queue with 1 plan step", () => {
+  it("plan-only creates queue with 4 granular plan steps", () => {
     const queue = buildQueue("plan-only", makeConfig());
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(4);
     expect(queue.steps[0].type).toBe("plan");
     expect(queue.status).toBe("idle");
     expect(queue.cursor).toBe(0);
+    // All steps should be plan type
+    for (const step of queue.steps) {
+      expect(step.type).toBe("plan");
+    }
   });
 
   it("plan-work creates queue starting with plan", () => {

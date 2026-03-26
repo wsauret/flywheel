@@ -391,10 +391,39 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     }
 
     try {
+      // (2b) Handle HITL — present prompt to user before worker invocation
+      // When hitl.enabled is true and a questionService is available,
+      // pause execution to present the HITL prompt and wait for input.
+      // When hitl.enabled is false (or no questionService), proceed autonomously.
+      let hitlResponse: string | null = null;
+      if (step.hitl) {
+        if (step.hitl.enabled && questionService) {
+          try {
+            const answers = await questionService.ask([{
+              question: step.hitl.prompt,
+              header: step.title,
+              options: [
+                { label: "Continue", description: "Proceed with this step" },
+              ],
+              custom: true,
+            }]);
+            hitlResponse = answers?.[0]?.[0] ?? null;
+            log.info("HITL response received", { stepId: step.id, hasResponse: hitlResponse !== null });
+          } catch (err) {
+            log.info("HITL dismissed by user, proceeding autonomously", { stepId: step.id });
+            // User dismissed — proceed autonomously (don't fail the step)
+          }
+        } else {
+          const reason = step.hitl.enabled ? "no question service available" : "hitl disabled on step";
+          log.info("HITL skipped, proceeding autonomously", { stepId: step.id, reason });
+        }
+      }
+
       // (3) Invoke dispatcher for prompt assembly
       const dispatcherContext: Record<string, unknown> = {
         ...accumulator.getContext(),
         ...(previousHandoff ? { previousHandoff } : {}),
+        ...(hitlResponse !== null ? { hitlResponse } : {}),
       };
       const dispatcherResult = await dispatcher(step, dispatcherContext);
       let currentPrompt = dispatcherResult.prompt;

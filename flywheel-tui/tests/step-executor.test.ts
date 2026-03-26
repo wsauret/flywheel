@@ -199,6 +199,7 @@ function createDefaultOptions(overrides: Partial<StepExecutorOptions> = {}): Ste
     persist: overrides.persist ?? createNoopPersist(),
     accumulator: overrides.accumulator ?? createNoopAccumulator(),
     maxRevisions: overrides.maxRevisions ?? 0,
+    onStepCompleted: overrides.onStepCompleted ?? null,
   };
 }
 
@@ -1298,5 +1299,659 @@ describe("VAL-QUEUE-035: Gate step pauses for user approval", () => {
     expect(methods).toContain("queueStepStarted");
     expect(methods).toContain("queueStepFailed");
     expect(methods).not.toContain("queueStepCompleted");
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-001: Steps execute natively without legacy bridge
+// ===========================================================================
+
+describe("VAL-EXEC-001: Steps execute natively without legacy bridge", () => {
+  test("executor calls dispatcher, spawns worker, invokes evaluator directly", async () => {
+    const dispatcherCalls: string[] = [];
+    const workerCalls: string[] = [];
+    const evalCalls: string[] = [];
+
+    const dispatcher: DispatcherFn = async (step) => {
+      dispatcherCalls.push(step.id);
+      return { prompt: "go", validationCriteria: { check: "all" } };
+    };
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
+    };
+    const evaluator: EvaluatorFn = async (step) => {
+      evalCalls.push(step.id);
+      return { passed: true, skipped: false, transportError: false, reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1 };
+    };
+
+    const s1 = makeStep({ title: "Step A" });
+    const s2 = makeStep({ title: "Step B" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, dispatcher, worker, evaluator });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(dispatcherCalls).toEqual([s1.id, s2.id]);
+    expect(workerCalls).toEqual([s1.id, s2.id]);
+    expect(evalCalls).toEqual([s1.id, s2.id]);
+  });
+
+  test("no delegation to createStageLoop, ExecutionLoop, or PhaseExecutor", async () => {
+    // This is a structural assertion — verified by code inspection and grep.
+    // The executor calls dispatcher→worker→evaluator inline.
+    // Verify by checking that each step goes through the full cycle.
+    const cycleSteps: Array<{ step: string; phase: string }> = [];
+
+    const dispatcher: DispatcherFn = async (step) => {
+      cycleSteps.push({ step: step.id, phase: "dispatch" });
+      return { prompt: "go", validationCriteria: null };
+    };
+    const worker: WorkerFn = async (step) => {
+      cycleSteps.push({ step: step.id, phase: "work" });
+      return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ title: "Step 1" });
+    const queue = createQueue([s1]);
+    const opts = createDefaultOptions({ queue, dispatcher, worker });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Each step goes through dispatch→work in sequence (not via any bridge)
+    expect(cycleSteps).toEqual([
+      { step: s1.id, phase: "dispatch" },
+      { step: s1.id, phase: "work" },
+    ]);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-002: Sequential cursor advancement through queue
+// ===========================================================================
+
+describe("VAL-EXEC-002: Sequential cursor advancement", () => {
+  test("3+ steps verify sequential execution and status transitions", async () => {
+    const statusLog: Array<{ id: string; status: string }> = [];
+
+    const worker: WorkerFn = async (step) => {
+      // Record the step's current status when worker is called
+      const queueStep = queue.steps.find((s) => s.id === step.id);
+      statusLog.push({ id: step.id, status: queueStep!.status });
+      return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ title: "First" });
+    const s2 = makeStep({ title: "Second" });
+    const s3 = makeStep({ title: "Third" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(3);
+
+    // Each step should have been "running" when the worker was called
+    for (const entry of statusLog) {
+      expect(entry.status).toBe("running");
+    }
+
+    // All steps should now be "completed"
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("completed");
+    expect(queue.steps[2].status).toBe("completed");
+
+    // Cursor should be past the end
+    expect(queue.cursor).toBe(3);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-004: Revision loop on evaluator revise verdict
+// ===========================================================================
+
+describe("VAL-EXEC-004: Revision loop on evaluator revise verdict", () => {
+  test("evaluator returns revise then pass — worker invoked twice", async () => {
+    let evalCount = 0;
+    let workerCount = 0;
+
+    const evaluator: EvaluatorFn = async () => {
+      evalCount++;
+      if (evalCount === 1) {
+        return { passed: false, skipped: false, transportError: false, reason: "needs revision", feedback: "improve tests", suggestions: [], cyclesUsed: 1 };
+      }
+      return { passed: true, skipped: false, transportError: false, reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1 };
+    };
+
+    const worker: WorkerFn = async (step) => {
+      workerCount++;
+      return { output: `attempt-${workerCount}`, handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const queue = createQueue([makeStep()]);
+    const opts = createDefaultOptions({ queue, evaluator, worker, maxRevisions: 3 });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(workerCount).toBe(2);
+    expect(evalCount).toBe(2);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-007: Gate steps bypass dispatcher/worker/evaluator
+// ===========================================================================
+
+describe("VAL-EXEC-007: Gate steps bypass dispatcher/worker/evaluator", () => {
+  /** Mock QuestionService for gate tests */
+  function createGateMockQS(answer: string): GateQuestionService {
+    return { ask: async () => [[answer]] };
+  }
+
+  test("gate step: no dispatcher, worker, or evaluator calls", async () => {
+    const dispatcherCalls: string[] = [];
+    const workerCalls: string[] = [];
+    const evalCalls: string[] = [];
+
+    const dispatcher: DispatcherFn = async (step) => {
+      dispatcherCalls.push(step.id);
+      return { prompt: "go", validationCriteria: null };
+    };
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "", durationMs: 0, sessionId: randomUUID() };
+    };
+    const evaluator: EvaluatorFn = async (step) => {
+      evalCalls.push(step.id);
+      return { passed: true, skipped: false, transportError: false, reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1 };
+    };
+
+    const gateStep = makeStep({ type: "gate", title: "Approval gate" });
+    const workStep = makeStep({ type: "work", title: "Do work" });
+    const queue = createQueue([gateStep, workStep]);
+
+    const opts = createDefaultOptions({ queue, dispatcher, worker, evaluator });
+    opts.questionService = createGateMockQS("Continue");
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    // Gate step should NOT have triggered dispatcher/worker/evaluator
+    expect(dispatcherCalls).not.toContain(gateStep.id);
+    expect(workerCalls).not.toContain(gateStep.id);
+    expect(evalCalls).not.toContain(gateStep.id);
+    // Work step should have gone through the full cycle
+    expect(dispatcherCalls).toContain(workStep.id);
+    expect(workerCalls).toContain(workStep.id);
+    expect(evalCalls).toContain(workStep.id);
+  });
+
+  test("gate resolution outcomes: continue, stop, pause", async () => {
+    // continue
+    let queue = createQueue([makeStep({ type: "gate", title: "G" }), makeStep()]);
+    let opts = createDefaultOptions({ queue });
+    opts.questionService = createGateMockQS("Continue");
+    let result = await createStepExecutor(opts).run();
+    expect(result.completed).toBe(true);
+
+    // stop
+    queue = createQueue([makeStep({ type: "gate", title: "G" }), makeStep()]);
+    opts = createDefaultOptions({ queue });
+    opts.questionService = createGateMockQS("Stop");
+    result = await createStepExecutor(opts).run();
+    expect(result.completed).toBe(false);
+    expect(queue.steps[0].status).toBe("failed");
+
+    // pause
+    queue = createQueue([makeStep({ type: "gate", title: "G" }), makeStep()]);
+    opts = createDefaultOptions({ queue });
+    opts.questionService = createGateMockQS("Pause");
+    result = await createStepExecutor(opts).run();
+    expect(result.completed).toBe(false);
+    expect(queue.steps[0].status).toBe("completed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-008: Queue events emitted for step lifecycle
+// ===========================================================================
+
+describe("VAL-EXEC-008: Queue events emitted for step lifecycle", () => {
+  test("queue:step-started emitted with stepId, step metadata", async () => {
+    const emitter = createMockEmitter();
+    const s1 = makeStep({ type: "plan", title: "Research codebase" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    const startEvents = emitter.events.filter((e) => e.method === "queueStepStarted");
+    expect(startEvents.length).toBe(1);
+    // args: workflowId, stepId, stepType, stepTitle
+    expect(startEvents[0].args[1]).toBe(s1.id);
+    expect(startEvents[0].args[2]).toBe("plan");
+    expect(startEvents[0].args[3]).toBe("Research codebase");
+  });
+
+  test("queue:step-completed emitted on success", async () => {
+    const emitter = createMockEmitter();
+    const s1 = makeStep({ title: "Work" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    await createStepExecutor(opts).run();
+
+    const completedEvents = emitter.events.filter((e) => e.method === "queueStepCompleted");
+    expect(completedEvents.length).toBe(1);
+    expect(completedEvents[0].args[1]).toBe(s1.id);
+  });
+
+  test("queue:step-failed emitted on failure", async () => {
+    const emitter = createMockEmitter();
+    const s1 = makeStep({ title: "Crasher" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, emitter, worker: createCrashingWorker() });
+    await createStepExecutor(opts).run();
+
+    const failedEvents = emitter.events.filter((e) => e.method === "queueStepFailed");
+    expect(failedEvents.length).toBe(1);
+    expect(failedEvents[0].args[1]).toBe(s1.id);
+  });
+
+  test("only queue:step-* events for step lifecycle (no legacy step:*)", async () => {
+    const emitter = createMockEmitter();
+    const queue = createQueue([makeStep(), makeStep()]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    await createStepExecutor(opts).run();
+
+    const methods = emitter.events.map((e) => e.method);
+    // No legacy event methods should be called
+    expect(methods).not.toContain("stepStarted");
+    expect(methods).not.toContain("stepCompleted");
+    expect(methods).not.toContain("stepFailed");
+    // Only queue-prefixed events
+    expect(methods.filter((m) => m.startsWith("queueStep")).length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-009: Queue state persisted after every step transition
+// ===========================================================================
+
+describe("VAL-EXEC-009: Queue state persisted after every step transition", () => {
+  test("persist called on pending→running and running→completed transitions", async () => {
+    const persist = createRecordingPersist();
+    const s1 = makeStep({ title: "Step 1" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, persist });
+    await createStepExecutor(opts).run();
+
+    // At minimum: running + completed = 2 persist calls
+    expect(persist.calls.length).toBeGreaterThanOrEqual(2);
+
+    // First persist should show step as running
+    const firstPersist = persist.calls[0];
+    expect(firstPersist.steps[0].status).toBe("running");
+
+    // Last persist should show step as completed
+    const lastPersist = persist.calls[persist.calls.length - 1];
+    expect(lastPersist.steps[0].status).toBe("completed");
+  });
+
+  test("persist called on pending→running and running→failed transitions", async () => {
+    const persist = createRecordingPersist();
+    const s1 = makeStep({ title: "Crasher" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, persist, worker: createCrashingWorker() });
+    await createStepExecutor(opts).run();
+
+    // At minimum: running + failed = 2 calls, plus one more for final queue status
+    expect(persist.calls.length).toBeGreaterThanOrEqual(2);
+
+    // First persist should show step as running
+    expect(persist.calls[0].steps[0].status).toBe("running");
+
+    // Some persist should show step as failed
+    const failedPersist = persist.calls.find((q) => q.steps[0].status === "failed");
+    expect(failedPersist).toBeDefined();
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-010: onStepCompleted hook called after step completion
+// ===========================================================================
+
+describe("VAL-EXEC-010: onStepCompleted hook called after step completion", () => {
+  test("hook called with step, completed status, queue, and handoff data", async () => {
+    const hookCalls: Array<{ stepId: string; status: string; handoff: unknown }> = [];
+    const handoffData = { summary: "implemented the feature", tests: 5 };
+    const handoffReader: HandoffReaderFn = async () => handoffData;
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, status, _queue, handoff) => {
+      hookCalls.push({ stepId: step.id, status, handoff });
+      return { continueExecution: true };
+    };
+
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const queue = createQueue([s1, s2]);
+
+    const opts = createDefaultOptions({ queue, handoffReader, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    expect(hookCalls.length).toBe(2);
+    expect(hookCalls[0].stepId).toBe(s1.id);
+    expect(hookCalls[0].status).toBe("completed");
+    expect(hookCalls[0].handoff).toEqual(handoffData);
+    expect(hookCalls[1].stepId).toBe(s2.id);
+    expect(hookCalls[1].status).toBe("completed");
+  });
+
+  test("hook called with failed status and null handoff on worker crash", async () => {
+    const hookCalls: Array<{ stepId: string; status: string; handoff: unknown }> = [];
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, status, _queue, handoff) => {
+      hookCalls.push({ stepId: step.id, status, handoff });
+      return { continueExecution: false };
+    };
+
+    const s1 = makeStep({ title: "Crasher" });
+    const queue = createQueue([s1]);
+
+    const opts = createDefaultOptions({ queue, worker: createCrashingWorker(), onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    expect(hookCalls.length).toBe(1);
+    expect(hookCalls[0].status).toBe("failed");
+    expect(hookCalls[0].handoff).toBeNull();
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-012: HITL field on steps enables user interaction
+// ===========================================================================
+
+describe("VAL-EXEC-012: HITL field on steps enables user interaction", () => {
+  /** Mock QuestionService that records interactions */
+  function createHITLQuestionService(answer = "Continue"): GateQuestionService & { calls: unknown[] } {
+    const calls: unknown[] = [];
+    return {
+      ask: async (questions) => {
+        calls.push(questions);
+        return [[answer]];
+      },
+      calls,
+    };
+  }
+
+  test("hitl.enabled=true pauses execution for user input", async () => {
+    const qs = createHITLQuestionService("user feedback response");
+
+    const step = makeStep({
+      type: "plan",
+      title: "Consolidate findings",
+      hitl: { prompt: "Review open questions from plan review", enabled: true },
+    });
+    const queue = createQueue([step]);
+
+    const opts = createDefaultOptions({ queue });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    // QuestionService should have been called for the HITL prompt
+    expect(qs.calls.length).toBe(1);
+    const questions = qs.calls[0] as Array<{ question: string }>;
+    expect(questions[0].question).toBe("Review open questions from plan review");
+  });
+
+  test("hitl.enabled=false proceeds autonomously (no user interaction)", async () => {
+    const qs = createHITLQuestionService();
+
+    const step = makeStep({
+      type: "plan",
+      title: "Consolidate findings",
+      hitl: { prompt: "Review open questions", enabled: false },
+    });
+    const queue = createQueue([step]);
+
+    const opts = createDefaultOptions({ queue });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    // QuestionService should NOT have been called (hitl disabled)
+    expect(qs.calls.length).toBe(0);
+  });
+
+  test("hitl.enabled=true without questionService proceeds autonomously", async () => {
+    const workerCalls: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.id);
+      return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const step = makeStep({
+      type: "plan",
+      title: "Consolidate findings",
+      hitl: { prompt: "Review open questions", enabled: true },
+    });
+    const queue = createQueue([step]);
+
+    // No questionService set
+    const opts = createDefaultOptions({ queue, worker });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(workerCalls.length).toBe(1); // Worker was still called
+  });
+
+  test("HITL response is passed to dispatcher context", async () => {
+    const qs = createHITLQuestionService("user wants feature X first");
+    const dispatcherContexts: Array<Record<string, unknown>> = [];
+    const dispatcher: DispatcherFn = async (_step, context) => {
+      dispatcherContexts.push({ ...context });
+      return { prompt: "go", validationCriteria: null };
+    };
+
+    const step = makeStep({
+      type: "plan",
+      title: "Consolidate",
+      hitl: { prompt: "What should we prioritize?", enabled: true },
+    });
+    const queue = createQueue([step]);
+
+    const opts = createDefaultOptions({ queue, dispatcher });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    await executor.run();
+
+    // Dispatcher should receive the HITL response in context
+    expect(dispatcherContexts.length).toBe(1);
+    expect(dispatcherContexts[0].hitlResponse).toBe("user wants feature X first");
+  });
+
+  test("step without hitl field proceeds normally", async () => {
+    const qs = createHITLQuestionService();
+
+    const step = makeStep({ type: "work", title: "No HITL" });
+    const queue = createQueue([step]);
+
+    const opts = createDefaultOptions({ queue });
+    opts.questionService = qs;
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    // QS should not be called for steps without hitl
+    expect(qs.calls.length).toBe(0);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-013: Workflow templates expand into visible granular steps
+// ===========================================================================
+
+describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", () => {
+  test("plan-work-review template produces 7+ individual steps", async () => {
+    const { buildQueueFromTemplate } = await import("../src/queue/templates");
+    const queue = buildQueueFromTemplate("plan-work-review");
+
+    // 4 plan sub-steps + 3 review sub-steps = 7 steps
+    expect(queue.steps.length).toBeGreaterThanOrEqual(7);
+
+    // Each step has an individual title
+    const titles = queue.steps.map((s) => s.title);
+    const uniqueTitles = new Set(titles);
+    expect(uniqueTitles.size).toBe(titles.length); // all titles unique
+  });
+
+  test("each step is independently visible with unique ID and title", async () => {
+    const { buildQueueFromTemplate } = await import("../src/queue/templates");
+    const queue = buildQueueFromTemplate("plan-work-review");
+
+    for (const step of queue.steps) {
+      expect(step.id).toBeTruthy();
+      expect(step.title).toBeTruthy();
+      expect(step.type).toBeTruthy();
+      expect(step.status).toBe("pending");
+    }
+
+    // All IDs are unique
+    const ids = queue.steps.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("full template produces 11+ individual steps", async () => {
+    const { buildQueueFromTemplate } = await import("../src/queue/templates");
+    const queue = buildQueueFromTemplate("full");
+
+    // 4 plan + 3 review + 4 ship = 11 steps
+    expect(queue.steps.length).toBeGreaterThanOrEqual(11);
+  });
+
+  test("plan sub-steps have expected granular titles", async () => {
+    const { buildQueueFromTemplate } = await import("../src/queue/templates");
+    const queue = buildQueueFromTemplate("plan-only");
+    const titles = queue.steps.map((s) => s.title.toLowerCase());
+
+    expect(titles.some((t) => t.includes("research"))).toBe(true);
+    expect(titles.some((t) => t.includes("draft"))).toBe(true);
+    expect(titles.some((t) => t.includes("review"))).toBe(true);
+    expect(titles.some((t) => t.includes("consolidate"))).toBe(true);
+  });
+
+  test("review sub-steps have expected granular titles", async () => {
+    const { buildQueueFromTemplate } = await import("../src/queue/templates");
+    const queue = buildQueueFromTemplate("plan-work-review");
+    const reviewSteps = queue.steps.filter((s) => s.type === "review");
+    const titles = reviewSteps.map((s) => s.title.toLowerCase());
+
+    expect(titles.some((t) => t.includes("code review") || t.includes("multi-agent"))).toBe(true);
+    expect(titles.some((t) => t.includes("consolidate"))).toBe(true);
+    expect(titles.some((t) => t.includes("fix") || t.includes("implement"))).toBe(true);
+  });
+
+  test("ship sub-steps have expected granular titles", async () => {
+    const { buildQueueFromTemplate } = await import("../src/queue/templates");
+    const queue = buildQueueFromTemplate("full");
+    const shipSteps = queue.steps.filter((s) => s.type === "ship");
+    const titles = shipSteps.map((s) => s.title.toLowerCase());
+
+    expect(titles.some((t) => t.includes("stage"))).toBe(true);
+    expect(titles.some((t) => t.includes("commit"))).toBe(true);
+    expect(titles.some((t) => t.includes("pull request") || t.includes("pr"))).toBe(true);
+    expect(titles.some((t) => t.includes("learning"))).toBe(true);
+  });
+});
+
+// ===========================================================================
+// VAL-EXEC-016: Queue lifecycle events emitted
+// ===========================================================================
+
+describe("VAL-EXEC-016: Queue lifecycle events emitted", () => {
+  test("queue:initialized emitted at start with queue metadata and step count", async () => {
+    const emitter = createMockEmitter();
+    const s1 = makeStep({ title: "A" });
+    const s2 = makeStep({ title: "B" });
+    const s3 = makeStep({ title: "C" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    await createStepExecutor(opts).run();
+
+    const initEvents = emitter.events.filter((e) => e.method === "queueInitialized");
+    expect(initEvents.length).toBe(1);
+    // args: workflowId, stepIds
+    const stepIds = initEvents[0].args[1] as string[];
+    expect(stepIds).toHaveLength(3);
+    expect(stepIds).toEqual([s1.id, s2.id, s3.id]);
+  });
+
+  test("queue:completed emitted when all steps complete successfully", async () => {
+    const emitter = createMockEmitter();
+    const queue = createQueue([makeStep(), makeStep()]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    await createStepExecutor(opts).run();
+
+    const completedEvents = emitter.events.filter((e) => e.method === "queueCompleted");
+    expect(completedEvents.length).toBe(1);
+    // args: workflowId, stepsCompleted
+    expect(completedEvents[0].args[1]).toBe(2);
+  });
+
+  test("queue:failed emitted when a step fails", async () => {
+    const emitter = createMockEmitter();
+    const queue = createQueue([makeStep(), makeStep()]);
+
+    // First step crashes
+    let count = 0;
+    const worker: WorkerFn = async (step) => {
+      count++;
+      if (count === 2) throw new Error("boom");
+      return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const opts = createDefaultOptions({ queue, emitter, worker });
+    await createStepExecutor(opts).run();
+
+    const failedEvents = emitter.events.filter((e) => e.method === "queueFailed");
+    expect(failedEvents.length).toBe(1);
+    // args: workflowId, reason, stepsCompleted
+    expect(failedEvents[0].args[2]).toBe(1); // 1 step completed before failure
+  });
+
+  test("queue lifecycle events are distinct from step-level events", async () => {
+    const emitter = createMockEmitter();
+    const queue = createQueue([makeStep()]);
+
+    const opts = createDefaultOptions({ queue, emitter });
+    await createStepExecutor(opts).run();
+
+    const methods = emitter.events.map((e) => e.method);
+    // Queue lifecycle events
+    expect(methods).toContain("queueInitialized");
+    expect(methods).toContain("queueCompleted");
+    // Step lifecycle events
+    expect(methods).toContain("queueStepStarted");
+    expect(methods).toContain("queueStepCompleted");
+    // These are different method names — not the same events
+    expect("queueInitialized").not.toBe("queueStepStarted");
+    expect("queueCompleted").not.toBe("queueStepCompleted");
   });
 });

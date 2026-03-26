@@ -40,16 +40,27 @@ function gateSteps(queue: Queue): Step[] {
 }
 
 // ---------------------------------------------------------------------------
-// VAL-SHELL-001: Plan Only template creates single plan step
+// VAL-SHELL-001: Plan Only template creates granular plan steps
 // ---------------------------------------------------------------------------
 
 describe("VAL-SHELL-001: Plan Only template", () => {
-  test("creates queue with exactly one step of type 'plan'", () => {
+  test("creates queue with 4 granular plan steps", () => {
     const queue = buildQueueFromTemplate("plan-only");
-    expect(queue.steps).toHaveLength(1);
-    expect(queue.steps[0].type).toBe("plan");
-    expect(queue.steps[0].status).toBe("pending");
-    expect(queue.steps[0].title).toBeTruthy();
+    expect(queue.steps).toHaveLength(4);
+    for (const step of queue.steps) {
+      expect(step.type).toBe("plan");
+      expect(step.status).toBe("pending");
+      expect(step.title).toBeTruthy();
+    }
+  });
+
+  test("plan steps have expected titles in order", () => {
+    const queue = buildQueueFromTemplate("plan-only");
+    const titles = stepTitles(queue);
+    expect(titles[0]).toContain("Research");
+    expect(titles[1]).toContain("Draft");
+    expect(titles[2]).toContain("Review");
+    expect(titles[3]).toContain("Consolidate");
   });
 
   test("all steps have unique IDs", () => {
@@ -74,12 +85,14 @@ describe("VAL-SHELL-001: Plan Only template", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-SHELL-002: Plan + Work template", () => {
-  test("creates initial queue with only a plan step (work deferred)", () => {
+  test("creates initial queue with 4 granular plan steps (work deferred)", () => {
     const queue = buildQueueFromTemplate("plan-work");
-    // Initially only plan step — work steps inserted after plan completes
+    // Initially only plan sub-steps — work steps inserted after plan completes
     const nonGateSteps = queue.steps.filter((s) => s.type !== "gate");
-    expect(nonGateSteps).toHaveLength(1);
-    expect(nonGateSteps[0].type).toBe("plan");
+    expect(nonGateSteps).toHaveLength(4);
+    for (const step of nonGateSteps) {
+      expect(step.type).toBe("plan");
+    }
   });
 
   test("all steps are pending", () => {
@@ -95,19 +108,21 @@ describe("VAL-SHELL-002: Plan + Work template", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-SHELL-003: Plan + Work + Review template", () => {
-  test("creates initial queue with [plan, review] (work inserted between after plan)", () => {
+  test("creates initial queue with 7 granular steps (4 plan + 3 review)", () => {
     const queue = buildQueueFromTemplate("plan-work-review");
     const nonGateSteps = queue.steps.filter((s) => s.type !== "gate");
-    expect(nonGateSteps).toHaveLength(2);
-    expect(nonGateSteps[0].type).toBe("plan");
-    expect(nonGateSteps[1].type).toBe("review");
+    expect(nonGateSteps).toHaveLength(7);
+    const planSteps = nonGateSteps.filter((s) => s.type === "plan");
+    const reviewSteps = nonGateSteps.filter((s) => s.type === "review");
+    expect(planSteps).toHaveLength(4);
+    expect(reviewSteps).toHaveLength(3);
   });
 
-  test("review step is after plan step", () => {
+  test("all review steps come after all plan steps", () => {
     const queue = buildQueueFromTemplate("plan-work-review");
-    const planIdx = queue.steps.findIndex((s) => s.type === "plan");
-    const reviewIdx = queue.steps.findIndex((s) => s.type === "review");
-    expect(reviewIdx).toBeGreaterThan(planIdx);
+    const lastPlanIdx = queue.steps.map((s, i) => ({ ...s, i })).filter((s) => s.type === "plan").pop()!.i;
+    const firstReviewIdx = queue.steps.findIndex((s) => s.type === "review");
+    expect(firstReviewIdx).toBeGreaterThan(lastPlanIdx);
   });
 });
 
@@ -116,22 +131,27 @@ describe("VAL-SHELL-003: Plan + Work + Review template", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-SHELL-004: Full template", () => {
-  test("creates initial queue with [plan, review, ship] (work inserted after plan)", () => {
+  test("creates initial queue with 11 granular steps (4 plan + 3 review + 4 ship)", () => {
     const queue = buildQueueFromTemplate("full");
     const nonGateSteps = queue.steps.filter((s) => s.type !== "gate");
-    expect(nonGateSteps).toHaveLength(3);
-    expect(nonGateSteps[0].type).toBe("plan");
-    expect(nonGateSteps[1].type).toBe("review");
-    expect(nonGateSteps[2].type).toBe("ship");
+    expect(nonGateSteps).toHaveLength(11);
+    const planSteps = nonGateSteps.filter((s) => s.type === "plan");
+    const reviewSteps = nonGateSteps.filter((s) => s.type === "review");
+    const shipSteps = nonGateSteps.filter((s) => s.type === "ship");
+    expect(planSteps).toHaveLength(4);
+    expect(reviewSteps).toHaveLength(3);
+    expect(shipSteps).toHaveLength(4);
   });
 
-  test("step order preserved: plan before review before ship", () => {
+  test("step order preserved: all plan before all review before all ship", () => {
     const queue = buildQueueFromTemplate("full");
-    const planIdx = queue.steps.findIndex((s) => s.type === "plan");
-    const reviewIdx = queue.steps.findIndex((s) => s.type === "review");
-    const shipIdx = queue.steps.findIndex((s) => s.type === "ship");
-    expect(planIdx).toBeLessThan(reviewIdx);
-    expect(reviewIdx).toBeLessThan(shipIdx);
+    const nonGateSteps = queue.steps.filter((s) => s.type !== "gate");
+    const lastPlanIdx = nonGateSteps.findLastIndex((s) => s.type === "plan");
+    const firstReviewIdx = nonGateSteps.findIndex((s) => s.type === "review");
+    const lastReviewIdx = nonGateSteps.findLastIndex((s) => s.type === "review");
+    const firstShipIdx = nonGateSteps.findIndex((s) => s.type === "ship");
+    expect(lastPlanIdx).toBeLessThan(firstReviewIdx);
+    expect(lastReviewIdx).toBeLessThan(firstShipIdx);
   });
 });
 
@@ -213,23 +233,24 @@ describe("VAL-QUEUE-036: Gate steps with skip_approval_gates", () => {
     expect(gateSteps(queueWithout)).toHaveLength(0);
   });
 
-  test("gate steps are positioned between major transitions", () => {
+  test("gate steps are positioned between major step type transitions", () => {
     const queue = buildQueueFromTemplate("full", {
       skipApprovalGates: false,
     });
     const types = stepTypes(queue);
-    // Gate should appear between plan and review, and between review and ship
-    // (work steps are deferred, so initially: plan, gate, review, gate, ship)
-    const planIdx = types.indexOf("plan");
-    const reviewIdx = types.indexOf("review");
-    const shipIdx = types.indexOf("ship");
+    // Gate should appear between the last plan step and first review step,
+    // and between the last review step and first ship step
+    const lastPlanIdx = types.lastIndexOf("plan");
+    const firstReviewIdx = types.indexOf("review");
+    const lastReviewIdx = types.lastIndexOf("review");
+    const firstShipIdx = types.indexOf("ship");
 
-    // There should be a gate between plan and review
-    const gatesBetweenPlanReview = types.slice(planIdx + 1, reviewIdx).filter((t) => t === "gate");
+    // There should be a gate between last plan and first review
+    const gatesBetweenPlanReview = types.slice(lastPlanIdx + 1, firstReviewIdx).filter((t) => t === "gate");
     expect(gatesBetweenPlanReview.length).toBeGreaterThanOrEqual(1);
 
-    // There should be a gate between review and ship
-    const gatesBetweenReviewShip = types.slice(reviewIdx + 1, shipIdx).filter((t) => t === "gate");
+    // There should be a gate between last review and first ship
+    const gatesBetweenReviewShip = types.slice(lastReviewIdx + 1, firstShipIdx).filter((t) => t === "gate");
     expect(gatesBetweenReviewShip.length).toBeGreaterThanOrEqual(1);
   });
 

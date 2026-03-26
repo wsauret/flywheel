@@ -104,3 +104,18 @@ None. (tmux testing done via Execute tool)
 - E2E test reveals a fundamental architectural issue (not just a bug)
 - Cannot test a scenario because the feature isn't implemented yet
 - Test requires real API calls that would incur cost
+
+---
+
+## Mission Context (OVERWRITTEN PER MISSION)
+
+<!-- This section is fully replaced by the orchestrator at mission start. -->
+
+### Key References
+- **ADR:** `docs/decisions/004-queue-execution-adr.md` — the canonical execution model spec
+
+### Mission-Specific Constraints
+- The live E2E test (`/start add a hello world endpoint`) is a **hard gate**. Iterate endlessly until it runs flawlessly with zero evaluator revisions.
+- Plan steps must produce JSON output (not markdown).
+- Work steps must be dynamically inserted from plan output.
+- All queue steps must be visible in the workflow panel.

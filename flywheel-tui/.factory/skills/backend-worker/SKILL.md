@@ -17,7 +17,7 @@ None.
 
 ## File Writing Rule (CRITICAL)
 
-**Never write files longer than 100 lines in a single Create tool call.** Split large files: create the first ~100 lines with Create, then use sequential Edit calls to append remaining sections. This applies to all file types (.ts, .tsx, .test.ts, .json, .md). If a write fails or is cancelled, break it into smaller pieces — do NOT retry the same large write.
+**Never write files longer than 200 lines in a single Create tool call.** For large files: create the first ~150 lines with Create, then use sequential Edit calls to append remaining sections (~100 lines each). If a write fails or is cancelled, break it into smaller pieces — do NOT retry the same large write. This applies to ALL file types (.ts, .tsx, .test.ts, .json, .md).
 
 ## Work Procedure
 
@@ -32,7 +32,7 @@ None.
    - For prompts: `src/prompts/plan/` directory
    Match existing patterns exactly (factory functions, DI, Zod schemas, atomic writes).
 
-3. **Read ADR-004** at `docs/decisions/004-queue-execution-adr.md` if the feature involves execution model decisions. Read `.factory/library/json-plan-migration.md` if the feature involves plan prompts.
+3. **Read mission-specific references** listed in the Mission Context section below. These change per mission and contain critical architectural guidance.
 
 4. **Write failing tests first (RED).** Create test file in `tests/`. Write tests covering all expected behaviors from the feature description. Run `bun test <file>` to confirm they fail.
 
@@ -50,16 +50,9 @@ None.
    ```
    Both must pass with zero errors.
 
-7. **When deleting dead code:** If the feature description says to remove old modules, delete them and update all imports. Run typecheck to catch broken references. Fix all errors. NO fallback paths — when you replace something, delete the old thing completely. No conditional imports, no backwards compatibility.
+7. **When deleting dead code:** If the feature description says to remove old modules, delete them and update all imports. Run typecheck to catch broken references. Fix all errors.
 
 8. **Commit your work** with a descriptive message.
-
-## Terminology Enforcement
-
-- Use "Step" not "Phase" in all new code
-- Use "Queue" not "Pipeline" for the execution container
-- Use "Workflow" not "PipelineMode" for templates
-- When modifying existing files, rename phase → step in that file
 
 ## Example Handoff
 
@@ -100,3 +93,25 @@ None.
 - Existing module has circular dependencies that block refactoring
 - Schema migration needed that would break other features
 - Config change would affect other running processes
+
+---
+
+## Mission Context (OVERWRITTEN PER MISSION)
+
+<!-- This section is fully replaced by the orchestrator at mission start. -->
+<!-- It contains mission-specific references, constraints, and terminology. -->
+
+### Key References
+- **ADR:** `docs/decisions/004-queue-execution-adr.md` — read for any execution model decision
+- **JSON Plan Migration:** `.factory/library/json-plan-migration.md` — read for any plan prompt work
+
+### Mission-Specific Constraints
+- **NO fallback paths.** When you replace something, delete the old thing completely. No conditional imports, no backwards compatibility, no bridge layers.
+- **Always make the difficult change** when it better aligns with ADR-004's vision.
+- **Delete aggressively.** Remove all legacy code paths, don't comment them out.
+
+### Terminology Enforcement
+- Use "Step" not "Phase" in all new code
+- Use "Queue" not "Pipeline" for the execution container
+- Use "Workflow" not "PipelineMode" for templates
+- When modifying existing files, rename phase → step in that file

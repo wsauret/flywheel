@@ -51,12 +51,13 @@ export interface BuildQueueOptions {
 // Step factory helpers
 // ---------------------------------------------------------------------------
 
-function makeStep(type: StepType, title: string): Step {
+function makeStep(type: StepType, title: string, extra?: Partial<Step>): Step {
   return {
     id: randomUUID(),
     type,
     title,
     status: "pending",
+    ...extra,
   };
 }
 
@@ -65,42 +66,129 @@ function makeGateStep(title: string): Step {
 }
 
 // ---------------------------------------------------------------------------
-// Template definitions
+// Granular step builders — ADR-004 requires visible sub-steps
+// ---------------------------------------------------------------------------
+
+/**
+ * Plan sub-steps per ADR-004 Decision 3:
+ *   1. research codebase
+ *   2. draft implementation plan
+ *   3. review plan
+ *   4. consolidate findings
+ */
+function buildGranularPlanSteps(): Step[] {
+  return [
+    makeStep("plan", "Research codebase", {
+      dispatcherHint: "research",
+      evaluationCriteria: "Produces a .context.md with file references and architectural summary",
+      toolScoping: { read: true, bash: true, write: true, edit: false },
+    }),
+    makeStep("plan", "Draft implementation plan", {
+      dispatcherHint: "draft",
+      evaluationCriteria: "Produces a structured JSON plan with steps, behavioralContract, decisions, and risks",
+    }),
+    makeStep("plan", "Review plan", {
+      dispatcherHint: "review",
+      evaluationCriteria: "Produces annotated JSON with review findings and open questions without modifying draft fields",
+      toolScoping: { read: true, bash: true, write: true, edit: false },
+    }),
+    makeStep("plan", "Consolidate findings", {
+      dispatcherHint: "consolidate",
+      evaluationCriteria: "Produces clean JSON plan with findings incorporated and review annotations stripped",
+      hitl: { prompt: "Review open questions from plan review before consolidation", enabled: false },
+    }),
+  ];
+}
+
+/**
+ * Review sub-steps per ADR-004 Decision 3:
+ *   1. multi-agent code review
+ *   2. consolidate findings
+ *   3. implement fixes
+ */
+function buildGranularReviewSteps(): Step[] {
+  return [
+    makeStep("review", "Multi-agent code review", {
+      dispatcherHint: "dispatch-reviewers",
+      evaluationCriteria: "Dispatches multiple review agents and produces a consolidated review document",
+      toolScoping: { read: true, bash: true, write: true, edit: false },
+    }),
+    makeStep("review", "Consolidate review findings", {
+      dispatcherHint: "consolidate-review",
+      evaluationCriteria: "Produces a prioritized list of findings with severity levels",
+    }),
+    makeStep("review", "Implement review fixes", {
+      dispatcherHint: "implement-fixes",
+      evaluationCriteria: "All P1 findings addressed, P2 findings addressed or justified as deferred",
+    }),
+  ];
+}
+
+/**
+ * Ship sub-steps per ADR-004 Decision 3:
+ *   1. stage changes
+ *   2. create commit
+ *   3. open pull request
+ *   4. extract learnings
+ */
+function buildGranularShipSteps(): Step[] {
+  return [
+    makeStep("ship", "Stage changes", {
+      dispatcherHint: "stage",
+      evaluationCriteria: "All relevant changes staged for commit",
+    }),
+    makeStep("ship", "Create commit", {
+      dispatcherHint: "commit",
+      evaluationCriteria: "Commit created with descriptive message",
+    }),
+    makeStep("ship", "Open pull request", {
+      dispatcherHint: "pr",
+      evaluationCriteria: "Pull request opened with description and linked issues",
+    }),
+    makeStep("ship", "Extract learnings", {
+      dispatcherHint: "learnings",
+      evaluationCriteria: "Learnings extracted and saved to docs/solutions/",
+    }),
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Template definitions — expanded to granular sub-steps per ADR-004
 // ---------------------------------------------------------------------------
 
 /**
  * Build the initial step list for a template, optionally inserting gates.
  */
 function buildPlanOnlySteps(): Step[] {
-  return [makeStep("plan", "Create plan")];
+  return buildGranularPlanSteps();
 }
 
 function buildPlanWorkSteps(): Step[] {
-  // Only plan initially — work steps are deferred until plan completes
-  return [makeStep("plan", "Create plan")];
+  // Plan sub-steps initially — work steps inserted after plan completes
+  return buildGranularPlanSteps();
 }
 
 function buildPlanWorkReviewSteps(insertGates: boolean): Step[] {
-  const steps: Step[] = [makeStep("plan", "Create plan")];
+  const steps: Step[] = [...buildGranularPlanSteps()];
   // Work steps will be inserted between plan and review after plan completes
   if (insertGates) {
     steps.push(makeGateStep("Approve plan before review"));
   }
-  steps.push(makeStep("review", "Review changes"));
+  steps.push(...buildGranularReviewSteps());
   return steps;
 }
 
 function buildFullSteps(insertGates: boolean): Step[] {
-  const steps: Step[] = [makeStep("plan", "Create plan")];
+  const steps: Step[] = [...buildGranularPlanSteps()];
   // Work steps will be inserted between plan and review after plan completes
   if (insertGates) {
     steps.push(makeGateStep("Approve plan before review"));
   }
-  steps.push(makeStep("review", "Review changes"));
+  steps.push(...buildGranularReviewSteps());
   if (insertGates) {
     steps.push(makeGateStep("Approve review before ship"));
   }
-  steps.push(makeStep("ship", "Ship changes"));
+  steps.push(...buildGranularShipSteps());
   return steps;
 }
 
@@ -125,28 +213,28 @@ const TEMPLATE_BUILDERS: Record<WorkflowName, WorkflowTemplateWithBuilder> = {
     name: "plan-only",
     label: "Just Plan",
     description: "Create a plan only",
-    initialStepTypes: ["plan"],
+    initialStepTypes: ["plan", "plan", "plan", "plan"],
     buildSteps: () => buildPlanOnlySteps(),
   },
   "plan-work": {
     name: "plan-work",
     label: "Plan + Work",
     description: "Create a plan and execute it",
-    initialStepTypes: ["plan"],
+    initialStepTypes: ["plan", "plan", "plan", "plan"],
     buildSteps: () => buildPlanWorkSteps(),
   },
   "plan-work-review": {
     name: "plan-work-review",
     label: "Plan + Work + Review",
     description: "Create, execute, and review (recommended)",
-    initialStepTypes: ["plan", "review"],
+    initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review", "review"],
     buildSteps: (insertGates) => buildPlanWorkReviewSteps(insertGates),
   },
   "full": {
     name: "full",
     label: "Full Pipeline",
     description: "Create, execute, review, and ship",
-    initialStepTypes: ["plan", "review", "ship"],
+    initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review", "review", "ship", "ship", "ship", "ship"],
     buildSteps: (insertGates) => buildFullSteps(insertGates),
   },
   "sprint": {
