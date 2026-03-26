@@ -1,0 +1,21 @@
+{
+  "groupId": "static-tui",
+  "surface": "static-analysis+tui",
+  "testedAt": "2026-03-26T12:00:00.000Z",
+  "assertions": {
+    "VAL-SPRINT-010": {
+      "status": "pass",
+      "evidence": "src/sprint/sprint-loop.ts does not exist (ls returns exit code 1). rg 'sprint-loop' src/ found only one match: a comment in src/sprint/types.ts line 9 ('Extracted from the former sprint-loop.ts') — not an import. Sprint directory retains needed files: escalation-context.ts, types.ts, verification-runner.ts. 5 unit tests in VAL-SPRINT-010 describe block all pass.",
+      "testName": "VAL-SPRINT-010: sprint-loop.ts deleted (5 tests in sprint-tui-integration.test.ts)"
+    },
+    "VAL-SPRINT-006": {
+      "status": "pass",
+      "evidence": "9 unit tests in VAL-SPRINT-006 describe block all pass. formatSprintIteration() correctly formats iteration strings (e.g., 'Sprint 2/5'), handles edge cases (null, undefined, zero → empty string), SprintIterationInfo interface is exported, and sprint iteration count is correctly derived from work step start events in the queue.",
+      "testName": "VAL-SPRINT-006: Telemetry bar sprint iteration display (9 tests in sprint-tui-integration.test.ts)"
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["rg", "bun test", "ls"],
+  "summary": "Tested 2 assertions: 2 passed. VAL-SPRINT-010 confirmed sprint-loop.ts is deleted with no live imports. VAL-SPRINT-006 confirmed iteration count formatting and derivation via 9 unit tests."
+}
