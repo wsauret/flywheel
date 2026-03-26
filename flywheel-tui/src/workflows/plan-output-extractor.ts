@@ -8,8 +8,14 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { WorkerResult } from "../schemas/worker";
-import type { OnStepCompleteHook } from "../controller/execution-loop";
 import { Log } from "../utils/log";
+
+/** Legacy hook type retained for backward compatibility. */
+type OnStepCompleteHook = (
+  stepIndex: number,
+  result: WorkerResult,
+  accumulatedExtra: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
 
 const log = Log.create({ service: "plan-hook" });
 import {
@@ -150,7 +156,7 @@ async function handleReviewQuestions(
  *
  * @param projectCwd - The project root directory (for disk verification)
  * @param options - Optional question service and interactive flag.
- * @returns An OnStepCompleteHook suitable for ExecutionLoop
+ * @returns An OnStepCompleteHook for step completion handling
  */
 export function createPlanOnStepComplete(
   projectCwd: string,

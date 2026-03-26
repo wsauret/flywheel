@@ -1,7 +1,7 @@
 /**
  * FileStatePersistence — file-backed state persistence with locking.
  *
- * Extracted from WorkExecutionLoop:248-307. Manages the `.state.md` file
+ * File-backed state persistence with locking. Manages the `.state.md` file
  * lifecycle: creation from plan content, phase status updates, and
  * atomic writes with O_EXCL locking.
  */

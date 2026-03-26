@@ -29,7 +29,7 @@ export interface EngineMetadata {
    * Whether this engine supports streaming input via stdin pipe
    * (e.g., Claude's `--input-format stream-json`).
    *
-   * When true, PhaseExecutor uses `stdinPipe: true` and wraps the
+   * When true, the worker spawner uses `stdinPipe: true` and wraps the
    * StdinHandle with engine-specific message formatting.
    *
    * When false (e.g., OpenCode SDK path), stdin injection is handled

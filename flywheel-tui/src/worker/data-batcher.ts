@@ -15,7 +15,7 @@
  *   batcher.dispose() // flush remaining and cancel timers
  *
  * NOTE: This module creates the utility only. It is NOT wired into
- * PhaseExecutor yet.
+ * the step executor yet.
  */
 
 import { StringDecoder } from "node:string_decoder"

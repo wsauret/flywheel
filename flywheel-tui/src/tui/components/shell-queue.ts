@@ -1,13 +1,13 @@
 /**
  * Shell Queue — queue-based workflow composition and step executor factory.
  *
- * Replaces shell-pipeline.ts. Contains:
+ * Queue-based workflow composition. Contains:
  *   - `buildQueue` — pure function to create a Queue from a WorkflowName + config
  *   - `buildQueueForSlashCommand` — creates queue from slash command name + config
  *   - `createShellStepExecutor` — factory for StepExecutor used by the shell
  *   - `QueueProgressInfo` — progress tracking type for telemetry bar
  *   - `formatQueueProgress` — format progress string for display
- *   - `createEndOfSessionGate` — validation state gate (re-exported from shell-pipeline)
+ *   - `createEndOfSessionGate` — validation state gate
  *
  * Terminology:
  *   Queue    — mutable, ordered list of steps for a session

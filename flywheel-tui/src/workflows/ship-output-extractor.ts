@@ -6,8 +6,14 @@
  */
 
 import type { WorkerResult } from "../schemas/worker";
-import type { OnStepCompleteHook } from "../controller/execution-loop";
 import { Log } from "../utils/log";
+
+/** Legacy hook type retained for backward compatibility. */
+type OnStepCompleteHook = (
+  stepIndex: number,
+  result: WorkerResult,
+  accumulatedExtra: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
 import { extractLearning, CompoundDocSchema } from "../memory/extract";
 import type { ExtractionInput, ExtractionResult } from "../memory/extract";
 import { readHandoff } from "../handoff/reader";
@@ -54,7 +60,7 @@ function mapHandoffCompoundDocs(docs: HandoffCompoundDoc[]): ExtractionInput[] {
  *
  * @param projectCwd - The project root directory
  * @param knownHashes - Optional pre-built hash set for fast dedup (from SESMemoryRetriever.getHashes())
- * @returns An OnStepCompleteHook suitable for ExecutionLoop
+ * @returns An OnStepCompleteHook for step completion handling
  */
 export function createShipOnStepComplete(
   projectCwd: string,

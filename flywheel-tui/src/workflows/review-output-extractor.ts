@@ -13,8 +13,14 @@
  */
 
 import type { WorkerResult } from "../schemas/worker";
-import type { OnStepCompleteHook } from "../controller/execution-loop";
 import type { QuestionInfo } from "../controller/question-service";
+
+/** Legacy hook type retained for backward compatibility. */
+type OnStepCompleteHook = (
+  stepIndex: number,
+  result: WorkerResult,
+  accumulatedExtra: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "review-hook" });
@@ -182,7 +188,7 @@ async function handleP3Triage(
  * Handoff is the only path. No fallback to stdout parsing.
  *
  * @param options - Question service and interactive flag
- * @returns An OnStepCompleteHook suitable for ExecutionLoop
+ * @returns An OnStepCompleteHook for step completion handling
  */
 export function createReviewOnStepComplete(
   options?: ReviewHookOptions,

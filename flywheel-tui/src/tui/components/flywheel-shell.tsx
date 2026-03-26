@@ -20,6 +20,7 @@
  */
 
 import fs from "node:fs"
+import { randomUUID } from "node:crypto"
 import { createSignal, createMemo, onCleanup, Show } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
@@ -49,7 +50,6 @@ import {
   type SessionRuntimeManager,
   type RunningRuntime,
 } from "./session-runtime"
-import { ExecutionLoop } from "../../controller/execution-loop"
 import { prepareWorkflowDeps } from "../../controller/workflow-deps"
 import type { WorkflowDeps } from "../../controller/workflow-deps"
 import { EventBus } from "../../events/event-bus"
@@ -58,13 +58,13 @@ import type { QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
-// shell-pipeline.ts imports removed — legacy pipeline code deleted
 import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "./start-command"
 import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
 import { buildQueueFromTemplate } from "../../queue/templates"
 import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
 import { createFlywheelEmitter } from "../../events/event-bus"
 import { createQueuePersistence } from "../../queue/persistence"
+import { createQueue } from "../../queue/queue"
 import type { Queue } from "../../queue/types"
 import { parseCommand } from "../utils/command-parser"
 import { createQuestionWiring, type QuestionWiring } from "../utils/question-wiring"
@@ -92,7 +92,6 @@ import { deriveHeaderInfo } from "./session-header-logic"
 import { autoDetectTransport } from "../../dispatcher/auto-detect"
 import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { killAllActiveProcesses } from "../../worker/process-lifecycle"
-import { createStageLoop } from "../../controller/stage-loop-factory"
 import { Log } from "../../utils/log"
 import { SubprocessLogger } from "../../utils/subprocess-logger.js"
 
@@ -206,8 +205,6 @@ export function FlywheelShell() {
 
   // Non-reactive refs for lifecycle management
   let activeSession: WorkflowSession | null = null
-  // activeController was removed — shutdown is now via activeLoop.requestShutdown()
-  let activeLoop: ExecutionLoop | null = null
   let activeStepExecutor: StepExecutor | null = null
   let activeQueue: Queue | null = null
   let activeFlusher: OutputFlusher | null = null
@@ -512,7 +509,6 @@ export function FlywheelShell() {
     if (prevFocused && runtimes.has(prevFocused)) {
       runtimes.background(prevFocused)
       activeSession = null
-      activeLoop = null
       activeStepExecutor = null
       activeQueue = null
       activeFlusher = null
@@ -528,7 +524,6 @@ export function FlywheelShell() {
     } else if (activeSession) {
       destroyWorkflowSession(activeSession)
       activeSession = null
-      activeLoop = null
       activeStepExecutor = null
       activeQueue = null
       if (activeFlusher) {
@@ -794,78 +789,48 @@ export function FlywheelShell() {
         deps, session.eventBus, workflowIdRef, queueLogBaseDir,
       )
 
-      // Step executor delegates to
-      // createStageLoop for each step, which is what the shell stage runner does.
       const emitter = createFlywheelEmitter(session.eventBus)
 
       // Track plan path discovered during plan step execution.
       // Used to pass planPath to dynamically inserted work steps.
       let discoveredPlanPath: string | null = null
 
-      // Create step executor with real dependencies
-      // Note: For this feature, we wire the step executor with stub functions
-      // that delegate to the existing stage loop infrastructure. The full
-      // integration (dispatcher → worker → evaluator per step) is already
-      // implemented in the step executor. Here we create the executor with
-      // the queue and wire it into the session.
+      // Create step executor with native per-step execution.
+      // Each step goes through dispatcher→worker→evaluator directly.
       const stepExec = createStepExecutor({
         queue,
         workflowId: workflowIdRef.current,
         emitter,
         dispatcher: async (step, context) => {
-          // Stub dispatcher — real integration uses dispatcher transport
           return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
         },
         worker: async (step, prompt) => {
-          // Build step-specific args: work steps use the discovered plan path
-          const stageArgs: Record<string, string> = { ...args }
-          if (step.type === "work" && discoveredPlanPath) {
-            stageArgs.planPath = discoveredPlanPath
-          }
-
-          // Delegate to createStageLoop for the actual execution
-          const handle = createStageLoop({
-            workflow: step.type as any,
-            args: stageArgs,
-            config: deps.config,
-            spawner: deps.spawner,
-            engine: deps.engine,
-            ui: session.adapter,
-            eventBus: session.eventBus,
-            budgetTracker: queueBudgetTracker ?? undefined,
-            budgetLimits: queueBudgetLimits ?? undefined,
-            contextIndexer: queueContextIndexer,
-            dispatcherTransport,
-            evaluatorTransport,
-            interactiveOverrides,
-            onSessionName: capturedSessionId ? (name: string) => {
-              try {
-                updateSession(capturedSessionId, { name, label: name }, capturedProjectCwd)
-                sessionCtx.refreshList()
-              } catch { /* best-effort */ }
-            } : undefined,
-            logBaseDir: queueLogBaseDir,
+          const engineCmd = deps.engine.buildCommand({
+            prompt,
+            model: deps.config.worker?.model ?? deps.config.model,
+            toolScoping: step.toolScoping ?? undefined,
           })
-
-          activeLoop = handle.loop
-
-          const result = await handle.loop.run()
-
-          // Capture plan path from plan step completion for work step insertion
-          if (step.type === "plan" && result.completed) {
-            const extra = handle.getAccumulatedExtra()
-            if (extra.planFilePath && typeof extra.planFilePath === "string") {
-              discoveredPlanPath = extra.planFilePath
-            }
-          }
-
+          const startTime = Date.now()
+          const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
+            cwd: deps.config.project_cwd ?? process.cwd(),
+            stdin: engineCmd.stdinPrompt
+              ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
+              : undefined,
+            onStdout: (chunk) => {
+              emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
+            },
+            onStderr: (chunk) => {
+              emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
+            },
+          })
+          const workerResult = await spawnResult.result
           return {
-            output: result.completed ? "completed" : (result.reason ?? "failed"),
-            handoffPath: "",
-            durationMs: 0,
+            output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
+            handoffPath: workerResult.handoffPath ?? "",
+            durationMs: Date.now() - startTime,
           }
         },
-        evaluator: null, // Evaluator is handled within createStageLoop
+        evaluator: null,
         handoffReader: async () => null,
         budgetChecker: queueBudgetTracker && queueBudgetLimits
           ? { isExhausted: () => queueBudgetTracker!.isExhausted(queueBudgetLimits!) }
@@ -886,7 +851,7 @@ export function FlywheelShell() {
           accumulate: () => {},
           getContext: () => ({}),
         },
-        maxRevisions: 0, // Revisions handled within createStageLoop
+        maxRevisions: deps.config.max_revisions ?? 0,
         onStepCompleted: async (step, status, q) => {
           // When a plan step completes, insert a work step into the queue
           if (step.type === "plan" && status === "completed" && discoveredPlanPath) {
@@ -931,9 +896,6 @@ export function FlywheelShell() {
           kind: "running" as const,
           sessionId: queueSessionId,
           session,
-          controller: null,
-          loop: null as any,
-          pipeline: null as any,
           flusher: activeFlusher!,
           budgetTracker: queueBudgetTracker!,
           storeUnsub: storeUnsub!,
@@ -1070,10 +1032,6 @@ export function FlywheelShell() {
       activeStepExecutor = null
     }
     activeQueue = null
-    if (activeLoop) {
-      activeLoop.requestShutdown()
-      activeLoop = null
-    }
     // Kill all active worker processes (fire-and-forget)
     const shutdownPromise = killAllActiveProcesses().catch(() => {})
     return shutdownPromise
@@ -1436,42 +1394,29 @@ export function FlywheelShell() {
             return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
           },
           worker: async (step, prompt) => {
-            // Build step-specific args: work steps use the discovered plan path
-            const stageArgs: Record<string, string> = { planPath: result.planPath }
-            if (step.type === "work" && discoveredPlanPath) {
-              stageArgs.planPath = discoveredPlanPath
-            }
-
-            const handle = createStageLoop({
-              workflow: step.type as any,
-              args: stageArgs,
-              config: deps.config,
-              spawner: deps.spawner,
-              engine: deps.engine,
-              ui: session.adapter,
-              eventBus: session.eventBus,
-              budgetTracker: resumeBudgetTracker ?? undefined,
-              budgetLimits: resumeBudgetLimits ?? undefined,
-              contextIndexer: queueContextIndexer,
-              dispatcherTransport,
-              evaluatorTransport,
-              logBaseDir: queueLogBaseDir,
+            const engineCmd = deps.engine.buildCommand({
+              prompt,
+              model: deps.config.worker?.model ?? deps.config.model,
+              toolScoping: step.toolScoping ?? undefined,
             })
-            activeLoop = handle.loop
-            const loopResult = await handle.loop.run()
-
-            // Capture plan path from plan step completion for work step insertion
-            if (step.type === "plan" && loopResult.completed) {
-              const extra = handle.getAccumulatedExtra()
-              if (extra.planFilePath && typeof extra.planFilePath === "string") {
-                discoveredPlanPath = extra.planFilePath
-              }
-            }
-
+            const startTime = Date.now()
+            const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
+              cwd: deps.config.project_cwd ?? process.cwd(),
+              stdin: engineCmd.stdinPrompt
+                ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
+                : undefined,
+              onStdout: (chunk) => {
+                emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
+              },
+              onStderr: (chunk) => {
+                emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
+              },
+            })
+            const workerResult = await spawnResult.result
             return {
-              output: loopResult.completed ? "completed" : (loopResult.reason ?? "failed"),
-              handoffPath: "",
-              durationMs: 0,
+              output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
+              handoffPath: workerResult.handoffPath ?? "",
+              durationMs: Date.now() - startTime,
             }
           },
           evaluator: null,
@@ -1488,7 +1433,7 @@ export function FlywheelShell() {
             }
           },
           accumulator: { accumulate: () => {}, getContext: () => ({}) },
-          maxRevisions: 0,
+          maxRevisions: deps.config.max_revisions ?? 0,
           onStepCompleted: async (step, status, q) => {
             // When a plan step completes, insert a work step into the queue
             if (step.type === "plan" && status === "completed" && discoveredPlanPath) {
@@ -1530,9 +1475,6 @@ export function FlywheelShell() {
           kind: "running" as const,
           sessionId,
           session,
-          controller: null,
-          loop: null as any,
-          pipeline: null as any,
           flusher: activeFlusher!,
           budgetTracker: resumeBudgetTracker!,
           storeUnsub: storeUnsub!,
@@ -1680,25 +1622,60 @@ export function FlywheelShell() {
       }
 
       try {
-        const handle = createStageLoop({
-          workflow: "work",
-          args: { planPath: result.planPath },
-          config: deps.config,
-          spawner: deps.spawner,
-          engine: deps.engine,
-          ui: session.adapter,
-          eventBus: session.eventBus,
-          dispatcherTransport,
-          evaluatorTransport: resumeEvaluatorTransport,
-          logBaseDir: deps.config.project_cwd ?? process.cwd(),
+        // Build a single-step work queue for the resumed session
+        const resumeWorkQueue = createQueue([{
+          id: randomUUID(),
+          type: "work" as const,
+          title: "Resume work execution",
+          status: "pending" as const,
+        }])
+        const resumeEmitter = createFlywheelEmitter(session.eventBus)
+        const resumeStepExec = createStepExecutor({
+          queue: resumeWorkQueue,
+          workflowId: resumeCurrentWorkflowId,
+          emitter: resumeEmitter,
+          dispatcher: async (step, context) => {
+            return { prompt: `Execute work: resume plan at ${result.planPath}`, validationCriteria: null }
+          },
+          worker: async (step, prompt) => {
+            const engineCmd = deps.engine.buildCommand({
+              prompt,
+              model: deps.config.worker?.model ?? deps.config.model,
+              toolScoping: step.toolScoping ?? undefined,
+            })
+            const startTime = Date.now()
+            const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
+              cwd: deps.config.project_cwd ?? process.cwd(),
+              stdin: engineCmd.stdinPrompt
+                ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
+                : undefined,
+              onStdout: (chunk) => {
+                resumeEmitter.workerOutput(resumeCurrentWorkflowId, "stdout", chunk, deps.engine.metadata.id)
+              },
+              onStderr: (chunk) => {
+                resumeEmitter.workerOutput(resumeCurrentWorkflowId, "stderr", chunk, deps.engine.metadata.id)
+              },
+            })
+            const workerResult = await spawnResult.result
+            return {
+              output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
+              handoffPath: workerResult.handoffPath ?? "",
+              durationMs: Date.now() - startTime,
+            }
+          },
+          evaluator: null,
+          handoffReader: async () => null,
+          budgetChecker: { isExhausted: () => false },
+          persist: async () => {},
+          accumulator: { accumulate: () => {}, getContext: () => ({}) },
+          maxRevisions: deps.config.max_revisions ?? 0,
         })
-        activeLoop = handle.loop
 
         sessionControllers.set(sessionId, {
-          shutdown: () => { handle.shutdown(); return killAllActiveProcesses() },
+          shutdown: () => { resumeStepExec.requestShutdown(); return killAllActiveProcesses() },
         })
 
-        const execResult = await handle.loop.run()
+        await resumeStepExec.run()
         sessionControllers.delete(sessionId)
       } catch {
         sessionControllers.delete(sessionId)
@@ -1789,7 +1766,7 @@ export function FlywheelShell() {
     // them, but the pipeline's async closure captured its own local references.
     // The pipeline will clean up sessionControllers when it finishes.
     activeSession = null
-    activeLoop = null
+    activeStepExecutor = null
     activeFlusher = null
     activeBudgetTracker = null
 
@@ -2067,15 +2044,9 @@ export function FlywheelShell() {
         }
         activeStore()?.clearApproval()
       } else if (input.trim()) {
-        // Working mode without approval: inject text into the running worker's stdin
-        const injected = activeLoop?.injectToWorker(input.trim()) ?? false
-        if (injected) {
-          log.info("injected message to worker", { length: input.trim().length })
-          toast.show({ message: "Message sent to worker", variant: "info", duration: 2000 })
-        } else {
-          log.warn("worker injection failed (no active loop or stdin handle)")
-          toast.show({ message: "No active worker to send to", variant: "warning", duration: 3000 })
-        }
+        // Working mode without approval: stdin injection not supported in queue execution
+        log.info("stdin injection not available in queue-based execution", { length: input.trim().length })
+        toast.show({ message: "Cannot send to worker during queue execution", variant: "warning", duration: 3000 })
       }
       return
     }

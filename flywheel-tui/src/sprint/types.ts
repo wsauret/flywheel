@@ -4,7 +4,6 @@
  * These types are used by:
  *   - src/sprint/escalation-context.ts
  *   - src/queue/sprint.ts
- *   - src/tui/components/shell-pipeline.ts
  *
  * Extracted from the former sprint-loop.ts so they can be shared
  * without depending on the deleted loop implementation.

@@ -1,7 +1,7 @@
 /**
  * Workflow pipeline types — minimal remnant.
  *
- * Legacy stage types and StageRunner have been removed.
+ * Legacy stage types have been removed.
  * All execution now goes through the queue-based step executor
  * (see src/queue/executor.ts).
  *

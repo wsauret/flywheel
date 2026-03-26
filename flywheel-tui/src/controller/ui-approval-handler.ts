@@ -1,7 +1,7 @@
 /**
  * UIApprovalHandler — UI-backed approval gate implementation.
  *
- * Extracted from WorkExecutionLoop:324-362. Emits `approval:requested`
+ * UI-backed approval gate. Emits `approval:requested`
  * events and waits for the UI adapter's `onApprovalDecision` callback.
  *
  * Supports:

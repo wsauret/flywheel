@@ -1,8 +1,9 @@
 /**
- * Workflow definitions for all non-work workflows.
+ * Workflow definitions for all workflow types.
  *
- * "work" uses WorkController with plan parsing + unified ExecutionLoop.
- * Non-work workflows use ExecutionLoop with WorkflowDefinitionProvider.
+ * Each workflow type has a definition that specifies steps, prompts,
+ * and validation criteria. Execution is handled by the queue-based
+ * step executor (src/queue/executor.ts).
  */
 
 export { planWorkflow } from "./plan";

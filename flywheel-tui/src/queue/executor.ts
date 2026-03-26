@@ -2,8 +2,8 @@
 // Step Executor — Queue-Based Execution Engine
 // ---------------------------------------------------------------------------
 //
-// Processes queue steps sequentially. Replaces ExecutionLoop for queue-based
-// execution. Uses DI for all dependencies (dispatcher, worker, evaluator,
+// Processes queue steps sequentially. Uses DI for all dependencies
+// (dispatcher, worker, evaluator,
 // persistence, budget, accumulator) to enable testability.
 //
 // For each pending step:

@@ -13,7 +13,7 @@
  * Usage:
  *   const tracker = createBudgetTracker({ sessionId, baseDir });
  *   parser.onEvent = tracker.handleEvent;
- *   tracker.incrementInvocations(); // called by PhaseExecutor per dispatch
+ *   tracker.incrementInvocations(); // called by step executor per dispatch
  *   tracker.isExhausted(budgetLimits); // check before next dispatch
  *   // ... when session ends:
  *   tracker.dispose(); // flushes pending data + cancels timers
@@ -61,7 +61,7 @@ export interface BudgetTracker {
   handleEvent(event: NDJSONEvent): void;
   /** Get accumulated cost so far. */
   getTotalCost(): number;
-  /** Increment the phase-level invocation counter. Called by PhaseExecutor/ExecutionLoop after each dispatch. */
+  /** Increment the step-level invocation counter. Called by the step executor after each dispatch. */
   incrementInvocations(): void;
   /** Get total invocations dispatched so far. */
   getInvocationsUsed(): number;
