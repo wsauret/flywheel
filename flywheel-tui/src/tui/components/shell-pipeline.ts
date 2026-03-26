@@ -1,7 +1,7 @@
 /**
  * Shell Pipeline — pipeline stage composition and stage runner factory.
  *
- * Contains `buildPipelineStages` (pure function to compute stages from
+ * Contains `buildShellStages` (pure function to compute stages from
  * config) and `createShellStageRunner` (factory for the StageRunner used
  * by the queue step executor when running within the shell).
  *
@@ -27,10 +27,10 @@ import { buildEscalationContext } from "../../sprint/escalation-context";
 import type { SprintLoopResult } from "../../sprint/sprint-loop";
 
 // ---------------------------------------------------------------------------
-// Local stage types — inline replacements for removed PipelineStage/Result
+// Local stage types — inline replacements for removed legacy stage types
 // ---------------------------------------------------------------------------
 
-/** A single stage in a legacy pipeline (used only by buildPipelineStages). */
+/** A single stage in a legacy pipeline (used only by buildShellStages). */
 export interface ShellStage {
   workflow: WorkflowType;
   gateBeforeNext?: boolean;
@@ -67,7 +67,7 @@ export type ShellStageRunner = (
  * Returns null when the command should run as a standalone workflow
  * (no pipeline wrapping needed).
  */
-export function buildPipelineStages(
+export function buildShellStages(
   workflow: string,
   config: FlywheelConfig,
 ): ShellStage[] | null {

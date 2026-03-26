@@ -1,7 +1,7 @@
 /**
  * Workflow pipeline types — minimal remnant.
  *
- * PipelineStage, PipelineStageResult, and StageRunner have been removed.
+ * Legacy stage types and StageRunner have been removed.
  * All execution now goes through the queue-based step executor
  * (see src/queue/executor.ts).
  *
@@ -23,7 +23,7 @@ export type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "rese
 
 /**
  * Lightweight result for a completed step — used in PipelineResult.stageResults
- * to communicate which step types completed. Replaces PipelineStageResult.
+ * to communicate which step types completed.
  */
 export interface CompletedStepResult {
   workflow: string;

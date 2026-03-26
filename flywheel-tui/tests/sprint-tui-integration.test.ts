@@ -5,7 +5,7 @@ import {
   type WorkflowName,
 } from "../src/tui/components/start-command"
 import {
-  buildPipelineStages,
+  buildShellStages,
 } from "../src/tui/components/shell-pipeline"
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader"
 import { EventBus } from "../src/events/event-bus"
@@ -120,34 +120,34 @@ describe("VAL-TUI-002: Sprint queue template returns correct steps", () => {
 })
 
 // ===========================================================================
-// VAL-TUI-002 (supplement): buildPipelineStages does not add sprint to auto_chain
+// VAL-TUI-002 (supplement): buildShellStages does not add sprint to auto_chain
 // ===========================================================================
 
-describe("buildPipelineStages excludes sprint from auto_chain", () => {
+describe("buildShellStages excludes sprint from auto_chain", () => {
   it("sprint returns null with auto_chain: true (no auto-chaining for sprint)", () => {
     const config = makeConfig({ auto_chain: true })
-    const stages = buildPipelineStages("sprint", config)
+    const stages = buildShellStages("sprint", config)
     expect(stages).toBeNull()
   })
 
   it("sprint returns null with auto_chain: false", () => {
     const config = makeConfig({ auto_chain: false })
-    const stages = buildPipelineStages("sprint", config)
+    const stages = buildShellStages("sprint", config)
     expect(stages).toBeNull()
   })
 
   it("sprint with auto_ship: true still returns null (sprint never auto-chains)", () => {
     const config = makeConfig({ auto_chain: true, auto_ship: true })
-    const stages = buildPipelineStages("sprint", config)
+    const stages = buildShellStages("sprint", config)
     expect(stages).toBeNull()
   })
 
   it("plan and work still auto-chain correctly (sprint exclusion doesn't break others)", () => {
     const config = makeConfig({ auto_chain: true, auto_ship: false })
-    expect(buildPipelineStages("plan", config)!.map((s) => s.workflow)).toEqual([
+    expect(buildShellStages("plan", config)!.map((s) => s.workflow)).toEqual([
       "plan", "work", "review",
     ])
-    expect(buildPipelineStages("work", config)!.map((s) => s.workflow)).toEqual([
+    expect(buildShellStages("work", config)!.map((s) => s.workflow)).toEqual([
       "work", "review",
     ])
   })
