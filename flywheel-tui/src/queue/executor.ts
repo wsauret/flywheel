@@ -297,6 +297,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   let shutdownRequested = false;
   /** Last handoff data from the most recently completed step (for chaining) */
   let previousHandoff: Record<string, unknown> | null = null;
+  /** Last evaluator assessment from the most recently completed step */
+  let previousAssessment: EvalResult | null = null;
 
   /**
    * Persist queue state (best-effort — log on failure, don't throw).
@@ -430,6 +432,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       const dispatcherContext: Record<string, unknown> = {
         ...accumulator.getContext(),
         ...(previousHandoff ? { previousHandoff } : {}),
+        ...(previousAssessment ? { previousAssessment } : {}),
         ...(hitlResponse !== null ? { hitlResponse } : {}),
       };
       const dispatcherResult = await dispatcher(step, dispatcherContext);
@@ -452,9 +455,13 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       // Capture validationCriteria from dispatcher for evaluator
       const validationCriteria = dispatcherResult.validationCriteria;
 
+      // Track last evaluator result for the next step's dispatcher context
+      let lastEvalResult: EvalResult | null = null;
+
       // (6) Invoke evaluator for quality check (if configured)
       if (evaluator) {
         let evalResult = await evaluator(step, workerOutput.output, validationCriteria, handoffData);
+        lastEvalResult = evalResult;
 
         // Handle transport error: skip evaluation, continue
         if (evalResult.transportError) {
@@ -491,6 +498,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
             // Re-evaluate (pass validationCriteria and handoff through revision loop)
             evalResult = await evaluator(step, workerOutput.output, validationCriteria, handoffData);
+            lastEvalResult = evalResult;
 
             // Transport error during revision: break out and continue
             if (evalResult.transportError) {
@@ -525,6 +533,9 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       }
 
       // (8) Accumulate context and chain handoff
+      // Store the final evaluator assessment for the next step's dispatcher
+      previousAssessment = lastEvalResult;
+
       if (handoffData) {
         previousHandoff = handoffData;
         accumulator.accumulate({
