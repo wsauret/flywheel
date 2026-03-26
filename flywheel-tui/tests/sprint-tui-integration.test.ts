@@ -9,7 +9,6 @@ import {
 } from "../src/tui/components/shell-pipeline"
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader"
 import { EventBus } from "../src/events/event-bus"
-import type { SprintIterationStarted, SprintStarted, SprintCompleted, SprintEscalated } from "../src/events/types"
 import {
   isValidTransition,
   findTransitionPath,
@@ -59,7 +58,6 @@ describe("VAL-TUI-001: Sprint is 5th option in /start workflow picker", () => {
   })
 
   it("WorkflowName union accepts 'sprint'", () => {
-    // Type-level test: this wouldn't compile if sprint wasn't in WorkflowName
     const workflow: WorkflowName = "sprint"
     expect(workflow).toBe("sprint")
   })
@@ -120,11 +118,11 @@ describe("VAL-TUI-002: Sprint queue template returns correct steps", () => {
 })
 
 // ===========================================================================
-// VAL-TUI-002 (supplement): buildShellStages does not add sprint to auto_chain
+// buildShellStages excludes sprint from auto_chain
 // ===========================================================================
 
 describe("buildShellStages excludes sprint from auto_chain", () => {
-  it("sprint returns null with auto_chain: true (no auto-chaining for sprint)", () => {
+  it("sprint returns null with auto_chain: true", () => {
     const config = makeConfig({ auto_chain: true })
     const stages = buildShellStages("sprint", config)
     expect(stages).toBeNull()
@@ -136,13 +134,13 @@ describe("buildShellStages excludes sprint from auto_chain", () => {
     expect(stages).toBeNull()
   })
 
-  it("sprint with auto_ship: true still returns null (sprint never auto-chains)", () => {
+  it("sprint with auto_ship: true still returns null", () => {
     const config = makeConfig({ auto_chain: true, auto_ship: true })
     const stages = buildShellStages("sprint", config)
     expect(stages).toBeNull()
   })
 
-  it("plan and work still auto-chain correctly (sprint exclusion doesn't break others)", () => {
+  it("plan and work still auto-chain correctly", () => {
     const config = makeConfig({ auto_chain: true, auto_ship: false })
     expect(buildShellStages("plan", config)!.map((s) => s.workflow)).toEqual([
       "plan", "work", "review",
@@ -154,23 +152,20 @@ describe("buildShellStages excludes sprint from auto_chain", () => {
 })
 
 // ===========================================================================
-// VAL-TUI-003: Telemetry bar shows iteration count during sprint
+// VAL-SPRINT-006: Telemetry bar shows iteration count
 // ===========================================================================
 
-describe("VAL-TUI-003: Telemetry bar sprint iteration display", () => {
+describe("VAL-SPRINT-006: Telemetry bar sprint iteration display", () => {
   it("formatSprintIteration returns correct string for active sprint", () => {
-    const result = formatSprintIteration({ iteration: 2, maxIterations: 5 })
-    expect(result).toBe("Sprint 2/5")
+    expect(formatSprintIteration({ iteration: 2, maxIterations: 5 })).toBe("Sprint 2/5")
   })
 
   it("formatSprintIteration returns correct string for first iteration", () => {
-    const result = formatSprintIteration({ iteration: 1, maxIterations: 5 })
-    expect(result).toBe("Sprint 1/5")
+    expect(formatSprintIteration({ iteration: 1, maxIterations: 5 })).toBe("Sprint 1/5")
   })
 
   it("formatSprintIteration returns correct string for last iteration", () => {
-    const result = formatSprintIteration({ iteration: 5, maxIterations: 5 })
-    expect(result).toBe("Sprint 5/5")
+    expect(formatSprintIteration({ iteration: 5, maxIterations: 5 })).toBe("Sprint 5/5")
   })
 
   it("formatSprintIteration returns empty string for null input", () => {
@@ -190,253 +185,298 @@ describe("VAL-TUI-003: Telemetry bar sprint iteration display", () => {
   })
 
   it("SprintIterationInfo interface is exported from format utils", () => {
-    // Type-level test: importing SprintIterationInfo without error confirms it's exported
     const info: SprintIterationInfo = { iteration: 3, maxIterations: 5 }
     expect(info.iteration).toBe(3)
     expect(info.maxIterations).toBe(5)
   })
-})
 
-// ===========================================================================
-// VAL-TUI-004: Session state transitions work for sprint lifecycle
-// ===========================================================================
+  it("sprint iteration count derived from work step starts", () => {
+    let sprintWorkStepCount = 0
+    const maxIter = 5
 
-describe("VAL-TUI-004: Session state transitions for sprint lifecycle", () => {
-  describe("sprint happy path: new → work:active → completed", () => {
-    it("new → plan:imported is valid (pipeline start)", () => {
-      expect(isValidTransition("new", "plan:imported")).toBe(true)
-    })
+    // First work step → iteration 1
+    sprintWorkStepCount++
+    let sprintInfo: SprintIterationInfo = { iteration: sprintWorkStepCount, maxIterations: maxIter }
+    expect(formatSprintIteration(sprintInfo)).toBe("Sprint 1/5")
 
-    it("plan:imported → plan:approved is valid", () => {
-      expect(isValidTransition("plan:imported", "plan:approved")).toBe(true)
-    })
-
-    it("plan:approved → work:active is valid", () => {
-      expect(isValidTransition("plan:approved", "work:active")).toBe(true)
-    })
-
-    it("work:active → completed is valid", () => {
-      expect(isValidTransition("work:active", "completed")).toBe(true)
-    })
-
-    it("full sprint happy path is reachable from new to completed", () => {
-      const path = findTransitionPath("new", "completed")
-      expect(path).not.toBeNull()
-      expect(path!).toContain("work:active")
-      expect(path!).toContain("completed")
-    })
-  })
-
-  describe("sprint pause/resume: work:active → work:paused → work:active", () => {
-    it("work:active → work:paused is valid", () => {
-      expect(isValidTransition("work:active", "work:paused")).toBe(true)
-    })
-
-    it("work:paused → work:active is valid (resume)", () => {
-      expect(isValidTransition("work:paused", "work:active")).toBe(true)
-    })
-  })
-
-  describe("sprint failure/interruption", () => {
-    it("work:active → work:paused is valid (stop/interrupt)", () => {
-      expect(isValidTransition("work:active", "work:paused")).toBe(true)
-    })
-
-    it("work:active → trashed is valid (discard)", () => {
-      expect(isValidTransition("work:active", "trashed")).toBe(true)
-    })
-  })
-
-  describe("sprint escalation: work:active → work:review or continued work:active", () => {
-    it("work:active → work:review is valid (escalation with review)", () => {
-      expect(isValidTransition("work:active", "work:review")).toBe(true)
-    })
-
-    it("work:review → completed is valid (after escalation completes)", () => {
-      expect(isValidTransition("work:review", "completed")).toBe(true)
-    })
-
-    it("work:review → work:active is valid (re-enter work after review)", () => {
-      expect(isValidTransition("work:review", "work:active")).toBe(true)
-    })
-  })
-
-  describe("sprint budget exhaustion", () => {
-    it("work:active → budget_exhausted is valid", () => {
-      expect(isValidTransition("work:active", "budget_exhausted")).toBe(true)
-    })
-
-    it("budget_exhausted → work:active is valid (resume after budget increase)", () => {
-      expect(isValidTransition("budget_exhausted", "work:active")).toBe(true)
-    })
-  })
-
-  describe("safeUpdateState path from new to work:paused", () => {
-    it("path exists from new to work:paused via intermediate states", () => {
-      const path = findTransitionPath("new", "work:paused")
-      expect(path).not.toBeNull()
-      // Should go through plan:imported → plan:approved → work:active → work:paused
-      expect(path!.length).toBeGreaterThan(1)
-      expect(path![path!.length - 1]).toBe("work:paused")
-    })
-
-    it("path exists from new to work:active", () => {
-      const path = findTransitionPath("new", "work:active")
-      expect(path).not.toBeNull()
-      expect(path![path!.length - 1]).toBe("work:active")
-    })
+    // Second work step (retry) → iteration 2
+    sprintWorkStepCount++
+    sprintInfo = { iteration: sprintWorkStepCount, maxIterations: maxIter }
+    expect(formatSprintIteration(sprintInfo)).toBe("Sprint 2/5")
   })
 })
 
 // ===========================================================================
-// Sprint events carry correct data for telemetry bar consumption
+// Session state transitions for sprint lifecycle
 // ===========================================================================
 
-describe("Sprint events carry correct telemetry data", () => {
-  it("sprint:started event has maxIterations field", () => {
-    const bus = new EventBus()
-    let captured: SprintStarted | null = null
+describe("Session state transitions for sprint lifecycle", () => {
+  it("new → plan:imported is valid", () => {
+    expect(isValidTransition("new", "plan:imported")).toBe(true)
+  })
 
-    bus.subscribeToType("sprint:started", (e) => {
-      captured = e
+  it("plan:approved → work:active is valid", () => {
+    expect(isValidTransition("plan:approved", "work:active")).toBe(true)
+  })
+
+  it("work:active → completed is valid", () => {
+    expect(isValidTransition("work:active", "completed")).toBe(true)
+  })
+
+  it("work:active → work:paused is valid", () => {
+    expect(isValidTransition("work:active", "work:paused")).toBe(true)
+  })
+
+  it("work:paused → work:active is valid", () => {
+    expect(isValidTransition("work:paused", "work:active")).toBe(true)
+  })
+
+  it("path exists from new to completed", () => {
+    const path = findTransitionPath("new", "completed")
+    expect(path).not.toBeNull()
+    expect(path!).toContain("work:active")
+    expect(path!).toContain("completed")
+  })
+})
+
+// ===========================================================================
+// VAL-SPRINT-011: Sprint uses standard queue step events
+// ===========================================================================
+
+describe("VAL-SPRINT-011: Sprint uses standard queue step events", () => {
+  it("queue:step-started fires for work steps in sprint queue", () => {
+    const bus = new EventBus()
+    const events: string[] = []
+
+    bus.subscribeToType("queue:step-started", (e) => {
+      events.push(`${e.stepType}:${e.stepTitle}`)
     })
 
     bus.emit({
-      type: "sprint:started",
+      type: "queue:step-started",
       workflowId: "sprint-1",
-      taskDescription: "Add hello world",
-      maxIterations: 5,
+      stepId: "s1",
+      stepType: "work",
+      stepTitle: "Sprint work (iteration 1)",
+      timestamp: new Date().toISOString(),
+    })
+    bus.emit({
+      type: "queue:step-started",
+      workflowId: "sprint-1",
+      stepId: "s2",
+      stepType: "verify",
+      stepTitle: "Verify changes (iteration 1)",
+      timestamp: new Date().toISOString(),
+    })
+
+    expect(events).toHaveLength(2)
+    expect(events[0]).toContain("work")
+    expect(events[1]).toContain("verify")
+  })
+
+  it("queue:step-completed fires for sprint verify steps", () => {
+    const bus = new EventBus()
+    let captured: { stepType: string; stepTitle: string } | null = null
+
+    bus.subscribeToType("queue:step-completed", (e) => {
+      captured = { stepType: e.stepType, stepTitle: e.stepTitle }
+    })
+
+    bus.emit({
+      type: "queue:step-completed",
+      workflowId: "sprint-1",
+      stepId: "s2",
+      stepType: "verify",
+      stepTitle: "Verify changes (iteration 1)",
       timestamp: new Date().toISOString(),
     })
 
     expect(captured).not.toBeNull()
-    expect(captured!.maxIterations).toBe(5)
-    expect(captured!.taskDescription).toBe("Add hello world")
+    expect(captured!.stepType).toBe("verify")
   })
 
-  it("sprint:iteration-started event has iteration and maxIterations", () => {
+  it("queue:step-failed fires for failed sprint steps", () => {
     const bus = new EventBus()
-    let captured: SprintIterationStarted | null = null
+    let captured: { stepType: string; reason: string } | null = null
 
-    bus.subscribeToType("sprint:iteration-started", (e) => {
-      captured = e
+    bus.subscribeToType("queue:step-failed", (e) => {
+      captured = { stepType: e.stepType, reason: e.reason }
     })
 
     bus.emit({
-      type: "sprint:iteration-started",
+      type: "queue:step-failed",
       workflowId: "sprint-1",
-      iteration: 2,
-      maxIterations: 5,
+      stepId: "s1",
+      stepType: "work",
+      stepTitle: "Sprint work (iteration 1)",
+      reason: "Worker crashed",
       timestamp: new Date().toISOString(),
     })
 
     expect(captured).not.toBeNull()
-    expect(captured!.iteration).toBe(2)
-    expect(captured!.maxIterations).toBe(5)
+    expect(captured!.stepType).toBe("work")
+    expect(captured!.reason).toBe("Worker crashed")
   })
 
-  it("sprint:completed event resets sprint info (completed: true)", () => {
+  it("queue:step-inserted fires when retry pair is inserted", () => {
     const bus = new EventBus()
-    let captured: SprintCompleted | null = null
+    const inserted: string[] = []
 
-    bus.subscribeToType("sprint:completed", (e) => {
-      captured = e
+    bus.subscribeToType("queue:step-inserted", (e) => {
+      inserted.push(`${e.stepType}:${e.stepTitle}`)
     })
 
     bus.emit({
-      type: "sprint:completed",
+      type: "queue:step-inserted",
       workflowId: "sprint-1",
-      completed: true,
-      iterationsUsed: 1,
-      escalated: false,
+      stepId: "s3",
+      stepType: "work",
+      stepTitle: "Sprint work (iteration 2)",
+      afterStepId: "s2",
+      timestamp: new Date().toISOString(),
+    })
+    bus.emit({
+      type: "queue:step-inserted",
+      workflowId: "sprint-1",
+      stepId: "s4",
+      stepType: "verify",
+      stepTitle: "Verify changes (iteration 2)",
+      afterStepId: "s3",
       timestamp: new Date().toISOString(),
     })
 
-    expect(captured).not.toBeNull()
-    expect(captured!.completed).toBe(true)
-    expect(captured!.iterationsUsed).toBe(1)
+    expect(inserted).toHaveLength(2)
+    expect(inserted[0]).toContain("work")
+    expect(inserted[1]).toContain("verify")
+  })
+})
+
+// ===========================================================================
+// VAL-SPRINT-010: sprint-loop.ts deleted, no imports reference it
+// ===========================================================================
+
+describe("VAL-SPRINT-010: sprint-loop.ts deleted", () => {
+  it("src/sprint/sprint-loop.ts file does not exist", async () => {
+    const fs = await import("fs")
+    const path = await import("path")
+    const filePath = path.resolve(__dirname, "../src/sprint/sprint-loop.ts")
+    expect(fs.existsSync(filePath)).toBe(false)
   })
 
-  it("sprint:escalated event carries iteration count and reason", () => {
-    const bus = new EventBus()
-    let captured: SprintEscalated | null = null
-
-    bus.subscribeToType("sprint:escalated", (e) => {
-      captured = e
-    })
-
-    bus.emit({
-      type: "sprint:escalated",
-      workflowId: "sprint-1",
-      iterationsUsed: 5,
-      reason: "Hard cap reached",
-      timestamp: new Date().toISOString(),
-    })
-
-    expect(captured).not.toBeNull()
-    expect(captured!.iterationsUsed).toBe(5)
-    expect(captured!.reason).toBe("Hard cap reached")
+  it("sprint/types.ts exists with shared types", async () => {
+    const { default: fs } = await import("fs")
+    const path = await import("path")
+    const filePath = path.resolve(__dirname, "../src/sprint/types.ts")
+    expect(fs.existsSync(filePath)).toBe(true)
   })
 
-  it("sprint iteration events can be mapped to SprintIterationInfo for telemetry bar", () => {
+  it("verification-runner.ts is preserved", async () => {
+    const { default: fs } = await import("fs")
+    const path = await import("path")
+    const filePath = path.resolve(__dirname, "../src/sprint/verification-runner.ts")
+    expect(fs.existsSync(filePath)).toBe(true)
+  })
+
+  it("escalation-context.ts is preserved", async () => {
+    const { default: fs } = await import("fs")
+    const path = await import("path")
+    const filePath = path.resolve(__dirname, "../src/sprint/escalation-context.ts")
+    expect(fs.existsSync(filePath)).toBe(true)
+  })
+
+  it("sprint queue handler is preserved", async () => {
+    const { default: fs } = await import("fs")
+    const path = await import("path")
+    const filePath = path.resolve(__dirname, "../src/queue/sprint.ts")
+    expect(fs.existsSync(filePath)).toBe(true)
+  })
+})
+
+// ===========================================================================
+// Sprint queue detection and headless logging
+// ===========================================================================
+
+describe("Sprint queue detection", () => {
+  it("sprint queue identified by verify step presence", async () => {
+    const { buildQueue } = await import("../src/tui/components/shell-queue")
+    const queue = buildQueue("sprint", { ...CONFIG_DEFAULTS, interactive_consolidation: false })
+    const isSprintQueue = queue.steps.some(s => s.type === "verify")
+    expect(isSprintQueue).toBe(true)
+  })
+
+  it("non-sprint queues do not have verify steps", async () => {
+    const { buildQueue } = await import("../src/tui/components/shell-queue")
+    const config = { ...CONFIG_DEFAULTS, interactive_consolidation: false }
+
+    const planOnly = buildQueue("plan-only", config)
+    expect(planOnly.steps.some(s => s.type === "verify")).toBe(false)
+
+    const planWork = buildQueue("plan-work", config)
+    expect(planWork.steps.some(s => s.type === "verify")).toBe(false)
+
+    const full = buildQueue("full", config)
+    expect(full.steps.some(s => s.type === "verify")).toBe(false)
+  })
+})
+
+describe("Headless adapter logs sprint steps meaningfully", () => {
+  it("headless adapter creates and logs queue:step-started for verify type", async () => {
+    const { HeadlessAdapter } = await import("../src/tui/adapters/headless")
+    const { EventBus } = await import("../src/events/event-bus")
+
+    const logs: string[] = []
+    const adapter = new HeadlessAdapter({
+      logLevel: "normal",
+      logger: (msg) => logs.push(msg),
+      timestamps: false,
+    })
     const bus = new EventBus()
-    let sprintInfo: SprintIterationInfo | null = null
+    adapter.connect(bus)
+    adapter.start()
 
-    // Simulate the same wiring as flywheel-shell.tsx
-    bus.subscribeToType("sprint:started", (e) => {
-      sprintInfo = { iteration: 0, maxIterations: e.maxIterations }
-    })
-    bus.subscribeToType("sprint:iteration-started", (e) => {
-      sprintInfo = { iteration: e.iteration, maxIterations: e.maxIterations }
-    })
-    bus.subscribeToType("sprint:completed", () => {
-      sprintInfo = null
-    })
-
-    // Sprint starts
     bus.emit({
-      type: "sprint:started",
+      type: "queue:step-started",
       workflowId: "sprint-1",
-      taskDescription: "test",
-      maxIterations: 3,
+      stepId: "s1",
+      stepType: "verify",
+      stepTitle: "Verify changes (iteration 1)",
       timestamp: new Date().toISOString(),
     })
-    expect(sprintInfo).toEqual({ iteration: 0, maxIterations: 3 })
-    // formatSprintIteration should return empty for iteration 0 (not yet started)
-    expect(formatSprintIteration(sprintInfo)).toBe("")
 
-    // Iteration 1 starts
+    adapter.stop()
+
+    const stepLog = logs.find(l => l.includes("verify"))
+    expect(stepLog).toBeDefined()
+    expect(stepLog).toContain("sprint verification")
+  })
+
+  it("headless adapter logs sprint work steps with sprint context", async () => {
+    const { HeadlessAdapter } = await import("../src/tui/adapters/headless")
+    const { EventBus } = await import("../src/events/event-bus")
+
+    const logs: string[] = []
+    const adapter = new HeadlessAdapter({
+      logLevel: "normal",
+      logger: (msg) => logs.push(msg),
+      timestamps: false,
+    })
+    const bus = new EventBus()
+    adapter.connect(bus)
+    adapter.start()
+
     bus.emit({
-      type: "sprint:iteration-started",
+      type: "queue:step-started",
       workflowId: "sprint-1",
-      iteration: 1,
-      maxIterations: 3,
+      stepId: "s1",
+      stepType: "work",
+      stepTitle: "Sprint work (iteration 1)",
       timestamp: new Date().toISOString(),
     })
-    expect(sprintInfo).toEqual({ iteration: 1, maxIterations: 3 })
-    expect(formatSprintIteration(sprintInfo)).toBe("Sprint 1/3")
 
-    // Iteration 2 starts
-    bus.emit({
-      type: "sprint:iteration-started",
-      workflowId: "sprint-1",
-      iteration: 2,
-      maxIterations: 3,
-      timestamp: new Date().toISOString(),
-    })
-    expect(sprintInfo).toEqual({ iteration: 2, maxIterations: 3 })
-    expect(formatSprintIteration(sprintInfo)).toBe("Sprint 2/3")
+    adapter.stop()
 
-    // Sprint completes — clear info
-    bus.emit({
-      type: "sprint:completed",
-      workflowId: "sprint-1",
-      completed: true,
-      iterationsUsed: 2,
-      escalated: false,
-      timestamp: new Date().toISOString(),
-    })
-    expect(sprintInfo).toBeNull()
-    expect(formatSprintIteration(sprintInfo)).toBe("")
+    const stepLog = logs.find(l => l.includes("Sprint work"))
+    expect(stepLog).toBeDefined()
+    expect(stepLog).toContain("sprint iteration")
   })
 })

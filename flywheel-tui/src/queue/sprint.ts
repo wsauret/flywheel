@@ -32,7 +32,7 @@ import {
   buildEscalationContext,
   type EscalationContext,
 } from "../sprint/escalation-context";
-import type { SprintIterationRecord, SprintLoopResult } from "../sprint/sprint-loop";
+import type { SprintIterationRecord, SprintLoopResult } from "../sprint/types";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "sprint-queue" });

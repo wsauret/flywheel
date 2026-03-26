@@ -58,13 +58,6 @@ export class MockAdapter extends BaseUIAdapter {
       // Budget events
       case "budget:warning":
       case "budget:exhausted":
-      // Sprint events
-      case "sprint:started":
-      case "sprint:iteration-started":
-      case "sprint:verification-started":
-      case "sprint:iteration-completed":
-      case "sprint:escalated":
-      case "sprint:completed":
       // Queue lifecycle events
       case "queue:initialized":
       case "queue:completed":

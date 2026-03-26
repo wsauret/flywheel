@@ -13,7 +13,7 @@
  * args so the planner can account for what was already tried.
  */
 
-import type { SprintIterationRecord, SprintLoopResult } from "./sprint-loop"
+import type { SprintIterationRecord, SprintLoopResult } from "./types"
 
 // ---------------------------------------------------------------------------
 // Types

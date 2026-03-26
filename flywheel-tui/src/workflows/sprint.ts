@@ -1,9 +1,8 @@
 /**
  * Sprint workflow definition.
  *
- * Sprint mode uses a single-step definition as a placeholder — the real
- * execution logic lives in SprintLoop (src/sprint/sprint-loop.ts), which
- * handles the iterate-verify-escalate cycle internally.
+ * Sprint mode uses queue-based execution (src/queue/sprint.ts) with
+ * work+verify step pairs and dynamic retry/escalation insertion.
  *
  * This definition exists for:
  * - Registry inclusion in workflowRegistry

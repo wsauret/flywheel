@@ -24,7 +24,7 @@ import type { EvaluatorTransport } from "../../evaluator/transport";
 import { checkEndOfSessionGate } from "../../controller/validation-state";
 import type { EndOfSessionGateCheck, WorkflowType } from "../../controller/workflow-pipeline";
 import { buildEscalationContext } from "../../sprint/escalation-context";
-import type { SprintLoopResult } from "../../sprint/sprint-loop";
+import type { SprintLoopResult } from "../../sprint/types";
 
 // ---------------------------------------------------------------------------
 // Local stage types — inline replacements for removed legacy stage types

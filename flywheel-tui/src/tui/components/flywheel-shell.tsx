@@ -626,9 +626,19 @@ export function FlywheelShell() {
     // Queue event subscriptions (replaces pipeline event subscriptions)
     cleanupPipelineSubscriptions()
     let stepCounter = 0
+    // Sprint detection: a queue with verify-type steps is a sprint queue
+    let isSprintQueue = queue.steps.some(s => s.type === "verify")
+    let sprintWorkStepCount = 0
     pipelineUnsubs.push(
       session.eventBus.subscribeToType("queue:initialized", (e) => {
         stepCounter = 0
+        sprintWorkStepCount = 0
+        // Re-check sprint status in case queue was rebuilt
+        isSprintQueue = queue.steps.some(s => s.type === "verify")
+        if (isSprintQueue) {
+          const maxIter = deps.config.sprint?.max_iterations ?? 5
+          setActiveSprintInfo({ iteration: 0, maxIterations: maxIter })
+        }
         setActiveQueueInfo({
           currentStep: 1,
           totalSteps: e.stepIds.length,
@@ -664,18 +674,20 @@ export function FlywheelShell() {
           activeFlusher.schedule()
         }
       }),
-      // Sprint iteration tracking for telemetry bar
-      session.eventBus.subscribeToType("sprint:started", (e) => {
-        setActiveSprintInfo({ iteration: 0, maxIterations: e.maxIterations })
-      }),
-      session.eventBus.subscribeToType("sprint:iteration-started", (e) => {
-        setActiveSprintInfo({ iteration: e.iteration, maxIterations: e.maxIterations })
-      }),
-      session.eventBus.subscribeToType("sprint:completed", () => {
-        setActiveSprintInfo(null)
-      }),
-      session.eventBus.subscribeToType("sprint:escalated", () => {
-        setActiveSprintInfo(null)
+      // Sprint iteration tracking for telemetry bar — derived from queue step events.
+      // Sprint queues are identified by having verify-type steps. The iteration
+      // count is derived from counting work steps that have started.
+      // Escalation clears sprint info (non-work/verify steps in sprint queue).
+      session.eventBus.subscribeToType("queue:step-started", (e) => {
+        if (!isSprintQueue) return
+        if (e.stepType === "work") {
+          sprintWorkStepCount++
+          const maxIter = deps.config.sprint?.max_iterations ?? 5
+          setActiveSprintInfo({ iteration: sprintWorkStepCount, maxIterations: maxIter })
+        } else if (e.stepType !== "verify") {
+          // Non-sprint step (escalation: plan/review) — clear sprint info
+          setActiveSprintInfo(null)
+        }
       }),
     )
 

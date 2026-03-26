@@ -238,37 +238,6 @@ export class HeadlessAdapter extends BaseUIAdapter {
         // Streaming output from dispatcher/evaluator subprocesses — no-op in headless mode
         break
 
-      // Sprint events
-      case "sprint:started":
-        this.log(`Sprint started (max ${event.maxIterations} iterations)`)
-        break
-
-      case "sprint:iteration-started":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Sprint iteration ${event.iteration}/${event.maxIterations}`)
-        }
-        break
-
-      case "sprint:verification-started":
-        if (this.logLevel === "verbose") {
-          this.log(`  Running verification: ${event.scriptPath}`)
-        }
-        break
-
-      case "sprint:iteration-completed":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Iteration ${event.iteration} ${event.passed ? "passed" : "failed"}${event.reason ? `: ${event.reason}` : ""}`)
-        }
-        break
-
-      case "sprint:escalated":
-        this.log(`  Sprint ESCALATED after ${event.iterationsUsed} iterations: ${event.reason}`)
-        break
-
-      case "sprint:completed":
-        this.log(`Sprint ${event.completed ? "completed" : "stopped"} (${event.iterationsUsed} iterations)${event.escalated ? " — escalated" : ""}`)
-        break
-
       // ── Queue lifecycle events ──
       case "queue:initialized":
         this.log(`Queue initialized (${event.stepIds.length} steps)`)
@@ -283,15 +252,20 @@ export class HeadlessAdapter extends BaseUIAdapter {
         break
 
       // ── Queue step events (normal+) ──
+      // Sprint steps (work/verify) are logged with sprint-specific context
       case "queue:step-started":
         if (this.logLevel !== "minimal") {
-          this.log(`  Queue step started: [${event.stepType}] ${event.stepTitle}`)
+          const sprintLabel = event.stepType === "verify" ? " (sprint verification)" :
+            event.stepType === "work" && event.stepTitle.includes("Sprint") ? " (sprint iteration)" : ""
+          this.log(`  Queue step started: [${event.stepType}] ${event.stepTitle}${sprintLabel}`)
         }
         break
 
       case "queue:step-completed":
         if (this.logLevel !== "minimal") {
-          this.log(`  Queue step completed: [${event.stepType}] ${event.stepTitle}`)
+          const sprintLabel = event.stepType === "verify" ? " (sprint verification)" :
+            event.stepType === "work" && event.stepTitle.includes("Sprint") ? " (sprint iteration)" : ""
+          this.log(`  Queue step completed: [${event.stepType}] ${event.stepTitle}${sprintLabel}`)
         }
         break
 

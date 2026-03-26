@@ -1,8 +1,7 @@
 /**
- * Shared test helpers for sprint loop tests.
+ * Shared test helpers for sprint tests.
  *
- * Extracted from sprint-loop.test.ts, sprint-loop-signals.test.ts, and
- * sprint-loop-events.test.ts to eliminate ~160 lines of duplicated code.
+ * Used by sprint-queue.test.ts and sprint-tui-integration.test.ts.
  */
 
 import type { WorkerResult } from "../../src/schemas/worker";
@@ -14,7 +13,6 @@ import type { EvaluatorInput, EvaluatorResult } from "../../src/schemas/evaluato
 import type { BudgetTracker } from "../../src/session/budget-tracker";
 import type { BudgetLimits } from "../../src/schemas/shared";
 import type { VerificationResult } from "../../src/sprint/verification-runner";
-import type { SprintLoopOptions } from "../../src/sprint/sprint-loop";
 import type { PhaseExecutor } from "../../src/controller/phase-executor";
 import { EventBus, createFlywheelEmitter } from "../../src/events/event-bus";
 import { MockAdapter } from "../../src/tui/adapters/mock";
@@ -194,51 +192,4 @@ export function collectEvents(eventBus: EventBus): FlywheelEvent[] {
   return events;
 }
 
-// ---------------------------------------------------------------------------
-// Test options factory
-// ---------------------------------------------------------------------------
 
-export function createTestOptions(overrides?: Partial<SprintLoopOptions>): SprintLoopOptions {
-  const eventBus = new EventBus();
-  const emitter = createFlywheelEmitter(eventBus);
-  const adapter = new MockAdapter();
-  adapter.connect(eventBus);
-
-  return {
-    taskDescription: "Add a hello world endpoint",
-    config: defaultConfig(),
-    executor: mockExecutor([makeWorkerResult("/tmp/handoff.json")]),
-    emitter,
-    ui: adapter,
-    workflowId: "test-sprint-1",
-    _readHandoff: async () => makeHandoff(),
-    _runVerification: async () => passingVerification(),
-    ...overrides,
-  };
-}
-
-/**
- * Create test options with a fresh EventBus and emitter, returning both for inspection.
- * Used in event-focused tests that need access to the raw event bus and events array.
- */
-export function createTestOptionsWithBus(overrides?: Partial<SprintLoopOptions>) {
-  const eventBus = new EventBus();
-  const events = collectEvents(eventBus);
-  const emitter = createFlywheelEmitter(eventBus);
-  const adapter = new MockAdapter();
-  adapter.connect(eventBus);
-
-  const opts: SprintLoopOptions = {
-    taskDescription: "Add a hello world endpoint",
-    config: defaultConfig(),
-    executor: mockExecutor([makeWorkerResult("/tmp/handoff.json")]),
-    emitter,
-    ui: adapter,
-    workflowId: "test-sprint-events",
-    _readHandoff: async () => makeHandoff(),
-    _runVerification: async () => passingVerification(),
-    ...overrides,
-  };
-
-  return { opts, eventBus, events, adapter };
-}

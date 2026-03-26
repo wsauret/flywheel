@@ -134,12 +134,6 @@ export interface FlywheelEmitter {
   workerInjected(workflowId: string, message: string): void;
   approvalRequested(workflowId: string, stepIndex: number, description: string): void;
   approvalReceived(workflowId: string, approved: boolean, skipped: boolean): void;
-  sprintStarted(workflowId: string, taskDescription: string, maxIterations: number): void;
-  sprintIterationStarted(workflowId: string, iteration: number, maxIterations: number): void;
-  sprintVerificationStarted(workflowId: string, iteration: number, scriptPath: string): void;
-  sprintIterationCompleted(workflowId: string, iteration: number, passed: boolean, reason?: string): void;
-  sprintEscalated(workflowId: string, iterationsUsed: number, reason: string): void;
-  sprintCompleted(workflowId: string, completed: boolean, iterationsUsed: number, escalated: boolean, reason?: string): void;
   // Queue lifecycle events
   queueInitialized(workflowId: string, stepIds: string[]): void;
   queueCompleted(workflowId: string, stepsCompleted: number): void;
@@ -207,18 +201,6 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "approval:requested", workflowId, stepIndex, description, timestamp: now() }),
     approvalReceived: (workflowId, approved, skipped) =>
       bus.emit({ type: "approval:received", workflowId, approved, skipped, timestamp: now() }),
-    sprintStarted: (workflowId, taskDescription, maxIterations) =>
-      bus.emit({ type: "sprint:started", workflowId, taskDescription, maxIterations, timestamp: now() }),
-    sprintIterationStarted: (workflowId, iteration, maxIterations) =>
-      bus.emit({ type: "sprint:iteration-started", workflowId, iteration, maxIterations, timestamp: now() }),
-    sprintVerificationStarted: (workflowId, iteration, scriptPath) =>
-      bus.emit({ type: "sprint:verification-started", workflowId, iteration, scriptPath, timestamp: now() }),
-    sprintIterationCompleted: (workflowId, iteration, passed, reason?) =>
-      bus.emit({ type: "sprint:iteration-completed", workflowId, iteration, passed, ...(reason !== undefined ? { reason } : {}), timestamp: now() }),
-    sprintEscalated: (workflowId, iterationsUsed, reason) =>
-      bus.emit({ type: "sprint:escalated", workflowId, iterationsUsed, reason, timestamp: now() }),
-    sprintCompleted: (workflowId, completed, iterationsUsed, escalated, reason?) =>
-      bus.emit({ type: "sprint:completed", workflowId, completed, iterationsUsed, escalated, ...(reason !== undefined ? { reason } : {}), timestamp: now() }),
     // Queue lifecycle events
     queueInitialized: (workflowId, stepIds) =>
       bus.emit({ type: "queue:initialized", workflowId, stepIds, timestamp: now() }),

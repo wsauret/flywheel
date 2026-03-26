@@ -38,12 +38,6 @@ export type FlywheelEvent =
   | QuestionRejected
   | BudgetWarning
   | BudgetExhausted
-  | SprintStarted
-  | SprintIterationStarted
-  | SprintVerificationStarted
-  | SprintIterationCompleted
-  | SprintEscalated
-  | SprintCompleted
   | QueueInitialized
   | QueueCompleted
   | QueueFailed
@@ -286,59 +280,6 @@ export interface BudgetExhausted {
   type: "budget:exhausted";
   workflowId: string;
   reason: string;
-  timestamp: string;
-}
-
-// -- Sprint events --
-
-export interface SprintStarted {
-  type: "sprint:started";
-  workflowId: string;
-  taskDescription: string;
-  maxIterations: number;
-  timestamp: string;
-}
-
-export interface SprintIterationStarted {
-  type: "sprint:iteration-started";
-  workflowId: string;
-  iteration: number;
-  maxIterations: number;
-  timestamp: string;
-}
-
-export interface SprintVerificationStarted {
-  type: "sprint:verification-started";
-  workflowId: string;
-  iteration: number;
-  scriptPath: string;
-  timestamp: string;
-}
-
-export interface SprintIterationCompleted {
-  type: "sprint:iteration-completed";
-  workflowId: string;
-  iteration: number;
-  passed: boolean;
-  reason?: string;
-  timestamp: string;
-}
-
-export interface SprintEscalated {
-  type: "sprint:escalated";
-  workflowId: string;
-  iterationsUsed: number;
-  reason: string;
-  timestamp: string;
-}
-
-export interface SprintCompleted {
-  type: "sprint:completed";
-  workflowId: string;
-  completed: boolean;
-  iterationsUsed: number;
-  escalated: boolean;
-  reason?: string;
   timestamp: string;
 }
 
