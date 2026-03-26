@@ -1,66 +1,45 @@
-# User Testing
-
-Testing surface, required testing skills/tools, and resource cost classification.
-
-**What belongs here:** How to test the TUI, what tools to use, concurrency limits.
-
+---
+title: "User Testing Guide"
+summary: "Testing tools, surfaces, and setup for flywheel-tui validation"
+tags: [testing, validation, user-testing]
 ---
 
-## Validation Surface
+## Testing Surfaces
 
-**Primary surface:** Terminal TUI via tmux
-**Tool:** tmux screen capture and keystroke injection
-**No browser, no API endpoints** — everything tested through terminal interaction
+### Unit Tests (bun test)
+- **Tool:** `bun test` (Bun's built-in test runner)
+- **Location:** `tests/` directory
+- **Pattern:** `tests/<module>.test.ts`
+- **No services required** — pure unit tests with mocks
 
-## Setup
-
-```bash
-# Start TUI in tmux
-tmux kill-session -t flywheel 2>/dev/null
-tmux new-session -d -s flywheel -x 120 -y 40 \
-  'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && bin/flywheel'
-sleep 3
-
-# Capture screen
-tmux capture-pane -t flywheel -p
-
-# Send keystrokes
-tmux send-keys -t flywheel '/start test' Enter
-
-# Cleanup
-tmux send-keys -t flywheel '/exit' Enter
-sleep 1
-tmux kill-session -t flywheel 2>/dev/null
-```
-
-## Terminal Sizes
-
-- Standard: 120x40 (shows sidebar + panel)
-- Narrow: 80x40 (sidebar hidden, panel hidden)
-- Sidebar threshold: 90 cols
-- Panel threshold: 120 cols
+### TUI (tmux)
+- **Tool:** tmux with `tuistory` skill for automation
+- **Setup:** `tmux new-session -d -s flywheel -x 120 -y 40 'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && bin/flywheel'`
+- **Resource cost:** ~300MB per TUI instance
+- **Max concurrent:** 5 instances
 
 ## Validation Concurrency
 
-**Machine:** 36 GB RAM, 11 cores
-**Per TUI instance:** ~300 MB RAM, 2 processes
-**Baseline usage:** ~12 GB
-**Usable headroom (70%):** ~16.8 GB
-**Max concurrent validators:** 5
+### Unit Test Surface
+- **Max concurrent validators:** 5
+- **Resource cost per validator:** Minimal (~50MB for bun test process)
+- **Isolation:** Each validator reads test output independently; tests share no mutable state
+- **Rationale:** Unit tests are read-only analysis of test output. No shared state concerns.
 
-## Check Logs After Testing
+## Flow Validator Guidance: Unit Tests
 
-```bash
-ls -t .flywheel/log/*.log | head -1 | xargs cat | grep -E '^(ERROR|WARN)'
-```
+### Isolation rules
+- Validators examine test output from `bun test` — they do NOT modify source code
+- Each validator runs the specific test file(s) for its assertion group
+- No shared mutable state between validators
 
-## Flow Validator Guidance: Terminal (bun test)
+### Verification approach
+1. Run the specific test file(s) for the assertion group
+2. Match test names to assertion IDs (tests are prefixed with `VAL-QUEUE-NNN:` or use descriptive names mapping to assertions)
+3. For each assertion, verify at least one test directly exercises the specified behavior
+4. Report pass/fail per assertion with evidence (test output excerpt)
 
-**Surface:** Unit and integration tests run via `bun test` in terminal.
-**Isolation:** Each `bun test <file>` invocation runs in its own process with independent state. No shared mutable state between test files. Multiple test files can run concurrently safely.
-**Boundaries:**
-- Do NOT modify source files during testing — only read and run tests
-- Do NOT start the TUI or any external services — these are pure unit/integration tests
-- Each validator should run specific test files matching its assertion group
-- Verify test pass/fail counts and check for specific test names matching assertions
-**Concurrency:** Up to 5 validators can run `bun test` concurrently without interference (each is ~500MB RAM, total ~2.5GB well within 16.8GB headroom)
+### Boundaries
+- Do not modify any source files
+- Do not modify test files
+- Only read and analyze test output
