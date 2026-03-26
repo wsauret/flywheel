@@ -188,6 +188,7 @@ export function createStageLoop(options: StageLoopOptions): StageLoopHandle {
       args,
       budgetTracker,
       budgetLimits,
+      contextIndexer,
       evaluatorTransport,
       logBaseDir,
     });
@@ -533,6 +534,7 @@ interface SprintLoopParams {
   args: Record<string, string>;
   budgetTracker?: BudgetTracker;
   budgetLimits?: BudgetLimits;
+  contextIndexer?: ContextIndexer;
   evaluatorTransport?: EvaluatorTransport;
   logBaseDir?: string;
 }
@@ -554,6 +556,7 @@ function createSprintStageLoop(params: SprintLoopParams): StageLoopHandle {
     args,
     budgetTracker,
     budgetLimits,
+    contextIndexer,
     evaluatorTransport,
     logBaseDir,
   } = params;
@@ -573,6 +576,7 @@ function createSprintStageLoop(params: SprintLoopParams): StageLoopHandle {
     evaluatorTransport,
     budgetTracker,
     budgetLimits,
+    contextIndexer,
     logBaseDir,
   });
 

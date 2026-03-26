@@ -28,6 +28,7 @@ import { WorkerError } from "../controller/phase-executor";
 import type { EvaluatorTransport } from "../evaluator/transport";
 import type { BudgetTracker } from "../session/budget-tracker";
 import type { BudgetLimits } from "../schemas/shared";
+import type { ContextIndexer } from "../memory/indexer";
 import type { IWorkflowUI } from "../tui/adapters/types";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
 import { WorkerHandoffSchema } from "../schemas/handoff";
@@ -85,6 +86,8 @@ export interface SprintLoopOptions {
   budgetLimits?: BudgetLimits;
   /** Base directory for subprocess JSONL logging. */
   logBaseDir?: string;
+  /** Context indexer for providing conventions/standards/learnings to the sprint worker prompt. */
+  contextIndexer?: ContextIndexer;
   /** DI: override handoff reader (for testing). */
   _readHandoff?: HandoffReader;
   /** DI: override verification runner (for testing). */
@@ -140,6 +143,7 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
     budgetTracker,
     budgetLimits,
     logBaseDir,
+    contextIndexer,
     _readHandoff: readHandoffOverride,
     _runVerification: runVerificationOverride,
   } = options;
@@ -215,7 +219,18 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
       const invocationId = crypto.randomUUID();
       const handoffPath = path.resolve(handoffsDir, `${invocationId}.json`);
 
-      // Build prompt
+      // Build prompt with context from ContextIndexer
+      const relevantContext = contextIndexer?.getRelevantContext({
+        workflowType: "sprint",
+        phaseDescription: taskDescription,
+      });
+      const extraContext: Record<string, unknown> = {};
+      if (relevantContext) {
+        extraContext.conventions = relevantContext.conventions;
+        extraContext.standards = relevantContext.standards;
+        extraContext.learnings = relevantContext.learnings;
+      }
+
       const prompt = buildPromptForIteration(
         iteration,
         maxIterations,
@@ -223,6 +238,7 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
         iterationHistory,
         handoffPath,
         projectCwd,
+        extraContext,
       );
 
       let workerHandoff: WorkerHandoff | undefined;
@@ -278,7 +294,7 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
         !workerCrashed &&
         workerHandoff &&
         sprintConfig.worker_can_escalate &&
-        (workerHandoff as Record<string, unknown>).needs_plan === true
+        workerHandoff.needs_plan === true
       ) {
         log.info("worker signaled needs_plan, escalating", { iteration });
         record.workerSummary += " [needs_plan escalation]";
@@ -414,8 +430,8 @@ export function createSprintLoop(options: SprintLoopOptions): SprintLoopHandle {
           if (!evalResult.passed) {
             // Extract dual-channel feedback
             record.evaluatorFeedback = {
-              implementation: (evalResult as Record<string, unknown>).implementation_feedback as string ?? evalResult.feedback ?? evalResult.reasoning ?? "",
-              script: (evalResult as Record<string, unknown>).script_feedback as string ?? "",
+              implementation: evalResult.implementation_feedback ?? evalResult.feedback ?? evalResult.reasoning ?? "",
+              script: evalResult.script_feedback ?? "",
             };
           }
         } catch (error) {
@@ -537,14 +553,17 @@ function buildPromptForIteration(
   previousIterations: SprintIterationRecord[],
   handoffPath: string,
   projectCwd: string,
+  extraContext?: Record<string, unknown>,
 ): string {
+  const extra: Record<string, unknown> = { handoffPath, ...extraContext };
+
   if (iteration === 1) {
     return buildSprintPhasePrompt({
       planContent: taskDescription,
       keyDecisions: [],
       fileReferences: [],
       projectCwd,
-      extra: { handoffPath },
+      extra,
     });
   }
 
@@ -569,7 +588,7 @@ function buildPromptForIteration(
       keyDecisions: [],
       fileReferences: [],
       projectCwd,
-      extra: { handoffPath },
+      extra,
     },
     currentIteration: iteration,
     maxIterations,

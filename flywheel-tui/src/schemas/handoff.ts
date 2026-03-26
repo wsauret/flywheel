@@ -155,6 +155,8 @@ export const WorkerHandoffBaseSchema = z.object({
   verification_script_path: z.string().optional(),
   /** Current sprint iteration number. */
   iteration_number: z.number().optional(),
+  /** Worker signals that the task requires full planning (sprint escalation). */
+  needs_plan: z.boolean().optional(),
 }).strict();
 
 /**
@@ -219,6 +221,10 @@ export const EvaluatorVerdictSchema = z.object({
   files_to_review: z.array(z.string()),
   /** Structured issues extracted from worker output. Defaults to empty array for backward compat. */
   issues: z.array(EvaluatorIssueSchema).default([]),
+  /** Sprint dual-channel feedback: specific feedback on the implementation. */
+  implementation_feedback: z.string().optional(),
+  /** Sprint dual-channel feedback: specific feedback on the verification script. */
+  script_feedback: z.string().optional(),
 }).strict();
 
 export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;

@@ -47,6 +47,10 @@ export const EvaluatorResultSchema = z.object({
   files_to_review: z.array(z.string()),
   /** Structured issues from evaluator verdict. Defaults to empty array for backward compat. */
   issues: z.array(EvaluatorIssueSchema).default([]),
+  /** Sprint dual-channel feedback: specific feedback on the implementation. */
+  implementation_feedback: z.string().optional(),
+  /** Sprint dual-channel feedback: specific feedback on the verification script. */
+  script_feedback: z.string().optional(),
 }).strip();
 
 export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>;

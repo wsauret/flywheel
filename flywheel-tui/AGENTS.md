@@ -186,6 +186,7 @@ src/
 ├── tui/           # TUI shell, components, adapters, routes, shared context
 ├── types/         # Shared type definitions
 ├── utils/         # Atomic write, debounced writer, retry, file-based logger
+├── sprint/        # Sprint execution loop, verification runner, escalation context
 ├── worker/        # Process spawning, NDJSON parsing, rate limiting, timeouts
 └── workflows/     # Per-workflow runners (plan, work, review, ship, debug, research)
 ```
@@ -261,7 +262,13 @@ The `EventBus` is a synchronous pub/sub system. `FlywheelEmitter` is a typed fac
 
 `WorkflowPipeline` sequences stages (each a `WorkflowType`) with optional gates between them. Gate decisions: `"continue"`, `"stop"`, `"pause"`, `"dismissed"`, `"aborted"`. `ExecutionLoop` iterates phases within a stage, delegating to `PhaseExecutor` which spawns workers with retry (exponential backoff, base 1s, max 120s, jitter).
 
-Six workflow types: `"work" | "plan" | "review" | "ship" | "debug" | "research"`.
+Seven workflow types: `"work" | "plan" | "review" | "ship" | "debug" | "research" | "sprint"`.
+
+The `WorkflowType` union is declared in **4 independent locations** — all must be updated when adding a new type:
+1. `src/controller/workflow-pipeline.ts`
+2. `src/session/manager.ts`
+3. `src/tui/components/action-dispatcher.ts`
+4. `src/schemas/session.ts`
 
 **Evaluator transport error graceful degradation:** When the evaluator subprocess fails due to a transport or infrastructure error (timeout, binary not found, handoff parse failure after retries), the execution loop treats the failure as non-fatal. It logs a warning and continues execution as if no evaluator were configured — the revision loop and issue gating are skipped entirely for that phase. This prevents infrastructure flakiness from blocking the pipeline.
 
@@ -585,5 +592,10 @@ Config is loaded from TOML (`flywheel.toml`) with env var overrides. Schema in `
 | `worktree.enabled` | bool | `true` | `FLYWHEEL_WORKTREE_ENABLED` |
 | `worktree.auto_remove` | bool | `false` | `FLYWHEEL_WORKTREE_AUTO_REMOVE` |
 | `worktree.grace_period_ms` | int ≥0 | `300000` | — |
+| `sprint.max_iterations` | int 1-10 | `5` | `FLYWHEEL_SPRINT_MAX_ITERATIONS` |
+| `sprint.verification_timeout_ms` | int ≥1000 | `30000` | `FLYWHEEL_SPRINT_VERIFICATION_TIMEOUT_MS` |
+| `sprint.escalate_to_full` | bool | `true` | `FLYWHEEL_SPRINT_ESCALATE_TO_FULL` |
+| `sprint.worker_can_escalate` | bool | `false` | — |
+| `sprint.escalate_on_stuck` | bool | `false` | — |
 
 Precedence: env vars > config file > defaults.
