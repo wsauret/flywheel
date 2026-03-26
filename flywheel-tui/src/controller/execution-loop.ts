@@ -19,7 +19,7 @@ import type { DispatcherOrchestrator } from "./dispatcher-orchestrator";
 import type { DispatcherDecision } from "../schemas/dispatcher";
 import type { WorkflowStepContext } from "../prompts/index";
 import type { BudgetTracker } from "../session/budget-tracker";
-import type { BudgetLimits, LastWorkerResult, SessionBudgetStatus } from "../schemas/shared";
+import type { BudgetLimits, LastWorkerResult, SessionBudgetStatus, ValidationCriteria } from "../schemas/shared";
 import type { ContextIndexer, ContextQuery } from "../memory/indexer";
 import type { WorkflowType } from "./workflow-pipeline";
 import type { EvaluatorTransport } from "../evaluator/transport";
@@ -215,6 +215,13 @@ export interface UnifiedExecutionLoopOptions {
    * Adapted from multi-agent mission system patterns.
    */
   milestoneTracker?: MilestoneTracker;
+  /**
+   * Template-defined validation criteria keyed by phase index.
+   * When present for a given phase, these criteria take precedence over
+   * dispatcher-generated validation_criteria. Used by non-work workflows
+   * (plan, review, ship, debug, research) to avoid dispatcher hallucination.
+   */
+  templateValidationCriteria?: Map<number, string>;
 }
 
 export interface ExecutionResult {
@@ -256,6 +263,7 @@ export class ExecutionLoop {
   private readonly evaluatorTransport?: EvaluatorTransport;
   private readonly logBaseDir?: string;
   private readonly milestoneTracker?: MilestoneTracker;
+  private readonly templateValidationCriteria?: Map<number, string>;
   private _sessionNameEmitted = false;
 
   private _shutdownRequested = false;
@@ -311,6 +319,7 @@ export class ExecutionLoop {
     this.evaluatorTransport = options.evaluatorTransport;
     this.logBaseDir = options.logBaseDir;
     this.milestoneTracker = options.milestoneTracker;
+    this.templateValidationCriteria = options.templateValidationCriteria;
 
     // Load stage context from disk when resuming, otherwise start fresh
     if (options.resumeStageContext) {
@@ -597,13 +606,29 @@ export class ExecutionLoop {
         }
 
         // --- Evaluator: post-phase quality check with revision loop ---
-        // Guards: transport exists, dispatcher produced a decision with validation_criteria,
-        // and skip_evaluation is not set.
+        // Guards: transport exists, skip_evaluation is not set, and either
+        // template-defined or dispatcher-generated validation criteria exist.
+        // Template criteria (from workflow definitions) take precedence over
+        // dispatcher-generated criteria to avoid dispatcher hallucination.
+        const templateCriteriaStr = this.templateValidationCriteria?.get(phase.index);
+        const hasTemplateCriteria = !!templateCriteriaStr;
+        const hasDispatcherCriteria = !!(decision && decision.validation_criteria);
+        const effectiveValidationCriteria: ValidationCriteria | undefined =
+          hasTemplateCriteria
+            ? {
+                acceptance_criteria: [templateCriteriaStr!],
+                required_tests: false,
+                custom_checks: [],
+                required_outputs: [],
+              }
+            : hasDispatcherCriteria
+              ? decision!.validation_criteria
+              : undefined;
+
         if (
           this.evaluatorTransport &&
           !this.config.skip_evaluation &&
-          decision &&
-          decision.validation_criteria
+          effectiveValidationCriteria
         ) {
           const evaluator = new Evaluator({
             transport: this.evaluatorTransport,
@@ -632,8 +657,8 @@ export class ExecutionLoop {
 
           let evalResult = await evaluator.evaluate({
             workerOutput: result.output,
-            validationCriteria: decision.validation_criteria,
-            contextFiles: decision.context_files ?? [],
+            validationCriteria: effectiveValidationCriteria,
+            contextFiles: decision?.context_files ?? [],
             durationSeconds: result.durationMs / 1000,
             testsPassed: null,
             artifactsProduced: [],
@@ -763,8 +788,8 @@ export class ExecutionLoop {
             // Evaluate revised output
             evalResult = await evaluator.evaluate({
               workerOutput: result.output,
-              validationCriteria: decision.validation_criteria,
-              contextFiles: decision.context_files ?? [],
+              validationCriteria: effectiveValidationCriteria,
+              contextFiles: decision?.context_files ?? [],
               durationSeconds: result.durationMs / 1000,
               testsPassed: null,
               artifactsProduced: [],

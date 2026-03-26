@@ -477,6 +477,17 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
     ? `# ${workflowDef.name}: ${description}\n\n${syntheticPlanContent}`
     : `# ${workflowDef.name}\n\n${syntheticPlanContent}`;
 
+  // Build template validation criteria map from workflow definition steps.
+  // These take precedence over dispatcher-generated criteria in the evaluator
+  // to prevent dispatcher hallucination for non-work workflows.
+  const templateValidationCriteria = new Map<number, string>();
+  for (let i = 0; i < workflowDef.steps.length; i++) {
+    const step = workflowDef.steps[i];
+    if (step.validationCriteria) {
+      templateValidationCriteria.set(i, step.validationCriteria);
+    }
+  }
+
   const loop = new ExecutionLoop({
     phaseProvider,
     promptBuilder,
@@ -496,6 +507,7 @@ function createGenericLoop(params: GenericLoopParams): StageLoopHandle {
     evaluatorTransport: params.evaluatorTransport,
     onSessionName: params.onSessionName,
     logBaseDir: params.logBaseDir,
+    templateValidationCriteria: templateValidationCriteria.size > 0 ? templateValidationCriteria : undefined,
   });
 
   return {
