@@ -595,7 +595,7 @@ Config is loaded from TOML (`flywheel.toml`) with env var overrides. Schema in `
 | `sprint.max_iterations` | int 1-10 | `5` | `FLYWHEEL_SPRINT_MAX_ITERATIONS` |
 | `sprint.verification_timeout_ms` | int ≥1000 | `30000` | `FLYWHEEL_SPRINT_VERIFICATION_TIMEOUT_MS` |
 | `sprint.escalate_to_full` | bool | `true` | `FLYWHEEL_SPRINT_ESCALATE_TO_FULL` |
-| `sprint.worker_can_escalate` | bool | `false` | — |
-| `sprint.escalate_on_stuck` | bool | `false` | — |
+| `sprint.worker_can_escalate` | bool | `false` | `FLYWHEEL_SPRINT_WORKER_CAN_ESCALATE` |
+| `sprint.escalate_on_stuck` | bool | `false` | `FLYWHEEL_SPRINT_ESCALATE_ON_STUCK` |
 
 Precedence: env vars > config file > defaults.
