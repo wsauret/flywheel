@@ -17,9 +17,13 @@
 
 import type { Step, Queue } from "./types";
 import type { ProtoStep } from "./proto-step";
-import { formalizeProtoSteps } from "./proto-step";
+import { ProtoStepArraySchema, formalizeProtoSteps } from "./proto-step";
 import { insertAfter, type MutationResult, type Provenance } from "./queue";
+import type { OnStepCompletedHook, OnStepCompletedResult } from "./executor";
 import { randomUUID } from "crypto";
+import { Log } from "../utils/log";
+
+const log = Log.create({ service: "plan-integration" });
 
 // ---------------------------------------------------------------------------
 // Provenance for plan integration mutations
@@ -108,11 +112,21 @@ export function insertWorkStepsFromPlanOutput(
   });
 
   // Convert StepWithPrompt[] to Step[] (drop the prompt field for queue insertion)
+  // Carry all plan metadata: description, acceptanceCriteria, fileReferences,
+  // feature, fulfills, milestone
   const workSteps: Step[] = formalizedSteps.map((s) => ({
     id: s.id,
     type: s.type,
     title: s.title,
     status: s.status,
+    ...(s.description ? { description: s.description } : {}),
+    ...(s.acceptanceCriteria && s.acceptanceCriteria.length > 0
+      ? { acceptanceCriteria: s.acceptanceCriteria }
+      : {}),
+    ...(s.fileReferences && s.fileReferences.length > 0
+      ? { fileReferences: s.fileReferences }
+      : {}),
+    ...(s.feature ? { feature: s.feature } : {}),
     ...(s.milestone ? { milestone: s.milestone } : {}),
     ...(s.fulfills && s.fulfills.length > 0 ? { fulfills: s.fulfills } : {}),
   }));
@@ -130,4 +144,104 @@ export function insertWorkStepsFromPlanOutput(
       : queue.steps[insertionIdx - 1].id;
 
   return insertAfter(queue, insertAfterId, workSteps, PLAN_INTEGRATION_PROVENANCE);
+}
+
+// ---------------------------------------------------------------------------
+// createPlanIntegrationHook — onStepCompleted hook for plan output insertion
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates an `onStepCompleted` hook that detects when a plan consolidation
+ * step completes and inserts formalized work steps into the queue.
+ *
+ * The hook checks if the completed step is a plan step and if the handoff
+ * data contains a `steps` array (proto-steps from plan output). If so,
+ * it validates the proto-steps and calls `insertWorkStepsFromPlanOutput()`.
+ *
+ * @returns An OnStepCompletedHook suitable for passing to StepExecutorOptions
+ */
+export function createPlanIntegrationHook(): OnStepCompletedHook {
+  return async (
+    step: Step,
+    status: "completed" | "failed",
+    queue: Queue,
+    handoffData: Record<string, unknown> | null,
+  ): Promise<OnStepCompletedResult> => {
+    // Only act on completed plan steps with handoff data containing steps[]
+    if (status !== "completed" || step.type !== "plan") {
+      return { continueExecution: false };
+    }
+
+    if (!handoffData || !Array.isArray(handoffData.steps) || handoffData.steps.length === 0) {
+      return { continueExecution: false };
+    }
+
+    // Validate proto-steps using Zod schema
+    const parseResult = ProtoStepArraySchema.safeParse(handoffData.steps);
+    if (!parseResult.success) {
+      log.warn("plan integration: invalid proto-steps in handoff", {
+        stepId: step.id,
+        error: parseResult.error.message,
+      });
+      return { continueExecution: false };
+    }
+
+    const protoSteps = parseResult.data;
+    const result = insertWorkStepsFromPlanOutput(queue, step.id, protoSteps);
+
+    if (result.success) {
+      log.info("plan integration: inserted work steps from plan output", {
+        stepId: step.id,
+        count: protoSteps.length,
+      });
+    } else {
+      log.warn("plan integration: failed to insert work steps", {
+        stepId: step.id,
+        error: "error" in result ? result.error : "unknown",
+      });
+    }
+
+    return { continueExecution: false };
+  };
+}
+
+// ---------------------------------------------------------------------------
+// createCompositeHook — chains multiple onStepCompleted hooks
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a composite hook that chains multiple `onStepCompleted` hooks.
+ * Hooks are called in order. If any hook returns `{ continueExecution: true }`,
+ * the composite returns `{ continueExecution: true }`.
+ *
+ * This allows combining plan-integration, sprint, and other hooks into
+ * a single hook for the step executor.
+ *
+ * @param hooks Array of hooks to chain (null/undefined entries are skipped)
+ * @returns A single OnStepCompletedHook that chains all provided hooks
+ */
+export function createCompositeHook(
+  hooks: Array<OnStepCompletedHook | null | undefined>,
+): OnStepCompletedHook {
+  const activeHooks = hooks.filter(
+    (h): h is OnStepCompletedHook => h != null,
+  );
+
+  return async (
+    step: Step,
+    status: "completed" | "failed",
+    queue: Queue,
+    handoffData: Record<string, unknown> | null,
+  ): Promise<OnStepCompletedResult> => {
+    let shouldContinue = false;
+
+    for (const hook of activeHooks) {
+      const result = await hook(step, status, queue, handoffData);
+      if (result.continueExecution) {
+        shouldContinue = true;
+      }
+    }
+
+    return { continueExecution: shouldContinue };
+  };
 }

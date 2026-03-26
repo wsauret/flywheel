@@ -41,6 +41,10 @@ export const ProtoStepSchema = z.object({
   description: z.string().min(1),
   /** Acceptance criteria that must be satisfied for the step to pass. */
   acceptanceCriteria: z.array(z.string().min(1)).min(1),
+  /** Files relevant to this step's work. */
+  fileReferences: z.array(z.string()).optional(),
+  /** Groups related steps for feature boundary detection. */
+  feature: z.string().optional(),
   /** Milestone this step belongs to (optional). */
   milestone: z.string().optional(),
   /** Validation contract assertion IDs this step fulfills (optional). */
@@ -140,7 +144,17 @@ export function formalizeProtoSteps(
       prompt: buildStepPrompt(proto, index, total),
     };
 
+    // Attach work content metadata
+    step.description = proto.description;
+    step.acceptanceCriteria = [...proto.acceptanceCriteria];
+
     // Attach optional metadata
+    if (proto.fileReferences && proto.fileReferences.length > 0) {
+      step.fileReferences = [...proto.fileReferences];
+    }
+    if (proto.feature) {
+      step.feature = proto.feature;
+    }
     if (proto.milestone) {
       step.milestone = proto.milestone;
     }

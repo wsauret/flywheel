@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------
 // Tests for src/queue/plan-integration.ts — plan output → queue insertion
@@ -12,11 +13,14 @@ import { describe, expect, test } from "bun:test";
 import {
   insertWorkStepsFromPlanOutput,
   findInsertionPoint,
+  createPlanIntegrationHook,
+  createCompositeHook,
 } from "../src/queue/plan-integration";
 
 import { createQueue } from "../src/queue/queue";
 import type { Step, Queue } from "../src/queue/types";
 import type { ProtoStep } from "../src/queue/proto-step";
+import type { OnStepCompletedHook } from "../src/queue/executor";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -275,5 +279,412 @@ describe("insertWorkStepsFromPlanOutput", () => {
       const ids = result.queue.steps.map((s) => s.id);
       expect(new Set(ids).size).toBe(ids.length);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VAL-HOOK-005: Inserted work steps carry plan metadata
+// ---------------------------------------------------------------------------
+
+describe("VAL-HOOK-005: Inserted work steps carry plan metadata", () => {
+  const richProtoSteps: ProtoStep[] = [
+    {
+      title: "Implement auth module",
+      description: "Add authentication module with JWT support",
+      acceptanceCriteria: ["JWT tokens generated", "Login endpoint works"],
+      fileReferences: ["src/auth/index.ts", "src/auth/jwt.ts"],
+      feature: "authentication",
+      fulfills: ["VAL-AUTH-001", "VAL-AUTH-002"],
+      milestone: "core-auth",
+    },
+    {
+      title: "Add user API",
+      description: "Create CRUD endpoints for users",
+      acceptanceCriteria: ["GET /users returns list", "POST /users creates user"],
+      fileReferences: ["src/api/users.ts"],
+      feature: "user-management",
+      milestone: "core-auth",
+    },
+  ];
+
+  test("inserted work steps carry title from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].title).toBe("Implement auth module");
+      expect(result.queue.steps[2].title).toBe("Add user API");
+    }
+  });
+
+  test("inserted work steps carry description from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].description).toBe("Add authentication module with JWT support");
+      expect(result.queue.steps[2].description).toBe("Create CRUD endpoints for users");
+    }
+  });
+
+  test("inserted work steps carry acceptanceCriteria from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].acceptanceCriteria).toEqual([
+        "JWT tokens generated",
+        "Login endpoint works",
+      ]);
+      expect(result.queue.steps[2].acceptanceCriteria).toEqual([
+        "GET /users returns list",
+        "POST /users creates user",
+      ]);
+    }
+  });
+
+  test("inserted work steps carry fileReferences from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].fileReferences).toEqual([
+        "src/auth/index.ts",
+        "src/auth/jwt.ts",
+      ]);
+      expect(result.queue.steps[2].fileReferences).toEqual(["src/api/users.ts"]);
+    }
+  });
+
+  test("inserted work steps carry feature from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].feature).toBe("authentication");
+      expect(result.queue.steps[2].feature).toBe("user-management");
+    }
+  });
+
+  test("inserted work steps carry fulfills from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].fulfills).toEqual(["VAL-AUTH-001", "VAL-AUTH-002"]);
+      // Second step has no fulfills
+      expect(result.queue.steps[2].fulfills).toBeUndefined();
+    }
+  });
+
+  test("inserted work steps carry milestone from proto-step", () => {
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const result = insertWorkStepsFromPlanOutput(queue, "p1", richProtoSteps);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.queue.steps[1].milestone).toBe("core-auth");
+      expect(result.queue.steps[2].milestone).toBe("core-auth");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VAL-HOOK-004: Plan completion triggers work step insertion
+// (createPlanIntegrationHook)
+// ---------------------------------------------------------------------------
+
+describe("VAL-HOOK-004: createPlanIntegrationHook", () => {
+  test("plan step completion with steps[] in handoff inserts work steps", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([
+      makePlanStep("p1"),
+      makeReviewStep("r1"),
+    ]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        {
+          title: "Implement feature A",
+          description: "Build the main feature",
+          acceptanceCriteria: ["Feature works", "Tests pass"],
+        },
+        {
+          title: "Implement feature B",
+          description: "Build the secondary feature",
+          acceptanceCriteria: ["Feature works"],
+        },
+      ],
+    };
+
+    const result = await hook(queue.steps[0], "completed", queue, handoffData);
+    expect(result.continueExecution).toBe(false);
+
+    // Work steps inserted between plan and review
+    expect(queue.steps).toHaveLength(4); // plan + 2 work + review
+    expect(queue.steps[1].type).toBe("work");
+    expect(queue.steps[1].title).toBe("Implement feature A");
+    expect(queue.steps[2].type).toBe("work");
+    expect(queue.steps[2].title).toBe("Implement feature B");
+    expect(queue.steps[3].type).toBe("review");
+  });
+
+  test("hook ignores failed plan steps", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([makePlanStep("p1")]);
+
+    const handoffData = {
+      steps: [
+        { title: "Step 1", description: "Desc", acceptanceCriteria: ["OK"] },
+      ],
+    };
+
+    await hook(queue.steps[0], "failed", queue, handoffData);
+
+    // No work steps inserted (status was "failed")
+    expect(queue.steps).toHaveLength(1);
+  });
+
+  test("hook ignores non-plan steps", async () => {
+    const hook = createPlanIntegrationHook();
+    const workStep: Step = {
+      id: randomUUID(),
+      type: "work",
+      title: "Work step",
+      status: "completed",
+    };
+    const queue = createQueue([workStep]);
+    queue.steps[0].status = "completed";
+
+    const handoffData = {
+      steps: [
+        { title: "Step 1", description: "Desc", acceptanceCriteria: ["OK"] },
+      ],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // No work steps inserted (not a plan step)
+    expect(queue.steps).toHaveLength(1);
+  });
+
+  test("hook ignores handoff without steps array", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+
+    const handoffData = { summary: "Plan completed", decisions: [] };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // No work steps inserted
+    expect(queue.steps).toHaveLength(1);
+  });
+
+  test("hook ignores null handoff", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+
+    await hook(queue.steps[0], "completed", queue, null);
+
+    // No work steps inserted
+    expect(queue.steps).toHaveLength(1);
+  });
+
+  test("hook ignores empty steps array in handoff", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+
+    await hook(queue.steps[0], "completed", queue, { steps: [] });
+
+    // No work steps inserted
+    expect(queue.steps).toHaveLength(1);
+  });
+
+  test("hook ignores invalid proto-steps (missing required fields)", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    // Invalid: missing description and acceptanceCriteria
+    const handoffData = {
+      steps: [{ title: "Incomplete step" }],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // No work steps inserted (validation failed)
+    expect(queue.steps).toHaveLength(1);
+  });
+
+  test("hook preserves all metadata from proto-steps", async () => {
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([
+      makePlanStep("p1"),
+      makeReviewStep("r1"),
+    ]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        {
+          title: "Auth module",
+          description: "Implement JWT auth",
+          acceptanceCriteria: ["JWT works"],
+          fileReferences: ["src/auth.ts"],
+          feature: "auth",
+          fulfills: ["VAL-AUTH-001"],
+          milestone: "core",
+        },
+      ],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    expect(queue.steps).toHaveLength(3);
+    const workStep = queue.steps[1];
+    expect(workStep.title).toBe("Auth module");
+    expect(workStep.description).toBe("Implement JWT auth");
+    expect(workStep.acceptanceCriteria).toEqual(["JWT works"]);
+    expect(workStep.fileReferences).toEqual(["src/auth.ts"]);
+    expect(workStep.feature).toBe("auth");
+    expect(workStep.fulfills).toEqual(["VAL-AUTH-001"]);
+    expect(workStep.milestone).toBe("core");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createCompositeHook
+// ---------------------------------------------------------------------------
+
+describe("createCompositeHook", () => {
+  test("calls all hooks in order", async () => {
+    const callOrder: string[] = [];
+
+    const hook1: OnStepCompletedHook = async () => {
+      callOrder.push("hook1");
+      return { continueExecution: false };
+    };
+    const hook2: OnStepCompletedHook = async () => {
+      callOrder.push("hook2");
+      return { continueExecution: false };
+    };
+
+    const composite = createCompositeHook([hook1, hook2]);
+    const step: Step = {
+      id: randomUUID(),
+      type: "work",
+      title: "Test",
+      status: "completed",
+    };
+    const queue = createQueue([step]);
+
+    await composite(step, "completed", queue, null);
+
+    expect(callOrder).toEqual(["hook1", "hook2"]);
+  });
+
+  test("returns continueExecution=true if any hook says true", async () => {
+    const hook1: OnStepCompletedHook = async () => ({ continueExecution: false });
+    const hook2: OnStepCompletedHook = async () => ({ continueExecution: true });
+    const hook3: OnStepCompletedHook = async () => ({ continueExecution: false });
+
+    const composite = createCompositeHook([hook1, hook2, hook3]);
+    const step: Step = { id: randomUUID(), type: "work", title: "T", status: "completed" };
+    const queue = createQueue([step]);
+
+    const result = await composite(step, "completed", queue, null);
+    expect(result.continueExecution).toBe(true);
+  });
+
+  test("returns continueExecution=false if all hooks say false", async () => {
+    const hook1: OnStepCompletedHook = async () => ({ continueExecution: false });
+    const hook2: OnStepCompletedHook = async () => ({ continueExecution: false });
+
+    const composite = createCompositeHook([hook1, hook2]);
+    const step: Step = { id: randomUUID(), type: "work", title: "T", status: "completed" };
+    const queue = createQueue([step]);
+
+    const result = await composite(step, "completed", queue, null);
+    expect(result.continueExecution).toBe(false);
+  });
+
+  test("skips null and undefined hooks", async () => {
+    const callOrder: string[] = [];
+    const hook: OnStepCompletedHook = async () => {
+      callOrder.push("active");
+      return { continueExecution: false };
+    };
+
+    const composite = createCompositeHook([null, hook, undefined, hook]);
+    const step: Step = { id: randomUUID(), type: "work", title: "T", status: "completed" };
+    const queue = createQueue([step]);
+
+    await composite(step, "completed", queue, null);
+    expect(callOrder).toEqual(["active", "active"]);
+  });
+
+  test("empty hooks array returns continueExecution=false", async () => {
+    const composite = createCompositeHook([]);
+    const step: Step = { id: randomUUID(), type: "work", title: "T", status: "completed" };
+    const queue = createQueue([step]);
+
+    const result = await composite(step, "completed", queue, null);
+    expect(result.continueExecution).toBe(false);
+  });
+
+  test("composite of plan-integration and sprint-like hook works", async () => {
+    const planHook = createPlanIntegrationHook();
+    const sprintCalls: string[] = [];
+    const sprintHook: OnStepCompletedHook = async (step, status) => {
+      sprintCalls.push(`${step.type}:${status}`);
+      return { continueExecution: false };
+    };
+
+    const composite = createCompositeHook([planHook, sprintHook]);
+
+    // Plan step completion with steps[] in handoff
+    const queue = createQueue([makePlanStep("p1"), makeReviewStep("r1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        { title: "Work A", description: "Do A", acceptanceCriteria: ["A done"] },
+      ],
+    };
+
+    await composite(queue.steps[0], "completed", queue, handoffData);
+
+    // Plan hook should have inserted work step
+    expect(queue.steps).toHaveLength(3); // plan + work + review
+    // Sprint hook should have been called too
+    expect(sprintCalls).toEqual(["plan:completed"]);
   });
 });

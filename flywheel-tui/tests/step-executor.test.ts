@@ -1955,3 +1955,404 @@ describe("VAL-EXEC-016: Queue lifecycle events emitted", () => {
     expect("queueCompleted").not.toBe("queueStepCompleted");
   });
 });
+
+// ===========================================================================
+// VAL-HOOK-001: Hook framework supports all 5 mutation operations
+// ===========================================================================
+
+describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () => {
+  test("hook can insertAfter on the live queue", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const queue = createQueue([s1, s2]);
+
+    const { insertAfter: qInsert } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        const newStep = makeStep({ title: "Inserted by hook" });
+        const result = qInsert(q, step.id, [newStep], { actor: "test-hook", reason: "hook insert test" });
+        expect(result.success).toBe(true);
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsTotal).toBe(3);
+    expect(result.stepsCompleted).toBe(3);
+    expect(queue.steps[1].title).toBe("Inserted by hook");
+  });
+
+  test("hook can removeStep from the live queue", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "To be removed" });
+    const s3 = makeStep({ title: "Step 3" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const { removeStep: qRemove } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        const result = qRemove(q, s2.id, { actor: "test-hook", reason: "hook remove test" });
+        expect(result.success).toBe(true);
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsTotal).toBe(2); // s2 was removed
+    expect(result.stepsCompleted).toBe(2); // s1 + s3
+    expect(queue.steps.map((s) => s.title)).toEqual(["Step 1", "Step 3"]);
+  });
+
+  test("hook can skipStep on the live queue", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Will be skipped" });
+    const s3 = makeStep({ title: "Step 3" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const { skipStep: qSkip } = await import("../src/queue/queue");
+    const workerCalls: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerCalls.push(step.title);
+      return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        const result = qSkip(q, s2.id, { actor: "test-hook", reason: "hook skip test" });
+        expect(result.success).toBe(true);
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(2); // s1 + s3 (s2 skipped)
+    expect(queue.steps[1].status).toBe("skipped");
+    expect(workerCalls).toEqual(["Step 1", "Step 3"]); // s2 not executed
+  });
+
+  test("hook can reorderSteps on the live queue", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const s3 = makeStep({ title: "Step 3" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const { reorderSteps: qReorder } = await import("../src/queue/queue");
+    const workerOrder: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerOrder.push(step.title);
+      return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        // Reorder s3 before s2
+        const result = qReorder(q, [s3.id, s2.id], { actor: "test-hook", reason: "hook reorder test" });
+        expect(result.success).toBe(true);
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(3);
+    // After s1 completes, s3 and s2 are reordered
+    expect(workerOrder).toEqual(["Step 1", "Step 3", "Step 2"]);
+  });
+
+  test("hook can replaceStep on the live queue", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Original step" });
+    const queue = createQueue([s1, s2]);
+
+    const { replaceStep: qReplace } = await import("../src/queue/queue");
+    const workerTitles: string[] = [];
+    const worker: WorkerFn = async (step) => {
+      workerTitles.push(step.title);
+      return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const replacement = makeStep({ title: "Replacement step" });
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        const result = qReplace(q, s2.id, replacement, { actor: "test-hook", reason: "hook replace test" });
+        expect(result.success).toBe(true);
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(2);
+    expect(workerTitles).toEqual(["Step 1", "Replacement step"]);
+  });
+});
+
+// ===========================================================================
+// VAL-HOOK-002: All hook mutations logged with provenance
+// ===========================================================================
+
+describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
+  test("insertAfter within hook records provenance", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const queue = createQueue([s1]);
+
+    const { insertAfter: qInsert } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        const newStep = makeStep({ title: "Inserted" });
+        qInsert(q, step.id, [newStep], { actor: "hook-actor", reason: "insert reason" });
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    const entry = queue.mutationLog.find((m) => m.action === "insert" && m.actor === "hook-actor");
+    expect(entry).toBeDefined();
+    expect(entry!.actor).toBe("hook-actor");
+    expect(entry!.reason).toBe("insert reason");
+    expect(entry!.timestamp).toBeTruthy();
+    expect(new Date(entry!.timestamp).toISOString()).toBe(entry!.timestamp);
+    expect(entry!.stepIds.length).toBeGreaterThan(0);
+  });
+
+  test("skipStep within hook records provenance", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Will skip" });
+    const s3 = makeStep({ title: "Step 3" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const { skipStep: qSkip } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        qSkip(q, s2.id, { actor: "skip-actor", reason: "skip reason" });
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    const entry = queue.mutationLog.find((m) => m.action === "skip" && m.actor === "skip-actor");
+    expect(entry).toBeDefined();
+    expect(entry!.reason).toBe("skip reason");
+    expect(entry!.stepIds).toEqual([s2.id]);
+  });
+
+  test("replaceStep within hook records provenance", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Original" });
+    const queue = createQueue([s1, s2]);
+
+    const { replaceStep: qReplace } = await import("../src/queue/queue");
+    const replacement = makeStep({ title: "Replaced" });
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        qReplace(q, s2.id, replacement, { actor: "replace-actor", reason: "replace reason" });
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    const entry = queue.mutationLog.find((m) => m.action === "replace" && m.actor === "replace-actor");
+    expect(entry).toBeDefined();
+    expect(entry!.reason).toBe("replace reason");
+    expect(entry!.stepIds).toContain(s2.id);
+    expect(entry!.stepIds).toContain(replacement.id);
+  });
+
+  test("removeStep within hook records provenance", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "To remove" });
+    const s3 = makeStep({ title: "Step 3" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const { removeStep: qRemove } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        qRemove(q, s2.id, { actor: "remove-actor", reason: "remove reason" });
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    const entry = queue.mutationLog.find((m) => m.action === "remove" && m.actor === "remove-actor");
+    expect(entry).toBeDefined();
+    expect(entry!.reason).toBe("remove reason");
+    expect(entry!.stepIds).toEqual([s2.id]);
+  });
+
+  test("reorderSteps within hook records provenance", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Pending A" });
+    const s3 = makeStep({ title: "Pending B" });
+    const queue = createQueue([s1, s2, s3]);
+
+    const { reorderSteps: qReorder } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      if (step.id === s1.id) {
+        qReorder(q, [s3.id, s2.id], { actor: "reorder-actor", reason: "reorder reason" });
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    const entry = queue.mutationLog.find((m) => m.action === "reorder" && m.actor === "reorder-actor");
+    expect(entry).toBeDefined();
+    expect(entry!.reason).toBe("reorder reason");
+    expect(entry!.stepIds).toEqual([s3.id, s2.id]);
+  });
+
+  test("provenance includes timestamp, actor, reason, and stepIds", async () => {
+    const s1 = makeStep({ title: "Step 1" });
+    const s2 = makeStep({ title: "Step 2" });
+    const queue = createQueue([s1, s2]);
+
+    const { insertAfter: qInsert } = await import("../src/queue/queue");
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+      // Only insert on the first step to avoid infinite loop
+      if (step.id === s1.id) {
+        const newStep = makeStep({ title: "Inserted" });
+        qInsert(q, step.id, [newStep], {
+          actor: "sprint-hook",
+          reason: "retry pair insertion",
+        });
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, onStepCompleted });
+    await createStepExecutor(opts).run();
+
+    const insertEntries = queue.mutationLog.filter((m) => m.action === "insert");
+    expect(insertEntries.length).toBeGreaterThanOrEqual(1);
+
+    const entry = insertEntries[0];
+    expect(entry.timestamp).toBeTruthy();
+    expect(entry.actor).toBe("sprint-hook");
+    expect(entry.reason).toBe("retry pair insertion");
+    expect(entry.stepIds.length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// VAL-HOOK-003: Hook continueExecution overrides failure behavior
+// ===========================================================================
+
+describe("VAL-HOOK-003: Hook continueExecution overrides failure behavior", () => {
+  test("continueExecution=true on failed step allows executor to continue", async () => {
+    let callCount = 0;
+    const worker: WorkerFn = async (step) => {
+      callCount++;
+      if (callCount === 1) throw new Error("step 1 crashed");
+      return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
+    };
+
+    const s1 = makeStep({ title: "Will fail" });
+    const s2 = makeStep({ title: "Should still run" });
+    const queue = createQueue([s1, s2]);
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (_step, status) => {
+      if (status === "failed") {
+        return { continueExecution: true };
+      }
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
+    const executor = createStepExecutor(opts);
+    const result = await executor.run();
+
+    // Despite s1 failing, s2 was executed because hook said continue
+    expect(result.completed).toBe(true);
+    expect(result.stepsCompleted).toBe(1); // only s2 completed (s1 failed)
+    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.steps[1].status).toBe("completed");
+  });
+
+  test("continueExecution=false on failed step stops execution (default)", async () => {
+    const worker: WorkerFn = async () => {
+      throw new Error("crash");
+    };
+
+    const s1 = makeStep({ title: "Crash" });
+    const s2 = makeStep({ title: "Never runs" });
+    const queue = createQueue([s1, s2]);
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async () => {
+      return { continueExecution: false };
+    };
+
+    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
+    const result = await createStepExecutor(opts).run();
+
+    expect(result.completed).toBe(false);
+    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.steps[1].status).toBe("pending");
+  });
+
+  test("continueExecution=true on eval failure allows executor to continue", async () => {
+    const s1 = makeStep({ title: "Eval fail" });
+    const s2 = makeStep({ title: "Should still run" });
+    const queue = createQueue([s1, s2]);
+
+    let evalCount = 0;
+    const evaluator: EvaluatorFn = async () => {
+      evalCount++;
+      if (evalCount === 1) {
+        // First step fails evaluation
+        return { passed: false, skipped: false, transportError: false,
+          reason: "not good", feedback: "fix it", suggestions: [], cyclesUsed: 1 };
+      }
+      // Second step passes
+      return { passed: true, skipped: false, transportError: false,
+        reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1 };
+    };
+
+    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (_step, status) => {
+      return { continueExecution: status === "failed" };
+    };
+
+    const opts = createDefaultOptions({ queue, evaluator, onStepCompleted, maxRevisions: 0 });
+    const result = await createStepExecutor(opts).run();
+
+    // s1 failed eval but hook said continue, s2 passed eval
+    expect(result.completed).toBe(true);
+    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.steps[1].status).toBe("completed");
+  });
+});
