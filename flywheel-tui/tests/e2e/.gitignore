@@ -8,5 +8,8 @@ plan.state.md
 # Lock files
 .flywheel/
 
+# Test log files (recreated each run)
+*.log
+
 # Results are kept for iteration tracking
 # results.json
