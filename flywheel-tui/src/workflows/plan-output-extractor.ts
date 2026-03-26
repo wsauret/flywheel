@@ -43,6 +43,9 @@ export const EXCLUDED_SUFFIXES = [
   ".validation-contract.md",
 ];
 
+/** File extension for JSON-native plan files (ADR-004 Decision 5). */
+export const JSON_PLAN_EXTENSION = ".plan.json";
+
 // ---------------------------------------------------------------------------
 // Hook factory
 // ---------------------------------------------------------------------------
@@ -216,15 +219,21 @@ export function createPlanOnStepComplete(
     // Fallback: scan .flywheel/plans/ for recently-modified plan files.
     // Only consider files modified within the last 5 minutes to avoid picking
     // up stale plans from prior sessions.
+    // Prefers .plan.json files (ADR-004 JSON-native plans), falls back to .md.
     const RECENCY_THRESHOLD_MS = 5 * 60 * 1000;
     try {
       const plansDir = path.join(projectCwd, ".flywheel", "plans");
       const entries = await fs.readdir(plansDir).catch(() => [] as string[]);
-      const planCandidates = entries.filter(
+
+      // Prefer .plan.json files first (ADR-004 Decision 5)
+      const jsonCandidates = entries.filter((f) => f.endsWith(JSON_PLAN_EXTENSION));
+      const mdCandidates = entries.filter(
         (f) =>
           f.endsWith(".md") &&
           !EXCLUDED_SUFFIXES.some((suffix) => f.endsWith(suffix)),
       );
+      // JSON-native plans take priority; fall back to markdown
+      const planCandidates = jsonCandidates.length > 0 ? jsonCandidates : mdCandidates;
 
       if (planCandidates.length > 0) {
         // Pick the most recently modified plan file, but only if recent
@@ -249,15 +258,18 @@ export function createPlanOnStepComplete(
     }
 
     // Also scan project root for plan files (worker might write there)
+    // Prefer .plan.json files (ADR-004 Decision 5), fall back to .plan.md
     try {
       const rootEntries = await fs.readdir(projectCwd);
-      const rootPlanFiles = rootEntries.filter(
+      const rootJsonPlans = rootEntries.filter((f) => f.endsWith(JSON_PLAN_EXTENSION));
+      const rootMdPlans = rootEntries.filter(
         (f) =>
           f.endsWith(".plan.md") ||
           (f.endsWith(".md") &&
             f.startsWith("plan") &&
             !EXCLUDED_SUFFIXES.some((suffix) => f.endsWith(suffix))),
       );
+      const rootPlanFiles = rootJsonPlans.length > 0 ? rootJsonPlans : rootMdPlans;
       if (rootPlanFiles.length > 0) {
         const resolvedPath = path.join(projectCwd, rootPlanFiles[0]);
         log.info("found plan file in project root via fallback scan", { planFilePath: resolvedPath });

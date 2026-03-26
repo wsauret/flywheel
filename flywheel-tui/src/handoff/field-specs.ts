@@ -76,6 +76,11 @@ export const PLAN_DRAFT_FIELDS: HandoffFieldSpec[] = [
     required: true,
   },
   {
+    key: "plan_file_path",
+    description: "Path to the JSON plan file produced by the draft step",
+    example: '".flywheel/plans/feat-auth.plan.json"',
+  },
+  {
     key: "decisions",
     description: "Key decisions made while drafting the plan",
     example: '["Split into 4 phases for incremental delivery"]',
@@ -95,6 +100,11 @@ export const PLAN_REVIEW_FIELDS: HandoffFieldSpec[] = [
     required: true,
   },
   {
+    key: "plan_file_path",
+    description: "Path to the annotated JSON plan file",
+    example: '".flywheel/plans/feat-auth.plan.json"',
+  },
+  {
     key: "open_questions",
     description: "Questions that need user input before proceeding",
     example: '[{"question": "Which auth provider?", "options": ["Auth0", "Cognito"], "header": "Auth"}]',
@@ -110,8 +120,8 @@ export const PLAN_CONSOLIDATE_FIELDS: HandoffFieldSpec[] = [
   },
   {
     key: "plan_file_path",
-    description: "Path to the final consolidated plan file",
-    example: '".flywheel/plans/auth-plan.md"',
+    description: "Path to the final consolidated JSON plan file",
+    example: '".flywheel/plans/feat-auth.plan.json"',
   },
   {
     key: "decisions",
