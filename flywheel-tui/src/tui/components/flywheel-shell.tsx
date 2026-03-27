@@ -94,6 +94,13 @@ import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { killAllActiveProcesses } from "../../worker/process-lifecycle"
 import { Log } from "../../utils/log"
 import { SubprocessLogger } from "../../utils/subprocess-logger.js"
+import { createStepDispatcher, type StepDispatchContext } from "../../queue/step-dispatcher"
+import { createTrustVerifyEvaluatorFn } from "../../evaluator/create-trust-verify"
+import { readHandoff } from "../../handoff/reader"
+import { WorkerHandoffSchema } from "../../schemas/handoff"
+import { createContextAccumulator } from "../../queue/context-accumulator"
+import { createPlanIntegrationHook, createCompositeHook } from "../../queue/plan-integration"
+import { resolveModels } from "../../config/loader"
 
 const log = Log.create({ service: "shell" })
 
@@ -791,20 +798,99 @@ export function FlywheelShell() {
 
       const emitter = createFlywheelEmitter(session.eventBus)
 
-      // Track plan path discovered during plan step execution.
-      // Used to pass planPath to dynamically inserted work steps.
-      let discoveredPlanPath: string | null = null
+      // Resolve model names for dispatcher and worker
+      const { dispatcherModel: resolvedDispatcherModel, workerModel: resolvedWorkerModel } = resolveModels(deps.config)
+      const projectCwdForExec = deps.config.project_cwd ?? process.cwd()
 
-      // Create step executor with native per-step execution.
+      // Build real StepDispatcher if transport is available
+      const realDispatcher = dispatcherTransport
+        ? createStepDispatcher({
+            transport: dispatcherTransport,
+            emitter,
+            workflowId: workflowIdRef.current,
+            configContext: {
+              maxEvalCycles: deps.config.max_retries ?? 3,
+              worktreePath: projectCwdForExec,
+              projectCwd: projectCwdForExec,
+              workerModel: resolvedWorkerModel ?? "sonnet",
+              dispatcherModel: resolvedDispatcherModel ?? "sonnet",
+            },
+            sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
+            availableContext: queueContextIndexer.getRelevantContext({ stepType: "plan", stepDescription: args.description ?? "" }),
+            sessionObjective: args.description,
+          })
+        : null
+
+      // Real context accumulator (windowed detail strategy)
+      const contextAccumulator = createContextAccumulator()
+
+      // Real trust-but-verify evaluator (if evaluation not skipped)
+      const realEvaluator = !deps.config.skip_evaluation
+        ? createTrustVerifyEvaluatorFn({ cwd: projectCwdForExec })
+        : null
+
+      // Plan integration hook for inserting work steps from plan output
+      const planIntegrationHook = createPlanIntegrationHook()
+
+      // Composite onStepCompleted hook: plan integration + TUI step insertion events
+      const compositeHook = createCompositeHook([
+        planIntegrationHook,
+        // TUI event emission hook for dynamic step insertion
+        async (step, status, q, handoffData) => {
+          if (status === "completed" && step.type === "plan") {
+            // After plan integration runs, check if new steps were inserted
+            // and emit events for TUI updates
+            const updatedQueueStepStates = q.steps.map(s => ({
+              id: s.id,
+              type: s.type,
+              title: s.title,
+              status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+            }))
+            setShellQueueSteps(updatedQueueStepStates)
+          }
+          return { continueExecution: false }
+        },
+      ])
+
+      // Create step executor with real per-step execution.
       // Each step goes through dispatcher→worker→evaluator directly.
       const stepExec = createStepExecutor({
         queue,
         workflowId: workflowIdRef.current,
         emitter,
         dispatcher: async (step, context) => {
-          return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
+          // Use real StepDispatcher if available, otherwise fall back to step metadata
+          if (realDispatcher) {
+            try {
+              const dispatchContext: StepDispatchContext = {
+                accumulatedContext: contextAccumulator.getContext() as any,
+                previousHandoff: (context.previousHandoff as Record<string, unknown>) ?? null,
+                previousAssessment: (context.previousAssessment as any) ?? null,
+                hitlResponse: (context.hitlResponse as string) ?? null,
+              }
+              const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
+              return {
+                prompt: decision.taskContent,
+                validationCriteria: decision.evaluationCriteria,
+              }
+            } catch (err) {
+              log.warn("real dispatcher failed, falling back to step metadata", {
+                stepId: step.id,
+                error: err instanceof Error ? err.message : String(err),
+              })
+            }
+          }
+          // Fallback: build prompt from step metadata
+          const parts = [step.title]
+          if (step.description) parts.push(step.description)
+          if (step.acceptanceCriteria?.length) {
+            parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
+          }
+          if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
+          return { prompt: parts.join("\n"), validationCriteria: null }
         },
         worker: async (step, prompt) => {
+          const invocationId = randomUUID()
           const engineCmd = deps.engine.buildCommand({
             prompt,
             model: deps.config.worker?.model ?? deps.config.model,
@@ -812,7 +898,8 @@ export function FlywheelShell() {
           })
           const startTime = Date.now()
           const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-            cwd: deps.config.project_cwd ?? process.cwd(),
+            cwd: projectCwdForExec,
+            invocationId,
             stdin: engineCmd.stdinPrompt
               ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
               : undefined,
@@ -830,8 +917,20 @@ export function FlywheelShell() {
             durationMs: Date.now() - startTime,
           }
         },
-        evaluator: null,
-        handoffReader: async () => null,
+        evaluator: realEvaluator,
+        handoffReader: async (handoffPath) => {
+          if (!handoffPath) return null
+          try {
+            const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
+            return handoff as unknown as Record<string, unknown>
+          } catch (err) {
+            log.warn("handoff read failed, continuing without handoff", {
+              path: handoffPath,
+              error: err instanceof Error ? err.message : String(err),
+            })
+            return null
+          }
+        },
         budgetChecker: queueBudgetTracker && queueBudgetLimits
           ? { isExhausted: () => queueBudgetTracker!.isExhausted(queueBudgetLimits!) }
           : { isExhausted: () => false },
@@ -847,41 +946,9 @@ export function FlywheelShell() {
             } catch { /* best-effort */ }
           }
         },
-        accumulator: {
-          accumulate: () => {},
-          getContext: () => ({}),
-        },
-        maxRevisions: deps.config.max_revisions ?? 0,
-        onStepCompleted: async (step, status, q) => {
-          // When a plan step completes, insert a work step into the queue
-          if (step.type === "plan" && status === "completed" && discoveredPlanPath) {
-            const { insertWorkStepsFromPlanOutput } = await import("../../queue/plan-integration")
-            const protoSteps = [{
-              title: "Execute plan",
-              description: "Execute the generated plan",
-              acceptanceCriteria: ["Plan executed successfully"],
-            }]
-            const result = insertWorkStepsFromPlanOutput(q, step.id, protoSteps)
-            if (result.success) {
-              // Emit step:inserted events for TUI updates
-              const insertedSteps = q.steps.filter(s =>
-                s.type === "work" && s.status === "pending" && s.title === "Execute plan"
-              )
-              for (const ws of insertedSteps) {
-                emitter.queueStepInserted(workflowIdRef.current, ws.id, ws.type, ws.title, step.id)
-              }
-              // Update queue step display state for workflow panel
-              const updatedQueueStepStates = q.steps.map(s => ({
-                id: s.id,
-                type: s.type,
-                title: s.title,
-                status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-              }))
-              setShellQueueSteps(updatedQueueStepStates)
-            }
-          }
-          return { continueExecution: false }
-        },
+        accumulator: contextAccumulator,
+        maxRevisions: deps.config.max_retries ?? 3,
+        onStepCompleted: compositeHook,
       })
 
       activeStepExecutor = stepExec
@@ -1382,18 +1449,90 @@ export function FlywheelShell() {
         const emitter = createFlywheelEmitter(session.eventBus)
         const resumeQueue = result.queue!
 
-        // Track plan path discovered during plan step execution (resume path).
-        // Initialized from the persisted plan path if available.
-        let discoveredPlanPath: string | null = result.planPath ?? null
+        // Resolve model names for dispatcher and worker (resume path)
+        const { dispatcherModel: resumeDispatcherModel, workerModel: resumeWorkerModel } = resolveModels(deps.config)
+        const resumeProjectCwd = deps.config.project_cwd ?? process.cwd()
+
+        // Build real StepDispatcher if transport is available (resume path)
+        const resumeRealDispatcher = dispatcherTransport
+          ? createStepDispatcher({
+              transport: dispatcherTransport,
+              emitter,
+              workflowId: workflowIdRef.current,
+              configContext: {
+                maxEvalCycles: deps.config.max_retries ?? 3,
+                worktreePath: resumeProjectCwd,
+                projectCwd: resumeProjectCwd,
+                workerModel: resumeWorkerModel ?? "sonnet",
+                dispatcherModel: resumeDispatcherModel ?? "sonnet",
+              },
+              sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
+              availableContext: queueContextIndexer.getRelevantContext({ stepType: "plan", stepDescription: result.planPath ?? "" }),
+              sessionObjective: result.planPath,
+            })
+          : null
+
+        // Real context accumulator (resume path)
+        const resumeContextAccumulator = createContextAccumulator()
+
+        // Real trust-but-verify evaluator (resume path)
+        const resumeRealEvaluator = !deps.config.skip_evaluation
+          ? createTrustVerifyEvaluatorFn({ cwd: resumeProjectCwd })
+          : null
+
+        // Plan integration hook (resume path)
+        const resumePlanHook = createPlanIntegrationHook()
+        const resumeCompositeHook = createCompositeHook([
+          resumePlanHook,
+          async (step, status, q, handoffData) => {
+            if (status === "completed" && step.type === "plan") {
+              const updatedQueueStepStates = q.steps.map(s => ({
+                id: s.id,
+                type: s.type,
+                title: s.title,
+                status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+              }))
+              setShellQueueSteps(updatedQueueStepStates)
+            }
+            return { continueExecution: false }
+          },
+        ])
 
         const stepExec = createStepExecutor({
           queue: resumeQueue,
           workflowId: workflowIdRef.current,
           emitter,
           dispatcher: async (step, context) => {
-            return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
+            if (resumeRealDispatcher) {
+              try {
+                const dispatchContext: StepDispatchContext = {
+                  accumulatedContext: resumeContextAccumulator.getContext() as any,
+                  previousHandoff: (context.previousHandoff as Record<string, unknown>) ?? null,
+                  previousAssessment: (context.previousAssessment as any) ?? null,
+                  hitlResponse: (context.hitlResponse as string) ?? null,
+                }
+                const decision = await resumeRealDispatcher.dispatch(step, resumeQueue, dispatchContext)
+                return {
+                  prompt: decision.taskContent,
+                  validationCriteria: decision.evaluationCriteria,
+                }
+              } catch (err) {
+                log.warn("real dispatcher failed on resume, falling back", {
+                  stepId: step.id,
+                  error: err instanceof Error ? err.message : String(err),
+                })
+              }
+            }
+            const parts = [step.title]
+            if (step.description) parts.push(step.description)
+            if (step.acceptanceCriteria?.length) {
+              parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
+            }
+            if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
+            return { prompt: parts.join("\n"), validationCriteria: null }
           },
           worker: async (step, prompt) => {
+            const invocationId = randomUUID()
             const engineCmd = deps.engine.buildCommand({
               prompt,
               model: deps.config.worker?.model ?? deps.config.model,
@@ -1401,7 +1540,8 @@ export function FlywheelShell() {
             })
             const startTime = Date.now()
             const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-              cwd: deps.config.project_cwd ?? process.cwd(),
+              cwd: resumeProjectCwd,
+              invocationId,
               stdin: engineCmd.stdinPrompt
                 ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
                 : undefined,
@@ -1419,8 +1559,20 @@ export function FlywheelShell() {
               durationMs: Date.now() - startTime,
             }
           },
-          evaluator: null,
-          handoffReader: async () => null,
+          evaluator: resumeRealEvaluator,
+          handoffReader: async (handoffPath) => {
+            if (!handoffPath) return null
+            try {
+              const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
+              return handoff as unknown as Record<string, unknown>
+            } catch (err) {
+              log.warn("handoff read failed on resume", {
+                path: handoffPath,
+                error: err instanceof Error ? err.message : String(err),
+              })
+              return null
+            }
+          },
           budgetChecker: resumeBudgetTracker && resumeBudgetLimits
             ? { isExhausted: () => resumeBudgetTracker!.isExhausted(resumeBudgetLimits!) }
             : { isExhausted: () => false },
@@ -1432,38 +1584,9 @@ export function FlywheelShell() {
               } catch { /* best-effort */ }
             }
           },
-          accumulator: { accumulate: () => {}, getContext: () => ({}) },
-          maxRevisions: deps.config.max_revisions ?? 0,
-          onStepCompleted: async (step, status, q) => {
-            // When a plan step completes, insert a work step into the queue
-            if (step.type === "plan" && status === "completed" && discoveredPlanPath) {
-              const { insertWorkStepsFromPlanOutput } = await import("../../queue/plan-integration")
-              const protoSteps = [{
-                title: "Execute plan",
-                description: "Execute the generated plan",
-                acceptanceCriteria: ["Plan executed successfully"],
-              }]
-              const insertResult = insertWorkStepsFromPlanOutput(q, step.id, protoSteps)
-              if (insertResult.success) {
-                // Emit step:inserted events for TUI updates
-                const insertedSteps = q.steps.filter(s =>
-                  s.type === "work" && s.status === "pending" && s.title === "Execute plan"
-                )
-                for (const ws of insertedSteps) {
-                  emitter.queueStepInserted(workflowIdRef.current, ws.id, ws.type, ws.title, step.id)
-                }
-                // Update queue step display state for workflow panel
-                const updatedQueueStepStates = q.steps.map(s => ({
-                  id: s.id,
-                  type: s.type,
-                  title: s.title,
-                  status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-                }))
-                setShellQueueSteps(updatedQueueStepStates)
-              }
-            }
-            return { continueExecution: false }
-          },
+          accumulator: resumeContextAccumulator,
+          maxRevisions: deps.config.max_retries ?? 3,
+          onStepCompleted: resumeCompositeHook,
         })
 
         activeStepExecutor = stepExec
