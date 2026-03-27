@@ -1,0 +1,162 @@
+{
+  "groupId": "sprint-mode-evidence",
+  "testedAt": "2026-03-27T20:30:00.000Z",
+  "isolation": {
+    "access": "read-only",
+    "repo": "/Users/wsauret/Documents/GitHub/flywheel/flywheel-tui",
+    "note": "Evidence-based validation — no TUI instances started, only existing artifacts examined"
+  },
+  "toolsUsed": ["Read", "Execute (grep)", "git show"],
+  "assertions": [
+    {
+      "id": "VAL-E2E-SPRINT-001",
+      "title": "Hello world endpoint completes in sprint mode",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Read benchmark report (tests/e2e/benchmark-sprint-mode.md)",
+          "expected": "Row for 'add a hello world endpoint' with runtime, quality score, and notes",
+          "observed": "Row present: 143s (2m 23s), quality 4/5, 2 steps (work + verify), 3/3 tests pass, 10 assertions"
+        },
+        {
+          "action": "Read log file .flywheel/log/2026-03-27T193905.log",
+          "expected": "Zero ERROR and zero WARN lines",
+          "observed": "All 26 lines are INFO level. grep -c '^ERROR' = 0, grep -c '^WARN' = 0"
+        },
+        {
+          "action": "Verify log shows queue completion",
+          "expected": "Queue completed message and shutdown requested",
+          "observed": "Line: 'stepsCompleted=2 Queue completed' at 19:42:07, 'shutdown requested' at 19:42:59"
+        },
+        {
+          "action": "Verify timing consistency between report and log",
+          "expected": "Log timestamps span ~143s as reported",
+          "observed": "Queue initialized at 19:39:44, Queue completed at 19:42:07 = 143s. Matches report exactly."
+        },
+        {
+          "action": "Verify evaluator verdicts",
+          "expected": "All steps pass evaluation",
+          "observed": "Step 1 (Sprint work): verdict=pass, Step 2 (Verify changes): verdict=pass"
+        },
+        {
+          "action": "Verify git commit 67c7b9b contains benchmark report",
+          "expected": "Commit exists with benchmark-sprint-mode.md",
+          "observed": "Commit 67c7b9bc: 'chore: E2E benchmark report for Sprint mode — 3 prompts, all pass, mean 3m32s (VAL-E2E-SPRINT-001..003)', 1 file changed: flywheel-tui/tests/e2e/benchmark-sprint-mode.md (63 insertions)"
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "logFile": ".flywheel/log/2026-03-27T193905.log",
+        "logErrorCount": 0,
+        "logWarnCount": 0,
+        "duration_ms": 143000,
+        "evaluatorVerdicts": ["pass", "pass"],
+        "gitCommit": "67c7b9b",
+        "consoleErrors": "none",
+        "network": "N/A (evidence-based validation)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-SPRINT-002",
+      "title": "Health check endpoint completes in sprint mode",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Read benchmark report (tests/e2e/benchmark-sprint-mode.md)",
+          "expected": "Row for 'add a health check endpoint that returns uptime' with runtime, quality score, and notes",
+          "observed": "Row present: 200s (3m 20s), quality 4/5, 2 steps (work + verify), 4372 total tests pass"
+        },
+        {
+          "action": "Read log file .flywheel/log/2026-03-27T194314.log",
+          "expected": "Zero ERROR and zero WARN lines",
+          "observed": "All 24 lines are INFO level. grep -c '^ERROR' = 0, grep -c '^WARN' = 0"
+        },
+        {
+          "action": "Verify log shows queue completion",
+          "expected": "Queue completed message and shutdown requested",
+          "observed": "Line: 'stepsCompleted=2 Queue completed' at 19:47:07, 'shutdown requested' at 19:47:42"
+        },
+        {
+          "action": "Verify timing consistency between report and log",
+          "expected": "Log timestamps span ~200s as reported",
+          "observed": "Queue initialized at 19:43:47, Queue completed at 19:47:07 = 200s. Matches report exactly."
+        },
+        {
+          "action": "Verify evaluator verdicts",
+          "expected": "All steps pass evaluation",
+          "observed": "Step 1 (Sprint work): verdict=pass, Step 2 (Verify changes): verdict=pass"
+        },
+        {
+          "action": "Verify git commit 67c7b9b contains benchmark report",
+          "expected": "Commit exists with benchmark-sprint-mode.md",
+          "observed": "Confirmed same commit 67c7b9b includes this assertion's results in the benchmark table"
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "logFile": ".flywheel/log/2026-03-27T194314.log",
+        "logErrorCount": 0,
+        "logWarnCount": 0,
+        "duration_ms": 200000,
+        "evaluatorVerdicts": ["pass", "pass"],
+        "gitCommit": "67c7b9b",
+        "consoleErrors": "none",
+        "network": "N/A (evidence-based validation)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-SPRINT-003",
+      "title": "YAML config parser completes in sprint mode",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Read benchmark report (tests/e2e/benchmark-sprint-mode.md)",
+          "expected": "Row for 'add a YAML config file parser' with runtime, quality score, and notes",
+          "observed": "Row present: 292s (4m 52s), quality 4/5, 2 steps (work + verify), 12 new tests, 4382 total tests pass, updated AGENTS.md docs"
+        },
+        {
+          "action": "Read log file .flywheel/log/2026-03-27T194801.log",
+          "expected": "Zero ERROR and zero WARN lines",
+          "observed": "All 38 lines are INFO level. grep -c '^ERROR' = 0, grep -c '^WARN' = 0"
+        },
+        {
+          "action": "Verify log shows queue completion",
+          "expected": "Queue completed message and shutdown requested",
+          "observed": "Line: 'stepsCompleted=2 Queue completed' at 19:53:30, 'shutdown requested' at 19:54:49"
+        },
+        {
+          "action": "Verify timing consistency between report and log",
+          "expected": "Log timestamps span ~292s as reported",
+          "observed": "Queue initialized at 19:48:38, Queue completed at 19:53:30 = 292s. Matches report exactly."
+        },
+        {
+          "action": "Verify evaluator verdicts",
+          "expected": "All steps pass evaluation",
+          "observed": "Step 1 (Sprint work): verdict=pass (2 commands checked, 8 files checked), Step 2 (Verify changes): verdict=pass (3 commands checked including tsc --noEmit)"
+        },
+        {
+          "action": "Verify git commit 67c7b9b contains benchmark report",
+          "expected": "Commit exists with benchmark-sprint-mode.md",
+          "observed": "Confirmed same commit 67c7b9b includes this assertion's results in the benchmark table"
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "logFile": ".flywheel/log/2026-03-27T194801.log",
+        "logErrorCount": 0,
+        "logWarnCount": 0,
+        "duration_ms": 292000,
+        "evaluatorVerdicts": ["pass", "pass"],
+        "gitCommit": "67c7b9b",
+        "consoleErrors": "none",
+        "network": "N/A (evidence-based validation)"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 3 assertions: all 3 passed. Each sprint mode E2E run (hello world 143s, health check 200s, YAML parser 292s) completed with zero ERROR/WARN log lines, both steps passed evaluator verdicts, and timing data in logs exactly matches the benchmark report. Git commit 67c7b9b confirms the report was committed."
+}
