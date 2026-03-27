@@ -1,0 +1,45 @@
+{
+  "featureId": "feature-quality-gates",
+  "reviewedAt": "2026-03-27T05:04:00.000Z",
+  "commitId": "857a067",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured implementation of ADR-004 Decision 9. The code follows the established queue system patterns (factory function, Provenance-based mutation logging, hook interface matching OnStepCompletedHook). 31 comprehensive tests cover all validation assertions (VAL-HOOK-009, VAL-HOOK-010, VAL-HOOK-011, VAL-CROSS-005). The implementation correctly separates pure detection logic (isFeatureBoundary), step construction (buildQualityCheckStep), hook behavior (onStepCompleted), and mutation guarding (guardMutation). All tests pass, typecheck is clean.",
+    "issues": [
+      {
+        "file": "src/queue/feature-quality-gates.ts",
+        "line": 317,
+        "severity": "non_blocking",
+        "description": "guardMutation() is a standalone method that callers must remember to invoke before performing queue mutations. It is NOT wired into the guardrails pipeline (src/queue/guardrails.ts applyMutations) or the core queue mutation functions (insertAfter, removeStep, replaceStep in queue.ts). This means sealed-feature protection is advisory — any code path that mutates the queue without first calling guardMutation will bypass the seal. This is acceptable for the current feature scope (the hook itself is self-contained) but must be addressed when wiring the quality gates into the executor pipeline. The guardrails.ts applyMutations function should call guardMutation as part of its check chain."
+      },
+      {
+        "file": "src/queue/feature-quality-gates.ts",
+        "line": 241,
+        "severity": "non_blocking",
+        "description": "onStepCompleted always returns { continueExecution: false }. The executor's onStepCompleted hook signature allows returning { continueExecution: true } to override failure behavior (see sprint.ts for example). Since the quality gate hook might co-exist with the sprint hook, and the executor currently only supports a single onStepCompleted hook, a composition mechanism will be needed when wiring this in. This is out-of-scope for this feature but worth noting."
+      },
+      {
+        "file": "src/queue/feature-quality-gates.ts",
+        "line": 271,
+        "severity": "non_blocking",
+        "description": "The hook uses isQualityCheckStep (title.endsWith('feature quality check') && type === 'verify') to detect its own quality check steps completing. This title-based detection is brittle — if the title format changes or a user-authored step happens to match the pattern, it could cause false detection. Consider adding a metadata field (e.g., step.__qualityCheck = true) in the future for more robust identification. Low risk currently since the title pattern is very specific."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The feature quality gates module is self-contained and not yet wired into the executor or guardrails pipeline. AGENTS.md documents the Key Code Locations for the queue system but does not yet list feature-quality-gates.ts. When the integration feature lands, AGENTS.md's queue system section should be updated to include this file.",
+      "evidence": "src/queue/feature-quality-gates.ts is not referenced in AGENTS.md Key Code Locations section. No imports of this module exist in any other src/ file — only the test file imports it."
+    },
+    {
+      "area": "conventions",
+      "observation": "The executor (src/queue/executor.ts) supports a single onStepCompleted hook. Both sprint.ts and feature-quality-gates.ts implement the OnStepCompletedHook interface. A hook composition pattern (e.g., combineHooks that runs multiple hooks sequentially) should be documented as a convention when the wiring feature lands.",
+      "evidence": "executor.ts line 200: onStepCompleted?: OnStepCompletedHook | null — single hook. sprint.ts and feature-quality-gates.ts both implement the same interface but cannot coexist without composition."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature quality gates implementation passes review. The code is well-structured, follows existing patterns (factory functions, Provenance logging, OnStepCompletedHook interface), and has comprehensive test coverage (31 tests, 66 assertions) covering all 4 validation assertions. Three non-blocking issues noted: (1) guardMutation is advisory-only and not enforced at the queue mutation layer, (2) single-hook limitation in executor means composition is needed for coexistence with sprint hook, (3) title-based quality check detection is slightly brittle. All are expected to be addressed when the integration/wiring feature lands. No blocking issues found."
+}

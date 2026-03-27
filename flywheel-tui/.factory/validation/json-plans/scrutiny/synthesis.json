@@ -1,0 +1,156 @@
+{
+  "milestone": "json-plans",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "details": "4321 tests pass, 0 failures, 11805 assertions" },
+    "typecheck": { "passed": true, "command": "bun run typecheck", "exitCode": 0 },
+    "lint": { "passed": true, "command": "N/A — no lint script configured in services.yaml or package.json", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "json-plan-schema-and-parser",
+      "severity": "non_blocking",
+      "description": "behavioralContract array has no .min(1) constraint despite spec saying 'required, min 1'. Permissive for LLM output but deviates from spec."
+    },
+    {
+      "featureId": "json-plan-schema-and-parser",
+      "severity": "non_blocking",
+      "description": "EstimatedComplexitySchema is duplicated in plan-json-parser.ts and proto-step.ts. Should share from one canonical location."
+    },
+    {
+      "featureId": "json-plan-schema-and-parser",
+      "severity": "non_blocking",
+      "description": "fileReferences is optional in Zod schema but the spec says required. The spec itself is internally inconsistent (prose says required, code reference shows optional)."
+    },
+    {
+      "featureId": "json-plan-draft-prompt",
+      "severity": "non_blocking",
+      "description": "JSON example only shows one step. A multi-step example would better illustrate complex plans."
+    },
+    {
+      "featureId": "json-plan-draft-prompt",
+      "severity": "non_blocking",
+      "description": "Curly-brace placeholders in file path could be confused with JSON syntax. Consider angle brackets."
+    },
+    {
+      "featureId": "json-plan-review-prompt",
+      "severity": "non_blocking",
+      "description": "options field is required in the prompt but optional in the canonical schema (json-plan-migration.md). Could cause workers to hallucinate options."
+    },
+    {
+      "featureId": "json-plan-consolidation-prompt",
+      "severity": "non_blocking",
+      "description": "Minor wording ambiguity about 'overwrite at the same path' in consolidation prompt."
+    },
+    {
+      "featureId": "json-plan-consolidation-prompt",
+      "severity": "non_blocking",
+      "description": "buildQuestionsSection() casts extra?.resolvedQuestions as types without runtime validation. Pre-existing pattern."
+    },
+    {
+      "featureId": "json-plan-tui-and-queue-integration",
+      "severity": "non_blocking",
+      "description": "buildJsonPlanSteps silently returns empty array when parseJsonPlan fails — invalid JSON plan produces empty steps array."
+    },
+    {
+      "featureId": "delete-markdown-plan-system",
+      "severity": "non_blocking",
+      "description": "Stale module comment in plan-confirmation-logic.ts still mentions 'legacy markdown plans'. PhaseSummaryItem type and phases field are vestigial."
+    },
+    {
+      "featureId": "delete-markdown-plan-system",
+      "severity": "non_blocking",
+      "description": "Dispatcher always sees step index 0 and empty completedSteps — pre-existing limitation of JSON plan migration."
+    },
+    {
+      "featureId": "feature-quality-gates",
+      "severity": "non_blocking",
+      "description": "guardMutation() is advisory-only and not enforced at the queue mutation layer. Must be addressed during executor integration."
+    },
+    {
+      "featureId": "feature-quality-gates",
+      "severity": "non_blocking",
+      "description": "Single onStepCompleted hook limitation means sprint and quality gates hooks can't coexist without composition."
+    },
+    {
+      "featureId": "feature-quality-gates",
+      "severity": "non_blocking",
+      "description": "Title-based quality check detection ('feature quality check') is slightly brittle."
+    },
+    {
+      "featureId": "guardrails",
+      "severity": "non_blocking",
+      "description": "Executor doesn't wire guardrails into StepDispatchContext — mutation_budget is never populated in production."
+    },
+    {
+      "featureId": "guardrails",
+      "severity": "non_blocking",
+      "description": "applyMutations() doesn't auto-invoke checkConvergence() — callers must check separately."
+    },
+    {
+      "featureId": "guardrails",
+      "severity": "non_blocking",
+      "description": "MutationRequest.type is limited to insert_after/skip/remove — missing reorder and replace."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Update Plan file format section: replace markdown plan format documentation (Phase headings, milestone markers, fulfills HTML annotations, checklist items, validation-contract.md) with JSON plan format (steps[], behavioralContract[], decisions[], risks[]). Document .plan.json as the canonical plan file extension.",
+      "evidence": "Multiple features (json-plan-draft-prompt, json-plan-consolidation-prompt, delete-markdown-plan-system) noted AGENTS.md still references deleted markdown plan concepts. All plan output is now JSON-native per the json-plans milestone.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Update assertion ID format references: change 'VAL-<AREA>-<NNN>' to 'BC-<AREA>-<NNN>' (behavioral contract format) in plan-related sections. The plan prompt now instructs workers to use BC- prefix.",
+      "evidence": "Features json-plan-draft-prompt and json-plan-consolidation-prompt both use BC-AREA-NNN format. AGENTS.md still references VAL-AREA-NNN in Plan file format section.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Remove stale references to deleted files: src/state/ directory, src/controller/plan-parser.ts, src/schemas/state.ts, .state.md system. These appear in the source tree listing, core layers table, and pipeline/execution section.",
+      "evidence": "Feature delete-markdown-plan-system removed these files. AGENTS.md lines 184 (state/ directory), 257 (plan parser), 302-308 (.state.md) are now stale.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add src/queue/feature-quality-gates.ts and src/queue/guardrails.ts to the Key Code Locations / queue system section. Document the hook composition need (sprint hook + quality gates hook coexistence).",
+      "evidence": "Features feature-quality-gates and guardrails introduced these modules. Neither is referenced in AGENTS.md. The single-hook limitation will affect future integration work.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document PlanImportResult as a key cross-layer contract that requires coordinated changes across controller, TUI, and dispatcher when modified.",
+      "evidence": "Feature json-plan-tui-and-queue-integration required manual fixture updates across multiple test files (plan-confirmation.test.ts, plan-import.test.ts, dispatcher.test.ts) when PlanImportResult shape changed.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "The ANNOTATED_JSON_EXAMPLE constant in review.ts is module-private and might need to be exported for future features.",
+      "reason": "Speculative — no current consumer needs it. If/when needed, exporting is a trivial change."
+    },
+    {
+      "observation": "isJsonPlanContent() could false-positive on markdown plans containing JSON objects.",
+      "reason": "Already resolved — the delete-markdown-plan-system feature removed all markdown plan support, making this concern moot."
+    },
+    {
+      "observation": "json-plan-migration.md spec has contradictory guidance on fileReferences (required vs optional).",
+      "reason": "This is a spec inconsistency, not a codebase gap. The implementation followed the code reference consistently. The spec document is in .factory/library/ which is reference material, not normative guidance."
+    },
+    {
+      "observation": "Duplicated EstimatedComplexitySchema across plan-json-parser.ts and proto-step.ts should be shared from one canonical location.",
+      "reason": "Already documented as a non-blocking code issue. This is code quality, not a shared state / conventions gap. A future cleanup feature can address it."
+    }
+  ],
+  "previousRound": null
+}

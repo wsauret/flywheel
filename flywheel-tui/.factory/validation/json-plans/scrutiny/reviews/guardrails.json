@@ -1,0 +1,45 @@
+{
+  "featureId": "guardrails",
+  "reviewedAt": "2026-03-27T05:12:00.000Z",
+  "commitId": "9e66663",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean, well-structured guardrails module implementing all 7 ADR-004 guardrails. The createGuardrails() factory pattern with closure-based state is idiomatic and testable. 43 comprehensive tests cover all guardrails individually and in integration. The dispatcher schema and step-dispatcher were correctly updated to carry mutation_budget. Two non-blocking integration gaps exist: (1) the executor doesn't yet create/pass guardrails into StepDispatchContext, so mutation_budget is never populated in production; (2) applyMutations() doesn't auto-invoke checkConvergence(), requiring callers to check separately.",
+    "issues": [
+      {
+        "file": "src/queue/executor.ts",
+        "line": 473,
+        "severity": "non_blocking",
+        "description": "Executor builds dispatcherContext as a plain Record<string, unknown> without mutationBudget. The StepDispatchContext.mutationBudget field (step-dispatcher.ts:66) and the mapping code (step-dispatcher.ts:427-454) exist, but the executor never creates a Guardrails instance or passes the budget. In production, context.mutationBudget will always be undefined, meaning VAL-GUARD-006 (budget visibility) is not wired end-to-end. The feature description says 'every dispatcher call includes remaining budget' — this holds in the unit test but not in the live execution path."
+      },
+      {
+        "file": "src/queue/guardrails.ts",
+        "line": 280,
+        "severity": "non_blocking",
+        "description": "applyMutations() does not call checkConvergence() before processing insert_after mutations. Convergence detection (VAL-GUARD-004) works correctly as a standalone check, but it's not enforced within the unified applyMutations() entry point. Callers must remember to check convergence separately before calling applyMutations(). The test 'convergence detection blocks insert mutations when converged' only calls checkConvergence() directly — it doesn't verify that applyMutations() auto-blocks converged inserts."
+      },
+      {
+        "file": "src/queue/guardrails.ts",
+        "line": 93,
+        "severity": "non_blocking",
+        "description": "MutationRequest.type is limited to 'insert_after' | 'skip' | 'remove', but the queue API (queue.ts) also supports reorderSteps and replaceStep mutations. If the dispatcher ever needs to request reorder or replace operations, this type union and the applyMutations switch statement would need extending."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The guardrails module introduces a new factory pattern (createGuardrails) that is not documented in AGENTS.md's Key Code Locations section. The queue system section lists queue.ts, executor.ts, step-dispatcher.ts, etc. but doesn't mention guardrails.ts. Future workers need to know this module exists and that it provides the mutation safety layer.",
+      "evidence": "AGENTS.md Key Code Locations → Queue System section does not include src/queue/guardrails.ts"
+    },
+    {
+      "area": "conventions",
+      "observation": "The executor (executor.ts) and guardrails module have no integration point. The executor passes a generic Record<string, unknown> as dispatcher context (line 473) while the step-dispatcher expects a typed StepDispatchContext with optional mutationBudget. There's a missing wiring layer — whoever picks up the integration task needs to know that StepExecutorOptions should accept a Guardrails instance (or the executor should create one internally).",
+      "evidence": "executor.ts:473 builds dispatcherContext without mutationBudget; step-dispatcher.ts:66 defines the field; no code bridges them"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The guardrails feature passes review. The core module (src/queue/guardrails.ts) is well-implemented with clean types, comprehensive tests (43 tests, 102 assertions), and correct integration into the dispatcher schema and step-dispatcher context types. All 7 ADR-004 guardrails are implemented and individually tested. The dispatcher schema correctly includes the optional mutation_budget field. Two non-blocking gaps exist: (1) the executor doesn't wire guardrails into the dispatch context yet, so mutation_budget won't flow in production until that integration is completed; (2) convergence detection is a standalone check not auto-enforced by applyMutations(). These are expected integration seams that will be closed when the executor is updated to create and use a Guardrails instance."
+}

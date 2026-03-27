@@ -1,0 +1,34 @@
+{
+  "featureId": "delete-markdown-plan-system",
+  "reviewedAt": "2026-03-27T04:15:00.000Z",
+  "commitId": "d0c3091",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Clean removal of all broken imports after legacy markdown plan system deletion. The worker correctly identified and removed 4 source file imports (plan-parser.ts, state/reader), 3 dead functions (importMarkdownPlan, buildMarkdownPlanSteps, buildQueueFromMarkdownPlan), 1 dead helper (isJsonPlanContent), and the deprecated PlanImportResult.phases field. Test files were properly updated: state.test.ts deleted (entirely tested deleted system), 4 integration/e2e runner scripts deleted (imported deleted modules), schemas.test.ts and validation-state.test.ts had stale test blocks removed, 6 other test files updated to use JSON plan fixtures. A new two-phase-plan.plan.json fixture was added. Typecheck is clean, all 4321 tests pass. Grep confirms zero references to parsePlan, StateFile, planParser, stateReader, stateWriter in src/ and tests/ (only historical comments in fixture files).",
+    "issues": [
+      {
+        "file": "src/tui/components/plan-confirmation-logic.ts",
+        "line": 7,
+        "severity": "non_blocking",
+        "description": "Module header comment still says 'Supports both JSON plans (steps with acceptance criteria, behavioral contract) and legacy markdown plans (phases with step counts)' but only JSON plans are now supported. The PhaseSummaryItem type and phases field in PlanSummaryDisplay are also stale (always empty array). Non-blocking since code compiles and works correctly."
+      },
+      {
+        "file": "src/dispatcher/assemble.ts",
+        "line": 79,
+        "severity": "non_blocking",
+        "description": "State tracking now defaults to empty completedSteps and currentStepIndex=0 with a comment 'no longer parsed from .state.md files'. This is correct for the deletion, but means the dispatcher always sees step 0 as current regardless of actual queue progress. This appears to be a pre-existing limitation of the JSON plan migration, not a bug introduced by this feature."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "AGENTS.md still references deleted files and systems: src/state/ directory (line 184), src/controller/plan-parser.ts (line 257), .state.md plan state tracking (line 302), and markdown plan annotation syntax (line 308+). These references are now stale after the markdown plan system deletion.",
+      "evidence": "AGENTS.md:184 '├── state/         # Plan state file (.state.md) lock, reader, writer'; AGENTS.md:257 '| Plan parser | src/controller/plan-parser.ts |'; AGENTS.md:302 'Plan state is tracked in .state.md files alongside plan files via src/state/ (reader, writer, lock). Plan markdown is parsed into structured phases by src/controller/plan-parser.ts'"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. The feature correctly removes all broken imports and dead code after the legacy markdown plan system deletion. 18 files changed across src/ and tests/, with net -1563 lines removed. All verification criteria met: typecheck clean, 4321 tests pass, grep confirms zero stale references to deleted modules in code (only benign historical comments in fixture files). Two non-blocking issues noted: stale comment in plan-confirmation-logic.ts and stale AGENTS.md references to deleted files. Worker followed the backend-worker skill procedure correctly."
+}
