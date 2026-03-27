@@ -1,6 +1,6 @@
 /**
  * Sprint Escalation Context — packages sprint iteration history for carry-forward
- * to the full pipeline (plan→work→review) when sprint exhausts its iteration cap.
+ * to the full queue (plan→work→review) when sprint exhausts its iteration cap.
  *
  * The escalation context includes:
  * - All attempt summaries from every sprint iteration
@@ -9,7 +9,7 @@
  * - Worker crash/missing artifact information
  * - Number of iterations used and escalation reason
  *
- * This context is serialized as JSON and threaded through the pipeline's
+ * This context is serialized as JSON and threaded through the queue's
  * args so the planner can account for what was already tried.
  */
 
@@ -42,7 +42,7 @@ export interface EscalationContext {
  * - scriptContent (verification script source code)
  * - workerCrashed / missingArtifact flags
  *
- * The result is JSON-serializable for threading through pipeline args.
+ * The result is JSON-serializable for threading through queue args.
  */
 export function buildEscalationContext(result: SprintLoopResult): EscalationContext {
   return {

@@ -42,7 +42,7 @@ export interface RunningRuntime {
   queueCleanup: () => void
   contextIndexer: ContextIndexer | null
   workerPid: number | null
-  /** Queue-based execution: step executor replaces the old pipeline model. */
+  /** Queue-based execution: step executor drives execution. */
   stepExecutor?: StepExecutor | null
   /** The queue being executed (when using queue-based execution). */
   queue?: Queue | null

@@ -226,7 +226,7 @@ export class StructuredOutputBuilder {
 
   /**
    * Full reset — wipes blocks AND tracking state.
-   * Used when starting a fresh standalone workflow (non-pipeline).
+   * Used when starting a fresh standalone workflow (standalone).
    */
   reset(): void {
     this.blocks = [];
@@ -240,7 +240,7 @@ export class StructuredOutputBuilder {
 
   /**
    * Reset only worker-level tracking state, preserving accumulated blocks.
-   * Used at pipeline step boundaries: a new worker means new agent IDs and
+   * Used at queue step boundaries: a new worker means new agent IDs and
    * context runs, but the output log is continuous.
    */
   resetTracking(): void {

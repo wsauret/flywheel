@@ -61,7 +61,7 @@ ${lines}`;
   return `## Resolved Open Questions\n\n_No open questions._`;
 }
 
-export const planConsolidateValidationCriteria =
+export const planConsolidateEvaluationCriteria =
   `Clean JSON plan written to ${DEFAULT_PLANS_DIR}/ with review findings merged, all P1 addressed, no review annotations remaining`;
 
 /**

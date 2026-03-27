@@ -140,7 +140,7 @@ export const FlywheelConfigSchema = z.object({
     max_iterations: z.number().int().min(1).max(10).default(5),
     /** Timeout (ms) for verification script execution. Default: 30000. */
     verification_timeout_ms: z.number().int().min(1000).default(30000),
-    /** Escalate to full pipeline when sprint exhausts iterations. Default: true. */
+    /** Escalate to full queue when sprint exhausts iterations. Default: true. */
     escalate_to_full: z.boolean().default(true),
     /** Allow worker to signal escalation via needs_plan. Default: false. */
     worker_can_escalate: z.boolean().default(false),

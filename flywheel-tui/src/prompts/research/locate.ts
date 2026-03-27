@@ -7,7 +7,7 @@ import {
   buildProjectContextSection,
 } from "../conventions.js";
 
-export const researchLocateValidationCriteria =
+export const researchLocateEvaluationCriteria =
   "Relevant sources identified and ranked by relevance to the research objective";
 
 /**

@@ -4,7 +4,7 @@ import {
   LastWorkerResultSchema,
   SessionBudgetStatusSchema,
   AvailableContextSchema,
-  ValidationCriteriaSchema,
+  EvaluationCriteriaSchema,
   WorkerConfigSchema,
 } from "./shared";
 import { StepContextSchema } from "../controller/step-context";
@@ -107,7 +107,7 @@ export const DispatcherDecisionSchema = z.object({
   task_content: z.string(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),
-  evaluation_criteria: ValidationCriteriaSchema,
+  evaluation_criteria: EvaluationCriteriaSchema,
   reasoning: z.string().optional(),
   warnings: z.array(z.string()).optional(),
   worker_config: WorkerConfigSchema.optional(),

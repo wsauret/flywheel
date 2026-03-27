@@ -1,10 +1,10 @@
 import type { WorkflowStepContext } from "../index.js";
 
-export const shipStageValidationCriteria =
+export const shipStageEvaluationCriteria =
   "Changes are staged with specific paths";
-export const shipCommitValidationCriteria =
+export const shipCommitEvaluationCriteria =
   "Branch created with descriptive name, commit with imperative mood message";
-export const shipPRValidationCriteria =
+export const shipPREvaluationCriteria =
   "PR created with concise title and body, no AI attribution";
 
 /**

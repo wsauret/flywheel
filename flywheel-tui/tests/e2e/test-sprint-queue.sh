@@ -195,9 +195,9 @@ const workerFn: WorkerFn = async (step, _prompt) => {
 
 const dispatcherFn: DispatcherFn = async (step, _ctx) => {
   if (step.type === "work") {
-    return { prompt: handler.buildWorkStepPrompt(step), validationCriteria: null }
+    return { prompt: handler.buildWorkStepPrompt(step), evaluationCriteria: null }
   }
-  return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
+  return { prompt: `Execute ${step.type}: ${step.title}`, evaluationCriteria: null }
 }
 
 const handoffReaderFn = async (p: string) => {
@@ -354,9 +354,9 @@ const workerFn: WorkerFn = async (step, _prompt) => {
 
 const dispatcherFn: DispatcherFn = async (step, _ctx) => {
   if (step.type === "work") {
-    return { prompt: handler.buildWorkStepPrompt(step), validationCriteria: null }
+    return { prompt: handler.buildWorkStepPrompt(step), evaluationCriteria: null }
   }
-  return { prompt: `Execute ${step.type}: ${step.title}`, validationCriteria: null }
+  return { prompt: `Execute ${step.type}: ${step.title}`, evaluationCriteria: null }
 }
 
 const handoffReaderFn = async (p: string) => {

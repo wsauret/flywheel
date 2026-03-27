@@ -2,7 +2,7 @@
  * Shared workflow dependency preparation.
  *
  * Extracts the common config → engine → spawner setup used by
- * the shell's pipeline launch functions. Callers
+ * the shell's queue launch functions. Callers
  * wrap in try/catch for UI error handling.
  *
  * Errors propagate (throw) — callers decide how to surface them.

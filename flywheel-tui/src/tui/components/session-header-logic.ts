@@ -46,7 +46,7 @@ export function lifecycleToWorkflowStatus(state: SessionLifecycleState): Workflo
     case "archived":
     case "trashed":
       return "completed"
-    // Plan stages and "new"
+    // Plan steps and "new"
     default:
       return "idle"
   }

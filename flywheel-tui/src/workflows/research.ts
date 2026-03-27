@@ -1,7 +1,7 @@
 import type { WorkflowDefinition } from "../schemas/workflow";
-import { researchLocateValidationCriteria } from "../prompts/research/locate";
-import { researchAnalyzeValidationCriteria } from "../prompts/research/analyze";
-import { researchPersistValidationCriteria } from "../prompts/research/persist";
+import { researchLocateEvaluationCriteria } from "../prompts/research/locate";
+import { researchAnalyzeEvaluationCriteria } from "../prompts/research/analyze";
+import { researchPersistEvaluationCriteria } from "../prompts/research/persist";
 
 export const researchWorkflow: WorkflowDefinition = {
   name: "research",
@@ -11,19 +11,19 @@ export const researchWorkflow: WorkflowDefinition = {
       description: "Locate relevant sources for the research objective",
       dispatcherHint:
         "Identify and locate files, documentation, and references relevant to the research topic.",
-      validationCriteria: researchLocateValidationCriteria,
+      evaluationCriteria: researchLocateEvaluationCriteria,
     },
     {
       description: "Analyze located sources for key findings",
       dispatcherHint:
         "Analyze located sources for patterns, implementation details, and insights relevant to the research topic.",
-      validationCriteria: researchAnalyzeValidationCriteria,
+      evaluationCriteria: researchAnalyzeEvaluationCriteria,
     },
     {
       description: "Persist structured research document",
       dispatcherHint:
         "Compile findings into a structured research document with YAML frontmatter.",
-      validationCriteria: researchPersistValidationCriteria,
+      evaluationCriteria: researchPersistEvaluationCriteria,
     },
   ],
 };

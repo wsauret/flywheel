@@ -138,7 +138,7 @@ async function handleReviewQuestions(
         questionDirective: PLAN_QUESTION_DIRECTIVE,
       };
     }
-    // Unexpected error — don't abort pipeline
+    // Unexpected error — don't abort queue
     throw err;
   }
 }
@@ -171,7 +171,7 @@ export function createPlanOnStepComplete(
       try {
         return await handleReviewQuestions(result, hookOptions);
       } catch (err) {
-        // Outer catch: unexpected errors don't abort the pipeline
+        // Outer catch: unexpected errors don't abort the queue
         log.error("unexpected error handling review questions", { error: err instanceof Error ? err : String(err) });
         return {};
       }
@@ -257,7 +257,7 @@ export function createPlanOnStepComplete(
       // Scan failed — continue to warning
     }
 
-    // No plan file found — warn but don't halt the pipeline
+    // No plan file found — warn but don't halt the queue
     return { planFileWarning: "Could not locate plan file on disk after consolidation" };
   };
 }

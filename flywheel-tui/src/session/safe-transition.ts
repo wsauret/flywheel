@@ -3,11 +3,11 @@
  *
  * Provides a resilient state transition function that chains through
  * intermediate states when a direct transition is invalid. Used by
- * pipeline completion handlers to gracefully handle sessions that
+ * queue completion handlers to gracefully handle sessions that
  * failed to transition through the proper lifecycle during startup.
  *
  * Example: If a session is stuck in "new" because the startup transitions
- * failed, and the pipeline completion tries to set "work:paused", this
+ * failed, and the queue completion tries to set "work:paused", this
  * helper discovers the path new -> plan:imported -> plan:approved ->
  * work:active -> work:paused and executes each step.
  */

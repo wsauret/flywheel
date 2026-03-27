@@ -48,7 +48,7 @@ export interface StepProgressInfo {
 }
 
 /**
- * Format a stage progress indicator string.
+ * Format a step progress indicator string.
  *
  * @example formatStepProgress({ step: 1, total: 3, stepName: "plan" }) → "Plan (1/3)"
  */

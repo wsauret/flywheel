@@ -37,7 +37,7 @@ import type {
   SessionBudgetStatus,
   AvailableContext,
   LastWorkerResult,
-  ValidationCriteria,
+  EvaluationCriteria,
   WorkerConfig,
 } from "../schemas/shared";
 import type { AccumulatedContext, HandoffSummary } from "./context-accumulator";
@@ -96,7 +96,7 @@ export interface StepDispatcherDecision {
   /** Crafted worker prompt. */
   taskContent: string;
   /** Evaluation criteria for the evaluator (null = no evaluation). */
-  evaluationCriteria: ValidationCriteria | null;
+  evaluationCriteria: EvaluationCriteria | null;
   /** Worker configuration overrides. */
   workerConfig: WorkerConfig | null;
   /** Files to inline into worker prompt (L2). */

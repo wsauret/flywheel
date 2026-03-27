@@ -127,8 +127,8 @@ export function buildWorkflowPrompt(
     step.description,
     "",
     step.dispatcherHint ? `## Approach\n\n${step.dispatcherHint}` : "",
-    step.validationCriteria
-      ? `## Success Criteria\n\n${step.validationCriteria}`
+    step.evaluationCriteria
+      ? `## Success Criteria\n\n${step.evaluationCriteria}`
       : "",
     "",
     ctx.planContent ? `## Context\n\n${ctx.planContent}` : "",

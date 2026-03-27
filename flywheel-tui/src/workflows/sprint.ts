@@ -20,7 +20,7 @@ export const sprintWorkflow: WorkflowDefinition = {
       description: "Sprint execution: implement task with verification script, iterate until passing",
       dispatcherHint:
         "Use sprint/step-prompt template. Worker explores codebase, implements, writes verification script.",
-      validationCriteria: "Verification script passes (exit code 0), implementation complete.",
+      evaluationCriteria: "Verification script passes (exit code 0), implementation complete.",
     },
   ],
 };

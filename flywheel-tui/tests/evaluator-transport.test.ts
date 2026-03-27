@@ -10,7 +10,7 @@ import { EvaluatorResultSchema } from "../src/schemas/evaluator";
 function validEvaluatorResult(overrides?: Partial<EvaluatorResult>): EvaluatorResult {
   return {
     passed: true,
-    reasoning: "All validation criteria met",
+    reasoning: "All evaluation criteria met",
     suggestions: [],
     confidence: 0.9,
     feedback: "Good work",
@@ -798,7 +798,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const prompt = spawnedArgs[pIdx + 1];
     // Should contain evaluator-specific content
     expect(prompt).toContain("Worker Output");
-    expect(prompt).toContain("Validation Criteria");
+    expect(prompt).toContain("Evaluation Criteria");
     // Should NOT contain dispatcher-specific content
     expect(prompt).not.toContain("prompt engineering specialist");
   });

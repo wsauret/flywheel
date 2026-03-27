@@ -95,7 +95,7 @@ export interface SessionOrchestrator {
   /** Resume a session: load from disk, restore output blocks. */
   handleResumeSession(sessionId: string): Promise<ResumeResult | null>;
 
-  /** Auto-archive: transition to completed, optionally archive if ship stage completed. */
+  /** Auto-archive: transition to completed, optionally archive if ship step completed. */
   handleAutoArchive(
     sessionId: string,
     stepResults: CompletedStepResult[],
@@ -180,7 +180,7 @@ export function createSessionOrchestrator(
       "completed",
     );
 
-    // 2. Check if ship stage is present and completed
+    // 2. Check if ship step is present and completed
     const shipResult = stepResults.find((r) => r.workflow === "ship");
     const shouldArchive = shipResult !== undefined && shipResult.completed;
 

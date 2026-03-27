@@ -1,16 +1,16 @@
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
-// ValidationCriteriaSchema
+// EvaluationCriteriaSchema
 // ---------------------------------------------------------------------------
-export const ValidationCriteriaSchema = z.object({
+export const EvaluationCriteriaSchema = z.object({
   acceptance_criteria: z.array(z.string()),
   required_tests: z.boolean(),
   custom_checks: z.array(z.string()),
   required_outputs: z.array(z.string()),
 }).strip();
 
-export type ValidationCriteria = z.infer<typeof ValidationCriteriaSchema>;
+export type EvaluationCriteria = z.infer<typeof EvaluationCriteriaSchema>;
 
 // ---------------------------------------------------------------------------
 // ToolScopingSchema
@@ -123,7 +123,7 @@ export type LastWorkerResult = z.infer<typeof LastWorkerResultSchema>;
 export const WorkflowStepBaseSchema = z.object({
   description: z.string(),
   dispatcherHint: z.string().optional(),
-  validationCriteria: z.string().optional(),
+  evaluationCriteria: z.string().optional(),
 });
 
 export type WorkflowStepBase = z.infer<typeof WorkflowStepBaseSchema>;

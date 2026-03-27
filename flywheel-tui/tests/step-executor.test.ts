@@ -76,7 +76,7 @@ function createCrashingWorker(errorMsg = "worker crashed"): WorkerFn {
 function createSimpleDispatcher(prompt = "do the work"): DispatcherFn {
   return async (_step, _context) => ({
     prompt,
-    validationCriteria: null,
+    evaluationCriteria: null,
   });
 }
 
@@ -298,7 +298,7 @@ describe("VAL-QUEUE-025: Dispatcher invoked per step for prompt assembly", () =>
     const dispatcherCalls: string[] = [];
     const dispatcher: DispatcherFn = async (step, _context) => {
       dispatcherCalls.push(step.id);
-      return { prompt: `prompt for ${step.title}`, validationCriteria: null };
+      return { prompt: `prompt for ${step.title}`, evaluationCriteria: null };
     };
 
     const s1 = makeStep({ title: "A" });
@@ -316,7 +316,7 @@ describe("VAL-QUEUE-025: Dispatcher invoked per step for prompt assembly", () =>
     let receivedStep: Step | null = null;
     const dispatcher: DispatcherFn = async (step, _context) => {
       receivedStep = step;
-      return { prompt: "go", validationCriteria: null };
+      return { prompt: "go", evaluationCriteria: null };
     };
 
     const step = makeStep({ type: "plan", title: "Create plan" });
@@ -334,7 +334,7 @@ describe("VAL-QUEUE-025: Dispatcher invoked per step for prompt assembly", () =>
   test("worker receives prompt from dispatcher", async () => {
     const dispatcher: DispatcherFn = async () => ({
       prompt: "SPECIFIC_PROMPT_CONTENT",
-      validationCriteria: null,
+      evaluationCriteria: null,
     });
 
     let receivedPrompt: string | null = null;
@@ -789,7 +789,7 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
     const dispatcherContexts: Array<Record<string, unknown>> = [];
     const dispatcher: DispatcherFn = async (step, context) => {
       dispatcherContexts.push({ ...context });
-      return { prompt: `work on ${step.title}`, validationCriteria: null };
+      return { prompt: `work on ${step.title}`, evaluationCriteria: null };
     };
 
     const s1 = makeStep({ title: "Step 1" });
@@ -831,7 +831,7 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
     const dispatcherContexts: Array<Record<string, unknown>> = [];
     const dispatcher: DispatcherFn = async (_step, context) => {
       dispatcherContexts.push({ ...context });
-      return { prompt: "go", validationCriteria: null };
+      return { prompt: "go", evaluationCriteria: null };
     };
 
     const queue = createQueue([makeStep(), makeStep()]);
@@ -845,11 +845,11 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
 });
 
 // ===========================================================================
-// Bug fix: validationCriteria forwarded to evaluator function
+// Bug fix: evaluationCriteria forwarded to evaluator function
 // ===========================================================================
 
-describe("validationCriteria forwarded to evaluator", () => {
-  test("evaluator receives validationCriteria from dispatcher", async () => {
+describe("evaluationCriteria forwarded to evaluator", () => {
+  test("evaluator receives evaluationCriteria from dispatcher", async () => {
     const criteria = {
       acceptance: ["has tests", "no lint errors"],
       required_files: ["src/index.ts"],
@@ -857,12 +857,12 @@ describe("validationCriteria forwarded to evaluator", () => {
 
     const dispatcher: DispatcherFn = async () => ({
       prompt: "do the work",
-      validationCriteria: criteria,
+      evaluationCriteria: criteria,
     });
 
     let receivedCriteria: unknown | null | undefined = undefined;
-    const evaluator: EvaluatorFn = async (_step, _output, validationCriteria) => {
-      receivedCriteria = validationCriteria;
+    const evaluator: EvaluatorFn = async (_step, _output, evaluationCriteria) => {
+      receivedCriteria = evaluationCriteria;
       return {
         passed: true, skipped: false, transportError: false,
         reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
@@ -877,15 +877,15 @@ describe("validationCriteria forwarded to evaluator", () => {
     expect(receivedCriteria).toEqual(criteria);
   });
 
-  test("evaluator receives null validationCriteria when dispatcher returns null", async () => {
+  test("evaluator receives null evaluationCriteria when dispatcher returns null", async () => {
     const dispatcher: DispatcherFn = async () => ({
       prompt: "do the work",
-      validationCriteria: null,
+      evaluationCriteria: null,
     });
 
     let receivedCriteria: unknown | null | undefined = "NOT_SET";
-    const evaluator: EvaluatorFn = async (_step, _output, validationCriteria) => {
-      receivedCriteria = validationCriteria;
+    const evaluator: EvaluatorFn = async (_step, _output, evaluationCriteria) => {
+      receivedCriteria = evaluationCriteria;
       return {
         passed: true, skipped: false, transportError: false,
         reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1,
@@ -900,19 +900,19 @@ describe("validationCriteria forwarded to evaluator", () => {
     expect(receivedCriteria).toBeNull();
   });
 
-  test("validationCriteria forwarded through revision loop", async () => {
+  test("evaluationCriteria forwarded through revision loop", async () => {
     const criteria = { rules: ["must have unit tests"] };
 
     const dispatcher: DispatcherFn = async () => ({
       prompt: "do the work",
-      validationCriteria: criteria,
+      evaluationCriteria: criteria,
     });
 
     const receivedCriteriaList: Array<unknown | null | undefined> = [];
     let evalCallCount = 0;
-    const evaluator: EvaluatorFn = async (_step, _output, validationCriteria) => {
+    const evaluator: EvaluatorFn = async (_step, _output, evaluationCriteria) => {
       evalCallCount++;
-      receivedCriteriaList.push(validationCriteria);
+      receivedCriteriaList.push(evaluationCriteria);
       if (evalCallCount === 1) {
         return {
           passed: false, skipped: false, transportError: false,
@@ -1314,7 +1314,7 @@ describe("VAL-EXEC-001: Steps execute natively without legacy bridge", () => {
 
     const dispatcher: DispatcherFn = async (step) => {
       dispatcherCalls.push(step.id);
-      return { prompt: "go", validationCriteria: { check: "all" } };
+      return { prompt: "go", evaluationCriteria: { check: "all" } };
     };
     const worker: WorkerFn = async (step) => {
       workerCalls.push(step.id);
@@ -1347,7 +1347,7 @@ describe("VAL-EXEC-001: Steps execute natively without legacy bridge", () => {
 
     const dispatcher: DispatcherFn = async (step) => {
       cycleSteps.push({ step: step.id, step: "dispatch" });
-      return { prompt: "go", validationCriteria: null };
+      return { prompt: "go", evaluationCriteria: null };
     };
     const worker: WorkerFn = async (step) => {
       cycleSteps.push({ step: step.id, step: "work" });
@@ -1460,7 +1460,7 @@ describe("VAL-EXEC-007: Gate steps bypass dispatcher/worker/evaluator", () => {
 
     const dispatcher: DispatcherFn = async (step) => {
       dispatcherCalls.push(step.id);
-      return { prompt: "go", validationCriteria: null };
+      return { prompt: "go", evaluationCriteria: null };
     };
     const worker: WorkerFn = async (step) => {
       workerCalls.push(step.id);
@@ -1765,7 +1765,7 @@ describe("VAL-EXEC-012: HITL field on steps enables user interaction", () => {
     const dispatcherContexts: Array<Record<string, unknown>> = [];
     const dispatcher: DispatcherFn = async (_step, context) => {
       dispatcherContexts.push({ ...context });
-      return { prompt: "go", validationCriteria: null };
+      return { prompt: "go", evaluationCriteria: null };
     };
 
     const step = makeStep({

@@ -8,7 +8,7 @@ import {
 } from "../conventions.js";
 import { DEFAULT_RESEARCH_DIR } from "../../config/paths.js";
 
-export const researchPersistValidationCriteria =
+export const researchPersistEvaluationCriteria =
   "Comprehensive research document persisted with findings and source references";
 
 /**

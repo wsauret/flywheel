@@ -77,7 +77,7 @@ Triage P3 findings yourself. Include non-cosmetic P3 findings that are worth fix
 // Main prompt builder
 // ---------------------------------------------------------------------------
 
-export const reviewConsolidateValidationCriteria =
+export const reviewConsolidateEvaluationCriteria =
   "Review document written to .flywheel/reviews/<date>-<slug>.md with P1/P2/P3 findings and implementation order. The file path must appear in worker output. Accept any file under .flywheel/reviews/ matching this pattern. If no significant issues, a clean summary is acceptable.";
 
 /**
@@ -97,7 +97,7 @@ ${ctx.previousResult}`
 
   return `# Review Consolidation
 
-You are running in an automated pipeline. Do not ask questions. Produce the review document directly.
+You are running in an automated queue. Do not ask questions. Produce the review document directly.
 
 ## Scope
 

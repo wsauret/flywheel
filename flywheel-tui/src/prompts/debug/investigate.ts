@@ -6,11 +6,11 @@ import {
   READ_FULLY_RULE,
 } from "../conventions.js";
 
-export const debugInvestigateValidationCriteria =
+export const debugInvestigateEvaluationCriteria =
   "Hypothesis formed with evidence and likelihood assessment";
-export const debugFixValidationCriteria =
+export const debugFixEvaluationCriteria =
   "Fix applied with references documenting the change";
-export const debugVerifyValidationCriteria =
+export const debugVerifyEvaluationCriteria =
   "Verification command output shows the issue is resolved";
 
 /**

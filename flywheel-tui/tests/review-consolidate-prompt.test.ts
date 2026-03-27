@@ -167,9 +167,9 @@ describe("buildReviewConsolidatePrompt general content", () => {
     expect(result).toContain("Review Consolidation");
   });
 
-  it("contains automated pipeline instruction", () => {
+  it("contains automated queue instruction", () => {
     const result = buildReviewConsolidatePrompt(baseCtx);
-    expect(result).toContain("automated pipeline");
+    expect(result).toContain("automated queue");
     expect(result).toContain("Do not ask questions");
   });
 

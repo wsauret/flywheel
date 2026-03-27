@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ValidationCriteriaSchema, WorkerConfigSchema } from "../schemas/shared";
+import { EvaluationCriteriaSchema, WorkerConfigSchema } from "../schemas/shared";
 
 // ---------------------------------------------------------------------------
 // Content quality helpers
@@ -240,7 +240,7 @@ export const DispatcherDecisionHandoffSchema = z.object({
   schema_version: z.literal(1),
   step_index: z.number(),
   task_content: z.string(),
-  evaluation_criteria: ValidationCriteriaSchema.optional(),
+  evaluation_criteria: EvaluationCriteriaSchema.optional(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),
   session_name: z.string().optional(),

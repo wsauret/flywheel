@@ -3,7 +3,7 @@
  *
  * Manages `validation-state.json` — the file that tracks assertion
  * pass/fail/blocked status across milestones. Uses atomic writes
- * for safety (concurrent pipeline access).
+ * for safety (concurrent queue access).
  *
  * Adapted from multi-agent mission system validation patterns.
  */
@@ -221,10 +221,10 @@ export interface EndOfSessionGateOptions {
 }
 
 /**
- * Check the validation state before declaring pipeline completion.
+ * Check the validation state before declaring queue completion.
  *
  * This is the **end-of-session gate** — the final quality check before
- * a pipeline is declared complete. It reads `validation-state.json` and
+ * a queue run is declared complete. It reads `validation-state.json` and
  * verifies that all assertions have passed.
  *
  * Behavior:

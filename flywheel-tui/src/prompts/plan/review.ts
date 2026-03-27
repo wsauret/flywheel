@@ -6,7 +6,7 @@ import {
 } from "../conventions.js";
 import { renderHandoffInstruction, PLAN_REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
-export const planReviewValidationCriteria =
+export const planReviewEvaluationCriteria =
   "Annotated JSON plan with review findings on steps and openQuestions array. Draft fields unmodified.";
 
 /**

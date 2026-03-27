@@ -29,7 +29,7 @@ export interface ApprovalHandler {
    * to continue (true) or stop (false).
    *
    * Implementations should surface each issue's description string to the user.
-   * When no approval handler is present, blocking issues always halt the pipeline.
+   * When no approval handler is present, blocking issues always halt the queue.
    */
   requestIssueApproval?(
     stepIndex: number,

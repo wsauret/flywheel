@@ -52,22 +52,22 @@ export { buildSprintStepPrompt } from "./sprint/step-prompt.js";
 export { buildSprintRevisionPrompt } from "./sprint/revision-prompt.js";
 export { buildSprintEvaluatorPrompt, SPRINT_EVALUATOR_SYSTEM_PROMPT } from "./sprint/evaluator-prompt.js";
 
-// ── Re-exports: colocated validation criteria ───────────────────
+// ── Re-exports: colocated evaluation criteria ───────────────────
 
-export { planResearchValidationCriteria } from "./plan/research.js";
-export { planDraftValidationCriteria } from "./plan/draft.js";
-export { planReviewValidationCriteria } from "./plan/review.js";
-export { planConsolidateValidationCriteria } from "./plan/consolidate.js";
+export { planResearchEvaluationCriteria } from "./plan/research.js";
+export { planDraftEvaluationCriteria } from "./plan/draft.js";
+export { planReviewEvaluationCriteria } from "./plan/review.js";
+export { planConsolidateEvaluationCriteria } from "./plan/consolidate.js";
 
-export { reviewDispatchValidationCriteria } from "./review/dispatch.js";
-export { reviewConsolidateValidationCriteria } from "./review/consolidate.js";
-export { reviewFixValidationCriteria } from "./review/fix.js";
+export { reviewDispatchEvaluationCriteria } from "./review/dispatch.js";
+export { reviewConsolidateEvaluationCriteria } from "./review/consolidate.js";
+export { reviewFixEvaluationCriteria } from "./review/fix.js";
 
-export { shipStageValidationCriteria, shipCommitValidationCriteria, shipPRValidationCriteria } from "./ship/workflow.js";
-export { shipCompoundValidationCriteria } from "./ship/compound.js";
+export { shipStageEvaluationCriteria, shipCommitEvaluationCriteria, shipPREvaluationCriteria } from "./ship/workflow.js";
+export { shipCompoundEvaluationCriteria } from "./ship/compound.js";
 
-export { debugInvestigateValidationCriteria, debugFixValidationCriteria, debugVerifyValidationCriteria } from "./debug/investigate.js";
+export { debugInvestigateEvaluationCriteria, debugFixEvaluationCriteria, debugVerifyEvaluationCriteria } from "./debug/investigate.js";
 
-export { researchLocateValidationCriteria } from "./research/locate.js";
-export { researchAnalyzeValidationCriteria } from "./research/analyze.js";
-export { researchPersistValidationCriteria } from "./research/persist.js";
+export { researchLocateEvaluationCriteria } from "./research/locate.js";
+export { researchAnalyzeEvaluationCriteria } from "./research/analyze.js";
+export { researchPersistEvaluationCriteria } from "./research/persist.js";

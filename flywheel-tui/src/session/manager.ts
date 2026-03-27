@@ -105,7 +105,7 @@ export interface SessionManager {
   sweepTrashed(): number;
 
   /**
-   * Recover stale `work:active` sessions that have no running pipeline.
+   * Recover stale `work:active` sessions that have no running queue execution.
    * Transitions them to `work:paused` so they can be resumed.
    *
    * Intended for startup crash recovery — call BEFORE `sweepTrashed()`.
@@ -288,7 +288,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       const state = entry.data.sessionLifecycleState;
       if (state !== "work:active") continue;
 
-      // This session was work:active on disk but has no running pipeline
+      // This session was work:active on disk but has no running queue
       // (since we just started up). Transition to work:paused.
       try {
         updateSession(entry.id, { sessionLifecycleState: "work:paused" }, baseDir);

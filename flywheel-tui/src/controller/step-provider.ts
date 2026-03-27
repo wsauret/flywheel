@@ -1,7 +1,7 @@
 /**
  * StepProvider interface — abstracts the source of execution steps.
  *
- * PlanFileProvider parses markdown plan files; WorkflowDefinitionProvider
+ * PlanFileProvider wraps JSON plan output; WorkflowDefinitionProvider
  * wraps WorkflowDefinition objects. Both return a uniform StepInfo[].
  */
 

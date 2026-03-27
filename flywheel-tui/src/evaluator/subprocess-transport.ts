@@ -41,7 +41,7 @@ const MAX_RETRIES = 1;
 
 /** Evaluator system prompt — used as --system-prompt for Claude (separate for caching). */
 const EVALUATOR_SYSTEM_PROMPT =
-  "You are an evaluator checking whether worker output meets the validation criteria. " +
+  "You are an evaluator checking whether worker output meets the evaluation criteria. " +
   "Evaluate the output against all provided criteria and respond with valid JSON only.";
 
 // ---------------------------------------------------------------------------
@@ -268,7 +268,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     }
 
     sections.push(
-      "## Validation Criteria",
+      "## Evaluation Criteria",
       input.evaluation_criteria,
       "",
     );
@@ -315,7 +315,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
     sections.push(
       "## Instructions",
-      "Evaluate the worker output against the validation criteria. Respond with valid JSON only, matching this exact schema:",
+      "Evaluate the worker output against the evaluation criteria. Respond with valid JSON only, matching this exact schema:",
       '{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[], "issues": Issue[] }',
       "",
       "- passed: Set passed to true if the output substantially meets the acceptance criteria. Be generous — minor omissions, format variations, and stylistic differences should NOT cause a failure. The worker produced useful output that advances the workflow? Pass it. Set passed to false ONLY if critical criteria are completely unmet, the output is fundamentally wrong, or there are blocking issues (test failures, security problems, regressions). When in doubt, pass with suggestions rather than fail.",
@@ -354,7 +354,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       "Extract and classify ALL issues you find in the worker output into the `issues` array. If no issues are found, use an empty array `[]`.",
       "",
       "### Severity Classification",
-      '- **blocking**: Issues that MUST be fixed before proceeding. These halt the pipeline.',
+      '- **blocking**: Issues that MUST be fixed before proceeding. These halt the queue.',
       '- **non_blocking**: Issues that should be addressed but don\'t prevent progress.',
       "",
       "### Category Classification",

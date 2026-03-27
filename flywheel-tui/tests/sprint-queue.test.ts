@@ -163,7 +163,7 @@ function createSuccessWorker(output = "done"): WorkerFn {
 function createSimpleDispatcher(prompt = "do the work"): DispatcherFn {
   return async (_step, _context) => ({
     prompt,
-    validationCriteria: null,
+    evaluationCriteria: null,
   });
 }
 

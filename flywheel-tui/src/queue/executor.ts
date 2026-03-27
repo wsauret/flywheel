@@ -91,17 +91,17 @@ export interface EvalResult {
 export type DispatcherFn = (
   step: Step,
   context: Record<string, unknown>,
-) => Promise<{ prompt: string; validationCriteria: unknown | null }>;
+) => Promise<{ prompt: string; evaluationCriteria: unknown | null }>;
 
 /**
  * Evaluator: assesses step output quality.
- * Receives the step, worker output, validation criteria, and handoff data.
+ * Receives the step, worker output, evaluation criteria, and handoff data.
  * The handoff data enables trust-but-verify: re-running commands, checking files, etc.
  */
 export type EvaluatorFn = (
   step: Step,
   workerOutput: string,
-  validationCriteria?: unknown | null,
+  evaluationCriteria?: unknown | null,
   handoffData?: Record<string, unknown> | null,
 ) => Promise<EvalResult>;
 
@@ -505,15 +505,15 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         });
       }
 
-      // Capture validationCriteria from dispatcher for evaluator
-      const validationCriteria = dispatcherResult.validationCriteria;
+      // Capture evaluationCriteria from dispatcher for evaluator
+      const evaluationCriteria = dispatcherResult.evaluationCriteria;
 
       // Track last evaluator result for the next step's dispatcher context
       let lastEvalResult: EvalResult | null = null;
 
       // (6) Invoke evaluator for quality check (if configured)
       if (evaluator) {
-        let evalResult = await evaluator(step, workerOutput.output, validationCriteria, handoffData);
+        let evalResult = await evaluator(step, workerOutput.output, evaluationCriteria, handoffData);
         lastEvalResult = evalResult;
 
         // Handle transport error: skip evaluation, continue
@@ -549,8 +549,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
               handoffData = null;
             }
 
-            // Re-evaluate (pass validationCriteria and handoff through revision loop)
-            evalResult = await evaluator(step, workerOutput.output, validationCriteria, handoffData);
+            // Re-evaluate (pass evaluationCriteria and handoff through revision loop)
+            evalResult = await evaluator(step, workerOutput.output, evaluationCriteria, handoffData);
             lastEvalResult = evalResult;
 
             // Transport error during revision: break out and continue

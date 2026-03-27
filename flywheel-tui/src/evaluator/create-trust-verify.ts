@@ -10,7 +10,7 @@
 
 import type { Step } from "../queue/types";
 import type { EvaluatorFn, EvalResult } from "../queue/executor";
-import type { ValidationCriteria } from "../schemas/shared";
+import type { EvaluationCriteria } from "../schemas/shared";
 import {
   createTrustVerifyEvaluator,
   type TrustVerifyHandoff,
@@ -192,24 +192,24 @@ export function createTrustVerifyEvaluatorFn(
   return async (
     step: Step,
     workerOutput: string,
-    validationCriteria?: unknown | null,
+    evaluationCriteria?: unknown | null,
     handoffData?: Record<string, unknown> | null,
   ): Promise<EvalResult> => {
     log.info("trust-but-verify evaluation starting", {
       stepId: step.id,
       stepTitle: step.title,
       hasHandoff: handoffData !== null && handoffData !== undefined,
-      hasValidationCriteria: validationCriteria !== null && validationCriteria !== undefined,
+      hasEvaluationCriteria: evaluationCriteria !== null && evaluationCriteria !== undefined,
     });
 
     // Extract handoff into trust-verify format
     const handoff = extractHandoff(handoffData);
 
     // Build evaluation criteria (default if not provided)
-    const criteria: ValidationCriteria = validationCriteria &&
-      typeof validationCriteria === "object" &&
-      "acceptance_criteria" in (validationCriteria as object)
-        ? (validationCriteria as ValidationCriteria)
+    const criteria: EvaluationCriteria = evaluationCriteria &&
+      typeof evaluationCriteria === "object" &&
+      "acceptance_criteria" in (evaluationCriteria as object)
+        ? (evaluationCriteria as EvaluationCriteria)
         : {
             acceptance_criteria: [],
             required_tests: false,

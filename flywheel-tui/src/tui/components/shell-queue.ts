@@ -93,7 +93,7 @@ const SLASH_COMMAND_STEP_TYPES: Record<string, StepType> = {
  * Build a Queue for a slash command.
  *
  * For `/work` and `/plan` with auto_chain enabled, creates a multi-step
- * pipeline-like queue. Otherwise creates a single-step queue.
+ * multi-step queue. Otherwise creates a single-step queue.
  *
  * @param command The slash command name (without /)
  * @param config FlywheelConfig
@@ -111,7 +111,7 @@ export function buildQueueForSlashCommand(command: string, config: FlywheelConfi
     }]);
   }
 
-  // For auto_chain pipelines, use the template system
+  // For auto_chain queues, use the template system
   if (config.auto_chain) {
     if (command === "plan") {
       return buildQueue("plan-work-review", config);

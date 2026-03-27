@@ -90,7 +90,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "worker output",
-      validationCriteria: { acceptance_criteria: ["must be valid"], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: ["must be valid"], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: ["src/index.ts"],
     });
 
@@ -114,7 +114,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "worker output",
-      validationCriteria: { acceptance_criteria: ["must be valid"], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: ["must be valid"], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: ["src/index.ts"],
     });
 
@@ -140,7 +140,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "worker output",
-      validationCriteria: { acceptance_criteria: ["must have tests"], required_tests: true, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: ["must have tests"], required_tests: true, custom_checks: [], required_outputs: [] },
       contextFiles: ["src/index.ts"],
     });
 
@@ -168,7 +168,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -196,7 +196,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -220,7 +220,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -246,7 +246,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -274,7 +274,7 @@ describe("Evaluator — re-prompt cycles", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -312,7 +312,7 @@ describe("Evaluator — timeout handling", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "worker output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -336,7 +336,7 @@ describe("Evaluator — timeout handling", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -357,7 +357,7 @@ describe("Evaluator — timeout handling", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -396,7 +396,7 @@ describe("Evaluator — skip_evaluation config", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -418,7 +418,7 @@ describe("Evaluator — skip_evaluation config", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -438,7 +438,7 @@ describe("Evaluator — skip_evaluation config", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -472,7 +472,7 @@ describe("Evaluator — transport interface", () => {
 
     await evaluator.evaluate({
       workerOutput: "worker output text",
-      validationCriteria: { acceptance_criteria: ["must pass all tests"], required_tests: true, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: ["must pass all tests"], required_tests: true, custom_checks: [], required_outputs: [] },
       contextFiles: ["src/main.ts", "tests/main.test.ts"],
     });
 
@@ -501,7 +501,7 @@ describe("Evaluator — transport interface", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -520,7 +520,7 @@ describe("Evaluator — transport interface", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
       acceptanceCriteria: ["tests pass"],
       artifactsProduced: ["src/new.ts"],
@@ -535,7 +535,7 @@ describe("Evaluator — transport interface", () => {
     expect(inputs()[0].duration_seconds).toBe(30);
   });
 
-  it("merges acceptance_criteria from structured ValidationCriteria", async () => {
+  it("merges acceptance_criteria from structured EvaluationCriteria", async () => {
     const { transport, inputs } = createMockTransport([passingResult()]);
 
     const evaluator = new Evaluator({
@@ -546,7 +546,7 @@ describe("Evaluator — transport interface", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: {
+      evaluationCriteria: {
         acceptance_criteria: ["from-criteria"],
         required_tests: false,
         custom_checks: [],
@@ -573,7 +573,7 @@ describe("Evaluator — transport interface", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -617,7 +617,7 @@ describe("Evaluator — failure definitions", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -646,7 +646,7 @@ describe("Evaluator — failure definitions", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -666,7 +666,7 @@ describe("Evaluator — failure definitions", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -703,7 +703,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -722,7 +722,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -746,7 +746,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -768,7 +768,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -791,7 +791,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -810,7 +810,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 
@@ -832,7 +832,7 @@ describe("Evaluator — event emission", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+      evaluationCriteria: { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
       contextFiles: [],
     });
 

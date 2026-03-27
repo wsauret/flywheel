@@ -8,7 +8,7 @@
 import type { EvaluatorTransport } from "./transport";
 import type { EvaluatorResult } from "../schemas/evaluator";
 import type { FlywheelEmitter } from "../events/event-bus";
-import type { ValidationCriteria } from "../schemas/shared";
+import type { EvaluationCriteria } from "../schemas/shared";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -22,11 +22,11 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 // ---------------------------------------------------------------------------
 
 /**
- * Serialize a `ValidationCriteria` object to a human-readable string for the
+ * Serialize a `EvaluationCriteria` object to a human-readable string for the
  * evaluator prompt.
  */
-function serializeValidationCriteria(
-  criteria: ValidationCriteria,
+function serializeEvaluationCriteria(
+  criteria: EvaluationCriteria,
 ): string {
   const parts: string[] = [];
   if (criteria.acceptance_criteria.length > 0) {
@@ -68,7 +68,7 @@ export interface EvaluatorOptions {
 
 export interface EvaluateOptions {
   workerOutput: string;
-  validationCriteria: ValidationCriteria;
+  evaluationCriteria: EvaluationCriteria;
   contextFiles: string[];
   acceptanceCriteria?: string[];
   artifactsProduced?: string[];
@@ -140,13 +140,13 @@ export class Evaluator {
    *
    * `evaluator:invoked` is emitted exactly once before the retry loop.
    *
-   * `validationCriteria` accepts a structured `ValidationCriteria` object
+   * `evaluationCriteria` accepts a structured `EvaluationCriteria` object
    * (from DispatcherDecision). Objects are serialized to a string before
    * being passed to the evaluator transport.
    *
    * Additional optional fields (`acceptanceCriteria`, `artifactsProduced`,
    * `testsPassed`, `durationSeconds`) are forwarded to the evaluator input
-   * when provided. If `validationCriteria` is a structured object, its
+   * when provided. If `evaluationCriteria` is a structured object, its
    * `acceptance_criteria` are merged with the explicit `acceptanceCriteria`.
    */
   async evaluate(options: EvaluateOptions): Promise<EvaluationResult> {
@@ -157,7 +157,7 @@ export class Evaluator {
 
     const {
       workerOutput,
-      validationCriteria,
+      evaluationCriteria,
       contextFiles,
       artifactsProduced,
       testsPassed,
@@ -167,11 +167,11 @@ export class Evaluator {
       stepContext,
     } = options;
 
-    // Serialize structured ValidationCriteria to string for the evaluator transport
-    const criteriaString = serializeValidationCriteria(validationCriteria);
+    // Serialize structured EvaluationCriteria to string for the evaluator transport
+    const criteriaString = serializeEvaluationCriteria(evaluationCriteria);
 
     // Merge acceptance_criteria: explicit + extracted from structured criteria
-    const extractedCriteria = validationCriteria.acceptance_criteria;
+    const extractedCriteria = evaluationCriteria.acceptance_criteria;
     const explicitCriteria = options.acceptanceCriteria ?? [];
     const mergedCriteria = [...new Set([...explicitCriteria, ...extractedCriteria])];
 
@@ -257,7 +257,7 @@ export class Evaluator {
 
   private async invokeWithTimeout(
     workerOutput: string,
-    validationCriteria: string,
+    evaluationCriteria: string,
     contextFiles: string[],
     acceptanceCriteria: string[],
     artifactsProduced: string[],
@@ -269,7 +269,7 @@ export class Evaluator {
   ): Promise<EvaluatorResult> {
     const input: import("../schemas/evaluator").EvaluatorInput = {
       worker_output: workerOutput,
-      evaluation_criteria: validationCriteria,
+      evaluation_criteria: evaluationCriteria,
       context_files: contextFiles,
       acceptance_criteria: acceptanceCriteria,
       artifacts_produced: artifactsProduced,

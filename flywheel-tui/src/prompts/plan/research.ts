@@ -9,7 +9,7 @@ import {
 } from "../conventions.js";
 import { renderHandoffInstruction, PLAN_RESEARCH_FIELDS } from "../../handoff/field-specs.js";
 
-export const planResearchValidationCriteria =
+export const planResearchEvaluationCriteria =
   "Produces a .context.md file with file references and patterns";
 
 /**

@@ -72,7 +72,7 @@ The loop then passes the fully assembled prompt to `executor.execute()` at `:499
 - The dispatcher's role as a "prompt engineering specialist" (`:38`)
 - Input schema: `plan.phases[]`, `state`, `context.files[]`, `workflow`, `config`, `session_budget`, `available_context` (`:42-52`)
 - Three-level context injection rules (`:54-56`): L1 metadata in `available_context`, L2 targeted inline via `context_to_inline` (8KB cap, controller-injected), L3 on-demand via `context_files` (worker reads)
-- Output schema requiring `task_content`, `context_files`, `context_to_inline`, `validation_criteria`, plus optional `reasoning`, `warnings`, `session_name`, `worker_config` (`:62-90`)
+- Output schema requiring `task_content`, `context_files`, `context_to_inline`, `evaluation_criteria`, plus optional `reasoning`, `warnings`, `session_name`, `worker_config` (`:62-90`)
 - Rules: `task_content` describes WHAT not HOW; behavioral instructions come from system templates (`:94`)
 
 `buildTruncationNotes()` at `:16-35` produces an optional `## Truncation Warnings` block when `plan_truncated` or `history_truncated` are true.
@@ -123,7 +123,7 @@ The execution loop calls this via its private `getDispatcherDecision()` helper a
 
 Each template is a pure function `(ctx: WorkflowStepContext) => string`. The `WorkflowStepContext` interface at `src/prompts/index.ts:10-23` provides: `planContent`, `keyDecisions`, `fileReferences`, `previousResult`, `projectCwd`, `extra`.
 
-Fallback generic prompt at `:119-141` constructs markdown from `step.description`, `step.dispatcherHint`, and `step.validationCriteria`.
+Fallback generic prompt at `:119-141` constructs markdown from `step.description`, `step.dispatcherHint`, and `step.evaluationCriteria`.
 
 ### 7. L2 Context Inlining
 
@@ -173,7 +173,7 @@ Fallback generic prompt at `:119-141` constructs markdown from `step.description
 
 **`DispatcherInputSchema`** (`:49-66`): `plan`, `state`, `context`, `plan_truncated`, `history_truncated`, `workflow_id`, `workflow`, `last_worker_result`, `config`, `session_budget`, `available_context`
 
-**`DispatcherDecisionSchema`** (`:73-88`): `schema_version: 1`, `phase_index`, `task_content`, `context_files`, `context_to_inline?`, `validation_criteria`, `reasoning?`, `warnings?`, `worker_config?`, `session_name?`
+**`DispatcherDecisionSchema`** (`:73-88`): `schema_version: 1`, `phase_index`, `task_content`, `context_files`, `context_to_inline?`, `evaluation_criteria`, `reasoning?`, `warnings?`, `worker_config?`, `session_name?`
 
 ### 11. File Caching and Context Parsing
 

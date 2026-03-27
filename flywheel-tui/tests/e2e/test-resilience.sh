@@ -113,7 +113,7 @@ const workerFn: WorkerFn = async (step, _prompt) => {
 
 const dispatcherFn: DispatcherFn = async (step, _ctx) => ({
   prompt: `Execute: ${step.title}`,
-  validationCriteria: null,
+  evaluationCriteria: null,
 })
 
 const handoffReaderFn = async () => ({ summary: "Done" })
@@ -294,7 +294,7 @@ const workerFn: WorkerFn = async (step, _prompt) => {
 
 const dispatcherFn: DispatcherFn = async (step, _ctx) => ({
   prompt: `Execute: ${step.title}`,
-  validationCriteria: null,
+  evaluationCriteria: null,
 })
 
 const handoffReaderFn = async () => ({ summary: "Done" })
@@ -501,7 +501,7 @@ const workerFn: WorkerFn = async (step, _prompt) => {
 
 const dispatcherFn: DispatcherFn = async (step, _ctx) => ({
   prompt: `Execute: ${step.title}`,
-  validationCriteria: null,
+  evaluationCriteria: null,
 })
 
 // Budget: exhausted after the first step completes
@@ -690,7 +690,7 @@ if (loadedQueue) {
 
   const dispatcherFn: DispatcherFn = async (step, _ctx) => ({
     prompt: `Execute: ${step.title}`,
-    validationCriteria: null,
+    evaluationCriteria: null,
   })
 
   const executor = createStepExecutor({
@@ -784,7 +784,7 @@ const dispatcherFn: DispatcherFn = async (step, context) => {
     stepTitle: step.title,
     context: JSON.parse(JSON.stringify(context)),
   })
-  return { prompt: `Execute: ${step.title}`, validationCriteria: null }
+  return { prompt: `Execute: ${step.title}`, evaluationCriteria: null }
 }
 
 const workerFn: WorkerFn = async (step, _prompt) => ({

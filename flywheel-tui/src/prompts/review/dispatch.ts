@@ -6,7 +6,7 @@ import {
 } from "../conventions.js";
 import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
 
-export const reviewDispatchValidationCriteria =
+export const reviewDispatchEvaluationCriteria =
   "Each reviewer returns findings categorized by severity (P1/P2/P3) with file:line references, or confirms no issues if changes are clean. Findings must be in structured format with Summary, Findings table, Minor Findings, and Implementation Order sections.";
 
 /**

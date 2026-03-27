@@ -27,7 +27,7 @@ import { EvaluatorVerdictSchema } from "../../src/schemas/handoff";
 function validVerdict(overrides?: Partial<import("../../src/schemas/handoff").EvaluatorVerdict>) {
   return {
     passed: true,
-    reasoning: "All validation criteria met",
+    reasoning: "All evaluation criteria met",
     suggestions: [],
     confidence: 0.9,
     feedback: "Good work",
@@ -630,7 +630,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     expect(prompt).toContain("tests/auth.test.ts");
   });
 
-  it("still includes validation criteria, timing, and instructions alongside handoff data", async () => {
+  it("still includes evaluation criteria, timing, and instructions alongside handoff data", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -646,7 +646,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Validation Criteria");
+    expect(prompt).toContain("## Evaluation Criteria");
     expect(prompt).toContain("All tests must pass");
     expect(prompt).toContain("## Timing");
     expect(prompt).toContain("42s");

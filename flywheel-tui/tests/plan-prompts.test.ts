@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test";
-import { buildPlanDraftPrompt, planDraftValidationCriteria } from "../src/prompts/plan/draft";
-import { buildPlanReviewPrompt, planReviewValidationCriteria } from "../src/prompts/plan/review";
-import { buildPlanConsolidatePrompt, planConsolidateValidationCriteria } from "../src/prompts/plan/consolidate";
-import { buildPlanResearchPrompt, planResearchValidationCriteria } from "../src/prompts/plan/research";
+import { buildPlanDraftPrompt, planDraftEvaluationCriteria } from "../src/prompts/plan/draft";
+import { buildPlanReviewPrompt, planReviewEvaluationCriteria } from "../src/prompts/plan/review";
+import { buildPlanConsolidatePrompt, planConsolidateEvaluationCriteria } from "../src/prompts/plan/consolidate";
+import { buildPlanResearchPrompt, planResearchEvaluationCriteria } from "../src/prompts/plan/research";
 import { planWorkflow } from "../src/workflows/plan";
 import type { WorkflowStepContext } from "../src/prompts/index";
 
@@ -162,25 +162,25 @@ describe("buildPlanDraftPrompt (JSON output)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// planDraftValidationCriteria — references JSON
+// planDraftEvaluationCriteria — references JSON
 // ---------------------------------------------------------------------------
 
-describe("planDraftValidationCriteria", () => {
+describe("planDraftEvaluationCriteria", () => {
   test("references JSON plan format", () => {
-    expect(planDraftValidationCriteria).toContain("JSON");
-    expect(planDraftValidationCriteria).toContain(".plan.json");
+    expect(planDraftEvaluationCriteria).toContain("JSON");
+    expect(planDraftEvaluationCriteria).toContain(".plan.json");
   });
 
   test("references steps, behavioralContract, decisions, risks", () => {
-    expect(planDraftValidationCriteria).toContain("steps");
-    expect(planDraftValidationCriteria).toContain("behavioralContract");
-    expect(planDraftValidationCriteria).toContain("decisions");
-    expect(planDraftValidationCriteria).toContain("risks");
+    expect(planDraftEvaluationCriteria).toContain("steps");
+    expect(planDraftEvaluationCriteria).toContain("behavioralContract");
+    expect(planDraftEvaluationCriteria).toContain("decisions");
+    expect(planDraftEvaluationCriteria).toContain("risks");
   });
 
   test("does NOT reference markdown format", () => {
-    expect(planDraftValidationCriteria).not.toContain("phases");
-    expect(planDraftValidationCriteria).not.toContain("checklist");
+    expect(planDraftEvaluationCriteria).not.toContain("phases");
+    expect(planDraftEvaluationCriteria).not.toContain("checklist");
   });
 });
 
@@ -382,29 +382,29 @@ describe("buildPlanReviewPrompt (JSON annotation)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// planReviewValidationCriteria — references annotated JSON
+// planReviewEvaluationCriteria — references annotated JSON
 // ---------------------------------------------------------------------------
 
-describe("planReviewValidationCriteria", () => {
+describe("planReviewEvaluationCriteria", () => {
   test("references annotated JSON", () => {
-    expect(planReviewValidationCriteria).toContain("Annotated JSON");
+    expect(planReviewEvaluationCriteria).toContain("Annotated JSON");
   });
 
   test("references review findings", () => {
-    expect(planReviewValidationCriteria).toContain("review findings");
+    expect(planReviewEvaluationCriteria).toContain("review findings");
   });
 
   test("references openQuestions", () => {
-    expect(planReviewValidationCriteria).toContain("openQuestions");
+    expect(planReviewEvaluationCriteria).toContain("openQuestions");
   });
 
   test("references draft fields unmodified", () => {
-    expect(planReviewValidationCriteria).toContain("Draft fields unmodified");
+    expect(planReviewEvaluationCriteria).toContain("Draft fields unmodified");
   });
 
   test("does NOT reference markdown format", () => {
-    expect(planReviewValidationCriteria).not.toContain("P1/P2/P3 categorized findings");
-    expect(planReviewValidationCriteria).not.toContain("Plan Review Summary");
+    expect(planReviewEvaluationCriteria).not.toContain("P1/P2/P3 categorized findings");
+    expect(planReviewEvaluationCriteria).not.toContain("Plan Review Summary");
   });
 });
 
@@ -415,17 +415,17 @@ describe("planReviewValidationCriteria", () => {
 describe("planWorkflow definition — step 2 (review)", () => {
   test("step 2 (review) validation criteria references annotated JSON", () => {
     const reviewStep = planWorkflow.steps[2];
-    expect(reviewStep.validationCriteria).toContain("Annotated JSON");
+    expect(reviewStep.evaluationCriteria).toContain("Annotated JSON");
   });
 
   test("step 2 (review) validation criteria references openQuestions", () => {
     const reviewStep = planWorkflow.steps[2];
-    expect(reviewStep.validationCriteria).toContain("openQuestions");
+    expect(reviewStep.evaluationCriteria).toContain("openQuestions");
   });
 
   test("step 2 (review) validation criteria references draft fields unmodified", () => {
     const reviewStep = planWorkflow.steps[2];
-    expect(reviewStep.validationCriteria).toContain("Draft fields unmodified");
+    expect(reviewStep.evaluationCriteria).toContain("Draft fields unmodified");
   });
 
   test("step 2 (review) dispatcher hint mentions 6 reviewer subagents", () => {
@@ -452,7 +452,7 @@ describe("buildPlanResearchPrompt (unchanged)", () => {
   });
 
   test("research validation criteria references .context.md", () => {
-    expect(planResearchValidationCriteria).toContain(".context.md");
+    expect(planResearchEvaluationCriteria).toContain(".context.md");
   });
 });
 
@@ -464,21 +464,21 @@ describe("planWorkflow definition", () => {
   test("step 1 (draft) validation criteria references JSON", () => {
     // step 0 = research, step 1 = draft
     const draftStep = planWorkflow.steps[1];
-    expect(draftStep.validationCriteria).toContain("JSON");
-    expect(draftStep.validationCriteria).toContain(".plan.json");
+    expect(draftStep.evaluationCriteria).toContain("JSON");
+    expect(draftStep.evaluationCriteria).toContain(".plan.json");
   });
 
   test("step 0 (research) validation criteria unchanged (references .context.md)", () => {
     const researchStep = planWorkflow.steps[0];
-    expect(researchStep.validationCriteria).toContain(".context.md");
+    expect(researchStep.evaluationCriteria).toContain(".context.md");
   });
 
   test("step 1 (draft) references steps, behavioralContract, decisions, risks", () => {
     const draftStep = planWorkflow.steps[1];
-    expect(draftStep.validationCriteria).toContain("steps");
-    expect(draftStep.validationCriteria).toContain("behavioralContract");
-    expect(draftStep.validationCriteria).toContain("decisions");
-    expect(draftStep.validationCriteria).toContain("risks");
+    expect(draftStep.evaluationCriteria).toContain("steps");
+    expect(draftStep.evaluationCriteria).toContain("behavioralContract");
+    expect(draftStep.evaluationCriteria).toContain("decisions");
+    expect(draftStep.evaluationCriteria).toContain("risks");
   });
 });
 
@@ -755,33 +755,33 @@ describe("buildPlanConsolidatePrompt — HITL question resolution", () => {
 });
 
 // ---------------------------------------------------------------------------
-// planConsolidateValidationCriteria — references clean JSON
+// planConsolidateEvaluationCriteria — references clean JSON
 // ---------------------------------------------------------------------------
 
-describe("planConsolidateValidationCriteria", () => {
+describe("planConsolidateEvaluationCriteria", () => {
   test("references clean JSON", () => {
-    expect(planConsolidateValidationCriteria).toContain("JSON");
+    expect(planConsolidateEvaluationCriteria).toContain("JSON");
   });
 
   test("references .flywheel/plans/", () => {
-    expect(planConsolidateValidationCriteria).toContain(".flywheel/plans/");
+    expect(planConsolidateEvaluationCriteria).toContain(".flywheel/plans/");
   });
 
   test("references review findings merged", () => {
-    expect(planConsolidateValidationCriteria).toContain("review findings merged");
+    expect(planConsolidateEvaluationCriteria).toContain("review findings merged");
   });
 
   test("references P1 addressed", () => {
-    expect(planConsolidateValidationCriteria).toContain("P1 addressed");
+    expect(planConsolidateEvaluationCriteria).toContain("P1 addressed");
   });
 
   test("references no review annotations remaining", () => {
-    expect(planConsolidateValidationCriteria).toContain("no review annotations");
+    expect(planConsolidateEvaluationCriteria).toContain("no review annotations");
   });
 
   test("does NOT reference markdown format", () => {
-    expect(planConsolidateValidationCriteria).not.toContain(".md");
-    expect(planConsolidateValidationCriteria).not.toContain("Implementation Checklist");
+    expect(planConsolidateEvaluationCriteria).not.toContain(".md");
+    expect(planConsolidateEvaluationCriteria).not.toContain("Implementation Checklist");
   });
 });
 
@@ -792,22 +792,22 @@ describe("planConsolidateValidationCriteria", () => {
 describe("planWorkflow definition — step 3 (consolidation)", () => {
   test("step 3 validation criteria references clean JSON", () => {
     const consolidationStep = planWorkflow.steps[3];
-    expect(consolidationStep.validationCriteria).toContain("JSON");
+    expect(consolidationStep.evaluationCriteria).toContain("JSON");
   });
 
   test("step 3 validation criteria references .flywheel/plans/", () => {
     const consolidationStep = planWorkflow.steps[3];
-    expect(consolidationStep.validationCriteria).toContain(".flywheel/plans/");
+    expect(consolidationStep.evaluationCriteria).toContain(".flywheel/plans/");
   });
 
   test("step 3 validation criteria references review findings merged", () => {
     const consolidationStep = planWorkflow.steps[3];
-    expect(consolidationStep.validationCriteria).toContain("review findings merged");
+    expect(consolidationStep.evaluationCriteria).toContain("review findings merged");
   });
 
   test("step 3 validation criteria references no review annotations remaining", () => {
     const consolidationStep = planWorkflow.steps[3];
-    expect(consolidationStep.validationCriteria).toContain("no review annotations");
+    expect(consolidationStep.evaluationCriteria).toContain("no review annotations");
   });
 
   test("step 3 dispatcher hint mentions consolidation", () => {

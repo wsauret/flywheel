@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------------------
 
 import { Log } from "../utils/log";
-import type { ValidationCriteria } from "../schemas/shared";
+import type { EvaluationCriteria } from "../schemas/shared";
 
 const log = Log.create({ service: "evaluator-trust-verify" });
 
@@ -129,7 +129,7 @@ export interface TrustVerifyEvaluatorOptions {
   /** Working directory for commands */
   cwd: string;
   /** Optional callback for testing — called with handoff and criteria */
-  onEvaluate?: (handoff: TrustVerifyHandoff, criteria: ValidationCriteria) => void;
+  onEvaluate?: (handoff: TrustVerifyHandoff, criteria: EvaluationCriteria) => void;
   /** Command timeout in ms (default: 30_000) */
   commandTimeoutMs?: number;
 }
@@ -140,7 +140,7 @@ export interface TrustVerifyEvaluatorOptions {
 
 export type TrustVerifyEvaluatorFn = (
   handoff: TrustVerifyHandoff,
-  evaluationCriteria: ValidationCriteria,
+  evaluationCriteria: EvaluationCriteria,
 ) => Promise<TrustVerifyAssessment>;
 
 // ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ export function createTrustVerifyEvaluator(
 
   return async function evaluate(
     handoff: TrustVerifyHandoff,
-    evaluationCriteria: ValidationCriteria,
+    evaluationCriteria: EvaluationCriteria,
   ): Promise<TrustVerifyAssessment> {
     // Notify test observer
     if (onEvaluate) {

@@ -96,7 +96,7 @@ describe("VAL-RETRY-001: Valid passed:false returns immediately without retry", 
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -119,7 +119,7 @@ describe("VAL-RETRY-001: Valid passed:false returns immediately without retry", 
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -161,7 +161,7 @@ describe("VAL-RETRY-002: Transport parse/schema errors retry up to maxCycles", (
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -187,7 +187,7 @@ describe("VAL-RETRY-002: Transport parse/schema errors retry up to maxCycles", (
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -215,7 +215,7 @@ describe("VAL-RETRY-002: Transport parse/schema errors retry up to maxCycles", (
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -260,7 +260,7 @@ describe("VAL-RETRY-003: evaluator:invoked emitted exactly once per evaluation",
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -281,7 +281,7 @@ describe("VAL-RETRY-003: evaluator:invoked emitted exactly once per evaluation",
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -300,7 +300,7 @@ describe("VAL-RETRY-003: evaluator:invoked emitted exactly once per evaluation",
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -319,7 +319,7 @@ describe("VAL-RETRY-003: evaluator:invoked emitted exactly once per evaluation",
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -355,7 +355,7 @@ describe("VAL-RETRY-005: passed:true returns immediately", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -394,7 +394,7 @@ describe("VAL-RETRY-006: Timeout returns as skipped", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -414,7 +414,7 @@ describe("VAL-RETRY-006: Timeout returns as skipped", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -434,7 +434,7 @@ describe("VAL-RETRY-006: Timeout returns as skipped", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -474,7 +474,7 @@ describe("VAL-RETRY-007: maxCycles controls error retries only", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -499,7 +499,7 @@ describe("VAL-RETRY-007: maxCycles controls error retries only", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -526,7 +526,7 @@ describe("VAL-RETRY-007: maxCycles controls error retries only", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -575,7 +575,7 @@ describe("VAL-RETRY-008: evaluator:invoked adapter idempotency", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -594,7 +594,7 @@ describe("VAL-RETRY-008: evaluator:invoked adapter idempotency", () => {
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -634,7 +634,7 @@ describe("EvaluationResult carries evaluator feedback fields", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -655,7 +655,7 @@ describe("EvaluationResult carries evaluator feedback fields", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 
@@ -687,7 +687,7 @@ describe("EvaluationResult carries evaluator feedback fields", () => {
 
     const result = await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: defaultCriteria,
+      evaluationCriteria: defaultCriteria,
       contextFiles: [],
     });
 

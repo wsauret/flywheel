@@ -17,7 +17,7 @@ import { SessionSchema, migrateSession } from "../src/schemas/session";
 import { WorkflowDefinitionSchema } from "../src/schemas/workflow";
 import { ExecutionStatusSchema, SessionStatusSchema } from "../src/schemas/execution";
 import {
-  ValidationCriteriaSchema,
+  EvaluationCriteriaSchema,
   ToolScopingSchema,
   SessionBudgetStatusSchema,
   WorkerConfigSchema,
@@ -161,7 +161,7 @@ describe("DispatcherDecisionSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("requires evaluation_criteria as ValidationCriteria object", () => {
+  it("requires evaluation_criteria as EvaluationCriteria object", () => {
     const criteria = {
       acceptance_criteria: ["tests pass", "no regressions"],
       required_tests: true,
@@ -866,7 +866,7 @@ describe("WorkflowDefinitionSchema", () => {
       {
         description: "Implement the feature",
         dispatcherHint: "Use TDD",
-        validationCriteria: "Tests pass",
+        evaluationCriteria: "Tests pass",
         requiredOutputs: ["src/feature.ts"],
         dependencies: [],
       },
@@ -935,7 +935,7 @@ describe("ExecutionStatusSchema", () => {
 // Shared Sub-Schemas (src/schemas/shared.ts)
 // ---------------------------------------------------------------------------
 
-describe("ValidationCriteriaSchema", () => {
+describe("EvaluationCriteriaSchema", () => {
   const valid = {
     acceptance_criteria: ["tests pass", "no regressions"],
     required_tests: true,
@@ -944,12 +944,12 @@ describe("ValidationCriteriaSchema", () => {
   };
 
   it("round-trips valid data", () => {
-    const result = ValidationCriteriaSchema.parse(valid);
+    const result = EvaluationCriteriaSchema.parse(valid);
     expect(result).toEqual(valid);
   });
 
   it("strips unknown fields", () => {
-    const result = ValidationCriteriaSchema.parse({
+    const result = EvaluationCriteriaSchema.parse({
       ...valid,
       hallucinated: "remove me",
     });
@@ -957,7 +957,7 @@ describe("ValidationCriteriaSchema", () => {
   });
 
   it("rejects missing required fields", () => {
-    const result = ValidationCriteriaSchema.safeParse({});
+    const result = EvaluationCriteriaSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });
@@ -1173,7 +1173,7 @@ describe("WorkflowStepBaseSchema", () => {
     const valid = {
       description: "Implement the feature",
       dispatcherHint: "Use TDD approach",
-      validationCriteria: "All tests pass",
+      evaluationCriteria: "All tests pass",
     };
     const result = WorkflowStepBaseSchema.parse(valid);
     expect(result).toEqual(valid);
@@ -1185,7 +1185,7 @@ describe("WorkflowStepBaseSchema", () => {
     });
     expect(result.description).toBe("Do something");
     expect(result.dispatcherHint).toBeUndefined();
-    expect(result.validationCriteria).toBeUndefined();
+    expect(result.evaluationCriteria).toBeUndefined();
   });
 
   it("rejects missing description", () => {
@@ -1740,7 +1740,7 @@ describe("Integration — full data contract flow", () => {
     const decision = DispatcherDecisionSchema.parse(fullDecision);
     const result = await evaluator.evaluate({
       workerOutput: "Feature implemented successfully. All tests pass.",
-      validationCriteria: decision.evaluation_criteria,
+      evaluationCriteria: decision.evaluation_criteria,
       contextFiles: decision.context_files,
       acceptanceCriteria: ["Manual review completed"],
       artifactsProduced: ["src/feature.ts", "tests/feature.test.ts"],
@@ -1945,7 +1945,7 @@ describe("Integration — full data contract flow", () => {
 
     const evalResult = await evaluator.evaluate({
       workerOutput: "Feature X implemented. Tests added and passing.",
-      validationCriteria: decision.evaluation_criteria,
+      evaluationCriteria: decision.evaluation_criteria,
       contextFiles: decision.context_files,
       artifactsProduced: ["src/feature-x.ts"],
       testsPassed: true,
@@ -1964,7 +1964,7 @@ describe("Integration — full data contract flow", () => {
     expect(parsedEvalInput.artifacts_produced).toEqual(["src/feature-x.ts"]);
     expect(parsedEvalInput.tests_passed).toBe(true);
     expect(parsedEvalInput.duration_seconds).toBe(60);
-    // acceptance_criteria merged from structured ValidationCriteria
+    // acceptance_criteria merged from structured EvaluationCriteria
     expect(parsedEvalInput.acceptance_criteria).toContain("Feature X works");
   });
 });

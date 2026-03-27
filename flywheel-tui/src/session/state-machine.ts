@@ -81,7 +81,7 @@ export function isValidTransition(
  * Returns an array of intermediate states (excluding `from`, including `to`),
  * or `null` if no path exists.
  *
- * Used by pipeline completion handlers to safely transition sessions that
+ * Used by queue completion handlers to safely transition sessions that
  * may be stuck in an intermediate state (e.g., "new") to a target state
  * (e.g., "work:paused") by chaining through required intermediate states.
  *

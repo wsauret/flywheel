@@ -86,55 +86,55 @@ describe("VAL-ALIGN-001: Research workflow step descriptions are task-adaptive",
 
     // Step 1: should NOT reference specific file scanning patterns
     expect(steps[0].description).not.toContain("parallel locator agents");
-    expect(steps[0].validationCriteria).not.toContain("File paths and line numbers");
+    expect(steps[0].evaluationCriteria).not.toContain("File paths and line numbers");
     // Should reference quality attributes generically
-    expect(steps[0].validationCriteria).toContain("Relevant");
+    expect(steps[0].evaluationCriteria).toContain("Relevant");
 
     // Step 2: should NOT reference specific file analysis
-    expect(steps[1].validationCriteria).not.toContain("Detailed analysis of each relevant file with code examples");
-    expect(steps[1].validationCriteria).toContain("relevant");
+    expect(steps[1].evaluationCriteria).not.toContain("Detailed analysis of each relevant file with code examples");
+    expect(steps[1].evaluationCriteria).toContain("relevant");
 
     // Step 3: should NOT enumerate specific section headings
-    expect(steps[2].validationCriteria).not.toContain("Codebase Map");
-    expect(steps[2].validationCriteria).not.toContain("Relevant Code");
-    expect(steps[2].validationCriteria).toContain("research");
+    expect(steps[2].evaluationCriteria).not.toContain("Codebase Map");
+    expect(steps[2].evaluationCriteria).not.toContain("Relevant Code");
+    expect(steps[2].evaluationCriteria).toContain("research");
   });
 });
 
 describe("VAL-ALIGN-002: Review workflow handles 'no issues found' as valid outcome", () => {
-  it("step 1 (multi-agent review) validationCriteria permits zero findings", async () => {
+  it("step 1 (multi-agent review) evaluationCriteria permits zero findings", async () => {
     const { reviewWorkflow } = await import("../src/workflows/review");
     const step1 = reviewWorkflow.steps[0]; // multi-agent review
 
-    expect(step1.validationCriteria).toContain("no issues");
+    expect(step1.evaluationCriteria).toContain("no issues");
   });
 
-  it("step 2 (consolidate) validationCriteria permits clean summary", async () => {
+  it("step 2 (consolidate) evaluationCriteria permits clean summary", async () => {
     const { reviewWorkflow } = await import("../src/workflows/review");
     const step2 = reviewWorkflow.steps[1]; // consolidate findings
 
-    expect(step2.validationCriteria).toContain("no significant issues");
+    expect(step2.evaluationCriteria).toContain("no significant issues");
   });
 });
 
 describe("VAL-ALIGN-003: Ship workflow handles trivial changes with no learnings", () => {
-  it("step 4 validationCriteria permits no-learnings outcome", async () => {
+  it("step 4 evaluationCriteria permits no-learnings outcome", async () => {
     const { shipWorkflow } = await import("../src/workflows/ship");
     const step4 = shipWorkflow.steps[3]; // extract learnings
 
-    expect(step4.validationCriteria).toContain("no significant learnings");
+    expect(step4.evaluationCriteria).toContain("no significant learnings");
   });
 });
 
 describe("VAL-ALIGN-004: Debug workflow handles non-code fixes", () => {
-  it("step 2 validationCriteria does not mandate file:line references for all fix types", async () => {
+  it("step 2 evaluationCriteria does not mandate file:line references for all fix types", async () => {
     const { debugWorkflow } = await import("../src/workflows/debug");
     const step2 = debugWorkflow.steps[1]; // apply fix
 
     // Should NOT hardcode file:line as the only reference format
-    expect(step2.validationCriteria).not.toContain("file:line references");
+    expect(step2.evaluationCriteria).not.toContain("file:line references");
     // Should accommodate non-code fixes
-    expect(step2.validationCriteria).toContain("references");
+    expect(step2.evaluationCriteria).toContain("references");
   });
 });
 
@@ -151,35 +151,35 @@ describe("VAL-ALIGN-009: Plan workflow step descriptions remain unchanged", () =
 
   it("plan workflow criteria are imported from prompt files (not hardcoded)", async () => {
     const { planWorkflow } = await import("../src/workflows/plan");
-    const { planResearchValidationCriteria } = await import("../src/prompts/plan/research");
-    const { planDraftValidationCriteria } = await import("../src/prompts/plan/draft");
-    const { planReviewValidationCriteria } = await import("../src/prompts/plan/review");
-    const { planConsolidateValidationCriteria } = await import("../src/prompts/plan/consolidate");
+    const { planResearchEvaluationCriteria } = await import("../src/prompts/plan/research");
+    const { planDraftEvaluationCriteria } = await import("../src/prompts/plan/draft");
+    const { planReviewEvaluationCriteria } = await import("../src/prompts/plan/review");
+    const { planConsolidateEvaluationCriteria } = await import("../src/prompts/plan/consolidate");
 
-    expect(planWorkflow.steps[0].validationCriteria).toBe(planResearchValidationCriteria);
-    expect(planWorkflow.steps[1].validationCriteria).toBe(planDraftValidationCriteria);
-    expect(planWorkflow.steps[2].validationCriteria).toBe(planReviewValidationCriteria);
-    expect(planWorkflow.steps[3].validationCriteria).toBe(planConsolidateValidationCriteria);
+    expect(planWorkflow.steps[0].evaluationCriteria).toBe(planResearchEvaluationCriteria);
+    expect(planWorkflow.steps[1].evaluationCriteria).toBe(planDraftEvaluationCriteria);
+    expect(planWorkflow.steps[2].evaluationCriteria).toBe(planReviewEvaluationCriteria);
+    expect(planWorkflow.steps[3].evaluationCriteria).toBe(planConsolidateEvaluationCriteria);
   });
 });
 
-describe("VAL-ALIGN-010: Workflow validationCriteria don't prescribe rigid output formats", () => {
+describe("VAL-ALIGN-010: Workflow evaluationCriteria don't prescribe rigid output formats", () => {
   it("research step 3 does not enumerate required section headings", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
     const step3 = researchWorkflow.steps[2];
 
-    expect(step3.validationCriteria).not.toContain("Codebase Map");
-    expect(step3.validationCriteria).not.toContain("Relevant Code");
-    expect(step3.validationCriteria).not.toContain("Patterns");
-    expect(step3.validationCriteria).not.toContain("Constraints");
-    expect(step3.validationCriteria).not.toContain("Open Questions");
+    expect(step3.evaluationCriteria).not.toContain("Codebase Map");
+    expect(step3.evaluationCriteria).not.toContain("Relevant Code");
+    expect(step3.evaluationCriteria).not.toContain("Patterns");
+    expect(step3.evaluationCriteria).not.toContain("Constraints");
+    expect(step3.evaluationCriteria).not.toContain("Open Questions");
   });
 
   it("debug step 2 criteria are flexible (not file:line only)", async () => {
     const { debugWorkflow } = await import("../src/workflows/debug");
     const step2 = debugWorkflow.steps[1];
 
-    expect(step2.validationCriteria).not.toContain("file:line");
+    expect(step2.evaluationCriteria).not.toContain("file:line");
   });
 });
 
@@ -242,7 +242,7 @@ describe("VAL-ALIGN-005: EvaluatorInput schema includes task_context field", () 
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: {
+      evaluationCriteria: {
         acceptance_criteria: [],
         required_tests: false,
         custom_checks: [],
@@ -270,7 +270,7 @@ describe("VAL-ALIGN-005: EvaluatorInput schema includes task_context field", () 
 
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: {
+      evaluationCriteria: {
         acceptance_criteria: [],
         required_tests: false,
         custom_checks: [],
@@ -387,7 +387,7 @@ describe("VAL-ALIGN-007: Execution loop passes task context to evaluator", () =>
     // Simulate what the execution loop would do: pass taskContext
     await evaluator.evaluate({
       workerOutput: "output",
-      validationCriteria: {
+      evaluationCriteria: {
         acceptance_criteria: ["Tests pass"],
         required_tests: true,
         custom_checks: [],
@@ -427,13 +427,13 @@ describe("VAL-ALIGN-008: Dispatcher system prompt doesn't prescribe fixed criter
 // Part C: Research workflow evaluator alignment
 // ---------------------------------------------------------------------------
 
-describe("VAL-EA-001: Research workflow validationCriteria reflect research output", () => {
+describe("VAL-EA-001: Research workflow evaluationCriteria reflect research output", () => {
   it("all research step criteria contain research-oriented vocabulary", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
     const researchVocab = ["sources", "findings", "document", "research", "relevant", "references"];
 
     for (const step of researchWorkflow.steps) {
-      const criteria = step.validationCriteria ?? "";
+      const criteria = step.evaluationCriteria ?? "";
       const hasResearchVocab = researchVocab.some((word) =>
         criteria.toLowerCase().includes(word),
       );
@@ -446,7 +446,7 @@ describe("VAL-EA-001: Research workflow validationCriteria reflect research outp
     const debuggingVocab = ["fix", "bug", "error", "stack trace", "debug", "crash", "exception"];
 
     for (const step of researchWorkflow.steps) {
-      const criteria = step.validationCriteria ?? "";
+      const criteria = step.evaluationCriteria ?? "";
       for (const word of debuggingVocab) {
         expect(criteria.toLowerCase()).not.toContain(word);
       }
@@ -454,8 +454,8 @@ describe("VAL-EA-001: Research workflow validationCriteria reflect research outp
   });
 });
 
-describe("VAL-EA-002: Research validationCriteria remain task-adaptive", () => {
-  it("no validationCriteria string contains specific markdown heading names", async () => {
+describe("VAL-EA-002: Research evaluationCriteria remain task-adaptive", () => {
+  it("no evaluationCriteria string contains specific markdown heading names", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
     const rigidHeadings = [
       "## Codebase Map",
@@ -470,33 +470,33 @@ describe("VAL-EA-002: Research validationCriteria remain task-adaptive", () => {
     ];
 
     for (const step of researchWorkflow.steps) {
-      const criteria = step.validationCriteria ?? "";
+      const criteria = step.evaluationCriteria ?? "";
       for (const heading of rigidHeadings) {
         expect(criteria).not.toContain(heading);
       }
     }
   });
 
-  it("no validationCriteria string contains ## heading markers at all", async () => {
+  it("no evaluationCriteria string contains ## heading markers at all", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
 
     for (const step of researchWorkflow.steps) {
-      const criteria = step.validationCriteria ?? "";
+      const criteria = step.evaluationCriteria ?? "";
       expect(criteria).not.toContain("##");
     }
   });
 });
 
-describe("VAL-EA-003: Plan step 0 validationCriteria reference .context.md", () => {
-  it("planWorkflow.steps[0].validationCriteria contains '.context.md'", async () => {
+describe("VAL-EA-003: Plan step 0 evaluationCriteria reference .context.md", () => {
+  it("planWorkflow.steps[0].evaluationCriteria contains '.context.md'", async () => {
     const { planWorkflow } = await import("../src/workflows/plan");
-    const criteria = planWorkflow.steps[0].validationCriteria ?? "";
+    const criteria = planWorkflow.steps[0].evaluationCriteria ?? "";
     expect(criteria).toContain(".context.md");
   });
 
-  it("planWorkflow.steps[0].validationCriteria references file references or patterns", async () => {
+  it("planWorkflow.steps[0].evaluationCriteria references file references or patterns", async () => {
     const { planWorkflow } = await import("../src/workflows/plan");
-    const criteria = planWorkflow.steps[0].validationCriteria ?? "";
+    const criteria = planWorkflow.steps[0].evaluationCriteria ?? "";
     expect(criteria).toContain("file references");
   });
 });
@@ -504,19 +504,19 @@ describe("VAL-EA-003: Plan step 0 validationCriteria reference .context.md", () 
 describe("VAL-EA-005: New evaluator-alignment tests for research criteria", () => {
   it("research step 0 criteria describe source identification", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
-    const criteria = researchWorkflow.steps[0].validationCriteria ?? "";
+    const criteria = researchWorkflow.steps[0].evaluationCriteria ?? "";
     expect(criteria.toLowerCase()).toContain("sources");
   });
 
   it("research step 1 criteria describe analysis of findings", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
-    const criteria = researchWorkflow.steps[1].validationCriteria ?? "";
+    const criteria = researchWorkflow.steps[1].evaluationCriteria ?? "";
     expect(criteria.toLowerCase()).toContain("findings");
   });
 
   it("research step 2 criteria describe a research document", async () => {
     const { researchWorkflow } = await import("../src/workflows/research");
-    const criteria = researchWorkflow.steps[2].validationCriteria ?? "";
+    const criteria = researchWorkflow.steps[2].evaluationCriteria ?? "";
     expect(criteria.toLowerCase()).toContain("document");
   });
 
@@ -529,7 +529,7 @@ describe("VAL-EA-005: New evaluator-alignment tests for research criteria", () =
     ];
 
     for (const step of researchWorkflow.steps) {
-      const criteria = step.validationCriteria ?? "";
+      const criteria = step.evaluationCriteria ?? "";
       for (const phrase of forbiddenPhrases) {
         expect(criteria.toLowerCase()).not.toContain(phrase.toLowerCase());
       }
@@ -544,7 +544,7 @@ describe("VAL-EA-005: New evaluator-alignment tests for research criteria", () =
     ];
 
     for (const step of researchWorkflow.steps) {
-      const criteria = step.validationCriteria ?? "";
+      const criteria = step.evaluationCriteria ?? "";
       for (const phrase of forbiddenArtifactPhrases) {
         expect(criteria.toLowerCase()).not.toContain(phrase.toLowerCase());
       }
@@ -570,8 +570,8 @@ describe("VAL-EA-006: Evaluator task_context is populated for research steps", (
 
     await evaluator.evaluate({
       workerOutput: "Located 15 relevant files for the research topic",
-      validationCriteria: {
-        acceptance_criteria: [researchWorkflow.steps[0].validationCriteria ?? ""],
+      evaluationCriteria: {
+        acceptance_criteria: [researchWorkflow.steps[0].evaluationCriteria ?? ""],
         required_tests: false,
         custom_checks: [],
         required_outputs: [],
@@ -608,8 +608,8 @@ describe("VAL-EA-006: Evaluator task_context is populated for research steps", (
       const step = researchWorkflow.steps[i];
       await evaluator.evaluate({
         workerOutput: `Step ${i} output`,
-        validationCriteria: {
-          acceptance_criteria: [step.validationCriteria ?? ""],
+        evaluationCriteria: {
+          acceptance_criteria: [step.evaluationCriteria ?? ""],
           required_tests: false,
           custom_checks: [],
           required_outputs: [],

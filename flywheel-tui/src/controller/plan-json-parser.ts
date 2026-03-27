@@ -2,8 +2,8 @@
 // JSON Plan Schema & Parser (ADR-004 Decision 5)
 //
 // Validates and parses JSON plan files produced by the plan draft step.
-// Replaces the markdown plan parser (plan-parser.ts) for the JSON-native
-// plan pipeline.
+// JSON-native plan parser (ADR-004 Decision 5) for the
+// plan queue flow.
 //
 // Three schema variants:
 //   PlanJsonSchema       — draft output (clean steps, no review annotations)

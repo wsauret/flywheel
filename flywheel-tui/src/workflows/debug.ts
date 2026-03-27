@@ -1,8 +1,8 @@
 import type { WorkflowDefinition } from "../schemas/workflow";
 import {
-  debugInvestigateValidationCriteria,
-  debugFixValidationCriteria,
-  debugVerifyValidationCriteria,
+  debugInvestigateEvaluationCriteria,
+  debugFixEvaluationCriteria,
+  debugVerifyEvaluationCriteria,
 } from "../prompts/debug/investigate";
 
 export const debugWorkflow: WorkflowDefinition = {
@@ -13,19 +13,19 @@ export const debugWorkflow: WorkflowDefinition = {
       description: "Investigate: gather context, form hypothesis",
       dispatcherHint:
         "Use debug/investigate prompt template. Read error output, search codebase, form hypothesis.",
-      validationCriteria: debugInvestigateValidationCriteria,
+      evaluationCriteria: debugInvestigateEvaluationCriteria,
     },
     {
       description: "Fix: apply minimum change to address root cause",
       dispatcherHint:
         "Apply smallest possible fix based on hypothesis. One logical change only.",
-      validationCriteria: debugFixValidationCriteria,
+      evaluationCriteria: debugFixEvaluationCriteria,
     },
     {
       description: "Verify: run verification command, confirm fix",
       dispatcherHint:
         "Run verification command and confirm the fix resolves the issue.",
-      validationCriteria: debugVerifyValidationCriteria,
+      evaluationCriteria: debugVerifyEvaluationCriteria,
     },
   ],
 };

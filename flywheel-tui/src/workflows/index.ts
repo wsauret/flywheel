@@ -2,7 +2,7 @@
  * Workflow definitions for all workflow types.
  *
  * Each workflow type has a definition that specifies steps, prompts,
- * and validation criteria. Execution is handled by the queue-based
+ * and evaluation criteria. Execution is handled by the queue-based
  * step executor (src/queue/executor.ts).
  */
 

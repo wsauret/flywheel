@@ -2,7 +2,7 @@ import type { WorkflowStepContext } from "../index.js";
 import { SCOPE_DISCIPLINE, FILE_LINE_DISCIPLINE } from "../conventions.js";
 import { renderHandoffInstruction, PLAN_DRAFT_FIELDS } from "../../handoff/field-specs.js";
 
-export const planDraftValidationCriteria =
+export const planDraftEvaluationCriteria =
   "Produces a JSON plan file (.plan.json) with steps[], behavioralContract[], decisions[], and risks[]";
 
 /**

@@ -2,7 +2,7 @@ import type { WorkflowStepContext } from "../index.js";
 import { renderHandoffInstruction, SHIP_FIELDS } from "../../handoff/field-specs.js";
 import { DEFAULT_SOLUTIONS_DIR } from "../../config/paths.js";
 
-export const shipCompoundValidationCriteria =
+export const shipCompoundEvaluationCriteria =
   "Learnings document created with categorized insights, or explicit statement that no significant learnings apply";
 
 /**

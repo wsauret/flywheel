@@ -59,7 +59,7 @@ export function createQuestionWiring({ eventBus, onQuestion, onClear }: Question
     for (const unsub of unsubs) unsub()
     // Clear display
     onClear()
-    // Reject all pending questions (prevents pipeline deadlock)
+    // Reject all pending questions (prevents queue deadlock)
     for (const pending of service.list()) {
       service.reject(pending.id)
     }

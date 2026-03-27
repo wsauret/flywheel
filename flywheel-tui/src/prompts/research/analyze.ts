@@ -7,7 +7,7 @@ import {
   buildProjectContextSection,
 } from "../conventions.js";
 
-export const researchAnalyzeValidationCriteria =
+export const researchAnalyzeEvaluationCriteria =
   "Findings extracted from sources with supporting references relevant to the research topic";
 
 /**

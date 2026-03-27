@@ -15,7 +15,7 @@ import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-spe
 // Main prompt builder
 // ---------------------------------------------------------------------------
 
-export const reviewFixValidationCriteria =
+export const reviewFixEvaluationCriteria =
   "All P1 findings addressed, P2 findings addressed where feasible, tests pass";
 
 /**
@@ -56,7 +56,7 @@ export function buildReviewFixPrompt(ctx: WorkflowStepContext): string {
 
   return `# Work Step Execution — Review Fix
 
-You are running in an automated pipeline. Do not ask questions. Implement all required fixes directly.
+You are running in an automated queue. Do not ask questions. Implement all required fixes directly.
 
 ## Task
 

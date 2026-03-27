@@ -48,7 +48,7 @@ export interface AutoDetectOptions {
   logBaseDir?: string;
 }
 
-// SdkSpawner singleton — shared across all pipelines in the same process.
+// SdkSpawner singleton — shared across all sessions in the same process.
 // Created once, reused until process exit.
 let _sdkSpawner: ProcessSpawner & { dispose(): void } | null = null;
 let _sdkSpawnerCreating: Promise<(ProcessSpawner & { dispose(): void }) | null> | null = null;

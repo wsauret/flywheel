@@ -9,6 +9,6 @@ export { buildResearchLocatePrompt } from "./locate.js";
 export { buildResearchAnalyzePrompt } from "./analyze.js";
 export { buildResearchPersistPrompt } from "./persist.js";
 
-export { researchLocateValidationCriteria } from "./locate.js";
-export { researchAnalyzeValidationCriteria } from "./analyze.js";
-export { researchPersistValidationCriteria } from "./persist.js";
+export { researchLocateEvaluationCriteria } from "./locate.js";
+export { researchAnalyzeEvaluationCriteria } from "./analyze.js";
+export { researchPersistEvaluationCriteria } from "./persist.js";

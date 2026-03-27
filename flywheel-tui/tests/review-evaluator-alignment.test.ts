@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
-import { reviewConsolidateValidationCriteria } from "../src/prompts/review/consolidate";
-import { reviewDispatchValidationCriteria } from "../src/prompts/review/dispatch";
-import { reviewFixValidationCriteria } from "../src/prompts/review/fix";
+import { reviewConsolidateEvaluationCriteria } from "../src/prompts/review/consolidate";
+import { reviewDispatchEvaluationCriteria } from "../src/prompts/review/dispatch";
+import { reviewFixEvaluationCriteria } from "../src/prompts/review/fix";
 import { reviewWorkflow } from "../src/workflows/review";
 import { DEFAULT_REVIEWS_DIR } from "../src/config/paths";
 import {
@@ -17,30 +17,30 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("review evaluator/worker path alignment", () => {
-  it("consolidate validationCriteria mentions .flywheel/reviews/ path pattern", () => {
-    expect(reviewConsolidateValidationCriteria).toContain(".flywheel/reviews/");
+  it("consolidate evaluationCriteria mentions .flywheel/reviews/ path pattern", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain(".flywheel/reviews/");
   });
 
-  it("consolidate validationCriteria mentions date-slug filename pattern", () => {
-    expect(reviewConsolidateValidationCriteria).toContain("<date>");
-    expect(reviewConsolidateValidationCriteria).toContain("<slug>");
+  it("consolidate evaluationCriteria mentions date-slug filename pattern", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain("<date>");
+    expect(reviewConsolidateEvaluationCriteria).toContain("<slug>");
   });
 
-  it("consolidate validationCriteria requires file path in output", () => {
-    expect(reviewConsolidateValidationCriteria).toContain("file path");
+  it("consolidate evaluationCriteria requires file path in output", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain("file path");
   });
 
-  it("consolidate validationCriteria still checks for review content quality", () => {
-    expect(reviewConsolidateValidationCriteria).toContain("P1/P2/P3");
-    expect(reviewConsolidateValidationCriteria).toContain("findings");
+  it("consolidate evaluationCriteria still checks for review content quality", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain("P1/P2/P3");
+    expect(reviewConsolidateEvaluationCriteria).toContain("findings");
   });
 
-  it("dispatch validationCriteria mentions severity categories", () => {
-    expect(reviewDispatchValidationCriteria).toContain("P1/P2/P3");
+  it("dispatch evaluationCriteria mentions severity categories", () => {
+    expect(reviewDispatchEvaluationCriteria).toContain("P1/P2/P3");
   });
 
-  it("dispatch validationCriteria mentions structured format", () => {
-    expect(reviewDispatchValidationCriteria).toContain("structured format");
+  it("dispatch evaluationCriteria mentions structured format", () => {
+    expect(reviewDispatchEvaluationCriteria).toContain("structured format");
   });
 
   it("review workflow consolidation step dispatcherHint mentions output path", () => {
@@ -49,7 +49,7 @@ describe("review evaluator/worker path alignment", () => {
   });
 
   it("DEFAULT_REVIEWS_DIR matches the path referenced in validation criteria", () => {
-    expect(reviewConsolidateValidationCriteria).toContain(
+    expect(reviewConsolidateEvaluationCriteria).toContain(
       DEFAULT_REVIEWS_DIR.replace(".flywheel/", ".flywheel/"),
     );
   });
@@ -60,11 +60,11 @@ describe("review evaluator/worker path alignment", () => {
 // ---------------------------------------------------------------------------
 
 describe("review workflow definition completeness", () => {
-  it("all review steps have validationCriteria", () => {
+  it("all review steps have evaluationCriteria", () => {
     for (const step of reviewWorkflow.steps) {
-      expect(step.validationCriteria).toBeTruthy();
-      expect(typeof step.validationCriteria).toBe("string");
-      expect(step.validationCriteria!.length).toBeGreaterThan(10);
+      expect(step.evaluationCriteria).toBeTruthy();
+      expect(typeof step.evaluationCriteria).toBe("string");
+      expect(step.evaluationCriteria!.length).toBeGreaterThan(10);
     }
   });
 
@@ -76,9 +76,9 @@ describe("review workflow definition completeness", () => {
     }
   });
 
-  it("fix step validationCriteria still checks quality", () => {
-    expect(reviewFixValidationCriteria).toContain("P1");
-    expect(reviewFixValidationCriteria).toContain("tests pass");
+  it("fix step evaluationCriteria still checks quality", () => {
+    expect(reviewFixEvaluationCriteria).toContain("P1");
+    expect(reviewFixEvaluationCriteria).toContain("tests pass");
   });
 });
 

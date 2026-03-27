@@ -397,7 +397,7 @@ export function FlywheelShell() {
           const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
           return {
             prompt: decision.taskContent,
-            validationCriteria: decision.evaluationCriteria,
+            evaluationCriteria: decision.evaluationCriteria,
           }
         } catch (err) {
           log.warn("real dispatcher failed, falling back to step metadata", {
@@ -412,7 +412,7 @@ export function FlywheelShell() {
         parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
       }
       if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
-      return { prompt: parts.join("\n"), validationCriteria: null }
+      return { prompt: parts.join("\n"), evaluationCriteria: null }
     }
 
     // Worker callback: spawn engine process
@@ -639,8 +639,6 @@ export function FlywheelShell() {
   void _autoFocusWorking
 
   // ── Workflow Lifecycle ──
-
-  // NOTE: startPipeline was removed — all execution now goes through startQueueExecution.
 
   /**
    * Start queue-based execution. Creates a new session, builds the queue,
@@ -1129,7 +1127,7 @@ export function FlywheelShell() {
   }
 
   /**
-   * Shut down pipeline/loop/controller runtime without touching
+   * Shut down queue runtime without touching
    * session, store, adapter, or subscriptions.
    *
    * Used by both teardownActiveWorkflow() (full cleanup) and
@@ -1241,7 +1239,7 @@ export function FlywheelShell() {
       activeBudgetTracker = null
     }
 
-    // Shut down pipeline, loop, and controller (but NOT session/adapter/store)
+    // Shut down queue runtime (but NOT session/adapter/store)
     _clearQueueRuntime()
 
     // Persist session state as work:paused and remove from sessionControllers
@@ -1265,7 +1263,7 @@ export function FlywheelShell() {
         type: "worker:output",
         workflowId: "queue-pause",
         stream: "stderr",
-        data: "⏸ Pipeline paused. Resume with /work or select from session sidebar.\n",
+        data: "⏸ Execution paused. Resume with /work or select from session sidebar.\n",
         timestamp: new Date().toISOString(),
       })
     }
@@ -1610,7 +1608,7 @@ export function FlywheelShell() {
       return
     }
 
-    // 5. Legacy fallback: resume via stage loop (non-queue sessions)
+    // 5. Legacy fallback: resume via legacy execution path (non-queue sessions)
     const session = createWorkflowSession(result.planPath)
     activeSession = session
     setActiveStore(session.store)
@@ -1694,7 +1692,7 @@ export function FlywheelShell() {
           workflowId: resumeCurrentWorkflowId,
           emitter: resumeEmitter,
           dispatcher: async (step, context) => {
-            return { prompt: `Execute work: resume plan at ${result.planPath}`, validationCriteria: null }
+            return { prompt: `Execute work: resume plan at ${result.planPath}`, evaluationCriteria: null }
           },
           worker: async (step, prompt) => {
             const engineCmd = deps.engine.buildCommand({
@@ -1818,12 +1816,12 @@ export function FlywheelShell() {
     }
 
     // Detach the live session references from the shell's "active" slots
-    // without destroying them. The session, controller, pipeline, and flusher
+    // without destroying them. The session, controller, queue, and flusher
     // continue to run — they're still tracked in sessionControllers/sessionStores.
     //
     // IMPORTANT: We null these refs so the shell doesn't try to interact with
     // them, but the queue's async closure captured its own local references.
-    // The pipeline will clean up sessionControllers when it finishes.
+    // The queue executor will clean up sessionControllers when it finishes.
     activeSession = null
     activeStepExecutor = null
     activeFlusher = null
@@ -1884,7 +1882,7 @@ export function FlywheelShell() {
 
   /**
    * /start flow: guided question wizard that collects a description and
-   * queue mode, then starts the appropriate pipeline.
+   * queue mode, then starts the appropriate queue.
    *
    * Questions happen BEFORE the queue starts. Uses a temporary EventBus
    * + QuestionService to drive the existing QuestionPrompt component.

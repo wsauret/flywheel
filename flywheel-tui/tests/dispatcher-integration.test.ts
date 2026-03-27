@@ -814,7 +814,7 @@ describe("StepDispatcher adapter for executor DispatcherFn", () => {
       previousAssessment: null,
     });
 
-    // Verify the adapter returns prompt and validationCriteria
+    // Verify the adapter returns prompt and evaluationCriteria
     expect(result.taskContent).toBe("Do the work for this step");
     expect(result.evaluationCriteria).toBeDefined();
     expect(result.evaluationCriteria!.acceptance_criteria).toContain("Feature works");

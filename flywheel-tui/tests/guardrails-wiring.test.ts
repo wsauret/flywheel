@@ -44,7 +44,7 @@ function makeExecutorOptions(
     emitter: makeEmitter(),
     dispatcher: async (step) => ({
       prompt: `Execute ${step.title}`,
-      validationCriteria: null,
+      evaluationCriteria: null,
     }),
     worker: async () => ({
       output: "done",
@@ -80,7 +80,7 @@ describe("Guardrails wiring into executor", () => {
       guardrails,
       dispatcher: async (_step, context) => {
         capturedContext = context;
-        return { prompt: "test", validationCriteria: null };
+        return { prompt: "test", evaluationCriteria: null };
       },
     });
 
@@ -110,7 +110,7 @@ describe("Guardrails wiring into executor", () => {
       guardrails,
       dispatcher: async (_step, context) => {
         capturedContext = context;
-        return { prompt: "test", validationCriteria: null };
+        return { prompt: "test", evaluationCriteria: null };
       },
     });
 
@@ -127,7 +127,7 @@ describe("Guardrails wiring into executor", () => {
       guardrails: null,
       dispatcher: async (_step, context) => {
         capturedContext = context;
-        return { prompt: "test", validationCriteria: null };
+        return { prompt: "test", evaluationCriteria: null };
       },
     });
 
@@ -154,7 +154,7 @@ describe("Guardrails wiring into executor", () => {
         if (context.mutation_budget) {
           capturedBudgets.push(context.mutation_budget as Record<string, unknown>);
         }
-        return { prompt: "test", validationCriteria: null };
+        return { prompt: "test", evaluationCriteria: null };
       },
     });
 
