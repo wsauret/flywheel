@@ -216,7 +216,8 @@ describe("Worker buildCommand is unchanged", () => {
     // Worker-specific flags should still be present
     expect(cmd.args).toContain("--print");
     expect(cmd.args).toContain("--output-format");
-    expect(cmd.args).toContain("--input-format");
+    // --input-format stream-json removed: worker receives plain-text stdin
+    expect(cmd.args).not.toContain("--input-format");
     expect(cmd.args).toContain("--dangerously-skip-permissions");
     expect(cmd.stdinPrompt).toBe(true);
   });

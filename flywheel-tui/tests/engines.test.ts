@@ -13,17 +13,16 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("Engine: claude", () => {
-  it("builds command with --print, --output-format stream-json, and --input-format stream-json", () => {
+  it("builds command with --print and --output-format stream-json (no --input-format for plain-text stdin)", () => {
     const cmd = claudeEngine.buildCommand({ prompt: "do stuff" });
 
     expect(cmd.command).toBe("claude");
     expect(cmd.args).toContain("--print");
     expect(cmd.args).toContain("--output-format");
     expect(cmd.args).toContain("stream-json");
-    expect(cmd.args).toContain("--input-format");
-    // Both --output-format and --input-format should have "stream-json" as their value
-    const inputIdx = cmd.args.indexOf("--input-format");
-    expect(cmd.args[inputIdx + 1]).toBe("stream-json");
+    // Worker receives plain-text prompt on stdin — --input-format stream-json
+    // would cause Claude Code to reject the input with a JSON parse error.
+    expect(cmd.args).not.toContain("--input-format");
   });
 
   it("passes model via --model flag when provided", () => {

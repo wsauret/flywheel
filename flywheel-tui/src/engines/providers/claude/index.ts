@@ -34,7 +34,6 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   const args: string[] = [
     "--print",
     "--output-format", "stream-json",
-    "--input-format", "stream-json",
     "--dangerously-skip-permissions",
   ];
 
