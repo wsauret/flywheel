@@ -77,28 +77,31 @@ describe("buildPlanDraftPrompt — behavioral contract instructions (JSON)", () 
 });
 
 // ---------------------------------------------------------------------------
-// Plan Consolidate Prompt — Validation Contract Instructions
+// Plan Consolidate Prompt — JSON consolidation (replaces validation contract)
 // ---------------------------------------------------------------------------
 
-describe("buildPlanConsolidatePrompt — validation contract instructions", () => {
-  it("instructs planner to generate validation-contract.md alongside plan", () => {
+describe("buildPlanConsolidatePrompt — JSON consolidation instructions", () => {
+  it("instructs producing clean JSON plan (no separate validation-contract.md)", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
-    expect(result).toContain("validation-contract.md");
+    expect(result).toContain(".plan.json");
+    // No separate validation contract file — behavioral contract is embedded in JSON
+    expect(result).not.toContain("validation-contract.md");
   });
 
-  it("includes milestone marker format instructions", () => {
+  it("instructs merging review findings into step content", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
-    expect(result).toContain("## Milestone:");
+    expect(result).toContain("Merge findings INTO steps");
+    expect(result).toContain("P1 findings are mandatory");
   });
 
-  it("includes fulfills annotation format in consolidated plan template", () => {
+  it("includes fulfills field for linking steps to behavioral contract", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
     expect(result).toContain("fulfills");
-    expect(result).toContain("<!-- fulfills:");
+    expect(result).toContain("behavioralContract");
   });
 
-  it("includes assertion ID format in contract instructions", () => {
+  it("includes behavioral contract assertion format (BC-AREA-NNN)", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
-    expect(result).toMatch(/VAL-[A-Z]+-\d{3}/);
+    expect(result).toMatch(/BC-[A-Z]+-\d{3}/);
   });
 });

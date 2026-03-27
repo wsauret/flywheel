@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { buildPlanDraftPrompt, planDraftValidationCriteria } from "../src/prompts/plan/draft";
 import { buildPlanReviewPrompt, planReviewValidationCriteria } from "../src/prompts/plan/review";
+import { buildPlanConsolidatePrompt, planConsolidateValidationCriteria } from "../src/prompts/plan/consolidate";
 import { buildPlanResearchPrompt, planResearchValidationCriteria } from "../src/prompts/plan/research";
 import { planWorkflow } from "../src/workflows/plan";
 import type { WorkflowStepContext } from "../src/prompts/index";
@@ -478,5 +479,339 @@ describe("planWorkflow definition", () => {
     expect(draftStep.validationCriteria).toContain("behavioralContract");
     expect(draftStep.validationCriteria).toContain("decisions");
     expect(draftStep.validationCriteria).toContain("risks");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan Consolidation Prompt — JSON consolidation (VAL-JSON-004, VAL-JSON-010)
+// ---------------------------------------------------------------------------
+
+describe("buildPlanConsolidatePrompt (JSON consolidation)", () => {
+  const ctx = makeCtx();
+  const prompt = buildPlanConsolidatePrompt(ctx);
+
+  test("includes annotated JSON plan section", () => {
+    expect(prompt).toContain("## Annotated JSON Plan");
+    expect(prompt).toContain("```json");
+  });
+
+  test("includes plan content from context", () => {
+    expect(prompt).toContain("Add a hello world endpoint");
+  });
+
+  test("instructs merging P1/P2 findings into step content", () => {
+    expect(prompt).toContain("P1");
+    expect(prompt).toContain("P2");
+    expect(prompt).toContain("findings");
+    expect(prompt).toContain("merge");
+  });
+
+  test("instructs incorporating findings into descriptions and acceptanceCriteria", () => {
+    expect(prompt).toContain("description");
+    expect(prompt).toContain("acceptanceCriteria");
+  });
+
+  test("instructs stripping all review annotations from steps", () => {
+    expect(prompt).toContain("review");
+    expect(prompt).toContain("Strips all");
+    expect(prompt).toContain("annotations");
+  });
+
+  test("instructs stripping openQuestions array", () => {
+    expect(prompt).toContain("openQuestions");
+  });
+
+  test("instructs writing clean JSON to .flywheel/plans/<name>.plan.json", () => {
+    expect(prompt).toContain(".flywheel/plans/");
+    expect(prompt).toContain(".plan.json");
+  });
+
+  test("output schema matches draft schema (no review annotations)", () => {
+    expect(prompt).toContain('"steps"');
+    expect(prompt).toContain('"behavioralContract"');
+    expect(prompt).toContain('"decisions"');
+    expect(prompt).toContain('"risks"');
+  });
+
+  test("output schema includes step fields (title, description, acceptanceCriteria, fileReferences)", () => {
+    expect(prompt).toContain('"title"');
+    expect(prompt).toContain('"description"');
+    expect(prompt).toContain('"acceptanceCriteria"');
+    expect(prompt).toContain('"fileReferences"');
+  });
+
+  test("includes synthesis principles for merging findings", () => {
+    expect(prompt).toContain("Synthesis Principles");
+    expect(prompt).toContain("Merge findings INTO steps");
+  });
+
+  test("includes quality checks before finalizing", () => {
+    expect(prompt).toContain("Quality Checks");
+    expect(prompt).toContain("Every P1 finding is incorporated");
+  });
+
+  test("does NOT contain markdown plan template instructions", () => {
+    // No Phase headings
+    expect(prompt).not.toContain("### Phase N:");
+    expect(prompt).not.toContain("### Phase 1:");
+    // No checklist syntax in template
+    expect(prompt).not.toContain("## Implementation Checklist");
+    // No milestone markers (## Milestone: format)
+    expect(prompt).not.toMatch(/^## Milestone:/m);
+    // No fulfills HTML annotations
+    expect(prompt).not.toContain("<!-- fulfills:");
+    // No instruction to generate a validation-contract.md
+    expect(prompt).not.toContain("validation-contract.md");
+    // No .state.md references
+    expect(prompt).not.toContain(".state.md");
+  });
+
+  test("does NOT contain legacy markdown consolidated plan template", () => {
+    expect(prompt).not.toContain("## Consolidated Plan Template");
+    expect(prompt).not.toContain("## Executive Summary");
+    expect(prompt).not.toContain("## Technical Reference");
+    expect(prompt).not.toContain("## Appendix");
+    expect(prompt).not.toContain("## Critical Items");
+  });
+
+  test("does NOT instruct producing separate validation-contract.md", () => {
+    expect(prompt).not.toContain("Generate the validation contract");
+    expect(prompt).not.toContain("validation-contract.md");
+  });
+
+  test("includes severity definitions convention", () => {
+    expect(prompt).toContain("Severity Definitions");
+  });
+
+  test("includes scope discipline convention", () => {
+    expect(prompt).toContain("Scope Discipline");
+  });
+
+  test("includes handoff instructions when handoff path provided", () => {
+    expect(prompt).toContain("Handoff Instructions");
+    expect(prompt).toContain(".flywheel/handoffs/test-handoff.json");
+  });
+
+  test("handles missing handoff path gracefully", () => {
+    const noHandoff = makeCtx({ extra: {} });
+    const result = buildPlanConsolidatePrompt(noHandoff);
+    expect(result).not.toContain("Handoff Instructions");
+  });
+
+  test("JSON example in output schema is valid JSON", () => {
+    const jsonBlocks = prompt.match(/```json\n([\s\S]*?)```/g);
+    expect(jsonBlocks).not.toBeNull();
+    expect(jsonBlocks!.length).toBeGreaterThanOrEqual(1);
+    // Find the output schema example (has "steps" and "behavioralContract")
+    const outputExample = jsonBlocks!.find(
+      (b) => b.includes('"steps"') && b.includes('"behavioralContract"') && !b.includes('"openQuestions"'),
+    );
+    expect(outputExample).toBeDefined();
+    if (outputExample) {
+      const jsonContent = outputExample.replace(/```json\n/, "").replace(/```$/, "");
+      expect(() => JSON.parse(jsonContent)).not.toThrow();
+    }
+  });
+
+  test("instructs updating decisions with review findings and question resolutions", () => {
+    expect(prompt).toContain("decisions");
+    expect(prompt).toContain("review");
+  });
+
+  test("instructs updating risks with review findings", () => {
+    expect(prompt).toContain("risks");
+  });
+
+  test("P1 findings are mandatory", () => {
+    expect(prompt).toContain("P1 findings are mandatory");
+  });
+
+  test("P2 findings are strongly recommended", () => {
+    expect(prompt).toContain("P2 findings");
+  });
+
+  test("instructs resolving ALL open questions", () => {
+    expect(prompt).toContain("Resolve ALL open questions");
+  });
+
+  test("instructs no orphaned behavioral contract assertions", () => {
+    expect(prompt).toContain("fulfills");
+    expect(prompt).toContain("behavioralContract");
+  });
+
+  test("instructs overwriting annotated plan at same path", () => {
+    expect(prompt).toContain(".flywheel/plans/");
+    expect(prompt).toContain("overwrite");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HITL control in consolidation (VAL-JSON-010)
+// ---------------------------------------------------------------------------
+
+describe("buildPlanConsolidatePrompt — HITL question resolution", () => {
+  test("HITL enabled: resolved questions show as Decisions Made section", () => {
+    const ctx = makeCtx({
+      extra: {
+        handoffPath: ".flywheel/handoffs/test.json",
+        resolvedQuestions: [
+          {
+            question: "Which auth provider?",
+            answers: ["Auth0"],
+            source: "user",
+          },
+        ],
+      },
+    });
+    const prompt = buildPlanConsolidatePrompt(ctx);
+    expect(prompt).toContain("## Decisions Made");
+    expect(prompt).toContain("Which auth provider?");
+    expect(prompt).toContain("Auth0");
+    expect(prompt).toContain("user");
+  });
+
+  test("HITL disabled: unresolved questions show as Open Questions to Resolve section", () => {
+    const ctx = makeCtx({
+      extra: {
+        handoffPath: ".flywheel/handoffs/test.json",
+        unresolvedQuestions: [
+          {
+            question: "Which auth provider?",
+            header: "Auth",
+            options: [
+              { label: "Auth0", description: "Managed auth service" },
+              { label: "Cognito", description: "AWS native" },
+            ],
+          },
+        ],
+      },
+    });
+    const prompt = buildPlanConsolidatePrompt(ctx);
+    expect(prompt).toContain("## Open Questions to Resolve");
+    expect(prompt).toContain("Which auth provider?");
+    expect(prompt).toContain("Auth0");
+    expect(prompt).toContain("Cognito");
+    expect(prompt).toContain("best judgment");
+  });
+
+  test("no questions: shows no open questions message", () => {
+    const ctx = makeCtx({
+      extra: {
+        handoffPath: ".flywheel/handoffs/test.json",
+      },
+    });
+    const prompt = buildPlanConsolidatePrompt(ctx);
+    expect(prompt).toContain("No open questions");
+  });
+
+  test("multiple resolved questions all appear", () => {
+    const ctx = makeCtx({
+      extra: {
+        handoffPath: ".flywheel/handoffs/test.json",
+        resolvedQuestions: [
+          { question: "Which DB?", answers: ["PostgreSQL"], source: "user" },
+          { question: "Which ORM?", answers: ["Drizzle"], source: "user" },
+        ],
+      },
+    });
+    const prompt = buildPlanConsolidatePrompt(ctx);
+    expect(prompt).toContain("Which DB?");
+    expect(prompt).toContain("PostgreSQL");
+    expect(prompt).toContain("Which ORM?");
+    expect(prompt).toContain("Drizzle");
+  });
+
+  test("multiple unresolved questions all appear with options", () => {
+    const ctx = makeCtx({
+      extra: {
+        handoffPath: ".flywheel/handoffs/test.json",
+        unresolvedQuestions: [
+          {
+            question: "Which DB?",
+            header: "Database",
+            options: [
+              { label: "PostgreSQL", description: "" },
+              { label: "SQLite", description: "" },
+            ],
+          },
+          {
+            question: "Which framework?",
+            header: "Framework",
+            options: [
+              { label: "Express", description: "" },
+              { label: "Hono", description: "" },
+            ],
+          },
+        ],
+      },
+    });
+    const prompt = buildPlanConsolidatePrompt(ctx);
+    expect(prompt).toContain("Which DB?");
+    expect(prompt).toContain("PostgreSQL");
+    expect(prompt).toContain("Which framework?");
+    expect(prompt).toContain("Express");
+    expect(prompt).toContain("Hono");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// planConsolidateValidationCriteria — references clean JSON
+// ---------------------------------------------------------------------------
+
+describe("planConsolidateValidationCriteria", () => {
+  test("references clean JSON", () => {
+    expect(planConsolidateValidationCriteria).toContain("JSON");
+  });
+
+  test("references .flywheel/plans/", () => {
+    expect(planConsolidateValidationCriteria).toContain(".flywheel/plans/");
+  });
+
+  test("references review findings merged", () => {
+    expect(planConsolidateValidationCriteria).toContain("review findings merged");
+  });
+
+  test("references P1 addressed", () => {
+    expect(planConsolidateValidationCriteria).toContain("P1 addressed");
+  });
+
+  test("references no review annotations remaining", () => {
+    expect(planConsolidateValidationCriteria).toContain("no review annotations");
+  });
+
+  test("does NOT reference markdown format", () => {
+    expect(planConsolidateValidationCriteria).not.toContain(".md");
+    expect(planConsolidateValidationCriteria).not.toContain("Implementation Checklist");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan workflow definition — step 3 (consolidation) validation criteria
+// ---------------------------------------------------------------------------
+
+describe("planWorkflow definition — step 3 (consolidation)", () => {
+  test("step 3 validation criteria references clean JSON", () => {
+    const consolidationStep = planWorkflow.steps[3];
+    expect(consolidationStep.validationCriteria).toContain("JSON");
+  });
+
+  test("step 3 validation criteria references .flywheel/plans/", () => {
+    const consolidationStep = planWorkflow.steps[3];
+    expect(consolidationStep.validationCriteria).toContain(".flywheel/plans/");
+  });
+
+  test("step 3 validation criteria references review findings merged", () => {
+    const consolidationStep = planWorkflow.steps[3];
+    expect(consolidationStep.validationCriteria).toContain("review findings merged");
+  });
+
+  test("step 3 validation criteria references no review annotations remaining", () => {
+    const consolidationStep = planWorkflow.steps[3];
+    expect(consolidationStep.validationCriteria).toContain("no review annotations");
+  });
+
+  test("step 3 dispatcher hint mentions consolidation", () => {
+    const consolidationStep = planWorkflow.steps[3];
+    expect(consolidationStep.dispatcherHint).toContain("consolidate");
   });
 });

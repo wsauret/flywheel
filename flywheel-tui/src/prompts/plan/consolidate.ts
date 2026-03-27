@@ -62,19 +62,27 @@ ${lines}`;
 }
 
 export const planConsolidateValidationCriteria =
-  `Final plan written to ${DEFAULT_PLANS_DIR}/<type>-<name>.md with Implementation Checklist, all P1 items addressed`;
+  `Clean JSON plan written to ${DEFAULT_PLANS_DIR}/ with review findings merged, all P1 addressed, no review annotations remaining`;
 
 /**
- * Builds a prompt for consolidating a reviewed plan into a final actionable plan.
+ * Builds a prompt for consolidating a reviewed JSON plan into a final clean JSON plan.
+ *
+ * The worker reads annotated JSON (with review.findings[] on steps and openQuestions[]),
+ * merges P1/P2 findings into step content, resolves open questions, strips all review
+ * annotations, and writes clean JSON to .flywheel/plans/<name>.plan.json.
  */
 export function buildPlanConsolidatePrompt(ctx: WorkflowStepContext): string {
   const questionsSection = buildQuestionsSection(ctx.extra);
 
   return `# Plan Consolidation
 
-## Plan with Review Findings
+## Annotated JSON Plan
 
+The following JSON plan has been reviewed. Steps may contain \`review.findings[]\` annotations. There may be \`openQuestions[]\` at the top level.
+
+\`\`\`json
 ${ctx.planContent}
+\`\`\`
 
 ${questionsSection}
 
@@ -84,136 +92,103 @@ ${SEVERITY_DEFINITIONS}
 
 ${SCOPE_DISCIPLINE}
 
-## Consolidated Plan Template
+## Consolidation Task
 
-Structure the final plan as:
+Produce a CLEAN JSON plan that:
+1. Incorporates all P1 and P2 findings into the step content (update description, acceptanceCriteria, fileReferences as needed)
+2. Resolves all open questions (document resolutions in \`decisions[]\`)
+3. Strips all \`review\` annotations from steps
+4. Strips the \`openQuestions\` array
+5. Updates \`decisions[]\` to include any new decisions from review findings or question resolutions
+6. Updates \`risks[]\` to include any new risks from review findings
 
-\`\`\`markdown
----
-status: READY
-created: <ISO date>
-reviewed: <ISO date>
-feature: <short name>
----
+Write the final clean JSON to:
+\`${DEFAULT_PLANS_DIR}/<type>-<description>.plan.json\`
 
-# <Feature Name>
-
-## Executive Summary
-
-<1-3 sentences>
-
-## Decisions Made
-
-<Numbered list of all architectural decisions, including resolutions to open questions>
-
-## Critical Items
-
-<Any P1 findings that became BLOCKING requirements — these must be addressed before implementation begins>
-
-## Implementation Checklist
-
-## Milestone: <Milestone Name>
-
-### Phase 1: <Name>
-<!-- fulfills: VAL-AREA-001, VAL-AREA-002 -->
-- [ ] **1.1 Test**: ...
-- [ ] **1.2 Implement**: ...
-...
-
-### Phase 2: <Name>
-<!-- fulfills: VAL-AREA-003 -->
-...
-
-## Milestone: <Next Milestone>
-
-### Phase N: <Name>
-<!-- fulfills: VAL-OTHER-001 -->
-...
-
-## Technical Reference
-
-<File paths, APIs, dependencies>
-
-## Review Findings Summary
-
-<Brief summary of review findings and how they were addressed>
-
-## Appendix
-
-<Supporting research, alternatives considered, risk analysis>
-\`\`\`
-
-### Milestone Markers
-
-Group related phases under \`## Milestone: <Name>\` headers. Each milestone should be an independently verifiable deliverable. Milestones enable automatic validation at completion boundaries.
-
-### Fulfills Annotations
-
-Each phase MUST include a \`<!-- fulfills: VAL-AREA-NNN, ... -->\` HTML comment immediately after the phase heading. This links phases to validation contract assertions. Every assertion must be claimed by exactly one phase.
-
-## Synthesis Principles
-
-1. **Deduplicate:** Merge identical or near-identical items from the original plan and review findings. Do not repeat the same concern in multiple places.
-
-2. **Prioritize:** P1 findings become either:
-   - Checklist action items (if they require implementation work), or
-   - BLOCKING prerequisites (if they must be resolved before any phase starts)
-
-3. **Preserve test-first ordering:** Every implementation step must still be preceded by its test step.
-
-4. **Integrate insights:** Review findings belong IN the relevant checklist items, not floating as separate sections. Example:
-   - Bad: "Phase 2, Step 2.3: Implement auth" + separate note "reviewer found JWT expiry issue"
-   - Good: "Phase 2, Step 2.3: Implement auth with 15-min JWT expiry (per security review)"
-
-5. **Make executable:** Vague items must become specific.
-   - Bad: "Implement auth"
-   - Good: "Step 2.1: Create JWT token helpers in \`src/auth/tokens.ts\` with sign/verify/refresh functions"
-
-## Quality Checks
-
-Before finalizing, verify:
-- [ ] Every P1 finding is addressed (as a checklist item or BLOCKING note)
-- [ ] Every P2 finding is addressed or explicitly deferred with rationale
-- [ ] No phase depends on a later phase
-- [ ] Test steps precede implementation steps
-- [ ] All file references use file:line format where possible
-- [ ] Open questions are all resolved (none remaining)
-- [ ] The plan can be executed phase-by-phase without ambiguity
-- [ ] Every phase has a \`<!-- fulfills: ... -->\` annotation
-- [ ] Every assertion in the validation contract is claimed by exactly one phase
-- [ ] Phases are grouped under \`## Milestone:\` markers
-
-## IMPORTANT: Write the plan file to disk
-
-After consolidating, you MUST write the final plan to a file at:
-\`${DEFAULT_PLANS_DIR}/<type>-<description>.md\`
+This should overwrite the annotated version at the same path.
 
 Where \`<type>\` is one of: feat, fix, refactor, chore, docs
 And \`<description>\` is a short kebab-case name for the feature.
 
-Example: \`${DEFAULT_PLANS_DIR}/feat-auth-jwt.md\`
-
 Create the \`${DEFAULT_PLANS_DIR}/\` directory if it does not exist.
-The filename MUST appear in your output so downstream tools can locate it.
 
-## IMPORTANT: Generate the validation contract
+### Output Schema
 
-You MUST also generate a \`validation-contract.md\` file alongside the plan. The filename MUST be derived from the plan filename to prevent concurrent session overwrites. If the plan is \`<type>-<description>.md\`, the contract MUST be \`<type>-<description>.validation-contract.md\`.
+The final JSON must match the draft schema exactly — no review annotations:
 
-Write it to:
-\`${DEFAULT_PLANS_DIR}/<type>-<description>.validation-contract.md\`
+\`\`\`json
+${CLEAN_JSON_EXAMPLE}
+\`\`\`
 
-Example: If the plan is \`feat-auth-jwt.md\`, the contract is \`feat-auth-jwt.validation-contract.md\`.
-Both files go in the same \`${DEFAULT_PLANS_DIR}/\` directory.
+### Synthesis Principles
 
-The validation contract defines testable assertions using the \`VAL-<AREA>-<NNN>\` ID format (e.g., \`VAL-AUTH-001\`, \`VAL-API-003\`). Each assertion has:
-- An ID and title
-- A behavioral description of the expected system behavior
-- Evidence requirements (how to verify)
+1. **Merge findings INTO steps.** Review findings belong in the relevant step's description and acceptanceCriteria, not floating separately.
+   - BAD: Step description unchanged + separate note about JWT expiry
+   - GOOD: Step description updated to mention "15-min JWT expiry (per security review)" and acceptanceCriteria updated with "JWT tokens expire after 15 minutes"
 
-Group assertions under \`## Area: <Name>\` sections matching the plan's functional areas. Include a \`## Cross-Area Flows\` section for assertions spanning multiple areas (using \`VAL-CROSS-NNN\` IDs).
+2. **P1 findings are mandatory.** Every P1 finding must be incorporated. If a P1 cannot be incorporated into an existing step, add a new step.
 
-Every assertion must be referenced by exactly one phase's \`<!-- fulfills: ... -->\` annotation in the plan.
+3. **P2 findings are strongly recommended.** Incorporate unless there's a clear reason to defer (document rationale in decisions).
+
+4. **P3 findings are optional.** Incorporate the useful ones, note deferred ones in decisions.
+
+5. **Resolve ALL open questions.** Use user answers if provided (see Decisions Made section above). Otherwise, use your best judgment and document rationale in decisions.
+
+6. **Preserve test-first intent.** acceptanceCriteria should be testable. fileReferences should include test files.
+
+7. **No orphaned assertions.** Every behavioralContract assertion must be claimed by exactly one step's fulfills. If review findings suggest a new assertion, add it to behavioralContract AND add it to the relevant step's fulfills.
+
+### Quality Checks
+
+Before finalizing, verify:
+- [ ] Every P1 finding is incorporated into a step
+- [ ] Every P2 finding is incorporated or deferred with rationale
+- [ ] All open questions are resolved
+- [ ] No \`review\` fields remain on any step
+- [ ] No \`openQuestions\` field at the top level
+- [ ] Every behavioralContract assertion is claimed by exactly one step
+- [ ] Steps are ordered so dependencies flow forward
+- [ ] All decisions (original + new) are listed
+- [ ] Valid JSON — no trailing commas, no comments
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_CONSOLIDATE_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;
 }
+
+// ---------------------------------------------------------------------------
+// Clean JSON example (kept as constant for clarity and testability)
+// ---------------------------------------------------------------------------
+
+const CLEAN_JSON_EXAMPLE = `{
+  "steps": [
+    {
+      "title": "Create server module with Bun.serve()",
+      "description": "Implement GET /hello endpoint returning JSON {greeting, timestamp}. Bind to 127.0.0.1:3000 (per security review). Use Bun.serve() API with fetch handler.",
+      "acceptanceCriteria": [
+        "GET /hello returns 200 with JSON body containing greeting and timestamp",
+        "Server binds to 127.0.0.1:3000 (not 0.0.0.0)",
+        "Response Content-Type is application/json"
+      ],
+      "fileReferences": ["src/server/index.ts", "tests/server.test.ts"],
+      "feature": "server",
+      "fulfills": ["BC-SERVER-001", "BC-SERVER-002"],
+      "milestone": "Foundation",
+      "estimatedComplexity": "low"
+    }
+  ],
+  "behavioralContract": [
+    {
+      "id": "BC-SERVER-001",
+      "title": "Hello endpoint returns greeting",
+      "description": "GET /hello returns 200 with JSON body containing a greeting string and ISO timestamp",
+      "evidence": "curl http://localhost:3000/hello returns 200 with greeting and timestamp fields",
+      "area": "Server"
+    }
+  ],
+  "decisions": [
+    "Using Bun.serve() native API instead of Express for zero-dependency server",
+    "Bind to 127.0.0.1 instead of 0.0.0.0 per security review"
+  ],
+  "risks": [
+    "Port 3000 may conflict with other services"
+  ]
+}`;

@@ -532,9 +532,9 @@ describe("buildPlanConsolidatePrompt", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
     for (const kw of [
       "Synthesis",
-      "Deduplicate",
-      "Integrate",
-      "Executive Summary",
+      "Merge findings INTO steps",
+      ".plan.json",
+      "behavioralContract",
     ]) {
       expect(result).toContain(kw);
     }
