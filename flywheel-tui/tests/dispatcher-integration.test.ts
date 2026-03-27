@@ -76,7 +76,7 @@ function createMockTransport(
         step_index: 0,
         task_content: "Implement the feature as described",
         context_files: ["src/foo.ts"],
-        validation_criteria: {
+        evaluation_criteria: {
           acceptance_criteria: ["Feature implemented correctly"],
           required_tests: true,
           custom_checks: [],
@@ -317,7 +317,7 @@ describe("VAL-DISP-002: Dispatcher returns prompt, criteria, and worker config",
 
   test("decision includes evaluation_criteria", async () => {
     const transport = createMockTransport({
-      validation_criteria: {
+      evaluation_criteria: {
         acceptance_criteria: ["Endpoint works", "Tests pass"],
         required_tests: true,
         custom_checks: ["lint clean"],
@@ -580,7 +580,7 @@ describe("VAL-DISP-006: Dispatcher can request queue mutations", () => {
           step_index: 0,
           task_content: "Fix the bug",
           context_files: [],
-          validation_criteria: {
+          evaluation_criteria: {
             acceptance_criteria: [],
             required_tests: false,
             custom_checks: [],
@@ -786,7 +786,7 @@ describe("StepDispatcher adapter for executor DispatcherFn", () => {
   test("createDispatcherAdapter creates a DispatcherFn from StepDispatcher", async () => {
     const transport = createMockTransport({
       task_content: "Do the work for this step",
-      validation_criteria: {
+      evaluation_criteria: {
         acceptance_criteria: ["Feature works"],
         required_tests: true,
         custom_checks: [],
@@ -973,7 +973,7 @@ describe("Step dispatcher edge cases", () => {
         step_index: 0,
         task_content: "Fix it",
         context_files: [],
-        validation_criteria: {
+        evaluation_criteria: {
           acceptance_criteria: [],
           required_tests: false,
           custom_checks: [],

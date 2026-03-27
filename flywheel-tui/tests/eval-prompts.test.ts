@@ -32,7 +32,7 @@ describe("eval-prompts: fixture assembly", () => {
     // No budget constraints
     expect(scenario.dispatcherInput.session_budget.invocations_remaining).toBeNull();
     expect(scenario.evaluatorInput.worker_output.length).toBeGreaterThan(0);
-    expect(scenario.evaluatorInput.validation_criteria.length).toBeGreaterThan(0);
+    expect(scenario.evaluatorInput.evaluation_criteria.length).toBeGreaterThan(0);
   });
 
   it("COMPLEX scenario has 4+ steps with 2 completed and context entries", async () => {

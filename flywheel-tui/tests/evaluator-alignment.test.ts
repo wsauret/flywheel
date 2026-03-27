@@ -65,7 +65,7 @@ function createMockTransport(
 function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput {
   return {
     worker_output: "Worker completed the task successfully",
-    validation_criteria: "Tests must pass",
+    evaluation_criteria: "Tests must pass",
     context_files: ["src/index.ts"],
     acceptance_criteria: ["must pass all tests"],
     artifacts_produced: ["src/new-file.ts"],
@@ -193,7 +193,7 @@ describe("VAL-ALIGN-005: EvaluatorInput schema includes task_context field", () 
 
     const inputWithContext = {
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],
@@ -214,7 +214,7 @@ describe("VAL-ALIGN-005: EvaluatorInput schema includes task_context field", () 
 
     const inputWithoutContext = {
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],

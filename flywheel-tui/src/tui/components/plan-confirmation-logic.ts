@@ -4,8 +4,8 @@
  * Exported separately from the JSX component so unit tests can import
  * these without pulling in the OpenTUI/SolidJS JSX runtime.
  *
- * Supports both JSON plans (steps with acceptance criteria, behavioral
- * contract) and legacy markdown plans (steps with step counts).
+ * Only JSON plans are supported (steps with acceptance criteria, behavioral
+ * contract).
  */
 
 import type { PlanImportResult, PlanImportStep } from "../../controller/plan-import"
@@ -42,11 +42,9 @@ export interface AssertionSummaryItem {
 /** Full plan summary prepared for the confirmation UI */
 export interface PlanSummaryDisplay {
   status: "ready" | "needs-fix"
-  /** Legacy markdown steps. Empty for JSON plans. */
-  legacySteps: StepSummaryItem[]
-  /** JSON plan steps. Empty for markdown plans. */
+  /** JSON plan steps. */
   steps: StepSummaryItem[]
-  /** Behavioral contract assertions. Empty for markdown plans. */
+  /** Behavioral contract assertions. */
   behavioralContract: AssertionSummaryItem[]
   /** Architectural decisions. */
   decisions: string[]
@@ -56,7 +54,7 @@ export interface PlanSummaryDisplay {
   totalSteps: number
   hasAcceptanceCriteria: boolean
   issues: string[]
-  /** Whether this is a JSON plan. */
+  /** Whether this is a JSON plan. Always true — only JSON plans are supported. */
   isJsonPlan: boolean
 }
 
@@ -96,7 +94,6 @@ export const PLAN_ACTIONS: PlanActionDef[] = [
 export function preparePlanSummary(result: PlanImportResult): PlanSummaryDisplay {
   return {
     status: result.status,
-    legacySteps: [],
     steps: (result.steps ?? []).map(mapStep),
     behavioralContract: (result.behavioralContract ?? []).map(mapAssertion),
     decisions: result.decisions ?? [],

@@ -757,7 +757,7 @@ describe("DispatcherDecisionHandoffSchema", () => {
     schema_version: 1 as const,
     step_index: 0,
     task_content: "Implement feature X according to plan step 1",
-    validation_criteria: {
+    evaluation_criteria: {
       acceptance_criteria: ["Tests pass", "No lint errors"],
       required_tests: true,
       custom_checks: [],

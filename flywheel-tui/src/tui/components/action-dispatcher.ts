@@ -28,7 +28,6 @@ const WORKFLOW_META: Record<StepType, WorkflowMeta> = {
   ship:     { stepLabel: "Step",      workflowName: "ship" },
   debug:    { stepLabel: "Step",      workflowName: "debug" },
   research: { stepLabel: "Step",      workflowName: "research" },
-  sprint:   { stepLabel: "Iteration", workflowName: "sprint" },
   verify:   { stepLabel: "Step",      workflowName: "verify" },
   gate:     { stepLabel: "Step",      workflowName: "gate" },
 }

@@ -22,7 +22,7 @@ export type EvaluatorHandoffData = z.infer<typeof EvaluatorHandoffDataSchema>;
 
 export const EvaluatorInputSchema = z.object({
   worker_output: z.string(),
-  validation_criteria: z.string(),
+  evaluation_criteria: z.string(),
   context_files: z.array(z.string()),
   acceptance_criteria: z.array(z.string()),
   artifacts_produced: z.array(z.string()),

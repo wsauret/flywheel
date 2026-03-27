@@ -80,7 +80,7 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
     step_index: 0,
     task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
-    validation_criteria: {
+    evaluation_criteria: {
       acceptance_criteria: ["Tests pass"],
       required_tests: true,
       custom_checks: [],
@@ -174,7 +174,7 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
     step_index: 0,
     task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
-    validation_criteria: {
+    evaluation_criteria: {
       acceptance_criteria: ["Tests pass"],
       required_tests: false,
       custom_checks: [],
@@ -259,7 +259,7 @@ describe("DispatcherDecisionSchema", () => {
       step_index: 0,
       task_content: "Execute the setup step",
       context_files: ["src/index.ts"],
-      validation_criteria: {
+      evaluation_criteria: {
         acceptance_criteria: ["Tests pass"],
         required_tests: true,
         custom_checks: [],
@@ -276,7 +276,7 @@ describe("DispatcherDecisionSchema", () => {
       step_index: 0,
       // no task_content
       context_files: ["src/index.ts"],
-      validation_criteria: {
+      evaluation_criteria: {
         acceptance_criteria: ["Tests pass"],
         required_tests: true,
         custom_checks: [],
@@ -1231,7 +1231,7 @@ describe("Dispatcher system prompt", () => {
     expect(prompt).toContain("schema_version");
   });
 
-  it("documents structured validation_criteria output", () => {
+  it("documents structured evaluation_criteria output", () => {
     const prompt = buildDispatcherSystemPrompt();
     expect(prompt).toContain("acceptance_criteria");
     expect(prompt).toContain("required_tests");
@@ -1344,7 +1344,7 @@ describe("Dispatcher system prompt", () => {
 
   // --- Prompt optimization tests (VAL-PROMPT-002) ---
 
-  it("documents validation_criteria as object-only (no string option)", () => {
+  it("documents evaluation_criteria as object-only (no string option)", () => {
     const prompt = buildDispatcherSystemPrompt();
     // Should NOT mention string|object or "plain string" as an option
     expect(prompt).not.toContain("string|object");
@@ -1358,7 +1358,7 @@ describe("Dispatcher system prompt", () => {
     expect(prompt).toContain('"step_index": 2');
     expect(prompt).toContain('"context_files"');
     expect(prompt).toContain('"context_to_inline"');
-    expect(prompt).toContain('"validation_criteria"');
+    expect(prompt).toContain('"evaluation_criteria"');
     expect(prompt).toContain('"session_name"');
   });
 

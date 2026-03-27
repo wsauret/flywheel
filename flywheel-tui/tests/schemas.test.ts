@@ -38,7 +38,7 @@ describe("DispatcherDecisionSchema", () => {
     step_index: 0,
     task_content: "Implement feature X",
     context_files: ["src/foo.ts"],
-    validation_criteria: {
+    evaluation_criteria: {
       acceptance_criteria: ["Tests pass"],
       required_tests: true,
       custom_checks: [],
@@ -161,7 +161,7 @@ describe("DispatcherDecisionSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("requires validation_criteria as ValidationCriteria object", () => {
+  it("requires evaluation_criteria as ValidationCriteria object", () => {
     const criteria = {
       acceptance_criteria: ["tests pass", "no regressions"],
       required_tests: true,
@@ -170,15 +170,15 @@ describe("DispatcherDecisionSchema", () => {
     };
     const result = DispatcherDecisionSchema.parse({
       ...validDecision,
-      validation_criteria: criteria,
+      evaluation_criteria: criteria,
     });
-    expect(result.validation_criteria).toEqual(criteria);
+    expect(result.evaluation_criteria).toEqual(criteria);
   });
 
-  it("rejects validation_criteria as string", () => {
+  it("rejects evaluation_criteria as string", () => {
     const result = DispatcherDecisionSchema.safeParse({
       ...validDecision,
-      validation_criteria: "Tests pass",
+      evaluation_criteria: "Tests pass",
     });
     expect(result.success).toBe(false);
   });
@@ -555,7 +555,7 @@ describe("EvaluatorResultSchema", () => {
 describe("EvaluatorInputSchema", () => {
   const validInput = {
     worker_output: "some output text",
-    validation_criteria: "Tests pass",
+    evaluation_criteria: "Tests pass",
     context_files: ["src/foo.ts"],
     acceptance_criteria: ["Tests pass"],
     artifacts_produced: ["src/feature.ts"],
@@ -625,7 +625,7 @@ describe("EvaluatorInputSchema", () => {
   it("rejects missing required fields", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
     });
     expect(result.success).toBe(false);
@@ -1606,7 +1606,7 @@ describe("Integration — full data contract flow", () => {
     step_index: 1,
     task_content: "Implement the core feature with proper error handling and tests.",
     context_files: ["src/index.ts", "src/utils.ts"],
-    validation_criteria: {
+    evaluation_criteria: {
       acceptance_criteria: ["Feature works end-to-end", "All tests pass"],
       required_tests: true,
       custom_checks: ["No lint warnings"],
@@ -1678,28 +1678,28 @@ describe("Integration — full data contract flow", () => {
     expect(parsed.success).toBe(true);
   });
 
-  // --- 8.1b: DispatcherDecision rejects string validation_criteria ---
+  // --- 8.1b: DispatcherDecision rejects string evaluation_criteria ---
 
-  it("rejects DispatcherDecision with string validation_criteria", () => {
+  it("rejects DispatcherDecision with string evaluation_criteria", () => {
     const result = DispatcherDecisionSchema.safeParse({
       ...fullDecision,
-      validation_criteria: "All tests pass and linting is clean",
+      evaluation_criteria: "All tests pass and linting is clean",
     });
 
     expect(result.success).toBe(false);
   });
 
-  // --- 8.1c: DispatcherDecision with structured validation_criteria ---
+  // --- 8.1c: DispatcherDecision with structured evaluation_criteria ---
 
-  it("parses DispatcherDecision with structured validation_criteria", () => {
+  it("parses DispatcherDecision with structured evaluation_criteria", () => {
     const decision = DispatcherDecisionSchema.parse(fullDecision);
 
     expect(decision.schema_version).toBe(1);
-    expect(typeof decision.validation_criteria).toBe("object");
-    expect(decision.validation_criteria.acceptance_criteria).toEqual(["Feature works end-to-end", "All tests pass"]);
-    expect(decision.validation_criteria.required_tests).toBe(true);
-    expect(decision.validation_criteria.custom_checks).toEqual(["No lint warnings"]);
-    expect(decision.validation_criteria.required_outputs).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+    expect(typeof decision.evaluation_criteria).toBe("object");
+    expect(decision.evaluation_criteria.acceptance_criteria).toEqual(["Feature works end-to-end", "All tests pass"]);
+    expect(decision.evaluation_criteria.required_tests).toBe(true);
+    expect(decision.evaluation_criteria.custom_checks).toEqual(["No lint warnings"]);
+    expect(decision.evaluation_criteria.required_outputs).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
   });
 
   // --- 8.1d: Evaluator with mock transport (end-to-end options-object pattern) ---
@@ -1740,7 +1740,7 @@ describe("Integration — full data contract flow", () => {
     const decision = DispatcherDecisionSchema.parse(fullDecision);
     const result = await evaluator.evaluate({
       workerOutput: "Feature implemented successfully. All tests pass.",
-      validationCriteria: decision.validation_criteria,
+      validationCriteria: decision.evaluation_criteria,
       contextFiles: decision.context_files,
       acceptanceCriteria: ["Manual review completed"],
       artifactsProduced: ["src/feature.ts", "tests/feature.test.ts"],
@@ -1756,10 +1756,10 @@ describe("Integration — full data contract flow", () => {
     // Verify the transport received correct EvaluatorInput
     expect(capturedInput).not.toBeNull();
     expect(capturedInput!.worker_output).toBe("Feature implemented successfully. All tests pass.");
-    // validation_criteria is serialized to string by Evaluator
-    expect(typeof capturedInput!.validation_criteria).toBe("string");
-    expect(capturedInput!.validation_criteria).toContain("Acceptance criteria:");
-    expect(capturedInput!.validation_criteria).toContain("Feature works end-to-end");
+    // evaluation_criteria is serialized to string by Evaluator
+    expect(typeof capturedInput!.evaluation_criteria).toBe("string");
+    expect(capturedInput!.evaluation_criteria).toContain("Acceptance criteria:");
+    expect(capturedInput!.evaluation_criteria).toContain("Feature works end-to-end");
     expect(capturedInput!.context_files).toEqual(["src/index.ts", "src/utils.ts"]);
     // Merged acceptance_criteria: explicit + from structured criteria
     expect(capturedInput!.acceptance_criteria).toContain("Manual review completed");
@@ -1865,7 +1865,7 @@ describe("Integration — full data contract flow", () => {
     expect(dispEvent.decision.reasoning).toBe("Step 2 requires both implementation and test coverage.");
     expect(dispEvent.decision.warnings).toEqual(["Large module — consider splitting if over 300 lines"]);
     expect(dispEvent.decision.worker_config).toBeDefined();
-    expect(typeof dispEvent.decision.validation_criteria).toBe("object");
+    expect(typeof dispEvent.decision.evaluation_criteria).toBe("object");
 
     // Verify evaluator event payload
     const evalEvent = events.find((e) => e.type === "evaluator:completed") as
@@ -1890,7 +1890,7 @@ describe("Integration — full data contract flow", () => {
       step_index: 1,
       task_content: "Build feature X based on the plan.",
       context_files: ["src/index.ts"],
-      validation_criteria: {
+      evaluation_criteria: {
         acceptance_criteria: ["Feature X works"],
         required_tests: true,
         custom_checks: [],
@@ -1945,7 +1945,7 @@ describe("Integration — full data contract flow", () => {
 
     const evalResult = await evaluator.evaluate({
       workerOutput: "Feature X implemented. Tests added and passing.",
-      validationCriteria: decision.validation_criteria,
+      validationCriteria: decision.evaluation_criteria,
       contextFiles: decision.context_files,
       artifactsProduced: ["src/feature-x.ts"],
       testsPassed: true,
@@ -1960,7 +1960,7 @@ describe("Integration — full data contract flow", () => {
     expect(capturedEvalInput).not.toBeNull();
     const parsedEvalInput = EvaluatorInputSchema.parse(capturedEvalInput);
     expect(parsedEvalInput.worker_output).toBe("Feature X implemented. Tests added and passing.");
-    expect(parsedEvalInput.validation_criteria).toContain("Feature X works");
+    expect(parsedEvalInput.evaluation_criteria).toContain("Feature X works");
     expect(parsedEvalInput.artifacts_produced).toEqual(["src/feature-x.ts"]);
     expect(parsedEvalInput.tests_passed).toBe(true);
     expect(parsedEvalInput.duration_seconds).toBe(60);

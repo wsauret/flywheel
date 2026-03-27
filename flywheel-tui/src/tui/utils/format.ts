@@ -38,7 +38,7 @@ export function formatQueueStepName(info: QueueStepProgressInfo | null | undefin
 }
 
 // ---------------------------------------------------------------------------
-// Legacy stage progress info (kept for backward compatibility in tests)
+// Step progress info
 // ---------------------------------------------------------------------------
 
 export interface StepProgressInfo {

@@ -300,7 +300,7 @@ async function runEvaluator(scenario: TestScenario): Promise<{
     input.worker_output,
     "",
     "## Validation Criteria",
-    input.validation_criteria,
+    input.evaluation_criteria,
     "",
   ];
 
@@ -450,7 +450,7 @@ async function runAllScenarios(): Promise<ScenarioResult[]> {
       info("Running judge on evaluator output...");
       evalJudge = await judgeEvaluator(
         scenario.evaluatorInput.worker_output,
-        scenario.evaluatorInput.validation_criteria,
+        scenario.evaluatorInput.evaluation_criteria,
         evalResult.parsed_result,
       );
       if (evalJudge) {

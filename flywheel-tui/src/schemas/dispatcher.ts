@@ -107,7 +107,7 @@ export const DispatcherDecisionSchema = z.object({
   task_content: z.string(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),
-  validation_criteria: ValidationCriteriaSchema,
+  evaluation_criteria: ValidationCriteriaSchema,
   reasoning: z.string().optional(),
   warnings: z.array(z.string()).optional(),
   worker_config: WorkerConfigSchema.optional(),

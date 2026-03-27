@@ -13,7 +13,7 @@ import {
 import {
   WORKFLOW_OPTIONS,
 } from "../src/tui/components/start-command";
-import type { WorkflowType } from "../src/controller/queue-types";
+import type { StepType } from "../src/controller/queue-types";
 
 // ---------------------------------------------------------------------------
 // VAL-SCHEMA-001: Sprint config section loads with correct defaults
@@ -237,14 +237,12 @@ describe("Handoff schema sprint fields (VAL-SCHEMA-004)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-SCHEMA-005: WorkflowType union includes "sprint"
+// VAL-SCHEMA-005: StepType union covers all step kinds (sprint removed — uses work+verify)
 // ---------------------------------------------------------------------------
 
-describe("WorkflowType includes 'sprint' (VAL-SCHEMA-005)", () => {
-  it("'sprint' is a valid WorkflowType in workflow-pipeline.ts", () => {
-    // WorkflowType includes "sprint" — verified by the fact that
-    // DEFAULT_TOOL_SCOPING has a sprint key (which is typed Record<WorkflowType, ...>)
-    const allTypes: WorkflowType[] = ["work", "plan", "review", "ship", "debug", "research", "sprint"];
+describe("StepType covers all step kinds (VAL-SCHEMA-005)", () => {
+  it("DEFAULT_TOOL_SCOPING has entries for all StepType values", () => {
+    const allTypes: StepType[] = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate"];
     for (const t of allTypes) {
       expect(DEFAULT_TOOL_SCOPING[t]).toBeDefined();
     }
@@ -252,41 +250,28 @@ describe("WorkflowType includes 'sprint' (VAL-SCHEMA-005)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-SCHEMA-006: DEFAULT_TOOL_SCOPING has sprint entry with write/edit enabled
+// VAL-SCHEMA-006: DEFAULT_TOOL_SCOPING covers all StepType values
 // ---------------------------------------------------------------------------
 
-describe("Sprint tool scoping (VAL-SCHEMA-006)", () => {
-  it("DEFAULT_TOOL_SCOPING has sprint entry", () => {
-    expect(DEFAULT_TOOL_SCOPING.sprint).toBeDefined();
-  });
-
-  it("sprint entry has write and edit enabled", () => {
-    expect(DEFAULT_TOOL_SCOPING.sprint).toEqual({
-      read: true,
-      bash: true,
-      write: true,
-      edit: true,
-    });
-  });
-
-  it("resolveToolScoping returns sprint defaults", () => {
-    expect(resolveToolScoping("sprint")).toEqual({
-      read: true,
-      bash: true,
-      write: true,
-      edit: true,
-    });
-  });
-
-  it("covers all WorkflowType values including sprint", () => {
-    const allTypes: WorkflowType[] = ["work", "plan", "review", "ship", "debug", "research", "sprint"];
-    for (const wfType of allTypes) {
-      expect(DEFAULT_TOOL_SCOPING[wfType]).toBeDefined();
-      expect(typeof DEFAULT_TOOL_SCOPING[wfType].read).toBe("boolean");
-      expect(typeof DEFAULT_TOOL_SCOPING[wfType].bash).toBe("boolean");
-      expect(typeof DEFAULT_TOOL_SCOPING[wfType].write).toBe("boolean");
-      expect(typeof DEFAULT_TOOL_SCOPING[wfType].edit).toBe("boolean");
+describe("Tool scoping covers all StepType values (VAL-SCHEMA-006)", () => {
+  it("covers all StepType values", () => {
+    const allTypes: StepType[] = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate"];
+    for (const stepType of allTypes) {
+      expect(DEFAULT_TOOL_SCOPING[stepType]).toBeDefined();
+      expect(typeof DEFAULT_TOOL_SCOPING[stepType].read).toBe("boolean");
+      expect(typeof DEFAULT_TOOL_SCOPING[stepType].bash).toBe("boolean");
+      expect(typeof DEFAULT_TOOL_SCOPING[stepType].write).toBe("boolean");
+      expect(typeof DEFAULT_TOOL_SCOPING[stepType].edit).toBe("boolean");
     }
+  });
+
+  it("resolveToolScoping returns defaults for verify", () => {
+    expect(resolveToolScoping("verify")).toEqual({
+      read: true,
+      bash: true,
+      write: false,
+      edit: false,
+    });
   });
 });
 

@@ -232,7 +232,7 @@ const TEMPLATE_BUILDERS: Record<WorkflowName, WorkflowTemplateWithBuilder> = {
   },
   "full": {
     name: "full",
-    label: "Full Pipeline",
+    label: "Full Queue",
     description: "Create, execute, review, and ship",
     initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review", "review", "ship", "ship", "ship", "ship"],
     buildSteps: (insertGates) => buildFullSteps(insertGates),

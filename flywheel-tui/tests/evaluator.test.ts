@@ -479,7 +479,7 @@ describe("Evaluator — transport interface", () => {
     expect(inputs()).toHaveLength(1);
     expect(inputs()[0]).toEqual({
       worker_output: "worker output text",
-      validation_criteria: "Acceptance criteria:\n- must pass all tests\nRequired: tests must pass",
+      evaluation_criteria: "Acceptance criteria:\n- must pass all tests\nRequired: tests must pass",
       context_files: ["src/main.ts", "tests/main.test.ts"],
       acceptance_criteria: ["must pass all tests"],
       artifacts_produced: [],
@@ -884,7 +884,7 @@ describe("SubprocessEvaluatorTransport", () => {
     const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     const evalResult = await transport.invoke({
       worker_output: "some output",
-      validation_criteria: "must pass",
+      evaluation_criteria: "must pass",
       context_files: [],
       acceptance_criteria: ["must pass"],
       artifacts_produced: [],
@@ -920,7 +920,7 @@ describe("SubprocessEvaluatorTransport", () => {
     const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     const result = await transport.invoke({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],
@@ -951,7 +951,7 @@ describe("SubprocessEvaluatorTransport", () => {
     await expect(
       transport.invoke({
         worker_output: "output",
-        validation_criteria: "criteria",
+        evaluation_criteria: "criteria",
         context_files: [],
         acceptance_criteria: [],
         artifacts_produced: [],
@@ -987,7 +987,7 @@ describe("SubprocessEvaluatorTransport", () => {
     const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     await transport.invoke({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],
@@ -1031,7 +1031,7 @@ describe("SubprocessEvaluatorTransport", () => {
     const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
     await transport.invoke({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],

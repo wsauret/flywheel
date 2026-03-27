@@ -22,7 +22,7 @@ function validEvaluatorResult(overrides?: Partial<EvaluatorResult>): EvaluatorRe
 function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput {
   return {
     worker_output: "Worker completed the task successfully",
-    validation_criteria: "Tests must pass",
+    evaluation_criteria: "Tests must pass",
     context_files: ["src/index.ts"],
     acceptance_criteria: ["must pass all tests"],
     artifacts_produced: ["src/new-file.ts"],

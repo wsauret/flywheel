@@ -375,8 +375,8 @@ export function buildScaffolding(
     return buildReviewScaffolding(handoffPath);
   }
 
-  // Sprint / verify steps
-  if (step.type === "sprint" || step.type === "verify") {
+  // Verify steps (sprint mode)
+  if (step.type === "verify") {
     return buildSprintVerifyScaffolding(handoffPath);
   }
 

@@ -124,7 +124,7 @@ export interface BudgetChecker {
 /** Persist function: saves queue state to disk */
 export type PersistFn = (queue: Queue) => Promise<void>;
 
-/** Stage context accumulator: accumulates handoff data across steps */
+/** Step context accumulator: accumulates handoff data across steps */
 export interface StepContextAccumulator {
   accumulate(data: unknown): void;
   getContext(): Record<string, unknown>;
@@ -153,7 +153,7 @@ export interface StepExecutorOptions {
   budgetChecker: BudgetChecker;
   /** Queue persistence function */
   persist: PersistFn;
-  /** Stage context accumulator */
+  /** Step context accumulator */
   accumulator: StepContextAccumulator;
   /** Maximum revision attempts per step (0 = no revisions) */
   maxRevisions: number;

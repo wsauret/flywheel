@@ -238,7 +238,7 @@ export function renderHandoffInstruction(
 
   return `## Handoff Instructions
 
-**CRITICAL:** Before you finish, you MUST write a valid JSON handoff file. This is how the pipeline tracks your work. If you skip this step or produce invalid JSON, the pipeline will retry the entire step.
+**CRITICAL:** Before you finish, you MUST write a valid JSON handoff file. This is how the queue tracks your work. If you skip this step or produce invalid JSON, the queue will retry the entire step.
 
 Write a JSON file to:
 \`${handoffPath}\`
@@ -273,7 +273,7 @@ ${fieldLines.join("\n\n")}
 export function renderEvaluatorHandoffInstruction(handoffPath: string): string {
   return `## Evaluator Handoff Instructions
 
-**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the pipeline reads your verdict. If missing or invalid, the evaluation will be retried.
+**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the queue reads your verdict. If missing or invalid, the evaluation will be retried.
 
 Write a JSON file to:
 \`${handoffPath}\`
@@ -319,7 +319,7 @@ Write a JSON file to:
 export function renderDispatcherHandoffInstruction(handoffPath: string): string {
   return `## Dispatcher Handoff Instructions
 
-**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the pipeline reads your dispatch decision. If missing or invalid, the dispatch will be retried.
+**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the queue reads your dispatch decision. If missing or invalid, the dispatch will be retried.
 
 Write a JSON file to:
 \`${handoffPath}\`
@@ -332,7 +332,7 @@ Write a JSON file to:
   "step_index": 0,
   "task_content": "Implement feature X according to the plan.",
   "context_files": ["src/foo.ts", "tests/foo.test.ts"],
-  "validation_criteria": {
+  "evaluation_criteria": {
     "acceptance_criteria": ["Tests pass", "No lint errors"],
     "required_tests": true,
     "custom_checks": [],
@@ -348,7 +348,7 @@ Write a JSON file to:
 - **task_content** (REQUIRED): The task prompt to send to the worker.
 - **context_files** (REQUIRED): File paths the worker should reference. Array of strings.
 - **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance; 8 KB cap.
-- **validation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: \`acceptance_criteria\` (string[]), \`required_tests\` (boolean), \`custom_checks\` (string[]), \`required_outputs\` (string[]).
+- **evaluation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: \`acceptance_criteria\` (string[]), \`required_tests\` (boolean), \`custom_checks\` (string[]), \`required_outputs\` (string[]).
 - **session_name** (optional): Name for the worker session (2-5 words).
 - **reasoning** (optional): Why this dispatch decision was made.
 - **worker_config** (optional): Override worker configuration.

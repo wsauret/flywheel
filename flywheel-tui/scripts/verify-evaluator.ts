@@ -215,7 +215,7 @@ if (engineArg) {
 
 const evaluatorInput: EvaluatorInput = {
   worker_output: SAMPLE_WORKER_OUTPUT,
-  validation_criteria: SAMPLE_VALIDATION_CRITERIA,
+  evaluation_criteria: SAMPLE_VALIDATION_CRITERIA,
   context_files: SAMPLE_CONTEXT_FILES,
   acceptance_criteria: SAMPLE_ACCEPTANCE_CRITERIA,
   artifacts_produced: SAMPLE_ARTIFACTS,

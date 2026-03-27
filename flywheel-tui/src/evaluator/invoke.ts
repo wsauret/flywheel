@@ -78,7 +78,7 @@ export interface EvaluateOptions {
   taskContext?: string;
   /** Structured handoff data from worker (optional; when present, forwarded to transport). */
   handoff?: import("../schemas/evaluator").EvaluatorHandoffData;
-  /** Cumulative stage context from prior steps (optional; evaluator for step N sees 1..N-1). */
+  /** Cumulative step context from prior steps (optional; evaluator for step N sees 1..N-1). */
   stepContext?: import("../controller/step-context").StepContext;
 }
 
@@ -269,7 +269,7 @@ export class Evaluator {
   ): Promise<EvaluatorResult> {
     const input: import("../schemas/evaluator").EvaluatorInput = {
       worker_output: workerOutput,
-      validation_criteria: validationCriteria,
+      evaluation_criteria: validationCriteria,
       context_files: contextFiles,
       acceptance_criteria: acceptanceCriteria,
       artifacts_produced: artifactsProduced,

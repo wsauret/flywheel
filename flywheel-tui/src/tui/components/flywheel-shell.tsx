@@ -1284,7 +1284,7 @@ export function FlywheelShell() {
    *   1. Loads session data + output blocks + queue state via orchestrator
    *   2. If queue state exists, uses startQueueExecution with the loaded queue
    *      (completed steps are NOT re-executed — cursor starts at first pending)
-   *   3. Falls back to legacy stage-loop resume for non-queue sessions
+   *   3. All sessions use queue-based execution
    */
   const resumeSession = async (sessionId: string) => {
     // 1. Clean up any current workflow

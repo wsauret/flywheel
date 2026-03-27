@@ -3,8 +3,8 @@
  * Plan Confirmation Component
  *
  * Displays a plan summary and offers Approve / Edit actions.
- * Supports both JSON plans (steps with acceptance criteria,
- * behavioral contract) and legacy markdown plans (steps).
+ * Only JSON plans are supported (steps with acceptance criteria,
+ * behavioral contract).
  *
  * Pure logic (data preparation, action defs, types) lives in
  * `./plan-confirmation-logic.ts` for testability.
@@ -217,8 +217,7 @@ export function PlanConfirmation(props: PlanConfirmationProps) {
           </box>
         </Show>
 
-        {/* Legacy markdown step list */}
-        {/* Legacy markdown plan rendering removed — only JSON plans remain */}
+        {/* Only JSON plans are supported */}
 
         {/* Issues */}
         <Show when={summary().issues.length > 0}>

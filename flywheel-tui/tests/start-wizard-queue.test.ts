@@ -86,7 +86,7 @@ describe("VAL-SHELL-008: Workflow picker shows 5 options", () => {
     expect(WORKFLOW_OPTIONS[0].label).toBe("Just Plan");
     expect(WORKFLOW_OPTIONS[1].label).toBe("Plan + Work");
     expect(WORKFLOW_OPTIONS[2].label).toBe("Plan + Work + Review");
-    expect(WORKFLOW_OPTIONS[3].label).toBe("Full Pipeline");
+    expect(WORKFLOW_OPTIONS[3].label).toBe("Full Queue");
     expect(WORKFLOW_OPTIONS[4].label).toBe("Sprint");
   });
 });

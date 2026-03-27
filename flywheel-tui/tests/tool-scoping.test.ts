@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { DEFAULT_TOOL_SCOPING, resolveToolScoping } from "../src/controller/tool-scoping";
-import type { WorkflowType } from "../src/controller/queue-types";
+import type { StepType } from "../src/controller/queue-types";
 import type { ToolScoping } from "../src/schemas/shared";
 
 // ---------------------------------------------------------------------------
@@ -44,8 +44,8 @@ describe("DEFAULT_TOOL_SCOPING", () => {
     });
   });
 
-  it("covers all WorkflowType values", () => {
-    const allTypes: WorkflowType[] = ["work", "plan", "review", "ship", "debug", "research"];
+  it("covers all StepType values", () => {
+    const allTypes: StepType[] = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate"];
     for (const wfType of allTypes) {
       expect(DEFAULT_TOOL_SCOPING[wfType]).toBeDefined();
       expect(typeof DEFAULT_TOOL_SCOPING[wfType].read).toBe("boolean");

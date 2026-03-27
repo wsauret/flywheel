@@ -47,7 +47,7 @@ export const WORKFLOW_OPTIONS: WorkflowOption[] = [
     value: "plan-work-review",
   },
   {
-    label: "Full Pipeline",
+    label: "Full Queue",
     description: "Create, execute, review, and ship",
     value: "full",
   },

@@ -269,7 +269,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
     sections.push(
       "## Validation Criteria",
-      input.validation_criteria,
+      input.evaluation_criteria,
       "",
     );
 

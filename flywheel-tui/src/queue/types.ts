@@ -20,7 +20,6 @@
  * Union of valid step types.
  *
  * - plan / work / review / ship / debug / research — correspond to workflow runners
- * - sprint — sprint-mode execution (iterative work + verify cycles)
  * - verify — runs a verification script (sprint mode)
  * - gate   — pauses execution for user approval
  */
@@ -31,7 +30,6 @@ export type StepType =
   | "ship"
   | "debug"
   | "research"
-  | "sprint"
   | "verify"
   | "gate";
 

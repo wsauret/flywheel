@@ -127,7 +127,7 @@ All 2 tests pass:
 - GET /hello returns 200
 - Response body is { message: "hello world" }
 `,
-    validation_criteria: "Acceptance criteria:\n- GET /hello endpoint returns 200\n- Response body is { message: \"hello world\" }\n- Tests pass",
+    evaluation_criteria: "Acceptance criteria:\n- GET /hello endpoint returns 200\n- Response body is { message: \"hello world\" }\n- Tests pass",
     context_files: [],
     acceptance_criteria: [
       "GET /hello endpoint returns 200",
@@ -245,7 +245,7 @@ export function buildComplexScenario(): TestScenario {
 - src/routes/posts.ts (new)
 - tests/api.test.ts (new)
 `,
-    validation_criteria:
+    evaluation_criteria:
       "Acceptance criteria:\n" +
       "- GET /users endpoint with pagination\n" +
       "- POST /users with validation\n" +
@@ -349,7 +349,7 @@ The JWT verification was using an expired secret key. Updated the key rotation l
 
 I ran out of time before fixing the remaining test.
 `,
-    validation_criteria:
+    evaluation_criteria:
       "Acceptance criteria:\n" +
       "- Auth middleware test failure is fixed\n" +
       "- All 3 auth tests pass\n" +

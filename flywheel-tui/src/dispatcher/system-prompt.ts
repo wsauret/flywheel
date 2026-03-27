@@ -66,7 +66,7 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
   "task_content": <string>,        // WHAT to accomplish — goal, file paths, steps. No behavioral instructions.
   "context_files": [<string>],     // Files worker can read on demand
   "context_to_inline": [<string>], // (optional) Paths from available_context to inject; most critical first
-  "validation_criteria": {         // How to verify completion
+  "evaluation_criteria": {         // How to verify completion
     "acceptance_criteria": [<string>],
     "required_tests": <boolean>,
     "custom_checks": [<string>],
@@ -93,7 +93,7 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 1. \`task_content\` describes WHAT, not HOW. Include the goal, specific file paths, and step-by-step guidance. Do NOT include behavioral instructions — those come from system templates.
 2. Include all relevant file paths in \`context_files\`.
 3. Output valid JSON only.
-4. \`validation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of steps (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
+4. \`evaluation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of steps (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
 
 ## Example
 
@@ -104,7 +104,7 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
   "task_content": "Implement pagination for the GET /users endpoint.\\n\\n1. Read src/routes/users.ts and add page/limit query parameters (default page=1, limit=20).\\n2. Update the database query in src/db/queries.ts to support OFFSET and LIMIT.\\n3. Return paginated response with { data, total, page, limit } shape.\\n4. Add tests in tests/routes/users.test.ts covering: default pagination, custom page/limit, out-of-range page returns empty array.\\n\\nThe User model is already defined in src/models/user.ts (from step 1). All 5 existing model tests pass.",
   "context_files": ["src/routes/users.ts", "src/db/queries.ts", "src/models/user.ts", "tests/routes/users.test.ts"],
   "context_to_inline": ["docs/standards/api.md"],
-  "validation_criteria": {
+  "evaluation_criteria": {
     "acceptance_criteria": [
       "GET /users supports page and limit query parameters",
       "Response includes total count and pagination metadata",

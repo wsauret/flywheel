@@ -39,7 +39,7 @@ function validVerdict(overrides?: Partial<import("../../src/schemas/handoff").Ev
 function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput {
   return {
     worker_output: "Worker completed the task successfully",
-    validation_criteria: "Tests must pass",
+    evaluation_criteria: "Tests must pass",
     context_files: ["src/index.ts"],
     acceptance_criteria: ["must pass all tests"],
     artifacts_produced: ["src/new-file.ts"],
@@ -57,7 +57,7 @@ describe("EvaluatorInput schema with handoff field", () => {
   it("accepts input without handoff (backward compat)", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],
@@ -70,7 +70,7 @@ describe("EvaluatorInput schema with handoff field", () => {
   it("accepts input with handoff data", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],
@@ -89,7 +89,7 @@ describe("EvaluatorInput schema with handoff field", () => {
   it("accepts input with minimal handoff (summary only)", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
-      validation_criteria: "criteria",
+      evaluation_criteria: "criteria",
       context_files: [],
       acceptance_criteria: [],
       artifacts_produced: [],
@@ -641,7 +641,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
       handoff: {
         summary: "A".repeat(100),
       },
-      validation_criteria: "All tests must pass",
+      evaluation_criteria: "All tests must pass",
       duration_seconds: 42,
     }));
 

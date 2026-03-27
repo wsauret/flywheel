@@ -184,18 +184,10 @@ describe("buildScaffolding — review steps", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Sprint / Verify step scaffolding
+// Verify step scaffolding
 // ---------------------------------------------------------------------------
 
-describe("buildScaffolding — sprint/verify steps", () => {
-  it("returns handoff scaffolding for sprint steps", () => {
-    const step = makeStep({ type: "sprint" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain("## Output Requirements");
-    expect(result).toContain("Handoff Instructions");
-    expect(result).toContain(HANDOFF_PATH);
-  });
-
+describe("buildScaffolding — verify steps", () => {
   it("returns handoff scaffolding for verify steps", () => {
     const step = makeStep({ type: "verify" });
     const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);

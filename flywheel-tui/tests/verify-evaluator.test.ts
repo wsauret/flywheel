@@ -47,7 +47,7 @@ describe("verify-evaluator: input assembly", () => {
   it("assembles evaluator input with realistic worker output", () => {
     const input = {
       worker_output: SAMPLE_WORKER_OUTPUT,
-      validation_criteria: SAMPLE_VALIDATION_CRITERIA,
+      evaluation_criteria: SAMPLE_VALIDATION_CRITERIA,
       context_files: ["src/routes/hello.ts", "tests/hello.test.ts"],
       acceptance_criteria: SAMPLE_ACCEPTANCE_CRITERIA,
       artifacts_produced: ["src/routes/hello.ts", "tests/hello.test.ts"],
@@ -56,7 +56,7 @@ describe("verify-evaluator: input assembly", () => {
     };
 
     expect(input.worker_output.length).toBeGreaterThan(100);
-    expect(input.validation_criteria.length).toBeGreaterThan(0);
+    expect(input.evaluation_criteria.length).toBeGreaterThan(0);
     expect(input.acceptance_criteria.length).toBe(3);
     expect(input.artifacts_produced.length).toBe(2);
     expect(input.tests_passed).toBe(true);

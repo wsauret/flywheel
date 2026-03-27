@@ -414,7 +414,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       // Convert accumulated context to StepContext
       const stepContext = accumulatedToStepContext(context.accumulatedContext);
 
-      // Inject previous assessment into stage context warnings
+      // Inject previous assessment into step context warnings
       if (context.previousAssessment) {
         injectAssessmentIntoContext(stepContext, context.previousAssessment);
       }
@@ -550,7 +550,7 @@ function buildStepDescription(step: Step, context: StepDispatchContext): string 
 }
 
 // ---------------------------------------------------------------------------
-// Inject assessment into stage context
+// Inject assessment into step context
 // ---------------------------------------------------------------------------
 
 function injectAssessmentIntoContext(
@@ -615,7 +615,7 @@ function normalizeDecision(
 
   return {
     taskContent: raw.task_content,
-    evaluationCriteria: raw.validation_criteria,
+    evaluationCriteria: raw.evaluation_criteria,
     workerConfig,
     contextToInline: raw.context_to_inline ?? [],
     contextFiles: raw.context_files,

@@ -49,7 +49,7 @@ export interface AssemblerInput {
   sessionBudget: SessionBudgetStatus;
   /** Available context (conventions, standards, learnings) */
   availableContext: AvailableContext;
-  /** Cumulative stage context from completed steps (optional) */
+  /** Cumulative step context from completed steps (optional) */
   stepContext?: StepContext;
 }
 

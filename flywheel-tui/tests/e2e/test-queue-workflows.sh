@@ -172,7 +172,7 @@ test_start_wizard() {
   assert_contains "$S" "Just Plan" "Picker: Just Plan"
   assert_contains "$S" "Plan + Work" "Picker: Plan + Work"
   assert_contains "$S" "Plan + Work + Review" "Picker: Plan + Work + Review"
-  assert_contains "$S" "Full Pipeline" "Picker: Full Pipeline"
+  assert_contains "$S" "Full Queue" "Picker: Full Queue"
   assert_contains "$S" "Sprint" "Picker: Sprint"
   # Dismiss with Escape (VAL-SHELL-012)
   tmux send-keys -t "$SESSION" Escape

@@ -14,7 +14,7 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
     step_index: 0,
     task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
-    validation_criteria: {
+    evaluation_criteria: {
       acceptance_criteria: ["Tests pass"],
       required_tests: false,
       custom_checks: [],

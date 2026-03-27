@@ -141,8 +141,7 @@ describe("preparePlanSummary", () => {
     expect(summary.steps[0].acceptanceCriteria).toEqual(["Directories exist", "Config files present"]);
     expect(summary.steps[1].title).toBe("Implement core features");
     expect(summary.steps[2].title).toBe("Testing & polish");
-    // legacySteps is empty for JSON plans
-    expect(summary.legacySteps).toEqual([]);
+    // Only JSON plans are supported
   });
 
   it("reports total step and step counts", () => {
@@ -178,7 +177,6 @@ describe("preparePlanSummary", () => {
 
   it("handles empty plan (no steps)", () => {
     const summary = preparePlanSummary(EMPTY_PLAN);
-    expect(summary.legacySteps).toEqual([]);
     expect(summary.steps).toEqual([]);
     expect(summary.stepCount).toBe(0);
     expect(summary.totalSteps).toBe(0);
@@ -242,7 +240,6 @@ describe("PlanSummaryDisplay shape", () => {
     const summary: PlanSummaryDisplay = preparePlanSummary(HEALTHY_PLAN);
 
     expect(summary).toHaveProperty("status");
-    expect(summary).toHaveProperty("legacySteps");
     expect(summary).toHaveProperty("steps");
     expect(summary).toHaveProperty("behavioralContract");
     expect(summary).toHaveProperty("decisions");
@@ -254,14 +251,9 @@ describe("PlanSummaryDisplay shape", () => {
     expect(summary).toHaveProperty("isJsonPlan");
   });
 
-  it("legacySteps have title and stepCount fields", () => {
+  it("only JSON plans are supported — no legacy markdown steps", () => {
     const summary = preparePlanSummary(HEALTHY_PLAN);
-    for (const step of summary.legacySteps) {
-      expect(step).toHaveProperty("title");
-      expect(step).toHaveProperty("stepCount");
-      expect(typeof step.title).toBe("string");
-      expect(typeof step.stepCount).toBe("number");
-    }
+    expect(summary.isJsonPlan).toBe(true);
   });
 });
 
@@ -316,11 +308,6 @@ describe("preparePlanSummary (JSON plan)", () => {
     expect(summary.totalSteps).toBe(4);
     expect(summary.hasAcceptanceCriteria).toBe(true);
     expect(summary.issues).toEqual([]);
-  });
-
-  it("has empty legacySteps array for JSON plans", () => {
-    const summary = preparePlanSummary(JSON_PLAN);
-    expect(summary.legacySteps).toEqual([]);
   });
 
   it("all plans are JSON native — isJsonPlan is true", () => {

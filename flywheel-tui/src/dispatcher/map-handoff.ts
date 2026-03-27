@@ -15,7 +15,7 @@ export function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): Dispat
     task_content: handoff.task_content,
     context_files: handoff.context_files,
     context_to_inline: handoff.context_to_inline,
-    validation_criteria: handoff.validation_criteria
+    evaluation_criteria: handoff.evaluation_criteria
       ?? { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
     reasoning: handoff.reasoning,
     worker_config: handoff.worker_config,

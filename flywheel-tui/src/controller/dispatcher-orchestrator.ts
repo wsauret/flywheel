@@ -34,7 +34,7 @@ export interface StepPromptOptions {
   configContext: AssemblerInput["configContext"];
   sessionBudget: AssemblerInput["sessionBudget"];
   availableContext: AssemblerInput["availableContext"];
-  /** Cumulative stage context from completed steps (optional). */
+  /** Cumulative step context from completed steps (optional). */
   stepContext?: StepContext;
 }
 
