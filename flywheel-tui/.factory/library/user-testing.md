@@ -1,119 +1,81 @@
 ---
 title: "User Testing Guide"
-summary: "Testing tools, surfaces, and setup for flywheel-tui validation"
+summary: "Testing conventions, tools, and setup for user testing validation"
 tags: [testing, validation, user-testing]
 ---
 
-## Testing Surfaces
+# User Testing Guide
 
-### Unit Tests (bun test)
-- **Tool:** `bun test` (Bun's built-in test runner)
-- **Location:** `tests/` directory
-- **Pattern:** `tests/<module>.test.ts`
-- **No services required** — pure unit tests with mocks
+## Environment
 
-### TUI (tmux)
-- **Tool:** tmux with `tuistory` skill for automation
-- **Setup:** `tmux new-session -d -s flywheel -x 120 -y 40 'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && bin/flywheel'`
-- **Resource cost:** ~300MB per TUI instance
-- **Max concurrent:** 3 instances (reduced from 5 due to other droid processes running)
+- **Runtime:** Bun (not Node)
+- **Test command:** `bun test` (runs all 4321+ tests)
+- **Typecheck command:** `bun run typecheck` (runs tsc --noEmit)
+- **TUI launch:** `bin/flywheel` (requires `--conditions=browser` flag, handled by wrapper)
+- **No external services required.** TUI runs locally. Workers spawned as subprocesses.
 
-### Static Analysis (rg/grep)
-- **Tool:** `rg` (ripgrep) for dead-code verification
-- **No services required** — pure filesystem scanning
+## Testing Tools
 
-## Validation Concurrency
+### Unit/Integration Tests (bun test)
+Most assertions in this project are verified via test output. The test suite covers:
+- Queue execution engine (`tests/step-executor.test.ts`)
+- Queue mutations and schemas (`tests/queue.test.ts`, `tests/queue-schema.test.ts`)
+- Guardrails (`tests/guardrails.test.ts`)
+- Feature quality gates (`tests/feature-quality-gates.test.ts`)
+- Plan prompts and JSON parsing (`tests/plan-prompts.test.ts`, `tests/plan-json-parser.test.ts`)
+- Shell queue wiring (`tests/shell-queue-wiring.test.ts`)
+- Workflow definitions (`tests/workflows.test.ts`)
 
-### Unit Test Surface
-- **Max concurrent validators:** 3
-- **Resource cost per validator:** Minimal (~50MB for bun test process)
-- **Isolation:** Each validator reads test output independently; tests share no mutable state
-- **Rationale:** Unit tests are read-only analysis of test output. No shared state concerns.
+### File System Checks
+Some assertions verify deletion of legacy files:
+- `src/controller/plan-parser.ts` should NOT exist
+- `src/state/` directory should NOT exist
+- `src/schemas/state.ts` should NOT exist
 
-### TUI Surface
-- **Max concurrent validators:** 2
-- **Resource cost per validator:** ~300MB per TUI instance
-- **Isolation:** Each validator uses a DIFFERENT tmux session name (e.g., flywheel-v1, flywheel-v2)
-- **Rationale:** TUI instances share no state. Different tmux sessions are fully independent.
-- **CRITICAL:** Each validator must use its own unique tmux session name. Never share tmux sessions.
-
-### Static Analysis Surface
-- **Max concurrent validators:** 3
-- **Resource cost per validator:** Minimal (~20MB for rg process)
-- **Isolation:** Pure read-only filesystem scanning. No shared state.
-
-## Flow Validator Guidance: Unit Tests
-
-### Isolation rules
-- Validators examine test output from `bun test` — they do NOT modify source code
-- Each validator runs the specific test file(s) for its assertion group
-- No shared mutable state between validators
-
-### Verification approach
-1. Run the specific test file(s) for the assertion group
-2. Match test names to assertion IDs (tests are prefixed with `VAL-SHELL-NNN:` or use descriptive names mapping to assertions)
-3. For each assertion, verify at least one test directly exercises the specified behavior
-4. Report pass/fail per assertion with evidence (test output excerpt)
-
-### Boundaries
-- Do not modify any source files
-- Do not modify test files
-- Only read and analyze test output
-
-## Flow Validator Guidance: TUI
-
-### Isolation rules
-- Each validator gets a unique tmux session name (e.g., `flywheel-v1`, `flywheel-v2`)
-- Validators MUST NOT use the session name `flywheel` — that's reserved for manual use
-- Each validator must kill its tmux session after testing
-
-### Verification approach
-1. Start TUI in tmux: `tmux new-session -d -s <session-name> -x 120 -y 40 'cd /Users/wsauret/Documents/GitHub/flywheel/flywheel-tui && bin/flywheel'`
-2. Wait 3 seconds for startup
-3. Send keystrokes and capture screen output
-4. Verify expected TUI behavior against assertion spec
-5. Check `.flywheel/log/` for errors after testing
-6. Kill tmux session when done
-
-### Key patterns
-- Send text: `tmux send-keys -t <session> 'text' Enter`
-- Capture screen: `tmux capture-pane -t <session> -p`
-- Send Escape: `tmux send-keys -t <session> Escape`
-- Send Ctrl+C: `tmux send-keys -t <session> C-c`
-- Wait for state transitions: `sleep 2-5`
-
-### Boundaries
-- Do not modify any source files
-- Only interact with the TUI via tmux
-- Always cleanup tmux sessions after testing
-
-## Flow Validator Guidance: Static Analysis
-
-### Verification approach
-1. Use `rg` (ripgrep) to search for patterns that should NOT exist
-2. For dead-code assertions: `rg '<pattern>' src/` should return NO matches
-3. For console.error assertions: `rg 'console\.(error|warn|debug)' src/ --glob '!*.test.*'`
-4. For typecheck: `bun run typecheck` should exit 0
-5. For test suite: `bun test` should exit 0 with all passing
-
-### Boundaries
-- Do not modify any source files
-- Only read and scan source code
+### TUI Testing (tuistory)
+VAL-JSON-006 and VAL-CROSS-001 require TUI interaction via tmux.
+- The TUI uses OpenTUI + SolidJS
+- Start with: `bin/flywheel`
+- tmux session name: use unique names per test to avoid conflicts
 
 ## Validation Concurrency
 
-### TUI Surface (tmux/tuistory)
-- **Max concurrent validators:** 1 (TUI is single-instance)
-- **Resource cost:** ~60 MB per TUI instance + tmux overhead
-- **Rationale:** Only one flywheel TUI can run at a time in a tmux session. Multiple concurrent validators would conflict.
+### Surface: bun test
+Max concurrent validators: 3
+Rationale: `bun test` runs all tests in a single process. Multiple concurrent test runs could interfere with each other if they use shared temp dirs. However, targeted test file runs are safe in parallel since each test creates its own isolated fixtures.
 
-### Unit Test Surface (bun test)
-- **Max concurrent validators:** 5
-- **Resource cost:** ~280 MB per bun test run (burst, settles quickly)
-- **Rationale:** 36 GB RAM, 11 CPU cores. Each test run is ~280 MB peak. 5 concurrent = ~1.4 GB, well within 70% of ~24 GB headroom.
+### Surface: file system check
+Max concurrent validators: 5
+Rationale: Read-only file existence checks, no shared state.
 
-### Machine Profile
-- **Total RAM:** 36 GB
-- **CPU cores:** 11
-- **Baseline usage:** ~12 GB (VS Code, Docker, DataGrip, other processes)
-- **Available headroom:** ~24 GB * 0.7 = ~17 GB usable
+### Surface: tuistory
+Max concurrent validators: 1
+Rationale: TUI testing requires exclusive tmux access and terminal rendering. Only one TUI instance should run at a time.
+
+## Flow Validator Guidance: bun test
+
+### Isolation Rules
+- Each subagent should run specific test files, not the full suite
+- Test files use isolated temporary directories for fixtures
+- No shared database or state between test files
+- Safe to run different test files concurrently
+
+### Boundaries
+- Do NOT modify any source code or test files
+- Only READ test output and verify assertions pass
+- Run tests with `bun test <specific-test-file>` format
+
+## Flow Validator Guidance: file system
+
+### Isolation Rules
+- Read-only checks — no shared state concerns
+- Use `ls`, `test -f`, `test -d`, and `rg` for verification
+- Do NOT create or delete any files
+
+## Flow Validator Guidance: tuistory
+
+### Isolation Rules
+- Only one TUI instance at a time
+- Use unique tmux session names
+- Clean up tmux sessions after testing
+- Do NOT modify source code during testing
