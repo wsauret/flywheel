@@ -100,6 +100,17 @@ export const DispatcherInputSchema = z.object({
   available_context: AvailableContextSchema,
   /** Cumulative stage context from completed steps. Optional for backward compat. */
   stage_context: StageContextSchema.optional(),
+  /** Mutation budget — remaining capacity for queue mutations. */
+  mutation_budget: z.object({
+    max_queue_length: z.number(),
+    current_queue_length: z.number(),
+    remaining_queue_capacity: z.number(),
+    mutations_used_this_step: z.number(),
+    mutations_remaining_this_step: z.number(),
+    total_session_inserts: z.number(),
+    session_inserts_remaining: z.number(),
+    session_objective: z.string(),
+  }).strip().optional(),
 }).strip();
 
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;

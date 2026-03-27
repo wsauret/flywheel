@@ -62,6 +62,8 @@ export interface StepDispatchContext {
   previousAssessment: EvalResult | null;
   /** HITL response from user (if step had HITL). */
   hitlResponse?: string | null;
+  /** Mutation budget from guardrails (for budget visibility — VAL-GUARD-006). */
+  mutationBudget?: import("./guardrails").MutationBudget | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,6 +423,20 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         injectAssessmentIntoContext(stageContext, context.previousAssessment);
       }
 
+      // Build mutation budget for dispatcher visibility (VAL-GUARD-006)
+      const mutationBudgetInput = context.mutationBudget
+        ? {
+            max_queue_length: context.mutationBudget.maxQueueLength,
+            current_queue_length: context.mutationBudget.currentQueueLength,
+            remaining_queue_capacity: context.mutationBudget.remainingQueueCapacity,
+            mutations_used_this_step: context.mutationBudget.mutationsUsedThisStep,
+            mutations_remaining_this_step: context.mutationBudget.mutationsRemainingThisStep,
+            total_session_inserts: context.mutationBudget.totalSessionInserts,
+            session_inserts_remaining: context.mutationBudget.sessionInsertsRemaining,
+            session_objective: context.mutationBudget.sessionObjective,
+          }
+        : undefined;
+
       // Build the DispatcherInput
       const input: DispatcherInput = {
         plan,
@@ -435,6 +451,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         session_budget: sessionBudget,
         available_context: availableContext,
         stage_context: stageContext,
+        mutation_budget: mutationBudgetInput,
       };
 
       // --- Invoke transport ---
