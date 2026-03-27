@@ -8,15 +8,8 @@
  *   1. new TimerService() — fresh per-session timer
  *   2. createStore(planPath) — fresh store
  *   3. new OpenTUIAdapter({ actions: store, timer }) — adapter with store and timer
- *   4. new EventBus() — fresh event bus (for testing; in production, WorkController
- *      creates its own eventBus and reconnects the adapter via ui.connect())
+ *   4. new EventBus() — fresh event bus
  *   5. adapter.connect(bus) + adapter.start()
- *
- * Note: When FlywheelShell creates a WorkController, the controller's constructor
- * calls adapter.connect(controller.eventBus), which disconnects from the session's
- * eventBus and reconnects to the controller's. This is correct — the controller
- * owns the eventBus in production. The session's eventBus is primarily useful
- * for testing without a real controller.
  */
 
 import { EventBus } from "../../events/event-bus";

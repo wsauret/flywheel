@@ -425,7 +425,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
   /**
    * Push a system message through the structured block pipeline and flush.
-   * Used for lifecycle events (step:started, worker:failed, etc.) that
+   * Used for lifecycle events (queue:step-started, worker:failed, etc.) that
    * are user-relevant. Produces SystemBlock objects.
    *
    * Timestamp conversion: `new Date(timestamp).getTime()` handles ISO strings;

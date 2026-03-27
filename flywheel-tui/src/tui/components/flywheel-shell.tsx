@@ -320,6 +320,155 @@ export function FlywheelShell() {
   }
 
   /**
+   * Build the shared executor dependencies (dispatcher, accumulator, evaluator,
+   * hooks, worker callback, handoff reader) used by both startQueueExecution
+   * and resumeSession. Eliminates ~150 lines of duplication between the two paths.
+   */
+  function buildExecutorDeps(opts: {
+    deps: WorkflowDeps;
+    emitter: ReturnType<typeof createFlywheelEmitter>;
+    workflowIdRef: { current: string };
+    dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined;
+    contextIndexer: ContextIndexer;
+    projectCwd: string;
+    sessionObjective: string | undefined;
+    queue: Queue;
+  }) {
+    const { deps, emitter, workflowIdRef, dispatcherTransport, contextIndexer, projectCwd, sessionObjective, queue } = opts
+    const { dispatcherModel, workerModel } = resolveModels(deps.config)
+
+    // Build real StepDispatcher if transport is available
+    const realDispatcher = dispatcherTransport
+      ? createStepDispatcher({
+          transport: dispatcherTransport,
+          emitter,
+          workflowId: workflowIdRef.current,
+          configContext: {
+            maxEvalCycles: deps.config.max_revisions ?? 1,
+            worktreePath: projectCwd,
+            projectCwd,
+            workerModel: workerModel ?? "sonnet",
+            dispatcherModel: dispatcherModel ?? "sonnet",
+          },
+          sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
+          availableContext: contextIndexer.getRelevantContext({ stepType: "plan", stepDescription: sessionObjective ?? "" }),
+          sessionObjective,
+        })
+      : null
+
+    // Real context accumulator (windowed detail strategy)
+    const contextAccumulator = createContextAccumulator()
+
+    // Real trust-but-verify evaluator (if evaluation not skipped)
+    const evaluator = !deps.config.skip_evaluation
+      ? createTrustVerifyEvaluatorFn({ cwd: projectCwd })
+      : null
+
+    // Plan integration hook + TUI step insertion composite hook
+    const planIntegrationHook = createPlanIntegrationHook()
+    const compositeHook = createCompositeHook([
+      planIntegrationHook,
+      async (step, status, q, _handoffData) => {
+        if (status === "completed" && step.type === "plan") {
+          const updatedQueueStepStates = q.steps.map(s => ({
+            id: s.id,
+            type: s.type,
+            title: s.title,
+            status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+          }))
+          setShellQueueSteps(updatedQueueStepStates)
+        }
+        return { continueExecution: false }
+      },
+    ])
+
+    // Dispatcher callback: real dispatcher with fallback to step metadata
+    const dispatcherFn = async (step: import("../../queue/types").Step, context: { previousHandoff?: unknown; previousAssessment?: unknown; hitlResponse?: unknown }) => {
+      if (realDispatcher) {
+        try {
+          const dispatchContext: StepDispatchContext = {
+            accumulatedContext: contextAccumulator.getContext() as any,
+            previousHandoff: (context.previousHandoff as Record<string, unknown>) ?? null,
+            previousAssessment: (context.previousAssessment as any) ?? null,
+            hitlResponse: (context.hitlResponse as string) ?? null,
+          }
+          const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
+          return {
+            prompt: decision.taskContent,
+            validationCriteria: decision.evaluationCriteria,
+          }
+        } catch (err) {
+          log.warn("real dispatcher failed, falling back to step metadata", {
+            stepId: step.id,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
+      const parts = [step.title]
+      if (step.description) parts.push(step.description)
+      if (step.acceptanceCriteria?.length) {
+        parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
+      }
+      if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
+      return { prompt: parts.join("\n"), validationCriteria: null }
+    }
+
+    // Worker callback: spawn engine process
+    const workerFn = async (step: import("../../queue/types").Step, prompt: string) => {
+      const invocationId = randomUUID()
+      const engineCmd = deps.engine.buildCommand({
+        prompt,
+        model: deps.config.worker?.model ?? deps.config.model,
+        toolScoping: step.toolScoping ?? undefined,
+      })
+      const startTime = Date.now()
+      const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
+        cwd: projectCwd,
+        invocationId,
+        stdin: engineCmd.stdinPrompt
+          ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
+          : undefined,
+        onStdout: (chunk) => {
+          emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
+        },
+        onStderr: (chunk) => {
+          emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
+        },
+      })
+      const workerResult = await spawnResult.result
+      return {
+        output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
+        handoffPath: workerResult.handoffPath ?? "",
+        durationMs: Date.now() - startTime,
+      }
+    }
+
+    // Handoff reader callback
+    const handoffReader = async (handoffPath: string) => {
+      if (!handoffPath) return null
+      try {
+        const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
+        return handoff as unknown as Record<string, unknown>
+      } catch (err) {
+        log.warn("handoff read failed, continuing without handoff", {
+          path: handoffPath,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        return null
+      }
+    }
+
+    return {
+      contextAccumulator,
+      evaluator,
+      compositeHook,
+      dispatcherFn,
+      workerFn,
+      handoffReader,
+    }
+  }
+
+  /**
    * Get deps or return to idle on failure.
    * Used in workflow launch functions where failure means we can't proceed.
    */
@@ -797,145 +946,28 @@ export function FlywheelShell() {
       )
 
       const emitter = createFlywheelEmitter(session.eventBus)
-
-      // Resolve model names for dispatcher and worker
-      const { dispatcherModel: resolvedDispatcherModel, workerModel: resolvedWorkerModel } = resolveModels(deps.config)
       const projectCwdForExec = deps.config.project_cwd ?? process.cwd()
 
-      // Build real StepDispatcher if transport is available
-      const realDispatcher = dispatcherTransport
-        ? createStepDispatcher({
-            transport: dispatcherTransport,
-            emitter,
-            workflowId: workflowIdRef.current,
-            configContext: {
-              maxEvalCycles: deps.config.max_retries ?? 3,
-              worktreePath: projectCwdForExec,
-              projectCwd: projectCwdForExec,
-              workerModel: resolvedWorkerModel ?? "sonnet",
-              dispatcherModel: resolvedDispatcherModel ?? "sonnet",
-            },
-            sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
-            availableContext: queueContextIndexer.getRelevantContext({ stepType: "plan", stepDescription: args.description ?? "" }),
-            sessionObjective: args.description,
-          })
-        : null
-
-      // Real context accumulator (windowed detail strategy)
-      const contextAccumulator = createContextAccumulator()
-
-      // Real trust-but-verify evaluator (if evaluation not skipped)
-      const realEvaluator = !deps.config.skip_evaluation
-        ? createTrustVerifyEvaluatorFn({ cwd: projectCwdForExec })
-        : null
-
-      // Plan integration hook for inserting work steps from plan output
-      const planIntegrationHook = createPlanIntegrationHook()
-
-      // Composite onStepCompleted hook: plan integration + TUI step insertion events
-      const compositeHook = createCompositeHook([
-        planIntegrationHook,
-        // TUI event emission hook for dynamic step insertion
-        async (step, status, q, handoffData) => {
-          if (status === "completed" && step.type === "plan") {
-            // After plan integration runs, check if new steps were inserted
-            // and emit events for TUI updates
-            const updatedQueueStepStates = q.steps.map(s => ({
-              id: s.id,
-              type: s.type,
-              title: s.title,
-              status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-            }))
-            setShellQueueSteps(updatedQueueStepStates)
-          }
-          return { continueExecution: false }
-        },
-      ])
+      // Build shared executor dependencies (dispatcher, accumulator, evaluator, hooks, worker, handoff reader)
+      const execDeps = buildExecutorDeps({
+        deps, emitter, workflowIdRef, dispatcherTransport,
+        contextIndexer: queueContextIndexer, projectCwd: projectCwdForExec,
+        sessionObjective: args.description, queue,
+      })
 
       // Create step executor with real per-step execution.
-      // Each step goes through dispatcher→worker→evaluator directly.
       const stepExec = createStepExecutor({
         queue,
         workflowId: workflowIdRef.current,
         emitter,
-        dispatcher: async (step, context) => {
-          // Use real StepDispatcher if available, otherwise fall back to step metadata
-          if (realDispatcher) {
-            try {
-              const dispatchContext: StepDispatchContext = {
-                accumulatedContext: contextAccumulator.getContext() as any,
-                previousHandoff: (context.previousHandoff as Record<string, unknown>) ?? null,
-                previousAssessment: (context.previousAssessment as any) ?? null,
-                hitlResponse: (context.hitlResponse as string) ?? null,
-              }
-              const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
-              return {
-                prompt: decision.taskContent,
-                validationCriteria: decision.evaluationCriteria,
-              }
-            } catch (err) {
-              log.warn("real dispatcher failed, falling back to step metadata", {
-                stepId: step.id,
-                error: err instanceof Error ? err.message : String(err),
-              })
-            }
-          }
-          // Fallback: build prompt from step metadata
-          const parts = [step.title]
-          if (step.description) parts.push(step.description)
-          if (step.acceptanceCriteria?.length) {
-            parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
-          }
-          if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
-          return { prompt: parts.join("\n"), validationCriteria: null }
-        },
-        worker: async (step, prompt) => {
-          const invocationId = randomUUID()
-          const engineCmd = deps.engine.buildCommand({
-            prompt,
-            model: deps.config.worker?.model ?? deps.config.model,
-            toolScoping: step.toolScoping ?? undefined,
-          })
-          const startTime = Date.now()
-          const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-            cwd: projectCwdForExec,
-            invocationId,
-            stdin: engineCmd.stdinPrompt
-              ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
-              : undefined,
-            onStdout: (chunk) => {
-              emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
-            },
-            onStderr: (chunk) => {
-              emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
-            },
-          })
-          const workerResult = await spawnResult.result
-          return {
-            output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
-            handoffPath: workerResult.handoffPath ?? "",
-            durationMs: Date.now() - startTime,
-          }
-        },
-        evaluator: realEvaluator,
-        handoffReader: async (handoffPath) => {
-          if (!handoffPath) return null
-          try {
-            const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
-            return handoff as unknown as Record<string, unknown>
-          } catch (err) {
-            log.warn("handoff read failed, continuing without handoff", {
-              path: handoffPath,
-              error: err instanceof Error ? err.message : String(err),
-            })
-            return null
-          }
-        },
+        dispatcher: execDeps.dispatcherFn,
+        worker: execDeps.workerFn,
+        evaluator: execDeps.evaluator,
+        handoffReader: execDeps.handoffReader,
         budgetChecker: queueBudgetTracker && queueBudgetLimits
           ? { isExhausted: () => queueBudgetTracker!.isExhausted(queueBudgetLimits!) }
           : { isExhausted: () => false },
         persist: async (q) => {
-          // Queue persistence
           if (queueSessionId && deps.config.queue?.persist_queue !== false) {
             try {
               const queuePersistence = createQueuePersistence({
@@ -946,9 +978,9 @@ export function FlywheelShell() {
             } catch { /* best-effort */ }
           }
         },
-        accumulator: contextAccumulator,
-        maxRevisions: deps.config.max_retries ?? 3,
-        onStepCompleted: compositeHook,
+        accumulator: execDeps.contextAccumulator,
+        maxRevisions: deps.config.max_revisions ?? 1,
+        onStepCompleted: execDeps.compositeHook,
       })
 
       activeStepExecutor = stepExec
@@ -1448,131 +1480,25 @@ export function FlywheelShell() {
 
         const emitter = createFlywheelEmitter(session.eventBus)
         const resumeQueue = result.queue!
-
-        // Resolve model names for dispatcher and worker (resume path)
-        const { dispatcherModel: resumeDispatcherModel, workerModel: resumeWorkerModel } = resolveModels(deps.config)
         const resumeProjectCwd = deps.config.project_cwd ?? process.cwd()
 
-        // Build real StepDispatcher if transport is available (resume path)
-        const resumeRealDispatcher = dispatcherTransport
-          ? createStepDispatcher({
-              transport: dispatcherTransport,
-              emitter,
-              workflowId: workflowIdRef.current,
-              configContext: {
-                maxEvalCycles: deps.config.max_retries ?? 3,
-                worktreePath: resumeProjectCwd,
-                projectCwd: resumeProjectCwd,
-                workerModel: resumeWorkerModel ?? "sonnet",
-                dispatcherModel: resumeDispatcherModel ?? "sonnet",
-              },
-              sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
-              availableContext: queueContextIndexer.getRelevantContext({ stepType: "plan", stepDescription: result.planPath ?? "" }),
-              sessionObjective: result.planPath,
-            })
-          : null
-
-        // Real context accumulator (resume path)
-        const resumeContextAccumulator = createContextAccumulator()
-
-        // Real trust-but-verify evaluator (resume path)
-        const resumeRealEvaluator = !deps.config.skip_evaluation
-          ? createTrustVerifyEvaluatorFn({ cwd: resumeProjectCwd })
-          : null
-
-        // Plan integration hook (resume path)
-        const resumePlanHook = createPlanIntegrationHook()
-        const resumeCompositeHook = createCompositeHook([
-          resumePlanHook,
-          async (step, status, q, handoffData) => {
-            if (status === "completed" && step.type === "plan") {
-              const updatedQueueStepStates = q.steps.map(s => ({
-                id: s.id,
-                type: s.type,
-                title: s.title,
-                status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-              }))
-              setShellQueueSteps(updatedQueueStepStates)
-            }
-            return { continueExecution: false }
-          },
-        ])
+        // Build shared executor dependencies (dispatcher, accumulator, evaluator, hooks, worker, handoff reader)
+        // Use the session name (original user description) as objective, not the label
+        // (which falls back to planPath when no description was provided).
+        const execDeps = buildExecutorDeps({
+          deps, emitter, workflowIdRef, dispatcherTransport,
+          contextIndexer: queueContextIndexer, projectCwd: resumeProjectCwd,
+          sessionObjective: result.session.name ?? undefined, queue: resumeQueue,
+        })
 
         const stepExec = createStepExecutor({
           queue: resumeQueue,
           workflowId: workflowIdRef.current,
           emitter,
-          dispatcher: async (step, context) => {
-            if (resumeRealDispatcher) {
-              try {
-                const dispatchContext: StepDispatchContext = {
-                  accumulatedContext: resumeContextAccumulator.getContext() as any,
-                  previousHandoff: (context.previousHandoff as Record<string, unknown>) ?? null,
-                  previousAssessment: (context.previousAssessment as any) ?? null,
-                  hitlResponse: (context.hitlResponse as string) ?? null,
-                }
-                const decision = await resumeRealDispatcher.dispatch(step, resumeQueue, dispatchContext)
-                return {
-                  prompt: decision.taskContent,
-                  validationCriteria: decision.evaluationCriteria,
-                }
-              } catch (err) {
-                log.warn("real dispatcher failed on resume, falling back", {
-                  stepId: step.id,
-                  error: err instanceof Error ? err.message : String(err),
-                })
-              }
-            }
-            const parts = [step.title]
-            if (step.description) parts.push(step.description)
-            if (step.acceptanceCriteria?.length) {
-              parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
-            }
-            if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
-            return { prompt: parts.join("\n"), validationCriteria: null }
-          },
-          worker: async (step, prompt) => {
-            const invocationId = randomUUID()
-            const engineCmd = deps.engine.buildCommand({
-              prompt,
-              model: deps.config.worker?.model ?? deps.config.model,
-              toolScoping: step.toolScoping ?? undefined,
-            })
-            const startTime = Date.now()
-            const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-              cwd: resumeProjectCwd,
-              invocationId,
-              stdin: engineCmd.stdinPrompt
-                ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
-                : undefined,
-              onStdout: (chunk) => {
-                emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
-              },
-              onStderr: (chunk) => {
-                emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
-              },
-            })
-            const workerResult = await spawnResult.result
-            return {
-              output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
-              handoffPath: workerResult.handoffPath ?? "",
-              durationMs: Date.now() - startTime,
-            }
-          },
-          evaluator: resumeRealEvaluator,
-          handoffReader: async (handoffPath) => {
-            if (!handoffPath) return null
-            try {
-              const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
-              return handoff as unknown as Record<string, unknown>
-            } catch (err) {
-              log.warn("handoff read failed on resume", {
-                path: handoffPath,
-                error: err instanceof Error ? err.message : String(err),
-              })
-              return null
-            }
-          },
+          dispatcher: execDeps.dispatcherFn,
+          worker: execDeps.workerFn,
+          evaluator: execDeps.evaluator,
+          handoffReader: execDeps.handoffReader,
           budgetChecker: resumeBudgetTracker && resumeBudgetLimits
             ? { isExhausted: () => resumeBudgetTracker!.isExhausted(resumeBudgetLimits!) }
             : { isExhausted: () => false },
@@ -1584,9 +1510,9 @@ export function FlywheelShell() {
               } catch { /* best-effort */ }
             }
           },
-          accumulator: resumeContextAccumulator,
-          maxRevisions: deps.config.max_retries ?? 3,
-          onStepCompleted: resumeCompositeHook,
+          accumulator: execDeps.contextAccumulator,
+          maxRevisions: deps.config.max_revisions ?? 1,
+          onStepCompleted: execDeps.compositeHook,
         })
 
         activeStepExecutor = stepExec

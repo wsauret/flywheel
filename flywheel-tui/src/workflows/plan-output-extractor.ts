@@ -9,13 +9,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { WorkerResult } from "../schemas/worker";
 import { Log } from "../utils/log";
-
-/** Legacy hook type retained for backward compatibility. */
-type OnStepCompleteHook = (
-  stepIndex: number,
-  result: WorkerResult,
-  accumulatedExtra: Record<string, unknown>,
-) => Promise<Record<string, unknown>>;
+import type { OnStepCompleteHook } from "./types";
 
 const log = Log.create({ service: "plan-hook" });
 import {

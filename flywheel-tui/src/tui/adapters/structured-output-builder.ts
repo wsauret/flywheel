@@ -86,7 +86,7 @@ export class StructuredOutputBuilder {
 
   /**
    * Push a system message as a SystemBlock.
-   * Used for lifecycle events (step:started, dispatcher:invoked, etc.)
+   * Used for lifecycle events (queue:step-started, dispatcher:invoked, etc.)
    * that are user-relevant but not worker output.
    */
   pushSystemMessage(message: string, timestamp: number): void {

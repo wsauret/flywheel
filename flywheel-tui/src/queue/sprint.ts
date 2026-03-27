@@ -8,7 +8,7 @@
 // escalation steps [plan, work, review] are inserted.
 //
 // Terminology:
-//   Step   — single unit of work (replaces "step")
+//   Step   — single unit of work
 //   Queue  — mutable, ordered list of steps
 // ---------------------------------------------------------------------------
 

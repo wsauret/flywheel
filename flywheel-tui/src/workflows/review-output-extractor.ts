@@ -14,13 +14,7 @@
 
 import type { WorkerResult } from "../schemas/worker";
 import type { QuestionInfo } from "../controller/question-service";
-
-/** Legacy hook type retained for backward compatibility. */
-type OnStepCompleteHook = (
-  stepIndex: number,
-  result: WorkerResult,
-  accumulatedExtra: Record<string, unknown>,
-) => Promise<Record<string, unknown>>;
+import type { OnStepCompleteHook } from "./types";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "review-hook" });

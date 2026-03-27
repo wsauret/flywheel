@@ -7,13 +7,7 @@
 
 import type { WorkerResult } from "../schemas/worker";
 import { Log } from "../utils/log";
-
-/** Legacy hook type retained for backward compatibility. */
-type OnStepCompleteHook = (
-  stepIndex: number,
-  result: WorkerResult,
-  accumulatedExtra: Record<string, unknown>,
-) => Promise<Record<string, unknown>>;
+import type { OnStepCompleteHook } from "./types";
 import { extractLearning, CompoundDocSchema } from "../memory/extract";
 import type { ExtractionInput, ExtractionResult } from "../memory/extract";
 import { readHandoff } from "../handoff/reader";

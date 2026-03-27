@@ -148,7 +148,7 @@ describe("Workflow Definitions", () => {
       }
     });
 
-    it("does not contain 'work' (work uses dedicated WorkController)", () => {
+    it("does not contain 'work' (work uses queue executor directly)", () => {
       expect(workflowRegistry.work).toBeUndefined();
     });
   });

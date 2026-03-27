@@ -27,7 +27,7 @@
 //   - Abort signal (finish current step, stop)
 //
 // Terminology:
-//   Step   — single unit of work (replaces "step")
+//   Step   — single unit of work
 //   Queue  — mutable, ordered list of steps
 // ---------------------------------------------------------------------------
 

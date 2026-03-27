@@ -1,13 +1,13 @@
 /**
  * StepContext — cumulative accumulator that grows as steps complete
- * within a pipeline stage.
+ * within a queue execution.
  *
  * After each step, decisions, warnings, artifacts, issues, and skill
  * feedback are accumulated into the context. The dispatcher for step N
  * receives the cumulative context from steps 1 through N-1.
  *
- * Persisted to disk via atomicWrite so pipeline restart/resume can
- * reload accumulated state. Resets between pipeline stages.
+ * Persisted to disk via atomicWrite so queue restart/resume can
+ * reload accumulated state.
  */
 
 import { z } from "zod";
@@ -114,7 +114,7 @@ export function createEmptyStepContext(): StepContext {
 // ---------------------------------------------------------------------------
 
 /**
- * Accumulate a completed step's handoff data into the stage context.
+ * Accumulate a completed step's handoff data into the step context.
  *
  * Returns a NEW StepContext object (does not mutate the input).
  * Skips adding entries for empty arrays to keep the context compact.
@@ -183,7 +183,7 @@ export function accumulateStepIntoContext(
 // ---------------------------------------------------------------------------
 
 /**
- * Persist stage context to disk using atomicWrite.
+ * Persist step context to disk using atomicWrite.
  * File is written to `<projectCwd>/.flywheel/step-context.json`.
  */
 export function persistStepContext(ctx: StepContext, projectCwd: string): void {
@@ -194,10 +194,10 @@ export function persistStepContext(ctx: StepContext, projectCwd: string): void {
 }
 
 /**
- * Load stage context from disk. Returns null if file doesn't exist,
+ * Load step context from disk. Returns null if file doesn't exist,
  * is invalid JSON, or fails schema validation.
  *
- * Used on pipeline restart/resume to recover accumulated state.
+ * Used on queue restart/resume to recover accumulated state.
  */
 export function loadStepContext(projectCwd: string): StepContext | null {
   const filePath = path.resolve(projectCwd, STEP_CONTEXT_FILE);

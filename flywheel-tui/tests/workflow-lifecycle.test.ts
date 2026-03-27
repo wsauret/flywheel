@@ -316,8 +316,8 @@ describe("Workflow Lifecycle", () => {
       // 1. timerService.reset()
       // 2. createStore(planPath)
       // 3. new OpenTUIAdapter({ actions: store })
-      // 4. adapter.connect(bus) — via WorkController constructor
-      // 5. adapter.start() — via WorkController constructor
+      // 4. adapter.connect(bus)
+      // 5. adapter.start()
 
       timerService.reset();
 
@@ -329,7 +329,7 @@ describe("Workflow Lifecycle", () => {
       expect(adapter.isRunning()).toBe(false);
 
       const bus = new EventBus();
-      // WorkController constructor calls connect + start
+      // createWorkflowSession calls connect + start
       adapter.connect(bus);
       adapter.start();
 
