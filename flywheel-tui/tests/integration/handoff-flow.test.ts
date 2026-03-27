@@ -292,25 +292,19 @@ describe("Invalid handoff recovery", () => {
     }
   });
 
-  it("throws HandoffInvalidError with field name for unknown fields (.strict())", async () => {
+  it("tolerates unknown fields (.passthrough()) on WorkerHandoffSchema", async () => {
     const hp = handoffPath("extra-fields-001");
     fs.writeFileSync(
       hp,
       JSON.stringify({
         summary: "A".repeat(100),
-        hallucinated_field: "should fail strict",
+        hallucinated_field: "should be tolerated by passthrough",
       }),
     );
 
-    try {
-      await readHandoff(hp, WorkerHandoffSchema);
-      expect(true).toBe(false);
-    } catch (err) {
-      expect(err).toBeInstanceOf(HandoffInvalidError);
-      expect((err as HandoffInvalidError).message).toContain(
-        "hallucinated_field",
-      );
-    }
+    // Should succeed now that WorkerHandoffBaseSchema uses .passthrough()
+    const result = await readHandoff(hp, WorkerHandoffSchema);
+    expect(result.summary).toBe("A".repeat(100));
   });
 
   it("succeeds after retry with corrected data", async () => {
@@ -480,21 +474,17 @@ describe("Evaluator verdict handoff", () => {
     }
   });
 
-  it("rejects verdict with unknown fields (.strict())", async () => {
+  it("tolerates verdict with unknown fields (.passthrough())", async () => {
     const hp = handoffPath("eval-strict-001");
     const verdict = {
       ...validEvaluatorVerdict(),
-      unknown_extra: "should fail",
+      unknown_extra: "should be tolerated",
     };
     fs.writeFileSync(hp, JSON.stringify(verdict));
 
-    try {
-      await readHandoff(hp, EvaluatorVerdictSchema);
-      expect(true).toBe(false);
-    } catch (err) {
-      expect(err).toBeInstanceOf(HandoffInvalidError);
-      expect((err as HandoffInvalidError).message).toContain("unknown_extra");
-    }
+    // Should succeed now that EvaluatorVerdictSchema uses .passthrough()
+    const result = await readHandoff(hp, EvaluatorVerdictSchema);
+    expect(result.passed).toBe(true);
   });
 
   it("evaluator handoff instruction includes all required fields", () => {
@@ -570,21 +560,17 @@ describe("Dispatcher decision handoff", () => {
     }
   });
 
-  it("rejects dispatcher decision with unknown fields (.strict())", async () => {
+  it("tolerates dispatcher decision with unknown fields (.passthrough())", async () => {
     const hp = handoffPath("dispatch-strict-001");
     const decision = {
       ...validDispatcherDecision(),
-      unknown_field: "bad",
+      unknown_field: "should be tolerated",
     };
     fs.writeFileSync(hp, JSON.stringify(decision));
 
-    try {
-      await readHandoff(hp, DispatcherDecisionHandoffSchema);
-      expect(true).toBe(false);
-    } catch (err) {
-      expect(err).toBeInstanceOf(HandoffInvalidError);
-      expect((err as HandoffInvalidError).message).toContain("unknown_field");
-    }
+    // Should succeed now that DispatcherDecisionHandoffSchema uses .passthrough()
+    const result = await readHandoff(hp, DispatcherDecisionHandoffSchema);
+    expect(result.schema_version).toBe(1);
   });
 
   it("dispatcher handoff instruction includes all required fields", () => {

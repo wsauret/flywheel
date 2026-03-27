@@ -18,6 +18,9 @@ export function countSentences(text: string): number {
 
 // ---------------------------------------------------------------------------
 // Sub-schemas (all .strict() — LLM typos should cause retries)
+// Top-level handoff schemas use .passthrough() to tolerate extra keys from
+// LLMs. Sub-schemas keep .strict() since they define small nested structures
+// where extra keys are more likely to indicate a malformed response.
 // ---------------------------------------------------------------------------
 
 export const ArtifactsSchema = z.object({
@@ -157,7 +160,7 @@ export const WorkerHandoffBaseSchema = z.object({
   iteration_number: z.number().optional(),
   /** Worker signals that the task requires full planning (sprint escalation). */
   needs_plan: z.boolean().optional(),
-}).strict();
+}).passthrough();
 
 /**
  * Full WorkerHandoffSchema with cross-field quality refinements.
@@ -225,7 +228,7 @@ export const EvaluatorVerdictSchema = z.object({
   implementation_feedback: z.string().optional(),
   /** Sprint dual-channel feedback: specific feedback on the verification script. */
   script_feedback: z.string().optional(),
-}).strict();
+}).passthrough();
 
 export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
 
@@ -243,6 +246,6 @@ export const DispatcherDecisionHandoffSchema = z.object({
   session_name: z.string().optional(),
   reasoning: z.string().optional(),
   worker_config: WorkerConfigSchema.optional(),
-}).strict();
+}).passthrough();
 
 export type DispatcherDecisionHandoff = z.infer<typeof DispatcherDecisionHandoffSchema>;

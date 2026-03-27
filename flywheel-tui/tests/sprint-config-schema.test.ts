@@ -218,12 +218,12 @@ describe("Handoff schema sprint fields (VAL-SCHEMA-004)", () => {
     expect(result.success).toBe(true);
   });
 
-  it(".strict() still rejects truly unknown fields", () => {
+  it(".passthrough() tolerates unknown fields", () => {
     const result = WorkerHandoffBaseSchema.safeParse({
       ...validBase,
-      completely_unknown_field: "should fail",
+      completely_unknown_field: "should be tolerated",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("full WorkerHandoffSchema also accepts sprint fields", () => {

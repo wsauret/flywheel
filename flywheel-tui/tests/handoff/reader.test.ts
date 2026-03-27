@@ -127,25 +127,20 @@ describe("readHandoff — empty file", () => {
   });
 });
 
-describe("readHandoff — strict rejection", () => {
-  it("throws HandoffInvalidError with unknown field name", async () => {
+describe("readHandoff — passthrough tolerance", () => {
+  it("tolerates unknown fields via .passthrough() on WorkerHandoffSchema", async () => {
     const path = join(tmpDir, "extra-fields.json");
     await Bun.write(
       path,
       JSON.stringify({
         summary: "A".repeat(100),
-        unknown_hallucinated_field: "should cause error",
+        unknown_hallucinated_field: "should be tolerated",
       }),
     );
 
-    try {
-      await readHandoff(path, WorkerHandoffSchema);
-      expect(true).toBe(false);
-    } catch (err) {
-      expect(err).toBeInstanceOf(HandoffInvalidError);
-      const msg = (err as HandoffInvalidError).message;
-      expect(msg).toContain("unknown_hallucinated_field");
-    }
+    // WorkerHandoffBaseSchema now uses .passthrough() — extra fields are accepted
+    const result = await readHandoff(path, WorkerHandoffSchema);
+    expect(result.summary).toBe("A".repeat(100));
   });
 });
 

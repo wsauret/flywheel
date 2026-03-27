@@ -115,14 +115,14 @@ describe("EvaluatorHandoffDataSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects fields not in pick set (inherits strict from WorkerHandoff)", () => {
+  it("tolerates fields not in pick set (inherits passthrough from WorkerHandoff)", () => {
     const data = {
       summary: "A".repeat(100),
-      plan_file_path: "not in pick set",
+      plan_file_path: "not in pick set but tolerated",
     };
     const result = EvaluatorHandoffDataSchema.safeParse(data);
-    // pick on a .strict() schema retains strictness — unlisted fields are rejected
-    expect(result.success).toBe(false);
+    // pick on a .passthrough() schema inherits passthrough — extra fields are tolerated
+    expect(result.success).toBe(true);
   });
 });
 

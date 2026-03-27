@@ -325,19 +325,12 @@ describe("WorkerHandoffSchema", () => {
     expect(atMax.success).toBe(true);
   });
 
-  it("rejects unknown fields (.strict())", () => {
+  it("tolerates unknown fields (.passthrough())", () => {
     const result = WorkerHandoffSchema.safeParse({
       ...validMinimal,
-      hallucinated_field: "should fail",
+      hallucinated_field: "should be tolerated",
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      // Zod strict mode produces "unrecognized_keys" issue
-      const unrecognized = result.error.issues.find(
-        (i) => i.code === "unrecognized_keys",
-      );
-      expect(unrecognized).toBeDefined();
-    }
+    expect(result.success).toBe(true);
   });
 
   it("parses handoff with partial artifacts (only files_created)", () => {
@@ -739,18 +732,12 @@ describe("EvaluatorVerdictSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects unknown fields (.strict())", () => {
+  it("tolerates unknown fields (.passthrough())", () => {
     const result = EvaluatorVerdictSchema.safeParse({
       ...validVerdict,
-      hallucinated: "should fail",
+      hallucinated: "should be tolerated",
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const unrecognized = result.error.issues.find(
-        (i) => i.code === "unrecognized_keys",
-      );
-      expect(unrecognized).toBeDefined();
-    }
+    expect(result.success).toBe(true);
   });
 
   it("rejects missing required fields", () => {
@@ -815,18 +802,12 @@ describe("DispatcherDecisionHandoffSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects unknown fields (.strict())", () => {
+  it("tolerates unknown fields (.passthrough())", () => {
     const result = DispatcherDecisionHandoffSchema.safeParse({
       ...validDecision,
-      hallucinated_field: "should fail",
+      hallucinated_field: "should be tolerated",
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const unrecognized = result.error.issues.find(
-        (i) => i.code === "unrecognized_keys",
-      );
-      expect(unrecognized).toBeDefined();
-    }
+    expect(result.success).toBe(true);
   });
 
   it("rejects missing required fields", () => {
