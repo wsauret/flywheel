@@ -15,11 +15,14 @@
 //   Queue     — mutable, ordered list of steps
 // ---------------------------------------------------------------------------
 
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import type { Step, Queue } from "./types";
 import type { ProtoStep } from "./proto-step";
 import { ProtoStepArraySchema, formalizeProtoSteps } from "./proto-step";
 import { insertAfter, type MutationResult, type Provenance } from "./queue";
 import type { OnStepCompletedHook, OnStepCompletedResult } from "./executor";
+import { parseJsonPlan } from "../controller/plan-json-parser";
 import { randomUUID } from "crypto";
 import { Log } from "../utils/log";
 
@@ -55,10 +58,12 @@ export function findInsertionPoint(steps: Step[], planStepId: string): number {
   const planIdx = steps.findIndex((s) => s.id === planStepId);
   if (planIdx === -1) return -1;
 
-  // Look for the first review, ship, or gate step after the plan step
+  // Look for the first review or ship step after the plan step.
+  // Gate steps are skipped — work steps should be inserted AFTER gates
+  // (e.g., plan → gate → [WORK STEPS] → review).
   for (let i = planIdx + 1; i < steps.length; i++) {
     const step = steps[i];
-    if (step.type === "review" || step.type === "ship" || step.type === "gate") {
+    if (step.type === "review" || step.type === "ship") {
       return i;
     }
   }
@@ -154,51 +159,120 @@ export function insertWorkStepsFromPlanOutput(
  * Creates an `onStepCompleted` hook that detects when a plan consolidation
  * step completes and inserts formalized work steps into the queue.
  *
- * The hook checks if the completed step is a plan step and if the handoff
- * data contains a `steps` array (proto-steps from plan output). If so,
- * it validates the proto-steps and calls `insertWorkStepsFromPlanOutput()`.
+ * The hook tries two sources for plan steps:
+ *   1. handoffData.steps — direct proto-steps array in the handoff JSON
+ *   2. handoffData.plan_file_path — path to a .plan.json file on disk
  *
+ * If neither source yields valid steps, the hook returns silently.
+ *
+ * @param projectCwd The project root directory (for resolving relative plan paths)
  * @returns An OnStepCompletedHook suitable for passing to StepExecutorOptions
  */
-export function createPlanIntegrationHook(): OnStepCompletedHook {
+export function createPlanIntegrationHook(projectCwd?: string): OnStepCompletedHook {
   return async (
     step: Step,
     status: "completed" | "failed",
     queue: Queue,
     handoffData: Record<string, unknown> | null,
   ): Promise<OnStepCompletedResult> => {
-    // Only act on completed plan steps with handoff data containing steps[]
+    // Only act on completed plan steps
     if (status !== "completed" || step.type !== "plan") {
       return { continueExecution: false };
     }
 
-    if (!handoffData || !Array.isArray(handoffData.steps) || handoffData.steps.length === 0) {
+    if (!handoffData) {
       return { continueExecution: false };
     }
 
-    // Validate proto-steps using Zod schema
-    const parseResult = ProtoStepArraySchema.safeParse(handoffData.steps);
-    if (!parseResult.success) {
+    // --- Source 1: handoffData.steps (direct proto-steps array) ---
+    if (Array.isArray(handoffData.steps) && handoffData.steps.length > 0) {
+      const parseResult = ProtoStepArraySchema.safeParse(handoffData.steps);
+      if (parseResult.success) {
+        const protoSteps = parseResult.data;
+        const result = insertWorkStepsFromPlanOutput(queue, step.id, protoSteps);
+
+        if (result.success) {
+          log.info("plan integration: inserted work steps from handoff steps", {
+            stepId: step.id,
+            count: protoSteps.length,
+          });
+        } else {
+          log.warn("plan integration: failed to insert work steps", {
+            stepId: step.id,
+            error: "error" in result ? result.error : "unknown",
+          });
+        }
+        return { continueExecution: false };
+      }
+
       log.warn("plan integration: invalid proto-steps in handoff", {
         stepId: step.id,
         error: parseResult.error.message,
       });
-      return { continueExecution: false };
+      // Fall through to try plan_file_path
     }
 
-    const protoSteps = parseResult.data;
-    const result = insertWorkStepsFromPlanOutput(queue, step.id, protoSteps);
+    // --- Source 2: handoffData.plan_file_path (read .plan.json from disk) ---
+    // Only read plan file for consolidation steps to avoid premature insertion
+    // (draft/review steps may also produce plan_file_path but their output
+    // is intermediate — only the consolidated plan should trigger work insertion).
+    const isConsolidation = step.dispatcherHint === "consolidate"
+      || step.title?.toLowerCase().includes("consolidat");
+    if (isConsolidation && typeof handoffData.plan_file_path === "string" && handoffData.plan_file_path.length > 0) {
+      const planFilePath = path.isAbsolute(handoffData.plan_file_path)
+        ? handoffData.plan_file_path
+        : projectCwd
+          ? path.join(projectCwd, handoffData.plan_file_path)
+          : handoffData.plan_file_path;
 
-    if (result.success) {
-      log.info("plan integration: inserted work steps from plan output", {
-        stepId: step.id,
-        count: protoSteps.length,
-      });
-    } else {
-      log.warn("plan integration: failed to insert work steps", {
-        stepId: step.id,
-        error: "error" in result ? result.error : "unknown",
-      });
+      try {
+        const content = await fs.readFile(planFilePath, "utf-8");
+        const parseResult = parseJsonPlan(content);
+
+        if (!parseResult.ok) {
+          log.warn("plan integration: failed to parse plan file", {
+            stepId: step.id,
+            planFilePath,
+            error: parseResult.error,
+          });
+          return { continueExecution: false };
+        }
+
+        // Convert PlanStep[] to ProtoStep[] (compatible schemas)
+        const protoSteps: ProtoStep[] = parseResult.plan.steps.map((s) => ({
+          title: s.title,
+          description: s.description,
+          acceptanceCriteria: s.acceptanceCriteria,
+          ...(s.fileReferences ? { fileReferences: s.fileReferences } : {}),
+          ...(s.feature ? { feature: s.feature } : {}),
+          ...(s.milestone ? { milestone: s.milestone } : {}),
+          ...(s.fulfills ? { fulfills: s.fulfills } : {}),
+          ...(s.estimatedComplexity ? { estimatedComplexity: s.estimatedComplexity } : {}),
+        }));
+
+        const result = insertWorkStepsFromPlanOutput(queue, step.id, protoSteps);
+
+        if (result.success) {
+          log.info("plan integration: inserted work steps from plan file", {
+            stepId: step.id,
+            planFilePath,
+            count: protoSteps.length,
+          });
+        } else {
+          log.warn("plan integration: failed to insert work steps from plan file", {
+            stepId: step.id,
+            planFilePath,
+            error: "error" in result ? result.error : "unknown",
+          });
+        }
+        return { continueExecution: false };
+      } catch (err) {
+        log.warn("plan integration: failed to read plan file", {
+          stepId: step.id,
+          planFilePath,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     return { continueExecution: false };

@@ -99,15 +99,15 @@ describe("findInsertionPoint", () => {
     expect(idx).toBe(1); // Between plan and review
   });
 
-  test("inserts before gate step that precedes review", () => {
+  test("inserts after gate step, before review", () => {
     const steps: Step[] = [
       { ...makePlanStep("p1"), status: "completed" },
       makeGateStep("g1"),
       makeReviewStep("r1"),
     ];
     const idx = findInsertionPoint(steps, "p1");
-    // Should insert between plan and the gate that precedes review
-    expect(idx).toBe(1);
+    // Gate is skipped — work steps go between gate and review
+    expect(idx).toBe(2);
   });
 });
 
@@ -208,7 +208,7 @@ describe("insertWorkStepsFromPlanOutput", () => {
     }
   });
 
-  test("inserts before gate that precedes review", () => {
+  test("inserts after gate, before review", () => {
     const queue = createQueue([
       makePlanStep("p1"),
       makeGateStep("g1"),
@@ -221,13 +221,13 @@ describe("insertWorkStepsFromPlanOutput", () => {
     expect(result.success).toBe(true);
 
     if (result.success) {
-      // plan, work, work, work, gate, review
+      // plan, gate, work, work, work, review
       expect(result.queue.steps).toHaveLength(6);
       expect(result.queue.steps[0].type).toBe("plan");
-      expect(result.queue.steps[1].type).toBe("work");
+      expect(result.queue.steps[1].type).toBe("gate");
       expect(result.queue.steps[2].type).toBe("work");
       expect(result.queue.steps[3].type).toBe("work");
-      expect(result.queue.steps[4].type).toBe("gate");
+      expect(result.queue.steps[4].type).toBe("work");
       expect(result.queue.steps[5].type).toBe("review");
     }
   });
@@ -576,6 +576,144 @@ describe("VAL-HOOK-004: createPlanIntegrationHook", () => {
     expect(workStep.feature).toBe("auth");
     expect(workStep.fulfills).toEqual(["VAL-AUTH-001"]);
     expect(workStep.milestone).toBe("core");
+  });
+
+  test("hook reads plan file when handoff has plan_file_path (consolidation step)", async () => {
+    const tmpDir = await import("node:os").then(os => os.tmpdir());
+    const testDir = `${tmpDir}/plan-integration-test-${randomUUID()}`;
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(testDir, { recursive: true });
+
+    // Write a valid plan JSON file
+    const planJson = JSON.stringify({
+      steps: [
+        {
+          title: "Create hello endpoint",
+          description: "Add GET /hello route returning JSON",
+          acceptanceCriteria: ["GET /hello returns 200", "Response is JSON"],
+          fileReferences: ["src/server.ts"],
+          feature: "hello-world",
+        },
+        {
+          title: "Add tests",
+          description: "Write unit tests for hello endpoint",
+          acceptanceCriteria: ["Tests pass"],
+        },
+      ],
+      behavioralContract: [{ id: "BC-1", title: "Hello", description: "Works", evidence: "test", area: "API" }],
+      decisions: [],
+      risks: [],
+    });
+    const planPath = `${testDir}/test.plan.json`;
+    await fs.writeFile(planPath, planJson, "utf-8");
+
+    const hook = createPlanIntegrationHook(testDir);
+    const queue = createQueue([
+      makePlanStep("p1"),
+      makeGateStep("g1"),
+      makeReviewStep("r1"),
+    ]);
+    // Mark as consolidation step
+    queue.steps[0].status = "completed";
+    queue.steps[0].dispatcherHint = "consolidate";
+    queue.cursor = 1;
+
+    const handoffData = {
+      summary: "Plan consolidated",
+      plan_file_path: planPath,
+      decisions: [],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // Work steps inserted after gate, before review
+    // plan, gate, work, work, review
+    expect(queue.steps).toHaveLength(5);
+    expect(queue.steps[0].type).toBe("plan");
+    expect(queue.steps[1].type).toBe("gate");
+    expect(queue.steps[2].type).toBe("work");
+    expect(queue.steps[2].title).toBe("Create hello endpoint");
+    expect(queue.steps[3].type).toBe("work");
+    expect(queue.steps[3].title).toBe("Add tests");
+    expect(queue.steps[4].type).toBe("review");
+
+    // Cleanup
+    await fs.rm(testDir, { recursive: true });
+  });
+
+  test("hook ignores plan_file_path for non-consolidation steps", async () => {
+    const tmpDir = await import("node:os").then(os => os.tmpdir());
+    const testDir = `${tmpDir}/plan-integration-test-${randomUUID()}`;
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(testDir, { recursive: true });
+
+    const planJson = JSON.stringify({
+      steps: [{ title: "Step", description: "Desc", acceptanceCriteria: ["OK"] }],
+      behavioralContract: [],
+      decisions: [],
+      risks: [],
+    });
+    const planPath = `${testDir}/test.plan.json`;
+    await fs.writeFile(planPath, planJson, "utf-8");
+
+    const hook = createPlanIntegrationHook(testDir);
+    const queue = createQueue([
+      makePlanStep("p1"),
+      makeReviewStep("r1"),
+    ]);
+    queue.steps[0].status = "completed";
+    // dispatcherHint is "draft", NOT "consolidate"
+    queue.steps[0].dispatcherHint = "draft";
+    queue.cursor = 1;
+
+    const handoffData = {
+      plan_file_path: planPath,
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // No work steps inserted — draft step should not trigger file reading
+    expect(queue.steps).toHaveLength(2);
+
+    // Cleanup
+    await fs.rm(testDir, { recursive: true });
+  });
+
+  test("hook handles relative plan_file_path resolved against projectCwd", async () => {
+    const tmpDir = await import("node:os").then(os => os.tmpdir());
+    const testDir = `${tmpDir}/plan-integration-test-${randomUUID()}`;
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(`${testDir}/.flywheel/plans`, { recursive: true });
+
+    const planJson = JSON.stringify({
+      steps: [{ title: "Relative step", description: "From relative path", acceptanceCriteria: ["Works"] }],
+      behavioralContract: [],
+      decisions: [],
+      risks: [],
+    });
+    await fs.writeFile(`${testDir}/.flywheel/plans/my.plan.json`, planJson, "utf-8");
+
+    const hook = createPlanIntegrationHook(testDir);
+    const queue = createQueue([
+      makePlanStep("p1"),
+      makeReviewStep("r1"),
+    ]);
+    queue.steps[0].status = "completed";
+    queue.steps[0].dispatcherHint = "consolidate";
+    queue.cursor = 1;
+
+    const handoffData = {
+      plan_file_path: ".flywheel/plans/my.plan.json",
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // Work step inserted
+    expect(queue.steps).toHaveLength(3);
+    expect(queue.steps[1].title).toBe("Relative step");
+
+    // Cleanup
+    await fs.rm(testDir, { recursive: true });
   });
 });
 

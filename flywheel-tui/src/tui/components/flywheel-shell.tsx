@@ -367,7 +367,7 @@ export function FlywheelShell() {
       : null
 
     // Plan integration hook + TUI step insertion composite hook
-    const planIntegrationHook = createPlanIntegrationHook()
+    const planIntegrationHook = createPlanIntegrationHook(projectCwd)
     const compositeHook = createCompositeHook([
       planIntegrationHook,
       async (step, status, q, _handoffData) => {
