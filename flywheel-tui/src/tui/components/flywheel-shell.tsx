@@ -100,6 +100,8 @@ import { readHandoff } from "../../handoff/reader"
 import { WorkerHandoffSchema } from "../../schemas/handoff"
 import { createContextAccumulator } from "../../queue/context-accumulator"
 import { createPlanIntegrationHook, createCompositeHook } from "../../queue/plan-integration"
+import { buildScaffolding } from "../../queue/prompt-scaffolding"
+import { HANDOFFS_DIR } from "../../config/paths"
 import { resolveModels } from "../../config/loader"
 
 const log = Log.create({ service: "shell" })
@@ -416,8 +418,16 @@ export function FlywheelShell() {
     // Worker callback: spawn engine process
     const workerFn = async (step: import("../../queue/types").Step, prompt: string) => {
       const invocationId = randomUUID()
+
+      // Compute handoff path BEFORE spawning (matches bun-spawner convention)
+      const handoffPath = `${HANDOFFS_DIR}/${invocationId}.json`
+
+      // Append deterministic scaffolding (output format + handoff instructions)
+      const scaffolding = buildScaffolding(step, handoffPath, projectCwd)
+      const fullPrompt = scaffolding ? `${prompt}\n\n${scaffolding}` : prompt
+
       const engineCmd = deps.engine.buildCommand({
-        prompt,
+        prompt: fullPrompt,
         model: deps.config.worker?.model ?? deps.config.model,
         toolScoping: step.toolScoping ?? undefined,
       })
@@ -426,7 +436,7 @@ export function FlywheelShell() {
         cwd: projectCwd,
         invocationId,
         stdin: engineCmd.stdinPrompt
-          ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
+          ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + fullPrompt : fullPrompt)
           : undefined,
         onStdout: (chunk) => {
           emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
