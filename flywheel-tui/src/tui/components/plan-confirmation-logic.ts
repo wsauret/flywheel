@@ -97,44 +97,21 @@ export const PLAN_ACTIONS: PlanActionDef[] = [
 /**
  * Transforms a `PlanImportResult` into a flat display-friendly structure.
  *
- * For JSON plans: maps steps, behavioral contract, decisions, and risks.
- * For markdown plans: maps phases with step counts (legacy path).
+ * Maps JSON plan steps, behavioral contract, decisions, and risks.
  */
 export function preparePlanSummary(result: PlanImportResult): PlanSummaryDisplay {
-  const isJsonPlan = result.isJsonPlan ?? false
-
-  if (isJsonPlan && result.steps && result.steps.length > 0) {
-    return {
-      status: result.status,
-      phases: [],
-      steps: result.steps.map(mapStep),
-      behavioralContract: (result.behavioralContract ?? []).map(mapAssertion),
-      decisions: result.decisions ?? [],
-      risks: result.risks ?? [],
-      phaseCount: result.summary.phaseCount,
-      totalSteps: result.summary.totalSteps,
-      hasAcceptanceCriteria: result.summary.hasAcceptanceCriteria,
-      issues: result.issues,
-      isJsonPlan: true,
-    }
-  }
-
-  // Legacy markdown plan path
   return {
     status: result.status,
-    phases: result.phases.map((phase) => ({
-      title: phase.title,
-      stepCount: phase.steps.length,
-    })),
-    steps: [],
-    behavioralContract: [],
-    decisions: [],
-    risks: [],
+    phases: [],
+    steps: (result.steps ?? []).map(mapStep),
+    behavioralContract: (result.behavioralContract ?? []).map(mapAssertion),
+    decisions: result.decisions ?? [],
+    risks: result.risks ?? [],
     phaseCount: result.summary.phaseCount,
     totalSteps: result.summary.totalSteps,
     hasAcceptanceCriteria: result.summary.hasAcceptanceCriteria,
     issues: result.issues,
-    isJsonPlan: false,
+    isJsonPlan: true,
   }
 }
 

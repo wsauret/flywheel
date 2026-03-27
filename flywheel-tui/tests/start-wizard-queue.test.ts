@@ -201,15 +201,15 @@ describe("VAL-SHELL-011: Queue created from each workflow selection", () => {
 // ===========================================================================
 
 describe("VAL-SHELL-033: /work <planPath> parses plan into work steps", () => {
-  const fixturePath = path.resolve(__dirname, "fixtures/two-phase-plan.md");
+  const fixturePath = path.resolve(__dirname, "fixtures/two-phase-plan.plan.json");
 
-  it("parses two-phase-plan.md into 2 work steps", () => {
+  it("parses two-phase-plan.plan.json into 2 work steps", () => {
     const queue = buildQueueFromPlan(fixturePath, makeConfig({ auto_chain: false }));
     const workSteps = queue.steps.filter((s) => s.type === "work");
     expect(workSteps).toHaveLength(2);
   });
 
-  it("work steps have correct titles from plan phases", () => {
+  it("work steps have correct titles from plan steps", () => {
     const queue = buildQueueFromPlan(fixturePath, makeConfig({ auto_chain: false }));
     const titles = queue.steps.filter((s) => s.type === "work").map((s) => s.title);
     expect(titles[0]).toContain("Setup project structure");
@@ -237,14 +237,14 @@ describe("VAL-SHELL-033: /work <planPath> parses plan into work steps", () => {
   });
 
   it("falls back to single work step for nonexistent plan file", () => {
-    const queue = buildQueueFromPlan("/nonexistent/plan.md", makeConfig({ auto_chain: false }));
+    const queue = buildQueueFromPlan("/nonexistent/plan.json", makeConfig({ auto_chain: false }));
     expect(queue.steps).toHaveLength(1);
     expect(queue.steps[0].type).toBe("work");
     expect(queue.steps[0].title).toBe("Execute work");
   });
 
-  it("falls back to single work step for empty plan content", () => {
-    // Use a path to a known file that exists but has no phases
+  it("falls back to single work step for invalid JSON plan content", () => {
+    // Use a path to a known file that exists but isn't a valid JSON plan
     const queue = buildQueueFromPlan(path.resolve(__dirname, "../package.json"), makeConfig({ auto_chain: false }));
     expect(queue.steps).toHaveLength(1);
     expect(queue.steps[0].type).toBe("work");

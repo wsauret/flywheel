@@ -294,7 +294,7 @@ describe("buildQueueFromPlan", () => {
     }
   });
 
-  it("falls back to markdown parsing for .md plan files", async () => {
+  it("falls back to single work step for non-JSON .md plan files", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const os = await import("node:os");
@@ -303,15 +303,15 @@ describe("buildQueueFromPlan", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
     const planPath = path.join(tmpDir, "plan.md");
 
-    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n- [ ] Add config\n\n### Phase 2: Build\n\n- [ ] Implement feature\n`;
+    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n`;
     fs.writeFileSync(planPath, mdPlan);
 
     try {
+      // Markdown parsing removed — non-JSON content falls back to single work step
       const queue = buildQueueFromPlan(planPath, makeConfig({ auto_chain: false }));
-      expect(queue.steps).toHaveLength(2);
-      expect(queue.steps[0].title).toBe("Setup");
-      expect(queue.steps[1].title).toBe("Build");
+      expect(queue.steps).toHaveLength(1);
       expect(queue.steps[0].type).toBe("work");
+      expect(queue.steps[0].title).toBe("Execute work");
     } finally {
       fs.rmSync(tmpDir, { recursive: true });
     }

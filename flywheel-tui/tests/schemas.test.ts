@@ -10,10 +10,6 @@ import {
   EvaluatorResultSchema,
 } from "../src/schemas/evaluator";
 import {
-  StateFileSchema,
-  migrateStateFile,
-} from "../src/schemas/state";
-import {
   WorkerResultSchema,
   WorkerFailureReasonSchema,
 } from "../src/schemas/worker";
@@ -655,115 +651,6 @@ describe("EvaluatorInputSchema", () => {
       hallucinated: "strip me",
     });
     expect((result as any).hallucinated).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// StateFileSchema (.strict() — internal)
-// ---------------------------------------------------------------------------
-describe("StateFileSchema", () => {
-  const validState = {
-    schema_version: 1 as const,
-    plan_path: "docs/plans/my-plan.md",
-    writer: "skill" as const,
-    last_written_at: "2026-03-15T00:00:00Z",
-    phases: [
-      {
-        name: "Phase 1",
-        status: "completed" as const,
-        steps: [],
-      },
-    ],
-  };
-
-  it("parses a valid state file", () => {
-    const result = StateFileSchema.safeParse(validState);
-    expect(result.success).toBe(true);
-  });
-
-  it("enforces schema_version: 1 literal", () => {
-    const result = StateFileSchema.safeParse({
-      ...validState,
-      schema_version: 2,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects unknown fields in strict mode", () => {
-    const result = StateFileSchema.safeParse({
-      ...validState,
-      unknown_field: "should fail",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("requires writer field", () => {
-    const { writer, ...noWriter } = validState;
-    const result = StateFileSchema.safeParse(noWriter);
-    expect(result.success).toBe(false);
-  });
-
-  it("requires last_written_at field", () => {
-    const { last_written_at, ...noTimestamp } = validState;
-    const result = StateFileSchema.safeParse(noTimestamp);
-    expect(result.success).toBe(false);
-  });
-
-  it("validates last_written_at is ISO datetime", () => {
-    const result = StateFileSchema.safeParse({
-      ...validState,
-      last_written_at: "not-a-date",
-    });
-    expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// migrateStateFile
-// ---------------------------------------------------------------------------
-describe("migrateStateFile", () => {
-  it("adds default writer='skill' when missing", () => {
-    const raw = {
-      schema_version: 1,
-      plan_path: "docs/plans/my-plan.md",
-      last_written_at: "2026-03-15T00:00:00Z",
-      phases: [],
-    };
-    const migrated = migrateStateFile(raw);
-    expect(migrated.writer).toBe("skill");
-  });
-
-  it("adds last_written_at from mtime when missing", () => {
-    const raw = {
-      schema_version: 1,
-      plan_path: "docs/plans/my-plan.md",
-      phases: [],
-    };
-    const migrated = migrateStateFile(raw, new Date("2026-01-01T00:00:00Z"));
-    expect(migrated.last_written_at).toBe("2026-01-01T00:00:00.000Z");
-  });
-
-  it("preserves existing writer field", () => {
-    const raw = {
-      schema_version: 1,
-      plan_path: "docs/plans/my-plan.md",
-      writer: "controller",
-      last_written_at: "2026-03-15T00:00:00Z",
-      phases: [],
-    };
-    const migrated = migrateStateFile(raw);
-    expect(migrated.writer).toBe("controller");
-  });
-
-  it("result parses with StateFileSchema", () => {
-    const raw = {
-      schema_version: 1,
-      plan_path: "docs/plans/my-plan.md",
-      phases: [],
-    };
-    const migrated = migrateStateFile(raw, new Date("2026-01-01T00:00:00Z"));
-    const result = StateFileSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
   });
 });
 
@@ -1664,36 +1551,13 @@ describe("migrateSession", () => {
 describe("Integration — full data contract flow", () => {
   // --- Shared test fixtures ---
 
-  const planContent = `# Test Plan
-
-### Phase 1: Setup
-- [ ] Initialize project structure
-- [ ] Configure build tooling
-
-### Phase 2: Implementation
-- [ ] Implement core feature
-- [ ] Add error handling
-`;
-
-  const stateContent = `---
-plan_path: docs/plans/test-plan.md
-schema_version: 1
-writer: controller
-last_written_at: "2026-03-20T10:00:00Z"
----
-
-# Test Plan
-
-## Phase 1: Setup
-status: completed
-- [x] Initialize project structure
-- [x] Configure build tooling
-
-## Phase 2: Implementation
-status: in_progress
-- [ ] Implement core feature
-- [ ] Add error handling
-`;
+  const planContent = JSON.stringify({
+    steps: [
+      { title: "Setup", description: "Initialize project structure and configure build tooling", acceptanceCriteria: ["Structure created", "Tooling configured"] },
+      { title: "Implementation", description: "Implement core feature with error handling", acceptanceCriteria: ["Feature works", "Errors handled"] },
+    ],
+    behavioralContract: [], decisions: [], risks: [],
+  });
 
   const contextContent = `- src/index.ts
 - src/utils.ts
@@ -1701,7 +1565,7 @@ status: in_progress
 
   const fullAssemblerInput: import("../src/dispatcher/assemble").AssemblerInput = {
     planContent,
-    stateContent,
+    stateContent: "",
     contextContent,
     lastWorkerResult: {
       step: 1,

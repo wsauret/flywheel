@@ -23,7 +23,6 @@ import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
 import { checkEndOfSessionGate } from "../../controller/validation-state";
 import type { EndOfSessionGateCheck } from "../../controller/workflow-pipeline";
-import { parsePlan } from "../../controller/plan-parser";
 import { parseJsonPlan } from "../../controller/plan-json-parser";
 import { randomUUID } from "crypto";
 
@@ -146,11 +145,10 @@ export function buildQueueForSlashCommand(command: string, config: FlywheelConfi
 /**
  * Build a Queue from a plan file path by parsing its steps into work steps.
  *
- * Supports both JSON (.plan.json) and legacy markdown plan formats.
- * For JSON plans, each step preserves full metadata (description,
- * acceptanceCriteria, fileReferences, feature, fulfills, milestone).
+ * Parses JSON plan files, with each step preserving full metadata
+ * (description, acceptanceCriteria, fileReferences, feature, fulfills, milestone).
  *
- * @param planPath Path to the plan file (.plan.json or .md)
+ * @param planPath Path to the plan file (.plan.json)
  * @param config FlywheelConfig
  * @returns A new Queue with work steps from the plan
  */
@@ -168,14 +166,7 @@ export function buildQueueFromPlan(planPath: string, config: FlywheelConfig): Qu
     }], { maxSteps: config.queue?.max_steps });
   }
 
-  // Detect JSON plan by extension or content
-  const isJson = planPath.endsWith(".plan.json") || isJsonContent(planContent);
-
-  if (isJson) {
-    return buildQueueFromJsonPlan(planContent, config);
-  }
-
-  return buildQueueFromMarkdownPlan(planContent, config);
+  return buildQueueFromJsonPlan(planContent, config);
 }
 
 /**
@@ -215,35 +206,6 @@ function buildQueueFromJsonPlan(planContent: string, config: FlywheelConfig): Qu
 }
 
 /**
- * Build queue from a legacy markdown plan file.
- */
-function buildQueueFromMarkdownPlan(planContent: string, config: FlywheelConfig): Queue {
-  const phases = parsePlan(planContent);
-
-  if (phases.length === 0) {
-    return createQueue([{
-      id: randomUUID(),
-      type: "work" as StepType,
-      title: "Execute work",
-      status: "pending",
-    }], { maxSteps: config.queue?.max_steps });
-  }
-
-  const steps: Step[] = phases.map((phase) => ({
-    id: randomUUID(),
-    type: "work" as StepType,
-    title: phase.title,
-    status: "pending" as const,
-    milestone: phase.milestone,
-    fulfills: phase.fulfills,
-  }));
-
-  appendAutoChainSteps(steps, config);
-
-  return createQueue(steps, { maxSteps: config.queue?.max_steps });
-}
-
-/**
  * Append review/ship steps when auto_chain is enabled.
  */
 function appendAutoChainSteps(steps: Step[], config: FlywheelConfig): void {
@@ -263,14 +225,6 @@ function appendAutoChainSteps(steps: Step[], config: FlywheelConfig): void {
       });
     }
   }
-}
-
-/**
- * Check if content looks like JSON.
- */
-function isJsonContent(content: string): boolean {
-  const trimmed = content.trim();
-  return trimmed.startsWith("{") && trimmed.endsWith("}");
 }
 
 // ---------------------------------------------------------------------------

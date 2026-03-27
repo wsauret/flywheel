@@ -1,11 +1,8 @@
 /**
  * Plan import service.
  *
- * Orchestrates plan ingestion from either a file path or pasted text.
- * Supports both JSON (.plan.json) and legacy markdown plan formats.
- *
- * For JSON plans: validates via PlanJsonSchema, maps steps to PlanImportStep[].
- * For markdown plans: uses the legacy parsePlan() / validatePlan() path.
+ * Orchestrates plan ingestion from a file path or pasted text.
+ * Validates via PlanJsonSchema and maps steps to PlanImportStep[].
  *
  * The content hash (SHA-256) can be stored in session JSON for plan
  * change detection between sessions.
@@ -13,11 +10,6 @@
 
 import * as fs from "node:fs";
 import * as crypto from "node:crypto";
-import {
-  validatePlan,
-  hasAcceptanceCriteria,
-  type PlanPhase,
-} from "./plan-parser";
 import {
   parseJsonPlan,
   type PlanJson,
@@ -51,9 +43,7 @@ export interface PlanImportStep {
 
 export interface PlanImportResult {
   status: "ready" | "needs-fix";
-  /** @deprecated Use `steps` for JSON plans. Kept for markdown plan compat. */
-  phases: PlanPhase[];
-  /** Structured steps from JSON plan (empty for markdown plans). */
+  /** Structured steps from JSON plan. */
   steps: PlanImportStep[];
   /** Behavioral contract assertions from JSON plan. */
   behavioralContract: BehavioralAssertion[];
@@ -79,25 +69,14 @@ export interface PlanImportResult {
 /**
  * Import a plan from either a file path or raw text content.
  *
- * Detects JSON plans by file extension (.plan.json) or content (starts with '{').
- *
  * @param source - Raw plan text (string) or `{ filePath: string }` to read from disk
- * @returns PlanImportResult with status, steps/phases, issues, and summary
+ * @returns PlanImportResult with status, steps, issues, and summary
  */
 export async function importPlan(
   source: string | { filePath: string },
 ): Promise<PlanImportResult> {
   const rawContent = await resolveContent(source);
-  const filePath = typeof source === "object" ? source.filePath : undefined;
-
-  // Detect JSON plan
-  const isJson = isJsonPlanContent(rawContent, filePath);
-
-  if (isJson) {
-    return importJsonPlan(rawContent);
-  }
-
-  return importMarkdownPlan(rawContent);
+  return importJsonPlan(rawContent);
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +94,6 @@ function importJsonPlan(rawContent: string): PlanImportResult {
   if (!result.ok) {
     return {
       status: "needs-fix",
-      phases: [],
       steps: [],
       behavioralContract: [],
       decisions: [],
@@ -136,7 +114,6 @@ function importJsonPlan(rawContent: string): PlanImportResult {
 
   return {
     status: "ready",
-    phases: [], // Empty for JSON plans — use steps instead
     steps,
     behavioralContract: plan.behavioralContract,
     decisions: plan.decisions,
@@ -158,58 +135,6 @@ function importJsonPlan(rawContent: string): PlanImportResult {
 }
 
 // ---------------------------------------------------------------------------
-// Markdown plan import (legacy)
-// ---------------------------------------------------------------------------
-
-function importMarkdownPlan(rawContent: string): PlanImportResult {
-  const content = rawContent.replace(/\r\n/g, "\n");
-  const validation = validatePlan(content);
-
-  const contentHash = crypto
-    .createHash("sha256")
-    .update(content)
-    .digest("hex");
-
-  const totalSteps = validation.phases.reduce(
-    (sum, phase) => sum + phase.steps.length,
-    0,
-  );
-
-  const summary = {
-    phaseCount: validation.phases.length,
-    totalSteps,
-    hasAcceptanceCriteria: hasAcceptanceCriteria(content),
-    contentHash,
-  };
-
-  if (validation.ok) {
-    return {
-      status: "ready",
-      phases: validation.phases,
-      steps: [],
-      behavioralContract: [],
-      decisions: [],
-      risks: [],
-      issues: [],
-      summary,
-      isJsonPlan: false,
-    };
-  }
-
-  return {
-    status: "needs-fix",
-    phases: validation.phases,
-    steps: [],
-    behavioralContract: [],
-    decisions: [],
-    risks: [],
-    issues: validation.issues,
-    summary,
-    isJsonPlan: false,
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -220,15 +145,6 @@ async function resolveContent(
     return source;
   }
   return fs.readFileSync(source.filePath, "utf-8");
-}
-
-/**
- * Detect if content is a JSON plan by file extension or content inspection.
- */
-function isJsonPlanContent(content: string, filePath?: string): boolean {
-  if (filePath && filePath.endsWith(".plan.json")) return true;
-  const trimmed = content.trim();
-  return trimmed.startsWith("{") && trimmed.endsWith("}");
 }
 
 /**

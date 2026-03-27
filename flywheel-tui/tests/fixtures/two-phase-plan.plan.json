@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "title": "Setup project structure",
+      "description": "Create the initial project structure and configuration.",
+      "acceptanceCriteria": ["Directory layout exists", "Config initialized", "Dependencies installed"],
+      "fileReferences": ["src/index.ts", "package.json"]
+    },
+    {
+      "title": "Implement core logic",
+      "description": "Build the main application logic.",
+      "acceptanceCriteria": ["Data models created", "Validation layer works", "Tests pass"],
+      "fileReferences": ["src/models.ts", "src/validation.ts", "tests/core.test.ts"]
+    }
+  ],
+  "behavioralContract": [],
+  "decisions": ["Use Bun runtime"],
+  "risks": []
+}

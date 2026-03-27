@@ -2,8 +2,7 @@
  * DispatcherInput assembler — transforms raw plan/state content
  * into the structured DispatcherInput with budget-aware truncation.
  *
- * Supports both JSON plans (parsed directly) and legacy markdown plans
- * (parsed via parsePlan). JSON plans are detected by content inspection.
+ * Parses JSON plans directly via parseJsonPlan.
  *
  * Single safety-valve cap: 100KB total. If the assembled input exceeds
  * this cap, available_context arrays are truncated to 10 entries each.
@@ -12,9 +11,7 @@
 import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "../schemas/dispatcher";
 import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
 import type { StageContext } from "../controller/stage-context";
-import { parsePlan } from "../controller/plan-parser";
 import { parseJsonPlan } from "../controller/plan-json-parser";
-import { parseStateFile } from "../state/reader";
 import { parseContextFile } from "../controller/templates";
 
 // ---------------------------------------------------------------------------
@@ -67,36 +64,13 @@ export interface AssembledInput {
 // ---------------------------------------------------------------------------
 
 export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
-  // Detect JSON plan content
-  const isJson = isJsonPlanContent(raw.planContent);
+  // Build plan steps for DispatcherInput from JSON plan content
+  const planSteps = buildJsonPlanSteps(raw.planContent);
 
-  // Build plan steps for DispatcherInput
-  const planSteps = isJson
-    ? buildJsonPlanSteps(raw.planContent)
-    : buildMarkdownPlanSteps(raw.planContent);
-
-  // Parse state (gracefully handle empty/missing)
-  const state = raw.stateContent
-    ? parseStateFile(raw.stateContent)
-    : { frontmatter: {}, title: "", phases: [], keyDecisions: [], errorLog: [] };
-
-  // Determine completed steps and current index
+  // State tracking — no longer parsed from .state.md files.
+  // Default to empty completed steps and index 0.
   const completedSteps: number[] = [];
-  let currentStepIndex = 0;
-  let foundPending = false;
-
-  for (let i = 0; i < state.phases.length; i++) {
-    if (state.phases[i].status === "completed") {
-      completedSteps.push(i);
-    } else if (!foundPending) {
-      currentStepIndex = i;
-      foundPending = true;
-    }
-  }
-
-  if (!foundPending && state.phases.length > 0) {
-    currentStepIndex = state.phases.length;
-  }
+  const currentStepIndex = 0;
 
   // Parse context files
   const contextFiles = raw.contextContent
@@ -191,34 +165,11 @@ function buildJsonPlanSteps(content: string): Array<{
   }));
 }
 
-/**
- * Build plan steps from markdown plan content (legacy).
- * Maps markdown phases to the step-based schema.
- */
-function buildMarkdownPlanSteps(content: string): Array<{
-  title: string;
-  description: string;
-}> {
-  const phases = parsePlan(content);
-  return phases.map((p) => ({
-    title: p.title,
-    description: p.steps.length > 0 ? p.steps.join("\n") : p.title,
-  }));
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function byteLength(str: string): number {
   return Buffer.byteLength(str, "utf8");
-}
-
-/**
- * Detect JSON plan content.
- */
-function isJsonPlanContent(content: string): boolean {
-  const trimmed = content.trim();
-  return trimmed.startsWith("{") && trimmed.endsWith("}");
 }
 

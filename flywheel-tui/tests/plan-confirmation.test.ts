@@ -8,35 +8,28 @@ import {
 } from "../src/tui/components/plan-confirmation-logic";
 
 // ---------------------------------------------------------------------------
-// Test fixtures — markdown plans (legacy)
+// Test fixtures — JSON plans
 // ---------------------------------------------------------------------------
 
 const HEALTHY_PLAN: PlanImportResult = {
   status: "ready",
-  phases: [
+  steps: [
     {
-      index: 0,
       title: "Setup project structure",
       description: "Initialize the repo",
-      steps: ["Create directories", "Add config files"],
-      status: "pending",
+      acceptanceCriteria: ["Directories exist", "Config files present"],
     },
     {
-      index: 1,
       title: "Implement core features",
       description: "Build the main modules",
-      steps: ["Write parser", "Write validator", "Write formatter"],
-      status: "pending",
+      acceptanceCriteria: ["Parser works", "Validator works", "Formatter works"],
     },
     {
-      index: 2,
       title: "Testing & polish",
       description: "Ensure quality",
-      steps: ["Unit tests", "Integration tests"],
-      status: "pending",
+      acceptanceCriteria: ["Unit tests pass", "Integration tests pass"],
     },
   ],
-  steps: [],
   behavioralContract: [],
   decisions: [],
   risks: [],
@@ -47,20 +40,11 @@ const HEALTHY_PLAN: PlanImportResult = {
     hasAcceptanceCriteria: true,
     contentHash: "abc123",
   },
-  isJsonPlan: false,
+  isJsonPlan: true,
 };
 
 const PLAN_WITH_ISSUES: PlanImportResult = {
   status: "needs-fix",
-  phases: [
-    {
-      index: 0,
-      title: "Partial phase",
-      description: "Incomplete",
-      steps: ["One step"],
-      status: "pending",
-    },
-  ],
   steps: [],
   behavioralContract: [],
   decisions: [],
@@ -72,24 +56,23 @@ const PLAN_WITH_ISSUES: PlanImportResult = {
     hasAcceptanceCriteria: false,
     contentHash: "def456",
   },
-  isJsonPlan: false,
+  isJsonPlan: true,
 };
 
 const EMPTY_PLAN: PlanImportResult = {
   status: "needs-fix",
-  phases: [],
   steps: [],
   behavioralContract: [],
   decisions: [],
   risks: [],
-  issues: ["No phases found"],
+  issues: ["No steps found"],
   summary: {
     phaseCount: 0,
     totalSteps: 0,
     hasAcceptanceCriteria: false,
     contentHash: "empty",
   },
-  isJsonPlan: false,
+  isJsonPlan: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -98,7 +81,6 @@ const EMPTY_PLAN: PlanImportResult = {
 
 const JSON_PLAN: PlanImportResult = {
   status: "ready",
-  phases: [],
   steps: [
     {
       title: "Create server module with Bun.serve()",
@@ -151,22 +133,16 @@ const JSON_PLAN: PlanImportResult = {
 // preparePlanSummary
 // ---------------------------------------------------------------------------
 describe("preparePlanSummary", () => {
-  it("extracts phase list with titles and step counts", () => {
+  it("extracts step list with titles and acceptance criteria", () => {
     const summary = preparePlanSummary(HEALTHY_PLAN);
 
-    expect(summary.phases).toHaveLength(3);
-    expect(summary.phases[0]).toEqual({
-      title: "Setup project structure",
-      stepCount: 2,
-    });
-    expect(summary.phases[1]).toEqual({
-      title: "Implement core features",
-      stepCount: 3,
-    });
-    expect(summary.phases[2]).toEqual({
-      title: "Testing & polish",
-      stepCount: 2,
-    });
+    expect(summary.steps).toHaveLength(3);
+    expect(summary.steps[0].title).toBe("Setup project structure");
+    expect(summary.steps[0].acceptanceCriteria).toEqual(["Directories exist", "Config files present"]);
+    expect(summary.steps[1].title).toBe("Implement core features");
+    expect(summary.steps[2].title).toBe("Testing & polish");
+    // phases is empty for JSON plans
+    expect(summary.phases).toEqual([]);
   });
 
   it("reports total phase and step counts", () => {
@@ -200,12 +176,13 @@ describe("preparePlanSummary", () => {
     expect(preparePlanSummary(PLAN_WITH_ISSUES).status).toBe("needs-fix");
   });
 
-  it("handles empty plan (no phases)", () => {
+  it("handles empty plan (no steps)", () => {
     const summary = preparePlanSummary(EMPTY_PLAN);
     expect(summary.phases).toEqual([]);
+    expect(summary.steps).toEqual([]);
     expect(summary.phaseCount).toBe(0);
     expect(summary.totalSteps).toBe(0);
-    expect(summary.issues).toEqual(["No phases found"]);
+    expect(summary.issues).toEqual(["No steps found"]);
   });
 });
 
@@ -346,12 +323,8 @@ describe("preparePlanSummary (JSON plan)", () => {
     expect(summary.phases).toEqual([]);
   });
 
-  it("markdown plans have isJsonPlan false", () => {
+  it("all plans are JSON native — isJsonPlan is true", () => {
     const summary = preparePlanSummary(HEALTHY_PLAN);
-    expect(summary.isJsonPlan).toBe(false);
-    expect(summary.steps).toEqual([]);
-    expect(summary.behavioralContract).toEqual([]);
-    expect(summary.decisions).toEqual([]);
-    expect(summary.risks).toEqual([]);
+    expect(summary.isJsonPlan).toBe(true);
   });
 });

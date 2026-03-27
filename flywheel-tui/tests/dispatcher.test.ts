@@ -300,33 +300,41 @@ describe("DispatcherInput assembler", () => {
     assembleDispatcherInput = mod.assembleDispatcherInput;
   });
 
-  it("assembles DispatcherInput from plan phases, state, and context", () => {
+  it("assembles DispatcherInput from JSON plan content", () => {
+    const jsonPlan = JSON.stringify({
+      steps: [
+        { title: "Setup project structure", description: "Create dirs", acceptanceCriteria: ["Dir exists"] },
+        { title: "Implement core logic", description: "Write code", acceptanceCriteria: ["Tests pass"] },
+      ],
+      behavioralContract: [], decisions: [], risks: [],
+    });
     const result = assembleDispatcherInput(baseAssemblerInput({
-      planContent: TWO_PHASE_PLAN,
-      stateContent: STATE_CONTENT_PHASE1_DONE,
+      planContent: jsonPlan,
+      stateContent: "",
     }));
 
-    // Assembler now outputs step-based plan (phases→steps migration)
-    const plan = result.input.plan as { steps?: { title: string }[]; phases?: { name: string }[] };
+    const plan = result.input.plan as { steps?: { title: string }[] };
     expect(plan.steps).toHaveLength(2);
     expect(plan.steps![0].title).toBe("Setup project structure");
-    expect(result.input.state.completed_phases).toEqual([0]);
-    expect(result.input.state.current_phase_index).toBe(1);
+    expect(result.input.state.completed_phases).toEqual([]);
+    expect(result.input.state.current_phase_index).toBe(0);
     expect(result.planTruncated).toBe(false);
     expect(result.historyTruncated).toBe(false);
   });
 
   it("respects 100KB budget", () => {
-    // Create moderately large plan content
-    const bigStep = "A".repeat(300);
-    const bigPhases = Array.from({ length: 10 }, (_, i) =>
-      `### Phase ${i + 1}: Phase title ${i}\n\n- [ ] ${bigStep}\n- [ ] ${bigStep}\n`
-    ).join("\n");
-    const bigPlan = `# Big Plan\n\n## Overview\nTest\n\n${bigPhases}`;
+    // Create moderately large JSON plan content
+    const bigDesc = "A".repeat(300);
+    const steps = Array.from({ length: 10 }, (_, i) => ({
+      title: `Step title ${i}`,
+      description: bigDesc,
+      acceptanceCriteria: [bigDesc, bigDesc],
+    }));
+    const bigPlan = JSON.stringify({ steps, behavioralContract: [], decisions: [], risks: [] });
 
     const result = assembleDispatcherInput(baseAssemblerInput({
       planContent: bigPlan,
-      stateContent: STATE_CONTENT_ALL_PENDING,
+      stateContent: "",
     }));
 
     // Plan steps pass through without per-field truncation
@@ -340,15 +348,17 @@ describe("DispatcherInput assembler", () => {
   it("passes plan through without per-field truncation", () => {
     // Plan content that would have exceeded the old 2KB per-field budget
     // but fits easily within the 100KB single cap
-    const bigStep = "X".repeat(500);
-    const bigPhases = Array.from({ length: 15 }, (_, i) =>
-      `### Phase ${i + 1}: Phase title ${i}\n\n- [ ] ${bigStep}\n`
-    ).join("\n");
-    const bigPlan = `# Big Plan\n\n## Overview\nTest\n\n${bigPhases}`;
+    const bigDesc = "X".repeat(500);
+    const steps = Array.from({ length: 15 }, (_, i) => ({
+      title: `Step title ${i}`,
+      description: bigDesc,
+      acceptanceCriteria: ["Passes"],
+    }));
+    const bigPlan = JSON.stringify({ steps, behavioralContract: [], decisions: [], risks: [] });
 
     const result = assembleDispatcherInput(baseAssemblerInput({
       planContent: bigPlan,
-      stateContent: STATE_CONTENT_ALL_PENDING,
+      stateContent: "",
     }));
 
     // No per-field truncation — plan passes through as-is
@@ -633,26 +643,25 @@ describe("DispatcherInput assembler — JSON plan", () => {
     expect(plan.steps[1].title).toBe("Add tests");
   });
 
-  it("falls back to markdown parsing for non-JSON content", () => {
-    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n\n### Phase 2: Build\n\n- [ ] Implement\n`;
+  it("returns empty steps for non-JSON content", () => {
+    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n`;
     const result = assembleDispatcherInput(baseAssemblerInput({ planContent: mdPlan }));
-    const plan = result.input.plan as { steps: Array<{ title: string; description: string }> };
+    const plan = result.input.plan as { steps: Array<{ title: string }> };
 
-    expect(plan.steps).toHaveLength(2);
-    expect(plan.steps[0].title).toBe("Setup");
-    expect(plan.steps[1].title).toBe("Build");
+    // Non-JSON content produces empty steps (markdown parsing removed)
+    expect(plan.steps).toHaveLength(0);
   });
 
-  it("emits both completed_steps and completed_phases for backward compat", () => {
+  it("emits default empty completed_steps and completed_phases", () => {
     const result = assembleDispatcherInput(baseAssemblerInput({
-      stateContent: STATE_CONTENT_PHASE1_DONE,
+      stateContent: "",
     }));
 
-    expect(result.input.state.completed_steps).toEqual([0]);
-    expect(result.input.state.current_step_index).toBe(1);
-    // Backward compat
-    expect(result.input.state.completed_phases).toEqual([0]);
-    expect(result.input.state.current_phase_index).toBe(1);
+    // State parsing removed — always defaults to empty
+    expect(result.input.state.completed_steps).toEqual([]);
+    expect(result.input.state.current_step_index).toBe(0);
+    expect(result.input.state.completed_phases).toEqual([]);
+    expect(result.input.state.current_phase_index).toBe(0);
   });
 });
 

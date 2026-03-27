@@ -7,35 +7,23 @@ import { buildDispatcherSystemPrompt } from "../src/dispatcher/system-prompt";
 // Test plan fixture — same as the verify-dispatcher script uses
 // ---------------------------------------------------------------------------
 
-const TEST_PLAN = `# Implementation Plan: Hello World Endpoint
-
-## Overview
-Add a simple GET /hello endpoint that returns { message: "hello world" }.
-
-### Phase 1: Add endpoint and test
-
-- [ ] Create src/routes/hello.ts with GET handler returning { message: "hello world" }
-- [ ] Add test in tests/hello.test.ts verifying the endpoint returns 200 and expected body
-- [ ] Register the route in src/routes/index.ts
-`;
-
-const TEST_STATE = `---
-plan: hello-endpoint.md
-status: in_progress
-schema_version: 3
----
-
-# Execution State: Hello World Endpoint
-
-## Progress
-- [ ] Phase 1: Add endpoint and test
-
-## Key Decisions
-
-## Error Log
-| Error | Attempt | Approach | Outcome |
-|-------|---------|----------|---------|
-`;
+const TEST_PLAN = JSON.stringify({
+  steps: [
+    {
+      title: "Add endpoint and test",
+      description: "Create src/routes/hello.ts with GET handler returning { message: \"hello world\" }. Add test in tests/hello.test.ts. Register the route in src/routes/index.ts.",
+      acceptanceCriteria: [
+        "GET /hello returns 200",
+        "Response body is { message: \"hello world\" }",
+        "Route is registered",
+      ],
+      fileReferences: ["src/routes/hello.ts", "tests/hello.test.ts", "src/routes/index.ts"],
+    },
+  ],
+  behavioralContract: [],
+  decisions: [],
+  risks: [],
+});
 
 // ---------------------------------------------------------------------------
 // 1. Dispatcher input assembly tests
@@ -45,7 +33,7 @@ describe("verify-dispatcher: input assembly", () => {
   it("assembles dispatcher input with the test plan", () => {
     const assembled = assembleDispatcherInput({
       planContent: TEST_PLAN,
-      stateContent: TEST_STATE,
+      stateContent: "",
       workflowContext: {
         workflowId: "verify-dispatcher-001",
         name: "work",
@@ -84,7 +72,7 @@ describe("verify-dispatcher: input assembly", () => {
   it("test plan has realistic multi-step content", () => {
     const assembled = assembleDispatcherInput({
       planContent: TEST_PLAN,
-      stateContent: TEST_STATE,
+      stateContent: "",
       workflowContext: {
         workflowId: "verify-dispatcher-001",
         name: "work",
