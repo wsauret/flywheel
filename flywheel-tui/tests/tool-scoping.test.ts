@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { DEFAULT_TOOL_SCOPING, resolveToolScoping } from "../src/controller/tool-scoping";
-import type { WorkflowType } from "../src/controller/workflow-pipeline";
+import type { WorkflowType } from "../src/controller/queue-types";
 import type { ToolScoping } from "../src/schemas/shared";
 
 // ---------------------------------------------------------------------------
@@ -8,37 +8,37 @@ import type { ToolScoping } from "../src/schemas/shared";
 // ---------------------------------------------------------------------------
 
 describe("DEFAULT_TOOL_SCOPING", () => {
-  it("work phases get full access by default", () => {
+  it("work steps get full access by default", () => {
     expect(DEFAULT_TOOL_SCOPING.work).toEqual({
       read: true, bash: true, write: true, edit: true,
     });
   });
 
-  it("plan phases get read-only by default (read + bash)", () => {
+  it("plan steps get read-only by default (read + bash)", () => {
     expect(DEFAULT_TOOL_SCOPING.plan).toEqual({
       read: true, bash: true, write: false, edit: false,
     });
   });
 
-  it("review phases get read-only by default (read + bash)", () => {
+  it("review steps get read-only by default (read + bash)", () => {
     expect(DEFAULT_TOOL_SCOPING.review).toEqual({
       read: true, bash: true, write: false, edit: false,
     });
   });
 
-  it("research phases get read-only by default (read + bash)", () => {
+  it("research steps get read-only by default (read + bash)", () => {
     expect(DEFAULT_TOOL_SCOPING.research).toEqual({
       read: true, bash: true, write: false, edit: false,
     });
   });
 
-  it("ship phases get write + bash (git ops)", () => {
+  it("ship steps get write + bash (git ops)", () => {
     expect(DEFAULT_TOOL_SCOPING.ship).toEqual({
       read: true, bash: true, write: true, edit: false,
     });
   });
 
-  it("debug phases get full access", () => {
+  it("debug steps get full access", () => {
     expect(DEFAULT_TOOL_SCOPING.debug).toEqual({
       read: true, bash: true, write: true, edit: true,
     });

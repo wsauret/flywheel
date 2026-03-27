@@ -1,11 +1,11 @@
 /**
  * Behavioral validation prompt template.
  *
- * Generates the prompt for behavioral validation phases that are auto-injected
+ * Generates the prompt for behavioral validation steps that are auto-injected
  * at milestone boundaries (after scrutiny). Instructs the worker to:
  *
  * 1. Read the validation contract and identify assertions from completed
- *    phases' `fulfills` fields
+ *    steps' `fulfills` fields
  * 2. Verify each assertion's behavioral description independently
  *    (not trusting prior self-reports)
  * 3. Update `validation-state.json` with pass/fail/blocked per assertion
@@ -18,7 +18,7 @@
  * Fulfills: VAL-EXEC-005, VAL-EXEC-006, VAL-EXEC-010, VAL-CROSS-006
  */
 
-import type { PhaseInfo } from "../../controller/phase-provider.js";
+import type { StepInfo } from "../../controller/step-provider.js";
 import type { AssertionStatus } from "../../schemas/validation.js";
 
 // ---------------------------------------------------------------------------
@@ -60,37 +60,37 @@ export interface BehavioralValidationContext {
 }
 
 // ---------------------------------------------------------------------------
-// Utility: Collect assertion IDs from phases' fulfills
+// Utility: Collect assertion IDs from steps' fulfills
 // ---------------------------------------------------------------------------
 
 /**
- * Collect all unique assertion IDs from completed phases belonging
+ * Collect all unique assertion IDs from completed steps belonging
  * to a specific milestone.
  *
- * Only includes phases that:
+ * Only includes steps that:
  * 1. Belong to the given milestone
  * 2. Have status "completed"
  * 3. Have a non-empty `fulfills` array
  *
  * Returns deduplicated assertion IDs in insertion order.
  *
- * @param phases - All phases (from phase provider)
+ * @param steps - All steps (from step provider)
  * @param milestoneName - The milestone to collect assertions for
  * @returns Deduplicated array of assertion IDs
  */
 export function collectAssertionsForMilestone(
-  phases: readonly PhaseInfo[],
+  steps: readonly StepInfo[],
   milestoneName: string,
 ): string[] {
   const seen = new Set<string>();
   const ids: string[] = [];
 
-  for (const phase of phases) {
-    if (phase.milestone !== milestoneName) continue;
-    if (phase.status !== "completed") continue;
-    if (!phase.fulfills) continue;
+  for (const step of steps) {
+    if (step.milestone !== milestoneName) continue;
+    if (step.status !== "completed") continue;
+    if (!step.fulfills) continue;
 
-    for (const id of phase.fulfills) {
+    for (const id of step.fulfills) {
       if (!seen.has(id)) {
         seen.add(id);
         ids.push(id);
@@ -266,7 +266,7 @@ export function buildBehavioralValidationPrompt(ctx: BehavioralValidationContext
   );
   sections.push("");
   sections.push(
-    "**CRITICAL: Do not trust prior self-reports from implementation phases.** " +
+    "**CRITICAL: Do not trust prior self-reports from implementation steps.** " +
     "Independently verify each assertion by examining the actual code, running tests, " +
     "or checking behaviors. Worker claims of \"tests pass\" or \"feature works\" must be " +
     "independently confirmed with real evidence.",
@@ -318,7 +318,7 @@ export function buildBehavioralValidationPrompt(ctx: BehavioralValidationContext
     sections.push("");
     sections.push(
       `No testable assertions were found for milestone "${milestoneName}". ` +
-      "This may indicate that phases in this milestone did not specify `fulfills` annotations. " +
+      "This may indicate that steps in this milestone did not specify `fulfills` annotations. " +
       "Report success (nothing to validate).",
     );
   }

@@ -13,13 +13,13 @@ import type { EvaluatorIssue } from "../schemas/handoff";
 
 export interface ApprovalHandler {
   /**
-   * Request approval for a phase.
+   * Request approval for a step.
    *
    * Resolves `true` if approved (proceed), `false` if rejected (stop).
    * Implementations may auto-approve based on configuration or session-level
    * skip flags.
    */
-  requestApproval(phaseIndex: number, title: string): Promise<boolean>;
+  requestApproval(stepIndex: number, title: string): Promise<boolean>;
 
   /**
    * Request approval due to blocking evaluator issues.
@@ -32,7 +32,7 @@ export interface ApprovalHandler {
    * When no approval handler is present, blocking issues always halt the pipeline.
    */
   requestIssueApproval?(
-    phaseIndex: number,
+    stepIndex: number,
     title: string,
     issues: EvaluatorIssue[],
   ): Promise<boolean>;

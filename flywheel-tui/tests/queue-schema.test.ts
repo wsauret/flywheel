@@ -585,9 +585,9 @@ describe("QueueSchema", () => {
 
   test("accepts queue with multiple steps", () => {
     const steps = [
-      validStep({ type: "plan", title: "Plan phase" }),
-      validStep({ type: "work", title: "Work phase" }),
-      validStep({ type: "review", title: "Review phase" }),
+      validStep({ type: "plan", title: "Plan step" }),
+      validStep({ type: "work", title: "Work step" }),
+      validStep({ type: "review", title: "Review step" }),
     ];
     const queue = validQueue({ steps: steps as Step[] });
     const result = QueueSchema.safeParse(queue);

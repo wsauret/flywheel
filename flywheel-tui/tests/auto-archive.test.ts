@@ -1,7 +1,7 @@
 /**
- * Auto-Archive Tests (Phase 7)
+ * Auto-Archive Tests (Step 7)
  *
- * Tests the pipeline completion handler: handlePipelineCompletion().
+ * Tests the pipeline completion handler: handleQueueCompletion().
  *
  * This is the extracted pure-function that encapsulates the logic from the
  * shell's queueMicrotask pipeline completion block:
@@ -14,21 +14,21 @@
 
 import { describe, it, expect } from "bun:test";
 import {
-  handlePipelineCompletion,
+  handleQueueCompletion,
   type PipelineCompletionDeps,
-} from "../src/tui/components/pipeline-completion";
-import type { PipelineResult, CompletedStepResult } from "../src/controller/workflow-pipeline";
+} from "../src/tui/components/queue-completion";
+import type { QueueResult, CompletedStepResult } from "../src/controller/queue-types";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makePipelineResult(overrides?: Partial<PipelineResult>): PipelineResult {
+function makeQueueResult(overrides?: Partial<QueueResult>): QueueResult {
   return {
     completed: true,
-    stagesCompleted: 3,
-    stagesTotal: 3,
-    stageResults: [],
+    stepsCompleted: 3,
+    stepsTotal: 3,
+    stepResults: [],
     ...overrides,
   };
 }
@@ -75,39 +75,39 @@ function makeMockDeps(overrides?: Partial<PipelineCompletionDeps>): {
 // Auto-archive triggering
 // ---------------------------------------------------------------------------
 
-describe("handlePipelineCompletion — auto-archive", () => {
+describe("handleQueueCompletion — auto-archive", () => {
   it("calls orchestrator.handleAutoArchive when pipeline completes with ship stage", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
         { workflow: "ship", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("handleAutoArchive:session-1");
   });
 
   it("shows 'Session shipped and archived' toast on auto-archive", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "ship", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("toast:info:Session shipped and archived");
   });
 
-  it("passes stageResults to orchestrator.handleAutoArchive", async () => {
+  it("passes stepResults to orchestrator.handleAutoArchive", async () => {
     let receivedResults: CompletedStepResult[] = [];
     const { deps } = makeMockDeps({
       orchestrator: {
@@ -116,13 +116,13 @@ describe("handlePipelineCompletion — auto-archive", () => {
         },
       },
     });
-    const stageResults: CompletedStepResult[] = [
+    const stepResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "ship", completed: true },
     ];
-    const result = makePipelineResult({ completed: true, stageResults });
+    const result = makeQueueResult({ completed: true, stepResults });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(receivedResults).toHaveLength(2);
     expect(receivedResults[1].workflow).toBe("ship");
@@ -133,21 +133,21 @@ describe("handlePipelineCompletion — auto-archive", () => {
 // Non-ship completions
 // ---------------------------------------------------------------------------
 
-describe("handlePipelineCompletion — non-ship completions", () => {
+describe("handleQueueCompletion — non-ship completions", () => {
   it("transitions plan+work+review pipeline to completed (queue-based)", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stagesCompleted: 3,
-      stagesTotal: 3,
-      stageResults: [
+      stepsCompleted: 3,
+      stepsTotal: 3,
+      stepResults: [
         { workflow: "plan", completed: true },
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Queue completed all steps (no ship) → session is completed
     expect(calls).toContain("updateState:session-1:completed");
@@ -157,29 +157,29 @@ describe("handlePipelineCompletion — non-ship completions", () => {
 
   it("does NOT call handleAutoArchive when no ship stage is present", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).not.toContain("handleAutoArchive:session-1");
   });
 
   it("transitions to 'completed' for non-ship completions (queue-based)", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("updateState:session-1:completed");
     expect(calls).toContain("refreshList");
@@ -187,30 +187,30 @@ describe("handlePipelineCompletion — non-ship completions", () => {
 
   it("does NOT call handleAutoArchive when ship stage is present but NOT completed", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: false,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "ship", completed: false, reason: "cancelled" },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).not.toContain("handleAutoArchive:session-1");
   });
 
   it("does NOT show ship toast for non-ship completions", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     const toastCalls = calls.filter((c) => c.startsWith("toast:"));
     expect(toastCalls).toHaveLength(0);
@@ -221,17 +221,17 @@ describe("handlePipelineCompletion — non-ship completions", () => {
 // Flusher lifecycle
 // ---------------------------------------------------------------------------
 
-describe("handlePipelineCompletion — flusher lifecycle", () => {
+describe("handleQueueCompletion — flusher lifecycle", () => {
   it("flushes and disposes flusher on successful ship completion", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "ship", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("flusher.flush");
     expect(calls).toContain("flusher.dispose");
@@ -239,14 +239,14 @@ describe("handlePipelineCompletion — flusher lifecycle", () => {
 
   it("flushes and disposes flusher on non-ship completion", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("flusher.flush");
     expect(calls).toContain("flusher.dispose");
@@ -254,13 +254,13 @@ describe("handlePipelineCompletion — flusher lifecycle", () => {
 
   it("disposes flusher even when pipeline did not complete (failed/interrupted)", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: false,
-      stageResults: [],
+      stepResults: [],
       reason: "Pipeline failed",
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("flusher.flush");
     expect(calls).toContain("flusher.dispose");
@@ -268,14 +268,14 @@ describe("handlePipelineCompletion — flusher lifecycle", () => {
 
   it("handles null flusher gracefully", async () => {
     const { deps, calls } = makeMockDeps({ flusher: null });
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "ship", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Should not crash, and should still do the auto-archive
     expect(calls).toContain("handleAutoArchive:session-1");
@@ -292,15 +292,15 @@ describe("handlePipelineCompletion — flusher lifecycle", () => {
         },
       },
     });
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
     // Should not throw
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Dispose should still be called even after flush error
     expect(calls).toContain("flusher.dispose");
@@ -328,12 +328,12 @@ describe("handlePipelineCompletion — flusher lifecycle", () => {
       refreshList: () => {},
     };
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [{ workflow: "ship", completed: true }],
+      stepResults: [{ workflow: "ship", completed: true }],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     const flushIdx = order.indexOf("flush");
     const archiveIdx = order.indexOf("archive");
@@ -345,17 +345,17 @@ describe("handlePipelineCompletion — flusher lifecycle", () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-describe("handlePipelineCompletion — edge cases", () => {
+describe("handleQueueCompletion — edge cases", () => {
   it("does nothing when sessionId is null", async () => {
     const { deps, calls } = makeMockDeps({ sessionId: null });
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "ship", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Flusher should still be disposed
     expect(calls).toContain("flusher.flush");
@@ -369,15 +369,15 @@ describe("handlePipelineCompletion — edge cases", () => {
 
   it("does not change state when pipeline was interrupted (not completed)", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: false,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: false, reason: "User stopped" },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Should NOT call updateState or handleAutoArchive
     const stateCalls = calls.filter((c) => c.startsWith("updateState"));
@@ -386,14 +386,14 @@ describe("handlePipelineCompletion — edge cases", () => {
     expect(archiveCalls).toHaveLength(0);
   });
 
-  it("handles empty stageResults with completed=true (edge case)", async () => {
+  it("handles empty stepResults with completed=true (edge case)", async () => {
     const { deps, calls } = makeMockDeps();
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [],
+      stepResults: [],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // No ship stage → non-ship completion path → completed (queue-based)
     expect(calls).toContain("updateState:session-1:completed");

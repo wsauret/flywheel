@@ -38,7 +38,7 @@ import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
-  WORK_PHASE_FIELDS,
+  WORK_STEP_FIELDS,
   PLAN_CONSOLIDATE_FIELDS,
   REVIEW_FIELDS,
 } from "../../src/handoff/field-specs";
@@ -130,12 +130,12 @@ function validDispatcherDecision(
 ): DispatcherDecisionHandoff {
   return {
     schema_version: 1 as const,
-    phase_index: 0,
+    step_index: 0,
     task_content:
       "Implement the authentication middleware with JWT validation following the plan.",
     context_files: ["src/index.ts", "docs/standards/auth.md"],
-    session_name: "work-session-phase-1",
-    reasoning: "Standard implementation phase, proceeding with plan.",
+    session_name: "work-session-step-1",
+    reasoning: "Standard implementation step, proceeding with plan.",
     ...overrides,
   };
 }
@@ -190,7 +190,7 @@ describe("Valid worker handoff flow", () => {
     expect(lwr.duration_seconds).toBe(30);
   });
 
-  it("previousResult is built from handoff for phase chaining", async () => {
+  it("previousResult is built from handoff for step chaining", async () => {
     const hp = handoffPath("worker-chain-001");
     const data = validWorkerHandoff();
     fs.writeFileSync(hp, JSON.stringify(data));
@@ -198,7 +198,7 @@ describe("Valid worker handoff flow", () => {
     const parsed = await readHandoff(hp, WorkerHandoffSchema);
     const previousResult = buildPreviousResultFromHandoff(parsed);
 
-    expect(previousResult).toContain("## Previous Phase Summary");
+    expect(previousResult).toContain("## Previous Step Summary");
     expect(previousResult).toContain("authentication middleware");
     expect(previousResult).toContain("### Decisions");
     expect(previousResult).toContain("RS256");
@@ -525,10 +525,10 @@ describe("Dispatcher decision handoff", () => {
     const parsed = await readHandoff(hp, DispatcherDecisionHandoffSchema);
 
     expect(parsed.schema_version).toBe(1);
-    expect(parsed.phase_index).toBe(0);
+    expect(parsed.step_index).toBe(0);
     expect(parsed.task_content).toContain("authentication middleware");
     expect(parsed.context_files).toContain("src/index.ts");
-    expect(parsed.session_name).toBe("work-session-phase-1");
+    expect(parsed.session_name).toBe("work-session-step-1");
     expect(parsed.reasoning).toContain("Standard implementation");
   });
 
@@ -536,8 +536,8 @@ describe("Dispatcher decision handoff", () => {
     const hp = handoffPath("dispatch-minimal-001");
     const decision = {
       schema_version: 1 as const,
-      phase_index: 2,
-      task_content: "Execute phase 3 of the plan.",
+      step_index: 2,
+      task_content: "Execute step 3 of the plan.",
       context_files: [],
     };
     fs.writeFileSync(hp, JSON.stringify(decision));
@@ -545,8 +545,8 @@ describe("Dispatcher decision handoff", () => {
     const parsed = await readHandoff(hp, DispatcherDecisionHandoffSchema);
 
     expect(parsed.schema_version).toBe(1);
-    expect(parsed.phase_index).toBe(2);
-    expect(parsed.task_content).toBe("Execute phase 3 of the plan.");
+    expect(parsed.step_index).toBe(2);
+    expect(parsed.task_content).toBe("Execute step 3 of the plan.");
     expect(parsed.context_files).toEqual([]);
     expect(parsed.session_name).toBeUndefined();
     expect(parsed.reasoning).toBeUndefined();
@@ -556,7 +556,7 @@ describe("Dispatcher decision handoff", () => {
     const hp = handoffPath("dispatch-badver-001");
     const decision = {
       schema_version: 2,
-      phase_index: 0,
+      step_index: 0,
       task_content: "Do something",
       context_files: [],
     };
@@ -591,7 +591,7 @@ describe("Dispatcher decision handoff", () => {
     const instruction = renderDispatcherHandoffInstruction("/tmp/dispatch.json");
     for (const field of [
       "schema_version",
-      "phase_index",
+      "step_index",
       "task_content",
       "context_files",
     ]) {
@@ -629,15 +629,15 @@ describe("Cross-role handoff flow", () => {
     const parsedVerdict = await readHandoff(evalHp, EvaluatorVerdictSchema);
     expect(parsedVerdict.passed).toBe(true);
 
-    // Step 4: Dispatcher writes decision for next phase
-    const dispatchDecision = validDispatcherDecision({ phase_index: 1 });
+    // Step 4: Dispatcher writes decision for next step
+    const dispatchDecision = validDispatcherDecision({ step_index: 1 });
     fs.writeFileSync(dispatchHp, JSON.stringify(dispatchDecision));
 
     const parsedDecision = await readHandoff(
       dispatchHp,
       DispatcherDecisionHandoffSchema,
     );
-    expect(parsedDecision.phase_index).toBe(1);
+    expect(parsedDecision.step_index).toBe(1);
 
     // Verify all three files exist and are valid
     expect(fs.existsSync(workerHp)).toBe(true);
@@ -645,7 +645,7 @@ describe("Cross-role handoff flow", () => {
     expect(fs.existsSync(dispatchHp)).toBe(true);
   });
 
-  it("previousResult from phase 1 flows to phase 2 prompt context", async () => {
+  it("previousResult from step 1 flows to step 2 prompt context", async () => {
     const hp = handoffPath("flow-chain-001");
     const handoff = validWorkerHandoff({
       summary:
@@ -673,7 +673,7 @@ describe("Cross-role handoff flow", () => {
     const previousResult = buildPreviousResultFromHandoff(parsed);
 
     // The previousResult should contain structured info, not raw output
-    expect(previousResult).toContain("## Previous Phase Summary");
+    expect(previousResult).toContain("## Previous Step Summary");
     expect(previousResult).toContain("project scaffold");
     expect(previousResult).toContain("### Artifacts");
     expect(previousResult).toContain("tsconfig.json");
@@ -691,10 +691,10 @@ describe("Workflow-specific handoff fields", () => {
     const hp = handoffPath("plan-consolidate-001");
     const handoff = validWorkerHandoff({
       summary:
-        "Consolidated the 6-phase implementation plan with user decisions applied. " +
-        "Updated phase ordering and removed deprecated steps. Plan saved to docs/plans/auth-plan.md.",
+        "Consolidated the 6-step implementation plan with user decisions applied. " +
+        "Updated step ordering and removed deprecated steps. Plan saved to docs/plans/auth-plan.md.",
       plan_file_path: "docs/plans/auth-plan.md",
-      decisions: ["User chose Auth0 over Cognito", "Split phase 3 into 3a and 3b"],
+      decisions: ["User chose Auth0 over Cognito", "Split step 3 into 3a and 3b"],
     });
     fs.writeFileSync(hp, JSON.stringify(handoff));
 
@@ -763,7 +763,7 @@ describe("Workflow-specific handoff fields", () => {
     expect(parsed.verification?.tests_passed).toBe(true);
 
     // Verify the instruction includes work fields
-    const instruction = renderHandoffInstruction(WORK_PHASE_FIELDS, hp);
+    const instruction = renderHandoffInstruction(WORK_STEP_FIELDS, hp);
     expect(instruction).toContain("artifacts");
     expect(instruction).toContain("verification");
     expect(instruction).toContain("files_to_review");
@@ -811,8 +811,8 @@ describe("Edge cases", () => {
     const hp1 = handoffPath("concurrent-001");
     const hp2 = handoffPath("concurrent-002");
 
-    const data1 = validWorkerHandoff({ summary: "A".repeat(100) + " first phase" });
-    const data2 = validWorkerHandoff({ summary: "B".repeat(100) + " second phase" });
+    const data1 = validWorkerHandoff({ summary: "A".repeat(100) + " first step" });
+    const data2 = validWorkerHandoff({ summary: "B".repeat(100) + " second step" });
 
     fs.writeFileSync(hp1, JSON.stringify(data1));
     fs.writeFileSync(hp2, JSON.stringify(data2));
@@ -822,7 +822,7 @@ describe("Edge cases", () => {
       readHandoff(hp2, WorkerHandoffSchema),
     ]);
 
-    expect(parsed1.summary).toContain("first phase");
-    expect(parsed2.summary).toContain("second phase");
+    expect(parsed1.summary).toContain("first step");
+    expect(parsed2.summary).toContain("second step");
   });
 });

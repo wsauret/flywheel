@@ -768,8 +768,8 @@ describe("EvaluatorVerdictSchema", () => {
 describe("DispatcherDecisionHandoffSchema", () => {
   const validDecision = {
     schema_version: 1 as const,
-    phase_index: 0,
-    task_content: "Implement feature X according to plan phase 1",
+    step_index: 0,
+    task_content: "Implement feature X according to plan step 1",
     validation_criteria: {
       acceptance_criteria: ["Tests pass", "No lint errors"],
       required_tests: true,
@@ -778,7 +778,7 @@ describe("DispatcherDecisionHandoffSchema", () => {
     },
     context_files: ["src/foo.ts", "tests/foo.test.ts"],
     session_name: "work-session-1",
-    reasoning: "Standard implementation phase",
+    reasoning: "Standard implementation step",
     worker_config: {
       model_override: null,
       timeout_minutes: 30,
@@ -807,7 +807,7 @@ describe("DispatcherDecisionHandoffSchema", () => {
   it("accepts minimal decision (only required fields)", () => {
     const minimal = {
       schema_version: 1 as const,
-      phase_index: 0,
+      step_index: 0,
       task_content: "Do something",
       context_files: [],
     };

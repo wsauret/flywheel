@@ -200,7 +200,7 @@ describe("TUI adapter: evaluator:revision-requested handling", () => {
     bus.emit({
       type: "evaluator:revision-requested",
       workflowId: "wf-1",
-      phaseIndex: 0,
+      stepIndex: 0,
       revisionAttempt: 1,
       maxRevisions: 2,
       reason: "Output quality insufficient",
@@ -228,7 +228,7 @@ describe("TUI adapter: evaluator:revision-requested handling", () => {
     bus.emit({
       type: "evaluator:revision-requested",
       workflowId: "wf-1",
-      phaseIndex: 0,
+      stepIndex: 0,
       revisionAttempt: 1,
       maxRevisions: 2,
       reason: "Output quality insufficient",

@@ -110,17 +110,17 @@ export function initializeValidationState(
 // ---------------------------------------------------------------------------
 
 /**
- * Result of checking assertion coverage across phases.
+ * Result of checking assertion coverage across steps.
  */
 export interface CoverageReport {
-  /** Assertion IDs in the contract but not claimed by any phase */
+  /** Assertion IDs in the contract but not claimed by any step */
   orphaned: string[];
-  /** Assertion IDs claimed by multiple phases */
+  /** Assertion IDs claimed by multiple steps */
   duplicates: Array<{
     assertionId: string;
     claimedBy: string[];
   }>;
-  /** Assertion IDs claimed by phases but not in the contract */
+  /** Assertion IDs claimed by steps but not in the contract */
   unclaimed: string[];
   /** True when every contract assertion is claimed exactly once and no extras */
   isComplete: boolean;
@@ -128,34 +128,34 @@ export interface CoverageReport {
 
 /**
  * Check assertion coverage: every contract assertion should be claimed by
- * exactly one phase's `fulfills` array.
+ * exactly one step's `fulfills` array.
  *
  * @param contractAssertionIds - All assertion IDs from the validation contract
- * @param phases - Phases with optional fulfills arrays
+ * @param steps - Steps with optional fulfills arrays
  * @returns Coverage report with orphaned, duplicate, and unclaimed assertion IDs
  */
 export function checkAssertionCoverage(
   contractAssertionIds: string[],
-  phases: ReadonlyArray<{ title: string; fulfills?: string[] }>,
+  steps: ReadonlyArray<{ title: string; fulfills?: string[] }>,
 ): CoverageReport {
-  // Build a map: assertion ID → list of phase titles that claim it
+  // Build a map: assertion ID → list of step titles that claim it
   const claimedBy = new Map<string, string[]>();
 
-  for (const phase of phases) {
-    if (!phase.fulfills) continue;
-    for (const id of phase.fulfills) {
+  for (const step of steps) {
+    if (!step.fulfills) continue;
+    for (const id of step.fulfills) {
       const existing = claimedBy.get(id) ?? [];
-      existing.push(phase.title);
+      existing.push(step.title);
       claimedBy.set(id, existing);
     }
   }
 
   const contractSet = new Set(contractAssertionIds);
 
-  // Orphaned: in contract but not claimed by any phase
+  // Orphaned: in contract but not claimed by any step
   const orphaned = contractAssertionIds.filter((id) => !claimedBy.has(id));
 
-  // Duplicates: claimed by more than one phase
+  // Duplicates: claimed by more than one step
   const duplicates: CoverageReport["duplicates"] = [];
   for (const [id, titles] of claimedBy) {
     if (titles.length > 1 && contractSet.has(id)) {
@@ -163,7 +163,7 @@ export function checkAssertionCoverage(
     }
   }
 
-  // Unclaimed: claimed by phases but not in contract
+  // Unclaimed: claimed by steps but not in contract
   const unclaimed: string[] = [];
   for (const [id] of claimedBy) {
     if (!contractSet.has(id)) {
@@ -315,7 +315,7 @@ export function checkEndOfSessionGate(
 }
 
 // ---------------------------------------------------------------------------
-// Update assertion statuses (used after validation phases)
+// Update assertion statuses (used after validation steps)
 // ---------------------------------------------------------------------------
 
 /**

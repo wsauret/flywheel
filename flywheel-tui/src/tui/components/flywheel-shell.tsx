@@ -28,7 +28,7 @@ import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
 import { Toast } from "@tui/shared/ui/toast"
 import { SharedLayout } from "../routes/work/components/shared-layout"
-import { OutputWindow, type CurrentPhaseInfo } from "../routes/work/components/output-window"
+import { OutputWindow, type CurrentStepInfo } from "../routes/work/components/output-window"
 import { SessionSidebar } from "./session-sidebar"
 import { WorkflowPanel } from "./workflow-panel"
 import { SessionHeader } from "./session-header"
@@ -53,7 +53,7 @@ import {
 import { prepareWorkflowDeps } from "../../controller/workflow-deps"
 import type { WorkflowDeps } from "../../controller/workflow-deps"
 import { EventBus } from "../../events/event-bus"
-import type { PipelineResult } from "../../controller/workflow-pipeline"
+import type { QueueResult } from "../../controller/queue-types"
 import type { QuestionRequest } from "../../controller/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
@@ -75,7 +75,7 @@ import { createBudgetTracker, type BudgetTracker } from "../../session/budget-tr
 import type { BudgetLimits } from "../../schemas/shared"
 import { fromSnapshot, snapshotToBlocks } from "../../schemas/output"
 import { createSessionOrchestrator, type SessionOrchestrator } from "./session-orchestrator"
-import { handlePipelineCompletion } from "./pipeline-completion"
+import { handleQueueCompletion } from "./queue-completion"
 import { safeUpdateState } from "../../session/safe-transition"
 import { ContextIndexer } from "../../memory/indexer"
 import { injectOutputBlocks } from "./resume-utils"
@@ -176,7 +176,7 @@ export function FlywheelShell() {
   // reactivity for nested array properties at runtime. Updated directly from
   // event bus subscriptions, matching the proven pattern of activeQueueInfo.
   const [shellQueueSteps, setShellQueueSteps] = createSignal<import("../routes/work/state/types").QueueStepState[]>([])
-  let pipelineUnsubs: Unsubscribe[] = []
+  let queueUnsubs: Unsubscribe[] = []
 
   // Track the active session's timer for the status bar runtime display.
   // The timer is a per-session instance (not the global singleton).
@@ -211,11 +211,11 @@ export function FlywheelShell() {
   let activeBudgetTracker: BudgetTracker | null = null
   let storeUnsub: (() => void) | null = null
 
-  // Pipeline running guard: prevents handleCommand from overwriting activeWorkflowName
-  // during pipeline execution (stage-transition events handle it instead)
-  let _isPipelineRunning = false
+  // Queue running guard: prevents handleCommand from overwriting activeWorkflowName
+  // during queue execution (step-transition events handle it instead)
+  let _isQueueRunning = false
 
-  // User-initiated pause flag: set when double-Esc pauses a pipeline.
+  // User-initiated pause flag: set when double-Esc pauses a queue.
   // Distinguishes pause from failure so ErrorModal is suppressed.
   let _userInitiatedPause = false
 
@@ -247,7 +247,7 @@ export function FlywheelShell() {
   }
 
   // ── Shared ContextIndexer (one per project_cwd) ──
-  // Lazy-init: created on first pipeline start, disposed on shell unmount.
+  // Lazy-init: created on first queue start, disposed on shell unmount.
   let _sharedContextIndexer: ContextIndexer | null = null
   let _indexerStarted = false
 
@@ -404,7 +404,7 @@ export function FlywheelShell() {
 
   // ── Derived state ──
 
-  const currentPhase = createMemo((): CurrentPhaseInfo | null => {
+  const currentStep = createMemo((): CurrentStepInfo | null => {
     const state = workState()
     if (!state) return null
     const steps = state.queueSteps
@@ -504,7 +504,7 @@ export function FlywheelShell() {
     preloadedDeps?: WorkflowDeps,
     interactiveOverrides?: { plan?: boolean; review?: boolean },
   ) => {
-    // Background previous session (don't destroy — allow concurrent pipelines)
+    // Background previous session (don't destroy — allow concurrent queues)
     const prevFocused = focusedSessionId()
     if (prevFocused && runtimes.has(prevFocused)) {
       runtimes.background(prevFocused)
@@ -518,7 +518,7 @@ export function FlywheelShell() {
         storeUnsub = null
       }
       cleanupQuestionSubscriptions()
-      cleanupPipelineSubscriptions()
+      cleanupQueueSubscriptions()
       setActiveStore(null)
       setWorkState(null)
     } else if (activeSession) {
@@ -630,13 +630,13 @@ export function FlywheelShell() {
     })
     activeQuestionWiring = questionWiring
 
-    // Queue event subscriptions (replaces pipeline event subscriptions)
-    cleanupPipelineSubscriptions()
+    // Queue event subscriptions (replaces queue event subscriptions)
+    cleanupQueueSubscriptions()
     let stepCounter = 0
     // Sprint detection: a queue with verify-type steps is a sprint queue
     let isSprintQueue = queue.steps.some(s => s.type === "verify")
     let sprintWorkStepCount = 0
-    pipelineUnsubs.push(
+    queueUnsubs.push(
       session.eventBus.subscribeToType("queue:initialized", (e) => {
         stepCounter = 0
         sprintWorkStepCount = 0
@@ -751,7 +751,7 @@ export function FlywheelShell() {
     const capturedSessionId = persistedSessionId
     const capturedProjectCwd = deps.config.project_cwd ?? "."
     const queueSessionId = persistedSessionId
-    _isPipelineRunning = true
+    _isQueueRunning = true
     _userInitiatedPause = false
 
     const capturedFlusher = activeFlusher
@@ -782,7 +782,7 @@ export function FlywheelShell() {
       const workflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
         workflowIdRef.current = ev.workflowId
       })
-      pipelineUnsubs.push(workflowIdUnsub)
+      queueUnsubs.push(workflowIdUnsub)
 
       // Resolve dispatcher and evaluator transports
       const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
@@ -900,7 +900,7 @@ export function FlywheelShell() {
           budgetTracker: queueBudgetTracker!,
           storeUnsub: storeUnsub!,
           questionCleanup: () => cleanupQuestionSubscriptions(),
-          queueCleanup: () => cleanupPipelineSubscriptions(),
+          queueCleanup: () => cleanupQueueSubscriptions(),
           contextIndexer: queueContextIndexer,
           workerPid: null,
           stepExecutor: stepExec,
@@ -957,7 +957,7 @@ export function FlywheelShell() {
           if (isStillViewed()) setAppState("completed")
         }
       } finally {
-        _isPipelineRunning = false
+        _isQueueRunning = false
 
         if (queueBudgetTracker) {
           queueBudgetTracker.dispose()
@@ -974,20 +974,20 @@ export function FlywheelShell() {
         // Handle completion
         if (queueResult && !_userInitiatedPause) {
           try {
-            // Convert queue result to pipeline result format for handlePipelineCompletion
-            const pipelineResultCompat: import("../../controller/workflow-pipeline").PipelineResult = {
+            // Convert queue result to QueueResult format for handleQueueCompletion
+            const queueResultCompat: import("../../controller/queue-types").QueueResult = {
               completed: queueResult.completed,
-              stagesCompleted: queueResult.stepsCompleted,
-              stagesTotal: queueResult.stepsTotal,
+              stepsCompleted: queueResult.stepsCompleted,
+              stepsTotal: queueResult.stepsTotal,
               reason: queueResult.reason,
-              stageResults: queue.steps
+              stepResults: queue.steps
                 .filter((s) => s.status === "completed")
                 .map((s) => ({
                   workflow: s.type as any,
                   completed: true,
                 })),
             }
-            await handlePipelineCompletion(pipelineResultCompat, {
+            await handleQueueCompletion(queueResultCompat, {
               orchestrator,
               sessionId: queueSessionId ?? null,
               flusher: capturedFlusher,
@@ -1011,12 +1011,12 @@ export function FlywheelShell() {
     setPendingQuestion(null)
   }
 
-  const cleanupPipelineSubscriptions = () => {
-    for (const unsub of pipelineUnsubs) unsub()
-    pipelineUnsubs = []
+  const cleanupQueueSubscriptions = () => {
+    for (const unsub of queueUnsubs) unsub()
+    queueUnsubs = []
     setActiveQueueInfo(null)
     setShellQueueSteps([])
-    _isPipelineRunning = false
+    _isQueueRunning = false
   }
 
   /**
@@ -1024,9 +1024,9 @@ export function FlywheelShell() {
    * session, store, adapter, or subscriptions.
    *
    * Used by both teardownActiveWorkflow() (full cleanup) and
-   * pausePipeline() (partial cleanup — keeps store/adapter alive).
+   * pauseQueue() (partial cleanup — keeps store/adapter alive).
    */
-  const _clearPipelineRuntime = (): Promise<void> | undefined => {
+  const _clearQueueRuntime = (): Promise<void> | undefined => {
     if (activeStepExecutor) {
       activeStepExecutor.requestShutdown()
       activeStepExecutor = null
@@ -1039,7 +1039,7 @@ export function FlywheelShell() {
 
   const teardownActiveWorkflow = (): Promise<void> | undefined => {
     cleanupQuestionSubscriptions()
-    cleanupPipelineSubscriptions()
+    cleanupQueueSubscriptions()
     unsubscribeTimer()
     if (storeUnsub) {
       storeUnsub()
@@ -1055,7 +1055,7 @@ export function FlywheelShell() {
       activeBudgetTracker.dispose()
       activeBudgetTracker = null
     }
-    const shutdownPromise = _clearPipelineRuntime()
+    const shutdownPromise = _clearQueueRuntime()
     if (activeSession) {
       destroyWorkflowSession(activeSession)
       activeSession = null
@@ -1095,23 +1095,23 @@ export function FlywheelShell() {
   }
 
   /**
-   * Pause the pipeline (user-initiated via double-Esc).
+   * Pause the queue (user-initiated via double-Esc).
    *
    * Unlike stopWorkflow(), this does NOT fully tear down the session:
-   * - Sets suppressPipelineError on the adapter so pipeline:failed doesn't trigger ErrorModal
-   * - Requests pipeline shutdown (which internally fires pipeline:failed)
+   * - Sets suppressQueueError on the adapter so queue:failed doesn't trigger ErrorModal
+   * - Requests queue shutdown (which internally fires queue:failed)
    * - Persists session state as work:paused (if a persistent session exists)
    * - Pushes a pause system message to output
    * - Transitions app state to "completed" (keeps output visible)
    */
-  const pausePipeline = async () => {
+  const pauseQueue = async () => {
     _userInitiatedPause = true
     escapeHandler.reset()
     setEscHint("")
 
-    // Suppress ErrorModal from the pipeline:failed event that shutdown triggers
+    // Suppress ErrorModal from the queue:failed event that shutdown triggers
     if (activeSession?.adapter) {
-      activeSession.adapter.suppressPipelineError = true
+      activeSession.adapter.suppressQueueError = true
     }
 
     // Flush output BEFORE shutting down runtime (data must be persisted first)
@@ -1133,7 +1133,7 @@ export function FlywheelShell() {
     }
 
     // Shut down pipeline, loop, and controller (but NOT session/adapter/store)
-    _clearPipelineRuntime()
+    _clearQueueRuntime()
 
     // Persist session state as work:paused and remove from sessionControllers
     // so the sidebar groups them as "Paused" instead of "Active".
@@ -1154,7 +1154,7 @@ export function FlywheelShell() {
     if (activeSession) {
       activeSession.eventBus.emit({
         type: "worker:output",
-        workflowId: "pipeline-pause",
+        workflowId: "queue-pause",
         stream: "stderr",
         data: "⏸ Pipeline paused. Resume with /work or select from session sidebar.\n",
         timestamp: new Date().toISOString(),
@@ -1271,9 +1271,9 @@ export function FlywheelShell() {
       activeQuestionWiring = questionWiring
 
       // Queue event subscriptions
-      cleanupPipelineSubscriptions()
+      cleanupQueueSubscriptions()
       let stepCounter = result.queue.steps.filter((s) => s.status === "completed").length
-      pipelineUnsubs.push(
+      queueUnsubs.push(
         session.eventBus.subscribeToType("queue:initialized", (e) => {
           setActiveQueueInfo({
             currentStep: stepCounter + 1,
@@ -1353,7 +1353,7 @@ export function FlywheelShell() {
 
       const capturedProjectCwd = projectCwd
       const capturedFlusher = activeFlusher
-      _isPipelineRunning = true
+      _isQueueRunning = true
       _userInitiatedPause = false
 
       queueMicrotask(async () => {
@@ -1372,7 +1372,7 @@ export function FlywheelShell() {
         const workflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
           workflowIdRef.current = ev.workflowId
         })
-        pipelineUnsubs.push(workflowIdUnsub)
+        queueUnsubs.push(workflowIdUnsub)
 
         // Resolve dispatcher and evaluator transports
         const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
@@ -1479,7 +1479,7 @@ export function FlywheelShell() {
           budgetTracker: resumeBudgetTracker!,
           storeUnsub: storeUnsub!,
           questionCleanup: () => cleanupQuestionSubscriptions(),
-          queueCleanup: () => cleanupPipelineSubscriptions(),
+          queueCleanup: () => cleanupQueueSubscriptions(),
           contextIndexer: queueContextIndexer,
           workerPid: null,
           stepExecutor: stepExec,
@@ -1516,7 +1516,7 @@ export function FlywheelShell() {
             if (isStillViewed()) setAppState("completed")
           }
         } finally {
-          _isPipelineRunning = false
+          _isQueueRunning = false
           if (resumeBudgetTracker) {
             resumeBudgetTracker.dispose()
             if (activeBudgetTracker === resumeBudgetTracker) activeBudgetTracker = null
@@ -1525,16 +1525,16 @@ export function FlywheelShell() {
           runtimes.remove(sessionId)
           if (queueResult && !_userInitiatedPause) {
             try {
-              const pipelineResultCompat: import("../../controller/workflow-pipeline").PipelineResult = {
+              const queueResultCompat: import("../../controller/queue-types").QueueResult = {
                 completed: queueResult.completed,
-                stagesCompleted: queueResult.stepsCompleted,
-                stagesTotal: queueResult.stepsTotal,
+                stepsCompleted: queueResult.stepsCompleted,
+                stepsTotal: queueResult.stepsTotal,
                 reason: queueResult.reason,
-                stageResults: resumeQueue.steps
+                stepResults: resumeQueue.steps
                   .filter((s) => s.status === "completed")
                   .map((s) => ({ workflow: s.type as any, completed: true })),
               }
-              await handlePipelineCompletion(pipelineResultCompat, {
+              await handleQueueCompletion(queueResultCompat, {
                 orchestrator,
                 sessionId,
                 flusher: capturedFlusher,
@@ -1739,7 +1739,7 @@ export function FlywheelShell() {
 
   /**
    * Background the current session: deselect it from the viewport and return
-   * to idle, but keep the pipeline/controller running. The session stays in
+   * to idle, but keep the queue/controller running. The session stays in
    * `sessionControllers` and can be re-opened from the sidebar.
    *
    * Unlike returnToIdle(), this does NOT tear down the workflow — the worker
@@ -1763,7 +1763,7 @@ export function FlywheelShell() {
     // continue to run — they're still tracked in sessionControllers/sessionStores.
     //
     // IMPORTANT: We null these refs so the shell doesn't try to interact with
-    // them, but the pipeline's async closure captured its own local references.
+    // them, but the queue's async closure captured its own local references.
     // The pipeline will clean up sessionControllers when it finishes.
     activeSession = null
     activeStepExecutor = null
@@ -1773,7 +1773,7 @@ export function FlywheelShell() {
     // Clear question/queue UI subscriptions (the queue executor itself doesn't need
     // these signals to function — they only drive UI state like pendingQuestion).
     cleanupQuestionSubscriptions()
-    cleanupPipelineSubscriptions()
+    cleanupQueueSubscriptions()
     unsubscribeTimer()
 
     // Reset viewport and shell state
@@ -1806,16 +1806,16 @@ export function FlywheelShell() {
 
   // ── Command Handler (via ActionDispatcher) ──
 
-  const launchWorkWithPipeline = (planPath: string) => {
+  const launchWorkWithQueue = (planPath: string) => {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
 
-    // Parse the plan file and create work steps from its phases
+    // Parse the plan file and create work steps from its steps
     const queue = buildQueueFromPlan(planPath, deps.config)
     startQueueExecution(queue, { planPath }, deps)
   }
 
-  const launchGenericWithPipeline = (name: string, args: Record<string, string>) => {
+  const launchGenericWithQueue = (name: string, args: Record<string, string>) => {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
 
@@ -1825,13 +1825,13 @@ export function FlywheelShell() {
 
   /**
    * /start flow: guided question wizard that collects a description and
-   * pipeline mode, then starts the appropriate pipeline.
+   * queue mode, then starts the appropriate pipeline.
    *
-   * Questions happen BEFORE the pipeline starts. Uses a temporary EventBus
+   * Questions happen BEFORE the queue starts. Uses a temporary EventBus
    * + QuestionService to drive the existing QuestionPrompt component.
    */
   const launchStartFlow = async (args: Record<string, string>) => {
-    // Create a temporary event bus + question wiring for pre-pipeline questions
+    // Create a temporary event bus + question wiring for pre-queue questions
     const startBus = new EventBus()
     cleanupQuestionSubscriptions()
     const startWiring = createQuestionWiring({
@@ -1952,8 +1952,8 @@ export function FlywheelShell() {
         ...(variant === "info" ? { duration: 8000 } : {}),
       })
     },
-    launchWorkWorkflow: launchWorkWithPipeline,
-    launchGenericWorkflow: launchGenericWithPipeline,
+    launchWorkWorkflow: launchWorkWithQueue,
+    launchGenericWorkflow: launchGenericWithQueue,
     launchStartFlow,
     exit: exitTUI,
     returnToIdle,
@@ -1963,7 +1963,7 @@ export function FlywheelShell() {
     const meta = dispatch(workflow, args)
     if (meta) {
       setActiveStepLabel(meta.stepLabel)
-      if (!_isPipelineRunning) {
+      if (!_isQueueRunning) {
         setActiveWorkflowName(meta.workflowName)
       }
     }
@@ -1988,9 +1988,9 @@ export function FlywheelShell() {
           setTimeout(() => setEscHint(""), 5000)
         } else {
           setEscHint("")
-          // During pipeline: pause instead of full stop
-          if (_isPipelineRunning) {
-            pausePipeline()
+          // During queue: pause instead of full stop
+          if (_isQueueRunning) {
+            pauseQueue()
           } else {
             stopWorkflow()
           }
@@ -2103,7 +2103,7 @@ export function FlywheelShell() {
         return
       }
 
-      // Ctrl+S: skip current phase
+      // Ctrl+S: skip current step
       if (evt.ctrl && evt.name === "s") {
         evt.preventDefault()
         return
@@ -2123,7 +2123,7 @@ export function FlywheelShell() {
         return
       }
 
-      // Up/Down: phase navigation (only when not prompt or sidebar focused)
+      // Up/Down: step navigation (only when not prompt or sidebar focused)
       if (!isPromptFocused() && !sidebarFocused()) {
         if (evt.name === "up") {
           evt.preventDefault()
@@ -2247,7 +2247,7 @@ export function FlywheelShell() {
     outputLines: [],
     outputBlocks: [],
     error: undefined,
-    selectedPhaseIndex: 0,
+    selectedStepIndex: 0,
     scrollOffset: 0,
     visibleItemCount: 0,
     approvalState: { pending: false },
@@ -2289,7 +2289,7 @@ export function FlywheelShell() {
                 sessionName: layoutState().planName,
                 planName: layoutState().planName,
                 workflowStatus: layoutState().workflowStatus,
-                currentPhase: currentPhase()?.name,
+                currentStep: currentStep()?.name,
               }}
               version={layoutState().version}
             />
@@ -2333,7 +2333,7 @@ export function FlywheelShell() {
             <WorkflowPanel
               state={layoutState()}
               stepLabel={activeStepLabel()}
-              selectedPhaseIndex={layoutState().selectedPhaseIndex}
+              selectedStepIndex={layoutState().selectedStepIndex}
               queueSteps={shellQueueSteps()}
             />
           ) : undefined
@@ -2377,7 +2377,7 @@ export function FlywheelShell() {
                 approvalPending={approvalPending()}
                 isPromptFocused={isPromptFocused() || sidebarFocused()}
                 availableWidth={dimensions()?.width}
-                currentPhase={currentPhase()}
+                currentStep={currentStep()}
               />
             </box>
           </Show>

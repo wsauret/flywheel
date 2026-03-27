@@ -23,7 +23,7 @@ export function buildWorkflowInstance(
     session_id: sessionId,
     status,
     plan_path: planPath,
-    current_stage: currentStage,
+    current_step: currentStage,
     worker_pid: workerPid,
   }
 }

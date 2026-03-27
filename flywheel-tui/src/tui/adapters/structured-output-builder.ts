@@ -240,7 +240,7 @@ export class StructuredOutputBuilder {
 
   /**
    * Reset only worker-level tracking state, preserving accumulated blocks.
-   * Used at pipeline phase boundaries: a new worker means new agent IDs and
+   * Used at pipeline step boundaries: a new worker means new agent IDs and
    * context runs, but the output log is continuous.
    */
   resetTracking(): void {

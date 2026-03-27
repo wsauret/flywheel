@@ -1,5 +1,5 @@
 /**
- * Tests for scrutiny validation phase:
+ * Tests for scrutiny validation step:
  * - Commands config schema (flywheel.toml commands section)
  * - Scrutiny prompt template content and behavior
  * - Integration with execution loop prompt builder
@@ -21,7 +21,7 @@ import {
 function makeScrutinyContext(overrides: Partial<ScrutinyPromptContext> = {}): ScrutinyPromptContext {
   return {
     milestoneName: "auth-system",
-    completedPhases: [
+    completedSteps: [
       { index: 0, title: "Add user model", description: "Create user schema and DB migration" },
       { index: 1, title: "Add login endpoint", description: "POST /api/auth/login" },
       { index: 2, title: "Add session middleware", description: "JWT verification middleware" },
@@ -142,10 +142,10 @@ describe("buildScrutinyPrompt — content", () => {
     expect(prompt.toLowerCase()).toContain("hard gate");
   });
 
-  test("prompt instructs worker to review each completed phase", () => {
+  test("prompt instructs worker to review each completed step", () => {
     const ctx = makeScrutinyContext();
     const prompt = buildScrutinyPrompt(ctx);
-    // Should reference each phase title
+    // Should reference each step title
     expect(prompt).toContain("Add user model");
     expect(prompt).toContain("Add login endpoint");
     expect(prompt).toContain("Add session middleware");
@@ -222,27 +222,27 @@ describe("buildScrutinyPrompt — missing commands", () => {
       commands: { test: "bun test" },
     });
     const prompt = buildScrutinyPrompt(ctx);
-    // Must convey that if the configured command fails, the entire scrutiny phase fails
+    // Must convey that if the configured command fails, the entire scrutiny step fails
     const lower = prompt.toLowerCase();
     expect(lower).toContain("fail");
   });
 });
 
 // ---------------------------------------------------------------------------
-// Scrutiny prompt: per-phase review instructions
+// Scrutiny prompt: per-step review instructions
 // ---------------------------------------------------------------------------
 
-describe("buildScrutinyPrompt — per-phase review", () => {
-  test("lists all completed phases for review", () => {
+describe("buildScrutinyPrompt — per-step review", () => {
+  test("lists all completed steps for review", () => {
     const ctx = makeScrutinyContext();
     const prompt = buildScrutinyPrompt(ctx);
-    // Each completed phase should be listed for review
-    expect(prompt).toContain("Phase 1");
-    expect(prompt).toContain("Phase 2");
-    expect(prompt).toContain("Phase 3");
+    // Each completed step should be listed for review
+    expect(prompt).toContain("Step 1");
+    expect(prompt).toContain("Step 2");
+    expect(prompt).toContain("Step 3");
   });
 
-  test("includes phase descriptions in review instructions", () => {
+  test("includes step descriptions in review instructions", () => {
     const ctx = makeScrutinyContext();
     const prompt = buildScrutinyPrompt(ctx);
     expect(prompt).toContain("Create user schema and DB migration");
@@ -250,17 +250,17 @@ describe("buildScrutinyPrompt — per-phase review", () => {
     expect(prompt).toContain("JWT verification middleware");
   });
 
-  test("handles empty completed phases list", () => {
-    const ctx = makeScrutinyContext({ completedPhases: [] });
+  test("handles empty completed steps list", () => {
+    const ctx = makeScrutinyContext({ completedSteps: [] });
     const prompt = buildScrutinyPrompt(ctx);
     // Should still produce a valid prompt
     expect(prompt).toBeTruthy();
     expect(prompt).toContain("auth-system");
   });
 
-  test("handles single completed phase", () => {
+  test("handles single completed step", () => {
     const ctx = makeScrutinyContext({
-      completedPhases: [
+      completedSteps: [
         { index: 0, title: "Setup project", description: "Initialize project structure" },
       ],
     });

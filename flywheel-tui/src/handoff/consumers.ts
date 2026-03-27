@@ -1,6 +1,6 @@
 /**
  * Handoff consumers — build structured data from worker handoff for
- * downstream consumers (dispatcher, phase chaining).
+ * downstream consumers (dispatcher, step chaining).
  *
  * All consumers read from the same WorkerHandoff object, which is
  * parsed once after worker execution.
@@ -20,20 +20,20 @@ import type { LastWorkerResult } from "../schemas/shared";
  * - summary → output_summary
  * - artifacts.files_created + artifacts.files_modified → artifacts_produced
  * - verification.tests_passed → tests_passed
- * - step from phaseIndex
+ * - step from stepIndex
  * - status = "completed"
  * - duration_seconds from durationMs / 1000
  */
 export function buildLastWorkerResult(
   handoff: WorkerHandoff,
-  phaseIndex: number,
+  stepIndex: number,
   durationMs: number,
 ): LastWorkerResult {
   const filesCreated = handoff.artifacts?.files_created ?? [];
   const filesModified = handoff.artifacts?.files_modified ?? [];
 
   return {
-    step: phaseIndex,
+    step: stepIndex,
     status: "completed",
     output_summary: handoff.summary,
     artifacts_produced: [...filesCreated, ...filesModified],
@@ -47,7 +47,7 @@ export function buildLastWorkerResult(
 }
 
 // ---------------------------------------------------------------------------
-// buildPreviousResultFromHandoff — for phase chaining
+// buildPreviousResultFromHandoff — for step chaining
 // ---------------------------------------------------------------------------
 
 /**
@@ -59,7 +59,7 @@ export function buildPreviousResultFromHandoff(handoff: WorkerHandoff): string {
   const sections: string[] = [];
 
   // Summary (always present)
-  sections.push("## Previous Phase Summary");
+  sections.push("## Previous Step Summary");
   sections.push(handoff.summary);
 
   // Decisions

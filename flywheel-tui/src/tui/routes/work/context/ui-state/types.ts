@@ -38,7 +38,7 @@ export interface UIActions {
   // Navigation actions
   selectNext(): void;
   selectPrevious(): void;
-  selectPhase(index: number): void;
+  selectStep(index: number): void;
 
   // Reset
   reset(planName: string): void;

@@ -1,32 +1,32 @@
 import { describe, it, expect } from "bun:test";
 
 /**
- * WorkflowView / WorkShell / PhaseProgress / TelemetryBar generalization tests.
+ * WorkflowView / WorkShell / StepProgress / TelemetryBar generalization tests.
  *
  * These are unit tests for the display text logic, not rendering tests
  * (OpenTUI components can't be rendered/imported in test without --conditions=browser).
  */
 
-// ── PhaseProgress display text logic ──
+// ── StepProgress display text logic ──
 
-describe("PhaseProgress display text", () => {
+describe("StepProgress display text", () => {
   /**
-   * Replicates the display text logic from PhaseProgress:
-   *   `{stepLabel ?? "Plan"} Progress (N {stepLabel?.toLowerCase() ?? "phase"}s)`
+   * Replicates the display text logic from StepProgress:
+   *   `{stepLabel ?? "Plan"} Progress (N {stepLabel?.toLowerCase() ?? "step"}s)`
    */
   function progressText(count: number, stepLabel?: string): string {
     const label = stepLabel ?? "Plan";
-    const unit = stepLabel?.toLowerCase() ?? "phase";
+    const unit = stepLabel?.toLowerCase() ?? "step";
     const plural = count === 1 ? unit : `${unit}s`;
     return `${label} Progress (${count} ${plural})`;
   }
 
-  it("defaults to 'Plan Progress (N phases)' without stepLabel", () => {
-    expect(progressText(3)).toBe("Plan Progress (3 phases)");
+  it("defaults to 'Plan Progress (N steps)' without stepLabel", () => {
+    expect(progressText(3)).toBe("Plan Progress (3 steps)");
   });
 
   it("uses singular when count is 1", () => {
-    expect(progressText(1)).toBe("Plan Progress (1 phase)");
+    expect(progressText(1)).toBe("Plan Progress (1 step)");
   });
 
   it("uses custom stepLabel 'Step'", () => {
@@ -37,12 +37,12 @@ describe("PhaseProgress display text", () => {
     expect(progressText(2, "Cycle")).toBe("Cycle Progress (2 cycles)");
   });
 
-  it("uses custom stepLabel 'Phase' (explicit)", () => {
-    expect(progressText(4, "Phase")).toBe("Phase Progress (4 phases)");
+  it("uses custom stepLabel 'Step' (explicit)", () => {
+    expect(progressText(4, "Step")).toBe("Step Progress (4 steps)");
   });
 
   it("handles zero count", () => {
-    expect(progressText(0)).toBe("Plan Progress (0 phases)");
+    expect(progressText(0)).toBe("Plan Progress (0 steps)");
   });
 
   it("handles singular with custom stepLabel", () => {
@@ -54,27 +54,27 @@ describe("PhaseProgress display text", () => {
 
 describe("TelemetryBar display text", () => {
   /**
-   * Replicates the phase display text from TelemetryBar:
-   *   `{stepLabel ?? "Phase"} X/N`
+   * Replicates the step display text from TelemetryBar:
+   *   `{stepLabel ?? "Step"} X/N`
    */
-  function phaseDisplayText(
-    currentPhase: number,
-    totalPhases: number,
+  function stepDisplayText(
+    currentStep: number,
+    totalSteps: number,
     stepLabel?: string,
   ): string {
-    return `${stepLabel ?? "Phase"} ${currentPhase}/${totalPhases}`;
+    return `${stepLabel ?? "Step"} ${currentStep}/${totalSteps}`;
   }
 
-  it("defaults to 'Phase X/N' without stepLabel", () => {
-    expect(phaseDisplayText(2, 5)).toBe("Phase 2/5");
+  it("defaults to 'Step X/N' without stepLabel", () => {
+    expect(stepDisplayText(2, 5)).toBe("Step 2/5");
   });
 
   it("uses custom stepLabel 'Step'", () => {
-    expect(phaseDisplayText(1, 3, "Step")).toBe("Step 1/3");
+    expect(stepDisplayText(1, 3, "Step")).toBe("Step 1/3");
   });
 
   it("uses custom stepLabel 'Cycle'", () => {
-    expect(phaseDisplayText(0, 2, "Cycle")).toBe("Cycle 0/2");
+    expect(stepDisplayText(0, 2, "Cycle")).toBe("Cycle 0/2");
   });
 });
 
@@ -83,11 +83,11 @@ describe("TelemetryBar display text", () => {
 describe("WorkShell defaults", () => {
   it("WorkShell would pass stepLabel='Step' and workflowName='work' to WorkflowView", () => {
     // This validates the contract: WorkShell hardcodes these values.
-    // We verify by checking the expected defaults match the PhaseProgress/TelemetryBar logic.
+    // We verify by checking the expected defaults match the StepProgress/TelemetryBar logic.
     const stepLabel = "Step";
     const workflowName = "work";
 
-    // PhaseProgress with stepLabel="Step"
+    // StepProgress with stepLabel="Step"
     const label = stepLabel;
     const unit = stepLabel.toLowerCase();
     expect(`${label} Progress (3 ${unit}s)`).toBe("Step Progress (3 steps)");

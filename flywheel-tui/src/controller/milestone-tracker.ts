@@ -4,16 +4,16 @@
  * Adapted from multi-agent mission system milestone completion and
  * validation planning patterns.
  *
- * A milestone is "implementation complete" when all non-validation phases
+ * A milestone is "implementation complete" when all non-validation steps
  * in that milestone are either "completed" or "cancelled". Validation-type
- * phases (scrutiny-validator, user-testing-validator) are excluded from
+ * steps (scrutiny-validator, user-testing-validator) are excluded from
  * this check to prevent circular dependency.
  *
  * The `milestonesWithValidationPlanned` array prevents re-injection of
- * validation phases after a milestone has been sealed.
+ * validation steps after a milestone has been sealed.
  */
 
-import type { PhaseInfo } from "./phase-provider";
+import type { StepInfo } from "./step-provider";
 import { Log } from "../utils/log";
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ import { Log } from "../utils/log";
 // ---------------------------------------------------------------------------
 
 /**
- * Skill names that indicate validation-type phases.
+ * Skill names that indicate validation-type steps.
  * These are excluded from milestone completion checks.
  *
  * Matches the validation system's validator skill names.
@@ -36,24 +36,24 @@ export const VALIDATION_SKILL_NAMES: readonly string[] = Object.freeze([
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal phase representation for milestone tracking.
+ * Minimal step representation for milestone tracking.
  *
- * This is a subset of PhaseInfo — callers should project their phase data
- * into this shape. The `isValidation` flag indicates whether the phase is
- * a validation-type phase (scrutiny, behavioral testing).
+ * This is a subset of StepInfo — callers should project their step data
+ * into this shape. The `isValidation` flag indicates whether the step is
+ * a validation-type step (scrutiny, behavioral testing).
  */
-export interface MilestonePhase {
+export interface MilestoneStep {
   /** 0-based index */
   index: number;
-  /** Phase title */
+  /** Step title */
   title: string;
   /** Execution status */
   status: "completed" | "pending" | "in_progress" | "cancelled";
-  /** Milestone this phase belongs to (undefined = no milestone) */
+  /** Milestone this step belongs to (undefined = no milestone) */
   milestone?: string;
   /**
-   * Whether this phase is a validation-type phase.
-   * Validation phases are excluded from milestone completion checks.
+   * Whether this step is a validation-type step.
+   * Validation steps are excluded from milestone completion checks.
    */
   isValidation: boolean;
 }
@@ -65,32 +65,32 @@ export interface MilestonePhase {
 const log = Log.create({ service: "milestone-tracker" });
 
 /**
- * Check whether all non-validation phases in a milestone are complete.
+ * Check whether all non-validation steps in a milestone are complete.
  *
  * A milestone is "implementation complete" when:
- * 1. There is at least one non-validation phase in the milestone
- * 2. All non-validation phases have status "completed" or "cancelled"
+ * 1. There is at least one non-validation step in the milestone
+ * 2. All non-validation steps have status "completed" or "cancelled"
  *
  * Adapted from multi-agent mission system milestone completion detection.
  *
- * @param phases - All phases (including from other milestones)
+ * @param steps - All steps (including from other milestones)
  * @param milestoneName - The milestone to check
- * @returns true if all implementation phases in the milestone are done
+ * @returns true if all implementation steps in the milestone are done
  */
 export function isMilestoneImplementationComplete(
-  phases: readonly MilestonePhase[],
+  steps: readonly MilestoneStep[],
   milestoneName: string,
 ): boolean {
-  // Filter to phases belonging to this milestone
-  const milestonePhases = phases.filter((p) => p.milestone === milestoneName);
-  if (milestonePhases.length === 0) return false;
+  // Filter to steps belonging to this milestone
+  const milestoneSteps = steps.filter((p) => p.milestone === milestoneName);
+  if (milestoneSteps.length === 0) return false;
 
-  // Filter out validation-type phases
-  const implementationPhases = milestonePhases.filter((p) => !p.isValidation);
-  if (implementationPhases.length === 0) return false;
+  // Filter out validation-type steps
+  const implementationSteps = milestoneSteps.filter((p) => !p.isValidation);
+  if (implementationSteps.length === 0) return false;
 
-  // All implementation phases must be completed or cancelled
-  return implementationPhases.every(
+  // All implementation steps must be completed or cancelled
+  return implementationSteps.every(
     (p) => p.status === "completed" || p.status === "cancelled",
   );
 }
@@ -103,26 +103,26 @@ export function isMilestoneImplementationComplete(
  * Stateful tracker for milestone completion and validation injection.
  *
  * Maintains the `milestonesWithValidationPlanned` array to prevent
- * duplicate injection of validation phases for the same milestone.
+ * duplicate injection of validation steps for the same milestone.
  *
  * Usage:
  * ```ts
  * const tracker = new MilestoneTracker();
  *
- * // After each phase completes, check for newly completed milestones
- * const completed = tracker.checkCompletedMilestones(phases);
+ * // After each step completes, check for newly completed milestones
+ * const completed = tracker.checkCompletedMilestones(steps);
  * for (const milestone of completed) {
- *   // Inject validation phases...
+ *   // Inject validation steps...
  *   tracker.markValidationPlanned(milestone);
  * }
  * ```
  */
 export class MilestoneTracker {
   /**
-   * Milestones that have already had validation phases injected.
-   * Prevents re-injection after fix phases cause re-completion.
+   * Milestones that have already had validation steps injected.
+   * Prevents re-injection after fix steps cause re-completion.
    *
-   * Prevents re-injection after fix phases cause re-completion.
+   * Prevents re-injection after fix steps cause re-completion.
    */
   private readonly _sealedMilestones: Set<string>;
 
@@ -134,11 +134,11 @@ export class MilestoneTracker {
   }
 
   /**
-   * Check whether a milestone's implementation phases are all complete.
+   * Check whether a milestone's implementation steps are all complete.
    * Delegates to the pure `isMilestoneImplementationComplete` function.
    */
-  isMilestoneComplete(phases: readonly MilestonePhase[], milestoneName: string): boolean {
-    return isMilestoneImplementationComplete(phases, milestoneName);
+  isMilestoneComplete(steps: readonly MilestoneStep[], milestoneName: string): boolean {
+    return isMilestoneImplementationComplete(steps, milestoneName);
   }
 
   /**
@@ -165,27 +165,27 @@ export class MilestoneTracker {
    * Determine whether validation should be injected for a milestone.
    *
    * Returns true when:
-   * 1. The milestone's implementation phases are all complete
+   * 1. The milestone's implementation steps are all complete
    * 2. Validation has NOT already been planned for this milestone
    *
    * Combined guard: checks implementation completeness and sealed state.
    */
-  shouldInjectValidation(phases: readonly MilestonePhase[], milestoneName: string): boolean {
+  shouldInjectValidation(steps: readonly MilestoneStep[], milestoneName: string): boolean {
     if (this._sealedMilestones.has(milestoneName)) return false;
-    return isMilestoneImplementationComplete(phases, milestoneName);
+    return isMilestoneImplementationComplete(steps, milestoneName);
   }
 
   /**
-   * Get all unique milestone names from phases (excluding undefined).
+   * Get all unique milestone names from steps (excluding undefined).
    * Returns in insertion order (first appearance).
    */
-  getMilestoneNames(phases: readonly MilestonePhase[]): string[] {
+  getMilestoneNames(steps: readonly MilestoneStep[]): string[] {
     const seen = new Set<string>();
     const names: string[] = [];
-    for (const phase of phases) {
-      if (phase.milestone && !seen.has(phase.milestone)) {
-        seen.add(phase.milestone);
-        names.push(phase.milestone);
+    for (const step of steps) {
+      if (step.milestone && !seen.has(step.milestone)) {
+        seen.add(step.milestone);
+        names.push(step.milestone);
       }
     }
     return names;
@@ -203,17 +203,17 @@ export class MilestoneTracker {
    * Check all milestones for newly completed ones that haven't been sealed.
    *
    * Returns milestone names that are:
-   * 1. Implementation complete (all non-validation phases done)
+   * 1. Implementation complete (all non-validation steps done)
    * 2. Not yet sealed (validation not yet planned)
    *
    * Scans all milestones and returns those ready for validation injection.
    */
-  checkCompletedMilestones(phases: readonly MilestonePhase[]): string[] {
-    const milestoneNames = this.getMilestoneNames(phases);
+  checkCompletedMilestones(steps: readonly MilestoneStep[]): string[] {
+    const milestoneNames = this.getMilestoneNames(steps);
     const newlyCompleted: string[] = [];
 
     for (const name of milestoneNames) {
-      if (this.shouldInjectValidation(phases, name)) {
+      if (this.shouldInjectValidation(steps, name)) {
         newlyCompleted.push(name);
       }
     }
@@ -222,29 +222,29 @@ export class MilestoneTracker {
   }
 
   /**
-   * Create validation phases for a completed milestone and return them
+   * Create validation steps for a completed milestone and return them
    * in the order they should be injected (scrutiny first, then behavioral).
    *
    * Adapted from multi-agent mission system validation injection patterns:
-   * - Scrutiny phase: runs test/typecheck/lint + per-phase code review
-   * - Behavioral validation phase: tests assertions from fulfills fields
+   * - Scrutiny step: runs test/typecheck/lint + per-step code review
+   * - Behavioral validation step: tests assertions from fulfills fields
    *
-   * Skip flags control which phases are created:
-   * - `skipScrutiny`: omit scrutiny phase
-   * - `skipValidation`: omit behavioral validation phase
+   * Skip flags control which steps are created:
+   * - `skipScrutiny`: omit scrutiny step
+   * - `skipValidation`: omit behavioral validation step
    *
    * When both are skipped, returns empty array and still marks milestone sealed.
    *
    * @param milestoneName - The milestone that just completed
-   * @param startIndex - Starting 0-based index for the new phases
+   * @param startIndex - Starting 0-based index for the new steps
    * @param options - Skip flags for scrutiny and/or behavioral validation
-   * @returns Array of PhaseInfo objects to prepend to the phase queue
+   * @returns Array of StepInfo objects to prepend to the step queue
    */
-  createValidationPhases(
+  createValidationSteps(
     milestoneName: string,
     startIndex: number,
     options: { skipScrutiny?: boolean; skipValidation?: boolean } = {},
-  ): PhaseInfo[] {
+  ): StepInfo[] {
     const { skipScrutiny = false, skipValidation = false } = options;
 
     if (skipScrutiny && skipValidation) {
@@ -252,18 +252,18 @@ export class MilestoneTracker {
       return [];
     }
 
-    const phases: PhaseInfo[] = [];
+    const steps: StepInfo[] = [];
     let idx = startIndex;
 
-    // Scrutiny validation phase (runs first)
+    // Scrutiny validation step (runs first)
     if (!skipScrutiny) {
-      phases.push({
+      steps.push({
         index: idx++,
         title: `Scrutiny: ${milestoneName}`,
         description: [
           `Scrutiny validation for milestone "${milestoneName}".`,
           "Run the project's test suite, typecheck, and lint as hard gates.",
-          "Review each completed phase in the milestone for code quality, correctness, and test coverage.",
+          "Review each completed step in the milestone for code quality, correctness, and test coverage.",
           "Synthesize findings into a scrutiny report.",
         ].join(" "),
         status: "pending",
@@ -271,21 +271,21 @@ export class MilestoneTracker {
           "Run test suite",
           "Run typecheck",
           "Run lint",
-          "Review completed phases",
+          "Review completed steps",
           "Synthesize findings",
         ],
         milestone: milestoneName,
       });
     }
 
-    // Behavioral validation phase (runs after scrutiny)
+    // Behavioral validation step (runs after scrutiny)
     if (!skipValidation) {
-      phases.push({
+      steps.push({
         index: idx++,
         title: `Validation: ${milestoneName}`,
         description: [
           `Behavioral validation for milestone "${milestoneName}".`,
-          "Read the validation contract and identify assertions from completed phases' fulfills fields.",
+          "Read the validation contract and identify assertions from completed steps' fulfills fields.",
           "Verify each assertion's behavioral description is satisfied.",
           "Update validation-state.json with pass/fail/blocked per assertion.",
         ].join(" "),
@@ -300,43 +300,43 @@ export class MilestoneTracker {
       });
     }
 
-    return phases;
+    return steps;
   }
 
   /**
-   * Check for milestone completion and create validation phases to inject.
+   * Check for milestone completion and create validation steps to inject.
    *
    * This is the main entry point for the execution loop to call after
-   * a phase completes. It combines milestone detection, skip flag handling,
-   * and phase creation.
+   * a step completes. It combines milestone detection, skip flag handling,
+   * and step creation.
    *
    * Adapted from multi-agent mission system validation injection patterns.
    *
-   * @param phases - Current phase list (as MilestonePhase projections)
-   * @param startIndex - Index at which to start numbering injected phases
+   * @param steps - Current step list (as MilestoneStep projections)
+   * @param startIndex - Index at which to start numbering injected steps
    * @param options - Skip flags
-   * @returns Object with milestone name and phases to inject, or null if nothing to inject
+   * @returns Object with milestone name and steps to inject, or null if nothing to inject
    */
-  checkAndCreateValidationPhases(
-    phases: readonly MilestonePhase[],
+  checkAndCreateValidationSteps(
+    steps: readonly MilestoneStep[],
     startIndex: number,
     options: { skipScrutiny?: boolean; skipValidation?: boolean } = {},
-  ): Array<{ milestone: string; phases: PhaseInfo[] }> {
-    const completedMilestones = this.checkCompletedMilestones(phases);
+  ): Array<{ milestone: string; steps: StepInfo[] }> {
+    const completedMilestones = this.checkCompletedMilestones(steps);
     if (completedMilestones.length === 0) return [];
 
-    const results: Array<{ milestone: string; phases: PhaseInfo[] }> = [];
+    const results: Array<{ milestone: string; steps: StepInfo[] }> = [];
     let currentIndex = startIndex;
 
     for (const milestone of completedMilestones) {
-      const validationPhases = this.createValidationPhases(milestone, currentIndex, options);
+      const validationSteps = this.createValidationSteps(milestone, currentIndex, options);
 
-      // Mark milestone as sealed (even if all phases were skipped)
+      // Mark milestone as sealed (even if all steps were skipped)
       this.markValidationPlanned(milestone);
 
-      if (validationPhases.length > 0) {
-        results.push({ milestone, phases: validationPhases });
-        currentIndex += validationPhases.length;
+      if (validationSteps.length > 0) {
+        results.push({ milestone, steps: validationSteps });
+        currentIndex += validationSteps.length;
       }
     }
 

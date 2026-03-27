@@ -20,9 +20,9 @@ describe("eval-prompts: fixture assembly", () => {
     const scenario = buildSimpleScenario();
 
     expect(scenario.name).toBe("simple");
-    expect(scenario.dispatcherInput.plan.phases.length).toBe(1);
-    expect(scenario.dispatcherInput.state.completed_phases).toEqual([]);
-    expect(scenario.dispatcherInput.state.current_phase_index).toBe(0);
+    expect(scenario.dispatcherInput.plan.steps.length).toBe(3);
+    expect(scenario.dispatcherInput.state.completed_steps).toEqual([]);
+    expect(scenario.dispatcherInput.state.current_step_index).toBe(0);
     expect(scenario.dispatcherInput.available_context.conventions).toEqual([]);
     expect(scenario.dispatcherInput.available_context.standards).toEqual([]);
     expect(scenario.dispatcherInput.available_context.learnings).toEqual([]);
@@ -35,14 +35,14 @@ describe("eval-prompts: fixture assembly", () => {
     expect(scenario.evaluatorInput.validation_criteria.length).toBeGreaterThan(0);
   });
 
-  it("COMPLEX scenario has 4+ phases with 2 completed and context entries", async () => {
+  it("COMPLEX scenario has 4+ steps with 2 completed and context entries", async () => {
     const { buildComplexScenario } = await import("../scripts/eval-prompts-fixtures");
     const scenario = buildComplexScenario();
 
     expect(scenario.name).toBe("complex");
-    expect(scenario.dispatcherInput.plan.phases.length).toBeGreaterThanOrEqual(4);
-    expect(scenario.dispatcherInput.state.completed_phases.length).toBe(2);
-    expect(scenario.dispatcherInput.state.current_phase_index).toBe(2);
+    expect(scenario.dispatcherInput.plan.steps.length).toBeGreaterThanOrEqual(4);
+    expect(scenario.dispatcherInput.state.completed_steps.length).toBe(2);
+    expect(scenario.dispatcherInput.state.current_step_index).toBe(2);
     // Has context entries
     expect(scenario.dispatcherInput.available_context.conventions.length).toBeGreaterThan(0);
     expect(scenario.dispatcherInput.available_context.standards.length).toBeGreaterThan(0);

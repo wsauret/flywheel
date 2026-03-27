@@ -29,7 +29,7 @@ export function createWorkflowActions(ctx: StoreContext) {
         outputLines: [],
         outputBlocks: [],
         approvalState: { pending: false },
-        selectedPhaseIndex: 0,
+        selectedStepIndex: 0,
         scrollOffset: 0,
         visibleItemCount: getState().visibleItemCount,
       });
@@ -44,7 +44,7 @@ export function createWorkflowActions(ctx: StoreContext) {
         workflowStatus: "running",
         approvalState: { pending: false },
         error: undefined,
-        // Preserve: outputBlocks, outputLines, phases, startTime, scrollOffset
+        // Preserve: outputBlocks, outputLines, steps, startTime, scrollOffset
       });
       notifyImmediate();
     },

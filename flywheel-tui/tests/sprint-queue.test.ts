@@ -30,7 +30,7 @@ import {
   type WorkerOutput,
   type BudgetChecker,
   type PersistFn,
-  type StageContextAccumulator,
+  type StepContextAccumulator,
 } from "../src/queue/executor";
 
 // ---------------------------------------------------------------------------
@@ -140,7 +140,7 @@ function createNoopPersist(): PersistFn {
   return async () => {};
 }
 
-function createNoopAccumulator(): StageContextAccumulator {
+function createNoopAccumulator(): StepContextAccumulator {
   return {
     accumulate: () => {},
     getContext: () => ({}),
@@ -186,7 +186,7 @@ describe("VAL-SPRINT-001: Sprint creates work + verify queue", () => {
 });
 
 describe("VAL-SPRINT-002: Work step uses sprint-specific prompt", () => {
-  test("first iteration uses buildSprintPhasePrompt", () => {
+  test("first iteration uses buildSprintStepPrompt", () => {
     const handler = createSprintQueueHandler(createDefaultSprintOptions());
     const step = makeStep({ type: "work", title: "Sprint work" });
     const prompt = handler.buildWorkStepPrompt(step);

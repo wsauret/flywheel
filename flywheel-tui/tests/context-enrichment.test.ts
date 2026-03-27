@@ -28,7 +28,7 @@ describe("enrichPromptWithContext", () => {
   });
 
   it("returns prompt unchanged when contextToInline is empty", async () => {
-    const prompt = "Execute phase 1";
+    const prompt = "Execute step 1";
     const result = await enrichPromptWithContext(prompt, [], tmpDir);
     expect(result).toBe(prompt);
   });
@@ -37,17 +37,17 @@ describe("enrichPromptWithContext", () => {
     const filePath = join(tmpDir, "conventions.md");
     await writeFile(filePath, "Always use TypeScript strict mode.");
 
-    const prompt = "Execute phase 1";
+    const prompt = "Execute step 1";
     const result = await enrichPromptWithContext(prompt, [filePath], tmpDir);
 
     expect(result).toContain("## Relevant Context (from project standards and learnings)");
     expect(result).toContain(`### ${filePath}`);
     expect(result).toContain("Always use TypeScript strict mode.");
     // Original prompt is at the end
-    expect(result).toContain("---\n\nExecute phase 1");
+    expect(result).toContain("---\n\nExecute step 1");
     // Verify ordering: context comes before prompt
     const contextIdx = result.indexOf("## Relevant Context");
-    const promptIdx = result.indexOf("Execute phase 1");
+    const promptIdx = result.indexOf("Execute step 1");
     expect(contextIdx).toBeLessThan(promptIdx);
   });
 

@@ -320,7 +320,7 @@ describe("Per-tier model config", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pipeline config fields (Phase 4)
+// Pipeline config fields (Step 4)
 // ---------------------------------------------------------------------------
 
 describe("Pipeline config fields", () => {
@@ -391,7 +391,7 @@ describe("Pipeline config fields", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Budget and Eval Config Fields (Phase 1)
+// Budget and Eval Config Fields (Step 1)
 // ---------------------------------------------------------------------------
 
 describe("max_eval_cycles config field", () => {

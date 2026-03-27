@@ -109,7 +109,7 @@ export function buildProjectContextSection(extra?: Record<string, unknown>): str
 
   return `## Project Context
 
-The following project files contain conventions and standards relevant to this phase.
+The following project files contain conventions and standards relevant to this step.
 Read them before starting implementation.
 
 ${sections.join("\n\n")}`;

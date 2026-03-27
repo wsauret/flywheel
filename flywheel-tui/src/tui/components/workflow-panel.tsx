@@ -48,8 +48,8 @@ export interface WorkflowPanelProps {
   collapsed?: boolean
   /** Step label override (e.g., "Step", "Cycle"). */
   stepLabel?: string
-  /** Index of the currently selected phase (for keyboard navigation). */
-  selectedPhaseIndex?: number
+  /** Index of the currently selected step (for keyboard navigation). */
+  selectedStepIndex?: number
   /**
    * Direct reactive queue steps override.
    *

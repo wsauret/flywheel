@@ -13,29 +13,29 @@ export function createNavigationActions(ctx: StoreContext) {
     selectNext(): void {
       const state = getState();
       const maxIndex = Math.max(0, state.queueSteps.length - 1);
-      const next = Math.min(state.selectedPhaseIndex + 1, maxIndex);
+      const next = Math.min(state.selectedStepIndex + 1, maxIndex);
       setState({
         ...state,
-        selectedPhaseIndex: next,
+        selectedStepIndex: next,
       });
       notify();
     },
 
     selectPrevious(): void {
       const state = getState();
-      const prev = Math.max(0, state.selectedPhaseIndex - 1);
+      const prev = Math.max(0, state.selectedStepIndex - 1);
       setState({
         ...state,
-        selectedPhaseIndex: prev,
+        selectedStepIndex: prev,
       });
       notify();
     },
 
-    selectPhase(index: number): void {
+    selectStep(index: number): void {
       const state = getState();
       setState({
         ...state,
-        selectedPhaseIndex: index,
+        selectedStepIndex: index,
       });
       notify();
     },

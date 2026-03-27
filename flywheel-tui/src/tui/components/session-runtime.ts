@@ -2,8 +2,8 @@
  * SessionRuntime — discriminated union for per-session workflow state.
  *
  * Replaces the 14 single-instance `let` refs in flywheel-shell.tsx with a
- * typed Map. Each session is either PendingRuntime (session created, pipeline
- * not yet started) or RunningRuntime (pipeline active, all fields populated).
+ * typed Map. Each session is either PendingRuntime (session created, queue
+ * not yet started) or RunningRuntime (queue active, all fields populated).
  *
  * Factory: `createSessionRuntimeManager(deps)` follows the project's
  * `createX(deps)` convention with dependency injection for testability.
@@ -23,14 +23,14 @@ const log = Log.create({ service: "session-runtime" })
 // Types
 // ---------------------------------------------------------------------------
 
-/** Pre-pipeline: session exists but pipeline hasn't started. */
+/** Pre-queue: session exists but queue hasn't started. */
 export interface PendingRuntime {
   kind: "pending"
   sessionId: string
   session: WorkflowSession
 }
 
-/** Active pipeline: all resources allocated and running. */
+/** Active queue: all resources allocated and running. */
 export interface RunningRuntime {
   kind: "running"
   sessionId: string
@@ -42,7 +42,7 @@ export interface RunningRuntime {
   queueCleanup: () => void
   contextIndexer: ContextIndexer | null
   workerPid: number | null
-  /** Queue-based execution: step executor replaces pipeline for queue mode. */
+  /** Queue-based execution: step executor replaces the old pipeline model. */
   stepExecutor?: StepExecutor | null
   /** The queue being executed (when using queue-based execution). */
   queue?: Queue | null
@@ -94,7 +94,7 @@ export interface SessionRuntimeManager {
   foreground(id: string): void
   /** Get IDs of all running (not pending) runtimes. */
   getRunningIds(): string[]
-  /** Remove a runtime from the map WITHOUT disposing resources (for already-completed pipelines). */
+  /** Remove a runtime from the map WITHOUT disposing resources (for already-completed queues). */
   remove(id: string): void
 }
 

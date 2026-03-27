@@ -11,8 +11,8 @@ import type { FlywheelConfig } from "../config/loader";
 import type { DispatcherTransport } from "../dispatcher/transport";
 import type { DispatcherDecision } from "../schemas/dispatcher";
 import type { LastWorkerResult } from "../schemas/shared";
-import type { StageContext } from "./stage-context";
-import type { PhaseInfo } from "./phase-provider";
+import type { StepContext } from "./step-context";
+import type { StepInfo } from "./step-provider";
 import type { AssemblerInput } from "../dispatcher/assemble";
 import { assembleDispatcherInput } from "../dispatcher/assemble";
 import { Log } from "../utils/log";
@@ -29,13 +29,13 @@ export interface DispatcherOrchestratorOptions {
 }
 
 /** Extended context for assembler — required fields per ADR spec. */
-export interface PhasePromptOptions {
+export interface StepPromptOptions {
   workflowContext: AssemblerInput["workflowContext"];
   configContext: AssemblerInput["configContext"];
   sessionBudget: AssemblerInput["sessionBudget"];
   availableContext: AssemblerInput["availableContext"];
-  /** Cumulative stage context from completed phases (optional). */
-  stageContext?: StageContext;
+  /** Cumulative stage context from completed steps (optional). */
+  stepContext?: StepContext;
 }
 
 const log = Log.create({ service: "dispatcher-orchestrator" });
@@ -58,21 +58,21 @@ export class DispatcherOrchestrator {
   }
 
   /**
-   * Get the full dispatcher decision for a phase.
+   * Get the full dispatcher decision for a step.
    *
    * Returns `null` if the dispatcher is disabled or fails, allowing
    * the caller to fall through to its own prompt builder.
    */
-  async getPhaseDecision(
-    phase: PhaseInfo,
+  async getStepDecision(
+    step: StepInfo,
     planContent: string,
     stateContent: string,
     contextContent: string | undefined,
     lastWorkerResult: LastWorkerResult | undefined,
-    options: PhasePromptOptions,
+    options: StepPromptOptions,
   ): Promise<DispatcherDecision | null> {
     // Emit dispatcher:invoked
-    this.emitter.dispatcherInvoked(this.workflowId, phase.index);
+    this.emitter.dispatcherInvoked(this.workflowId, step.index);
 
     const MAX_RETRIES = 2;
     const BACKOFF_MS = 1_000;
@@ -89,14 +89,14 @@ export class DispatcherOrchestrator {
           configContext: options.configContext,
           sessionBudget: options.sessionBudget,
           availableContext: options.availableContext,
-          stageContext: options.stageContext,
+          stepContext: options.stepContext,
         });
 
         // Call dispatcher
         const decision = await this.transport.invoke(assembled.input);
 
         log.info("dispatcher decision received", {
-          phaseIndex: phase.index,
+          stepIndex: step.index,
           hasSessionName: !!decision.session_name,
           sessionName: decision.session_name ?? null,
           taskContentLength: decision.task_content.length,

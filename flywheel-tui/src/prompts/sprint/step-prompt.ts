@@ -1,5 +1,5 @@
 /**
- * Sprint phase prompt — first iteration prompt for sprint workers.
+ * Sprint step prompt — first iteration prompt for sprint workers.
  *
  * Instructs the worker to: explore the codebase, implement the task,
  * write a behavioral verification script, and produce a handoff JSON
@@ -17,7 +17,7 @@ import { renderHandoffInstruction, SPRINT_FIELDS } from "../../handoff/field-spe
 import type { BoundariesConfig } from "../../config/loader.js";
 
 // ---------------------------------------------------------------------------
-// Boundaries section (reused pattern from work/phase-prompt.ts)
+// Boundaries section (reused pattern from work/step-prompt.ts)
 // ---------------------------------------------------------------------------
 
 function buildBoundariesSection(extra?: Record<string, unknown>): string {
@@ -84,7 +84,7 @@ When done, provide:
  * working directory, TDD cycle, scope discipline, three-strike protocol,
  * knowledge library instruction, and boundaries (when configured).
  */
-export function buildSprintPhasePrompt(ctx: WorkflowStepContext): string {
+export function buildSprintStepPrompt(ctx: WorkflowStepContext): string {
   const projectContext = buildProjectContextSection(ctx.extra);
   const boundariesSection = buildBoundariesSection(ctx.extra);
 
@@ -150,7 +150,7 @@ ${THREE_STRIKE_PROTOCOL}
 
 ## Shared Knowledge Library
 
-Before starting work, read any existing files in \`.flywheel/library/\` for context from prior phases:
+Before starting work, read any existing files in \`.flywheel/library/\` for context from prior steps:
 - \`environment.md\` — ports, env vars, service configuration
 - \`architecture.md\` — architectural decisions, component relationships, design patterns
 

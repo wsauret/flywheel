@@ -201,9 +201,9 @@ describe("VAL-SHELL-011: Queue created from each workflow selection", () => {
 // ===========================================================================
 
 describe("VAL-SHELL-033: /work <planPath> parses plan into work steps", () => {
-  const fixturePath = path.resolve(__dirname, "fixtures/two-phase-plan.plan.json");
+  const fixturePath = path.resolve(__dirname, "fixtures/two-step-plan.plan.json");
 
-  it("parses two-phase-plan.plan.json into 2 work steps", () => {
+  it("parses two-step-plan.plan.json into 2 work steps", () => {
     const queue = buildQueueFromPlan(fixturePath, makeConfig({ auto_chain: false }));
     const workSteps = queue.steps.filter((s) => s.type === "work");
     expect(workSteps).toHaveLength(2);

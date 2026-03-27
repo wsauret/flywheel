@@ -7,24 +7,24 @@
  * work:active) during startup.
  *
  * Covers:
- * - handlePipelineCompletion gracefully handles session stuck in "new" state
+ * - handleQueueCompletion gracefully handles session stuck in "new" state
  * - handleAutoArchive gracefully handles session stuck in "new" state
  * - All valid state transitions still work correctly
  */
 
 import { describe, it, expect } from "bun:test";
 import {
-  handlePipelineCompletion,
+  handleQueueCompletion,
   type PipelineCompletionDeps,
-} from "../src/tui/components/pipeline-completion";
+} from "../src/tui/components/queue-completion";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
 } from "../src/tui/components/session-orchestrator";
 import type {
-  PipelineResult,
+  QueueResult,
   CompletedStepResult,
-} from "../src/controller/workflow-pipeline";
+} from "../src/controller/queue-types";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import { isValidTransition } from "../src/session/state-machine";
 
@@ -32,12 +32,12 @@ import { isValidTransition } from "../src/session/state-machine";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makePipelineResult(overrides?: Partial<PipelineResult>): PipelineResult {
+function makeQueueResult(overrides?: Partial<QueueResult>): QueueResult {
   return {
     completed: true,
-    stagesCompleted: 3,
-    stagesTotal: 3,
-    stageResults: [],
+    stepsCompleted: 3,
+    stepsTotal: 3,
+    stepResults: [],
     ...overrides,
   };
 }
@@ -93,19 +93,19 @@ function makeMockDeps(
 }
 
 // ---------------------------------------------------------------------------
-// handlePipelineCompletion — state transition resilience
+// handleQueueCompletion — state transition resilience
 // ---------------------------------------------------------------------------
 
-describe("handlePipelineCompletion — state transition resilience", () => {
+describe("handleQueueCompletion — state transition resilience", () => {
   it("does not throw when updateState throws (session stuck in 'new' state)", async () => {
     const manager = createStatefulMockManager("new");
     const { deps } = makeMockDeps({
       updateState: (id, state) => manager.updateState(id, state as SessionLifecycleState),
     });
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "plan", completed: true },
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
@@ -113,7 +113,7 @@ describe("handlePipelineCompletion — state transition resilience", () => {
     });
 
     // Should NOT throw — the handler must be resilient to state transition errors
-    await expect(handlePipelineCompletion(result, deps)).resolves.toBeUndefined();
+    await expect(handleQueueCompletion(result, deps)).resolves.toBeUndefined();
   });
 
   it("still refreshes session list even when state transition fails", async () => {
@@ -124,14 +124,14 @@ describe("handlePipelineCompletion — state transition resilience", () => {
       refreshList: () => { calls.push("refreshList"); },
     });
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("refreshList");
   });
@@ -142,15 +142,15 @@ describe("handlePipelineCompletion — state transition resilience", () => {
       updateState: (id, state) => manager.updateState(id, state as SessionLifecycleState),
     });
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Session should end up in completed, having transitioned through intermediate states
     expect(manager.currentState).toBe("completed");
@@ -162,14 +162,14 @@ describe("handlePipelineCompletion — state transition resilience", () => {
       updateState: (id, state) => manager.updateState(id, state as SessionLifecycleState),
     });
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(manager.currentState).toBe("completed");
   });
@@ -180,14 +180,14 @@ describe("handlePipelineCompletion — state transition resilience", () => {
       updateState: (id, state) => manager.updateState(id, state as SessionLifecycleState),
     });
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(manager.currentState).toBe("completed");
   });
@@ -198,14 +198,14 @@ describe("handlePipelineCompletion — state transition resilience", () => {
       updateState: (id, state) => manager.updateState(id, state as SessionLifecycleState),
     });
 
-    const result = makePipelineResult({
+    const result = makeQueueResult({
       completed: true,
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     });
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(manager.currentState).toBe("completed");
     expect(manager.transitions).toEqual(["work:active -> completed"]);

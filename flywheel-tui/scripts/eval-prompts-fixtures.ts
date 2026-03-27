@@ -72,20 +72,15 @@ export interface EvalSummary {
 export function buildSimpleScenario(): TestScenario {
   const dispatcherInput: DispatcherInput = {
     plan: {
-      phases: [
-        {
-          name: "Add hello world endpoint",
-          steps: [
-            { description: "Create src/routes/hello.ts with GET handler returning { message: 'hello world' }" },
-            { description: "Add test in tests/hello.test.ts verifying 200 response and body" },
-            { description: "Register the route in src/routes/index.ts" },
-          ],
-        },
+      steps: [
+        { title: "Create hello endpoint", description: "Create src/routes/hello.ts with GET handler returning { message: 'hello world' }" },
+        { title: "Add hello test", description: "Add test in tests/hello.test.ts verifying 200 response and body" },
+        { title: "Register route", description: "Register the route in src/routes/index.ts" },
       ],
     },
     state: {
-      completed_phases: [],
-      current_phase_index: 0,
+      completed_steps: [],
+      current_step_index: 0,
     },
     context: { files: [] },
     plan_truncated: false,
@@ -159,52 +154,17 @@ All 2 tests pass:
 export function buildComplexScenario(): TestScenario {
   const dispatcherInput: DispatcherInput = {
     plan: {
-      phases: [
-        {
-          name: "Set up project structure",
-          steps: [
-            { description: "Initialize project with package.json and tsconfig.json" },
-            { description: "Create src/ and tests/ directories" },
-          ],
-        },
-        {
-          name: "Implement data models",
-          steps: [
-            { description: "Create User model with Zod schema in src/models/user.ts" },
-            { description: "Create Post model with Zod schema in src/models/post.ts" },
-            { description: "Add unit tests for both models" },
-          ],
-        },
-        {
-          name: "Build REST API endpoints",
-          steps: [
-            { description: "Create GET /users endpoint with pagination" },
-            { description: "Create POST /users endpoint with validation" },
-            { description: "Create GET /posts endpoint with author filtering" },
-            { description: "Create POST /posts endpoint with validation" },
-            { description: "Add integration tests for all endpoints" },
-          ],
-        },
-        {
-          name: "Add authentication middleware",
-          steps: [
-            { description: "Implement JWT authentication middleware" },
-            { description: "Protect POST endpoints with auth middleware" },
-            { description: "Add auth tests" },
-          ],
-        },
-        {
-          name: "Documentation and cleanup",
-          steps: [
-            { description: "Generate OpenAPI spec from route handlers" },
-            { description: "Add README with setup instructions" },
-          ],
-        },
+      steps: [
+        { title: "Set up project structure", description: "Initialize project with package.json and tsconfig.json. Create src/ and tests/ directories." },
+        { title: "Implement data models", description: "Create User model with Zod schema in src/models/user.ts. Create Post model with Zod schema in src/models/post.ts. Add unit tests for both models." },
+        { title: "Build REST API endpoints", description: "Create GET /users endpoint with pagination. Create POST /users endpoint with validation. Create GET /posts and POST /posts endpoints. Add integration tests." },
+        { title: "Add authentication middleware", description: "Implement JWT authentication middleware. Protect POST endpoints with auth middleware. Add auth tests." },
+        { title: "Documentation and cleanup", description: "Generate OpenAPI spec from route handlers. Add README with setup instructions." },
       ],
     },
     state: {
-      completed_phases: [0, 1],
-      current_phase_index: 2,
+      completed_steps: [0, 1],
+      current_step_index: 2,
     },
     context: { files: ["src/models/user.ts", "src/models/post.ts"] },
     plan_truncated: false,
@@ -308,7 +268,7 @@ export function buildComplexScenario(): TestScenario {
 
   return {
     name: "complex",
-    description: "Multi-phase plan (5 phases, 2 completed) with context entries, last_worker_result, and budget constraints",
+    description: "Multi-step plan (5 steps, 2 completed) with context entries, last_worker_result, and budget constraints",
     dispatcherInput,
     evaluatorInput,
   };
@@ -321,24 +281,14 @@ export function buildComplexScenario(): TestScenario {
 export function buildEdgeScenario(): TestScenario {
   const dispatcherInput: DispatcherInput = {
     plan: {
-      phases: [
-        {
-          name: "Phase 1 (completed)",
-          steps: [{ description: "Initial setup" }],
-        },
-        {
-          name: "Fix failing tests",
-          steps: [
-            { description: "Investigate test failure in auth middleware" },
-            { description: "Fix the root cause" },
-            { description: "Verify all tests pass" },
-          ],
-        },
+      steps: [
+        { title: "Initial setup", description: "Initial project setup (completed)" },
+        { title: "Fix failing tests", description: "Investigate test failure in auth middleware. Fix the root cause. Verify all tests pass." },
       ],
     },
     state: {
-      completed_phases: [0],
-      current_phase_index: 1,
+      completed_steps: [0],
+      current_step_index: 1,
     },
     context: { files: ["src/middleware/auth.ts", "tests/auth.test.ts"] },
     plan_truncated: true,

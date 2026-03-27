@@ -3,7 +3,7 @@
  *
  * Validates:
  * - VAL-DEL-009: Legacy events removed from event system
- * - VAL-TUI-001: Workflow panel renders only queue steps (no LegacyPhaseRow)
+ * - VAL-TUI-001: Workflow panel renders only queue steps (no LegacyStepRow)
  * - VAL-TUI-002: Queue events drive all TUI updates
  * - VAL-TUI-003: Step status icons render correctly
  * - VAL-TUI-004: Timer lifecycle tied to queue events
@@ -79,10 +79,10 @@ describe("VAL-DEL-009: Legacy events removed", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-TUI-001: Only QueueStepRow rendering", () => {
-  it("WorkState has no phases or stages arrays", () => {
+  it("WorkState has no steps or stages arrays", () => {
     const store = createStore("test");
     const state = store.getState();
-    expect((state as any).phases).toBeUndefined();
+    expect((state as any).steps).toBeUndefined();
     expect((state as any).stages).toBeUndefined();
     expect(state.queueSteps).toBeDefined();
     expect(Array.isArray(state.queueSteps)).toBe(true);

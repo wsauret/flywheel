@@ -234,49 +234,49 @@ describe("statusLabel", () => {
 // ---------------------------------------------------------------------------
 
 describe("formatSessionStatus", () => {
-  it("returns empty string when no phase or branch", () => {
+  it("returns empty string when no step or branch", () => {
     const info: SessionHeaderInfo = { sessionName: "test" };
     expect(formatSessionStatus(info)).toBe("");
   });
 
-  it("shows running phase icon", () => {
+  it("shows running step icon", () => {
     const info: SessionHeaderInfo = {
       sessionName: "test",
-      currentPhase: "Build",
-      phaseStatus: "running",
+      currentStep: "Build",
+      stepStatus: "running",
     };
     const result = formatSessionStatus(info);
     expect(result).toContain("\u25d3"); // ◓
     expect(result).toContain("Build");
   });
 
-  it("shows completed phase icon", () => {
+  it("shows completed step icon", () => {
     const info: SessionHeaderInfo = {
       sessionName: "test",
-      currentPhase: "Setup",
-      phaseStatus: "completed",
+      currentStep: "Setup",
+      stepStatus: "completed",
     };
     const result = formatSessionStatus(info);
     expect(result).toContain("\u25cf"); // ●
     expect(result).toContain("Setup");
   });
 
-  it("shows failed phase icon", () => {
+  it("shows failed step icon", () => {
     const info: SessionHeaderInfo = {
       sessionName: "test",
-      currentPhase: "Deploy",
-      phaseStatus: "failed",
+      currentStep: "Deploy",
+      stepStatus: "failed",
     };
     const result = formatSessionStatus(info);
     expect(result).toContain("\u2717"); // ✗
     expect(result).toContain("Deploy");
   });
 
-  it("shows pending phase icon for unknown status", () => {
+  it("shows pending step icon for unknown status", () => {
     const info: SessionHeaderInfo = {
       sessionName: "test",
-      currentPhase: "Init",
-      phaseStatus: "pending",
+      currentStep: "Init",
+      stepStatus: "pending",
     };
     const result = formatSessionStatus(info);
     expect(result).toContain("\u25cb"); // ○
@@ -292,11 +292,11 @@ describe("formatSessionStatus", () => {
     expect(result).toContain("feature/shell-redesign");
   });
 
-  it("shows both phase and branch separated by double space", () => {
+  it("shows both step and branch separated by double space", () => {
     const info: SessionHeaderInfo = {
       sessionName: "test",
-      currentPhase: "Build",
-      phaseStatus: "running",
+      currentStep: "Build",
+      stepStatus: "running",
       branch: "main",
     };
     const result = formatSessionStatus(info);

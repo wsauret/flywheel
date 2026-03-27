@@ -63,12 +63,12 @@ describe("buildWorkflowInstance", () => {
     session: { planPath: "/runtime/plan.md" } as any,
     controller: {} as any,
     loop: {} as any,
-    pipeline: {} as any,
+    
     flusher: {} as any,
     budgetTracker: {} as any,
     storeUnsub: () => {},
     questionCleanup: () => {},
-    pipelineCleanup: () => {},
+    queueCleanup: () => {},
     contextIndexer: null,
     workerPid,
   } as RunningRuntime);
@@ -82,7 +82,7 @@ describe("buildWorkflowInstance", () => {
     expect(instance.session_id).toBe("sess-1");
     expect(instance.status).toBe("running");
     expect(instance.plan_path).toBe("/plans/test.md");
-    expect(instance.current_stage).toBe("work");
+    expect(instance.current_step).toBe("work");
     expect(instance.worker_pid).toBe(5678);
   });
 
@@ -139,18 +139,18 @@ describe("buildWorkflowInstance", () => {
     expect(instance.plan_path).toBeNull();
   });
 
-  it("returns current_stage 'work' for running runtime", () => {
+  it("returns current_step 'work' for running runtime", () => {
     const runtime = makeRunningRuntime("sess-1");
     const instance = buildWorkflowInstance("sess-1", runtime, null);
 
-    expect(instance.current_stage).toBe("work");
+    expect(instance.current_step).toBe("work");
   });
 
-  it("returns null current_stage for pending runtime", () => {
+  it("returns null current_step for pending runtime", () => {
     const runtime = makePendingRuntime("sess-1");
     const instance = buildWorkflowInstance("sess-1", runtime, null);
 
-    expect(instance.current_stage).toBeNull();
+    expect(instance.current_step).toBeNull();
   });
 
   it("returns null worker_pid for pending runtime", () => {

@@ -22,14 +22,14 @@ const TWO_PHASE_PLAN = `# Implementation Plan: Test
 ## Overview
 A test plan.
 
-### Phase 1: Setup project structure
+### Step 1: Setup project structure
 
 Create the initial project structure and configuration.
 
 - [ ] Create directory layout
 - [ ] Initialize configuration files
 
-### Phase 2: Implement core logic
+### Step 2: Implement core logic
 
 Build the main application logic.
 
@@ -46,8 +46,8 @@ schema_version: 3
 # Execution State: test
 
 ## Progress
-- [x] Phase 1: Setup project structure
-- [ ] Phase 2: Implement core logic
+- [x] Step 1: Setup project structure
+- [ ] Step 2: Implement core logic
 
 ## Key Decisions
 - Used TDD approach
@@ -66,8 +66,8 @@ schema_version: 3
 # Execution State: test
 
 ## Progress
-- [ ] Phase 1: Setup project structure
-- [ ] Phase 2: Implement core logic
+- [ ] Step 1: Setup project structure
+- [ ] Step 2: Implement core logic
 
 ## Error Log
 | Error | Attempt | Approach | Outcome |
@@ -77,8 +77,8 @@ schema_version: 3
 function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecision {
   return {
     schema_version: 1,
-    phase_index: 0,
-    task_content: "Execute the setup phase by creating directory layout",
+    step_index: 0,
+    task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -86,7 +86,7 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
       custom_checks: [],
       required_outputs: [],
     },
-    reasoning: "Standard setup phase execution",
+    reasoning: "Standard setup step execution",
     warnings: [],
     worker_config: {
       model_override: null,
@@ -150,8 +150,8 @@ function baseAssemblerInput(overrides?: Partial<import("../src/dispatcher/assemb
 /** Base DispatcherInput with all required fields */
 function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherInput {
   return {
-    plan: { phases: [{ name: "Phase 1", steps: [{ description: "step 1" }] }] },
-    state: { completed_phases: [], current_phase_index: 0 },
+    plan: { steps: [{ title: "Step 1", description: "step 1" }] },
+    state: { completed_steps: [], current_step_index: 0 },
     context: { files: [] },
     plan_truncated: false,
     history_truncated: false,
@@ -171,8 +171,8 @@ function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherIn
 function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): DispatcherDecisionHandoff {
   return {
     schema_version: 1,
-    phase_index: 0,
-    task_content: "Execute the setup phase by creating directory layout",
+    step_index: 0,
+    task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -180,7 +180,7 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
       custom_checks: [],
       required_outputs: [],
     },
-    reasoning: "Standard setup phase execution",
+    reasoning: "Standard setup step execution",
     ...overrides,
   };
 }
@@ -240,8 +240,8 @@ function createDispatcherHandoffSpawner(
   return { spawner, callCount: () => calls };
 }
 
-/** Base PhasePromptOptions for dispatcher orchestrator tests */
-const basePhasePromptOptions = {
+/** Base StepPromptOptions for dispatcher orchestrator tests */
+const baseStepPromptOptions = {
   workflowContext: baseWorkflowContext,
   configContext: baseConfigContext,
   sessionBudget: baseSessionBudget,
@@ -256,8 +256,8 @@ describe("DispatcherDecisionSchema", () => {
   it("accepts objects with task_content field", () => {
     const obj = {
       schema_version: 1,
-      phase_index: 0,
-      task_content: "Execute the setup phase",
+      step_index: 0,
+      task_content: "Execute the setup step",
       context_files: ["src/index.ts"],
       validation_criteria: {
         acceptance_criteria: ["Tests pass"],
@@ -267,13 +267,13 @@ describe("DispatcherDecisionSchema", () => {
       },
     };
     const result = DispatcherDecisionSchema.parse(obj);
-    expect(result.task_content).toBe("Execute the setup phase");
+    expect(result.task_content).toBe("Execute the setup step");
   });
 
   it("rejects objects without task_content", () => {
     const obj = {
       schema_version: 1,
-      phase_index: 0,
+      step_index: 0,
       // no task_content
       context_files: ["src/index.ts"],
       validation_criteria: {
@@ -316,8 +316,8 @@ describe("DispatcherInput assembler", () => {
     const plan = result.input.plan as { steps?: { title: string }[] };
     expect(plan.steps).toHaveLength(2);
     expect(plan.steps![0].title).toBe("Setup project structure");
-    expect(result.input.state.completed_phases).toEqual([]);
-    expect(result.input.state.current_phase_index).toBe(0);
+    expect(result.input.state.completed_steps).toEqual([]);
+    expect(result.input.state.current_step_index).toBe(0);
     expect(result.planTruncated).toBe(false);
     expect(result.historyTruncated).toBe(false);
   });
@@ -376,13 +376,13 @@ describe("DispatcherInput assembler", () => {
     expect(result.input.context.files).toEqual([]);
   });
 
-  it("handles missing state file (all phases pending)", () => {
+  it("handles missing state file (all steps pending)", () => {
     const result = assembleDispatcherInput(baseAssemblerInput({
       stateContent: "",
     }));
 
-    expect(result.input.state.completed_phases).toEqual([]);
-    expect(result.input.state.current_phase_index).toBe(0);
+    expect(result.input.state.completed_steps).toEqual([]);
+    expect(result.input.state.current_step_index).toBe(0);
   });
 
   it("includes context files when provided", () => {
@@ -491,10 +491,10 @@ describe("DispatcherInput assembler", () => {
   it("maximally-populated input stays within 100KB budget", () => {
     // Build a maximally-populated input with realistic data
     const bigStep = "A".repeat(200);
-    const bigPhases = Array.from({ length: 8 }, (_, i) =>
-      `### Phase ${i + 1}: Phase title ${i}\n\n- [ ] ${bigStep}\n- [ ] ${bigStep}\n`
+    const bigSteps = Array.from({ length: 8 }, (_, i) =>
+      `### Step ${i + 1}: Step title ${i}\n\n- [ ] ${bigStep}\n- [ ] ${bigStep}\n`
     ).join("\n");
-    const bigPlan = `# Big Plan\n\n## Overview\nTest\n\n${bigPhases}`;
+    const bigPlan = `# Big Plan\n\n## Overview\nTest\n\n${bigSteps}`;
 
     const result = assembleDispatcherInput({
       planContent: bigPlan,
@@ -562,10 +562,10 @@ describe("DispatcherInput assembler", () => {
     // Create a scenario that will exceed 100KB:
     // Huge available_context summaries (20 entries x 3 arrays x ~2KB each = ~120KB)
     const bigStep = "Z".repeat(200);
-    const bigPhases = Array.from({ length: 5 }, (_, i) =>
-      `### Phase ${i + 1}: Phase title ${i}\n\n- [ ] ${bigStep}\n`
+    const bigSteps = Array.from({ length: 5 }, (_, i) =>
+      `### Step ${i + 1}: Step title ${i}\n\n- [ ] ${bigStep}\n`
     ).join("\n");
-    const bigPlan = `# Big Plan\n\n## Overview\nTest\n\n${bigPhases}`;
+    const bigPlan = `# Big Plan\n\n## Overview\nTest\n\n${bigSteps}`;
 
     const result = assembleDispatcherInput(baseAssemblerInput({
       planContent: bigPlan,
@@ -644,7 +644,7 @@ describe("DispatcherInput assembler — JSON plan", () => {
   });
 
   it("returns empty steps for non-JSON content", () => {
-    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n`;
+    const mdPlan = `# Plan\n\n### Step 1: Setup\n\n- [ ] Create project\n`;
     const result = assembleDispatcherInput(baseAssemblerInput({ planContent: mdPlan }));
     const plan = result.input.plan as { steps: Array<{ title: string }> };
 
@@ -652,7 +652,7 @@ describe("DispatcherInput assembler — JSON plan", () => {
     expect(plan.steps).toHaveLength(0);
   });
 
-  it("emits default empty completed_steps and completed_phases", () => {
+  it("emits default empty completed_steps and completed_steps", () => {
     const result = assembleDispatcherInput(baseAssemblerInput({
       stateContent: "",
     }));
@@ -660,8 +660,8 @@ describe("DispatcherInput assembler — JSON plan", () => {
     // State parsing removed — always defaults to empty
     expect(result.input.state.completed_steps).toEqual([]);
     expect(result.input.state.current_step_index).toBe(0);
-    expect(result.input.state.completed_phases).toEqual([]);
-    expect(result.input.state.current_phase_index).toBe(0);
+    expect(result.input.state.completed_steps).toEqual([]);
+    expect(result.input.state.current_step_index).toBe(0);
   });
 });
 
@@ -839,7 +839,7 @@ describe("SubprocessTransport", () => {
 
     const result = await transport.invoke(input);
     expect(result.task_content).toBe(handoff.task_content);
-    expect(result.phase_index).toBe(handoff.phase_index);
+    expect(result.step_index).toBe(handoff.step_index);
   });
 
   it("falls back on handoff missing after 1 retry", async () => {
@@ -980,7 +980,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup project structure",
@@ -992,7 +992,7 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     expect(result).not.toBeNull();
@@ -1013,7 +1013,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup project structure",
@@ -1025,7 +1025,7 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     // Returns null — the execution loop will use its own prompt builder
@@ -1049,7 +1049,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
 
-    await orchestrator.getPhaseDecision(
+    await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1061,7 +1061,7 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     const eventTypes = events.map((e) => e.type);
@@ -1075,10 +1075,10 @@ describe("DispatcherOrchestrator", () => {
   });
 
   // -------------------------------------------------------------------------
-  // getPhaseDecision() — returns full DispatcherDecision
+  // getStepDecision() — returns full DispatcherDecision
   // -------------------------------------------------------------------------
 
-  it("getPhaseDecision() returns full DispatcherDecision object (not just string)", async () => {
+  it("getStepDecision() returns full DispatcherDecision object (not just string)", async () => {
     const decision = validDecision({ task_content: "Full decision prompt" });
     const mockTransport: DispatcherTransport = {
       async invoke() { return decision; },
@@ -1091,7 +1091,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1103,7 +1103,7 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     expect(result).not.toBeNull();
@@ -1112,10 +1112,10 @@ describe("DispatcherOrchestrator", () => {
     expect(result!.worker_config).toBeDefined();
     expect(result!.worker_config.timeout_minutes).toBe(30);
     expect(result!.worker_config.max_retries).toBe(3);
-    expect(result!.reasoning).toBe("Standard setup phase execution");
+    expect(result!.reasoning).toBe("Standard setup step execution");
   });
 
-  it("getPhaseDecision() returns null on dispatcher failure", async () => {
+  it("getStepDecision() returns null on dispatcher failure", async () => {
     const mockTransport: DispatcherTransport = {
       async invoke() { throw new Error("Dispatcher exploded"); },
     };
@@ -1127,7 +1127,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1139,7 +1139,7 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     expect(result).toBeNull();
@@ -1148,7 +1148,7 @@ describe("DispatcherOrchestrator", () => {
     expect(failedEvents).toHaveLength(1);
   });
 
-  it("getPhaseDecision() emits dispatcherInvoked and dispatcherCompleted events", async () => {
+  it("getStepDecision() emits dispatcherInvoked and dispatcherCompleted events", async () => {
     const decision = validDecision();
     const mockTransport: DispatcherTransport = {
       async invoke() { return decision; },
@@ -1161,7 +1161,7 @@ describe("DispatcherOrchestrator", () => {
       workflowId: "test-wf",
     });
 
-    await orchestrator.getPhaseDecision(
+    await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1173,7 +1173,7 @@ describe("DispatcherOrchestrator", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     const eventTypes = events.map((e) => e.type);
@@ -1355,7 +1355,7 @@ describe("Dispatcher system prompt", () => {
   it("includes a concrete output example with realistic JSON", () => {
     const prompt = buildDispatcherSystemPrompt();
     // Example should include all key fields
-    expect(prompt).toContain('"phase_index": 2');
+    expect(prompt).toContain('"step_index": 2');
     expect(prompt).toContain('"context_files"');
     expect(prompt).toContain('"context_to_inline"');
     expect(prompt).toContain('"validation_criteria"');
@@ -1590,7 +1590,7 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
     await writeFile(filePath, "Use strict mode always.");
 
     const decision = validDecision({
-      task_content: "Execute the setup phase",
+      task_content: "Execute the setup step",
       context_to_inline: [filePath],
     });
     const mockTransport: DispatcherTransport = {
@@ -1604,7 +1604,7 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1617,21 +1617,21 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
       undefined,
       undefined,
       {
-        ...basePhasePromptOptions,
+        ...baseStepPromptOptions,
         configContext: { ...baseConfigContext, projectCwd: tmpDir },
       },
     );
 
     expect(result).not.toBeNull();
     // Orchestrator no longer enriches — returns raw task_content from dispatcher
-    expect(result!.task_content).toBe("Execute the setup phase");
+    expect(result!.task_content).toBe("Execute the setup step");
     // context_to_inline is preserved in the decision for the execution loop
     expect(result!.context_to_inline).toEqual([filePath]);
   });
 
   it("returns raw task_content when context_to_inline is absent", async () => {
     const decision = validDecision({
-      task_content: "Execute the setup phase",
+      task_content: "Execute the setup step",
       // No context_to_inline field
     });
     const mockTransport: DispatcherTransport = {
@@ -1645,7 +1645,7 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1657,16 +1657,16 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     expect(result).not.toBeNull();
-    expect(result!.task_content).toBe("Execute the setup phase");
+    expect(result!.task_content).toBe("Execute the setup step");
   });
 
   it("returns raw task_content when context_to_inline is empty array", async () => {
     const decision = validDecision({
-      task_content: "Execute the setup phase",
+      task_content: "Execute the setup step",
       context_to_inline: [],
     });
     const mockTransport: DispatcherTransport = {
@@ -1680,7 +1680,7 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
       workflowId: "test-wf",
     });
 
-    const result = await orchestrator.getPhaseDecision(
+    const result = await orchestrator.getStepDecision(
       {
         index: 0,
         title: "Setup",
@@ -1692,11 +1692,11 @@ describe("DispatcherOrchestrator raw decision passthrough", () => {
       STATE_CONTENT_ALL_PENDING,
       undefined,
       undefined,
-      basePhasePromptOptions,
+      baseStepPromptOptions,
     );
 
     expect(result).not.toBeNull();
-    expect(result!.task_content).toBe("Execute the setup phase");
+    expect(result!.task_content).toBe("Execute the setup step");
   });
 });
 
@@ -1712,90 +1712,90 @@ describe("Stage context in DispatcherInput", () => {
     assembleDispatcherInput = mod.assembleDispatcherInput;
   });
 
-  it("includes stage_context when provided", () => {
-    const stageContext = {
+  it("includes step_context when provided", () => {
+    const stepContext = {
       cumulative_decisions: [
-        { phase_index: 0, phase_title: "Setup", decisions: ["Used TDD"] },
+        { step_index: 0, step_title: "Setup", decisions: ["Used TDD"] },
       ],
       cumulative_warnings: [],
       cumulative_artifacts: [
-        { phase_index: 0, phase_title: "Setup", artifacts: ["src/index.ts"] },
+        { step_index: 0, step_title: "Setup", artifacts: ["src/index.ts"] },
       ],
       cumulative_issues: [],
       skill_feedback: [],
-      phase_count: 1,
+      step_count: 1,
     };
 
     const result = assembleDispatcherInput(baseAssemblerInput({
-      stageContext,
+      stepContext,
     }));
 
-    expect(result.input.stage_context).toBeDefined();
-    expect(result.input.stage_context!.phase_count).toBe(1);
-    expect(result.input.stage_context!.cumulative_decisions).toHaveLength(1);
-    expect(result.input.stage_context!.cumulative_decisions[0].decisions).toEqual(["Used TDD"]);
+    expect(result.input.step_context).toBeDefined();
+    expect(result.input.step_context!.step_count).toBe(1);
+    expect(result.input.step_context!.cumulative_decisions).toHaveLength(1);
+    expect(result.input.step_context!.cumulative_decisions[0].decisions).toEqual(["Used TDD"]);
   });
 
-  it("omits stage_context when not provided (backward compat)", () => {
+  it("omits step_context when not provided (backward compat)", () => {
     const result = assembleDispatcherInput(baseAssemblerInput({}));
 
-    expect(result.input.stage_context).toBeUndefined();
+    expect(result.input.step_context).toBeUndefined();
   });
 
-  it("passes multi-phase stage context through", () => {
-    const stageContext = {
+  it("passes multi-step stage context through", () => {
+    const stepContext = {
       cumulative_decisions: [
-        { phase_index: 0, phase_title: "Setup", decisions: ["Decision A"] },
-        { phase_index: 1, phase_title: "Implement", decisions: ["Decision B", "Decision C"] },
+        { step_index: 0, step_title: "Setup", decisions: ["Decision A"] },
+        { step_index: 1, step_title: "Implement", decisions: ["Decision B", "Decision C"] },
       ],
       cumulative_warnings: [
-        { phase_index: 1, phase_title: "Implement", warnings: ["Slow test detected"] },
+        { step_index: 1, step_title: "Implement", warnings: ["Slow test detected"] },
       ],
       cumulative_artifacts: [
-        { phase_index: 0, phase_title: "Setup", artifacts: ["package.json"] },
-        { phase_index: 1, phase_title: "Implement", artifacts: ["src/core.ts", "tests/core.test.ts"] },
+        { step_index: 0, step_title: "Setup", artifacts: ["package.json"] },
+        { step_index: 1, step_title: "Implement", artifacts: ["src/core.ts", "tests/core.test.ts"] },
       ],
       cumulative_issues: [],
       skill_feedback: [],
-      phase_count: 2,
+      step_count: 2,
     };
 
     const result = assembleDispatcherInput(baseAssemblerInput({
-      stageContext,
+      stepContext,
     }));
 
-    expect(result.input.stage_context).toBeDefined();
-    expect(result.input.stage_context!.phase_count).toBe(2);
-    expect(result.input.stage_context!.cumulative_decisions).toHaveLength(2);
-    expect(result.input.stage_context!.cumulative_warnings).toHaveLength(1);
-    expect(result.input.stage_context!.cumulative_artifacts).toHaveLength(2);
+    expect(result.input.step_context).toBeDefined();
+    expect(result.input.step_context!.step_count).toBe(2);
+    expect(result.input.step_context!.cumulative_decisions).toHaveLength(2);
+    expect(result.input.step_context!.cumulative_warnings).toHaveLength(1);
+    expect(result.input.step_context!.cumulative_artifacts).toHaveLength(2);
   });
 
-  it("validates stage_context against StageContextSchema", () => {
+  it("validates step_context against StepContextSchema", () => {
     // This test ensures the schema is properly wired
     const { DispatcherInputSchema } = require("../src/schemas/dispatcher");
 
     const inputWithContext = baseDispatcherInput({
-      stage_context: {
+      step_context: {
         cumulative_decisions: [],
         cumulative_warnings: [],
         cumulative_artifacts: [],
         cumulative_issues: [],
         skill_feedback: [],
-        phase_count: 0,
+        step_count: 0,
       },
     });
 
     const parsed = DispatcherInputSchema.parse(inputWithContext);
-    expect(parsed.stage_context).toBeDefined();
-    expect(parsed.stage_context!.phase_count).toBe(0);
+    expect(parsed.step_context).toBeDefined();
+    expect(parsed.step_context!.step_count).toBe(0);
   });
 
-  it("DispatcherInputSchema accepts input without stage_context (optional)", () => {
+  it("DispatcherInputSchema accepts input without step_context (optional)", () => {
     const { DispatcherInputSchema } = require("../src/schemas/dispatcher");
 
     const inputWithoutContext = baseDispatcherInput();
     const parsed = DispatcherInputSchema.parse(inputWithoutContext);
-    expect(parsed.stage_context).toBeUndefined();
+    expect(parsed.step_context).toBeUndefined();
   });
 });

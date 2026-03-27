@@ -1,5 +1,5 @@
 /**
- * Tests for Phase 3: Evaluator Handoff
+ * Tests for Step 3: Evaluator Handoff
  *
  * Verifies:
  * - Evaluator prompt includes renderEvaluatorHandoffInstruction(handoffPath)

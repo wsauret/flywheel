@@ -7,7 +7,7 @@
 // in ./schemas.ts.
 //
 // Terminology:
-//   Step   — single unit of work (replaces "phase")
+//   Step   — single unit of work (replaces "step")
 //   Queue  — mutable, ordered list of steps for a session
 //   Workflow — named template that generates an initial queue
 // ---------------------------------------------------------------------------
@@ -20,6 +20,7 @@
  * Union of valid step types.
  *
  * - plan / work / review / ship / debug / research — correspond to workflow runners
+ * - sprint — sprint-mode execution (iterative work + verify cycles)
  * - verify — runs a verification script (sprint mode)
  * - gate   — pauses execution for user approval
  */
@@ -30,6 +31,7 @@ export type StepType =
   | "ship"
   | "debug"
   | "research"
+  | "sprint"
   | "verify"
   | "gate";
 

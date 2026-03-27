@@ -537,7 +537,7 @@ describe("WorktreeManager — multiple sessions", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Worktree path persistence (Phase 2 — step 2.6)
+// Worktree path persistence (Step 2 — step 2.6)
 // ---------------------------------------------------------------------------
 
 describe("WorktreeManager — worktreePath persistence", () => {
@@ -594,7 +594,7 @@ describe("WorktreeManager — worktreePath persistence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Lazy rehydration from disk (Phase 2 — step 2.6)
+// Lazy rehydration from disk (Step 2 — step 2.6)
 // ---------------------------------------------------------------------------
 
 describe("WorktreeManager — lazy rehydration (switchToSession)", () => {

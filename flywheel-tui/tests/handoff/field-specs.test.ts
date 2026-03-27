@@ -3,7 +3,7 @@ import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
-  WORK_PHASE_FIELDS,
+  WORK_STEP_FIELDS,
   PLAN_DRAFT_FIELDS,
   PLAN_REVIEW_FIELDS,
   PLAN_CONSOLIDATE_FIELDS,
@@ -20,24 +20,24 @@ describe("renderHandoffInstruction", () => {
   const testPath = "/tmp/handoff.json";
 
   it("includes the handoff path in output", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain(testPath);
   });
 
   it("includes field descriptions for specified fields", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     // summary is always included
     expect(output).toContain("summary");
-    // Each field from WORK_PHASE_FIELDS should have its description
-    for (const field of WORK_PHASE_FIELDS) {
+    // Each field from WORK_STEP_FIELDS should have its description
+    for (const field of WORK_STEP_FIELDS) {
       expect(output).toContain(field.key);
       expect(output).toContain(field.description);
     }
   });
 
   it("includes examples for specified fields", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
-    for (const field of WORK_PHASE_FIELDS) {
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
+    for (const field of WORK_STEP_FIELDS) {
       expect(output).toContain(field.example);
     }
   });
@@ -55,7 +55,7 @@ describe("renderHandoffInstruction", () => {
   });
 
   it("different field sets produce different prompts", () => {
-    const workOutput = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const workOutput = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     const planOutput = renderHandoffInstruction(PLAN_DRAFT_FIELDS, testPath);
     const reviewOutput = renderHandoffInstruction(REVIEW_FIELDS, testPath);
 
@@ -67,7 +67,7 @@ describe("renderHandoffInstruction", () => {
 
   it("output is under 4000 bytes for any field set", () => {
     const allFieldSets = [
-      WORK_PHASE_FIELDS,
+      WORK_STEP_FIELDS,
       PLAN_DRAFT_FIELDS,
       PLAN_REVIEW_FIELDS,
       PLAN_CONSOLIDATE_FIELDS,
@@ -88,17 +88,17 @@ describe("renderHandoffInstruction", () => {
 // ---------------------------------------------------------------------------
 
 describe("HandoffFieldSpec.key typing", () => {
-  it("WORK_PHASE_FIELDS keys are valid WorkerHandoff keys", () => {
+  it("WORK_STEP_FIELDS keys are valid WorkerHandoff keys", () => {
     // This is primarily a compile-time check — if the keys were wrong,
     // TypeScript would fail to compile. At runtime we verify they're strings.
-    for (const field of WORK_PHASE_FIELDS) {
+    for (const field of WORK_STEP_FIELDS) {
       expect(typeof field.key).toBe("string");
       expect(field.key.length).toBeGreaterThan(0);
     }
   });
 
   it("all field registries have non-empty fields", () => {
-    expect(WORK_PHASE_FIELDS.length).toBeGreaterThan(0);
+    expect(WORK_STEP_FIELDS.length).toBeGreaterThan(0);
     expect(PLAN_DRAFT_FIELDS.length).toBeGreaterThan(0);
     expect(PLAN_REVIEW_FIELDS.length).toBeGreaterThan(0);
     expect(PLAN_CONSOLIDATE_FIELDS.length).toBeGreaterThan(0);
@@ -141,7 +141,7 @@ describe("renderDispatcherHandoffInstruction", () => {
   it("includes dispatcher-specific fields", () => {
     const output = renderDispatcherHandoffInstruction("/tmp/dispatch.json");
     expect(output).toContain("schema_version");
-    expect(output).toContain("phase_index");
+    expect(output).toContain("step_index");
     expect(output).toContain("task_content");
     expect(output).toContain("context_files");
   });

@@ -94,7 +94,7 @@ describe("Workflow Lifecycle", () => {
   // ── Events flow through adapter → store → state updates ──
 
   describe("events flow through adapter → store → state updates", () => {
-    it("full workflow lifecycle: start → phases → complete", () => {
+    it("full workflow lifecycle: start → steps → complete", () => {
       const store = createStore("integration-plan");
       const bus = new EventBus();
       const adapter = new OpenTUIAdapter({ actions: store });
@@ -187,15 +187,15 @@ describe("Workflow Lifecycle", () => {
 
     it("timerService.reset() clears all timer state", () => {
       timerService.start();
-      timerService.registerAgent("phase-0");
+      timerService.registerAgent("step-0");
 
       expect(timerService.isRunning()).toBe(true);
-      expect(timerService.hasAgent("phase-0")).toBe(true);
+      expect(timerService.hasAgent("step-0")).toBe(true);
 
       timerService.reset();
 
       expect(timerService.getStatus()).toBe("idle");
-      expect(timerService.hasAgent("phase-0")).toBe(false);
+      expect(timerService.hasAgent("step-0")).toBe(false);
       expect(timerService.getWorkflowRuntime()).toBe("00:00");
     });
 

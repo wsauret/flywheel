@@ -35,7 +35,7 @@ const HEALTHY_PLAN: PlanImportResult = {
   risks: [],
   issues: [],
   summary: {
-    phaseCount: 3,
+    stepCount: 3,
     totalSteps: 7,
     hasAcceptanceCriteria: true,
     contentHash: "abc123",
@@ -49,9 +49,9 @@ const PLAN_WITH_ISSUES: PlanImportResult = {
   behavioralContract: [],
   decisions: [],
   risks: [],
-  issues: ["Missing acceptance criteria", "Phase 2 has no steps"],
+  issues: ["Missing acceptance criteria", "Step 2 has no steps"],
   summary: {
-    phaseCount: 1,
+    stepCount: 1,
     totalSteps: 1,
     hasAcceptanceCriteria: false,
     contentHash: "def456",
@@ -67,7 +67,7 @@ const EMPTY_PLAN: PlanImportResult = {
   risks: [],
   issues: ["No steps found"],
   summary: {
-    phaseCount: 0,
+    stepCount: 0,
     totalSteps: 0,
     hasAcceptanceCriteria: false,
     contentHash: "empty",
@@ -121,7 +121,7 @@ const JSON_PLAN: PlanImportResult = {
   risks: ["Port 3000 may conflict"],
   issues: [],
   summary: {
-    phaseCount: 2,
+    stepCount: 2,
     totalSteps: 4,
     hasAcceptanceCriteria: true,
     contentHash: "json123",
@@ -141,13 +141,13 @@ describe("preparePlanSummary", () => {
     expect(summary.steps[0].acceptanceCriteria).toEqual(["Directories exist", "Config files present"]);
     expect(summary.steps[1].title).toBe("Implement core features");
     expect(summary.steps[2].title).toBe("Testing & polish");
-    // phases is empty for JSON plans
-    expect(summary.phases).toEqual([]);
+    // legacySteps is empty for JSON plans
+    expect(summary.legacySteps).toEqual([]);
   });
 
-  it("reports total phase and step counts", () => {
+  it("reports total step and step counts", () => {
     const summary = preparePlanSummary(HEALTHY_PLAN);
-    expect(summary.phaseCount).toBe(3);
+    expect(summary.stepCount).toBe(3);
     expect(summary.totalSteps).toBe(7);
   });
 
@@ -162,7 +162,7 @@ describe("preparePlanSummary", () => {
     const summary = preparePlanSummary(PLAN_WITH_ISSUES);
     expect(summary.issues).toEqual([
       "Missing acceptance criteria",
-      "Phase 2 has no steps",
+      "Step 2 has no steps",
     ]);
   });
 
@@ -178,9 +178,9 @@ describe("preparePlanSummary", () => {
 
   it("handles empty plan (no steps)", () => {
     const summary = preparePlanSummary(EMPTY_PLAN);
-    expect(summary.phases).toEqual([]);
+    expect(summary.legacySteps).toEqual([]);
     expect(summary.steps).toEqual([]);
-    expect(summary.phaseCount).toBe(0);
+    expect(summary.stepCount).toBe(0);
     expect(summary.totalSteps).toBe(0);
     expect(summary.issues).toEqual(["No steps found"]);
   });
@@ -242,25 +242,25 @@ describe("PlanSummaryDisplay shape", () => {
     const summary: PlanSummaryDisplay = preparePlanSummary(HEALTHY_PLAN);
 
     expect(summary).toHaveProperty("status");
-    expect(summary).toHaveProperty("phases");
+    expect(summary).toHaveProperty("legacySteps");
     expect(summary).toHaveProperty("steps");
     expect(summary).toHaveProperty("behavioralContract");
     expect(summary).toHaveProperty("decisions");
     expect(summary).toHaveProperty("risks");
-    expect(summary).toHaveProperty("phaseCount");
+    expect(summary).toHaveProperty("stepCount");
     expect(summary).toHaveProperty("totalSteps");
     expect(summary).toHaveProperty("hasAcceptanceCriteria");
     expect(summary).toHaveProperty("issues");
     expect(summary).toHaveProperty("isJsonPlan");
   });
 
-  it("phases have title and stepCount fields", () => {
+  it("legacySteps have title and stepCount fields", () => {
     const summary = preparePlanSummary(HEALTHY_PLAN);
-    for (const phase of summary.phases) {
-      expect(phase).toHaveProperty("title");
-      expect(phase).toHaveProperty("stepCount");
-      expect(typeof phase.title).toBe("string");
-      expect(typeof phase.stepCount).toBe("number");
+    for (const step of summary.legacySteps) {
+      expect(step).toHaveProperty("title");
+      expect(step).toHaveProperty("stepCount");
+      expect(typeof step.title).toBe("string");
+      expect(typeof step.stepCount).toBe("number");
     }
   });
 });
@@ -312,15 +312,15 @@ describe("preparePlanSummary (JSON plan)", () => {
     const summary = preparePlanSummary(JSON_PLAN);
 
     expect(summary.status).toBe("ready");
-    expect(summary.phaseCount).toBe(2);
+    expect(summary.stepCount).toBe(2);
     expect(summary.totalSteps).toBe(4);
     expect(summary.hasAcceptanceCriteria).toBe(true);
     expect(summary.issues).toEqual([]);
   });
 
-  it("has empty phases array for JSON plans", () => {
+  it("has empty legacySteps array for JSON plans", () => {
     const summary = preparePlanSummary(JSON_PLAN);
-    expect(summary.phases).toEqual([]);
+    expect(summary.legacySteps).toEqual([]);
   });
 
   it("all plans are JSON native — isJsonPlan is true", () => {

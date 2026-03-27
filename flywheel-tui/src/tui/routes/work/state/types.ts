@@ -33,7 +33,6 @@ export interface QueueStepState {
 }
 
 export interface WorkerState {
-  phaseIndex: number;
   stepIndex: number;
   status: "running" | "completed" | "failed" | "retrying";
   attempt?: number;
@@ -111,7 +110,7 @@ export interface WorkState {
   outputLines: OutputLine[];
   outputBlocks: AnyBlock[];
   approvalState: ApprovalState;
-  selectedPhaseIndex: number;
+  selectedStepIndex: number;
   scrollOffset: number;
   visibleItemCount: number;
   error?: string;

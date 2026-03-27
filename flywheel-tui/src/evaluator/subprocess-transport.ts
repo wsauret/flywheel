@@ -309,7 +309,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     // Surface timing so the evaluator knows if work was rushed or thorough.
     sections.push(
       "## Timing",
-      `Phase took ${input.duration_seconds}s to complete.`,
+      `Step took ${input.duration_seconds}s to complete.`,
       "",
     );
 
@@ -331,7 +331,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       "",
       "## CRITICAL: Bias Toward Passing",
       "",
-      "Revision loops are EXPENSIVE — they double the cost and time of a phase. You should strongly bias toward passing with suggestions rather than failing. Only fail when:",
+      "Revision loops are EXPENSIVE — they double the cost and time of a step. You should strongly bias toward passing with suggestions rather than failing. Only fail when:",
       "- Tests are failing or typecheck has errors (hard evidence of breakage)",
       "- Security issues found (credentials, secrets in code)",
       "- The output is fundamentally wrong or addresses the wrong task entirely",

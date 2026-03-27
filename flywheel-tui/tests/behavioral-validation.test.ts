@@ -1,5 +1,5 @@
 /**
- * Tests for behavioral validation phase:
+ * Tests for behavioral validation step:
  * - Behavioral validation prompt template content and behavior
  * - Re-validation logic (only checks failed/blocked assertions)
  * - Assertion extraction from fulfills
@@ -30,7 +30,7 @@ import {
 } from "../src/controller/validation-state";
 
 import type { ValidationState } from "../src/schemas/validation";
-import type { PhaseInfo } from "../src/controller/phase-provider";
+import type { StepInfo } from "../src/controller/step-provider";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,8 +50,8 @@ function stateFilePath(): string {
   return path.join(tmpDir, "validation-state.json");
 }
 
-function makePhases(overrides?: Partial<PhaseInfo>[]): PhaseInfo[] {
-  const defaults: PhaseInfo[] = [
+function makeSteps(overrides?: Partial<StepInfo>[]): StepInfo[] {
+  const defaults: StepInfo[] = [
     {
       index: 0,
       title: "Add user model",
@@ -248,51 +248,51 @@ describe("buildBehavioralValidationPrompt — re-validation", () => {
 });
 
 // ---------------------------------------------------------------------------
-// collectAssertionsForMilestone — extract assertions from phases' fulfills
+// collectAssertionsForMilestone — extract assertions from steps' fulfills
 // ---------------------------------------------------------------------------
 
 describe("collectAssertionsForMilestone", () => {
-  test("collects assertion IDs from phases belonging to the milestone", () => {
-    const phases = makePhases();
-    const ids = collectAssertionsForMilestone(phases, "auth-system");
+  test("collects assertion IDs from steps belonging to the milestone", () => {
+    const steps = makeSteps();
+    const ids = collectAssertionsForMilestone(steps, "auth-system");
     expect(ids).toEqual(["VAL-AUTH-001", "VAL-AUTH-002", "VAL-AUTH-003"]);
   });
 
-  test("excludes assertions from phases in other milestones", () => {
-    const phases = makePhases();
-    const ids = collectAssertionsForMilestone(phases, "auth-system");
+  test("excludes assertions from steps in other milestones", () => {
+    const steps = makeSteps();
+    const ids = collectAssertionsForMilestone(steps, "auth-system");
     expect(ids).not.toContain("VAL-DASH-001");
   });
 
-  test("returns empty array when no phases match the milestone", () => {
-    const phases = makePhases();
-    const ids = collectAssertionsForMilestone(phases, "nonexistent");
+  test("returns empty array when no steps match the milestone", () => {
+    const steps = makeSteps();
+    const ids = collectAssertionsForMilestone(steps, "nonexistent");
     expect(ids).toEqual([]);
   });
 
-  test("handles phases without fulfills", () => {
-    const phases: PhaseInfo[] = [
+  test("handles steps without fulfills", () => {
+    const steps: StepInfo[] = [
       { index: 0, title: "Setup", description: "Setup", status: "completed", milestone: "core" },
     ];
-    const ids = collectAssertionsForMilestone(phases, "core");
+    const ids = collectAssertionsForMilestone(steps, "core");
     expect(ids).toEqual([]);
   });
 
   test("deduplicates assertion IDs", () => {
-    const phases: PhaseInfo[] = [
+    const steps: StepInfo[] = [
       { index: 0, title: "A", description: "A", status: "completed", milestone: "m1", fulfills: ["VAL-1", "VAL-2"] },
       { index: 1, title: "B", description: "B", status: "completed", milestone: "m1", fulfills: ["VAL-2", "VAL-3"] },
     ];
-    const ids = collectAssertionsForMilestone(phases, "m1");
+    const ids = collectAssertionsForMilestone(steps, "m1");
     expect(ids).toEqual(["VAL-1", "VAL-2", "VAL-3"]);
   });
 
-  test("only includes completed phases", () => {
-    const phases: PhaseInfo[] = [
+  test("only includes completed steps", () => {
+    const steps: StepInfo[] = [
       { index: 0, title: "Done", description: "Done", status: "completed", milestone: "m1", fulfills: ["VAL-1"] },
       { index: 1, title: "Pending", description: "Pending", status: "pending", milestone: "m1", fulfills: ["VAL-2"] },
     ];
-    const ids = collectAssertionsForMilestone(phases, "m1");
+    const ids = collectAssertionsForMilestone(steps, "m1");
     expect(ids).toEqual(["VAL-1"]);
   });
 });
@@ -460,10 +460,10 @@ describe("updateAssertionStatuses", () => {
 // ---------------------------------------------------------------------------
 
 describe("plan-to-contract-to-fulfills-to-validation chain", () => {
-  test("assertion IDs from phases' fulfills are validated", () => {
-    // Simulate: phases with fulfills → collectAssertionsForMilestone → buildPrompt
-    const phases = makePhases();
-    const assertionIds = collectAssertionsForMilestone(phases, "auth-system");
+  test("assertion IDs from steps' fulfills are validated", () => {
+    // Simulate: steps with fulfills → collectAssertionsForMilestone → buildPrompt
+    const steps = makeSteps();
+    const assertionIds = collectAssertionsForMilestone(steps, "auth-system");
 
     // These IDs should match what would come from a validation contract
     expect(assertionIds).toEqual(["VAL-AUTH-001", "VAL-AUTH-002", "VAL-AUTH-003"]);
@@ -491,8 +491,8 @@ describe("plan-to-contract-to-fulfills-to-validation chain", () => {
   });
 
   test("new assertion added to contract and referenced in fulfills causes it to be tested", () => {
-    // Phase claims a new assertion ID
-    const phases: PhaseInfo[] = [
+    // Step claims a new assertion ID
+    const steps: StepInfo[] = [
       {
         index: 0,
         title: "Auth",
@@ -502,7 +502,7 @@ describe("plan-to-contract-to-fulfills-to-validation chain", () => {
         fulfills: ["VAL-AUTH-001", "VAL-NEW-001"],
       },
     ];
-    const ids = collectAssertionsForMilestone(phases, "core");
+    const ids = collectAssertionsForMilestone(steps, "core");
     expect(ids).toContain("VAL-NEW-001");
   });
 });
@@ -512,7 +512,7 @@ describe("plan-to-contract-to-fulfills-to-validation chain", () => {
 // ---------------------------------------------------------------------------
 
 describe("stage-loop-factory — behavioral validation prompt routing", () => {
-  test("Validation: prefix phases use behavioral validation prompt builder", () => {
+  test("Validation: prefix steps use behavioral validation prompt builder", () => {
     // This is a structural test — we verify the title pattern matching
     // The actual integration is in stage-loop-factory.ts
     const validationTitle = "Validation: auth-system";
@@ -521,13 +521,13 @@ describe("stage-loop-factory — behavioral validation prompt routing", () => {
     expect(milestoneName).toBe("auth-system");
   });
 
-  test("Scrutiny: prefix phases are not routed to behavioral validation", () => {
+  test("Scrutiny: prefix steps are not routed to behavioral validation", () => {
     const scrutinyTitle = "Scrutiny: auth-system";
     expect(scrutinyTitle.startsWith("Validation: ")).toBe(false);
     expect(scrutinyTitle.startsWith("Scrutiny: ")).toBe(true);
   });
 
-  test("Regular phase titles are not routed to behavioral validation", () => {
+  test("Regular step titles are not routed to behavioral validation", () => {
     const regularTitle = "Add user model";
     expect(regularTitle.startsWith("Validation: ")).toBe(false);
     expect(regularTitle.startsWith("Scrutiny: ")).toBe(false);

@@ -39,6 +39,6 @@ export interface WorkflowInstance {
   session_id: string
   status: WorkflowInstanceStatus
   plan_path: string | null
-  current_stage: string | null
+  current_step: string | null
   worker_pid: number | null
 }

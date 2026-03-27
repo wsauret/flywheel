@@ -114,10 +114,10 @@ function summarizeEntry(entry: HandoffEntry): HandoffSummary {
 // ---------------------------------------------------------------------------
 
 /**
- * ContextAccumulator extends the executor's StageContextAccumulator interface
+ * ContextAccumulator extends the executor's StepContextAccumulator interface
  * with serialization and size methods for persistence support.
  *
- * `accumulate(data)` accepts `unknown` (matching StageContextAccumulator)
+ * `accumulate(data)` accepts `unknown` (matching StepContextAccumulator)
  * but only processes objects with the expected shape (stepId, stepType,
  * stepTitle, handoff). Anything else is silently ignored.
  *

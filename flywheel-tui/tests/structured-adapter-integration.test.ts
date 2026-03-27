@@ -512,9 +512,9 @@ describe("Structured Adapter Integration", () => {
     });
   });
 
-  // ── Phase reset ──
+  // ── Step reset ──
 
-  describe("phase reset", () => {
+  describe("step reset", () => {
     it("blocks are cleared on new startWorkflow", async () => {
       const { bus, store } = createHarness();
 

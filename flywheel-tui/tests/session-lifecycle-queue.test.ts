@@ -16,13 +16,13 @@ import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
 } from "../src/tui/components/session-orchestrator";
-import { handlePipelineCompletion, type PipelineCompletionDeps } from "../src/tui/components/pipeline-completion";
+import { handleQueueCompletion, type PipelineCompletionDeps } from "../src/tui/components/queue-completion";
 import { isResumable, isValidTransition, VALID_TRANSITIONS } from "../src/session/state-machine";
 import { groupSessions, type SessionGroupKey } from "../src/tui/components/sidebar-logic";
 import type { Session } from "../src/schemas/session";
 import type { OutputSnapshot } from "../src/schemas/output";
 import type { Queue } from "../src/queue/types";
-import type { PipelineResult, CompletedStepResult } from "../src/controller/workflow-pipeline";
+import type { QueueResult, CompletedStepResult } from "../src/controller/queue-types";
 import type { SessionSummary } from "../src/session/manager";
 
 // ---------------------------------------------------------------------------
@@ -227,7 +227,7 @@ describe("SessionOrchestrator.handleResumeSession — queue loading", () => {
 // VAL-SHELL-020: Pipeline completion handles queue completion properly
 // ===========================================================================
 
-describe("handlePipelineCompletion — queue completion", () => {
+describe("handleQueueCompletion — queue completion", () => {
   function makeMockCompletionDeps(overrides?: Partial<PipelineCompletionDeps>): {
     deps: PipelineCompletionDeps;
     calls: string[];
@@ -260,17 +260,17 @@ describe("handlePipelineCompletion — queue completion", () => {
 
   it("transitions to completed when queue completes without ship step", async () => {
     const { deps, calls } = makeMockCompletionDeps();
-    const result: PipelineResult = {
+    const result: QueueResult = {
       completed: true,
-      stagesCompleted: 2,
-      stagesTotal: 2,
-      stageResults: [
+      stepsCompleted: 2,
+      stepsTotal: 2,
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
       ],
     };
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Should transition to completed (not work:paused)
     const updateCalls = calls.filter((c) => c.startsWith("updateState:"));
@@ -280,35 +280,35 @@ describe("handlePipelineCompletion — queue completion", () => {
 
   it("auto-archives when queue completes with ship step", async () => {
     const { deps, calls } = makeMockCompletionDeps();
-    const result: PipelineResult = {
+    const result: QueueResult = {
       completed: true,
-      stagesCompleted: 3,
-      stagesTotal: 3,
-      stageResults: [
+      stepsCompleted: 3,
+      stepsTotal: 3,
+      stepResults: [
         { workflow: "work", completed: true },
         { workflow: "review", completed: true },
         { workflow: "ship", completed: true },
       ],
     };
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("autoArchive:session-1");
   });
 
   it("does not transition when queue did not complete (interrupted/failed)", async () => {
     const { deps, calls } = makeMockCompletionDeps();
-    const result: PipelineResult = {
+    const result: QueueResult = {
       completed: false,
-      stagesCompleted: 1,
-      stagesTotal: 3,
+      stepsCompleted: 1,
+      stepsTotal: 3,
       reason: "Step failed",
-      stageResults: [
+      stepResults: [
         { workflow: "work", completed: true },
       ],
     };
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     // Should NOT call updateState (interrupted pipelines leave state as-is)
     const updateCalls = calls.filter((c) => c.startsWith("updateState:"));
@@ -317,14 +317,14 @@ describe("handlePipelineCompletion — queue completion", () => {
 
   it("flushes and disposes flusher on completion", async () => {
     const { deps, calls } = makeMockCompletionDeps();
-    const result: PipelineResult = {
+    const result: QueueResult = {
       completed: true,
-      stagesCompleted: 1,
-      stagesTotal: 1,
-      stageResults: [{ workflow: "plan", completed: true }],
+      stepsCompleted: 1,
+      stepsTotal: 1,
+      stepResults: [{ workflow: "plan", completed: true }],
     };
 
-    await handlePipelineCompletion(result, deps);
+    await handleQueueCompletion(result, deps);
 
     expect(calls).toContain("flush");
     expect(calls).toContain("dispose");

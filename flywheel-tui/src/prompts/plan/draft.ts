@@ -74,7 +74,7 @@ ${BEHAVIORAL_CONTRACT_RULES}
 - Do NOT produce a markdown plan file
 - Do NOT produce a separate validation-contract.md file (it's embedded in the JSON as behavioralContract)
 - Do NOT produce a separate .context.md file (context info goes in decisions and risks)
-- Do NOT use phase headings, checklist syntax, or milestone markers
+- Do NOT use step headings, checklist syntax, or milestone markers
 - Do NOT use HTML comments for fulfills annotations
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(PLAN_DRAFT_FIELDS, ctx.extra.handoffPath as string)}` : ""}
 `;

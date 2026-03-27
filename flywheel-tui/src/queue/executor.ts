@@ -27,7 +27,7 @@
 //   - Abort signal (finish current step, stop)
 //
 // Terminology:
-//   Step   — single unit of work (replaces "phase")
+//   Step   — single unit of work (replaces "step")
 //   Queue  — mutable, ordered list of steps
 // ---------------------------------------------------------------------------
 
@@ -125,7 +125,7 @@ export interface BudgetChecker {
 export type PersistFn = (queue: Queue) => Promise<void>;
 
 /** Stage context accumulator: accumulates handoff data across steps */
-export interface StageContextAccumulator {
+export interface StepContextAccumulator {
   accumulate(data: unknown): void;
   getContext(): Record<string, unknown>;
 }
@@ -154,7 +154,7 @@ export interface StepExecutorOptions {
   /** Queue persistence function */
   persist: PersistFn;
   /** Stage context accumulator */
-  accumulator: StageContextAccumulator;
+  accumulator: StepContextAccumulator;
   /** Maximum revision attempts per step (0 = no revisions) */
   maxRevisions: number;
   /**
@@ -178,6 +178,13 @@ export interface StepExecutorOptions {
    * Called with the step, its final status, and the queue for mutation.
    */
   onStepCompleted?: OnStepCompletedHook | null;
+
+  /**
+   * Guardrails instance for mutation budget tracking and enforcement.
+   * When provided, the executor passes mutation_budget to the dispatcher
+   * context and session objective from the guardrails.
+   */
+  guardrails?: import("./guardrails").Guardrails | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +337,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     maxRevisions,
     questionService,
     onStepCompleted,
+    guardrails,
   } = options;
 
   let shutdownRequested = false;
@@ -475,6 +483,10 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         ...(previousHandoff ? { previousHandoff } : {}),
         ...(previousAssessment ? { previousAssessment } : {}),
         ...(hitlResponse !== null ? { hitlResponse } : {}),
+        ...(guardrails ? {
+          mutation_budget: guardrails.getMutationBudget(step.id, queue.steps.length),
+          session_objective: guardrails.getSessionObjective(),
+        } : {}),
       };
       const dispatcherResult = await dispatcher(step, dispatcherContext);
       let currentPrompt = dispatcherResult.prompt;

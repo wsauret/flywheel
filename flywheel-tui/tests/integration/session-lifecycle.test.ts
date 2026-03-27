@@ -450,7 +450,7 @@ describe("Trash from any non-terminal state", () => {
 // ===========================================================================
 
 describe("Invalid transitions are rejected", () => {
-  it("rejects new -> work:active (skipping plan phases)", () => {
+  it("rejects new -> work:active (skipping plan steps)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
@@ -667,7 +667,7 @@ describe("Error handling in lifecycle operations", () => {
 });
 
 // ===========================================================================
-// Phase 8.1: Pause / Resume Lifecycle Integration Tests
+// Step 8.1: Pause / Resume Lifecycle Integration Tests
 // ===========================================================================
 
 describe("Pause / Resume Lifecycle", () => {
@@ -912,7 +912,7 @@ describe("Pause / Resume Lifecycle", () => {
 });
 
 // ===========================================================================
-// Phase 8.1: Auto-Archive Integration Tests
+// Step 8.1: Auto-Archive Integration Tests
 // ===========================================================================
 
 describe("Auto-Archive via orchestrator", () => {
@@ -976,7 +976,7 @@ describe("Auto-Archive via orchestrator", () => {
 });
 
 // ===========================================================================
-// Phase 8.2: Crash Recovery
+// Step 8.2: Crash Recovery
 // ===========================================================================
 
 describe("Crash recovery: stale work:active sessions", () => {
@@ -1081,7 +1081,7 @@ describe("Crash recovery: stale work:active sessions", () => {
 });
 
 // ===========================================================================
-// Phase 8.3: Edge Cases
+// Step 8.3: Edge Cases
 // ===========================================================================
 
 describe("Edge cases", () => {
@@ -1115,7 +1115,7 @@ describe("Edge cases", () => {
     const planDir = path.join(baseDir, "plans");
     fs.mkdirSync(planDir, { recursive: true });
     const planPath = path.join(planDir, "modifiable.md");
-    fs.writeFileSync(planPath, "# Original Plan\n\n- Phase 1: Setup\n- Phase 2: Build");
+    fs.writeFileSync(planPath, "# Original Plan\n\n- Step 1: Setup\n- Step 2: Build");
 
     const id = mgr.create("plans/modifiable.md", "Modifiable Plan");
     mgr.updateState(id, "plan:imported");
@@ -1126,7 +1126,7 @@ describe("Edge cases", () => {
     mgr.updateState(id, "work:paused");
 
     // Modify plan file on disk
-    fs.writeFileSync(planPath, "# Modified Plan\n\n- Phase 1: NEW PHASE\n- Phase 2: Build\n- Phase 3: Test");
+    fs.writeFileSync(planPath, "# Modified Plan\n\n- Step 1: NEW PHASE\n- Step 2: Build\n- Step 3: Test");
 
     // Resume — session data should reflect the original planPath
     mgr.updateState(id, "work:active");

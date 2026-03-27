@@ -75,9 +75,9 @@ describe("buildPlanDraftPrompt (JSON output)", () => {
   });
 
   test("does NOT contain markdown plan template instructions", () => {
-    // No Phase headings
-    expect(prompt).not.toContain("### Phase N:");
-    expect(prompt).not.toContain("### Phase 1:");
+    // No Step headings
+    expect(prompt).not.toContain("### Step N:");
+    expect(prompt).not.toContain("### Step 1:");
     // No checklist syntax
     expect(prompt).not.toContain("- [ ] **");
     // No milestone markers (## Milestone: format)
@@ -551,9 +551,9 @@ describe("buildPlanConsolidatePrompt (JSON consolidation)", () => {
   });
 
   test("does NOT contain markdown plan template instructions", () => {
-    // No Phase headings
-    expect(prompt).not.toContain("### Phase N:");
-    expect(prompt).not.toContain("### Phase 1:");
+    // No Step headings
+    expect(prompt).not.toContain("### Step N:");
+    expect(prompt).not.toContain("### Step 1:");
     // No checklist syntax in template
     expect(prompt).not.toContain("## Implementation Checklist");
     // No milestone markers (## Milestone: format)

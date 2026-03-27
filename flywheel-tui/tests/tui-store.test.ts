@@ -19,7 +19,7 @@ describe("Work Store", () => {
       expect(state.queueSteps).toEqual([]);
       expect(state.outputLines).toEqual([]);
       expect(state.approvalState).toEqual({ pending: false });
-      expect(state.selectedPhaseIndex).toBe(0);
+      expect(state.selectedStepIndex).toBe(0);
       expect(state.scrollOffset).toBe(0);
     });
 
@@ -320,14 +320,14 @@ describe("Work Store", () => {
   // ── Navigation Actions ──
 
   describe("navigation actions", () => {
-    it("selectNext increments selectedPhaseIndex", () => {
+    it("selectNext increments selectedStepIndex", () => {
       store.setQueueSteps([
         { id: "s1", type: "work", title: "Step 0", status: "pending" },
         { id: "s2", type: "work", title: "Step 1", status: "pending" },
       ]);
-      store.selectPhase(0);
+      store.selectStep(0);
       store.selectNext();
-      expect(store.getState().selectedPhaseIndex).toBe(1);
+      expect(store.getState().selectedStepIndex).toBe(1);
     });
 
     it("selectNext clamps to last step", () => {
@@ -335,48 +335,48 @@ describe("Work Store", () => {
         { id: "s1", type: "work", title: "Step 0", status: "pending" },
         { id: "s2", type: "work", title: "Step 1", status: "pending" },
       ]);
-      store.selectPhase(1);
+      store.selectStep(1);
       store.selectNext();
-      expect(store.getState().selectedPhaseIndex).toBe(1);
+      expect(store.getState().selectedStepIndex).toBe(1);
     });
 
-    it("selectPrevious decrements selectedPhaseIndex", () => {
+    it("selectPrevious decrements selectedStepIndex", () => {
       store.setQueueSteps([
         { id: "s1", type: "work", title: "Step 0", status: "pending" },
         { id: "s2", type: "work", title: "Step 1", status: "pending" },
       ]);
-      store.selectPhase(1);
+      store.selectStep(1);
       store.selectPrevious();
-      expect(store.getState().selectedPhaseIndex).toBe(0);
+      expect(store.getState().selectedStepIndex).toBe(0);
     });
 
     it("selectPrevious clamps to 0", () => {
       store.setQueueSteps([
         { id: "s1", type: "work", title: "Step 0", status: "pending" },
       ]);
-      store.selectPhase(0);
+      store.selectStep(0);
       store.selectPrevious();
-      expect(store.getState().selectedPhaseIndex).toBe(0);
+      expect(store.getState().selectedStepIndex).toBe(0);
     });
 
-    it("selectPhase sets index directly", () => {
+    it("selectStep sets index directly", () => {
       store.setQueueSteps([
         { id: "s1", type: "work", title: "Step 0", status: "pending" },
         { id: "s2", type: "work", title: "Step 1", status: "pending" },
         { id: "s3", type: "work", title: "Step 2", status: "pending" },
       ]);
-      store.selectPhase(2);
-      expect(store.getState().selectedPhaseIndex).toBe(2);
+      store.selectStep(2);
+      expect(store.getState().selectedStepIndex).toBe(2);
     });
 
     it("selectNext is no-op when no steps", () => {
       store.selectNext();
-      expect(store.getState().selectedPhaseIndex).toBe(0);
+      expect(store.getState().selectedStepIndex).toBe(0);
     });
 
     it("selectPrevious is no-op when no steps", () => {
       store.selectPrevious();
-      expect(store.getState().selectedPhaseIndex).toBe(0);
+      expect(store.getState().selectedStepIndex).toBe(0);
     });
   });
 });

@@ -8,7 +8,7 @@
 // escalation steps [plan, work, review] are inserted.
 //
 // Terminology:
-//   Step   — single unit of work (replaces "phase")
+//   Step   — single unit of work (replaces "step")
 //   Queue  — mutable, ordered list of steps
 // ---------------------------------------------------------------------------
 
@@ -22,8 +22,8 @@ import type { OnStepCompletedResult } from "./executor";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { VerificationResult } from "../sprint/verification-runner";
 import {
-  buildSprintPhasePrompt,
-} from "../prompts/sprint/phase-prompt";
+  buildSprintStepPrompt,
+} from "../prompts/sprint/step-prompt";
 import {
   buildSprintRevisionPrompt,
   type SprintIterationSummary,
@@ -231,8 +231,8 @@ export function createSprintQueueHandler(
     const iteration = iterationCount + 1; // Next iteration
 
     if (iteration === 1 || iterationHistory.length === 0) {
-      // First iteration: use buildSprintPhasePrompt
-      return buildSprintPhasePrompt({
+      // First iteration: use buildSprintStepPrompt
+      return buildSprintStepPrompt({
         planContent: taskDescription,
         keyDecisions: [],
         fileReferences: [],

@@ -11,7 +11,7 @@ import type { DispatcherDecisionHandoff } from "../schemas/handoff";
 export function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {
   return {
     schema_version: handoff.schema_version,
-    phase_index: handoff.phase_index,
+    step_index: handoff.step_index,
     task_content: handoff.task_content,
     context_files: handoff.context_files,
     context_to_inline: handoff.context_to_inline,

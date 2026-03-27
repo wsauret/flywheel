@@ -37,9 +37,9 @@ describe("buildReviewFixPrompt — work-style structure", () => {
     expect(prompt.length).toBeGreaterThan(0);
   });
 
-  it("includes Work Phase Execution header", () => {
+  it("includes Work Step Execution header", () => {
     const prompt = buildReviewFixPrompt(ctx);
-    expect(prompt).toContain("Work Phase Execution");
+    expect(prompt).toContain("Work Step Execution");
   });
 
   it("includes TDD cycle instructions", () => {

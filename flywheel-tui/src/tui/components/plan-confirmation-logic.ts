@@ -5,7 +5,7 @@
  * these without pulling in the OpenTUI/SolidJS JSX runtime.
  *
  * Supports both JSON plans (steps with acceptance criteria, behavioral
- * contract) and legacy markdown plans (phases with step counts).
+ * contract) and legacy markdown plans (steps with step counts).
  */
 
 import type { PlanImportResult, PlanImportStep } from "../../controller/plan-import"
@@ -17,12 +17,6 @@ import type { BehavioralAssertion } from "../../controller/plan-json-parser"
 
 /** Action the user can take on a plan confirmation screen */
 export type PlanAction = "approve" | "edit"
-
-/** Single phase summary for display (legacy markdown plans) */
-export interface PhaseSummaryItem {
-  title: string
-  stepCount: number
-}
 
 /** Single step summary for display (JSON plans) */
 export interface StepSummaryItem {
@@ -48,8 +42,8 @@ export interface AssertionSummaryItem {
 /** Full plan summary prepared for the confirmation UI */
 export interface PlanSummaryDisplay {
   status: "ready" | "needs-fix"
-  /** Legacy markdown phases. Empty for JSON plans. */
-  phases: PhaseSummaryItem[]
+  /** Legacy markdown steps. Empty for JSON plans. */
+  legacySteps: StepSummaryItem[]
   /** JSON plan steps. Empty for markdown plans. */
   steps: StepSummaryItem[]
   /** Behavioral contract assertions. Empty for markdown plans. */
@@ -58,7 +52,7 @@ export interface PlanSummaryDisplay {
   decisions: string[]
   /** Identified risks. */
   risks: string[]
-  phaseCount: number
+  stepCount: number
   totalSteps: number
   hasAcceptanceCriteria: boolean
   issues: string[]
@@ -102,12 +96,12 @@ export const PLAN_ACTIONS: PlanActionDef[] = [
 export function preparePlanSummary(result: PlanImportResult): PlanSummaryDisplay {
   return {
     status: result.status,
-    phases: [],
+    legacySteps: [],
     steps: (result.steps ?? []).map(mapStep),
     behavioralContract: (result.behavioralContract ?? []).map(mapAssertion),
     decisions: result.decisions ?? [],
     risks: result.risks ?? [],
-    phaseCount: result.summary.phaseCount,
+    stepCount: result.summary.stepCount,
     totalSteps: result.summary.totalSteps,
     hasAcceptanceCriteria: result.summary.hasAcceptanceCriteria,
     issues: result.issues,

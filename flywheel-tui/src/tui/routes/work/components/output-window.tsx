@@ -29,7 +29,7 @@ function getStepStatusColor(status: QueueStepStatus, theme: ReturnType<typeof us
   }
 }
 
-export interface CurrentPhaseInfo {
+export interface CurrentStepInfo {
   index: number
   name: string
   status: QueueStepStatus
@@ -41,7 +41,7 @@ export interface OutputWindowProps {
   approvalPending: boolean
   isPromptFocused: boolean
   availableWidth?: number
-  currentPhase?: CurrentPhaseInfo | null
+  currentStep?: CurrentStepInfo | null
 }
 
 export function OutputWindow(props: OutputWindowProps) {
@@ -65,15 +65,15 @@ export function OutputWindow(props: OutputWindowProps) {
 
   const activityPhrase = () => {
     if (props.approvalPending) return "Waiting for approval..."
-    if (props.currentPhase?.status === "running") return "Executing phase..."
+    if (props.currentStep?.status === "running") return "Executing step..."
     return null
   }
 
   return (
     <box flexDirection="column" flexGrow={1}>
-      {/* Rich Header (when phase is active) */}
-      <Show when={props.currentPhase} fallback={
-        /* Simple header: no active phase — show status-aware heading */
+      {/* Rich Header (when step is active) */}
+      <Show when={props.currentStep} fallback={
+        /* Simple header: no active step — show status-aware heading */
         <box flexDirection="column" paddingLeft={1} height={3} flexShrink={0}>
           <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
           <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
@@ -90,29 +90,29 @@ export function OutputWindow(props: OutputWindowProps) {
           <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
         </box>
       }>
-        {(phase) => {
-          const statusColor = () => getStepStatusColor(phase().status, themeCtx.theme)
+        {(step) => {
+          const statusColor = () => getStepStatusColor(step().status, themeCtx.theme)
 
           return (
             <Show when={isWide()} fallback={
               /* Narrow layout: 5 lines */
               <box flexDirection="column" paddingLeft={1} height={5} flexShrink={0}>
                 <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
-                {/* Line 1: Phase name */}
+                {/* Line 1: Step name */}
                 <box flexDirection="row">
                   <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
                   <text fg={themeCtx.theme.text} attributes={1}>
-                    Phase {phase().index + 1}: {phase().name}
+                    Step {step().index + 1}: {step().name}
                   </text>
                 </box>
                 {/* Line 2: Status icon */}
                 <box flexDirection="row">
                   <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
-                  <Show when={phase().status === "running"} fallback={
-                    <text fg={statusColor()}>{getStepStatusIcon(phase().status)} {phase().status}</text>
+                  <Show when={step().status === "running"} fallback={
+                    <text fg={statusColor()}>{getStepStatusIcon(step().status)} {step().status}</text>
                   }>
                     <Spinner color={statusColor()} />
-                    <text fg={statusColor()}> {phase().status}</text>
+                    <text fg={statusColor()}> {step().status}</text>
                   </Show>
                 </box>
                 {/* Line 3: Activity phrase + line count */}
@@ -140,20 +140,20 @@ export function OutputWindow(props: OutputWindowProps) {
               {/* Wide layout: 4 lines */}
               <box flexDirection="column" paddingLeft={1} height={4} flexShrink={0}>
                 <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
-                {/* Line 1: Phase name + status */}
+                {/* Line 1: Step name + status */}
                 <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
                   <box flexDirection="row">
                     <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
                     <text fg={themeCtx.theme.text} attributes={1}>
-                      Phase {phase().index + 1}: {phase().name}
+                      Step {step().index + 1}: {step().name}
                     </text>
                   </box>
                   <box flexDirection="row">
-                    <Show when={phase().status === "running"} fallback={
-                      <text fg={statusColor()}>{getStepStatusIcon(phase().status)} {phase().status}</text>
+                    <Show when={step().status === "running"} fallback={
+                      <text fg={statusColor()}>{getStepStatusIcon(step().status)} {step().status}</text>
                     }>
                       <Spinner color={statusColor()} />
-                      <text fg={statusColor()}> {phase().status}</text>
+                      <text fg={statusColor()}> {step().status}</text>
                     </Show>
                   </box>
                 </box>

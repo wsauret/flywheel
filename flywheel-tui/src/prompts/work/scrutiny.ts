@@ -1,11 +1,11 @@
 /**
  * Scrutiny validation prompt template.
  *
- * Generates the prompt for scrutiny validation phases that are auto-injected
+ * Generates the prompt for scrutiny validation steps that are auto-injected
  * at milestone boundaries. Instructs the worker to:
  *
  * 1. Run test/typecheck/lint as hard gates (commands from config, not hardcoded)
- * 2. Review each completed phase in the milestone for code quality, correctness,
+ * 2. Review each completed step in the milestone for code quality, correctness,
  *    and test coverage
  * 3. Synthesize findings into a scrutiny report
  *
@@ -21,14 +21,14 @@ import type { CommandsConfig } from "../../config/loader.js";
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal phase data needed for per-phase review instructions.
+ * Minimal step data needed for per-step review instructions.
  */
-export interface ScrutinyPhaseInfo {
+export interface ScrutinyStepInfo {
   /** 0-based index */
   index: number;
-  /** Phase title */
+  /** Step title */
   title: string;
-  /** Phase description */
+  /** Step description */
   description: string;
 }
 
@@ -38,8 +38,8 @@ export interface ScrutinyPhaseInfo {
 export interface ScrutinyPromptContext {
   /** Name of the milestone being validated */
   milestoneName: string;
-  /** Phases in this milestone that have been completed */
-  completedPhases: ScrutinyPhaseInfo[];
+  /** Steps in this milestone that have been completed */
+  completedSteps: ScrutinyStepInfo[];
   /** Commands from config (flywheel.toml [commands] section) */
   commands?: CommandsConfig;
   /** Project working directory */
@@ -92,7 +92,7 @@ function buildHardGatesSection(commands?: CommandsConfig): string {
   sections.push("## Hard Gate Validators");
   sections.push("");
   sections.push(
-    "Run each configured command below **in order**. These are hard gates — if ANY configured command fails (non-zero exit code), the scrutiny validation phase **fails**. Do not continue to code review if a gate fails.",
+    "Run each configured command below **in order**. These are hard gates — if ANY configured command fails (non-zero exit code), the scrutiny validation step **fails**. Do not continue to code review if a gate fails.",
   );
   sections.push("");
 
@@ -122,49 +122,49 @@ function buildHardGatesSection(commands?: CommandsConfig): string {
 }
 
 // ---------------------------------------------------------------------------
-// Per-phase review section
+// Per-step review section
 // ---------------------------------------------------------------------------
 
 /**
- * Build the per-phase code review section.
+ * Build the per-step code review section.
  *
- * Lists each completed phase with its description and instructs the worker
+ * Lists each completed step with its description and instructs the worker
  * to review for code quality, correctness, and test coverage.
  *
- * VAL-EXEC-004: Scrutiny prompt instructs review of each completed phase.
+ * VAL-EXEC-004: Scrutiny prompt instructs review of each completed step.
  */
-function buildPhaseReviewSection(
-  completedPhases: ScrutinyPhaseInfo[],
+function buildStepReviewSection(
+  completedSteps: ScrutinyStepInfo[],
   milestoneName: string,
 ): string {
   const sections: string[] = [];
 
-  sections.push("## Per-Phase Code Review");
+  sections.push("## Per-Step Code Review");
   sections.push("");
   sections.push(
-    `Review each completed phase in milestone "${milestoneName}" for code quality, correctness, and test coverage.`,
+    `Review each completed step in milestone "${milestoneName}" for code quality, correctness, and test coverage.`,
   );
   sections.push("");
 
-  if (completedPhases.length === 0) {
-    sections.push("_No completed phases found in this milestone._");
+  if (completedSteps.length === 0) {
+    sections.push("_No completed steps found in this milestone._");
     return sections.join("\n");
   }
 
-  sections.push("For **each phase** listed below, review the implementation and check:");
+  sections.push("For **each step** listed below, review the implementation and check:");
   sections.push("");
   sections.push("1. **Code quality:** Clean, readable, idiomatic code. No dead code, proper error handling, consistent style.");
-  sections.push("2. **Correctness:** Implementation matches the phase description. Edge cases handled. No regressions.");
+  sections.push("2. **Correctness:** Implementation matches the step description. Edge cases handled. No regressions.");
   sections.push("3. **Test coverage:** Meaningful tests exist for the new behavior. Tests cover happy path and error cases.");
   sections.push("");
 
-  for (const phase of completedPhases) {
-    sections.push(`### Phase ${phase.index + 1}: ${phase.title}`);
+  for (const step of completedSteps) {
+    sections.push(`### Step ${step.index + 1}: ${step.title}`);
     sections.push("");
-    sections.push(`**Description:** ${phase.description}`);
+    sections.push(`**Description:** ${step.description}`);
     sections.push("");
     sections.push(
-      `Review the code changes for this phase. Use \`git log\` and \`git diff\` to identify relevant commits and changes. Check that the implementation satisfies the description above.`,
+      `Review the code changes for this step. Use \`git log\` and \`git diff\` to identify relevant commits and changes. Check that the implementation satisfies the description above.`,
     );
     sections.push("");
   }
@@ -181,11 +181,11 @@ function buildPhaseReviewSection(
  *
  * Adapted from multi-agent mission system scrutiny validation patterns.
  *
- * @param ctx - Scrutiny prompt context with milestone, phases, and commands
+ * @param ctx - Scrutiny prompt context with milestone, steps, and commands
  * @returns Complete prompt string
  */
 export function buildScrutinyPrompt(ctx: ScrutinyPromptContext): string {
-  const { milestoneName, completedPhases, commands, projectCwd } = ctx;
+  const { milestoneName, completedSteps, commands, projectCwd } = ctx;
 
   const sections: string[] = [];
 
@@ -194,7 +194,7 @@ export function buildScrutinyPrompt(ctx: ScrutinyPromptContext): string {
   sections.push("");
   sections.push(
     `You are validating milestone "${milestoneName}". Your job is to run hard gate validators ` +
-    `(test, typecheck, lint) and then review each completed phase for code quality, correctness, and test coverage.`,
+    `(test, typecheck, lint) and then review each completed step for code quality, correctness, and test coverage.`,
   );
   sections.push("");
   sections.push(
@@ -214,18 +214,18 @@ export function buildScrutinyPrompt(ctx: ScrutinyPromptContext): string {
   sections.push("");
   sections.push(buildHardGatesSection(commands));
 
-  // Per-phase review
+  // Per-step review
   sections.push("");
-  sections.push(buildPhaseReviewSection(completedPhases, milestoneName));
+  sections.push(buildStepReviewSection(completedSteps, milestoneName));
 
   // Synthesis instructions
   sections.push("");
   sections.push("## Synthesis");
   sections.push("");
-  sections.push("After completing all hard gate checks and per-phase reviews, synthesize your findings:");
+  sections.push("After completing all hard gate checks and per-step reviews, synthesize your findings:");
   sections.push("");
   sections.push("1. **Gate results:** For each command run, report: command, exit code, pass/fail.");
-  sections.push("2. **Review findings:** For each phase reviewed, report: phase title, status (pass/fail), and any issues found.");
+  sections.push("2. **Review findings:** For each step reviewed, report: step title, status (pass/fail), and any issues found.");
   sections.push("3. **Blocking issues:** Any issue that must be fixed before the milestone can proceed. Include severity, description, and suggested fix.");
   sections.push("4. **Overall verdict:** Pass (all gates passed, no blocking issues) or Fail (gate failure or blocking issues).");
   sections.push("");

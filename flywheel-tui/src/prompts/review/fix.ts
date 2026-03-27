@@ -22,8 +22,8 @@ export const reviewFixValidationCriteria =
  * Builds a work-style implementation prompt for the review fix step.
  *
  * This prompt only runs when `hasActionableFindings` is true (the
- * `shouldSkipPhase` hook skips this step otherwise). It uses the same
- * conventions as `buildWorkPhasePrompt` — TDD cycle, verification
+ * `shouldSkipStep` hook skips this step otherwise). It uses the same
+ * conventions as `buildWorkStepPrompt` — TDD cycle, verification
  * protocol, scope discipline — with the review document as the task.
  *
  * The review findings are passed via:
@@ -54,7 +54,7 @@ export function buildReviewFixPrompt(ctx: WorkflowStepContext): string {
 
   const projectContext = buildProjectContextSection(ctx.extra);
 
-  return `# Work Phase Execution — Review Fix
+  return `# Work Step Execution — Review Fix
 
 You are running in an automated pipeline. Do not ask questions. Implement all required fixes directly.
 
@@ -126,7 +126,7 @@ ${THREE_STRIKE_PROTOCOL}
 
 ${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : `## Completion
 
-When the phase is done, provide:
+When the step is done, provide:
 - Summary of what was fixed (by finding ID/severity)
 - Evidence of verification (command outputs)
 - Any findings that could not be addressed and why`}

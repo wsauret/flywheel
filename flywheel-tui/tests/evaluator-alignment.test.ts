@@ -394,11 +394,11 @@ describe("VAL-ALIGN-007: Execution loop passes task context to evaluator", () =>
         required_outputs: [],
       },
       contextFiles: [],
-      taskContext: "Phase description from execution loop",
+      taskContext: "Step description from execution loop",
     });
 
     expect(inputs()).toHaveLength(1);
-    expect(inputs()[0].task_context).toBe("Phase description from execution loop");
+    expect(inputs()[0].task_context).toBe("Step description from execution loop");
     expect(inputs()[0].task_context).toBeTruthy(); // non-empty
   });
 });
@@ -552,8 +552,8 @@ describe("VAL-EA-005: New evaluator-alignment tests for research criteria", () =
   });
 });
 
-describe("VAL-EA-006: Evaluator task_context is populated for research phases", () => {
-  it("evaluator receives non-empty taskContext for a research workflow phase", async () => {
+describe("VAL-EA-006: Evaluator task_context is populated for research steps", () => {
+  it("evaluator receives non-empty taskContext for a research workflow step", async () => {
     const { Evaluator } = await import("../src/evaluator/invoke");
     const bus = new EventBus();
     const { transport, inputs } = createMockTransport([passingResult()]);

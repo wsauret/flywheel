@@ -7,7 +7,7 @@ import { SPRINT_FIELDS, renderHandoffInstruction } from "../src/handoff/field-sp
 // Imports for prompt builders (will be created)
 // ---------------------------------------------------------------------------
 
-import { buildSprintPhasePrompt } from "../src/prompts/sprint/phase-prompt";
+import { buildSprintStepPrompt } from "../src/prompts/sprint/step-prompt";
 import { buildSprintRevisionPrompt } from "../src/prompts/sprint/revision-prompt";
 import {
   buildSprintEvaluatorPrompt,
@@ -162,43 +162,43 @@ const evaluatorInput: SprintEvaluatorInput = {
 // VAL-PROMPT-001: First iteration prompt structure
 // ===========================================================================
 
-describe("buildSprintPhasePrompt", () => {
+describe("buildSprintStepPrompt", () => {
   it("includes task description", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("hello-world REST endpoint");
   });
 
   it("includes codebase exploration instruction", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     // Should instruct the worker to explore the codebase
     expect(result.toLowerCase()).toContain("explore");
     expect(result.toLowerCase()).toContain("codebase");
   });
 
   it("includes implementation instruction", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result.toLowerCase()).toContain("implement");
   });
 
   it("includes verification script writing instruction", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("verification script");
     expect(result).toContain(".flywheel/verify/");
   });
 
   it("includes handoff instruction with verification_script_path", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("verification_script_path");
     expect(result).toContain(".flywheel/handoffs/test-uuid.json");
   });
 
   it("includes working directory", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("/home/user/my-project");
   });
 
   it("does NOT include 'Previous Attempts' section", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).not.toContain("Previous Attempts");
     expect(result).not.toContain("Iteration");
     // Should not have retry-specific language
@@ -206,27 +206,27 @@ describe("buildSprintPhasePrompt", () => {
   });
 
   it("includes TDD cycle convention", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("TDD");
   });
 
   it("includes scope discipline convention", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("Scope Discipline");
   });
 
   it("includes three-strike protocol", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("Three-Strike");
   });
 
   it("includes knowledge library instruction", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain(".flywheel/library/");
   });
 
   it("produces non-empty output", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
@@ -238,13 +238,13 @@ describe("buildSprintPhasePrompt", () => {
       fileReferences: [],
       extra: { handoffPath: ".flywheel/handoffs/min.json" },
     };
-    const result = buildSprintPhasePrompt(minCtx);
+    const result = buildSprintStepPrompt(minCtx);
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
 
   it("uses renderHandoffInstruction with SPRINT_FIELDS", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     // The rendered output should contain all SPRINT_FIELDS keys
     for (const field of SPRINT_FIELDS) {
       expect(result).toContain(field.key);
@@ -256,16 +256,16 @@ describe("buildSprintPhasePrompt", () => {
 // VAL-PROMPT-002: Verification script requirements are explicit and behavioral
 // ===========================================================================
 
-describe("buildSprintPhasePrompt — verification requirements", () => {
+describe("buildSprintStepPrompt — verification requirements", () => {
   it("specifies exit 0 = pass, non-zero = fail", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("exit 0");
     // Should mention non-zero = fail
     expect(result.toLowerCase()).toContain("non-zero");
   });
 
   it("demands behavioral testing (not just compilation)", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     // Should explicitly require runtime behavior testing
     expect(result.toLowerCase()).toContain("runtime behavior");
     // Should forbid trivial checks
@@ -273,7 +273,7 @@ describe("buildSprintPhasePrompt — verification requirements", () => {
   });
 
   it("requires meaningful output from scripts", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result.toLowerCase()).toContain("meaningful output");
   });
 });
@@ -282,23 +282,23 @@ describe("buildSprintPhasePrompt — verification requirements", () => {
 // VAL-PROMPT-010: Prompt includes project conventions and boundaries
 // ===========================================================================
 
-describe("buildSprintPhasePrompt — conventions and boundaries", () => {
+describe("buildSprintStepPrompt — conventions and boundaries", () => {
   it("includes project context section when conventions are set", () => {
-    const result = buildSprintPhasePrompt(ctxWithContext);
+    const result = buildSprintStepPrompt(ctxWithContext);
     expect(result).toContain("Project Context");
     expect(result).toContain("Conventions");
     expect(result).toContain("AGENTS.md");
   });
 
   it("includes boundaries when configured", () => {
-    const result = buildSprintPhasePrompt(ctxWithBoundaries);
+    const result = buildSprintStepPrompt(ctxWithBoundaries);
     expect(result).toContain("Mission Boundaries");
     expect(result).toContain("3000-3999");
     expect(result).toContain("Do not call production API");
   });
 
   it("omits boundaries when not configured", () => {
-    const result = buildSprintPhasePrompt(ctxWithHandoffPath);
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).not.toContain("Mission Boundaries");
   });
 });
@@ -642,9 +642,9 @@ describe("buildSprintEvaluatorPrompt — handoff instruction", () => {
 // ===========================================================================
 
 describe("prompts index re-exports sprint builders", () => {
-  it("exports buildSprintPhasePrompt", async () => {
+  it("exports buildSprintStepPrompt", async () => {
     const mod = await import("../src/prompts/index");
-    expect(typeof (mod as Record<string, unknown>).buildSprintPhasePrompt).toBe("function");
+    expect(typeof (mod as Record<string, unknown>).buildSprintStepPrompt).toBe("function");
   });
 
   it("exports buildSprintRevisionPrompt", async () => {

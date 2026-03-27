@@ -263,7 +263,7 @@ describe("BudgetTracker — token tracking", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — invocation tracking", () => {
-  it("incrementInvocations() tracks phase-level invocation count", () => {
+  it("incrementInvocations() tracks step-level invocation count", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });

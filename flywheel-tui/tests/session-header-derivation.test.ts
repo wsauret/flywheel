@@ -1,5 +1,5 @@
 /**
- * Session Header Derivation Tests (Phase 5, Step 5.0)
+ * Session Header Derivation Tests (Step 5, Step 5.0)
  *
  * Tests the mapping from SessionLifecycleState → WorkflowStatus,
  * and the derivation of SessionHeaderInfo from SessionSummary.

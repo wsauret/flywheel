@@ -22,13 +22,13 @@ export const TelemetryRecordSchema = z.object({
   started_at: z.string(),
   completed_at: z.string().optional(),
   duration_ms: z.number().optional(),
-  phases_total: z.number(),
-  phases_completed: z.number(),
+  steps_total: z.number(),
+  steps_completed: z.number(),
   dispatcher_mode: z.enum(["static", "dispatcher"]),
   evaluation_cycles: z.number(),
   errors: z.array(
     z.object({
-      phase: z.number(),
+      step: z.number(),
       kind: z.string(),
       message: z.string(),
     }),
@@ -47,8 +47,8 @@ const ALLOWED_KEYS = new Set<string>([
   "started_at",
   "completed_at",
   "duration_ms",
-  "phases_total",
-  "phases_completed",
+  "steps_total",
+  "steps_completed",
   "dispatcher_mode",
   "evaluation_cycles",
   "errors",
@@ -75,7 +75,7 @@ export class TelemetryLogger {
     workflow: string,
     workflowId: string,
     options: {
-      phasesTotal: number;
+      stepsTotal: number;
       dispatcherMode: "static" | "dispatcher";
     },
   ): TelemetryRecord {
@@ -83,8 +83,8 @@ export class TelemetryLogger {
       workflow,
       workflow_id: workflowId,
       started_at: new Date().toISOString(),
-      phases_total: options.phasesTotal,
-      phases_completed: 0,
+      steps_total: options.stepsTotal,
+      steps_completed: 0,
       dispatcher_mode: options.dispatcherMode,
       evaluation_cycles: 0,
       errors: [],

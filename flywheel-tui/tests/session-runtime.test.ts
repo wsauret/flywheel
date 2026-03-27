@@ -338,7 +338,7 @@ describe("createSessionRuntimeManager", () => {
       const budget = mockBudgetTracker();
       let storeUnsubbed = false;
       let questionCleaned = false;
-      let pipelineCleaned = false;
+      let queueCleaned = false;
 
       manager.register("s1", {
         kind: "running",
@@ -349,7 +349,7 @@ describe("createSessionRuntimeManager", () => {
         budgetTracker: budget,
         storeUnsub: () => { storeUnsubbed = true; },
         questionCleanup: () => { questionCleaned = true; },
-        queueCleanup: () => { pipelineCleaned = true; },
+        queueCleanup: () => { queueCleaned = true; },
         contextIndexer: null,
         workerPid: null,
       });
@@ -362,7 +362,7 @@ describe("createSessionRuntimeManager", () => {
       expect(budget.disposed).toBe(true);
       expect(storeUnsubbed).toBe(true);
       expect(questionCleaned).toBe(true);
-      expect(pipelineCleaned).toBe(true);
+      expect(queueCleaned).toBe(true);
       expect(destroyTracker.calls).toHaveLength(1);
       expect(destroyTracker.calls[0]).toBe(session);
     });

@@ -31,7 +31,7 @@ export interface HeadlessAdapterOptions {
  *
  * Log levels:
  * - minimal: workflow start/end + errors only
- * - normal: + phase/step + output
+ * - normal: + step/step + output
  * - verbose: + dispatcher/evaluator events
  */
 export class HeadlessAdapter extends BaseUIAdapter {

@@ -1,7 +1,7 @@
 /**
  * Workflow prompt builder — maps workflow steps to prompt templates.
  *
- * Uses the prompt templates from src/prompts/ (Phase 0 deliverables).
+ * Uses the prompt templates from src/prompts/ (Step 0 deliverables).
  * Each workflow type has a mapping from step index to the appropriate
  * template function.
  */

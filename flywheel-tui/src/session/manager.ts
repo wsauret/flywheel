@@ -59,13 +59,13 @@ export interface SessionManagerDeps {
   /**
    * @deprecated No longer used by SessionManager — kept for backward
    * compatibility with existing test harnesses. Will be removed in a
-   * future phase.
+   * future step.
    */
   createWorkflowSessionFn?: (planPath: string) => WorkflowSession;
   /**
    * @deprecated No longer used by SessionManager — kept for backward
    * compatibility with existing test harnesses. Will be removed in a
-   * future phase.
+   * future step.
    */
   destroyWorkflowSessionFn?: (session: WorkflowSession) => void;
   /** Optional worktree manager for git worktree lifecycle integration. */
@@ -74,13 +74,15 @@ export interface SessionManagerDeps {
   config?: FlywheelConfig;
 }
 
-/** Workflow type for a session. */
-export type SessionWorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research" | "sprint";
+import type { StepType } from "../queue/types";
+
+/** Step type for a session (uses StepType as sole source of truth). */
+export type SessionStepType = StepType;
 
 /** The SessionManager interface. */
 export interface SessionManager {
   /** Create a new session and persist it. Returns session ID. */
-  create(planPath: string, name?: string, workflowType?: SessionWorkflowType): string;
+  create(planPath: string, name?: string, stepType?: SessionStepType): string;
 
   /** List all sessions as summaries. */
   list(): SessionListResult;
@@ -154,7 +156,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   // SessionManager methods
   // -------------------------------------------------------------------------
 
-  function create(planPath: string, name?: string, workflowType?: SessionWorkflowType): string {
+  function create(planPath: string, name?: string, stepType?: SessionStepType): string {
     const now = new Date().toISOString();
     const budget = config.budget;
 
@@ -180,7 +182,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
           wall_clock_deadline: wallClockDeadline,
         },
         budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-        workflowType: workflowType ?? "work",
+        workflowType: stepType ?? "work",
       },
       baseDir,
     );

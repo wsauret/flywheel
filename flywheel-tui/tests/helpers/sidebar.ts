@@ -25,7 +25,7 @@ export function makeSession(
     id: crypto.randomUUID(),
     name: "Test Session",
     planPath: "plans/test.md",
-    currentPhase: 0,
+    currentStep: 0,
     totalCost: 0,
     lastUpdated: new Date().toISOString(),
     ...overrides,

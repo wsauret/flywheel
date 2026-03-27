@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import type { WorkflowStepContext } from "../src/prompts/index";
 import {
-  buildWorkPhasePrompt,
+  buildWorkStepPrompt,
   buildPlanResearchPrompt,
   buildPlanDraftPrompt,
   buildPlanReviewPrompt,
@@ -48,7 +48,7 @@ const minimalCtx: WorkflowStepContext = {
 // ---------------------------------------------------------------------------
 
 const ORCHESTRATION_LEAKS = [
-  "Phase 0:",
+  "Step 0:",
   "session.md",
   ".flywheel/session",
   "Ralph mode",
@@ -59,7 +59,7 @@ const ORCHESTRATION_LEAKS = [
   "$ARGUMENTS",
 ];
 
-// "Phase 1:" is allowed in draft/consolidate templates (it's a formatting example,
+// "Step 1:" is allowed in draft/consolidate templates (it's a formatting example,
 // not an orchestration cue). "checkpoint" is also not present in any template.
 // We test those separately only for builders where they'd be actual leaks.
 
@@ -170,42 +170,42 @@ describe("buildIterationBudgetInstruction", () => {
 });
 
 // ---------------------------------------------------------------------------
-// buildWorkPhasePrompt
+// buildWorkStepPrompt
 // ---------------------------------------------------------------------------
 
-describe("buildWorkPhasePrompt", () => {
+describe("buildWorkStepPrompt", () => {
   it("produces non-empty output", () => {
-    const result = buildWorkPhasePrompt(baseCtx);
+    const result = buildWorkStepPrompt(baseCtx);
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
 
   it("includes planContent", () => {
-    expect(buildWorkPhasePrompt(baseCtx)).toContain(baseCtx.planContent);
+    expect(buildWorkStepPrompt(baseCtx)).toContain(baseCtx.planContent);
   });
 
   it("includes key decisions", () => {
-    const result = buildWorkPhasePrompt(baseCtx);
+    const result = buildWorkStepPrompt(baseCtx);
     for (const d of baseCtx.keyDecisions) {
       expect(result).toContain(d);
     }
   });
 
   it("includes file references", () => {
-    const result = buildWorkPhasePrompt(baseCtx);
+    const result = buildWorkStepPrompt(baseCtx);
     for (const f of baseCtx.fileReferences) {
       expect(result).toContain(f);
     }
   });
 
   it("handles minimal context without crashing", () => {
-    const result = buildWorkPhasePrompt(minimalCtx);
+    const result = buildWorkStepPrompt(minimalCtx);
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
   });
 
   it("contains domain-specific content", () => {
-    const result = buildWorkPhasePrompt(baseCtx);
+    const result = buildWorkStepPrompt(baseCtx);
     for (const kw of [
       "TDD",
       "Verification Protocol",
@@ -218,7 +218,7 @@ describe("buildWorkPhasePrompt", () => {
   });
 
   it("includes Understand-Act-Verify section", () => {
-    const result = buildWorkPhasePrompt(baseCtx);
+    const result = buildWorkStepPrompt(baseCtx);
     expect(result).toContain("Understand-Act-Verify");
     expect(result).toContain("UNDERSTAND");
     expect(result).toContain("ACT");
@@ -230,20 +230,20 @@ describe("buildWorkPhasePrompt", () => {
       ...baseCtx,
       extra: { iterationBudget: 5 },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).toContain("5");
     expect(result).toContain("iteration");
   });
 
   it("omits iteration budget instruction when extra.iterationBudget is absent", () => {
-    const result = buildWorkPhasePrompt(baseCtx);
+    const result = buildWorkStepPrompt(baseCtx);
     // Should not contain the budget instruction phrasing
     expect(result).not.toContain("iteration cycles");
   });
 
   it("has no orchestration leaks", () => {
-    assertNoOrchestrationLeaks(buildWorkPhasePrompt(baseCtx));
-    assertNoOrchestrationLeaks(buildWorkPhasePrompt(minimalCtx));
+    assertNoOrchestrationLeaks(buildWorkStepPrompt(baseCtx));
+    assertNoOrchestrationLeaks(buildWorkStepPrompt(minimalCtx));
   });
 
   // ---- Project Context section ----
@@ -257,7 +257,7 @@ describe("buildWorkPhasePrompt", () => {
         ],
       },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).toContain("## Project Context");
     expect(result).toContain("### Conventions");
     expect(result).toContain("`AGENTS.md`");
@@ -273,7 +273,7 @@ describe("buildWorkPhasePrompt", () => {
         ],
       },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).toContain("## Project Context");
     expect(result).toContain("### Standards");
     expect(result).toContain("`docs/standards/testing.md`");
@@ -289,7 +289,7 @@ describe("buildWorkPhasePrompt", () => {
         ],
       },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).toContain("## Project Context");
     expect(result).toContain("### Learnings");
     expect(result).toContain("`.flywheel/solutions/retry-pattern.md`");
@@ -311,7 +311,7 @@ describe("buildWorkPhasePrompt", () => {
         ],
       },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).toContain("## Project Context");
     expect(result).toContain("### Conventions");
     expect(result).toContain("### Standards");
@@ -328,7 +328,7 @@ describe("buildWorkPhasePrompt", () => {
         learnings: [],
       },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).not.toContain("## Project Context");
     expect(result).not.toContain("### Conventions");
     expect(result).not.toContain("### Standards");
@@ -339,7 +339,7 @@ describe("buildWorkPhasePrompt", () => {
     const ctx: WorkflowStepContext = {
       ...minimalCtx,
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).not.toContain("## Project Context");
   });
 
@@ -354,7 +354,7 @@ describe("buildWorkPhasePrompt", () => {
         learnings: [],
       },
     };
-    const result = buildWorkPhasePrompt(ctx);
+    const result = buildWorkStepPrompt(ctx);
     expect(result).toContain("## Project Context");
     expect(result).toContain("### Conventions");
     expect(result).not.toContain("### Standards");
@@ -452,7 +452,7 @@ describe("buildPlanDraftPrompt", () => {
 
   it("has no orchestration leaks (excluding template examples)", () => {
     const result = buildPlanDraftPrompt(baseCtx);
-    // "Phase 1:" is part of the plan template example, not an orchestration cue.
+    // "Step 1:" is part of the plan template example, not an orchestration cue.
     // We check all other leak phrases.
     for (const phrase of ORCHESTRATION_LEAKS) {
       expect(result).not.toContain(phrase);
@@ -542,7 +542,7 @@ describe("buildPlanConsolidatePrompt", () => {
 
   it("has no orchestration leaks (excluding template examples)", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
-    // "Phase 1:" is part of the consolidated plan template, not an orchestration cue.
+    // "Step 1:" is part of the consolidated plan template, not an orchestration cue.
     for (const phrase of ORCHESTRATION_LEAKS) {
       expect(result).not.toContain(phrase);
     }
@@ -573,7 +573,7 @@ describe("buildReviewDispatchPrompt", () => {
   it("contains domain-specific content", () => {
     const result = buildReviewDispatchPrompt(baseCtx);
     for (const kw of [
-      "Phase Grouping",
+      "Step Grouping",
       "Output Format",
       "P3 Triage",
     ]) {
@@ -584,7 +584,7 @@ describe("buildReviewDispatchPrompt", () => {
   it("contains Plan Compliance content when baselinePlan is set", () => {
     const ctx: WorkflowStepContext = {
       ...baseCtx,
-      extra: { baselinePlan: "Phase 1: Setup auth" },
+      extra: { baselinePlan: "Step 1: Setup auth" },
     };
     const result = buildReviewDispatchPrompt(ctx);
     expect(result).toContain("Plan Compliance");
@@ -715,7 +715,7 @@ describe("buildReviewDispatchPrompt extras", () => {
     const ctx: WorkflowStepContext = {
       ...baseCtx,
       extra: {
-        baselinePlan: "Phase 1: Setup auth\n- [ ] 1.1 Create JWT helpers",
+        baselinePlan: "Step 1: Setup auth\n- [ ] 1.1 Create JWT helpers",
       },
     };
     const result = buildReviewDispatchPrompt(ctx);

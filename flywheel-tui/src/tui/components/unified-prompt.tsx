@@ -13,7 +13,7 @@
  * Mode is resolved via resolvePromptMode(appState, approvalPending):
  *   - "command": Prompt with autocomplete (idle/completed)
  *   - "active": Prompt with approval-aware placeholder (working + approval)
- *   - "passive": Disabled Prompt with "Phase executing..." placeholder
+ *   - "passive": Disabled Prompt with "Step executing..." placeholder
  *   - "disabled": Prompt fully disabled (importing)
  */
 
@@ -44,7 +44,7 @@ export interface UnifiedPromptResult {
 const PLACEHOLDERS: Record<PromptMode, string> = {
   command: "Type a / command...",
   active: "Type to steer the worker...",
-  passive: "Phase executing...",
+  passive: "Step executing...",
   disabled: "Import in progress...",
 }
 

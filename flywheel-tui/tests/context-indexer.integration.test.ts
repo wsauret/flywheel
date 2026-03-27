@@ -110,8 +110,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "implement retry resilience testing",
+        stepType: "work",
+        stepDescription: "implement retry resilience testing",
       });
 
       // Conventions: AGENTS.md should be found
@@ -155,8 +155,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "build api caching layer",
+        stepType: "work",
+        stepDescription: "build api caching layer",
       });
 
       // Verify shape of each category's entries
@@ -204,8 +204,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "handle errors resilience",
+        stepType: "work",
+        stepDescription: "handle errors resilience",
       });
 
       // Strict Zod parse — throws on failure
@@ -236,8 +236,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "retry test implementation",
+        stepType: "work",
+        stepDescription: "retry test implementation",
       });
 
       const result = AvailableContextSchema.safeParse(ctx);
@@ -407,8 +407,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "implement something",
+        stepType: "work",
+        stepDescription: "implement something",
       });
 
       expect(ctx.conventions).toEqual([]);
@@ -428,8 +428,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "plan",
-        phaseDescription: "create initial plan",
+        stepType: "plan",
+        stepDescription: "create initial plan",
       });
 
       expect(ctx.conventions).toEqual([]);
@@ -447,8 +447,8 @@ describe("Context Indexer Integration", () => {
       await indexer.startIndexing();
 
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "build feature",
+        stepType: "work",
+        stepDescription: "build feature",
       });
 
       expect(ctx.conventions).toEqual([]);

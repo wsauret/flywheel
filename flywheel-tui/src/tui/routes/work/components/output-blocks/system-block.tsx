@@ -2,7 +2,7 @@
 /**
  * SystemBlock Component
  *
- * Renders a system message (e.g., "Phase started", "Workflow complete").
+ * Renders a system message (e.g., "Step started", "Workflow complete").
  */
 
 import { useTheme } from "@tui/shared/context/theme"

@@ -31,8 +31,8 @@ describe("TelemetryRecordSchema", () => {
     workflow: "work",
     workflow_id: "wf-123",
     started_at: "2026-03-16T10:00:00Z",
-    phases_total: 3,
-    phases_completed: 0,
+    steps_total: 3,
+    steps_completed: 0,
     dispatcher_mode: "static",
     evaluation_cycles: 0,
     errors: [],
@@ -48,7 +48,7 @@ describe("TelemetryRecordSchema", () => {
       ...validRecord,
       completed_at: "2026-03-16T10:05:00Z",
       duration_ms: 300000,
-      phases_completed: 3,
+      steps_completed: 3,
     };
     const result = TelemetryRecordSchema.safeParse(completed);
     expect(result.success).toBe(true);
@@ -57,7 +57,7 @@ describe("TelemetryRecordSchema", () => {
   it("accepts a record with errors", () => {
     const withErrors = {
       ...validRecord,
-      errors: [{ phase: 0, kind: "worker_timeout", message: "Worker timed out after 5m" }],
+      errors: [{ step: 0, kind: "worker_timeout", message: "Worker timed out after 5m" }],
     };
     const result = TelemetryRecordSchema.safeParse(withErrors);
     expect(result.success).toBe(true);
@@ -92,14 +92,14 @@ describe("TelemetryLogger: record creation", () => {
   it("startRecord creates a valid TelemetryRecord", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-abc", {
-      phasesTotal: 5,
+      stepsTotal: 5,
       dispatcherMode: "dispatcher",
     });
 
     expect(record.workflow).toBe("work");
     expect(record.workflow_id).toBe("wf-abc");
-    expect(record.phases_total).toBe(5);
-    expect(record.phases_completed).toBe(0);
+    expect(record.steps_total).toBe(5);
+    expect(record.steps_completed).toBe(0);
     expect(record.dispatcher_mode).toBe("dispatcher");
     expect(record.evaluation_cycles).toBe(0);
     expect(record.errors).toEqual([]);
@@ -109,7 +109,7 @@ describe("TelemetryLogger: record creation", () => {
   it("started_at is a valid ISO timestamp", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "static",
     });
     const parsed = new Date(record.started_at);
@@ -119,7 +119,7 @@ describe("TelemetryLogger: record creation", () => {
   it("created record passes schema validation", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 2,
+      stepsTotal: 2,
       dispatcherMode: "static",
     });
     const result = TelemetryRecordSchema.safeParse(record);
@@ -132,20 +132,20 @@ describe("TelemetryLogger: record creation", () => {
 // ---------------------------------------------------------------------------
 
 describe("TelemetryLogger: updateRecord", () => {
-  it("updates phases_completed", () => {
+  it("updates steps_completed", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 3,
+      stepsTotal: 3,
       dispatcherMode: "static",
     });
-    logger.updateRecord(record, { phases_completed: 2 });
-    expect(record.phases_completed).toBe(2);
+    logger.updateRecord(record, { steps_completed: 2 });
+    expect(record.steps_completed).toBe(2);
   });
 
   it("updates evaluation_cycles", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "dispatcher",
     });
     logger.updateRecord(record, { evaluation_cycles: 3 });
@@ -155,11 +155,11 @@ describe("TelemetryLogger: updateRecord", () => {
   it("appends errors", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "static",
     });
     logger.updateRecord(record, {
-      errors: [{ phase: 0, kind: "worker_timeout", message: "Timed out" }],
+      errors: [{ step: 0, kind: "worker_timeout", message: "Timed out" }],
     });
     expect(record.errors.length).toBe(1);
     expect(record.errors[0].kind).toBe("worker_timeout");
@@ -168,7 +168,7 @@ describe("TelemetryLogger: updateRecord", () => {
   it("sets completed_at and duration_ms on finalization", () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "static",
     });
     logger.updateRecord(record, {
@@ -196,7 +196,7 @@ describe("TelemetryLogger: persist", () => {
   it("creates the telemetry directory if it doesn't exist", async () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "static",
     });
     await logger.persist(record);
@@ -207,7 +207,7 @@ describe("TelemetryLogger: persist", () => {
   it("writes a JSON file with correct naming convention", async () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "static",
     });
     await logger.persist(record);
@@ -220,10 +220,10 @@ describe("TelemetryLogger: persist", () => {
   it("persisted file is valid JSON matching schema", async () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 2,
+      stepsTotal: 2,
       dispatcherMode: "dispatcher",
     });
-    logger.updateRecord(record, { phases_completed: 1 });
+    logger.updateRecord(record, { steps_completed: 1 });
     await logger.persist(record);
 
     const files = await readdir(telemetryDir);
@@ -231,13 +231,13 @@ describe("TelemetryLogger: persist", () => {
     const parsed = JSON.parse(content);
     const result = TelemetryRecordSchema.safeParse(parsed);
     expect(result.success).toBe(true);
-    expect(parsed.phases_completed).toBe(1);
+    expect(parsed.steps_completed).toBe(1);
   });
 
   it("does NOT contain worker output content (security)", async () => {
     const logger = new TelemetryLogger(telemetryDir);
     const record = logger.startRecord("work", "wf-1", {
-      phasesTotal: 1,
+      stepsTotal: 1,
       dispatcherMode: "static",
     });
     // Attempt to sneak output content in via extra fields
@@ -272,7 +272,7 @@ describe("TelemetryLogger: file rotation", () => {
     // Persist 5 records
     for (let i = 0; i < 5; i++) {
       const record = logger.startRecord("work", `wf-${i}`, {
-        phasesTotal: 1,
+        stepsTotal: 1,
         dispatcherMode: "static",
       });
       await logger.persist(record);
@@ -293,7 +293,7 @@ describe("TelemetryLogger: file rotation", () => {
       const id = `wf-${i}`;
       ids.push(id);
       const record = logger.startRecord("work", id, {
-        phasesTotal: 1,
+        stepsTotal: 1,
         dispatcherMode: "static",
       });
       await logger.persist(record);

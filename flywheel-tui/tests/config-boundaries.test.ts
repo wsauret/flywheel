@@ -4,7 +4,7 @@ import {
   CONFIG_DEFAULTS,
   loadConfig,
 } from "../src/config";
-import { buildWorkPhasePrompt } from "../src/prompts/work/phase-prompt";
+import { buildWorkStepPrompt } from "../src/prompts/work/step-prompt";
 import type { WorkflowStepContext } from "../src/prompts/index";
 
 // ---------------------------------------------------------------------------
@@ -147,7 +147,7 @@ describe("loadConfig: boundaries section", () => {
 // Boundaries injection into worker prompts
 // ---------------------------------------------------------------------------
 
-describe("buildWorkPhasePrompt — boundaries injection", () => {
+describe("buildWorkStepPrompt — boundaries injection", () => {
   function makeCtx(overrides?: Partial<WorkflowStepContext>): WorkflowStepContext {
     return {
       planContent: "Implement feature X",
@@ -167,7 +167,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).toContain("## Mission Boundaries");
     expect(prompt).toContain("3000-3100");
@@ -183,7 +183,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).toContain("## Mission Boundaries");
     expect(prompt).toContain("3000-3100");
@@ -199,7 +199,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).toContain("## Mission Boundaries");
     expect(prompt).toContain("node_modules");
@@ -215,7 +215,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).toContain("## Mission Boundaries");
     expect(prompt).toContain("Auth0 API");
@@ -231,7 +231,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).toContain("NEVER violate");
   });
@@ -244,7 +244,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     // Should tell worker to return/escalate if blocked
     expect(prompt).toMatch(/return.*orchestrator|escalate/i);
@@ -254,14 +254,14 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
     const ctx = makeCtx({
       extra: {},
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).not.toContain("Mission Boundaries");
   });
 
   it("does NOT include boundaries section when extra is undefined", () => {
     const ctx = makeCtx();
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).not.toContain("Mission Boundaries");
   });
@@ -272,7 +272,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         boundaries: {},
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).not.toContain("Mission Boundaries");
   });
@@ -286,7 +286,7 @@ describe("buildWorkPhasePrompt — boundaries injection", () => {
         },
       },
     });
-    const prompt = buildWorkPhasePrompt(ctx);
+    const prompt = buildWorkStepPrompt(ctx);
 
     expect(prompt).toContain("Port Ranges");
     expect(prompt).not.toContain("Off-Limits");

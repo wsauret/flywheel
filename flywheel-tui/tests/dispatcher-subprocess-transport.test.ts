@@ -15,8 +15,8 @@ import type { DispatcherDecisionHandoff } from "../src/schemas/handoff";
 function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): DispatcherDecisionHandoff {
   return {
     schema_version: 1,
-    phase_index: 0,
-    task_content: "Execute the setup phase by creating directory layout",
+    step_index: 0,
+    task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -24,7 +24,7 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
       custom_checks: [],
       required_outputs: [],
     },
-    reasoning: "Standard setup phase execution",
+    reasoning: "Standard setup step execution",
     ...overrides,
   };
 }
@@ -36,8 +36,8 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
 function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecision {
   return {
     schema_version: 1,
-    phase_index: 0,
-    task_content: "Execute the setup phase by creating directory layout",
+    step_index: 0,
+    task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -45,15 +45,15 @@ function validDecision(overrides?: Partial<DispatcherDecision>): DispatcherDecis
       custom_checks: [],
       required_outputs: [],
     },
-    reasoning: "Standard setup phase execution",
+    reasoning: "Standard setup step execution",
     ...overrides,
   };
 }
 
 function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherInput {
   return {
-    plan: { phases: [{ name: "Phase 1", steps: [{ description: "step 1" }] }] },
-    state: { completed_phases: [], current_phase_index: 0 },
+    plan: { steps: [{ name: "Step 1", steps: [{ description: "step 1" }] }] },
+    state: { completed_steps: [], current_step_index: 0 },
     context: { files: [] },
     plan_truncated: false,
     history_truncated: false,
@@ -712,15 +712,15 @@ describe("Config model flow through transport chain", () => {
 // ---------------------------------------------------------------------------
 // VAL-CROSS-001: Worker spawn path unaffected
 // This is validated by the existing test suite (worker commands are not changed).
-// We verify here that SubprocessTransport does NOT affect phase-executor.
+// We verify here that SubprocessTransport does NOT affect step-executor.
 // ---------------------------------------------------------------------------
 
 describe("Worker spawn path unaffected", () => {
-  it("SubprocessTransport does not export or modify PhaseExecutor", async () => {
+  it("SubprocessTransport does not export or modify StepExecutor", async () => {
     const mod = await import("../src/dispatcher/subprocess-transport");
     // SubprocessTransport is the only export that matters here
     expect(mod.SubprocessTransport).toBeDefined();
-    // Should not have any phase-executor-related exports
-    expect((mod as any).PhaseExecutor).toBeUndefined();
+    // Should not have any step-executor-related exports
+    expect((mod as any).StepExecutor).toBeUndefined();
   });
 });

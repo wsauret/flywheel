@@ -42,8 +42,8 @@ import type {
 } from "../schemas/shared";
 import type { AccumulatedContext, HandoffSummary } from "./context-accumulator";
 import type { EvalResult } from "./executor";
-import type { StageContext } from "../controller/stage-context";
-import { createEmptyStageContext } from "../controller/stage-context";
+import type { StepContext } from "../controller/step-context";
+import { createEmptyStepContext } from "../controller/step-context";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "step-dispatcher" });
@@ -176,7 +176,7 @@ export class StepDispatcherError extends Error {
 function buildCompactQueueState(
   queue: Queue,
   currentStepIndex: number,
-): { completed_phases: number[]; current_phase_index: number; completed_steps: number[]; current_step_index: number } {
+): { completed_steps: number[]; current_step_index: number } {
   const completed: number[] = [];
   for (let i = 0; i < queue.steps.length; i++) {
     if (queue.steps[i].status === "completed") {
@@ -184,12 +184,8 @@ function buildCompactQueueState(
     }
   }
   return {
-    // New step-based fields
     completed_steps: completed,
     current_step_index: currentStepIndex,
-    // Legacy phase-based fields (backward compat)
-    completed_phases: completed,
-    current_phase_index: currentStepIndex,
   };
 }
 
@@ -242,38 +238,38 @@ function handoffToLastWorkerResult(
 }
 
 /**
- * Convert accumulated context to StageContext for the dispatcher input.
+ * Convert accumulated context to StepContext for the dispatcher input.
  */
-function accumulatedToStageContext(
+function accumulatedToStepContext(
   accumulated: AccumulatedContext,
-): StageContext {
+): StepContext {
   if (accumulated.totalSteps === 0) {
-    return createEmptyStageContext();
+    return createEmptyStepContext();
   }
 
-  const ctx = createEmptyStageContext();
-  ctx.phase_count = accumulated.totalSteps;
+  const ctx = createEmptyStepContext();
+  ctx.step_count = accumulated.totalSteps;
 
-  // Convert summaries to StageContext format
+  // Convert summaries to StepContext format
   for (const summary of accumulated.summaries) {
     if (summary.decisions.length > 0) {
       ctx.cumulative_decisions.push({
-        phase_index: 0,
-        phase_title: summary.stepTitle,
+        step_index: 0,
+        step_title: summary.stepTitle,
         decisions: summary.decisions,
       });
     }
     if (summary.issues.length > 0) {
       ctx.cumulative_issues.push({
-        phase_index: 0,
-        phase_title: summary.stepTitle,
+        step_index: 0,
+        step_title: summary.stepTitle,
         issues: summary.issues,
       });
     }
     if (summary.artifacts.length > 0) {
       ctx.cumulative_artifacts.push({
-        phase_index: 0,
-        phase_title: summary.stepTitle,
+        step_index: 0,
+        step_title: summary.stepTitle,
         artifacts: summary.artifacts,
       });
     }
@@ -415,12 +411,12 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         ? handoffToLastWorkerResult(context.previousHandoff, currentIndex - 1)
         : null;
 
-      // Convert accumulated context to StageContext
-      const stageContext = accumulatedToStageContext(context.accumulatedContext);
+      // Convert accumulated context to StepContext
+      const stepContext = accumulatedToStepContext(context.accumulatedContext);
 
       // Inject previous assessment into stage context warnings
       if (context.previousAssessment) {
-        injectAssessmentIntoContext(stageContext, context.previousAssessment);
+        injectAssessmentIntoContext(stepContext, context.previousAssessment);
       }
 
       // Build mutation budget for dispatcher visibility (VAL-GUARD-006)
@@ -450,7 +446,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         config: dispatcherConfig,
         session_budget: sessionBudget,
         available_context: availableContext,
-        stage_context: stageContext,
+        step_context: stepContext,
         mutation_budget: mutationBudgetInput,
       };
 
@@ -558,7 +554,7 @@ function buildStepDescription(step: Step, context: StepDispatchContext): string 
 // ---------------------------------------------------------------------------
 
 function injectAssessmentIntoContext(
-  ctx: StageContext,
+  ctx: StepContext,
   assessment: EvalResult,
 ): void {
   const assessmentWarnings: string[] = [];
@@ -589,8 +585,8 @@ function injectAssessmentIntoContext(
 
   if (assessmentWarnings.length > 0) {
     ctx.cumulative_warnings.push({
-      phase_index: ctx.phase_count,
-      phase_title: "Previous evaluator assessment",
+      step_index: ctx.step_count,
+      step_title: "Previous evaluator assessment",
       warnings: assessmentWarnings,
     });
   }

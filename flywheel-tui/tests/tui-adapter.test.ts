@@ -259,7 +259,7 @@ describe("OpenTUIAdapter", () => {
       expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
       const agent = agentBlocks[0] as any;
       expect(agent.agentLabel).toBe("Dispatcher");
-      expect(agent.description).toBe("Analyzing phase and crafting worker prompt");
+      expect(agent.description).toBe("Analyzing step and crafting worker prompt");
       expect(agent.status).toBe("active");
     });
 
@@ -268,7 +268,7 @@ describe("OpenTUIAdapter", () => {
       bus.emit({
         type: "dispatcher:completed",
         workflowId: "w1",
-        decision: { action: "continue", phaseIndex: 0, warnings: [] } as any,
+        decision: { action: "continue", stepIndex: 0, warnings: [] } as any,
         timestamp: "2025-01-01T00:00:00Z",
       });
       const blocks = store.getState().outputBlocks;
@@ -402,31 +402,31 @@ describe("OpenTUIAdapter", () => {
 
   // ── Suppress Pipeline Error (Pause Behavior) ──
 
-  describe("suppressPipelineError", () => {
-    it("suppressPipelineError defaults to false", () => {
+  describe("suppressQueueError", () => {
+    it("suppressQueueError defaults to false", () => {
       const { adapter } = createHarness();
-      expect(adapter.suppressPipelineError).toBe(false);
+      expect(adapter.suppressQueueError).toBe(false);
     });
 
-    it("suppressPipelineError resets to false after being set", () => {
+    it("suppressQueueError resets to false after being set", () => {
       const { adapter } = createHarness();
-      adapter.suppressPipelineError = true;
-      expect(adapter.suppressPipelineError).toBe(true);
-      adapter.suppressPipelineError = false;
-      expect(adapter.suppressPipelineError).toBe(false);
+      adapter.suppressQueueError = true;
+      expect(adapter.suppressQueueError).toBe(true);
+      adapter.suppressQueueError = false;
+      expect(adapter.suppressQueueError).toBe(false);
     });
 
-    it("queue:failed skips setError when suppressPipelineError is true", () => {
+    it("queue:failed skips setError when suppressQueueError is true", () => {
       const { bus, store, adapter } = createHarness();
       store.startWorkflow("p");
       bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });
-      adapter.suppressPipelineError = true;
+      adapter.suppressQueueError = true;
       bus.emit({ type: "queue:failed", workflowId: "w1", reason: "interrupted by user", stepsCompleted: 0, timestamp: ts() });
       // Error should NOT be set (suppressed)
       expect(store.getState().error).toBeUndefined();
     });
 
-    it("queue:failed still calls setError when suppressPipelineError is false", () => {
+    it("queue:failed still calls setError when suppressQueueError is false", () => {
       const { bus, store } = createHarness();
       store.startWorkflow("p");
       bus.emit({ type: "queue:initialized", workflowId: "w1", stepIds: ["s1"], timestamp: ts() });

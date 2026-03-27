@@ -16,7 +16,7 @@ import { parseFrontmatter } from "../utils/frontmatter";
 import { SESMemoryRetriever } from "./retrieve";
 import type { LearningEntry } from "./retrieve";
 import type { AvailableContext, ContextEntry } from "../schemas/shared";
-import type { WorkflowType } from "../controller/workflow-pipeline";
+import type { StepType } from "../queue/types";
 import {
   DEFAULT_SOLUTIONS_DIR,
   DEFAULT_STANDARDS_DIR,
@@ -29,8 +29,8 @@ import {
 // ---------------------------------------------------------------------------
 
 export interface ContextQuery {
-  workflowType: WorkflowType;
-  phaseDescription: string;
+  stepType: StepType;
+  stepDescription: string;
   tags?: string[];
 }
 
@@ -117,7 +117,7 @@ export class ContextIndexer {
     }
 
     // Refresh learnings from retriever using extracted tags
-    const tags = query.tags ?? this.extractTags(query.phaseDescription);
+    const tags = query.tags ?? this.extractTags(query.stepDescription);
     const rawLearnings = this.retriever.retrieve(tags);
     this.learnings = this.mapLearnings(rawLearnings);
 

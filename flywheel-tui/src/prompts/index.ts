@@ -8,7 +8,7 @@
 // ── Context type ────────────────────────────────────────────────
 
 export interface WorkflowStepContext {
-  /** Full plan content or phase content */
+  /** Full plan content or step content */
   planContent: string;
   /** Key decisions from state file */
   keyDecisions: string[];
@@ -24,7 +24,7 @@ export interface WorkflowStepContext {
 
 // ── Re-exports: prompt builders ─────────────────────────────────
 
-export { buildWorkPhasePrompt } from "./work/phase-prompt.js";
+export { buildWorkStepPrompt } from "./work/step-prompt.js";
 export { buildScrutinyPrompt } from "./work/scrutiny.js";
 export { buildBehavioralValidationPrompt } from "./work/behavioral-validation.js";
 
@@ -48,7 +48,7 @@ export {
   buildResearchPersistPrompt,
 } from "./research/index.js";
 
-export { buildSprintPhasePrompt } from "./sprint/phase-prompt.js";
+export { buildSprintStepPrompt } from "./sprint/step-prompt.js";
 export { buildSprintRevisionPrompt } from "./sprint/revision-prompt.js";
 export { buildSprintEvaluatorPrompt, SPRINT_EVALUATOR_SYSTEM_PROMPT } from "./sprint/evaluator-prompt.js";
 

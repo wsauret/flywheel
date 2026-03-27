@@ -17,7 +17,7 @@ function noShellMetachars(fieldName: string) {
 
 /**
  * Boundaries sub-schema — constraints workers must never violate.
- * Extracted so the type can be shared with prompt builders (e.g. phase-prompt.ts).
+ * Extracted so the type can be shared with prompt builders (e.g. step-prompt.ts).
  */
 export const BoundariesSchema = z.object({
   /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
@@ -76,7 +76,7 @@ export const FlywheelConfigSchema = z.object({
    * Decision #1: intentional behavior change — /work now chains to review. */
   auto_chain: z.boolean().default(true),
 
-  /** Max evaluator retry cycles per phase. 1 = single attempt (no retries). Default: 3. */
+  /** Max evaluator retry cycles per step. 1 = single attempt (no retries). Default: 3. */
   max_eval_cycles: z.number().int().min(1).max(10).default(3),
 
   /** Max revision attempts after evaluator failure. 0 = no revisions. Default: 1. */
@@ -87,7 +87,7 @@ export const FlywheelConfigSchema = z.object({
 
   /** Budget limits for workflow execution. 0 = unlimited for all fields. */
   budget: z.object({
-    /** Max total worker invocations across all phases. 0 = unlimited. */
+    /** Max total worker invocations across all steps. 0 = unlimited. */
     max_invocations: z.number().int().min(0).default(0),
     /** Max total tokens consumed. 0 = unlimited. */
     max_tokens: z.number().int().min(0).default(0),
@@ -120,10 +120,10 @@ export const FlywheelConfigSchema = z.object({
   /** Project commands for scrutiny validation (test, typecheck, lint). */
   commands: CommandsSchema.optional(),
 
-  /** Skip scrutiny validation phase injection at milestone boundaries. Default: false. */
+  /** Skip scrutiny validation step injection at milestone boundaries. Default: false. */
   skip_scrutiny: z.boolean().default(false),
 
-  /** Skip behavioral validation phase injection at milestone boundaries. Default: false. */
+  /** Skip behavioral validation step injection at milestone boundaries. Default: false. */
   skip_validation: z.boolean().default(false),
 
   /** Queue execution engine configuration. */
@@ -407,7 +407,7 @@ export function loadConfig(
   if (config.max_eval_cycles === 1) {
     warnings.push(
       "WARNING: max_eval_cycles is 1. The evaluator will not retry on failure. " +
-        "This means phases that fail evaluation will not be re-attempted.",
+        "This means steps that fail evaluation will not be re-attempted.",
     );
   }
 

@@ -46,7 +46,7 @@ export class StructuredEventParser {
     this.builder = options.builder;
   }
 
-  /** Reset parser state (call on phase transitions). */
+  /** Reset parser state (call on step transitions). */
   reset(): void {
     this.toolUseIdToAgentId.clear();
   }
@@ -180,7 +180,7 @@ export class StructuredEventParser {
       this.handleOpenCodeToolUse(data, now);
     }
     // step_start, step_finish, reasoning, error — currently skipped
-    // (can be added in future phases)
+    // (can be added in future steps)
   }
 
   private handleOpenCodeToolUse(data: Record<string, unknown>, now: number): void {

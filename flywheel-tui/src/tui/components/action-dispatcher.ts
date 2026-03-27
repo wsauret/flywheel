@@ -10,19 +10,18 @@
  */
 
 import os from "node:os"
+import type { StepType } from "../../queue/types"
 
 // ---------------------------------------------------------------------------
 // Workflow metadata
 // ---------------------------------------------------------------------------
-
-type WorkflowType = "work" | "plan" | "review" | "ship" | "debug" | "research" | "sprint"
 
 export interface WorkflowMeta {
   stepLabel: string
   workflowName: string
 }
 
-const WORKFLOW_META: Record<WorkflowType, WorkflowMeta> = {
+const WORKFLOW_META: Record<StepType, WorkflowMeta> = {
   work:     { stepLabel: "Step",      workflowName: "work" },
   plan:     { stepLabel: "Step",      workflowName: "plan" },
   review:   { stepLabel: "Step",      workflowName: "review" },
@@ -30,9 +29,11 @@ const WORKFLOW_META: Record<WorkflowType, WorkflowMeta> = {
   debug:    { stepLabel: "Step",      workflowName: "debug" },
   research: { stepLabel: "Step",      workflowName: "research" },
   sprint:   { stepLabel: "Iteration", workflowName: "sprint" },
+  verify:   { stepLabel: "Step",      workflowName: "verify" },
+  gate:     { stepLabel: "Step",      workflowName: "gate" },
 }
 
-function isWorkflowType(s: string): s is WorkflowType {
+function isStepType(s: string): s is StepType {
   return s in WORKFLOW_META
 }
 
@@ -104,7 +105,7 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
     }
 
     // Check if this is a valid workflow type
-    if (!isWorkflowType(workflow)) {
+    if (!isStepType(workflow)) {
       deps.notify(`Unknown workflow: ${workflow}`, "error")
       return null
     }

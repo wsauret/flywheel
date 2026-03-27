@@ -45,7 +45,7 @@ export class UIApprovalHandler implements ApprovalHandler {
   }
 
   async requestIssueApproval(
-    phaseIndex: number,
+    stepIndex: number,
     title: string,
     issues: EvaluatorIssue[],
   ): Promise<boolean> {
@@ -56,10 +56,10 @@ export class UIApprovalHandler implements ApprovalHandler {
     const description = `${title}\n\nBlocking issues found:\n${issueDescriptions}`;
 
     // Delegate to the standard approval mechanism with the enriched description
-    return this.requestApproval(phaseIndex, description);
+    return this.requestApproval(stepIndex, description);
   }
 
-  async requestApproval(phaseIndex: number, title: string): Promise<boolean> {
+  async requestApproval(stepIndex: number, title: string): Promise<boolean> {
     // Config-level auto-approve
     if (this.config.skip_approval_gates) {
       return true;
@@ -69,8 +69,8 @@ export class UIApprovalHandler implements ApprovalHandler {
     if (this._skipRemainingGates) {
       this.emitter.approvalRequested(
         this.workflowId,
-        phaseIndex,
-        `Step ${phaseIndex + 1}: ${title}`,
+        stepIndex,
+        `Step ${stepIndex + 1}: ${title}`,
       );
       this.emitter.approvalReceived(this.workflowId, true, true);
       return true;
@@ -84,8 +84,8 @@ export class UIApprovalHandler implements ApprovalHandler {
         // No approval callback — auto-approve
         this.emitter.approvalRequested(
           this.workflowId,
-          phaseIndex,
-          `Step ${phaseIndex + 1}: ${title}`,
+          stepIndex,
+          `Step ${stepIndex + 1}: ${title}`,
         );
         this.emitter.approvalReceived(this.workflowId, true, true);
         resolve(true);
@@ -109,8 +109,8 @@ export class UIApprovalHandler implements ApprovalHandler {
       // Emit approval requested AFTER installing the callback
       this.emitter.approvalRequested(
         this.workflowId,
-        phaseIndex,
-        `Step ${phaseIndex + 1}: ${title}`,
+        stepIndex,
+        `Step ${stepIndex + 1}: ${title}`,
       );
     });
   }

@@ -62,8 +62,7 @@ export interface EvaluatorOptions {
   timeoutMs?: number;
   /** Max evaluation cycles. Defaults to DEFAULT_MAX_CYCLES (3). */
   maxCycles?: number;
-  /** Phase/step indices for event emission. Defaults to 0. */
-  phaseIndex?: number;
+  /** Step index for event emission. Defaults to 0. */
   stepIndex?: number;
 }
 
@@ -75,12 +74,12 @@ export interface EvaluateOptions {
   artifactsProduced?: string[];
   testsPassed?: boolean | null;
   durationSeconds?: number;
-  /** Task context (user's task description or phase description) for the evaluator. */
+  /** Task context (user's task description or step description) for the evaluator. */
   taskContext?: string;
   /** Structured handoff data from worker (optional; when present, forwarded to transport). */
   handoff?: import("../schemas/evaluator").EvaluatorHandoffData;
-  /** Cumulative stage context from prior phases (optional; evaluator for phase N sees 1..N-1). */
-  stageContext?: import("../controller/stage-context").StageContext;
+  /** Cumulative stage context from prior steps (optional; evaluator for step N sees 1..N-1). */
+  stepContext?: import("../controller/step-context").StepContext;
 }
 
 export interface EvaluationResult {
@@ -116,7 +115,6 @@ export class Evaluator {
   private readonly skipEvaluation: boolean;
   private readonly timeoutMs: number;
   private readonly maxCycles: number;
-  private readonly phaseIndex: number;
   private readonly stepIndex: number;
 
   constructor(options: EvaluatorOptions) {
@@ -126,7 +124,7 @@ export class Evaluator {
     this.skipEvaluation = options.skipEvaluation ?? false;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxCycles = options.maxCycles ?? DEFAULT_MAX_CYCLES;
-    this.phaseIndex = options.phaseIndex ?? 0;
+    this.stepIndex = options.stepIndex ?? 0;
     this.stepIndex = options.stepIndex ?? 0;
   }
 
@@ -166,7 +164,7 @@ export class Evaluator {
       durationSeconds,
       taskContext,
       handoff,
-      stageContext,
+      stepContext,
     } = options;
 
     // Serialize structured ValidationCriteria to string for the evaluator transport
@@ -194,7 +192,7 @@ export class Evaluator {
           durationSeconds ?? 0,
           taskContext,
           handoff,
-          stageContext,
+          stepContext,
         );
 
         if (result.passed) {
@@ -267,7 +265,7 @@ export class Evaluator {
     durationSeconds: number,
     taskContext?: string,
     handoff?: import("../schemas/evaluator").EvaluatorHandoffData,
-    stageContext?: import("../controller/stage-context").StageContext,
+    stepContext?: import("../controller/step-context").StepContext,
   ): Promise<EvaluatorResult> {
     const input: import("../schemas/evaluator").EvaluatorInput = {
       worker_output: workerOutput,
@@ -279,7 +277,7 @@ export class Evaluator {
       duration_seconds: durationSeconds,
       task_context: taskContext,
       handoff,
-      stage_context: stageContext,
+      step_context: stepContext,
     };
 
     // Race transport call against timeout

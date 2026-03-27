@@ -12,8 +12,8 @@
  *       → StructuredOutputBuilder (block accumulation)
  *         → setOutputBlocks (batched flush)
  *
- * Timer service integration: converts phase indexes to string IDs
- * ("phase-0", "phase-1", …) for the agent-based timer API.
+ * Timer service integration: converts step indexes to string IDs
+ * ("step-0", "step-1", …) for the agent-based timer API.
  */
 
 import type { FlywheelEvent } from "../../events/types";
@@ -52,7 +52,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   private _rawMode = false;
 
   /** When true, queue:failed skips setError (user-initiated pause). */
-  public suppressPipelineError = false;
+  public suppressQueueError = false;
 
   /** Current engine ID for routing events. Updated per worker:output event. */
   private currentEngineId: string | undefined;
@@ -240,7 +240,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this._dispatcherBlockId = blockId;
         this._dispatcherStartedAt = Date.now();
         this.dispatcherNdjsonParser.flush();
-        this.builder.startAgent(blockId, "Dispatcher", "Analyzing phase and crafting worker prompt", Date.now());
+        this.builder.startAgent(blockId, "Dispatcher", "Analyzing step and crafting worker prompt", Date.now());
         this.flushBlocks();
         break;
       }
@@ -383,7 +383,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         this.timer.stop();
         this.flushBlocks();
-        if (!this.suppressPipelineError) {
+        if (!this.suppressQueueError) {
           this.actions.setError(event.reason);
         }
         break;

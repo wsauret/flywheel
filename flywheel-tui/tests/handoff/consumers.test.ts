@@ -91,7 +91,7 @@ describe("buildLastWorkerResult", () => {
     expect(result.tests_passed).toBeNull();
   });
 
-  it("sets step from phaseIndex", () => {
+  it("sets step from stepIndex", () => {
     const handoff = minimalHandoff();
     const result = buildLastWorkerResult(handoff, 3, 10000);
 
@@ -150,7 +150,7 @@ describe("buildPreviousResultFromHandoff", () => {
     const handoff = minimalHandoff();
     const result = buildPreviousResultFromHandoff(handoff);
 
-    expect(result).toContain("## Previous Phase Summary");
+    expect(result).toContain("## Previous Step Summary");
     expect(result).toContain(handoff.summary);
   });
 
@@ -244,7 +244,7 @@ describe("buildPreviousResultFromHandoff", () => {
     const result = buildPreviousResultFromHandoff(handoff);
 
     // Should have all sections
-    expect(result).toContain("## Previous Phase Summary");
+    expect(result).toContain("## Previous Step Summary");
     expect(result).toContain("### Decisions");
     expect(result).toContain("### Artifacts");
     expect(result).toContain("### Verification");

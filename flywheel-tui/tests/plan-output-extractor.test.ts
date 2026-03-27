@@ -58,7 +58,7 @@ function workerResult(output: string, handoffPath = ""): WorkerResult {
 }
 
 /** A summary string that satisfies the 100-char minimum. */
-const VALID_SUMMARY = "Review of the plan is complete. All questions have been identified and documented. The review covered architecture, security, and performance concerns across all phases.";
+const VALID_SUMMARY = "Review of the plan is complete. All questions have been identified and documented. The review covered architecture, security, and performance concerns across all steps.";
 
 /** Write a handoff JSON file with open_questions and return its path. */
 function writeHandoffWithQuestions(dir: string, questions: object[]): string {

@@ -73,7 +73,7 @@ function createMockTransport(
       state.invokeCount++;
       return {
         schema_version: 1 as const,
-        phase_index: 0,
+        step_index: 0,
         task_content: "Implement the feature as described",
         context_files: ["src/foo.ts"],
         validation_criteria: {
@@ -169,8 +169,8 @@ describe("VAL-DISP-001: Dispatcher receives full per-step context", () => {
     });
 
     const input = transport.lastInput!;
-    expect(input.state.completed_phases).toContain(0);
-    expect(input.state.current_phase_index).toBe(1);
+    expect(input.state.completed_steps).toContain(0);
+    expect(input.state.current_step_index).toBe(1);
   });
 
   test("dispatcher input includes previous handoff", async () => {
@@ -213,8 +213,8 @@ describe("VAL-DISP-001: Dispatcher receives full per-step context", () => {
     });
 
     const input = transport.lastInput!;
-    expect(input.stage_context).toBeDefined();
-    expect(input.stage_context!.phase_count).toBe(1);
+    expect(input.step_context).toBeDefined();
+    expect(input.step_context!.step_count).toBe(1);
   });
 
   test("dispatcher input includes available context (L1)", async () => {
@@ -577,7 +577,7 @@ describe("VAL-DISP-006: Dispatcher can request queue mutations", () => {
         (transport as any).lastInput = input;
         return {
           schema_version: 1 as const,
-          phase_index: 0,
+          step_index: 0,
           task_content: "Fix the bug",
           context_files: [],
           validation_criteria: {
@@ -847,13 +847,13 @@ describe("StepDispatcher adapter for executor DispatcherFn", () => {
     });
 
     const input = transport.lastInput!;
-    // Accumulated context should be converted to stage_context
-    expect(input.stage_context).toBeDefined();
-    expect(input.stage_context!.phase_count).toBe(1);
+    // Accumulated context should be converted to step_context
+    expect(input.step_context).toBeDefined();
+    expect(input.step_context!.step_count).toBe(1);
     // Previous handoff should be in last_worker_result
     expect(input.last_worker_result).not.toBeNull();
     expect(input.last_worker_result!.output_summary).toContain("Previous step done");
-    // Previous assessment should be in the context (via stage_context warnings)
+    // Previous assessment should be in the context (via step_context warnings)
     const serialized = JSON.stringify(input);
     expect(serialized).toContain("All good");
   });
@@ -938,8 +938,8 @@ describe("Step dispatcher edge cases", () => {
     const input = transport.lastInput!;
     expect(input.workflow.step_number).toBe(3); // 1-indexed
     expect(input.workflow.total_steps).toBe(4);
-    expect(input.state.completed_phases).toEqual([0, 1]);
-    expect(input.state.current_phase_index).toBe(2);
+    expect(input.state.completed_steps).toEqual([0, 1]);
+    expect(input.state.current_step_index).toBe(2);
   });
 
   test("StepDispatcherError contains step ID and cause", async () => {
@@ -970,7 +970,7 @@ describe("Step dispatcher edge cases", () => {
     const transport: DispatcherTransport = {
       invoke: async () => ({
         schema_version: 1 as const,
-        phase_index: 0,
+        step_index: 0,
         task_content: "Fix it",
         context_files: [],
         validation_criteria: {

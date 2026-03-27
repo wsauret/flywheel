@@ -13,7 +13,7 @@ import {
 import {
   WORKFLOW_OPTIONS,
 } from "../src/tui/components/start-command";
-import type { WorkflowType } from "../src/controller/workflow-pipeline";
+import type { WorkflowType } from "../src/controller/queue-types";
 
 // ---------------------------------------------------------------------------
 // VAL-SCHEMA-001: Sprint config section loads with correct defaults

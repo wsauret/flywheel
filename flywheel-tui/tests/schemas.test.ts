@@ -35,7 +35,7 @@ import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 describe("DispatcherDecisionSchema", () => {
   const validDecision = {
     schema_version: 1 as const,
-    phase_index: 0,
+    step_index: 0,
     task_content: "Implement feature X",
     context_files: ["src/foo.ts"],
     validation_criteria: {
@@ -112,9 +112,9 @@ describe("DispatcherDecisionSchema", () => {
   it("requires reasoning string", () => {
     const result = DispatcherDecisionSchema.parse({
       ...validDecision,
-      reasoning: "Phase is straightforward setup",
+      reasoning: "Step is straightforward setup",
     });
-    expect(result.reasoning).toBe("Phase is straightforward setup");
+    expect(result.reasoning).toBe("Step is straightforward setup");
   });
 
   it("accepts missing reasoning (optional)", () => {
@@ -219,16 +219,16 @@ describe("DispatcherDecisionSchema", () => {
 describe("DispatcherInputSchema", () => {
   const validInput = {
     plan: {
-      phases: [
+      steps: [
         {
-          name: "Phase 1",
-          steps: [{ description: "Do something" }],
+          title: "Step 1",
+          description: "Do something",
         },
       ],
     },
     state: {
-      completed_phases: [],
-      current_phase_index: 0,
+      completed_steps: [],
+      current_step_index: 0,
     },
     context: {
       files: ["src/foo.ts"],
@@ -260,10 +260,10 @@ describe("DispatcherInputSchema", () => {
     }
   });
 
-  it("accepts empty phases array", () => {
+  it("accepts empty steps array", () => {
     const result = DispatcherInputSchema.safeParse({
       ...validInput,
-      plan: { phases: [] },
+      plan: { steps: [] },
     });
     expect(result.success).toBe(true);
   });
@@ -300,7 +300,7 @@ describe("DispatcherInputSchema", () => {
     const lastWorkerResult = {
       step: 1,
       status: "completed",
-      output_summary: "Phase 1 done",
+      output_summary: "Step 1 done",
       artifacts_produced: ["src/setup.ts"],
       tests_passed: true,
       duration_seconds: 30,
@@ -429,8 +429,8 @@ describe("DispatcherInputSchema", () => {
 
   it("rejects missing required fields", () => {
     const minimalInput = {
-      plan: { phases: [] },
-      state: { completed_phases: [], current_phase_index: 0 },
+      plan: { steps: [] },
+      state: { completed_steps: [], current_step_index: 0 },
       context: { files: [] },
     };
     const result = DispatcherInputSchema.safeParse(minimalInput);
@@ -1195,7 +1195,7 @@ describe("WorkflowStepBaseSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// SessionStatusSchema (Phase 5 — superset of ExecutionStatus)
+// SessionStatusSchema (Step 5 — superset of ExecutionStatus)
 // ---------------------------------------------------------------------------
 describe("SessionStatusSchema", () => {
   const executionStatuses = [
@@ -1243,7 +1243,7 @@ describe("SessionStatusSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ExecutionStatusSchema — verify unchanged (Phase 5)
+// ExecutionStatusSchema — verify unchanged (Step 5)
 // ---------------------------------------------------------------------------
 describe("ExecutionStatusSchema — unchanged", () => {
   it("still has exactly 5 values", () => {
@@ -1409,7 +1409,7 @@ describe("migrateSession", () => {
     planPath: "docs/plans/my-plan.md",
     statePath: "docs/plans/my-plan.state.md",
     contextPath: "docs/plans/my-plan.context.md",
-    currentPhase: 0,
+    currentStep: 0,
     lastUpdated: "2026-03-15T00:00:00Z",
     workflowId: "550e8400-e29b-41d4-a716-446655440000",
   };
@@ -1492,11 +1492,11 @@ describe("migrateSession", () => {
     }
   });
 
-  it("removes vestigial fields (statePath, contextPath, currentPhase, workflowId)", () => {
+  it("removes vestigial fields (statePath, contextPath, currentStep, workflowId)", () => {
     const migrated = migrateSession(oldSession);
     expect(migrated.statePath).toBeUndefined();
     expect(migrated.contextPath).toBeUndefined();
-    expect(migrated.currentPhase).toBeUndefined();
+    expect(migrated.currentStep).toBeUndefined();
     expect(migrated.workflowId).toBeUndefined();
     // And the old budget fields
     expect(migrated.budgetConfig).toBeUndefined();
@@ -1570,7 +1570,7 @@ describe("Integration — full data contract flow", () => {
     lastWorkerResult: {
       step: 1,
       status: "completed",
-      output_summary: "Phase 1 setup completed — project structure initialized and build tooling configured.",
+      output_summary: "Step 1 setup completed — project structure initialized and build tooling configured.",
       artifacts_produced: ["src/index.ts", "tsconfig.json"],
       tests_passed: true,
       duration_seconds: 45,
@@ -1603,7 +1603,7 @@ describe("Integration — full data contract flow", () => {
 
   const fullDecision = {
     schema_version: 1 as const,
-    phase_index: 1,
+    step_index: 1,
     task_content: "Implement the core feature with proper error handling and tests.",
     context_files: ["src/index.ts", "src/utils.ts"],
     validation_criteria: {
@@ -1612,7 +1612,7 @@ describe("Integration — full data contract flow", () => {
       custom_checks: ["No lint warnings"],
       required_outputs: ["src/feature.ts", "tests/feature.test.ts"],
     },
-    reasoning: "Phase 2 requires both implementation and test coverage.",
+    reasoning: "Step 2 requires both implementation and test coverage.",
     warnings: ["Large module — consider splitting if over 300 lines"],
     worker_config: {
       model_override: null,
@@ -1641,9 +1641,9 @@ describe("Integration — full data contract flow", () => {
     const { input, planTruncated, historyTruncated } = assembleDispatcherInput(fullAssemblerInput);
 
     // Core fields populated — plan now uses step-based schema
-    const plan = input.plan as { steps?: unknown[]; phases?: unknown[] };
+    const plan = input.plan as { steps?: unknown[] };
     expect(plan.steps!.length).toBeGreaterThan(0);
-    expect(input.state.completed_phases).toBeDefined();
+    expect(input.state.completed_steps).toBeDefined();
     expect(input.context.files).toEqual(["src/index.ts", "src/utils.ts", "tests/index.test.ts"]);
 
     // New fields populated
@@ -1732,7 +1732,7 @@ describe("Integration — full data contract flow", () => {
       transport: mockTransport,
       emitter,
       workflowId: "wf-integration-eval",
-      phaseIndex: 1,
+      stepIndex: 1,
       stepIndex: 0,
     });
 
@@ -1808,7 +1808,7 @@ describe("Integration — full data contract flow", () => {
       planPath: "docs/plans/integration-plan.md",
       statePath: "docs/plans/integration-plan.state.md",
       contextPath: "docs/plans/integration-plan.context.md",
-      currentPhase: 1,
+      currentStep: 1,
       lastUpdated: "2026-03-20T10:00:00Z",
       workflowId: "550e8400-e29b-41d4-a716-446655440000",
       budgetConfig: {
@@ -1862,7 +1862,7 @@ describe("Integration — full data contract flow", () => {
       import("../src/events/types").DispatcherCompleted;
     expect(dispEvent).toBeDefined();
     expect(dispEvent.decision.schema_version).toBe(1);
-    expect(dispEvent.decision.reasoning).toBe("Phase 2 requires both implementation and test coverage.");
+    expect(dispEvent.decision.reasoning).toBe("Step 2 requires both implementation and test coverage.");
     expect(dispEvent.decision.warnings).toEqual(["Large module — consider splitting if over 300 lines"]);
     expect(dispEvent.decision.worker_config).toBeDefined();
     expect(typeof dispEvent.decision.validation_criteria).toBe("object");
@@ -1887,7 +1887,7 @@ describe("Integration — full data contract flow", () => {
     // Step 2: Parse a mock DispatcherDecision (simulating LLM output)
     const rawLlmDecision = {
       schema_version: 1 as const,
-      phase_index: 1,
+      step_index: 1,
       task_content: "Build feature X based on the plan.",
       context_files: ["src/index.ts"],
       validation_criteria: {
@@ -1939,7 +1939,7 @@ describe("Integration — full data contract flow", () => {
       transport: mockTransport,
       emitter,
       workflowId: "wf-pipeline-test",
-      phaseIndex: decision.phase_index,
+      stepIndex: decision.step_index,
       stepIndex: 0,
     });
 

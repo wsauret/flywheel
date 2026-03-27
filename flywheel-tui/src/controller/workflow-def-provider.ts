@@ -1,33 +1,33 @@
 /**
- * WorkflowDefinitionProvider — wraps a WorkflowDefinition into PhaseInfo[].
+ * WorkflowDefinitionProvider — wraps a WorkflowDefinition into StepInfo[].
  *
  * Non-work workflows (plan, review, ship, debug, research) use
  * WorkflowDefinition objects instead of plan markdown files. This
- * provider adapts them to the uniform PhaseProvider interface.
+ * provider adapts them to the uniform StepProvider interface.
  *
- * All phases always start as "pending" — non-work workflows have
+ * All steps always start as "pending" — non-work workflows have
  * no state persistence.
  */
 
 import type { WorkflowDefinition } from "../schemas/workflow";
-import type { PhaseInfo, PhaseProvider } from "./phase-provider";
+import type { StepInfo, StepProvider } from "./step-provider";
 
 // ---------------------------------------------------------------------------
 // WorkflowDefinitionProvider
 // ---------------------------------------------------------------------------
 
-export class WorkflowDefinitionProvider implements PhaseProvider {
+export class WorkflowDefinitionProvider implements StepProvider {
   private readonly workflow: WorkflowDefinition;
-  private cachedPhases: PhaseInfo[] | undefined;
+  private cachedSteps: StepInfo[] | undefined;
 
   constructor(workflow: WorkflowDefinition) {
     this.workflow = workflow;
   }
 
-  getPhases(): PhaseInfo[] {
-    if (this.cachedPhases) return this.cachedPhases;
+  getSteps(): StepInfo[] {
+    if (this.cachedSteps) return this.cachedSteps;
 
-    this.cachedPhases = this.workflow.steps.map((step, index) => ({
+    this.cachedSteps = this.workflow.steps.map((step, index) => ({
       index,
       title: step.description,
       description: step.description,
@@ -35,10 +35,10 @@ export class WorkflowDefinitionProvider implements PhaseProvider {
       // Non-work workflows don't have checklist steps
       steps: undefined,
     }));
-    return this.cachedPhases;
+    return this.cachedSteps;
   }
 
-  get phaseCount(): number {
+  get stepCount(): number {
     return this.workflow.steps.length;
   }
 }

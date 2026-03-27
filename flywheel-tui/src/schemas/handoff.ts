@@ -235,7 +235,7 @@ export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
 
 export const DispatcherDecisionHandoffSchema = z.object({
   schema_version: z.literal(1),
-  phase_index: z.number(),
+  step_index: z.number(),
   task_content: z.string(),
   validation_criteria: ValidationCriteriaSchema.optional(),
   context_files: z.array(z.string()),

@@ -16,9 +16,9 @@ import type { QueueStepState } from "../src/tui/routes/work/state/types";
 
 describe("queue panel reactivity — store chain propagation", () => {
   const makeSteps = (): QueueStepState[] => [
-    { id: "s1", type: "plan", title: "Plan phase", status: "pending" },
-    { id: "s2", type: "work", title: "Work phase", status: "pending" },
-    { id: "s3", type: "review", title: "Review phase", status: "pending" },
+    { id: "s1", type: "plan", title: "Plan step", status: "pending" },
+    { id: "s2", type: "work", title: "Work step", status: "pending" },
+    { id: "s3", type: "review", title: "Review step", status: "pending" },
   ];
 
   it("store subscriber sees queueSteps changes immediately (notifyImmediate)", () => {
@@ -104,9 +104,9 @@ describe("queue panel reactivity — store chain propagation", () => {
 
 describe("queue panel reactivity — event bus → direct signal updates", () => {
   const makeSteps = (): QueueStepState[] => [
-    { id: "s1", type: "plan", title: "Plan phase", status: "pending" },
-    { id: "s2", type: "work", title: "Work phase", status: "pending" },
-    { id: "s3", type: "review", title: "Review phase", status: "pending" },
+    { id: "s1", type: "plan", title: "Plan step", status: "pending" },
+    { id: "s2", type: "work", title: "Work step", status: "pending" },
+    { id: "s3", type: "review", title: "Review step", status: "pending" },
   ];
 
   /**
@@ -148,7 +148,7 @@ describe("queue panel reactivity — event bus → direct signal updates", () =>
       workflowId: "test",
       stepId: "s1",
       stepType: "plan",
-      stepTitle: "Plan phase",
+      stepTitle: "Plan step",
       timestamp: Date.now(),
     });
 
@@ -182,7 +182,7 @@ describe("queue panel reactivity — event bus → direct signal updates", () =>
       workflowId: "test",
       stepId: "s1",
       stepType: "plan",
-      stepTitle: "Plan phase",
+      stepTitle: "Plan step",
       timestamp: Date.now(),
     });
 
@@ -213,7 +213,7 @@ describe("queue panel reactivity — event bus → direct signal updates", () =>
       workflowId: "test",
       stepId: "s1",
       stepType: "plan",
-      stepTitle: "Plan phase",
+      stepTitle: "Plan step",
       reason: "worker crashed",
       timestamp: Date.now(),
     });
@@ -269,7 +269,7 @@ describe("queue panel reactivity — event bus → direct signal updates", () =>
       workflowId: "test",
       stepId: "s2",
       stepType: "work",
-      stepTitle: "Work phase",
+      stepTitle: "Work step",
       timestamp: Date.now(),
     });
 

@@ -70,7 +70,7 @@ Dispatch review agents in parallel. Each reviewer returns findings in their resp
 3. **Testing** — Missing coverage, fragile tests, test-implementation coupling, untested error paths.
 4. **Architecture** — Layering violations, god objects, circular dependencies, pattern breaks.
 5. **Performance** — O(n^2) in hot paths, unnecessary allocations, missing pagination, unbounded queries.
-6. **Validation Contract Compliance** — If a validation contract exists (a \`*.validation-contract.md\` file alongside the plan), check: (a) every \`<!-- fulfills: VAL-... -->\` annotation in the plan references an assertion that exists in the contract, (b) every contract assertion is claimed by exactly one phase, (c) no orphaned or duplicate assertion IDs. If no contract exists, skip this dimension.
+6. **Validation Contract Compliance** — If a validation contract exists (a \`*.validation-contract.md\` file alongside the plan), check: (a) every \`<!-- fulfills: VAL-... -->\` annotation in the plan references an assertion that exists in the contract, (b) every contract assertion is claimed by exactly one step, (c) no orphaned or duplicate assertion IDs. If no contract exists, skip this dimension.
 
 ## Finding Synthesis
 
@@ -96,7 +96,7 @@ For P3 findings, decide:
 - **Exclude** if it would expand scope or is purely cosmetic
 - Format excluded P3s as: \`P3 (deferred): <finding> — reason: <why not now>\`
 
-### 4. Phase Grouping
+### 4. Step Grouping
 
 Group findings for implementation:
 - By file/module (changes to the same file go together)

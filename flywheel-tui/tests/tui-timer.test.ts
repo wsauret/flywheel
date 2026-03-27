@@ -75,29 +75,29 @@ describe("TimerService", () => {
 
     it("reset() returns to idle", () => {
       timerService.start();
-      timerService.registerAgent("phase-0");
+      timerService.registerAgent("step-0");
       timerService.reset();
       expect(timerService.getStatus()).toBe("idle");
-      expect(timerService.hasAgent("phase-0")).toBe(false);
+      expect(timerService.hasAgent("step-0")).toBe(false);
     });
   });
 
-  // ── Agent/Phase registration ──
+  // ── Agent/Step registration ──
 
-  describe("agent registration (phase-based)", () => {
-    it("registerAgent registers a phase", () => {
+  describe("agent registration (step-based)", () => {
+    it("registerAgent registers a step", () => {
       timerService.start();
-      timerService.registerAgent("phase-0");
-      expect(timerService.hasAgent("phase-0")).toBe(true);
+      timerService.registerAgent("step-0");
+      expect(timerService.hasAgent("step-0")).toBe(true);
     });
 
     it("completeAgent removes the agent and returns duration", () => {
       timerService.start();
-      timerService.registerAgent("phase-1");
+      timerService.registerAgent("step-1");
       // Small delay
-      const duration = timerService.completeAgent("phase-1");
+      const duration = timerService.completeAgent("step-1");
       expect(duration).toBeGreaterThanOrEqual(0);
-      expect(timerService.hasAgent("phase-1")).toBe(false);
+      expect(timerService.hasAgent("step-1")).toBe(false);
     });
 
     it("completeAgent returns 0 for unknown agent", () => {
@@ -107,14 +107,14 @@ describe("TimerService", () => {
     });
 
     it("hasAgent returns false for unregistered agent", () => {
-      expect(timerService.hasAgent("phase-99")).toBe(false);
+      expect(timerService.hasAgent("step-99")).toBe(false);
     });
 
     it("registerAgent auto-starts if idle", () => {
       expect(timerService.getStatus()).toBe("idle");
-      timerService.registerAgent("phase-0");
+      timerService.registerAgent("step-0");
       expect(timerService.getStatus()).toBe("running");
-      expect(timerService.hasAgent("phase-0")).toBe(true);
+      expect(timerService.hasAgent("step-0")).toBe(true);
     });
   });
 
@@ -202,7 +202,7 @@ describe("TimerService", () => {
     it("returns idle defaults when timer is null", () => {
       const result = useTimer(null);
       expect(result.workflowRuntime()).toBe("00:00");
-      expect(result.agentDuration("phase-0")).toBe("");
+      expect(result.agentDuration("step-0")).toBe("");
       expect(result.status()).toBe("idle");
       expect(result.isPaused()).toBe(false);
       expect(result.isRunning()).toBe(false);
@@ -212,7 +212,7 @@ describe("TimerService", () => {
     });
   });
 
-  // ── Instance Independence (Phase 1 — per-session timers) ──
+  // ── Instance Independence (Step 1 — per-session timers) ──
 
   describe("instance independence", () => {
     it("new TimerService() returns distinct instances", () => {
@@ -246,10 +246,10 @@ describe("TimerService", () => {
 
       a.start();
       b.start();
-      a.registerAgent("phase-0");
+      a.registerAgent("step-0");
 
-      expect(a.hasAgent("phase-0")).toBe(true);
-      expect(b.hasAgent("phase-0")).toBe(false);
+      expect(a.hasAgent("step-0")).toBe(true);
+      expect(b.hasAgent("step-0")).toBe(false);
 
       a.reset();
       b.reset();
@@ -306,15 +306,15 @@ describe("TimerService", () => {
 
       a.start();
       b.start();
-      a.registerAgent("phase-0");
-      b.registerAgent("phase-1");
+      a.registerAgent("step-0");
+      b.registerAgent("step-1");
 
       a.reset();
 
       expect(a.getStatus()).toBe("idle");
-      expect(a.hasAgent("phase-0")).toBe(false);
+      expect(a.hasAgent("step-0")).toBe(false);
       expect(b.isRunning()).toBe(true);
-      expect(b.hasAgent("phase-1")).toBe(true);
+      expect(b.hasAgent("step-1")).toBe(true);
 
       b.reset();
     });

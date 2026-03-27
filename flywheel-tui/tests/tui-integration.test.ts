@@ -41,7 +41,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
   // ── Full Workflow Lifecycle ──
 
   describe("full workflow lifecycle", () => {
-    it("processes complete workflow: started → phase → output → phase complete → workflow complete", () => {
+    it("processes complete workflow: started → step → output → step complete → workflow complete", () => {
       const wfId = "wf-lifecycle-1";
       const emitter = createFlywheelEmitter(bus);
 
@@ -68,7 +68,7 @@ describe("TUI Integration — event → adapter → store pipeline", () => {
       expect(store.getState().workflowStatus).toBe("completed");
     });
 
-    it("handles multi-phase workflow with output interleaving", () => {
+    it("handles multi-step workflow with output interleaving", () => {
       const wfId = "wf-multi";
       const emitter = createFlywheelEmitter(bus);
 

@@ -118,7 +118,7 @@ export type LastWorkerResult = z.infer<typeof LastWorkerResultSchema>;
 
 // ---------------------------------------------------------------------------
 // WorkflowStepBaseSchema
-// Base fields shared by PlanPhaseStepSchema and WorkflowStepSchema.
+// Base fields shared by PlanStepStepSchema and WorkflowStepSchema.
 // ---------------------------------------------------------------------------
 export const WorkflowStepBaseSchema = z.object({
   description: z.string(),

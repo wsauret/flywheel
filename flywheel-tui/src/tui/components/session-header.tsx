@@ -6,7 +6,7 @@
  *   - Session name
  *   - Repo / working directory
  *   - Current branch (if available)
- *   - Current phase name and status
+ *   - Current step name and status
  *   - Last activity timestamp
  *
  * Falls back to BrandingHeader-like layout with the same visual weight

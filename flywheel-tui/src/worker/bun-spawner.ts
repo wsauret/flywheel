@@ -371,7 +371,7 @@ export class BunProcessSpawner implements ProcessSpawner {
 
         // In pipe mode, close stdin when the worker signals completion.
         // Without this, Claude's stream-json mode keeps waiting for more input
-        // on stdin, preventing the process from exiting and the phase from advancing.
+        // on stdin, preventing the process from exiting and the step from advancing.
         _onCompletionDetected = () => {
           if (!pipeOpen) return;
           pipeOpen = false;

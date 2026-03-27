@@ -303,7 +303,7 @@ describe("buildQueueFromPlan", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
     const planPath = path.join(tmpDir, "plan.md");
 
-    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n`;
+    const mdPlan = `# Plan\n\n### Step 1: Setup\n\n- [ ] Create project\n`;
     fs.writeFileSync(planPath, mdPlan);
 
     try {

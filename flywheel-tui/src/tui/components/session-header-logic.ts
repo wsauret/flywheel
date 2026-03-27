@@ -18,8 +18,8 @@ export interface SessionHeaderInfo {
   planName?: string
   repo?: string
   branch?: string
-  currentPhase?: string
-  phaseStatus?: "pending" | "running" | "completed" | "failed" | "skipped"
+  currentStep?: string
+  stepStatus?: "pending" | "running" | "completed" | "failed" | "skipped"
   workflowStatus?: WorkflowStatus
   lastActivity?: string
 }
@@ -83,12 +83,12 @@ export function deriveHeaderInfo(summary: SessionSummary): SessionHeaderInfo {
 export function formatSessionStatus(info: SessionHeaderInfo): string {
   const parts: string[] = []
 
-  if (info.currentPhase) {
-    const icon = info.phaseStatus === "running" ? "\u25d3"
-      : info.phaseStatus === "completed" ? "\u25cf"
-      : info.phaseStatus === "failed" ? "\u2717"
+  if (info.currentStep) {
+    const icon = info.stepStatus === "running" ? "\u25d3"
+      : info.stepStatus === "completed" ? "\u25cf"
+      : info.stepStatus === "failed" ? "\u2717"
       : "\u25cb"
-    parts.push(`${icon} ${info.currentPhase}`)
+    parts.push(`${icon} ${info.currentStep}`)
   }
 
   if (info.branch) {

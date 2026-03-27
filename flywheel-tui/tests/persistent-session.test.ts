@@ -32,7 +32,7 @@ function parseSlashCommand(input: string): { command: string; args: string } | n
  *
  * Integrates:
  *   - createWorkflowSession / destroyWorkflowSession
- *   - Store actions (startWorkflow, appendOutput, completePhase, stopWorkflow)
+ *   - Store actions (startWorkflow, appendOutput, completeStep, stopWorkflow)
  *   - Timer service reset between runs
  *   - Slash command parsing in context of shell state
  *   - Escape handler state machine in context of workflow states
@@ -56,7 +56,7 @@ class ShellSimulator {
   escHint = "";
   exitCalled = false;
 
-  // Pipeline pause state (mirrors flywheel-shell.tsx Phase 5)
+  // Pipeline pause state (mirrors flywheel-shell.tsx Step 5)
   isPipelineRunning = false;
   userInitiatedPause = false;
   pauseMessageEmitted = false;
@@ -126,9 +126,9 @@ class ShellSimulator {
     this.escapeHandler.reset();
     this.escHint = "";
 
-    // Set suppressPipelineError on the adapter before shutdown triggers pipeline:failed
+    // Set suppressQueueError on the adapter before shutdown triggers pipeline:failed
     if (this.activeSession) {
-      this.activeSession.adapter.suppressPipelineError = true;
+      this.activeSession.adapter.suppressQueueError = true;
     }
 
     // Push pause message through event bus
@@ -225,7 +225,7 @@ describe("Persistent Session Integration", () => {
   // ── Full lifecycle: idle → start → complete → start another → stop → exit ──
 
   describe("full lifecycle", () => {
-    it("idle → start workflow → phases → complete → start another → complete", () => {
+    it("idle → start workflow → steps → complete → start another → complete", () => {
       // Initial state: idle
       expect(shell.shellState).toBe("idle");
       expect(shell.runs).toHaveLength(0);
@@ -457,8 +457,8 @@ describe("Persistent Session Integration", () => {
         stepIds: ["s1"],
         timestamp: ts(),
       });
-      session.timer.registerAgent("phase-0");
-      expect(session.timer.hasAgent("phase-0")).toBe(true);
+      session.timer.registerAgent("step-0");
+      expect(session.timer.hasAgent("step-0")).toBe(true);
 
       // Stop workflow → destroys session → stops timer
       shell.handleSubmit("/stop");
@@ -752,11 +752,11 @@ describe("Persistent Session Integration", () => {
       shell.handleEscape();
       expect(shell.shellState).toBe("completed");
       expect(shell.userInitiatedPause).toBe(true);
-      // Session adapter should have suppressPipelineError set
-      expect(session.adapter.suppressPipelineError).toBe(true);
+      // Session adapter should have suppressQueueError set
+      expect(session.adapter.suppressQueueError).toBe(true);
     });
 
-    it("queue:failed is NOT turned into ErrorModal when suppressPipelineError is set", () => {
+    it("queue:failed is NOT turned into ErrorModal when suppressQueueError is set", () => {
       shell.handleSubmit("plan.md");
       const session = shell.activeSession!;
       session.store.startWorkflow("plan.md");
@@ -768,7 +768,7 @@ describe("Persistent Session Integration", () => {
       });
 
       // Set suppress flag on adapter (as pause would)
-      session.adapter.suppressPipelineError = true;
+      session.adapter.suppressQueueError = true;
 
       // Emit queue:failed (happens internally when shutdown is requested)
       session.eventBus.emit({

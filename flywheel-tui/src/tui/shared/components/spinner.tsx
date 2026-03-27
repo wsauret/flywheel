@@ -1,13 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 /**
  * Animated Spinner Component
- * Simple moon phase spinner
+ * Simple moon step spinner
  */
 
 import { createSignal, onMount, onCleanup } from "solid-js"
 import type { RGBA } from "@opentui/core"
 
-// Moon phases - 4 frame rotation
+// Moon steps - 4 frame rotation
 const FRAMES = ["◐", "◓", "◑", "◒"]
 
 interface SpinnerProps {

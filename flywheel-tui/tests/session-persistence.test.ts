@@ -192,7 +192,7 @@ describe("legacy session compatibility", () => {
       planPath: "plans/old.md",
       statePath: ".flywheel/state/old.state.md",
       contextPath: ".flywheel/context/old.ctx.md",
-      currentPhase: 2,
+      currentStep: 2,
       lastUpdated: "2026-01-01T00:00:00.000Z",
       workflowId: crypto.randomUUID(),
     };

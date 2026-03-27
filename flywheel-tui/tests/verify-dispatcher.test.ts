@@ -60,9 +60,9 @@ describe("verify-dispatcher: input assembly", () => {
       },
     });
 
-    const plan = assembled.input.plan as { steps?: unknown[]; phases?: unknown[] };
+    const plan = assembled.input.plan as { steps?: unknown[]; steps?: unknown[] };
     expect(plan.steps!.length).toBeGreaterThan(0);
-    expect(assembled.input.state.current_phase_index).toBe(0);
+    expect(assembled.input.state.current_step_index).toBe(0);
     expect(assembled.input.workflow_id).toBe("verify-dispatcher-001");
     expect(assembled.input.workflow.name).toBe("work");
     expect(assembled.input.config.dispatcher_model).toBe("sonnet");
@@ -179,8 +179,8 @@ describe("verify-dispatcher: schema validation", () => {
   it("valid decision passes schema validation", () => {
     const decision = {
       schema_version: 1,
-      phase_index: 0,
-      task_content: "Execute the setup phase by creating directory layout",
+      step_index: 0,
+      task_content: "Execute the setup step by creating directory layout",
       context_files: ["src/index.ts"],
       validation_criteria: {
         acceptance_criteria: ["Tests pass"],
@@ -199,7 +199,7 @@ describe("verify-dispatcher: schema validation", () => {
   it("decision with meaningful task_content passes", () => {
     const decision = {
       schema_version: 1,
-      phase_index: 0,
+      step_index: 0,
       task_content: "Create a GET /hello endpoint that returns JSON { message: 'hello world' }. Write tests first.",
       context_files: [],
       validation_criteria: {

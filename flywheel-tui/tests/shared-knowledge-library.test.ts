@@ -13,7 +13,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { LIBRARY_DIR, FLYWHEEL_DIR } from "../src/config/paths";
-import { buildWorkPhasePrompt } from "../src/prompts/work/phase-prompt";
+import { buildWorkStepPrompt } from "../src/prompts/work/step-prompt";
 import type { WorkflowStepContext } from "../src/prompts/index";
 
 // ---------------------------------------------------------------------------
@@ -43,30 +43,30 @@ describe("Work prompt library references", () => {
   };
 
   test("prompt includes reference to .flywheel/library/", () => {
-    const prompt = buildWorkPhasePrompt(baseCtx);
+    const prompt = buildWorkStepPrompt(baseCtx);
     expect(prompt).toContain(".flywheel/library/");
   });
 
   test("prompt includes instruction to read from library before starting", () => {
-    const prompt = buildWorkPhasePrompt(baseCtx);
+    const prompt = buildWorkStepPrompt(baseCtx);
     // Must tell workers to read the library BEFORE starting
     expect(prompt).toMatch(/read.*library|library.*read/i);
   });
 
   test("prompt includes instruction to write discoveries to library before completing", () => {
-    const prompt = buildWorkPhasePrompt(baseCtx);
+    const prompt = buildWorkStepPrompt(baseCtx);
     // Must tell workers to write critical context to the library
     expect(prompt).toMatch(/write.*library|library.*write/i);
   });
 
   test("prompt references specific filenames: environment.md, architecture.md", () => {
-    const prompt = buildWorkPhasePrompt(baseCtx);
+    const prompt = buildWorkStepPrompt(baseCtx);
     expect(prompt).toContain("environment.md");
     expect(prompt).toContain("architecture.md");
   });
 
   test("prompt contains a Knowledge Library section header", () => {
-    const prompt = buildWorkPhasePrompt(baseCtx);
+    const prompt = buildWorkStepPrompt(baseCtx);
     expect(prompt).toMatch(/knowledge library/i);
   });
 
@@ -76,7 +76,7 @@ describe("Work prompt library references", () => {
       keyDecisions: [],
       fileReferences: [],
     };
-    const prompt = buildWorkPhasePrompt(minimalCtx);
+    const prompt = buildWorkStepPrompt(minimalCtx);
     expect(prompt).toContain(".flywheel/library/");
   });
 });

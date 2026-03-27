@@ -33,8 +33,8 @@ export const SessionSchema = z.object({
   budgetLimits: BudgetLimitsSchema.strip(),
   /** Accumulated budget usage for this session. Uses .strip() for forward-compat. */
   budgetUsage: BudgetUsageSchema.strip(),
-  /** The workflow type that initiated this session. */
-  workflowType: z.enum(["work", "plan", "review", "ship", "debug", "research", "sprint"]),
+  /** The step type that initiated this session. */
+  workflowType: z.enum(["work", "plan", "review", "ship", "debug", "research", "sprint", "verify", "gate"]),
 }).strict();
 
 export type Session = z.infer<typeof SessionSchema>;
@@ -47,7 +47,7 @@ export type Session = z.infer<typeof SessionSchema>;
  *
  * 1. Old `budgetConfig`/`budgetUsed` → new `budgetLimits`/`budgetUsage` mapping
  * 2. Old `total_token_budget: 0` → `max_tokens: null` (0 means unlimited)
- * 3. Removal of vestigial fields: `statePath`, `contextPath`, `currentPhase`, `workflowId`
+ * 3. Removal of vestigial fields: `statePath`, `contextPath`, `currentStep`, `workflowId`
  * 4. `planPath` (required string) → `label` (required) + `planPath` (optional)
  * 5. Default `workflowType` to `"work"` if absent
  *
@@ -114,7 +114,7 @@ export function migrateSession(raw: Record<string, unknown>): Record<string, unk
   // --- Remove vestigial fields (would cause .strict() to reject) ---
   delete migrated.statePath;
   delete migrated.contextPath;
-  delete migrated.currentPhase;
+  delete migrated.currentStep;
   delete migrated.workflowId;
   // Remove old budget fields (already migrated above)
   delete migrated.budgetConfig;

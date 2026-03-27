@@ -39,7 +39,7 @@ const ctxWithAnalysisResult: WorkflowStepContext = {
 // ---------------------------------------------------------------------------
 
 const ORCHESTRATION_LEAKS = [
-  "Phase 0:",
+  "Step 0:",
   "session.md",
   ".flywheel/session",
   "Ralph mode",

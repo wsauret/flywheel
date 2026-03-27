@@ -24,7 +24,7 @@ import {
   type EndOfSessionGateResult,
 } from "../src/controller/validation-state";
 
-import type { PhaseInfo } from "../src/controller/phase-provider";
+import type { StepInfo } from "../src/controller/step-provider";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -230,12 +230,12 @@ describe("initializeValidationState", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-CONTRACT-003: PhaseInfo type includes optional fulfills: string[] field
+// VAL-CONTRACT-003: StepInfo type includes optional fulfills: string[] field
 // ---------------------------------------------------------------------------
 
-describe("PhaseInfo fulfills field", () => {
-  it("PhaseInfo type supports optional fulfills string array", () => {
-    const phase: PhaseInfo = {
+describe("StepInfo fulfills field", () => {
+  it("StepInfo type supports optional fulfills string array", () => {
+    const step: StepInfo = {
       index: 0,
       title: "Setup auth",
       description: "Setup authentication",
@@ -244,18 +244,18 @@ describe("PhaseInfo fulfills field", () => {
       fulfills: ["VAL-AUTH-001", "VAL-AUTH-002"],
     };
 
-    expect(phase.fulfills).toEqual(["VAL-AUTH-001", "VAL-AUTH-002"]);
+    expect(step.fulfills).toEqual(["VAL-AUTH-001", "VAL-AUTH-002"]);
   });
 
-  it("PhaseInfo fulfills is optional (undefined when not set)", () => {
-    const phase: PhaseInfo = {
+  it("StepInfo fulfills is optional (undefined when not set)", () => {
+    const step: StepInfo = {
       index: 0,
       title: "Setup",
       description: "Setup",
       status: "pending",
     };
 
-    expect(phase.fulfills).toBeUndefined();
+    expect(step.fulfills).toBeUndefined();
   });
 });
 
@@ -264,40 +264,40 @@ describe("PhaseInfo fulfills field", () => {
 // ---------------------------------------------------------------------------
 
 describe("checkAssertionCoverage", () => {
-  it("reports no issues when every assertion is claimed by exactly one phase", () => {
+  it("reports no issues when every assertion is claimed by exactly one step", () => {
     const contractAssertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-API-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Auth", fulfills: ["VAL-AUTH-001", "VAL-AUTH-002"] },
       { title: "API", fulfills: ["VAL-API-001"] },
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.orphaned).toEqual([]);
     expect(report.duplicates).toEqual([]);
     expect(report.isComplete).toBe(true);
   });
 
-  it("reports orphaned assertions (not claimed by any phase)", () => {
+  it("reports orphaned assertions (not claimed by any step)", () => {
     const contractAssertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-API-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Auth", fulfills: ["VAL-AUTH-001"] },
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.orphaned).toEqual(["VAL-AUTH-002", "VAL-API-001"]);
     expect(report.isComplete).toBe(false);
   });
 
-  it("reports duplicate assertions (claimed by multiple phases)", () => {
+  it("reports duplicate assertions (claimed by multiple steps)", () => {
     const contractAssertionIds = ["VAL-AUTH-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Auth", fulfills: ["VAL-AUTH-001"] },
       { title: "Auth v2", fulfills: ["VAL-AUTH-001"] },
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.duplicates).toHaveLength(1);
     expect(report.duplicates[0].assertionId).toBe("VAL-AUTH-001");
@@ -305,14 +305,14 @@ describe("checkAssertionCoverage", () => {
     expect(report.isComplete).toBe(false);
   });
 
-  it("handles phases without fulfills (they claim nothing)", () => {
+  it("handles steps without fulfills (they claim nothing)", () => {
     const contractAssertionIds = ["VAL-AUTH-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Setup" },
       { title: "Auth", fulfills: ["VAL-AUTH-001"] },
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.orphaned).toEqual([]);
     expect(report.duplicates).toEqual([]);
@@ -321,21 +321,21 @@ describe("checkAssertionCoverage", () => {
 
   it("handles empty contract assertions", () => {
     const contractAssertionIds: string[] = [];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Auth", fulfills: ["VAL-AUTH-001"] },
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.orphaned).toEqual([]);
     expect(report.isComplete).toBe(true);
   });
 
-  it("handles empty phases", () => {
+  it("handles empty steps", () => {
     const contractAssertionIds = ["VAL-AUTH-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [];
+    const steps: Array<{ title: string; fulfills?: string[] }> = [];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.orphaned).toEqual(["VAL-AUTH-001"]);
     expect(report.isComplete).toBe(false);
@@ -343,13 +343,13 @@ describe("checkAssertionCoverage", () => {
 
   it("detects both orphaned and duplicates in same report", () => {
     const contractAssertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-API-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Auth A", fulfills: ["VAL-AUTH-001"] },
       { title: "Auth B", fulfills: ["VAL-AUTH-001"] },
       // VAL-AUTH-002 and VAL-API-001 are orphaned
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     expect(report.orphaned).toEqual(["VAL-AUTH-002", "VAL-API-001"]);
     expect(report.duplicates).toHaveLength(1);
@@ -357,14 +357,14 @@ describe("checkAssertionCoverage", () => {
     expect(report.isComplete).toBe(false);
   });
 
-  it("reports extra assertions claimed by phases but not in contract", () => {
-    // Phase claims an assertion that doesn't exist in the contract
+  it("reports extra assertions claimed by steps but not in contract", () => {
+    // Step claims an assertion that doesn't exist in the contract
     const contractAssertionIds = ["VAL-AUTH-001"];
-    const phases: Array<{ title: string; fulfills?: string[] }> = [
+    const steps: Array<{ title: string; fulfills?: string[] }> = [
       { title: "Auth", fulfills: ["VAL-AUTH-001", "VAL-EXTRA-001"] },
     ];
 
-    const report = checkAssertionCoverage(contractAssertionIds, phases);
+    const report = checkAssertionCoverage(contractAssertionIds, steps);
 
     // VAL-EXTRA-001 is not in the contract — it should be reported as unclaimed
     expect(report.unclaimed).toEqual(["VAL-EXTRA-001"]);

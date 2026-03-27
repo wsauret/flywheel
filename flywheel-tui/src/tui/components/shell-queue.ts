@@ -11,7 +11,7 @@
  *
  * Terminology:
  *   Queue    — mutable, ordered list of steps for a session
- *   Step     — single unit of work (replaces "phase")
+ *   Step     — single unit of work (replaces "step")
  *   Workflow — named template that generates an initial queue
  */
 
@@ -22,7 +22,7 @@ import type { Queue, Step, StepType } from "../../queue/types";
 import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
 import { checkEndOfSessionGate } from "../../controller/validation-state";
-import type { EndOfSessionGateCheck } from "../../controller/workflow-pipeline";
+import type { EndOfSessionGateCheck } from "../../controller/queue-types";
 import { parseJsonPlan } from "../../controller/plan-json-parser";
 import { randomUUID } from "crypto";
 

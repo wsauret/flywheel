@@ -32,7 +32,7 @@ function makeMockOrchestrator(overrides?: Partial<SessionOrchestrator>): Session
         planPath: "plans/test.md",
         statePath: ".flywheel/state/test.state.md",
         contextPath: ".flywheel/context/test.ctx.md",
-        currentPhase: 0,
+        currentStep: 0,
         lastUpdated: new Date().toISOString(),
         workflowId: "test-wf",
         sessionLifecycleState: "completed" as const,

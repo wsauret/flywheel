@@ -7,7 +7,7 @@
 // provenance in the mutation log and enforce validation rules.
 //
 // Terminology:
-//   Step   — single unit of work (replaces "phase")
+//   Step   — single unit of work (replaces "step")
 //   Queue  — mutable, ordered list of steps for a session
 // ---------------------------------------------------------------------------
 

@@ -34,13 +34,13 @@ describe("UIApprovalHandler", () => {
   describe("config-level auto-approve", () => {
     it("resolves true when skip_approval_gates is set", async () => {
       const { handler } = createHandler({ skip_approval_gates: true });
-      const result = await handler.requestApproval(0, "Phase 1: Setup");
+      const result = await handler.requestApproval(0, "Step 1: Setup");
       expect(result).toBe(true);
     });
 
     it("does not emit events when skip_approval_gates is set", async () => {
       const { handler, adapter } = createHandler({ skip_approval_gates: true });
-      await handler.requestApproval(0, "Phase 1: Setup");
+      await handler.requestApproval(0, "Step 1: Setup");
       // No approval events should be emitted
       const approvalEvents = adapter.events.filter(
         (e) => e.type === "approval:requested" || e.type === "approval:received",
@@ -118,12 +118,12 @@ describe("UIApprovalHandler", () => {
       expect(handler.skipRemainingGates).toBe(true);
     });
 
-    it("after skip, subsequent phases auto-approve without showing modal", async () => {
+    it("after skip, subsequent steps auto-approve without showing modal", async () => {
       const { handler, adapter } = createHandler();
 
       // First approval: user clicks Skip
       adapter.onApprovalDecision = () => {};
-      const first = handler.requestApproval(0, "Phase 1");
+      const first = handler.requestApproval(0, "Step 1");
       adapter.onApprovalDecision!(true, true);
       await first;
 
@@ -135,7 +135,7 @@ describe("UIApprovalHandler", () => {
         secondCallbackCalled.value = true;
       };
 
-      const result = await handler.requestApproval(1, "Phase 2");
+      const result = await handler.requestApproval(1, "Step 2");
       expect(result).toBe(true);
       // The callback should NOT have been replaced
       expect(secondCallbackCalled.value).toBe(false);

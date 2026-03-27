@@ -9,7 +9,7 @@ import {
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
   REVIEW_FIELDS,
-  WORK_PHASE_FIELDS,
+  WORK_STEP_FIELDS,
 } from "../src/handoff/field-specs";
 
 // ---------------------------------------------------------------------------
@@ -90,33 +90,33 @@ describe("handoff instruction clarity", () => {
   const testPath = "/tmp/test-handoff.json";
 
   it("worker handoff instruction emphasizes CRITICAL importance", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain("CRITICAL");
   });
 
   it("worker handoff instruction includes JSON example structure", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain("```json");
   });
 
   it("worker handoff instruction mentions file-writing tool requirement", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain("file-writing tool");
   });
 
   it("worker handoff instruction warns against stdout", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain("stdout");
     expect(output).toContain("Do NOT");
   });
 
   it("worker handoff instruction warns about trailing commas", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain("trailing commas");
   });
 
   it("worker handoff instruction mentions retry consequence", () => {
-    const output = renderHandoffInstruction(WORK_PHASE_FIELDS, testPath);
+    const output = renderHandoffInstruction(WORK_STEP_FIELDS, testPath);
     expect(output).toContain("retried");
   });
 

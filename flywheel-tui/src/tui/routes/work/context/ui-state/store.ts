@@ -26,7 +26,7 @@ function createInitialState(planName: string): WorkState {
     outputLines: [],
     outputBlocks: [],
     approvalState: { pending: false },
-    selectedPhaseIndex: 0,
+    selectedStepIndex: 0,
     scrollOffset: 0,
     visibleItemCount: 10,
   };

@@ -10,7 +10,7 @@
 
 import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "../schemas/dispatcher";
 import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
-import type { StageContext } from "../controller/stage-context";
+import type { StepContext } from "../controller/step-context";
 import { parseJsonPlan } from "../controller/plan-json-parser";
 import { parseContextFile } from "../controller/templates";
 
@@ -50,7 +50,7 @@ export interface AssemblerInput {
   /** Available context (conventions, standards, learnings) */
   availableContext: AvailableContext;
   /** Cumulative stage context from completed steps (optional) */
-  stageContext?: StageContext;
+  stepContext?: StepContext;
 }
 
 export interface AssembledInput {
@@ -104,9 +104,6 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
       // New step-based fields
       completed_steps: completedSteps,
       current_step_index: currentStepIndex,
-      // Legacy phase-based fields (backward compat)
-      completed_phases: completedSteps,
-      current_phase_index: currentStepIndex,
     },
     context: { files: contextFiles },
     plan_truncated: planTruncated,
@@ -117,7 +114,7 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     config: dispatcherConfig,
     session_budget: raw.sessionBudget,
     available_context: raw.availableContext,
-    stage_context: raw.stageContext,
+    step_context: raw.stepContext,
   };
 
   // Safety valve — if total exceeds 100KB, truncate available_context as last resort

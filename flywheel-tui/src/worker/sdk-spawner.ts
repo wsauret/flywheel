@@ -5,7 +5,7 @@
  * creates a session, and uses the HTTP API for messaging. SSE events are
  * parsed to stream output back through the standard onStdout callback.
  *
- * Server lifecycle: started on first spawn, reused across phases, cleaned up
+ * Server lifecycle: started on first spawn, reused across steps, cleaned up
  * via dispose().
  */
 

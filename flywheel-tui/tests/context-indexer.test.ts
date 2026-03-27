@@ -52,8 +52,8 @@ async function writeSolution(
 }
 
 const defaultQuery: ContextQuery = {
-  workflowType: "work",
-  phaseDescription: "implement the feature",
+  stepType: "work",
+  stepDescription: "implement the feature",
 };
 
 // ---------------------------------------------------------------------------
@@ -122,12 +122,12 @@ describe("ContextIndexer", () => {
       indexer.dispose();
     });
 
-    it("ContextQuery.workflowType accepts WorkflowType values", async () => {
+    it("ContextQuery.stepType accepts StepType values", async () => {
       const indexer = new ContextIndexer(projectCwd);
       await indexer.startIndexing();
       // All workflow types should be accepted
       for (const wt of ["work", "plan", "review", "ship", "debug", "research"] as const) {
-        const query: ContextQuery = { workflowType: wt, phaseDescription: "test" };
+        const query: ContextQuery = { stepType: wt, stepDescription: "test" };
         const ctx = indexer.getRelevantContext(query);
         expect(ctx).toHaveProperty("conventions");
       }
@@ -318,8 +318,8 @@ describe("ContextIndexer", () => {
       const indexer = new ContextIndexer(projectCwd);
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "fix docker issue",
+        stepType: "work",
+        stepDescription: "fix docker issue",
       });
       expect(ctx.learnings.length).toBeGreaterThanOrEqual(1);
       const learning = ctx.learnings.find((l) => l.name === "Docker Fix");
@@ -337,8 +337,8 @@ describe("ContextIndexer", () => {
       const indexer = new ContextIndexer(projectCwd);
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "run test suite",
+        stepType: "work",
+        stepDescription: "run test suite",
       });
       const learning = ctx.learnings.find((l) => l.name === "Summary Test");
       expect(learning).toBeDefined();
@@ -355,8 +355,8 @@ describe("ContextIndexer", () => {
       const indexer = new ContextIndexer(projectCwd);
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "handle empty cases",
+        stepType: "work",
+        stepDescription: "handle empty cases",
       });
       const learning = ctx.learnings.find((l) => l.name === "Empty Content");
       expect(learning).toBeDefined();
@@ -410,7 +410,7 @@ describe("ContextIndexer", () => {
   // -------------------------------------------------------------------------
 
   describe("tag extraction", () => {
-    it("extracts keywords from phase description for learnings query", async () => {
+    it("extracts keywords from step description for learnings query", async () => {
       // Write learnings with specific tags
       await writeSolution("docker-fix.md", {
         title: "Docker Fix",
@@ -428,8 +428,8 @@ describe("ContextIndexer", () => {
 
       // Query with "docker compose" should match docker-fix via tag extraction
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "fix docker compose configuration",
+        stepType: "work",
+        stepDescription: "fix docker compose configuration",
       });
       // Should find docker-related learnings
       const dockerLearning = ctx.learnings.find((l) => l.name === "Docker Fix");
@@ -449,8 +449,8 @@ describe("ContextIndexer", () => {
 
       // "the" is a stopword, "is" and "a" are too short — no tags should match
       const ctx = indexer.getRelevantContext({
-        workflowType: "work",
-        phaseDescription: "the is a",
+        stepType: "work",
+        stepDescription: "the is a",
       });
       // "the" tagged learning should NOT appear (stopword filtered out)
       const learning = ctx.learnings.find((l) => l.name === "The Fix");

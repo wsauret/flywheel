@@ -13,7 +13,7 @@ export const planResearchValidationCriteria =
   "Produces a .context.md file with file references and patterns";
 
 /**
- * Builds a prompt for the plan research phase (locator → analyzer dispatch).
+ * Builds a prompt for the plan research step (locator → analyzer dispatch).
  */
 export function buildPlanResearchPrompt(ctx: WorkflowStepContext): string {
   const files =

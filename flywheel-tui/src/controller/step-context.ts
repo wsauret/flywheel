@@ -1,10 +1,10 @@
 /**
- * StageContext — cumulative accumulator that grows as phases complete
+ * StepContext — cumulative accumulator that grows as steps complete
  * within a pipeline stage.
  *
- * After each phase, decisions, warnings, artifacts, issues, and skill
- * feedback are accumulated into the context. The dispatcher for phase N
- * receives the cumulative context from phases 1 through N-1.
+ * After each step, decisions, warnings, artifacts, issues, and skill
+ * feedback are accumulated into the context. The dispatcher for step N
+ * receives the cumulative context from steps 1 through N-1.
  *
  * Persisted to disk via atomicWrite so pipeline restart/resume can
  * reload accumulated state. Resets between pipeline stages.
@@ -17,46 +17,46 @@ import { writeFileAtomic } from "../utils/atomic-write";
 import { Log } from "../utils/log";
 import type { SkillFeedback } from "../schemas/handoff";
 
-const log = Log.create({ service: "stage-context" });
+const log = Log.create({ service: "step-context" });
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Relative path within .flywheel/ for stage context persistence */
-export const STAGE_CONTEXT_FILE = ".flywheel/stage-context.json";
+/** Relative path within .flywheel/ for step context persistence */
+export const STEP_CONTEXT_FILE = ".flywheel/step-context.json";
 
 // ---------------------------------------------------------------------------
 // Schemas
 // ---------------------------------------------------------------------------
 
-const PhaseDecisionsSchema = z.object({
-  phase_index: z.number(),
-  phase_title: z.string(),
+const StepDecisionsSchema = z.object({
+  step_index: z.number(),
+  step_title: z.string(),
   decisions: z.array(z.string()),
 });
 
-const PhaseWarningsSchema = z.object({
-  phase_index: z.number(),
-  phase_title: z.string(),
+const StepWarningsSchema = z.object({
+  step_index: z.number(),
+  step_title: z.string(),
   warnings: z.array(z.string()),
 });
 
-const PhaseArtifactsSchema = z.object({
-  phase_index: z.number(),
-  phase_title: z.string(),
+const StepArtifactsSchema = z.object({
+  step_index: z.number(),
+  step_title: z.string(),
   artifacts: z.array(z.string()),
 });
 
-const PhaseIssuesSchema = z.object({
-  phase_index: z.number(),
-  phase_title: z.string(),
+const StepIssuesSchema = z.object({
+  step_index: z.number(),
+  step_title: z.string(),
   issues: z.array(z.string()),
 });
 
 const SkillFeedbackEntrySchema = z.object({
-  phase_index: z.number(),
-  phase_title: z.string(),
+  step_index: z.number(),
+  step_title: z.string(),
   followedProcedure: z.boolean(),
   deviations: z.array(z.object({
     step: z.string(),
@@ -66,24 +66,24 @@ const SkillFeedbackEntrySchema = z.object({
   suggestedChanges: z.array(z.string()).optional(),
 });
 
-export const StageContextSchema = z.object({
-  cumulative_decisions: z.array(PhaseDecisionsSchema),
-  cumulative_warnings: z.array(PhaseWarningsSchema),
-  cumulative_artifacts: z.array(PhaseArtifactsSchema),
-  cumulative_issues: z.array(PhaseIssuesSchema),
+export const StepContextSchema = z.object({
+  cumulative_decisions: z.array(StepDecisionsSchema),
+  cumulative_warnings: z.array(StepWarningsSchema),
+  cumulative_artifacts: z.array(StepArtifactsSchema),
+  cumulative_issues: z.array(StepIssuesSchema),
   skill_feedback: z.array(SkillFeedbackEntrySchema),
-  phase_count: z.number().min(0),
+  step_count: z.number().min(0),
 });
 
-export type StageContext = z.infer<typeof StageContextSchema>;
+export type StepContext = z.infer<typeof StepContextSchema>;
 
 // ---------------------------------------------------------------------------
-// PhaseHandoffSummary — the per-phase data fed into the accumulator
+// StepHandoffSummary — the per-step data fed into the accumulator
 // ---------------------------------------------------------------------------
 
-export interface PhaseHandoffSummary {
-  phase_index: number;
-  phase_title: string;
+export interface StepHandoffSummary {
+  step_index: number;
+  step_title: string;
   decisions: string[];
   warnings: string[];
   artifacts: string[];
@@ -96,16 +96,16 @@ export interface PhaseHandoffSummary {
 // ---------------------------------------------------------------------------
 
 /**
- * Create a fresh empty StageContext.
+ * Create a fresh empty StepContext.
  */
-export function createEmptyStageContext(): StageContext {
+export function createEmptyStepContext(): StepContext {
   return {
     cumulative_decisions: [],
     cumulative_warnings: [],
     cumulative_artifacts: [],
     cumulative_issues: [],
     skill_feedback: [],
-    phase_count: 0,
+    step_count: 0,
   };
 }
 
@@ -114,61 +114,61 @@ export function createEmptyStageContext(): StageContext {
 // ---------------------------------------------------------------------------
 
 /**
- * Accumulate a completed phase's handoff data into the stage context.
+ * Accumulate a completed step's handoff data into the stage context.
  *
- * Returns a NEW StageContext object (does not mutate the input).
+ * Returns a NEW StepContext object (does not mutate the input).
  * Skips adding entries for empty arrays to keep the context compact.
  */
-export function accumulatePhaseIntoContext(
-  ctx: StageContext,
-  handoff: PhaseHandoffSummary,
-): StageContext {
-  const updated: StageContext = {
+export function accumulateStepIntoContext(
+  ctx: StepContext,
+  handoff: StepHandoffSummary,
+): StepContext {
+  const updated: StepContext = {
     cumulative_decisions: [...ctx.cumulative_decisions],
     cumulative_warnings: [...ctx.cumulative_warnings],
     cumulative_artifacts: [...ctx.cumulative_artifacts],
     cumulative_issues: [...ctx.cumulative_issues],
     skill_feedback: [...ctx.skill_feedback],
-    phase_count: ctx.phase_count + 1,
+    step_count: ctx.step_count + 1,
   };
 
   // Only add entries for non-empty data to keep context compact
   if (handoff.decisions.length > 0) {
     updated.cumulative_decisions.push({
-      phase_index: handoff.phase_index,
-      phase_title: handoff.phase_title,
+      step_index: handoff.step_index,
+      step_title: handoff.step_title,
       decisions: handoff.decisions,
     });
   }
 
   if (handoff.warnings.length > 0) {
     updated.cumulative_warnings.push({
-      phase_index: handoff.phase_index,
-      phase_title: handoff.phase_title,
+      step_index: handoff.step_index,
+      step_title: handoff.step_title,
       warnings: handoff.warnings,
     });
   }
 
   if (handoff.artifacts.length > 0) {
     updated.cumulative_artifacts.push({
-      phase_index: handoff.phase_index,
-      phase_title: handoff.phase_title,
+      step_index: handoff.step_index,
+      step_title: handoff.step_title,
       artifacts: handoff.artifacts,
     });
   }
 
   if (handoff.issues.length > 0) {
     updated.cumulative_issues.push({
-      phase_index: handoff.phase_index,
-      phase_title: handoff.phase_title,
+      step_index: handoff.step_index,
+      step_title: handoff.step_title,
       issues: handoff.issues,
     });
   }
 
   if (handoff.skill_feedback) {
     updated.skill_feedback.push({
-      phase_index: handoff.phase_index,
-      phase_title: handoff.phase_title,
+      step_index: handoff.step_index,
+      step_title: handoff.step_title,
       followedProcedure: handoff.skill_feedback.followedProcedure,
       deviations: handoff.skill_feedback.deviations,
       suggestedChanges: handoff.skill_feedback.suggestedChanges,
@@ -184,13 +184,13 @@ export function accumulatePhaseIntoContext(
 
 /**
  * Persist stage context to disk using atomicWrite.
- * File is written to `<projectCwd>/.flywheel/stage-context.json`.
+ * File is written to `<projectCwd>/.flywheel/step-context.json`.
  */
-export function persistStageContext(ctx: StageContext, projectCwd: string): void {
-  const filePath = path.resolve(projectCwd, STAGE_CONTEXT_FILE);
+export function persistStepContext(ctx: StepContext, projectCwd: string): void {
+  const filePath = path.resolve(projectCwd, STEP_CONTEXT_FILE);
   const content = JSON.stringify(ctx, null, 2);
   writeFileAtomic(filePath, content);
-  log.debug("stage context persisted", { phaseCount: ctx.phase_count, path: filePath });
+  log.debug("step context persisted", { stepCount: ctx.step_count, path: filePath });
 }
 
 /**
@@ -199,22 +199,22 @@ export function persistStageContext(ctx: StageContext, projectCwd: string): void
  *
  * Used on pipeline restart/resume to recover accumulated state.
  */
-export function loadStageContext(projectCwd: string): StageContext | null {
-  const filePath = path.resolve(projectCwd, STAGE_CONTEXT_FILE);
+export function loadStepContext(projectCwd: string): StepContext | null {
+  const filePath = path.resolve(projectCwd, STEP_CONTEXT_FILE);
 
   if (!fs.existsSync(filePath)) {
-    log.debug("no stage context file found", { path: filePath });
+    log.debug("no step context file found", { path: filePath });
     return null;
   }
 
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(raw);
-    const validated = StageContextSchema.parse(parsed);
-    log.info("stage context loaded from disk", { phaseCount: validated.phase_count });
+    const validated = StepContextSchema.parse(parsed);
+    log.info("step context loaded from disk", { stepCount: validated.step_count });
     return validated;
   } catch (err) {
-    log.warn("failed to load stage context, starting fresh", {
+    log.warn("failed to load step context, starting fresh", {
       path: filePath,
       error: err instanceof Error ? err.message : String(err),
     });

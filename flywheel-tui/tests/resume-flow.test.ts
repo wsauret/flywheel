@@ -1,5 +1,5 @@
 /**
- * Resume Flow Tests (Phase 4)
+ * Resume Flow Tests (Step 4)
  *
  * Tests the end-to-end resume path:
  * - appendOutputBlocks: delta-only append to existing blocks
@@ -36,7 +36,7 @@ function makeVariedSnapshots(): OutputSnapshot[] {
     { kind: "text", content: "hello", timestamp: 1000 },
     { kind: "tool", name: "read", detail: "file.ts", timestamp: 2000 },
     { kind: "agent", id: "a1", agentLabel: "worker", description: "doing work", status: "paused", children: [], timestamp: 3000 },
-    { kind: "system", message: "Phase started", timestamp: 4000 },
+    { kind: "system", message: "Step started", timestamp: 4000 },
     { kind: "contextGroup", tools: [{ kind: "tool", name: "grep", detail: "*.ts", timestamp: 5000 }], timestamp: 5000 },
   ];
 }
@@ -109,7 +109,7 @@ describe("appendOutputBlocks", () => {
 
     const delta: AnyBlock[] = [
       { kind: "tool", name: "read", detail: "file.ts", timestamp: 2 },
-      { kind: "system", message: "Phase started", timestamp: 3 },
+      { kind: "system", message: "Step started", timestamp: 3 },
     ];
     store.appendOutputBlocks(delta);
 
@@ -238,7 +238,7 @@ describe("injectOutputBlocks", () => {
     const blocks: AnyBlock[] = [
       { kind: "text", content: "hello", timestamp: 1000 },
       { kind: "tool", name: "read", detail: "file.ts", timestamp: 2000 },
-      { kind: "system", message: "Phase started", timestamp: 3000 },
+      { kind: "system", message: "Step started", timestamp: 3000 },
       { kind: "contextGroup", tools: [{ kind: "tool", name: "grep", detail: "*.ts", timestamp: 4000 }], timestamp: 4000 },
     ];
 
@@ -373,11 +373,11 @@ describe("OutputSnapshot → AnyBlock compatibility", () => {
   });
 
   it("system snapshots are identical to SystemBlock", () => {
-    const snapshot: OutputSnapshot = { kind: "system", message: "Phase started", timestamp: 3000 };
+    const snapshot: OutputSnapshot = { kind: "system", message: "Step started", timestamp: 3000 };
     const [block] = snapshotToBlocks([snapshot]) as AnyBlock[];
 
     expect(block.kind).toBe("system");
-    expect((block as SystemBlock).message).toBe("Phase started");
+    expect((block as SystemBlock).message).toBe("Step started");
   });
 });
 
@@ -425,7 +425,7 @@ describe("Resume result → store injection", () => {
         planPath: "plans/test.md",
         statePath: ".flywheel/state/test.state.md",
         contextPath: ".flywheel/context/test.ctx.md",
-        currentPhase: 2,
+        currentStep: 2,
         lastUpdated: new Date().toISOString(),
         workflowId: crypto.randomUUID(),
         sessionLifecycleState: "work:paused" as const,

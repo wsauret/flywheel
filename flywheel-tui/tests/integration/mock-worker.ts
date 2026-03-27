@@ -10,7 +10,7 @@ const prompt = process.argv.slice(2).join(" ");
 
 // Simulate some work output
 console.log(JSON.stringify({ type: "text", content: "Starting work..." }));
-console.log(JSON.stringify({ type: "text", content: `Processing phase: ${prompt.slice(0, 80)}...` }));
+console.log(JSON.stringify({ type: "text", content: `Processing step: ${prompt.slice(0, 80)}...` }));
 console.log(JSON.stringify({ type: "text", content: "Work completed." }));
 
 // Print completion marker

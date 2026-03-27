@@ -1,11 +1,11 @@
 import { describe, it, expect } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { PhaseInfo } from "../src/controller/phase-provider";
+import type { StepInfo } from "../src/controller/step-provider";
 import type { WorkflowStepContext } from "../src/prompts/index";
-import { buildWorkPhasePrompt } from "../src/prompts/work/phase-prompt";
-// buildPhasePrompt has been deleted — tests for PhaseInfo compatibility with
-// the static template are no longer needed since buildWorkPhasePrompt is the
+import { buildWorkStepPrompt } from "../src/prompts/work/step-prompt";
+// buildStepPrompt has been deleted — tests for StepInfo compatibility with
+// the static template are no longer needed since buildWorkStepPrompt is the
 // primary prompt builder for the work path.
 import { buildWorkflowPrompt } from "../src/workflows/prompt-builder";
 import { planWorkflow } from "../src/workflows/plan";
@@ -22,16 +22,16 @@ function readFixture(name: string): string {
 
 /**
  * The unified PromptBuilder type.
- * The execution loop will call: wrapCompletionInstruction(builder(phase, ctx))
+ * The execution loop will call: wrapCompletionInstruction(builder(step, ctx))
  */
-type PromptBuilder = (phase: PhaseInfo, ctx: WorkflowStepContext) => string;
+type PromptBuilder = (step: StepInfo, ctx: WorkflowStepContext) => string;
 
 // ---------------------------------------------------------------------------
 // PromptBuilder contract
 // ---------------------------------------------------------------------------
 
 describe("Unified PromptBuilder contract", () => {
-  const samplePhase: PhaseInfo = {
+  const sampleStep: StepInfo = {
     index: 0,
     title: "Setup project structure",
     description: "Create the initial project structure and configuration.\n\n- [ ] Create directory layout\n- [ ] Initialize configuration files",
@@ -40,7 +40,7 @@ describe("Unified PromptBuilder contract", () => {
   };
 
   const sampleCtx: WorkflowStepContext = {
-    planContent: samplePhase.description,
+    planContent: sampleStep.description,
     keyDecisions: ["Use TDD approach"],
     fileReferences: ["src/index.ts"],
     previousResult: undefined,
@@ -48,17 +48,17 @@ describe("Unified PromptBuilder contract", () => {
   };
 
   describe("Work path prompt builder", () => {
-    const workPromptBuilder: PromptBuilder = (phase, ctx) =>
-      buildWorkPhasePrompt({
+    const workPromptBuilder: PromptBuilder = (step, ctx) =>
+      buildWorkStepPrompt({
         ...ctx,
-        planContent: phase.description,
+        planContent: step.description,
       });
 
-    it("produces prompts using buildWorkPhasePrompt (rich template)", () => {
-      const prompt = workPromptBuilder(samplePhase, sampleCtx);
+    it("produces prompts using buildWorkStepPrompt (rich template)", () => {
+      const prompt = workPromptBuilder(sampleStep, sampleCtx);
 
       // Should include the rich template features
-      expect(prompt).toContain("# Work Phase Execution");
+      expect(prompt).toContain("# Work Step Execution");
       expect(prompt).toContain("## Task");
       expect(prompt).toContain("TDD Cycle");
       expect(prompt).toContain("Verification Protocol");
@@ -66,7 +66,7 @@ describe("Unified PromptBuilder contract", () => {
     });
 
     it("receives keyDecisions and fileReferences from context", () => {
-      const prompt = workPromptBuilder(samplePhase, sampleCtx);
+      const prompt = workPromptBuilder(sampleStep, sampleCtx);
 
       expect(prompt).toContain("Use TDD approach");
       expect(prompt).toContain("src/index.ts");
@@ -75,16 +75,16 @@ describe("Unified PromptBuilder contract", () => {
     it("receives previousResult when available", () => {
       const ctxWithPrev: WorkflowStepContext = {
         ...sampleCtx,
-        previousResult: "Previous phase completed successfully",
+        previousResult: "Previous step completed successfully",
       };
 
-      const prompt = workPromptBuilder(samplePhase, ctxWithPrev);
-      expect(prompt).toContain("Previous Phase Result");
-      expect(prompt).toContain("Previous phase completed successfully");
+      const prompt = workPromptBuilder(sampleStep, ctxWithPrev);
+      expect(prompt).toContain("Previous Step Result");
+      expect(prompt).toContain("Previous step completed successfully");
     });
 
     it("receives projectCwd", () => {
-      const prompt = workPromptBuilder(samplePhase, sampleCtx);
+      const prompt = workPromptBuilder(sampleStep, sampleCtx);
       expect(prompt).toContain("/tmp/test-project");
     });
   });
@@ -184,24 +184,24 @@ describe("Unified PromptBuilder contract", () => {
         ...sampleCtx,
         extra: { handoffPath: "/tmp/.flywheel/handoffs/abc-123.json" },
       };
-      const prompt = buildWorkPhasePrompt({ ...ctxWithHandoff, planContent: samplePhase.description });
+      const prompt = buildWorkStepPrompt({ ...ctxWithHandoff, planContent: sampleStep.description });
       expect(prompt).toContain("## Handoff Instructions");
       expect(prompt).toContain("/tmp/.flywheel/handoffs/abc-123.json");
       expect(prompt).not.toContain("<promise>COMPLETE</promise>");
     });
 
     it("falls back to old Completion section when no handoffPath", () => {
-      const prompt = buildWorkPhasePrompt({ ...sampleCtx, planContent: samplePhase.description });
+      const prompt = buildWorkStepPrompt({ ...sampleCtx, planContent: sampleStep.description });
       expect(prompt).toContain("## Completion");
       expect(prompt).not.toContain("## Handoff Instructions");
     });
 
-    it("uses only work-phase field set (summary, artifacts, verification, etc.)", () => {
+    it("uses only work-step field set (summary, artifacts, verification, etc.)", () => {
       const ctxWithHandoff: WorkflowStepContext = {
         ...sampleCtx,
         extra: { handoffPath: "/tmp/handoff.json" },
       };
-      const prompt = buildWorkPhasePrompt({ ...ctxWithHandoff, planContent: samplePhase.description });
+      const prompt = buildWorkStepPrompt({ ...ctxWithHandoff, planContent: sampleStep.description });
       expect(prompt).toContain("**summary**");
       expect(prompt).toContain("**artifacts**");
       expect(prompt).toContain("**verification**");
@@ -210,9 +210,9 @@ describe("Unified PromptBuilder contract", () => {
     });
   });
 
-  describe("PhaseInfo compatibility", () => {
-    it("work builder handles phases with steps", () => {
-      const phase: PhaseInfo = {
+  describe("StepInfo compatibility", () => {
+    it("work builder handles steps with steps", () => {
+      const step: StepInfo = {
         index: 0,
         title: "Test",
         description: "Build something",
@@ -221,17 +221,17 @@ describe("Unified PromptBuilder contract", () => {
       };
 
       const ctx: WorkflowStepContext = {
-        planContent: phase.description,
+        planContent: step.description,
         keyDecisions: [],
         fileReferences: [],
       };
 
-      const prompt = buildWorkPhasePrompt(ctx);
+      const prompt = buildWorkStepPrompt(ctx);
       expect(prompt).toContain("Build something");
     });
 
-    it("work builder handles phases without steps", () => {
-      const phase: PhaseInfo = {
+    it("work builder handles steps without steps", () => {
+      const step: StepInfo = {
         index: 0,
         title: "Test",
         description: "Build something",
@@ -240,17 +240,17 @@ describe("Unified PromptBuilder contract", () => {
       };
 
       const ctx: WorkflowStepContext = {
-        planContent: phase.description,
+        planContent: step.description,
         keyDecisions: [],
         fileReferences: [],
       };
 
-      const prompt = buildWorkPhasePrompt(ctx);
+      const prompt = buildWorkStepPrompt(ctx);
       expect(prompt).toContain("Build something");
     });
 
-    it("work builder handles phases without steps (no static template needed)", () => {
-      const phase: PhaseInfo = {
+    it("work builder handles steps without steps (no static template needed)", () => {
+      const step: StepInfo = {
         index: 0,
         title: "Test",
         description: "Build something",
@@ -259,13 +259,13 @@ describe("Unified PromptBuilder contract", () => {
       };
 
       const ctx: WorkflowStepContext = {
-        planContent: phase.description,
+        planContent: step.description,
         keyDecisions: [],
         fileReferences: [],
       };
 
-      // buildWorkPhasePrompt is the primary builder; buildPhasePrompt was removed
-      const prompt = buildWorkPhasePrompt(ctx);
+      // buildWorkStepPrompt is the primary builder; buildStepPrompt was removed
+      const prompt = buildWorkStepPrompt(ctx);
       expect(prompt).toContain("Build something");
     });
   });

@@ -516,7 +516,7 @@ describe("createSessionManager factory", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Config injection + budget initialization (Phase 3)
+// Config injection + budget initialization (Step 3)
 // ---------------------------------------------------------------------------
 
 describe("SessionManager config injection", () => {

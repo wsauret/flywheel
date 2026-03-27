@@ -5,7 +5,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Queue step progress info (replaces StageProgressInfo)
+// Queue step progress info (replaces StepProgressInfo)
 // ---------------------------------------------------------------------------
 
 export interface QueueStepProgressInfo {
@@ -41,21 +41,21 @@ export function formatQueueStepName(info: QueueStepProgressInfo | null | undefin
 // Legacy stage progress info (kept for backward compatibility in tests)
 // ---------------------------------------------------------------------------
 
-export interface StageProgressInfo {
-  stage: number;
+export interface StepProgressInfo {
+  step: number;
   total: number;
-  stageName: string;
+  stepName: string;
 }
 
 /**
  * Format a stage progress indicator string.
  *
- * @example formatStageProgress({ stage: 1, total: 3, stageName: "plan" }) → "Plan (1/3)"
+ * @example formatStepProgress({ step: 1, total: 3, stepName: "plan" }) → "Plan (1/3)"
  */
-export function formatStageProgress(info: StageProgressInfo | null | undefined): string {
-  if (!info || !info.stage || !info.total) return "";
-  const name = info.stageName.charAt(0).toUpperCase() + info.stageName.slice(1);
-  return `${name} (${info.stage}/${info.total})`;
+export function formatStepProgress(info: StepProgressInfo | null | undefined): string {
+  if (!info || !info.step || !info.total) return "";
+  const name = info.stepName.charAt(0).toUpperCase() + info.stepName.slice(1);
+  return `${name} (${info.step}/${info.total})`;
 }
 
 // ---------------------------------------------------------------------------

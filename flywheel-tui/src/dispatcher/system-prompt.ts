@@ -20,12 +20,12 @@ export function buildTruncationNotes(input: {
   const notes: string[] = [];
   if (input.plan_truncated) {
     notes.push(
-      "- The plan content has been truncated to fit within budget. Some phases or step details may be incomplete.",
+      "- The plan content has been truncated to fit within budget. Some steps or step details may be incomplete.",
     );
   }
   if (input.history_truncated) {
     notes.push(
-      "- The execution history has been truncated. Older completed phases may be missing.",
+      "- The execution history has been truncated. Older completed steps may be missing.",
     );
   }
 
@@ -35,13 +35,13 @@ export function buildTruncationNotes(input: {
 }
 
 export function buildDispatcherSystemPrompt(): string {
-  return `You are a prompt engineering specialist for the flywheel workflow system. You receive a workflow plan, execution state, and context, then craft an optimal task description for a worker AI to execute the current phase.
+  return `You are a prompt engineering specialist for the flywheel workflow system. You receive a workflow plan, execution state, and context, then craft an optimal task description for a worker AI to execute the current step.
 
 ## Input
 
 JSON object with:
-- \`plan.phases[]\`: Phases with name and steps
-- \`state.completed_phases[]\`, \`state.current_phase_index\`: Execution progress (0-based)
+- \`plan.steps[]\`: Steps with name and steps
+- \`state.completed_steps[]\`, \`state.current_step_index\`: Execution progress (0-based)
 - \`context.files[]\`: Relevant file paths
 - \`plan_truncated\`, \`history_truncated\`: Whether content was trimmed
 - \`workflow_id\`: Execution ID for traceability
@@ -62,7 +62,7 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 \`\`\`
 {
   "schema_version": 1,
-  "phase_index": <number>,
+  "step_index": <number>,
   "task_content": <string>,        // WHAT to accomplish — goal, file paths, steps. No behavioral instructions.
   "context_files": [<string>],     // Files worker can read on demand
   "context_to_inline": [<string>], // (optional) Paths from available_context to inject; most critical first
@@ -74,7 +74,7 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
   },
   "reasoning": <string>,           // (optional) Your prompt strategy rationale
   "warnings": [<string>],          // (optional) risks or concerns for this step
-  "session_name": <string>,        // (optional) 2-5 word task summary, first phase only
+  "session_name": <string>,        // (optional) 2-5 word task summary, first step only
   "worker_config": {               // (optional) Override defaults when needed
     "model_override": <string|null>,
     "timeout_minutes": <number>,
@@ -93,15 +93,15 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 1. \`task_content\` describes WHAT, not HOW. Include the goal, specific file paths, and step-by-step guidance. Do NOT include behavioral instructions — those come from system templates.
 2. Include all relevant file paths in \`context_files\`.
 3. Output valid JSON only.
-4. \`validation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of phases (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
+4. \`validation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of steps (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
 
 ## Example
 
 \`\`\`json
 {
   "schema_version": 1,
-  "phase_index": 2,
-  "task_content": "Implement pagination for the GET /users endpoint.\\n\\n1. Read src/routes/users.ts and add page/limit query parameters (default page=1, limit=20).\\n2. Update the database query in src/db/queries.ts to support OFFSET and LIMIT.\\n3. Return paginated response with { data, total, page, limit } shape.\\n4. Add tests in tests/routes/users.test.ts covering: default pagination, custom page/limit, out-of-range page returns empty array.\\n\\nThe User model is already defined in src/models/user.ts (from phase 1). All 5 existing model tests pass.",
+  "step_index": 2,
+  "task_content": "Implement pagination for the GET /users endpoint.\\n\\n1. Read src/routes/users.ts and add page/limit query parameters (default page=1, limit=20).\\n2. Update the database query in src/db/queries.ts to support OFFSET and LIMIT.\\n3. Return paginated response with { data, total, page, limit } shape.\\n4. Add tests in tests/routes/users.test.ts covering: default pagination, custom page/limit, out-of-range page returns empty array.\\n\\nThe User model is already defined in src/models/user.ts (from step 1). All 5 existing model tests pass.",
   "context_files": ["src/routes/users.ts", "src/db/queries.ts", "src/models/user.ts", "tests/routes/users.test.ts"],
   "context_to_inline": ["docs/standards/api.md"],
   "validation_criteria": {
@@ -114,8 +114,8 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
     "custom_checks": ["Run full test suite — zero failures"],
     "required_outputs": ["src/routes/users.ts", "tests/routes/users.test.ts"]
   },
-  "reasoning": "Phase 1 completed models successfully. Inlining API standards since they govern endpoint design. Budget is healthy (8 invocations left) so no constraints needed.",
-  "warnings": ["Previous phase modified src/db/queries.ts — verify no conflicts before editing."],
+  "reasoning": "Step 1 completed models successfully. Inlining API standards since they govern endpoint design. Budget is healthy (8 invocations left) so no constraints needed.",
+  "warnings": ["Previous step modified src/db/queries.ts — verify no conflicts before editing."],
   "session_name": "REST API Pagination",
   "worker_config": {
     "timeout_minutes": 30

@@ -11,8 +11,8 @@ import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
 function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): DispatcherDecisionHandoff {
   return {
     schema_version: 1,
-    phase_index: 0,
-    task_content: "Execute the setup phase by creating directory layout",
+    step_index: 0,
+    task_content: "Execute the setup step by creating directory layout",
     context_files: ["src/index.ts"],
     validation_criteria: {
       acceptance_criteria: ["Tests pass"],
@@ -20,15 +20,15 @@ function validHandoff(overrides?: Partial<DispatcherDecisionHandoff>): Dispatche
       custom_checks: [],
       required_outputs: [],
     },
-    reasoning: "Standard setup phase execution",
+    reasoning: "Standard setup step execution",
     ...overrides,
   };
 }
 
 function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherInput {
   return {
-    plan: { phases: [{ name: "Phase 1", steps: [{ description: "step 1" }] }] },
-    state: { completed_phases: [], current_phase_index: 0 },
+    plan: { steps: [{ name: "Step 1", steps: [{ description: "step 1" }] }] },
+    state: { completed_steps: [], current_step_index: 0 },
     context: { files: [] },
     plan_truncated: false,
     history_truncated: false,
@@ -212,14 +212,14 @@ describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
     const result = await transport.invoke(baseDispatcherInput());
 
     expect(result.task_content).toBe("From handoff file");
-    expect(result.phase_index).toBe(0);
+    expect(result.step_index).toBe(0);
     expect(result.context_files).toEqual(["src/index.ts"]);
   });
 
   it("maps handoff fields correctly", async () => {
     const handoff = validHandoff({
-      phase_index: 2,
-      task_content: "Phase 3 task",
+      step_index: 2,
+      task_content: "Step 3 task",
       context_files: ["a.ts", "b.ts"],
       session_name: "test-session",
     });
@@ -230,8 +230,8 @@ describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
     const transport = new SdkTransport();
     const result = await transport.invoke(baseDispatcherInput());
 
-    expect(result.phase_index).toBe(2);
-    expect(result.task_content).toBe("Phase 3 task");
+    expect(result.step_index).toBe(2);
+    expect(result.task_content).toBe("Step 3 task");
     expect(result.context_files).toEqual(["a.ts", "b.ts"]);
     expect(result.session_name).toBe("test-session");
   });
@@ -444,10 +444,10 @@ describe("Auto-detect: never uses SDK for claude engine", () => {
 
     const handoff = {
       schema_version: 1,
-      phase_index: 0,
-      task_content: "Execute the setup phase by creating directory layout",
+      step_index: 0,
+      task_content: "Execute the setup step by creating directory layout",
       context_files: ["src/index.ts"],
-      reasoning: "Standard setup phase execution",
+      reasoning: "Standard setup step execution",
     };
 
     const mockSpawner: ProcessSpawner = {

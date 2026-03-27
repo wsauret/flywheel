@@ -6,7 +6,7 @@ import {
 } from "../src/tui/components/session-orchestrator";
 import type { Session } from "../src/schemas/session";
 import type { OutputSnapshot } from "../src/schemas/output";
-import type { CompletedStepResult } from "../src/controller/workflow-pipeline";
+import type { CompletedStepResult } from "../src/controller/queue-types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,7 +31,7 @@ function minimalSession(overrides?: Partial<Session>): Session {
 function makeFakeSnapshots(): OutputSnapshot[] {
   return [
     { kind: "text", content: "Hello world", timestamp: Date.now() },
-    { kind: "system", message: "Phase 1 started", timestamp: Date.now() },
+    { kind: "system", message: "Step 1 started", timestamp: Date.now() },
   ];
 }
 
@@ -200,13 +200,13 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: CompletedStepResult[] = [
+    const stepResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "review", completed: true },
       { workflow: "ship", completed: true },
     ];
 
-    await orchestrator.handleAutoArchive("session-1", stageResults);
+    await orchestrator.handleAutoArchive("session-1", stepResults);
 
     expect(calls).toContain("manager.updateState:session-1:completed");
     expect(calls).toContain("manager.archive:session-1");
@@ -218,12 +218,12 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: CompletedStepResult[] = [
+    const stepResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "review", completed: true },
     ];
 
-    await orchestrator.handleAutoArchive("session-1", stageResults);
+    await orchestrator.handleAutoArchive("session-1", stepResults);
 
     expect(calls).toContain("manager.updateState:session-1:completed");
     expect(calls).not.toContain("manager.archive:session-1");
@@ -235,12 +235,12 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: CompletedStepResult[] = [
+    const stepResults: CompletedStepResult[] = [
       { workflow: "work", completed: true },
       { workflow: "ship", completed: false, reason: "cancelled" },
     ];
 
-    await orchestrator.handleAutoArchive("session-1", stageResults);
+    await orchestrator.handleAutoArchive("session-1", stepResults);
 
     expect(calls).toContain("manager.updateState:session-1:completed");
     expect(calls).not.toContain("manager.archive:session-1");
@@ -252,11 +252,11 @@ describe("SessionOrchestrator.handleAutoArchive", () => {
     deps.worktreeManager = undefined;
     const orchestrator = createSessionOrchestrator(deps);
 
-    const stageResults: CompletedStepResult[] = [
+    const stepResults: CompletedStepResult[] = [
       { workflow: "ship", completed: true },
     ];
 
-    await orchestrator.handleAutoArchive("session-1", stageResults);
+    await orchestrator.handleAutoArchive("session-1", stepResults);
 
     expect(calls).toContain("manager.updateState:session-1:completed");
     expect(calls).toContain("manager.archive:session-1");

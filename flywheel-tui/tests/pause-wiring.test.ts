@@ -1,5 +1,5 @@
 /**
- * Pause Wiring Tests (Phase 2)
+ * Pause Wiring Tests (Step 2)
  *
  * Tests the gap where pausePipeline() cannot persist state because:
  * 1. No Session exists (startPipeline never calls manager.create())
@@ -149,7 +149,7 @@ describe("Pause wiring — output flusher integration", () => {
 
     const blocks = [
       { kind: "text" as const, content: "output before pause", timestamp: Date.now() },
-      { kind: "system" as const, message: "phase completed", timestamp: Date.now() },
+      { kind: "system" as const, message: "step completed", timestamp: Date.now() },
     ];
 
     const flusher = persistence.createFlusher(() => blocks, { intervalMs: 60000 });
@@ -187,28 +187,28 @@ describe("Pause wiring — output flusher integration", () => {
     expect((loaded[0] as any).content).toBe("preserved");
   });
 
-  it("flusher schedule + flush works with phase:completed event pattern", async () => {
+  it("flusher schedule + flush works with step:completed event pattern", async () => {
     const baseDir = makeTmpDir();
     const sessionId = crypto.randomUUID();
     const persistence = createOutputPersistence({ sessionId, baseDir });
 
     let currentBlocks = [
-      { kind: "text" as const, content: "phase-1-output", timestamp: Date.now() },
+      { kind: "text" as const, content: "step-1-output", timestamp: Date.now() },
     ];
 
     const flusher = persistence.createFlusher(() => currentBlocks, { intervalMs: 20 });
 
-    // Simulate phase:completed event triggering flush
+    // Simulate step:completed event triggering flush
     flusher.schedule();
     await flusher.flush();
 
-    // Update blocks (next phase)
+    // Update blocks (next step)
     currentBlocks = [
       ...currentBlocks,
-      { kind: "text" as const, content: "phase-2-output", timestamp: Date.now() },
+      { kind: "text" as const, content: "step-2-output", timestamp: Date.now() },
     ];
 
-    // Another phase completed — schedule + flush for the new data
+    // Another step completed — schedule + flush for the new data
     flusher.schedule();
     await flusher.flush();
 

@@ -1,25 +1,23 @@
 /**
- * Pipeline Completion Handler
+ * Queue Completion Handler
  *
  * Extracted from flywheel-shell.tsx so it can be unit-tested without
  * rendering a SolidJS component. Handles:
  *
  * - Flushing and disposing the output flusher
- * - Calling orchestrator.handleAutoArchive() when ship stage completed
+ * - Calling orchestrator.handleAutoArchive() when ship step completed
  * - Transitioning non-ship completions to work:paused (resumable)
  * - Showing toast notification on auto-archive
  *
- * Only a pipeline that completes the ship stage (i.e. all possible stages)
- * transitions to "completed". Partial pipelines (plan-only, plan+work,
+ * Only a queue that completes a ship step (i.e. all possible steps)
+ * transitions to "completed". Partial queues (plan-only, plan+work,
  * plan+work+review) leave the session in work:paused so it's resumable.
- *
- * Phase 7 — Auto-Archive on Ship.
  */
 
 import type {
-  PipelineResult,
+  QueueResult,
   CompletedStepResult,
-} from "../../controller/workflow-pipeline";
+} from "../../controller/queue-types";
 import type { SessionLifecycleState } from "../../session/state-machine";
 import { safeUpdateState } from "../../session/safe-transition";
 
@@ -27,8 +25,8 @@ import { safeUpdateState } from "../../session/safe-transition";
 // Types
 // ---------------------------------------------------------------------------
 
-/** Dependencies injected into handlePipelineCompletion. */
-export interface PipelineCompletionDeps {
+/** Dependencies injected into handleQueueCompletion. */
+export interface QueueCompletionDeps {
   orchestrator: {
     handleAutoArchive(
       id: string,
@@ -42,25 +40,27 @@ export interface PipelineCompletionDeps {
   refreshList: () => void;
 }
 
+/** @deprecated Use QueueCompletionDeps instead. */
+export type PipelineCompletionDeps = QueueCompletionDeps;
+
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
 /**
- * Handle pipeline completion: flush output, auto-archive if ship completed,
- * or transition to work:paused for partial pipelines (no ship).
+ * Handle queue completion: flush output, auto-archive if ship completed,
+ * or transition to work:paused for partial queues (no ship).
  *
- * Called from the shell's `queueMicrotask` block after `pipeline.run()` resolves.
+ * Called from the shell's `queueMicrotask` block after `stepExecutor.run()` resolves.
  *
  * Resilient to state transition errors: if the session is stuck in an
  * intermediate state (e.g., "new" because the startup transitions failed),
  * this handler chains through the required intermediate states rather than
- * throwing. This prevents the "Invalid state transition: new -> work:paused"
- * error that was observed in E2E testing.
+ * throwing.
  */
-export async function handlePipelineCompletion(
-  result: PipelineResult,
-  deps: PipelineCompletionDeps,
+export async function handleQueueCompletion(
+  result: QueueResult,
+  deps: QueueCompletionDeps,
 ): Promise<void> {
   // 1. Always flush and dispose the flusher
   if (deps.flusher) {
@@ -75,19 +75,19 @@ export async function handlePipelineCompletion(
   // 2. Bail if no session ID
   if (!deps.sessionId) return;
 
-  // 3. Only process completed pipelines — interrupted/failed ones leave state as-is
+  // 3. Only process completed queues — interrupted/failed ones leave state as-is
   if (!result.completed) return;
 
-  // 4. Check if ship stage is present and completed
-  const hasShipCompleted = result.stageResults.some(
-    (r) => r.workflow === "ship" && r.completed,
+  // 4. Check if ship step is present and completed
+  const hasShipCompleted = result.stepResults.some(
+    (r: CompletedStepResult) => r.workflow === "ship" && r.completed,
   );
 
   if (hasShipCompleted) {
     // Auto-archive: orchestrator handles completed → archived + worktree cleanup
     await deps.orchestrator.handleAutoArchive(
       deps.sessionId,
-      result.stageResults,
+      result.stepResults,
     );
     deps.toast.show({
       message: "Session shipped and archived",
@@ -95,8 +95,6 @@ export async function handlePipelineCompletion(
     });
   } else {
     // Queue completed successfully but no ship step — mark as completed.
-    // Uses safeUpdateState to handle sessions stuck in intermediate states
-    // (e.g., "new") by chaining through required transitions.
     safeUpdateState(deps.updateState, deps.sessionId, "completed");
     deps.refreshList();
   }

@@ -4,7 +4,7 @@
  *
  * Displays a plan summary and offers Approve / Edit actions.
  * Supports both JSON plans (steps with acceptance criteria,
- * behavioral contract) and legacy markdown plans (phases).
+ * behavioral contract) and legacy markdown plans (steps).
  *
  * Pure logic (data preparation, action defs, types) lives in
  * `./plan-confirmation-logic.ts` for testability.
@@ -28,7 +28,6 @@ export {
   PLAN_ACTIONS,
   type PlanAction,
   type PlanSummaryDisplay,
-  type PhaseSummaryItem,
   type StepSummaryItem,
   type AssertionSummaryItem,
   type PlanActionDef,
@@ -103,7 +102,7 @@ export function PlanConfirmation(props: PlanConfirmationProps) {
         {/* Summary stats */}
         <box flexDirection="row" marginBottom={1} gap={3}>
           <text fg={theme.theme.text}>
-            {summary().phaseCount} step{summary().phaseCount !== 1 ? "s" : ""}
+            {summary().stepCount} step{summary().stepCount !== 1 ? "s" : ""}
           </text>
           <text fg={theme.theme.text}>
             {summary().totalSteps} criteria
@@ -218,27 +217,8 @@ export function PlanConfirmation(props: PlanConfirmationProps) {
           </box>
         </Show>
 
-        {/* Legacy markdown phase list */}
-        <Show when={!summary().isJsonPlan && summary().phases.length > 0}>
-          <box flexDirection="column" marginBottom={1}>
-            <text fg={theme.theme.textMuted} attributes={1}>
-              Phases
-            </text>
-            <For each={summary().phases}>
-              {(phase, i) => (
-                <box paddingLeft={1}>
-                  <text fg={theme.theme.text}>
-                    {i() + 1}. {phase.title}
-                  </text>
-                  <text fg={theme.theme.textMuted}>
-                    {" "}
-                    ({phase.stepCount} step{phase.stepCount !== 1 ? "s" : ""})
-                  </text>
-                </box>
-              )}
-            </For>
-          </box>
-        </Show>
+        {/* Legacy markdown step list */}
+        {/* Legacy markdown plan rendering removed — only JSON plans remain */}
 
         {/* Issues */}
         <Show when={summary().issues.length > 0}>

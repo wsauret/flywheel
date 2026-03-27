@@ -17,7 +17,7 @@
 //
 // Terminology:
 //   Workflow  — named template generating an initial queue
-//   Step      — single unit of work (replaces "phase")
+//   Step      — single unit of work (replaces "step")
 //   Queue     — mutable, ordered list of steps
 // ---------------------------------------------------------------------------
 

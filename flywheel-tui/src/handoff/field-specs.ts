@@ -15,7 +15,7 @@ export interface HandoffFieldSpec {
 // Per-workflow field registries
 // ---------------------------------------------------------------------------
 
-export const WORK_PHASE_FIELDS: HandoffFieldSpec[] = [
+export const WORK_STEP_FIELDS: HandoffFieldSpec[] = [
   {
     key: "summary",
     description: "100-5000 char summary of what was done, decisions made, and current state",
@@ -24,7 +24,7 @@ export const WORK_PHASE_FIELDS: HandoffFieldSpec[] = [
   },
   {
     key: "artifacts",
-    description: "Files created, modified, and commands run during this phase",
+    description: "Files created, modified, and commands run during this step",
     example: '{"files_created": ["src/auth.ts"], "files_modified": ["src/app.ts"], "commands_run": ["bun test"]}',
   },
   {
@@ -72,7 +72,7 @@ export const PLAN_DRAFT_FIELDS: HandoffFieldSpec[] = [
   {
     key: "summary",
     description: "100-5000 char summary of the plan created, its scope, and approach",
-    example: '"Created a 4-phase plan for implementing the auth system..."',
+    example: '"Created a 4-step plan for implementing the auth system..."',
     required: true,
   },
   {
@@ -83,7 +83,7 @@ export const PLAN_DRAFT_FIELDS: HandoffFieldSpec[] = [
   {
     key: "decisions",
     description: "Key decisions made while drafting the plan",
-    example: '["Split into 4 phases for incremental delivery"]',
+    example: '["Split into 4 steps for incremental delivery"]',
   },
   {
     key: "warnings",
@@ -96,7 +96,7 @@ export const PLAN_REVIEW_FIELDS: HandoffFieldSpec[] = [
   {
     key: "summary",
     description: "100-5000 char summary of the plan review findings",
-    example: '"Reviewed the 4-phase auth plan. Found 2 open questions..."',
+    example: '"Reviewed the 4-step auth plan. Found 2 open questions..."',
     required: true,
   },
   {
@@ -227,7 +227,7 @@ export function renderHandoffInstruction(
 ): string {
   // Ensure summary is always included
   const hasSum = fields.some((f) => f.key === "summary");
-  const allFields = hasSum ? fields : [WORK_PHASE_FIELDS[0], ...fields];
+  const allFields = hasSum ? fields : [WORK_STEP_FIELDS[0], ...fields];
 
   const fieldLines = allFields.map((f) => {
     const req = f.required || f.key === "summary" ? " (REQUIRED)" : " (optional)";
@@ -238,7 +238,7 @@ export function renderHandoffInstruction(
 
   return `## Handoff Instructions
 
-**CRITICAL:** Before you finish, you MUST write a valid JSON handoff file. This is how the pipeline tracks your work. If you skip this step or produce invalid JSON, the pipeline will retry the entire phase.
+**CRITICAL:** Before you finish, you MUST write a valid JSON handoff file. This is how the pipeline tracks your work. If you skip this step or produce invalid JSON, the pipeline will retry the entire step.
 
 Write a JSON file to:
 \`${handoffPath}\`
@@ -261,7 +261,7 @@ ${fieldLines.join("\n\n")}
 
 1. The \`summary\` field is REQUIRED (100-5000 characters, single paragraph, no newlines).
 2. All other fields are optional but strongly encouraged — they improve downstream quality assessment.
-3. Do NOT include fields not listed above — unknown fields cause a validation error and the phase will be retried.
+3. Do NOT include fields not listed above — unknown fields cause a validation error and the step will be retried.
 4. Write the file using your file-writing tool (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
 5. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.`;
 }
@@ -294,7 +294,7 @@ Write a JSON file to:
 
 ### Field reference
 
-- **passed** (REQUIRED): Whether the phase output meets acceptance criteria. Boolean.
+- **passed** (REQUIRED): Whether the step output meets acceptance criteria. Boolean.
 - **reasoning** (REQUIRED): Explanation of the evaluation decision. String.
 - **suggestions** (REQUIRED): List of improvement suggestions. Empty array \`[]\` if none.
 - **confidence** (REQUIRED): Confidence in the verdict, 0.0 to 1.0. Number.
@@ -329,7 +329,7 @@ Write a JSON file to:
 \`\`\`json
 {
   "schema_version": 1,
-  "phase_index": 0,
+  "step_index": 0,
   "task_content": "Implement feature X according to the plan.",
   "context_files": ["src/foo.ts", "tests/foo.test.ts"],
   "validation_criteria": {
@@ -344,7 +344,7 @@ Write a JSON file to:
 ### Field reference
 
 - **schema_version** (REQUIRED): Must be \`1\`. Literal number.
-- **phase_index** (REQUIRED): Zero-based index of the phase being dispatched.
+- **step_index** (REQUIRED): Zero-based index of the step being dispatched.
 - **task_content** (REQUIRED): The task prompt to send to the worker.
 - **context_files** (REQUIRED): File paths the worker should reference. Array of strings.
 - **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance; 8 KB cap.

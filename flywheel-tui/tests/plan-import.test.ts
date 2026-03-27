@@ -90,7 +90,7 @@ describe("importPlan", () => {
       expect(result.status).toBe("ready");
       expect(result.steps).toHaveLength(2);
       expect(result.issues).toEqual([]);
-      expect(result.summary.phaseCount).toBe(2);
+      expect(result.summary.stepCount).toBe(2);
       expect(result.summary.totalSteps).toBe(4); // 2 + 2 acceptance criteria
       expect(result.summary.hasAcceptanceCriteria).toBe(true);
       expect(result.summary.contentHash).toBe(sha256(VALID_JSON_PLAN));
@@ -117,7 +117,7 @@ describe("importPlan", () => {
     it("summary contains step count, total criteria, criteria flag, and content hash", async () => {
       const result = await importPlan(VALID_JSON_PLAN);
 
-      expect(result.summary.phaseCount).toBe(2);
+      expect(result.summary.stepCount).toBe(2);
       expect(result.summary.totalSteps).toBe(4);
       expect(result.summary.hasAcceptanceCriteria).toBe(true);
       expect(result.summary.contentHash).toBe(sha256(VALID_JSON_PLAN));
@@ -216,10 +216,10 @@ describe("importPlan", () => {
       expect(result.summary.contentHash.length).toBe(64);
     });
 
-    it("summary counts steps as phaseCount and criteria as totalSteps", async () => {
+    it("summary counts steps as stepCount and criteria as totalSteps", async () => {
       const result = await importPlan(VALID_JSON_PLAN);
 
-      expect(result.summary.phaseCount).toBe(2);
+      expect(result.summary.stepCount).toBe(2);
       expect(result.summary.totalSteps).toBe(4);
       expect(result.summary.hasAcceptanceCriteria).toBe(true);
     });

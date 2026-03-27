@@ -53,7 +53,7 @@ export interface PlanImportResult {
   risks: string[];
   issues: string[];
   summary: {
-    phaseCount: number;
+    stepCount: number;
     totalSteps: number;
     hasAcceptanceCriteria: boolean;
     contentHash: string;
@@ -100,7 +100,7 @@ function importJsonPlan(rawContent: string): PlanImportResult {
       risks: [],
       issues: [`JSON plan validation failed: ${result.error}`],
       summary: {
-        phaseCount: 0,
+        stepCount: 0,
         totalSteps: 0,
         hasAcceptanceCriteria: false,
         contentHash,
@@ -120,7 +120,7 @@ function importJsonPlan(rawContent: string): PlanImportResult {
     risks: plan.risks,
     issues: [],
     summary: {
-      phaseCount: steps.length,
+      stepCount: steps.length,
       totalSteps: steps.reduce(
         (sum, s) => sum + s.acceptanceCriteria.length,
         0,

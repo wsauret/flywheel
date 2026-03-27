@@ -8,7 +8,7 @@ import {
   buildIterationBudgetInstruction,
   buildProjectContextSection,
 } from "../conventions.js";
-import { renderHandoffInstruction, WORK_PHASE_FIELDS } from "../../handoff/field-specs.js";
+import { renderHandoffInstruction, WORK_STEP_FIELDS } from "../../handoff/field-specs.js";
 import type { BoundariesConfig } from "../../config/loader.js";
 
 // ---------------------------------------------------------------------------
@@ -62,15 +62,15 @@ ${subsections.join("\n\n")}`;
 function completionSection(ctx: WorkflowStepContext): string {
   const handoffPath = ctx.extra?.handoffPath;
   if (typeof handoffPath === "string" && handoffPath.length > 0) {
-    return renderHandoffInstruction(WORK_PHASE_FIELDS, handoffPath);
+    return renderHandoffInstruction(WORK_STEP_FIELDS, handoffPath);
   }
   // Backward-compatible fallback when no handoffPath is available
   return `## Completion
 
-When the phase is done, provide:
+When the step is done, provide:
 - Summary of what was implemented
 - Evidence of verification (command outputs)
-- Any decisions made that affect future phases`;
+- Any decisions made that affect future steps`;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,9 +78,9 @@ When the phase is done, provide:
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a prompt for executing a single work phase (TDD, verification gates).
+ * Builds a prompt for executing a single work step (TDD, verification gates).
  */
-export function buildWorkPhasePrompt(ctx: WorkflowStepContext): string {
+export function buildWorkStepPrompt(ctx: WorkflowStepContext): string {
   const decisions =
     ctx.keyDecisions.length > 0
       ? ctx.keyDecisions.map((d) => `- ${d}`).join("\n")
@@ -92,7 +92,7 @@ export function buildWorkPhasePrompt(ctx: WorkflowStepContext): string {
       : "_No file references._";
 
   const previousOutput = ctx.previousResult
-    ? `## Previous Phase Result\n\n${ctx.previousResult}`
+    ? `## Previous Step Result\n\n${ctx.previousResult}`
     : "";
 
   const iterationBudget =
@@ -103,7 +103,7 @@ export function buildWorkPhasePrompt(ctx: WorkflowStepContext): string {
   const projectContext = buildProjectContextSection(ctx.extra);
   const boundariesSection = buildBoundariesSection(ctx.extra);
 
-  return `# Work Phase Execution
+  return `# Work Step Execution
 
 ## Task
 
@@ -111,7 +111,7 @@ ${ctx.planContent}
 
 ${previousOutput}
 
-## Key Decisions from Prior Phases
+## Key Decisions from Prior Steps
 
 ${decisions}
 
@@ -167,12 +167,12 @@ ${THREE_STRIKE_PROTOCOL}
 
 ## Shared Knowledge Library
 
-Before starting work, read any existing files in \`.flywheel/library/\` for context from prior phases:
+Before starting work, read any existing files in \`.flywheel/library/\` for context from prior steps:
 - \`environment.md\` — ports, env vars, service configuration
 - \`architecture.md\` — architectural decisions, component relationships, design patterns
 
-Before completing your phase, write any critical discoveries to \`.flywheel/library/\`:
-- Ports, environment variables, or service configuration that future phases need
+Before completing your step, write any critical discoveries to \`.flywheel/library/\`:
+- Ports, environment variables, or service configuration that future steps need
 - Architectural decisions or patterns that affect the broader system
 - Gotchas, workarounds, or non-obvious constraints discovered during implementation
 

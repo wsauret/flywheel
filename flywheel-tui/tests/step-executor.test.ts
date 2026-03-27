@@ -23,7 +23,7 @@ import {
   type HandoffReaderFn,
   type BudgetChecker,
   type PersistFn,
-  type StageContextAccumulator,
+  type StepContextAccumulator,
   type GateQuestionService,
 } from "../src/queue/executor";
 
@@ -166,7 +166,7 @@ function createRecordingPersist(): PersistFn & { calls: Queue[] } {
 }
 
 /** No-op stage context accumulator */
-function createNoopAccumulator(): StageContextAccumulator {
+function createNoopAccumulator(): StepContextAccumulator {
   return {
     accumulate: () => {},
     getContext: () => ({}),
@@ -174,7 +174,7 @@ function createNoopAccumulator(): StageContextAccumulator {
 }
 
 /** Recording stage context accumulator */
-function createRecordingAccumulator(): StageContextAccumulator & { accumulated: unknown[] } {
+function createRecordingAccumulator(): StepContextAccumulator & { accumulated: unknown[] } {
   const accumulated: unknown[] = [];
   return {
     accumulate: (data: unknown) => { accumulated.push(data); },
@@ -1339,18 +1339,18 @@ describe("VAL-EXEC-001: Steps execute natively without legacy bridge", () => {
     expect(evalCalls).toEqual([s1.id, s2.id]);
   });
 
-  test("no delegation to createStageLoop, ExecutionLoop, or PhaseExecutor", async () => {
+  test("no delegation to createStageLoop, ExecutionLoop, or StepExecutor", async () => {
     // This is a structural assertion — verified by code inspection and grep.
     // The executor calls dispatcher→worker→evaluator inline.
     // Verify by checking that each step goes through the full cycle.
-    const cycleSteps: Array<{ step: string; phase: string }> = [];
+    const cycleSteps: Array<{ step: string; step: string }> = [];
 
     const dispatcher: DispatcherFn = async (step) => {
-      cycleSteps.push({ step: step.id, phase: "dispatch" });
+      cycleSteps.push({ step: step.id, step: "dispatch" });
       return { prompt: "go", validationCriteria: null };
     };
     const worker: WorkerFn = async (step) => {
-      cycleSteps.push({ step: step.id, phase: "work" });
+      cycleSteps.push({ step: step.id, step: "work" });
       return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
     };
 
@@ -1362,8 +1362,8 @@ describe("VAL-EXEC-001: Steps execute natively without legacy bridge", () => {
 
     // Each step goes through dispatch→work in sequence (not via any bridge)
     expect(cycleSteps).toEqual([
-      { step: s1.id, phase: "dispatch" },
-      { step: s1.id, phase: "work" },
+      { step: s1.id, step: "dispatch" },
+      { step: s1.id, step: "work" },
     ]);
   });
 });
