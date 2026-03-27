@@ -1,0 +1,52 @@
+{
+  "milestone": "e2e-benchmarks",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "details": "4370 tests pass, 0 fail, 11924 expect() calls across 158 files in 17.59s" },
+    "typecheck": { "passed": true, "command": "bun run typecheck", "exitCode": 0 },
+    "lint": { "passed": true, "command": "N/A — no lint command configured in project", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added Git Ignore section to .factory/library/environment.md documenting that .flywheel/ is gitignored by parent monorepo .gitignore, requiring git add -f for files there",
+      "sourceFeature": "produce-benchmark-report"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Update e2e-tester skill to include guidance for long-running benchmark tasks vs quick automated tests. The skill's Work Procedure step 3 unconditionally says 'Write the E2E test script', but benchmark tasks (3-10 min per run, real API calls, subjective quality scoring) don't fit this pattern. Add a branch: if the task is benchmarking, allow interactive tmux sessions with documented manual steps instead of requiring a reusable script.",
+      "evidence": "Both e2e-full-mode-runs and e2e-sprint-mode-runs workers deviated from the skill procedure by running interactive tmux sessions instead of writing reusable scripts. Both noted this in skillFeedback.deviations and suggestedChanges.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Clarify in e2e-tester skill and mission AGENTS.md that direct tmux commands via Execute tool are acceptable (and preferred for simplicity) instead of using the tuistory skill for E2E testing. Both sprint and full mode workers used direct tmux and it worked fine.",
+      "evidence": "e2e-sprint-mode-runs worker: 9 occurrences of 'tmux send-keys' / 'tmux capture-pane' but zero tuistory invocations. skillFeedback noted 'tmux direct commands via Execute work perfectly fine and are simpler'. Same pattern in e2e-full-mode-runs.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "In the E2E Run Procedure section of mission AGENTS.md, explicitly recommend using FLYWHEEL_SKIP_APPROVAL_GATES=true env var when launching TUI for automated E2E runs, instead of only saying 'For HITL questions: select No, handle automatically'. The env var approach is cleaner and avoids timing issues with interactive HITL responses.",
+      "evidence": "Both e2e-full-mode-runs and e2e-sprint-mode-runs workers independently discovered and used FLYWHEEL_SKIP_APPROVAL_GATES=true. The env var is documented in the project AGENTS.md config table but not in the mission-level E2E procedure.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Consider adding a 'report-compiler' or 'documentation' skill for features that only produce markdown artifacts with no code changes. The backend-worker skill's TDD-focused procedure was irrelevant for the produce-benchmark-report task.",
+      "evidence": "produce-benchmark-report worker's skillFeedback.suggestedChanges: 'Backend-worker skill focuses on TDD code implementation but this feature was purely a documentation/report compilation task.'",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}

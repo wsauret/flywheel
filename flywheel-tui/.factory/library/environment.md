@@ -26,3 +26,7 @@ Key libraries: zod (schemas), solid-js (reactivity), @opentui/core + @opentui/so
 - `.flywheel/sessions/<id>.output.json` — output block snapshots
 - `.flywheel/handoffs/<invocationId>.json` — worker handoff files
 - `.flywheel/log/` — rotating log files (10 max)
+
+## Git Ignore
+
+The parent monorepo `.gitignore` includes `flywheel-tui/.flywheel/`, so files written under `.flywheel/` are not tracked by default. To commit files in `.flywheel/` (e.g., benchmark reports), use `git add -f <path>`. Prefer placing persistent artifacts in tracked directories like `tests/e2e/` instead.
