@@ -1,0 +1,58 @@
+{
+  "featureId": "misc-cleanup-broken-scripts",
+  "milestone": "misc-post-core",
+  "reviewedAt": "2026-03-27T14:30:00.000Z",
+  "commitId": "6c708e1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "reviewerVerdict": "pass",
+  "codeQualityIssues": [
+    {
+      "severity": "non_blocking",
+      "file": "src/queue/queue.ts:10, src/queue/templates.ts:20, src/queue/types.ts:10, src/tui/components/start-command.ts:10, src/tui/utils/format.ts:8, src/tui/components/shell-queue.ts:14",
+      "description": "Tautological comments '(replaces \"step\")' remain in 6 additional files beyond executor.ts and sprint.ts. These were created by the terminology unification find-replace that changed 'phase' → 'step' but left the parenthetical annotation intact, resulting in 'Step — single unit of work (replaces \"step\")'. The worker only fixed the two files explicitly named in the description (executor.ts and sprint.ts) but the same pattern exists in queue/queue.ts, queue/templates.ts, queue/types.ts, start-command.ts, format.ts, shell-queue.ts."
+    },
+    {
+      "severity": "non_blocking",
+      "file": "src/tui/components/flywheel-shell.tsx",
+      "description": "evaluatorTransport is resolved by resolveTransports() at lines 944 and 1477 but never used — it's destructured from the return value but not passed anywhere. The buildExecutorDeps function creates the evaluator via createTrustVerifyEvaluatorFn() directly instead. This is pre-existing dead code (also unused before this commit), but the refactoring was a good opportunity to clean it up."
+    },
+    {
+      "severity": "suggestion",
+      "file": "src/schemas/dispatcher.ts:34",
+      "description": "Stale comment '/** Plan steps (replaces steps). */' — same tautological pattern from terminology rename. Minor, but discovered during review."
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "target": "AGENTS.md",
+      "observation": "The configuration table in AGENTS.md documents max_retries but does not document max_revisions (added in config/loader.ts with default 1). Since the feature explicitly fixed a bug where max_retries was incorrectly used where max_revisions was needed, this config key distinction is important to document.",
+      "evidence": "AGENTS.md line 584 lists max_retries but no max_revisions row. Config schema at src/config/loader.ts:83 defines max_revisions with default 1 and FLYWHEEL_MAX_REVISIONS env var at line 263."
+    }
+  ],
+  "codeReview": {
+    "summary": "Clean, well-scoped refactoring that correctly addresses the core issues: (1) max_retries→max_revisions config bug fixed at all 4 occurrences in flywheel-shell.tsx, (2) ~150 lines of duplication between startQueueExecution and resumeSession consolidated into buildExecutorDeps factory function, (3) resume path sessionObjective fixed to use session.name (original description) instead of planPath, (4) tautological comments fixed in executor.ts and sprint.ts, (5) stale JSDoc in step-context.ts updated from 'pipeline stage' to 'queue execution', (6) stale step:started event name references updated in adapter files, (7) OnStepCompleteHook deduplicated into src/workflows/types.ts. Several items from the feature description were already completed by prior workers (broken integration scripts deleted, PipelineCompletionDeps removed, discoveredPlanPath removed), which the worker correctly identified and noted. The startWorkflow() store action was correctly left in place — it's used by ~80+ test call sites as a test utility, not dead production code.",
+    "issues": [
+      {
+        "file": "src/queue/queue.ts",
+        "line": 10,
+        "severity": "non_blocking",
+        "description": "Remaining tautological comment '(replaces \"step\")' not cleaned up"
+      },
+      {
+        "file": "src/queue/templates.ts",
+        "line": 20,
+        "severity": "non_blocking",
+        "description": "Remaining tautological comment '(replaces \"step\")' not cleaned up"
+      },
+      {
+        "file": "src/queue/types.ts",
+        "line": 10,
+        "severity": "non_blocking",
+        "description": "Remaining tautological comment '(replaces \"step\")' not cleaned up"
+      }
+    ]
+  },
+  "addressesFailureFrom": null,
+  "summary": "PASS. The feature correctly fixes the critical max_retries/max_revisions config bug (changing default from 3 transport retries to 1 evaluator revision), extracts 150+ duplicated lines into a shared buildExecutorDeps factory, fixes the resume path to use session.name instead of planPath for sessionObjective, deduplicates OnStepCompleteHook into a shared types file, and cleans up stale JSDoc/comments. All verification commands passed (typecheck clean, 4332 tests passing, zero stale references for WorkController, step:started, pipeline stage, PipelineCompletionDeps, discoveredPlanPath). Remaining non-blocking issues: 6 additional files still have tautological '(replaces step)' comments, and evaluatorTransport is resolved but unused (pre-existing)."
+}

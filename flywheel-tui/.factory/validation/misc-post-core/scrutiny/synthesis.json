@@ -1,0 +1,37 @@
+{
+  "milestone": "misc-post-core",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun test", "exitCode": 0, "summary": "4332 pass, 0 fail, 156 files" },
+    "typecheck": { "passed": true, "command": "bun run typecheck", "exitCode": 0 },
+    "lint": { "passed": true, "command": "N/A — no lint command configured in services.yaml", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add max_revisions to the Configuration table. It controls the evaluator revision cycle limit (default 1, env var FLYWHEEL_MAX_REVISIONS, range 0-5). This is distinct from max_retries which controls transport retries (default 3). The feature that fixed the max_retries/max_revisions confusion bug highlighted that this config key is undocumented.",
+      "evidence": "Config schema at src/config/loader.ts:83 defines max_revisions with default 1. Feature misc-cleanup-broken-scripts fixed a bug where max_retries (default 3) was incorrectly used for evaluator revision cycles instead of max_revisions (default 1).",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "6 files have tautological '(replaces \"step\")' comments from terminology unification",
+      "reason": "Non-blocking cosmetic issue. These are tautological comments in 5 src files (queue/queue.ts, queue/types.ts, queue/templates.ts, tui/components/start-command.ts, tui/components/shell-queue.ts) and 1 schema file (schemas/dispatcher.ts:34). They don't affect functionality and aren't worth documenting as shared knowledge — they're just leftover rename artifacts."
+    },
+    {
+      "observation": "evaluatorTransport is resolved but unused in flywheel-shell.tsx",
+      "reason": "Pre-existing dead code. The evaluator is created directly via createTrustVerifyEvaluatorFn() in buildExecutorDeps rather than through the transport. Non-blocking and not new to this milestone."
+    }
+  ],
+  "previousRound": null
+}
