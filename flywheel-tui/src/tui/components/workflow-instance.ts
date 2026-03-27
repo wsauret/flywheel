@@ -16,14 +16,14 @@ export function buildWorkflowInstance(
     : runtime?.kind === "running" ? "running" : "pending"
 
   const planPath = persisted?.planPath ?? runtime?.session?.planPath ?? null
-  const currentStage = runtime?.kind === "running" ? "work" : null
+  const currentStep = runtime?.kind === "running" ? "work" : null
   const workerPid = runtime?.kind === "running" ? (runtime as RunningRuntime).workerPid : null
 
   return {
     session_id: sessionId,
     status,
     plan_path: planPath,
-    current_step: currentStage,
+    current_step: currentStep,
     worker_pid: workerPid,
   }
 }

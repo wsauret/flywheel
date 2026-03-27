@@ -15,7 +15,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   handleQueueCompletion,
-  type PipelineCompletionDeps,
+  type QueueCompletionDeps,
 } from "../src/tui/components/queue-completion";
 import type { QueueResult, CompletedStepResult } from "../src/controller/queue-types";
 
@@ -33,13 +33,13 @@ function makeQueueResult(overrides?: Partial<QueueResult>): QueueResult {
   };
 }
 
-function makeMockDeps(overrides?: Partial<PipelineCompletionDeps>): {
-  deps: PipelineCompletionDeps;
+function makeMockDeps(overrides?: Partial<QueueCompletionDeps>): {
+  deps: QueueCompletionDeps;
   calls: string[];
 } {
   const calls: string[] = [];
 
-  const deps: PipelineCompletionDeps = {
+  const deps: QueueCompletionDeps = {
     orchestrator: {
       handleAutoArchive: async (id: string, results: CompletedStepResult[]) => {
         calls.push(`handleAutoArchive:${id}`);
@@ -308,7 +308,7 @@ describe("handleQueueCompletion — flusher lifecycle", () => {
 
   it("flushes before calling orchestrator (ordering)", async () => {
     const order: string[] = [];
-    const deps: PipelineCompletionDeps = {
+    const deps: QueueCompletionDeps = {
       orchestrator: {
         handleAutoArchive: async () => {
           order.push("archive");

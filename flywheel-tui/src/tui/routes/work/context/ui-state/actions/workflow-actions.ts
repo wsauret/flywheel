@@ -36,7 +36,7 @@ export function createWorkflowActions(ctx: StoreContext) {
       notifyImmediate();
     },
 
-    continueStage(planName: string): void {
+    continueStep(planName: string): void {
       const state = getState();
       setState({
         ...state,

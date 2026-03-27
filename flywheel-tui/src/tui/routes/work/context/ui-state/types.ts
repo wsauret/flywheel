@@ -16,8 +16,8 @@ export interface UIActions {
 
   // Workflow actions
   startWorkflow(planName: string): void;
-  /** Update metadata for a new pipeline stage without wiping output. */
-  continueStage(planName: string): void;
+  /** Update metadata for a new queue step without wiping output. */
+  continueStep(planName: string): void;
   stopWorkflow(status: "completed" | "interrupted"): void;
   setError(reason: string): void;
   clearError(): void;

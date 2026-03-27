@@ -15,7 +15,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   handleQueueCompletion,
-  type PipelineCompletionDeps,
+  type QueueCompletionDeps,
 } from "../src/tui/components/queue-completion";
 import {
   createSessionOrchestrator,
@@ -64,10 +64,10 @@ function createStatefulMockManager(initialState: SessionLifecycleState = "new") 
 }
 
 function makeMockDeps(
-  overrides?: Partial<PipelineCompletionDeps>,
-): { deps: PipelineCompletionDeps; calls: string[] } {
+  overrides?: Partial<QueueCompletionDeps>,
+): { deps: QueueCompletionDeps; calls: string[] } {
   const calls: string[] = [];
-  const deps: PipelineCompletionDeps = {
+  const deps: QueueCompletionDeps = {
     orchestrator: {
       handleAutoArchive: async (id: string, _results: CompletedStepResult[]) => {
         calls.push(`handleAutoArchive:${id}`);

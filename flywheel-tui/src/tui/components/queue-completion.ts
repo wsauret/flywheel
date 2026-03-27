@@ -40,9 +40,6 @@ export interface QueueCompletionDeps {
   refreshList: () => void;
 }
 
-/** @deprecated Use QueueCompletionDeps instead. */
-export type PipelineCompletionDeps = QueueCompletionDeps;
-
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------

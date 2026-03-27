@@ -16,7 +16,7 @@ import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
 } from "../src/tui/components/session-orchestrator";
-import { handleQueueCompletion, type PipelineCompletionDeps } from "../src/tui/components/queue-completion";
+import { handleQueueCompletion, type QueueCompletionDeps } from "../src/tui/components/queue-completion";
 import { isResumable, isValidTransition, VALID_TRANSITIONS } from "../src/session/state-machine";
 import { groupSessions, type SessionGroupKey } from "../src/tui/components/sidebar-logic";
 import type { Session } from "../src/schemas/session";
@@ -228,12 +228,12 @@ describe("SessionOrchestrator.handleResumeSession — queue loading", () => {
 // ===========================================================================
 
 describe("handleQueueCompletion — queue completion", () => {
-  function makeMockCompletionDeps(overrides?: Partial<PipelineCompletionDeps>): {
-    deps: PipelineCompletionDeps;
+  function makeMockCompletionDeps(overrides?: Partial<QueueCompletionDeps>): {
+    deps: QueueCompletionDeps;
     calls: string[];
   } {
     const calls: string[] = [];
-    const deps: PipelineCompletionDeps = {
+    const deps: QueueCompletionDeps = {
       orchestrator: {
         handleAutoArchive: async (id: string, results: CompletedStepResult[]) => {
           calls.push(`autoArchive:${id}`);

@@ -284,12 +284,12 @@ describe("Work Store", () => {
       expect(approval.description).toBeUndefined();
     });
 
-    it("continueStage updates planName without wiping output", () => {
+    it("continueStep updates planName without wiping output", () => {
       store.startWorkflow("stage-1-plan");
       store.appendOutput({ stream: "stdout", data: "stage 1 output\n", timestamp: "t1" });
       store.setOutputBlocks([{ kind: "text", content: "block1", timestamp: Date.now() }]);
 
-      store.continueStage("stage-2-plan");
+      store.continueStep("stage-2-plan");
 
       const state = store.getState();
       expect(state.planName).toBe("stage-2-plan");
@@ -303,12 +303,12 @@ describe("Work Store", () => {
       expect(state.startTime).toBeDefined();
     });
 
-    it("continueStage clears pending approval and error", () => {
+    it("continueStep clears pending approval and error", () => {
       store.startWorkflow("plan-a");
       store.setApprovalPending("Review this");
       store.setError("old error");
 
-      store.continueStage("plan-b");
+      store.continueStep("plan-b");
 
       const state = store.getState();
       expect(state.approvalState.pending).toBe(false);
