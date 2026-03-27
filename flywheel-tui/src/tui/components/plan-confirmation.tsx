@@ -2,8 +2,9 @@
 /**
  * Plan Confirmation Component
  *
- * Displays a plan summary (phases, steps, acceptance criteria, issues)
- * and offers Approve / Edit actions. Rendered inside a ModalBase overlay.
+ * Displays a plan summary and offers Approve / Edit actions.
+ * Supports both JSON plans (steps with acceptance criteria,
+ * behavioral contract) and legacy markdown plans (phases).
  *
  * Pure logic (data preparation, action defs, types) lives in
  * `./plan-confirmation-logic.ts` for testability.
@@ -28,6 +29,8 @@ export {
   type PlanAction,
   type PlanSummaryDisplay,
   type PhaseSummaryItem,
+  type StepSummaryItem,
+  type AssertionSummaryItem,
   type PlanActionDef,
 } from "./plan-confirmation-logic"
 
@@ -100,10 +103,10 @@ export function PlanConfirmation(props: PlanConfirmationProps) {
         {/* Summary stats */}
         <box flexDirection="row" marginBottom={1} gap={3}>
           <text fg={theme.theme.text}>
-            {summary().phaseCount} phase{summary().phaseCount !== 1 ? "s" : ""}
+            {summary().phaseCount} step{summary().phaseCount !== 1 ? "s" : ""}
           </text>
           <text fg={theme.theme.text}>
-            {summary().totalSteps} step{summary().totalSteps !== 1 ? "s" : ""}
+            {summary().totalSteps} criteria
           </text>
           <text
             fg={
@@ -117,8 +120,106 @@ export function PlanConfirmation(props: PlanConfirmationProps) {
           </text>
         </box>
 
-        {/* Phase list */}
-        <Show when={summary().phases.length > 0}>
+        {/* JSON plan steps */}
+        <Show when={summary().isJsonPlan && summary().steps.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Steps
+            </text>
+            <For each={summary().steps}>
+              {(step, i) => (
+                <box flexDirection="column" paddingLeft={1} marginBottom={0}>
+                  <box>
+                    <text fg={theme.theme.text} attributes={1}>
+                      {i() + 1}. {step.title}
+                    </text>
+                    <Show when={step.estimatedComplexity}>
+                      <text fg={theme.theme.textMuted}>
+                        {" "}[{step.estimatedComplexity}]
+                      </text>
+                    </Show>
+                  </box>
+                  <Show when={step.feature || step.milestone}>
+                    <box paddingLeft={2}>
+                      <Show when={step.feature}>
+                        <text fg={theme.theme.textMuted}>
+                          feature: {step.feature}
+                        </text>
+                      </Show>
+                      <Show when={step.milestone}>
+                        <text fg={theme.theme.textMuted}>
+                          {step.feature ? "  " : ""}milestone: {step.milestone}
+                        </text>
+                      </Show>
+                    </box>
+                  </Show>
+                  <For each={step.acceptanceCriteria}>
+                    {(criteria) => (
+                      <box paddingLeft={3}>
+                        <text fg={theme.theme.textMuted}>
+                          ✓ {criteria}
+                        </text>
+                      </box>
+                    )}
+                  </For>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Behavioral contract (JSON plans) */}
+        <Show when={summary().behavioralContract.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Behavioral Contract
+            </text>
+            <For each={summary().behavioralContract}>
+              {(assertion) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.text}>
+                    [{assertion.id}] {assertion.title}
+                  </text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Decisions (JSON plans) */}
+        <Show when={summary().decisions.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Decisions
+            </text>
+            <For each={summary().decisions}>
+              {(decision) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.text}>• {decision}</text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Risks (JSON plans) */}
+        <Show when={summary().risks.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Risks
+            </text>
+            <For each={summary().risks}>
+              {(risk) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.warning}>⚠ {risk}</text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Legacy markdown phase list */}
+        <Show when={!summary().isJsonPlan && summary().phases.length > 0}>
           <box flexDirection="column" marginBottom={1}>
             <text fg={theme.theme.textMuted} attributes={1}>
               Phases

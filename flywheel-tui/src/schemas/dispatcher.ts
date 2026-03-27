@@ -9,17 +9,47 @@ import {
 } from "./shared";
 import { StageContextSchema } from "../controller/stage-context";
 
-// REMOVED: full_content — use phases[] only
-const PlanPhaseStepSchema = WorkflowStepBaseSchema.strip();
+// ---------------------------------------------------------------------------
+// PlanInputSchema — step-based plan representation for the dispatcher
+// ---------------------------------------------------------------------------
 
-const PlanPhaseSchema = z.object({
-  name: z.string(),
-  steps: z.array(PlanPhaseStepSchema),
+const PlanStepInputSchema = z.object({
+  /** Step title. */
+  title: z.string(),
+  /** Step description or first step detail. */
+  description: z.string(),
+  /** Testable acceptance criteria (JSON plans). */
+  acceptanceCriteria: z.array(z.string()).optional(),
+  /** Files to create or modify. */
+  fileReferences: z.array(z.string()).optional(),
+  /** Feature grouping. */
+  feature: z.string().optional(),
+  /** Behavioral contract assertion IDs. */
+  fulfills: z.array(z.string()).optional(),
 }).strip();
 
+export type PlanStepInput = z.infer<typeof PlanStepInputSchema>;
+
 const PlanInputSchema = z.object({
-  // REMOVED: full_content — use phases[] only
-  phases: z.array(PlanPhaseSchema),
+  /** Plan steps (replaces phases). */
+  steps: z.array(PlanStepInputSchema),
+}).strip();
+
+export type PlanInput = z.infer<typeof PlanInputSchema>;
+
+/**
+ * @deprecated Legacy phase-based schema for backward compatibility.
+ * Use PlanInputSchema with steps[] instead.
+ */
+const LegacyPlanPhaseStepSchema = WorkflowStepBaseSchema.strip();
+
+const LegacyPlanPhaseSchema = z.object({
+  name: z.string(),
+  steps: z.array(LegacyPlanPhaseStepSchema),
+}).strip();
+
+const LegacyPlanInputSchema = z.object({
+  phases: z.array(LegacyPlanPhaseSchema),
 }).strip();
 
 // ---------------------------------------------------------------------------
@@ -48,10 +78,14 @@ export const DispatcherConfigSchema = z.object({
 export type DispatcherConfig = z.infer<typeof DispatcherConfigSchema>;
 
 export const DispatcherInputSchema = z.object({
-  plan: PlanInputSchema,
+  plan: z.union([PlanInputSchema, LegacyPlanInputSchema]),
   state: z.object({
-    completed_phases: z.array(z.number()),
-    current_phase_index: z.number(),
+    /** @deprecated Use completed_steps. Kept for backward compat during migration. */
+    completed_phases: z.array(z.number()).optional(),
+    /** @deprecated Use current_step_index. Kept for backward compat during migration. */
+    current_phase_index: z.number().optional(),
+    completed_steps: z.array(z.number()).optional(),
+    current_step_index: z.number().optional(),
   }).strip(),
   context: z.object({
     files: z.array(z.string()),
@@ -64,7 +98,7 @@ export const DispatcherInputSchema = z.object({
   config: DispatcherConfigSchema,
   session_budget: SessionBudgetStatusSchema,
   available_context: AvailableContextSchema,
-  /** Cumulative stage context from completed phases. Optional for backward compat. */
+  /** Cumulative stage context from completed steps. Optional for backward compat. */
   stage_context: StageContextSchema.optional(),
 }).strip();
 
@@ -75,7 +109,9 @@ export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 // REMOVED: top-level timeout_minutes — canonical field is worker_config.timeout_minutes
 export const DispatcherDecisionSchema = z.object({
   schema_version: z.literal(1),
-  phase_index: z.number(),
+  /** @deprecated Use step_index. Kept for backward compat during migration. */
+  phase_index: z.number().optional(),
+  step_index: z.number().optional(),
   task_content: z.string(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),

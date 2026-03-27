@@ -1776,8 +1776,9 @@ status: in_progress
   it("assembles DispatcherInput with all expanded fields", () => {
     const { input, planTruncated, historyTruncated } = assembleDispatcherInput(fullAssemblerInput);
 
-    // Core fields populated
-    expect(input.plan.phases.length).toBeGreaterThan(0);
+    // Core fields populated — plan now uses step-based schema
+    const plan = input.plan as { steps?: unknown[]; phases?: unknown[] };
+    expect(plan.steps!.length).toBeGreaterThan(0);
     expect(input.state.completed_phases).toBeDefined();
     expect(input.context.files).toEqual(["src/index.ts", "src/utils.ts", "tests/index.test.ts"]);
 

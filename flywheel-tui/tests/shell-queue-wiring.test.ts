@@ -201,6 +201,151 @@ describe("buildQueueForSlashCommand", () => {
 });
 
 // ===========================================================================
+// shell-queue.ts — buildQueueFromPlan (JSON plan support)
+// ===========================================================================
+
+describe("buildQueueFromPlan", () => {
+  it("reads .plan.json files and creates work steps with full metadata", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
+    const planPath = path.join(tmpDir, "test.plan.json");
+
+    const jsonPlan = JSON.stringify({
+      steps: [
+        {
+          title: "Create server module",
+          description: "Implement GET /hello endpoint",
+          acceptanceCriteria: ["Returns 200", "JSON body"],
+          fileReferences: ["src/server.ts"],
+          feature: "server",
+          fulfills: ["BC-001"],
+          milestone: "Foundation",
+        },
+        {
+          title: "Add auth middleware",
+          description: "JWT validation",
+          acceptanceCriteria: ["Rejects invalid JWT"],
+          feature: "auth",
+        },
+      ],
+      behavioralContract: [
+        { id: "BC-001", title: "Hello endpoint", description: "...", evidence: "curl", area: "Server" },
+      ],
+      decisions: ["Use Bun.serve()"],
+      risks: ["Port conflict"],
+    });
+
+    fs.writeFileSync(planPath, jsonPlan);
+
+    try {
+      const queue = buildQueueFromPlan(planPath, makeConfig());
+
+      // Should have 2 work steps + 1 review step (auto_chain default true)
+      expect(queue.steps.length).toBeGreaterThanOrEqual(3);
+      expect(queue.steps[0].type).toBe("work");
+      expect(queue.steps[0].title).toBe("Create server module");
+      expect(queue.steps[0].description).toBe("Implement GET /hello endpoint");
+      expect(queue.steps[0].acceptanceCriteria).toEqual(["Returns 200", "JSON body"]);
+      expect(queue.steps[0].fileReferences).toEqual(["src/server.ts"]);
+      expect(queue.steps[0].feature).toBe("server");
+      expect(queue.steps[0].fulfills).toEqual(["BC-001"]);
+      expect(queue.steps[0].milestone).toBe("Foundation");
+
+      expect(queue.steps[1].type).toBe("work");
+      expect(queue.steps[1].title).toBe("Add auth middleware");
+      expect(queue.steps[1].feature).toBe("auth");
+
+      // Last step should be review (auto_chain)
+      expect(queue.steps[queue.steps.length - 1].type).toBe("review");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("reads JSON plan content by content detection (no .plan.json extension)", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
+    const planPath = path.join(tmpDir, "plan.json");
+
+    const jsonPlan = JSON.stringify({
+      steps: [{ title: "Step one", description: "Do something", acceptanceCriteria: ["Done"] }],
+      behavioralContract: [],
+      decisions: [],
+      risks: [],
+    });
+
+    fs.writeFileSync(planPath, jsonPlan);
+
+    try {
+      const queue = buildQueueFromPlan(planPath, makeConfig({ auto_chain: false }));
+      expect(queue.steps).toHaveLength(1);
+      expect(queue.steps[0].title).toBe("Step one");
+      expect(queue.steps[0].type).toBe("work");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("falls back to markdown parsing for .md plan files", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
+    const planPath = path.join(tmpDir, "plan.md");
+
+    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n- [ ] Add config\n\n### Phase 2: Build\n\n- [ ] Implement feature\n`;
+    fs.writeFileSync(planPath, mdPlan);
+
+    try {
+      const queue = buildQueueFromPlan(planPath, makeConfig({ auto_chain: false }));
+      expect(queue.steps).toHaveLength(2);
+      expect(queue.steps[0].title).toBe("Setup");
+      expect(queue.steps[1].title).toBe("Build");
+      expect(queue.steps[0].type).toBe("work");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("falls back to single work step for invalid JSON plan", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
+    const planPath = path.join(tmpDir, "bad.plan.json");
+
+    fs.writeFileSync(planPath, '{"steps": []}'); // Empty steps — invalid
+
+    try {
+      const queue = buildQueueFromPlan(planPath, makeConfig({ auto_chain: false }));
+      expect(queue.steps).toHaveLength(1);
+      expect(queue.steps[0].title).toBe("Execute work");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it("falls back to single work step when file not found", async () => {
+    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+    const queue = buildQueueFromPlan("/nonexistent/path.plan.json", makeConfig({ auto_chain: false }));
+    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps[0].title).toBe("Execute work");
+  });
+});
+
+// ===========================================================================
 // QueueProgressInfo
 // ===========================================================================
 

@@ -24,6 +24,7 @@ import type { FlywheelConfig } from "../../config/loader";
 import { checkEndOfSessionGate } from "../../controller/validation-state";
 import type { EndOfSessionGateCheck } from "../../controller/workflow-pipeline";
 import { parsePlan } from "../../controller/plan-parser";
+import { parseJsonPlan } from "../../controller/plan-json-parser";
 import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------
@@ -139,18 +140,17 @@ export function buildQueueForSlashCommand(command: string, config: FlywheelConfi
 }
 
 // ---------------------------------------------------------------------------
-// buildQueueFromPlan — parse plan file and create work steps from phases
+// buildQueueFromPlan — parse plan file and create work steps
 // ---------------------------------------------------------------------------
 
 /**
- * Build a Queue from a plan file path by parsing its phases into work steps.
+ * Build a Queue from a plan file path by parsing its steps into work steps.
  *
- * Each phase in the plan becomes a work step in the queue.
- * Pending phases are included; completed phases are skipped.
+ * Supports both JSON (.plan.json) and legacy markdown plan formats.
+ * For JSON plans, each step preserves full metadata (description,
+ * acceptanceCriteria, fileReferences, feature, fulfills, milestone).
  *
- * VAL-SHELL-033: /work <planPath> parses plan into work steps
- *
- * @param planPath Path to the plan markdown file
+ * @param planPath Path to the plan file (.plan.json or .md)
  * @param config FlywheelConfig
  * @returns A new Queue with work steps from the plan
  */
@@ -168,10 +168,24 @@ export function buildQueueFromPlan(planPath: string, config: FlywheelConfig): Qu
     }], { maxSteps: config.queue?.max_steps });
   }
 
-  const phases = parsePlan(planContent);
+  // Detect JSON plan by extension or content
+  const isJson = planPath.endsWith(".plan.json") || isJsonContent(planContent);
 
-  if (phases.length === 0) {
-    // Empty plan — fall back to single work step
+  if (isJson) {
+    return buildQueueFromJsonPlan(planContent, config);
+  }
+
+  return buildQueueFromMarkdownPlan(planContent, config);
+}
+
+/**
+ * Build queue from a JSON plan file.
+ */
+function buildQueueFromJsonPlan(planContent: string, config: FlywheelConfig): Queue {
+  const result = parseJsonPlan(planContent);
+
+  if (!result.ok || result.plan.steps.length === 0) {
+    // Invalid or empty JSON plan — fall back to single work step
     return createQueue([{
       id: randomUUID(),
       type: "work" as StepType,
@@ -180,7 +194,41 @@ export function buildQueueFromPlan(planPath: string, config: FlywheelConfig): Qu
     }], { maxSteps: config.queue?.max_steps });
   }
 
-  // Convert each plan phase to a work step
+  // Convert each JSON plan step to a queue work step with full metadata
+  const steps: Step[] = result.plan.steps.map((planStep) => ({
+    id: randomUUID(),
+    type: "work" as StepType,
+    title: planStep.title,
+    status: "pending" as const,
+    description: planStep.description,
+    acceptanceCriteria: planStep.acceptanceCriteria,
+    fileReferences: planStep.fileReferences,
+    feature: planStep.feature,
+    fulfills: planStep.fulfills,
+    milestone: planStep.milestone,
+  }));
+
+  // If auto_chain is on, add review (and ship if auto_ship) after work steps
+  appendAutoChainSteps(steps, config);
+
+  return createQueue(steps, { maxSteps: config.queue?.max_steps });
+}
+
+/**
+ * Build queue from a legacy markdown plan file.
+ */
+function buildQueueFromMarkdownPlan(planContent: string, config: FlywheelConfig): Queue {
+  const phases = parsePlan(planContent);
+
+  if (phases.length === 0) {
+    return createQueue([{
+      id: randomUUID(),
+      type: "work" as StepType,
+      title: "Execute work",
+      status: "pending",
+    }], { maxSteps: config.queue?.max_steps });
+  }
+
   const steps: Step[] = phases.map((phase) => ({
     id: randomUUID(),
     type: "work" as StepType,
@@ -190,7 +238,15 @@ export function buildQueueFromPlan(planPath: string, config: FlywheelConfig): Qu
     fulfills: phase.fulfills,
   }));
 
-  // If auto_chain is on, add review (and ship if auto_ship) after work steps
+  appendAutoChainSteps(steps, config);
+
+  return createQueue(steps, { maxSteps: config.queue?.max_steps });
+}
+
+/**
+ * Append review/ship steps when auto_chain is enabled.
+ */
+function appendAutoChainSteps(steps: Step[], config: FlywheelConfig): void {
   if (config.auto_chain) {
     steps.push({
       id: randomUUID(),
@@ -207,8 +263,14 @@ export function buildQueueFromPlan(planPath: string, config: FlywheelConfig): Qu
       });
     }
   }
+}
 
-  return createQueue(steps, { maxSteps: config.queue?.max_steps });
+/**
+ * Check if content looks like JSON.
+ */
+function isJsonContent(content: string): boolean {
+  const trimmed = content.trim();
+  return trimmed.startsWith("{") && trimmed.endsWith("}");
 }
 
 // ---------------------------------------------------------------------------

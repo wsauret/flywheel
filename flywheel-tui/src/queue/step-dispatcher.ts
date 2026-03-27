@@ -174,7 +174,7 @@ export class StepDispatcherError extends Error {
 function buildCompactQueueState(
   queue: Queue,
   currentStepIndex: number,
-): { completed_phases: number[]; current_phase_index: number } {
+): { completed_phases: number[]; current_phase_index: number; completed_steps: number[]; current_step_index: number } {
   const completed: number[] = [];
   for (let i = 0; i < queue.steps.length; i++) {
     if (queue.steps[i].status === "completed") {
@@ -182,6 +182,10 @@ function buildCompactQueueState(
     }
   }
   return {
+    // New step-based fields
+    completed_steps: completed,
+    current_step_index: currentStepIndex,
+    // Legacy phase-based fields (backward compat)
     completed_phases: completed,
     current_phase_index: currentStepIndex,
   };
@@ -277,29 +281,41 @@ function accumulatedToStageContext(
 }
 
 /**
- * Build the plan phases array from queue steps (compact representation).
+ * Build the plan steps array from queue steps (compact representation).
+ * Uses the new step-based schema for the dispatcher.
  */
+interface PlanStepCompact {
+  title: string;
+  description: string;
+  acceptanceCriteria?: string[];
+  fileReferences?: string[];
+  feature?: string;
+  fulfills?: string[];
+}
+
 function buildPlanFromQueue(
   queue: Queue,
   step: Step,
   sessionObjective?: string,
-): { phases: Array<{ name: string; steps: Array<{ description: string }> }> } {
-  const phases = queue.steps.map((s) => ({
-    name: s.title,
-    steps: s.description
-      ? [{ description: s.description }]
-      : s.acceptanceCriteria?.map((ac) => ({ description: ac })) ?? [{ description: s.title }],
+): { steps: PlanStepCompact[] } {
+  const steps: PlanStepCompact[] = queue.steps.map((s) => ({
+    title: s.title,
+    description: s.description ?? s.title,
+    acceptanceCriteria: s.acceptanceCriteria,
+    fileReferences: s.fileReferences,
+    feature: s.feature,
+    fulfills: s.fulfills,
   }));
 
   // If session objective is provided, prepend it as context
   if (sessionObjective) {
-    phases.unshift({
-      name: "Session Objective",
-      steps: [{ description: sessionObjective }],
+    steps.unshift({
+      title: "Session Objective",
+      description: sessionObjective,
     });
   }
 
-  return { phases };
+  return { steps };
 }
 
 /**

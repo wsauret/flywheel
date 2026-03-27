@@ -2,16 +2,18 @@
  * DispatcherInput assembler — transforms raw plan/state content
  * into the structured DispatcherInput with budget-aware truncation.
  *
+ * Supports both JSON plans (parsed directly) and legacy markdown plans
+ * (parsed via parsePlan). JSON plans are detected by content inspection.
+ *
  * Single safety-valve cap: 100KB total. If the assembled input exceeds
  * this cap, available_context arrays are truncated to 10 entries each.
- * Per-field sub-budgets were removed — context is passed through as-is
- * unless the total overflows.
  */
 
 import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "../schemas/dispatcher";
 import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
 import type { StageContext } from "../controller/stage-context";
 import { parsePlan } from "../controller/plan-parser";
+import { parseJsonPlan } from "../controller/plan-json-parser";
 import { parseStateFile } from "../state/reader";
 import { parseContextFile } from "../controller/templates";
 
@@ -50,7 +52,7 @@ export interface AssemblerInput {
   sessionBudget: SessionBudgetStatus;
   /** Available context (conventions, standards, learnings) */
   availableContext: AvailableContext;
-  /** Cumulative stage context from completed phases (optional) */
+  /** Cumulative stage context from completed steps (optional) */
   stageContext?: StageContext;
 }
 
@@ -65,31 +67,35 @@ export interface AssembledInput {
 // ---------------------------------------------------------------------------
 
 export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
-  // Parse plan
-  const phases = parsePlan(raw.planContent);
+  // Detect JSON plan content
+  const isJson = isJsonPlanContent(raw.planContent);
+
+  // Build plan steps for DispatcherInput
+  const planSteps = isJson
+    ? buildJsonPlanSteps(raw.planContent)
+    : buildMarkdownPlanSteps(raw.planContent);
 
   // Parse state (gracefully handle empty/missing)
   const state = raw.stateContent
     ? parseStateFile(raw.stateContent)
     : { frontmatter: {}, title: "", phases: [], keyDecisions: [], errorLog: [] };
 
-  // Determine completed phases and current index
-  const completedPhases: number[] = [];
-  let currentPhaseIndex = 0;
+  // Determine completed steps and current index
+  const completedSteps: number[] = [];
+  let currentStepIndex = 0;
   let foundPending = false;
 
   for (let i = 0; i < state.phases.length; i++) {
     if (state.phases[i].status === "completed") {
-      completedPhases.push(i);
+      completedSteps.push(i);
     } else if (!foundPending) {
-      currentPhaseIndex = i;
+      currentStepIndex = i;
       foundPending = true;
     }
   }
 
-  // If all completed, current is beyond last
   if (!foundPending && state.phases.length > 0) {
-    currentPhaseIndex = state.phases.length;
+    currentStepIndex = state.phases.length;
   }
 
   // Parse context files
@@ -97,20 +103,12 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     ? parseContextFile(raw.contextContent)
     : [];
 
-  // Build plan phases for DispatcherInput
-  const planPhases = phases.map((p) => ({
-    name: p.title,
-    steps: p.steps.map((s) => ({ description: s })),
-  }));
-
   // Tracking flags
   let planTruncated = false;
   let historyTruncated = false;
 
-  // Structured lastWorkerResult (from handoff) or null
   const lastWorkerResultObj: LastWorkerResult | null = raw.lastWorkerResult ?? null;
 
-  // Build workflow info (required)
   const workflowInfo: WorkflowInfo = {
     name: raw.workflowContext.name,
     step_number: raw.workflowContext.stepNumber,
@@ -118,7 +116,6 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     step_description: raw.workflowContext.stepDescription,
   };
 
-  // Build dispatcher config (required)
   const dispatcherConfig: DispatcherConfig = {
     max_eval_cycles: raw.configContext.maxEvalCycles,
     worktree_path: raw.configContext.worktreePath,
@@ -127,12 +124,15 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     dispatcher_model: raw.configContext.dispatcherModel,
   };
 
-  // Build the input
   const input: DispatcherInput = {
-    plan: { phases: planPhases },
+    plan: { steps: planSteps },
     state: {
-      completed_phases: completedPhases,
-      current_phase_index: currentPhaseIndex,
+      // New step-based fields
+      completed_steps: completedSteps,
+      current_step_index: currentStepIndex,
+      // Legacy phase-based fields (backward compat)
+      completed_phases: completedSteps,
+      current_phase_index: currentStepIndex,
     },
     context: { files: contextFiles },
     plan_truncated: planTruncated,
@@ -163,6 +163,50 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
 }
 
 // ---------------------------------------------------------------------------
+// Plan step builders
+// ---------------------------------------------------------------------------
+
+/**
+ * Build plan steps from JSON plan content.
+ * Maps JSON plan steps directly to the dispatcher's step-based schema.
+ */
+function buildJsonPlanSteps(content: string): Array<{
+  title: string;
+  description: string;
+  acceptanceCriteria?: string[];
+  fileReferences?: string[];
+  feature?: string;
+  fulfills?: string[];
+}> {
+  const result = parseJsonPlan(content);
+  if (!result.ok) return [];
+
+  return result.plan.steps.map((s) => ({
+    title: s.title,
+    description: s.description,
+    acceptanceCriteria: s.acceptanceCriteria,
+    fileReferences: s.fileReferences,
+    feature: s.feature,
+    fulfills: s.fulfills,
+  }));
+}
+
+/**
+ * Build plan steps from markdown plan content (legacy).
+ * Maps markdown phases to the step-based schema.
+ */
+function buildMarkdownPlanSteps(content: string): Array<{
+  title: string;
+  description: string;
+}> {
+  const phases = parsePlan(content);
+  return phases.map((p) => ({
+    title: p.title,
+    description: p.steps.length > 0 ? p.steps.join("\n") : p.title,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -170,5 +214,11 @@ function byteLength(str: string): number {
   return Buffer.byteLength(str, "utf8");
 }
 
-
+/**
+ * Detect JSON plan content.
+ */
+function isJsonPlanContent(content: string): boolean {
+  const trimmed = content.trim();
+  return trimmed.startsWith("{") && trimmed.endsWith("}");
+}
 

@@ -306,8 +306,10 @@ describe("DispatcherInput assembler", () => {
       stateContent: STATE_CONTENT_PHASE1_DONE,
     }));
 
-    expect(result.input.plan.phases).toHaveLength(2);
-    expect(result.input.plan.phases[0].name).toBe("Setup project structure");
+    // Assembler now outputs step-based plan (phases→steps migration)
+    const plan = result.input.plan as { steps?: { title: string }[]; phases?: { name: string }[] };
+    expect(plan.steps).toHaveLength(2);
+    expect(plan.steps![0].title).toBe("Setup project structure");
     expect(result.input.state.completed_phases).toEqual([0]);
     expect(result.input.state.current_phase_index).toBe(1);
     expect(result.planTruncated).toBe(false);
@@ -327,8 +329,9 @@ describe("DispatcherInput assembler", () => {
       stateContent: STATE_CONTENT_ALL_PENDING,
     }));
 
-    // Plan phases pass through without per-field truncation
-    expect(result.input.plan.phases.length).toBeGreaterThan(0);
+    // Plan steps pass through without per-field truncation
+    const plan = result.input.plan as { steps?: unknown[] };
+    expect(plan.steps!.length).toBeGreaterThan(0);
     // Total serialized size should be under 100KB
     const serialized = JSON.stringify(result.input);
     expect(serialized.length).toBeLessThanOrEqual(102400);
@@ -351,7 +354,8 @@ describe("DispatcherInput assembler", () => {
     // No per-field truncation — plan passes through as-is
     expect(result.planTruncated).toBe(false);
     expect(result.input.plan_truncated).toBe(false);
-    expect(result.input.plan.phases).toHaveLength(15);
+    const plan = result.input.plan as { steps?: unknown[] };
+    expect(plan.steps).toHaveLength(15);
   });
 
   it("handles missing context file (empty files array)", () => {
@@ -579,6 +583,76 @@ describe("DispatcherInput assembler", () => {
     expect(result.input.available_context.conventions).toHaveLength(10);
     expect(result.input.available_context.standards).toHaveLength(10);
     expect(result.input.available_context.learnings).toHaveLength(10);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// JSON plan assembly
+// ---------------------------------------------------------------------------
+
+describe("DispatcherInput assembler — JSON plan", () => {
+  let assembleDispatcherInput: typeof import("../src/dispatcher/assemble").assembleDispatcherInput;
+
+  beforeEach(async () => {
+    const mod = await import("../src/dispatcher/assemble");
+    assembleDispatcherInput = mod.assembleDispatcherInput;
+  });
+
+  it("parses JSON plan content into step-based plan input", () => {
+    const jsonPlan = JSON.stringify({
+      steps: [
+        {
+          title: "Create server",
+          description: "Implement endpoint",
+          acceptanceCriteria: ["Returns 200"],
+          fileReferences: ["src/server.ts"],
+          feature: "server",
+          fulfills: ["BC-001"],
+        },
+        {
+          title: "Add tests",
+          description: "Write test suite",
+          acceptanceCriteria: ["All pass"],
+        },
+      ],
+      behavioralContract: [],
+      decisions: [],
+      risks: [],
+    });
+
+    const result = assembleDispatcherInput(baseAssemblerInput({ planContent: jsonPlan }));
+    const plan = result.input.plan as { steps: Array<{ title: string; description: string; acceptanceCriteria?: string[]; fileReferences?: string[]; feature?: string; fulfills?: string[] }> };
+
+    expect(plan.steps).toHaveLength(2);
+    expect(plan.steps[0].title).toBe("Create server");
+    expect(plan.steps[0].description).toBe("Implement endpoint");
+    expect(plan.steps[0].acceptanceCriteria).toEqual(["Returns 200"]);
+    expect(plan.steps[0].fileReferences).toEqual(["src/server.ts"]);
+    expect(plan.steps[0].feature).toBe("server");
+    expect(plan.steps[0].fulfills).toEqual(["BC-001"]);
+    expect(plan.steps[1].title).toBe("Add tests");
+  });
+
+  it("falls back to markdown parsing for non-JSON content", () => {
+    const mdPlan = `# Plan\n\n### Phase 1: Setup\n\n- [ ] Create project\n\n### Phase 2: Build\n\n- [ ] Implement\n`;
+    const result = assembleDispatcherInput(baseAssemblerInput({ planContent: mdPlan }));
+    const plan = result.input.plan as { steps: Array<{ title: string; description: string }> };
+
+    expect(plan.steps).toHaveLength(2);
+    expect(plan.steps[0].title).toBe("Setup");
+    expect(plan.steps[1].title).toBe("Build");
+  });
+
+  it("emits both completed_steps and completed_phases for backward compat", () => {
+    const result = assembleDispatcherInput(baseAssemblerInput({
+      stateContent: STATE_CONTENT_PHASE1_DONE,
+    }));
+
+    expect(result.input.state.completed_steps).toEqual([0]);
+    expect(result.input.state.current_step_index).toBe(1);
+    // Backward compat
+    expect(result.input.state.completed_phases).toEqual([0]);
+    expect(result.input.state.current_phase_index).toBe(1);
   });
 });
 

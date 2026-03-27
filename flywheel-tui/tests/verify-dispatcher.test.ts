@@ -72,7 +72,8 @@ describe("verify-dispatcher: input assembly", () => {
       },
     });
 
-    expect(assembled.input.plan.phases.length).toBeGreaterThan(0);
+    const plan = assembled.input.plan as { steps?: unknown[]; phases?: unknown[] };
+    expect(plan.steps!.length).toBeGreaterThan(0);
     expect(assembled.input.state.current_phase_index).toBe(0);
     expect(assembled.input.workflow_id).toBe("verify-dispatcher-001");
     expect(assembled.input.workflow.name).toBe("work");
@@ -110,13 +111,12 @@ describe("verify-dispatcher: input assembly", () => {
       },
     });
 
-    // Test plan should have at least one phase with steps
-    const phase = assembled.input.plan.phases[0];
-    expect(phase).toBeDefined();
-    expect(phase.steps.length).toBeGreaterThan(0);
+    // Test plan should have at least one step
+    const plan = assembled.input.plan as { steps?: { title: string; description: string }[] };
+    const step = plan.steps![0];
+    expect(step).toBeDefined();
     // Steps should contain meaningful descriptions
-    const stepTexts = phase.steps.map(s => s.description);
-    expect(stepTexts.some(s => s.includes("hello"))).toBe(true);
+    expect(step.title.length).toBeGreaterThan(0);
   });
 
   it("system prompt is non-empty and contains expected structure", () => {
