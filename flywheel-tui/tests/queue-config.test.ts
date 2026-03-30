@@ -3,7 +3,7 @@ import {
   loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
-} from "../src/config";
+} from "../src/config/loader";
 import {
   ProtoStepSchema,
   ProtoStepArraySchema,

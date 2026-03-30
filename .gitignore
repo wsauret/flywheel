@@ -45,6 +45,7 @@ __pycache__/
 dist/
 build/
 .eggs/
+.pytest_cache/
 
 # Test coverage
 coverage/
@@ -75,16 +76,16 @@ target/
 Cargo.lock
 
 # Project-specific
-.flywheel/
 .worktrees/
-.beads/
-.ralph-tui/
+
 .factory/
 flywheel-tui/.factory/
-docs/
-plugin/docs/
+
 flywheel-tui/docs/
+
 plugin/inspiration/
 flywheel-tui/inspiration/
+
+.flywheel/
 plugin/.flywheel/
 flywheel-tui/.flywheel/

@@ -22,8 +22,10 @@
 import { createStore } from "../routes/work/context/ui-state/store";
 import { injectOutputBlocks, type InjectionHandle } from "./resume-utils";
 import { snapshotToBlocks } from "../../schemas/output";
+import { computeQueueProgress } from "./workflow-panel-logic";
 import type { UIActions } from "../routes/work/context/ui-state/types";
-import type { AnyBlock } from "../routes/work/state/types";
+import type { AnyBlock, QueueStepState } from "../routes/work/state/types";
+import type { QueueProgressInfo } from "./shell-queue";
 import type { SessionOrchestrator } from "./session-orchestrator";
 import type { AppState } from "./shell-modes";
 
@@ -76,6 +78,11 @@ export interface SessionViewportDeps {
 
   /** Set loading state during async disk reads (optional — for loading skeleton). */
   setSessionLoading?: (loading: boolean) => void;
+
+  /** Set shell-level queue steps signal (for WorkflowPanel + telemetry on historical sessions). */
+  setShellQueueSteps?: (steps: QueueStepState[]) => void;
+  /** Set shell-level queue progress info (for TelemetryBar on historical sessions). */
+  setActiveQueueInfo?: (info: QueueProgressInfo | null) => void;
 }
 
 /** The SessionViewport interface. */
@@ -118,6 +125,25 @@ export function createSessionViewport(
   // Cancellation state for in-flight injection chains
   let _injectionHandle: InjectionHandle | null = null;
   let _currentLoadToken = 0;
+
+  /** Populate shell-level queue signals for historical (non-running) sessions. */
+  function populateQueueSignals(steps: QueueStepState[]): void {
+    deps.setShellQueueSteps?.(steps);
+    if (steps.length > 0) {
+      const progress = computeQueueProgress(steps);
+      // Find the last completed (or last running) step for the stepName
+      const lastActive = [...steps].reverse().find(
+        (s) => s.status === "completed" || s.status === "running",
+      );
+      deps.setActiveQueueInfo?.({
+        currentStep: progress.completed + progress.running,
+        totalSteps: progress.total,
+        stepName: lastActive?.title ?? steps[steps.length - 1].title,
+      });
+    } else {
+      deps.setActiveQueueInfo?.(null);
+    }
+  }
 
   /**
    * Cancel any in-flight injection chain.
@@ -192,6 +218,10 @@ export function createSessionViewport(
       const isRunning = sessionControllers.has(sessionId);
       hydrateStore(cachedStore, isRunning);
       setViewedSessionId(sessionId);
+      // Populate shell queue signals for non-running (historical) sessions
+      if (!isRunning) {
+        populateQueueSignals(cachedStore.getState().queueSteps);
+      }
       deps.setAppState?.(isRunning ? "working" : "completed");
       return;
     }
@@ -243,15 +273,20 @@ export function createSessionViewport(
       );
     }
 
-    // 10. Cache in LRU store map
+    // 10. Populate shell queue signals so WorkflowPanel + TelemetryBar render
+    if (!sessionControllers.has(sessionId)) {
+      populateQueueSignals(store.getState().queueSteps);
+    }
+
+    // 11. Cache in LRU store map
     sessionStores.set(sessionId, store);
     evictLRU();
 
-    // 11. Set as active store and hydrate view
+    // 12. Set as active store and hydrate view
     const isRunning = sessionControllers.has(sessionId);
     hydrateStore(store, isRunning);
 
-    // 12. Determine app state: running → "working", else → "completed"
+    // 13. Determine app state: running → "working", else → "completed"
     deps.setAppState?.(isRunning ? "working" : "completed");
     deps.setSessionLoading?.(false);
   }

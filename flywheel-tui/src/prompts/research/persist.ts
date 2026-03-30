@@ -1,11 +1,6 @@
-import type { WorkflowStepContext } from "../index.js";
-import {
-  DOCUMENTARIAN_MODE,
-  LOCATOR_ANALYZER_PATTERN,
-  FILE_LINE_DISCIPLINE,
-  READ_FULLY_RULE,
-  buildProjectContextSection,
-} from "../conventions.js";
+// ---------------------------------------------------------------------------
+// Research persist — reusable constants for prompt scaffolding
+// ---------------------------------------------------------------------------
 
 
 export const researchPersistEvaluationCriteria =
@@ -87,48 +82,3 @@ Keep ALL code blocks under 15 lines. If a listing (directory tree, code excerpt,
 export const RESEARCH_PERSISTENCE_INSTRUCTIONS = `## Persistence Instructions
 
 Write the research document to:`;
-
-// ---------------------------------------------------------------------------
-// Main prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * Builds a prompt for the research persist step (step 2 of standalone /research).
- * Compiles analysis results into a comprehensive research document.
- */
-export function buildResearchPersistPrompt(ctx: WorkflowStepContext): string {
-  const previousResult = ctx.previousResult ?? "_No analysis output available._";
-  const projectContext = buildProjectContextSection(ctx.extra);
-
-  return `# Research: Compile Document
-
-## Research Topic
-
-${ctx.planContent}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
-${projectContext}
-
-## Analysis Output (from previous step)
-
-${previousResult}
-
----
-
-${LOCATOR_ANALYZER_PATTERN}
-
-${DOCUMENTARIAN_MODE}
-
-${READ_FULLY_RULE}
-
-${FILE_LINE_DISCIPLINE}
-
-${RESEARCH_PERSISTENCE_INSTRUCTIONS}
-\`${ctx.extra?.researchPath ?? "research.md"}\`
-
-Create the parent directory if it does not exist.
-
-${RESEARCH_DOC_TEMPLATE}
-`;
-}

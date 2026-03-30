@@ -58,6 +58,7 @@ import {
 } from "../prompts/debug/investigate.js";
 import { LOCATOR_DISPATCH_INSTRUCTIONS } from "../prompts/research/locate.js";
 import { ANALYZER_DISPATCH_INSTRUCTIONS } from "../prompts/research/analyze.js";
+import { AGENT_DISCOVERY_PHASE } from "../prompts/conventions.js";
 import {
   RESEARCH_DOC_TEMPLATE,
   RESEARCH_PERSISTENCE_INSTRUCTIONS,
@@ -298,7 +299,9 @@ ${renderHandoffInstruction(PLAN_DRAFT_FIELDS, handoffPath)}`;
 function buildPlanReviewScaffolding(handoffPath: string): ScaffoldingResult {
   const preamble = `## YOUR PRIMARY TASK: Dispatch Reviewer Agents
 
-You MUST dispatch ALL of the following reviewer agents **in parallel** using the Task tool.
+${AGENT_DISCOVERY_PHASE}
+
+After discovering agents, dispatch ALL of the following reviewer agents **in parallel** using the Task tool.
 Launch ALL of them in a SINGLE message with multiple Task calls. Do NOT skip any.
 Do NOT do the review yourself — delegate to these specialized agents.
 
@@ -408,7 +411,9 @@ ${renderHandoffInstruction(PLAN_CONSOLIDATE_FIELDS, handoffPath)}`;
 function buildPlanResearchScaffolding(handoffPath: string): ScaffoldingResult {
   const preamble = `## YOUR PRIMARY TASK: Dispatch Locator and Analyzer Agents
 
-You MUST follow a two-phase dispatch pattern using pre-installed agents:
+${AGENT_DISCOVERY_PHASE}
+
+After discovering agents, follow this two-phase dispatch pattern:
 
 **Phase 1 — Locators (parallel):** Dispatch ALL 3 locator agents in a SINGLE message with multiple Task calls. They find WHERE things are.
 **Phase 1b — Rank:** Deduplicate and rank locator results. Select top findings for analyzers.
@@ -490,6 +495,8 @@ ${renderHandoffInstruction(SHIP_FIELDS, handoffPath)}`;
 
 function buildReviewDispatchScaffolding(handoffPath: string): ScaffoldingResult {
   const preamble = `## YOUR PRIMARY TASK: Dispatch Review Agents
+
+${AGENT_DISCOVERY_PHASE}
 
 ${REVIEWER_DISPATCH_INSTRUCTIONS}
 

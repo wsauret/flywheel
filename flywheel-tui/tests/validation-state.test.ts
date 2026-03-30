@@ -24,7 +24,21 @@ import {
   type EndOfSessionGateResult,
 } from "../src/controller/validation-state";
 
-import type { StepInfo } from "../src/controller/step-provider";
+
+
+// ---------------------------------------------------------------------------
+// Types (inlined from deleted step-provider.ts)
+// ---------------------------------------------------------------------------
+
+interface StepInfo {
+  index: number;
+  title: string;
+  description: string;
+  status: "completed" | "pending" | "in_progress";
+  steps?: string[];
+  milestone?: string;
+  fulfills?: string[];
+}
 
 // ---------------------------------------------------------------------------
 // Helpers

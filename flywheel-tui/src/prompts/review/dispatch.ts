@@ -1,10 +1,6 @@
-import type { WorkflowStepContext } from "../index.js";
-import {
-  SEVERITY_DEFINITIONS,
-  FILE_LINE_DISCIPLINE,
-  TOKEN_LIMITS,
-} from "../conventions.js";
-import { renderHandoffInstruction, REVIEW_FIELDS } from "../../handoff/field-specs.js";
+// ---------------------------------------------------------------------------
+// Review dispatch — reusable constants for prompt scaffolding
+// ---------------------------------------------------------------------------
 
 export const reviewDispatchEvaluationCriteria =
   "Each reviewer returns findings categorized by severity (P1/P2/P3) with file:line references, or confirms no issues if changes are clean. Findings must be in structured format with Summary, Findings table, Minor Findings, and Implementation Order sections.";
@@ -100,78 +96,3 @@ Ordered list of fixes grouped by file, respecting dependencies.
 **CRITICAL:** The \`## Findings\` table MUST include a "Severity" column with values P1/P2/P3. The \`## Minor Findings\` section MUST use the exact heading. P3 bullets MUST start with \`- P3:\` or \`- P3 (deferred):\`. These formats are parsed by downstream tooling — do NOT deviate.
 
 The review document must be consumable as an implementation plan. A developer should be able to go through it top-to-bottom and address every finding.`;
-
-// ---------------------------------------------------------------------------
-// Main prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * Builds a prompt for multi-agent code review dispatch.
- */
-export function buildReviewDispatchPrompt(ctx: WorkflowStepContext): string {
-  const baselinePlan = ctx.extra?.baselinePlan;
-  const planComplianceSection =
-    typeof baselinePlan === "string"
-      ? `## Plan Compliance Check
-
-Compare the implementation against the baseline plan:
-
-<baseline-plan>
-${baselinePlan}
-</baseline-plan>
-
-Perform these four checks:
-
-1. **Items implemented:** Which plan items were completed? Cite evidence (file:line).
-2. **Items skipped:** Which plan items were NOT implemented? Flag with severity.
-3. **Items added:** What was implemented that was NOT in the plan? Justify or flag.
-4. **Items modified:** What diverged from the plan specification? Explain why.
-
-### Compliance Report Format
-
-\`\`\`markdown
-| Plan Item | Status | Evidence / Notes |
-|-----------|--------|------------------|
-| 1.1 ...   | Done   | src/auth.ts:42   |
-| 1.2 ...   | Skipped | No test written  |
-| 2.1 ...   | Modified | Used Redis instead of in-memory (justified: scale requirement) |
-\`\`\`
-`
-      : "";
-
-  return `# Code Review
-
-## Diff / Changes to Review
-
-${ctx.planContent}
-
-${planComplianceSection}
-
----
-
-${SEVERITY_DEFINITIONS}
-
-${FILE_LINE_DISCIPLINE}
-
-${TOKEN_LIMITS}
-
-## Reviewer Dispatch
-
-${REVIEWER_DISPATCH_INSTRUCTIONS}
-
-### How to Dispatch
-
-For each \`fly/*\` reviewer, use the Task tool like this:
-
-\`\`\`
-Task(subagent_type="fly/reviewer-architecture", prompt="Review these code changes for architectural concerns.\\nDIFF:\\n[changes summary]\\nProvide findings with priority (P1/P2/P3) and file:line references.\\nIMPORTANT: Return ALL findings in your response only. Do NOT write to any files.")
-\`\`\`
-
-Launch ALL 5 Task calls in a SINGLE response message so they run in parallel. Handle Validation Contract Compliance yourself inline.
-
-${FINDING_SYNTHESIS_INSTRUCTIONS}
-
-${REVIEW_OUTPUT_FORMAT}
-${ctx.extra?.handoffPath ? `\n${renderHandoffInstruction(REVIEW_FIELDS, ctx.extra.handoffPath as string)}` : ""}
-`;
-}

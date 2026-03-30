@@ -357,6 +357,143 @@ describe("SessionViewport loading state", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Queue signal population for historical sessions
+// ---------------------------------------------------------------------------
+
+describe("SessionViewport queue signal population", () => {
+  it("populates setShellQueueSteps on disk-loaded historical session", async () => {
+    let capturedSteps: import("../src/tui/routes/work/state/types").QueueStepState[] = [];
+    const { deps } = makeMockDeps({
+      orchestrator: makeMockOrchestrator({
+        handleResumeSession: async () => ({
+          session: {
+            planPath: "plans/test.md",
+            statePath: ".flywheel/state/test.state.md",
+            contextPath: ".flywheel/context/test.ctx.md",
+            currentStep: 0,
+            lastUpdated: new Date().toISOString(),
+            workflowId: "test-wf",
+            sessionLifecycleState: "completed" as const,
+            worktreePath: "/tmp/wt/test",
+          },
+          outputBlocks: [],
+          planPath: "plans/test.md",
+          statePath: ".flywheel/state/test.state.md",
+          worktreePath: "/tmp/wt/test",
+          queue: {
+            steps: [
+              { id: "s1", type: "plan", title: "Plan", status: "completed" },
+              { id: "s2", type: "work", title: "Work", status: "completed" },
+              { id: "s3", type: "review", title: "Review", status: "failed" },
+            ],
+          },
+        }),
+      }),
+    });
+    deps.setShellQueueSteps = (steps) => { capturedSteps = steps; };
+
+    const viewport = createSessionViewport(deps);
+    await viewport.openSession("session-with-queue");
+
+    expect(capturedSteps.length).toBe(3);
+    expect(capturedSteps[0].status).toBe("completed");
+    expect(capturedSteps[2].status).toBe("failed");
+  });
+
+  it("populates setActiveQueueInfo with progress on disk-loaded session", async () => {
+    let capturedInfo: any = undefined;
+    const { deps } = makeMockDeps({
+      orchestrator: makeMockOrchestrator({
+        handleResumeSession: async () => ({
+          session: {
+            planPath: "plans/test.md",
+            statePath: ".flywheel/state/test.state.md",
+            contextPath: ".flywheel/context/test.ctx.md",
+            currentStep: 0,
+            lastUpdated: new Date().toISOString(),
+            workflowId: "test-wf",
+            sessionLifecycleState: "completed" as const,
+            worktreePath: "/tmp/wt/test",
+          },
+          outputBlocks: [],
+          planPath: "plans/test.md",
+          statePath: ".flywheel/state/test.state.md",
+          worktreePath: "/tmp/wt/test",
+          queue: {
+            steps: [
+              { id: "s1", type: "plan", title: "Plan", status: "completed" },
+              { id: "s2", type: "work", title: "Work", status: "completed" },
+              { id: "s3", type: "review", title: "Review", status: "pending" },
+            ],
+          },
+        }),
+      }),
+    });
+    deps.setActiveQueueInfo = (info) => { capturedInfo = info; };
+
+    const viewport = createSessionViewport(deps);
+    await viewport.openSession("session-q");
+
+    expect(capturedInfo).not.toBeNull();
+    expect(capturedInfo.currentStep).toBe(2); // 2 completed
+    expect(capturedInfo.totalSteps).toBe(3);
+    expect(capturedInfo.stepName).toBe("Work"); // last completed step
+  });
+
+  it("populates queue signals on LRU cache-hit for non-running session", async () => {
+    let capturedSteps: import("../src/tui/routes/work/state/types").QueueStepState[] = [];
+    let capturedInfo: any = undefined;
+    const store = createStore("cached-plan");
+    store.setQueueSteps([
+      { id: "s1", type: "plan", title: "Cached Plan", status: "completed" },
+      { id: "s2", type: "work", title: "Cached Work", status: "completed" },
+    ]);
+
+    const { deps } = makeMockDeps();
+    deps.sessionStores.set("cached-1", store);
+    deps.setShellQueueSteps = (steps) => { capturedSteps = steps; };
+    deps.setActiveQueueInfo = (info) => { capturedInfo = info; };
+
+    const viewport = createSessionViewport(deps);
+    await viewport.openSession("cached-1");
+
+    expect(capturedSteps.length).toBe(2);
+    expect(capturedInfo).not.toBeNull();
+    expect(capturedInfo.currentStep).toBe(2);
+    expect(capturedInfo.totalSteps).toBe(2);
+  });
+
+  it("does NOT populate queue signals for running sessions (shell manages them)", async () => {
+    let queueSignalCalled = false;
+    const store = createStore("running-plan");
+    store.setQueueSteps([
+      { id: "s1", type: "plan", title: "Live", status: "running" },
+    ]);
+
+    const { deps } = makeMockDeps();
+    deps.sessionControllers.set("running-1", { shutdown: async () => {} });
+    deps.sessionStores.set("running-1", store);
+    deps.setShellQueueSteps = () => { queueSignalCalled = true; };
+
+    const viewport = createSessionViewport(deps);
+    await viewport.openSession("running-1");
+
+    expect(queueSignalCalled).toBe(false);
+  });
+
+  it("sets activeQueueInfo to null when session has no queue steps", async () => {
+    let capturedInfo: any = "not-called";
+    const { deps } = makeMockDeps(); // default orchestrator returns no queue
+    deps.setActiveQueueInfo = (info) => { capturedInfo = info; };
+
+    const viewport = createSessionViewport(deps);
+    await viewport.openSession("no-queue");
+
+    expect(capturedInfo).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Dependency injection
 // ---------------------------------------------------------------------------
 

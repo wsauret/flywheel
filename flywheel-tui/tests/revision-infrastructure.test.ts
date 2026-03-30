@@ -3,7 +3,7 @@ import {
   loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
-} from "../src/config";
+} from "../src/config/loader";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import type { FlywheelEvent } from "../src/events/types";
 import { WorkerResultSchema } from "../src/schemas/worker";

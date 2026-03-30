@@ -26,7 +26,7 @@ import {
   WorkflowStepBaseSchema,
 } from "../src/schemas/shared";
 import { assembleDispatcherInput } from "../src/dispatcher/assemble";
-import { Evaluator } from "../src/evaluator/invoke";
+
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 
 // ---------------------------------------------------------------------------
@@ -1702,92 +1702,6 @@ describe("Integration — full data contract flow", () => {
     expect(decision.evaluation_criteria.required_outputs).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
   });
 
-  // --- 8.1d: Evaluator with mock transport (end-to-end options-object pattern) ---
-
-  it("builds EvaluatorInput from expanded DispatcherDecision via mock transport", async () => {
-    const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
-
-    // Track events emitted during evaluation
-    const events: import("../src/events/types").FlywheelEvent[] = [];
-    bus.subscribe((e) => events.push(e));
-
-    // Mock transport that captures the input it receives
-    let capturedInput: import("../src/schemas/evaluator").EvaluatorInput | null = null;
-    const mockTransport: import("../src/evaluator/transport").EvaluatorTransport = {
-      async invoke(input) {
-        capturedInput = input;
-        return {
-          passed: true,
-          reasoning: "All criteria met",
-          suggestions: [],
-          confidence: 0.95,
-          feedback: "Good work",
-          files_to_review: ["src/feature.ts"],
-        };
-      },
-    };
-
-    const evaluator = new Evaluator({
-      transport: mockTransport,
-      emitter,
-      workflowId: "wf-integration-eval",
-      stepIndex: 1,
-      stepIndex: 0,
-    });
-
-    // Build EvaluateOptions from our DispatcherDecision
-    const decision = DispatcherDecisionSchema.parse(fullDecision);
-    const result = await evaluator.evaluate({
-      workerOutput: "Feature implemented successfully. All tests pass.",
-      evaluationCriteria: decision.evaluation_criteria,
-      contextFiles: decision.context_files,
-      acceptanceCriteria: ["Manual review completed"],
-      artifactsProduced: ["src/feature.ts", "tests/feature.test.ts"],
-      testsPassed: true,
-      durationSeconds: 120,
-    });
-
-    // Verify evaluator result
-    expect(result.passed).toBe(true);
-    expect(result.cyclesUsed).toBe(1);
-    expect(result.skipped).toBe(false);
-
-    // Verify the transport received correct EvaluatorInput
-    expect(capturedInput).not.toBeNull();
-    expect(capturedInput!.worker_output).toBe("Feature implemented successfully. All tests pass.");
-    // evaluation_criteria is serialized to string by Evaluator
-    expect(typeof capturedInput!.evaluation_criteria).toBe("string");
-    expect(capturedInput!.evaluation_criteria).toContain("Acceptance criteria:");
-    expect(capturedInput!.evaluation_criteria).toContain("Feature works end-to-end");
-    expect(capturedInput!.context_files).toEqual(["src/index.ts", "src/utils.ts"]);
-    // Merged acceptance_criteria: explicit + from structured criteria
-    expect(capturedInput!.acceptance_criteria).toContain("Manual review completed");
-    expect(capturedInput!.acceptance_criteria).toContain("Feature works end-to-end");
-    expect(capturedInput!.acceptance_criteria).toContain("All tests pass");
-    expect(capturedInput!.artifacts_produced).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
-    expect(capturedInput!.tests_passed).toBe(true);
-    expect(capturedInput!.duration_seconds).toBe(120);
-
-    // Validate the captured input against EvaluatorInputSchema
-    const parsedInput = EvaluatorInputSchema.safeParse(capturedInput);
-    expect(parsedInput.success).toBe(true);
-
-    // Verify events were emitted correctly
-    const evalInvoked = events.find((e) => e.type === "evaluator:invoked");
-    expect(evalInvoked).toBeDefined();
-    expect((evalInvoked as any).workflowId).toBe("wf-integration-eval");
-    expect((evalInvoked as any).stepIndex).toBe(0);
-
-    const evalCompleted = events.find((e) => e.type === "evaluator:completed");
-    expect(evalCompleted).toBeDefined();
-    const evalResult = (evalCompleted as any).result;
-    expect(evalResult.passed).toBe(true);
-    expect(evalResult.confidence).toBe(0.95);
-    expect(evalResult.feedback).toBe("Good work");
-    expect(evalResult.files_to_review).toEqual(["src/feature.ts"]);
-  });
-
   // --- 8.1e: EvaluatorResult with new fields ---
 
   it("parses EvaluatorResult with all new fields", () => {
@@ -1876,95 +1790,4 @@ describe("Integration — full data contract flow", () => {
     expect(evalEvent.result.files_to_review).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
   });
 
-  // --- 8.1h: Full pipeline: assemble → dispatch parse → evaluate → result ---
-
-  it("full pipeline: assemble → dispatch → evaluate → result", async () => {
-    // Step 1: Assemble DispatcherInput
-    const { input } = assembleDispatcherInput(fullAssemblerInput);
-    const parsedInput = DispatcherInputSchema.parse(input);
-    expect(parsedInput.workflow_id).toBe("wf-integration-test");
-
-    // Step 2: Parse a mock DispatcherDecision (simulating LLM output)
-    const rawLlmDecision = {
-      schema_version: 1 as const,
-      step_index: 1,
-      task_content: "Build feature X based on the plan.",
-      context_files: ["src/index.ts"],
-      evaluation_criteria: {
-        acceptance_criteria: ["Feature X works"],
-        required_tests: true,
-        custom_checks: [],
-        required_outputs: ["src/feature-x.ts"],
-      },
-      reasoning: "Straightforward implementation step",
-      warnings: [],
-      worker_config: {
-        model_override: null,
-        timeout_minutes: 10,
-        retry_on_failure: true,
-        max_retries: 2,
-        iteration_budget: 5,
-        tool_scoping: { read: true, bash: true, write: true, edit: true },
-        parallel: false,
-        parallel_variants: null,
-      },
-      // Extra LLM hallucinated field — should be stripped
-      thinking: "I need to carefully consider...",
-    };
-    const decision = DispatcherDecisionSchema.parse(rawLlmDecision);
-    expect(decision.schema_version).toBe(1);
-    expect((decision as any).thinking).toBeUndefined(); // stripped
-    expect(decision.reasoning).toBe("Straightforward implementation step");
-
-    // Step 3: Evaluate with mock transport
-    const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
-    let capturedEvalInput: import("../src/schemas/evaluator").EvaluatorInput | null = null;
-
-    const mockTransport: import("../src/evaluator/transport").EvaluatorTransport = {
-      async invoke(evalInput) {
-        capturedEvalInput = evalInput;
-        return {
-          passed: true,
-          reasoning: "Feature X implemented correctly",
-          suggestions: [],
-          confidence: 0.88,
-          feedback: "Clean implementation",
-          files_to_review: ["src/feature-x.ts"],
-        };
-      },
-    };
-
-    const evaluator = new Evaluator({
-      transport: mockTransport,
-      emitter,
-      workflowId: "wf-pipeline-test",
-      stepIndex: decision.step_index,
-      stepIndex: 0,
-    });
-
-    const evalResult = await evaluator.evaluate({
-      workerOutput: "Feature X implemented. Tests added and passing.",
-      evaluationCriteria: decision.evaluation_criteria,
-      contextFiles: decision.context_files,
-      artifactsProduced: ["src/feature-x.ts"],
-      testsPassed: true,
-      durationSeconds: 60,
-    });
-
-    // Step 4: Verify end-to-end result
-    expect(evalResult.passed).toBe(true);
-    expect(evalResult.cyclesUsed).toBe(1);
-
-    // Verify evaluator received properly assembled input
-    expect(capturedEvalInput).not.toBeNull();
-    const parsedEvalInput = EvaluatorInputSchema.parse(capturedEvalInput);
-    expect(parsedEvalInput.worker_output).toBe("Feature X implemented. Tests added and passing.");
-    expect(parsedEvalInput.evaluation_criteria).toContain("Feature X works");
-    expect(parsedEvalInput.artifacts_produced).toEqual(["src/feature-x.ts"]);
-    expect(parsedEvalInput.tests_passed).toBe(true);
-    expect(parsedEvalInput.duration_seconds).toBe(60);
-    // acceptance_criteria merged from structured EvaluationCriteria
-    expect(parsedEvalInput.acceptance_criteria).toContain("Feature X works");
-  });
 });

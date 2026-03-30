@@ -1,8 +1,0 @@
-commands:
-  install: bun install
-  test: bun test
-  typecheck: bun run typecheck
-  build: bun run build
-  dev: bun --conditions=browser run src/cli/index.ts
-
-services: {}

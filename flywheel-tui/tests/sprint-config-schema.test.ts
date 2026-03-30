@@ -3,8 +3,7 @@ import {
   loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
-} from "../src/config";
-import { DEFAULT_TOOL_SCOPING, resolveToolScoping } from "../src/controller/tool-scoping";
+} from "../src/config/loader";
 import { WorkerHandoffBaseSchema, WorkerHandoffSchema } from "../src/schemas/handoff";
 import {
   SPRINT_FIELDS,
@@ -13,7 +12,7 @@ import {
 import {
   WORKFLOW_OPTIONS,
 } from "../src/tui/components/start-command";
-import type { StepType } from "../src/controller/queue-types";
+
 
 // ---------------------------------------------------------------------------
 // VAL-SCHEMA-001: Sprint config section loads with correct defaults
@@ -239,41 +238,6 @@ describe("Handoff schema sprint fields (VAL-SCHEMA-004)", () => {
 // ---------------------------------------------------------------------------
 // VAL-SCHEMA-005: StepType union covers all step kinds (sprint removed — uses work+verify)
 // ---------------------------------------------------------------------------
-
-describe("StepType covers all step kinds (VAL-SCHEMA-005)", () => {
-  it("DEFAULT_TOOL_SCOPING has entries for all StepType values", () => {
-    const allTypes: StepType[] = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate"];
-    for (const t of allTypes) {
-      expect(DEFAULT_TOOL_SCOPING[t]).toBeDefined();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// VAL-SCHEMA-006: DEFAULT_TOOL_SCOPING covers all StepType values
-// ---------------------------------------------------------------------------
-
-describe("Tool scoping covers all StepType values (VAL-SCHEMA-006)", () => {
-  it("covers all StepType values", () => {
-    const allTypes: StepType[] = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate"];
-    for (const stepType of allTypes) {
-      expect(DEFAULT_TOOL_SCOPING[stepType]).toBeDefined();
-      expect(typeof DEFAULT_TOOL_SCOPING[stepType].read).toBe("boolean");
-      expect(typeof DEFAULT_TOOL_SCOPING[stepType].bash).toBe("boolean");
-      expect(typeof DEFAULT_TOOL_SCOPING[stepType].write).toBe("boolean");
-      expect(typeof DEFAULT_TOOL_SCOPING[stepType].edit).toBe("boolean");
-    }
-  });
-
-  it("resolveToolScoping returns defaults for verify", () => {
-    expect(resolveToolScoping("verify")).toEqual({
-      read: true,
-      bash: true,
-      write: false,
-      edit: false,
-    });
-  });
-});
 
 // ---------------------------------------------------------------------------
 // VAL-SCHEMA-008: WorkflowName type includes "sprint" value

@@ -1,11 +1,6 @@
-import type { WorkflowStepContext } from "../index.js";
-import {
-  DOCUMENTARIAN_MODE,
-  LOCATOR_ANALYZER_PATTERN,
-  FILE_LINE_DISCIPLINE,
-  READ_FULLY_RULE,
-  buildProjectContextSection,
-} from "../conventions.js";
+// ---------------------------------------------------------------------------
+// Research analyze — reusable constants for prompt scaffolding
+// ---------------------------------------------------------------------------
 
 export const researchAnalyzeEvaluationCriteria =
   "Findings extracted from sources with supporting references relevant to the research topic";
@@ -38,57 +33,3 @@ Task(subagent_type="fly/analyzer-web", prompt="Fetch and analyze these URLs rela
 \`\`\`
 
 Launch ALL applicable analyzer Task calls in a SINGLE response message so they run in parallel. Skip fly/analyzer-web if no URLs were found by locator-web. Skip fly/analyzer-docs if no documentation paths were found.`;
-
-// ---------------------------------------------------------------------------
-// Main prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * Builds a prompt for the research analyze step (step 1 of standalone /research).
- * Dispatches analyzer sub-agents on top findings from the locate step.
- */
-export function buildResearchAnalyzePrompt(ctx: WorkflowStepContext): string {
-  const previousResult = ctx.previousResult ?? "_No locator output available._";
-  const projectContext = buildProjectContextSection(ctx.extra);
-
-  return `# Research: Analyze Sources
-
-## Research Topic
-
-${ctx.planContent}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
-${projectContext}
-
-## Locator Output (from previous step)
-
-${previousResult}
-
----
-
-${LOCATOR_ANALYZER_PATTERN}
-
-${DOCUMENTARIAN_MODE}
-
-${READ_FULLY_RULE}
-
-${FILE_LINE_DISCIPLINE}
-
-## Filtering Instructions
-
-Before dispatching analyzers, select the top findings from the locator output:
-- **Max 15 file paths** for fly/analyzer-codebase (most relevant implementation files)
-- **Max 10 pattern locations** for fly/analyzer-patterns (most relevant file:line refs)
-- **Max 5 documentation paths** for fly/analyzer-docs (most relevant docs)
-- **Max 10 URLs** for fly/analyzer-web (most relevant external resources)
-
-If total findings are fewer than 10, you may skip the filtering step and send all findings directly.
-
-${ANALYZER_DISPATCH_INSTRUCTIONS}
-
-## Output
-
-Return the consolidated analysis results. Synthesize findings from all analyzers into a coherent understanding of the researched topic. Use file:line references throughout.
-`;
-}

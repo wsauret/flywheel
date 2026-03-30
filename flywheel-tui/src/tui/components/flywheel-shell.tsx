@@ -803,6 +803,8 @@ export function FlywheelShell() {
     orchestrator,
     toast,
     setSessionLoading,
+    setShellQueueSteps,
+    setActiveQueueInfo,
   })
 
   // ── Derived state ──

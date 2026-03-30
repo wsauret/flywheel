@@ -660,23 +660,4 @@ describe("buildSprintEvaluatorPrompt — handoff instruction", () => {
   });
 });
 
-// ===========================================================================
-// Re-exports from index.ts
-// ===========================================================================
 
-describe("prompts index re-exports sprint builders", () => {
-  it("exports buildSprintStepPrompt", async () => {
-    const mod = await import("../src/prompts/index");
-    expect(typeof (mod as Record<string, unknown>).buildSprintStepPrompt).toBe("function");
-  });
-
-  it("exports buildSprintRevisionPrompt", async () => {
-    const mod = await import("../src/prompts/index");
-    expect(typeof (mod as Record<string, unknown>).buildSprintRevisionPrompt).toBe("function");
-  });
-
-  it("exports buildSprintEvaluatorPrompt", async () => {
-    const mod = await import("../src/prompts/index");
-    expect(typeof (mod as Record<string, unknown>).buildSprintEvaluatorPrompt).toBe("function");
-  });
-});

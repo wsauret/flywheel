@@ -74,9 +74,14 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
   const timer = useTimer()
   const label = () => props.stepLabel ?? "Step"
 
-  // Use the direct reactive override when available (fixes SolidJS reactivity
+  // Use the direct reactive override when it has steps (fixes SolidJS reactivity
   // for nested array properties that break through the store → workState chain).
-  const queueSteps = () => props.queueSteps ?? props.state.queueSteps
+  // Length-check instead of ?? so empty [] from shell cleanup falls through to
+  // the store's queue steps (which are populated for historical sessions).
+  const queueSteps = () =>
+    (props.queueSteps && props.queueSteps.length > 0)
+      ? props.queueSteps
+      : props.state.queueSteps
 
   const hasQueueSteps = () => queueSteps().length > 0
   const progress = () => computeQueueProgress(queueSteps())

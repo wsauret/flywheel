@@ -357,38 +357,42 @@ describe("queue panel reactivity — WorkflowPanel queueSteps override", () => {
     expect(overrideProgress.running).toBe(1);
   });
 
-  it("override fallback chain: queueSteps ?? state.queueSteps", () => {
+  it("override fallback chain: non-empty override wins over state", () => {
     const stateQueueSteps: QueueStepState[] = [
       { id: "s1", type: "plan", title: "From store", status: "pending" },
     ];
 
-    // Simulate the WorkflowPanel's queueSteps accessor:
-    // const queueSteps = () => props.queueSteps ?? props.state.queueSteps
-
     // When override is undefined, falls back to state
-    const queueSteps1 = undefined ?? stateQueueSteps;
+    const resolve = (override: QueueStepState[] | undefined, state: QueueStepState[]) =>
+      (override && override.length > 0) ? override : state;
+
+    const queueSteps1 = resolve(undefined, stateQueueSteps);
     expect(queueSteps1).toBe(stateQueueSteps);
     expect(queueSteps1[0].title).toBe("From store");
 
-    // When override is provided, uses it
+    // When override is provided and non-empty, uses it
     const overrideSteps: QueueStepState[] = [
       { id: "s1", type: "plan", title: "From signal", status: "running" },
     ];
-    const queueSteps2 = overrideSteps ?? stateQueueSteps;
+    const queueSteps2 = resolve(overrideSteps, stateQueueSteps);
     expect(queueSteps2).toBe(overrideSteps);
     expect(queueSteps2[0].title).toBe("From signal");
     expect(queueSteps2[0].status).toBe("running");
   });
 
-  it("empty override array still uses override (not fallback)", () => {
+  it("empty override array falls through to state (historical session fix)", () => {
     const stateQueueSteps: QueueStepState[] = [
-      { id: "s1", type: "plan", title: "From store", status: "pending" },
+      { id: "s1", type: "plan", title: "From store", status: "completed" },
+      { id: "s2", type: "work", title: "From store", status: "completed" },
     ];
     const overrideSteps: QueueStepState[] = [];
 
-    // Empty array is truthy — ?? does not fall back
-    const queueSteps = overrideSteps ?? stateQueueSteps;
-    expect(queueSteps).toBe(overrideSteps);
-    expect(queueSteps.length).toBe(0);
+    // After the fix: empty array falls through to store's steps
+    const resolve = (override: QueueStepState[] | undefined, state: QueueStepState[]) =>
+      (override && override.length > 0) ? override : state;
+
+    const queueSteps = resolve(overrideSteps, stateQueueSteps);
+    expect(queueSteps).toBe(stateQueueSteps);
+    expect(queueSteps.length).toBe(2);
   });
 });

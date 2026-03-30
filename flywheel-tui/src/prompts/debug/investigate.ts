@@ -1,10 +1,6 @@
-import type { WorkflowStepContext } from "../index.js";
-import {
-  THREE_STRIKE_PROTOCOL,
-  VERIFICATION_BANNED_PHRASES,
-  SCOPE_DISCIPLINE,
-  READ_FULLY_RULE,
-} from "../conventions.js";
+// ---------------------------------------------------------------------------
+// Debug investigate — reusable constants for prompt scaffolding
+// ---------------------------------------------------------------------------
 
 export const debugInvestigateEvaluationCriteria =
   "Hypothesis formed with evidence and likelihood assessment";
@@ -91,57 +87,4 @@ When the bug is fixed:
 **Verification evidence:** <command output proving the fix works>
 \`\`\``;
 
-// ---------------------------------------------------------------------------
-// Main prompt builder
-// ---------------------------------------------------------------------------
 
-/**
- * Builds a prompt for debugging (error diagnosis + fix-verify loop).
- */
-export function buildDebugPrompt(ctx: WorkflowStepContext): string {
-  const verificationCommand = ctx.extra?.verificationCommand;
-  const verificationSection =
-    typeof verificationCommand === "string"
-      ? `## Verification Command\n\nUse this command to verify the fix:\n\`\`\`\n${verificationCommand}\n\`\`\``
-      : "## Verification Command\n\n_No verification command provided. Determine the appropriate command from context._";
-
-  const files =
-    ctx.fileReferences.length > 0
-      ? ctx.fileReferences.map((f) => `- \`${f}\``).join("\n")
-      : "_No initial file references._";
-
-  return `# Debug Investigation
-
-## Problem Description
-
-${ctx.planContent}
-
-${verificationSection}
-
-## Known File References
-
-${files}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
----
-
-${READ_FULLY_RULE}
-
-${SCOPE_DISCIPLINE}
-
-${INVESTIGATION_METHODOLOGY}
-
-${FIX_LOOP_RULES}
-
-${FIX_ITERATION_TEMPLATE}
-
-${THREE_STRIKE_PROTOCOL}
-
-${VERIFICATION_BANNED_PHRASES}
-
-${ESCALATION_FORMAT}
-
-${RESOLUTION_FORMAT}
-`;
-}

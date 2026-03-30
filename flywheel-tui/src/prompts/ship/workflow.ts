@@ -1,4 +1,6 @@
-import type { WorkflowStepContext } from "../index.js";
+// ---------------------------------------------------------------------------
+// Ship workflow — reusable constants for prompt scaffolding
+// ---------------------------------------------------------------------------
 
 export const shipStageEvaluationCriteria =
   "Changes are staged with specific paths";
@@ -73,45 +75,3 @@ export const PR_FORMAT = `## PR Format
 - No boilerplate ("## Testing", "## Screenshots" if empty)
 - No AI disclaimers or attribution of any kind
 - Link to relevant issues if they exist`;
-
-// ---------------------------------------------------------------------------
-// Main prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * Builds a prompt for the ship workflow (branch → commit → PR → compound).
- */
-export function buildShipPrompt(ctx: WorkflowStepContext): string {
-  return `# Ship Workflow
-
-## Changes to Ship
-
-${ctx.planContent}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
----
-
-${NO_AI_ATTRIBUTION_RULE}
-
-${BRANCH_NAMING}
-
-${STAGING_RULES}
-
-${PR_FORMAT}
-
-## Edge Cases
-
-### Empty diff
-If there are no changes to commit, report this and stop. Do not create empty commits or PRs.
-
-### Merge conflicts
-If the branch has merge conflicts with the base:
-1. Report the conflicting files
-2. Do NOT attempt to resolve automatically unless the resolution is trivial (e.g., both sides added different items to a list)
-3. Ask the user how they want to proceed
-
-### Already pushed
-If the branch already exists on remote with commits, verify the local branch is up to date before pushing.
-`;
-}

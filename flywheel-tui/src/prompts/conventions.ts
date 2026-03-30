@@ -49,6 +49,25 @@ export const THREE_STRIKE_PROTOCOL = `## Three-Strike Protocol
 - **Strike 3 — Broader rethink:** Question assumptions, reduce scope.
 - **After 3 strikes:** Escalate to user with full context of what was tried and why it failed.`;
 
+export const AGENT_DISCOVERY_PHASE = `## Phase 0: Discover Available Agents
+
+Before dispatching ANY agents via Task, you MUST first discover which agents are actually installed. Run these commands:
+
+\`\`\`bash
+# Project-local agents
+find .claude/agents -name "*.md" 2>/dev/null
+
+# User's global agents
+find ~/.claude/agents -name "*.md" 2>/dev/null
+
+# Plugin agents
+find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
+\`\`\`
+
+Use the discovered agent filenames (without .md extension) as the \`subagent_type\` values in your Task calls. For agents in subdirectories (e.g., \`fly/agent-name.md\`), use the subdirectory-prefixed name (e.g., \`fly/agent-name\`).
+
+**Do NOT dispatch agents that were not found by the discovery commands above.**`;
+
 export const TOKEN_LIMITS = `## Token Limits
 
 - Locator output: max 500 tokens

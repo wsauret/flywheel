@@ -1,11 +1,6 @@
-import type { WorkflowStepContext } from "../index.js";
-import {
-  DOCUMENTARIAN_MODE,
-  LOCATOR_ANALYZER_PATTERN,
-  FILE_LINE_DISCIPLINE,
-  READ_FULLY_RULE,
-  buildProjectContextSection,
-} from "../conventions.js";
+// ---------------------------------------------------------------------------
+// Research locate — reusable constants for prompt scaffolding
+// ---------------------------------------------------------------------------
 
 export const researchLocateEvaluationCriteria =
   "Relevant sources identified and ranked by relevance to the research objective";
@@ -38,65 +33,3 @@ Task(subagent_type="fly/locator-web", prompt="Find documentation and articles ab
 \`\`\`
 
 Launch ALL 4 in a SINGLE response message so they run in parallel.`;
-
-// ---------------------------------------------------------------------------
-// Main prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * Builds a prompt for the research locate step (step 0 of standalone /research).
- * Dispatches parallel locator sub-agents to find files, patterns, and docs.
- */
-export function buildResearchLocatePrompt(ctx: WorkflowStepContext): string {
-  const files =
-    ctx.fileReferences.length > 0
-      ? ctx.fileReferences.map((f) => `- \`${f}\``).join("\n")
-      : "_No initial file references._";
-
-  const projectContext = buildProjectContextSection(ctx.extra);
-
-  return `# Research: Locate Sources
-
-## Research Topic
-
-${ctx.planContent}
-
-## Known File References
-
-${files}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
-${projectContext}
-
----
-
-${LOCATOR_ANALYZER_PATTERN}
-
-${DOCUMENTARIAN_MODE}
-
-${READ_FULLY_RULE}
-
-${FILE_LINE_DISCIPLINE}
-
-## BLOCKING Rule
-
-Do NOT use Read/Grep/Glob for target codebase research directly. Dispatch locator Tasks first to find relevant files, then return the consolidated results.
-
-**Exception:** Files listed in the Project Context section above (conventions, standards) MUST be read directly before dispatching locators.
-
-${LOCATOR_DISPATCH_INSTRUCTIONS}
-
-## Ranking Locator Results
-
-After all locators complete, rank and deduplicate results. Prioritize:
-1. **Direct relevance** — files directly implementing the researched concept
-2. **Modification targets** — files that would need changes if extending the concept
-3. **Pattern exemplars** — files that establish patterns related to the concept
-4. **Constraint docs** — files documenting constraints, conventions, or boundaries
-
-## Output
-
-Return the consolidated, ranked locator results. Do not analyze file contents — that happens in the next step.
-`;
-}
