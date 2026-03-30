@@ -231,6 +231,18 @@ export function createSessionViewport(
     const blocks = snapshotToBlocks(result.outputBlocks) as AnyBlock[];
     _injectionHandle = injectOutputBlocks(store, blocks);
 
+    // 9b. Restore queue steps into the store so the workflow panel shows them
+    if (result.queue?.steps) {
+      store.setQueueSteps(
+        result.queue.steps.map((s: { id: string; type: string; title: string; status: string }) => ({
+          id: s.id,
+          type: s.type,
+          title: s.title,
+          status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+        })),
+      );
+    }
+
     // 10. Cache in LRU store map
     sessionStores.set(sessionId, store);
     evictLRU();

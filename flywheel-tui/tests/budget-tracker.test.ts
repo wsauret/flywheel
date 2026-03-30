@@ -391,12 +391,13 @@ describe("BudgetTracker — flush", () => {
     tracker.incrementInvocations();
     tracker.flush();
 
-    // Read raw file to verify structure
+    // Read raw file to verify structure (directory-per-session layout)
     const filePath = path.join(
       baseDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.json`,
+      sessionId,
+      "session.json",
     );
     const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     expect(raw.budgetUsage).toEqual({
@@ -493,12 +494,13 @@ describe("BudgetTracker — session summary", () => {
     tracker.incrementInvocations();
     tracker.flush();
 
-    // Read raw file to verify structure
+    // Read raw file to verify structure (directory-per-session layout)
     const filePath = path.join(
       baseDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.json`,
+      sessionId,
+      "session.json",
     );
     const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     expect(raw.totalCost).toBeCloseTo(0.35, 10);

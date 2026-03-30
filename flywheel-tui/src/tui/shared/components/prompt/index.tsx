@@ -5,7 +5,7 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { COMMANDS } from "@tui/config/commands"
 import fuzzysort from "fuzzysort"
 import type { PromptProps } from "./types"
-import type { BoxRenderable, ScrollBoxRenderable } from "@opentui/core"
+import type { BoxRenderable, ScrollBoxRenderable, InputAction } from "@opentui/core"
 
 export function Prompt(props: PromptProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -276,6 +276,10 @@ export function Prompt(props: PromptProps) {
             cursorColor={themeCtx.theme.primary}
             backgroundColor="transparent"
             focusedBackgroundColor="transparent"
+            keyBindings={[
+              { name: "z", ctrl: true, action: "undo" as InputAction },
+              { name: "z", ctrl: true, shift: true, action: "redo" as InputAction },
+            ]}
           />
         </box>
 

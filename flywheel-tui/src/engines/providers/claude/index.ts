@@ -5,7 +5,7 @@
  * Model can be a short name (opus, sonnet, haiku) or a full claude model ID.
  */
 
-import type { DispatcherCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
+import type { DispatcherCommandOptions, EvaluatorCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
 
 export const metadata: EngineMetadata = {
   id: "claude",
@@ -28,12 +28,13 @@ const TOOL_NAME_MAP: Record<string, string> = {
   bash: "Bash",
   write: "Write",
   edit: "Edit",
+  task: "Task",
 };
 
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
   const args: string[] = [
-    "--print",
     "--output-format", "stream-json",
+    "--input-format", "stream-json",
     "--dangerously-skip-permissions",
   ];
 
@@ -84,14 +85,13 @@ const DISPATCHER_DEFAULT_MODEL = "sonnet";
  * - `--system-prompt <prompt>` — separate system prompt for prompt caching
  * - `--no-session-persistence` — skip writing session to disk
  * - `--effort low` — reduced reasoning overhead
- * - `-p <prompt>` — pass prompt directly (not via stdin)
+ * - `-p <prompt>` — pass prompt directly (print mode, one-shot)
  * - `--dangerously-skip-permissions` — skip permission prompts
  */
 export function buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand {
   const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
 
   const args: string[] = [
-    "--print",
     "--output-format", "stream-json",
     "--dangerously-skip-permissions",
     "--no-session-persistence",
@@ -99,6 +99,35 @@ export function buildDispatcherCommand(options: DispatcherCommandOptions): Engin
     "--model", model,
     "--system-prompt", options.systemPrompt,
     "--effort", "low",
+    "-p", options.prompt,
+  ];
+
+  return {
+    command: metadata.cliBinary,
+    args,
+    stdinPrompt: false,
+  };
+}
+
+/**
+ * Build a CLI command for agent-based evaluation.
+ *
+ * Like dispatcher but with Read, Bash, Write tools so the evaluator can
+ * investigate mismatches (grep for files, re-run commands, check outputs).
+ * No Edit tool — evaluators must not modify the codebase.
+ *
+ * Uses -p (print mode) for one-shot execution with tool access.
+ */
+export function buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineCommand {
+  const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+
+  const args: string[] = [
+    "--output-format", "stream-json",
+    "--dangerously-skip-permissions",
+    "--no-session-persistence",
+    "--tools", "Read,Bash,Write,Grep,Glob",
+    "--model", model,
+    "--system-prompt", options.systemPrompt,
     "-p", options.prompt,
   ];
 
@@ -126,4 +155,4 @@ async function listModels(_provider?: string): Promise<ModelInfo[]> {
   return CLAUDE_MODELS;
 }
 
-export const claudeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, listModels };
+export const claudeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, buildEvaluatorCommand, listModels };

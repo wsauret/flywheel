@@ -10,7 +10,7 @@
 // writing instructions. Gate steps get no scaffolding.
 // ---------------------------------------------------------------------------
 
-import type { Step } from "./types";
+import type { Step, StepType } from "./types";
 import {
   renderHandoffInstruction,
   PLAN_DRAFT_FIELDS,
@@ -21,28 +21,112 @@ import {
   REVIEW_FIELDS,
   SPRINT_FIELDS,
   SHIP_FIELDS,
+  REVIEW_DISPATCH_FIELDS,
+  REVIEW_CONSOLIDATE_FIELDS,
+  SHIP_COMMIT_FIELDS,
+  SHIP_LEARNINGS_FIELDS,
+  DEBUG_INVESTIGATE_FIELDS,
+  DEBUG_FIX_FIELDS,
+  DEBUG_VERIFY_FIELDS,
+  RESEARCH_FIELDS,
 } from "../handoff/field-specs.js";
-import { DEFAULT_PLANS_DIR } from "../config/paths.js";
+import {
+  REVIEWER_DISPATCH_INSTRUCTIONS,
+  FINDING_SYNTHESIS_INSTRUCTIONS,
+  REVIEW_OUTPUT_FORMAT,
+} from "../prompts/review/dispatch.js";
+import {
+  CONSOLIDATION_INSTRUCTIONS,
+  REVIEW_DOC_TEMPLATE,
+} from "../prompts/review/consolidate.js";
+import {
+  NO_AI_ATTRIBUTION_RULE,
+  STAGING_RULES,
+  PR_FORMAT,
+  BRANCH_NAMING,
+} from "../prompts/ship/workflow.js";
+import {
+  COMPOUND_DOC_FORMAT,
+  COMPOUND_DEDUP_RULES,
+} from "../prompts/ship/compound.js";
+import {
+  INVESTIGATION_METHODOLOGY,
+  FIX_LOOP_RULES,
+  FIX_ITERATION_TEMPLATE,
+  ESCALATION_FORMAT,
+  RESOLUTION_FORMAT,
+} from "../prompts/debug/investigate.js";
+import { LOCATOR_DISPATCH_INSTRUCTIONS } from "../prompts/research/locate.js";
+import { ANALYZER_DISPATCH_INSTRUCTIONS } from "../prompts/research/analyze.js";
+import {
+  RESEARCH_DOC_TEMPLATE,
+  RESEARCH_PERSISTENCE_INSTRUCTIONS,
+} from "../prompts/research/persist.js";
+
 
 // ---------------------------------------------------------------------------
-// Plan sub-step role detection
+// Generic role detection
 // ---------------------------------------------------------------------------
 
+interface RoleMapping<R extends string> {
+  /** Map from dispatcherHint value to role. */
+  hintMap: Record<string, R>;
+  /** Map from title keyword to role. Title is lowercased before lookup. */
+  titleMap: [keyword: string, role: R][];
+  /** Default role when no match found. */
+  defaultRole: R;
+}
+
+function detectRole<R extends string>(step: Step, mapping: RoleMapping<R>): R {
+  const hint = step.dispatcherHint?.toLowerCase();
+  if (hint && hint in mapping.hintMap) {
+    return mapping.hintMap[hint];
+  }
+
+  const title = step.title.toLowerCase();
+  for (const [keyword, role] of mapping.titleMap) {
+    if (title.includes(keyword)) return role;
+  }
+
+  return mapping.defaultRole;
+}
+
+// Per-type role mappings
 type PlanRole = "research" | "draft" | "review" | "consolidate";
 
-function detectPlanRole(step: Step): PlanRole {
-  const hint = step.dispatcherHint?.toLowerCase();
-  if (hint === "draft") return "draft";
-  if (hint === "review") return "review";
-  if (hint === "consolidate") return "consolidate";
-  if (hint === "research") return "research";
+const PLAN_ROLE_MAPPING: RoleMapping<PlanRole> = {
+  hintMap: { draft: "draft", review: "review", consolidate: "consolidate", research: "research" },
+  titleMap: [["draft", "draft"], ["review plan", "review"], ["review", "review"], ["consolidate", "consolidate"]],
+  defaultRole: "research",
+};
 
-  // Fallback to title matching
-  const title = step.title.toLowerCase();
-  if (title.includes("draft")) return "draft";
-  if (title.includes("review plan") || title.includes("review")) return "review";
-  if (title.includes("consolidate")) return "consolidate";
-  return "research";
+type ReviewRole = "dispatch" | "consolidate";
+const REVIEW_ROLE_MAPPING: RoleMapping<ReviewRole> = {
+  hintMap: { "dispatch-reviewers": "dispatch", "consolidate-review": "consolidate" },
+  titleMap: [["dispatch", "dispatch"], ["multi-agent", "dispatch"], ["consolidate", "consolidate"]],
+  defaultRole: "dispatch",
+};
+
+type ShipRole = "ship" | "learnings";
+const SHIP_ROLE_MAPPING: RoleMapping<ShipRole> = {
+  hintMap: { ship: "ship", stage: "ship", commit: "ship", pr: "ship", learnings: "learnings" },
+  titleMap: [["learning", "learnings"], ["compound", "learnings"], ["extract", "learnings"]],
+  defaultRole: "ship",
+};
+
+type DebugRole = "investigate" | "fix" | "verify";
+const DEBUG_ROLE_MAPPING: RoleMapping<DebugRole> = {
+  hintMap: { investigate: "investigate", fix: "fix", "debug-verify": "verify" },
+  titleMap: [["investigate", "investigate"], ["fix", "fix"], ["verify", "verify"]],
+  defaultRole: "investigate",
+};
+
+/**
+ * Detect the sub-role of a plan step.
+ * Thin wrapper around the generic detectRole for backward compatibility.
+ */
+function detectPlanRole(step: Step): PlanRole {
+  return detectRole(step, PLAN_ROLE_MAPPING);
 }
 
 // ---------------------------------------------------------------------------
@@ -162,17 +246,15 @@ const CLEAN_JSON_EXAMPLE = `{
 // Scaffolding builders per plan role
 // ---------------------------------------------------------------------------
 
-function buildPlanDraftScaffolding(handoffPath: string): string {
+function buildPlanDraftScaffolding(handoffPath: string, planOutputPath?: string): string {
+  const planPath = planOutputPath ?? "plan.json";
   return `---
 ## Output Requirements
 
 You MUST produce a structured JSON plan. Write a single JSON file to:
-\`${DEFAULT_PLANS_DIR}/{type}-{description}.plan.json\`
+\`${planPath}\`
 
-Where \`{type}\` is one of: feat, fix, refactor, chore, docs
-And \`{description}\` is a short kebab-case name for the feature.
-
-Create the \`${DEFAULT_PLANS_DIR}/\` directory if it does not exist.
+Create the parent directory if it does not exist.
 
 ### JSON Structure
 
@@ -213,11 +295,42 @@ ${DRAFT_JSON_EXAMPLE}
 ${renderHandoffInstruction(PLAN_DRAFT_FIELDS, handoffPath)}`;
 }
 
-function buildPlanReviewScaffolding(handoffPath: string): string {
-  return `---
+function buildPlanReviewScaffolding(handoffPath: string): ScaffoldingResult {
+  const preamble = `## YOUR PRIMARY TASK: Dispatch Reviewer Agents
+
+You MUST dispatch ALL of the following reviewer agents **in parallel** using the Task tool.
+Launch ALL of them in a SINGLE message with multiple Task calls. Do NOT skip any.
+Do NOT do the review yourself — delegate to these specialized agents.
+
+### Agents (pre-installed, use \`subagent_type\` to reference each)
+
+1. **fly/reviewer-architecture** — Layering violations, coupling, SOLID compliance, pattern inconsistencies.
+2. **fly/reviewer-code-quality** — Type safety, testability, naming, duplication, logic errors.
+3. **fly/reviewer-patterns** — Design patterns, anti-patterns, naming conventions, code duplication.
+4. **fly/reviewer-performance** — Algorithmic complexity, queries, memory, caching, scalability.
+5. **fly/reviewer-data-integrity** — Migration safety, constraints, transactions. Skip if not applicable.
+6. **fly/reviewer-plan-philosophy** — TDD ordering, SOLID compliance in planned design, DRY compliance.
+
+### How to Dispatch
+
+For EACH reviewer, call the Task tool with the reviewer's name as subagent_type and the full plan JSON in the prompt:
+
+\`\`\`
+Task(subagent_type="fly/reviewer-architecture", prompt="Review this plan for architectural concerns.\\nPLAN:\\n[paste the full plan JSON here]\\nProvide findings with priority (P1/P2/P3) and specific step references.\\nIMPORTANT: Return ALL findings in your response only. Do NOT write to any files.")
+\`\`\`
+
+Launch ALL 6 Task calls in a SINGLE response message so they run in parallel.
+After all reviewers respond, merge their findings into the annotated JSON output described below.
+
+If a finding from one reviewer contradicts another, add it as an open question with both positions.
+
+---`;
+
+  const postamble = `---
 ## Output Requirements
 
-You MUST produce annotated JSON. Read the original JSON plan and produce a new JSON document that:
+After all reviewer agents respond, merge their findings and produce annotated JSON.
+Read the original JSON plan and produce a new JSON document that:
 1. Preserves ALL original fields exactly as-is (do NOT modify title, description, acceptanceCriteria, fileReferences, feature, fulfills, milestone, or estimatedComplexity)
 2. Adds a \`review\` object to each step that has findings
 3. Adds an \`openQuestions\` array at the top level
@@ -239,9 +352,12 @@ ${ANNOTATED_JSON_EXAMPLE}
 5. **Findings use severity P1/P2/P3.** P1 = critical, P2 = important, P3 = minor.
 
 ${renderHandoffInstruction(PLAN_REVIEW_FIELDS, handoffPath)}`;
+
+  return { preamble, postamble };
 }
 
-function buildPlanConsolidateScaffolding(handoffPath: string): string {
+function buildPlanConsolidateScaffolding(handoffPath: string, planOutputPath?: string): string {
+  const planPath = planOutputPath ?? "plan.json";
   return `---
 ## Output Requirements
 
@@ -254,7 +370,7 @@ Produce a CLEAN JSON plan that:
 6. Updates \`risks[]\` with new risks from review
 
 Write the final clean JSON to:
-\`${DEFAULT_PLANS_DIR}/<type>-<description>.plan.json\`
+\`${planPath}\`
 
 This should overwrite the annotated version at the same path.
 
@@ -273,6 +389,7 @@ ${CLEAN_JSON_EXAMPLE}
 5. **Resolve ALL open questions.** Document rationale in decisions.
 6. **Preserve test-first intent.** acceptanceCriteria should be testable.
 7. **No orphaned assertions.** Every behavioralContract assertion must be claimed by exactly one step.
+8. **Each step = one subprocess (context-clearing boundary).** Every step spawns an independent AI worker with a blank context window. Split only when clearing context helps (e.g., fresh perspective for unrelated work). Keep activities in the same step when they need awareness of what was just done (running tests, auditing related code, smoke-testing) — losing context forces the worker to rediscover everything.
 
 ### Quality Checks
 
@@ -288,11 +405,55 @@ ${CLEAN_JSON_EXAMPLE}
 ${renderHandoffInstruction(PLAN_CONSOLIDATE_FIELDS, handoffPath)}`;
 }
 
-function buildPlanResearchScaffolding(handoffPath: string): string {
-  return `---
+function buildPlanResearchScaffolding(handoffPath: string): ScaffoldingResult {
+  const preamble = `## YOUR PRIMARY TASK: Dispatch Locator and Analyzer Agents
+
+You MUST follow a two-phase dispatch pattern using pre-installed agents:
+
+**Phase 1 — Locators (parallel):** Dispatch ALL 3 locator agents in a SINGLE message with multiple Task calls. They find WHERE things are.
+**Phase 1b — Rank:** Deduplicate and rank locator results. Select top findings for analyzers.
+**Phase 2 — Analyzers (parallel):** Dispatch analyzer agents on TOP FINDINGS ONLY in a SINGLE message.
+
+Do NOT do the research yourself — delegate to these specialized agents.
+
+### Locator Agents (pre-installed, use \`subagent_type\` to reference each)
+
+1. **fly/locator-codebase** — Finds implementation files, tests, configs, types, docs.
+2. **fly/locator-patterns** — Finds file:line references for specific patterns, imports, APIs.
+3. **fly/locator-docs** — Finds README, AGENTS.md, docs/, inline documentation.
+
+### Analyzer Agents (pre-installed, use \`subagent_type\` to reference each)
+
+1. **fly/analyzer-codebase** — Reads files, documents function signatures, data flow, error handling.
+2. **fly/analyzer-patterns** — Extracts code examples with context, caller usage, constraints.
+
+### How to Dispatch Locators
+
+Launch ALL 3 in a SINGLE response message:
+
+\`\`\`
+Task(subagent_type="fly/locator-codebase", prompt="Find WHERE files and components live related to: [topic]. Return file paths only, max 30 paths.")
+Task(subagent_type="fly/locator-patterns", prompt="Find WHERE specific patterns exist related to: [topic]. Return file:line references only, max 30 locations.")
+Task(subagent_type="fly/locator-docs", prompt="Find WHERE documentation lives related to: [topic]. Return paths only. Max 20 paths.")
+\`\`\`
+
+### How to Dispatch Analyzers (after ranking locator results)
+
+Launch both in a SINGLE response message:
+
+\`\`\`
+Task(subagent_type="fly/analyzer-codebase", prompt="Analyze these files related to [topic]:\\n[top 15 file paths]\\nDocument function signatures, data flow, error handling. File:line references required. Documentarian mode — do NOT suggest improvements.")
+Task(subagent_type="fly/analyzer-patterns", prompt="Analyze these patterns related to [topic]:\\n[top 10 file:line refs]\\nFor each: exact code, caller usage, constraints. File:line references required. Documentarian mode — do NOT suggest alternatives.")
+\`\`\`
+
+---`;
+
+  const postamble = `---
 ## Output Requirements
 
 ${renderHandoffInstruction(PLAN_RESEARCH_FIELDS, handoffPath)}`;
+
+  return { preamble, postamble };
 }
 
 // ---------------------------------------------------------------------------
@@ -327,68 +488,235 @@ function buildShipScaffolding(handoffPath: string): string {
 ${renderHandoffInstruction(SHIP_FIELDS, handoffPath)}`;
 }
 
+function buildReviewDispatchScaffolding(handoffPath: string): ScaffoldingResult {
+  const preamble = `## YOUR PRIMARY TASK: Dispatch Review Agents
+
+${REVIEWER_DISPATCH_INSTRUCTIONS}
+
+${FINDING_SYNTHESIS_INSTRUCTIONS}
+
+${REVIEW_OUTPUT_FORMAT}
+
+---`;
+
+  const postamble = `---
+## Output Requirements
+
+${renderHandoffInstruction(REVIEW_DISPATCH_FIELDS, handoffPath)}`;
+
+  return { preamble, postamble };
+}
+
+function buildReviewConsolidateScaffolding(handoffPath: string, reviewPath?: string): ScaffoldingResult {
+  const path = reviewPath ?? "review.md";
+  const postamble = `---
+## Output Requirements
+
+${CONSOLIDATION_INSTRUCTIONS}
+
+${REVIEW_DOC_TEMPLATE}
+
+## IMPORTANT: Write the review document
+
+Write the final review document to:
+\`${path}\`
+
+Also persist a copy to \`docs/reviews/\` with a date-prefixed filename (e.g., \`docs/reviews/YYYY-MM-DD-<slug>.md\`).
+Create the parent directory if it does not exist.
+
+${renderHandoffInstruction(REVIEW_CONSOLIDATE_FIELDS, handoffPath)}`;
+
+  return { preamble: "", postamble };
+}
+
+function buildShipCommitScaffolding(handoffPath: string): string {
+  return `---
+## Output Requirements
+
+${NO_AI_ATTRIBUTION_RULE}
+
+${BRANCH_NAMING}
+
+${STAGING_RULES}
+
+${PR_FORMAT}
+
+${renderHandoffInstruction(SHIP_COMMIT_FIELDS, handoffPath)}`;
+}
+
+function buildShipLearningsScaffolding(handoffPath: string): string {
+  return `---
+## Output Requirements
+
+${COMPOUND_DOC_FORMAT}
+
+${COMPOUND_DEDUP_RULES}
+
+${renderHandoffInstruction(SHIP_LEARNINGS_FIELDS, handoffPath)}`;
+}
+
+function buildDebugInvestigateScaffolding(handoffPath: string): ScaffoldingResult {
+  const preamble = `## Investigation Phase
+
+${INVESTIGATION_METHODOLOGY}
+
+---`;
+
+  const postamble = `---
+## Output Requirements
+
+${renderHandoffInstruction(DEBUG_INVESTIGATE_FIELDS, handoffPath)}`;
+
+  return { preamble, postamble };
+}
+
+function buildDebugFixScaffolding(handoffPath: string): string {
+  return `---
+## Fix Phase
+
+${FIX_LOOP_RULES}
+
+${FIX_ITERATION_TEMPLATE}
+
+${renderHandoffInstruction(DEBUG_FIX_FIELDS, handoffPath)}`;
+}
+
+function buildDebugVerifyScaffolding(handoffPath: string): string {
+  return `---
+## Verification Phase
+
+${RESOLUTION_FORMAT}
+
+${ESCALATION_FORMAT}
+
+${renderHandoffInstruction(DEBUG_VERIFY_FIELDS, handoffPath)}`;
+}
+
+function buildResearchFullScaffolding(handoffPath: string, researchPath?: string): ScaffoldingResult {
+  const path = researchPath ?? "research.md";
+  const preamble = `## YOUR PRIMARY TASK: Research via Locator-Analyzer Pattern
+
+You will execute a three-phase research process within a single worker context:
+
+**Phase 1 — Locate:** Dispatch 4 locator agents in parallel to find relevant files, patterns, docs, and web resources.
+**Phase 2 — Analyze:** Rank and deduplicate locator results, then dispatch analyzer agents on top findings.
+**Phase 3 — Persist:** Compile findings into a comprehensive research document.
+
+${LOCATOR_DISPATCH_INSTRUCTIONS}
+
+After ranking locator results:
+
+${ANALYZER_DISPATCH_INSTRUCTIONS}
+
+---`;
+
+  const postamble = `---
+## Output Requirements
+
+${RESEARCH_PERSISTENCE_INSTRUCTIONS}
+
+Write the research document to:
+\`${path}\`
+
+${RESEARCH_DOC_TEMPLATE}
+
+${renderHandoffInstruction(RESEARCH_FIELDS, handoffPath)}`;
+
+  return { preamble, postamble };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /**
- * Build deterministic scaffolding to append after the dispatcher's task_content.
+ * Scaffolding result: preamble goes BEFORE dispatcher task_content,
+ * postamble goes AFTER. This ensures workflow-critical instructions
+ * (like "dispatch these agents") take priority over the dispatcher's
+ * contextual framing.
+ */
+export interface ScaffoldingResult {
+  /** Placed before dispatcher task_content. Workflow method instructions. */
+  preamble: string;
+  /** Placed after dispatcher task_content. Output format + handoff instructions. */
+  postamble: string;
+}
+
+/**
+ * Paths that scaffolding needs for session-scoped output instructions.
+ * Computed once by the caller (flywheel-shell) and threaded through.
+ */
+export interface ScaffoldingPaths {
+  /** Where the worker writes its handoff JSON */
+  handoffPath: string;
+  /** Where the plan JSON should be written (e.g., `.flywheel/sessions/<id>/plan.json`) */
+  planPath?: string;
+  /** Where the research doc should be written (e.g., `.flywheel/sessions/<id>/research.md`) */
+  researchPath?: string;
+  /** Where the review doc should be written (e.g., `.flywheel/sessions/<id>/review.md`) */
+  reviewPath?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Strategy map — replaces if/else chain with lookup table
+// ---------------------------------------------------------------------------
+
+type ScaffoldingStrategy = (step: Step, paths: ScaffoldingPaths) => ScaffoldingResult;
+
+const SCAFFOLDING_STRATEGIES: Map<StepType, ScaffoldingStrategy> = new Map([
+  ["gate", () => ({ preamble: "", postamble: "" })],
+  ["plan", (step: Step, paths: ScaffoldingPaths) => {
+    const role = detectPlanRole(step);
+    const wrap = (postamble: string): ScaffoldingResult => ({ preamble: "", postamble });
+    switch (role) {
+      case "draft": return wrap(buildPlanDraftScaffolding(paths.handoffPath, paths.planPath));
+      case "review": return buildPlanReviewScaffolding(paths.handoffPath);
+      case "consolidate": return wrap(buildPlanConsolidateScaffolding(paths.handoffPath, paths.planPath));
+      case "research": return buildPlanResearchScaffolding(paths.handoffPath);
+    }
+  }],
+  ["work", (_step: Step, paths: ScaffoldingPaths) => ({ preamble: "", postamble: buildWorkScaffolding(paths.handoffPath) })],
+  ["review", (step: Step, paths: ScaffoldingPaths) => {
+    const role = detectRole(step, REVIEW_ROLE_MAPPING);
+    switch (role) {
+      case "dispatch": return buildReviewDispatchScaffolding(paths.handoffPath);
+      case "consolidate": return buildReviewConsolidateScaffolding(paths.handoffPath, paths.reviewPath);
+    }
+  }],
+  ["verify", (_step: Step, paths: ScaffoldingPaths) => ({ preamble: "", postamble: buildSprintVerifyScaffolding(paths.handoffPath) })],
+  ["ship", (step: Step, paths: ScaffoldingPaths) => {
+    const role = detectRole(step, SHIP_ROLE_MAPPING);
+    const wrap = (postamble: string): ScaffoldingResult => ({ preamble: "", postamble });
+    switch (role) {
+      case "ship": return wrap(buildShipCommitScaffolding(paths.handoffPath));
+      case "learnings": return wrap(buildShipLearningsScaffolding(paths.handoffPath));
+    }
+  }],
+  ["debug", (step: Step, paths: ScaffoldingPaths) => {
+    const role = detectRole(step, DEBUG_ROLE_MAPPING);
+    const wrap = (postamble: string): ScaffoldingResult => ({ preamble: "", postamble });
+    switch (role) {
+      case "investigate": return buildDebugInvestigateScaffolding(paths.handoffPath);
+      case "fix": return wrap(buildDebugFixScaffolding(paths.handoffPath));
+      case "verify": return wrap(buildDebugVerifyScaffolding(paths.handoffPath));
+    }
+  }],
+  ["research", (_step: Step, paths: ScaffoldingPaths) => buildResearchFullScaffolding(paths.handoffPath, paths.researchPath)],
+]);
+
+/**
+ * Build deterministic scaffolding around the dispatcher's task_content.
  *
- * Returns the appropriate output format instructions and handoff writing
- * instructions based on the step's type and role. Gate steps return empty string.
+ * Returns preamble (before) and postamble (after) strings. Gate steps
+ * return empty for both.
  *
- * @param step       The queue step being executed
- * @param handoffPath Path where the worker should write its handoff JSON
- * @param _projectCwd Project working directory (reserved for future use)
- * @returns Scaffolding string to append, or empty string for gate steps
+ * All paths are provided by the caller — this module never computes paths.
  */
 export function buildScaffolding(
   step: Step,
-  handoffPath: string,
-  _projectCwd: string,
-): string {
-  // Gate steps need no scaffolding
-  if (step.type === "gate") return "";
-
-  // Plan steps have sub-roles
-  if (step.type === "plan") {
-    const role = detectPlanRole(step);
-    switch (role) {
-      case "draft":
-        return buildPlanDraftScaffolding(handoffPath);
-      case "review":
-        return buildPlanReviewScaffolding(handoffPath);
-      case "consolidate":
-        return buildPlanConsolidateScaffolding(handoffPath);
-      case "research":
-        return buildPlanResearchScaffolding(handoffPath);
-    }
-  }
-
-  // Work steps
-  if (step.type === "work") {
-    return buildWorkScaffolding(handoffPath);
-  }
-
-  // Review steps
-  if (step.type === "review") {
-    return buildReviewScaffolding(handoffPath);
-  }
-
-  // Verify steps (sprint mode)
-  if (step.type === "verify") {
-    return buildSprintVerifyScaffolding(handoffPath);
-  }
-
-  // Ship steps
-  if (step.type === "ship") {
-    return buildShipScaffolding(handoffPath);
-  }
-
-  // Debug / research steps — use work step fields as reasonable default
-  if (step.type === "debug" || step.type === "research") {
-    return buildWorkScaffolding(handoffPath);
-  }
-
-  return "";
+  paths: ScaffoldingPaths,
+): ScaffoldingResult {
+  const strategy = SCAFFOLDING_STRATEGIES.get(step.type as StepType);
+  if (!strategy) return { preamble: "", postamble: "" };
+  return strategy(step, paths);
 }

@@ -1,16 +1,20 @@
 /**
- * Escape Handler — Double-Esc Timing Logic
+ * Escape Handler — 3-State Interrupt Logic
  *
  * Pure state machine for handling escape key during workflow execution:
- * - First Esc → returns "show-hint" (display "press again to stop")
- * - Second Esc within timeout → returns "stop" (trigger stopWorkflow)
- * - After timeout expires → resets, next Esc returns "show-hint" again
+ * - First Esc → returns "interrupt" (send SIGINT, show "press again to kill")
+ * - Second Esc within timeout → returns "kill" (full process kill + pause queue)
+ * - After timeout expires → resets, next Esc returns "interrupt" again
+ *
+ * Legacy aliases: "show-hint" maps to "interrupt", "stop" maps to "kill".
+ * The old names are kept as type union members for backward compatibility
+ * with existing shell-modes.ts references.
  *
  * This is a pure function factory with no TUI dependencies,
  * making it fully testable without OpenTUI runtime.
  */
 
-export type EscapeResult = "show-hint" | "stop"
+export type EscapeResult = "interrupt" | "kill"
 
 export interface EscapeHandler {
   /** Call when Esc is pressed. Returns the action to take. */
@@ -47,12 +51,12 @@ export function createEscapeHandler(
 
   function handleEscape(): EscapeResult {
     if (hintShown) {
-      // Second Esc within timeout → stop
+      // Second Esc within timeout → kill
       reset()
-      return "stop"
+      return "kill"
     }
 
-    // First Esc → show hint, start timeout
+    // First Esc → interrupt, start timeout
     hintShown = true
     clearTimer()
     timer = setTimeout(() => {
@@ -60,7 +64,7 @@ export function createEscapeHandler(
       timer = null
     }, timeoutMs)
 
-    return "show-hint"
+    return "interrupt"
   }
 
   return {

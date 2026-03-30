@@ -75,8 +75,8 @@ describe("createSession", () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
 
-    // Verify file exists
-    const filePath = path.join(baseDir, ".flywheel", "sessions", `${id}.json`);
+    // Verify file exists (directory-per-session layout)
+    const filePath = path.join(baseDir, ".flywheel", "sessions", id, "session.json");
     expect(fs.existsSync(filePath)).toBe(true);
   });
 
@@ -139,10 +139,10 @@ describe("readSession", () => {
 
   it("returns null for corrupt JSON", () => {
     const baseDir = makeTmpDir();
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", "bad-uuid");
+    fs.mkdirSync(sessionDir, { recursive: true });
     fs.writeFileSync(
-      path.join(sessionsDir, "bad-uuid.json"),
+      path.join(sessionDir, "session.json"),
       "NOT VALID JSON {{{",
     );
 
@@ -152,12 +152,12 @@ describe("readSession", () => {
 
   it("returns null for JSON that fails Zod validation", () => {
     const baseDir = makeTmpDir();
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", "invalid");
+    fs.mkdirSync(sessionDir, { recursive: true });
 
     // Valid JSON but not a valid Session (missing required fields)
     fs.writeFileSync(
-      path.join(sessionsDir, "invalid.json"),
+      path.join(sessionDir, "session.json"),
       JSON.stringify({ foo: "bar" }),
     );
 
@@ -184,8 +184,8 @@ describe("readSession", () => {
 describe("legacy session compatibility", () => {
   it("parses sessions without new optional fields (old format with vestigial fields)", () => {
     const baseDir = makeTmpDir();
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", "legacy-id");
+    fs.mkdirSync(sessionDir, { recursive: true });
 
     // Write a legacy session (old format with statePath, contextPath, etc.)
     const legacyData = {
@@ -197,7 +197,7 @@ describe("legacy session compatibility", () => {
       workflowId: crypto.randomUUID(),
     };
     fs.writeFileSync(
-      path.join(sessionsDir, "legacy-id.json"),
+      path.join(sessionDir, "session.json"),
       JSON.stringify(legacyData),
     );
 
@@ -218,15 +218,15 @@ describe("legacy session compatibility", () => {
 
   it("strict mode rejects unknown fields", () => {
     const baseDir = makeTmpDir();
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", "unknown-field");
+    fs.mkdirSync(sessionDir, { recursive: true });
 
     const dataWithUnknown = {
       ...minimalSession(),
       unknownField: "should cause rejection",
     };
     fs.writeFileSync(
-      path.join(sessionsDir, "unknown-field.json"),
+      path.join(sessionDir, "session.json"),
       JSON.stringify(dataWithUnknown),
     );
 
@@ -296,8 +296,8 @@ describe("updateSession", () => {
 
     updateSession(id, { totalCost: 10 }, baseDir);
 
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    const files = fs.readdirSync(sessionsDir);
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", id);
+    const files = fs.readdirSync(sessionDir);
     const tmpFiles = files.filter((f) => f.endsWith(".tmp"));
     expect(tmpFiles).toHaveLength(0);
   });
@@ -387,14 +387,18 @@ describe("listSessions", () => {
     // Create one valid session
     const validId = createSession(minimalSession({ label: "valid.md", planPath: "valid.md" }), baseDir);
 
-    // Manually create corrupt files
+    // Manually create corrupt session directories
     const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
+    const corrupt1Dir = path.join(sessionsDir, "corrupt-1");
+    const corrupt2Dir = path.join(sessionsDir, "corrupt-2");
+    fs.mkdirSync(corrupt1Dir, { recursive: true });
+    fs.mkdirSync(corrupt2Dir, { recursive: true });
     fs.writeFileSync(
-      path.join(sessionsDir, "corrupt-1.json"),
+      path.join(corrupt1Dir, "session.json"),
       "NOT JSON AT ALL {{{",
     );
     fs.writeFileSync(
-      path.join(sessionsDir, "corrupt-2.json"),
+      path.join(corrupt2Dir, "session.json"),
       JSON.stringify({ invalid: true }), // valid JSON, invalid schema
     );
 
@@ -407,20 +411,20 @@ describe("listSessions", () => {
 
     // Errors are reported but don't crash the listing
     expect(result.errors).toHaveLength(2);
-    expect(result.errors.some((e) => e.file.includes("corrupt-1.json"))).toBe(
+    expect(result.errors.some((e) => e.file.includes("corrupt-1"))).toBe(
       true,
     );
-    expect(result.errors.some((e) => e.file.includes("corrupt-2.json"))).toBe(
+    expect(result.errors.some((e) => e.file.includes("corrupt-2"))).toBe(
       true,
     );
   });
 
-  it("ignores non-.json files in sessions directory", () => {
+  it("ignores non-directory entries in sessions directory", () => {
     const baseDir = makeTmpDir();
     const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
     fs.mkdirSync(sessionsDir, { recursive: true });
 
-    // Create a non-json file
+    // Create a non-directory file (listSessions now reads directories, not flat files)
     fs.writeFileSync(path.join(sessionsDir, "README.md"), "# Sessions");
     // Create a valid session
     createSession(minimalSession(), baseDir);

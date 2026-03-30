@@ -13,6 +13,8 @@ export interface StdinHandle {
   write(message: string): boolean;
   /** Close the stdin pipe (signals EOF). Idempotent. */
   close(): void;
+  /** Interrupt the current turn without destroying the session. SDK-only. */
+  interrupt?(): void;
   /** Whether the pipe is still open */
   readonly isOpen: boolean;
 }
@@ -66,4 +68,27 @@ export interface SpawnOptions {
   stdinPipe?: boolean;
   /** Unique invocation ID for handoff file path construction */
   invocationId?: string;
+  /** Flywheel session ID for session-scoped handoff paths */
+  sessionId?: string;
+  /** Explicit handoff file name (e.g., "work_step-1.json"). Overrides invocationId-based naming. */
+  handoffFileName?: string;
+  /**
+   * Callback invoked when a turn completes (result event detected) while
+   * the stdin pipe is still open. Enables the 2-tier interrupt system:
+   * the shell can inject queued messages at turn boundaries instead of
+   * closing the pipe.
+   *
+   * Only called when `stdinPipe` is true and the engine supports
+   * streaming input. The sessionId is extracted from the NDJSON output.
+   *
+   * When not provided, the default behavior is to close the stdin pipe
+   * on completion detection (current behavior).
+   */
+  onTurnComplete?: (sessionId: string | undefined) => void;
+  /**
+   * Called when session_id is first captured from the NDJSON stream.
+   * Fires as soon as the init event arrives (the very first NDJSON line),
+   * well before turn completion or process exit.
+   */
+  onSessionId?: (sessionId: string) => void;
 }

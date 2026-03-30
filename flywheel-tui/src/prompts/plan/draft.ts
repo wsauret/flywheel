@@ -8,7 +8,7 @@ export const planDraftEvaluationCriteria =
 /**
  * Builds a prompt for drafting an implementation plan from research results.
  *
- * The worker produces a single JSON file at .flywheel/plans/<type>-<description>.plan.json
+ * The worker produces a single JSON plan file at the session's plan.json path.
  * containing {steps[], behavioralContract[], decisions[], risks[]}.
  */
 export function buildPlanDraftPrompt(ctx: WorkflowStepContext): string {
@@ -42,12 +42,9 @@ ${FILE_LINE_DISCIPLINE}
 ## Output Format
 
 You MUST produce a structured JSON plan. Write a single JSON file to:
-\`.flywheel/plans/{type}-{description}.plan.json\`
+\`${ctx.extra?.planPath ?? "plan.json"}\`
 
-Where \`{type}\` is one of: feat, fix, refactor, chore, docs
-And \`{description}\` is a short kebab-case name for the feature.
-
-Create the \`.flywheel/plans/\` directory if it does not exist.
+Create the parent directory if it does not exist.
 
 ### JSON Structure
 
@@ -143,7 +140,8 @@ const STEP_DECOMPOSITION_RULES = `1. **Test-first pairing**: Each implementation
 2. **Single responsibility**: One step, one clear goal. If description needs "and" for unrelated things, split.
 3. **Dependencies flow forward**: Step N never depends on Step N+1.
 4. **Feature grouping**: Related steps share a \`feature\` value. Quality checks fire at feature boundaries.
-5. **Milestone grouping**: Steps in the same milestone form a deliverable unit.`;
+5. **Milestone grouping**: Steps in the same milestone form a deliverable unit.
+6. **Each step = one subprocess (context-clearing boundary).** Every step spawns an independent AI worker with a blank context window. The rule for splitting: will clearing context help or hurt? If the next chunk of work benefits from a fresh perspective (e.g., a large unrelated feature after a complex refactor), make it a new step. If the next activity needs awareness of what was just done (e.g., running tests after code changes, auditing related code, smoke-testing the thing you just built), keep it in the SAME step — losing that context would force the worker to rediscover everything. A 4-step plan where step 1 fixes a bug and steps 2-4 are "audit", "run tests", and "smoke test" is WRONG — that's one step whose acceptanceCriteria includes those verification checks, because the worker that wrote the fix is best positioned to run tests and fix failures.`;
 
 const BEHAVIORAL_CONTRACT_RULES = `1. **Complete coverage**: Every step should fulfill at least one assertion. Every assertion should be fulfilled by exactly one step.
 2. **Behavioral, not structural**: Describe what the user or system sees, not implementation details.

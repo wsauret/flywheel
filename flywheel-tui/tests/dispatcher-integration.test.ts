@@ -649,19 +649,7 @@ describe("VAL-DISP-007: Dispatcher receives both handoff and assessment", () => 
       feedback: null,
       suggestions: [],
       cyclesUsed: 1,
-      verificationResults: {
-        commandResults: [{
-          command: "bun test",
-          claimedExitCode: 0,
-          actualExitCode: 0,
-          matched: true,
-          stdout: "5 pass",
-          stderr: "",
-          timedOut: false,
-        }],
-        fileResults: [],
-        countResults: [],
-      },
+
     };
 
     await dispatcher.dispatch(step, queue, {

@@ -111,4 +111,64 @@ describe("createActionDispatcher", () => {
     const message = (deps.notify as ReturnType<typeof mock>).mock.calls[0][0]
     expect(message).toContain("Unknown workflow")
   })
+
+  // ── /compound command routing ──
+
+  it('dispatching "compound" calls launchGenericWorkflow with compound command', () => {
+    const deps = fakeDeps()
+    const dispatch = createActionDispatcher(deps)
+    const result = dispatch("compound", {})
+
+    expect(result).toBeNull() // /compound is a special command
+    expect(deps.launchGenericWorkflow).toHaveBeenCalledTimes(1)
+    const [name] = (deps.launchGenericWorkflow as ReturnType<typeof mock>).mock.calls[0]
+    expect(name).toBe("compound")
+  })
+
+  // ── /review target routing ──
+
+  it('dispatching "review" with no target passes default description', () => {
+    const deps = fakeDeps()
+    const dispatch = createActionDispatcher(deps)
+    const result = dispatch("review", {})
+
+    expect(result).toEqual({ stepLabel: "Step", workflowName: "review" })
+    expect(deps.launchGenericWorkflow).toHaveBeenCalledTimes(1)
+    const [, args] = (deps.launchGenericWorkflow as ReturnType<typeof mock>).mock.calls[0]
+    expect(args.description).toContain("current changes")
+  })
+
+  it('dispatching "review" with PR number passes resolved target', () => {
+    const deps = fakeDeps()
+    const dispatch = createActionDispatcher(deps)
+    const result = dispatch("review", { target: "#42" })
+
+    expect(result).toEqual({ stepLabel: "Step", workflowName: "review" })
+    const [, args] = (deps.launchGenericWorkflow as ReturnType<typeof mock>).mock.calls[0]
+    expect(args.description).toContain("PR #42")
+  })
+
+  it('dispatching "review" with bare PR number passes resolved target', () => {
+    const deps = fakeDeps()
+    const dispatch = createActionDispatcher(deps)
+    dispatch("review", { target: "123" })
+    const [, args] = (deps.launchGenericWorkflow as ReturnType<typeof mock>).mock.calls[0]
+    expect(args.description).toContain("PR #123")
+  })
+
+  it('dispatching "review" with GitHub URL passes resolved target', () => {
+    const deps = fakeDeps()
+    const dispatch = createActionDispatcher(deps)
+    dispatch("review", { target: "https://github.com/org/repo/pull/99" })
+    const [, args] = (deps.launchGenericWorkflow as ReturnType<typeof mock>).mock.calls[0]
+    expect(args.description).toContain("PR #99")
+  })
+
+  it('dispatching "review" with branch name passes as description', () => {
+    const deps = fakeDeps()
+    const dispatch = createActionDispatcher(deps)
+    dispatch("review", { target: "feat/auth" })
+    const [, args] = (deps.launchGenericWorkflow as ReturnType<typeof mock>).mock.calls[0]
+    expect(args.description).toContain("feat/auth")
+  })
 })

@@ -93,6 +93,7 @@ describe("isValidTransition — valid transitions", () => {
     // new ->
     ["new", "plan:draft"],
     ["new", "plan:imported"],
+    ["new", "trashed"],
     // plan:draft ->
     ["plan:draft", "plan:imported"],
     ["plan:draft", "plan:needs-fix"],
@@ -147,7 +148,6 @@ describe("isValidTransition — invalid transitions", () => {
     ["new", "work:active"],
     ["new", "completed"],
     ["new", "archived"],
-    ["new", "trashed"],
     // plan:approved cannot go backwards
     ["plan:approved", "plan:draft"],
     ["plan:approved", "new"],
@@ -201,6 +201,19 @@ describe("isValidTransition — skip edges (multi-hop paths)", () => {
   it("work:active -> work:paused -> work:active (pause/resume cycle)", () => {
     expect(isValidTransition("work:active", "work:paused")).toBe(true);
     expect(isValidTransition("work:paused", "work:active")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression: new -> trashed must be allowed (was missing from VALID_TRANSITIONS)
+// ---------------------------------------------------------------------------
+describe("isValidTransition — regression: new -> trashed", () => {
+  it("VALID_TRANSITIONS['new'] includes 'trashed'", () => {
+    expect(VALID_TRANSITIONS["new"]).toContain("trashed");
+  });
+
+  it("allows new -> trashed", () => {
+    expect(isValidTransition("new", "trashed")).toBe(true);
   });
 });
 

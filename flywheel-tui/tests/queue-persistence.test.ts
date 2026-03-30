@@ -60,7 +60,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-QUEUE-019: save writes to correct file path", () => {
-  it("saves queue state to .flywheel/sessions/<id>.queue.json", () => {
+  it("saves queue state to .flywheel/sessions/<id>/queue.json", () => {
     const sessionId = "test-session-001";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
@@ -71,7 +71,8 @@ describe("VAL-QUEUE-019: save writes to correct file path", () => {
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     expect(fs.existsSync(expectedPath)).toBe(true);
 
@@ -110,7 +111,8 @@ describe("VAL-QUEUE-019: save writes to correct file path", () => {
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     const raw = fs.readFileSync(expectedPath, "utf-8");
     const parsed = JSON.parse(raw);
@@ -140,18 +142,19 @@ describe("VAL-QUEUE-020: atomic writes via writeFileAtomic", () => {
     const queue = makeQueue();
     persistence.save(queue);
 
-    // File should exist at expected path
+    // File should exist at expected path (directory-per-session layout)
     const expectedPath = path.join(
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     expect(fs.existsSync(expectedPath)).toBe(true);
 
-    // No temp files should remain in sessions dir
-    const sessionsDir = path.join(tmpDir, ".flywheel", "sessions");
-    const files = fs.readdirSync(sessionsDir);
+    // No temp files should remain in session dir
+    const sessionDir = path.join(tmpDir, ".flywheel", "sessions", sessionId);
+    const files = fs.readdirSync(sessionDir);
     const tmpFiles = files.filter((f) => f.includes(".__flywheel__"));
     expect(tmpFiles).toHaveLength(0);
   });
@@ -161,12 +164,12 @@ describe("VAL-QUEUE-020: atomic writes via writeFileAtomic", () => {
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
     // Parent dir does NOT exist yet
-    const sessionsDir = path.join(tmpDir, ".flywheel", "sessions");
-    expect(fs.existsSync(sessionsDir)).toBe(false);
+    const sessionDir = path.join(tmpDir, ".flywheel", "sessions", sessionId);
+    expect(fs.existsSync(sessionDir)).toBe(false);
 
     persistence.save(makeQueue());
 
-    expect(fs.existsSync(sessionsDir)).toBe(true);
+    expect(fs.existsSync(sessionDir)).toBe(true);
   });
 
   it("overwrites previous save without corruption", () => {
@@ -183,7 +186,8 @@ describe("VAL-QUEUE-020: atomic writes via writeFileAtomic", () => {
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     const raw = fs.readFileSync(expectedPath, "utf-8");
     const parsed = JSON.parse(raw);
@@ -251,15 +255,15 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     const sessionId = "test-corrupt";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    // Write corrupt data manually
-    const filePath = path.join(
+    // Write corrupt data manually (directory-per-session layout)
+    const sessionDir = path.join(
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, "{{not valid json}}", "utf-8");
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionDir, "queue.json"), "{{not valid json}}", "utf-8");
 
     const loaded = await persistence.load();
     expect(loaded).toBeNull();
@@ -269,15 +273,15 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     const sessionId = "test-bad-schema";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    // Write valid JSON but invalid queue structure
-    const filePath = path.join(
+    // Write valid JSON but invalid queue structure (directory-per-session layout)
+    const sessionDir = path.join(
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify({ steps: [] }), "utf-8");
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionDir, "queue.json"), JSON.stringify({ steps: [] }), "utf-8");
 
     const loaded = await persistence.load();
     expect(loaded).toBeNull();
@@ -287,15 +291,15 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     const sessionId = "test-invalid-type";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    const filePath = path.join(
+    const sessionDir = path.join(
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.mkdirSync(sessionDir, { recursive: true });
     fs.writeFileSync(
-      filePath,
+      path.join(sessionDir, "queue.json"),
       JSON.stringify({
         steps: [{ id: "x", type: "INVALID_TYPE", title: "Bad", status: "pending" }],
         cursor: 0,
@@ -535,7 +539,8 @@ describe("persist_queue=false means no file I/O", () => {
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     expect(fs.existsSync(filePath)).toBe(false);
   });
@@ -548,16 +553,16 @@ describe("persist_queue=false means no file I/O", () => {
       persistQueue: false,
     });
 
-    // Even if a file exists, load should be a no-op
-    const filePath = path.join(
+    // Even if a file exists, load should be a no-op (directory-per-session layout)
+    const sessionDir = path.join(
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.mkdirSync(sessionDir, { recursive: true });
     fs.writeFileSync(
-      filePath,
+      path.join(sessionDir, "queue.json"),
       JSON.stringify(makeQueue()),
       "utf-8",
     );
@@ -583,7 +588,8 @@ describe("persist_queue=false means no file I/O", () => {
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     expect(fs.existsSync(filePath)).toBe(false);
   });
@@ -606,7 +612,8 @@ describe("delete removes queue file", () => {
       tmpDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.queue.json`,
+      sessionId,
+      "queue.json",
     );
     expect(fs.existsSync(filePath)).toBe(false);
   });

@@ -22,7 +22,6 @@
  *   flusher.dispose();
  */
 
-import * as path from "node:path";
 import * as fs from "node:fs";
 import { writeFileAtomic } from "../utils/atomic-write";
 import { QueueSchema } from "./schemas";
@@ -30,7 +29,7 @@ import {
   createDebouncedWriter,
   type DebouncedWriter,
 } from "../utils/debounced-writer";
-import { SESSIONS_DIR } from "../config/paths";
+import { resolveSessionFile } from "../config/paths";
 import type { Queue } from "./types";
 import type { AccumulatorState } from "./context-accumulator";
 
@@ -119,11 +118,11 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
   } = deps;
 
   function queueFilePath(): string {
-    return path.join(baseDir, SESSIONS_DIR, `${sessionId}.queue.json`);
+    return resolveSessionFile(sessionId, "queue", baseDir);
   }
 
   function accumulatorFilePath(): string {
-    return path.join(baseDir, SESSIONS_DIR, `${sessionId}.context.json`);
+    return resolveSessionFile(sessionId, "context", baseDir);
   }
 
   function save(queue: Queue): void {

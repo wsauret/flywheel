@@ -55,6 +55,27 @@ export class SdkSpawner implements ProcessSpawner {
         this.client = oc.client;
         this.server = oc.server;
         log.info("OpenCode server started", { url: oc.server.url });
+
+        // Wait for the session API to be ready. The HTTP port may be open
+        // before the server is fully initialized to handle requests.
+        const MAX_READY_ATTEMPTS = 10;
+        const READY_DELAY_MS = 300;
+        for (let i = 0; i < MAX_READY_ATTEMPTS; i++) {
+          try {
+            const probe = await oc.client.session.list();
+            if (probe.data) {
+              log.info("OpenCode server ready", { attempt: i + 1 });
+              break;
+            }
+          } catch {
+            // Not ready yet
+          }
+          if (i === MAX_READY_ATTEMPTS - 1) {
+            log.warn("OpenCode server readiness check exhausted — proceeding anyway");
+          } else {
+            await new Promise((r) => setTimeout(r, READY_DELAY_MS));
+          }
+        }
       } catch (err) {
         log.error("failed to start OpenCode server", {
           error: err instanceof Error ? err : String(err),
@@ -96,10 +117,18 @@ export class SdkSpawner implements ProcessSpawner {
     const sessionId = sessionResp.data!.id;
     log.info("SDK session created", { sessionId });
 
+    // Fire onSessionId callback immediately after session creation
+    options?.onSessionId?.(sessionId);
+
     // State tracking
     const textChunks: string[] = [];
     let completed = false;
     let aborted = false;
+    let interrupted = false;
+    /** Number of promptAsync injections awaiting their session.idle. */
+    let pendingInjections = 0;
+    /** Last injected message text — re-sent on idle if the queue didn't drain. */
+    let lastInjectedMessage: string | null = null;
 
     // Set up timeout
     const timeoutHandle = setTimeout(() => {
@@ -146,7 +175,7 @@ export class SdkSpawner implements ProcessSpawner {
         let sseBuf = "";
         try {
           while (true) {
-            if (completed && aborted) break;
+            if (completed) break;
 
             const { done, value } = await sseReader.read();
             if (done) break;
@@ -178,21 +207,116 @@ export class SdkSpawner implements ProcessSpawner {
                 case "message.part.delta": {
                   if (props.field === "text" && typeof props.delta === "string") {
                     textChunks.push(props.delta);
-                    options?.onStdout?.(props.delta);
+                    // Emit as NDJSON text event (matches opencode run --format json output)
+                    const ndjsonEvent = JSON.stringify({
+                      type: "text",
+                      timestamp: Date.now(),
+                      sessionID: sessionId,
+                      part: {
+                        sessionID: sessionId,
+                        type: "text",
+                        text: props.delta,
+                      },
+                    });
+                    options?.onStdout?.(ndjsonEvent + "\n");
+                  } else if (props.field === "thinking" && typeof props.delta === "string") {
+                    // Forward reasoning/thinking deltas as NDJSON
+                    const ndjsonEvent = JSON.stringify({
+                      type: "reasoning",
+                      timestamp: Date.now(),
+                      sessionID: sessionId,
+                      part: {
+                        sessionID: sessionId,
+                        type: "reasoning",
+                        text: props.delta,
+                      },
+                    });
+                    options?.onStdout?.(ndjsonEvent + "\n");
                   }
                   break;
                 }
 
-                // Full part updates (final text, step lifecycle)
+                // Full part updates (tool use, step lifecycle)
                 case "message.part.updated": {
                   const part = props.part as Record<string, unknown> | undefined;
-                  if (part?.type === "step-finish") {
+                  if (!part) break;
+
+                  const partType = part.type as string;
+
+                  if (partType === "tool-use" || partType === "tool_use") {
+                    const ndjsonEvent = JSON.stringify({
+                      type: "tool_use",
+                      timestamp: Date.now(),
+                      sessionID: sessionId,
+                      part: { ...part, sessionID: sessionId },
+                    });
+                    options?.onStdout?.(ndjsonEvent + "\n");
+                  } else if (partType === "step-start") {
+                    const ndjsonEvent = JSON.stringify({
+                      type: "step_start",
+                      timestamp: Date.now(),
+                      sessionID: sessionId,
+                      part: { ...part, sessionID: sessionId },
+                    });
+                    options?.onStdout?.(ndjsonEvent + "\n");
+                  } else if (partType === "step-finish") {
                     log.debug("step-finish", { sessionId });
+                    const ndjsonEvent = JSON.stringify({
+                      type: "step_finish",
+                      timestamp: Date.now(),
+                      sessionID: sessionId,
+                      part: { ...part, sessionID: sessionId },
+                    });
+                    options?.onStdout?.(ndjsonEvent + "\n");
+                  } else if (partType === "text") {
+                    // Full text part (as opposed to delta) — forward as text event
+                    const text = part.text as string | undefined;
+                    if (text) {
+                      const ndjsonEvent = JSON.stringify({
+                        type: "text",
+                        timestamp: Date.now(),
+                        sessionID: sessionId,
+                        part: { ...part, sessionID: sessionId },
+                      });
+                      options?.onStdout?.(ndjsonEvent + "\n");
+                    }
                   }
                   break;
                 }
 
                 case "session.idle": {
+                  if (interrupted) {
+                    // Session is interrupted — ignore ALL idle events until
+                    // user resumes via write(). OpenCode may fire multiple
+                    // idle events after an abort; resetting the flag on the
+                    // first one caused the second to resolve the promise.
+                    log.debug("ignoring session.idle while interrupted", { sessionId });
+                    break;
+                  }
+
+                  if (pendingInjections > 0) {
+                    // Session went idle but a message was injected via promptAsync.
+                    // The message may have been queued while the session was busy
+                    // and not drained before idle. Re-send it now that the session
+                    // is idle so it starts a fresh turn.
+                    pendingInjections--;
+                    log.info("session idle — re-sending pending injection", { sessionId, remaining: pendingInjections });
+                    if (lastInjectedMessage) {
+                      const msg = lastInjectedMessage;
+                      lastInjectedMessage = null;
+                      client.session.promptAsync({
+                        path: { id: sessionId },
+                        body: {
+                          parts: [{ type: "text", text: msg }],
+                          ...(model ? { model } : {}),
+                        },
+                      }).catch((err) =>
+                        log.error("re-injection failed", { sessionId, error: err instanceof Error ? err : String(err) }),
+                      );
+                    }
+                    break;
+                  }
+
                   log.info("session idle", { sessionId });
                   completed = true;
                   clearTimeout(timeoutHandle);
@@ -256,6 +380,9 @@ export class SdkSpawner implements ProcessSpawner {
     const stdinHandle: StdinHandle = {
       write: (message: string) => {
         if (completed) return false;
+        interrupted = false; // Reset interrupt state on new message (resume)
+        pendingInjections++;
+        lastInjectedMessage = message;
         client.session.promptAsync({
           path: { id: sessionId },
           body: {
@@ -276,6 +403,12 @@ export class SdkSpawner implements ProcessSpawner {
         aborted = true;
         clearTimeout(timeoutHandle);
         client.session.abort({ path: { id: sessionId } }).catch(() => {});
+      },
+      interrupt: () => {
+        if (completed) return;
+        interrupted = true;
+        client.session.abort({ path: { id: sessionId } }).catch(() => {});
+        log.info("SDK session interrupted", { sessionId });
       },
       get isOpen() {
         return !completed;

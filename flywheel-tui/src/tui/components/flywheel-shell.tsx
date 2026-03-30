@@ -62,6 +62,9 @@ import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "./start-
 import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, createEndOfSessionGate as createQueueEndOfSessionGate } from "./shell-queue"
 import { buildQueueFromTemplate } from "../../queue/templates"
 import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
+import { createSprintQueueHandler, type SprintQueueHandler } from "../../queue/sprint"
+import { createDebugQueueHandler } from "../../queue/debug-loop"
+import { runVerificationScript } from "../../sprint/verification-runner"
 import { createFlywheelEmitter } from "../../events/event-bus"
 import { createQueuePersistence } from "../../queue/persistence"
 import { createQueue } from "../../queue/queue"
@@ -70,6 +73,7 @@ import { parseCommand } from "../utils/command-parser"
 import { createQuestionWiring, type QuestionWiring } from "../utils/question-wiring"
 import { SIDEBAR_WIDTH } from "./shell-modes"
 import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
+import { createTranscriptLogger, type TranscriptLogger } from "../../session/transcript"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
 import { createBudgetTracker, type BudgetTracker } from "../../session/budget-tracker"
 import type { BudgetLimits } from "../../schemas/shared"
@@ -86,23 +90,34 @@ import type { WorkState } from "../routes/work/state/types"
 import type { AnyBlock } from "../routes/work/state/types"
 import type { Unsubscribe } from "../../events/event-bus"
 import { sidebarKeyHandler, getOpenAction, groupToFlatList, type SelectionAction } from "./sidebar-logic"
+import { TEST_STEPS, setupTestFixture, buildTestQueue, type TestStepDef } from "./test-step"
 import { createSessionViewport, type SessionViewport } from "./session-viewport"
 import { isResumable } from "../../session/state-machine"
 import { deriveHeaderInfo } from "./session-header-logic"
 import { autoDetectTransport } from "../../dispatcher/auto-detect"
 import { createEvaluatorTransport } from "../../evaluator/create-transport"
-import { killAllActiveProcesses } from "../../worker/process-lifecycle"
+import { killAllActiveProcesses, interruptAllActiveProcesses } from "../../worker/process-lifecycle"
 import { Log } from "../../utils/log"
 import { SubprocessLogger } from "../../utils/subprocess-logger.js"
 import { createStepDispatcher, type StepDispatchContext } from "../../queue/step-dispatcher"
-import { createTrustVerifyEvaluatorFn } from "../../evaluator/create-trust-verify"
+import { createAgentEvaluatorFn } from "../../evaluator/create-agent-evaluator"
 import { readHandoff } from "../../handoff/reader"
 import { WorkerHandoffSchema } from "../../schemas/handoff"
 import { createContextAccumulator } from "../../queue/context-accumulator"
 import { createPlanIntegrationHook, createCompositeHook } from "../../queue/plan-integration"
-import { buildScaffolding } from "../../queue/prompt-scaffolding"
-import { HANDOFFS_DIR } from "../../config/paths"
+import { createReviewFixInjectionHook } from "../../queue/review-fix-injection"
+import { createReviewP3TriageHook } from "../../queue/review-p3-triage"
+import { buildScaffolding, type ScaffoldingPaths } from "../../queue/prompt-scaffolding"
+import {
+  sessionDir,
+  sessionHandoffsDir,
+  buildWorkerHandoffPath,
+  ensureSessionDir,
+  resolveSessionFile,
+} from "../../config/paths"
 import { resolveModels } from "../../config/loader"
+import type { StdinHandle } from "../../worker/spawner"
+import { formatClaudeStdinMessage } from "../../worker/stdin-format"
 
 const log = Log.create({ service: "shell" })
 
@@ -216,9 +231,21 @@ export function FlywheelShell() {
   let activeSession: WorkflowSession | null = null
   let activeStepExecutor: StepExecutor | null = null
   let activeQueue: Queue | null = null
+  /** Mutable ref for the currently running worker's stdin handle (mid-execution injection). */
+  const activeStdinHandleRef: { current: StdinHandle | null } = { current: null }
   let activeFlusher: OutputFlusher | null = null
+  let activeTranscript: TranscriptLogger | null = null
   let activeBudgetTracker: BudgetTracker | null = null
   let storeUnsub: (() => void) | null = null
+
+  // ── 2-Tier Interrupt System ──
+  // Tracks whether the worker has been interrupted (first Esc / SIGINT)
+  // and stores a pending message for injection at turn boundaries or resume.
+  const [isInterrupted, setIsInterrupted] = createSignal(false)
+  /** Pending message to inject at next turn boundary (soft injection). */
+  const pendingInjection: { current: string | null } = { current: null }
+  /** Captured session ID from the NDJSON output, for --resume/--session after interrupt. */
+  const capturedWorkerSessionId: { current: string | undefined } = { current: undefined }
 
   // Queue running guard: prevents handleCommand from overwriting activeWorkflowName
   // during queue execution (step-transition events handle it instead)
@@ -227,6 +254,12 @@ export function FlywheelShell() {
   // User-initiated pause flag: set when double-Esc pauses a queue.
   // Distinguishes pause from failure so ErrorModal is suppressed.
   let _userInitiatedPause = false
+
+  // Interrupt-abort flag: set when first Esc aborts the executor mid-step.
+  // Unlike _userInitiatedPause (which is set by the full pause/kill flow),
+  // this flag tells the queue result handler to transition to work:paused
+  // and "completed" app state WITHOUT showing the ErrorModal.
+  let _interruptAbort = false
 
   // ── Lazy-cached workflow deps ──
   // Avoids calling prepareWorkflowDeps() at every call site.
@@ -274,7 +307,7 @@ export function FlywheelShell() {
    * Resolve dispatcher and evaluator transports for queue execution.
    * Shared between startQueueExecution and resumeSession queue paths.
    */
-  async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string) {
+  async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string, sessionId?: string, baseDir?: string) {
     const engineName = deps.config.engine
 
     let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
@@ -288,6 +321,8 @@ export function FlywheelShell() {
         onStdout: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
         onStderr: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
         logBaseDir,
+        sessionId,
+        baseDir,
       })
       dispatcherTransport = resolved.transport
       log.info("queue dispatcher transport resolved", { label: resolved.label, engine: engineName })
@@ -309,6 +344,8 @@ export function FlywheelShell() {
           onStdout: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
           onStderr: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
           logBaseDir,
+          sessionId,
+          baseDir,
         })
         log.info("queue evaluator transport created", { engine: engineName })
       } catch (err) {
@@ -331,12 +368,19 @@ export function FlywheelShell() {
     emitter: ReturnType<typeof createFlywheelEmitter>;
     workflowIdRef: { current: string };
     dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined;
+    evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined;
     contextIndexer: ContextIndexer;
     projectCwd: string;
     sessionObjective: string | undefined;
     queue: Queue;
+    /** Session ID for session-scoped file paths. */
+    sessionId: string;
+    /** Mutable ref to store the active worker's stdin handle for mid-execution injection. */
+    stdinHandleRef?: { current: StdinHandle | null };
+    /** Pre-seed context accumulator with fixture handoff (for /test command). */
+    seedHandoff?: Record<string, unknown> | null;
   }) {
-    const { deps, emitter, workflowIdRef, dispatcherTransport, contextIndexer, projectCwd, sessionObjective, queue } = opts
+    const { deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport, contextIndexer, projectCwd, sessionObjective, queue, stdinHandleRef, seedHandoff, sessionId: execSessionId } = opts
     const { dispatcherModel, workerModel } = resolveModels(deps.config)
 
     // Build real StepDispatcher if transport is available
@@ -361,17 +405,81 @@ export function FlywheelShell() {
     // Real context accumulator (windowed detail strategy)
     const contextAccumulator = createContextAccumulator()
 
-    // Real trust-but-verify evaluator (if evaluation not skipped)
-    const evaluator = !deps.config.skip_evaluation
-      ? createTrustVerifyEvaluatorFn({ cwd: projectCwd })
+    // Seed accumulator with fixture handoff data (for /test command)
+    if (seedHandoff) {
+      contextAccumulator.accumulate(seedHandoff)
+    }
+
+    // Agent-based evaluator (if evaluation not skipped and transport available)
+    // Verify steps skip evaluation entirely — they use direct verification scripts.
+    const baseEvaluator = !deps.config.skip_evaluation && evaluatorTransport
+      ? createAgentEvaluatorFn({ transport: evaluatorTransport })
+      : null
+    const evaluator = baseEvaluator
+      ? async (step: import("../../queue/types").Step, workerOutput: string, evaluationCriteria?: unknown | null, handoffData?: Record<string, unknown> | null) => {
+          // Skip evaluation for verify steps (sprint verification is handled by the sprint handler)
+          if (step.type === "verify") {
+            return { passed: true, skipped: true, transportError: false, reason: null, feedback: null, suggestions: [], cyclesUsed: 0 }
+          }
+          return baseEvaluator(step, workerOutput, evaluationCriteria, handoffData)
+        }
       : null
 
-    // Plan integration hook + TUI step insertion composite hook
+    // Sprint queue handler: wire when queue contains verify steps
+    const isSprintQueue = queue.steps.some(s => s.type === "verify")
+    let sprintHandler: SprintQueueHandler | null = null
+    if (isSprintQueue) {
+      sprintHandler = createSprintQueueHandler({
+        taskDescription: sessionObjective ?? "",
+        projectCwd,
+        sprintConfig: {
+          max_iterations: deps.config.sprint?.max_iterations ?? 5,
+          verification_timeout_ms: deps.config.sprint?.verification_timeout_ms ?? 30000,
+          escalate_to_full: deps.config.sprint?.escalate_to_full ?? true,
+          escalate_on_stuck: deps.config.sprint?.escalate_on_stuck ?? false,
+        },
+        emitter,
+        workflowId: workflowIdRef.current,
+        runVerification: runVerificationScript,
+        readHandoff: async (handoffPath: string) => {
+          if (!handoffPath) return null
+          try {
+            const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
+            return handoff as unknown as Record<string, unknown>
+          } catch { return null }
+        },
+      })
+    }
+
+    // Debug queue handler: wire when queue contains debug steps
+    const isDebugQueue = queue.steps.some(s => s.type === "debug")
+    const debugHandler = isDebugQueue ? createDebugQueueHandler() : null
+
+    // Plan integration hook + review fix injection + P3 triage + debug hook + sprint hook + TUI step insertion composite hook
     const planIntegrationHook = createPlanIntegrationHook(projectCwd)
+    const reviewFixInjectionHook = createReviewFixInjectionHook()
+    const reviewP3TriageHook = createReviewP3TriageHook({ questionService: activeQuestionWiring?.service ?? null })
     const compositeHook = createCompositeHook([
       planIntegrationHook,
+      reviewFixInjectionHook,
+      reviewP3TriageHook,
+      debugHandler?.onStepCompleted ?? null,
+      sprintHandler?.onStepCompleted ?? null,
       async (step, status, q, _handoffData) => {
-        if (status === "completed" && step.type === "plan") {
+        // Refresh TUI step list when plan, review, or verify steps complete
+        // (plan integration inserts work steps; review-fix-injection may insert a fix step;
+        // sprint handler inserts retry pairs or escalation steps)
+        if (status === "completed" && (step.type === "plan" || step.type === "review" || step.type === "verify")) {
+          const updatedQueueStepStates = q.steps.map(s => ({
+            id: s.id,
+            type: s.type,
+            title: s.title,
+            status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
+          }))
+          setShellQueueSteps(updatedQueueStepStates)
+        }
+        // Also refresh on failed verify/work steps in sprint or debug (retry pairs get inserted)
+        if ((isSprintQueue || isDebugQueue) && status === "failed" && (step.type === "work" || step.type === "verify" || step.type === "debug")) {
           const updatedQueueStepStates = q.steps.map(s => ({
             id: s.id,
             type: s.type,
@@ -385,7 +493,19 @@ export function FlywheelShell() {
     ])
 
     // Dispatcher callback: real dispatcher with fallback to step metadata
+    // Sprint work steps use the sprint handler's prompt builder for iteration-aware prompts
     const dispatcherFn = async (step: import("../../queue/types").Step, context: { previousHandoff?: unknown; previousAssessment?: unknown; hitlResponse?: unknown }) => {
+      // Sprint work steps: use sprint handler's prompt builder (iteration-aware)
+      if (sprintHandler && step.type === "work" && isSprintQueue) {
+        const sprintPrompt = sprintHandler.buildWorkStepPrompt(step)
+        return { prompt: sprintPrompt, evaluationCriteria: null }
+      }
+
+      // Verify steps: no dispatcher needed (they run verification scripts directly)
+      if (step.type === "verify") {
+        return { prompt: "", evaluationCriteria: null }
+      }
+
       if (realDispatcher) {
         try {
           const dispatchContext: StepDispatchContext = {
@@ -415,16 +535,72 @@ export function FlywheelShell() {
       return { prompt: parts.join("\n"), evaluationCriteria: null }
     }
 
-    // Worker callback: spawn engine process
+    // Worker callback: spawn engine process (or run verification script for verify steps)
+    const useStdinPipe = deps.engine.metadata.supportsStreamingInput
     const workerFn = async (step: import("../../queue/types").Step, prompt: string) => {
+      // Sprint verify steps: run verification script directly (no dispatcher/worker/evaluator)
+      if (step.type === "verify" && sprintHandler) {
+        const startTime = Date.now()
+        const verifyResult = await sprintHandler.executeVerifyStep(step, null)
+        // Write verification result as a pseudo-handoff so the sprint handler
+        // can read it back in onStepCompleted
+        const invocationId = randomUUID()
+        const handoffPath = buildWorkerHandoffPath(execSessionId, step.type, step.id, projectCwd)
+        ensureSessionDir(execSessionId, projectCwd)
+        try {
+          const verifySummary = verifyResult.passed
+            ? `Verification passed (exit code ${verifyResult.exitCode ?? 0}).`
+            : `Verification failed: ${verifyResult.error ?? `exit code ${verifyResult.exitCode ?? 1}`}.`
+          const handoffData = {
+            summary: verifySummary.replace(/[\n\r]/g, " ").slice(0, 500),
+            verificationResult: verifyResult,
+          }
+          await Bun.write(handoffPath, JSON.stringify(handoffData, null, 2))
+        } catch (err) {
+          log.warn("failed to write verify handoff", { error: err instanceof Error ? err.message : String(err) })
+        }
+        // Emit output for TUI display
+        const statusLabel = verifyResult.passed ? "✅ PASSED" : "❌ FAILED"
+        emitter.workerOutput(workflowIdRef.current, "stderr",
+          `Verification ${statusLabel}${verifyResult.exitCode !== undefined ? ` (exit code ${verifyResult.exitCode})` : ""}\n`,
+          "verification-runner")
+        if (verifyResult.stdout) {
+          emitter.workerOutput(workflowIdRef.current, "stdout", verifyResult.stdout, "verification-runner")
+        }
+        if (verifyResult.stderr) {
+          emitter.workerOutput(workflowIdRef.current, "stderr", verifyResult.stderr, "verification-runner")
+        }
+        if (verifyResult.error) {
+          emitter.workerOutput(workflowIdRef.current, "stderr", `Error: ${verifyResult.error}\n`, "verification-runner")
+        }
+        return {
+          output: verifyResult.passed ? "completed" : "verification failed",
+          handoffPath,
+          durationMs: Date.now() - startTime,
+        }
+      }
+
       const invocationId = randomUUID()
 
-      // Compute handoff path BEFORE spawning (matches bun-spawner convention)
-      const handoffPath = `${HANDOFFS_DIR}/${invocationId}.json`
+      // Compute handoff path BEFORE spawning — session-scoped with meaningful name
+      const handoffPath = buildWorkerHandoffPath(execSessionId, step.type, step.id, projectCwd)
+      ensureSessionDir(execSessionId, projectCwd)
 
-      // Append deterministic scaffolding (output format + handoff instructions)
-      const scaffolding = buildScaffolding(step, handoffPath, projectCwd)
-      const fullPrompt = scaffolding ? `${prompt}\n\n${scaffolding}` : prompt
+      // Build session-scoped paths for scaffolding
+      const scaffoldingPaths: ScaffoldingPaths = {
+        handoffPath,
+        planPath: `${sessionDir(execSessionId)}/plan.json`,
+        researchPath: `${sessionDir(execSessionId)}/research.md`,
+        reviewPath: `${sessionDir(execSessionId)}/review.md`,
+      }
+
+      // Build deterministic scaffolding (preamble before task_content, postamble after)
+      const scaffolding = buildScaffolding(step, scaffoldingPaths)
+      const parts: string[] = []
+      if (scaffolding.preamble) parts.push(scaffolding.preamble)
+      parts.push(prompt)
+      if (scaffolding.postamble) parts.push(scaffolding.postamble)
+      const fullPrompt = parts.join("\n\n")
 
       const engineCmd = deps.engine.buildCommand({
         prompt: fullPrompt,
@@ -432,12 +608,55 @@ export function FlywheelShell() {
         toolScoping: step.toolScoping ?? undefined,
       })
       const startTime = Date.now()
+      const rawStdinContent = engineCmd.stdinPrompt
+        ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + fullPrompt : fullPrompt)
+        : undefined
+      // NDJSON-wrap stdin content when using streaming pipe (Claude's --input-format stream-json)
+      const stdinContent = useStdinPipe && rawStdinContent
+        ? formatClaudeStdinMessage(rawStdinContent)
+        : rawStdinContent
+      // Turn-complete callback: when the worker finishes a turn (result event)
+      // and the stdin pipe is still open, either inject a pending message or
+      // close the pipe to let the step advance.
+      const onTurnComplete = useStdinPipe ? (sessionId: string | undefined) => {
+        // Capture session ID for --resume/--session after interrupt
+        capturedWorkerSessionId.current = sessionId
+        // Check for pending injection (user typed while worker was running)
+        if (pendingInjection.current && stdinHandleRef?.current?.isOpen) {
+          const message = pendingInjection.current
+          pendingInjection.current = null
+          const written = stdinHandleRef.current.write(formatClaudeStdinMessage(message))
+          if (written) {
+            log.info("turn-boundary injection sent to worker", { length: message.length })
+            // Emit event for TUI display
+            if (activeSession) {
+              activeSession.eventBus.emit({
+                type: "worker:injected",
+                workflowId: workflowIdRef.current,
+                message,
+                timestamp: new Date().toISOString(),
+              })
+            }
+          } else {
+            log.warn("turn-boundary injection failed — pipe closed")
+          }
+        } else {
+          // No pending injection — close the pipe to let the step advance
+          stdinHandleRef?.current?.close()
+        }
+      } : undefined
+
       const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
         cwd: projectCwd,
         invocationId,
-        stdin: engineCmd.stdinPrompt
-          ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + fullPrompt : fullPrompt)
-          : undefined,
+        sessionId: execSessionId,
+        handoffFileName: `${step.type}_${step.id}.json`,
+        stdin: stdinContent,
+        stdinPipe: useStdinPipe && stdinContent !== undefined,
+        onTurnComplete,
+        onSessionId: (sessionId) => {
+          capturedWorkerSessionId.current = sessionId
+        },
         onStdout: (chunk) => {
           emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
         },
@@ -445,11 +664,27 @@ export function FlywheelShell() {
           emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
         },
       })
-      const workerResult = await spawnResult.result
-      return {
-        output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
-        handoffPath: workerResult.handoffPath ?? "",
-        durationMs: Date.now() - startTime,
+      // Expose stdinHandle for mid-execution injection (user steering)
+      if (stdinHandleRef && spawnResult.stdinHandle) {
+        stdinHandleRef.current = spawnResult.stdinHandle
+      }
+      try {
+        const workerResult = await spawnResult.result
+        // Capture session ID from worker result (fallback for non-streaming engines)
+        if (workerResult.sessionId) {
+          capturedWorkerSessionId.current = workerResult.sessionId
+        }
+        return {
+          output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
+          handoffPath: workerResult.handoffPath ?? "",
+          durationMs: Date.now() - startTime,
+          sessionId: workerResult.sessionId,
+        }
+      } finally {
+        // Clear handle when worker finishes (pipe is closed)
+        if (stdinHandleRef) {
+          stdinHandleRef.current = null
+        }
       }
     }
 
@@ -475,6 +710,7 @@ export function FlywheelShell() {
       dispatcherFn,
       workerFn,
       handoffReader,
+      sprintHandler,
     }
   }
 
@@ -667,6 +903,8 @@ export function FlywheelShell() {
     args: Record<string, string>,
     preloadedDeps?: WorkflowDeps,
     interactiveOverrides?: { plan?: boolean; review?: boolean },
+    /** Pre-seed the context accumulator with fixture handoff data (for /test). */
+    seedHandoff?: Record<string, unknown> | null,
   ) => {
     // Background previous session (don't destroy — allow concurrent queues)
     const prevFocused = focusedSessionId()
@@ -675,7 +913,12 @@ export function FlywheelShell() {
       activeSession = null
       activeStepExecutor = null
       activeQueue = null
+      activeStdinHandleRef.current = null
       activeFlusher = null
+      if (activeTranscript) {
+        activeTranscript.dispose()
+        activeTranscript = null
+      }
       activeBudgetTracker = null
       if (storeUnsub) {
         storeUnsub()
@@ -690,9 +933,14 @@ export function FlywheelShell() {
       activeSession = null
       activeStepExecutor = null
       activeQueue = null
+      activeStdinHandleRef.current = null
       if (activeFlusher) {
         activeFlusher.dispose()
         activeFlusher = null
+      }
+      if (activeTranscript) {
+        activeTranscript.dispose()
+        activeTranscript = null
       }
       if (activeBudgetTracker) {
         activeBudgetTracker.dispose()
@@ -710,6 +958,10 @@ export function FlywheelShell() {
     setActiveStore(session.store)
     subscribeToStore(session.store)
     subscribeToTimer(session.timer)
+
+    // Start workflow — sets workflowStatus to "running" and initializes store
+    const planLabel = args.planPath ?? args.description ?? queue.steps.map((s) => s.type).join(" → ")
+    session.store.startWorkflow(planLabel)
 
     // Populate queue step display state for workflow panel BEFORE setting
     // appState to "working". This ensures the panel has step data available
@@ -744,7 +996,7 @@ export function FlywheelShell() {
       persistedSessionId = sessionCtx.manager.create(planPathForSession, placeholderName)
 
       const projectCwd = deps.config.project_cwd ?? "."
-      updateSession(persistedSessionId, { outputPath: `${persistedSessionId}.output.json` }, projectCwd)
+      updateSession(persistedSessionId, { outputPath: "output.json" }, projectCwd)
 
       // Transition to work:active
       sessionCtx.manager.updateState(persistedSessionId, "plan:imported")
@@ -759,6 +1011,13 @@ export function FlywheelShell() {
       const sessionStore = session.store
       const getOutputBlocks = () => (sessionStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
       activeFlusher = persistence.createFlusher(getOutputBlocks, { intervalMs: 5000 })
+
+      // Start transcript logger — append-only JSONL capturing ALL events
+      activeTranscript = createTranscriptLogger({
+        sessionId: persistedSessionId,
+        baseDir: projectCwd,
+      })
+      activeTranscript.subscribeTo(session.eventBus)
 
       sessionStores.set(persistedSessionId, session.store)
       sessionCtx.refreshList()
@@ -796,6 +1055,9 @@ export function FlywheelShell() {
 
     // Queue event subscriptions (replaces queue event subscriptions)
     cleanupQueueSubscriptions()
+    // Re-populate shellQueueSteps after cleanup (cleanupQueueSubscriptions resets
+    // the signal to [], overwriting the initial population from line ~909).
+    setShellQueueSteps(initialQueueStepStates)
     let stepCounter = 0
     // Sprint detection: a queue with verify-type steps is a sprint queue
     let isSprintQueue = queue.steps.some(s => s.type === "verify")
@@ -917,6 +1179,7 @@ export function FlywheelShell() {
     const queueSessionId = persistedSessionId
     _isQueueRunning = true
     _userInitiatedPause = false
+    _interruptAbort = false
 
     const capturedFlusher = activeFlusher
 
@@ -949,8 +1212,11 @@ export function FlywheelShell() {
       queueUnsubs.push(workflowIdUnsub)
 
       // Resolve dispatcher and evaluator transports
+      // Session ID must exist at this point
+      const effectiveSessionId = queueSessionId ?? crypto.randomUUID()
+
       const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-        deps, session.eventBus, workflowIdRef, queueLogBaseDir,
+        deps, session.eventBus, workflowIdRef, queueLogBaseDir, effectiveSessionId, capturedProjectCwd,
       )
 
       const emitter = createFlywheelEmitter(session.eventBus)
@@ -958,15 +1224,19 @@ export function FlywheelShell() {
 
       // Build shared executor dependencies (dispatcher, accumulator, evaluator, hooks, worker, handoff reader)
       const execDeps = buildExecutorDeps({
-        deps, emitter, workflowIdRef, dispatcherTransport,
+        deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
         contextIndexer: queueContextIndexer, projectCwd: projectCwdForExec,
         sessionObjective: args.description, queue,
+        sessionId: effectiveSessionId,
+        stdinHandleRef: activeStdinHandleRef,
+        seedHandoff,
       })
 
       // Create step executor with real per-step execution.
       const stepExec = createStepExecutor({
         queue,
         workflowId: workflowIdRef.current,
+        sessionId: effectiveSessionId,
         emitter,
         dispatcher: execDeps.dispatcherFn,
         worker: execDeps.workerFn,
@@ -1016,13 +1286,46 @@ export function FlywheelShell() {
       }
 
       let queueResult: StepExecutorResult | undefined
+      // Track whether this run was interrupted (for skip-cleanup in finally)
+      let wasInterruptedRun = false
       try {
         queueResult = await stepExec.run()
 
         if (!queueResult.completed && !_userInitiatedPause) {
           const isBudgetExhausted = /budget[_ ]exhausted/i.test(queueResult.reason ?? "")
           const isRateLimitPause = /rate limit/i.test(queueResult.reason ?? "")
-          if (isRateLimitPause) {
+          const wasInterrupted = _interruptAbort
+          // Reset interrupt flag after capturing it
+          _interruptAbort = false
+
+          if (wasInterrupted) {
+            // Interrupt-abort: step was aborted by first Esc (SIGINT + executor abort).
+            // Stay in "working" state so the user can type to resume the worker.
+            // Do NOT transition to completed, do NOT show ErrorModal.
+            wasInterruptedRun = true
+            _isQueueRunning = false
+            // Clear the step executor (it's done) but keep everything else alive
+            activeStepExecutor = null
+            toast.show({
+              message: "Worker interrupted — type to resume, or Esc to kill",
+              variant: "warning",
+              duration: 5000,
+            })
+            // Update the failed step's display to show "interrupted" instead of "failed"
+            setShellQueueSteps((prev) =>
+              prev.map((s) =>
+                s.status === "failed"
+                  ? { ...s, status: "failed" as const, error: "interrupted" }
+                  : s,
+              ),
+            )
+            log.info("queue interrupted — staying in working state for resume", {
+              sessionId: queueSessionId,
+              capturedWorkerSession: capturedWorkerSessionId.current,
+            })
+            // Don't transition app state — stay in "working"
+            return
+          } else if (isRateLimitPause) {
             toast.show({
               message: "Queue paused — rate limit reached. Resume when limits lift.",
               variant: "warning",
@@ -1052,6 +1355,25 @@ export function FlywheelShell() {
         }
       } catch (err) {
         if (!_userInitiatedPause) {
+          // Check if this was an interrupt abort that threw
+          const wasInterrupted = _interruptAbort
+          _interruptAbort = false
+
+          if (wasInterrupted) {
+            wasInterruptedRun = true
+            _isQueueRunning = false
+            activeStepExecutor = null
+            toast.show({
+              message: "Worker interrupted — type to resume, or Esc to kill",
+              variant: "warning",
+              duration: 5000,
+            })
+            log.info("queue interrupted (exception path) — staying in working state", {
+              sessionId: queueSessionId,
+            })
+            return
+          }
+
           activeStore()?.setError(String(err))
           if (queueSessionId) {
             safeUpdateState(
@@ -1064,6 +1386,9 @@ export function FlywheelShell() {
           if (isStillViewed()) setAppState("completed")
         }
       } finally {
+        // Skip cleanup if this was an interrupted run — resources stay alive for resume
+        if (wasInterruptedRun) return
+
         _isQueueRunning = false
 
         if (queueBudgetTracker) {
@@ -1139,6 +1464,11 @@ export function FlywheelShell() {
       activeStepExecutor = null
     }
     activeQueue = null
+    activeStdinHandleRef.current = null
+    // Reset interrupt state
+    setIsInterrupted(false)
+    pendingInjection.current = null
+    capturedWorkerSessionId.current = undefined
     // Kill all active worker processes (fire-and-forget)
     const shutdownPromise = killAllActiveProcesses().catch(() => {})
     return shutdownPromise
@@ -1156,6 +1486,11 @@ export function FlywheelShell() {
     if (activeFlusher) {
       activeFlusher.dispose()
       activeFlusher = null
+    }
+    // Dispose transcript logger (flushes remaining buffer, closes file handle)
+    if (activeTranscript) {
+      activeTranscript.dispose()
+      activeTranscript = null
     }
     // Dispose budget tracker (flushes pending data, cancels timers)
     if (activeBudgetTracker) {
@@ -1175,6 +1510,9 @@ export function FlywheelShell() {
   const stopWorkflow = async () => {
     escapeHandler.reset()
     setEscHint("")
+    setIsInterrupted(false)
+    pendingInjection.current = null
+    capturedWorkerSessionId.current = undefined
 
     // Capture session ID before teardown clears it
     const sessionId = focusedSessionId()
@@ -1215,6 +1553,9 @@ export function FlywheelShell() {
     _userInitiatedPause = true
     escapeHandler.reset()
     setEscHint("")
+    setIsInterrupted(false)
+    pendingInjection.current = null
+    capturedWorkerSessionId.current = undefined
 
     // Suppress ErrorModal from the queue:failed event that shutdown triggers
     if (activeSession?.adapter) {
@@ -1233,31 +1574,35 @@ export function FlywheelShell() {
       activeFlusher = null
     }
 
+    // Flush and dispose transcript logger (persists final buffered entries)
+    if (activeTranscript) {
+      activeTranscript.dispose()
+      activeTranscript = null
+    }
+
     // Flush and dispose budget tracker (persists final cost/usage data)
     if (activeBudgetTracker) {
       activeBudgetTracker.dispose()
       activeBudgetTracker = null
     }
 
-    // Shut down queue runtime (but NOT session/adapter/store)
+    // Clean up subscriptions (question wiring, queue event bus listeners)
+    cleanupQuestionSubscriptions()
+    cleanupQueueSubscriptions()
+
+    // Unsubscribe from timer so the runtime display stops ticking
+    unsubscribeTimer()
+
+    // Clean up store subscription
+    if (storeUnsub) {
+      storeUnsub()
+      storeUnsub = null
+    }
+
+    // Shut down queue runtime (executor, processes, stdin handles)
     _clearQueueRuntime()
 
-    // Persist session state as work:paused and remove from sessionControllers
-    // so the sidebar groups them as "Paused" instead of "Active".
-    const runningSessionIds = [...sessionControllers.keys()]
-    for (const sessionId of runningSessionIds) {
-      try {
-        sessionCtx.manager.updateState(sessionId, "work:paused")
-      } catch (err) {
-        log.warn("state transition failed (pause)", { session: sessionId, error: err instanceof Error ? err : String(err) })
-      }
-      sessionControllers.delete(sessionId)
-    }
-    if (runningSessionIds.length > 0) {
-      sessionCtx.refreshList()
-    }
-
-    // Push pause message through the event bus
+    // Push pause message through the event bus BEFORE destroying the session
     if (activeSession) {
       activeSession.eventBus.emit({
         type: "worker:output",
@@ -1268,8 +1613,262 @@ export function FlywheelShell() {
       })
     }
 
+    // Destroy the workflow session (stops timer interval, stops and disconnects adapter)
+    if (activeSession) {
+      destroyWorkflowSession(activeSession)
+      activeSession = null
+    }
+    setActiveStore(null)
+
+    // Persist session state as work:paused and remove from sessionControllers
+    // so the sidebar groups them as "Paused" instead of "Active".
+    const runningSessionIds = [...sessionControllers.keys()]
+    for (const sessionId of runningSessionIds) {
+      try {
+        sessionCtx.manager.updateState(sessionId, "work:paused")
+      } catch (err) {
+        log.warn("state transition failed (pause)", { session: sessionId, error: err instanceof Error ? err : String(err) })
+      }
+      runtimes.teardown(sessionId)
+      sessionControllers.delete(sessionId)
+    }
+    if (runningSessionIds.length > 0) {
+      sessionCtx.refreshList()
+    }
+
     // Transition to completed (keeps output visible, enables /work to restart)
     setAppState("completed")
+  }
+
+  /**
+   * Resume the worker after an interrupt by spawning a new process with --resume.
+   *
+   * Called when the user types text while in the interrupted state (after first Esc).
+   * Spawns a new worker process with --resume <sessionId> and the user's message,
+   * then transitions back to normal "working" state.
+   */
+  const resumeWorkerWithMessage = (message: string) => {
+    // SDK path: if the stdinHandle is still open (SDK session stayed alive
+    // after interrupt), just send the message directly — no respawn needed.
+    const handle = activeStdinHandleRef.current
+    if (handle?.isOpen) {
+      setIsInterrupted(false)
+      setEscHint("")
+      escapeHandler.reset()
+      pendingInjection.current = null
+
+      if (activeSession?.adapter) {
+        activeSession.adapter.suppressQueueError = false
+      }
+
+      log.info("resuming SDK session via stdinHandle.write", {
+        sessionId: capturedWorkerSessionId.current,
+        messageLength: message.length,
+      })
+
+      // Emit a system message to show the resume in the output
+      if (activeSession) {
+        activeSession.eventBus.emit({
+          type: "worker:output",
+          workflowId: "resume",
+          stream: "stderr",
+          data: `▶ Resuming with message: ${message.slice(0, 100)}${message.length > 100 ? "…" : ""}\n`,
+          timestamp: new Date().toISOString(),
+        })
+      }
+
+      const written = handle.write(message)
+      if (written) {
+        log.info("SDK resume message sent", { sessionId: capturedWorkerSessionId.current })
+      } else {
+        log.warn("SDK resume write failed — handle closed unexpectedly")
+        toast.show({ message: "Resume failed — session closed", variant: "error" })
+      }
+      return
+    }
+
+    // CLI path: spawn a new process with --resume
+    const resumeSessionId = capturedWorkerSessionId.current
+    if (!resumeSessionId) {
+      log.warn("no captured session ID for resume — cannot resume worker")
+      toast.show({ message: "Cannot resume — no session ID captured", variant: "error" })
+      // Fall back to queuing the message
+      pendingInjection.current = message
+      setIsInterrupted(false)
+      setEscHint("")
+      escapeHandler.reset()
+      return
+    }
+
+    // Reset interrupt state
+    setIsInterrupted(false)
+    setEscHint("")
+    escapeHandler.reset()
+    pendingInjection.current = null
+
+    // Reset suppressQueueError so normal errors are shown again
+    if (activeSession?.adapter) {
+      activeSession.adapter.suppressQueueError = false
+    }
+
+    const deps = getDepsOrWarn()
+    if (!deps) {
+      toast.show({ message: "Failed to load config for resume", variant: "error" })
+      return
+    }
+
+    const projectCwd = deps.config.project_cwd ?? "."
+
+    log.info("resuming worker with --resume", {
+      resumeSessionId,
+      messageLength: message.length,
+    })
+
+    // Emit a system message to show the resume in the output
+    if (activeSession) {
+      activeSession.eventBus.emit({
+        type: "worker:output",
+        workflowId: "resume",
+        stream: "stderr",
+        data: `▶ Resuming worker with message: ${message.slice(0, 100)}${message.length > 100 ? "…" : ""}\n`,
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    // Spawn a new worker process with --resume
+    const useStdinPipe = deps.engine.metadata.supportsStreamingInput
+    const engineCmd = deps.engine.buildCommand({
+      prompt: message,
+      model: deps.config.worker?.model ?? deps.config.model,
+      resumeSessionId,
+    })
+
+    const stdinContent = useStdinPipe
+      ? formatClaudeStdinMessage(message)
+      : (engineCmd.stdinPrompt
+          ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + message : message)
+          : undefined)
+
+    const emitter = activeSession
+      ? createFlywheelEmitter(activeSession.eventBus)
+      : null
+
+    const workflowIdRef = `resume-${resumeSessionId}`
+
+    // Update queue step display to show "running" again
+    setShellQueueSteps((prev) =>
+      prev.map((s) =>
+        s.error === "interrupted"
+          ? { ...s, status: "running" as const, error: undefined }
+          : s,
+      ),
+    )
+
+    // Fire-and-forget async spawn
+    queueMicrotask(async () => {
+      try {
+        const onTurnComplete = useStdinPipe ? (sessionId: string | undefined) => {
+          // Capture new session ID
+          if (sessionId) capturedWorkerSessionId.current = sessionId
+          // Check for pending injection
+          if (pendingInjection.current && activeStdinHandleRef.current?.isOpen) {
+            const injectMsg = pendingInjection.current
+            pendingInjection.current = null
+            const written = activeStdinHandleRef.current.write(formatClaudeStdinMessage(injectMsg))
+            if (written) {
+              log.info("turn-boundary injection sent to resumed worker", { length: injectMsg.length })
+            }
+          } else {
+            activeStdinHandleRef.current?.close()
+          }
+        } : undefined
+
+        const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
+          cwd: projectCwd,
+          invocationId: randomUUID(),
+          stdin: stdinContent,
+          stdinPipe: useStdinPipe && stdinContent !== undefined,
+          onTurnComplete,
+          onSessionId: (sessionId) => {
+            capturedWorkerSessionId.current = sessionId
+          },
+          onStdout: (chunk) => {
+            emitter?.workerOutput(workflowIdRef, "stdout", chunk, deps.engine.metadata.id)
+          },
+          onStderr: (chunk) => {
+            emitter?.workerOutput(workflowIdRef, "stderr", chunk, deps.engine.metadata.id)
+          },
+        })
+
+        // Store stdin handle for mid-execution injection
+        if (spawnResult.stdinHandle) {
+          activeStdinHandleRef.current = spawnResult.stdinHandle
+        }
+
+        const workerResult = await spawnResult.result
+
+        // Capture session ID from result (fallback for non-streaming engines)
+        if (workerResult.sessionId) {
+          capturedWorkerSessionId.current = workerResult.sessionId
+        }
+
+        // Clear stdin handle
+        activeStdinHandleRef.current = null
+
+        if (workerResult.exitCode === 0) {
+          // Worker completed successfully — mark the interrupted step as completed
+          setShellQueueSteps((prev) =>
+            prev.map((s) =>
+              s.status === "running"
+                ? { ...s, status: "completed" as const }
+                : s,
+            ),
+          )
+          toast.show({ message: "Worker completed", variant: "info", duration: 3000 })
+
+          // Check if there are remaining pending steps in the queue
+          const hasPendingSteps = activeQueue?.steps.some((s) => s.status === "pending")
+          if (hasPendingSteps) {
+            // TODO: restart step executor for remaining steps
+            log.info("resumed worker completed, pending steps remain — pausing")
+          }
+
+          // No executor to continue remaining steps — transition to completed
+          // so the runtime doesn't stay stuck in "working" with nothing running
+          if (!hasPendingSteps || !activeStepExecutor) {
+            await stopWorkflow()
+          }
+        } else {
+          // Worker failed after resume — clean up and transition to completed
+          setShellQueueSteps((prev) =>
+            prev.map((s) =>
+              s.status === "running"
+                ? { ...s, status: "failed" as const, error: workerResult.failure?.message ?? "failed" }
+                : s,
+            ),
+          )
+          toast.show({
+            message: `Worker failed: ${workerResult.failure?.message ?? "unknown error"}`,
+            variant: "error",
+            duration: 5000,
+          })
+          await stopWorkflow()
+        }
+      } catch (err) {
+        activeStdinHandleRef.current = null
+        const errMsg = err instanceof Error ? err.message : String(err)
+        log.error("resume worker spawn failed", { error: errMsg })
+        setShellQueueSteps((prev) =>
+          prev.map((s) =>
+            s.status === "running"
+              ? { ...s, status: "failed" as const, error: errMsg }
+              : s,
+          ),
+        )
+        toast.show({ message: `Resume failed: ${errMsg}`, variant: "error" })
+        await stopWorkflow()
+      }
+    })
   }
 
   /**
@@ -1330,6 +1929,9 @@ export function FlywheelShell() {
       subscribeToStore(session.store)
       subscribeToTimer(session.timer)
 
+      // Start workflow — sets workflowStatus to "running"
+      session.store.startWorkflow(result.planPath ?? "Resumed session")
+
       // Inject restored output blocks
       injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
 
@@ -1356,6 +1958,12 @@ export function FlywheelShell() {
         () => (resumedStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[],
         { intervalMs: 5000 },
       )
+
+      // Start transcript logger (append-only — resumes appending to existing file)
+      activeTranscript = createTranscriptLogger({ sessionId, baseDir: projectCwd })
+      activeTranscript.subscribeTo(session.eventBus)
+      activeTranscript.logEntry("session:resumed", { sessionId })
+
       sessionStores.set(sessionId, session.store)
 
       // Create BudgetTracker
@@ -1379,6 +1987,9 @@ export function FlywheelShell() {
 
       // Queue event subscriptions
       cleanupQueueSubscriptions()
+      // Re-populate shellQueueSteps after cleanup (cleanupQueueSubscriptions resets
+      // the signal to [], overwriting the initial population above).
+      setShellQueueSteps(resumeQueueStepStates)
       let stepCounter = result.queue.steps.filter((s) => s.status === "completed").length
       queueUnsubs.push(
         session.eventBus.subscribeToType("queue:initialized", (e) => {
@@ -1462,6 +2073,7 @@ export function FlywheelShell() {
       const capturedFlusher = activeFlusher
       _isQueueRunning = true
       _userInitiatedPause = false
+      _interruptAbort = false
 
       queueMicrotask(async () => {
         const isStillViewed = () => viewedSessionId() === sessionId
@@ -1482,8 +2094,9 @@ export function FlywheelShell() {
         queueUnsubs.push(workflowIdUnsub)
 
         // Resolve dispatcher and evaluator transports
+        const capturedProjectCwdResume = deps.config.project_cwd ?? process.cwd()
         const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-          deps, session.eventBus, workflowIdRef, queueLogBaseDir,
+          deps, session.eventBus, workflowIdRef, queueLogBaseDir, sessionId, capturedProjectCwdResume,
         )
 
         const emitter = createFlywheelEmitter(session.eventBus)
@@ -1494,14 +2107,17 @@ export function FlywheelShell() {
         // Use the session name (original user description) as objective, not the label
         // (which falls back to planPath when no description was provided).
         const execDeps = buildExecutorDeps({
-          deps, emitter, workflowIdRef, dispatcherTransport,
+          deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
           contextIndexer: queueContextIndexer, projectCwd: resumeProjectCwd,
           sessionObjective: result.session.name ?? undefined, queue: resumeQueue,
+          sessionId,
+          stdinHandleRef: activeStdinHandleRef,
         })
 
         const stepExec = createStepExecutor({
           queue: resumeQueue,
           workflowId: workflowIdRef.current,
+          sessionId,
           emitter,
           dispatcher: execDeps.dispatcherFn,
           worker: execDeps.workerFn,
@@ -1544,11 +2160,37 @@ export function FlywheelShell() {
         })
 
         let queueResult: StepExecutorResult | undefined
+        let wasInterruptedRun = false
         try {
           queueResult = await stepExec.run()
           if (!queueResult.completed && !_userInitiatedPause) {
             const isBudgetExhausted = /budget[_ ]exhausted/i.test(queueResult.reason ?? "")
-            if (isBudgetExhausted) {
+            const wasInterrupted = _interruptAbort
+            _interruptAbort = false
+
+            if (wasInterrupted) {
+              // Interrupt-abort: stay in "working" state for resume
+              wasInterruptedRun = true
+              _isQueueRunning = false
+              activeStepExecutor = null
+              toast.show({
+                message: "Worker interrupted — type to resume, or Esc to kill",
+                variant: "warning",
+                duration: 5000,
+              })
+              setShellQueueSteps((prev) =>
+                prev.map((s) =>
+                  s.status === "failed"
+                    ? { ...s, status: "failed" as const, error: "interrupted" }
+                    : s,
+                ),
+              )
+              log.info("queue interrupted (resume path) — staying in working state", {
+                sessionId,
+                capturedWorkerSession: capturedWorkerSessionId.current,
+              })
+              return
+            } else if (isBudgetExhausted) {
               toast.show({ message: "Queue stopped — budget exhausted.", variant: "warning", duration: 5000 })
             } else {
               activeStore()?.setError(queueResult.reason ?? "Queue execution failed")
@@ -1563,6 +2205,24 @@ export function FlywheelShell() {
           }
         } catch (err) {
           if (!_userInitiatedPause) {
+            const wasInterrupted = _interruptAbort
+            _interruptAbort = false
+
+            if (wasInterrupted) {
+              wasInterruptedRun = true
+              _isQueueRunning = false
+              activeStepExecutor = null
+              toast.show({
+                message: "Worker interrupted — type to resume, or Esc to kill",
+                variant: "warning",
+                duration: 5000,
+              })
+              log.info("queue interrupted (resume exception path) — staying in working state", {
+                sessionId,
+              })
+              return
+            }
+
             activeStore()?.setError(String(err))
             safeUpdateState(
               (id, s) => sessionCtx.manager.updateState(id, s),
@@ -1573,6 +2233,9 @@ export function FlywheelShell() {
             if (isStillViewed()) setAppState("completed")
           }
         } finally {
+          // Skip cleanup if this was an interrupted run — resources stay alive for resume
+          if (wasInterruptedRun) return
+
           _isQueueRunning = false
           if (resumeBudgetTracker) {
             resumeBudgetTracker.dispose()
@@ -1615,6 +2278,7 @@ export function FlywheelShell() {
     subscribeToStore(session.store)
     subscribeToTimer(session.timer)
 
+    session.store.startWorkflow(result.planPath ?? "Resumed session")
     injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
     setFocusedSessionId(sessionId)
 
@@ -1658,6 +2322,8 @@ export function FlywheelShell() {
           onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
           onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
           logBaseDir: deps.config.project_cwd ?? process.cwd(),
+          sessionId: sessionId,
+          baseDir: deps.config.project_cwd ?? process.cwd(),
         })
         dispatcherTransport = resolved.transport
       } catch { /* fallback to static prompts */ }
@@ -1674,6 +2340,8 @@ export function FlywheelShell() {
             onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
             onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
             logBaseDir: deps.config.project_cwd ?? process.cwd(),
+            sessionId: sessionId,
+            baseDir: deps.config.project_cwd ?? process.cwd(),
           })
         } catch { /* evaluation will be skipped */ }
       }
@@ -1690,6 +2358,7 @@ export function FlywheelShell() {
         const resumeStepExec = createStepExecutor({
           queue: resumeWorkQueue,
           workflowId: resumeCurrentWorkflowId,
+          sessionId: sessionId,
           emitter: resumeEmitter,
           dispatcher: async (step, context) => {
             return { prompt: `Execute work: resume plan at ${result.planPath}`, evaluationCriteria: null }
@@ -1780,6 +2449,9 @@ export function FlywheelShell() {
           }
           // No openable sessions left — return to idle
           returnToIdle()
+        }).catch(() => {
+          toast.show({ message: `Failed to delete ${sessionName(sessionId)}`, variant: "error" })
+          sessionCtx.refreshList()
         })
         return
     }
@@ -1791,6 +2463,9 @@ export function FlywheelShell() {
     setSessionLoading(false)
     setViewedSessionId(null)
     setWorkState(null)
+    setIsInterrupted(false)
+    pendingInjection.current = null
+    capturedWorkerSessionId.current = undefined
     setAppState("idle")
   }
 
@@ -1824,7 +2499,9 @@ export function FlywheelShell() {
     // The queue executor will clean up sessionControllers when it finishes.
     activeSession = null
     activeStepExecutor = null
+    activeStdinHandleRef.current = null
     activeFlusher = null
+    activeTranscript = null  // Detached but NOT disposed — still running with the backgrounded queue
     activeBudgetTracker = null
 
     // Clear question/queue UI subscriptions (the queue executor itself doesn't need
@@ -1939,23 +2616,26 @@ export function FlywheelShell() {
       const selectedOption = WORKFLOW_OPTIONS.find((o) => o.label === selectedLabel)
       const workflow: WorkflowName = selectedOption?.value ?? "plan-work-review"
 
-      // Step 3: Consolidation preference (all non-sprint workflows include plan)
-      const consolidationAnswers = await startQS.ask([{
-        question: "Do you want to participate in plan consolidation?",
-        header: "Consolidation",
-        options: [
-          { label: "Yes, let me review", description: "Review and consolidate the plan interactively (Recommended)" },
-          { label: "No, handle automatically", description: "Auto-consolidate without prompts" },
-        ],
-        custom: false,
-        default: "Yes, let me review",
-      }])
-      const consolidationLabel = consolidationAnswers[0]?.[0]
-      if (!consolidationLabel) {
-        cleanupQuestionSubscriptions()
-        return
+      // Step 3: Consolidation preference (skip for sprint — no planning phase)
+      let planInteractive = false
+      if (workflow !== "sprint") {
+        const consolidationAnswers = await startQS.ask([{
+          question: "Do you want to participate in plan consolidation?",
+          header: "Consolidation",
+          options: [
+            { label: "Yes, let me review", description: "Review and consolidate the plan interactively (Recommended)" },
+            { label: "No, handle automatically", description: "Auto-consolidate without prompts" },
+          ],
+          custom: false,
+          default: "Yes, let me review",
+        }])
+        const consolidationLabel = consolidationAnswers[0]?.[0]
+        if (!consolidationLabel) {
+          cleanupQuestionSubscriptions()
+          return
+        }
+        planInteractive = consolidationLabel === "Yes, let me review"
       }
-      const planInteractive = consolidationLabel === "Yes, let me review"
 
       // Step 4: Review triage preference (only if workflow includes review)
       let reviewInteractive = false
@@ -2000,6 +2680,72 @@ export function FlywheelShell() {
     }
   }
 
+  // ── /test command ──
+  const launchTestStep = async (args: Record<string, string>) => {
+    // If stepName provided as argument, look it up directly
+    const directMatch = args.stepName
+      ? TEST_STEPS.find((s) => s.id === args.stepName)
+      : null
+
+    let selectedStep: TestStepDef | null = directMatch ?? null
+
+    if (!selectedStep) {
+      // Show picker
+      cleanupQuestionSubscriptions()
+      const startBus = new EventBus()
+      const startWiring = createQuestionWiring({
+        eventBus: startBus,
+        onQuestion: (q) => setPendingQuestion(q),
+        onClear: () => setPendingQuestion(null),
+      })
+      activeQuestionWiring = startWiring
+
+      try {
+        const qs = startWiring.service
+
+        const stepOptions = TEST_STEPS.map((s) => ({
+          label: s.label,
+          description: `${s.type} step (${s.dispatcherHint ?? s.type})`,
+        }))
+
+        const answers = await qs.ask([{
+          question: "Which step type do you want to test?",
+          header: "Test Step",
+          options: stepOptions,
+        }])
+
+        cleanupQuestionSubscriptions()
+        const selectedLabel = answers[0]?.[0]
+        if (selectedLabel) {
+          selectedStep = TEST_STEPS.find((s) => s.label === selectedLabel) ?? null
+        }
+      } catch {
+        cleanupQuestionSubscriptions()
+        return
+      }
+    }
+
+    if (!selectedStep) {
+      toast.show({ message: "No step selected", variant: "warning" })
+      return
+    }
+
+    // Set up fixture files
+    const deps = getDepsOrReturnIdle()
+    if (!deps) return
+    const projectCwd = deps.config.project_cwd ?? process.cwd()
+    const fixture = setupTestFixture(selectedStep, projectCwd)
+
+    // Build single-step queue
+    const queue = buildTestQueue(selectedStep, fixture)
+
+    // Launch it through the normal queue execution path
+    const testArgs: Record<string, string> = {
+      description: `[test] ${selectedStep.label}`,
+    }
+    startQueueExecution(queue, testArgs, deps, undefined, fixture.handoffData)
+  }
+
   const dispatch = createActionDispatcher({
     fileExists: (path) => fs.existsSync(path),
     notify: (message, variant) => {
@@ -2012,6 +2758,7 @@ export function FlywheelShell() {
     launchWorkWorkflow: launchWorkWithQueue,
     launchGenericWorkflow: launchGenericWithQueue,
     launchStartFlow,
+    launchTestStep,
     exit: exitTUI,
     returnToIdle,
   })
@@ -2039,12 +2786,52 @@ export function FlywheelShell() {
         }
         return
       case "double-esc-stop": {
-        const result = escapeHandler.handleEscape()
-        if (result === "show-hint") {
-          setEscHint("Press Esc again to stop")
-          setTimeout(() => setEscHint(""), 5000)
-        } else {
+        // If already interrupted (first Esc was pressed), second Esc is full kill
+        if (isInterrupted()) {
+          escapeHandler.reset()
           setEscHint("")
+          setIsInterrupted(false)
+          pendingInjection.current = null
+          capturedWorkerSessionId.current = undefined
+          pauseQueue()
+          return
+        }
+
+        const result = escapeHandler.handleEscape()
+        if (result === "interrupt") {
+          const handle = activeStdinHandleRef.current
+          if (handle?.interrupt) {
+            // SDK path: interrupt without killing — session stays alive for resume
+            handle.interrupt()
+            setIsInterrupted(true)
+            setEscHint("Press Esc again to kill worker")
+            log.info("worker interrupted via SDK session.abort (session stays alive)", {
+              sessionId: capturedWorkerSessionId.current,
+            })
+          } else {
+            // CLI path: Send SIGINT to all active worker processes and abort
+            // the step executor so the evaluator is skipped and the step is
+            // NOT marked as completed (queue does not advance).
+            // Suppress ErrorModal from the queue:failed event that abort triggers
+            if (activeSession?.adapter) {
+              activeSession.adapter.suppressQueueError = true
+            }
+            interruptAllActiveProcesses()
+            if (activeStepExecutor) {
+              _interruptAbort = true
+              activeStepExecutor.abort()
+            }
+            setIsInterrupted(true)
+            setEscHint("Press Esc again to kill worker")
+            log.info("worker interrupted via SIGINT + executor abort", {
+              sessionId: capturedWorkerSessionId.current,
+            })
+          }
+        } else {
+          // Tier 2: Full kill — pause the queue entirely
+          setEscHint("")
+          setIsInterrupted(false)
+          pendingInjection.current = null
           // During queue: pause instead of full stop
           if (_isQueueRunning) {
             pauseQueue()
@@ -2069,8 +2856,19 @@ export function FlywheelShell() {
     const currentAppState = appState()
 
     if (currentAppState === "idle" || currentAppState === "completed") {
-      // Command mode: parse like the old LauncherView
       const trimmed = input.trim()
+
+      // In completed state with a resumable session: sending a non-empty
+      // message resumes the paused session instead of parsing commands.
+      if (currentAppState === "completed" && isSessionResumable() && trimmed && !trimmed.startsWith("/")) {
+        const vid = viewedSessionId()
+        if (vid) {
+          resumeSession(vid)
+          return
+        }
+      }
+
+      // Command mode: parse like the old LauncherView
       if (!trimmed) return
 
       const result = parseCommand(trimmed)
@@ -2101,9 +2899,48 @@ export function FlywheelShell() {
         }
         activeStore()?.clearApproval()
       } else if (input.trim()) {
-        // Working mode without approval: stdin injection not supported in queue execution
-        log.info("stdin injection not available in queue-based execution", { length: input.trim().length })
-        toast.show({ message: "Cannot send to worker during queue execution", variant: "warning", duration: 3000 })
+        const message = input.trim()
+
+        if (isInterrupted()) {
+          // Interrupted state: user typed text after first Esc (SIGINT).
+          // Resume the worker by spawning a new process with --resume
+          // and the user's message as stdin content.
+          resumeWorkerWithMessage(message)
+          return
+        }
+
+        // Working mode without approval: inject message into running worker's stdin
+        const handle = activeStdinHandleRef.current
+        if (handle && handle.isOpen) {
+          // Write directly to the worker. For Claude CLI (stream-json stdin),
+          // wrap as NDJSON. For SDK engines (OpenCode), send raw text —
+          // the SDK handle wraps it in its own API format.
+          const deps = getDepsOrWarn()
+          const payload = deps?.engine.metadata.supportsStreamingInput
+            ? formatClaudeStdinMessage(message)
+            : message
+          const written = handle.write(payload)
+          if (written) {
+            log.info("message injected into worker stdin", { length: message.length })
+          } else {
+            log.warn("stdin write failed — pipe closed between check and write")
+            pendingInjection.current = message
+            toast.show({ message: "Message queued for next turn", variant: "info", duration: 2000 })
+          }
+          // Emit worker:injected event for TUI display
+          if (activeSession) {
+            activeSession.eventBus.emit({
+              type: "worker:injected",
+              workflowId: "",
+              message,
+              timestamp: new Date().toISOString(),
+            })
+          }
+        } else {
+          log.info("no stdin handle available for injection — queuing for next turn")
+          pendingInjection.current = message
+          toast.show({ message: "Message queued for next turn", variant: "info", duration: 2000 })
+        }
       }
       return
     }
@@ -2204,16 +3041,17 @@ export function FlywheelShell() {
     }
     // === End work-mode shortcuts ===
 
-    // === Resume key: press 'r' to resume a paused session ===
+    // === Resume key: Ctrl+R (always) or 'r' (when prompt unfocused) ===
     if (
-      evt.name === "r" &&
-      !evt.ctrl &&
-      !evt.meta &&
       appState() === "completed" &&
-      !isPromptFocused() &&
-      !sidebarFocused() &&
       !showStopModal() &&
-      isSessionResumable()
+      isSessionResumable() &&
+      (
+        // Ctrl+R works regardless of focus state
+        (evt.name === "r" && evt.ctrl && !evt.meta) ||
+        // Plain 'r' only when prompt/sidebar not focused (avoids swallowing typing)
+        (evt.name === "r" && !evt.ctrl && !evt.meta && !isPromptFocused() && !sidebarFocused())
+      )
     ) {
       evt.preventDefault()
       const vid = viewedSessionId()
@@ -2223,17 +3061,25 @@ export function FlywheelShell() {
       return
     }
 
-    // Tab: toggle sidebar focus (when not prompt focused, sessions exist, sidebar visible)
-    if (evt.name === "tab" && !isPromptFocused() && !showStopModal() && !approvalPending() && !pendingQuestion()) {
+    // Tab: cycle focus zones — prompt → sidebar → output → prompt
+    // (sidebar is skipped when not visible or no sessions exist)
+    if (evt.name === "tab" && !showStopModal() && !approvalPending() && !pendingQuestion()) {
       const hasSessions = sessionCtx.sessions().length > 0
-      const sidebarVisible = (dimensions()?.width ?? 120) >= 90
-      if (hasSessions && sidebarVisible) {
-        evt.preventDefault()
-        const next = !sidebarFocused()
-        setSidebarFocused(next)
-        if (next) setIsPromptFocused(false)
-        return
+      const sidebarVisible = hasSessions && (dimensions()?.width ?? 120) >= 90
+      evt.preventDefault()
+
+      if (isPromptFocused()) {
+        // prompt → sidebar (if visible) or output
+        setIsPromptFocused(false)
+        setSidebarFocused(sidebarVisible)
+      } else if (sidebarFocused()) {
+        // sidebar → output
+        setSidebarFocused(false)
+      } else {
+        // output → prompt
+        setIsPromptFocused(true)
       }
+      return
     }
 
     // Escape: handle at shell level for non-idle states.
@@ -2319,6 +3165,7 @@ export function FlywheelShell() {
     get appState() { return appState() },
     get approvalPending() { return approvalPending() },
     get sidebarFocused() { return sidebarFocused() },
+    get isInterrupted() { return isInterrupted() },
     onCommand: handleCommand,
     onPromptSubmit: handlePromptInput,
     onEscape: handleEscape,
@@ -2482,6 +3329,7 @@ export function FlywheelShell() {
         sidebarVisible={sessionCtx.sessions().length > 0 && (dimensions()?.width ?? 120) >= 90}
         isSessionResumable={isSessionResumable()}
         isWorking={appState() === "working"}
+        isInterrupted={isInterrupted()}
       />
 
       {/* Quit confirmation modal (Esc in idle with running sessions) */}

@@ -50,7 +50,11 @@ function minimalSession(overrides?: Partial<Session>): Session {
 
 /**
  * Create a session with all companion files on disk.
- * Returns { id, baseDir, statePath, contextPath, outputPath, jsonPath }.
+ * Returns { id, baseDir, sessionDir, outputPath, jsonPath }.
+ *
+ * Uses the new directory-per-session layout:
+ *   .flywheel/sessions/<id>/session.json
+ *   .flywheel/sessions/<id>/output.json
  */
 function createSessionWithCompanions(baseDir: string, overrides?: Partial<Session>) {
   const data = minimalSession({
@@ -59,20 +63,19 @@ function createSessionWithCompanions(baseDir: string, overrides?: Partial<Sessio
 
   const id = createSession(data, baseDir);
 
-  // Create the output file using convention-based path
-  const outputPath = path.join(baseDir, ".flywheel/sessions", `${id}.output.json`);
+  // Session directory already created by createSession
+  const sessionDir = path.join(baseDir, ".flywheel/sessions", id);
+
+  // Create the output file using new directory-per-session path
+  const outputPath = path.join(sessionDir, "output.json");
   fs.writeFileSync(outputPath, JSON.stringify([]));
 
-  // Update session to record outputPath
-  const jsonPath = path.join(baseDir, ".flywheel/sessions", `${id}.json`);
-  const sessionData = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
-  sessionData.outputPath = `${id}.output.json`;
-  sessionData.lastUpdated = new Date().toISOString();
-  fs.writeFileSync(jsonPath, JSON.stringify(sessionData, null, 2));
+  const jsonPath = path.join(sessionDir, "session.json");
 
   return {
     id,
     baseDir,
+    sessionDir,
     outputPath,
     jsonPath,
   };
@@ -95,9 +98,9 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("deleteSessionWithCompanions", () => {
-  it("deletes session JSON + output files", () => {
+  it("deletes session directory with all files", () => {
     const baseDir = makeTmpDir();
-    const { id, outputPath, jsonPath } =
+    const { id, sessionDir, outputPath, jsonPath } =
       createSessionWithCompanions(baseDir);
 
     // Verify all files exist before deletion
@@ -106,12 +109,14 @@ describe("deleteSessionWithCompanions", () => {
 
     const result = deleteSessionWithCompanions(id, baseDir);
 
-    // All files should be gone
+    // All files should be gone (entire directory removed)
     expect(fs.existsSync(jsonPath)).toBe(false);
     expect(fs.existsSync(outputPath)).toBe(false);
+    expect(fs.existsSync(sessionDir)).toBe(false);
 
-    // All files should be in the deleted list
-    expect(result.deleted.length).toBe(2);
+    // Directory path should be in the deleted list
+    expect(result.deleted.length).toBe(1);
+    expect(result.deleted[0]).toContain(id);
     expect(result.errors).toHaveLength(0);
   });
 
@@ -127,71 +132,56 @@ describe("deleteSessionWithCompanions", () => {
     expect(Array.isArray(result.errors)).toBe(true);
   });
 
-  it("reads session JSON to find output path", () => {
+  it("deletes entire session directory including output", () => {
     const baseDir = makeTmpDir();
     const { id, outputPath } = createSessionWithCompanions(baseDir);
 
     const result = deleteSessionWithCompanions(id, baseDir);
 
-    // The output path should have been resolved from JSON and deleted
+    // The output file should be deleted as part of the directory removal
     expect(fs.existsSync(outputPath)).toBe(false);
-    expect(result.deleted).toContain(outputPath);
+    expect(result.deleted.length).toBe(1);
   });
 
-  it("falls back to convention-based output path if JSON read fails", () => {
+  it("deletes directory even with corrupt session.json", () => {
     const baseDir = makeTmpDir();
     const sessionsDir = path.join(baseDir, ".flywheel/sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
-
-    // Create a session JSON that is corrupt (unreadable by readSession)
     const id = crypto.randomUUID();
-    const jsonPath = path.join(sessionsDir, `${id}.json`);
-    fs.writeFileSync(jsonPath, "NOT VALID JSON {{{");
+    const sessionDir = path.join(sessionsDir, id);
+    fs.mkdirSync(sessionDir, { recursive: true });
 
-    // But the output file does exist at the convention path
-    const outputPath = path.join(sessionsDir, `${id}.output.json`);
-    fs.writeFileSync(outputPath, JSON.stringify([]));
+    // Create a corrupt session.json
+    fs.writeFileSync(path.join(sessionDir, "session.json"), "NOT VALID JSON {{{");
+
+    // Also create an output file
+    fs.writeFileSync(path.join(sessionDir, "output.json"), JSON.stringify([]));
 
     const result = deleteSessionWithCompanions(id, baseDir);
 
-    // Convention-based output file should be deleted
-    expect(fs.existsSync(outputPath)).toBe(false);
-    expect(result.deleted).toContain(outputPath);
-
-    // The corrupt JSON should also be deleted
-    expect(fs.existsSync(jsonPath)).toBe(false);
-    expect(result.deleted).toContain(jsonPath);
+    // Entire directory should be deleted
+    expect(fs.existsSync(sessionDir)).toBe(false);
+    expect(result.deleted.length).toBe(1);
+    expect(result.errors).toHaveLength(0);
   });
 
-  it("reports errors for files that fail to delete but continues", () => {
+  it("reports errors for directories that fail to delete", () => {
     const baseDir = makeTmpDir();
-    const { id, outputPath, jsonPath } =
+    const { id, sessionDir } =
       createSessionWithCompanions(baseDir);
 
-    // Make output file's directory read-only to cause delete failure
-    const outputDir = path.dirname(outputPath);
-    fs.chmodSync(outputDir, 0o555);
+    // Make parent directory read-only to cause delete failure
+    const sessionsDir = path.dirname(sessionDir);
+    fs.chmodSync(sessionsDir, 0o555);
 
     try {
       const result = deleteSessionWithCompanions(id, baseDir);
 
-      // Output file deletion should have failed (and session JSON too, same dir)
+      // Deletion should have failed
       expect(result.errors.length).toBeGreaterThan(0);
     } finally {
       // Restore permissions so cleanup works
-      fs.chmodSync(outputDir, 0o755);
+      fs.chmodSync(sessionsDir, 0o755);
     }
-  });
-
-  it("deletes session JSON last (after companions)", () => {
-    const baseDir = makeTmpDir();
-    const { id, jsonPath } = createSessionWithCompanions(baseDir);
-
-    const result = deleteSessionWithCompanions(id, baseDir);
-
-    // Session JSON should be the last item in the deleted list
-    const jsonIndex = result.deleted.indexOf(jsonPath);
-    expect(jsonIndex).toBe(result.deleted.length - 1);
   });
 
   it("returns error if session ID matches active session", () => {
@@ -209,7 +199,7 @@ describe("deleteSessionWithCompanions", () => {
     expect(session).not.toBeNull();
   });
 
-  it("handles missing companion files gracefully (still deletes what exists)", () => {
+  it("handles session without companion files (still deletes directory)", () => {
     const baseDir = makeTmpDir();
     // Create session without output file on disk
     const data = minimalSession();
@@ -217,11 +207,10 @@ describe("deleteSessionWithCompanions", () => {
 
     const result = deleteSessionWithCompanions(id, baseDir);
 
-    // Should still succeed — only the JSON file existed
+    // Should still succeed — directory was deleted
     expect(result.errors).toHaveLength(0);
-    // Only session JSON was deleted (companions didn't exist)
     expect(result.deleted.length).toBe(1);
-    expect(result.deleted[0]).toContain(`${id}.json`);
+    expect(result.deleted[0]).toContain(id);
 
     // Session should be gone
     expect(readSession(id, baseDir)).toBeNull();
@@ -233,7 +222,7 @@ describe("deleteSessionWithCompanions", () => {
 
     const result = deleteSessionWithCompanions(fakeId, baseDir);
 
-    // No files to delete, no errors (just nothing happened)
+    // No directory to delete, no errors (just nothing happened)
     expect(result.deleted).toHaveLength(0);
     expect(result.errors).toHaveLength(0);
   });
@@ -335,11 +324,10 @@ describe("SessionManager.sweepTrashed", () => {
     const data = minimalSession();
     const id = createSession(data, baseDir);
 
-    // Create output file
-    const sessionsDir = path.join(baseDir, ".flywheel/sessions");
-    const outputPath = path.join(sessionsDir, `${id}.output.json`);
+    // Create output file (directory-per-session layout)
+    const sessionDir = path.join(baseDir, ".flywheel/sessions", id);
+    const outputPath = path.join(sessionDir, "output.json");
     fs.writeFileSync(outputPath, JSON.stringify([]));
-    updateSession(id, { outputPath: `${id}.output.json` }, baseDir);
 
     // Transition to trashed
     updateSession(id, { sessionLifecycleState: "plan:draft" as SessionLifecycleState }, baseDir);
@@ -348,8 +336,9 @@ describe("SessionManager.sweepTrashed", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
     mgr.sweepTrashed();
 
-    // Session and output files should be gone
+    // Session directory and all files should be gone
     expect(readSession(id, baseDir)).toBeNull();
     expect(fs.existsSync(outputPath)).toBe(false);
+    expect(fs.existsSync(sessionDir)).toBe(false);
   });
 });

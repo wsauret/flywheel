@@ -95,6 +95,44 @@ export async function gracefulKill(child: ChildHandle): Promise<void> {
 }
 
 /**
+ * Send SIGINT to a single active process by PID.
+ *
+ * Used by the 2-tier interrupt system: first Esc sends SIGINT to the
+ * running worker, which terminates the process but preserves the
+ * conversation session (resumable via --resume/--session).
+ *
+ * @returns true if the signal was sent, false if the process was not found or already dead.
+ */
+export function interruptActiveProcess(pid: number): boolean {
+  try {
+    process.kill(pid, 2); // SIGINT
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Send SIGINT to all active processes in the global registry.
+ *
+ * Unlike `killAllActiveProcesses()` which does SIGTERM→wait→SIGKILL,
+ * this sends SIGINT immediately and does NOT clear the registry
+ * (processes may still be alive briefly and will be cleaned up by
+ * their exit handlers).
+ *
+ * Used by the escape handler's "interrupt" tier.
+ */
+export function interruptAllActiveProcesses(): void {
+  for (const child of activeProcesses) {
+    try {
+      killProcessGroup(child, "SIGINT");
+    } catch {
+      // Process may already be dead
+    }
+  }
+}
+
+/**
  * Kill all active processes (for shutdown hooks).
  * Sends SIGTERM to all, waits grace period, then SIGKILL to survivors.
  */

@@ -1,0 +1,12 @@
+{
+  "summary": "Implemented hello-world endpoint with Bun.serve(), wrote verification script that curls the endpoint and asserts 200 response with JSON body.",
+  "verification_script_path": ".flywheel/verify/sprint-hello-world.ts",
+  "artifacts": {
+    "files_created": ["src/hello.ts", ".flywheel/verify/sprint-hello-world.ts"],
+    "files_modified": ["src/app.ts"],
+    "commands_run": [
+      {"command": "bun test", "exitCode": 0, "observation": "5/5 tests pass"}
+    ]
+  },
+  "verification": {"tests_passed": true, "test_output_summary": "5/5 tests pass"}
+}

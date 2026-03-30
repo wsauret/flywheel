@@ -1,0 +1,11 @@
+{
+  "summary": "Dispatched 5 review agents in parallel. Found 1 P1 critical issue (missing input validation), 2 P2 important issues (error handling gaps), and 4 P3 suggestions (naming, caching).",
+  "finding_counts": {"p1_critical": 1, "p2_important": 2, "p3_suggestion": 4},
+  "p3_findings": [
+    {"description": "Consider adding LRU cache for repeated lookups", "location": "src/api.ts:42", "suggestion": "Add cache with 60s TTL"},
+    {"description": "Rename variable 'x' to 'userCount'", "location": "src/utils.ts:15", "suggestion": "Use descriptive name"},
+    {"description": "Extract magic number 86400 to constant", "location": "src/config.ts:8", "suggestion": "const SECONDS_PER_DAY = 86400"},
+    {"description": "Add JSDoc to exported function", "location": "src/auth.ts:22", "suggestion": "Document parameters and return type"}
+  ],
+  "files_to_review": ["src/api.ts", "src/auth.ts", "src/utils.ts", "src/config.ts"]
+}

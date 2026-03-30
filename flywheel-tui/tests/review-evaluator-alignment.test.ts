@@ -3,7 +3,8 @@ import { reviewConsolidateEvaluationCriteria } from "../src/prompts/review/conso
 import { reviewDispatchEvaluationCriteria } from "../src/prompts/review/dispatch";
 import { reviewFixEvaluationCriteria } from "../src/prompts/review/fix";
 import { reviewWorkflow } from "../src/workflows/review";
-import { DEFAULT_REVIEWS_DIR } from "../src/config/paths";
+// DEFAULT_REVIEWS_DIR is no longer exported — review paths are now session-scoped.
+// Tests check prompt content for the .flywheel/reviews/ pattern instead.
 import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
@@ -17,13 +18,12 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("review evaluator/worker path alignment", () => {
-  it("consolidate evaluationCriteria mentions .flywheel/reviews/ path pattern", () => {
-    expect(reviewConsolidateEvaluationCriteria).toContain(".flywheel/reviews/");
+  it("consolidate evaluationCriteria mentions session directory for output", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain("session directory");
   });
 
-  it("consolidate evaluationCriteria mentions date-slug filename pattern", () => {
-    expect(reviewConsolidateEvaluationCriteria).toContain("<date>");
-    expect(reviewConsolidateEvaluationCriteria).toContain("<slug>");
+  it("consolidate evaluationCriteria mentions file path in output", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain("file path");
   });
 
   it("consolidate evaluationCriteria requires file path in output", () => {
@@ -43,15 +43,13 @@ describe("review evaluator/worker path alignment", () => {
     expect(reviewDispatchEvaluationCriteria).toContain("structured format");
   });
 
-  it("review workflow consolidation step dispatcherHint mentions output path", () => {
+  it("review workflow consolidation step dispatcherHint mentions session review path", () => {
     const consolidateStep = reviewWorkflow.steps[1];
-    expect(consolidateStep.dispatcherHint).toContain(".flywheel/reviews/");
+    expect(consolidateStep.dispatcherHint).toContain("session review.md path");
   });
 
-  it("DEFAULT_REVIEWS_DIR matches the path referenced in validation criteria", () => {
-    expect(reviewConsolidateEvaluationCriteria).toContain(
-      DEFAULT_REVIEWS_DIR.replace(".flywheel/", ".flywheel/"),
-    );
+  it("evaluation criteria references session directory", () => {
+    expect(reviewConsolidateEvaluationCriteria).toContain("session directory");
   });
 });
 

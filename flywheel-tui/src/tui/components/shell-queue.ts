@@ -17,7 +17,15 @@
 
 import * as path from "node:path";
 import * as fs from "node:fs";
-import { buildQueueFromTemplate, type WorkflowName } from "../../queue/templates";
+import {
+  buildQueueFromTemplate,
+  buildGranularReviewSteps,
+  buildGranularShipSteps,
+  buildGranularDebugSteps,
+  type WorkflowName,
+} from "../../queue/templates";
+import { researchPersistEvaluationCriteria } from "../../prompts/research/persist";
+import { shipCompoundEvaluationCriteria } from "../../prompts/ship/compound";
 import type { Queue, Step, StepType } from "../../queue/types";
 import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
@@ -100,6 +108,19 @@ const SLASH_COMMAND_STEP_TYPES: Record<string, StepType> = {
  * @returns A new Queue
  */
 export function buildQueueForSlashCommand(command: string, config: FlywheelConfig): Queue {
+  // /compound — standalone learning extraction (single ship step with learnings hint)
+  if (command === "compound") {
+    return createQueue([{
+      id: randomUUID(),
+      type: "ship" as StepType,
+      title: "Extract learnings",
+      status: "pending",
+      dispatcherHint: "learnings",
+      evaluationCriteria: shipCompoundEvaluationCriteria,
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
+    }], { maxSteps: config.queue?.max_steps });
+  }
+
   const stepType = SLASH_COMMAND_STEP_TYPES[command];
   if (!stepType) {
     // Unknown command — create single work step as fallback
@@ -129,7 +150,40 @@ export function buildQueueForSlashCommand(command: string, config: FlywheelConfi
     }
   }
 
-  // Single-step queue for standalone commands
+  // Multi-step queues for specific commands
+  if (command === "debug") {
+    const steps: Step[] = [...buildGranularDebugSteps()];
+    if (config.auto_chain) {
+      appendAutoChainSteps(steps, config);
+    }
+    return createQueue(steps, { maxSteps: config.queue?.max_steps });
+  }
+
+  if (command === "review") {
+    return createQueue(buildGranularReviewSteps(), { maxSteps: config.queue?.max_steps });
+  }
+
+  if (command === "ship") {
+    return createQueue(buildGranularShipSteps(), { maxSteps: config.queue?.max_steps });
+  }
+
+  if (command === "research") {
+    const steps: Step[] = [{
+      id: randomUUID(),
+      type: "research" as StepType,
+      title: "Research topic",
+      status: "pending",
+      dispatcherHint: "research",
+      evaluationCriteria: researchPersistEvaluationCriteria,
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
+    }];
+    if (config.auto_chain) {
+      appendAutoChainSteps(steps, config);
+    }
+    return createQueue(steps, { maxSteps: config.queue?.max_steps });
+  }
+
+  // Single-step queue for remaining commands (plan, work without auto_chain)
   return createQueue([{
     id: randomUUID(),
     type: stepType,

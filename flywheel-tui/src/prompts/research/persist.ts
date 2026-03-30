@@ -6,52 +6,17 @@ import {
   READ_FULLY_RULE,
   buildProjectContextSection,
 } from "../conventions.js";
-import { DEFAULT_RESEARCH_DIR } from "../../config/paths.js";
+
 
 export const researchPersistEvaluationCriteria =
   "Comprehensive research document persisted with findings and source references";
 
-/**
- * Builds a prompt for the research persist step (step 2 of standalone /research).
- * Compiles analysis results into a comprehensive research document.
- */
-export function buildResearchPersistPrompt(ctx: WorkflowStepContext): string {
-  const previousResult = ctx.previousResult ?? "_No analysis output available._";
-  const projectContext = buildProjectContextSection(ctx.extra);
+// ---------------------------------------------------------------------------
+// Reusable prompt constants
+// ---------------------------------------------------------------------------
 
-  return `# Research: Compile Document
-
-## Research Topic
-
-${ctx.planContent}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
-${projectContext}
-
-## Analysis Output (from previous step)
-
-${previousResult}
-
----
-
-${LOCATOR_ANALYZER_PATTERN}
-
-${DOCUMENTARIAN_MODE}
-
-${READ_FULLY_RULE}
-
-${FILE_LINE_DISCIPLINE}
-
-## Persistence Instructions
-
-Write the research document to \`${DEFAULT_RESEARCH_DIR}/YYYY-MM-DD-<topic-slug>.md\` where:
-- \`YYYY-MM-DD\` is today's date
-- \`<topic-slug>\` is a kebab-case slug derived from the research topic
-
-Create the \`${DEFAULT_RESEARCH_DIR}/\` directory if it does not exist.
-
-## Document Template
+/** Research document template with YAML frontmatter. */
+export const RESEARCH_DOC_TEMPLATE = `## Document Template
 
 The research document MUST include the following YAML frontmatter and sections:
 
@@ -116,6 +81,54 @@ Keep ALL code blocks under 15 lines. If a listing (directory tree, code excerpt,
 - The Summary section must be 3-5 sentences synthesizing all findings
 - The Code References table must include at least 5 unique file:line references
 - Every Detailed Findings subsection must cite specific file:line references
-- Avoid prescriptive language (do not use "should", "recommend", "suggest", "consider" outside of Open Questions)
+- Avoid prescriptive language (do not use "should", "recommend", "suggest", "consider" outside of Open Questions)`;
+
+/** Research persistence instructions (path + directory creation). */
+export const RESEARCH_PERSISTENCE_INSTRUCTIONS = `## Persistence Instructions
+
+Write the research document to:`;
+
+// ---------------------------------------------------------------------------
+// Main prompt builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a prompt for the research persist step (step 2 of standalone /research).
+ * Compiles analysis results into a comprehensive research document.
+ */
+export function buildResearchPersistPrompt(ctx: WorkflowStepContext): string {
+  const previousResult = ctx.previousResult ?? "_No analysis output available._";
+  const projectContext = buildProjectContextSection(ctx.extra);
+
+  return `# Research: Compile Document
+
+## Research Topic
+
+${ctx.planContent}
+
+${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+${projectContext}
+
+## Analysis Output (from previous step)
+
+${previousResult}
+
+---
+
+${LOCATOR_ANALYZER_PATTERN}
+
+${DOCUMENTARIAN_MODE}
+
+${READ_FULLY_RULE}
+
+${FILE_LINE_DISCIPLINE}
+
+${RESEARCH_PERSISTENCE_INSTRUCTIONS}
+\`${ctx.extra?.researchPath ?? "research.md"}\`
+
+Create the parent directory if it does not exist.
+
+${RESEARCH_DOC_TEMPLATE}
 `;
 }

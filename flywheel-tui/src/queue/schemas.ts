@@ -60,6 +60,7 @@ export const ToolScopingStepSchema = z.object({
   bash: z.boolean(),
   write: z.boolean(),
   edit: z.boolean(),
+  task: z.boolean().optional(),
 }).strict();
 
 export const StepSchema = z.object({

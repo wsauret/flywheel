@@ -5,7 +5,7 @@
  * Model uses provider/model format (e.g., "anthropic/claude-opus-4-6").
  */
 
-import type { DispatcherCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
+import type { DispatcherCommandOptions, EvaluatorCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
 
 export const metadata: EngineMetadata = {
   id: "opencode",
@@ -31,6 +31,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   bash: "Bash",
   write: "Write",
   edit: "Edit",
+  task: "Task",
 };
 
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
@@ -51,11 +52,14 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     const denied: string[] = [];
     const allowed: string[] = [];
     for (const [key, displayName] of Object.entries(TOOL_DISPLAY_NAMES)) {
-      if (options.toolScoping[key as keyof typeof options.toolScoping]) {
+      const value = options.toolScoping[key as keyof typeof options.toolScoping];
+      if (value === true) {
         allowed.push(displayName);
-      } else {
+      } else if (value === false) {
+        // Explicitly denied — only deny when set to false, not when undefined
         denied.push(displayName);
       }
+      // undefined = not restricted, don't mention in either list
     }
     // Only add prefix if some tools are denied
     if (denied.length > 0) {
@@ -86,6 +90,29 @@ const DISPATCHER_DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
  * Tool restriction is not natively supported by OpenCode CLI.
  */
 export function buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand {
+  const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+
+  const args: string[] = [
+    "run",
+    "--format", "json",
+    "--model", model,
+  ];
+
+  return {
+    command: metadata.cliBinary,
+    args,
+    stdinPrompt: true,
+  };
+}
+
+/**
+ * Build a CLI command for agent-based evaluation.
+ *
+ * Same as dispatcher but the prompt instructs the model to use Read/Bash/Write
+ * for investigation. OpenCode has no CLI-level tool restriction, so this is
+ * identical to buildDispatcherCommand — tool scoping is prompt-based.
+ */
+export function buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineCommand {
   const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
 
   const args: string[] = [
@@ -224,4 +251,4 @@ const FALLBACK_MODELS: ModelInfo[] = [
   { id: "anthropic/claude-haiku-4-5",  name: "Claude Haiku 4.5",  family: "haiku",  isAlias: true },
 ];
 
-export const opencodeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, listModels };
+export const opencodeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, buildEvaluatorCommand, listModels };

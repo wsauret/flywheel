@@ -25,6 +25,8 @@ export interface StatusFooterProps {
   isSessionResumable?: boolean
   /** Whether a workflow is actively running (show background hint). */
   isWorking?: boolean
+  /** Whether the worker is in an interrupted state (first Esc, awaiting resume). */
+  isInterrupted?: boolean
 }
 
 /**
@@ -42,6 +44,7 @@ export function StatusFooter(props: StatusFooterProps) {
     sidebarVisible: props.sidebarVisible,
     isSessionResumable: props.isSessionResumable,
     isWorking: props.isWorking,
+    isInterrupted: props.isInterrupted,
   })
 
   return (

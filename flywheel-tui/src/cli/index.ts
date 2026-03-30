@@ -9,6 +9,8 @@
  */
 
 import { Log } from "../utils/log"
+import { installAgents } from "../agents/installer"
+import { createServer } from "../server/index"
 
 // ---------------------------------------------------------------------------
 // Main
@@ -23,6 +25,20 @@ export async function main(): Promise<void> {
     print: process.argv.includes("--print-logs"),
     level: process.env.FLYWHEEL_LOG_LEVEL as Log.Level | undefined,
   })
+
+  // Sync agent personas to engine discovery paths (~/.claude/agents/fly/,
+  // ~/.config/opencode/agents/fly/) so worker subprocesses can resolve
+  // fly/* agents natively via their Task tool.
+  installAgents().catch((err) => {
+    Log.Default.warn("agent installation failed (non-fatal)", {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  })
+
+  const server = createServer({ port: 3100 })
+  if (server) {
+    Log.Default.info("server started", { url: `http://${server.hostname}:${server.port}` })
+  }
 
   await runTUI();
 }

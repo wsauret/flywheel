@@ -37,6 +37,10 @@ export interface CreateEvaluatorTransportOptions {
   onStderr?: (chunk: string) => void;
   /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
   logBaseDir?: string;
+  /** Flywheel session ID for session-scoped handoff paths. */
+  sessionId?: string;
+  /** Project base directory for path resolution. */
+  baseDir?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,5 +91,7 @@ export async function createEvaluatorTransport(
     onStdout: options.onStdout,
     onStderr: options.onStderr,
     logBaseDir: options.logBaseDir,
+    sessionId: options.sessionId,
+    baseDir: options.baseDir,
   });
 }

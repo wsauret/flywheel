@@ -106,7 +106,7 @@ describe("SdkTransport: model parameter", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport({ dispatcherModel: "anthropic/claude-sonnet-4-6" });
+    const transport = new SdkTransport({ dispatcherModel: "anthropic/claude-sonnet-4-6", sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     expect(capturedPromptOpts).toBeDefined();
@@ -123,7 +123,7 @@ describe("SdkTransport: model parameter", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     expect(capturedPromptOpts).toBeDefined();
@@ -141,7 +141,7 @@ describe("SdkTransport: model parameter", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport({ dispatcherModel: "openai/gpt-4o" });
+    const transport = new SdkTransport({ dispatcherModel: "openai/gpt-4o", sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     expect(capturedPromptOpts.body.model).toEqual({
@@ -158,7 +158,7 @@ describe("SdkTransport: model parameter", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport({ dispatcherModel: "claude-sonnet-4-6" });
+    const transport = new SdkTransport({ dispatcherModel: "claude-sonnet-4-6", sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     // Without slash, default provider is "anthropic"
@@ -193,7 +193,7 @@ describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     const result = await transport.invoke(baseDispatcherInput());
 
     // Validate against schema
@@ -208,7 +208,7 @@ describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     const result = await transport.invoke(baseDispatcherInput());
 
     expect(result.task_content).toBe("From handoff file");
@@ -227,7 +227,7 @@ describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     const result = await transport.invoke(baseDispatcherInput());
 
     expect(result.step_index).toBe(2);
@@ -246,7 +246,7 @@ describe("SdkTransport: valid DispatcherDecision output via handoff", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     // The prompt should include the handoff instruction
@@ -281,7 +281,7 @@ describe("SdkTransport: handoff retry logic", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     const result = await transport.invoke(baseDispatcherInput());
 
     expect(callCount()).toBe(2);
@@ -294,7 +294,7 @@ describe("SdkTransport: handoff retry logic", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     await expect(transport.invoke(baseDispatcherInput())).rejects.toThrow(
       /SDK dispatcher failed after 2 attempts/,
     );
@@ -312,7 +312,7 @@ describe("SdkTransport: handoff retry logic", () => {
 
     _setClientFactoryForTesting(() => client);
 
-    const transport = new SdkTransport();
+    const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     expect(capturedPrompts).toHaveLength(2);

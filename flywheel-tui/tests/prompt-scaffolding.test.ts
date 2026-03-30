@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { buildScaffolding } from "../src/queue/prompt-scaffolding";
+import { buildScaffolding, type ScaffoldingResult, type ScaffoldingPaths } from "../src/queue/prompt-scaffolding";
 import type { Step } from "../src/queue/types";
-import { HANDOFFS_DIR, DEFAULT_PLANS_DIR } from "../src/config/paths";
+
+/** Combine preamble + postamble for content assertions. */
+function combined(r: ScaffoldingResult): string {
+  return [r.preamble, r.postamble].filter(Boolean).join("\n\n");
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,8 +21,15 @@ function makeStep(overrides: Partial<Step> = {}): Step {
   };
 }
 
-const HANDOFF_PATH = `${HANDOFFS_DIR}/inv-123.json`;
+const HANDOFF_PATH = "/tmp/test-project/.flywheel/sessions/test-session/handoffs/dispatcher_inv-123.json";
 const PROJECT_CWD = "/tmp/test-project";
+const TEST_PLAN_PATH = "/tmp/test-project/.flywheel/sessions/test-session/plan.json";
+
+/** Default scaffolding paths for tests */
+const TEST_PATHS: ScaffoldingPaths = {
+  handoffPath: HANDOFF_PATH,
+  planPath: TEST_PLAN_PATH,
+};
 
 // ---------------------------------------------------------------------------
 // Plan Draft scaffolding
@@ -27,9 +38,9 @@ const PROJECT_CWD = "/tmp/test-project";
 describe("buildScaffolding — plan draft", () => {
   it("returns scaffolding for plan step with dispatcherHint 'draft'", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "draft" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("## Output Requirements");
-    expect(result).toContain(".plan.json");
+    expect(result).toContain("plan.json");
     expect(result).toContain("steps");
     expect(result).toContain("behavioralContract");
     expect(result).toContain("Handoff Instructions");
@@ -38,14 +49,14 @@ describe("buildScaffolding — plan draft", () => {
 
   it("falls back to title matching for 'Draft' keyword", () => {
     const step = makeStep({ type: "plan", title: "Draft implementation plan" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain(".plan.json");
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("plan.json");
     expect(result).toContain("Handoff Instructions");
   });
 
   it("includes JSON schema example", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "draft" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("acceptanceCriteria");
     expect(result).toContain("fileReferences");
     expect(result).toContain("estimatedComplexity");
@@ -53,8 +64,8 @@ describe("buildScaffolding — plan draft", () => {
 
   it("includes plan file output path instruction", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "draft" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain(DEFAULT_PLANS_DIR);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain(TEST_PLAN_PATH);
   });
 });
 
@@ -65,27 +76,42 @@ describe("buildScaffolding — plan draft", () => {
 describe("buildScaffolding — plan review", () => {
   it("returns scaffolding for plan step with dispatcherHint 'review'", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "review" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain("## Output Requirements");
-    expect(result).toContain("Annotated JSON");
-    expect(result).toContain("DO NOT MODIFY");
-    expect(result).toContain("Handoff Instructions");
-    expect(result).toContain(HANDOFF_PATH);
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.postamble).toContain("Output Requirements");
+    expect(result.postamble).toContain("Annotated JSON");
+    expect(result.postamble).toContain("NEVER modify draft-authored fields");
+    expect(result.postamble).toContain("Handoff Instructions");
+    expect(result.postamble).toContain(HANDOFF_PATH);
   });
 
   it("falls back to title matching for 'Review plan' keyword", () => {
     const step = makeStep({ type: "plan", title: "Review plan" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain("Annotated JSON");
-    expect(result).toContain("Handoff Instructions");
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.postamble).toContain("Annotated JSON");
+    expect(result.postamble).toContain("Handoff Instructions");
   });
 
-  it("includes review dispatch instructions", () => {
+  it("includes reviewer agent dispatch instructions in preamble", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "review" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain("openQuestions");
-    expect(result).toContain("findings");
-    expect(result).toContain("severity");
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("fly/reviewer-architecture");
+    expect(result.preamble).toContain("fly/reviewer-code-quality");
+    expect(result.preamble).toContain("fly/reviewer-patterns");
+    expect(result.preamble).toContain("fly/reviewer-performance");
+    expect(result.preamble).toContain("fly/reviewer-data-integrity");
+    expect(result.preamble).toContain("fly/reviewer-plan-philosophy");
+    expect(result.preamble).toContain("subagent_type");
+    expect(result.preamble).toContain("Task");
+  });
+
+  it("has preamble before postamble in combined output", () => {
+    const step = makeStep({ type: "plan", dispatcherHint: "review" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble.length).toBeGreaterThan(0);
+    expect(result.postamble.length).toBeGreaterThan(0);
+    // Preamble contains dispatch instructions, postamble contains output format
+    expect(result.preamble).toContain("Dispatch Reviewer Agents");
+    expect(result.postamble).toContain("openQuestions");
   });
 });
 
@@ -96,7 +122,7 @@ describe("buildScaffolding — plan review", () => {
 describe("buildScaffolding — plan consolidate", () => {
   it("returns scaffolding for plan step with dispatcherHint 'consolidate'", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "consolidate" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("## Output Requirements");
     expect(result).toContain("Synthesis Principles");
     expect(result).toContain("Quality Checks");
@@ -106,14 +132,14 @@ describe("buildScaffolding — plan consolidate", () => {
 
   it("falls back to title matching for 'Consolidate' keyword", () => {
     const step = makeStep({ type: "plan", title: "Consolidate findings" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("Synthesis Principles");
     expect(result).toContain("Handoff Instructions");
   });
 
   it("includes clean JSON output schema", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "consolidate" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("steps");
     expect(result).toContain("behavioralContract");
     expect(result).toContain("decisions");
@@ -122,8 +148,8 @@ describe("buildScaffolding — plan consolidate", () => {
 
   it("includes plan file output path instruction", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "consolidate" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain(DEFAULT_PLANS_DIR);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain(TEST_PLAN_PATH);
   });
 });
 
@@ -134,7 +160,7 @@ describe("buildScaffolding — plan consolidate", () => {
 describe("buildScaffolding — plan research", () => {
   it("returns handoff scaffolding for plan step with dispatcherHint 'research'", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "research" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
   });
@@ -147,7 +173,7 @@ describe("buildScaffolding — plan research", () => {
 describe("buildScaffolding — work steps", () => {
   it("returns handoff scaffolding for work steps", () => {
     const step = makeStep({ type: "work", title: "Implement feature" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("## Output Requirements");
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
@@ -156,7 +182,7 @@ describe("buildScaffolding — work steps", () => {
 
   it("includes work-specific handoff fields", () => {
     const step = makeStep({ type: "work" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("artifacts");
     expect(result).toContain("verification");
   });
@@ -169,7 +195,7 @@ describe("buildScaffolding — work steps", () => {
 describe("buildScaffolding — review steps", () => {
   it("returns handoff scaffolding for review steps", () => {
     const step = makeStep({ type: "review", title: "Multi-agent code review" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("## Output Requirements");
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
@@ -177,9 +203,9 @@ describe("buildScaffolding — review steps", () => {
 
   it("includes review-specific handoff fields", () => {
     const step = makeStep({ type: "review" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain("review_file_path");
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("finding_counts");
+    expect(result).toContain("p3_findings");
   });
 });
 
@@ -190,7 +216,7 @@ describe("buildScaffolding — review steps", () => {
 describe("buildScaffolding — verify steps", () => {
   it("returns handoff scaffolding for verify steps", () => {
     const step = makeStep({ type: "verify" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
     expect(result).toContain("verification_script_path");
@@ -202,10 +228,11 @@ describe("buildScaffolding — verify steps", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildScaffolding — gate steps", () => {
-  it("returns empty string for gate steps", () => {
+  it("returns empty for gate steps", () => {
     const step = makeStep({ type: "gate", title: "Approve plan" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toBe("");
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toBe("");
+    expect(result.postamble).toBe("");
   });
 });
 
@@ -214,16 +241,16 @@ describe("buildScaffolding — gate steps", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildScaffolding — delimiter format", () => {
-  it("starts with --- delimiter for non-gate steps", () => {
+  it("postamble starts with --- delimiter for non-gate steps", () => {
     const step = makeStep({ type: "work" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toMatch(/^---\n/);
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.postamble).toMatch(/^---\n/);
   });
 
   it("contains ## Output Requirements heading", () => {
     const step = makeStep({ type: "work" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
-    expect(result).toContain("## Output Requirements");
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Output Requirements");
   });
 });
 
@@ -234,7 +261,7 @@ describe("buildScaffolding — delimiter format", () => {
 describe("buildScaffolding — ship steps", () => {
   it("returns handoff scaffolding for ship steps", () => {
     const step = makeStep({ type: "ship" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
   });
@@ -247,7 +274,7 @@ describe("buildScaffolding — ship steps", () => {
 describe("buildScaffolding — debug steps", () => {
   it("returns handoff scaffolding for debug steps", () => {
     const step = makeStep({ type: "debug" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
   });
@@ -260,8 +287,343 @@ describe("buildScaffolding — debug steps", () => {
 describe("buildScaffolding — research steps", () => {
   it("returns handoff scaffolding for research steps", () => {
     const step = makeStep({ type: "research" });
-    const result = buildScaffolding(step, HANDOFF_PATH, PROJECT_CWD);
+    const result = combined(buildScaffolding(step, TEST_PATHS));
     expect(result).toContain("Handoff Instructions");
     expect(result).toContain(HANDOFF_PATH);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Generic detectRole tests (via buildScaffolding routing)
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — generic role detection via strategy map", () => {
+  it("routes plan steps via detectRole (backward compat with detectPlanRole)", () => {
+    // These tests already exist above and verify plan role detection
+    // This test verifies the strategy map doesn't break existing behavior
+    const draftStep = makeStep({ type: "plan", dispatcherHint: "draft" });
+    const result = combined(buildScaffolding(draftStep, TEST_PATHS));
+    expect(result).toContain("plan.json");
+    expect(result).toContain("behavioralContract");
+  });
+
+  it("routes review steps with dispatcherHint 'dispatch-reviewers' (dispatch role)", () => {
+    // Review dispatch scaffolding not yet implemented — should still return review handoff
+    const step = makeStep({ type: "review", dispatcherHint: "dispatch-reviewers" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Handoff Instructions");
+    expect(result).toContain(HANDOFF_PATH);
+  });
+
+  it("routes review steps with dispatcherHint 'consolidate-review' (consolidate role)", () => {
+    const step = makeStep({ type: "review", dispatcherHint: "consolidate-review" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Handoff Instructions");
+    expect(result).toContain(HANDOFF_PATH);
+  });
+
+  it("routes ship steps with dispatcherHint 'learnings' (learnings role)", () => {
+    const step = makeStep({ type: "ship", dispatcherHint: "learnings" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Handoff Instructions");
+    expect(result).toContain(HANDOFF_PATH);
+  });
+
+  it("routes debug steps with dispatcherHint 'investigate' (investigate role)", () => {
+    const step = makeStep({ type: "debug", dispatcherHint: "investigate" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Handoff Instructions");
+    expect(result).toContain(HANDOFF_PATH);
+  });
+
+  it("routes debug steps with dispatcherHint 'fix' (fix role)", () => {
+    const step = makeStep({ type: "debug", dispatcherHint: "fix" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Handoff Instructions");
+    expect(result).toContain(HANDOFF_PATH);
+  });
+
+  it("routes research steps without role detection (single role)", () => {
+    const step = makeStep({ type: "research" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Handoff Instructions");
+    expect(result).toContain(HANDOFF_PATH);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Strategy map routing tests
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — strategy map routing", () => {
+  it("strategy map handles all StepType values without errors", () => {
+    const stepTypes: Array<import("../src/queue/types").StepType> = [
+      "plan", "work", "review", "ship", "debug", "research", "verify", "gate",
+    ];
+    for (const type of stepTypes) {
+      const step = makeStep({ type, dispatcherHint: type === "plan" ? "draft" : undefined });
+      const result = buildScaffolding(step, TEST_PATHS);
+      expect(result).toBeDefined();
+      expect(typeof result.preamble).toBe("string");
+      expect(typeof result.postamble).toBe("string");
+    }
+  });
+
+  it("returns empty for unknown step types", () => {
+    const step = makeStep({ type: "unknown" as any });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toBe("");
+    expect(result.postamble).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Field spec integration tests
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — field spec integration", () => {
+  it("renderHandoffInstruction produces non-empty output for all field spec arrays", () => {
+    // Import field specs directly to test they're well-formed
+    const { renderHandoffInstruction, WORK_STEP_FIELDS, REVIEW_FIELDS, SHIP_FIELDS, SPRINT_FIELDS,
+            DEBUG_INVESTIGATE_FIELDS, DEBUG_FIX_FIELDS, DEBUG_VERIFY_FIELDS, RESEARCH_FIELDS,
+            SHIP_COMMIT_FIELDS, SHIP_LEARNINGS_FIELDS, REVIEW_DISPATCH_FIELDS, REVIEW_CONSOLIDATE_FIELDS,
+    } = require("../src/handoff/field-specs");
+
+    const allFieldSpecs = [
+      WORK_STEP_FIELDS, REVIEW_FIELDS, SHIP_FIELDS, SPRINT_FIELDS,
+      DEBUG_INVESTIGATE_FIELDS, DEBUG_FIX_FIELDS, DEBUG_VERIFY_FIELDS, RESEARCH_FIELDS,
+      SHIP_COMMIT_FIELDS, SHIP_LEARNINGS_FIELDS, REVIEW_DISPATCH_FIELDS, REVIEW_CONSOLIDATE_FIELDS,
+    ];
+
+    for (const fields of allFieldSpecs) {
+      expect(fields.length).toBeGreaterThan(0);
+      const output = renderHandoffInstruction(fields, "/tmp/test-handoff.json");
+      expect(output.length).toBeGreaterThan(0);
+      expect(output).toContain("Handoff Instructions");
+      expect(output).toContain("/tmp/test-handoff.json");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Review dispatch scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — review dispatch scaffolding", () => {
+  it("returns preamble with reviewer dispatch instructions for dispatch-reviewers hint", () => {
+    const step = makeStep({ type: "review", dispatcherHint: "dispatch-reviewers" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("Dispatch Review Agents");
+    expect(result.preamble).toContain("fly/reviewer-architecture");
+    expect(result.postamble).toContain("Handoff Instructions");
+    expect(result.postamble).toContain(HANDOFF_PATH);
+  });
+
+  it("returns finding synthesis instructions in preamble", () => {
+    const step = makeStep({ type: "review", dispatcherHint: "dispatch-reviewers" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("Collect & Deduplicate");
+    expect(result.preamble).toContain("Severity Assignment");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Review consolidate scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — review consolidate scaffolding", () => {
+  it("returns postamble with consolidation instructions for consolidate-review hint", () => {
+    const step = makeStep({ type: "review", dispatcherHint: "consolidate-review" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toBe("");
+    expect(result.postamble).toContain("Deduplicate");
+    expect(result.postamble).toContain("Handoff Instructions");
+  });
+
+  it("includes review document persistence instruction to docs/reviews/", () => {
+    const step = makeStep({ type: "review", dispatcherHint: "consolidate-review" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.postamble).toContain("docs/reviews/");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ship commit scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — ship commit scaffolding", () => {
+  it("returns postamble with staging rules for ship hint", () => {
+    const step = makeStep({ type: "ship", dispatcherHint: "ship" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("NEVER");
+    expect(result).toContain("AI attribution");
+    expect(result).toContain("Handoff Instructions");
+  });
+
+  it("includes branch naming and PR format", () => {
+    const step = makeStep({ type: "ship", dispatcherHint: "ship" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Branch Naming");
+    expect(result).toContain("PR Format");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ship learnings scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — ship learnings scaffolding", () => {
+  it("returns postamble with compound doc format for learnings hint", () => {
+    const step = makeStep({ type: "ship", dispatcherHint: "learnings" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Compound Doc Format");
+    expect(result).toContain("Handoff Instructions");
+  });
+
+  it("includes dedup rules", () => {
+    const step = makeStep({ type: "ship", dispatcherHint: "learnings" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Dedup");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Review/Ship backward compat
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — review/ship backward compat", () => {
+  it("review step without dispatcherHint defaults to dispatch role", () => {
+    const step = makeStep({ type: "review" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("Dispatch Review Agents");
+  });
+
+  it("ship step without dispatcherHint defaults to ship role", () => {
+    const step = makeStep({ type: "ship" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("NEVER");
+    expect(result).toContain("Branch Naming");
+  });
+
+  it("review step with title 'Consolidate review findings' maps to consolidate", () => {
+    const step = makeStep({ type: "review", title: "Consolidate review findings" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.postamble).toContain("Deduplicate");
+  });
+
+  it("ship step with title 'Extract learnings' maps to learnings", () => {
+    const step = makeStep({ type: "ship", title: "Extract learnings" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Compound Doc Format");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Debug investigate scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — debug investigate scaffolding", () => {
+  it("contains investigation methodology + hypothesis template for investigate hint", () => {
+    const step = makeStep({ type: "debug", dispatcherHint: "investigate" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("Investigation");
+    expect(result.preamble).toContain("Hypothesis");
+    expect(result.postamble).toContain("Handoff Instructions");
+    expect(result.postamble).toContain(HANDOFF_PATH);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Debug fix scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — debug fix scaffolding", () => {
+  it("contains fix loop rules + minimum-change principle for fix hint", () => {
+    const step = makeStep({ type: "debug", dispatcherHint: "fix" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Minimum change");
+    expect(result).toContain("Fix");
+    expect(result).toContain("Handoff Instructions");
+  });
+
+  it("contains fix iteration template", () => {
+    const step = makeStep({ type: "debug", dispatcherHint: "fix" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Attempt");
+    expect(result).toContain("Verification");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Debug verify scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — debug verify scaffolding", () => {
+  it("contains verification + resolution format for debug-verify hint", () => {
+    const step = makeStep({ type: "debug", dispatcherHint: "debug-verify" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Resolution");
+    expect(result).toContain("Escalation");
+    expect(result).toContain("Handoff Instructions");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Research full scaffolding
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — research scaffolding", () => {
+  it("contains full locate→analyze→persist flow", () => {
+    const step = makeStep({ type: "research" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("Locator");
+    expect(result.preamble).toContain("Analyzer");
+    expect(result.postamble).toContain("Handoff Instructions");
+  });
+
+  it("contains research document template with YAML frontmatter", () => {
+    const step = makeStep({ type: "research" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("type: research");
+    expect(result).toContain("Research Question");
+  });
+
+  it("uses researchPath from paths when provided", () => {
+    const step = makeStep({ type: "research" });
+    const paths = { ...TEST_PATHS, researchPath: "/custom/research.md" };
+    const result = combined(buildScaffolding(step, paths));
+    expect(result).toContain("/custom/research.md");
+  });
+
+  it("contains 4-locator dispatch instructions", () => {
+    const step = makeStep({ type: "research" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("fly/locator-codebase");
+    expect(result.preamble).toContain("fly/locator-patterns");
+    expect(result.preamble).toContain("fly/locator-docs");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Debug/Research backward compat
+// ---------------------------------------------------------------------------
+
+describe("buildScaffolding — debug/research backward compat", () => {
+  it("debug step without dispatcherHint defaults to investigate", () => {
+    const step = makeStep({ type: "debug" });
+    const result = buildScaffolding(step, TEST_PATHS);
+    expect(result.preamble).toContain("Investigation");
+  });
+
+  it("debug step with title 'Fix' maps to fix role", () => {
+    const step = makeStep({ type: "debug", title: "Fix the bug" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Minimum change");
+  });
+
+  it("debug step with title 'Verify' maps to verify role", () => {
+    const step = makeStep({ type: "debug", title: "Verify resolution" });
+    const result = combined(buildScaffolding(step, TEST_PATHS));
+    expect(result).toContain("Resolution");
   });
 });

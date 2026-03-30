@@ -181,6 +181,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -222,6 +224,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseEvaluatorInput());
 
@@ -265,6 +269,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseEvaluatorInput());
 
@@ -310,6 +316,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseEvaluatorInput());
 
@@ -355,6 +363,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseEvaluatorInput());
 
@@ -381,6 +391,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
 
     await expect(transport.invoke(baseEvaluatorInput())).rejects.toThrow(
@@ -424,6 +436,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -468,6 +482,8 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseEvaluatorInput());
 
@@ -531,6 +547,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({
       handoff: {
@@ -551,6 +569,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({
       worker_output: "The raw worker output text",
@@ -568,6 +588,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({
       handoff: {
@@ -580,7 +602,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Verification");
+    expect(prompt).toContain("## Worker-Reported Verification");
     expect(prompt).toContain("Tests passed: yes");
     expect(prompt).toContain("24/24 tests pass");
   });
@@ -591,6 +613,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({
       handoff: {
@@ -604,7 +628,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Artifacts");
+    expect(prompt).toContain("## Worker-Reported Artifacts");
     expect(prompt).toContain("src/auth.ts");
     expect(prompt).toContain("src/app.ts");
     expect(prompt).toContain("bun test");
@@ -616,6 +640,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({
       handoff: {
@@ -636,6 +662,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({
       handoff: {
@@ -650,6 +678,6 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     expect(prompt).toContain("All tests must pass");
     expect(prompt).toContain("## Timing");
     expect(prompt).toContain("42s");
-    expect(prompt).toContain("## Instructions");
+    expect(prompt).toContain("## Verdict Instructions");
   });
 });

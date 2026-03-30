@@ -29,14 +29,6 @@ import type { OpenQuestion as HandoffOpenQuestion } from "../schemas/handoff";
 /** Directive sent to consolidation when open questions are forwarded unresolved. */
 export const PLAN_QUESTION_DIRECTIVE = "resolve-best-judgment" as const;
 
-/** File suffixes to exclude from scan results (metadata companions, not actual plans). */
-export const EXCLUDED_SUFFIXES = [
-  ".context.md",
-  ".state.md",
-  ".baseline.md",
-  ".validation-contract.md",
-];
-
 /** File extension for JSON-native plan files (ADR-004 Decision 5). */
 export const JSON_PLAN_EXTENSION = ".plan.json";
 
@@ -171,7 +163,6 @@ export function createPlanOnStepComplete(
       try {
         return await handleReviewQuestions(result, hookOptions);
       } catch (err) {
-        // Outer catch: unexpected errors don't abort the queue
         log.error("unexpected error handling review questions", { error: err instanceof Error ? err : String(err) });
         return {};
       }
@@ -191,7 +182,6 @@ export function createPlanOnStepComplete(
           const resolvedPath = path.isAbsolute(handoff.plan_file_path)
             ? handoff.plan_file_path
             : path.join(projectCwd, handoff.plan_file_path);
-          // Verify file exists on disk (handoff data is LLM-produced, may be wrong)
           try {
             await fs.access(resolvedPath);
             const planFileName = path.basename(resolvedPath);
@@ -210,54 +200,6 @@ export function createPlanOnStepComplete(
       }
     }
 
-    // Fallback: scan .flywheel/plans/ for recently-modified .plan.json files.
-    // Only consider files modified within the last 5 minutes to avoid picking
-    // up stale plans from prior sessions.
-    // Only JSON plans — no markdown fallback (ADR-004).
-    const RECENCY_THRESHOLD_MS = 5 * 60 * 1000;
-    try {
-      const plansDir = path.join(projectCwd, ".flywheel", "plans");
-      const entries = await fs.readdir(plansDir).catch(() => [] as string[]);
-
-      const planCandidates = entries.filter((f) => f.endsWith(JSON_PLAN_EXTENSION));
-
-      if (planCandidates.length > 0) {
-        // Pick the most recently modified plan file, but only if recent
-        const now = Date.now();
-        let bestFile: string | null = null;
-        let bestMtime = 0;
-        for (const f of planCandidates) {
-          const stat = await fs.stat(path.join(plansDir, f)).catch(() => null);
-          if (stat && stat.mtimeMs > bestMtime && now - stat.mtimeMs < RECENCY_THRESHOLD_MS) {
-            bestMtime = stat.mtimeMs;
-            bestFile = f;
-          }
-        }
-        if (bestFile) {
-          const resolvedPath = path.join(plansDir, bestFile);
-          log.info("found plan file via directory scan fallback", { planFilePath: resolvedPath });
-          return { planFilePath: resolvedPath, planFileName: bestFile };
-        }
-      }
-    } catch {
-      // Scan failed — continue to warning
-    }
-
-    // Also scan project root for .plan.json files (worker might write there)
-    // Only JSON plans — no markdown fallback (ADR-004).
-    try {
-      const rootEntries = await fs.readdir(projectCwd);
-      const rootJsonPlans = rootEntries.filter((f) => f.endsWith(JSON_PLAN_EXTENSION));
-      if (rootJsonPlans.length > 0) {
-        const resolvedPath = path.join(projectCwd, rootJsonPlans[0]);
-        log.info("found plan file in project root via fallback scan", { planFilePath: resolvedPath });
-        return { planFilePath: resolvedPath, planFileName: rootJsonPlans[0] };
-      }
-    } catch {
-      // Scan failed — continue to warning
-    }
-
-    // No plan file found — warn but don't halt the queue
     return { planFileWarning: "Could not locate plan file on disk after consolidation" };
   };
 }

@@ -19,6 +19,13 @@ export function createServer(opts: { port: number }): ReturnType<typeof Bun.serv
           })
         }
 
+        if (url.pathname === "/healthz") {
+          if (req.method !== "GET") {
+            return Response.json({ error: "Method Not Allowed" }, { status: 405 })
+          }
+          return Response.json({ status: "ok" })
+        }
+
         return Response.json({ error: "Not Found" }, { status: 404 })
       },
     })

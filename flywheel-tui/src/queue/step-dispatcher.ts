@@ -570,19 +570,6 @@ function injectAssessmentIntoContext(
       `Evaluator suggestions: ${assessment.suggestions.join("; ")}`,
     );
   }
-  // Include verification results summary
-  if (assessment.verificationResults) {
-    const vr = assessment.verificationResults;
-    if (vr.commandResults.length > 0) {
-      const failedCmds = vr.commandResults.filter((r) => !r.matched);
-      if (failedCmds.length > 0) {
-        assessmentWarnings.push(
-          `Failed verification commands: ${failedCmds.map((c) => c.command).join(", ")}`,
-        );
-      }
-    }
-  }
-
   if (assessmentWarnings.length > 0) {
     ctx.cumulative_warnings.push({
       step_index: ctx.step_count,

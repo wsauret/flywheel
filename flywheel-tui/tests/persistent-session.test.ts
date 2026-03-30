@@ -186,8 +186,8 @@ class ShellSimulator {
     }
     if (this.shellState === "working") {
       const result = this.escapeHandler.handleEscape();
-      if (result === "show-hint") {
-        this.escHint = "Press Esc again to stop";
+      if (result === "interrupt") {
+        this.escHint = "Press Esc again to kill worker";
       } else {
         this.escHint = "";
         // During pipeline: pause instead of full stop
@@ -593,7 +593,7 @@ describe("Persistent Session Integration", () => {
       expect(shell.shellState).toBe("working");
 
       shell.handleEscape();
-      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.escHint).toBe("Press Esc again to kill worker");
       expect(shell.shellState).toBe("working"); // still working
       expect(shell.activeSession).not.toBeNull(); // session still alive
     });
@@ -612,7 +612,7 @@ describe("Persistent Session Integration", () => {
 
       // First Esc → hint
       shell.handleEscape();
-      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.escHint).toBe("Press Esc again to kill worker");
 
       // Second Esc → stop
       shell.handleEscape();
@@ -634,14 +634,14 @@ describe("Persistent Session Integration", () => {
 
       // First Esc → hint
       shell.handleEscape();
-      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.escHint).toBe("Press Esc again to kill worker");
 
       // Wait for timeout (200ms in test config)
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Esc after timeout → hint again (not stop)
       shell.handleEscape();
-      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.escHint).toBe("Press Esc again to kill worker");
       expect(shell.shellState).toBe("working"); // still working
     });
   });
@@ -745,7 +745,7 @@ describe("Persistent Session Integration", () => {
 
       // First Esc → hint
       shell.handleEscape();
-      expect(shell.escHint).toBe("Press Esc again to stop");
+      expect(shell.escHint).toBe("Press Esc again to kill worker");
       expect(shell.shellState).toBe("working");
 
       // Second Esc → pause (not full teardown)

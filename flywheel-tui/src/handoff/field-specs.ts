@@ -24,12 +24,12 @@ export const WORK_STEP_FIELDS: HandoffFieldSpec[] = [
   },
   {
     key: "artifacts",
-    description: "Files created, modified, and commands run during this step",
-    example: '{"files_created": ["src/auth.ts"], "files_modified": ["src/app.ts"], "commands_run": ["bun test"]}',
+    description: "Files created, modified, and commands run. IMPORTANT: commands_run entries will be RE-EXECUTED by a verification agent — only list commands you actually ran, with accurate exit codes. Fabricated or inaccurate entries cause the step to fail verification and retry",
+    example: '{"files_created": ["src/auth.ts"], "files_modified": ["src/app.ts"], "commands_run": [{"command": "bun test", "exitCode": 0, "observation": "12/12 tests pass"}]}',
   },
   {
     key: "verification",
-    description: "Whether tests passed and a brief summary of test output",
+    description: "Whether tests passed and a brief summary of test output. Must reflect actual results — a verification agent will re-run reported commands to confirm",
     example: '{"tests_passed": true, "test_output_summary": "12/12 tests pass"}',
   },
   {
@@ -78,7 +78,7 @@ export const PLAN_DRAFT_FIELDS: HandoffFieldSpec[] = [
   {
     key: "plan_file_path",
     description: "Path to the JSON plan file produced by the draft step",
-    example: '".flywheel/plans/feat-auth.plan.json"',
+    example: '"plan.json"',
   },
   {
     key: "decisions",
@@ -102,7 +102,7 @@ export const PLAN_REVIEW_FIELDS: HandoffFieldSpec[] = [
   {
     key: "plan_file_path",
     description: "Path to the annotated JSON plan file",
-    example: '".flywheel/plans/feat-auth.plan.json"',
+    example: '"plan.json"',
   },
   {
     key: "open_questions",
@@ -121,7 +121,7 @@ export const PLAN_CONSOLIDATE_FIELDS: HandoffFieldSpec[] = [
   {
     key: "plan_file_path",
     description: "Path to the final consolidated JSON plan file",
-    example: '".flywheel/plans/feat-auth.plan.json"',
+    example: '"plan.json"',
   },
   {
     key: "decisions",
@@ -140,7 +140,7 @@ export const REVIEW_FIELDS: HandoffFieldSpec[] = [
   {
     key: "review_file_path",
     description: "Path to the full review document",
-    example: '".flywheel/reviews/auth-review.md"',
+    example: '"review.md"',
   },
   {
     key: "finding_counts",
@@ -173,6 +173,80 @@ export const SHIP_FIELDS: HandoffFieldSpec[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Debug sub-step fields
+// ---------------------------------------------------------------------------
+
+export const DEBUG_INVESTIGATE_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of investigation findings, root cause hypothesis, and evidence gathered", example: '"Investigated the failing test and identified a race condition in the event handler..."', required: true },
+  { key: "hypothesis", description: "Root cause hypothesis based on investigation", example: '"The race condition occurs because the event listener is registered after the initial emit"' },
+  { key: "artifacts", description: "Files examined and commands run during investigation", example: '{"files_modified": [], "commands_run": [{"command": "bun test tests/event.test.ts", "exitCode": 1, "observation": "Timeout on line 42"}]}' },
+  { key: "decisions", description: "Key decisions about the investigation approach", example: '["Focused on event handler timing based on stack trace"]' },
+];
+
+export const DEBUG_FIX_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of the fix applied and rationale", example: '"Applied minimum-change fix to register the event listener before the initial emit..."', required: true },
+  { key: "artifacts", description: "Files modified and commands run to apply the fix. IMPORTANT: commands_run entries will be RE-EXECUTED by verification", example: '{"files_modified": ["src/events/handler.ts"], "commands_run": [{"command": "bun test", "exitCode": 0, "observation": "All tests pass"}]}' },
+  { key: "verification", description: "Whether tests passed after the fix", example: '{"tests_passed": true, "test_output_summary": "42/42 tests pass"}' },
+  { key: "files_to_review", description: "Files changed by the fix", example: '["src/events/handler.ts"]' },
+];
+
+export const DEBUG_VERIFY_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of verification results", example: '"Verification confirmed the fix resolves the original issue. All tests pass..."', required: true },
+  { key: "verification", description: "Verification command output and result", example: '{"tests_passed": true, "test_output_summary": "42/42 tests pass, no regressions"}' },
+  { key: "artifacts", description: "Commands run during verification", example: '{"commands_run": [{"command": "bun test", "exitCode": 0, "observation": "42/42 pass"}]}' },
+];
+
+// ---------------------------------------------------------------------------
+// Research fields (single rich step)
+// ---------------------------------------------------------------------------
+
+export const RESEARCH_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of research findings covering locate, analyze, and persist phases", example: '"Researched authentication patterns in the codebase. Located 12 relevant files across 3 modules..."', required: true },
+  { key: "document_path", description: "Path to the persisted research document", example: '"docs/research/2026-03-29-auth-patterns.md"' },
+  { key: "artifacts", description: "Files created during research (research doc, context files)", example: '{"files_created": ["docs/research/2026-03-29-auth-patterns.md"]}' },
+  { key: "decisions", description: "Key decisions about research scope and findings", example: '["Focused on middleware-based auth patterns as dominant pattern"]' },
+  { key: "files_to_review", description: "Key files discovered during research", example: '["src/middleware/auth.ts", "src/services/jwt.ts"]' },
+];
+
+// ---------------------------------------------------------------------------
+// Ship sub-step fields (split ship and learnings)
+// ---------------------------------------------------------------------------
+
+export const SHIP_COMMIT_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of staged changes, commit, and PR", example: '"Staged 12 files, committed with message feat: add auth middleware, opened PR #42..."', required: true },
+  { key: "artifacts", description: "Files staged, branch name, commit hash, PR URL", example: '{"files_modified": ["src/auth.ts"], "commands_run": [{"command": "git push -u origin feat/auth", "exitCode": 0, "observation": "PR opened"}]}' },
+  { key: "decisions", description: "Decisions about commit scope and PR description", example: '["Split into single commit for clean history"]' },
+];
+
+export const SHIP_LEARNINGS_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of learnings extracted", example: '"Extracted 2 compound solution documents covering the auth middleware pattern..."', required: true },
+  { key: "compound_docs", description: "Learnings extracted and saved as compound solution documents", example: '[{"title": "Auth middleware pattern", "type": "pattern", "tags": ["auth"], "problem": "Need reusable auth", "solution": "Middleware chain"}]' },
+  { key: "artifacts", description: "Compound doc files created", example: '{"files_created": ["docs/solutions/auth-middleware-pattern.md"]}' },
+];
+
+// ---------------------------------------------------------------------------
+// Review sub-step fields (split dispatch and consolidate)
+// ---------------------------------------------------------------------------
+
+export const REVIEW_DISPATCH_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of review dispatch and per-reviewer findings", example: '"Dispatched 5 review agents. Found 1 P1, 3 P2, 7 P3 findings across 12 files..."', required: true },
+  { key: "finding_counts", description: "Count of findings by severity", example: '{"p1_critical": 1, "p2_important": 3, "p3_suggestion": 7}' },
+  { key: "p3_findings", description: "Low-priority suggestions for optional triage", example: '[{"description": "Consider caching", "location": "src/api.ts:10", "suggestion": "Add LRU cache"}]' },
+  { key: "files_to_review", description: "Files that were reviewed", example: '["src/auth.ts", "src/middleware.ts"]' },
+];
+
+export const REVIEW_CONSOLIDATE_FIELDS: HandoffFieldSpec[] = [
+  { key: "summary", description: "100-5000 char summary of consolidated review with incorporated findings", example: '"Consolidated review: 1 P1 fixed, 3 P2 addressed. Review doc written to docs/reviews/..."', required: true },
+  { key: "review_file_path", description: "Path to the full review document", example: '"docs/reviews/2026-03-29-auth-review.md"' },
+  { key: "finding_counts", description: "Final finding counts after triage", example: '{"p1_critical": 1, "p2_important": 3, "p3_suggestion": 5}' },
+  { key: "files_to_review", description: "Files that need attention based on review", example: '["src/auth.ts"]' },
+];
+
+// ---------------------------------------------------------------------------
+// Sprint fields
+// ---------------------------------------------------------------------------
+
 export const SPRINT_FIELDS: HandoffFieldSpec[] = [
   {
     key: "summary",
@@ -187,8 +261,8 @@ export const SPRINT_FIELDS: HandoffFieldSpec[] = [
   },
   {
     key: "artifacts",
-    description: "Files created, modified, and commands run during this sprint iteration",
-    example: '{"files_created": ["src/hello.ts", ".flywheel/verify/sprint-hello-world.ts"], "files_modified": ["src/app.ts"], "commands_run": ["bun test"]}',
+    description: "Files created, modified, and commands run during this sprint iteration. IMPORTANT: commands_run entries will be RE-EXECUTED by a verification agent — only list commands you actually ran, with accurate exit codes",
+    example: '{"files_created": ["src/hello.ts", ".flywheel/verify/sprint-hello-world.ts"], "files_modified": ["src/app.ts"], "commands_run": [{"command": "bun test", "exitCode": 0, "observation": "5/5 tests pass"}]}',
   },
   {
     key: "verification",
@@ -263,7 +337,8 @@ ${fieldLines.join("\n\n")}
 2. All other fields are optional but strongly encouraged — they improve downstream quality assessment.
 3. Do NOT include fields not listed above — unknown fields cause a validation error and the step will be retried.
 4. Write the file using your file-writing tool (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
-5. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.`;
+5. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.
+6. **Accuracy is critical.** A verification agent will re-execute commands from \`artifacts.commands_run\` and check that files in \`artifacts.files_created\`/\`files_modified\` exist on disk. If any reported command returns a different exit code than you claimed, or a reported file does not exist, the step fails verification and you will be asked to retry. Only report commands you actually ran and files that actually exist.`;
 }
 
 // ---------------------------------------------------------------------------

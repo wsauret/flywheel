@@ -1,7 +1,6 @@
 import type { WorkflowDefinition } from "../schemas/workflow";
 import { reviewDispatchEvaluationCriteria } from "../prompts/review/dispatch";
 import { reviewConsolidateEvaluationCriteria } from "../prompts/review/consolidate";
-import { reviewFixEvaluationCriteria } from "../prompts/review/fix";
 
 export const reviewWorkflow: WorkflowDefinition = {
   name: "review",
@@ -16,13 +15,11 @@ export const reviewWorkflow: WorkflowDefinition = {
     {
       description: "Consolidate findings into review document",
       dispatcherHint:
-        "Deduplicate, rank by severity, and produce final review document. Worker writes to .flywheel/reviews/<date>-<slug>.md.",
+        "Deduplicate, rank by severity, and produce final review document. Worker writes to session review.md path.",
       evaluationCriteria: reviewConsolidateEvaluationCriteria,
     },
-    {
-      description: "Implement review findings",
-      dispatcherHint: "Read the review document and implement P1/P2 fixes. Skip if no actionable findings.",
-      evaluationCriteria: reviewFixEvaluationCriteria,
-    },
+    // NOTE: The work/fix step is no longer statically defined here.
+    // It is dynamically injected by the review-fix-injection hook
+    // in the queue executor when review findings warrant it.
   ],
 };

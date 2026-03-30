@@ -322,6 +322,8 @@ describe("VAL-ALIGN-006: Evaluator buildPrompt includes task context section", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
 
     await transport.invoke(baseEvaluatorInput({
@@ -340,6 +342,8 @@ describe("VAL-ALIGN-006: Evaluator buildPrompt includes task context section", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
 
     await transport.invoke(baseEvaluatorInput());
@@ -355,6 +359,8 @@ describe("VAL-ALIGN-006: Evaluator buildPrompt includes task context section", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
 
     await transport.invoke(baseEvaluatorInput({

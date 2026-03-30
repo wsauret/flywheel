@@ -5,7 +5,6 @@ import type {
   ResolvedQuestion,
 } from "../../controller/question-service.js";
 import { renderHandoffInstruction, PLAN_CONSOLIDATE_FIELDS } from "../../handoff/field-specs.js";
-import { DEFAULT_PLANS_DIR } from "../../config/paths.js";
 
 /**
  * Format a single resolved question as a readable line.
@@ -62,14 +61,14 @@ ${lines}`;
 }
 
 export const planConsolidateEvaluationCriteria =
-  `Clean JSON plan written to ${DEFAULT_PLANS_DIR}/ with review findings merged, all P1 addressed, no review annotations remaining`;
+  "Clean JSON plan written with review findings merged, all P1 addressed, no review annotations remaining";
 
 /**
  * Builds a prompt for consolidating a reviewed JSON plan into a final clean JSON plan.
  *
  * The worker reads annotated JSON (with review.findings[] on steps and openQuestions[]),
  * merges P1/P2 findings into step content, resolves open questions, strips all review
- * annotations, and writes clean JSON to .flywheel/plans/<name>.plan.json.
+ * annotations, and writes clean JSON to the session's plan.json.
  */
 export function buildPlanConsolidatePrompt(ctx: WorkflowStepContext): string {
   const questionsSection = buildQuestionsSection(ctx.extra);
@@ -103,14 +102,11 @@ Produce a CLEAN JSON plan that:
 6. Updates \`risks[]\` to include any new risks from review findings
 
 Write the final clean JSON to:
-\`${DEFAULT_PLANS_DIR}/<type>-<description>.plan.json\`
+\`${ctx.extra?.planPath ?? "plan.json"}\`
 
 This should overwrite the annotated version at the same path.
 
-Where \`<type>\` is one of: feat, fix, refactor, chore, docs
-And \`<description>\` is a short kebab-case name for the feature.
-
-Create the \`${DEFAULT_PLANS_DIR}/\` directory if it does not exist.
+Create the parent directory if it does not exist.
 
 ### Output Schema
 
@@ -137,6 +133,8 @@ ${CLEAN_JSON_EXAMPLE}
 6. **Preserve test-first intent.** acceptanceCriteria should be testable. fileReferences should include test files.
 
 7. **No orphaned assertions.** Every behavioralContract assertion must be claimed by exactly one step's fulfills. If review findings suggest a new assertion, add it to behavioralContract AND add it to the relevant step's fulfills.
+
+8. **Each step = one subprocess (context-clearing boundary).** Every step spawns an independent AI worker with a blank context window. The rule for splitting: will clearing context help or hurt? If the next chunk of work benefits from a fresh perspective (e.g., a large unrelated feature after a complex refactor), make it a new step. If the next activity needs awareness of what was just done (e.g., running tests, auditing related code, smoke-testing the thing you just built), keep it in the SAME step — losing that context forces the worker to rediscover everything. Example: a bug fix with "audit for similar issues", "run automated tests", and "manual smoke test" is ONE step whose acceptanceCriteria includes those checks, because the worker that wrote the fix is best positioned to run tests and fix any failures.
 
 ### Quality Checks
 

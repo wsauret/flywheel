@@ -74,11 +74,11 @@ export function OutputWindow(props: OutputWindowProps) {
       {/* Rich Header (when step is active) */}
       <Show when={props.currentStep} fallback={
         /* Simple header: no active step — show status-aware heading */
-        <box flexDirection="column" paddingLeft={1} height={3} flexShrink={0}>
-          <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
+        <box flexDirection="column" paddingLeft={1} height={2} flexShrink={0}>
+          <text fg={themeCtx.theme.border}>{"\u2500\u2500"}</text>
           <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
             <box flexDirection="row">
-              <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
+              <text fg={themeCtx.theme.border}>{" "}</text>
               <text fg={themeCtx.theme.text} attributes={1}>
                 {hasContent() ? "Output" : statusHeading()}
               </text>
@@ -87,7 +87,6 @@ export function OutputWindow(props: OutputWindowProps) {
               <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
             </Show>
           </box>
-          <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
         </box>
       }>
         {(step) => {
@@ -95,19 +94,19 @@ export function OutputWindow(props: OutputWindowProps) {
 
           return (
             <Show when={isWide()} fallback={
-              /* Narrow layout: 5 lines */
-              <box flexDirection="column" paddingLeft={1} height={5} flexShrink={0}>
-                <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
+              /* Narrow layout: 4 lines */
+              <box flexDirection="column" paddingLeft={1} height={4} flexShrink={0}>
+                <text fg={themeCtx.theme.border}>{"\u2500\u2500"}</text>
                 {/* Line 1: Step name */}
                 <box flexDirection="row">
-                  <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
+                  <text fg={themeCtx.theme.border}>{" "}</text>
                   <text fg={themeCtx.theme.text} attributes={1}>
                     Step {step().index + 1}: {step().name}
                   </text>
                 </box>
                 {/* Line 2: Status icon */}
                 <box flexDirection="row">
-                  <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
+                  <text fg={themeCtx.theme.border}>{" "}</text>
                   <Show when={step().status === "running"} fallback={
                     <text fg={statusColor()}>{getStepStatusIcon(step().status)} {step().status}</text>
                   }>
@@ -118,7 +117,7 @@ export function OutputWindow(props: OutputWindowProps) {
                 {/* Line 3: Activity phrase + line count */}
                 <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
                   <box flexDirection="row">
-                    <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
+                    <text fg={themeCtx.theme.border}>{" "}</text>
                     <Show when={activityPhrase()} fallback={
                       <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}{blockCountText()}</text>
                     }>
@@ -134,16 +133,15 @@ export function OutputWindow(props: OutputWindowProps) {
                     <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
                   </Show>
                 </box>
-                <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
               </box>
             }>
-              {/* Wide layout: 4 lines */}
-              <box flexDirection="column" paddingLeft={1} height={4} flexShrink={0}>
-                <text fg={themeCtx.theme.border}>{"\u256D\u2500"}</text>
+              {/* Wide layout: 3 lines */}
+              <box flexDirection="column" paddingLeft={1} height={3} flexShrink={0}>
+                <text fg={themeCtx.theme.border}>{"\u2500\u2500"}</text>
                 {/* Line 1: Step name + status */}
                 <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
                   <box flexDirection="row">
-                    <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
+                    <text fg={themeCtx.theme.border}>{" "}</text>
                     <text fg={themeCtx.theme.text} attributes={1}>
                       Step {step().index + 1}: {step().name}
                     </text>
@@ -160,7 +158,7 @@ export function OutputWindow(props: OutputWindowProps) {
                 {/* Line 2: Activity phrase + line count */}
                 <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
                   <box flexDirection="row">
-                    <text fg={themeCtx.theme.border}>{"\u2502  "}</text>
+                    <text fg={themeCtx.theme.border}>{" "}</text>
                     <Show when={activityPhrase()} fallback={
                       <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}</text>
                     }>
@@ -174,7 +172,6 @@ export function OutputWindow(props: OutputWindowProps) {
                   </box>
                   <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
                 </box>
-                <text fg={themeCtx.theme.border}>{"\u2570\u2500"}</text>
               </box>
             </Show>
           )
@@ -206,12 +203,10 @@ export function OutputWindow(props: OutputWindowProps) {
           <scrollbox
             ref={(r: ScrollBoxRenderable) => setScrollRef(r)}
             flexGrow={1}
-            flexDirection="column"
             width="100%"
             stickyScroll={true}
             stickyStart="bottom"
             scrollbarOptions={{
-              showArrows: true,
               trackOptions: {
                 foregroundColor: themeCtx.theme.info,
                 backgroundColor: themeCtx.theme.border,

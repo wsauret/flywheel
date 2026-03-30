@@ -342,6 +342,22 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
 };
 
 // ---------------------------------------------------------------------------
+// Error types
+// ---------------------------------------------------------------------------
+
+export type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
+
+export class ConfigLoadError extends Error {
+  readonly code: ConfigErrorCode;
+
+  constructor(message: string, code: ConfigErrorCode) {
+    super(message);
+    this.name = "ConfigLoadError";
+    this.code = code;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Warnings
 // ---------------------------------------------------------------------------
 
@@ -386,11 +402,23 @@ export function loadConfig(
   }
   raw = deepMerge(raw, envOverrides);
 
+  // Warn about unrecognized top-level keys before Zod strips them
+  const knownKeys = new Set(Object.keys(FlywheelConfigSchema.shape));
+  for (const key of Object.keys(raw)) {
+    if (!knownKeys.has(key)) {
+      warnings.push(
+        `WARNING: Unrecognized config key "${key}". This key will be ignored. ` +
+          "Check for typos in your config file.",
+      );
+    }
+  }
+
   // Validate with Zod (defaults are applied here)
   const result = FlywheelConfigSchema.safeParse(raw);
   if (!result.success) {
-    throw new Error(
+    throw new ConfigLoadError(
       `Invalid configuration: ${result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ")}`,
+      "VALIDATION",
     );
   }
 
@@ -421,19 +449,35 @@ export function loadConfig(
 function loadTomlFile(filePath: string): Record<string, unknown> {
   const absPath = path.resolve(filePath);
   if (!fs.existsSync(absPath)) {
-    throw new Error(`Config file not found: ${absPath}`);
+    throw new ConfigLoadError(`Config file not found: ${absPath}`, "FILE_NOT_FOUND");
   }
 
-  const content = fs.readFileSync(absPath, "utf-8");
-
-  // Use Bun's built-in TOML parser
-  const BunGlobal = globalThis as unknown as { Bun?: { TOML?: { parse(s: string): unknown } } };
-  if (BunGlobal.Bun?.TOML) {
-    return BunGlobal.Bun.TOML.parse(content) as Record<string, unknown>;
+  let content: string;
+  try {
+    content = fs.readFileSync(absPath, "utf-8");
+  } catch (err) {
+    throw new ConfigLoadError(
+      `Cannot read config file: ${absPath} (${err instanceof Error ? err.message : String(err)})`,
+      "FILE_READ_ERROR",
+    );
   }
 
-  // Fallback: minimal TOML parser for simple key=value and [section] syntax
-  return parseSimpleToml(content);
+  try {
+    // Use Bun's built-in TOML parser
+    const BunGlobal = globalThis as unknown as { Bun?: { TOML?: { parse(s: string): unknown } } };
+    if (BunGlobal.Bun?.TOML) {
+      return BunGlobal.Bun.TOML.parse(content) as Record<string, unknown>;
+    }
+
+    // Fallback: minimal TOML parser for simple key=value and [section] syntax
+    return parseSimpleToml(content);
+  } catch (err) {
+    if (err instanceof ConfigLoadError) throw err;
+    throw new ConfigLoadError(
+      `Failed to parse config file: ${absPath} (${err instanceof Error ? err.message : String(err)})`,
+      "PARSE_ERROR",
+    );
+  }
 }
 
 /**

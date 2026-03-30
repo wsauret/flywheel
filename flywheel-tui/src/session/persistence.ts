@@ -1,25 +1,31 @@
 /**
  * Session Persistence
  *
- * CRUD operations for session files stored in `.flywheel/sessions/<uuid>.json`.
+ * CRUD operations for session files stored in `.flywheel/sessions/<id>/session.json`.
+ * Each session gets its own directory containing all related files.
  * Uses atomic writes (write → fsync → rename) and Zod validation on read.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { SessionSchema, migrateSession, type Session } from "../schemas/session";
 import { writeFileAtomic } from "../utils/atomic-write";
-import { SESSIONS_DIR } from "../config/paths";
+import {
+  SESSIONS_DIR,
+  resolveSessionDir,
+  resolveSessionFile,
+  ensureSessionDir,
+} from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function sessionsDir(baseDir: string): string {
+function sessionsBaseDir(baseDir: string): string {
   return path.join(baseDir, SESSIONS_DIR);
 }
 
 function sessionFilePath(id: string, baseDir: string): string {
-  return path.join(sessionsDir(baseDir), `${id}.json`);
+  return resolveSessionFile(id, "session", baseDir);
 }
 
 // ---------------------------------------------------------------------------
@@ -27,12 +33,17 @@ function sessionFilePath(id: string, baseDir: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Create a new session. Writes session data to `.flywheel/sessions/<uuid>.json`.
+ * Create a new session. Writes session data to `.flywheel/sessions/<id>/session.json`.
+ * Creates the session directory and handoffs/ subdirectory.
  *
  * @returns The generated UUID for the session.
  */
 export function createSession(data: Session, baseDir: string): string {
   const id = crypto.randomUUID();
+
+  // Create session directory structure
+  ensureSessionDir(id, baseDir);
+
   const filePath = sessionFilePath(id, baseDir);
 
   // Validate before writing — fail fast on bad data
@@ -120,12 +131,12 @@ export interface SessionListResult {
 /**
  * List all sessions in `.flywheel/sessions/`.
  *
- * Reads every `.json` file, validates with Zod, and returns the results.
- * Corrupt or invalid files are reported in `errors` but do not prevent
- * other sessions from being returned (per-file error isolation).
+ * Reads each subdirectory's `session.json`, validates with Zod, and returns
+ * the results. Corrupt or invalid entries are reported in `errors` but do
+ * not prevent other sessions from being returned (per-entry error isolation).
  */
 export function listSessions(baseDir: string): SessionListResult {
-  const dir = sessionsDir(baseDir);
+  const dir = sessionsBaseDir(baseDir);
   const sessions: SessionEntry[] = [];
   const errors: SessionListError[] = [];
 
@@ -133,18 +144,17 @@ export function listSessions(baseDir: string): SessionListResult {
     return { sessions, errors };
   }
 
-  const files = fs.readdirSync(dir);
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-  for (const file of files) {
-    // Only process .json files
-    if (!file.endsWith(".json")) {
-      continue;
-    }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
 
-    const filePath = path.join(dir, file);
-    const id = file.replace(/\.json$/, "");
+    const id = entry.name;
+    const filePath = path.join(dir, id, "session.json");
 
     try {
+      if (!fs.existsSync(filePath)) continue;
+
       const raw = fs.readFileSync(filePath, "utf-8");
       const json = JSON.parse(raw);
       const migrated = migrateSession(json);
@@ -168,18 +178,18 @@ export function listSessions(baseDir: string): SessionListResult {
 }
 
 /**
- * Delete a session by ID.
+ * Delete a session by ID. Removes the entire session directory.
  *
- * @returns `true` if the file was deleted, `false` if it didn't exist.
+ * @returns `true` if the directory was deleted, `false` if it didn't exist.
  */
 export function deleteSession(id: string, baseDir: string): boolean {
-  const filePath = sessionFilePath(id, baseDir);
+  const dirPath = resolveSessionDir(id, baseDir);
 
   try {
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(dirPath)) {
       return false;
     }
-    fs.unlinkSync(filePath);
+    fs.rmSync(dirPath, { recursive: true, force: true });
     return true;
   } catch {
     return false;
@@ -197,11 +207,10 @@ export interface DeleteResult {
 }
 
 /**
- * Delete a session and its companion files (output snapshot).
+ * Delete a session and all its files.
  *
- * Reads the session JSON first to discover the output path. Falls back to
- * convention-based output path (`<id>.output.json`) if the JSON is unreadable.
- * Deletes companions first, then the session JSON last.
+ * With directory-per-session layout, this simply removes the entire
+ * session directory recursively.
  *
  * @param id - The session UUID.
  * @param baseDir - The project root directory.
@@ -221,47 +230,16 @@ export function deleteSessionWithCompanions(
     return result;
   }
 
-  // Read session JSON first to get companion paths
-  const session = readSession(id, baseDir);
+  const dirPath = resolveSessionDir(id, baseDir);
 
-  // Collect companion paths to delete (before the JSON itself)
-  const toDelete: string[] = [];
-
-  if (session) {
-    if (session.outputPath) {
-      toDelete.push(path.join(sessionsDir(baseDir), session.outputPath));
-    }
-  }
-
-  // Convention-based output path fallback (always attempt if not already listed)
-  const conventionOutput = path.join(sessionsDir(baseDir), `${id}.output.json`);
-  if (!toDelete.includes(conventionOutput)) {
-    toDelete.push(conventionOutput);
-  }
-
-  // Delete companion files
-  for (const filePath of toDelete) {
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        result.deleted.push(filePath);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      result.errors.push(`${filePath}: ${message}`);
-    }
-  }
-
-  // Delete session JSON last
-  const jsonPath = sessionFilePath(id, baseDir);
   try {
-    if (fs.existsSync(jsonPath)) {
-      fs.unlinkSync(jsonPath);
-      result.deleted.push(jsonPath);
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+      result.deleted.push(dirPath);
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    result.errors.push(`${jsonPath}: ${message}`);
+    result.errors.push(`${dirPath}: ${message}`);
   }
 
   return result;

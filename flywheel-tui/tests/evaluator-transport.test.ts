@@ -141,14 +141,17 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
     expect(spawnedCommand).toBe("claude");
-    expect(spawnedArgs).toContain("--print");
+    expect(spawnedArgs).toContain("-p");
     expect(spawnedArgs).toContain("--tools");
     expect(spawnedArgs).toContain("--no-session-persistence");
-    expect(spawnedArgs).toContain("--effort");
+    // No --effort flag — agent needs full reasoning for investigation
+    expect(spawnedArgs).not.toContain("--effort");
   });
 
   it("spawns 'opencode' engine when engineName is 'opencode'", async () => {
@@ -175,6 +178,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -208,6 +213,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -220,7 +227,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   // VAL-EVAL-002: Evaluator optimization flags
   // -----------------------------------------------------------------------
 
-  it("Claude route includes all dispatcher optimization flags (tools disabled, model, etc.)", async () => {
+  it("Claude route includes evaluator flags (tools for investigation, model, no session persistence)", async () => {
     let spawnedArgs: string[] = [];
 
     const mockSpawner: ProcessSpawner = {
@@ -242,20 +249,21 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
-    // Same optimization flags as dispatcher
-    expect(spawnedArgs).toContain("--print");
+    // Agent-based evaluator: -p for one-shot, investigation tools, no session persistence
+    expect(spawnedArgs).toContain("-p");
     expect(spawnedArgs).toContain("--dangerously-skip-permissions");
     expect(spawnedArgs).toContain("--no-session-persistence");
     expect(spawnedArgs).toContain("--tools");
     const toolsIdx = spawnedArgs.indexOf("--tools");
-    expect(spawnedArgs[toolsIdx + 1]).toBe("Write"); // only Write tool for handoff files
+    expect(spawnedArgs[toolsIdx + 1]).toBe("Read,Bash,Write,Grep,Glob");
     expect(spawnedArgs).toContain("--model");
-    expect(spawnedArgs).toContain("--effort");
-    const effortIdx = spawnedArgs.indexOf("--effort");
-    expect(spawnedArgs[effortIdx + 1]).toBe("low");
+    // No --effort flag — agent needs full reasoning for investigation
+    expect(spawnedArgs).not.toContain("--effort");
   });
 
   it("Claude route uses --system-prompt for evaluator prompt (separate for caching)", async () => {
@@ -280,15 +288,17 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
     expect(spawnedArgs).toContain("--system-prompt");
     const sysIdx = spawnedArgs.indexOf("--system-prompt");
     expect(sysIdx).toBeGreaterThan(-1);
-    // The system prompt should contain evaluator-specific instructions
+    // The system prompt should contain verification agent instructions
     expect(spawnedArgs[sysIdx + 1]).toBeTruthy();
-    expect(spawnedArgs[sysIdx + 1]).toContain("evaluator");
+    expect(spawnedArgs[sysIdx + 1]).toContain("verification agent");
   });
 
   it("Claude route passes evaluator input via -p flag (not stdin)", async () => {
@@ -315,6 +325,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -345,6 +357,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -373,12 +387,14 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
     // OpenCode uses stdin for prompt delivery
     expect(receivedStdin).toBeTruthy();
-    expect(receivedStdin).toContain("evaluator");
+    expect(receivedStdin).toContain("verification agent");
   });
 
   // -----------------------------------------------------------------------
@@ -408,6 +424,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       spawner: mockSpawner,
       engineName: "claude",
       // No evaluatorModel — should use engine default
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -438,6 +456,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -473,6 +493,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       spawner: mockSpawner,
       engineName: "claude",
       evaluatorModel: "haiku",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -504,6 +526,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       spawner: mockSpawner,
       engineName: "opencode",
       evaluatorModel: "anthropic/claude-haiku-4-5",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -535,6 +559,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
       new SubprocessEvaluatorTransport({
         spawner: mockSpawner,
         engineName: "nonexistent-engine",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
       });
       // If we get here, the test should fail
       expect(true).toBe(false);
@@ -554,6 +580,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
     expect(evalResult.reasoning).toBe("Handoff-based verdict (opencode)");
@@ -566,6 +594,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
     expect(evalResult.reasoning).toBe("Handoff-based verdict (claude)");
@@ -577,6 +607,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
 
@@ -590,6 +622,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
 
@@ -609,6 +643,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const evalResult = await transport.invoke(baseEvaluatorInput());
     expect(callCount()).toBe(2);
@@ -622,11 +658,13 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await expect(transport.invoke(baseEvaluatorInput())).rejects.toThrow();
   });
 
-  it("respects 30s timeout", async () => {
+  it("respects 60s timeout (agent needs time for investigation)", async () => {
     let receivedTimeout: number | undefined;
 
     const mockSpawner: ProcessSpawner = {
@@ -648,9 +686,11 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
-    expect(receivedTimeout).toBe(30_000);
+    expect(receivedTimeout).toBe(60_000);
   });
 
   it("backward compat: no engineName defaults to legacy opencode behavior", async () => {
@@ -673,7 +713,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     };
 
     // Construct without engineName — should still work like before
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseEvaluatorInput());
 
     expect(spawnedCommand).toBe("opencode");
@@ -701,6 +741,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -749,20 +791,21 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
     // All 6 fields from EvaluatorResultSchema must be mentioned in the prompt
-    expect(capturedPrompt).toContain('"passed"');
-    expect(capturedPrompt).toContain('"reasoning"');
-    expect(capturedPrompt).toContain('"suggestions"');
-    expect(capturedPrompt).toContain('"confidence"');
-    expect(capturedPrompt).toContain('"feedback"');
-    expect(capturedPrompt).toContain('"files_to_review"');
+    expect(capturedPrompt).toContain("passed");
+    expect(capturedPrompt).toContain("reasoning");
+    expect(capturedPrompt).toContain("suggestions");
+    expect(capturedPrompt).toContain("confidence");
+    expect(capturedPrompt).toContain("feedback");
+    expect(capturedPrompt).toContain("files_to_review");
 
-    // Confidence must be explicitly specified as 0.0-1.0, NOT 0-100
+    // Confidence must be explicitly specified as 0.0-1.0
     expect(capturedPrompt).toMatch(/0\.0.*1\.0/);
-    expect(capturedPrompt).toContain("NOT 0-100");
   });
 
   it("evaluator prompt contains evaluator-specific content (not dispatcher content)", async () => {
@@ -789,6 +832,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -853,6 +898,8 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
@@ -871,6 +918,8 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({ context_files: ["src/foo.ts", "src/bar.ts"] }));
 
@@ -878,7 +927,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     // Should NOT have the old actionable header
     expect(prompt).not.toContain("## Context Files");
     // Should have informational framing instead
-    expect(prompt).toContain("worker was given access to these files");
+    expect(prompt).toContain("Worker Had Access To");
     // The file paths should still appear
     expect(prompt).toContain("src/foo.ts");
     expect(prompt).toContain("src/bar.ts");
@@ -890,6 +939,8 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({ context_files: [] }));
 
@@ -907,6 +958,8 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({ duration_seconds: 45 }));
 
@@ -921,6 +974,8 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput({ duration_seconds: 0 }));
 
@@ -940,14 +995,16 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
     const prompt = getPrompt();
-    // Should contain guidance about not being overly strict
+    // Should contain guidance about biasing toward passing
     expect(prompt).toContain("substantially meets");
-    expect(prompt).toContain("minor omissions");
-    expect(prompt).toContain("critical criteria are completely unmet");
+    expect(prompt).toContain("Bias Toward Passing");
+    expect(prompt).toContain("HARD EVIDENCE");
   });
 
   // -----------------------------------------------------------------------
@@ -960,14 +1017,15 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
 
     const prompt = getPrompt();
     // Should contain confidence scale explanation
     expect(prompt).toContain("0.9");
-    expect(prompt).toContain("clear pass/fail");
+    expect(prompt).toContain("clear verdict");
     expect(prompt).toContain("borderline");
-    expect(prompt).toContain("lack enough information");
   });
 });

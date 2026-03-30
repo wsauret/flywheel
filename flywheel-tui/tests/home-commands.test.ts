@@ -140,4 +140,17 @@ describe("parseHomeCommand", () => {
       expect(result!.workflow).toBe(name.slice(1))
     }
   })
+
+  it('parses "/compound" correctly', () => {
+    const result = parseHomeCommand("/compound")
+    expect(result).toEqual({ workflow: "compound", args: {} })
+  })
+
+  it('parses "/review #42" with target arg', () => {
+    const result = parseHomeCommand("/review #42")
+    expect(result).toEqual({
+      workflow: "review",
+      args: { target: "#42" },
+    })
+  })
 })

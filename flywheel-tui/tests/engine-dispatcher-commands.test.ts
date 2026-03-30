@@ -16,7 +16,7 @@ describe("Claude engine: buildDispatcherCommand", () => {
     });
 
     expect(cmd.command).toBe("claude");
-    expect(cmd.args).toContain("--print");
+    expect(cmd.args).toContain("-p");
     expect(cmd.args).toContain("--dangerously-skip-permissions");
     expect(cmd.args).toContain("--no-session-persistence");
     expect(cmd.args).toContain("--effort");
@@ -213,11 +213,11 @@ describe("Worker buildCommand is unchanged", () => {
     expect(cmd.args).not.toContain("-p");
     expect(cmd.args).not.toContain("--system-prompt");
 
-    // Worker-specific flags should still be present
-    expect(cmd.args).toContain("--print");
+    // Worker-specific flags should still be present (no --print for interactive stdin)
+    expect(cmd.args).not.toContain("--print");
     expect(cmd.args).toContain("--output-format");
-    // --input-format stream-json removed: worker receives plain-text stdin
-    expect(cmd.args).not.toContain("--input-format");
+    // --input-format stream-json: worker receives NDJSON-wrapped stdin for streaming pipe
+    expect(cmd.args).toContain("--input-format");
     expect(cmd.args).toContain("--dangerously-skip-permissions");
     expect(cmd.stdinPrompt).toBe(true);
   });

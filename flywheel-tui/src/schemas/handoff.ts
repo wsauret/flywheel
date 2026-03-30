@@ -23,10 +23,19 @@ export function countSentences(text: string): number {
 // where extra keys are more likely to indicate a malformed response.
 // ---------------------------------------------------------------------------
 
+const CommandRunEntrySchema = z.union([
+  z.string(),
+  z.object({
+    command: z.string(),
+    exitCode: z.number().optional(),
+    observation: z.string().optional(),
+  }).passthrough(),
+]);
+
 export const ArtifactsSchema = z.object({
   files_created: z.array(z.string()).optional(),
   files_modified: z.array(z.string()).optional(),
-  commands_run: z.array(z.string()).optional(),
+  commands_run: z.array(CommandRunEntrySchema).optional(),
 }).strict();
 
 export type Artifacts = z.infer<typeof ArtifactsSchema>;
@@ -160,6 +169,10 @@ export const WorkerHandoffBaseSchema = z.object({
   iteration_number: z.number().optional(),
   /** Worker signals that the task requires full planning (sprint escalation). */
   needs_plan: z.boolean().optional(),
+  /** Root cause hypothesis from debug investigation. */
+  hypothesis: z.string().optional(),
+  /** Path to the persisted research document. */
+  document_path: z.string().optional(),
 }).passthrough();
 
 /**

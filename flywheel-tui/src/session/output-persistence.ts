@@ -18,7 +18,6 @@
  *   const flusher = persistence.createFlusher(() => getBlocks());
  */
 
-import * as path from "node:path";
 import * as fs from "node:fs";
 import { writeFileAtomic } from "../utils/atomic-write";
 import {
@@ -30,7 +29,7 @@ import {
   createDebouncedWriter,
   type DebouncedWriter,
 } from "../utils/debounced-writer";
-import { SESSIONS_DIR } from "../config/paths";
+import { resolveSessionFile, ensureSessionDir } from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -87,7 +86,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
   const { sessionId, baseDir = ".", maxSizeBytes = DEFAULT_MAX_SIZE_BYTES } = deps;
 
   function outputFilePath(): string {
-    return path.join(baseDir, SESSIONS_DIR, `${sessionId}.output.json`);
+    return resolveSessionFile(sessionId, "output", baseDir);
   }
 
   function save(blocks: AnyBlockLike[]): void {

@@ -400,6 +400,8 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -413,6 +415,8 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -426,6 +430,8 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -443,6 +449,8 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -461,10 +469,15 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
-    expect(prompt).toContain("Issue Extraction Guidelines");
+    // Issue categories are described in the verdict instructions
+    expect(prompt).toContain("test_failure");
+    expect(prompt).toContain("security");
+    expect(prompt).toContain("incomplete");
   });
 });
 
@@ -473,18 +486,20 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
 // ---------------------------------------------------------------------------
 
 describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)", () => {
-  it("prompt instructs evaluator to check test results", async () => {
+  it("prompt instructs evaluator to verify claims and classify issues", async () => {
     const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
-    // Should instruct checking test results and classifying failures as blocking
-    expect(prompt).toContain("test");
-    expect(prompt).toContain("typecheck");
+    // Should instruct re-running commands and checking acceptance criteria
+    expect(prompt).toContain("Re-run Claimed Commands");
+    expect(prompt).toContain("Check Acceptance Criteria");
     expect(prompt).toContain("blocking");
     expect(prompt).toContain("test_failure");
     expect(prompt).toContain("type_error");
@@ -496,6 +511,8 @@ describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)"
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -517,6 +534,8 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -530,6 +549,8 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
@@ -546,6 +567,8 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();

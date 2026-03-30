@@ -1055,3 +1055,77 @@ describe("WorkerHandoffSchema — skillFeedback", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// WorkerHandoffSchema — hypothesis field
+// ---------------------------------------------------------------------------
+
+describe("WorkerHandoffSchema — hypothesis field", () => {
+  const validSummary = "Investigated the failing test and identified a race condition in the event handler setup.";
+
+  it("accepts handoff with hypothesis field", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      hypothesis: "The race condition occurs because the event listener is registered after the initial emit",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.hypothesis).toBe("The race condition occurs because the event listener is registered after the initial emit");
+    }
+  });
+
+  it("accepts handoff without hypothesis (backward compat)", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.hypothesis).toBeUndefined();
+    }
+  });
+
+  it("rejects non-string hypothesis", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      hypothesis: 42,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WorkerHandoffSchema — document_path field
+// ---------------------------------------------------------------------------
+
+describe("WorkerHandoffSchema — document_path field", () => {
+  const validSummary = "Researched authentication patterns in the codebase and persisted findings to a research document.";
+
+  it("accepts handoff with document_path field", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      document_path: "docs/research/2026-03-29-auth-patterns.md",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.document_path).toBe("docs/research/2026-03-29-auth-patterns.md");
+    }
+  });
+
+  it("accepts handoff without document_path (backward compat)", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.document_path).toBeUndefined();
+    }
+  });
+
+  it("rejects non-string document_path", () => {
+    const result = WorkerHandoffSchema.safeParse({
+      summary: validSummary,
+      document_path: 123,
+    });
+    expect(result.success).toBe(false);
+  });
+});

@@ -210,6 +210,29 @@ describe("buildSprintStepPrompt", () => {
     expect(result).toContain("TDD");
   });
 
+  it("enforces TDD-first ordering: verification script BEFORE implementation", () => {
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
+    // Verification/RED step should appear before implementation/GREEN step
+    const redIndex = result.indexOf("RED");
+    const greenIndex = result.indexOf("GREEN");
+    expect(redIndex).toBeGreaterThan(-1);
+    expect(greenIndex).toBeGreaterThan(-1);
+    expect(redIndex).toBeLessThan(greenIndex);
+    // "Write the Verification Script FIRST" should appear before "Implement"
+    const verifyFirstIndex = result.indexOf("Write the Verification Script FIRST");
+    const implementIndex = result.indexOf("Implement Until Verification Passes");
+    expect(verifyFirstIndex).toBeGreaterThan(-1);
+    expect(implementIndex).toBeGreaterThan(-1);
+    expect(verifyFirstIndex).toBeLessThan(implementIndex);
+  });
+
+  it("instructs running the script to confirm it FAILS (RED phase)", () => {
+    const result = buildSprintStepPrompt(ctxWithHandoffPath);
+    expect(result).toContain("Run the script now");
+    expect(result).toContain("FAILS");
+    expect(result).toContain("RED phase");
+  });
+
   it("includes scope discipline convention", () => {
     const result = buildSprintStepPrompt(ctxWithHandoffPath);
     expect(result).toContain("Scope Discipline");

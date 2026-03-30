@@ -881,7 +881,7 @@ describe("SubprocessEvaluatorTransport", () => {
       },
     };
 
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const evalResult = await transport.invoke({
       worker_output: "some output",
       evaluation_criteria: "must pass",
@@ -917,7 +917,7 @@ describe("SubprocessEvaluatorTransport", () => {
       },
     };
 
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const result = await transport.invoke({
       worker_output: "output",
       evaluation_criteria: "criteria",
@@ -946,7 +946,7 @@ describe("SubprocessEvaluatorTransport", () => {
       },
     };
 
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
 
     await expect(
       transport.invoke({
@@ -984,7 +984,7 @@ describe("SubprocessEvaluatorTransport", () => {
       },
     };
 
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke({
       worker_output: "output",
       evaluation_criteria: "criteria",
@@ -1028,7 +1028,7 @@ describe("SubprocessEvaluatorTransport", () => {
       },
     };
 
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner });
+    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke({
       worker_output: "output",
       evaluation_criteria: "criteria",
@@ -1039,7 +1039,7 @@ describe("SubprocessEvaluatorTransport", () => {
       duration_seconds: 0,
     });
 
-    expect(receivedTimeout).toBe(30_000);
+    expect(receivedTimeout).toBe(60_000);
   });
 });
 

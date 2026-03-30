@@ -1,0 +1,8 @@
+{
+  "summary": "Staged 8 files for commit: src/api.ts, src/auth.ts, src/validation.ts, tests/validation.test.ts, and 4 related test fixtures.",
+  "artifacts": {
+    "commands_run": [
+      {"command": "git add src/api.ts src/auth.ts src/validation.ts tests/", "exitCode": 0, "observation": "8 files staged"}
+    ]
+  }
+}

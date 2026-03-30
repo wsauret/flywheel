@@ -15,6 +15,8 @@ export interface FooterContext {
   sidebarVisible?: boolean;
   isSessionResumable?: boolean;
   isWorking?: boolean;
+  /** Whether the worker is in an interrupted state (first Esc, awaiting resume). */
+  isInterrupted?: boolean;
 }
 
 /**
@@ -35,12 +37,17 @@ export function resolveFooterShortcuts(ctx: FooterContext): string {
 
   // Prompt focused
   if (ctx.isPromptFocused) {
-    return "[Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw";
+    return "[Tab] Focus Output  [Esc] Exit Prompt  [Enter] Continue/Send  [Ctrl+S] Skip  [Ctrl+D] Raw";
   }
 
   const sidebarHint = ctx.sidebarVisible ? "[Tab] Sidebar  " : "";
   const isWorking = ctx.appState === "working" || ctx.isWorking;
   const bgHint = isWorking ? "[Ctrl+B] Background  " : "";
+
+  // Interrupted state: show resume hint
+  if (isWorking && ctx.isInterrupted) {
+    return `[Type] Resume worker  [Esc] Kill worker  ${sidebarHint}`;
+  }
 
   // Working state with approval pending
   if (isWorking && ctx.approvalPending) {
@@ -53,6 +60,6 @@ export function resolveFooterShortcuts(ctx: FooterContext): string {
   }
 
   // Idle / completed — standard shortcuts
-  const resumeHint = ctx.isSessionResumable ? "[R] Resume  " : "";
+  const resumeHint = ctx.isSessionResumable ? "[Ctrl+R] Resume  " : "";
   return `${resumeHint}${sidebarHint}[↑↓] Navigate  [Ctrl+D] Raw  [Esc] Exit`;
 }

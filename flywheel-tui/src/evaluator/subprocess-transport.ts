@@ -1,17 +1,20 @@
 /**
- * SubprocessEvaluatorTransport — engine-aware evaluator invocation via subprocess.
+ * SubprocessEvaluatorTransport — agent-based evaluator invocation via subprocess.
  *
- * Uses the engine registry to build commands with per-engine optimization flags.
- * - Claude Code: --print, --tools "", --system-prompt, --no-session-persistence, --effort low, -p
- * - OpenCode: run --format json, --model, stdin prompt delivery
+ * Uses the engine registry to build evaluator commands with tool access
+ * (Read, Bash, Write, Grep, Glob) so the evaluator can investigate:
+ * - Re-run commands the worker claims to have run
+ * - Check that reported files exist on disk
+ * - Grep for files that may have been written to different paths
+ * - Verify acceptance criteria are met
  *
  * Same transport pattern as src/dispatcher/subprocess-transport.ts.
  * Uses ProcessSpawner (DI seam, same pattern as worker).
  * Applies createEnvFilter() for env sanitization.
- * 30s timeout. On parse failure: retry ONCE with error feedback.
+ * 60s timeout. On parse failure: retry ONCE with error feedback.
  *
  * Verdict is read from a handoff file (not stdout parsing).
- * The evaluator LLM writes a JSON verdict to a file path included in the prompt.
+ * The evaluator agent writes a JSON verdict to a file path included in the prompt.
  */
 
 import * as nodePath from "node:path";
@@ -28,7 +31,7 @@ import { EvaluatorVerdictSchema } from "../schemas/handoff";
 import type { EvaluatorVerdict } from "../schemas/handoff";
 import { Log } from "../utils/log";
 import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
-import { HANDOFFS_DIR } from "../config/paths";
+import { buildEvaluatorHandoffPath, ensureSessionDir } from "../config/paths";
 
 const log = Log.create({ service: "evaluator-subprocess" });
 
@@ -36,13 +39,15 @@ const log = Log.create({ service: "evaluator-subprocess" });
 // Constants
 // ---------------------------------------------------------------------------
 
-const CLI_TIMEOUT_MS = 30_000;
+const CLI_TIMEOUT_MS = 60_000;
 const MAX_RETRIES = 1;
 
 /** Evaluator system prompt — used as --system-prompt for Claude (separate for caching). */
 const EVALUATOR_SYSTEM_PROMPT =
-  "You are an evaluator checking whether worker output meets the evaluation criteria. " +
-  "Evaluate the output against all provided criteria and respond with valid JSON only.";
+  "You are a verification agent. You have tools (Read, Bash, Grep, Glob, Write) to investigate " +
+  "whether a worker's output meets acceptance criteria. Re-run claimed commands, check file " +
+  "existence, and investigate mismatches before rendering a verdict. Write your JSON verdict " +
+  "to the handoff file path specified in the prompt.";
 
 // ---------------------------------------------------------------------------
 // SubprocessEvaluatorTransport
@@ -60,6 +65,10 @@ export interface SubprocessEvaluatorTransportOptions {
   onStderr?: (chunk: string) => void;
   /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
   logBaseDir?: string;
+  /** Flywheel session ID for session-scoped handoff paths. */
+  sessionId?: string;
+  /** Project base directory for path resolution. */
+  baseDir?: string;
 }
 
 export class SubprocessEvaluatorTransport implements EvaluatorTransport {
@@ -70,6 +79,8 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private readonly onStdout?: (chunk: string) => void;
   private readonly onStderr?: (chunk: string) => void;
   private readonly logBaseDir?: string;
+  private readonly sessionId?: string;
+  private readonly baseDir: string;
 
   constructor(options: SubprocessEvaluatorTransportOptions) {
     this.spawner = options.spawner;
@@ -77,6 +88,8 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     this.onStdout = options.onStdout;
     this.onStderr = options.onStderr;
     this.logBaseDir = options.logBaseDir;
+    this.sessionId = options.sessionId;
+    this.baseDir = options.baseDir ?? process.cwd();
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -94,12 +107,11 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
   async invoke(input: EvaluatorInput): Promise<EvaluatorResult> {
     const invocationId = crypto.randomUUID();
-    const handoffsDir = nodePath.resolve(
-      process.cwd(),
-      HANDOFFS_DIR,
-    );
-    fs.mkdirSync(handoffsDir, { recursive: true });
-    const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
+    if (!this.sessionId) {
+      throw new Error("SubprocessEvaluatorTransport requires sessionId for handoff path construction");
+    }
+    ensureSessionDir(this.sessionId, this.baseDir);
+    const handoffPath = buildEvaluatorHandoffPath(this.sessionId, invocationId, this.baseDir);
 
     const userMessage = this.buildPrompt(input);
     // Append handoff instruction so the evaluator writes its verdict to a file
@@ -122,8 +134,8 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
           ? `\n\n[RETRY] Previous attempt failed with error: ${lastError?.message}. Please write valid JSON to the handoff file at \`${handoffPath}\`.`
           : "";
 
-        // Build the engine-specific command via the registry
-        const engineCmd = this.engine.buildDispatcherCommand({
+        // Build the engine-specific evaluator command (with tool access)
+        const engineCmd = this.engine.buildEvaluatorCommand({
           prompt: fullPrompt + retryNote,
           systemPrompt: EVALUATOR_SYSTEM_PROMPT,
           model: this.evaluatorModel,
@@ -199,31 +211,20 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   // -------------------------------------------------------------------------
 
   private buildPrompt(input: EvaluatorInput): string {
-    // NOTE: Role framing is set in EVALUATOR_SYSTEM_PROMPT (passed via --system-prompt).
-    // Do NOT duplicate it here — the system prompt already establishes the evaluator role.
     const sections: string[] = [];
 
-    // Task context section (when present) — placed before worker output
-    // so the evaluator understands what the worker was trying to accomplish.
+    // Task context
     if (input.task_context) {
-      sections.push(
-        "## Task Context",
-        input.task_context,
-        "",
-      );
+      sections.push("## Task Context", input.task_context, "");
     }
 
-    // When structured handoff data is available, render it instead of raw worker_output
+    // Worker handoff data
     if (input.handoff) {
-      sections.push(
-        "## Worker Summary",
-        input.handoff.summary,
-        "",
-      );
+      sections.push("## Worker Summary", input.handoff.summary, "");
 
       if (input.handoff.verification) {
         sections.push(
-          "## Verification",
+          "## Worker-Reported Verification",
           `Tests passed: ${input.handoff.verification.tests_passed === null ? "unknown" : input.handoff.verification.tests_passed ? "yes" : "no"}`,
         );
         if (input.handoff.verification.test_output_summary) {
@@ -237,15 +238,19 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
         const filesModified = input.handoff.artifacts.files_modified ?? [];
         const commandsRun = input.handoff.artifacts.commands_run ?? [];
         if (filesCreated.length > 0 || filesModified.length > 0 || commandsRun.length > 0) {
-          sections.push("## Artifacts");
+          sections.push("## Worker-Reported Artifacts");
           if (filesCreated.length > 0) {
-            sections.push("Files created:", ...filesCreated.map((f) => `- ${f}`));
+            sections.push("Files created:", ...filesCreated.map((f) => `- \`${f}\``));
           }
           if (filesModified.length > 0) {
-            sections.push("Files modified:", ...filesModified.map((f) => `- ${f}`));
+            sections.push("Files modified:", ...filesModified.map((f) => `- \`${f}\``));
           }
           if (commandsRun.length > 0) {
-            sections.push("Commands run:", ...commandsRun.map((c) => `- ${c}`));
+            sections.push("Commands run:", ...commandsRun.map((c) => {
+              if (typeof c === "string") return `- \`${c}\` (claimed exit code: 0)`;
+              const obj = c as Record<string, unknown>;
+              return `- \`${obj.command}\` (claimed exit code: ${obj.exitCode ?? obj.exit_code ?? 0})`;
+            }));
           }
           sections.push("");
         }
@@ -254,24 +259,15 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       if (input.handoff.files_to_review && input.handoff.files_to_review.length > 0) {
         sections.push(
           "## Files to Review",
-          ...input.handoff.files_to_review.map((f) => `- ${f}`),
+          ...input.handoff.files_to_review.map((f) => `- \`${f}\``),
           "",
         );
       }
     } else {
-      // Backward compat: render raw worker_output when no handoff data
-      sections.push(
-        "## Worker Output",
-        input.worker_output,
-        "",
-      );
+      sections.push("## Worker Output", input.worker_output, "");
     }
 
-    sections.push(
-      "## Evaluation Criteria",
-      input.evaluation_criteria,
-      "",
-    );
+    sections.push("## Evaluation Criteria", input.evaluation_criteria, "");
 
     if (input.acceptance_criteria.length > 0) {
       sections.push(
@@ -290,104 +286,84 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     }
 
     if (input.tests_passed !== null) {
-      sections.push(
-        "## Test Results",
-        `Tests passed: ${input.tests_passed ? "yes" : "no"}`,
-        "",
-      );
+      sections.push("## Test Results", `Tests passed: ${input.tests_passed ? "yes" : "no"}`, "");
     }
 
-    // Informational only — tools are disabled so the model cannot read these files.
     if (input.context_files.length > 0) {
       sections.push(
-        "The worker was given access to these files:",
-        ...input.context_files.map((f) => `- ${f}`),
+        "## Files the Worker Had Access To",
+        ...input.context_files.map((f) => `- \`${f}\``),
         "",
       );
     }
 
-    // Surface timing so the evaluator knows if work was rushed or thorough.
+    sections.push("## Timing", `Step took ${input.duration_seconds}s to complete.`, "");
+
+    // -----------------------------------------------------------------------
+    // Verification instructions — the evaluator has tools to investigate
+    // -----------------------------------------------------------------------
     sections.push(
-      "## Timing",
-      `Step took ${input.duration_seconds}s to complete.`,
+      "## Verification Procedure",
+      "",
+      "You have tools: Read, Bash, Grep, Glob, Write. Use them to verify the worker's claims.",
+      "",
+      "### Step 1: Verify Files Exist",
+      "For each file the worker claims to have created or modified, check that it exists on disk.",
+      "If a claimed file is missing, use Grep/Glob to search for it — the worker may have written",
+      "it to a slightly different path. If you find it elsewhere, note the discrepancy but do NOT",
+      "fail the step for a path mismatch alone.",
+      "",
+      "### Step 2: Re-run Claimed Commands",
+      "For each command the worker claims to have run (listed under Worker-Reported Artifacts),",
+      "re-run it using Bash and compare the exit code to what the worker claimed. If a command",
+      "fails when the worker said it passed, investigate why — read the output, check if the",
+      "failure is due to environment differences, or if the worker genuinely fabricated results.",
+      "A grep returning no matches (exit code 1) when the worker claimed exit code 0 may mean",
+      "the code was already cleaned up correctly — investigate before failing.",
+      "",
+      "### Step 3: Check Acceptance Criteria",
+      "Compare the worker's output against each acceptance criterion. Use your tools to spot-check",
+      "claims — e.g., if a criterion says 'tests pass', run the test command. If it says 'file",
+      "contains X', read the file and verify.",
+      "",
+      "### Step 4: Security Scan",
+      "Scan the worker's output and any created/modified files for secrets, credentials, or API keys",
+      "(patterns: AKIA..., sk-..., ghp_..., passwords, connection strings).",
       "",
     );
 
+    // -----------------------------------------------------------------------
+    // Verdict instructions
+    // -----------------------------------------------------------------------
     sections.push(
-      "## Instructions",
-      "Evaluate the worker output against the evaluation criteria. Respond with valid JSON only, matching this exact schema:",
-      '{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[], "issues": Issue[] }',
+      "## Verdict Instructions",
       "",
-      "- passed: Set passed to true if the output substantially meets the acceptance criteria. Be generous — minor omissions, format variations, and stylistic differences should NOT cause a failure. The worker produced useful output that advances the workflow? Pass it. Set passed to false ONLY if critical criteria are completely unmet, the output is fundamentally wrong, or there are blocking issues (test failures, security problems, regressions). When in doubt, pass with suggestions rather than fail.",
-      "- reasoning: string explaining your assessment of the output",
-      "- suggestions: array of improvement suggestions (empty array [] if none)",
-      "- confidence: float between 0.0 and 1.0 (NOT 0-100, must be a decimal like 0.85). confidence should reflect how certain you are about your pass/fail decision: 0.9+ means clear pass/fail, 0.5-0.7 means borderline, below 0.5 means you lack enough information to judge.",
-      "- feedback: string with overall feedback about the work quality",
-      "- files_to_review: array of file paths that need further review (empty array [] if none)",
-      "- issues: array of structured issues found in the worker output. Each issue is an object with:",
-      '  - description: string describing the issue (must not be empty)',
+      "After investigating, write your JSON verdict to the handoff file. Schema:",
+      '`{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[], "issues": Issue[] }`',
+      "",
+      "Field definitions:",
+      "- **passed**: true if the output substantially meets acceptance criteria. Bias toward passing.",
+      "- **reasoning**: your assessment based on what you investigated and found.",
+      "- **suggestions**: improvement suggestions (empty array [] if none).",
+      "- **confidence**: float 0.0-1.0. 0.9+ = clear verdict, 0.5-0.7 = borderline.",
+      "- **feedback**: actionable feedback for the worker if retrying. Empty string if passed.",
+      "- **files_to_review**: file paths needing further review (empty array [] if none).",
+      "- **issues**: structured issues found. Each: `{description, severity, category}`",
       '  - severity: "blocking" or "non_blocking"',
-      '  - category: one of "test_failure", "type_error", "security", "regression", "incomplete", "other"',
+      '  - category: "test_failure" | "type_error" | "security" | "regression" | "incomplete" | "other"',
       "",
       "## CRITICAL: Bias Toward Passing",
       "",
-      "Revision loops are EXPENSIVE — they double the cost and time of a step. You should strongly bias toward passing with suggestions rather than failing. Only fail when:",
-      "- Tests are failing or typecheck has errors (hard evidence of breakage)",
-      "- Security issues found (credentials, secrets in code)",
-      "- The output is fundamentally wrong or addresses the wrong task entirely",
-      "- Critical deliverables are completely missing (not just in a different format)",
+      "Revision loops are EXPENSIVE — they double the cost and time of a step.",
+      "Only fail when you have HARD EVIDENCE from your investigation:",
+      "- You re-ran tests and they actually fail",
+      "- You found secrets/credentials in files you read",
+      "- Critical deliverables are genuinely missing (not just at a different path)",
+      "- The worker's output is fundamentally wrong or addresses the wrong task",
       "",
-      "Do NOT fail for: format deviations, missing optional sections, slight wording differences from acceptance criteria, the worker taking a different but valid approach, or the output being organized differently than expected.",
-      "",
-      "## CRITICAL: You Cannot Verify File Existence or Paths",
-      "",
-      "You have NO tools — you cannot read files, run commands, or check if files exist on disk. Therefore:",
-      "- If the worker says they created a file, TRUST THEIR CLAIM",
-      "- Do NOT fail because a file was written to a different path than expected — the worker may have a valid reason",
-      "- Do NOT fail because you 'cannot verify the file exists'",
-      "- Do NOT require specific filenames or paths unless the task explicitly demanded them",
-      "- If the worker's summary describes creating the required deliverables and the content sounds correct, PASS",
-      "- Only fail if the worker's own output contradicts their claims or clearly indicates they didn't do the work",
-      "",
-      "## Issue Extraction Guidelines",
-      "",
-      "Extract and classify ALL issues you find in the worker output into the `issues` array. If no issues are found, use an empty array `[]`.",
-      "",
-      "### Severity Classification",
-      '- **blocking**: Issues that MUST be fixed before proceeding. These halt the queue.',
-      '- **non_blocking**: Issues that should be addressed but don\'t prevent progress.',
-      "",
-      "### Category Classification",
-      '- **test_failure**: Unit tests, integration tests, or E2E tests are failing. BLOCKING if the worker claimed tests passed but evidence shows otherwise, or if required tests are missing.',
-      '- **type_error**: TypeScript compilation errors, type mismatches, or missing type definitions. BLOCKING if typecheck was required and fails.',
-      '- **security**: API keys, passwords, credentials, or secrets found in source code, logs, or output. Always BLOCKING.',
-      '- **regression**: Previously working functionality is now broken. BLOCKING.',
-      '- **incomplete**: Acceptance criteria partially met, missing edge cases, or incomplete implementation. May be blocking or non-blocking depending on severity.',
-      '- **other**: Issues that don\'t fit other categories (style, performance, documentation).',
-      "",
-      "### Checks to Perform",
-      "1. **Test/typecheck results**: If the worker handoff indicates tests failed or typecheck has errors, classify as blocking test_failure or type_error.",
-      "2. **Secrets/credentials**: Look for patterns like API keys (AKIA..., sk-..., ghp_...), passwords, tokens, or connection strings in the worker output. Classify as blocking security.",
-      "3. **Regression indicators**: If the worker mentions breaking existing functionality or existing tests now failing, classify as blocking regression.",
-      "4. **Completeness**: Compare worker output against acceptance criteria. Missing critical criteria are blocking incomplete; minor gaps are non_blocking incomplete.",
-      "",
-      "### Examples",
-      '```json',
-      '// Worker reported failing tests → blocking test_failure',
-      '{"description": "3 unit tests in auth.test.ts are failing: testLogin, testLogout, testRefresh", "severity": "blocking", "category": "test_failure"}',
-      "",
-      '// API key found in source → blocking security',
-      '{"description": "AWS access key found in src/config.ts: AKIA...", "severity": "blocking", "category": "security"}',
-      "",
-      '// TypeScript compilation error → blocking type_error',
-      '{"description": "Type error in src/utils.ts:42 — Property \'name\' does not exist on type \'unknown\'", "severity": "blocking", "category": "type_error"}',
-      "",
-      '// Missing edge case handling → non_blocking incomplete',
-      '{"description": "No error handling for network timeout in fetchUser()", "severity": "non_blocking", "category": "incomplete"}',
-      "",
-      '// Existing API broken → blocking regression',
-      '{"description": "GET /api/users endpoint returns 500 after changes — was working before", "severity": "blocking", "category": "regression"}',
-      '```',
+      "Do NOT fail for: path discrepancies (if the file exists elsewhere), format deviations,",
+      "the worker taking a different but valid approach, or minor differences from criteria wording.",
+      "When in doubt, pass with suggestions.",
     );
 
     return sections.join("\n");

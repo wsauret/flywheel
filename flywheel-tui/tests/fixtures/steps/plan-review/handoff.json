@@ -1,0 +1,13 @@
+{
+  "summary": "Drafted a 3-step plan for adding GET /healthz endpoint to the flywheel-tui server. The plan mirrors the existing /hello pattern: add route in src/server/index.ts, add tests in tests/server.test.ts, then run the full test suite. Plan file written to .flywheel/plans/feat-healthz-endpoint.plan.json. Three behavioral contracts cover: 200 response with status+uptime, 405 for non-GET methods.",
+  "plan_file_path": ".flywheel/plans/test-step-fixture.plan.json",
+  "artifacts": {
+    "files_created": [".flywheel/plans/test-step-fixture.plan.json"],
+    "files_modified": []
+  },
+  "decisions": [
+    "Reusing existing /hello pattern for consistency",
+    "Including process.uptime() for observability"
+  ],
+  "warnings": []
+}

@@ -46,8 +46,8 @@ describe("Workflow Definitions", () => {
   });
 
   describe("reviewWorkflow", () => {
-    it("has 3 steps", () => {
-      expect(reviewWorkflow.steps).toHaveLength(3);
+    it("has 2 steps (fix step is dynamically injected at runtime)", () => {
+      expect(reviewWorkflow.steps).toHaveLength(2);
     });
 
     it("is named 'review'", () => {
@@ -59,10 +59,9 @@ describe("Workflow Definitions", () => {
       expect(result.success).toBe(true);
     });
 
-    it("steps cover review, consolidate, fix", () => {
+    it("steps cover review and consolidate (fix is injected dynamically)", () => {
       expect(reviewWorkflow.steps[0].description).toContain("review");
       expect(reviewWorkflow.steps[1].description).toContain("Consolidate");
-      expect(reviewWorkflow.steps[2].description.toLowerCase()).toMatch(/fix|implement/);
     });
   });
 
@@ -274,7 +273,7 @@ describe("Research prompt routing", () => {
       topic: "Event bus architecture",
     });
     expect(prompt).toContain("Research: Locate Sources");
-    expect(prompt).toContain("Locator Dispatch Templates");
+    expect(prompt).toContain("Locator Dispatch");
     expect(prompt).toContain("BLOCKING Rule");
     // Should NOT contain analyzer or persist content
     expect(prompt).not.toContain("Research: Analyze Sources");
@@ -289,7 +288,7 @@ describe("Research prompt routing", () => {
       "Located files: src/events/event-bus.ts, src/events/types.ts",
     );
     expect(prompt).toContain("Research: Analyze Sources");
-    expect(prompt).toContain("Analyzer Dispatch Templates");
+    expect(prompt).toContain("Analyzer Dispatch");
     expect(prompt).toContain("Located files: src/events/event-bus.ts");
     // Should NOT contain locator or persist content
     expect(prompt).not.toContain("Research: Locate Sources");
@@ -304,7 +303,7 @@ describe("Research prompt routing", () => {
       "Analysis results: EventBus uses pub/sub pattern...",
     );
     expect(prompt).toContain("Research: Compile Document");
-    expect(prompt).toContain(".flywheel/research/");
+    expect(prompt).toContain("research.md");
     expect(prompt).toContain("Analysis results: EventBus uses pub/sub pattern");
     // Should NOT contain locator or analyzer content
     expect(prompt).not.toContain("Research: Locate Sources");

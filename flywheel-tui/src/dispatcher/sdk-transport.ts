@@ -24,7 +24,7 @@ import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handof
 import { DispatcherDecisionHandoffSchema } from "../schemas/handoff";
 import { mapHandoffToDecision } from "./map-handoff";
 import { Log } from "../utils/log";
-import { HANDOFFS_DIR } from "../config/paths";
+import { buildDispatcherHandoffPath, ensureSessionDir } from "../config/paths";
 
 // ---------------------------------------------------------------------------
 // SDK availability detection
@@ -121,11 +121,17 @@ export interface SdkTransportOptions {
   engineName?: string;
   /** Dispatcher model override — e.g. "anthropic/claude-sonnet-4-6". Uses default when not set. */
   dispatcherModel?: string;
+  /** Flywheel session ID for session-scoped handoff paths. */
+  sessionId?: string;
+  /** Project base directory for path resolution. */
+  baseDir?: string;
 }
 
 export class SdkTransport implements DispatcherTransport {
   private readonly baseUrl: string;
   private readonly modelSpec: { providerID: string; modelID: string };
+  private readonly sessionId?: string;
+  private readonly baseDir: string;
 
   constructor(options?: SdkTransportOptions) {
     // Guard: SDK transport is exclusively for OpenCode
@@ -138,6 +144,8 @@ export class SdkTransport implements DispatcherTransport {
     }
 
     this.baseUrl = options?.baseUrl ?? "";
+    this.sessionId = options?.sessionId;
+    this.baseDir = options?.baseDir ?? process.cwd();
 
     // Resolve model: parse dispatcher model or use default
     const modelStr = options?.dispatcherModel ?? DEFAULT_OPENCODE_MODEL;
@@ -155,14 +163,12 @@ export class SdkTransport implements DispatcherTransport {
       throw new Error("@opencode-ai/sdk is not available");
     }
 
-    // Generate handoff path (same approach as SubprocessTransport)
     const invocationId = crypto.randomUUID();
-    const handoffsDir = nodePath.resolve(
-      process.cwd(),
-      HANDOFFS_DIR,
-    );
-    fs.mkdirSync(handoffsDir, { recursive: true });
-    const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
+    if (!this.sessionId) {
+      throw new Error("SdkTransport requires sessionId for handoff path construction");
+    }
+    ensureSessionDir(this.sessionId, this.baseDir);
+    const handoffPath = buildDispatcherHandoffPath(this.sessionId, invocationId, this.baseDir);
 
     const client = _createOpencodeClient({ baseUrl: this.baseUrl }) as SdkClient;
 

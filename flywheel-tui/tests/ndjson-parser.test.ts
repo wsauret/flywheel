@@ -186,6 +186,21 @@ describe("NDJSONParser", () => {
     expect(parser.sessionId).toBe("sess-123");
   });
 
+  it("captures session_id (snake_case) from system/init event", () => {
+    expect(parser.sessionId).toBeNull();
+    parser.write('{"type":"system","subtype":"init","session_id":"init-abc"}\n');
+    expect(parser.sessionId).toBe("init-abc");
+    // Subsequent events with sessionID don't override
+    parser.write('{"type":"step_finish","sessionID":"step-456"}\n');
+    expect(parser.sessionId).toBe("init-abc");
+  });
+
+  it("prefers sessionID (camelCase) over session_id when both present", () => {
+    expect(parser.sessionId).toBeNull();
+    parser.write('{"type":"text","sessionID":"camel-1","session_id":"snake-1"}\n');
+    expect(parser.sessionId).toBe("camel-1");
+  });
+
   it("feeds through tiered buffer system", () => {
     const tieredBuffer = new TieredBuffer();
     const p = new NDJSONParser(tieredBuffer);

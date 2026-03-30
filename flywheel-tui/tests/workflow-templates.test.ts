@@ -18,6 +18,9 @@ import {
   WORKFLOW_TEMPLATES,
   getWorkflowTemplate,
   buildQueueFromTemplate,
+  buildGranularDebugSteps,
+  buildGranularShipSteps,
+  buildGranularReviewSteps,
   type WorkflowName,
 } from "../src/queue/templates";
 
@@ -108,14 +111,14 @@ describe("VAL-SHELL-002: Plan + Work template", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-SHELL-003: Plan + Work + Review template", () => {
-  test("creates initial queue with 7 granular steps (4 plan + 3 review)", () => {
+  test("creates initial queue with 6 granular steps (4 plan + 2 review, fix step injected dynamically)", () => {
     const queue = buildQueueFromTemplate("plan-work-review");
     const nonGateSteps = queue.steps.filter((s) => s.type !== "gate");
-    expect(nonGateSteps).toHaveLength(7);
+    expect(nonGateSteps).toHaveLength(6);
     const planSteps = nonGateSteps.filter((s) => s.type === "plan");
     const reviewSteps = nonGateSteps.filter((s) => s.type === "review");
     expect(planSteps).toHaveLength(4);
-    expect(reviewSteps).toHaveLength(3);
+    expect(reviewSteps).toHaveLength(2);
   });
 
   test("all review steps come after all plan steps", () => {
@@ -131,16 +134,16 @@ describe("VAL-SHELL-003: Plan + Work + Review template", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-SHELL-004: Full template", () => {
-  test("creates initial queue with 11 granular steps (4 plan + 3 review + 4 ship)", () => {
+  test("creates initial queue with 8 granular steps (4 plan + 2 review + 2 ship, fix step injected dynamically)", () => {
     const queue = buildQueueFromTemplate("full");
     const nonGateSteps = queue.steps.filter((s) => s.type !== "gate");
-    expect(nonGateSteps).toHaveLength(11);
+    expect(nonGateSteps).toHaveLength(8);
     const planSteps = nonGateSteps.filter((s) => s.type === "plan");
     const reviewSteps = nonGateSteps.filter((s) => s.type === "review");
     const shipSteps = nonGateSteps.filter((s) => s.type === "ship");
     expect(planSteps).toHaveLength(4);
-    expect(reviewSteps).toHaveLength(3);
-    expect(shipSteps).toHaveLength(4);
+    expect(reviewSteps).toHaveLength(2);
+    expect(shipSteps).toHaveLength(2);
   });
 
   test("step order preserved: all plan before all review before all ship", () => {
@@ -316,5 +319,54 @@ describe("Workflow template registry", () => {
     expect(names).toContain("plan-work-review");
     expect(names).toContain("full");
     expect(names).toContain("sprint");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildGranularDebugSteps
+// ---------------------------------------------------------------------------
+
+describe("buildGranularDebugSteps", () => {
+  test("creates 3 steps: investigate, fix, verify", () => {
+    const steps = buildGranularDebugSteps();
+    expect(steps).toHaveLength(3);
+    expect(steps[0].type).toBe("debug");
+    expect(steps[0].dispatcherHint).toBe("investigate");
+    expect(steps[0].evaluationCriteria).toBeTruthy();
+    expect(steps[0].toolScoping).toBeDefined();
+    expect(steps[1].type).toBe("debug");
+    expect(steps[1].dispatcherHint).toBe("fix");
+    expect(steps[2].type).toBe("verify");
+    expect(steps[2].dispatcherHint).toBe("debug-verify");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildGranularShipSteps — refactored
+// ---------------------------------------------------------------------------
+
+describe("buildGranularShipSteps — refactored", () => {
+  test("creates 2 steps: ship + learnings", () => {
+    const steps = buildGranularShipSteps();
+    expect(steps).toHaveLength(2);
+    expect(steps[0].type).toBe("ship");
+    expect(steps[0].dispatcherHint).toBe("ship");
+    expect(steps[0].title).toContain("Stage");
+    expect(steps[1].type).toBe("ship");
+    expect(steps[1].dispatcherHint).toBe("learnings");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildGranularReviewSteps — export verification
+// ---------------------------------------------------------------------------
+
+describe("buildGranularReviewSteps — export verification", () => {
+  test("is exported and creates 2 steps", () => {
+    expect(buildGranularReviewSteps).toBeDefined();
+    const steps = buildGranularReviewSteps();
+    expect(steps).toHaveLength(2);
+    expect(steps[0].type).toBe("review");
+    expect(steps[1].type).toBe("review");
   });
 });

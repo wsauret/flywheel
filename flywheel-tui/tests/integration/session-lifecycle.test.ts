@@ -651,10 +651,12 @@ describe("Error handling in lifecycle operations", () => {
     // Create a valid session
     const validId = mgr.create("plans/valid.md", "Valid");
 
-    // Write a corrupt session file
+    // Write a corrupt session directory (directory-per-session layout)
     const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
+    const corruptDir = path.join(sessionsDir, "corrupt-id");
+    fs.mkdirSync(corruptDir, { recursive: true });
     fs.writeFileSync(
-      path.join(sessionsDir, "corrupt-id.json"),
+      path.join(corruptDir, "session.json"),
       "NOT VALID JSON",
     );
 
@@ -756,8 +758,8 @@ describe("Pause / Resume Lifecycle", () => {
     expect(persisted).not.toBeNull();
     expect(persisted!.sessionLifecycleState).toBe("work:paused");
 
-    // Verify output file exists on disk
-    const outputPath = path.join(baseDir, ".flywheel", "sessions", `${id}.output.json`);
+    // Verify output file exists on disk (directory-per-session layout)
+    const outputPath = path.join(baseDir, ".flywheel", "sessions", id, "output.json");
     expect(fs.existsSync(outputPath)).toBe(true);
 
     // Verify output content is valid
@@ -850,10 +852,10 @@ describe("Pause / Resume Lifecycle", () => {
     // Pause
     mgr.updateState(id, "work:paused");
 
-    // Verify files exist before delete
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    const sessionJson = path.join(sessionsDir, `${id}.json`);
-    const outputJson = path.join(sessionsDir, `${id}.output.json`);
+    // Verify files exist before delete (directory-per-session layout)
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", id);
+    const sessionJson = path.join(sessionDir, "session.json");
+    const outputJson = path.join(sessionDir, "output.json");
     expect(fs.existsSync(sessionJson)).toBe(true);
     expect(fs.existsSync(outputJson)).toBe(true);
 
@@ -861,9 +863,8 @@ describe("Pause / Resume Lifecycle", () => {
     mgr.trash(id);
     const result = deleteSessionWithCompanions(id, baseDir);
 
-    // Both files should be gone
-    expect(fs.existsSync(sessionJson)).toBe(false);
-    expect(fs.existsSync(outputJson)).toBe(false);
+    // Entire session directory should be gone
+    expect(fs.existsSync(sessionDir)).toBe(false);
     expect(result.errors).toHaveLength(0);
 
     // Session should not appear in a fresh list
@@ -1147,9 +1148,9 @@ describe("Edge cases", () => {
     mgr.updateState(id, "plan:approved");
     mgr.updateState(id, "work:active");
 
-    // Write corrupt output file
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.writeFileSync(path.join(sessionsDir, `${id}.output.json`), "NOT JSON{{{");
+    // Write corrupt output file (directory-per-session layout)
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", id);
+    fs.writeFileSync(path.join(sessionDir, "output.json"), "NOT JSON{{{");
 
     // Load should return empty array, not throw
     const persistence = createOutputPersistence({ sessionId: id, baseDir });
@@ -1171,11 +1172,11 @@ describe("Edge cases", () => {
 
   it("output with mixed valid/invalid blocks: invalid are filtered out", async () => {
     const baseDir = makeTmpDir();
-    const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionDir = path.join(baseDir, ".flywheel", "sessions", "test-mixed-output");
+    fs.mkdirSync(sessionDir, { recursive: true });
 
     const id = "test-mixed-output";
-    const outputPath = path.join(sessionsDir, `${id}.output.json`);
+    const outputPath = path.join(sessionDir, "output.json");
 
     // Write output with valid and invalid blocks
     const mixedData = [

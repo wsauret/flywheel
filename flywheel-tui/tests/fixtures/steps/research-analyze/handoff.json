@@ -1,0 +1,8 @@
+{
+  "summary": "Located 15 relevant files across 4 modules related to authentication patterns. Key files: src/middleware/auth.ts (JWT validation), src/services/token.ts (token management), src/routes/auth.ts (auth endpoints), tests/auth.test.ts (test suite).",
+  "artifacts": {
+    "files_created": [],
+    "commands_run": []
+  },
+  "decisions": ["Focused on middleware-based auth patterns as the dominant pattern in this codebase"]
+}

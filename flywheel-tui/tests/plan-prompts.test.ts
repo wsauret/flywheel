@@ -19,6 +19,7 @@ function makeCtx(overrides: Partial<WorkflowStepContext> = {}): WorkflowStepCont
     projectCwd: "/workspace/project",
     extra: {
       handoffPath: ".flywheel/handoffs/test-handoff.json",
+      planPath: ".flywheel/sessions/test-session/plan.json",
     },
     ...overrides,
   };
@@ -34,12 +35,11 @@ describe("buildPlanDraftPrompt (JSON output)", () => {
 
   test("includes JSON schema instructions", () => {
     expect(prompt).toContain("JSON");
-    expect(prompt).toContain(".plan.json");
+    expect(prompt).toContain("plan.json");
   });
 
-  test("instructs writing to .flywheel/plans/<type>-<description>.plan.json", () => {
-    expect(prompt).toContain(".flywheel/plans/");
-    expect(prompt).toContain(".plan.json");
+  test("instructs writing to session-scoped plan path", () => {
+    expect(prompt).toContain(".flywheel/sessions/test-session/plan.json");
   });
 
   test("includes full JSON example with steps array", () => {
@@ -202,12 +202,12 @@ describe("buildPlanReviewPrompt (JSON annotation)", () => {
   });
 
   test("dispatches all 6 reviewer agents", () => {
-    expect(prompt).toContain("reviewer-correctness");
-    expect(prompt).toContain("reviewer-security");
-    expect(prompt).toContain("reviewer-testing");
-    expect(prompt).toContain("reviewer-architecture");
-    expect(prompt).toContain("reviewer-scope");
-    expect(prompt).toContain("reviewer-dependencies");
+    expect(prompt).toContain("fly/reviewer-architecture");
+    expect(prompt).toContain("fly/reviewer-code-quality");
+    expect(prompt).toContain("fly/reviewer-patterns");
+    expect(prompt).toContain("fly/reviewer-performance");
+    expect(prompt).toContain("fly/reviewer-data-integrity");
+    expect(prompt).toContain("fly/reviewer-plan-philosophy");
   });
 
   test("instructs producing annotated JSON output", () => {
@@ -521,9 +521,8 @@ describe("buildPlanConsolidatePrompt (JSON consolidation)", () => {
     expect(prompt).toContain("openQuestions");
   });
 
-  test("instructs writing clean JSON to .flywheel/plans/<name>.plan.json", () => {
-    expect(prompt).toContain(".flywheel/plans/");
-    expect(prompt).toContain(".plan.json");
+  test("instructs writing clean JSON to session-scoped plan path", () => {
+    expect(prompt).toContain(".flywheel/sessions/test-session/plan.json");
   });
 
   test("output schema matches draft schema (no review annotations)", () => {
@@ -640,7 +639,7 @@ describe("buildPlanConsolidatePrompt (JSON consolidation)", () => {
   });
 
   test("instructs overwriting annotated plan at same path", () => {
-    expect(prompt).toContain(".flywheel/plans/");
+    expect(prompt).toContain(".flywheel/sessions/test-session/plan.json");
     expect(prompt).toContain("overwrite");
   });
 });
@@ -763,8 +762,8 @@ describe("planConsolidateEvaluationCriteria", () => {
     expect(planConsolidateEvaluationCriteria).toContain("JSON");
   });
 
-  test("references .flywheel/plans/", () => {
-    expect(planConsolidateEvaluationCriteria).toContain(".flywheel/plans/");
+  test("references clean JSON plan", () => {
+    expect(planConsolidateEvaluationCriteria).toContain("Clean JSON plan");
   });
 
   test("references review findings merged", () => {
@@ -795,9 +794,9 @@ describe("planWorkflow definition — step 3 (consolidation)", () => {
     expect(consolidationStep.evaluationCriteria).toContain("JSON");
   });
 
-  test("step 3 validation criteria references .flywheel/plans/", () => {
+  test("step 3 validation criteria references clean JSON plan", () => {
     const consolidationStep = planWorkflow.steps[3];
-    expect(consolidationStep.evaluationCriteria).toContain(".flywheel/plans/");
+    expect(consolidationStep.evaluationCriteria).toContain("Clean JSON plan");
   });
 
   test("step 3 validation criteria references review findings merged", () => {

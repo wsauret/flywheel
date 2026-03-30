@@ -7,27 +7,19 @@ export const shipCommitEvaluationCriteria =
 export const shipPREvaluationCriteria =
   "PR created with concise title and body, no AI attribution";
 
-/**
- * Builds a prompt for the ship workflow (branch → commit → PR → compound).
- */
-export function buildShipPrompt(ctx: WorkflowStepContext): string {
-  return `# Ship Workflow
+// ---------------------------------------------------------------------------
+// Reusable prompt constants
+// ---------------------------------------------------------------------------
 
-## Changes to Ship
-
-${ctx.planContent}
-
-${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
-
----
-
-## CRITICAL Rules
+/** No-AI-attribution rule for commits and PRs. */
+export const NO_AI_ATTRIBUTION_RULE = `## CRITICAL Rules
 
 - **NEVER** add Co-Authored-By lines or AI attribution to commits.
 - **NEVER** mention AI, assistant, copilot, or any automated tool in PR descriptions or commit messages.
-- Write everything as if the user wrote it themselves.
+- Write everything as if the user wrote it themselves.`;
 
-## Branch Naming
+/** Branch naming convention. */
+export const BRANCH_NAMING = `## Branch Naming
 
 Format: \`<type>/<short-description>\`
 
@@ -36,9 +28,10 @@ Types: \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`test\`, \`chore\`
 Examples:
 - \`feat/jwt-auth\`
 - \`fix/memory-leak-ws-handler\`
-- \`refactor/extract-parser-module\`
+- \`refactor/extract-parser-module\``;
 
-## Commit Practices
+/** Staging rules for ship workflow. */
+export const STAGING_RULES = `## Commit Practices
 
 1. **Review the diff** before committing. Understand what changed and why.
 2. **Group related changes** into logical commits. One commit per logical change.
@@ -52,9 +45,10 @@ Examples:
    - Good: \`fix connection leak in WebSocket handler\`
    - Bad: \`update files\`
    - Bad: \`fix bug\`
-   - Bad: \`AI-generated changes for authentication feature\`
+   - Bad: \`AI-generated changes for authentication feature\``;
 
-## PR Format
+/** PR format template. */
+export const PR_FORMAT = `## PR Format
 
 ### Title
 - Short, under 70 characters
@@ -78,7 +72,33 @@ Examples:
 - No filler ("This PR...", "In this change...")
 - No boilerplate ("## Testing", "## Screenshots" if empty)
 - No AI disclaimers or attribution of any kind
-- Link to relevant issues if they exist
+- Link to relevant issues if they exist`;
+
+// ---------------------------------------------------------------------------
+// Main prompt builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a prompt for the ship workflow (branch → commit → PR → compound).
+ */
+export function buildShipPrompt(ctx: WorkflowStepContext): string {
+  return `# Ship Workflow
+
+## Changes to Ship
+
+${ctx.planContent}
+
+${ctx.projectCwd ? `## Working Directory\n\n\`${ctx.projectCwd}\`` : ""}
+
+---
+
+${NO_AI_ATTRIBUTION_RULE}
+
+${BRANCH_NAMING}
+
+${STAGING_RULES}
+
+${PR_FORMAT}
 
 ## Edge Cases
 

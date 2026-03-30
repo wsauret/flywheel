@@ -4,11 +4,11 @@ import { createEscapeHandler, type EscapeHandler } from "../src/tui/utils/escape
 /**
  * Escape Handler Tests
  *
- * Tests the double-Esc timing logic used by FlywheelShell:
- * - First Esc returns "show-hint"
- * - Second Esc within timeout returns "stop"
- * - After timeout, resets back to "show-hint" on next Esc
- * - reset() clears state so next Esc returns "show-hint"
+ * Tests the 3-state interrupt logic used by FlywheelShell:
+ * - First Esc returns "interrupt" (send SIGINT to worker)
+ * - Second Esc within timeout returns "kill" (full process kill + pause queue)
+ * - After timeout, resets back to "interrupt" on next Esc
+ * - reset() clears state so next Esc returns "interrupt"
  */
 
 describe("createEscapeHandler", () => {
@@ -23,43 +23,43 @@ describe("createEscapeHandler", () => {
       handler = createEscapeHandler({ timeoutMs: 5000 });
     });
 
-    it("first Esc returns show-hint", () => {
-      expect(handler.handleEscape()).toBe("show-hint");
+    it("first Esc returns interrupt", () => {
+      expect(handler.handleEscape()).toBe("interrupt");
     });
 
-    it("second Esc within timeout returns stop", () => {
-      expect(handler.handleEscape()).toBe("show-hint");
-      expect(handler.handleEscape()).toBe("stop");
+    it("second Esc within timeout returns kill", () => {
+      expect(handler.handleEscape()).toBe("interrupt");
+      expect(handler.handleEscape()).toBe("kill");
     });
 
-    it("after stop, next Esc returns show-hint again (auto-reset)", () => {
-      handler.handleEscape(); // show-hint
-      handler.handleEscape(); // stop (resets internally)
-      expect(handler.handleEscape()).toBe("show-hint");
+    it("after kill, next Esc returns interrupt again (auto-reset)", () => {
+      handler.handleEscape(); // interrupt
+      handler.handleEscape(); // kill (resets internally)
+      expect(handler.handleEscape()).toBe("interrupt");
     });
   });
 
   describe("timeout behavior", () => {
-    it("after timeout expires, next Esc returns show-hint", async () => {
+    it("after timeout expires, next Esc returns interrupt", async () => {
       handler = createEscapeHandler({ timeoutMs: 50 });
 
-      expect(handler.handleEscape()).toBe("show-hint");
+      expect(handler.handleEscape()).toBe("interrupt");
 
       // Wait for timeout to expire
       await new Promise((resolve) => setTimeout(resolve, 80));
 
-      // Should have reset — next Esc is "show-hint" again
-      expect(handler.handleEscape()).toBe("show-hint");
+      // Should have reset — next Esc is "interrupt" again
+      expect(handler.handleEscape()).toBe("interrupt");
     });
 
-    it("second Esc before timeout returns stop", async () => {
+    it("second Esc before timeout returns kill", async () => {
       handler = createEscapeHandler({ timeoutMs: 200 });
 
-      expect(handler.handleEscape()).toBe("show-hint");
+      expect(handler.handleEscape()).toBe("interrupt");
 
       // Press again quickly
       await new Promise((resolve) => setTimeout(resolve, 20));
-      expect(handler.handleEscape()).toBe("stop");
+      expect(handler.handleEscape()).toBe("kill");
     });
   });
 
@@ -68,45 +68,45 @@ describe("createEscapeHandler", () => {
       handler = createEscapeHandler({ timeoutMs: 5000 });
     });
 
-    it("reset after first Esc makes next Esc return show-hint", () => {
-      handler.handleEscape(); // show-hint
+    it("reset after first Esc makes next Esc return interrupt", () => {
+      handler.handleEscape(); // interrupt
       handler.reset();
-      expect(handler.handleEscape()).toBe("show-hint");
+      expect(handler.handleEscape()).toBe("interrupt");
     });
 
     it("reset clears pending timer", async () => {
       handler = createEscapeHandler({ timeoutMs: 50 });
-      handler.handleEscape(); // show-hint, starts timer
+      handler.handleEscape(); // interrupt, starts timer
       handler.reset();
 
       // Even after waiting, the handler is already reset
       await new Promise((resolve) => setTimeout(resolve, 80));
-      expect(handler.handleEscape()).toBe("show-hint");
+      expect(handler.handleEscape()).toBe("interrupt");
     });
   });
 
   describe("dispose()", () => {
     it("dispose resets state (same as reset)", () => {
       handler = createEscapeHandler({ timeoutMs: 5000 });
-      handler.handleEscape(); // show-hint
+      handler.handleEscape(); // interrupt
       handler.dispose();
       // After dispose, creating behavior is reset
-      expect(handler.handleEscape()).toBe("show-hint");
+      expect(handler.handleEscape()).toBe("interrupt");
     });
   });
 
   describe("edge cases", () => {
-    it("rapid triple-Esc: stop on second, show-hint on third", () => {
+    it("rapid triple-Esc: kill on second, interrupt on third", () => {
       handler = createEscapeHandler({ timeoutMs: 5000 });
-      expect(handler.handleEscape()).toBe("show-hint");
-      expect(handler.handleEscape()).toBe("stop");
-      expect(handler.handleEscape()).toBe("show-hint");
+      expect(handler.handleEscape()).toBe("interrupt");
+      expect(handler.handleEscape()).toBe("kill");
+      expect(handler.handleEscape()).toBe("interrupt");
     });
 
     it("works with default timeout (no options)", () => {
       handler = createEscapeHandler();
-      expect(handler.handleEscape()).toBe("show-hint");
-      expect(handler.handleEscape()).toBe("stop");
+      expect(handler.handleEscape()).toBe("interrupt");
+      expect(handler.handleEscape()).toBe("kill");
     });
   });
 });

@@ -336,7 +336,11 @@ export function QuestionPrompt(props: QuestionPromptProps) {
                   backgroundColor="transparent"
                   focusedBackgroundColor="transparent"
                   flexGrow={1}
-                  keyBindings={[{ name: "return", action: "submit" as TextareaAction }]}
+                  keyBindings={[
+                    { name: "return", action: "submit" as TextareaAction },
+                    { name: "z", ctrl: true, action: "undo" as TextareaAction },
+                    { name: "z", ctrl: true, shift: true, action: "redo" as TextareaAction },
+                  ]}
                 />
               </box>
             </Show>
@@ -409,6 +413,10 @@ export function QuestionPrompt(props: QuestionPromptProps) {
                           backgroundColor="transparent"
                           focusedBackgroundColor="transparent"
                           flexGrow={1}
+                          keyBindings={[
+                            { name: "z", ctrl: true, action: "undo" as TextareaAction },
+                            { name: "z", ctrl: true, shift: true, action: "redo" as TextareaAction },
+                          ]}
                         />
                       </box>
                     </Show>

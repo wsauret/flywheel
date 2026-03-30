@@ -242,7 +242,7 @@ describe("Structured Adapter Integration", () => {
       expect(allText).toContain("more text");
     });
 
-    it("tool_use produces ToolBlocks", async () => {
+    it("tool_use produces ToolBlocks (non-context) or Context AgentBlock (context tools)", async () => {
       const { bus, store } = createHarness();
 
       emitOutput(bus, claudeToolLine("Read", { file_path: "src/index.ts" }), "claude");
@@ -251,9 +251,11 @@ describe("Structured Adapter Integration", () => {
       await wait();
 
       const blocks = store.getState().outputBlocks;
+      // Read is a context tool → absorbed into a "Context" AgentBlock
+      const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
+      expect(agentBlocks.some((a) => a.agentLabel === "Context" && a.children.some((c) => c.name === "Read"))).toBe(true);
+      // Bash is a non-context tool → standalone ToolBlock
       const toolBlocks = blocks.filter((b) => b.kind === "tool") as ToolBlock[];
-      expect(toolBlocks.length).toBeGreaterThanOrEqual(2);
-      expect(toolBlocks.some((t) => t.name === "Read")).toBe(true);
       expect(toolBlocks.some((t) => t.name === "Bash")).toBe(true);
     });
 
@@ -476,7 +478,7 @@ describe("Structured Adapter Integration", () => {
       expect(allText).toContain("Hello from OpenCode");
     });
 
-    it("tool_use produces ToolBlocks", async () => {
+    it("tool_use produces Context AgentBlock for context tools", async () => {
       const { bus, store } = createHarness();
 
       emitOutput(
@@ -488,9 +490,11 @@ describe("Structured Adapter Integration", () => {
       await wait();
 
       const blocks = store.getState().outputBlocks;
-      const toolBlocks = blocks.filter((b) => b.kind === "tool") as ToolBlock[];
-      expect(toolBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(toolBlocks[0].name).toBe("Read");
+      // Read is a context tool → absorbed into a "Context" AgentBlock
+      const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
+      expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(agentBlocks[0].agentLabel).toBe("Context");
+      expect(agentBlocks[0].children[0].name).toBe("Read");
     });
 
     it("Task tool produces AgentBlock (spawn + complete)", async () => {

@@ -742,7 +742,7 @@ describe("SdkTransport", () => {
     _setClientFactoryForTesting(() => client);
 
     try {
-      const transport = new SdkTransport();
+      const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
       const input = baseDispatcherInput();
       await transport.invoke(input);
 
@@ -780,7 +780,7 @@ describe("SdkTransport", () => {
     _setClientFactoryForTesting(() => client);
 
     try {
-      const transport = new SdkTransport();
+      const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
       const input = baseDispatcherInput({ plan_truncated: true, history_truncated: true });
       await transport.invoke(input);
 
@@ -806,7 +806,7 @@ describe("SdkTransport", () => {
     _setClientFactoryForTesting(() => client);
 
     try {
-      const transport = new SdkTransport();
+      const transport = new SdkTransport({ sessionId: "test-session", baseDir: "/tmp/test" });
       await transport.invoke(baseDispatcherInput({ plan_truncated: false }));
       await transport.invoke(baseDispatcherInput({ plan_truncated: true, workflow_id: "different-wf" }));
 
@@ -834,7 +834,7 @@ describe("SubprocessTransport", () => {
     const handoff = validHandoff();
     const { spawner } = createDispatcherHandoffSpawner(handoff);
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput();
 
     const result = await transport.invoke(input);
@@ -849,7 +849,7 @@ describe("SubprocessTransport", () => {
       (n) => n >= 2 ? handoff : null,
     );
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput();
 
     const result = await transport.invoke(input);
@@ -861,7 +861,7 @@ describe("SubprocessTransport", () => {
     // Never write a handoff file
     const { spawner } = createDispatcherHandoffSpawner(() => null);
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput();
 
     await expect(transport.invoke(input)).rejects.toThrow();
@@ -876,7 +876,7 @@ describe("SubprocessTransport", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput();
 
     await transport.invoke(input);
@@ -892,7 +892,7 @@ describe("SubprocessTransport", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput();
 
     await transport.invoke(input);
@@ -1445,7 +1445,7 @@ describe("Cache-stable prompt structure", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     // Should contain a --- separator between system and user content
@@ -1474,7 +1474,7 @@ describe("Cache-stable prompt structure", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
 
     // First invocation: no truncation
     await transport.invoke(baseDispatcherInput({ plan_truncated: false, history_truncated: false }));
@@ -1500,7 +1500,7 @@ describe("Cache-stable prompt structure", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput({ workflow_id: "wf-unique-marker-123" });
     await transport.invoke(input);
 
@@ -1523,7 +1523,7 @@ describe("Cache-stable prompt structure", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput({ plan_truncated: true, history_truncated: true }));
 
     const parts = capturedStdin.split("\n\n---\n\n");
@@ -1547,7 +1547,7 @@ describe("Cache-stable prompt structure", () => {
       },
     });
 
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     const input = baseDispatcherInput();
     await transport.invoke(input);
 

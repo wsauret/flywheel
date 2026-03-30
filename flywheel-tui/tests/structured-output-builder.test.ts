@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/tui/adapters/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, ContextGroupBlock, SystemBlock } from "../src/tui/routes/work/state/types";
+import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/routes/work/state/types";
 
 describe("StructuredOutputBuilder", () => {
   let builder: StructuredOutputBuilder;
@@ -33,7 +33,7 @@ describe("StructuredOutputBuilder", () => {
     it("text after a tool creates a new TextBlock", () => {
       const now = Date.now();
       builder.pushText("before", now);
-      builder.pushTool("Read", "file.ts", now + 100);
+      builder.pushTool("Bash", "ls -la", now + 100); // non-context tool stays as ToolBlock
       builder.pushText("after", now + 200);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
@@ -158,10 +158,26 @@ describe("StructuredOutputBuilder", () => {
     });
   });
 
-  // ── Context grouping ──
+  // ── Context grouping (as synthetic AgentBlock) ──
 
   describe("context grouping", () => {
-    it("3 consecutive context tools are grouped into a ContextGroupBlock", () => {
+    it("first context tool creates a Context AgentBlock immediately", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("agent");
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Context");
+      expect(agent.description).toBe("Gathering context...");
+      expect(agent.status).toBe("active");
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].name).toBe("Read");
+      expect(agent.latestChild).toBe("Read: file1.ts");
+    });
+
+    it("consecutive context tools accumulate in the same Context AgentBlock", () => {
       const now = Date.now();
       builder.pushTool("Read", "file1.ts", now);
       builder.pushTool("Read", "file2.ts", now + 100);
@@ -169,23 +185,15 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("contextGroup");
-      const group = blocks[0] as ContextGroupBlock;
-      expect(group.tools).toHaveLength(3);
-      expect(group.tools[0].name).toBe("Read");
-      expect(group.tools[1].name).toBe("Read");
-      expect(group.tools[2].name).toBe("Glob");
-    });
-
-    it("2 consecutive context tools remain as standalone ToolBlocks", () => {
-      const now = Date.now();
-      builder.pushTool("Read", "file1.ts", now);
-      builder.pushTool("Grep", "pattern", now + 100);
-
-      const blocks = builder.getBlocks();
-      expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("tool");
-      expect(blocks[1].kind).toBe("tool");
+      expect(blocks[0].kind).toBe("agent");
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Context");
+      expect(agent.children).toHaveLength(3);
+      expect(agent.children[0].name).toBe("Read");
+      expect(agent.children[1].name).toBe("Read");
+      expect(agent.children[2].name).toBe("Glob");
+      // latestChild shows the most recent tool
+      expect(agent.latestChild).toBe("Glob: **/*.ts");
     });
 
     it("context group grows with additional context tools", () => {
@@ -197,24 +205,45 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const group = blocks[0] as ContextGroupBlock;
-      expect(group.tools).toHaveLength(4);
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.children).toHaveLength(4);
     });
 
-    it("non-context tool breaks context grouping", () => {
+    it("non-context tool breaks context grouping and completes the Context agent", () => {
       const now = Date.now();
       builder.pushTool("Read", "file1.ts", now);
       builder.pushTool("Glob", "**/*.ts", now + 100);
       builder.pushTool("Grep", "pattern", now + 200);
       builder.pushTool("Bash", "ls", now + 300); // non-context tool breaks grouping
-      builder.pushTool("Read", "file5.ts", now + 400);
 
       const blocks = builder.getBlocks();
-      // ContextGroup(3), Tool(Bash), Tool(Read) — single Read can't form a group
-      expect(blocks).toHaveLength(3);
-      expect(blocks[0].kind).toBe("contextGroup");
+      // Context AgentBlock (completed) + Tool(Bash)
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent");
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Context");
+      expect(agent.status).toBe("completed");
+      expect(agent.toolCount).toBe(3);
+      expect(agent.duration).toBe(300); // 300 - 0 = 300ms
       expect(blocks[1].kind).toBe("tool");
-      expect(blocks[2].kind).toBe("tool");
+    });
+
+    it("new context tool after break starts a new Context agent", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+      builder.pushTool("Glob", "**/*.ts", now + 100);
+      builder.pushTool("Bash", "ls", now + 200); // break
+      builder.pushTool("Read", "file5.ts", now + 300); // new context run
+
+      const blocks = builder.getBlocks();
+      // Context AgentBlock (completed) + Tool(Bash) + Context AgentBlock (active)
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("tool");
+      expect(blocks[2].kind).toBe("agent");
+      expect((blocks[2] as AgentBlock).status).toBe("active");
+      expect((blocks[2] as AgentBlock).children).toHaveLength(1);
     });
 
     it("context grouping is case-insensitive", () => {
@@ -225,7 +254,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("contextGroup");
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).agentLabel).toBe("Context");
     });
 
     it("WebSearch and WebFetch are treated as context tools for grouping", () => {
@@ -236,12 +266,13 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("contextGroup");
-      const group = blocks[0] as ContextGroupBlock;
-      expect(group.tools).toHaveLength(3);
+      expect(blocks[0].kind).toBe("agent");
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Context");
+      expect(agent.children).toHaveLength(3);
     });
 
-    it("context tools inside an agent are NOT grouped at top level", () => {
+    it("context tools inside a real agent are NOT grouped as Context agent", () => {
       const now = Date.now();
       builder.startAgent("agent-1", "Explore", "Searching", now);
       builder.pushTool("Read", "file1.ts", now + 100);
@@ -253,8 +284,50 @@ describe("StructuredOutputBuilder", () => {
       expect(blocks[0].kind).toBe("agent");
       // Children are plain ToolBlocks, not grouped
       const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Explore");
       expect(agent.children).toHaveLength(3);
       expect(agent.children[0].name).toBe("Read");
+    });
+
+    it("text breaks context run and completes Context agent", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+      builder.pushTool("Glob", "**/*.ts", now + 100);
+      builder.pushText("some output", now + 200);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("text");
+    });
+
+    it("system message breaks context run and completes Context agent", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+      builder.pushTool("Glob", "**/*.ts", now + 100);
+      builder.pushSystemMessage("step started\n", now + 200);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("system");
+    });
+
+    it("starting a real agent breaks context run", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+      builder.pushTool("Glob", "**/*.ts", now + 100);
+      builder.startAgent("agent-1", "Explore", "Searching", now + 200);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).agentLabel).toBe("Context");
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("agent");
+      expect((blocks[1] as AgentBlock).agentLabel).toBe("Explore");
     });
   });
 
@@ -428,12 +501,16 @@ describe("StructuredOutputBuilder", () => {
       builder.pushTool("Grep", "pattern", now + 300);
 
       const blocks = builder.getBlocks();
-      // Read, Glob (standalone - only 2 before break), SystemBlock, Grep (standalone)
-      expect(blocks).toHaveLength(4);
-      expect(blocks[0].kind).toBe("tool");
-      expect(blocks[1].kind).toBe("tool");
-      expect(blocks[2].kind).toBe("system");
-      expect(blocks[3].kind).toBe("tool");
+      // Context AgentBlock (completed, 2 tools), SystemBlock, Context AgentBlock (active, 1 tool)
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).agentLabel).toBe("Context");
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect((blocks[0] as AgentBlock).children).toHaveLength(2);
+      expect(blocks[1].kind).toBe("system");
+      expect(blocks[2].kind).toBe("agent");
+      expect((blocks[2] as AgentBlock).agentLabel).toBe("Context");
+      expect((blocks[2] as AgentBlock).status).toBe("active");
     });
 
     it("system message after text creates separate block", () => {

@@ -37,19 +37,31 @@ ${FILE_LINE_DISCIPLINE}
 
 ## Reviewer Dispatch
 
-Dispatch ALL of the following reviewer agents. Do NOT filter agents — run them ALL.
+Dispatch ALL of the following reviewer agents **in parallel** using the Task tool. Launch ALL of them in a SINGLE message with multiple Task calls. Do NOT filter agents — run them ALL.
 
 **Critical constraint for every reviewer:**
-> Do NOT write to any files. Return findings in your response only.
+> Do NOT write to any files. Return ALL findings in your response message only. No editing the plan, no creating review files.
 
-### Reviewer Agents
+### Reviewer Agents (installed as \`fly/*\` agents)
 
-1. **reviewer-correctness** — Will the plan produce correct behavior? Look for logic errors, missing edge cases, incorrect assumptions about APIs or data.
-2. **reviewer-security** — Security concerns? Auth bypasses, injection risks, secret handling, permission escalation.
-3. **reviewer-testing** — Is the test strategy sufficient? Missing test cases, untestable designs.
-4. **reviewer-architecture** — Does the plan fit the existing codebase? Layering violations, coupling, pattern inconsistencies.
-5. **reviewer-scope** — Appropriately scoped? Over-engineering, missing requirements, unnecessary steps.
-6. **reviewer-dependencies** — External dependencies appropriate? Version conflicts, licensing, maintenance risk.
+These agents are pre-installed and available via the Task tool. Use \`subagent_type\` to reference each one:
+
+1. **fly/reviewer-architecture** — Does the plan fit the existing codebase? Layering violations, coupling, SOLID compliance, pattern inconsistencies, dependency rule violations.
+2. **fly/reviewer-code-quality** — Type safety, testability, naming, duplication. High quality bar on modified code, pragmatic on new isolated code.
+3. **fly/reviewer-patterns** — Design patterns, anti-patterns, naming conventions, code duplication, architectural boundary violations.
+4. **fly/reviewer-performance** — Algorithmic complexity, database queries, memory management, caching, scalability projections.
+5. **fly/reviewer-data-integrity** — If the plan involves data models, migrations, or persistent data: migration safety, constraints, transactions, referential integrity. Skip if not applicable.
+6. **fly/reviewer-plan-philosophy** — TDD ordering (tests before/alongside implementation), SOLID compliance in planned design, DRY compliance. Language-agnostic, evaluates design not syntax.
+
+### How to Dispatch
+
+For each reviewer, use the Task tool like this:
+
+\`\`\`
+Task(subagent_type="fly/reviewer-architecture", prompt="Review this plan for architectural concerns.\\nPLAN:\\n[full plan JSON]\\nProvide findings with priority (P1/P2/P3) and specific locations.\\nFlag OPEN QUESTIONS for trade-offs needing user input.\\nIMPORTANT: Return ALL findings in your response only. Do NOT write to any files.")
+\`\`\`
+
+Launch ALL 6 Task calls in a SINGLE response message so they run in parallel.
 
 ### Contradiction Handling
 

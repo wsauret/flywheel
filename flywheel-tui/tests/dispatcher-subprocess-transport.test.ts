@@ -158,11 +158,13 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
     expect(spawnedCommand).toBe("claude");
-    expect(spawnedArgs).toContain("--print");
+    expect(spawnedArgs).toContain("-p");
     expect(spawnedArgs).toContain("--tools");
     expect(spawnedArgs).toContain("--no-session-persistence");
     expect(spawnedArgs).toContain("--effort");
@@ -182,6 +184,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -205,6 +209,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -230,6 +236,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -254,6 +262,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -277,6 +287,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
       spawner,
       engineName: "claude",
       dispatcherModel: "haiku",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -296,6 +308,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
       spawner,
       engineName: "opencode",
       dispatcherModel: "anthropic/claude-haiku-4-5",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -319,6 +333,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
       spawner,
       engineName: "claude",
       // No dispatcherModel — should use engine default
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -337,6 +353,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -356,6 +374,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
 
@@ -372,6 +392,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
 
@@ -391,6 +413,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "opencode",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
     expect(result.task_content).toBe("Handoff-based decision (opencode)");
@@ -403,6 +427,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
     expect(result.task_content).toBe("Handoff-based decision (claude)");
@@ -425,6 +451,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
 
@@ -439,6 +467,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
 
@@ -462,6 +492,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
       const transport = new SubprocessTransport({
         spawner,
         engineName: "nonexistent-engine",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
       });
       await transport.invoke(baseDispatcherInput());
       // If we get here, the test should fail
@@ -483,6 +515,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     const result = await transport.invoke(baseDispatcherInput());
     expect(callCount()).toBe(2);
@@ -496,6 +530,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await expect(transport.invoke(baseDispatcherInput())).rejects.toThrow();
   });
@@ -512,6 +548,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
     expect(receivedTimeout).toBe(60_000);
@@ -529,7 +567,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
     });
 
     // Construct without engineName — should still work like before
-    const transport = new SubprocessTransport({ spawner });
+    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
     await transport.invoke(baseDispatcherInput());
 
     expect(spawnedCommand).toBe("opencode");
@@ -551,11 +589,13 @@ describe("SubprocessTransport: engine-aware command building", () => {
     const transport = new SubprocessTransport({
       spawner,
       engineName: "claude",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
     expect(capturedPrompt).toContain("Dispatcher Handoff Instructions");
-    expect(capturedPrompt).toContain(".flywheel/handoffs/");
+    expect(capturedPrompt).toContain(".flywheel/sessions/test-session/handoffs/");
     expect(capturedPrompt).toContain(".json");
     expect(capturedPrompt).toContain("schema_version");
     expect(capturedPrompt).toContain("task_content");
@@ -627,6 +667,8 @@ describe("Auto-detect transport: engine-aware", () => {
       spawner,
       engineName: "claude",
       dispatcherModel: "haiku",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
 
     // Invoke the transport to verify the model is passed through
@@ -681,6 +723,8 @@ describe("Config model flow through transport chain", () => {
       spawner,
       engineName: "claude",
       dispatcherModel: "opus",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 
@@ -700,6 +744,8 @@ describe("Config model flow through transport chain", () => {
       spawner,
       engineName: "opencode",
       dispatcherModel: "anthropic/claude-opus-4-6",
+      sessionId: "test-session",
+      baseDir: "/tmp/test",
     });
     await transport.invoke(baseDispatcherInput());
 

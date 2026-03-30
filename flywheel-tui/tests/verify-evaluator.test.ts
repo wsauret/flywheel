@@ -207,7 +207,7 @@ describe("verify-evaluator: engine binary availability", () => {
     const claudeAvailable = Bun.which("claude") !== null;
     if (!claudeAvailable) {
       expect(() => {
-        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "claude" });
+        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "claude", sessionId: "test-session", baseDir: "/tmp/test" });
       }).toThrow(/claude CLI not found/);
     }
 
@@ -215,13 +215,13 @@ describe("verify-evaluator: engine binary availability", () => {
     const opencodeAvailable = Bun.which("opencode") !== null;
     if (!opencodeAvailable) {
       expect(() => {
-        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "opencode" });
+        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "opencode", sessionId: "test-session", baseDir: "/tmp/test" });
       }).toThrow(/opencode CLI not found/);
     }
 
     // Unknown engine always throws
     expect(() => {
-      new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "nonexistent" });
+      new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "nonexistent", sessionId: "test-session", baseDir: "/tmp/test" });
     }).toThrow(/Unknown engine/);
   });
 });

@@ -27,7 +27,7 @@ import { NDJSONParser } from "./ndjson-parser";
 import { categorizeFailure } from "./errors";
 import { registerProcess, gracefulKill, type ChildHandle } from "./process-lifecycle";
 import { createWorkerTimeout, minutesToMs, clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES } from "./timeout";
-import { HANDOFFS_DIR } from "../config/paths";
+import { resolveSessionHandoffsDir } from "../config/paths";
 
 /**
  * Shell metacharacter regex — reject args that could cause shell injection.
@@ -183,10 +183,19 @@ export class BunProcessSpawner implements ProcessSpawner {
       workerTimeout.interrupt();
     }
 
-    // Resolve handoff path from invocationId + cwd
-    const handoffPath = options?.invocationId
-      ? path.resolve(options.cwd ?? process.cwd(), HANDOFFS_DIR, `${options.invocationId}.json`)
-      : "";
+    // Resolve handoff path from sessionId + handoffFileName, or invocationId fallback
+    let handoffPath = "";
+    if (options?.sessionId && options?.handoffFileName) {
+      handoffPath = path.resolve(
+        resolveSessionHandoffsDir(options.sessionId, options.cwd ?? process.cwd()),
+        options.handoffFileName,
+      );
+    } else if (options?.invocationId && options?.sessionId) {
+      handoffPath = path.resolve(
+        resolveSessionHandoffsDir(options.sessionId, options.cwd ?? process.cwd()),
+        `${options.invocationId}.json`,
+      );
+    }
 
     // Build the WorkerResult from completion state (shared between pipe and non-pipe paths)
     const buildWorkerResult = (exitCode: number): WorkerResult => {
@@ -268,6 +277,9 @@ export class BunProcessSpawner implements ProcessSpawner {
       /** Optional callback invoked once when completion is first detected during streaming. */
       let _onCompletionDetected: (() => void) | null = null;
 
+      /** Track whether onSessionId has been fired (fire-once semantics). */
+      let sessionIdReported = false;
+
       const readStdout = async () => {
         try {
           while (true) {
@@ -277,6 +289,11 @@ export class BunProcessSpawner implements ProcessSpawner {
             rawStdoutChunks.push(text);
             options?.onStdout?.(text);
             ndjsonParser.write(text);
+            // Fire once when session_id is first captured from NDJSON init event
+            if (!sessionIdReported && ndjsonParser.sessionId && options?.onSessionId) {
+              options.onSessionId(ndjsonParser.sessionId);
+              sessionIdReported = true;
+            }
             const wasDetected = completionDetector.hasSeenCompletion;
             completionDetector.check(text);
             // Fire once on transition from undetected → detected
@@ -291,6 +308,11 @@ export class BunProcessSpawner implements ProcessSpawner {
             rawStdoutChunks.push(remaining);
             options?.onStdout?.(remaining);
             ndjsonParser.write(remaining);
+            // Check session_id after flush too
+            if (!sessionIdReported && ndjsonParser.sessionId && options?.onSessionId) {
+              options.onSessionId(ndjsonParser.sessionId);
+              sessionIdReported = true;
+            }
             completionDetector.check(remaining);
           }
         } catch {
@@ -364,23 +386,39 @@ export class BunProcessSpawner implements ProcessSpawner {
         const writeInitialStdin = async () => {
           try {
             stdinSink.write(encoder.encode(options!.stdin!));
+            stdinSink.flush();
+            // DO NOT call stdinSink.end() — pipe stays open for mid-execution injection
           } catch {
             pipeOpen = false;
           }
         };
 
-        // In pipe mode, close stdin when the worker signals completion.
-        // Without this, Claude's stream-json mode keeps waiting for more input
-        // on stdin, preventing the process from exiting and the step from advancing.
-        _onCompletionDetected = () => {
-          if (!pipeOpen) return;
-          pipeOpen = false;
-          try {
-            stdinSink.end();
-          } catch {
-            // Already closed
-          }
-        };
+        // In pipe mode, handle completion detection based on whether the caller
+        // wants turn-boundary callbacks (2-tier interrupt system) or the default
+        // close-on-completion behavior.
+        if (options?.onTurnComplete) {
+          // Turn-complete mode: notify the caller at turn boundaries so they
+          // can inject messages via the still-open stdin pipe. The pipe stays
+          // open until the caller explicitly closes it or the process exits.
+          const turnCallback = options.onTurnComplete;
+          _onCompletionDetected = () => {
+            if (!pipeOpen) return;
+            turnCallback(ndjsonParser.sessionId ?? undefined);
+          };
+        } else {
+          // Default: close stdin when the worker signals completion.
+          // Without this, Claude's stream-json mode keeps waiting for more input
+          // on stdin, preventing the process from exiting and the step from advancing.
+          _onCompletionDetected = () => {
+            if (!pipeOpen) return;
+            pipeOpen = false;
+            try {
+              stdinSink.end();
+            } catch {
+              // Already closed
+            }
+          };
+        }
 
         // The result promise: read streams + wait for exit + build result
         const resultPromise = (async (): Promise<WorkerResult> => {

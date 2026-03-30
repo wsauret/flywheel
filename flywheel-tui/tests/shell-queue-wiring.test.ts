@@ -144,40 +144,60 @@ describe("buildQueueForSlashCommand", () => {
     expect(queue.steps[0].type).toBe("plan");
   });
 
-  it("/review creates a single review step queue", async () => {
+  it("/review creates a 2-step review queue", async () => {
     const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
     const queue = buildQueueForSlashCommand("review", makeConfig());
 
     expect(queue).toBeDefined();
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(2);
     expect(queue.steps[0].type).toBe("review");
+    expect(queue.steps[0].dispatcherHint).toBe("dispatch-reviewers");
+    expect(queue.steps[1].type).toBe("review");
+    expect(queue.steps[1].dispatcherHint).toBe("consolidate-review");
   });
 
-  it("/ship creates a single ship step queue", async () => {
+  it("/ship creates a 2-step ship queue", async () => {
     const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
     const queue = buildQueueForSlashCommand("ship", makeConfig());
 
     expect(queue).toBeDefined();
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(2);
     expect(queue.steps[0].type).toBe("ship");
+    expect(queue.steps[0].dispatcherHint).toBe("ship");
+    expect(queue.steps[1].type).toBe("ship");
+    expect(queue.steps[1].dispatcherHint).toBe("learnings");
   });
 
-  it("/debug creates a single debug step queue", async () => {
+  it("/debug creates a 3-step debug queue (+ auto_chain review)", async () => {
     const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    // Default config has auto_chain: true, so review is appended
     const queue = buildQueueForSlashCommand("debug", makeConfig());
 
     expect(queue).toBeDefined();
-    expect(queue.steps).toHaveLength(1);
+    // 3 debug steps + 1 review (auto_chain)
+    expect(queue.steps).toHaveLength(4);
     expect(queue.steps[0].type).toBe("debug");
+    expect(queue.steps[0].dispatcherHint).toBe("investigate");
+    expect(queue.steps[1].type).toBe("debug");
+    expect(queue.steps[1].dispatcherHint).toBe("fix");
+    expect(queue.steps[2].type).toBe("verify");
+    expect(queue.steps[2].dispatcherHint).toBe("debug-verify");
+    expect(queue.steps[3].type).toBe("review");
   });
 
-  it("/research creates a single research step queue", async () => {
+  it("/research creates a single research step with metadata (+ auto_chain review)", async () => {
     const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    // Default config has auto_chain: true, so review is appended
     const queue = buildQueueForSlashCommand("research", makeConfig());
 
     expect(queue).toBeDefined();
-    expect(queue.steps).toHaveLength(1);
+    // 1 research step + 1 review (auto_chain)
+    expect(queue.steps).toHaveLength(2);
     expect(queue.steps[0].type).toBe("research");
+    expect(queue.steps[0].dispatcherHint).toBe("research");
+    expect(queue.steps[0].evaluationCriteria).toBeTruthy();
+    expect(queue.steps[0].toolScoping).toBeDefined();
+    expect(queue.steps[1].type).toBe("review");
   });
 
   it("auto_chain /plan creates plan+work+review pipeline queue", async () => {
@@ -449,5 +469,56 @@ describe("Queue event handling", () => {
     expect(captured).not.toBeNull();
     expect((captured as any).reason).toBe("Step failed");
     expect((captured as any).stepsCompleted).toBe(1);
+  });
+});
+
+// ===========================================================================
+// buildQueueForSlashCommand — auto_chain for debug/research
+// ===========================================================================
+
+describe("buildQueueForSlashCommand — auto_chain for debug/research", () => {
+  it("/debug with auto_chain appends review+ship after debug steps", async () => {
+    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const config = makeConfig({ auto_chain: true, auto_ship: true });
+    const queue = buildQueueForSlashCommand("debug", config);
+    const types = queue.steps.map(s => s.type);
+    expect(types).toContain("debug");
+    expect(types).toContain("verify");
+    expect(types).toContain("review");
+    expect(types).toContain("ship");
+  });
+
+  it("/research with auto_chain appends review+ship after research step", async () => {
+    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const config = makeConfig({ auto_chain: true, auto_ship: true });
+    const queue = buildQueueForSlashCommand("research", config);
+    const types = queue.steps.map(s => s.type);
+    expect(types[0]).toBe("research");
+    expect(types).toContain("review");
+    expect(types).toContain("ship");
+  });
+
+  it("debug investigate/fix steps use type 'debug', verify uses type 'verify'", async () => {
+    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const queue = buildQueueForSlashCommand("debug", makeConfig({ auto_chain: false }));
+    expect(queue.steps[0].type).toBe("debug");
+    expect(queue.steps[1].type).toBe("debug");
+    expect(queue.steps[2].type).toBe("verify");
+  });
+});
+
+// ===========================================================================
+// buildQueueForSlashCommand — /compound
+// ===========================================================================
+
+describe("buildQueueForSlashCommand — /compound", () => {
+  it("/compound creates a single ship step with learnings hint", async () => {
+    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const queue = buildQueueForSlashCommand("compound", makeConfig());
+    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps[0].type).toBe("ship");
+    expect(queue.steps[0].dispatcherHint).toBe("learnings");
+    expect(queue.steps[0].evaluationCriteria).toBeTruthy();
+    expect(queue.steps[0].title).toContain("learnings");
   });
 });

@@ -83,7 +83,7 @@ describe("buildPlanDraftPrompt — behavioral contract instructions (JSON)", () 
 describe("buildPlanConsolidatePrompt — JSON consolidation instructions", () => {
   it("instructs producing clean JSON plan (no separate validation-contract.md)", () => {
     const result = buildPlanConsolidatePrompt(baseCtx);
-    expect(result).toContain(".plan.json");
+    expect(result).toContain("plan.json");
     // No separate validation contract file — behavioral contract is embedded in JSON
     expect(result).not.toContain("validation-contract.md");
   });

@@ -2,14 +2,17 @@
  * Structured Output Builder
  *
  * Accumulates parsed engine output into structured blocks (TextBlock, ToolBlock,
- * AgentBlock, ContextGroupBlock) for display in the TUI output window.
+ * AgentBlock) for display in the TUI output window.
  *
  * Manages all mutations internally — exposes only `getBlocks()` which returns
  * a new array reference when dirty, enabling efficient SolidJS reactivity via
  * `setOutputBlocks(builder.getBlocks())`.
  *
- * Context grouping: 3+ consecutive Read/Glob/Grep tools are collapsed into a
- * single ContextGroupBlock. Maintains a pointer for O(1) appending.
+ * Context grouping: Consecutive Read/Glob/Grep/WebSearch/WebFetch tools are
+ * rendered as a synthetic AgentBlock ("Context") with live tool display — each
+ * tool call replaces the previous in the `latestChild` field (spinner + ↳ line).
+ * When context gathering ends (non-context item arrives), the block shows a
+ * completed summary: `✓ Context · N toolcalls · Xs`.
  */
 
 import type {
@@ -17,13 +20,11 @@ import type {
   TextBlock,
   ToolBlock,
   AgentBlock,
-  ContextGroupBlock,
   SystemBlock,
 } from "../routes/work/state/types";
 
 const BLOCKS_CAP = 5000;
 const AGENT_CHILDREN_CAP = 50;
-const CONTEXT_GROUP_THRESHOLD = 3;
 
 /** Tool names that qualify for context grouping (matched case-insensitively). */
 const CONTEXT_TOOL_NAMES = new Set(["read", "glob", "grep", "websearch", "webfetch"]);
@@ -45,13 +46,14 @@ export class StructuredOutputBuilder {
   private agentIndexById = new Map<string, number>();
 
   /**
-   * Tracks consecutive context tools for grouping.
-   * `contextRunStart` is the index in `blocks` where the current run of
-   * consecutive context tools begins. -1 means no active run.
-   * `contextRunLength` is the count of consecutive context tools in the run.
+   * Tracks the active context agent block (synthetic AgentBlock for context tool runs).
+   * `contextAgentId` is the agent ID for the current run, or null if no run is active.
+   * `contextRunCounter` increments to generate unique IDs across runs.
+   * `contextRunStartTime` tracks when the run started for duration calculation.
    */
-  private contextRunStart = -1;
-  private contextRunLength = 0;
+  private contextAgentId: string | null = null;
+  private contextRunCounter = 0;
+  private contextRunStartTime = 0;
 
   /**
    * Optional callback fired when an agent has activity (tool added).
@@ -68,7 +70,7 @@ export class StructuredOutputBuilder {
   // ── Public API ──
 
   pushText(text: string, timestamp: number): void {
-    this.breakContextRun();
+    this.breakContextRun(timestamp);
 
     const last = this.blocks[this.blocks.length - 1];
     if (last && last.kind === "text") {
@@ -90,7 +92,7 @@ export class StructuredOutputBuilder {
    * that are user-relevant but not worker output.
    */
   pushSystemMessage(message: string, timestamp: number): void {
-    this.breakContextRun();
+    this.breakContextRun(timestamp);
     this.blocks.push({ kind: "system", message, timestamp } as SystemBlock);
     this.enforceBlocksCap();
     this.markDirty();
@@ -99,16 +101,17 @@ export class StructuredOutputBuilder {
   pushTool(name: string, detail: string, timestamp: number): void {
     const tool: ToolBlock = { kind: "tool", name, detail, timestamp };
 
-    // If inside an active agent, add as child
-    if (this.activeAgentId !== null) {
+    // If inside an active (real) agent, add as child — context tools inside
+    // real agents stay as plain children, not grouped.
+    if (this.activeAgentId !== null && this.activeAgentId !== this.contextAgentId) {
       if (this.appendToolToAgent(this.activeAgentId, tool)) return;
     }
 
     // Top-level tool: check context grouping
     if (isContextTool(name)) {
-      this.pushContextTool(tool);
+      this.pushContextTool(tool, timestamp);
     } else {
-      this.breakContextRun();
+      this.breakContextRun(timestamp);
       this.blocks.push(tool);
     }
 
@@ -147,7 +150,7 @@ export class StructuredOutputBuilder {
   }
 
   startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
-    this.breakContextRun();
+    this.breakContextRun(timestamp);
 
     const agent: AgentBlock = {
       kind: "agent",
@@ -234,8 +237,9 @@ export class StructuredOutputBuilder {
     this.cachedSnapshot = [];
     this.activeAgentId = null;
     this.agentIndexById.clear();
-    this.contextRunStart = -1;
-    this.contextRunLength = 0;
+    this.contextAgentId = null;
+    this.contextRunCounter = 0;
+    this.contextRunStartTime = 0;
   }
 
   /**
@@ -246,8 +250,8 @@ export class StructuredOutputBuilder {
   resetTracking(): void {
     this.activeAgentId = null;
     this.agentIndexById.clear();
-    this.contextRunStart = -1;
-    this.contextRunLength = 0;
+    this.contextAgentId = null;
+    this.contextRunStartTime = 0;
     // Mark dirty so the next getBlocks() returns a fresh snapshot
     // (tracking changes may affect how subsequent blocks are grouped).
     this.dirty = true;
@@ -257,55 +261,44 @@ export class StructuredOutputBuilder {
   // ── Context grouping (private) ──
 
   /**
-   * Push a context tool (Read/Glob/Grep) and manage grouping.
-   * When 3+ consecutive context tools accumulate, they are collapsed
-   * into a ContextGroupBlock in-place.
+   * Push a context tool as a child of the synthetic "Context" agent block.
+   * On first context tool, creates a new AgentBlock. Subsequent tools update
+   * `latestChild` in place (live display like subagent traces).
    */
-  private pushContextTool(tool: ToolBlock): void {
-    if (this.contextRunStart === -1) {
-      // Start a new potential context run
-      this.contextRunStart = this.blocks.length;
-      this.contextRunLength = 1;
-      this.blocks.push(tool);
-    } else {
-      this.contextRunLength++;
+  private pushContextTool(tool: ToolBlock, timestamp: number): void {
+    if (this.contextAgentId === null) {
+      // Start a new context agent run
+      this.contextRunCounter++;
+      const id = `ctx-run-${this.contextRunCounter}`;
+      this.contextRunStartTime = timestamp;
 
-      if (this.contextRunLength === CONTEXT_GROUP_THRESHOLD) {
-        // Collapse the previous standalone ToolBlocks into a group
-        const startIdx = this.contextRunStart;
-        const tools = this.blocks.slice(startIdx) as ToolBlock[];
-        tools.push(tool);
-
-        const group: ContextGroupBlock = {
-          kind: "contextGroup",
-          tools,
-          timestamp: tools[0].timestamp,
-        };
-
-        // Replace the run with a single group block
-        this.blocks.splice(startIdx, this.contextRunLength - 1, group);
-        // Update contextRunStart to point to the group
-        this.contextRunStart = startIdx;
-      } else if (this.contextRunLength > CONTEXT_GROUP_THRESHOLD) {
-        // Append to existing ContextGroupBlock
-        const group = this.blocks[this.contextRunStart] as ContextGroupBlock;
-        this.blocks[this.contextRunStart] = {
-          ...group,
-          tools: [...group.tools, tool],
-        };
-      } else {
-        // contextRunLength < CONTEXT_GROUP_THRESHOLD — just append as standalone
-        this.blocks.push(tool);
-      }
+      // Create the synthetic agent block via startAgent (contextAgentId is still
+      // null, so startAgent's breakContextRun is a no-op). Set contextAgentId
+      // AFTER startAgent to avoid premature completion.
+      this.startAgent(id, "Context", "Gathering context...", timestamp);
+      this.contextAgentId = id;
     }
+
+    // Add the tool as a child of the context agent (updates latestChild)
+    this.appendToolToAgent(this.contextAgentId, tool);
   }
 
   /**
    * Break the current context run. Called when a non-context item is pushed.
+   * Completes the synthetic "Context" agent block with duration and tool count.
    */
-  private breakContextRun(): void {
-    this.contextRunStart = -1;
-    this.contextRunLength = 0;
+  private breakContextRun(timestamp: number): void {
+    if (this.contextAgentId === null) return;
+
+    const id = this.contextAgentId;
+    const agentIdx = this.agentIndexById.get(id);
+    if (agentIdx !== undefined) {
+      const agent = this.blocks[agentIdx] as AgentBlock;
+      const duration = timestamp - this.contextRunStartTime;
+      this.completeAgent(id, duration, agent.children.length);
+    }
+
+    this.contextAgentId = null;
   }
 
   private markDirty(): void {
@@ -318,9 +311,9 @@ export class StructuredOutputBuilder {
       this.blocks.splice(0, overflow);
       // Rebuild agent index map since indices shifted
       this.rebuildAgentIndex();
-      // Reset context run tracking since indices shifted
-      if (this.contextRunStart !== -1) {
-        this.contextRunStart = Math.max(0, this.contextRunStart - overflow);
+      // If the context agent was evicted, clear its tracking
+      if (this.contextAgentId !== null && !this.agentIndexById.has(this.contextAgentId)) {
+        this.contextAgentId = null;
       }
     }
   }

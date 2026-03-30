@@ -1,14 +1,13 @@
 /**
  * Sprint step prompt — first iteration prompt for sprint workers.
  *
- * Instructs the worker to: explore the codebase, implement the task,
- * write a behavioral verification script, and produce a handoff JSON
- * with verification_script_path via renderHandoffInstruction(SPRINT_FIELDS).
+ * Enforces TDD ordering: explore codebase, write verification script FIRST
+ * (RED), then implement until verification passes (GREEN), and produce a
+ * handoff JSON with verification_script_path via renderHandoffInstruction(SPRINT_FIELDS).
  */
 
 import type { WorkflowStepContext } from "../index.js";
 import {
-  TDD_CYCLE,
   SCOPE_DISCIPLINE,
   THREE_STRIKE_PROTOCOL,
   buildProjectContextSection,
@@ -79,10 +78,11 @@ When done, provide:
 /**
  * Builds the first-iteration sprint prompt for a worker.
  *
- * Includes: task description, codebase exploration, implementation instruction,
- * verification script requirements, handoff instruction with SPRINT_FIELDS,
- * working directory, TDD cycle, scope discipline, three-strike protocol,
- * knowledge library instruction, and boundaries (when configured).
+ * Enforces TDD ordering: explore codebase, write verification script FIRST
+ * (RED phase), then implement until verification passes (GREEN phase).
+ * Includes handoff instruction with SPRINT_FIELDS, working directory,
+ * scope discipline, three-strike protocol, knowledge library instruction,
+ * and boundaries (when configured).
  */
 export function buildSprintStepPrompt(ctx: WorkflowStepContext): string {
   const projectContext = buildProjectContextSection(ctx.extra);
@@ -110,30 +110,26 @@ Before implementing anything, explore the codebase to understand:
 
 Read relevant files thoroughly. Do not guess — read the actual code.
 
-## Implementation
+## Sprint TDD — Write Verification FIRST
 
-Implement the task described above. Follow existing patterns and conventions.
+**You MUST follow strict Test-Driven Development in this sprint.** The verification
+script is your acceptance gate — the queue will run it automatically after you finish
+and FAIL the sprint if it exits non-zero.
 
-${TDD_CYCLE}
+### Step 1: RED — Write the Verification Script FIRST
 
-${SCOPE_DISCIPLINE}
+Before writing ANY implementation code, create a verification script that defines
+the success criteria for this task.
 
-${THREE_STRIKE_PROTOCOL}
-
-## Verification Script
-
-**CRITICAL:** You MUST write a verification script that validates your implementation works correctly.
-
-### Requirements
-
-- Write the script to \`.flywheel/verify/\` (create the directory if it doesn't exist)
-- The script must be a \`.ts\` or \`.sh\` file
-- **Exit code 0 = pass, non-zero = fail** — this is the primary acceptance gate
+- Write the script to \`.flywheel/verify/<descriptive-name>.ts\` (or \`.sh\`)
+- Create the \`.flywheel/verify/\` directory if it doesn't exist
+- The script must be runnable and **exit 0 on success, non-zero on failure**
 - The script must test actual runtime behavior, not just compilation or file existence
 - The script must produce meaningful output describing what was tested and whether it passed
 - The script must be executable and self-contained
+- **Run the script now** to confirm it **FAILS** (RED phase) — if it passes before you implement anything, the test is wrong
 
-### What Makes a Good Verification Script
+#### What Makes a Good Verification Script
 
 - Tests the actual feature end-to-end (e.g., starts a server, makes a request, checks the response)
 - Verifies all acceptance criteria from the task description
@@ -141,12 +137,28 @@ ${THREE_STRIKE_PROTOCOL}
 - Prints clear pass/fail messages for each check
 - Exits with non-zero code if ANY check fails
 
-### What to AVOID
+#### What to AVOID
 
 - Scripts that only check if files exist — that is not behavioral testing
-- Scripts that only run the compiler — compilation is not sufficient, not just compilation of the project
+- Scripts that only run the compiler — compilation is not sufficient
 - Scripts that always exit 0 regardless of results — this is useless
 - Trivial scripts that test nothing meaningful — the evaluator will catch this and fail you
+
+### Step 2: GREEN — Implement Until Verification Passes
+
+Now implement the minimum code to make the verification script pass.
+
+- Follow existing patterns and conventions
+- Run the verification script after each significant change
+- Stop as soon as the script passes — do not gold-plate
+
+### Step 3: REFACTOR (Optional)
+
+Clean up while green. Run the verification script after each refactoring change.
+
+${SCOPE_DISCIPLINE}
+
+${THREE_STRIKE_PROTOCOL}
 
 ## Shared Knowledge Library
 

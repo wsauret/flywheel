@@ -1,18 +1,25 @@
 /**
  * Centralized path constants for the flywheel-tui codebase.
  *
- * Single source of truth for ALL paths. Internal state directories are
- * constants; user-facing output directories have defaults that can be
- * overridden via `[paths]` in `flywheel.toml`.
+ * Single source of truth for ALL paths.
+ *
+ * Session files live in `.flywheel/sessions/<session-id>/` with simple names:
+ *   session.json, plan.json, research.md, review.md, output.json,
+ *   transcript.jsonl, queue.json, context.json
+ *
+ * Handoffs live in `.flywheel/sessions/<session-id>/handoffs/` with
+ * descriptive names: plan_draft.json, work_<step-id>.json, etc.
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
+
 // ---------------------------------------------------------------------------
-// Internal .flywheel/ state directories (not configurable)
+// Internal .flywheel/ state directories
 // ---------------------------------------------------------------------------
 
 export const FLYWHEEL_DIR = ".flywheel";
 export const SESSIONS_DIR = `${FLYWHEEL_DIR}/sessions`;
-export const HANDOFFS_DIR = `${FLYWHEEL_DIR}/handoffs`;
 export const LIBRARY_DIR = `${FLYWHEEL_DIR}/library`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
 export const CACHE_DIR = `${FLYWHEEL_DIR}/cache`;
@@ -21,12 +28,9 @@ export const SUBPROCESS_LOG_DIR = `${FLYWHEEL_DIR}/subprocess-logs`;
 export const LOCK_DIR = FLYWHEEL_DIR;
 
 // ---------------------------------------------------------------------------
-// User-facing output directories (defaults, overridable via flywheel.toml)
+// Global directories (cross-session)
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_PLANS_DIR = `${FLYWHEEL_DIR}/plans`;
-export const DEFAULT_RESEARCH_DIR = `${FLYWHEEL_DIR}/research`;
-export const DEFAULT_REVIEWS_DIR = `${FLYWHEEL_DIR}/reviews`;
 export const DEFAULT_SOLUTIONS_DIR = `${FLYWHEEL_DIR}/solutions`;
 export const DEFAULT_STANDARDS_DIR = "docs/standards";
 
@@ -49,43 +53,108 @@ export const CONFIG_DIRS = [".claude/", ".opencode/"];
 export const CONFIG_FILES = ["flywheel.toml", ".flywheel.toml"];
 
 // ---------------------------------------------------------------------------
-// Output path resolution helper
+// Session directory helpers
 // ---------------------------------------------------------------------------
 
-export interface OutputPaths {
-  plans: string;
-  research: string;
-  reviews: string;
-  solutions: string;
-  standards: string;
+/** Returns the directory for a session: `.flywheel/sessions/<id>` */
+export function sessionDir(sessionId: string): string {
+  return `${SESSIONS_DIR}/${sessionId}`;
 }
 
-export function resolveOutputPaths(configOverrides?: Partial<OutputPaths>): OutputPaths {
-  return {
-    plans: configOverrides?.plans ?? DEFAULT_PLANS_DIR,
-    research: configOverrides?.research ?? DEFAULT_RESEARCH_DIR,
-    reviews: configOverrides?.reviews ?? DEFAULT_REVIEWS_DIR,
-    solutions: configOverrides?.solutions ?? DEFAULT_SOLUTIONS_DIR,
-    standards: configOverrides?.standards ?? DEFAULT_STANDARDS_DIR,
-  };
+/** Returns the handoffs subdirectory for a session: `.flywheel/sessions/<id>/handoffs` */
+export function sessionHandoffsDir(sessionId: string): string {
+  return `${sessionDir(sessionId)}/handoffs`;
+}
+
+/** Resolves an absolute session directory path. */
+export function resolveSessionDir(sessionId: string, baseDir: string): string {
+  return path.resolve(baseDir, sessionDir(sessionId));
+}
+
+/** Resolves an absolute session handoffs directory path. */
+export function resolveSessionHandoffsDir(sessionId: string, baseDir: string): string {
+  return path.resolve(baseDir, sessionHandoffsDir(sessionId));
+}
+
+/**
+ * Ensure the session directory and its handoffs/ subdirectory exist.
+ * Idempotent — safe to call multiple times.
+ */
+export function ensureSessionDir(sessionId: string, baseDir: string): void {
+  const handoffsPath = resolveSessionHandoffsDir(sessionId, baseDir);
+  fs.mkdirSync(handoffsPath, { recursive: true });
+}
+
+// ---------------------------------------------------------------------------
+// Session file path helpers
+// ---------------------------------------------------------------------------
+
+/** Well-known file names within a session directory. */
+export const SESSION_FILES = {
+  session: "session.json",
+  plan: "plan.json",
+  research: "research.md",
+  review: "review.md",
+  output: "output.json",
+  transcript: "transcript.jsonl",
+  queue: "queue.json",
+  context: "context.json",
+} as const;
+
+/** Returns absolute path to a well-known session file. */
+export function resolveSessionFile(
+  sessionId: string,
+  file: keyof typeof SESSION_FILES,
+  baseDir: string,
+): string {
+  return path.resolve(baseDir, sessionDir(sessionId), SESSION_FILES[file]);
+}
+
+// ---------------------------------------------------------------------------
+// Handoff path helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a handoff file path for a worker step.
+ * Pattern: `.flywheel/sessions/<session-id>/handoffs/<type>_<step-id>.json`
+ */
+export function buildWorkerHandoffPath(
+  sessionId: string,
+  stepType: string,
+  stepId: string,
+  baseDir: string,
+): string {
+  return path.resolve(baseDir, sessionHandoffsDir(sessionId), `${stepType}_${stepId}.json`);
+}
+
+/**
+ * Build a handoff file path for a dispatcher invocation.
+ * Pattern: `.flywheel/sessions/<session-id>/handoffs/dispatcher_<invocation-id>.json`
+ */
+export function buildDispatcherHandoffPath(
+  sessionId: string,
+  invocationId: string,
+  baseDir: string,
+): string {
+  return path.resolve(baseDir, sessionHandoffsDir(sessionId), `dispatcher_${invocationId}.json`);
+}
+
+/**
+ * Build a handoff file path for an evaluator invocation.
+ * Pattern: `.flywheel/sessions/<session-id>/handoffs/evaluator_<invocation-id>.json`
+ */
+export function buildEvaluatorHandoffPath(
+  sessionId: string,
+  invocationId: string,
+  baseDir: string,
+): string {
+  return path.resolve(baseDir, sessionHandoffsDir(sessionId), `evaluator_${invocationId}.json`);
 }
 
 // ---------------------------------------------------------------------------
 // Directory creation helpers
 // ---------------------------------------------------------------------------
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-
-/**
- * Ensure the shared knowledge library directory exists.
- *
- * Creates `.flywheel/library/` under `projectCwd` if it doesn't already exist.
- * Uses `recursive: true` so the parent `.flywheel/` directory is also created
- * if needed. Idempotent — safe to call multiple times.
- *
- * Adapted from multi-agent mission system inter-worker knowledge sharing patterns.
- */
 export function ensureLibraryDir(projectCwd: string): void {
   const libraryPath = path.resolve(projectCwd, LIBRARY_DIR);
   fs.mkdirSync(libraryPath, { recursive: true });

@@ -29,7 +29,7 @@ import type { DispatcherDecisionHandoff } from "../schemas/handoff";
 import { mapHandoffToDecision } from "./map-handoff";
 import { Log } from "../utils/log";
 import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
-import { HANDOFFS_DIR } from "../config/paths";
+import { buildDispatcherHandoffPath, ensureSessionDir } from "../config/paths";
 
 const log = Log.create({ service: "dispatcher-subprocess" });
 
@@ -56,6 +56,10 @@ export interface SubprocessTransportOptions {
   onStderr?: (chunk: string) => void;
   /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
   logBaseDir?: string;
+  /** Flywheel session ID for session-scoped handoff paths. */
+  sessionId?: string;
+  /** Project base directory for path resolution. */
+  baseDir?: string;
 }
 
 export class SubprocessTransport implements DispatcherTransport {
@@ -66,6 +70,8 @@ export class SubprocessTransport implements DispatcherTransport {
   private readonly onStdout?: (chunk: string) => void;
   private readonly onStderr?: (chunk: string) => void;
   private readonly logBaseDir?: string;
+  private readonly sessionId?: string;
+  private readonly baseDir: string;
 
   constructor(options: SubprocessTransportOptions) {
     this.spawner = options.spawner;
@@ -73,6 +79,8 @@ export class SubprocessTransport implements DispatcherTransport {
     this.onStdout = options.onStdout;
     this.onStderr = options.onStderr;
     this.logBaseDir = options.logBaseDir;
+    this.sessionId = options.sessionId;
+    this.baseDir = options.baseDir ?? process.cwd();
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -90,12 +98,11 @@ export class SubprocessTransport implements DispatcherTransport {
 
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
     const invocationId = crypto.randomUUID();
-    const handoffsDir = nodePath.resolve(
-      process.cwd(),
-      HANDOFFS_DIR,
-    );
-    fs.mkdirSync(handoffsDir, { recursive: true });
-    const handoffPath = nodePath.resolve(handoffsDir, `${invocationId}.json`);
+    if (!this.sessionId) {
+      throw new Error("SubprocessTransport requires sessionId for handoff path construction");
+    }
+    ensureSessionDir(this.sessionId, this.baseDir);
+    const handoffPath = buildDispatcherHandoffPath(this.sessionId, invocationId, this.baseDir);
 
     const systemPrompt = buildDispatcherSystemPrompt();
     const truncationNotes = buildTruncationNotes(input);

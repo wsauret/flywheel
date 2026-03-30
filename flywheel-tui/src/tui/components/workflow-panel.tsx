@@ -159,16 +159,6 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
           </box>
         </Show>
 
-        {/* Plan name */}
-        <Show when={props.state.planName}>
-          <box paddingLeft={1} paddingRight={1} flexShrink={0} marginTop={1}>
-            <text fg={themeCtx.theme.textMuted}>Plan: </text>
-            <text fg={themeCtx.theme.text}>
-              {truncate(props.state.planName, 28)}
-            </text>
-          </box>
-        </Show>
-
         {/* ── Queue step list (scrollable) ── */}
         <Show
           when={hasQueueSteps()}

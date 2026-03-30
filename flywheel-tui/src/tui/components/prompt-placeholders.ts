@@ -13,7 +13,7 @@ const PLACEHOLDERS: Record<string, string> = {
   "plan:approved":  "Plan approved — starting work...",
   "plan:needs-fix": "Refine this plan, or paste a new one",
   "work:active":    "Press Enter to continue, or type to steer",
-  "work:paused":    "Session paused — press Enter to resume",
+  "work:paused":    "Session paused — press Enter or Ctrl+R to resume",
   "work:review":    "Review the output, then approve or request changes",
   "completed":      "Enter to run again, or paste new path",
   "archived":       "Session archived — start a new one with /new",

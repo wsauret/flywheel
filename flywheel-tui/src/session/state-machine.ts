@@ -41,7 +41,7 @@ export type SessionLifecycleState = z.infer<typeof SessionLifecycleStateSchema>;
 export const VALID_TRANSITIONS: Readonly<
   Record<SessionLifecycleState, readonly SessionLifecycleState[]>
 > = Object.freeze({
-  new: ["plan:draft", "plan:imported"],
+  new: ["plan:draft", "plan:imported", "trashed"],
   "plan:draft": ["plan:imported", "plan:needs-fix", "trashed"],
   "plan:imported": ["plan:approved", "plan:needs-fix", "trashed"],
   "plan:approved": ["work:active", "trashed"],

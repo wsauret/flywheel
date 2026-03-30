@@ -4,7 +4,7 @@ import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentu
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
-import type { TextBlock, ToolBlock } from "../src/tui/routes/work/state/types";
+import type { TextBlock, ToolBlock, AgentBlock } from "../src/tui/routes/work/state/types";
 
 function createHarness() {
   const bus = new EventBus();
@@ -46,7 +46,7 @@ describe("OpenTUI Adapter — output formatting", () => {
       expect(textBlocks[0].content).toContain("Hello world");
     });
 
-    it("formats tool_use from assistant NDJSON → ToolBlock", () => {
+    it("formats tool_use from assistant NDJSON → ToolBlock (or Context AgentBlock for context tools)", () => {
       const { bus, store } = createHarness();
       const ndjson = JSON.stringify({
         type: "assistant",
@@ -64,10 +64,13 @@ describe("OpenTUI Adapter — output formatting", () => {
         timestamp: ts(),
       });
       const blocks = store.getState().outputBlocks;
-      const toolBlocks = blocks.filter((b) => b.kind === "tool") as ToolBlock[];
-      expect(toolBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(toolBlocks[0].name).toBe("Read");
-      expect(toolBlocks[0].detail).toContain("src/index.ts");
+      // Read is a context tool — it creates a synthetic "Context" AgentBlock
+      const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
+      expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(agentBlocks[0].agentLabel).toBe("Context");
+      expect(agentBlocks[0].children.length).toBeGreaterThanOrEqual(1);
+      expect(agentBlocks[0].children[0].name).toBe("Read");
+      expect(agentBlocks[0].children[0].detail).toContain("src/index.ts");
     });
 
     it("skips system NDJSON lines (no blocks or lines produced)", () => {

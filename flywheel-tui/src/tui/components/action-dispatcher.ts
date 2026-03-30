@@ -46,6 +46,7 @@ export interface ActionDispatcherDeps {
   launchWorkWorkflow: (planPath: string) => void
   launchGenericWorkflow: (name: string, args: Record<string, string>) => void
   launchStartFlow?: (args: Record<string, string>) => void
+  launchTestStep?: (args: Record<string, string>) => void
   exit: () => void
   returnToIdle?: () => void
 }
@@ -59,6 +60,32 @@ function expandTilde(p: string): string {
     return os.homedir() + p.slice(1)
   }
   return p
+}
+
+// ---------------------------------------------------------------------------
+// Review target resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a review target string into a description.
+ * - PR number: `#123` or `123` → "Review PR #123"
+ * - GitHub URL: `github.com/.../pull/123` → "Review PR #123"
+ * - Branch name or other → "Review: <target>"
+ * - Default (no target) → "Review current changes"
+ */
+function resolveReviewTarget(target: string | undefined): string {
+  if (!target) return "Review current changes"
+
+  // PR number: #123 or bare 123
+  const prMatch = target.match(/^#?(\d+)$/)
+  if (prMatch) return `Review PR #${prMatch[1]}`
+
+  // GitHub PR URL
+  const ghMatch = target.match(/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)/)
+  if (ghMatch) return `Review PR #${ghMatch[1]}`
+
+  // Everything else: branch name or description
+  return `Review: ${target}`
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +109,7 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
 
     if (workflow === "help") {
       deps.notify(
-        "Commands: /start, /work, /plan, /review, /ship, /debug, /research, /config, /exit",
+        "Commands: /start, /work, /plan, /review, /ship, /compound, /debug, /research, /config, /exit",
         "info",
       )
       return null
@@ -100,6 +127,16 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
 
     if (workflow === "start") {
       deps.launchStartFlow?.(args)
+      return null
+    }
+
+    if (workflow === "test") {
+      deps.launchTestStep?.(args)
+      return null
+    }
+
+    if (workflow === "compound") {
+      deps.launchGenericWorkflow("compound", args)
       return null
     }
 
@@ -143,6 +180,13 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
     if (workflow === "research" && !args.topic) {
       deps.notify("Usage: /research <topic>", "error")
       return null
+    }
+
+    // Resolve review target into description
+    if (workflow === "review") {
+      const description = resolveReviewTarget(args.target)
+      deps.launchGenericWorkflow(workflow, { ...args, description })
+      return meta
     }
 
     // Start generic workflow

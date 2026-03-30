@@ -440,11 +440,10 @@ describe("buildPlanDraftPrompt", () => {
   it("contains domain-specific content", () => {
     const result = buildPlanDraftPrompt(baseCtx);
     for (const kw of [
-      ".plan.json",
+      "plan.json",
       "steps",
       "behavioralContract",
       "Test-first",
-      "kebab-case",
     ]) {
       expect(result).toContain(kw);
     }
@@ -533,7 +532,7 @@ describe("buildPlanConsolidatePrompt", () => {
     for (const kw of [
       "Synthesis",
       "Merge findings INTO steps",
-      ".plan.json",
+      "plan.json",
       "behavioralContract",
     ]) {
       expect(result).toContain(kw);

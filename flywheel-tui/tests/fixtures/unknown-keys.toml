@@ -1,0 +1,3 @@
+engine = "claude"
+max_retires = 5
+tiemout_minutes = 90

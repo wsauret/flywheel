@@ -262,29 +262,43 @@ describe("VAL-SHELL-033: /work <planPath> parses plan into work steps", () => {
 // VAL-SHELL-034: Other slash commands still functional
 // ===========================================================================
 
-describe("VAL-SHELL-034: Slash commands create appropriate single-step queues", () => {
-  it("/review creates single review step queue", () => {
+describe("VAL-SHELL-034: Slash commands create appropriate multi-step queues", () => {
+  it("/review creates 2-step review queue", () => {
     const queue = buildQueueForSlashCommand("review", makeConfig({ auto_chain: false }));
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(2);
     expect(queue.steps[0].type).toBe("review");
+    expect(queue.steps[0].dispatcherHint).toBe("dispatch-reviewers");
+    expect(queue.steps[1].type).toBe("review");
+    expect(queue.steps[1].dispatcherHint).toBe("consolidate-review");
   });
 
-  it("/ship creates single ship step queue", () => {
+  it("/ship creates 2-step ship queue", () => {
     const queue = buildQueueForSlashCommand("ship", makeConfig({ auto_chain: false }));
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(2);
     expect(queue.steps[0].type).toBe("ship");
+    expect(queue.steps[0].dispatcherHint).toBe("ship");
+    expect(queue.steps[1].type).toBe("ship");
+    expect(queue.steps[1].dispatcherHint).toBe("learnings");
   });
 
-  it("/debug creates single debug step queue", () => {
+  it("/debug creates 3-step debug queue", () => {
     const queue = buildQueueForSlashCommand("debug", makeConfig({ auto_chain: false }));
-    expect(queue.steps).toHaveLength(1);
+    expect(queue.steps).toHaveLength(3);
     expect(queue.steps[0].type).toBe("debug");
+    expect(queue.steps[0].dispatcherHint).toBe("investigate");
+    expect(queue.steps[1].type).toBe("debug");
+    expect(queue.steps[1].dispatcherHint).toBe("fix");
+    expect(queue.steps[2].type).toBe("verify");
+    expect(queue.steps[2].dispatcherHint).toBe("debug-verify");
   });
 
-  it("/research creates single research step queue", () => {
+  it("/research creates single research step queue with metadata", () => {
     const queue = buildQueueForSlashCommand("research", makeConfig({ auto_chain: false }));
     expect(queue.steps).toHaveLength(1);
     expect(queue.steps[0].type).toBe("research");
+    expect(queue.steps[0].dispatcherHint).toBe("research");
+    expect(queue.steps[0].evaluationCriteria).toBeTruthy();
+    expect(queue.steps[0].toolScoping).toBeDefined();
   });
 
   it("/plan creates single plan step queue (no auto_chain)", () => {

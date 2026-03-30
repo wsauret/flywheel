@@ -83,8 +83,7 @@ export interface EvalResult {
   feedback: string | null;
   suggestions: string[];
   cyclesUsed: number;
-  /** Structured verification results from trust-but-verify evaluator (when available) */
-  verificationResults?: import("../evaluator/trust-verify").VerificationResults;
+
 }
 
 /** Dispatcher: assembles prompt for a step */
@@ -139,6 +138,8 @@ export interface StepExecutorOptions {
   queue: Queue;
   /** Unique workflow identifier */
   workflowId: string;
+  /** Session ID for file path construction */
+  sessionId: string;
   /** Event emitter for lifecycle events */
   emitter: FlywheelEmitter;
   /** Dispatcher for prompt assembly */

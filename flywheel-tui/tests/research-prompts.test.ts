@@ -292,12 +292,10 @@ describe("buildResearchPersistPrompt", () => {
     expect(result).toContain("Analysis output: EventBus uses pub/sub pattern");
   });
 
-  it("instructs writing to .flywheel/research/YYYY-MM-DD-<topic-slug>.md", async () => {
+  it("instructs writing to session-scoped research path (or default research.md)", async () => {
     const { buildResearchPersistPrompt } = await import("../src/prompts/research/index");
     const result = buildResearchPersistPrompt(ctxWithAnalysisResult);
-    expect(result).toContain(".flywheel/research/");
-    expect(result).toContain("YYYY-MM-DD");
-    expect(result).toContain("topic-slug");
+    expect(result).toContain("research.md");
   });
 
   it("includes full YAML frontmatter template", async () => {
@@ -381,10 +379,10 @@ describe("Plan research prompt vs standalone research prompts", () => {
     expect(result).toContain(".context.md");
   });
 
-  it("standalone persist prompt mentions .flywheel/research/, not .context.md", async () => {
+  it("standalone persist prompt mentions research.md, not .context.md", async () => {
     const { buildResearchPersistPrompt } = await import("../src/prompts/research/index");
     const result = buildResearchPersistPrompt(ctxWithAnalysisResult);
-    expect(result).toContain(".flywheel/research/");
+    expect(result).toContain("research.md");
     expect(result).not.toContain(".context.md");
   });
 

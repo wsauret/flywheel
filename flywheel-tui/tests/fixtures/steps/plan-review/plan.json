@@ -1,0 +1,71 @@
+{
+  "steps": [
+    {
+      "title": "Add GET /healthz route to Bun.serve handler",
+      "description": "Add a new if-branch in src/server/index.ts for pathname === '/healthz'. Return 200 with JSON { status: 'ok', uptime: process.uptime() }. Reject non-GET methods with 405.",
+      "acceptanceCriteria": [
+        "GET /healthz returns 200 with JSON body containing 'status' and 'uptime'",
+        "Response Content-Type is application/json",
+        "Non-GET methods to /healthz return 405 with JSON { error: 'Method Not Allowed' }",
+        "Existing /hello endpoint behavior is unchanged"
+      ],
+      "fileReferences": ["src/server/index.ts"],
+      "feature": "server",
+      "fulfills": ["BC-HEALTH-001", "BC-HEALTH-002"],
+      "milestone": "Implementation",
+      "estimatedComplexity": "trivial"
+    },
+    {
+      "title": "Add tests for /healthz endpoint",
+      "description": "Add test cases in tests/server.test.ts: GET /healthz returns 200 with correct body shape, POST /healthz returns 405, existing /hello tests still pass.",
+      "acceptanceCriteria": [
+        "Test: GET /healthz returns 200 with { status: 'ok', uptime: number }",
+        "Test: POST /healthz returns 405",
+        "All existing server tests still pass"
+      ],
+      "fileReferences": ["tests/server.test.ts"],
+      "feature": "server",
+      "fulfills": ["BC-HEALTH-001", "BC-HEALTH-002"],
+      "milestone": "Validation",
+      "estimatedComplexity": "trivial"
+    },
+    {
+      "title": "Run test suite and verify all behavioral contracts",
+      "description": "Execute 'bun test tests/server.test.ts' and confirm all tests pass including the new /healthz tests.",
+      "acceptanceCriteria": [
+        "All tests pass with zero failures",
+        "No regressions in existing /hello endpoint tests"
+      ],
+      "fileReferences": ["tests/server.test.ts"],
+      "feature": "server",
+      "fulfills": ["BC-HEALTH-001", "BC-HEALTH-002"],
+      "milestone": "Validation",
+      "estimatedComplexity": "trivial"
+    }
+  ],
+  "behavioralContract": [
+    {
+      "id": "BC-HEALTH-001",
+      "title": "Health check returns status and uptime",
+      "description": "GET /healthz returns 200 with JSON { status: 'ok', uptime: <seconds as number> }",
+      "evidence": "bun test tests/server.test.ts — health check test passes",
+      "area": "Server"
+    },
+    {
+      "id": "BC-HEALTH-002",
+      "title": "Health check rejects non-GET methods",
+      "description": "POST/PUT/DELETE to /healthz return 405 with JSON { error: 'Method Not Allowed' }",
+      "evidence": "bun test tests/server.test.ts — 405 test passes",
+      "area": "Server"
+    }
+  ],
+  "decisions": [
+    "Using Bun.serve() pathname routing pattern matching existing /hello endpoint",
+    "Including process.uptime() in response for basic observability",
+    "Reusing existing 405 method guard pattern from /hello"
+  ],
+  "risks": [
+    "process.uptime() leaks server start time (acceptable for internal health checks)",
+    "No authentication on health endpoint (standard practice for health checks)"
+  ]
+}

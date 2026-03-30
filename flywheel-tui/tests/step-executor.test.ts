@@ -1807,12 +1807,12 @@ describe("VAL-EXEC-012: HITL field on steps enables user interaction", () => {
 // ===========================================================================
 
 describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", () => {
-  test("plan-work-review template produces 7+ individual steps", async () => {
+  test("plan-work-review template produces 6+ individual steps (fix step injected dynamically)", async () => {
     const { buildQueueFromTemplate } = await import("../src/queue/templates");
     const queue = buildQueueFromTemplate("plan-work-review");
 
-    // 4 plan sub-steps + 3 review sub-steps = 7 steps
-    expect(queue.steps.length).toBeGreaterThanOrEqual(7);
+    // 4 plan sub-steps + 2 review sub-steps = 6 steps (fix step injected at runtime)
+    expect(queue.steps.length).toBeGreaterThanOrEqual(6);
 
     // Each step has an individual title
     const titles = queue.steps.map((s) => s.title);
@@ -1836,12 +1836,12 @@ describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", 
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  test("full template produces 11+ individual steps", async () => {
+  test("full template produces 8+ individual steps (fix step injected dynamically)", async () => {
     const { buildQueueFromTemplate } = await import("../src/queue/templates");
     const queue = buildQueueFromTemplate("full");
 
-    // 4 plan + 3 review + 4 ship = 11 steps
-    expect(queue.steps.length).toBeGreaterThanOrEqual(11);
+    // 4 plan + 2 review + 2 ship = 8 steps (fix step injected at runtime)
+    expect(queue.steps.length).toBeGreaterThanOrEqual(8);
   });
 
   test("plan sub-steps have expected granular titles", async () => {
@@ -1855,15 +1855,15 @@ describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", 
     expect(titles.some((t) => t.includes("consolidate"))).toBe(true);
   });
 
-  test("review sub-steps have expected granular titles", async () => {
+  test("review sub-steps have expected granular titles (fix step injected dynamically)", async () => {
     const { buildQueueFromTemplate } = await import("../src/queue/templates");
     const queue = buildQueueFromTemplate("plan-work-review");
     const reviewSteps = queue.steps.filter((s) => s.type === "review");
     const titles = reviewSteps.map((s) => s.title.toLowerCase());
 
+    // Review steps: dispatch + consolidate (fix step is no longer static — injected at runtime)
     expect(titles.some((t) => t.includes("code review") || t.includes("multi-agent"))).toBe(true);
     expect(titles.some((t) => t.includes("consolidate"))).toBe(true);
-    expect(titles.some((t) => t.includes("fix") || t.includes("implement"))).toBe(true);
   });
 
   test("ship sub-steps have expected granular titles", async () => {

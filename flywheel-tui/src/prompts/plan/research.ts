@@ -14,6 +14,9 @@ export const planResearchEvaluationCriteria =
 
 /**
  * Builds a prompt for the plan research step (locator → analyzer dispatch).
+ *
+ * Mirrors the plan-review dispatch pattern: explicit fly/* agent names,
+ * Task(subagent_type=...) syntax, parallel dispatch in a single message.
  */
 export function buildPlanResearchPrompt(ctx: WorkflowStepContext): string {
   const files =
@@ -55,48 +58,63 @@ Do NOT use Read/Grep/Glob for target codebase research directly. Dispatch locato
 
 **Exception:** Files listed in the Project Context section above (conventions, standards) MUST be read directly before dispatching locators.
 
-## Locator Dispatch Templates
+## Phase 1: Locator Dispatch
 
-### locator-codebase
-Find WHERE files and components live. Return file paths and line numbers only. Focus on:
-- Entry points and exports
-- Directory structure and module boundaries
-- Configuration files
+Dispatch ALL 3 locator agents **in parallel** using the Task tool. Launch ALL of them in a SINGLE message with multiple Task calls. Each locator returns paths and references only — no file contents. Max 500 tokens output each.
 
-### locator-patterns
-Find WHERE specific patterns exist in the codebase. Return file paths and line numbers only. Focus on:
-- Usage of specific APIs, functions, or types
-- Import/dependency chains
-- Naming conventions and existing patterns to follow
+### Locator Agents (installed as \`fly/*\` agents)
 
-### locator-docs
-Find WHERE documentation lives. Return file paths only. Focus on:
-- README files, AGENTS.md, CONTRIBUTING guides
-- Inline documentation and JSDoc comments
-- Configuration schemas and examples
+These agents are pre-installed and available via the Task tool. Use \`subagent_type\` to reference each one:
 
-## Analyzer Dispatch Templates
+1. **fly/locator-codebase** — Find WHERE files and components live. Returns file paths only. Focus on entry points, directory structure, module boundaries, configuration files.
+2. **fly/locator-patterns** — Find WHERE specific patterns exist. Returns file:line references only. Focus on API usage, import/dependency chains, naming conventions, existing patterns to follow.
+3. **fly/locator-docs** — Find WHERE documentation lives. Returns file paths only. Focus on README, AGENTS.md, CONTRIBUTING guides, inline docs, config schemas.
 
-### analyzer-codebase
-Understand HOW code works. Read the files found by locators. Document:
-- Function signatures and return types
-- Data flow and state management
-- Error handling patterns
-- Side effects and I/O boundaries
+### How to Dispatch
 
-### analyzer-patterns
-Extract code examples with context. For each pattern found:
-- The exact code with file:line reference
-- How it's used by callers
-- Constraints or invariants it depends on
+For each locator, use the Task tool like this:
 
-## Ranking Locator Results
+\`\`\`
+Task(subagent_type="fly/locator-codebase", prompt="Find WHERE files and components live related to: [research objective]. Return file paths only, categorized by: implementation, tests, config, types, docs. Max 30 paths.")
+Task(subagent_type="fly/locator-patterns", prompt="Find WHERE specific patterns exist related to: [research objective]. Return file:line references only, grouped by pattern type. Max 30 locations.")
+Task(subagent_type="fly/locator-docs", prompt="Find WHERE documentation lives related to: [research objective]. Search README, AGENTS.md, docs/, inline comments. Return paths only. Max 20 paths.")
+\`\`\`
 
-When multiple locator results come back, prioritize:
-1. Files directly related to the feature being planned
-2. Files that will need modification
-3. Files that establish patterns to follow
-4. Files that document constraints or conventions
+Launch ALL 3 Task calls in a SINGLE response message so they run in parallel.
+
+## Phase 1b: Rank Locator Results
+
+After all locators complete, deduplicate and rank results before dispatching analyzers:
+1. **Direct relevance** — files directly implementing the researched concept
+2. **Modification targets** — files that would need changes if extending the concept
+3. **Pattern exemplars** — files that establish patterns related to the concept
+4. **Constraint docs** — files documenting constraints, conventions, or boundaries
+
+Select top findings for analyzers:
+- **Max 15 file paths** for fly/analyzer-codebase
+- **Max 10 pattern locations** for fly/analyzer-patterns
+
+If total findings < 10, send all findings directly without filtering.
+
+## Phase 2: Analyzer Dispatch
+
+Dispatch analyzer agents on TOP FINDINGS ONLY using the Task tool. Each analyzer reads actual files and extracts structured findings in documentarian mode. Max 750 tokens output each.
+
+### Analyzer Agents (installed as \`fly/*\` agents)
+
+These agents are pre-installed and available via the Task tool. Use \`subagent_type\` to reference each one:
+
+1. **fly/analyzer-codebase** — Understand HOW code works. Reads files, documents function signatures, data flow, error handling, side effects, dependencies. File:line references required.
+2. **fly/analyzer-patterns** — Extract code examples with context. For each pattern: exact code reference, caller usage, constraints, variations. File:line references required.
+
+### How to Dispatch
+
+\`\`\`
+Task(subagent_type="fly/analyzer-codebase", prompt="Analyze these implementation files related to [research objective]:\\n[list of top file paths from locator output]\\nDocument: function signatures, data flow, error handling, side effects, dependencies. File:line references required. Documentarian mode only — do NOT suggest improvements.")
+Task(subagent_type="fly/analyzer-patterns", prompt="Analyze these pattern locations related to [research objective]:\\n[list of top file:line refs from locator output]\\nFor each: exact code reference, caller usage, constraints, variations. File:line references required. Documentarian mode only — do NOT suggest alternatives.")
+\`\`\`
+
+Launch both Task calls in a SINGLE response message so they run in parallel.
 
 ## Persistence
 

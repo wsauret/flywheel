@@ -140,7 +140,7 @@ describe("ActionDispatcher", () => {
       dispatch("review", {})
       expect(calls.find((c) => c.name === "launchGenericWorkflow")).toEqual({
         name: "launchGenericWorkflow",
-        args: ["review", {}],
+        args: ["review", { description: "Review current changes" }],
       })
     })
 

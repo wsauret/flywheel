@@ -59,6 +59,8 @@ export interface ToolScopingConfig {
   bash: boolean;
   write: boolean;
   edit: boolean;
+  /** When true, the worker can dispatch sub-agents via the Task tool. */
+  task?: boolean;
 }
 
 export interface EngineCommandOptions {
@@ -98,6 +100,22 @@ export interface ModelInfo {
   isAlias: boolean;
 }
 
+/**
+ * Options for building an evaluator command.
+ *
+ * Evaluator commands are agent-based: they have Read, Bash, and Write tools
+ * so they can investigate mismatches (grep for renamed files, re-run commands,
+ * etc.), but no Edit tool (evaluators must not modify the codebase).
+ */
+export interface EvaluatorCommandOptions {
+  /** The evaluator prompt */
+  prompt: string;
+  /** System prompt (separate from user prompt for caching) */
+  systemPrompt: string;
+  /** Model override — defaults to a Sonnet-class model per engine */
+  model?: string;
+}
+
 export interface Engine {
   metadata: EngineMetadata;
   /** Build the CLI command + args for worker execution */
@@ -109,6 +127,14 @@ export interface Engine {
    * system prompt for caching, and disable session persistence.
    */
   buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand;
+  /**
+   * Build a CLI command for agent-based evaluation.
+   *
+   * Evaluator commands have Read, Bash, and Write tools (for investigation
+   * and handoff writing) but no Edit tool (evaluators must not modify code).
+   * Uses a fast model, no session persistence.
+   */
+  buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineCommand;
   /**
    * List available models.
    * @param provider - Optional provider filter (e.g., "anthropic"). If omitted, returns all.

@@ -27,6 +27,8 @@ export interface UnifiedPromptProps {
   approvalPending: boolean
   /** Whether the sidebar currently has keyboard focus (blurs prompt input). */
   sidebarFocused?: boolean
+  /** Whether the worker is in an interrupted state (first Esc pressed, awaiting resume). */
+  isInterrupted?: boolean
   onCommand: (workflow: string, args: Record<string, string>) => void
   onPromptSubmit: (text: string) => void
   onEscape: () => void
@@ -79,6 +81,10 @@ export function useUnifiedPrompt(props: UnifiedPromptProps): UnifiedPromptResult
     get disabled() { return isDisabled() },
     get focused() { return !isDisabled() && !props.sidebarFocused },
     get placeholder() {
+      // Interrupted state: override placeholder to prompt for resume text
+      if (props.isInterrupted && mode() === "active") {
+        return "Type to resume worker..."
+      }
       const base = PLACEHOLDERS[mode()]
       if (mode() === "command" && (props.runningCount ?? 0) > 0) {
         return `${base} (${props.runningCount} running)`

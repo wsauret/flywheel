@@ -46,6 +46,10 @@ export interface AutoDetectOptions {
   onStderr?: (chunk: string) => void;
   /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
   logBaseDir?: string;
+  /** Flywheel session ID for session-scoped handoff paths. */
+  sessionId?: string;
+  /** Project base directory for path resolution. */
+  baseDir?: string;
 }
 
 // SdkSpawner singleton — shared across all sessions in the same process.
@@ -113,6 +117,8 @@ export async function autoDetectTransport(
       onStdout: options.onStdout,
       onStderr: options.onStderr,
       logBaseDir: options.logBaseDir,
+      sessionId: options.sessionId,
+      baseDir: options.baseDir,
     });
     return { transport, label: "cli", dispose: () => {} };
   }
@@ -129,6 +135,8 @@ export async function autoDetectTransport(
         onStdout: options.onStdout,
         onStderr: options.onStderr,
         logBaseDir: options.logBaseDir,
+        sessionId: options.sessionId,
+        baseDir: options.baseDir,
       });
       return {
         transport,
@@ -149,6 +157,8 @@ export async function autoDetectTransport(
     onStdout: options.onStdout,
     onStderr: options.onStderr,
     logBaseDir: options.logBaseDir,
+    sessionId: options.sessionId,
+    baseDir: options.baseDir,
   });
   return { transport, label: "cli", dispose: () => {} };
 }

@@ -90,7 +90,7 @@ describe("createOutputPersistence — save + load", () => {
     expect(loaded[2].kind).toBe("system");
   });
 
-  it("writes to .flywheel/sessions/<id>.output.json", () => {
+  it("writes to .flywheel/sessions/<id>/output.json", () => {
     const baseDir = makeTmpDir();
     const sessionId = crypto.randomUUID();
     const persistence = createOutputPersistence({ sessionId, baseDir });
@@ -101,7 +101,8 @@ describe("createOutputPersistence — save + load", () => {
       baseDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.output.json`,
+      sessionId,
+      "output.json",
     );
     expect(fs.existsSync(filePath)).toBe(true);
   });
@@ -151,15 +152,15 @@ describe("createOutputPersistence — load error handling", () => {
     const sessionId = crypto.randomUUID();
     const persistence = createOutputPersistence({ sessionId, baseDir });
 
-    // Write corrupt file manually
-    const filePath = path.join(
+    // Write corrupt file manually (directory-per-session layout)
+    const sessionDir = path.join(
       baseDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.output.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, "NOT VALID JSON {{{");
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionDir, "output.json"), "NOT VALID JSON {{{");
 
     const loaded = await persistence.load();
     expect(loaded).toEqual([]);
@@ -170,14 +171,14 @@ describe("createOutputPersistence — load error handling", () => {
     const sessionId = crypto.randomUUID();
     const persistence = createOutputPersistence({ sessionId, baseDir });
 
-    const filePath = path.join(
+    const sessionDir = path.join(
       baseDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.output.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify({ not: "an array" }));
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionDir, "output.json"), JSON.stringify({ not: "an array" }));
 
     const loaded = await persistence.load();
     expect(loaded).toEqual([]);
@@ -188,15 +189,15 @@ describe("createOutputPersistence — load error handling", () => {
     const sessionId = crypto.randomUUID();
     const persistence = createOutputPersistence({ sessionId, baseDir });
 
-    const filePath = path.join(
+    const sessionDir = path.join(
       baseDir,
       ".flywheel",
       "sessions",
-      `${sessionId}.output.json`,
+      sessionId,
     );
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.mkdirSync(sessionDir, { recursive: true });
     fs.writeFileSync(
-      filePath,
+      path.join(sessionDir, "output.json"),
       JSON.stringify([
         { kind: "text", content: "valid", timestamp: 100 },
         { kind: "bogus" },

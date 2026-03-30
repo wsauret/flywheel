@@ -65,7 +65,7 @@ export interface Step {
   /** Guidance for the dispatcher's prompt strategy. */
   dispatcherHint?: string;
   /** Tool permission scoping for the worker. */
-  toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean };
+  toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task?: boolean };
   /**
    * Evaluator rubric — how to assess this step's output.
    * Set by templates for non-work steps; for work steps the dispatcher

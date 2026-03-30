@@ -81,20 +81,22 @@ function buildGranularPlanSteps(): Step[] {
     makeStep("plan", "Research codebase", {
       dispatcherHint: "research",
       evaluationCriteria: "Produces a .context.md with file references and architectural summary",
-      toolScoping: { read: true, bash: true, write: true, edit: false },
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
     makeStep("plan", "Draft implementation plan", {
       dispatcherHint: "draft",
       evaluationCriteria: "Produces a structured JSON plan with steps, behavioralContract, decisions, and risks",
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
     makeStep("plan", "Review plan", {
       dispatcherHint: "review",
       evaluationCriteria: "Produces annotated JSON with review findings and open questions without modifying draft fields",
-      toolScoping: { read: true, bash: true, write: true, edit: false },
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
     makeStep("plan", "Consolidate findings", {
       dispatcherHint: "consolidate",
       evaluationCriteria: "Produces clean JSON plan with findings incorporated and review annotations stripped",
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
       hitl: { prompt: "Review open questions from plan review before consolidation", enabled: false },
     }),
   ];
@@ -104,22 +106,22 @@ function buildGranularPlanSteps(): Step[] {
  * Review sub-steps per ADR-004 Decision 3:
  *   1. multi-agent code review
  *   2. consolidate findings
- *   3. implement fixes
+ *
+ * A work/fix step is NOT statically included here. Instead, the
+ * review-fix-injection hook dynamically inserts one after consolidation
+ * completes — but only when findings warrant it (P1 + P2 > 0).
  */
-function buildGranularReviewSteps(): Step[] {
+export function buildGranularReviewSteps(): Step[] {
   return [
     makeStep("review", "Multi-agent code review", {
       dispatcherHint: "dispatch-reviewers",
       evaluationCriteria: "Dispatches multiple review agents and produces a consolidated review document",
-      toolScoping: { read: true, bash: true, write: true, edit: false },
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
     makeStep("review", "Consolidate review findings", {
       dispatcherHint: "consolidate-review",
       evaluationCriteria: "Produces a prioritized list of findings with severity levels",
-    }),
-    makeStep("review", "Implement review fixes", {
-      dispatcherHint: "implement-fixes",
-      evaluationCriteria: "All P1 findings addressed, P2 findings addressed or justified as deferred",
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
   ];
 }
@@ -131,23 +133,43 @@ function buildGranularReviewSteps(): Step[] {
  *   3. open pull request
  *   4. extract learnings
  */
-function buildGranularShipSteps(): Step[] {
+export function buildGranularShipSteps(): Step[] {
   return [
-    makeStep("ship", "Stage changes", {
-      dispatcherHint: "stage",
-      evaluationCriteria: "All relevant changes staged for commit",
-    }),
-    makeStep("ship", "Create commit", {
-      dispatcherHint: "commit",
-      evaluationCriteria: "Commit created with descriptive message",
-    }),
-    makeStep("ship", "Open pull request", {
-      dispatcherHint: "pr",
-      evaluationCriteria: "Pull request opened with description and linked issues",
+    makeStep("ship", "Stage, commit, and open PR", {
+      dispatcherHint: "ship",
+      evaluationCriteria: "Changes staged, committed, and PR opened",
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
     makeStep("ship", "Extract learnings", {
       dispatcherHint: "learnings",
       evaluationCriteria: "Learnings extracted and saved to docs/solutions/",
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
+    }),
+  ];
+}
+
+/**
+ * Debug sub-steps:
+ *   1. investigate — read-only analysis to form hypothesis
+ *   2. fix — apply the fix with write access
+ *   3. verify — run verification to confirm fix
+ */
+export function buildGranularDebugSteps(): Step[] {
+  return [
+    makeStep("debug", "Investigate", {
+      dispatcherHint: "investigate",
+      evaluationCriteria: "Hypothesis formed with evidence and likelihood assessment",
+      toolScoping: { read: true, bash: true, write: false, edit: false, task: true },
+    }),
+    makeStep("debug", "Fix", {
+      dispatcherHint: "fix",
+      evaluationCriteria: "Fix applied with references documenting the change",
+      toolScoping: { read: true, bash: true, write: true, edit: true, task: false },
+    }),
+    makeStep("verify", "Verify fix", {
+      dispatcherHint: "debug-verify",
+      evaluationCriteria: "Verification command output shows the issue is resolved",
+      toolScoping: { read: true, bash: true, write: false, edit: false, task: false },
     }),
   ];
 }
@@ -194,8 +216,12 @@ function buildFullSteps(insertGates: boolean): Step[] {
 
 function buildSprintSteps(): Step[] {
   return [
-    makeStep("work", "Sprint work"),
-    makeStep("verify", "Verify changes"),
+    makeStep("work", "Sprint work", {
+      toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
+    }),
+    makeStep("verify", "Verify changes", {
+      toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
+    }),
   ];
 }
 
@@ -227,14 +253,14 @@ const TEMPLATE_BUILDERS: Record<WorkflowName, WorkflowTemplateWithBuilder> = {
     name: "plan-work-review",
     label: "Plan + Work + Review",
     description: "Create, execute, and review (recommended)",
-    initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review", "review"],
+    initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review"],
     buildSteps: (insertGates) => buildPlanWorkReviewSteps(insertGates),
   },
   "full": {
     name: "full",
     label: "Full Queue",
     description: "Create, execute, review, and ship",
-    initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review", "review", "ship", "ship", "ship", "ship"],
+    initialStepTypes: ["plan", "plan", "plan", "plan", "review", "review", "ship", "ship"],
     buildSteps: (insertGates) => buildFullSteps(insertGates),
   },
   "sprint": {

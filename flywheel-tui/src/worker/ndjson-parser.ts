@@ -175,9 +175,15 @@ export class NDJSONParser {
   }
 
   private emitEvent(data: Record<string, unknown>, raw: string): void {
-    // Capture sessionID from first event that has it
-    if (this._sessionId === null && typeof data.sessionID === "string") {
-      this._sessionId = data.sessionID;
+    // Capture session ID from first event that has it.
+    // Claude CLI uses "sessionID" (camelCase) in step_finish events
+    // and "session_id" (snake_case) in system/init and result events.
+    if (this._sessionId === null) {
+      if (typeof data.sessionID === "string") {
+        this._sessionId = data.sessionID;
+      } else if (typeof data.session_id === "string") {
+        this._sessionId = data.session_id;
+      }
     }
 
     const type = classifyEvent(data);

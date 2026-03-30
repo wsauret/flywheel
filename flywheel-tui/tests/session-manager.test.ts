@@ -268,11 +268,12 @@ describe("SessionManager.list()", () => {
   it("passes through errors from persistence layer", () => {
     const baseDir = makeTmpDir();
     const sessionsDir = path.join(baseDir, ".flywheel", "sessions");
-    fs.mkdirSync(sessionsDir, { recursive: true });
 
-    // Write a corrupt file
+    // Write a corrupt session directory (directory-per-session layout)
+    const corruptDir = path.join(sessionsDir, "corrupt");
+    fs.mkdirSync(corruptDir, { recursive: true });
     fs.writeFileSync(
-      path.join(sessionsDir, "corrupt.json"),
+      path.join(corruptDir, "session.json"),
       "NOT VALID JSON",
     );
 
