@@ -41,7 +41,9 @@ export function buildLastWorkerResult(
     duration_seconds: durationMs / 1000,
     decisions: handoff.decisions ?? [],
     warnings: handoff.warnings ?? [],
-    commands_run: handoff.artifacts?.commands_run ?? [],
+    commands_run: (handoff.artifacts?.commands_run ?? []).map((c) =>
+      typeof c === "string" ? c : c.command,
+    ),
     files_to_review: handoff.files_to_review ?? [],
   };
 }

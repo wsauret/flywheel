@@ -20,6 +20,7 @@ export const ToolScopingSchema = z.object({
   bash: z.boolean(),
   write: z.boolean(),
   edit: z.boolean(),
+  task: z.boolean().optional(),
 }).strip();
 
 export type ToolScoping = z.infer<typeof ToolScopingSchema>;

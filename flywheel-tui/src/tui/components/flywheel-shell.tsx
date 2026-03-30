@@ -425,8 +425,10 @@ export function FlywheelShell() {
         }
       : null
 
-    // Sprint queue handler: wire when queue contains verify steps
-    const isSprintQueue = queue.steps.some(s => s.type === "verify")
+    // Sprint queue handler: wire when queue contains verify steps but NOT debug steps
+    // (debug queues also have verify steps but use the debug-loop handler instead)
+    const isDebugQueue = queue.steps.some(s => s.type === "debug")
+    const isSprintQueue = !isDebugQueue && queue.steps.some(s => s.type === "verify")
     let sprintHandler: SprintQueueHandler | null = null
     if (isSprintQueue) {
       sprintHandler = createSprintQueueHandler({
@@ -451,8 +453,7 @@ export function FlywheelShell() {
       })
     }
 
-    // Debug queue handler: wire when queue contains debug steps
-    const isDebugQueue = queue.steps.some(s => s.type === "debug")
+    // Debug queue handler (isDebugQueue already computed above for sprint exclusion)
     const debugHandler = isDebugQueue ? createDebugQueueHandler() : null
 
     // Plan integration hook + review fix injection + P3 triage + debug hook + sprint hook + TUI step insertion composite hook
