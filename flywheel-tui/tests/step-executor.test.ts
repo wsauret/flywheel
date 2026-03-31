@@ -2483,7 +2483,7 @@ describe("VAL-EXEC-005: Budget enforcement stops execution with budget_exhausted
 // ===========================================================================
 
 describe("VAL-EXEC-006: Graceful shutdown on abort signal", () => {
-  test("abort during execution terminates worker and marks step failed", async () => {
+  test("abort during execution terminates worker and reverts step to pending", async () => {
     let executorRef: StepExecutor | null = null;
 
     const worker: WorkerFn = async (step) => {
@@ -2510,8 +2510,9 @@ describe("VAL-EXEC-006: Graceful shutdown on abort signal", () => {
     const result = await executor.run();
 
     expect(result.completed).toBe(false);
-    expect(queue.steps[0].status).toBe("failed");
+    expect(queue.steps[0].status).toBe("pending"); // reverted to pending for retry on resume
     expect(queue.steps[1].status).toBe("pending");
+    expect(queue.status).toBe("paused"); // abort sets queue to paused, not failed
   });
 
   test("abort returns cleanly without throwing", async () => {

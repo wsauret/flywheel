@@ -389,11 +389,11 @@ describe("VAL-QUEUE-022: debounced flusher coalesces rapid writes", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-QUEUE-023: Running step marked failed on crash recovery
+// VAL-QUEUE-023: Running step reverted to pending on crash recovery
 // ---------------------------------------------------------------------------
 
-describe("VAL-QUEUE-023: crash recovery marks running steps as failed", () => {
-  it("running step marked failed with crash-recovery reason on load", async () => {
+describe("VAL-QUEUE-023: crash recovery reverts running steps to pending", () => {
+  it("running step reverted to pending with crash-recovery reason on load", async () => {
     const sessionId = "test-crash-recovery";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
@@ -412,7 +412,7 @@ describe("VAL-QUEUE-023: crash recovery marks running steps as failed", () => {
 
     expect(loaded).not.toBeNull();
     expect(loaded!.steps[0].status).toBe("completed"); // unchanged
-    expect(loaded!.steps[1].status).toBe("failed"); // was running → failed
+    expect(loaded!.steps[1].status).toBe("pending"); // was running → pending (retry on resume)
     expect(loaded!.steps[2].status).toBe("pending"); // unchanged
 
     // Mutation log should record the crash-recovery action
@@ -423,7 +423,7 @@ describe("VAL-QUEUE-023: crash recovery marks running steps as failed", () => {
     expect(recoveryEntries[0].stepIds).toContain("s2");
   });
 
-  it("multiple running steps all marked failed", async () => {
+  it("multiple running steps all reverted to pending", async () => {
     const sessionId = "test-multi-running";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
@@ -436,8 +436,8 @@ describe("VAL-QUEUE-023: crash recovery marks running steps as failed", () => {
     persistence.save(queue);
     const loaded = await persistence.load();
 
-    expect(loaded!.steps[0].status).toBe("failed");
-    expect(loaded!.steps[1].status).toBe("failed");
+    expect(loaded!.steps[0].status).toBe("pending");
+    expect(loaded!.steps[1].status).toBe("pending");
     expect(loaded!.steps[2].status).toBe("pending");
   });
 
@@ -628,11 +628,11 @@ describe("delete removes queue file", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-EXEC-014: Crash recovery marks running steps as failed with crash_recovery reason
+// VAL-EXEC-014: Crash recovery reverts running steps to pending with crash_recovery reason
 // ---------------------------------------------------------------------------
 
-describe("VAL-EXEC-014: Crash recovery marks running steps as failed with crash_recovery", () => {
-  it("running step gets status 'failed' after crash recovery load", async () => {
+describe("VAL-EXEC-014: Crash recovery reverts running steps to pending with crash_recovery", () => {
+  it("running step gets status 'pending' after crash recovery load", async () => {
     const sessionId = "test-crash-reason";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
@@ -645,7 +645,7 @@ describe("VAL-EXEC-014: Crash recovery marks running steps as failed with crash_
     const loaded = await persistence.load();
 
     expect(loaded).not.toBeNull();
-    expect(loaded!.steps[1].status).toBe("failed");
+    expect(loaded!.steps[1].status).toBe("pending");
   });
 
   it("crash recovery mutation log contains 'crash_recovery' reason", async () => {
@@ -681,7 +681,7 @@ describe("VAL-EXEC-014: Crash recovery marks running steps as failed with crash_
     const loaded = await persistence.load();
 
     expect(loaded!.steps[0].status).toBe("completed");
-    expect(loaded!.steps[1].status).toBe("failed");
+    expect(loaded!.steps[1].status).toBe("pending"); // was running → pending (retry on resume)
     expect(loaded!.steps[2].status).toBe("pending");
   });
 });
@@ -849,9 +849,9 @@ describe("VAL-CROSS-007: Queue state survives session resume", () => {
     const loadedQueue = await persistence.load();
     const loadedAcc = await persistence.loadAccumulatorState();
 
-    // Crash recovery should have marked s2 as failed
+    // Crash recovery should have reverted s2 to pending for retry
     expect(loadedQueue!.steps[0].status).toBe("completed");
-    expect(loadedQueue!.steps[1].status).toBe("failed"); // crash recovery
+    expect(loadedQueue!.steps[1].status).toBe("pending"); // crash recovery → pending
     expect(loadedQueue!.steps[2].status).toBe("pending");
 
     // Accumulated context from before the crash should be available

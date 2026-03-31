@@ -52,9 +52,9 @@ export interface QueueOptions {
 
 const VALID_TRANSITIONS: Record<StepStatus, StepStatus[]> = {
   pending: ["running", "skipped"],
-  running: ["completed", "failed"],
+  running: ["completed", "failed", "pending"],
   completed: [],
-  failed: [],
+  failed: ["pending"],
   skipped: [],
 };
 
@@ -121,8 +121,9 @@ function findStepIndex(queue: Queue, stepId: string): number {
 /**
  * Transition a step to a new status. Enforces valid transitions:
  *   pending → running | skipped
- *   running → completed | failed
- *   completed, failed, skipped → (none — terminal)
+ *   running → completed | failed | pending (abort/interrupt recovery)
+ *   failed  → pending (resume retry)
+ *   completed, skipped → (none — terminal)
  */
 export function transitionStep(
   queue: Queue,

@@ -362,7 +362,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
    */
   async function safeTransition(
     stepId: string,
-    newStatus: "running" | "completed" | "failed" | "skipped",
+    newStatus: "running" | "completed" | "failed" | "skipped" | "pending",
     reason: string,
   ): Promise<boolean> {
     const result = transitionStep(queue, stepId, newStatus, makeProvenance(reason));
@@ -634,6 +634,13 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       return "completed";
     } catch (error) {
+      // Abort/interrupt: revert the step to pending so it can be retried on resume
+      if (error instanceof DOMException && error.name === "AbortError") {
+        log.info("step interrupted by abort, reverting to pending", { stepId: step.id });
+        await safeTransition(step.id, "pending", "interrupted by abort — will retry on resume");
+        return "failed";
+      }
+
       // Worker crash or other error: mark step failed, don't throw
       const reason = error instanceof Error ? error.message : String(error);
       log.warn("step execution failed", { stepId: step.id, reason });
@@ -765,10 +772,13 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         // (e.g., sprint retry insertion). Advance cursor to next pending step.
         advanceCursor(queue);
       } else {
-        // Step failed — stop execution
-        queue.status = "failed";
+        // Abort/interrupt: set queue to paused (step already reverted to pending)
+        const wasAborted = abortController.signal.aborted;
+        queue.status = wasAborted ? "paused" : "failed";
         await persistQueue();
-        const failedReason = `Step "${step.title}" failed`;
+        const failedReason = wasAborted
+          ? "Interrupted — will resume from this step"
+          : `Step "${step.title}" failed`;
         emitter.queueFailed(workflowId, failedReason, stepsCompleted);
         return {
           completed: false,

@@ -90,7 +90,7 @@ function applyCrashRecovery(queue: Queue): void {
 
   for (const step of queue.steps) {
     if (step.status === "running") {
-      step.status = "failed";
+      step.status = "pending";
       runningStepIds.push(step.id);
     }
   }
@@ -100,7 +100,7 @@ function applyCrashRecovery(queue: Queue): void {
       timestamp: new Date().toISOString(),
       action: "crash-recovery",
       actor: "persistence",
-      reason: "crash recovery: step was running when process exited",
+      reason: "crash recovery: step was running when process exited — reverted to pending for retry",
       stepIds: runningStepIds,
     });
   }
