@@ -1,3 +1,5 @@
+import { LOCATOR_DISPATCH_INSTRUCTIONS, ANALYZER_DISPATCH_INSTRUCTIONS } from "../../shared/prompts";
+
 // ---------------------------------------------------------------------------
 // Research persist — reusable constants for prompt scaffolding
 // ---------------------------------------------------------------------------
@@ -9,6 +11,20 @@ export const researchPersistEvaluationCriteria =
 // ---------------------------------------------------------------------------
 // Reusable prompt constants
 // ---------------------------------------------------------------------------
+
+export const RESEARCH_PREAMBLE = `## YOUR PRIMARY TASK: Research via Locator-Analyzer Pattern
+
+You will execute a three-phase research process within a single worker context:
+
+**Phase 1 — Locate:** Dispatch 4 locator agents in parallel to find relevant files, patterns, docs, and web resources.
+**Phase 2 — Analyze:** Rank and deduplicate locator results, then dispatch analyzer agents on top findings.
+**Phase 3 — Persist:** Compile findings into a comprehensive research document.
+
+${LOCATOR_DISPATCH_INSTRUCTIONS}
+
+After ranking locator results:
+
+${ANALYZER_DISPATCH_INSTRUCTIONS}`;
 
 /** Research document template with YAML frontmatter. */
 export const RESEARCH_DOC_TEMPLATE = `## Document Template

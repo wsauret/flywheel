@@ -1,6 +1,6 @@
 import { renderHandoffInstruction } from "../../shared/handoff-render";
 import { registerScaffolding, type ScaffoldingResult, type ScaffoldingPaths } from "../../shared/scaffolding";
-import { AGENT_DISCOVERY_PHASE } from "../../shared/conventions";
+import { AGENT_DISCOVERY_PHASE } from "../../shared/prompts";
 import {
   REVIEWER_DISPATCH_INSTRUCTIONS,
   FINDING_SYNTHESIS_INSTRUCTIONS,

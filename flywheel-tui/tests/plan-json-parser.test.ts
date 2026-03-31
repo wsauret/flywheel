@@ -20,7 +20,7 @@ import {
   PlanReviewOutputSchema,
   parseJsonPlan,
   type PlanJson,
-} from "../src/plan/parser";
+} from "../src/queue/shared/plan-parser";
 
 // ---------------------------------------------------------------------------
 // Fixtures

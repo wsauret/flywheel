@@ -1,4 +1,36 @@
-import { DRAFT_JSON_EXAMPLE } from "../../shared/plan-schemas";
+export const DRAFT_JSON_EXAMPLE = `{
+  "steps": [
+    {
+      "title": "Create server module with Bun.serve()",
+      "description": "Implement GET /hello endpoint returning JSON {greeting, timestamp}. Bind to 127.0.0.1:3000. Use Bun.serve() API with fetch handler.",
+      "acceptanceCriteria": [
+        "GET /hello returns 200 with JSON body containing greeting and timestamp",
+        "Server binds to 127.0.0.1:3000",
+        "Response Content-Type is application/json"
+      ],
+      "fileReferences": ["src/server/index.ts", "tests/server.test.ts"],
+      "feature": "server",
+      "fulfills": ["BC-SERVER-001", "BC-SERVER-002"],
+      "milestone": "Foundation",
+      "estimatedComplexity": "low"
+    }
+  ],
+  "behavioralContract": [
+    {
+      "id": "BC-SERVER-001",
+      "title": "Hello endpoint returns greeting",
+      "description": "GET /hello returns 200 with JSON body containing a greeting string and ISO timestamp",
+      "evidence": "curl http://localhost:3000/hello returns 200, body has greeting and timestamp fields",
+      "area": "Server"
+    }
+  ],
+  "decisions": [
+    "Using Bun.serve() native API instead of Express for zero-dependency server"
+  ],
+  "risks": [
+    "Port 3000 may conflict with other services"
+  ]
+}`;
 
 export const PLAN_DRAFT_SCHEMA_RULES = `### Schema Rules
 
@@ -28,4 +60,3 @@ export const PLAN_DRAFT_EXCLUSIONS = `### What NOT to produce
 - Do NOT produce a separate validation-contract.md file
 - Do NOT use step headings, checklist syntax, or milestone markers`;
 
-export { DRAFT_JSON_EXAMPLE };

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SessionLifecycleStateSchema } from "./state-machine";
-import { BudgetLimitsSchema, BudgetUsageSchema } from "../schemas/shared";
+import { BudgetLimitsSchema, BudgetUsageSchema } from "../schemas";
 
 export const SessionSchema = z.object({
   // --- Required fields ---

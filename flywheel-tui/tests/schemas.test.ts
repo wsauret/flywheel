@@ -14,7 +14,6 @@ import {
   WorkerFailureReasonSchema,
 } from "../src/worker/schemas";
 import { SessionSchema, migrateSession } from "../src/session/schemas";
-import { ExecutionStatusSchema, SessionStatusSchema } from "../src/schemas/execution";
 import {
   EvaluationCriteriaSchema,
   ToolScopingSchema,
@@ -23,7 +22,7 @@ import {
   AvailableContextSchema,
   LastWorkerResultSchema,
   WorkflowStepBaseSchema,
-} from "../src/schemas/shared";
+} from "../src/schemas";
 import { assembleDispatcherInput } from "../src/dispatcher/assemble";
 
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
@@ -855,31 +854,6 @@ describe("SessionSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ExecutionStatusSchema
-// ---------------------------------------------------------------------------
-describe("ExecutionStatusSchema", () => {
-  const validStatuses = [
-    "running",
-    "completed",
-    "failed",
-    "interrupted",
-    "timeout",
-  ];
-
-  for (const status of validStatuses) {
-    it(`accepts '${status}'`, () => {
-      const result = ExecutionStatusSchema.safeParse(status);
-      expect(result.success).toBe(true);
-    });
-  }
-
-  it("rejects invalid status", () => {
-    const result = ExecutionStatusSchema.safeParse("paused");
-    expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Shared Sub-Schemas (src/schemas/shared.ts)
 // ---------------------------------------------------------------------------
 
@@ -1142,72 +1116,7 @@ describe("WorkflowStepBaseSchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// SessionStatusSchema (Step 5 — superset of ExecutionStatus)
-// ---------------------------------------------------------------------------
-describe("SessionStatusSchema", () => {
-  const executionStatuses = [
-    "running",
-    "completed",
-    "failed",
-    "interrupted",
-    "timeout",
-  ];
 
-  const additionalStatuses = [
-    "budget_exhausted",
-    "awaiting_user",
-  ];
-
-  const allStatuses = [...executionStatuses, ...additionalStatuses];
-
-  it("has exactly 7 values", () => {
-    expect(SessionStatusSchema.options).toHaveLength(7);
-  });
-
-  for (const status of allStatuses) {
-    it(`accepts '${status}'`, () => {
-      const result = SessionStatusSchema.safeParse(status);
-      expect(result.success).toBe(true);
-    });
-  }
-
-  it("is a superset of ExecutionStatus (all 5 execution statuses accepted)", () => {
-    for (const status of ExecutionStatusSchema.options) {
-      const result = SessionStatusSchema.safeParse(status);
-      expect(result.success).toBe(true);
-    }
-  });
-
-  it("rejects invalid status", () => {
-    const result = SessionStatusSchema.safeParse("paused");
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects non-string input", () => {
-    const result = SessionStatusSchema.safeParse(42);
-    expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// ExecutionStatusSchema — verify unchanged (Step 5)
-// ---------------------------------------------------------------------------
-describe("ExecutionStatusSchema — unchanged", () => {
-  it("still has exactly 5 values", () => {
-    expect(ExecutionStatusSchema.options).toHaveLength(5);
-  });
-
-  it("does NOT accept budget_exhausted", () => {
-    const result = ExecutionStatusSchema.safeParse("budget_exhausted");
-    expect(result.success).toBe(false);
-  });
-
-  it("does NOT accept awaiting_user", () => {
-    const result = ExecutionStatusSchema.safeParse("awaiting_user");
-    expect(result.success).toBe(false);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // SessionSchema — WP2 budget fields (budgetLimits + budgetUsage)

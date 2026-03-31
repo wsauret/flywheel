@@ -73,7 +73,7 @@ import { createOutputPersistence, type OutputFlusher } from "../../session/outpu
 import { createTranscriptLogger, type TranscriptLogger } from "../../session/transcript"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
 import { createBudgetTracker, type BudgetTracker } from "../../session/budget-tracker"
-import type { BudgetLimits } from "../../schemas/shared"
+import type { BudgetLimits } from "../../schemas"
 import { fromSnapshot, snapshotToBlocks } from "../../session/output-schemas"
 import { createSessionOrchestrator, type SessionOrchestrator } from "../session/session-orchestrator"
 import { handleQueueCompletion } from "../session/queue-completion"
@@ -96,7 +96,7 @@ import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { killAllActiveProcesses, interruptAllActiveProcesses } from "../../worker/process-lifecycle"
 import { Log } from "../../utils/log"
 import { SubprocessLogger } from "../../utils/subprocess-logger.js"
-import { TelemetryLogger, type TelemetryRecord } from "../../telemetry/logger"
+import { TelemetryLogger, type TelemetryRecord } from "../../telemetry"
 
 import type { StdinHandle } from "../../worker/spawner"
 import { resolveTransports, buildExecutorDeps } from "../shell/queue-orchestrator"
@@ -627,7 +627,7 @@ export function FlywheelShell() {
 
     // Create BudgetTracker
     let queueBudgetTracker: BudgetTracker | null = null
-    let queueBudgetLimits: import("../../schemas/shared").BudgetLimits | null = null
+    let queueBudgetLimits: import("../../schemas").BudgetLimits | null = null
     if (persistedSessionId) {
       const projectCwd = deps.config.project_cwd ?? "."
       const persistedSession = readSession(persistedSessionId, projectCwd)
@@ -1385,7 +1385,7 @@ export function FlywheelShell() {
 
       // Create BudgetTracker
       let resumeBudgetTracker: BudgetTracker | null = null
-      let resumeBudgetLimits: import("../../schemas/shared").BudgetLimits | null = null
+      let resumeBudgetLimits: import("../../schemas").BudgetLimits | null = null
       const persistedSession = readSession(sessionId, projectCwd)
       if (persistedSession) {
         resumeBudgetLimits = persistedSession.budgetLimits

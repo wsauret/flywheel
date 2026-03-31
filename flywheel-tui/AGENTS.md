@@ -9,6 +9,24 @@ Flywheel CLI is a terminal UI application that executes workflow plans. It spawn
 **Config format:** TOML (`flywheel.toml`), not YAML
 **Important:** SolidJS must resolve with the `"browser"` export condition. The `bin/flywheel` wrapper handles this with `bun --conditions=browser`.
 
+## Queue Architecture
+
+The queue engine executes a sequence of typed steps. Each step type + variant is a self-contained module under `src/queue/steps/`. Shared infrastructure lives in `src/queue/shared/`.
+
+**Steps are modular and self-contained.** Every step variant is a folder with three files: `fields.ts` (handoff field specs), `scaffolding.ts` (prompt assembly), and `prompts.ts` (prompt text constants). Some variants also have `hooks.ts` for post-completion behavior. A step folder contains everything needed to understand that step's behavior.
+
+**Scaffolding is thin assembly, prompts hold the text.** `scaffolding.ts` registers a strategy and composes the preamble/postamble from constants defined in `prompts.ts`. Prompt text, examples, and instructions live in `prompts.ts` -- scaffolding never contains long string literals.
+
+**Schemas live with their owners.** Worker handoff schemas (used by all steps) live in `queue/shared/handoff-schemas.ts`. Evaluator-specific schemas live in `evaluator/schemas.ts`. Dispatcher-specific schemas live in `dispatcher/schemas.ts`. If a schema is consumed by exactly one module, it belongs in that module.
+
+**Registration over wiring.** Step variants register their scaffolding strategy via side-effect imports (`registerScaffolding`). A single `register-all.ts` populates the registry. The orchestrator dispatches by variant key without knowing individual step implementations.
+
+**Hooks are step-scoped.** Post-completion hooks (plan integration, sprint loops, review triage, debug loops) live in the step variant folder that owns the behavior, not in a central hooks file. The shared `createCompositeHook` composes them at the orchestrator level.
+
+**Colocate what's used once, share what's used across steps.** If a constant, schema, or helper is consumed by a single step variant, it belongs in that variant's folder. It moves to `queue/shared/` only when two or more variants depend on it. Conventions, handoff rendering, and the scaffolding registry are genuinely shared.
+
+**No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Tests exist to verify production behavior, not to keep unused code alive. Git history is the recovery mechanism.
+
 ## Agent Behavior
 
 Always test your changes by running the code. Then fix any errors that arise.

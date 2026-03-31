@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "bun:test"
-import { createServer } from "../src/server/index"
+import { createServer } from "../src/server"
 
 describe("GET /hello", () => {
   let server: ReturnType<typeof createServer>

@@ -6,7 +6,7 @@ import {
   AvailableContextSchema,
   EvaluationCriteriaSchema,
   WorkerConfigSchema,
-} from "../schemas/shared";
+} from "../schemas";
 import { StepContextSchema } from "../queue/step-context";
 
 // ---------------------------------------------------------------------------

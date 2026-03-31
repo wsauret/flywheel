@@ -9,9 +9,9 @@
  */
 
 import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "./schemas";
-import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
+import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas";
 import type { StepContext } from "../queue/step-context";
-import { parseJsonPlan } from "../plan/parser";
+import { parseJsonPlan } from "../queue/shared/plan-parser";
 import { parseContextFile } from "../utils/file-cache";
 
 // ---------------------------------------------------------------------------

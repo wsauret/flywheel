@@ -6,7 +6,7 @@ import * as os from "node:os";
 import { createBudgetTracker } from "../src/session/budget-tracker";
 import { createSession, readSession } from "../src/session/persistence";
 import type { Session } from "../src/session/schemas";
-import type { BudgetLimits } from "../src/schemas/shared";
+import type { BudgetLimits } from "../src/schemas";
 import type { NDJSONEvent } from "../src/worker/ndjson-parser";
 
 // ---------------------------------------------------------------------------

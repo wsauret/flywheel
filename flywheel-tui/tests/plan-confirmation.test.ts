@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import type { PlanImportResult } from "../src/plan/import";
+import type { PlanImportResult } from "../src/queue/shared/plan-import";
 import {
   preparePlanSummary,
   type PlanSummaryDisplay,

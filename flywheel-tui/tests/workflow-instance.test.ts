@@ -1,9 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import {
   mapLifecycleToStatus,
+  buildWorkflowInstance,
   type WorkflowInstanceStatus,
-} from "../src/types/workflow-instance";
-import { buildWorkflowInstance } from "../src/tui/session/workflow-instance";
+} from "../src/tui/session/workflow-instance";
 import type { SessionRuntime, RunningRuntime } from "../src/tui/session/session-runtime";
 import type { SessionSummary } from "../src/session/manager";
 import type { SessionLifecycleState } from "../src/session/state-machine";

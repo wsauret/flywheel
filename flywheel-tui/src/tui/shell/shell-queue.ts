@@ -31,7 +31,7 @@ import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
 import { checkEndOfSessionGate } from "../../session/validation-state";
 import type { EndOfSessionGateCheck } from "../../queue/queue-types";
-import { parseJsonPlan } from "../../plan/parser";
+import { parseJsonPlan } from "../../queue/shared/plan-parser";
 import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,45 @@
-import { AGENT_DISCOVERY_PHASE } from "../../shared/conventions";
-import { ANNOTATED_JSON_EXAMPLE } from "../../shared/plan-schemas";
+import { AGENT_DISCOVERY_PHASE } from "../../shared/prompts";
+
+const ANNOTATED_JSON_EXAMPLE = `{
+  "steps": [
+    {
+      "title": "Original title (DO NOT MODIFY)",
+      "description": "Original description (DO NOT MODIFY)",
+      "acceptanceCriteria": ["Original (DO NOT MODIFY)"],
+      "fileReferences": ["Original (DO NOT MODIFY)"],
+      "feature": "original",
+      "fulfills": ["BC-AREA-001"],
+      "review": {
+        "findings": [
+          {
+            "severity": "P1",
+            "description": "Must bind to 127.0.0.1, not 0.0.0.0",
+            "reviewer": "security",
+            "actionRequired": "Add explicit host binding"
+          }
+        ]
+      }
+    }
+  ],
+  "behavioralContract": [
+    {
+      "id": "BC-AREA-001",
+      "title": "DO NOT MODIFY",
+      "description": "DO NOT MODIFY",
+      "evidence": "DO NOT MODIFY",
+      "area": "DO NOT MODIFY"
+    }
+  ],
+  "decisions": ["DO NOT MODIFY"],
+  "risks": ["DO NOT MODIFY"],
+  "openQuestions": [
+    {
+      "question": "Should server.enabled default to true or false?",
+      "raisedBy": "scope",
+      "options": ["true (simpler)", "false (safer)"]
+    }
+  ]
+}`;
 
 export const PLAN_REVIEW_DISPATCH_PREAMBLE = `## YOUR PRIMARY TASK: Dispatch Reviewer Agents
 

@@ -21,7 +21,7 @@
 
 import { z } from "zod";
 import type { NDJSONEvent } from "../worker/ndjson-parser";
-import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../schemas/shared";
+import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../schemas";
 import { updateSession } from "./persistence";
 
 // ---------------------------------------------------------------------------

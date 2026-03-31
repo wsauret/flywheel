@@ -22,7 +22,7 @@ import type { ProtoStep } from "./proto-step";
 import { ProtoStepArraySchema, formalizeProtoSteps } from "./proto-step";
 import { insertAfter, type MutationResult, type Provenance } from "../../queue";
 import type { OnStepCompletedHook, OnStepCompletedResult } from "../../shared/hooks";
-import { parseJsonPlan } from "../../../plan/parser";
+import { parseJsonPlan } from "../../shared/plan-parser";
 import { resolveSessionFile } from "../../../config/paths";
 import { randomUUID } from "crypto";
 import { Log } from "../../../utils/log";

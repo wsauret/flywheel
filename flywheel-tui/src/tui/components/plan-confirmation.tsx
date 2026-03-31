@@ -14,7 +14,7 @@ import { For, Show, createSignal } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { useKeyboard } from "@opentui/solid"
 import { ModalBase } from "@tui/shared/components/modal/modal-base"
-import type { PlanImportResult } from "../../plan/import"
+import type { PlanImportResult } from "../../queue/shared/plan-import"
 import {
   preparePlanSummary,
   PLAN_ACTIONS,

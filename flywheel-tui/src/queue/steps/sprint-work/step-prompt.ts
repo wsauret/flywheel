@@ -11,7 +11,7 @@ import {
   SCOPE_DISCIPLINE,
   THREE_STRIKE_PROTOCOL,
   buildProjectContextSection,
-} from "../../shared/conventions.js";
+} from "./prompts.js";
 import { renderHandoffInstruction } from "../../shared/handoff-render.js";
 import { SPRINT_FIELDS } from "./fields.js";
 import type { BoundariesConfig } from "../../../config/loader.js";

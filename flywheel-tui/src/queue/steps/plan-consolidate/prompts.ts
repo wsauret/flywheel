@@ -1,4 +1,36 @@
-import { CLEAN_JSON_EXAMPLE } from "../../shared/plan-schemas";
+const CLEAN_JSON_EXAMPLE = `{
+  "steps": [
+    {
+      "title": "Create server module with Bun.serve()",
+      "description": "Implement GET /hello endpoint. Bind to 127.0.0.1:3000 (per security review).",
+      "acceptanceCriteria": [
+        "GET /hello returns 200 with JSON body",
+        "Server binds to 127.0.0.1:3000 (not 0.0.0.0)"
+      ],
+      "fileReferences": ["src/server/index.ts", "tests/server.test.ts"],
+      "feature": "server",
+      "fulfills": ["BC-SERVER-001"],
+      "milestone": "Foundation",
+      "estimatedComplexity": "low"
+    }
+  ],
+  "behavioralContract": [
+    {
+      "id": "BC-SERVER-001",
+      "title": "Hello endpoint returns greeting",
+      "description": "GET /hello returns 200 with greeting and timestamp",
+      "evidence": "curl http://localhost:3000/hello returns 200",
+      "area": "Server"
+    }
+  ],
+  "decisions": [
+    "Using Bun.serve() native API",
+    "Bind to 127.0.0.1 per security review"
+  ],
+  "risks": [
+    "Port 3000 may conflict with other services"
+  ]
+}`;
 
 export const PLAN_CONSOLIDATE_SYNTHESIS = `### Synthesis Principles
 

@@ -15,7 +15,7 @@ import { join, relative, basename } from "node:path";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { SESMemoryRetriever } from "./retrieve";
 import type { LearningEntry } from "./retrieve";
-import type { AvailableContext, ContextEntry } from "../schemas/shared";
+import type { AvailableContext, ContextEntry } from "../schemas";
 import type { StepType } from "../queue/types";
 import {
   DEFAULT_SOLUTIONS_DIR,

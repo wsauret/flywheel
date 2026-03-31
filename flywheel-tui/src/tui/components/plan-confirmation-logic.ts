@@ -8,8 +8,8 @@
  * contract).
  */
 
-import type { PlanImportResult, PlanImportStep } from "../../plan/import"
-import type { BehavioralAssertion } from "../../plan/parser"
+import type { PlanImportResult, PlanImportStep } from "../../queue/shared/plan-import"
+import type { BehavioralAssertion } from "../../queue/shared/plan-parser"
 
 // ---------------------------------------------------------------------------
 // Types

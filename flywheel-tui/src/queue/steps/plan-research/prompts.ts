@@ -1,6 +1,4 @@
-import { AGENT_DISCOVERY_PHASE } from "../../shared/conventions";
-import { LOCATOR_DISPATCH_INSTRUCTIONS } from "../../shared/research-locate";
-import { ANALYZER_DISPATCH_INSTRUCTIONS } from "../../shared/research-analyze";
+import { AGENT_DISCOVERY_PHASE, LOCATOR_DISPATCH_INSTRUCTIONS, ANALYZER_DISPATCH_INSTRUCTIONS } from "../../shared/prompts";
 
 export const PLAN_RESEARCH_PREAMBLE = `## YOUR PRIMARY TASK: Dispatch Locator and Analyzer Agents
 

@@ -39,7 +39,7 @@ import type {
   LastWorkerResult,
   EvaluationCriteria,
   WorkerConfig,
-} from "../schemas/shared";
+} from "../schemas";
 import type { AccumulatedContext, HandoffSummary } from "./context-accumulator";
 import type { EvalResult } from "./executor";
 import type { StepContext } from "./step-context";

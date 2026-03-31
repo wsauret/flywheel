@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import {
   TelemetryLogger,
   TelemetryRecordSchema,
-} from "../src/telemetry/logger";
-import type { TelemetryRecord } from "../src/telemetry/logger";
+} from "../src/telemetry";
+import type { TelemetryRecord } from "../src/telemetry";
 
 // ---------------------------------------------------------------------------
 // Helpers

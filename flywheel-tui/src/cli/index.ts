@@ -10,7 +10,7 @@
 
 import { Log } from "../utils/log"
 import { installAgents } from "../agents/installer"
-import { createServer } from "../server/index"
+import { createServer } from "../server"
 
 // ---------------------------------------------------------------------------
 // Main

@@ -1,5 +1,4 @@
 import type { Step, StepType } from "../types";
-import type { StepPaths } from "./step-paths";
 
 export interface ScaffoldingResult {
   preamble: string;
@@ -76,11 +75,4 @@ export function buildScaffolding(step: Step, paths: ScaffoldingPaths): Scaffoldi
   return { preamble: "", postamble: "" };
 }
 
-export function toScaffoldingPaths(stepPaths: StepPaths, stepType: string, stepId: string): ScaffoldingPaths {
-  return {
-    handoffPath: stepPaths.handoffPath(stepType, stepId),
-    planPath: stepPaths.planPath,
-    researchPath: stepPaths.researchPath,
-    reviewPath: stepPaths.reviewPath,
-  };
-}
+

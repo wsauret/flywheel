@@ -5,7 +5,7 @@
  * components and logic.
  */
 
-import type { BehavioralAssertion } from "./parser";
+import type { BehavioralAssertion } from "./plan-parser";
 
 // ---------------------------------------------------------------------------
 // Types

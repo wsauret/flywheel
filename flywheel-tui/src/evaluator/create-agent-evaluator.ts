@@ -12,7 +12,7 @@ import type { Step } from "../queue/types";
 import type { EvaluatorFn, EvalResult } from "../queue/executor";
 import type { EvaluatorTransport } from "./transport";
 import type { EvaluatorInput, EvaluatorResult } from "./schemas";
-import type { EvaluationCriteria } from "../schemas/shared";
+import type { EvaluationCriteria } from "../schemas";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "evaluator-agent-factory" });

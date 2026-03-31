@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ContextIndexer } from "../src/memory/indexer";
 import type { ContextQuery } from "../src/memory/indexer";
-import { AvailableContextSchema } from "../src/schemas/shared";
+import { AvailableContextSchema } from "../src/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -27,10 +27,6 @@ import type { WorkerHandoff } from "../../src/queue/shared/handoff-schemas";
 import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "../../src/evaluator/schemas";
 import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "../../src/dispatcher/schemas";
 import {
-  buildLastWorkerResult,
-  buildPreviousResultFromHandoff,
-} from "../../src/queue/shared/handoff-consumers";
-import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
@@ -175,42 +171,6 @@ describe("Valid worker handoff flow", () => {
     expect(parsed.files_to_review!.length).toBeGreaterThan(0);
   });
 
-  it("dispatcher gets lastWorkerResult from worker handoff", async () => {
-    const hp = handoffPath("worker-for-dispatch-001");
-    const data = validWorkerHandoff();
-    fs.writeFileSync(hp, JSON.stringify(data));
-
-    const parsed = await readHandoff(hp, WorkerHandoffSchema);
-    const lwr = buildLastWorkerResult(parsed, 0, 30000);
-
-    expect(lwr.step).toBe(0);
-    expect(lwr.status).toBe("completed");
-    expect(lwr.output_summary).toContain("authentication middleware");
-    expect(lwr.artifacts_produced).toContain("src/auth/jwt.ts");
-    expect(lwr.artifacts_produced).toContain("src/index.ts");
-    expect(lwr.tests_passed).toBe(true);
-    expect(lwr.duration_seconds).toBe(30);
-  });
-
-  it("previousResult is built from handoff for step chaining", async () => {
-    const hp = handoffPath("worker-chain-001");
-    const data = validWorkerHandoff();
-    fs.writeFileSync(hp, JSON.stringify(data));
-
-    const parsed = await readHandoff(hp, WorkerHandoffSchema);
-    const previousResult = buildPreviousResultFromHandoff(parsed);
-
-    expect(previousResult).toContain("## Previous Step Summary");
-    expect(previousResult).toContain("authentication middleware");
-    expect(previousResult).toContain("### Decisions");
-    expect(previousResult).toContain("RS256");
-    expect(previousResult).toContain("### Artifacts");
-    expect(previousResult).toContain("src/auth/jwt.ts");
-    expect(previousResult).toContain("### Verification");
-    expect(previousResult).toContain("Tests passed: yes");
-    expect(previousResult).toContain("### Warnings");
-    expect(previousResult).toContain("JWT secret should be rotated");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -603,21 +563,16 @@ describe("Cross-role handoff flow", () => {
     fs.writeFileSync(workerHp, JSON.stringify(workerData));
 
     const workerHandoff = await readHandoff(workerHp, WorkerHandoffSchema);
+    expect(workerHandoff.summary).toContain("authentication middleware");
 
-    // Step 2: Build lastWorkerResult for dispatcher
-    const lwr = buildLastWorkerResult(workerHandoff, 0, 45000);
-    expect(lwr.output_summary).toBe(workerHandoff.summary);
-    expect(lwr.tests_passed).toBe(true);
-    expect(lwr.artifacts_produced.length).toBe(4); // 2 created + 2 modified
-
-    // Step 3: Evaluator writes verdict based on worker handoff
+    // Step 2: Evaluator writes verdict based on worker handoff
     const evalVerdict = validEvaluatorVerdict();
     fs.writeFileSync(evalHp, JSON.stringify(evalVerdict));
 
     const parsedVerdict = await readHandoff(evalHp, EvaluatorVerdictSchema);
     expect(parsedVerdict.passed).toBe(true);
 
-    // Step 4: Dispatcher writes decision for next step
+    // Step 3: Dispatcher writes decision for next step
     const dispatchDecision = validDispatcherDecision({ step_index: 1 });
     fs.writeFileSync(dispatchHp, JSON.stringify(dispatchDecision));
 
@@ -631,42 +586,6 @@ describe("Cross-role handoff flow", () => {
     expect(fs.existsSync(workerHp)).toBe(true);
     expect(fs.existsSync(evalHp)).toBe(true);
     expect(fs.existsSync(dispatchHp)).toBe(true);
-  });
-
-  it("previousResult from step 1 flows to step 2 prompt context", async () => {
-    const hp = handoffPath("flow-chain-001");
-    const handoff = validWorkerHandoff({
-      summary:
-        "Set up the project scaffold with TypeScript config, test framework, and directory structure. " +
-        "Created 5 files and verified build passes.",
-      artifacts: {
-        files_created: [
-          "tsconfig.json",
-          "package.json",
-          "src/index.ts",
-          "tests/setup.ts",
-          "jest.config.ts",
-        ],
-        files_modified: [],
-        commands_run: ["bun install", "bun test"],
-      },
-      verification: {
-        tests_passed: true,
-        test_output_summary: "1/1 test pass",
-      },
-    });
-    fs.writeFileSync(hp, JSON.stringify(handoff));
-
-    const parsed = await readHandoff(hp, WorkerHandoffSchema);
-    const previousResult = buildPreviousResultFromHandoff(parsed);
-
-    // The previousResult should contain structured info, not raw output
-    expect(previousResult).toContain("## Previous Step Summary");
-    expect(previousResult).toContain("project scaffold");
-    expect(previousResult).toContain("### Artifacts");
-    expect(previousResult).toContain("tsconfig.json");
-    expect(previousResult).toContain("### Verification");
-    expect(previousResult).toContain("Tests passed: yes");
   });
 });
 
