@@ -3,8 +3,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import * as crypto from "node:crypto";
-import { importPlan } from "../src/controller/plan-import";
-import type { PlanImportResult } from "../src/controller/plan-import";
+import { importPlan } from "../src/plan/import";
+import type { PlanImportResult } from "../src/plan/import";
 
 // ---------------------------------------------------------------------------
 // Helpers

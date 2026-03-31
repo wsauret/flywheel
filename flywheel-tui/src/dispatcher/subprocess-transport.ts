@@ -15,7 +15,7 @@
 
 import * as nodePath from "node:path";
 import * as fs from "node:fs";
-import type { DispatcherInput, DispatcherDecision } from "../schemas/dispatcher";
+import type { DispatcherInput, DispatcherDecision } from "./schemas";
 import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
 import type { Engine } from "../engines/core/types";
@@ -24,8 +24,8 @@ import { getEngine } from "../engines/core/registry";
 import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prompt";
 import { renderDispatcherHandoffInstruction } from "../handoff/field-specs";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
-import { DispatcherDecisionHandoffSchema } from "../schemas/handoff";
-import type { DispatcherDecisionHandoff } from "../schemas/handoff";
+import { DispatcherDecisionHandoffSchema } from "../handoff/schemas";
+import type { DispatcherDecisionHandoff } from "../handoff/schemas";
 import { mapHandoffToDecision } from "./map-handoff";
 import { Log } from "../utils/log";
 import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";

@@ -15,16 +15,16 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EvaluatorInput, EvaluatorResult } from "../../src/schemas/evaluator";
+import type { EvaluatorInput, EvaluatorResult } from "../../src/evaluator/schemas";
 import type { ProcessSpawner, SpawnOptions } from "../../src/worker/spawner";
-import { EvaluatorInputSchema, EvaluatorHandoffDataSchema } from "../../src/schemas/evaluator";
-import { EvaluatorVerdictSchema } from "../../src/schemas/handoff";
+import { EvaluatorInputSchema, EvaluatorHandoffDataSchema } from "../../src/evaluator/schemas";
+import { EvaluatorVerdictSchema } from "../../src/handoff/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function validVerdict(overrides?: Partial<import("../../src/schemas/handoff").EvaluatorVerdict>) {
+function validVerdict(overrides?: Partial<import("../../src/handoff/schemas").EvaluatorVerdict>) {
   return {
     passed: true,
     reasoning: "All evaluation criteria met",

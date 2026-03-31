@@ -16,8 +16,8 @@ import { describe, it, expect } from "bun:test";
 import {
   handleQueueCompletion,
   type QueueCompletionDeps,
-} from "../src/tui/components/queue-completion";
-import type { QueueResult, CompletedStepResult } from "../src/controller/queue-types";
+} from "../src/tui/session/queue-completion";
+import type { QueueResult, CompletedStepResult } from "../src/queue/queue-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

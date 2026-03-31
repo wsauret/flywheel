@@ -44,7 +44,7 @@ import {
   WorkerHandoffSchema,
   EvaluatorVerdictSchema,
   DispatcherDecisionHandoffSchema,
-} from "../src/schemas/handoff";
+} from "../src/handoff/schemas";
 import type { ZodSchema } from "zod";
 import {
   renderHandoffInstruction,

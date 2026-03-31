@@ -8,7 +8,7 @@
  * `ExecutionStatus.interrupted` = cancellation, NOT a WorkerFailureReason kind.
  */
 
-import type { WorkerFailureReason } from "../schemas/worker";
+import type { WorkerFailureReason } from "./schemas";
 import { RateLimitDetector } from "./rate-limit";
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { SessionSchema, migrateSession, type Session } from "../schemas/session";
+import { SessionSchema, migrateSession, type Session } from "./schemas";
 import { writeFileAtomic } from "../utils/atomic-write";
 import {
   SESSIONS_DIR,

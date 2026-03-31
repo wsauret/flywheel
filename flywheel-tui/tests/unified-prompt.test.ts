@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { resolvePromptMode } from "../src/tui/components/unified-prompt-logic";
-import type { AppState } from "../src/tui/components/shell-modes";
+import type { AppState } from "../src/tui/shell/shell-modes";
 
 /**
  * Unified Prompt Logic Tests

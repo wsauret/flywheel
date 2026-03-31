@@ -1,8 +1,8 @@
-import type { DispatcherDecision } from "../schemas/dispatcher";
-import type { EvaluatorResult } from "../schemas/evaluator";
-import type { WorkerResult, WorkerFailureReason } from "../schemas/worker";
+import type { DispatcherDecision } from "../dispatcher/schemas";
+import type { EvaluatorResult } from "../evaluator/schemas";
+import type { WorkerResult, WorkerFailureReason } from "../worker/schemas";
 import type { ExecutionStatus } from "../schemas/execution";
-import type { QuestionInfo, QuestionAnswer } from "../controller/question-service";
+import type { QuestionInfo, QuestionAnswer } from "../queue/question-service";
 
 // ---------------------------------------------------------------------------
 // FlywheelEvent discriminated union (~25 event types, namespace:verb naming)

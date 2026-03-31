@@ -15,7 +15,7 @@ import {
   type PlanJson,
   type PlanStep,
   type BehavioralAssertion,
-} from "./plan-json-parser";
+} from "./parser";
 
 // ---------------------------------------------------------------------------
 // Types

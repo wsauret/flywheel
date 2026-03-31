@@ -3,10 +3,10 @@ import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
   type ResumeResult,
-} from "../src/tui/components/session-orchestrator";
-import type { Session } from "../src/schemas/session";
-import type { OutputSnapshot } from "../src/schemas/output";
-import type { CompletedStepResult } from "../src/controller/queue-types";
+} from "../src/tui/session/session-orchestrator";
+import type { Session } from "../src/session/schemas";
+import type { OutputSnapshot } from "../src/session/output-schemas";
+import type { CompletedStepResult } from "../src/queue/queue-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

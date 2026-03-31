@@ -5,7 +5,7 @@
  * Adapts shortcut text based on app state and interaction context.
  */
 
-import type { AppState } from "../components/shell-modes";
+import type { AppState } from "../shell/shell-modes";
 
 export interface FooterContext {
   appState: AppState;

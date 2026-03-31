@@ -8,8 +8,8 @@ import {
   createSessionRuntimeManager,
   type SessionRuntimeManager,
   type SessionRuntimeManagerDeps,
-} from "../src/tui/components/session-runtime";
-import type { WorkflowSession } from "../src/tui/components/workflow-session";
+} from "../src/tui/session/session-runtime";
+import type { WorkflowSession } from "../src/tui/session/workflow-session";
 import type { OutputFlusher } from "../src/session/output-persistence";
 import type { BudgetTracker } from "../src/session/budget-tracker";
 import { TimerService } from "../src/tui/shared/services/timer";

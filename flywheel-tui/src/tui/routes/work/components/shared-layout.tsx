@@ -23,7 +23,7 @@ import {
   layoutVisibility,
   SIDEBAR_WIDTH,
   PANEL_WIDTH,
-} from "../../../components/shell-modes"
+} from "../../../shell/shell-modes"
 import type { WorkState } from "../state/types"
 export interface SharedLayoutProps {
   state: WorkState

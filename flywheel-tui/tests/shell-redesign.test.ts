@@ -9,7 +9,7 @@ import {
   SIDEBAR_WIDTH,
   PANEL_WIDTH,
   type AppState,
-} from "../src/tui/components/shell-modes";
+} from "../src/tui/shell/shell-modes";
 import {
   computeQueueProgress,
   statusLabel,

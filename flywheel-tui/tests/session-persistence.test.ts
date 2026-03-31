@@ -15,7 +15,7 @@ import {
   listSessions,
   deleteSession,
 } from "../src/session/persistence";
-import { SessionSchema, type Session } from "../src/schemas/session";
+import { SessionSchema, type Session } from "../src/session/schemas";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 
 // ---------------------------------------------------------------------------

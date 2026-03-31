@@ -8,8 +8,8 @@
  * contract).
  */
 
-import type { PlanImportResult, PlanImportStep } from "../../controller/plan-import"
-import type { BehavioralAssertion } from "../../controller/plan-json-parser"
+import type { PlanImportResult, PlanImportStep } from "../../plan/import"
+import type { BehavioralAssertion } from "../../plan/parser"
 
 // ---------------------------------------------------------------------------
 // Types

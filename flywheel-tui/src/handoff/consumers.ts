@@ -6,7 +6,7 @@
  * parsed once after worker execution.
  */
 
-import type { WorkerHandoff } from "../schemas/handoff";
+import type { WorkerHandoff } from "./schemas";
 import type { LastWorkerResult } from "../schemas/shared";
 
 // ---------------------------------------------------------------------------

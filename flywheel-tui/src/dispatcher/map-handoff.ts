@@ -5,8 +5,8 @@
  * identical DispatcherDecision shapes from the handoff file.
  */
 
-import type { DispatcherDecision } from "../schemas/dispatcher";
-import type { DispatcherDecisionHandoff } from "../schemas/handoff";
+import type { DispatcherDecision } from "./schemas";
+import type { DispatcherDecisionHandoff } from "../handoff/schemas";
 
 export function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {
   return {

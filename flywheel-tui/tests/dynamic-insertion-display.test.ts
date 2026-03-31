@@ -7,7 +7,7 @@ import {
 import {
   layoutVisibility,
   MIN_WIDTH_PANEL,
-} from "../src/tui/components/shell-modes";
+} from "../src/tui/shell/shell-modes";
 import type { QueueStepState } from "../src/tui/routes/work/state/types";
 
 // ---------------------------------------------------------------------------

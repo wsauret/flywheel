@@ -24,14 +24,14 @@ import {
   buildGranularDebugSteps,
   type WorkflowName,
 } from "../../queue/templates";
-import { researchPersistEvaluationCriteria } from "../../prompts/research/persist";
-import { shipCompoundEvaluationCriteria } from "../../prompts/ship/compound";
+import { researchPersistEvaluationCriteria } from "../../queue/prompts/research-persist";
+import { shipCompoundEvaluationCriteria } from "../../queue/prompts/ship-compound";
 import type { Queue, Step, StepType } from "../../queue/types";
 import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
-import { checkEndOfSessionGate } from "../../controller/validation-state";
-import type { EndOfSessionGateCheck } from "../../controller/queue-types";
-import { parseJsonPlan } from "../../controller/plan-json-parser";
+import { checkEndOfSessionGate } from "../../session/validation-state";
+import type { EndOfSessionGateCheck } from "../../queue/queue-types";
+import { parseJsonPlan } from "../../plan/parser";
 import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------

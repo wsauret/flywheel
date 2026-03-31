@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { EvaluatorResultSchema } from "../src/schemas/evaluator";
+import { EvaluatorResultSchema } from "../src/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Test fixtures — realistic evaluator inputs

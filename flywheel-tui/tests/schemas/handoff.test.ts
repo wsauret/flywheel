@@ -12,7 +12,7 @@ import {
   SkillDeviationSchema,
   SkillFeedbackSchema,
   countSentences,
-} from "../../src/schemas/handoff";
+} from "../../src/handoff/schemas";
 
 // ---------------------------------------------------------------------------
 // Sub-schemas

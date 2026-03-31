@@ -1,4 +1,4 @@
-import type { EvaluatorInput, EvaluatorResult } from "../schemas/evaluator";
+import type { EvaluatorInput, EvaluatorResult } from "./schemas";
 
 // TODO(feat-flywheel-cli-intelligence): Implementation in Plan 3
 

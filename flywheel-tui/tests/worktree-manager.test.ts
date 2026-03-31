@@ -5,7 +5,7 @@ import {
   type WorktreeInfo,
   type WorktreeManagerDeps,
 } from "../src/session/worktree-manager";
-import type { Session } from "../src/schemas/session";
+import type { Session } from "../src/session/schemas";
 
 // ---------------------------------------------------------------------------
 // Mock IWorktreeClient

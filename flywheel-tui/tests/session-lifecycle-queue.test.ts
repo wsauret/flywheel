@@ -15,14 +15,14 @@ import { describe, it, expect } from "bun:test";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
-} from "../src/tui/components/session-orchestrator";
-import { handleQueueCompletion, type QueueCompletionDeps } from "../src/tui/components/queue-completion";
+} from "../src/tui/session/session-orchestrator";
+import { handleQueueCompletion, type QueueCompletionDeps } from "../src/tui/session/queue-completion";
 import { isResumable, isValidTransition, VALID_TRANSITIONS } from "../src/session/state-machine";
-import { groupSessions, type SessionGroupKey } from "../src/tui/components/sidebar-logic";
-import type { Session } from "../src/schemas/session";
-import type { OutputSnapshot } from "../src/schemas/output";
+import { groupSessions, type SessionGroupKey } from "../src/tui/session/sidebar-logic";
+import type { Session } from "../src/session/schemas";
+import type { OutputSnapshot } from "../src/session/output-schemas";
 import type { Queue } from "../src/queue/types";
-import type { QueueResult, CompletedStepResult } from "../src/controller/queue-types";
+import type { QueueResult, CompletedStepResult } from "../src/queue/queue-types";
 import type { SessionSummary } from "../src/session/manager";
 
 // ---------------------------------------------------------------------------

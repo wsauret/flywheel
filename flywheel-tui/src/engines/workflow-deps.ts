@@ -9,11 +9,11 @@
  */
 
 import { loadConfig } from "../config/loader"
-import { getEngine } from "../engines/core/registry"
+import { getEngine } from "./core/registry"
 import { BunProcessSpawner } from "../worker/bun-spawner"
 import { SdkSpawner } from "../worker/sdk-spawner"
 import type { FlywheelConfig } from "../config/loader"
-import type { Engine } from "../engines/core/types"
+import type { Engine } from "./core/types"
 import type { ProcessSpawner } from "../worker/spawner"
 
 export interface WorkflowDeps {

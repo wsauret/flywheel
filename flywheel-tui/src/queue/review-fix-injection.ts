@@ -23,7 +23,7 @@ import { randomUUID } from "crypto";
 
 import type { Step, Queue } from "./types";
 import { insertAfter, type Provenance } from "./queue";
-import type { OnStepCompletedHook, OnStepCompletedResult } from "./executor";
+import type { OnStepCompletedHook, OnStepCompletedResult } from "./hooks";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "review-fix-injection" });

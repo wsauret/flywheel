@@ -4,8 +4,8 @@ import {
   EvaluatorIssueSeverityEnum,
   EvaluatorIssueCategoryEnum,
   EvaluatorIssueSchema,
-} from "../src/schemas/handoff";
-import type { EvaluatorInput, EvaluatorResult } from "../src/schemas/evaluator";
+} from "../src/handoff/schemas";
+import type { EvaluatorInput, EvaluatorResult } from "../src/evaluator/schemas";
 import type { ProcessSpawner } from "../src/worker/spawner";
 import { renderEvaluatorHandoffInstruction } from "../src/handoff/field-specs";
 

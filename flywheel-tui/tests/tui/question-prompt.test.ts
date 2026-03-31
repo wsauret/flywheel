@@ -26,7 +26,7 @@ import type {
   QuestionInfo,
   QuestionRequest,
   QuestionService,
-} from "../../src/controller/question-service"
+} from "../../src/queue/question-service"
 
 // ---------------------------------------------------------------------------
 // Fixtures

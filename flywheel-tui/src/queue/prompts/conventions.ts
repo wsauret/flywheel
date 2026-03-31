@@ -95,7 +95,7 @@ Never claim without evidence. The following phrases are BANNED unless accompanie
 // Project Context section builder
 // ---------------------------------------------------------------------------
 
-import type { ContextEntry } from "../schemas/shared.js";
+import type { ContextEntry } from "../../schemas/shared.js";
 
 /**
  * Build a "Project Context" section from context entries in ctx.extra.

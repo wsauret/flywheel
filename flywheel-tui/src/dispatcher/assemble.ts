@@ -8,11 +8,11 @@
  * this cap, available_context arrays are truncated to 10 entries each.
  */
 
-import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "../schemas/dispatcher";
+import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "./schemas";
 import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas/shared";
-import type { StepContext } from "../controller/step-context";
-import { parseJsonPlan } from "../controller/plan-json-parser";
-import { parseContextFile } from "../controller/templates";
+import type { StepContext } from "../queue/step-context";
+import { parseJsonPlan } from "../plan/parser";
+import { parseContextFile } from "../utils/file-cache";
 
 // ---------------------------------------------------------------------------
 // Budget constant (bytes) — single safety-valve cap

@@ -4,7 +4,7 @@ import {
   ctrlCForState,
   resolveAppState,
   type AppState,
-} from "../src/tui/components/shell-modes";
+} from "../src/tui/shell/shell-modes";
 
 /**
  * Shell Modes — AppState Tests

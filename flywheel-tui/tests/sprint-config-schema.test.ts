@@ -4,14 +4,14 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
 } from "../src/config/loader";
-import { WorkerHandoffBaseSchema, WorkerHandoffSchema } from "../src/schemas/handoff";
+import { WorkerHandoffBaseSchema, WorkerHandoffSchema } from "../src/handoff/schemas";
 import {
   SPRINT_FIELDS,
   renderHandoffInstruction,
 } from "../src/handoff/field-specs";
 import {
   WORKFLOW_OPTIONS,
-} from "../src/tui/components/start-command";
+} from "../src/tui/shell/start-command";
 
 
 // ---------------------------------------------------------------------------

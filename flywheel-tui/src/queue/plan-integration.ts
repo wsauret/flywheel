@@ -21,8 +21,8 @@ import type { Step, Queue } from "./types";
 import type { ProtoStep } from "./proto-step";
 import { ProtoStepArraySchema, formalizeProtoSteps } from "./proto-step";
 import { insertAfter, type MutationResult, type Provenance } from "./queue";
-import type { OnStepCompletedHook, OnStepCompletedResult } from "./executor";
-import { parseJsonPlan } from "../controller/plan-json-parser";
+import type { OnStepCompletedHook, OnStepCompletedResult } from "./hooks";
+import { parseJsonPlan } from "../plan/parser";
 import { randomUUID } from "crypto";
 import { Log } from "../utils/log";
 
@@ -279,43 +279,3 @@ export function createPlanIntegrationHook(projectCwd?: string): OnStepCompletedH
   };
 }
 
-// ---------------------------------------------------------------------------
-// createCompositeHook — chains multiple onStepCompleted hooks
-// ---------------------------------------------------------------------------
-
-/**
- * Creates a composite hook that chains multiple `onStepCompleted` hooks.
- * Hooks are called in order. If any hook returns `{ continueExecution: true }`,
- * the composite returns `{ continueExecution: true }`.
- *
- * This allows combining plan-integration, sprint, and other hooks into
- * a single hook for the step executor.
- *
- * @param hooks Array of hooks to chain (null/undefined entries are skipped)
- * @returns A single OnStepCompletedHook that chains all provided hooks
- */
-export function createCompositeHook(
-  hooks: Array<OnStepCompletedHook | null | undefined>,
-): OnStepCompletedHook {
-  const activeHooks = hooks.filter(
-    (h): h is OnStepCompletedHook => h != null,
-  );
-
-  return async (
-    step: Step,
-    status: "completed" | "failed",
-    queue: Queue,
-    handoffData: Record<string, unknown> | null,
-  ): Promise<OnStepCompletedResult> => {
-    let shouldContinue = false;
-
-    for (const hook of activeHooks) {
-      const result = await hook(step, status, queue, handoffData);
-      if (result.continueExecution) {
-        shouldContinue = true;
-      }
-    }
-
-    return { continueExecution: shouldContinue };
-  };
-}

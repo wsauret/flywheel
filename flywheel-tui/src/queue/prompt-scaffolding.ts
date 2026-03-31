@@ -34,35 +34,35 @@ import {
   REVIEWER_DISPATCH_INSTRUCTIONS,
   FINDING_SYNTHESIS_INSTRUCTIONS,
   REVIEW_OUTPUT_FORMAT,
-} from "../prompts/review/dispatch.js";
+} from "./prompts/review-dispatch.js";
 import {
   CONSOLIDATION_INSTRUCTIONS,
   REVIEW_DOC_TEMPLATE,
-} from "../prompts/review/consolidate.js";
+} from "./prompts/review-consolidate.js";
 import {
   NO_AI_ATTRIBUTION_RULE,
   STAGING_RULES,
   PR_FORMAT,
   BRANCH_NAMING,
-} from "../prompts/ship/workflow.js";
+} from "./prompts/ship.js";
 import {
   COMPOUND_DOC_FORMAT,
   COMPOUND_DEDUP_RULES,
-} from "../prompts/ship/compound.js";
+} from "./prompts/ship-compound.js";
 import {
   INVESTIGATION_METHODOLOGY,
   FIX_LOOP_RULES,
   FIX_ITERATION_TEMPLATE,
   ESCALATION_FORMAT,
   RESOLUTION_FORMAT,
-} from "../prompts/debug/investigate.js";
-import { LOCATOR_DISPATCH_INSTRUCTIONS } from "../prompts/research/locate.js";
-import { ANALYZER_DISPATCH_INSTRUCTIONS } from "../prompts/research/analyze.js";
-import { AGENT_DISCOVERY_PHASE } from "../prompts/conventions.js";
+} from "./prompts/debug.js";
+import { LOCATOR_DISPATCH_INSTRUCTIONS } from "./prompts/research-locate.js";
+import { ANALYZER_DISPATCH_INSTRUCTIONS } from "./prompts/research-analyze.js";
+import { AGENT_DISCOVERY_PHASE } from "./prompts/conventions.js";
 import {
   RESEARCH_DOC_TEMPLATE,
   RESEARCH_PERSISTENCE_INSTRUCTIONS,
-} from "../prompts/research/persist.js";
+} from "./prompts/research-persist.js";
 
 
 // ---------------------------------------------------------------------------

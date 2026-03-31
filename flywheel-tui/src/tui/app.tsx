@@ -25,7 +25,7 @@ import { createSessionManager } from "../session/manager"
 import {
   createWorkflowSession,
   destroyWorkflowSession,
-} from "./components/workflow-session"
+} from "./session/workflow-session"
 import { loadConfig } from "../config/loader"
 import { CONFIG_FILES } from "../config/paths"
 

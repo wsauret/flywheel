@@ -6,7 +6,7 @@ import {
   GROUP_ORDER,
   type SidebarAction,
   type SelectionAction,
-} from "../src/tui/components/sidebar-logic";
+} from "../src/tui/session/sidebar-logic";
 import type { SessionSummary } from "../src/session/manager";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import { isResumable } from "../src/session/state-machine";

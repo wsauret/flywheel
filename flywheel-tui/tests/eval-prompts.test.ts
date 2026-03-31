@@ -69,7 +69,7 @@ describe("eval-prompts: fixture assembly", () => {
 
   it("each scenario has valid evaluator input", async () => {
     const { buildSimpleScenario, buildComplexScenario, buildEdgeScenario } = await import("../scripts/eval-prompts-fixtures");
-    const { EvaluatorInputSchema } = await import("../src/schemas/evaluator");
+    const { EvaluatorInputSchema } = await import("../src/evaluator/schemas");
 
     for (const build of [buildSimpleScenario, buildComplexScenario, buildEdgeScenario]) {
       const scenario = build();
@@ -80,7 +80,7 @@ describe("eval-prompts: fixture assembly", () => {
 
   it("each scenario has valid dispatcher input", async () => {
     const { buildSimpleScenario, buildComplexScenario, buildEdgeScenario } = await import("../scripts/eval-prompts-fixtures");
-    const { DispatcherInputSchema } = await import("../src/schemas/dispatcher");
+    const { DispatcherInputSchema } = await import("../src/dispatcher/schemas");
 
     for (const build of [buildSimpleScenario, buildComplexScenario, buildEdgeScenario]) {
       const scenario = build();

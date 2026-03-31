@@ -15,7 +15,7 @@ import { useKeyboard } from "@opentui/solid"
 import type { TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useDialog } from "@tui/shared/context/dialog"
-import type { QuestionRequest, QuestionService } from "../../controller/question-service"
+import type { QuestionRequest, QuestionService } from "../../queue/question-service"
 import {
   createInitialStore,
   selectOption,

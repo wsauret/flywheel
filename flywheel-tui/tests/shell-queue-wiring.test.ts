@@ -21,7 +21,7 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
 
 describe("buildQueue", () => {
   it("returns a Queue for plan-only template with granular plan steps", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("plan-only", makeConfig());
 
     expect(queue).toBeDefined();
@@ -33,7 +33,7 @@ describe("buildQueue", () => {
   });
 
   it("returns a Queue for plan-work template", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("plan-work", makeConfig());
 
     expect(queue).toBeDefined();
@@ -43,7 +43,7 @@ describe("buildQueue", () => {
   });
 
   it("returns a Queue for plan-work-review template", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("plan-work-review", makeConfig());
 
     expect(queue).toBeDefined();
@@ -55,7 +55,7 @@ describe("buildQueue", () => {
   });
 
   it("returns a Queue for full template", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("full", makeConfig());
 
     expect(queue).toBeDefined();
@@ -66,7 +66,7 @@ describe("buildQueue", () => {
   });
 
   it("returns a Queue for sprint template", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("sprint", makeConfig());
 
     expect(queue).toBeDefined();
@@ -76,7 +76,7 @@ describe("buildQueue", () => {
   });
 
   it("inserts gate steps when skip_approval_gates is false", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: false }));
 
     const gateSteps = queue.steps.filter((s) => s.type === "gate");
@@ -84,7 +84,7 @@ describe("buildQueue", () => {
   });
 
   it("does not insert gate steps when skip_approval_gates is true (default)", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: true }));
 
     const gateSteps = queue.steps.filter((s) => s.type === "gate");
@@ -92,7 +92,7 @@ describe("buildQueue", () => {
   });
 
   it("respects max_steps from queue config", async () => {
-    const { buildQueue } = await import("../src/tui/components/shell-queue");
+    const { buildQueue } = await import("../src/tui/shell/shell-queue");
     const config = makeConfig();
     config.queue = { max_steps: 10, persist_queue: true };
     const queue = buildQueue("full", config);
@@ -107,7 +107,7 @@ describe("buildQueue", () => {
 
 describe("buildQueueForSlashCommand", () => {
   it("/work with auto_chain creates multi-step queue starting with work", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     // Default config has auto_chain: true, so /work creates work+review
     const queue = buildQueueForSlashCommand("work", makeConfig());
 
@@ -117,7 +117,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/work without auto_chain creates single work step queue", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueForSlashCommand("work", makeConfig({ auto_chain: false }));
 
     expect(queue).toBeDefined();
@@ -126,7 +126,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/plan with auto_chain creates multi-step queue starting with plan", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     // Default config has auto_chain: true, so /plan creates plan+work+review
     const queue = buildQueueForSlashCommand("plan", makeConfig());
 
@@ -136,7 +136,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/plan without auto_chain creates single plan step queue", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueForSlashCommand("plan", makeConfig({ auto_chain: false }));
 
     expect(queue).toBeDefined();
@@ -145,7 +145,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/review creates a 2-step review queue", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueForSlashCommand("review", makeConfig());
 
     expect(queue).toBeDefined();
@@ -157,7 +157,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/ship creates a 2-step ship queue", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueForSlashCommand("ship", makeConfig());
 
     expect(queue).toBeDefined();
@@ -169,7 +169,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/debug creates a 3-step debug queue (+ auto_chain review)", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     // Default config has auto_chain: true, so review is appended
     const queue = buildQueueForSlashCommand("debug", makeConfig());
 
@@ -186,7 +186,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("/research creates a single research step with metadata (+ auto_chain review)", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     // Default config has auto_chain: true, so review is appended
     const queue = buildQueueForSlashCommand("research", makeConfig());
 
@@ -201,7 +201,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("auto_chain /plan creates plan+work+review pipeline queue", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const config = makeConfig({ auto_chain: true, auto_ship: false });
     const queue = buildQueueForSlashCommand("plan", config);
 
@@ -211,7 +211,7 @@ describe("buildQueueForSlashCommand", () => {
   });
 
   it("auto_chain /work creates work+review pipeline queue", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const config = makeConfig({ auto_chain: true, auto_ship: false });
     const queue = buildQueueForSlashCommand("work", config);
 
@@ -229,7 +229,7 @@ describe("buildQueueFromPlan", () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const os = await import("node:os");
-    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+    const { buildQueueFromPlan } = await import("../src/tui/shell/shell-queue");
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
     const planPath = path.join(tmpDir, "test.plan.json");
@@ -290,7 +290,7 @@ describe("buildQueueFromPlan", () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const os = await import("node:os");
-    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+    const { buildQueueFromPlan } = await import("../src/tui/shell/shell-queue");
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
     const planPath = path.join(tmpDir, "plan.json");
@@ -318,7 +318,7 @@ describe("buildQueueFromPlan", () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const os = await import("node:os");
-    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+    const { buildQueueFromPlan } = await import("../src/tui/shell/shell-queue");
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
     const planPath = path.join(tmpDir, "plan.md");
@@ -341,7 +341,7 @@ describe("buildQueueFromPlan", () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const os = await import("node:os");
-    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+    const { buildQueueFromPlan } = await import("../src/tui/shell/shell-queue");
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-test-"));
     const planPath = path.join(tmpDir, "bad.plan.json");
@@ -358,7 +358,7 @@ describe("buildQueueFromPlan", () => {
   });
 
   it("falls back to single work step when file not found", async () => {
-    const { buildQueueFromPlan } = await import("../src/tui/components/shell-queue");
+    const { buildQueueFromPlan } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueFromPlan("/nonexistent/path.plan.json", makeConfig({ auto_chain: false }));
     expect(queue.steps).toHaveLength(1);
     expect(queue.steps[0].title).toBe("Execute work");
@@ -371,7 +371,7 @@ describe("buildQueueFromPlan", () => {
 
 describe("QueueProgressInfo", () => {
   it("formatQueueProgress formats step position", async () => {
-    const { formatQueueProgress } = await import("../src/tui/components/shell-queue");
+    const { formatQueueProgress } = await import("../src/tui/shell/shell-queue");
     const result = formatQueueProgress({ currentStep: 2, totalSteps: 5, stepName: "plan" });
     expect(result).toContain("2");
     expect(result).toContain("5");
@@ -379,7 +379,7 @@ describe("QueueProgressInfo", () => {
   });
 
   it("formatQueueProgress returns empty string for null", async () => {
-    const { formatQueueProgress } = await import("../src/tui/components/shell-queue");
+    const { formatQueueProgress } = await import("../src/tui/shell/shell-queue");
     const result = formatQueueProgress(null);
     expect(result).toBe("");
   });
@@ -478,7 +478,7 @@ describe("Queue event handling", () => {
 
 describe("buildQueueForSlashCommand — auto_chain for debug/research", () => {
   it("/debug with auto_chain appends review+ship after debug steps", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const config = makeConfig({ auto_chain: true, auto_ship: true });
     const queue = buildQueueForSlashCommand("debug", config);
     const types = queue.steps.map(s => s.type);
@@ -489,7 +489,7 @@ describe("buildQueueForSlashCommand — auto_chain for debug/research", () => {
   });
 
   it("/research with auto_chain appends review+ship after research step", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const config = makeConfig({ auto_chain: true, auto_ship: true });
     const queue = buildQueueForSlashCommand("research", config);
     const types = queue.steps.map(s => s.type);
@@ -499,7 +499,7 @@ describe("buildQueueForSlashCommand — auto_chain for debug/research", () => {
   });
 
   it("debug investigate/fix steps use type 'debug', verify uses type 'verify'", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueForSlashCommand("debug", makeConfig({ auto_chain: false }));
     expect(queue.steps[0].type).toBe("debug");
     expect(queue.steps[1].type).toBe("debug");
@@ -513,7 +513,7 @@ describe("buildQueueForSlashCommand — auto_chain for debug/research", () => {
 
 describe("buildQueueForSlashCommand — /compound", () => {
   it("/compound creates a single ship step with learnings hint", async () => {
-    const { buildQueueForSlashCommand } = await import("../src/tui/components/shell-queue");
+    const { buildQueueForSlashCommand } = await import("../src/tui/shell/shell-queue");
     const queue = buildQueueForSlashCommand("compound", makeConfig());
     expect(queue.steps).toHaveLength(1);
     expect(queue.steps[0].type).toBe("ship");

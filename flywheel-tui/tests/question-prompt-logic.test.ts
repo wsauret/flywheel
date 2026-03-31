@@ -10,7 +10,7 @@ import {
   moveTo,
   type QuestionStore,
 } from "../src/tui/components/question-prompt-logic"
-import type { QuestionInfo } from "../src/controller/question-service"
+import type { QuestionInfo } from "../src/queue/question-service"
 
 // ---------------------------------------------------------------------------
 // Helpers

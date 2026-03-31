@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { assembleDispatcherInput } from "../src/dispatcher/assemble";
-import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
+import { DispatcherDecisionSchema } from "../src/dispatcher/schemas";
 import { buildDispatcherSystemPrompt } from "../src/dispatcher/system-prompt";
 
 // ---------------------------------------------------------------------------

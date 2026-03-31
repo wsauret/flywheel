@@ -2,7 +2,7 @@ import { describe, it, expect, mock } from "bun:test"
 import {
   createActionDispatcher,
   type ActionDispatcherDeps,
-} from "../src/tui/components/action-dispatcher"
+} from "../src/tui/shell/action-dispatcher"
 
 /** Create fake deps with spies for all callbacks. */
 function fakeDeps(overrides?: Partial<ActionDispatcherDeps>): ActionDispatcherDeps {

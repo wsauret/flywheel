@@ -20,7 +20,7 @@ import { randomUUID } from "crypto";
 
 import type { Step, Queue, StepStatus } from "./types";
 import { insertAfter, type Provenance } from "./queue";
-import type { OnStepCompletedResult } from "./executor";
+import type { OnStepCompletedResult } from "./hooks";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "feature-quality-gates" });

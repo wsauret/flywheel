@@ -6,8 +6,8 @@ import {
   AvailableContextSchema,
   EvaluationCriteriaSchema,
   WorkerConfigSchema,
-} from "./shared";
-import { StepContextSchema } from "../controller/step-context";
+} from "../schemas/shared";
+import { StepContextSchema } from "../queue/step-context";
 
 // ---------------------------------------------------------------------------
 // PlanInputSchema — step-based plan representation for the dispatcher

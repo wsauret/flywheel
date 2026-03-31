@@ -5,7 +5,7 @@ import {
   QuestionRejectedError,
   type QuestionInfo,
   type QuestionAnswer,
-} from "../src/controller/question-service";
+} from "../src/queue/question-service";
 
 // ---------------------------------------------------------------------------
 // Helpers

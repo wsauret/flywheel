@@ -14,8 +14,8 @@ import {
   insertWorkStepsFromPlanOutput,
   findInsertionPoint,
   createPlanIntegrationHook,
-  createCompositeHook,
 } from "../src/queue/plan-integration";
+import { createCompositeHook } from "../src/queue/hooks";
 
 import { createQueue } from "../src/queue/queue";
 import type { Step, Queue } from "../src/queue/types";

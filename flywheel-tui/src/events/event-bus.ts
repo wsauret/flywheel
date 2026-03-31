@@ -111,17 +111,17 @@ export class EventBus {
 
 export interface FlywheelEmitter {
   dispatcherInvoked(workflowId: string, stepIndex: number): void;
-  dispatcherCompleted(workflowId: string, decision: import("../schemas/dispatcher").DispatcherDecision): void;
+  dispatcherCompleted(workflowId: string, decision: import("../dispatcher/schemas").DispatcherDecision): void;
   dispatcherFailed(workflowId: string, reason: string): void;
   dispatcherOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
   evaluatorInvoked(workflowId: string, stepIndex: number): void;
-  evaluatorCompleted(workflowId: string, result: import("../schemas/evaluator").EvaluatorResult): void;
+  evaluatorCompleted(workflowId: string, result: import("../evaluator/schemas").EvaluatorResult): void;
   evaluatorFailed(workflowId: string, reason: string): void;
   evaluatorRevisionRequested(workflowId: string, stepIndex: number, revisionAttempt: number, maxRevisions: number, reason: string): void;
   evaluatorOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
   workerSpawned(workflowId: string, stepIndex: number): void;
-  workerCompleted(workflowId: string, result: import("../schemas/worker").WorkerResult): void;
-  workerFailed(workflowId: string, failure: import("../schemas/worker").WorkerFailureReason): void;
+  workerCompleted(workflowId: string, result: import("../worker/schemas").WorkerResult): void;
+  workerFailed(workflowId: string, failure: import("../worker/schemas").WorkerFailureReason): void;
   workerRetrying(workflowId: string, attempt: number, maxAttempts: number, reason: string): void;
   workerOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineId?: string): void;
   workerInjected(workflowId: string, message: string): void;

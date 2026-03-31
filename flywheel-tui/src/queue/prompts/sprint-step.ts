@@ -6,12 +6,12 @@
  * handoff JSON with verification_script_path via renderHandoffInstruction(SPRINT_FIELDS).
  */
 
-import type { WorkflowStepContext } from "../index.js";
+import type { WorkflowStepContext } from "./types.js";
 import {
   SCOPE_DISCIPLINE,
   THREE_STRIKE_PROTOCOL,
   buildProjectContextSection,
-} from "../conventions.js";
+} from "./conventions.js";
 import { renderHandoffInstruction, SPRINT_FIELDS } from "../../handoff/field-specs.js";
 import type { BoundariesConfig } from "../../config/loader.js";
 

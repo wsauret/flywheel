@@ -17,7 +17,7 @@
 import type {
   QueueResult,
   CompletedStepResult,
-} from "../../controller/queue-types";
+} from "../../queue/queue-types";
 import type { SessionLifecycleState } from "../../session/state-machine";
 import { safeUpdateState } from "../../session/safe-transition";
 

@@ -19,7 +19,7 @@
 
 import * as path from "node:path";
 import type { ProcessSpawner, SpawnOptions, SpawnResult, StdinHandle } from "./spawner";
-import type { WorkerResult } from "../schemas/worker";
+import type { WorkerResult } from "./schemas";
 import { TieredBuffer } from "./buffer";
 import { CompletionDetector } from "./completion";
 import { createEnvFilter, type EnvFilterOptions } from "./env-filter";

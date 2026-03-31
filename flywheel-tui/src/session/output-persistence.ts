@@ -24,7 +24,7 @@ import {
   toSnapshot,
   fromSnapshot,
   type OutputSnapshot,
-} from "../schemas/output";
+} from "./output-schemas";
 import {
   createDebouncedWriter,
   type DebouncedWriter,

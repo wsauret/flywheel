@@ -14,9 +14,9 @@ import {
   readSession,
   listSessions,
 } from "../src/session/persistence";
-import type { Session } from "../src/schemas/session";
+import type { Session } from "../src/session/schemas";
 import type { SessionLifecycleState } from "../src/session/state-machine";
-import type { WorkflowSession } from "../src/tui/components/workflow-session";
+import type { WorkflowSession } from "../src/tui/session/workflow-session";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader";
 
 // ---------------------------------------------------------------------------

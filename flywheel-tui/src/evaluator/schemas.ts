@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { WorkerHandoffBaseSchema, EvaluatorIssueSchema } from "./handoff";
-import { StepContextSchema } from "../controller/step-context";
+import { WorkerHandoffBaseSchema, EvaluatorIssueSchema } from "../handoff/schemas";
+import { StepContextSchema } from "../queue/step-context";
 
 /**
  * Subset of WorkerHandoff fields projected for evaluator consumption.

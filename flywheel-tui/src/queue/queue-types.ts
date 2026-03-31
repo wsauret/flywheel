@@ -11,8 +11,8 @@
  *   - EndOfSessionGateCheck — end-of-session validation hook
  */
 
-import type { EndOfSessionGateResult } from "./validation-state";
-import type { StepType } from "../queue/types";
+import type { EndOfSessionGateResult } from "../session/validation-state";
+import type { StepType } from "./types";
 
 // Re-export StepType so existing consumers can import from here
 export type { StepType };

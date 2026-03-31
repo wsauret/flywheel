@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import type { EvaluatorInput, EvaluatorResult } from "../src/schemas/evaluator";
+import type { EvaluatorInput, EvaluatorResult } from "../src/evaluator/schemas";
 import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
-import { EvaluatorResultSchema } from "../src/schemas/evaluator";
+import { EvaluatorResultSchema } from "../src/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers

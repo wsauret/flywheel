@@ -21,13 +21,13 @@
 
 import { createStore } from "../routes/work/context/ui-state/store";
 import { injectOutputBlocks, type InjectionHandle } from "./resume-utils";
-import { snapshotToBlocks } from "../../schemas/output";
-import { computeQueueProgress } from "./workflow-panel-logic";
+import { snapshotToBlocks } from "../../session/output-schemas";
+import { computeQueueProgress } from "../components/workflow-panel-logic";
 import type { UIActions } from "../routes/work/context/ui-state/types";
 import type { AnyBlock, QueueStepState } from "../routes/work/state/types";
-import type { QueueProgressInfo } from "./shell-queue";
+import type { QueueProgressInfo } from "../shell/shell-queue";
 import type { SessionOrchestrator } from "./session-orchestrator";
-import type { AppState } from "./shell-modes";
+import type { AppState } from "../shell/shell-modes";
 
 // ---------------------------------------------------------------------------
 // Types

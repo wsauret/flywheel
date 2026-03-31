@@ -7,7 +7,7 @@
  * verification outputs, and instruction to update existing work (not restart).
  */
 
-import type { WorkflowStepContext } from "../index.js";
+import type { WorkflowStepContext } from "./types.js";
 import { renderHandoffInstruction, SPRINT_FIELDS } from "../../handoff/field-specs.js";
 
 // ---------------------------------------------------------------------------

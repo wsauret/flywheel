@@ -3,8 +3,8 @@ import {
   mapLifecycleToStatus,
   type WorkflowInstanceStatus,
 } from "../src/types/workflow-instance";
-import { buildWorkflowInstance } from "../src/tui/components/workflow-instance";
-import type { SessionRuntime, RunningRuntime } from "../src/tui/components/session-runtime";
+import { buildWorkflowInstance } from "../src/tui/session/workflow-instance";
+import type { SessionRuntime, RunningRuntime } from "../src/tui/session/session-runtime";
 import type { SessionSummary } from "../src/session/manager";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 

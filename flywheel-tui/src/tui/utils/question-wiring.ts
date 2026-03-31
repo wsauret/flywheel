@@ -6,7 +6,7 @@
  * it into a single factory following the `createX({ deps })` convention.
  */
 
-import { QuestionService, type QuestionRequest } from "../../controller/question-service"
+import { QuestionService, type QuestionRequest } from "../../queue/question-service"
 import type { EventBus, Unsubscribe } from "../../events/event-bus"
 
 // ---------------------------------------------------------------------------

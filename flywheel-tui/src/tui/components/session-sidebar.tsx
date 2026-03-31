@@ -20,8 +20,8 @@ import {
   GROUP_LABELS,
   type SessionGroupKey,
   type SelectionAction,
-} from "./sidebar-logic"
-import { SIDEBAR_WIDTH } from "./shell-modes"
+} from "../session/sidebar-logic"
+import { SIDEBAR_WIDTH } from "../shell/shell-modes"
 import type { SessionSummary } from "../../session/manager"
 
 // ---------------------------------------------------------------------------

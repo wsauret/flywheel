@@ -19,7 +19,7 @@
 
 import { Prompt } from "@tui/shared/components/prompt/index"
 import { resolvePromptMode, type PromptMode } from "./unified-prompt-logic"
-import type { AppState } from "./shell-modes"
+import type { AppState } from "../shell/shell-modes"
 import type { JSX } from "solid-js"
 
 export interface UnifiedPromptProps {

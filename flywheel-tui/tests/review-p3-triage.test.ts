@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import type { Step, Queue } from "../src/queue/types";
 import { createQueue } from "../src/queue/queue";
 import { createReviewP3TriageHook, REVIEW_P3_DIRECTIVE } from "../src/queue/review-p3-triage";
-import { QuestionRejectedError } from "../src/controller/question-service";
+import { QuestionRejectedError } from "../src/queue/question-service";
 
 function makeStep(overrides: Partial<Step> = {}): Step {
   return { id: randomUUID(), type: "work", title: "Test", status: "pending", ...overrides };

@@ -4,16 +4,16 @@ import {
   DispatcherDecisionSchema,
   WorkflowInfoSchema,
   DispatcherConfigSchema,
-} from "../src/schemas/dispatcher";
+} from "../src/dispatcher/schemas";
 import {
   EvaluatorInputSchema,
   EvaluatorResultSchema,
-} from "../src/schemas/evaluator";
+} from "../src/evaluator/schemas";
 import {
   WorkerResultSchema,
   WorkerFailureReasonSchema,
-} from "../src/schemas/worker";
-import { SessionSchema, migrateSession } from "../src/schemas/session";
+} from "../src/worker/schemas";
+import { SessionSchema, migrateSession } from "../src/session/schemas";
 import { WorkflowDefinitionSchema } from "../src/schemas/workflow";
 import { ExecutionStatusSchema, SessionStatusSchema } from "../src/schemas/execution";
 import {

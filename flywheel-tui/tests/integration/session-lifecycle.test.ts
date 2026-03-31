@@ -19,10 +19,10 @@ import {
 } from "../../src/session/manager";
 import { readSession, deleteSessionWithCompanions } from "../../src/session/persistence";
 import { isValidTransition, VALID_TRANSITIONS, type SessionLifecycleState } from "../../src/session/state-machine";
-import type { WorkflowSession } from "../../src/tui/components/workflow-session";
+import type { WorkflowSession } from "../../src/tui/session/workflow-session";
 import { createOutputPersistence } from "../../src/session/output-persistence";
-import { createSessionOrchestrator, type SessionOrchestratorDeps } from "../../src/tui/components/session-orchestrator";
-import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../../src/schemas/output";
+import { createSessionOrchestrator, type SessionOrchestratorDeps } from "../../src/tui/session/session-orchestrator";
+import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../../src/session/output-schemas";
 
 // ---------------------------------------------------------------------------
 // Test helpers

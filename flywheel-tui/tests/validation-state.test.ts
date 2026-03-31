@@ -12,7 +12,7 @@ import {
   AssertionStatusSchema,
   type ValidationState,
   type AssertionStatus,
-} from "../src/schemas/validation";
+} from "../src/session/validation-schemas";
 
 import {
   readValidationState,
@@ -22,7 +22,7 @@ import {
   checkAssertionCoverage,
   checkEndOfSessionGate,
   type EndOfSessionGateResult,
-} from "../src/controller/validation-state";
+} from "../src/session/validation-state";
 
 
 

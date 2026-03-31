@@ -20,18 +20,18 @@ import {
   workflowHasReview,
   modeHasReview,
   type WorkflowName,
-} from "../src/tui/components/start-command";
+} from "../src/tui/shell/start-command";
 import {
   buildQueue,
   buildQueueForSlashCommand,
   buildQueueFromPlan,
   formatQueueProgress,
   type QueueProgressInfo,
-} from "../src/tui/components/shell-queue";
+} from "../src/tui/shell/shell-queue";
 import {
   createActionDispatcher,
   type ActionDispatcherDeps,
-} from "../src/tui/components/action-dispatcher";
+} from "../src/tui/shell/action-dispatcher";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader";
 import * as path from "node:path";
 

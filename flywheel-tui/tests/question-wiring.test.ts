@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { createQuestionWiring } from "../src/tui/utils/question-wiring";
 import { EventBus } from "../src/events/event-bus";
-import type { QuestionRequest } from "../src/controller/question-service";
+import type { QuestionRequest } from "../src/queue/question-service";
 
 describe("createQuestionWiring", () => {
   it("creates a QuestionService and wires events", () => {

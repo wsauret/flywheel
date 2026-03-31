@@ -32,6 +32,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
+import type { OnStepCompletedHook } from "./hooks";
 import type { FlywheelEmitter } from "../events/event-bus";
 import {
   transitionStep,
@@ -47,7 +48,7 @@ import { Log } from "../utils/log";
 
 /**
  * Minimal QuestionService interface for gate steps.
- * Mirrors the `ask` method from `src/controller/question-service.ts`.
+ * Mirrors the `ask` method from `src/queue/question-service.ts`.
  * The full QuestionService type is not imported to avoid coupling the
  * queue engine to the controller layer.
  */
@@ -189,25 +190,10 @@ export interface StepExecutorOptions {
 }
 
 // ---------------------------------------------------------------------------
-// OnStepCompleted hook type
+// OnStepCompleted hook type (canonical source: ./hooks.ts)
 // ---------------------------------------------------------------------------
 
-export interface OnStepCompletedResult {
-  /** When true for a failed step, the executor continues instead of stopping. */
-  continueExecution: boolean;
-}
-
-/**
- * Hook called after a step transitions to completed or failed.
- * Receives the step, its final status, the queue (for mutation),
- * and the handoff data (if available).
- */
-export type OnStepCompletedHook = (
-  step: Step,
-  status: "completed" | "failed",
-  queue: Queue,
-  handoffData: Record<string, unknown> | null,
-) => Promise<OnStepCompletedResult>;
+export type { OnStepCompletedHook, OnStepCompletedResult } from "./hooks";
 
 // ---------------------------------------------------------------------------
 // StepExecutorResult — what run() returns

@@ -13,12 +13,12 @@ import { describe, it, expect, beforeEach, mock } from "bun:test";
 import {
   createSessionViewport,
   type SessionViewportDeps,
-} from "../src/tui/components/session-viewport";
+} from "../src/tui/session/session-viewport";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { WorkState } from "../src/tui/routes/work/state/types";
-import type { AppState } from "../src/tui/components/shell-modes";
-import type { SessionOrchestrator } from "../src/tui/components/session-orchestrator";
+import type { AppState } from "../src/tui/shell/shell-modes";
+import type { SessionOrchestrator } from "../src/tui/session/session-orchestrator";
 
 // ---------------------------------------------------------------------------
 // Helpers

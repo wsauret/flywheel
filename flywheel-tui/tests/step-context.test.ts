@@ -12,7 +12,7 @@ import {
   STEP_CONTEXT_FILE,
   type StepContext,
   type StepHandoffSummary,
-} from "../src/controller/step-context";
+} from "../src/queue/step-context";
 
 // ---------------------------------------------------------------------------
 // Helpers

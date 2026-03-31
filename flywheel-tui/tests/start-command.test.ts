@@ -4,7 +4,7 @@ import {
   modeHasReview,
   WORKFLOW_OPTIONS,
   type WorkflowName,
-} from "../src/tui/components/start-command"
+} from "../src/tui/shell/start-command"
 
 // ===========================================================================
 // WORKFLOW_OPTIONS (replaces PIPELINE_MODE_OPTIONS)

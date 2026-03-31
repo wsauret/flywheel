@@ -20,7 +20,7 @@ import {
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
 import { isValidTransition, type SessionLifecycleState } from "./state-machine";
-import type { WorkflowSession } from "../tui/components/workflow-session";
+import type { WorkflowSession } from "../tui/session/workflow-session";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/loader";
 import { Log } from "../utils/log";

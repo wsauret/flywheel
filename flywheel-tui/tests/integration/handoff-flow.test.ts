@@ -24,12 +24,12 @@ import {
   WorkerHandoffSchema,
   EvaluatorVerdictSchema,
   DispatcherDecisionHandoffSchema,
-} from "../../src/schemas/handoff";
+} from "../../src/handoff/schemas";
 import type {
   WorkerHandoff,
   EvaluatorVerdict,
   DispatcherDecisionHandoff,
-} from "../../src/schemas/handoff";
+} from "../../src/handoff/schemas";
 import {
   buildLastWorkerResult,
   buildPreviousResultFromHandoff,

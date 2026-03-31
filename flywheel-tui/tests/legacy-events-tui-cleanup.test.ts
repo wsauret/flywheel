@@ -23,7 +23,7 @@ import {
   getStepStatusIcon,
   getStepTypeLabel,
 } from "../src/tui/components/workflow-panel-logic";
-import type { RunningRuntime } from "../src/tui/components/session-runtime";
+import type { RunningRuntime } from "../src/tui/session/session-runtime";
 
 function ts(): string {
   return new Date().toISOString();

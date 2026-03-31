@@ -24,8 +24,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { EvaluatorResultSchema } from "../src/schemas/evaluator";
-import type { EvaluatorInput, EvaluatorResult } from "../src/schemas/evaluator";
+import { EvaluatorResultSchema } from "../src/evaluator/schemas";
+import type { EvaluatorInput, EvaluatorResult } from "../src/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers

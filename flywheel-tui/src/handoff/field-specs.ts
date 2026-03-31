@@ -1,4 +1,4 @@
-import type { WorkerHandoff } from "../schemas/handoff";
+import type { WorkerHandoff } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // HandoffFieldSpec — typed key ensures compile-time safety

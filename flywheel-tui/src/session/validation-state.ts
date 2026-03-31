@@ -13,7 +13,7 @@ import { writeFileAtomic } from "../utils/atomic-write";
 import {
   ValidationStateSchema,
   type ValidationState,
-} from "../schemas/validation";
+} from "./validation-schemas";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "validation-state" });

@@ -13,7 +13,7 @@ import type {
   QuestionAnswer,
   QuestionRequest,
   QuestionService,
-} from "../../controller/question-service"
+} from "../../queue/question-service"
 
 // ---------------------------------------------------------------------------
 // Store shape (mirrors OpenCode's createStore shape)

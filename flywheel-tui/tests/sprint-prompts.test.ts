@@ -1,18 +1,18 @@
 import { describe, it, expect } from "bun:test";
-import type { WorkflowStepContext } from "../src/prompts/index";
+import type { WorkflowStepContext } from "../src/queue/prompts/types";
 import type { BoundariesConfig } from "../src/config/loader";
 import { SPRINT_FIELDS, renderHandoffInstruction } from "../src/handoff/field-specs";
 
 // ---------------------------------------------------------------------------
-// Imports for prompt builders (will be created)
+// Imports for prompt builders
 // ---------------------------------------------------------------------------
 
-import { buildSprintStepPrompt } from "../src/prompts/sprint/step-prompt";
-import { buildSprintRevisionPrompt } from "../src/prompts/sprint/revision-prompt";
+import { buildSprintStepPrompt } from "../src/queue/prompts/sprint-step";
+import { buildSprintRevisionPrompt } from "../src/queue/prompts/sprint-revision";
 import {
   buildSprintEvaluatorPrompt,
   SPRINT_EVALUATOR_SYSTEM_PROMPT,
-} from "../src/prompts/sprint/evaluator-prompt";
+} from "../src/queue/prompts/sprint-evaluator";
 
 // ---------------------------------------------------------------------------
 // Fixtures

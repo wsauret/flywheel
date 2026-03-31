@@ -18,16 +18,16 @@ import * as path from "node:path";
 
 import type { Step, Queue } from "./types";
 import { insertAfter, type Provenance } from "./queue";
-import type { OnStepCompletedResult } from "./executor";
+import type { OnStepCompletedResult } from "./hooks";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type { VerificationResult } from "../sprint/verification-runner";
 import {
   buildSprintStepPrompt,
-} from "../prompts/sprint/step-prompt";
+} from "./prompts/sprint-step";
 import {
   buildSprintRevisionPrompt,
   type SprintIterationSummary,
-} from "../prompts/sprint/revision-prompt";
+} from "./prompts/sprint-revision";
 import {
   buildEscalationContext,
   type EscalationContext,

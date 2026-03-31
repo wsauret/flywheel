@@ -31,7 +31,7 @@ import type {
   DispatcherDecision,
   DispatcherConfig,
   WorkflowInfo,
-} from "../schemas/dispatcher";
+} from "../dispatcher/schemas";
 import type { FlywheelEmitter } from "../events/event-bus";
 import type {
   SessionBudgetStatus,
@@ -42,8 +42,8 @@ import type {
 } from "../schemas/shared";
 import type { AccumulatedContext, HandoffSummary } from "./context-accumulator";
 import type { EvalResult } from "./executor";
-import type { StepContext } from "../controller/step-context";
-import { createEmptyStepContext } from "../controller/step-context";
+import type { StepContext } from "./step-context";
+import { createEmptyStepContext } from "./step-context";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "step-dispatcher" });

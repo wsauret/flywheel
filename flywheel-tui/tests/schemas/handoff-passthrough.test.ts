@@ -4,7 +4,7 @@ import {
   WorkerHandoffBaseSchema,
   EvaluatorVerdictSchema,
   DispatcherDecisionHandoffSchema,
-} from "../../src/schemas/handoff";
+} from "../../src/handoff/schemas";
 
 // ---------------------------------------------------------------------------
 // Tests for passthrough behavior on incoming handoff schemas.

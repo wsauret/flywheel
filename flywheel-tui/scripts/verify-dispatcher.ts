@@ -26,8 +26,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { assembleDispatcherInput } from "../src/dispatcher/assemble";
-import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
-import type { DispatcherDecision } from "../src/schemas/dispatcher";
+import { DispatcherDecisionSchema } from "../src/dispatcher/schemas";
+import type { DispatcherDecision } from "../src/dispatcher/schemas";
 import { buildDispatcherSystemPrompt } from "../src/dispatcher/system-prompt";
 import { buildWorkPhasePrompt } from "../src/prompts/work/phase-prompt";
 import { enrichPromptWithContext } from "../src/controller/context-enrichment";

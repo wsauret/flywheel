@@ -16,15 +16,15 @@ import { describe, it, expect } from "bun:test";
 import {
   handleQueueCompletion,
   type QueueCompletionDeps,
-} from "../src/tui/components/queue-completion";
+} from "../src/tui/session/queue-completion";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
-} from "../src/tui/components/session-orchestrator";
+} from "../src/tui/session/session-orchestrator";
 import type {
   QueueResult,
   CompletedStepResult,
-} from "../src/controller/queue-types";
+} from "../src/queue/queue-types";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import { isValidTransition } from "../src/session/state-machine";
 

@@ -15,11 +15,11 @@ import * as os from "node:os";
 import {
   WorkerHandoffSchema,
   EvaluatorVerdictSchema,
-} from "../../src/schemas/handoff";
-import { EvaluatorHandoffDataSchema } from "../../src/schemas/evaluator";
+} from "../../src/handoff/schemas";
+import { EvaluatorHandoffDataSchema } from "../../src/evaluator/schemas";
 import { LastWorkerResultSchema } from "../../src/schemas/shared";
 import { buildLastWorkerResult } from "../../src/handoff/consumers";
-import type { WorkerHandoff } from "../../src/schemas/handoff";
+import type { WorkerHandoff } from "../../src/handoff/schemas";
 import type { LastWorkerResult } from "../../src/schemas/shared";
 
 // ---------------------------------------------------------------------------

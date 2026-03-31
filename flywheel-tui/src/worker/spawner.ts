@@ -1,4 +1,4 @@
-import type { WorkerResult } from "../schemas/worker";
+import type { WorkerResult } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // StdinHandle — mid-execution stdin injection

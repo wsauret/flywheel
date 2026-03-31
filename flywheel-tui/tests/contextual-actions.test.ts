@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test"
-import { createActionDispatcher } from "../src/tui/components/action-dispatcher"
+import { createActionDispatcher } from "../src/tui/shell/action-dispatcher"
 import { getPlaceholderForState } from "../src/tui/components/prompt-placeholders"
 import type { SessionLifecycleState } from "../src/session/state-machine"
 

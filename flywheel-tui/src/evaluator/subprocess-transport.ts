@@ -19,7 +19,7 @@
 
 import * as nodePath from "node:path";
 import * as fs from "node:fs";
-import type { EvaluatorInput, EvaluatorResult } from "../schemas/evaluator";
+import type { EvaluatorInput, EvaluatorResult } from "./schemas";
 import type { EvaluatorTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
 import type { Engine } from "../engines/core/types";
@@ -27,8 +27,8 @@ import { createEnvFilter } from "../worker/env-filter";
 import { getEngine } from "../engines/core/registry";
 import { renderEvaluatorHandoffInstruction } from "../handoff/field-specs";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
-import { EvaluatorVerdictSchema } from "../schemas/handoff";
-import type { EvaluatorVerdict } from "../schemas/handoff";
+import { EvaluatorVerdictSchema } from "../handoff/schemas";
+import type { EvaluatorVerdict } from "../handoff/schemas";
 import { Log } from "../utils/log";
 import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
 import { buildEvaluatorHandoffPath, ensureSessionDir } from "../config/paths";

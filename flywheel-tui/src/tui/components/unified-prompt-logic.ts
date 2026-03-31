@@ -5,7 +5,7 @@
  * whether an approval gate is pending.
  */
 
-import type { AppState } from "./shell-modes"
+import type { AppState } from "../shell/shell-modes"
 
 /**
  * Prompt modes:

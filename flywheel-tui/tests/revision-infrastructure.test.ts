@@ -6,7 +6,7 @@ import {
 } from "../src/config/loader";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import type { FlywheelEvent } from "../src/events/types";
-import { WorkerResultSchema } from "../src/schemas/worker";
+import { WorkerResultSchema } from "../src/worker/schemas";
 import { HeadlessAdapter } from "../src/tui/adapters/headless";
 
 // ---------------------------------------------------------------------------

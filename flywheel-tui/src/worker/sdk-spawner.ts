@@ -10,7 +10,7 @@
  */
 
 import type { ProcessSpawner, SpawnOptions, SpawnResult, StdinHandle } from "./spawner";
-import type { WorkerResult } from "../schemas/worker";
+import type { WorkerResult } from "./schemas";
 import { createOpencode, type OpencodeClient } from "@opencode-ai/sdk";
 import { Log } from "../utils/log";
 

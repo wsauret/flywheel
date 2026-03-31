@@ -19,7 +19,7 @@ import {
   type MutationRequest,
 } from "../src/queue/step-dispatcher";
 import type { DispatcherTransport } from "../src/dispatcher/transport";
-import type { DispatcherInput, DispatcherDecision } from "../src/schemas/dispatcher";
+import type { DispatcherInput, DispatcherDecision } from "../src/dispatcher/schemas";
 import type { AccumulatedContext } from "../src/queue/context-accumulator";
 import type { EvalResult } from "../src/queue/executor";
 

@@ -5,7 +5,7 @@ import {
   toSnapshot,
   fromSnapshot,
   type OutputSnapshot,
-} from "../src/schemas/output";
+} from "../src/session/output-schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers — standalone block fixtures (NOT imported from TUI types)

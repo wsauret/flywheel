@@ -7,7 +7,7 @@ import {
   type SidebarAction,
   GROUP_ORDER,
   GROUP_LABELS,
-} from "../src/tui/components/sidebar-logic";
+} from "../src/tui/session/sidebar-logic";
 import type { SessionSummary } from "../src/session/manager";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import { makeSession, groupToFlatList } from "./helpers/sidebar";

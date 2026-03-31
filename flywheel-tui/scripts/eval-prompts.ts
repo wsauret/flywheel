@@ -28,10 +28,10 @@ import {
   type EvaluatorJudgeScores,
   type EvalSummary,
 } from "./eval-prompts-fixtures";
-import { DispatcherDecisionSchema } from "../src/schemas/dispatcher";
-import type { DispatcherDecision } from "../src/schemas/dispatcher";
-import { EvaluatorResultSchema } from "../src/schemas/evaluator";
-import type { EvaluatorResult } from "../src/schemas/evaluator";
+import { DispatcherDecisionSchema } from "../src/dispatcher/schemas";
+import type { DispatcherDecision } from "../src/dispatcher/schemas";
+import { EvaluatorResultSchema } from "../src/evaluator/schemas";
+import type { EvaluatorResult } from "../src/evaluator/schemas";
 import { getEngine } from "../src/engines/core/registry";
 import type { Engine } from "../src/engines/core/types";
 

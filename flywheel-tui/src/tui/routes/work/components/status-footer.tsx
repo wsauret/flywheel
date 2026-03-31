@@ -11,7 +11,7 @@
 
 import { useTheme } from "@tui/shared/context/theme"
 import { resolveFooterShortcuts } from "../../../utils/footer-shortcuts"
-import type { AppState } from "../../../components/shell-modes"
+import type { AppState } from "../../../shell/shell-modes"
 
 export interface StatusFooterProps {
   /** Current app state — determines which shortcut set to display. */

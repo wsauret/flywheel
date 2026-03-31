@@ -12,13 +12,13 @@
 // ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
-import type { OnStepCompletedHook, OnStepCompletedResult } from "./executor";
+import type { OnStepCompletedHook, OnStepCompletedResult } from "./hooks";
 import { Log } from "../utils/log";
 import {
   QuestionRejectedError,
   type QuestionService,
   type QuestionInfo,
-} from "../controller/question-service";
+} from "./question-service";
 
 const log = Log.create({ service: "review-p3-triage" });
 
