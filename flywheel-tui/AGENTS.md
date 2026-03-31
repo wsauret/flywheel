@@ -192,13 +192,17 @@ After modifying any file under `src/tui/`, always:
 
 1. Run `bun test` to ensure unit tests pass
 2. Start the TUI in tmux
-3. Verify the idle screen renders correctly (branding, sidebar, starter chooser, prompt)
-4. Test the specific feature you changed
-5. Test adjacent interactions (e.g., if you changed a modal, also test opening and closing it, keyboard shortcuts within it, and that the view behind it restores correctly)
-6. **Check the log file for errors** — after the test, read `.flywheel/log/` for the most recent `.log` file and look for `ERROR` or `WARN` lines. Any errors there indicate problems even if the TUI appeared to work visually.
+3. Test the specific feature you changed
+4. Test adjacent interactions (e.g., if you changed a modal, also test opening and closing it, keyboard shortcuts within it, and that the view behind it restores correctly)
+5. **Check the log files for errors** — session logs live inside `.flywheel/sessions/<id>/` (transcript.jsonl, telemetry.json, logs/subprocess/*.jsonl). The root `.flywheel/log/` only covers app-level logging between sessions. Check both locations for `ERROR` or `WARN` lines — errors there indicate problems even if the TUI appeared to work visually.
+6. **Clean up ALL artifacts** — delete every file and session created during the tmux test (plans, sessions, worktrees, source files, test fixtures). Never leave behind files that were created solely for manual testing.
 7. Clean up the tmux session
 
 ```bash
 # After running a tmux TUI test, check for logged errors:
+# App-level log (startup, between sessions):
 ls -t .flywheel/log/*.log | head -1 | xargs cat | grep -E '^(ERROR|WARN)'
+# Session-level logs (the main logs during a run):
+cat .flywheel/sessions/*/transcript.jsonl | grep -i error
+cat .flywheel/sessions/*/logs/subprocess/*.jsonl | grep -i error
 ```

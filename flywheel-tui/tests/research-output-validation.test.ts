@@ -19,7 +19,7 @@ import {
   checkNoPlanContamination,
   type ResearchVariant,
   type ValidationResult,
-} from "../scripts/validate-research-output";
+} from "./fixtures/validate-research-output";
 
 // ---------------------------------------------------------------------------
 // Helpers

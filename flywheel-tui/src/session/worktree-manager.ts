@@ -15,6 +15,8 @@
  * Graceful fallback: all operations return null/no-op when wt is unavailable.
  */
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
@@ -328,12 +330,42 @@ export function createWorktreeManager(deps: WorktreeManagerDeps): WorktreeManage
 }
 
 // ---------------------------------------------------------------------------
+// Bundled binary resolution
+// ---------------------------------------------------------------------------
+
+const PLATFORM_MAP: Record<string, string> = {
+  "darwin-arm64": "wt-darwin-arm64",
+  "darwin-x64": "wt-darwin-x64",
+  "linux-x64": "wt-linux-x64",
+  "linux-arm64": "wt-linux-arm64",
+};
+
+/**
+ * Resolve the `wt` binary path. Checks the bundled vendor directory first,
+ * then falls back to the system-installed binary via `Bun.which`.
+ * Returns null if neither is found.
+ */
+export function resolveWtBinary(): string | null {
+  const platformKey = `${process.platform}-${process.arch}`;
+  const binaryName = PLATFORM_MAP[platformKey];
+
+  if (binaryName) {
+    const projectRoot = join(new URL(".", import.meta.url).pathname, "..", "..");
+    const vendoredPath = join(projectRoot, "bin", "vendor", binaryName);
+    if (existsSync(vendoredPath)) return vendoredPath;
+  }
+
+  return Bun.which("wt");
+}
+
+// ---------------------------------------------------------------------------
 // Default IWorktreeClient — shells out to `wt` CLI
 // ---------------------------------------------------------------------------
 
 /**
  * Create a production IWorktreeClient that shells out to the `wt` CLI.
  *
+ * Prefers the bundled binary under `bin/vendor/`, falls back to system `wt`.
  * Uses Bun.spawn for process execution with proper timeout/abort handling.
  * Parses wt output with Zod schemas.
  */
@@ -346,13 +378,23 @@ export function createWtClient(opts?: {
   const cwd = opts?.cwd ?? process.cwd();
   const timeoutMs = opts?.timeoutMs ?? 30_000;
 
-  /** Run a wt CLI command and return stdout. */
+  let _resolvedBinary: string | null | undefined;
+
+  function getWtPath(): string | null {
+    if (_resolvedBinary !== undefined) return _resolvedBinary;
+    _resolvedBinary = resolveWtBinary();
+    return _resolvedBinary;
+  }
+
   async function runWt(args: string[]): Promise<string> {
+    const wtPath = getWtPath();
+    if (!wtPath) throw new Error("wt binary not found");
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const proc = Bun.spawn(["wt", ...args], {
+      const proc = Bun.spawn([wtPath, ...args], {
         cwd,
         stdout: "pipe",
         stderr: "pipe",
@@ -373,19 +415,13 @@ export function createWtClient(opts?: {
     }
   }
 
-  // Cache isAvailable() — one filesystem stat, not N per session
-  let _availableCache: boolean | null = null;
-
   return {
     async isAvailable(): Promise<boolean> {
-      if (_availableCache !== null) return _availableCache;
       try {
-        const resolved = Bun.which("wt");
-        _availableCache = resolved !== null;
+        return getWtPath() !== null;
       } catch {
-        _availableCache = false;
+        return false;
       }
-      return _availableCache;
     },
 
     async create(branchName: string, baseBranch?: string): Promise<WorktreeInfo> {

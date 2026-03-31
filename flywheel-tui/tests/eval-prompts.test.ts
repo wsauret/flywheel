@@ -16,7 +16,7 @@ import { describe, it, expect } from "bun:test";
 
 describe("eval-prompts: fixture assembly", () => {
   it("SIMPLE scenario assembles valid dispatcher input with no history, no context", async () => {
-    const { buildSimpleScenario } = await import("../scripts/eval-prompts-fixtures");
+    const { buildSimpleScenario } = await import("./fixtures/eval-prompts-fixtures");
     const scenario = buildSimpleScenario();
 
     expect(scenario.name).toBe("simple");
@@ -36,7 +36,7 @@ describe("eval-prompts: fixture assembly", () => {
   });
 
   it("COMPLEX scenario has 4+ steps with 2 completed and context entries", async () => {
-    const { buildComplexScenario } = await import("../scripts/eval-prompts-fixtures");
+    const { buildComplexScenario } = await import("./fixtures/eval-prompts-fixtures");
     const scenario = buildComplexScenario();
 
     expect(scenario.name).toBe("complex");
@@ -54,7 +54,7 @@ describe("eval-prompts: fixture assembly", () => {
   });
 
   it("EDGE scenario has truncation flags, tight budget, and failed result", async () => {
-    const { buildEdgeScenario } = await import("../scripts/eval-prompts-fixtures");
+    const { buildEdgeScenario } = await import("./fixtures/eval-prompts-fixtures");
     const scenario = buildEdgeScenario();
 
     expect(scenario.name).toBe("edge");
@@ -68,7 +68,7 @@ describe("eval-prompts: fixture assembly", () => {
   });
 
   it("each scenario has valid evaluator input", async () => {
-    const { buildSimpleScenario, buildComplexScenario, buildEdgeScenario } = await import("../scripts/eval-prompts-fixtures");
+    const { buildSimpleScenario, buildComplexScenario, buildEdgeScenario } = await import("./fixtures/eval-prompts-fixtures");
     const { EvaluatorInputSchema } = await import("../src/evaluator/schemas");
 
     for (const build of [buildSimpleScenario, buildComplexScenario, buildEdgeScenario]) {
@@ -79,7 +79,7 @@ describe("eval-prompts: fixture assembly", () => {
   });
 
   it("each scenario has valid dispatcher input", async () => {
-    const { buildSimpleScenario, buildComplexScenario, buildEdgeScenario } = await import("../scripts/eval-prompts-fixtures");
+    const { buildSimpleScenario, buildComplexScenario, buildEdgeScenario } = await import("./fixtures/eval-prompts-fixtures");
     const { DispatcherInputSchema } = await import("../src/dispatcher/schemas");
 
     for (const build of [buildSimpleScenario, buildComplexScenario, buildEdgeScenario]) {
@@ -90,7 +90,7 @@ describe("eval-prompts: fixture assembly", () => {
   });
 
   it("all 3 scenarios are returned by buildAllScenarios", async () => {
-    const { buildAllScenarios } = await import("../scripts/eval-prompts-fixtures");
+    const { buildAllScenarios } = await import("./fixtures/eval-prompts-fixtures");
     const scenarios = buildAllScenarios();
 
     expect(scenarios.length).toBe(3);
@@ -104,7 +104,7 @@ describe("eval-prompts: fixture assembly", () => {
 
 describe("eval-prompts: judge prompt construction", () => {
   it("dispatcher judge prompt includes plan description and task_content", async () => {
-    const { buildDispatcherJudgePrompt } = await import("../scripts/eval-prompts-fixtures");
+    const { buildDispatcherJudgePrompt } = await import("./fixtures/eval-prompts-fixtures");
 
     const prompt = buildDispatcherJudgePrompt(
       "Create a GET /hello endpoint returning { message: 'hello world' }",
@@ -124,7 +124,7 @@ describe("eval-prompts: judge prompt construction", () => {
   });
 
   it("evaluator judge prompt includes worker output and evaluator result", async () => {
-    const { buildEvaluatorJudgePrompt } = await import("../scripts/eval-prompts-fixtures");
+    const { buildEvaluatorJudgePrompt } = await import("./fixtures/eval-prompts-fixtures");
 
     const prompt = buildEvaluatorJudgePrompt(
       "Tests pass and endpoint returns 200",
@@ -146,7 +146,7 @@ describe("eval-prompts: judge prompt construction", () => {
   });
 
   it("judge prompts request 1-5 scale scores", async () => {
-    const { buildDispatcherJudgePrompt, buildEvaluatorJudgePrompt } = await import("../scripts/eval-prompts-fixtures");
+    const { buildDispatcherJudgePrompt, buildEvaluatorJudgePrompt } = await import("./fixtures/eval-prompts-fixtures");
 
     const dispPrompt = buildDispatcherJudgePrompt("task desc", "task content");
     expect(dispPrompt).toContain("1-5");
@@ -217,7 +217,7 @@ describe("eval-prompts: CLI argument parsing", () => {
 
 describe("eval-prompts: baseline comparison", () => {
   it("calculates delta between baseline and current scores", async () => {
-    const { calculateScoreDelta } = await import("../scripts/eval-prompts-fixtures");
+    const { calculateScoreDelta } = await import("./fixtures/eval-prompts-fixtures");
 
     const baseline = { clarity: 4, completeness: 3, actionability: 5 };
     const current = { clarity: 5, completeness: 3, actionability: 4 };
@@ -229,7 +229,7 @@ describe("eval-prompts: baseline comparison", () => {
   });
 
   it("calculates timing delta", async () => {
-    const { calculateTimingDelta } = await import("../scripts/eval-prompts-fixtures");
+    const { calculateTimingDelta } = await import("./fixtures/eval-prompts-fixtures");
 
     const delta = calculateTimingDelta(15000, 12000);
     expect(delta.absolute_ms).toBe(-3000);
@@ -237,7 +237,7 @@ describe("eval-prompts: baseline comparison", () => {
   });
 
   it("identifies regression when timing increases", async () => {
-    const { calculateTimingDelta } = await import("../scripts/eval-prompts-fixtures");
+    const { calculateTimingDelta } = await import("./fixtures/eval-prompts-fixtures");
 
     const delta = calculateTimingDelta(10000, 15000);
     expect(delta.absolute_ms).toBe(5000);

@@ -10,7 +10,7 @@
 
 import { Log } from "../utils/log"
 import { installAgents } from "../agents/installer"
-import { createServer } from "../server"
+
 
 // ---------------------------------------------------------------------------
 // Main
@@ -34,11 +34,6 @@ export async function main(): Promise<void> {
       error: err instanceof Error ? err.message : String(err),
     })
   })
-
-  const server = createServer({ port: 3100 })
-  if (server) {
-    Log.Default.info("server started", { url: `http://${server.hostname}:${server.port}` })
-  }
 
   await runTUI();
 }
