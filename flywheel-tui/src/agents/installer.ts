@@ -9,7 +9,7 @@
 //
 // This module copies the bundled persona .md files from the repo into both
 // locations so that when a flywheel worker is spawned (regardless of engine),
-// its Task tool can resolve `fly/reviewer-architecture` etc. natively.
+// its Task tool can resolve agents natively (prefix varies by engine).
 //
 // The installer is idempotent: it overwrites existing files (to pick up
 // updates) and skips gracefully on permission errors.

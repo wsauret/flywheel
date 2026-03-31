@@ -2,9 +2,9 @@ import { describe, it, expect } from "bun:test";
 import {
   WorkerHandoffSchema,
   WorkerHandoffBaseSchema,
-  EvaluatorVerdictSchema,
-  DispatcherDecisionHandoffSchema,
-} from "../../src/handoff/schemas";
+} from "../../src/queue/shared/handoff-schemas";
+import { EvaluatorVerdictSchema } from "../../src/evaluator/schemas";
+import { DispatcherDecisionHandoffSchema } from "../../src/dispatcher/schemas";
 
 // ---------------------------------------------------------------------------
 // Tests for passthrough behavior on incoming handoff schemas.

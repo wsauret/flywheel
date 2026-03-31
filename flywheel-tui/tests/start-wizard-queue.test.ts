@@ -376,17 +376,11 @@ describe("VAL-SHELL-034: ActionDispatcher routes all commands", () => {
 // ===========================================================================
 
 describe("VAL-SHELL-036: HITL preferences stored in queue-level metadata", () => {
-  it("buildQueue respects skip_approval_gates for gate insertion", () => {
-    // Gates are inserted when skip_approval_gates is false
-    const withGates = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: false }));
-    const gateSteps = withGates.steps.filter((s) => s.type === "gate");
-    expect(gateSteps.length).toBeGreaterThan(0);
-  });
-
-  it("buildQueue skips gates when skip_approval_gates is true", () => {
-    const noGates = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: true }));
-    const gateSteps = noGates.steps.filter((s) => s.type === "gate");
-    expect(gateSteps).toHaveLength(0);
+  it("buildQueue never inserts gate steps (HITL via questions)", () => {
+    const withFlag = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: false }));
+    const withoutFlag = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: true }));
+    expect(withFlag.steps.filter((s) => s.type === "gate")).toHaveLength(0);
+    expect(withoutFlag.steps.filter((s) => s.type === "gate")).toHaveLength(0);
   });
 
   it("queue respects max_steps from config", () => {

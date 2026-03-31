@@ -9,8 +9,8 @@ import {
   ProtoStepArraySchema,
   EstimatedComplexitySchema,
   formalizeProtoSteps,
-} from "../src/queue/proto-step";
-import type { ProtoStep, StepWithPrompt } from "../src/queue/proto-step";
+} from "../src/queue/steps/plan-consolidate/proto-step";
+import type { ProtoStep, StepWithPrompt } from "../src/queue/steps/plan-consolidate/proto-step";
 
 // ===========================================================================
 // VAL-QUEUE-037: Config section [queue] in flywheel.toml

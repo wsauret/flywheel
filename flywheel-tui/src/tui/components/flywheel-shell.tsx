@@ -100,7 +100,7 @@ import { TelemetryLogger, type TelemetryRecord } from "../../telemetry/logger"
 
 import type { StdinHandle } from "../../worker/spawner"
 import { resolveTransports, buildExecutorDeps } from "../shell/queue-orchestrator"
-import { SPRINT_EVALUATOR_ADDENDUM } from "../../queue/prompts/sprint-evaluator"
+import { SPRINT_EVALUATOR_ADDENDUM } from "../../queue/steps/sprint-work/evaluator"
 import {
   resumeWorkerWithMessage as resumeWorkerWithMessageImpl,
   resetInterruptState,
@@ -858,6 +858,7 @@ export function FlywheelShell() {
         stdinHandleRef: activeStdinHandleRef,
         seedHandoff,
         questionService: activeQuestionWiring?.service ?? null,
+        reviewTriageInteractive: interactiveOverrides?.review,
         setShellQueueSteps,
         capturedWorkerSessionId,
         pendingInjection,
@@ -1039,7 +1040,7 @@ export function FlywheelShell() {
         if (queueResult && !_userInitiatedPause) {
           try {
             // Convert queue result to QueueResult format for handleQueueCompletion
-            const queueResultCompat: import("../../controller/queue-types").QueueResult = {
+            const queueResultCompat: QueueResult = {
               completed: queueResult.completed,
               stepsCompleted: queueResult.stepsCompleted,
               stepsTotal: queueResult.stepsTotal,
@@ -1701,7 +1702,7 @@ export function FlywheelShell() {
           runtimes.remove(sessionId)
           if (queueResult && !_userInitiatedPause) {
             try {
-              const queueResultCompat: import("../../controller/queue-types").QueueResult = {
+              const queueResultCompat: QueueResult = {
                 completed: queueResult.completed,
                 stepsCompleted: queueResult.stepsCompleted,
                 stepsTotal: queueResult.stepsTotal,

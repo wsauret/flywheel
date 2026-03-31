@@ -1,8 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
   WorkerHandoffSchema,
-  EvaluatorVerdictSchema,
-  DispatcherDecisionHandoffSchema,
   ArtifactsSchema,
   VerificationSchema,
   OpenQuestionSchema,
@@ -12,7 +10,9 @@ import {
   SkillDeviationSchema,
   SkillFeedbackSchema,
   countSentences,
-} from "../../src/handoff/schemas";
+} from "../../src/queue/shared/handoff-schemas";
+import { EvaluatorVerdictSchema } from "../../src/evaluator/schemas";
+import { DispatcherDecisionHandoffSchema } from "../../src/dispatcher/schemas";
 
 // ---------------------------------------------------------------------------
 // Sub-schemas

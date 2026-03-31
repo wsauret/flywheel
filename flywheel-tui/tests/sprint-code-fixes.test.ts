@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { SPRINT_FIELDS, renderHandoffInstruction } from "../src/handoff/field-specs";
+import { SPRINT_FIELDS } from "../src/queue/steps/sprint-work/fields";
+import { renderHandoffInstruction } from "../src/queue/shared/handoff-render";
 import { loadConfig } from "../src/config/loader";
 
 // ===========================================================================

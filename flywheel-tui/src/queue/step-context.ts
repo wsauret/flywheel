@@ -15,7 +15,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { writeFileAtomic } from "../utils/atomic-write";
 import { Log } from "../utils/log";
-import type { SkillFeedback } from "../handoff/schemas";
+import type { SkillFeedback } from "./shared/handoff-schemas";
 
 const log = Log.create({ service: "step-context" });
 

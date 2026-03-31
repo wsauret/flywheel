@@ -39,21 +39,19 @@ import {
   readHandoff,
   HandoffMissingError,
   HandoffInvalidError,
-} from "../src/handoff/reader";
-import {
-  WorkerHandoffSchema,
-  EvaluatorVerdictSchema,
-  DispatcherDecisionHandoffSchema,
-} from "../src/handoff/schemas";
+} from "../src/queue/shared/handoff-reader";
+import { WorkerHandoffSchema } from "../src/queue/shared/handoff-schemas";
+import { EvaluatorVerdictSchema } from "../src/evaluator/schemas";
+import { DispatcherDecisionHandoffSchema } from "../src/dispatcher/schemas";
 import type { ZodSchema } from "zod";
 import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
-  WORK_PHASE_FIELDS,
-  PLAN_CONSOLIDATE_FIELDS,
-  REVIEW_FIELDS,
-} from "../src/handoff/field-specs";
+} from "../src/queue/shared/handoff-render";
+import { WORK_STEP_FIELDS as WORK_PHASE_FIELDS } from "../src/queue/steps/work/fields";
+import { PLAN_CONSOLIDATE_FIELDS } from "../src/queue/steps/plan-consolidate/fields";
+import { REVIEW_FIELDS } from "../src/queue/steps/review-consolidate/fields";
 
 // ---------------------------------------------------------------------------
 // Terminal colors

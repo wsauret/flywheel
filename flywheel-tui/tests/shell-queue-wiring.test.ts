@@ -75,20 +75,13 @@ describe("buildQueue", () => {
     expect(queue.steps[1].type).toBe("verify");
   });
 
-  it("inserts gate steps when skip_approval_gates is false", async () => {
+  it("no gate steps regardless of skip_approval_gates config (HITL via questions)", async () => {
     const { buildQueue } = await import("../src/tui/shell/shell-queue");
-    const queue = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: false }));
+    const withFlag = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: false }));
+    const withoutFlag = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: true }));
 
-    const gateSteps = queue.steps.filter((s) => s.type === "gate");
-    expect(gateSteps.length).toBeGreaterThan(0);
-  });
-
-  it("does not insert gate steps when skip_approval_gates is true (default)", async () => {
-    const { buildQueue } = await import("../src/tui/shell/shell-queue");
-    const queue = buildQueue("plan-work-review", makeConfig({ skip_approval_gates: true }));
-
-    const gateSteps = queue.steps.filter((s) => s.type === "gate");
-    expect(gateSteps).toHaveLength(0);
+    expect(withFlag.steps.filter((s) => s.type === "gate")).toHaveLength(0);
+    expect(withoutFlag.steps.filter((s) => s.type === "gate")).toHaveLength(0);
   });
 
   it("respects max_steps from queue config", async () => {

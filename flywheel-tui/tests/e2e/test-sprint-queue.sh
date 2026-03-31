@@ -137,7 +137,7 @@ import {
 } from "../../src/queue/executor"
 import type { Step, Queue } from "../../src/queue/types"
 import type { FlywheelEmitter } from "../../src/events/event-bus"
-import type { VerificationResult } from "../../src/sprint/verification-runner"
+import type { VerificationResult } from "../../src/queue/steps/sprint-work/verification-runner"
 
 const emittedEvents: Array<{ method: string; args: unknown[] }> = []
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
@@ -300,7 +300,7 @@ import {
 } from "../../src/queue/executor"
 import type { Step } from "../../src/queue/types"
 import type { FlywheelEmitter } from "../../src/events/event-bus"
-import type { VerificationResult } from "../../src/sprint/verification-runner"
+import type { VerificationResult } from "../../src/queue/steps/sprint-work/verification-runner"
 
 const emittedEvents: Array<{ method: string; args: unknown[] }> = []
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
@@ -462,7 +462,7 @@ import { randomUUID } from "crypto"
 import { buildQueueFromTemplate } from "../../src/queue/templates"
 import { createSprintQueueHandler, type SprintQueueOptions } from "../../src/queue/sprint"
 import type { FlywheelEmitter } from "../../src/events/event-bus"
-import type { VerificationResult } from "../../src/sprint/verification-runner"
+import type { VerificationResult } from "../../src/queue/steps/sprint-work/verification-runner"
 
 const emittedEvents: Array<{ method: string; args: unknown[] }> = []
 const mockEmitter = new Proxy({} as FlywheelEmitter, {

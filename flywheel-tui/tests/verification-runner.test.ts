@@ -10,7 +10,7 @@ import {
   type VerificationRunnerOptions,
   VERIFY_DIR,
   MAX_OUTPUT_BYTES,
-} from "../src/sprint/verification-runner";
+} from "../src/queue/steps/sprint-work/verification-runner";
 
 // ---------------------------------------------------------------------------
 // Test helpers

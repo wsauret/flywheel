@@ -13,14 +13,14 @@ import { createQueue, insertAfter, transitionStep, advanceCursor } from "../src/
 import { buildQueueFromTemplate } from "../src/queue/templates";
 import type { Step, Queue } from "../src/queue/types";
 import type { FlywheelEmitter } from "../src/events/event-bus";
-import type { VerificationResult } from "../src/sprint/verification-runner";
+import type { VerificationResult } from "../src/queue/steps/sprint-work/verification-runner";
 import {
   createSprintQueueHandler,
   type SprintQueueOptions,
   type SprintQueueHandler,
   type VerificationScriptRunner,
   type HandoffReaderFn,
-} from "../src/queue/sprint";
+} from "../src/queue/steps/sprint-work/hooks";
 import {
   createStepExecutor,
   type StepExecutorOptions,

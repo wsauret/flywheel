@@ -190,26 +190,19 @@ function buildPlanWorkSteps(): Step[] {
   return buildGranularPlanSteps();
 }
 
-function buildPlanWorkReviewSteps(insertGates: boolean): Step[] {
+function buildPlanWorkReviewSteps(_insertGates: boolean): Step[] {
   const steps: Step[] = [...buildGranularPlanSteps()];
   // Work steps will be inserted between plan and review after plan completes
-  if (insertGates) {
-    steps.push(makeGateStep("Approve plan before review"));
-  }
+  // Gate steps removed — HITL checkpoints are handled via questions in the start wizard
   steps.push(...buildGranularReviewSteps());
   return steps;
 }
 
-function buildFullSteps(insertGates: boolean): Step[] {
+function buildFullSteps(_insertGates: boolean): Step[] {
   const steps: Step[] = [...buildGranularPlanSteps()];
   // Work steps will be inserted between plan and review after plan completes
-  if (insertGates) {
-    steps.push(makeGateStep("Approve plan before review"));
-  }
+  // Gate steps removed — HITL checkpoints are handled via questions in the start wizard
   steps.push(...buildGranularReviewSteps());
-  if (insertGates) {
-    steps.push(makeGateStep("Approve review before ship"));
-  }
   steps.push(...buildGranularShipSteps());
   return steps;
 }

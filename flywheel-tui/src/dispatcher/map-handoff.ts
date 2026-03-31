@@ -6,7 +6,7 @@
  */
 
 import type { DispatcherDecision } from "./schemas";
-import type { DispatcherDecisionHandoff } from "../handoff/schemas";
+import type { DispatcherDecisionHandoff } from "./schemas";
 
 export function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {
   return {

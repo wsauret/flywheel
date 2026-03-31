@@ -4,10 +4,10 @@ import {
   EvaluatorIssueSeverityEnum,
   EvaluatorIssueCategoryEnum,
   EvaluatorIssueSchema,
-} from "../src/handoff/schemas";
+} from "../src/evaluator/schemas";
 import type { EvaluatorInput, EvaluatorResult } from "../src/evaluator/schemas";
 import type { ProcessSpawner } from "../src/worker/spawner";
-import { renderEvaluatorHandoffInstruction } from "../src/handoff/field-specs";
+import { renderEvaluatorHandoffInstruction } from "../src/queue/shared/handoff-render";
 
 // ---------------------------------------------------------------------------
 // VAL-EVAL-001: Evaluator verdict has structured issues

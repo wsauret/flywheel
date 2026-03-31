@@ -14,12 +14,12 @@ import {
   insertWorkStepsFromPlanOutput,
   findInsertionPoint,
   createPlanIntegrationHook,
-} from "../src/queue/plan-integration";
-import { createCompositeHook } from "../src/queue/hooks";
+} from "../src/queue/steps/plan-consolidate/hooks";
+import { createCompositeHook } from "../src/queue/shared/hooks";
 
 import { createQueue } from "../src/queue/queue";
 import type { Step, Queue } from "../src/queue/types";
-import type { ProtoStep } from "../src/queue/proto-step";
+import type { ProtoStep } from "../src/queue/steps/plan-consolidate/proto-step";
 import type { OnStepCompletedHook } from "../src/queue/executor";
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import type { DispatcherInput, DispatcherDecision } from "../src/dispatcher/schemas";
 import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
 import { DispatcherDecisionSchema } from "../src/dispatcher/schemas";
-import type { DispatcherDecisionHandoff } from "../src/handoff/schemas";
+import type { DispatcherDecisionHandoff } from "../src/dispatcher/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers

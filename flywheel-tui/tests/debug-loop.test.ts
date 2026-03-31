@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test";
 import { randomUUID } from "crypto";
 import type { Step, Queue } from "../src/queue/types";
 import { createQueue } from "../src/queue/queue";
-import { createDebugQueueHandler } from "../src/queue/debug-loop";
+import { createDebugQueueHandler } from "../src/queue/steps/debug-fix/hooks";
 
 // ---------------------------------------------------------------------------
 // Helpers

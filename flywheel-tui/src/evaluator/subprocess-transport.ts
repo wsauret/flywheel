@@ -25,10 +25,9 @@ import type { ProcessSpawner } from "../worker/spawner";
 import type { Engine } from "../engines/core/types";
 import { createEnvFilter } from "../worker/env-filter";
 import { getEngine } from "../engines/core/registry";
-import { renderEvaluatorHandoffInstruction } from "../handoff/field-specs";
-import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../handoff/reader";
-import { EvaluatorVerdictSchema } from "../handoff/schemas";
-import type { EvaluatorVerdict } from "../handoff/schemas";
+import { renderEvaluatorHandoffInstruction } from "../queue/shared/handoff-render";
+import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../queue/shared/handoff-reader";
+import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "./schemas";
 import { Log } from "../utils/log";
 import { SubprocessLogger, createLoggedCallbacks } from "../utils/subprocess-logger.js";
 import { buildEvaluatorHandoffPath, ensureSessionDir } from "../config/paths";
@@ -44,10 +43,12 @@ const MAX_RETRIES = 1;
 
 /** Evaluator system prompt — used as --system-prompt for Claude (separate for caching). */
 const EVALUATOR_SYSTEM_PROMPT =
-  "You are a verification agent. You have tools (Read, Bash, Grep, Glob, Write) to investigate " +
-  "whether a worker's output meets acceptance criteria. Re-run claimed commands, check file " +
-  "existence, and investigate mismatches before rendering a verdict. Write your JSON verdict " +
-  "to the handoff file path specified in the prompt.";
+  "You are a verification agent with a strict 60-second time limit. " +
+  "Your ONLY job is to evaluate the worker's output against acceptance criteria and write a JSON verdict. " +
+  "You have tools (Read, Bash, Grep, Glob, Write) but use them SPARINGLY — at most 2-3 quick checks. " +
+  "Do NOT explore the codebase broadly. Do NOT read files unless directly needed to verify a specific claim. " +
+  "Evaluate from the provided input first. Only use tools to spot-check suspicious claims. " +
+  "WRITE THE HANDOFF JSON FILE IMMEDIATELY after forming your verdict — do not delay.";
 
 // ---------------------------------------------------------------------------
 // SubprocessEvaluatorTransport

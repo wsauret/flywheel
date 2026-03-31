@@ -8,8 +8,8 @@ import {
   HandoffMissingError,
   HandoffInvalidError,
   HandoffReadTimeoutError,
-} from "../../src/handoff/reader";
-import { WorkerHandoffSchema } from "../../src/handoff/schemas";
+} from "../../src/queue/shared/handoff-reader";
+import { WorkerHandoffSchema } from "../../src/queue/shared/handoff-schemas";
 
 let tmpDir: string;
 

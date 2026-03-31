@@ -24,8 +24,8 @@ import {
   buildGranularDebugSteps,
   type WorkflowName,
 } from "../../queue/templates";
-import { researchPersistEvaluationCriteria } from "../../queue/prompts/research-persist";
-import { shipCompoundEvaluationCriteria } from "../../queue/prompts/ship-compound";
+import { researchPersistEvaluationCriteria } from "../../queue/steps/research/prompts";
+import { shipCompoundEvaluationCriteria } from "../../queue/steps/ship-learnings/prompts";
 import type { Queue, Step, StepType } from "../../queue/types";
 import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";

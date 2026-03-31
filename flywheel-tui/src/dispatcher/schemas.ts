@@ -116,3 +116,21 @@ export const DispatcherDecisionSchema = z.object({
 }).strip();
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>;
+
+// ---------------------------------------------------------------------------
+// DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess
+// ---------------------------------------------------------------------------
+
+export const DispatcherDecisionHandoffSchema = z.object({
+  schema_version: z.literal(1),
+  step_index: z.number(),
+  task_content: z.string(),
+  evaluation_criteria: EvaluationCriteriaSchema.optional(),
+  context_files: z.array(z.string()),
+  context_to_inline: z.array(z.string()).optional(),
+  session_name: z.string().optional(),
+  reasoning: z.string().optional(),
+  worker_config: WorkerConfigSchema.optional(),
+}).passthrough();
+
+export type DispatcherDecisionHandoff = z.infer<typeof DispatcherDecisionHandoffSchema>;

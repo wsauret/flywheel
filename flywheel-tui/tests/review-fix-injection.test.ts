@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { createReviewFixInjectionHook, REVIEW_FIX_EVALUATION_CRITERIA } from "../src/queue/review-fix-injection";
+import { createReviewFixInjectionHook, REVIEW_FIX_EVALUATION_CRITERIA } from "../src/queue/steps/review-consolidate/hooks";
 import { createQueue } from "../src/queue/queue";
 import { randomUUID } from "crypto";
 import type { Step, Queue } from "../src/queue/types";

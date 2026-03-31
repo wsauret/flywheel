@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { buildLastWorkerResult, buildPreviousResultFromHandoff } from "../../src/handoff/consumers";
-import type { WorkerHandoff } from "../../src/handoff/schemas";
+import { buildLastWorkerResult, buildPreviousResultFromHandoff } from "../../src/queue/shared/handoff-consumers";
+import type { WorkerHandoff } from "../../src/queue/shared/handoff-schemas";
 
 // ---------------------------------------------------------------------------
 // Fixtures

@@ -181,88 +181,35 @@ describe("VAL-SHELL-005: Sprint template", () => {
 // VAL-QUEUE-036: Gate steps inserted when skip_approval_gates=false
 // ---------------------------------------------------------------------------
 
-describe("VAL-QUEUE-036: Gate steps with skip_approval_gates", () => {
-  test("plan-work-review inserts gate steps when skip_approval_gates=false", () => {
-    const queue = buildQueueFromTemplate("plan-work-review", {
-      skipApprovalGates: false,
-    });
-    const gates = gateSteps(queue);
-    expect(gates.length).toBeGreaterThan(0);
+describe("VAL-QUEUE-036: Gate steps removed from templates (HITL via questions)", () => {
+  test("plan-work-review never inserts gate steps regardless of config", () => {
+    const withFlag = buildQueueFromTemplate("plan-work-review", { skipApprovalGates: false });
+    const withoutFlag = buildQueueFromTemplate("plan-work-review", { skipApprovalGates: true });
+    const noOptions = buildQueueFromTemplate("plan-work-review");
+    expect(gateSteps(withFlag)).toHaveLength(0);
+    expect(gateSteps(withoutFlag)).toHaveLength(0);
+    expect(gateSteps(noOptions)).toHaveLength(0);
   });
 
-  test("plan-work-review has no gate steps when skip_approval_gates=true", () => {
-    const queue = buildQueueFromTemplate("plan-work-review", {
-      skipApprovalGates: true,
-    });
-    const gates = gateSteps(queue);
-    expect(gates).toHaveLength(0);
-  });
-
-  test("full template inserts gate steps when skip_approval_gates=false", () => {
-    const queue = buildQueueFromTemplate("full", {
-      skipApprovalGates: false,
-    });
-    const gates = gateSteps(queue);
-    expect(gates.length).toBeGreaterThan(0);
-  });
-
-  test("full template has no gate steps when skip_approval_gates=true", () => {
-    const queue = buildQueueFromTemplate("full", {
-      skipApprovalGates: true,
-    });
-    const gates = gateSteps(queue);
-    expect(gates).toHaveLength(0);
+  test("full template never inserts gate steps regardless of config", () => {
+    const withFlag = buildQueueFromTemplate("full", { skipApprovalGates: false });
+    const withoutFlag = buildQueueFromTemplate("full", { skipApprovalGates: true });
+    expect(gateSteps(withFlag)).toHaveLength(0);
+    expect(gateSteps(withoutFlag)).toHaveLength(0);
   });
 
   test("plan-only has no gate steps regardless of config", () => {
-    const queueWithGates = buildQueueFromTemplate("plan-only", {
-      skipApprovalGates: false,
-    });
-    const queueWithout = buildQueueFromTemplate("plan-only", {
-      skipApprovalGates: true,
-    });
+    const queueWithGates = buildQueueFromTemplate("plan-only", { skipApprovalGates: false });
+    const queueWithout = buildQueueFromTemplate("plan-only", { skipApprovalGates: true });
     expect(gateSteps(queueWithGates)).toHaveLength(0);
     expect(gateSteps(queueWithout)).toHaveLength(0);
   });
 
   test("sprint has no gate steps regardless of config", () => {
-    const queueWithGates = buildQueueFromTemplate("sprint", {
-      skipApprovalGates: false,
-    });
-    const queueWithout = buildQueueFromTemplate("sprint", {
-      skipApprovalGates: true,
-    });
+    const queueWithGates = buildQueueFromTemplate("sprint", { skipApprovalGates: false });
+    const queueWithout = buildQueueFromTemplate("sprint", { skipApprovalGates: true });
     expect(gateSteps(queueWithGates)).toHaveLength(0);
     expect(gateSteps(queueWithout)).toHaveLength(0);
-  });
-
-  test("gate steps are positioned between major step type transitions", () => {
-    const queue = buildQueueFromTemplate("full", {
-      skipApprovalGates: false,
-    });
-    const types = stepTypes(queue);
-    // Gate should appear between the last plan step and first review step,
-    // and between the last review step and first ship step
-    const lastPlanIdx = types.lastIndexOf("plan");
-    const firstReviewIdx = types.indexOf("review");
-    const lastReviewIdx = types.lastIndexOf("review");
-    const firstShipIdx = types.indexOf("ship");
-
-    // There should be a gate between last plan and first review
-    const gatesBetweenPlanReview = types.slice(lastPlanIdx + 1, firstReviewIdx).filter((t) => t === "gate");
-    expect(gatesBetweenPlanReview.length).toBeGreaterThanOrEqual(1);
-
-    // There should be a gate between last review and first ship
-    const gatesBetweenReviewShip = types.slice(lastReviewIdx + 1, firstShipIdx).filter((t) => t === "gate");
-    expect(gatesBetweenReviewShip.length).toBeGreaterThanOrEqual(1);
-  });
-
-  test("gate steps default to skip_approval_gates=true (no gates)", () => {
-    // Default behavior when no options provided: gates are NOT inserted
-    // (skip_approval_gates defaults to true per feature description)
-    const queue = buildQueueFromTemplate("plan-work-review");
-    const gates = gateSteps(queue);
-    expect(gates).toHaveLength(0);
   });
 });
 

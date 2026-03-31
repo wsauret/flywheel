@@ -3,14 +3,14 @@ import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
-  WORK_STEP_FIELDS,
-  PLAN_DRAFT_FIELDS,
-  PLAN_REVIEW_FIELDS,
-  PLAN_CONSOLIDATE_FIELDS,
-  REVIEW_FIELDS,
-  SHIP_FIELDS,
   type HandoffFieldSpec,
-} from "../../src/handoff/field-specs";
+} from "../../src/queue/shared/handoff-render";
+import { WORK_STEP_FIELDS } from "../../src/queue/steps/work/fields";
+import { PLAN_DRAFT_FIELDS } from "../../src/queue/steps/plan-draft/fields";
+import { PLAN_REVIEW_FIELDS } from "../../src/queue/steps/plan-review/fields";
+import { PLAN_CONSOLIDATE_FIELDS } from "../../src/queue/steps/plan-consolidate/fields";
+import { REVIEW_FIELDS } from "../../src/queue/steps/review-consolidate/fields";
+import { SHIP_FIELDS } from "../../src/queue/steps/ship-commit/fields";
 
 // ---------------------------------------------------------------------------
 // renderHandoffInstruction

@@ -1,14 +1,56 @@
 import { z } from "zod";
-import { WorkerHandoffBaseSchema, EvaluatorIssueSchema } from "../handoff/schemas";
+import { WorkerHandoffBaseSchema } from "../queue/shared/handoff-schemas";
 import { StepContextSchema } from "../queue/step-context";
 
-/**
- * Subset of WorkerHandoff fields projected for evaluator consumption.
- * Used when structured handoff data is available.
- * Uses WorkerHandoffBaseSchema (the z.object) for .pick() support;
- * cross-field refinements from WorkerHandoffSchema don't apply here
- * since this is a projection, not full handoff validation.
- */
+// ---------------------------------------------------------------------------
+// Evaluator issue sub-schemas
+// ---------------------------------------------------------------------------
+
+export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"]);
+export type EvaluatorIssueSeverity = z.infer<typeof EvaluatorIssueSeverityEnum>;
+
+export const EvaluatorIssueCategoryEnum = z.enum([
+  "test_failure",
+  "type_error",
+  "security",
+  "regression",
+  "incomplete",
+  "other",
+]);
+export type EvaluatorIssueCategory = z.infer<typeof EvaluatorIssueCategoryEnum>;
+
+export const EvaluatorIssueSchema = z.object({
+  description: z.string().min(1, {
+    message: "Issue description must not be empty.",
+  }),
+  severity: EvaluatorIssueSeverityEnum,
+  category: EvaluatorIssueCategoryEnum,
+}).strict();
+
+export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>;
+
+// ---------------------------------------------------------------------------
+// EvaluatorVerdictSchema (handoff written by evaluator subprocess)
+// ---------------------------------------------------------------------------
+
+export const EvaluatorVerdictSchema = z.object({
+  passed: z.boolean(),
+  reasoning: z.string(),
+  suggestions: z.array(z.string()),
+  confidence: z.number().min(0).max(1),
+  feedback: z.string(),
+  files_to_review: z.array(z.string()),
+  issues: z.array(EvaluatorIssueSchema).default([]),
+  implementation_feedback: z.string().optional(),
+  script_feedback: z.string().optional(),
+}).passthrough();
+
+export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
+
+// ---------------------------------------------------------------------------
+// EvaluatorHandoffDataSchema (projection of worker handoff for evaluator)
+// ---------------------------------------------------------------------------
+
 export const EvaluatorHandoffDataSchema = WorkerHandoffBaseSchema.pick({
   summary: true,
   verification: true,
@@ -20,6 +62,10 @@ export const EvaluatorHandoffDataSchema = WorkerHandoffBaseSchema.pick({
 
 export type EvaluatorHandoffData = z.infer<typeof EvaluatorHandoffDataSchema>;
 
+// ---------------------------------------------------------------------------
+// EvaluatorInputSchema
+// ---------------------------------------------------------------------------
+
 export const EvaluatorInputSchema = z.object({
   worker_output: z.string(),
   evaluation_criteria: z.string(),
@@ -29,27 +75,25 @@ export const EvaluatorInputSchema = z.object({
   tests_passed: z.boolean().nullable(),
   duration_seconds: z.number(),
   task_context: z.string().optional(),
-  /** Structured handoff data from worker (optional; when present, used instead of worker_output). */
   handoff: EvaluatorHandoffDataSchema.optional(),
-  /** Cumulative context from prior steps. Evaluator for step N sees context from 1..N-1. */
   step_context: StepContextSchema.optional(),
 }).strip();
 
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;
 
+// ---------------------------------------------------------------------------
+// EvaluatorResultSchema
+// ---------------------------------------------------------------------------
+
 export const EvaluatorResultSchema = z.object({
   passed: z.boolean(),
-  // ADR spec uses 'reason'; kept as 'reasoning' for backward compat — intentional deviation
   reasoning: z.string(),
   suggestions: z.array(z.string()).optional(),
   confidence: z.number().min(0).max(1),
   feedback: z.string(),
   files_to_review: z.array(z.string()),
-  /** Structured issues from evaluator verdict. Defaults to empty array for backward compat. */
   issues: z.array(EvaluatorIssueSchema).default([]),
-  /** Sprint dual-channel feedback: specific feedback on the implementation. */
   implementation_feedback: z.string().optional(),
-  /** Sprint dual-channel feedback: specific feedback on the verification script. */
   script_feedback: z.string().optional(),
 }).strip();
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { buildScaffolding, type ScaffoldingResult, type ScaffoldingPaths } from "../src/queue/prompt-scaffolding";
+import "../src/queue/steps/register-all";
+import { buildScaffolding, type ScaffoldingResult, type ScaffoldingPaths } from "../src/queue/shared/scaffolding";
 import type { Step } from "../src/queue/types";
 
 /** Combine preamble + postamble for content assertions. */
@@ -94,13 +95,13 @@ describe("buildScaffolding — plan review", () => {
   it("includes reviewer agent dispatch instructions in preamble", () => {
     const step = makeStep({ type: "plan", dispatcherHint: "review" });
     const result = buildScaffolding(step, TEST_PATHS);
-    expect(result.preamble).toContain("fly/reviewer-architecture");
-    expect(result.preamble).toContain("fly/reviewer-code-quality");
-    expect(result.preamble).toContain("fly/reviewer-patterns");
-    expect(result.preamble).toContain("fly/reviewer-performance");
-    expect(result.preamble).toContain("fly/reviewer-data-integrity");
-    expect(result.preamble).toContain("fly/reviewer-plan-philosophy");
-    expect(result.preamble).toContain("subagent_type");
+    expect(result.preamble).toContain("reviewer-architecture");
+    expect(result.preamble).toContain("reviewer-code-quality");
+    expect(result.preamble).toContain("reviewer-patterns");
+    expect(result.preamble).toContain("reviewer-performance");
+    expect(result.preamble).toContain("reviewer-data-integrity");
+    expect(result.preamble).toContain("reviewer-plan-philosophy");
+    expect(result.preamble).toContain("Phase 0");
     expect(result.preamble).toContain("Task");
   });
 
@@ -383,11 +384,19 @@ describe("buildScaffolding — strategy map routing", () => {
 
 describe("buildScaffolding — field spec integration", () => {
   it("renderHandoffInstruction produces non-empty output for all field spec arrays", () => {
-    // Import field specs directly to test they're well-formed
-    const { renderHandoffInstruction, WORK_STEP_FIELDS, REVIEW_FIELDS, SHIP_FIELDS, SPRINT_FIELDS,
-            DEBUG_INVESTIGATE_FIELDS, DEBUG_FIX_FIELDS, DEBUG_VERIFY_FIELDS, RESEARCH_FIELDS,
-            SHIP_COMMIT_FIELDS, SHIP_LEARNINGS_FIELDS, REVIEW_DISPATCH_FIELDS, REVIEW_CONSOLIDATE_FIELDS,
-    } = require("../src/handoff/field-specs");
+    const { renderHandoffInstruction } = require("../src/queue/shared/handoff-render");
+    const { WORK_STEP_FIELDS } = require("../src/queue/steps/work/fields");
+    const { REVIEW_FIELDS } = require("../src/queue/steps/review-consolidate/fields");
+    const { SHIP_FIELDS } = require("../src/queue/steps/ship-commit/fields");
+    const { SPRINT_FIELDS } = require("../src/queue/steps/sprint-work/fields");
+    const { DEBUG_INVESTIGATE_FIELDS } = require("../src/queue/steps/debug-investigate/fields");
+    const { DEBUG_FIX_FIELDS } = require("../src/queue/steps/debug-fix/fields");
+    const { DEBUG_VERIFY_FIELDS } = require("../src/queue/steps/debug-verify/fields");
+    const { RESEARCH_FIELDS } = require("../src/queue/steps/research/fields");
+    const { SHIP_COMMIT_FIELDS } = require("../src/queue/steps/ship-commit/fields");
+    const { SHIP_LEARNINGS_FIELDS } = require("../src/queue/steps/ship-learnings/fields");
+    const { REVIEW_DISPATCH_FIELDS } = require("../src/queue/steps/review-dispatch/fields");
+    const { REVIEW_CONSOLIDATE_FIELDS } = require("../src/queue/steps/review-consolidate/fields");
 
     const allFieldSpecs = [
       WORK_STEP_FIELDS, REVIEW_FIELDS, SHIP_FIELDS, SPRINT_FIELDS,
@@ -598,9 +607,9 @@ describe("buildScaffolding — research scaffolding", () => {
   it("contains 4-locator dispatch instructions", () => {
     const step = makeStep({ type: "research" });
     const result = buildScaffolding(step, TEST_PATHS);
-    expect(result.preamble).toContain("fly/locator-codebase");
-    expect(result.preamble).toContain("fly/locator-patterns");
-    expect(result.preamble).toContain("fly/locator-docs");
+    expect(result.preamble).toContain("locator-codebase");
+    expect(result.preamble).toContain("locator-patterns");
+    expect(result.preamble).toContain("locator-docs");
   });
 });
 

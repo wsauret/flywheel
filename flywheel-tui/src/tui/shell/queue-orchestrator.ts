@@ -10,17 +10,18 @@ import { autoDetectTransport } from "../../dispatcher/auto-detect"
 import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { createStepDispatcher, type StepDispatchContext } from "../../queue/step-dispatcher"
 import { createAgentEvaluatorFn } from "../../evaluator/create-agent-evaluator"
-import { readHandoff } from "../../handoff/reader"
-import { WorkerHandoffSchema } from "../../handoff/schemas"
+import { readHandoff } from "../../queue/shared/handoff-reader"
+import { WorkerHandoffSchema } from "../../queue/shared/handoff-schemas"
 import { createContextAccumulator } from "../../queue/context-accumulator"
-import { createPlanIntegrationHook } from "../../queue/plan-integration"
-import { createCompositeHook } from "../../queue/hooks"
-import { createReviewFixInjectionHook } from "../../queue/review-fix-injection"
-import { createReviewP3TriageHook } from "../../queue/review-p3-triage"
-import { createSprintQueueHandler, type SprintQueueHandler } from "../../queue/sprint"
-import { createDebugQueueHandler } from "../../queue/debug-loop"
-import { runVerificationScript } from "../../sprint/verification-runner"
-import { buildScaffolding, type ScaffoldingPaths } from "../../queue/prompt-scaffolding"
+import { createPlanIntegrationHook } from "../../queue/steps/plan-consolidate/hooks"
+import { createCompositeHook } from "../../queue/shared/hooks"
+import { createReviewFixInjectionHook } from "../../queue/steps/review-consolidate/hooks"
+import { createReviewP3TriageHook } from "../../queue/steps/review-dispatch/hooks"
+import { createSprintQueueHandler, type SprintQueueHandler } from "../../queue/steps/sprint-work/hooks"
+import { createDebugQueueHandler } from "../../queue/steps/debug-fix/hooks"
+import { runVerificationScript } from "../../queue/steps/sprint-work/verification-runner"
+import "../../queue/steps/register-all"
+import { buildScaffolding, type ScaffoldingPaths } from "../../queue/shared/scaffolding"
 import {
   sessionDir,
   buildWorkerHandoffPath,
@@ -118,6 +119,8 @@ export interface BuildExecutorDepsOpts {
   seedHandoff?: Record<string, unknown> | null;
   /** Question service for P3 triage hook (from activeQuestionWiring?.service). */
   questionService?: QuestionService | null;
+  /** When false, P3 triage uses auto-directive instead of interactive question. */
+  reviewTriageInteractive?: boolean;
   /** Setter for TUI queue step state (SolidJS signal setter passed from shell). */
   setShellQueueSteps: (updater: any) => void;
   /** Mutable ref tracking captured worker session ID for resume/interrupt. */
@@ -138,7 +141,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
     contextIndexer, projectCwd, sessionObjective, queue, stdinHandleRef,
     seedHandoff, sessionId: execSessionId,
-    questionService, setShellQueueSteps,
+    questionService, reviewTriageInteractive, setShellQueueSteps,
     capturedWorkerSessionId, pendingInjection, activeSessionRef,
   } = opts
   const { dispatcherModel, workerModel } = resolveModels(deps.config)
@@ -217,9 +220,10 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
   const debugHandler = isDebugQueue ? createDebugQueueHandler() : null
 
   // Plan integration hook + review fix injection + P3 triage + debug hook + sprint hook + TUI step insertion composite hook
-  const planIntegrationHook = createPlanIntegrationHook(projectCwd)
+  const planIntegrationHook = createPlanIntegrationHook(projectCwd, execSessionId)
   const reviewFixInjectionHook = createReviewFixInjectionHook()
-  const reviewP3TriageHook = createReviewP3TriageHook({ questionService: questionService ?? null })
+  const triageQS = reviewTriageInteractive === false ? null : (questionService ?? null)
+  const reviewP3TriageHook = createReviewP3TriageHook({ questionService: triageQS })
   const compositeHook = createCompositeHook([
     planIntegrationHook,
     reviewFixInjectionHook,

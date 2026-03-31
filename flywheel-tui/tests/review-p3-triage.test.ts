@@ -2,7 +2,7 @@ import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { randomUUID } from "crypto";
 import type { Step, Queue } from "../src/queue/types";
 import { createQueue } from "../src/queue/queue";
-import { createReviewP3TriageHook, REVIEW_P3_DIRECTIVE } from "../src/queue/review-p3-triage";
+import { createReviewP3TriageHook, REVIEW_P3_DIRECTIVE } from "../src/queue/steps/review-dispatch/hooks";
 import { QuestionRejectedError } from "../src/queue/question-service";
 
 function makeStep(overrides: Partial<Step> = {}): Step {
