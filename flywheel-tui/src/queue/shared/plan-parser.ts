@@ -19,7 +19,6 @@ import { z } from "zod";
 
 /**
  * Estimated complexity for a plan step.
- * Maps to the same enum used in ProtoStep.
  */
 export const EstimatedComplexitySchema = z.enum([
   "trivial",
@@ -30,6 +29,38 @@ export const EstimatedComplexitySchema = z.enum([
 ]);
 
 export type EstimatedComplexity = z.infer<typeof EstimatedComplexitySchema>;
+
+// ---------------------------------------------------------------------------
+// PlanOutputStepSchema — lightweight step definition from plan output
+// (formerly ProtoStepSchema)
+// ---------------------------------------------------------------------------
+
+export const PlanOutputStepSchema = z.object({
+  /** Human-readable title for the step. */
+  title: z.string().min(1),
+  /** Detailed description of what the step should accomplish. */
+  description: z.string().min(1),
+  /** Acceptance criteria that must be satisfied for the step to pass. */
+  acceptanceCriteria: z.array(z.string().min(1)).min(1),
+  /** Files relevant to this step's work. */
+  fileReferences: z.array(z.string()).optional(),
+  /** Groups related steps for feature boundary detection. */
+  feature: z.string().optional(),
+  /** Milestone this step belongs to (optional). */
+  milestone: z.string().optional(),
+  /** Validation contract assertion IDs this step fulfills (optional). */
+  fulfills: z.array(z.string()).optional(),
+  /** Estimated complexity of the step (optional). */
+  estimatedComplexity: EstimatedComplexitySchema.optional(),
+}).strict();
+
+export type PlanOutputStep = z.infer<typeof PlanOutputStepSchema>;
+
+// ---------------------------------------------------------------------------
+// PlanOutputStepArraySchema (for validating plan output)
+// ---------------------------------------------------------------------------
+
+export const PlanOutputStepArraySchema = z.array(PlanOutputStepSchema).min(1);
 
 // ---------------------------------------------------------------------------
 // PlanStep — individual step in a JSON plan

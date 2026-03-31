@@ -49,6 +49,12 @@ export function createWorkflowActions(ctx: StoreContext) {
       notifyImmediate();
     },
 
+    setPlanName(name: string): void {
+      const state = getState();
+      setState({ ...state, planName: name });
+      notify();
+    },
+
     stopWorkflow(status: "completed" | "interrupted"): void {
       const state = getState();
       setState({

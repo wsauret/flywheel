@@ -18,8 +18,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { Step, Queue } from "../../types";
-import type { ProtoStep } from "./proto-step";
-import { ProtoStepArraySchema, formalizeProtoSteps } from "./proto-step";
+import { PlanOutputStepArraySchema, type PlanOutputStep } from "../../shared/plan-parser";
 import { insertAfter, type MutationResult, type Provenance } from "../../queue";
 import type { OnStepCompletedHook, OnStepCompletedResult } from "../../shared/hooks";
 import { parseJsonPlan } from "../../shared/plan-parser";
@@ -81,9 +80,8 @@ export function findInsertionPoint(steps: Step[], planStepId: string): number {
 /**
  * When a plan step completes and produces proto-steps, this function:
  *   1. Validates the proto-steps array is non-empty
- *   2. Formalizes proto-steps into full Step[] via formalizeProtoSteps()
- *   3. Determines the correct insertion point in the queue
- *   4. Inserts the work steps using the queue mutation API
+ *   2. Determines the correct insertion point in the queue
+ *   3. Inserts the work steps using the queue mutation API
  *
  * @param queue The current queue
  * @param planStepId The ID of the completed plan step
@@ -93,7 +91,7 @@ export function findInsertionPoint(steps: Step[], planStepId: string): number {
 export function insertWorkStepsFromPlanOutput(
   queue: Queue,
   planStepId: string,
-  protoSteps: ProtoStep[],
+  protoSteps: PlanOutputStep[],
 ): MutationResult {
   // Validate non-empty
   if (protoSteps.length === 0) {
@@ -112,20 +110,13 @@ export function insertWorkStepsFromPlanOutput(
     };
   }
 
-  // Formalize proto-steps into full Steps with unique IDs
-  const formalizedSteps = formalizeProtoSteps(protoSteps, {
-    stepType: "work",
-    idGenerator: () => randomUUID(),
-  });
-
-  // Convert StepWithPrompt[] to Step[] (drop the prompt field for queue insertion)
   // Carry all plan metadata: description, acceptanceCriteria, fileReferences,
   // feature, fulfills, milestone
-  const workSteps: Step[] = formalizedSteps.map((s) => ({
-    id: s.id,
-    type: s.type,
+  const workSteps: Step[] = protoSteps.map((s) => ({
+    id: randomUUID(),
+    type: "work" as const,
     title: s.title,
-    status: s.status,
+    status: "pending" as const,
     ...(s.description ? { description: s.description } : {}),
     ...(s.acceptanceCriteria && s.acceptanceCriteria.length > 0
       ? { acceptanceCriteria: s.acceptanceCriteria }
@@ -176,7 +167,7 @@ export type ConfirmBeforeInsert = (planResult: PlanImportResult) => Promise<bool
 function buildPlanImportResult(
   source:
     | { kind: "json"; plan: import("../../shared/plan-parser").PlanJson }
-    | { kind: "proto"; protoSteps: ProtoStep[] },
+    | { kind: "proto"; protoSteps: PlanOutputStep[] },
 ): PlanImportResult {
   if (source.kind === "json") {
     const plan = source.plan;
@@ -289,7 +280,7 @@ export function createPlanIntegrationHook(
 
     // --- Source 1: handoffData.steps (direct proto-steps array) ---
     if (Array.isArray(handoffData.steps) && handoffData.steps.length > 0) {
-      const parseResult = ProtoStepArraySchema.safeParse(handoffData.steps);
+      const parseResult = PlanOutputStepArraySchema.safeParse(handoffData.steps);
       if (parseResult.success) {
         const protoSteps = parseResult.data;
 
@@ -372,8 +363,8 @@ export function createPlanIntegrationHook(
           }
         }
 
-        // Convert PlanStep[] to ProtoStep[] (compatible schemas)
-        const protoSteps: ProtoStep[] = jsonParseResult.plan.steps.map((s) => ({
+        // Convert PlanStep[] to PlanOutputStep[] (compatible schemas)
+        const protoSteps: PlanOutputStep[] = jsonParseResult.plan.steps.map((s) => ({
           title: s.title,
           description: s.description,
           acceptanceCriteria: s.acceptanceCriteria,

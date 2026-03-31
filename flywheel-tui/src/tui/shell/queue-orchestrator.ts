@@ -169,7 +169,9 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     : null
 
   // Real context accumulator (windowed detail strategy)
-  const contextAccumulator = createContextAccumulator()
+  const contextAccumulator = createContextAccumulator({
+    windowSize: deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
+  })
 
   // Seed accumulator with fixture handoff data (for /test command)
   if (seedHandoff) {
@@ -286,6 +288,8 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
         return {
           prompt: decision.taskContent,
           evaluationCriteria: decision.evaluationCriteria,
+          mutationRequests: decision.mutationRequests,
+          sessionName: decision.sessionName,
         }
       } catch (err) {
         log.warn("real dispatcher failed, falling back to step metadata", {

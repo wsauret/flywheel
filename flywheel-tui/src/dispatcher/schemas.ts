@@ -113,6 +113,21 @@ export const DispatcherDecisionSchema = z.object({
   worker_config: WorkerConfigSchema.optional(),
   /** Short session name (2-5 words) summarizing the task. Generated on the first dispatcher call. */
   session_name: z.string().optional(),
+  mutation_requests: z.array(
+    z.object({
+      type: z.enum(["insert_after", "skip", "remove"]),
+      target_step_id: z.string().optional(),
+      steps: z.array(
+        z.object({
+          type: z.string(),
+          title: z.string(),
+          description: z.string().optional(),
+          acceptance_criteria: z.array(z.string()).optional(),
+        })
+      ).optional(),
+      reason: z.string(),
+    }).strict()
+  ).optional(),
 }).strip();
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>;
@@ -131,6 +146,21 @@ export const DispatcherDecisionHandoffSchema = z.object({
   session_name: z.string().optional(),
   reasoning: z.string().optional(),
   worker_config: WorkerConfigSchema.optional(),
+  mutation_requests: z.array(
+    z.object({
+      type: z.enum(["insert_after", "skip", "remove"]),
+      target_step_id: z.string().optional(),
+      steps: z.array(
+        z.object({
+          type: z.string(),
+          title: z.string(),
+          description: z.string().optional(),
+          acceptance_criteria: z.array(z.string()).optional(),
+        })
+      ).optional(),
+      reason: z.string(),
+    }).strict()
+  ).optional(),
 }).passthrough();
 
 export type DispatcherDecisionHandoff = z.infer<typeof DispatcherDecisionHandoffSchema>;

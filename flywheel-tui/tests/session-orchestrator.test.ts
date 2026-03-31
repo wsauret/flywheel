@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { randomUUID } from "crypto";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
   type ResumeResult,
 } from "../src/tui/session/session-orchestrator";
+import { createQueue } from "../src/queue/queue";
 import type { Session } from "../src/session/schemas";
 import type { OutputSnapshot } from "../src/session/output-schemas";
 import type { CompletedStepResult } from "../src/queue/types";
@@ -80,6 +82,14 @@ function makeMockDeps(overrides?: Partial<SessionOrchestratorDeps>): {
         return true;
       },
     },
+    createQueuePersistence: (sessionId: string) => ({
+      load: async () => createQueue([{
+        id: randomUUID(),
+        type: "work" as const,
+        title: "Test step",
+        status: "pending" as const,
+      }]),
+    }),
     refreshList: () => {
       calls.push("refreshList");
     },

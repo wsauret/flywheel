@@ -78,12 +78,7 @@ export interface MutationRequest {
   /** Step ID to operate on (for skip/remove) or insert after. */
   targetStepId?: string;
   /** For insert_after: the step(s) to insert. */
-  steps?: Array<{
-    type: string;
-    title: string;
-    description?: string;
-    acceptanceCriteria?: string[];
-  }>;
+  steps?: import("./types").Step[];
   /** Why the mutation is requested. */
   reason: string;
 }
@@ -339,7 +334,7 @@ function parseMutationRequests(warnings: string[] | undefined): MutationRequest[
       requests.push({
         type: "insert_after",
         targetStepId: target === "current" ? undefined : target,
-        steps: [{ type: "work", title, description: insertReason }],
+        steps: [{ id: randomUUID(), type: "work", status: "pending", title, description: insertReason }],
         reason: insertReason,
       });
     } else if (type === "skip") {
@@ -587,12 +582,28 @@ function injectAssessmentIntoContext(
 // Normalize DispatcherDecision → StepDispatcherDecision
 // ---------------------------------------------------------------------------
 
+import { randomUUID } from "crypto";
+
 function normalizeDecision(
   raw: DispatcherDecision,
   step: Step,
 ): StepDispatcherDecision {
-  // Parse mutation requests from warnings
-  const mutationRequests = parseMutationRequests(raw.warnings);
+  // Parse mutation requests from warnings or use structured field
+  const mutationRequests = raw.mutation_requests?.length 
+    ? raw.mutation_requests.map(req => ({
+        type: req.type as "insert_after" | "skip" | "remove",
+        targetStepId: req.target_step_id,
+        steps: req.steps?.map(s => ({
+          id: randomUUID(),
+          type: s.type as any,
+          title: s.title,
+          status: "pending" as const,
+          description: s.description,
+          acceptanceCriteria: s.acceptance_criteria,
+        })),
+        reason: req.reason,
+      }))
+    : parseMutationRequests(raw.warnings);
 
   // Merge tool scoping: step provides defaults, dispatcher can override
   let workerConfig = raw.worker_config ?? null;

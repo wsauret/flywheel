@@ -5,12 +5,11 @@ import {
   CONFIG_DEFAULTS,
 } from "../src/config/loader";
 import {
-  ProtoStepSchema,
-  ProtoStepArraySchema,
+  PlanOutputStepSchema,
+  PlanOutputStepArraySchema,
   EstimatedComplexitySchema,
-  formalizeProtoSteps,
-} from "../src/queue/steps/plan-consolidate/proto-step";
-import type { ProtoStep, StepWithPrompt } from "../src/queue/steps/plan-consolidate/proto-step";
+} from "../src/queue/shared/plan-parser";
+import type { PlanOutputStep } from "../src/queue/shared/plan-parser";
 
 // ===========================================================================
 // VAL-QUEUE-037: Config section [queue] in flywheel.toml
@@ -201,11 +200,11 @@ describe("Queue config env var overrides", () => {
 });
 
 // ===========================================================================
-// ProtoStep schema validation
+// PlanOutputStep schema validation
 // ===========================================================================
 
-describe("ProtoStep schema validates proto-step JSON", () => {
-  const validProto: ProtoStep = {
+describe("PlanOutputStep schema validates plan step JSON", () => {
+  const validProto: PlanOutputStep = {
     title: "Add user authentication",
     description: "Implement JWT-based authentication with login and logout endpoints",
     acceptanceCriteria: [
@@ -215,13 +214,13 @@ describe("ProtoStep schema validates proto-step JSON", () => {
     ],
   };
 
-  it("accepts valid proto-step with required fields", () => {
-    const result = ProtoStepSchema.safeParse(validProto);
+  it("accepts valid step with required fields", () => {
+    const result = PlanOutputStepSchema.safeParse(validProto);
     expect(result.success).toBe(true);
   });
 
-  it("accepts proto-step with all optional fields", () => {
-    const result = ProtoStepSchema.safeParse({
+  it("accepts step with all optional fields", () => {
+    const result = PlanOutputStepSchema.safeParse({
       ...validProto,
       milestone: "core-auth",
       fulfills: ["VAL-AUTH-001", "VAL-AUTH-002"],
@@ -236,7 +235,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects missing title", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       description: "some desc",
       acceptanceCriteria: ["criterion"],
     });
@@ -244,7 +243,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects empty title", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       title: "",
       description: "some desc",
       acceptanceCriteria: ["criterion"],
@@ -253,7 +252,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects missing description", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       title: "title",
       acceptanceCriteria: ["criterion"],
     });
@@ -261,7 +260,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects empty description", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       title: "title",
       description: "",
       acceptanceCriteria: ["criterion"],
@@ -270,7 +269,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects missing acceptanceCriteria", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       title: "title",
       description: "desc",
     });
@@ -278,7 +277,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects empty acceptanceCriteria array", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       title: "title",
       description: "desc",
       acceptanceCriteria: [],
@@ -287,7 +286,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects empty string in acceptanceCriteria", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       title: "title",
       description: "desc",
       acceptanceCriteria: ["valid", ""],
@@ -296,7 +295,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects unknown fields (.strict())", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       ...validProto,
       unknownField: "should fail",
     });
@@ -305,7 +304,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
 
   it("validates all 5 estimatedComplexity values", () => {
     for (const complexity of ["trivial", "low", "medium", "high", "critical"]) {
-      const result = ProtoStepSchema.safeParse({
+      const result = PlanOutputStepSchema.safeParse({
         ...validProto,
         estimatedComplexity: complexity,
       });
@@ -314,7 +313,7 @@ describe("ProtoStep schema validates proto-step JSON", () => {
   });
 
   it("rejects invalid estimatedComplexity", () => {
-    const result = ProtoStepSchema.safeParse({
+    const result = PlanOutputStepSchema.safeParse({
       ...validProto,
       estimatedComplexity: "extreme",
     });
@@ -323,12 +322,12 @@ describe("ProtoStep schema validates proto-step JSON", () => {
 });
 
 // ===========================================================================
-// ProtoStepArraySchema
+// PlanOutputStepArraySchema
 // ===========================================================================
 
-describe("ProtoStepArraySchema", () => {
+describe("PlanOutputStepArraySchema", () => {
   it("accepts array of valid proto-steps", () => {
-    const result = ProtoStepArraySchema.safeParse([
+    const result = PlanOutputStepArraySchema.safeParse([
       {
         title: "Step 1",
         description: "First step",
@@ -344,12 +343,12 @@ describe("ProtoStepArraySchema", () => {
   });
 
   it("rejects empty array", () => {
-    const result = ProtoStepArraySchema.safeParse([]);
+    const result = PlanOutputStepArraySchema.safeParse([]);
     expect(result.success).toBe(false);
   });
 
   it("rejects array with invalid proto-step", () => {
-    const result = ProtoStepArraySchema.safeParse([
+    const result = PlanOutputStepArraySchema.safeParse([
       { title: "valid", description: "desc", acceptanceCriteria: ["c"] },
       { title: "" }, // invalid
     ]);
@@ -377,150 +376,5 @@ describe("EstimatedComplexitySchema", () => {
   });
 });
 
-// ===========================================================================
-// formalizeProtoSteps
-// ===========================================================================
+// End of tests
 
-describe("formalizeProtoSteps converts proto-steps to full Steps", () => {
-  const protoSteps: ProtoStep[] = [
-    {
-      title: "Add user model",
-      description: "Create the User database model with email, password hash, and timestamps",
-      acceptanceCriteria: [
-        "User model has email, passwordHash, createdAt, updatedAt fields",
-        "Model validates email format",
-      ],
-    },
-    {
-      title: "Add auth endpoints",
-      description: "Create login and register API endpoints",
-      acceptanceCriteria: [
-        "POST /register creates new user",
-        "POST /login returns JWT token",
-      ],
-      milestone: "auth",
-      fulfills: ["VAL-AUTH-001"],
-      estimatedComplexity: "medium",
-    },
-  ];
-
-  it("returns Step[] with correct length", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps).toHaveLength(2);
-  });
-
-  it("assigns sequential IDs by default", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].id).toBe("step-1");
-    expect(steps[1].id).toBe("step-2");
-  });
-
-  it("uses custom idGenerator when provided", () => {
-    const steps = formalizeProtoSteps(protoSteps, {
-      idGenerator: (i) => `custom-${i * 10}`,
-    });
-    expect(steps[0].id).toBe("custom-0");
-    expect(steps[1].id).toBe("custom-10");
-  });
-
-  it("assigns type 'work' by default", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].type).toBe("work");
-    expect(steps[1].type).toBe("work");
-  });
-
-  it("uses custom stepType when provided", () => {
-    const steps = formalizeProtoSteps(protoSteps, { stepType: "research" });
-    expect(steps[0].type).toBe("research");
-    expect(steps[1].type).toBe("research");
-  });
-
-  it("assigns status 'pending' to all steps", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    for (const step of steps) {
-      expect(step.status).toBe("pending");
-    }
-  });
-
-  it("preserves title from proto-step", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].title).toBe("Add user model");
-    expect(steps[1].title).toBe("Add auth endpoints");
-  });
-
-  it("preserves milestone from proto-step", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].milestone).toBeUndefined();
-    expect(steps[1].milestone).toBe("auth");
-  });
-
-  it("preserves fulfills from proto-step", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].fulfills).toBeUndefined();
-    expect(steps[1].fulfills).toEqual(["VAL-AUTH-001"]);
-  });
-
-  it("generates prompt containing title", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].prompt).toContain("Add user model");
-    expect(steps[1].prompt).toContain("Add auth endpoints");
-  });
-
-  it("generates prompt containing description", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].prompt).toContain(
-      "Create the User database model with email, password hash, and timestamps",
-    );
-  });
-
-  it("generates prompt containing acceptance criteria as checklist", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].prompt).toContain("- [ ] User model has email, passwordHash, createdAt, updatedAt fields");
-    expect(steps[0].prompt).toContain("- [ ] Model validates email format");
-  });
-
-  it("generates prompt with step position (Step N of M)", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].prompt).toContain("Step 1 of 2");
-    expect(steps[1].prompt).toContain("Step 2 of 2");
-  });
-
-  it("includes estimated complexity in prompt when provided", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].prompt).not.toContain("Estimated Complexity");
-    expect(steps[1].prompt).toContain("Estimated Complexity: medium");
-  });
-
-  it("includes fulfills in prompt when provided", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    expect(steps[0].prompt).not.toContain("Fulfills");
-    expect(steps[1].prompt).toContain("Fulfills: VAL-AUTH-001");
-  });
-
-  it("handles single proto-step", () => {
-    const steps = formalizeProtoSteps([protoSteps[0]]);
-    expect(steps).toHaveLength(1);
-    expect(steps[0].prompt).toContain("Step 1 of 1");
-  });
-
-  it("does not mutate fulfills array", () => {
-    const proto: ProtoStep = {
-      title: "Test",
-      description: "Test",
-      acceptanceCriteria: ["criterion"],
-      fulfills: ["VAL-001"],
-    };
-    const steps = formalizeProtoSteps([proto]);
-    // Modifying the step fulfills should not affect the original
-    steps[0].fulfills!.push("VAL-002");
-    expect(proto.fulfills).toEqual(["VAL-001"]);
-  });
-
-  it("returns StepWithPrompt with prompt field", () => {
-    const steps = formalizeProtoSteps(protoSteps);
-    for (const step of steps) {
-      expect(typeof step.prompt).toBe("string");
-      expect(step.prompt.length).toBeGreaterThan(0);
-    }
-  });
-});

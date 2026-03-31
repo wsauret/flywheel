@@ -18,6 +18,8 @@ export interface UIActions {
   startWorkflow(planName: string): void;
   /** Update metadata for a new queue step without wiping output. */
   continueStep(planName: string): void;
+  /** Update the session display name without resetting state. */
+  setPlanName(name: string): void;
   stopWorkflow(status: "completed" | "interrupted"): void;
   setError(reason: string): void;
   clearError(): void;

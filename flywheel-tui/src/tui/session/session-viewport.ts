@@ -262,7 +262,7 @@ export function createSessionViewport(
     _injectionHandle = injectOutputBlocks(store, blocks);
 
     // 9b. Restore queue steps into the store so the workflow panel shows them
-    if (result.queue?.steps) {
+    if (result.queue.steps) {
       store.setQueueSteps(
         result.queue.steps.map((s: { id: string; type: string; title: string; status: string }) => ({
           id: s.id,

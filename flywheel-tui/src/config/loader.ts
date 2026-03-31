@@ -134,6 +134,22 @@ export const FlywheelConfigSchema = z.object({
     persist_queue: z.boolean().default(true),
   }).default({}),
 
+  /** Dispatcher intelligence configuration. */
+  dispatcher_intelligence: z.object({
+    /** Enable dispatcher queue mutations. Default: true. */
+    enabled: z.boolean().default(true),
+    /** Max mutations per step completion. Default: 3. */
+    max_mutations_per_step: z.number().int().min(0).max(10).default(3),
+    /** Max total steps inserted per session. Default: 20. */
+    max_inserted_steps: z.number().int().min(0).max(100).default(20),
+    /** Auto-insert fix steps from review findings. Default: true. */
+    auto_fix_insertion: z.boolean().default(true),
+    /** Separate budget for replan decisions (0 = unlimited). Default: 0. */
+    replan_cost_budget_usd: z.number().min(0).default(0),
+    /** Recent handoffs in full detail (older summarized). Default: 3. */
+    handoff_detail_window: z.number().int().min(1).max(20).default(3),
+  }).default({}),
+
   /** Sprint mode configuration. */
   sprint: z.object({
     /** Max sprint iterations before escalation. Default: 5. */
@@ -185,6 +201,14 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   queue: {
     max_steps: 50,
     persist_queue: true,
+  },
+  dispatcher_intelligence: {
+    enabled: true,
+    max_mutations_per_step: 3,
+    max_inserted_steps: 20,
+    auto_fix_insertion: true,
+    replan_cost_budget_usd: 0,
+    handoff_detail_window: 3,
   },
   sprint: {
     max_iterations: 5,

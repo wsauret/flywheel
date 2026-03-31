@@ -33,8 +33,8 @@ export interface ResumeResult {
   outputBlocks: OutputSnapshot[];
   planPath: string;
   worktreePath?: string;
-  /** Queue state loaded from .queue.json (null if not found or corrupt). */
-  queue: Queue | null;
+  /** Queue state loaded from .queue.json. */
+  queue: Queue;
 }
 
 /** Minimal OutputPersistence interface — only the load we need. */
@@ -140,15 +140,19 @@ export function createSessionOrchestrator(
     // 3. Validate via fromSnapshot
     const outputBlocks = fromSnapshot(rawSnapshots);
 
-    // 4. Load queue state from .queue.json (if available)
+    // 4. Load queue state from .queue.json (required)
     let queue: Queue | null = null;
     if (deps.createQueuePersistence) {
       try {
         const queuePersistence = deps.createQueuePersistence(sessionId);
         queue = await queuePersistence.load();
       } catch {
-        // Best-effort — queue file may not exist for older sessions
+        // Queue file missing or corrupt
       }
+    }
+
+    if (!queue) {
+      return null;
     }
 
     // 5. Return structured result

@@ -42,6 +42,7 @@ function makeMockOrchestrator(overrides?: Partial<SessionOrchestrator>): Session
       planPath: "plans/test.md",
       statePath: ".flywheel/state/test.state.md",
       worktreePath: "/tmp/wt/test",
+      queue: { steps: [], cursor: 0, status: "completed" as const, maxSteps: 50, mutationLog: [] },
     }),
     handleAutoArchive: async () => {},
     handleDeleteSession: async () => {},

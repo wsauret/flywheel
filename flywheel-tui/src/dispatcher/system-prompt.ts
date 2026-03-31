@@ -84,7 +84,22 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
     "tool_scoping": { "read": <boolean>, "bash": <boolean>, "write": <boolean>, "edit": <boolean> },
     "parallel": <boolean>,
     "parallel_variants": [{ "name": <string>, "prompt": <string> }]
-  }
+  },
+  "mutation_requests": [             // (optional) Queue mutations to adapt the workflow
+    {
+      "type": "insert_after" | "skip" | "remove",
+      "target_step_id": <string>,    // Required for all mutation types
+      "steps": [                     // Required only for "insert_after"
+        {
+          "type": <string>,
+          "title": <string>,
+          "description": <string>,
+          "acceptance_criteria": [<string>]
+        }
+      ],
+      "reason": <string>             // Required for all mutation types
+    }
+  ]
 }
 \`\`\`
 
@@ -94,6 +109,24 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 2. Include all relevant file paths in \`context_files\`.
 3. Output valid JSON only.
 4. \`evaluation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of steps (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
+
+## Queue Mutations (optional)
+
+When \`mutation_budget\` is present in the input, you may request queue mutations.
+Return them in \`mutation_requests\` — an array of structured objects.
+
+Supported mutation types:
+- \`insert_after\` — insert step(s) after a target step ID. Requires \`target_step_id\` and \`steps[]\`.
+- \`skip\` — mark a pending step as skipped. Requires \`target_step_id\`.
+- \`remove\` — remove a pending step from the queue. Requires \`target_step_id\`.
+
+Rules:
+- Check \`mutation_budget.mutations_remaining_this_step\` before requesting mutations.
+- Check \`mutation_budget.remaining_queue_capacity\` before requesting inserts.
+- Every mutation must include a \`reason\` tied to \`mutation_budget.session_objective\`.
+- If no mutation is needed, omit \`mutation_requests\` entirely — don't mutate for the sake of it.
+- When budget is low (session_budget.invocations_remaining < pending steps), consider skipping lower-priority pending steps.
+- After inserting fix steps, check if any pending steps are now redundant and skip them.
 
 ## Example
 

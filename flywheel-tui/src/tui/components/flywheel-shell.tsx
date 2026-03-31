@@ -890,6 +890,9 @@ export function FlywheelShell() {
 
       // Create guardrails for mutation budget tracking and convergence detection.
       const guardrails = createGuardrails({
+        maxQueueLength: deps.config.queue?.max_steps ?? 50,
+        maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
+        maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
         sessionObjective: args.description ?? "",
       })
 
@@ -921,6 +924,13 @@ export function FlywheelShell() {
         maxRevisions: deps.config.max_revisions ?? 1,
         onStepCompleted: execDeps.compositeHook,
         guardrails,
+        onSessionName: (name) => {
+          if (queueSessionId) {
+            updateSession(queueSessionId, { name, label: name }, capturedProjectCwd)
+          }
+          session.store.setPlanName(name)
+          sessionCtx.refreshList()
+        },
       })
 
       activeStepExecutor = stepExec
@@ -1349,10 +1359,10 @@ export function FlywheelShell() {
       return
     }
 
-    // 4. If queue state exists, resume via queue-based execution
+    // 4. Resume via queue-based execution.
     //    The loaded queue has completed steps already marked, and the cursor
     //    is positioned at the first pending step (crash recovery already applied).
-    if (result.queue) {
+    {
       // Transition session state before starting execution
       // (budget_exhausted → work:active or work:paused → work:active)
       try {
@@ -1442,15 +1452,15 @@ export function FlywheelShell() {
           setActiveQueueInfo({
             currentStep: stepCounter + 1,
             totalSteps: e.stepIds.length,
-            stepName: result.queue!.steps[result.queue!.cursor]?.type ?? "step",
+            stepName: result.queue.steps[result.queue.cursor]?.type ?? "step",
           })
-          setActiveWorkflowName(result.queue!.steps[result.queue!.cursor]?.type ?? "work")
+          setActiveWorkflowName(result.queue.steps[result.queue.cursor]?.type ?? "work")
         }),
         session.eventBus.subscribeToType("queue:step-started", (e) => {
           stepCounter++
           setActiveQueueInfo({
             currentStep: stepCounter,
-            totalSteps: result.queue!.steps.length,
+            totalSteps: result.queue.steps.length,
             stepName: e.stepType,
           })
           setActiveWorkflowName(e.stepType)
@@ -1541,7 +1551,7 @@ export function FlywheelShell() {
 
         // Resolve dispatcher and evaluator transports
         const capturedProjectCwdResume = deps.config.project_cwd ?? process.cwd()
-        const resumeQueue = result.queue!
+        const resumeQueue = result.queue
 
         // Detect sprint queue early for evaluator system prompt addendum
         const isDebugQueueResume = resumeQueue.steps.some(s => s.type === "debug")
@@ -1602,6 +1612,9 @@ export function FlywheelShell() {
         })
 
         const resumeGuardrails = createGuardrails({
+          maxQueueLength: deps.config.queue?.max_steps ?? 50,
+          maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
+          maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
           sessionObjective: result.session.name ?? "",
         })
 
@@ -1629,6 +1642,11 @@ export function FlywheelShell() {
           maxRevisions: deps.config.max_revisions ?? 1,
           onStepCompleted: execDeps.compositeHook,
           guardrails: resumeGuardrails,
+          onSessionName: (name) => {
+            updateSession(sessionId, { name, label: name }, capturedProjectCwd)
+            session.store.setPlanName(name)
+            sessionCtx.refreshList()
+          },
         })
 
         activeStepExecutor = stepExec
@@ -1771,151 +1789,7 @@ export function FlywheelShell() {
           }
         }
       })
-      return
     }
-
-    // 5. Legacy fallback: resume via legacy execution path (non-queue sessions)
-    const session = createWorkflowSession(result.planPath)
-    activeSession = session
-    setActiveStore(session.store)
-    subscribeToStore(session.store)
-    subscribeToTimer(session.timer)
-
-    session.store.startWorkflow(result.planPath ?? "Resumed session")
-    injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
-    setFocusedSessionId(sessionId)
-
-    try {
-      sessionCtx.manager.updateState(sessionId, "work:active")
-      sessionCtx.refreshList()
-    } catch (err) {
-      toast.show({
-        message: `Failed to update session state: ${err instanceof Error ? err.message : String(err)}`,
-        variant: "warning",
-      })
-    }
-
-    const projectCwd = deps.config.project_cwd ?? "."
-    const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-    const resumedStore = session.store
-    activeFlusher = persistence.createFlusher(
-      () => (resumedStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[],
-      { intervalMs: 5000 },
-    )
-    sessionStores.set(sessionId, session.store)
-
-    setViewedSessionId(sessionId)
-    setAppState("working")
-
-    queueMicrotask(async () => {
-      let resumeCurrentWorkflowId = "unknown"
-      const resumeWorkflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
-        resumeCurrentWorkflowId = ev.workflowId
-      })
-      const resumeEngineName = deps.config.engine
-
-      let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
-      try {
-        const { resolveModels } = await import("../../config/loader")
-        const { dispatcherModel } = resolveModels(deps.config)
-        const resolved = await autoDetectTransport({
-          spawner: deps.spawner,
-          engineName: deps.config.engine,
-          dispatcherModel,
-          onStdout: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
-          onStderr: (chunk) => session.eventBus.emit({ type: "dispatcher:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
-          logBaseDir: deps.config.project_cwd ?? process.cwd(),
-          sessionId: sessionId,
-          baseDir: deps.config.project_cwd ?? process.cwd(),
-        })
-        dispatcherTransport = resolved.transport
-      } catch { /* fallback to static prompts */ }
-
-      let resumeEvaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
-      if (!deps.config.skip_evaluation) {
-        try {
-          const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
-          const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
-          resumeEvaluatorTransport = await createEvaluatorTransport({
-            spawner: deps.spawner,
-            engineName: deps.config.engine,
-            evaluatorModel: evalModel,
-            onStdout: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stdout", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
-            onStderr: (chunk) => session.eventBus.emit({ type: "evaluator:output", workflowId: resumeCurrentWorkflowId, stream: "stderr", data: chunk, engineName: resumeEngineName, timestamp: Date.now() }),
-            logBaseDir: deps.config.project_cwd ?? process.cwd(),
-            sessionId: sessionId,
-            baseDir: deps.config.project_cwd ?? process.cwd(),
-          })
-        } catch { /* evaluation will be skipped */ }
-      }
-
-      try {
-        // Build a single-step work queue for the resumed session
-        const resumeWorkQueue = createQueue([{
-          id: randomUUID(),
-          type: "work" as const,
-          title: "Resume work execution",
-          status: "pending" as const,
-        }])
-        const resumeEmitter = createFlywheelEmitter(session.eventBus)
-        const resumeWorkGuardrails = createGuardrails({
-          sessionObjective: result.planPath ?? "",
-        })
-        const resumeStepExec = createStepExecutor({
-          queue: resumeWorkQueue,
-          workflowId: resumeCurrentWorkflowId,
-          sessionId: sessionId,
-          emitter: resumeEmitter,
-          dispatcher: async (step, context) => {
-            return { prompt: `Execute work: resume plan at ${result.planPath}`, evaluationCriteria: null }
-          },
-          worker: async (step, prompt) => {
-            const engineCmd = deps.engine.buildCommand({
-              prompt,
-              model: deps.config.worker?.model ?? deps.config.model,
-              toolScoping: step.toolScoping ?? undefined,
-            })
-            const startTime = Date.now()
-            const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-              cwd: deps.config.project_cwd ?? process.cwd(),
-              stdin: engineCmd.stdinPrompt
-                ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + prompt : prompt)
-                : undefined,
-              onStdout: (chunk) => {
-                resumeEmitter.workerOutput(resumeCurrentWorkflowId, "stdout", chunk, deps.engine.metadata.id)
-              },
-              onStderr: (chunk) => {
-                resumeEmitter.workerOutput(resumeCurrentWorkflowId, "stderr", chunk, deps.engine.metadata.id)
-              },
-            })
-            const workerResult = await spawnResult.result
-            return {
-              output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
-              handoffPath: workerResult.handoffPath ?? "",
-              durationMs: Date.now() - startTime,
-            }
-          },
-          evaluator: null,
-          handoffReader: async () => null,
-          budgetChecker: { isExhausted: () => false },
-          persist: async () => {},
-          accumulator: { accumulate: () => {}, getContext: () => ({}) },
-          maxRevisions: deps.config.max_revisions ?? 0,
-          guardrails: resumeWorkGuardrails,
-        })
-
-        sessionControllers.set(sessionId, {
-          shutdown: () => { resumeStepExec.requestShutdown(); return killAllActiveProcesses() },
-        })
-
-        await resumeStepExec.run()
-        sessionControllers.delete(sessionId)
-      } catch {
-        sessionControllers.delete(sessionId)
-      } finally {
-        resumeWorkflowIdUnsub()
-      }
-    })
   }
 
   /**

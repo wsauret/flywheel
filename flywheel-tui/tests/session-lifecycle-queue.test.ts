@@ -84,6 +84,12 @@ function makeMockDeps(overrides?: Partial<SessionOrchestratorDeps>): {
       calls.push(`fromSnapshot:${snapshots.length}`);
       return snapshots as OutputSnapshot[];
     },
+    createQueuePersistence: (sessionId: string) => ({
+      load: async () => {
+        calls.push(`queuePersistence.load:${sessionId}`);
+        return makeFakeQueue();
+      },
+    }),
     manager: {
       updateState: (id: string, newState: string) => {
         calls.push(`manager.updateState:${id}:${newState}`);
@@ -134,13 +140,12 @@ describe("SessionOrchestrator.handleResumeSession — queue loading", () => {
     const result = await orchestrator.handleResumeSession("session-1");
 
     expect(result).not.toBeNull();
-    expect(result!.queue).not.toBeNull();
-    expect(result!.queue!.steps).toHaveLength(3);
-    expect(result!.queue!.cursor).toBe(1);
+    expect(result!.queue.steps).toHaveLength(3);
+    expect(result!.queue.cursor).toBe(1);
     expect(calls).toContain("queuePersistence.load:session-1");
   });
 
-  it("returns null queue when .queue.json does not exist", async () => {
+  it("returns null when .queue.json does not exist", async () => {
     const { deps } = makeMockDeps({
       createQueuePersistence: () => ({
         load: async () => null,
@@ -150,21 +155,21 @@ describe("SessionOrchestrator.handleResumeSession — queue loading", () => {
 
     const result = await orchestrator.handleResumeSession("session-1");
 
-    expect(result).not.toBeNull();
-    expect(result!.queue).toBeNull();
+    expect(result).toBeNull();
   });
 
-  it("returns null queue when createQueuePersistence is not provided", async () => {
-    const { deps } = makeMockDeps();
+  it("returns null when createQueuePersistence is not provided", async () => {
+    const { deps } = makeMockDeps({
+      createQueuePersistence: undefined,
+    });
     const orchestrator = createSessionOrchestrator(deps);
 
     const result = await orchestrator.handleResumeSession("session-1");
 
-    expect(result).not.toBeNull();
-    expect(result!.queue).toBeNull();
+    expect(result).toBeNull();
   });
 
-  it("returns null queue when queue persistence throws", async () => {
+  it("returns null when queue persistence throws", async () => {
     const { deps } = makeMockDeps({
       createQueuePersistence: () => ({
         load: async () => { throw new Error("corrupt file"); },
@@ -174,8 +179,7 @@ describe("SessionOrchestrator.handleResumeSession — queue loading", () => {
 
     const result = await orchestrator.handleResumeSession("session-1");
 
-    expect(result).not.toBeNull();
-    expect(result!.queue).toBeNull();
+    expect(result).toBeNull();
   });
 
   it("queue has correct cursor pointing to first pending step", async () => {
@@ -197,11 +201,11 @@ describe("SessionOrchestrator.handleResumeSession — queue loading", () => {
 
     const result = await orchestrator.handleResumeSession("session-1");
 
-    expect(result!.queue!.cursor).toBe(2);
+    expect(result!.queue.cursor).toBe(2);
     // Completed steps are before cursor — they won't be re-executed
-    expect(result!.queue!.steps[0].status).toBe("completed");
-    expect(result!.queue!.steps[1].status).toBe("completed");
-    expect(result!.queue!.steps[2].status).toBe("pending");
+    expect(result!.queue.steps[0].status).toBe("completed");
+    expect(result!.queue.steps[1].status).toBe("completed");
+    expect(result!.queue.steps[2].status).toBe("pending");
   });
 
   it("still returns session and output blocks alongside queue", async () => {

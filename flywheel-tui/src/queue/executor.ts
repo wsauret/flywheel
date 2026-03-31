@@ -91,7 +91,12 @@ export interface EvalResult {
 export type DispatcherFn = (
   step: Step,
   context: Record<string, unknown>,
-) => Promise<{ prompt: string; evaluationCriteria: unknown | null }>;
+) => Promise<{ 
+  prompt: string; 
+  evaluationCriteria: unknown | null;
+  mutationRequests?: import("./step-dispatcher").MutationRequest[];
+  sessionName?: string;
+}>;
 
 /**
  * Evaluator: assesses step output quality.
@@ -187,6 +192,12 @@ export interface StepExecutorOptions {
    * context and session objective from the guardrails.
    */
   guardrails?: import("./guardrails").Guardrails | null;
+
+  /**
+   * Callback invoked when the dispatcher returns a session name (first call only).
+   * Used to persist the LLM-generated session name to disk and update the UI.
+   */
+  onSessionName?: ((name: string) => void) | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,6 +330,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     questionService,
     onStepCompleted,
     guardrails,
+    onSessionName,
   } = options;
 
   let shutdownRequested = false;
@@ -329,6 +341,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   let previousHandoff: Record<string, unknown> | null = null;
   /** Last evaluator assessment from the most recently completed step */
   let previousAssessment: EvalResult | null = null;
+  /** Whether a session name has already been emitted (only fire once). */
+  let sessionNameEmitted = false;
 
   /**
    * Persist queue state (best-effort — log on failure, don't throw).
@@ -471,6 +485,33 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       };
       const dispatcherResult = await dispatcher(step, dispatcherContext);
       let currentPrompt = dispatcherResult.prompt;
+
+      // Emit session name on the first dispatcher call that returns one
+      if (!sessionNameEmitted && dispatcherResult.sessionName && onSessionName) {
+        sessionNameEmitted = true;
+        onSessionName(dispatcherResult.sessionName);
+      }
+
+      // Apply dispatcher mutation requests if guardrails are active
+      if (dispatcherResult.mutationRequests?.length && guardrails) {
+        log.info("applying dispatcher mutations", { stepId: step.id, count: dispatcherResult.mutationRequests.length });
+        const provenance: Provenance = {
+          actor: "dispatcher",
+          reason: `mutations requested after dispatching step ${step.id}`,
+        };
+        const results = guardrails.applyMutations(
+          queue,
+          step.id,
+          dispatcherResult.mutationRequests,
+          provenance,
+        );
+        for (const r of results) {
+          if (!r.applied) {
+            log.warn("dispatcher mutation rejected", { stepId: step.id, reason: r.reason });
+          }
+        }
+        await persistQueue();
+      }
 
       // (4) Spawn worker — race against abort signal
       let workerOutput = await raceAbort(worker(step, currentPrompt), abortController.signal);

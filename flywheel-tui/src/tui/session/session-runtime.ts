@@ -45,7 +45,7 @@ export interface RunningRuntime {
   /** Queue-based execution: step executor drives execution. */
   stepExecutor?: StepExecutor | null
   /** The queue being executed (when using queue-based execution). */
-  queue?: Queue | null
+  queue?: Queue
 }
 
 /** Discriminated union — check `kind` to narrow. */
