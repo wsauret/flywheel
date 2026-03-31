@@ -15,8 +15,6 @@ import { describe, expect, test } from "bun:test";
 // ---------------------------------------------------------------------------
 
 import {
-  WORKFLOW_TEMPLATES,
-  getWorkflowTemplate,
   buildQueueFromTemplate,
   buildGranularDebugSteps,
   buildGranularShipSteps,
@@ -231,43 +229,7 @@ describe("VAL-QUEUE-035: Gate step properties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Workflow template registry
-// ---------------------------------------------------------------------------
 
-describe("Workflow template registry", () => {
-  test("5 workflow templates are defined", () => {
-    expect(WORKFLOW_TEMPLATES).toHaveLength(5);
-  });
-
-  test("all templates have required fields", () => {
-    for (const template of WORKFLOW_TEMPLATES) {
-      expect(template.name).toBeTruthy();
-      expect(template.label).toBeTruthy();
-      expect(template.description).toBeTruthy();
-    }
-  });
-
-  test("getWorkflowTemplate returns correct template by name", () => {
-    const planOnly = getWorkflowTemplate("plan-only");
-    expect(planOnly).toBeDefined();
-    expect(planOnly!.name).toBe("plan-only");
-  });
-
-  test("getWorkflowTemplate returns undefined for unknown name", () => {
-    const unknown = getWorkflowTemplate("nonexistent" as WorkflowName);
-    expect(unknown).toBeUndefined();
-  });
-
-  test("template names match expected values", () => {
-    const names = WORKFLOW_TEMPLATES.map((t) => t.name);
-    expect(names).toContain("plan-only");
-    expect(names).toContain("plan-work");
-    expect(names).toContain("plan-work-review");
-    expect(names).toContain("full");
-    expect(names).toContain("sprint");
-  });
-});
 
 // ---------------------------------------------------------------------------
 // buildGranularDebugSteps

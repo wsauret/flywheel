@@ -1,7 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import {
   workflowHasReview,
-  modeHasReview,
   WORKFLOW_OPTIONS,
   type WorkflowName,
 } from "../src/tui/shell/start-command"
@@ -51,19 +50,6 @@ describe("workflowHasReview", () => {
     expect(workflowHasReview("plan-only")).toBe(false)
     expect(workflowHasReview("plan-work")).toBe(false)
     expect(workflowHasReview("sprint")).toBe(false)
-  })
-})
-
-// ===========================================================================
-// modeHasReview (deprecated alias, backward compat)
-// ===========================================================================
-
-describe("modeHasReview (backward compat alias)", () => {
-  it("behaves identically to workflowHasReview", () => {
-    expect(modeHasReview("plan-work-review")).toBe(workflowHasReview("plan-work-review"))
-    expect(modeHasReview("full")).toBe(workflowHasReview("full"))
-    expect(modeHasReview("plan-only")).toBe(workflowHasReview("plan-only"))
-    expect(modeHasReview("sprint")).toBe(workflowHasReview("sprint"))
   })
 })
 

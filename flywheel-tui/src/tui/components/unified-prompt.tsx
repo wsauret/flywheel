@@ -19,6 +19,8 @@
 
 import { Prompt } from "@tui/shared/components/prompt/index"
 import { resolvePromptMode, type PromptMode } from "./unified-prompt-logic"
+import { getPlaceholderForState } from "./prompt-placeholders"
+import type { SessionLifecycleState } from "../../session/state-machine"
 import type { AppState } from "../shell/shell-modes"
 import type { JSX } from "solid-js"
 
@@ -36,6 +38,8 @@ export interface UnifiedPromptProps {
   availableWidth?: number
   /** Number of running sessions (background or focused). When > 0 in idle, shows count in placeholder. */
   runningCount?: number
+  /** Current session lifecycle state (for contextual placeholder text). */
+  lifecycleState?: SessionLifecycleState | null
 }
 
 export interface UnifiedPromptResult {
@@ -84,6 +88,14 @@ export function useUnifiedPrompt(props: UnifiedPromptProps): UnifiedPromptResult
       // Interrupted state: override placeholder to prompt for resume text
       if (props.isInterrupted && mode() === "active") {
         return "Type to resume worker..."
+      }
+      // Use lifecycle-aware placeholder when a session is active
+      if (props.lifecycleState) {
+        const contextual = getPlaceholderForState(props.lifecycleState)
+        if (mode() === "command" && (props.runningCount ?? 0) > 0) {
+          return `${contextual} (${props.runningCount} running)`
+        }
+        return contextual
       }
       const base = PLACEHOLDERS[mode()]
       if (mode() === "command" && (props.runningCount ?? 0) > 0) {

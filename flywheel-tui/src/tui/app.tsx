@@ -22,8 +22,9 @@ import { DialogProvider } from "@tui/shared/context/dialog"
 import { SessionProvider } from "@tui/shared/context/session"
 import { ErrorComponent } from "./components/error-boundary"
 import { createSessionManager } from "../session/manager"
+import { createWorktreeManager, createWtClient } from "../session/worktree-manager.js"
 
-import { loadConfig } from "../config/loader"
+import { loadConfig, CONFIG_DEFAULTS } from "../config/loader"
 import { CONFIG_FILES } from "../config/paths"
 
 export interface TUIOptions {
@@ -55,10 +56,20 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
       // Config load failure is non-fatal — session manager will use CONFIG_DEFAULTS
     }
 
+    // Create worktree manager (gracefully inert when wt CLI is unavailable)
+    const wtConfig = (config ?? CONFIG_DEFAULTS).worktree
+    const worktreeManager = createWorktreeManager({
+      client: createWtClient({ cwd: process.cwd() }),
+      enabled: wtConfig.enabled,
+      autoRemoveOnArchive: wtConfig.auto_remove,
+      gracePeriodMs: wtConfig.grace_period_ms,
+    })
+
     // Create session manager for the current working directory
     const sessionManager = createSessionManager({
       baseDir: process.cwd(),
       config,
+      worktreeManager,
     })
 
     render(
@@ -75,7 +86,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode}>
                 <DialogProvider>
-                  <SessionProvider manager={sessionManager}>
+                  <SessionProvider manager={sessionManager} worktreeManager={worktreeManager}>
                     <FlywheelShell />
                   </SessionProvider>
                 </DialogProvider>

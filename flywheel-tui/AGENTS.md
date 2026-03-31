@@ -27,6 +27,12 @@ The queue engine executes a sequence of typed steps. Each step type + variant is
 
 **No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Tests exist to verify production behavior, not to keep unused code alive. Git history is the recovery mechanism.
 
+**Built means wired.** A module that compiles but is never called from the production entry point does not exist. Every new module must be imported and invoked in the live application before its PR merges. If you cannot demonstrate the feature running in the TUI via tmux, it is not done.
+
+**Unit tests prove logic, not integration.** A test suite that passes only shows the module works in isolation. It says nothing about whether the module is reachable from the running application. After wiring a feature, verify it in the live TUI -- not just in the test harness.
+
+**Test the wiring, not just the parts.** When you connect a new module to the system, the E2E verification must exercise the actual integration path: start the TUI, trigger the feature, observe the result on screen or in logs. Calling `bun test` is necessary but never sufficient for wiring changes.
+
 **No single-file directories.** If a directory contains exactly one file, flatten it. `src/telemetry/logger.ts` becomes `src/telemetry.ts`. The directory earns its existence when a second file joins it.
 
 **Imports reveal misplacement.** If a file's imports all reach three or more levels up (`../../../`), it probably lives too deep. If every consumer of a module reaches across subsystem boundaries to import it, the module is in the wrong subsystem. Let import paths guide where things belong.
@@ -45,7 +51,7 @@ Do not ever use emojis in your code.
 DRY - Reuse existing code instead of writing it from scratch. Use grep to determine whether the logic already exists and extend that implementation instead then import it.
 SOLID - Always follow the solid principles, especially single responsibility. It makes code composable and reusable making it easier to follow DRY.
 Never mock anything. Never use a placeholder. Never omit code.
-Always fully wire any new code into the system! Verify the wiring via integration tests.
+Always fully wire any new code into the system! Verify the wiring by running the TUI and exercising the feature end-to-end. Unit tests alone do not prove wiring -- if you cannot trigger it from the running app, it is unwired.
 
 ## Using TypeScript
 

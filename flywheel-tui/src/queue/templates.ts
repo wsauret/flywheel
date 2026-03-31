@@ -40,7 +40,7 @@ export type WorkflowName =
 // BuildQueueOptions — configuration for queue building
 // ---------------------------------------------------------------------------
 
-export interface BuildQueueOptions {
+interface BuildQueueOptions {
   /** When false, gate steps are inserted between major transitions. Default: true (no gates). */
   skipApprovalGates?: boolean;
   /** Maximum number of steps in the queue. */
@@ -222,7 +222,7 @@ function buildSprintSteps(): Step[] {
 // Workflow template registry
 // ---------------------------------------------------------------------------
 
-export interface WorkflowTemplateWithBuilder extends WorkflowTemplate {
+interface WorkflowTemplateWithBuilder extends WorkflowTemplate {
   /** Build the initial queue for this workflow. */
   buildSteps(insertGates: boolean): Step[];
 }
@@ -272,12 +272,12 @@ const TEMPLATE_BUILDERS: Record<WorkflowName, WorkflowTemplateWithBuilder> = {
 /**
  * All workflow templates as an array (for display in pickers).
  */
-export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = Object.values(TEMPLATE_BUILDERS);
+const WORKFLOW_TEMPLATES: WorkflowTemplate[] = Object.values(TEMPLATE_BUILDERS);
 
 /**
  * Look up a workflow template by name.
  */
-export function getWorkflowTemplate(name: WorkflowName): WorkflowTemplate | undefined {
+function getWorkflowTemplate(name: WorkflowName): WorkflowTemplate | undefined {
   return TEMPLATE_BUILDERS[name];
 }
 

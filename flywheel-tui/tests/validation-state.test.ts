@@ -11,7 +11,6 @@ import {
   ValidationStateSchema,
   AssertionStatusSchema,
   type ValidationState,
-  type AssertionStatus,
 } from "../src/session/validation-schemas";
 
 import {

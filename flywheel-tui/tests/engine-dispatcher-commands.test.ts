@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { claudeEngine } from "../src/engines/providers/claude/index";
-import { opencodeEngine } from "../src/engines/providers/opencode/index";
+import { claudeEngine } from "../src/engines/providers/claude";
+import { opencodeEngine } from "../src/engines/providers/opencode";
 import { getEngine } from "../src/engines/core/registry";
 import type { DispatcherCommandOptions, EngineCommandOptions } from "../src/engines/core/types";
 

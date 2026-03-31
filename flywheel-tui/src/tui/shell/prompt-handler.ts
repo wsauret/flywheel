@@ -15,7 +15,7 @@ import { formatClaudeStdinMessage } from "../../worker/stdin-format"
 import { Log } from "../../utils/log"
 
 import type { AppState } from "./shell-modes"
-import type { WorkState } from "../routes/work/state/types"
+import type { WorkState } from "../types"
 import type { StdinHandle } from "../../worker/spawner"
 import type { WorkflowDeps } from "../../engines/workflow-deps"
 import type { WorkflowSession } from "../session/workflow-session"

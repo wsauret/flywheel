@@ -30,7 +30,7 @@ import * as path from "node:path";
 import { buildWorkflowPrompt } from "../src/workflows/prompt-builder";
 import { researchWorkflow } from "../src/workflows/research";
 import { planWorkflow } from "../src/workflows/plan";
-import { getEngine, isEngineAvailable } from "../src/engines/core/registry";
+import { getEngine } from "../src/engines/core/registry";
 import { BunProcessSpawner } from "../src/worker/bun-spawner";
 import { TieredBuffer } from "../src/worker/buffer";
 import { NDJSONParser } from "../src/worker/ndjson-parser";
@@ -499,10 +499,13 @@ async function main() {
   console.log(`${YELLOW}   Each research phase takes 2-5 minutes and incurs API costs.${RESET}\n`);
 
   // Check engine availability
-  if (!isEngineAvailable(args.engine)) {
-    const engine = getEngine(args.engine);
-    console.error(`${RED}ERROR${RESET}: Engine '${args.engine}' (${engine.metadata.cliBinary}) is not available.`);
-    console.error(`Install it: ${engine.metadata.installCommand}`);
+  const engineForCheck = getEngine(args.engine);
+  const engineAvailable = (() => {
+    try { return Bun.which(engineForCheck.metadata.cliBinary) !== null; } catch { return false; }
+  })();
+  if (!engineAvailable) {
+    console.error(`${RED}ERROR${RESET}: Engine '${args.engine}' (${engineForCheck.metadata.cliBinary}) is not available.`);
+    console.error(`Install it: ${engineForCheck.metadata.installCommand}`);
     process.exit(1);
   }
 

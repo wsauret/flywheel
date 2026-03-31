@@ -5,7 +5,7 @@
  * Model uses provider/model format (e.g., "anthropic/claude-opus-4-6").
  */
 
-import type { DispatcherCommandOptions, EvaluatorCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../../core/types";
+import type { DispatcherCommandOptions, EvaluatorCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../core/types";
 
 export const metadata: EngineMetadata = {
   id: "opencode",

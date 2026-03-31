@@ -16,7 +16,7 @@
  * a new one.
  */
 
-import type { AnyBlock } from "../routes/work/state/types";
+import type { AnyBlock } from "../types";
 
 // ---------------------------------------------------------------------------
 // Constants

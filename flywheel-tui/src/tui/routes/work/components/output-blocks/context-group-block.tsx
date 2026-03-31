@@ -7,7 +7,7 @@
  */
 
 import { useTheme } from "@tui/shared/context/theme"
-import type { ContextGroupBlock as ContextGroupBlockType } from "../../state/types"
+import type { ContextGroupBlock as ContextGroupBlockType } from "@tui/types"
 
 export interface ContextGroupBlockProps {
   block: ContextGroupBlockType

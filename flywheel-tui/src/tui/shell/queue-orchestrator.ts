@@ -13,7 +13,7 @@ import { createAgentEvaluatorFn } from "../../evaluator/create-agent-evaluator"
 import { readHandoff } from "../../queue/shared/handoff-reader"
 import { WorkerHandoffSchema } from "../../queue/shared/handoff-schemas"
 import { createContextAccumulator } from "../../queue/context-accumulator"
-import { createPlanIntegrationHook } from "../../queue/steps/plan-consolidate/hooks"
+import { createPlanIntegrationHook, type ConfirmBeforeInsert } from "../../queue/steps/plan-consolidate/hooks"
 import { createCompositeHook } from "../../queue/shared/hooks"
 import { createReviewFixInjectionHook } from "../../queue/steps/review-consolidate/hooks"
 import { createReviewP3TriageHook } from "../../queue/steps/review-dispatch/hooks"
@@ -121,6 +121,8 @@ export interface BuildExecutorDepsOpts {
   questionService?: QuestionService | null;
   /** When false, P3 triage uses auto-directive instead of interactive question. */
   reviewTriageInteractive?: boolean;
+  /** Optional callback for interactive plan confirmation (HITL). */
+  confirmBeforeInsert?: ConfirmBeforeInsert;
   /** Setter for TUI queue step state (SolidJS signal setter passed from shell). */
   setShellQueueSteps: (updater: any) => void;
   /** Mutable ref tracking captured worker session ID for resume/interrupt. */
@@ -141,7 +143,8 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
     contextIndexer, projectCwd, sessionObjective, queue, stdinHandleRef,
     seedHandoff, sessionId: execSessionId,
-    questionService, reviewTriageInteractive, setShellQueueSteps,
+    questionService, reviewTriageInteractive, confirmBeforeInsert,
+    setShellQueueSteps,
     capturedWorkerSessionId, pendingInjection, activeSessionRef,
   } = opts
   const { dispatcherModel, workerModel } = resolveModels(deps.config)
@@ -220,7 +223,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
   const debugHandler = isDebugQueue ? createDebugQueueHandler() : null
 
   // Plan integration hook + review fix injection + P3 triage + debug hook + sprint hook + TUI step insertion composite hook
-  const planIntegrationHook = createPlanIntegrationHook(projectCwd, execSessionId)
+  const planIntegrationHook = createPlanIntegrationHook(projectCwd, execSessionId, confirmBeforeInsert)
   const reviewFixInjectionHook = createReviewFixInjectionHook()
   const triageQS = reviewTriageInteractive === false ? null : (questionService ?? null)
   const reviewP3TriageHook = createReviewP3TriageHook({ questionService: triageQS })

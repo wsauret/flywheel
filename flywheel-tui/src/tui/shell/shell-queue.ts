@@ -26,11 +26,10 @@ import {
 } from "../../queue/templates";
 import { researchPersistEvaluationCriteria } from "../../queue/steps/research/prompts";
 import { shipCompoundEvaluationCriteria } from "../../queue/steps/ship-learnings/prompts";
-import type { Queue, Step, StepType } from "../../queue/types";
+import type { Queue, Step, StepType, EndOfSessionGateCheck } from "../../queue/types";
 import { createQueue } from "../../queue/queue";
 import type { FlywheelConfig } from "../../config/loader";
 import { checkEndOfSessionGate } from "../../session/validation-state";
-import type { EndOfSessionGateCheck } from "../../queue/queue-types";
 import { parseJsonPlan } from "../../queue/shared/plan-parser";
 import { randomUUID } from "crypto";
 

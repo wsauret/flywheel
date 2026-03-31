@@ -6,7 +6,7 @@ import {
 } from "../src/tui/session/session-orchestrator";
 import type { Session } from "../src/session/schemas";
 import type { OutputSnapshot } from "../src/session/output-schemas";
-import type { CompletedStepResult } from "../src/queue/queue-types";
+import type { CompletedStepResult } from "../src/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

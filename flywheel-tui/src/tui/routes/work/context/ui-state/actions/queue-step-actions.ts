@@ -6,7 +6,7 @@
  * when queue events fire (queue:initialized, queue:step-started, etc.).
  */
 
-import type { QueueStepState } from "../../../state/types";
+import type { QueueStepState } from "@tui/types";
 import type { StoreContext } from "./workflow-actions";
 
 export function createQueueStepActions(ctx: StoreContext) {

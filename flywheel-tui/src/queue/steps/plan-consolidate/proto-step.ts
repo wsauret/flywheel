@@ -15,20 +15,10 @@
 
 import { z } from "zod";
 import type { Step } from "../../types";
+import { EstimatedComplexitySchema } from "../../shared/plan-parser.js";
 
-// ---------------------------------------------------------------------------
-// Complexity enum for estimated effort
-// ---------------------------------------------------------------------------
-
-export const EstimatedComplexitySchema = z.enum([
-  "trivial",
-  "low",
-  "medium",
-  "high",
-  "critical",
-]);
-
-export type EstimatedComplexity = z.infer<typeof EstimatedComplexitySchema>;
+export type { EstimatedComplexity } from "../../shared/plan-parser.js";
+export { EstimatedComplexitySchema } from "../../shared/plan-parser.js";
 
 // ---------------------------------------------------------------------------
 // ProtoStep Zod schema

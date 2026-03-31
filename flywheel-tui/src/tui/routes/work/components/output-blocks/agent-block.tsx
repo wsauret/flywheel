@@ -24,7 +24,7 @@ import { Show } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { truncate, MAX_BLOCK_LINE_LENGTH } from "@tui/utils/text"
-import type { AgentBlock as AgentBlockType } from "../../state/types"
+import type { AgentBlock as AgentBlockType } from "@tui/types"
 
 export interface AgentBlockProps {
   block: AgentBlockType

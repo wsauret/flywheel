@@ -132,7 +132,7 @@ describe("parseHomeCommand", () => {
 
   it("derives valid commands from COMMANDS array (sync check)", () => {
     // All COMMANDS entries should be parseable
-    const { COMMANDS } = require("../src/tui/config/commands")
+    const { COMMANDS } = require("../src/tui/commands")
     for (const cmd of COMMANDS) {
       const name = cmd.name // e.g., "/work"
       const result = parseHomeCommand(name)

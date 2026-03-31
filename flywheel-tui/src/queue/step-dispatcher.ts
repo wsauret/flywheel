@@ -43,8 +43,9 @@ import type {
 import type { AccumulatedContext, HandoffSummary } from "./context-accumulator";
 import type { EvalResult } from "./executor";
 import type { StepContext } from "./step-context";
-import { createEmptyStepContext } from "./step-context";
-import { Log } from "../utils/log";
+import { createEmptyStepContext } from "./step-context.js";
+import { applyBudgetTruncation } from "../dispatcher/truncation.js";
+import { Log } from "../utils/log.js";
 
 const log = Log.create({ service: "step-dispatcher" });
 
@@ -449,6 +450,9 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         step_context: stepContext,
         mutation_budget: mutationBudgetInput,
       };
+
+      // Safety valve — shared 100KB budget truncation on available_context
+      applyBudgetTruncation(input);
 
       // --- Invoke transport ---
       log.info("dispatching step", {

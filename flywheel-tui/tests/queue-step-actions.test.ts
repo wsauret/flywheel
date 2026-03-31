@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
-import type { QueueStepState } from "../src/tui/routes/work/state/types";
+import type { QueueStepState } from "../src/tui/types";
 
 // ---------------------------------------------------------------------------
 // Queue step actions — store integration tests

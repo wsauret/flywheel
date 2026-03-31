@@ -1,9 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { claudeEngine } from "../src/engines/providers/claude/index";
-import { opencodeEngine } from "../src/engines/providers/opencode/index";
+import { claudeEngine } from "../src/engines/providers/claude";
+import { opencodeEngine } from "../src/engines/providers/opencode";
 import {
   getEngine,
-  isEngineAvailable,
 } from "../src/engines/core/registry";
 
 // ---------------------------------------------------------------------------
@@ -258,23 +257,4 @@ describe("Engine: opencode — tool scoping", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Engine availability
-// ---------------------------------------------------------------------------
 
-describe("Engine availability", () => {
-  it("isEngineAvailable returns true when CLI binary is in PATH", () => {
-    // "claude" or "opencode" may be installed; test whichever is available
-    // We verify the function works by checking against Bun.which directly
-    const claudeInPath = (() => {
-      try { return Bun.which("claude") !== null; } catch { return false; }
-    })();
-    expect(isEngineAvailable("claude")).toBe(claudeInPath);
-  });
-
-  it("isEngineAvailable returns false for nonexistent engine ID", () => {
-    expect(isEngineAvailable("nonexistent-engine-xyz")).toBe(false);
-  });
-
-
-});

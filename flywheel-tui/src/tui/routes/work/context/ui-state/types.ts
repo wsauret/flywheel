@@ -5,7 +5,7 @@
  * Re-exports WorkState types for convenience.
  */
 
-import type { WorkState, OutputLine, AnyBlock, WorkflowStatus as WfStatus, QueueStepState } from "../../state/types";
+import type { WorkState, OutputLine, AnyBlock, WorkflowStatus as WfStatus, QueueStepState } from "@tui/types";
 
 export type Listener = () => void;
 
@@ -47,6 +47,4 @@ export interface UIActions {
   showToast?(variant: "success" | "error" | "info" | "warning", message: string): void;
 }
 
-// Re-export for backward compatibility with existing index.ts
-export type WorkflowState = WorkState;
 export type { WfStatus as WorkflowStatus };

@@ -12,6 +12,7 @@
 import { createSignal } from "solid-js"
 import { createSimpleContext } from "./helper"
 import type { SessionManager, SessionSummary, SessionListResult } from "../../../session/manager"
+import type { WorktreeManager } from "../../../session/worktree-manager.js"
 
 
 // ---------------------------------------------------------------------------
@@ -21,6 +22,9 @@ import type { SessionManager, SessionSummary, SessionListResult } from "../../..
 export interface SessionContextValue {
   /** The underlying SessionManager instance. */
   manager: SessionManager
+
+  /** Optional worktree manager for git worktree lifecycle. */
+  worktreeManager: WorktreeManager | null
 
   /** Refresh the session list from disk. Returns the current list. */
   refreshList: () => SessionListResult
@@ -35,7 +39,7 @@ export interface SessionContextValue {
 
 export const { use: useSession, provider: SessionProvider } = createSimpleContext<
   SessionContextValue,
-  { manager: SessionManager }
+  { manager: SessionManager; worktreeManager?: WorktreeManager }
 >({
   name: "Session",
   init: (props) => {
@@ -77,6 +81,7 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
 
     return {
       manager: props.manager,
+      worktreeManager: props.worktreeManager ?? null,
       refreshList,
       sessions,
     }

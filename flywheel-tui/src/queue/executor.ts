@@ -190,12 +190,6 @@ export interface StepExecutorOptions {
 }
 
 // ---------------------------------------------------------------------------
-// OnStepCompleted hook type (canonical source: ./hooks.ts)
-// ---------------------------------------------------------------------------
-
-export type { OnStepCompletedHook, OnStepCompletedResult } from "./shared/hooks";
-
-// ---------------------------------------------------------------------------
 // StepExecutorResult — what run() returns
 // ---------------------------------------------------------------------------
 

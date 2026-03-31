@@ -8,7 +8,7 @@
  * No singleton — each workflow session gets its own store.
  */
 
-import type { WorkState } from "../../state/types";
+import type { WorkState } from "@tui/types";
 import type { UIActions, Listener } from "./types";
 import { createWorkflowActions } from "./actions/workflow-actions";
 import { createNavigationActions } from "./actions/navigation-actions";

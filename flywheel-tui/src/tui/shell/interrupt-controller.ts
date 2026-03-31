@@ -20,7 +20,7 @@ import type { WorkflowSession } from "../session/workflow-session"
 import type { Queue } from "../../queue/types"
 import type { StepExecutor } from "../../queue/executor"
 import type { EscapeHandler } from "../utils/escape-handler"
-import type { QueueStepState } from "../routes/work/state/types"
+import type { QueueStepState } from "../types"
 
 const log = Log.create({ service: "shell" })
 

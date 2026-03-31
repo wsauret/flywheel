@@ -6,7 +6,7 @@
  * engine-aware command building.
  *
  * When the engine is OpenCode and the SDK is available, the shared SdkSpawner
- * singleton (from auto-detect.ts) is used instead of the caller-provided
+ * singleton (from engines/sdk-detect.ts) is used instead of the caller-provided
  * subprocess spawner — giving the evaluator full streaming support.
  *
  * The evaluator model falls back to: evaluator.model → dispatcher.model → engine default.
@@ -15,7 +15,7 @@
 import type { ProcessSpawner } from "../worker/spawner";
 import type { EvaluatorTransport } from "./transport";
 import { SubprocessEvaluatorTransport } from "./subprocess-transport";
-import { SDK_AVAILABLE, getOrCreateSdkSpawner } from "../dispatcher/auto-detect.js";
+import { SDK_AVAILABLE, getOrCreateSdkSpawner } from "../engines/sdk-detect.js";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "evaluator-transport-factory" });

@@ -4,7 +4,7 @@
  * Factory that takes store context and returns workflow mutation functions.
  */
 
-import type { WorkState, OutputLine, AnyBlock } from "../../../state/types";
+import type { WorkState, OutputLine, AnyBlock } from "@tui/types";
 
 export interface StoreContext {
   getState(): WorkState;

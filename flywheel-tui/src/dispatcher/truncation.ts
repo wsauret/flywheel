@@ -1,0 +1,51 @@
+/**
+ * Shared safety-valve truncation for DispatcherInput.
+ *
+ * If the serialized DispatcherInput exceeds BUDGET_TOTAL (100KB),
+ * truncates `available_context` arrays to MAX_CONTEXT_ENTRIES each
+ * as a last-resort size reduction.
+ */
+
+import type { DispatcherInput } from "./schemas.js";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Maximum serialized size in bytes before truncation kicks in. */
+const BUDGET_TOTAL = 102_400; // 100KB
+
+/** Number of entries to keep per available_context category after truncation. */
+const MAX_CONTEXT_ENTRIES = 10;
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply budget-aware safety-valve truncation to a DispatcherInput.
+ *
+ * Mutates `input.available_context` in place if the serialized size
+ * exceeds 100KB. Returns whether truncation was applied.
+ */
+export function applyBudgetTruncation(input: DispatcherInput): boolean {
+  if (byteLength(JSON.stringify(input)) <= BUDGET_TOTAL) {
+    return false;
+  }
+
+  input.available_context = {
+    conventions: input.available_context.conventions.slice(0, MAX_CONTEXT_ENTRIES),
+    standards: input.available_context.standards.slice(0, MAX_CONTEXT_ENTRIES),
+    learnings: input.available_context.learnings.slice(0, MAX_CONTEXT_ENTRIES),
+  };
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function byteLength(str: string): number {
+  return Buffer.byteLength(str, "utf8");
+}

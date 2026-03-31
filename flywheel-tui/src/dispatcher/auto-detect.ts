@@ -15,24 +15,8 @@
 import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
 import { SubprocessTransport } from "./subprocess-transport";
+import { SDK_AVAILABLE, getOrCreateSdkSpawner } from "../engines/sdk-detect.js";
 import { Log } from "../utils/log";
-
-// ---------------------------------------------------------------------------
-// SDK availability detection
-// ---------------------------------------------------------------------------
-
-let _sdkAvailable = false;
-
-try {
-  const sdk = await import("@opencode-ai/sdk");
-  if ("createOpencodeClient" in sdk) {
-    _sdkAvailable = true;
-  }
-} catch {
-  // SDK not available — that's fine
-}
-
-export const SDK_AVAILABLE: boolean = _sdkAvailable;
 
 const log = Log.create({ service: "dispatcher" });
 
@@ -66,44 +50,6 @@ export interface AutoDetectOptions {
   sessionId?: string;
   /** Project base directory for path resolution. */
   baseDir?: string;
-}
-
-// SdkSpawner singleton — shared across all sessions in the same process.
-// Created once, reused until process exit.
-let _sdkSpawner: ProcessSpawner & { dispose(): void } | null = null;
-let _sdkSpawnerCreating: Promise<(ProcessSpawner & { dispose(): void }) | null> | null = null;
-
-/**
- * Get or create the shared SdkSpawner instance.
- * Returns null if the SDK is not available or the spawner cannot be created.
- *
- * Exported so the evaluator transport can share the same singleton.
- */
-export async function getOrCreateSdkSpawner(): Promise<(ProcessSpawner & { dispose(): void }) | null> {
-  if (_sdkSpawner) return _sdkSpawner;
-
-  // Deduplicate concurrent calls
-  if (_sdkSpawnerCreating) return _sdkSpawnerCreating;
-
-  _sdkSpawnerCreating = (async () => {
-    try {
-      // Dynamic import — only loaded when SDK is available
-      const { SdkSpawner } = await import("../worker/sdk-spawner");
-      const spawner = new SdkSpawner();
-      _sdkSpawner = spawner;
-      log.info("SdkSpawner created for dispatcher (streaming mode)");
-      return spawner;
-    } catch (err) {
-      log.warn("failed to create SdkSpawner for dispatcher", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return null;
-    } finally {
-      _sdkSpawnerCreating = null;
-    }
-  })();
-
-  return _sdkSpawnerCreating;
 }
 
 // ---------------------------------------------------------------------------

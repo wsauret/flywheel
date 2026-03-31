@@ -9,7 +9,7 @@
  * determines how trailing text is mapped into `args`.
  */
 
-import { COMMAND_MAP } from "../config/commands"
+import { COMMAND_MAP } from "../commands"
 
 export interface CommandResult {
   workflow: string
@@ -62,7 +62,4 @@ export function parseCommand(input: string): CommandResult | null {
   return { workflow: command, args }
 }
 
-/**
- * @deprecated Use `parseCommand` instead. This alias exists for backward compatibility.
- */
-export const parseHomeCommand = parseCommand
+

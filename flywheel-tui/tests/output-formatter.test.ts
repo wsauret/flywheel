@@ -1,9 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   extractDisplayText,
-  formatToolUse,
   getToolDetail,
-  truncate,
 } from "../src/tui/adapters/output-formatter";
 
 describe("output-formatter", () => {
@@ -108,26 +106,6 @@ describe("output-formatter", () => {
     });
   });
 
-  // ── formatToolUse ──
-
-  describe("formatToolUse", () => {
-    it("returns empty string for block without name", () => {
-      expect(formatToolUse({})).toBe("");
-    });
-
-    it("returns name only when no input", () => {
-      expect(formatToolUse({ name: "Read" })).toBe("  ▸ Read\n");
-    });
-
-    it("returns name + detail for known tool", () => {
-      const result = formatToolUse({
-        name: "Bash",
-        input: { command: "ls -la" },
-      });
-      expect(result).toBe("  ▸ Bash: ls -la\n");
-    });
-  });
-
   // ── getToolDetail ──
 
   describe("getToolDetail", () => {
@@ -195,31 +173,4 @@ describe("output-formatter", () => {
     });
   });
 
-  // ── truncate ──
-
-  describe("truncate", () => {
-    it("returns null for null/undefined", () => {
-      expect(truncate(null, 80)).toBeNull();
-      expect(truncate(undefined, 80)).toBeNull();
-    });
-
-    it("returns short string as-is", () => {
-      expect(truncate("hello", 80)).toBe("hello");
-    });
-
-    it("truncates long string with ellipsis", () => {
-      const long = "a".repeat(100);
-      const result = truncate(long, 80)!;
-      expect(result.length).toBe(80);
-      expect(result.endsWith("…")).toBe(true);
-    });
-
-    it("collapses newlines to spaces", () => {
-      expect(truncate("line1\nline2\nline3", 80)).toBe("line1 line2 line3");
-    });
-
-    it("trims whitespace", () => {
-      expect(truncate("  hello  ", 80)).toBe("hello");
-    });
-  });
 });

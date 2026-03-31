@@ -9,7 +9,7 @@
 import type { KeyEvent } from "@opentui/core"
 import type { AppState } from "./shell-modes"
 import type { UIActions } from "../routes/work/context/ui-state/types"
-import type { WorkState } from "../routes/work/state/types"
+import type { WorkState } from "../types"
 import type { WorkflowSession } from "../session/workflow-session"
 import type { QuestionRequest } from "../../queue/question-service"
 import type { SelectionAction } from "../session/sidebar-logic"

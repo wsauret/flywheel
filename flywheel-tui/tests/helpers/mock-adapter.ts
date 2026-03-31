@@ -1,8 +1,7 @@
-import type { EventBus } from "../../events/event-bus";
-import type { FlywheelEvent } from "../../events/types";
-import { assertNever } from "../../events/types";
-import type { AdapterType } from "./types";
-import { BaseUIAdapter } from "./base";
+import type { FlywheelEvent } from "../../src/events/types";
+import { assertNever } from "../../src/events/types";
+import type { AdapterType } from "../../src/tui/adapters/types";
+import { BaseUIAdapter } from "../../src/tui/adapters/base";
 
 /**
  * MockAdapter — connects to event bus, records events.

@@ -7,7 +7,7 @@ import type {
   AgentBlock,
   ContextGroupBlock,
   SystemBlock,
-} from "../src/tui/routes/work/state/types";
+} from "../src/tui/types";
 import type { Theme } from "../src/tui/shared/context/theme";
 
 /**

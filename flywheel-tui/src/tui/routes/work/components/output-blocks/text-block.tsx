@@ -7,7 +7,7 @@
  */
 
 import { useTheme } from "@tui/shared/context/theme"
-import type { TextBlock as TextBlockType } from "../../state/types"
+import type { TextBlock as TextBlockType } from "@tui/types"
 
 export interface TextBlockProps {
   block: TextBlockType

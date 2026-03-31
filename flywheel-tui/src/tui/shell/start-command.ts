@@ -70,8 +70,4 @@ export function workflowHasReview(workflow: WorkflowName): boolean {
   return workflow === "plan-work-review" || workflow === "full"
 }
 
-/**
- * @deprecated Use workflowHasReview instead. Kept for backward compatibility
- * during the transition period.
- */
-export const modeHasReview = workflowHasReview
+

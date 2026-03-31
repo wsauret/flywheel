@@ -50,7 +50,7 @@ const OPENCODE_STRIP_KEYS = ["name", "tools", "skills"];
  * - Maps short model names (haiku/sonnet/opus) to full Anthropic IDs
  * - Adds `mode: subagent`
  */
-export function transformForOpenCode(content: string): string {
+function transformForOpenCode(content: string): string {
   // Only transform files with frontmatter
   if (!content.startsWith("---\n")) return content;
 
@@ -236,7 +236,7 @@ export async function installAgents(): Promise<InstallResult> {
  * Check whether agents are installed at the expected locations.
  * Returns the set of engines that have agents installed.
  */
-export async function checkInstallation(): Promise<Map<string, boolean>> {
+async function checkInstallation(): Promise<Map<string, boolean>> {
   const targets = getInstallTargets();
   const result = new Map<string, boolean>();
 

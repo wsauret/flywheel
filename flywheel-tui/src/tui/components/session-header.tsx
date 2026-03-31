@@ -19,9 +19,6 @@ import { useTheme } from "@tui/shared/context/theme"
 import { SIMPLE_LOGO } from "@tui/shared/components/logo"
 import { formatSessionStatus, type SessionHeaderInfo } from "./session-header-logic"
 
-// Re-export types and pure logic for consumers
-export { formatSessionStatus, type SessionHeaderInfo } from "./session-header-logic"
-
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------

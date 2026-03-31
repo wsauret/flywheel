@@ -1,5 +1,3 @@
-import type { BoxRenderable } from "@opentui/core"
-
 export interface PromptProps {
   onSubmit: (input: string) => void
   hint?: string
@@ -10,7 +8,4 @@ export interface PromptProps {
   onEscape?: () => void
 }
 
-export interface PromptOverlayState {
-  visible: boolean
-  anchorRef: BoxRenderable | null
-}
+

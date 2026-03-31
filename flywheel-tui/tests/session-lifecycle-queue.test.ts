@@ -21,8 +21,7 @@ import { isResumable, isValidTransition, VALID_TRANSITIONS } from "../src/sessio
 import { groupSessions, type SessionGroupKey } from "../src/tui/session/sidebar-logic";
 import type { Session } from "../src/session/schemas";
 import type { OutputSnapshot } from "../src/session/output-schemas";
-import type { Queue } from "../src/queue/types";
-import type { QueueResult, CompletedStepResult } from "../src/queue/queue-types";
+import type { Queue, QueueResult, CompletedStepResult } from "../src/queue/types";
 import type { SessionSummary } from "../src/session/manager";
 
 // ---------------------------------------------------------------------------

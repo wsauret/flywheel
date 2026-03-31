@@ -7,7 +7,7 @@
 
 import { useTheme } from "@tui/shared/context/theme"
 import { truncate, MAX_BLOCK_LINE_LENGTH } from "@tui/utils/text"
-import type { ToolBlock as ToolBlockType } from "../../state/types"
+import type { ToolBlock as ToolBlockType } from "@tui/types"
 
 export interface ToolBlockProps {
   block: ToolBlockType

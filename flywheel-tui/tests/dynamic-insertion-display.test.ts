@@ -8,7 +8,7 @@ import {
   layoutVisibility,
   MIN_WIDTH_PANEL,
 } from "../src/tui/shell/shell-modes";
-import type { QueueStepState } from "../src/tui/routes/work/state/types";
+import type { QueueStepState } from "../src/tui/types";
 
 // ---------------------------------------------------------------------------
 // VAL-TUI-006: Dynamically inserted step appears at correct position

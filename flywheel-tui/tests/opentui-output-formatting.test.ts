@@ -4,7 +4,7 @@ import { OpenTUIAdapter, createOpenTUIAdapter } from "../src/tui/adapters/opentu
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
-import type { TextBlock, ToolBlock, AgentBlock } from "../src/tui/routes/work/state/types";
+import type { TextBlock, ToolBlock, AgentBlock } from "../src/tui/types";
 
 function createHarness() {
   const bus = new EventBus();

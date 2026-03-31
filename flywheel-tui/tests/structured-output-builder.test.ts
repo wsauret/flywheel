@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/tui/adapters/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/routes/work/state/types";
+import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/types";
 
 describe("StructuredOutputBuilder", () => {
   let builder: StructuredOutputBuilder;

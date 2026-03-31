@@ -12,7 +12,7 @@
 import { For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { FULL_LOGO } from "@tui/shared/components/logo"
-import { HOME_HELP_COMMANDS } from "@tui/config/commands"
+import { HOME_HELP_COMMANDS } from "@tui/commands"
 
 const SLOGANS = [
   "plan  -  execute  -  iterate",

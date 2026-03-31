@@ -4,7 +4,7 @@ import {
   getStepStatusIcon,
   getStepTypeLabel,
 } from "../src/tui/components/workflow-panel-logic";
-import type { QueueStepState } from "../src/tui/routes/work/state/types";
+import type { QueueStepState } from "../src/tui/types";
 
 // ---------------------------------------------------------------------------
 // computeQueueProgress

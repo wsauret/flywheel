@@ -65,7 +65,7 @@ export function extractDisplayText(line: string): string | null {
 /**
  * Format a tool_use content block for display.
  */
-export function formatToolUse(block: Record<string, unknown>): string {
+function formatToolUse(block: Record<string, unknown>): string {
   const name = block.name as string | undefined;
   if (!name) return "";
 
@@ -123,7 +123,7 @@ export function getToolDetail(
   }
 }
 
-export function truncate(
+function truncate(
   s: string | undefined | null,
   max: number,
 ): string | null {

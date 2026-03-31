@@ -1,51 +1,8 @@
 /**
  * Utility functions for template support.
  *
- * File caching and context file parsing for execution loops.
- * Plan/context files are cached in memory; re-read on mtime change via fs.stat.
- * NOTE: mtime cache is a known TOCTOU limitation (acceptable for sequential execution).
+ * Context file parsing for execution loops.
  */
-
-import * as fs from "node:fs";
-
-// ---------------------------------------------------------------------------
-// File cache (mtime-based)
-// ---------------------------------------------------------------------------
-
-interface CachedFile {
-  content: string;
-  mtimeMs: number;
-}
-
-const fileCache = new Map<string, CachedFile>();
-
-/**
- * Read a file with mtime-based caching.
- * Returns null if the file does not exist.
- */
-export function readCachedFile(filePath: string): string | null {
-  try {
-    const stat = fs.statSync(filePath);
-    const cached = fileCache.get(filePath);
-
-    if (cached && cached.mtimeMs === stat.mtimeMs) {
-      return cached.content;
-    }
-
-    const content = fs.readFileSync(filePath, "utf-8");
-    fileCache.set(filePath, { content, mtimeMs: stat.mtimeMs });
-    return content;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Clear the file cache (for testing).
- */
-export function clearFileCache(): void {
-  fileCache.clear();
-}
 
 // ---------------------------------------------------------------------------
 // Context file parsing

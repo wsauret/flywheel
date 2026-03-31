@@ -31,7 +31,7 @@ if (isDev) {
 }
 
 // Apply framework patches (must run before any TUI components are created)
-await import("./patches/text-wrap-resize")
+await import("./text-wrap-resize-patch")
 log.debug("framework patches applied")
 
 // Re-export type for callers
@@ -63,5 +63,4 @@ export async function exitTUI() {
   }
 }
 
-/** @deprecated Use exitTUI() instead */
-export const destroyTUI = exitTUI;
+

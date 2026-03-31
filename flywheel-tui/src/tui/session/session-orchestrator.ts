@@ -17,10 +17,10 @@
 
 import type { OutputSnapshot } from "../../session/output-schemas";
 import type { Session } from "../../session/schemas";
-import type { Queue } from "../../queue/types";
+import type { Queue, CompletedStepResult } from "../../queue/types";
 import type { DeleteResult } from "../../session/persistence";
-import type { CompletedStepResult } from "../../queue/queue-types";
 import type { SessionLifecycleState } from "../../session/state-machine";
+import type { WorktreeManager } from "../../session/worktree-manager.js";
 import { safeUpdateState } from "../../session/safe-transition";
 
 // ---------------------------------------------------------------------------
@@ -54,12 +54,6 @@ interface ManagerSubset {
   archive(id: string): void;
 }
 
-/** Minimal WorktreeManager interface — only the methods we need. */
-interface WorktreeManagerSubset {
-  removeForSession(id: string): Promise<void>;
-  cleanupTrashed(id: string): Promise<boolean>;
-}
-
 /** Dependencies injected into the session orchestrator. */
 export interface SessionOrchestratorDeps {
   /** Read a session from disk by ID. Returns null if not found. */
@@ -78,7 +72,7 @@ export interface SessionOrchestratorDeps {
   manager: ManagerSubset;
 
   /** Optional worktree manager for git worktree lifecycle. */
-  worktreeManager?: WorktreeManagerSubset;
+  worktreeManager?: Pick<WorktreeManager, "removeForSession" | "cleanupTrashed">;
 
   /** Callback to refresh the session list in the UI. */
   refreshList: () => void;

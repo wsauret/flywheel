@@ -17,7 +17,7 @@ import type {
   TextBlock,
   ToolBlock,
   AgentBlock,
-} from "../src/tui/routes/work/state/types";
+} from "../src/tui/types";
 import { timerService } from "../src/tui/shared/services/timer";
 
 // ── Helpers ──

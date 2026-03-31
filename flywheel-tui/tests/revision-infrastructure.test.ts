@@ -7,7 +7,7 @@ import {
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
 import type { FlywheelEvent } from "../src/events/types";
 import { WorkerResultSchema } from "../src/worker/schemas";
-import { HeadlessAdapter } from "../src/tui/adapters/headless";
+import { HeadlessAdapter } from "./helpers/headless-adapter";
 
 // ---------------------------------------------------------------------------
 // VAL-REV-007: max_revisions config with correct default and range

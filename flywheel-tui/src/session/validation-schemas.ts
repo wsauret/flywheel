@@ -26,14 +26,14 @@ import { z } from "zod";
 // Assertion status enum
 // ---------------------------------------------------------------------------
 
-export const AssertionStatusEnum = z.enum([
+const AssertionStatusEnum = z.enum([
   "pending",
   "passed",
   "failed",
   "blocked",
 ]);
 
-export type AssertionStatusValue = z.infer<typeof AssertionStatusEnum>;
+type AssertionStatusValue = z.infer<typeof AssertionStatusEnum>;
 
 // ---------------------------------------------------------------------------
 // Individual assertion status
@@ -48,7 +48,7 @@ export const AssertionStatusSchema = z.object({
   evidence: z.string().optional(),
 });
 
-export type AssertionStatus = z.infer<typeof AssertionStatusSchema>;
+type AssertionStatus = z.infer<typeof AssertionStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Full validation state (the top-level document)

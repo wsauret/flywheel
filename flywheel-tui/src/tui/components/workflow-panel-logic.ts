@@ -5,7 +5,7 @@
  * Handles: progress computation, status labels, step icons, step type labels.
  */
 
-import type { QueueStepState, QueueStepStatus } from "../routes/work/state/types"
+import type { QueueStepState, QueueStepStatus } from "../types"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,7 +65,7 @@ export function getStepTypeLabel(type: string): string {
 // statusLabel
 // ---------------------------------------------------------------------------
 
-import type { WorkflowStatus } from "../routes/work/state/types"
+import type { WorkflowStatus } from "../types"
 
 /** Map workflow status to a human-readable label. */
 export function statusLabel(status: WorkflowStatus): string {

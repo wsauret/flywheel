@@ -14,8 +14,10 @@ import {
   insertWorkStepsFromPlanOutput,
   findInsertionPoint,
   createPlanIntegrationHook,
+  type ConfirmBeforeInsert,
 } from "../src/queue/steps/plan-consolidate/hooks";
 import { createCompositeHook } from "../src/queue/shared/hooks";
+import type { PlanImportResult } from "../src/queue/shared/plan-import";
 
 import { createQueue } from "../src/queue/queue";
 import type { Step, Queue } from "../src/queue/types";
@@ -824,5 +826,202 @@ describe("createCompositeHook", () => {
     expect(queue.steps).toHaveLength(3); // plan + work + review
     // Sprint hook should have been called too
     expect(sprintCalls).toEqual(["plan:completed"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// confirmBeforeInsert — interactive plan confirmation (HITL)
+// ---------------------------------------------------------------------------
+
+describe("createPlanIntegrationHook with confirmBeforeInsert", () => {
+  test("when user approves, work steps are inserted (Source 1: handoff steps)", async () => {
+    let receivedPlan: PlanImportResult | null = null;
+    const confirmFn: ConfirmBeforeInsert = async (planResult) => {
+      receivedPlan = planResult;
+      return true; // approve
+    };
+
+    const hook = createPlanIntegrationHook(undefined, undefined, confirmFn);
+    const queue = createQueue([makePlanStep("p1"), makeReviewStep("r1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        { title: "Step A", description: "Do A", acceptanceCriteria: ["A done"] },
+        { title: "Step B", description: "Do B", acceptanceCriteria: ["B done"] },
+      ],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // Work steps should be inserted (approved)
+    expect(queue.steps).toHaveLength(4); // plan + 2 work + review
+    expect(queue.steps[1].type).toBe("work");
+    expect(queue.steps[1].title).toBe("Step A");
+    expect(queue.steps[2].type).toBe("work");
+    expect(queue.steps[2].title).toBe("Step B");
+
+    // Confirm callback received a valid PlanImportResult
+    expect(receivedPlan).not.toBeNull();
+    expect(receivedPlan!.steps).toHaveLength(2);
+    expect(receivedPlan!.steps[0].title).toBe("Step A");
+    expect(receivedPlan!.isJsonPlan).toBe(true);
+    expect(receivedPlan!.status).toBe("ready");
+  });
+
+  test("when user rejects, work steps are NOT inserted (Source 1: handoff steps)", async () => {
+    const confirmFn: ConfirmBeforeInsert = async () => false; // reject
+
+    const hook = createPlanIntegrationHook(undefined, undefined, confirmFn);
+    const queue = createQueue([makePlanStep("p1"), makeReviewStep("r1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        { title: "Step A", description: "Do A", acceptanceCriteria: ["A done"] },
+      ],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // No work steps inserted (rejected)
+    expect(queue.steps).toHaveLength(2); // plan + review only
+  });
+
+  test("when user approves plan file, work steps are inserted (Source 2: plan_file_path)", async () => {
+    const tmpDir = await import("node:os").then(os => os.tmpdir());
+    const testDir = `${tmpDir}/plan-confirm-test-${randomUUID()}`;
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(testDir, { recursive: true });
+
+    const planJson = JSON.stringify({
+      steps: [
+        {
+          title: "Build endpoint",
+          description: "Create GET /api endpoint",
+          acceptanceCriteria: ["Returns 200", "JSON body"],
+          feature: "api",
+        },
+      ],
+      behavioralContract: [{ id: "BC-1", title: "API works", description: "Endpoint returns data", evidence: "curl test", area: "API" }],
+      decisions: ["Use Bun.serve()"],
+      risks: ["Port conflict"],
+    });
+    const planPath = `${testDir}/test.plan.json`;
+    await fs.writeFile(planPath, planJson, "utf-8");
+
+    let receivedPlan: PlanImportResult | null = null;
+    const confirmFn: ConfirmBeforeInsert = async (planResult) => {
+      receivedPlan = planResult;
+      return true; // approve
+    };
+
+    const hook = createPlanIntegrationHook(testDir, undefined, confirmFn);
+    const queue = createQueue([makePlanStep("p1"), makeReviewStep("r1")]);
+    queue.steps[0].status = "completed";
+    queue.steps[0].dispatcherHint = "consolidate";
+    queue.cursor = 1;
+
+    await hook(queue.steps[0], "completed", queue, {
+      plan_file_path: planPath,
+    });
+
+    // Work steps should be inserted (approved)
+    expect(queue.steps).toHaveLength(3); // plan + 1 work + review
+    expect(queue.steps[1].title).toBe("Build endpoint");
+
+    // Confirm callback received full JSON plan data
+    expect(receivedPlan).not.toBeNull();
+    expect(receivedPlan!.steps).toHaveLength(1);
+    expect(receivedPlan!.behavioralContract).toHaveLength(1);
+    expect(receivedPlan!.decisions).toEqual(["Use Bun.serve()"]);
+    expect(receivedPlan!.risks).toEqual(["Port conflict"]);
+    expect(receivedPlan!.steps[0].feature).toBe("api");
+
+    await fs.rm(testDir, { recursive: true });
+  });
+
+  test("when user rejects plan file, work steps are NOT inserted (Source 2: plan_file_path)", async () => {
+    const tmpDir = await import("node:os").then(os => os.tmpdir());
+    const testDir = `${tmpDir}/plan-confirm-test-${randomUUID()}`;
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(testDir, { recursive: true });
+
+    const planJson = JSON.stringify({
+      steps: [
+        { title: "Build endpoint", description: "Create endpoint", acceptanceCriteria: ["Works"] },
+      ],
+      behavioralContract: [],
+      decisions: [],
+      risks: [],
+    });
+    const planPath = `${testDir}/test.plan.json`;
+    await fs.writeFile(planPath, planJson, "utf-8");
+
+    const confirmFn: ConfirmBeforeInsert = async () => false; // reject
+
+    const hook = createPlanIntegrationHook(testDir, undefined, confirmFn);
+    const queue = createQueue([makePlanStep("p1"), makeReviewStep("r1")]);
+    queue.steps[0].status = "completed";
+    queue.steps[0].dispatcherHint = "consolidate";
+    queue.cursor = 1;
+
+    await hook(queue.steps[0], "completed", queue, {
+      plan_file_path: planPath,
+    });
+
+    // No work steps inserted (rejected)
+    expect(queue.steps).toHaveLength(2); // plan + review only
+
+    await fs.rm(testDir, { recursive: true });
+  });
+
+  test("without confirmBeforeInsert, behavior is unchanged (Source 1)", async () => {
+    // No confirm callback — steps should be inserted automatically
+    const hook = createPlanIntegrationHook();
+    const queue = createQueue([makePlanStep("p1"), makeReviewStep("r1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        { title: "Auto step", description: "Auto inserted", acceptanceCriteria: ["Works"] },
+      ],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    // Work steps inserted automatically (no confirmation needed)
+    expect(queue.steps).toHaveLength(3); // plan + work + review
+    expect(queue.steps[1].title).toBe("Auto step");
+  });
+
+  test("confirmBeforeInsert receives correct summary counts", async () => {
+    let receivedPlan: PlanImportResult | null = null;
+    const confirmFn: ConfirmBeforeInsert = async (planResult) => {
+      receivedPlan = planResult;
+      return true;
+    };
+
+    const hook = createPlanIntegrationHook(undefined, undefined, confirmFn);
+    const queue = createQueue([makePlanStep("p1")]);
+    queue.steps[0].status = "completed";
+    queue.cursor = 1;
+
+    const handoffData = {
+      steps: [
+        { title: "Step 1", description: "Desc 1", acceptanceCriteria: ["C1", "C2"] },
+        { title: "Step 2", description: "Desc 2", acceptanceCriteria: ["C3"] },
+      ],
+    };
+
+    await hook(queue.steps[0], "completed", queue, handoffData);
+
+    expect(receivedPlan).not.toBeNull();
+    expect(receivedPlan!.summary.stepCount).toBe(2);
+    expect(receivedPlan!.summary.totalSteps).toBe(3); // 2 + 1 criteria
+    expect(receivedPlan!.summary.hasAcceptanceCriteria).toBe(true);
   });
 });

@@ -13,7 +13,7 @@ import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer"
 import type { RGBA } from "@opentui/core"
-import type { WorkflowStatus, QueueStepStatus, AnyBlock } from "../state/types"
+import type { WorkflowStatus, QueueStepStatus, AnyBlock } from "@tui/types"
 import { getStepStatusIcon } from "../../../components/workflow-panel-logic"
 
 const MIN_WIDTH_FOR_INLINE_STATUS = 75

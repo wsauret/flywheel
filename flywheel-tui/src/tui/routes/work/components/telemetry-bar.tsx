@@ -12,7 +12,7 @@
 import { Show, createMemo } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { formatQueueStepProgress, formatQueueStepName, formatSprintIteration, type QueueStepProgressInfo, type SprintIterationInfo } from "../../../utils/format"
-import type { WorkflowStatus } from "../state/types"
+import type { WorkflowStatus } from "@tui/types"
 
 export interface TelemetryBarProps {
   /** Session or plan name displayed in the bar. */

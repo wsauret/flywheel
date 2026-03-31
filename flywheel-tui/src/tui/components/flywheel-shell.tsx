@@ -32,7 +32,7 @@ import { OutputWindow, type CurrentStepInfo } from "../routes/work/components/ou
 import { SessionSidebar } from "./session-sidebar"
 import { WorkflowPanel } from "./workflow-panel"
 import { SessionHeader } from "./session-header"
-import { BrandingHeader } from "@tui/shared/components/layout/branding-header"
+import { BrandingHeader } from "@tui/shared/components/branding-header"
 import { EmptyState } from "./empty-state"
 import { useUnifiedPrompt } from "./unified-prompt"
 import { exitTUI } from "../app"
@@ -53,7 +53,7 @@ import {
 // prepareWorkflowDeps now used via createDepsCache in shell-lifecycle
 import type { WorkflowDeps } from "../../engines/workflow-deps"
 import { EventBus } from "../../events/event-bus"
-import type { QueueResult } from "../../queue/queue-types"
+import type { QueueResult } from "../../queue/types"
 import type { QuestionRequest } from "../../queue/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
@@ -62,6 +62,7 @@ import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "../shell
 import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, createEndOfSessionGate as createQueueEndOfSessionGate } from "../shell/shell-queue"
 import { buildQueueFromTemplate } from "../../queue/templates"
 import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
+import { createGuardrails } from "../../queue/guardrails"
 
 import { createFlywheelEmitter } from "../../events/event-bus"
 import { createQueuePersistence } from "../../queue/persistence"
@@ -83,8 +84,8 @@ import { injectOutputBlocks } from "../session/resume-utils"
 import type { SprintIterationInfo } from "../utils/format"
 import type { WorkflowSession } from "../session/workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
-import type { WorkState } from "../routes/work/state/types"
-import type { AnyBlock } from "../routes/work/state/types"
+import type { WorkState } from "../types"
+import type { AnyBlock } from "../types"
 import type { Unsubscribe } from "../../events/event-bus"
 import { getOpenAction, groupToFlatList, type SelectionAction } from "../session/sidebar-logic"
 import { TEST_STEPS, setupTestFixture, buildTestQueue, type TestStepDef } from "../session/test-step"
@@ -100,6 +101,9 @@ import { TelemetryLogger, type TelemetryRecord } from "../../telemetry"
 
 import type { StdinHandle } from "../../worker/spawner"
 import { resolveTransports, buildExecutorDeps } from "../shell/queue-orchestrator"
+import { PlanConfirmation } from "./plan-confirmation"
+import type { PlanImportResult } from "../../queue/shared/plan-import"
+import type { ConfirmBeforeInsert } from "../../queue/steps/plan-consolidate/hooks"
 import { SPRINT_EVALUATOR_ADDENDUM } from "../../queue/steps/sprint-work/evaluator"
 import {
   resumeWorkerWithMessage as resumeWorkerWithMessageImpl,
@@ -188,6 +192,13 @@ export function FlywheelShell() {
 
   // Pending question tracking for QuestionPrompt
   const [pendingQuestion, setPendingQuestion] = createSignal<QuestionRequest | null>(null)
+
+  // Plan confirmation HITL state: holds the parsed plan and a resolver
+  // that the plan integration hook awaits for user approval/rejection.
+  const [pendingPlanConfirm, setPendingPlanConfirm] = createSignal<{
+    plan: PlanImportResult
+    resolve: (approved: boolean) => void
+  } | null>(null)
   let activeQuestionWiring: QuestionWiring | null = null
   /** Getter-based ref for passing activeQuestionWiring to extracted lifecycle functions. */
   const activeQuestionWiringRef: { current: QuestionWiring | null } = Object.defineProperty(
@@ -205,7 +216,7 @@ export function FlywheelShell() {
   // Bypasses the store → workState signal chain which breaks SolidJS fine-grained
   // reactivity for nested array properties at runtime. Updated directly from
   // event bus subscriptions, matching the proven pattern of activeQueueInfo.
-  const [shellQueueSteps, setShellQueueSteps] = createSignal<import("../routes/work/state/types").QueueStepState[]>([])
+  const [shellQueueSteps, setShellQueueSteps] = createSignal<import("../types").QueueStepState[]>([])
   let queueUnsubs: Unsubscribe[] = []
   /** Getter-based ref for passing queueUnsubs to extracted lifecycle functions. */
   const queueUnsubsRef: { current: Unsubscribe[] } = Object.defineProperty(
@@ -337,6 +348,7 @@ export function FlywheelShell() {
     },
     fromSnapshot,
     manager: sessionCtx.manager,
+    worktreeManager: sessionCtx.worktreeManager ?? undefined,
     refreshList: () => sessionCtx.refreshList(),
     deleteSessionFiles: (id: string) => {
       // Guard: refuse to delete any session that has a running controller.
@@ -443,6 +455,14 @@ export function FlywheelShell() {
     return deriveHeaderInfo(session)
   })
 
+  // Derived: lifecycle state of the currently viewed session (for prompt placeholders)
+  const viewedLifecycleState = createMemo(() => {
+    const vid = viewedSessionId()
+    if (!vid) return null
+    const session = sessionsMap().get(vid)
+    return session?.lifecycleState ?? null
+  })
+
   // Auto-focus prompt when approval is pending (P1: approval focus path)
   // Using createEffect-like pattern via derived memo.
   // Guard: skip auto-focus for read-only sessions (no running controller).
@@ -474,16 +494,17 @@ export function FlywheelShell() {
   // ── Workflow Lifecycle ──
 
   /**
-   * Start queue-based execution. Creates a new session, builds the queue,
-   * wires events, and runs the step executor.
-   *
-   * VAL-SHELL-013: Shell transitions idle→working on queue start
-   * VAL-SHELL-014: Shell transitions working→completed on queue success
-   * VAL-SHELL-015: Shell transitions working→completed on queue failure
-   * VAL-SHELL-019: Session created when queue starts
-   * VAL-SHELL-020: Session lifecycle follows queue progression
-   * VAL-SHELL-035: Output blocks render during step execution
+   * Plan confirmation callback (HITL). When planInteractive is true, the
+   * plan integration hook calls this before inserting work steps. The shell
+   * sets a signal to render <PlanConfirmation>, and the returned Promise
+   * resolves when the user approves or rejects.
    */
+  const confirmPlanBeforeInsert: ConfirmBeforeInsert = (planResult) => {
+    return new Promise<boolean>((resolve) => {
+      setPendingPlanConfirm({ plan: planResult, resolve })
+    })
+  }
+
   /**
    * Start queue-based execution. Creates a new session, builds the queue,
    * wires events, and runs the step executor.
@@ -754,7 +775,7 @@ export function FlywheelShell() {
         setShellQueueSteps((prev) => {
           const idx = prev.findIndex((s) => s.id === e.afterStepId)
           const insertIdx = idx >= 0 ? idx + 1 : prev.length
-          const newStep: import("../routes/work/state/types").QueueStepState = {
+          const newStep: import("../types").QueueStepState = {
             id: e.stepId,
             type: e.stepType,
             title: e.stepTitle,
@@ -859,10 +880,16 @@ export function FlywheelShell() {
         seedHandoff,
         questionService: activeQuestionWiring?.service ?? null,
         reviewTriageInteractive: interactiveOverrides?.review,
+        confirmBeforeInsert: interactiveOverrides?.plan ? confirmPlanBeforeInsert : undefined,
         setShellQueueSteps,
         capturedWorkerSessionId,
         pendingInjection,
         activeSessionRef,
+      })
+
+      // Create guardrails for mutation budget tracking and convergence detection.
+      const guardrails = createGuardrails({
+        sessionObjective: args.description ?? "",
       })
 
       // Create step executor with real per-step execution.
@@ -892,6 +919,7 @@ export function FlywheelShell() {
         accumulator: execDeps.contextAccumulator,
         maxRevisions: deps.config.max_revisions ?? 1,
         onStepCompleted: execDeps.compositeHook,
+        guardrails,
       })
 
       activeStepExecutor = stepExec
@@ -1472,7 +1500,7 @@ export function FlywheelShell() {
           setShellQueueSteps((prev) => {
             const idx = prev.findIndex((s) => s.id === e.afterStepId)
             const insertIdx = idx >= 0 ? idx + 1 : prev.length
-            const newStep: import("../routes/work/state/types").QueueStepState = {
+            const newStep: import("../types").QueueStepState = {
               id: e.stepId,
               type: e.stepType,
               title: e.stepTitle,
@@ -1571,6 +1599,10 @@ export function FlywheelShell() {
           activeSessionRef,
         })
 
+        const resumeGuardrails = createGuardrails({
+          sessionObjective: result.session.name ?? "",
+        })
+
         const stepExec = createStepExecutor({
           queue: resumeQueue,
           workflowId: workflowIdRef.current,
@@ -1594,6 +1626,7 @@ export function FlywheelShell() {
           accumulator: execDeps.contextAccumulator,
           maxRevisions: deps.config.max_revisions ?? 1,
           onStepCompleted: execDeps.compositeHook,
+          guardrails: resumeGuardrails,
         })
 
         activeStepExecutor = stepExec
@@ -1823,6 +1856,9 @@ export function FlywheelShell() {
           status: "pending" as const,
         }])
         const resumeEmitter = createFlywheelEmitter(session.eventBus)
+        const resumeWorkGuardrails = createGuardrails({
+          sessionObjective: result.planPath ?? "",
+        })
         const resumeStepExec = createStepExecutor({
           queue: resumeWorkQueue,
           workflowId: resumeCurrentWorkflowId,
@@ -1863,6 +1899,7 @@ export function FlywheelShell() {
           persist: async () => {},
           accumulator: { accumulate: () => {}, getContext: () => ({}) },
           maxRevisions: deps.config.max_revisions ?? 0,
+          guardrails: resumeWorkGuardrails,
         })
 
         sessionControllers.set(sessionId, {
@@ -2405,6 +2442,7 @@ export function FlywheelShell() {
     onEscape: handleEscape,
     get availableWidth() { return dimensions()?.width },
     get runningCount() { return runtimes.getRunningIds().length },
+    get lifecycleState() { return viewedLifecycleState() },
   })
 
   // ── Render ──
@@ -2565,6 +2603,27 @@ export function FlywheelShell() {
         isWorking={appState() === "working"}
         isInterrupted={isInterrupted()}
       />
+
+      {/* Plan confirmation modal (HITL: user reviews plan before work steps are inserted) */}
+      <Show when={pendingPlanConfirm()}>
+        {(confirm) => (
+          <PlanConfirmation
+            plan={confirm().plan}
+            onApprove={() => {
+              confirm().resolve(true)
+              setPendingPlanConfirm(null)
+            }}
+            onEdit={() => {
+              confirm().resolve(false)
+              setPendingPlanConfirm(null)
+            }}
+            onClose={() => {
+              confirm().resolve(false)
+              setPendingPlanConfirm(null)
+            }}
+          />
+        )}
+      </Show>
 
       {/* Quit confirmation modal (Esc in idle with running sessions) */}
       <Show when={showQuitModal()}>

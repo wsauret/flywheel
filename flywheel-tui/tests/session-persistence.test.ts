@@ -13,7 +13,6 @@ import {
   readSession,
   updateSession,
   listSessions,
-  deleteSession,
 } from "../src/session/persistence";
 import { SessionSchema, type Session } from "../src/session/schemas";
 import type { SessionLifecycleState } from "../src/session/state-machine";
@@ -432,41 +431,6 @@ describe("listSessions", () => {
     const result = listSessions(baseDir);
     expect(result.sessions).toHaveLength(1);
     expect(result.errors).toHaveLength(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// deleteSession
-// ---------------------------------------------------------------------------
-
-describe("deleteSession", () => {
-  it("removes the session file", () => {
-    const baseDir = makeTmpDir();
-    const id = createSession(minimalSession(), baseDir);
-
-    const deleted = deleteSession(id, baseDir);
-    expect(deleted).toBe(true);
-
-    const read = readSession(id, baseDir);
-    expect(read).toBeNull();
-  });
-
-  it("returns false for non-existent session", () => {
-    const baseDir = makeTmpDir();
-    const deleted = deleteSession("non-existent", baseDir);
-    expect(deleted).toBe(false);
-  });
-
-  it("session no longer appears in list after deletion", () => {
-    const baseDir = makeTmpDir();
-    const id1 = createSession(minimalSession({ label: "a.md", planPath: "a.md" }), baseDir);
-    const id2 = createSession(minimalSession({ label: "b.md", planPath: "b.md" }), baseDir);
-
-    deleteSession(id1, baseDir);
-
-    const result = listSessions(baseDir);
-    expect(result.sessions).toHaveLength(1);
-    expect(result.sessions[0].id).toBe(id2);
   });
 });
 

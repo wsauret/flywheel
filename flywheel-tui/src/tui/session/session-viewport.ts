@@ -24,7 +24,7 @@ import { injectOutputBlocks, type InjectionHandle } from "./resume-utils";
 import { snapshotToBlocks } from "../../session/output-schemas";
 import { computeQueueProgress } from "../components/workflow-panel-logic";
 import type { UIActions } from "../routes/work/context/ui-state/types";
-import type { AnyBlock, QueueStepState } from "../routes/work/state/types";
+import type { AnyBlock, QueueStepState } from "../types";
 import type { QueueProgressInfo } from "../shell/shell-queue";
 import type { SessionOrchestrator } from "./session-orchestrator";
 import type { AppState } from "../shell/shell-modes";
@@ -55,7 +55,7 @@ export interface SessionViewportDeps {
   /** Unsubscribe the current store subscription (if any). */
   unsubscribeStore: () => void;
   /** Set the work state signal directly. */
-  setWorkState: (state: import("../routes/work/state/types").WorkState | null) => void;
+  setWorkState: (state: import("../types").WorkState | null) => void;
   /** Set the app state signal (optional — shell may derive this instead). */
   setAppState?: (state: AppState) => void;
 

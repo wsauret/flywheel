@@ -6,7 +6,7 @@
  */
 
 import { useTheme } from "@tui/shared/context/theme"
-import type { SystemBlock as SystemBlockType } from "../../state/types"
+import type { SystemBlock as SystemBlockType } from "@tui/types"
 
 export interface SystemBlockProps {
   block: SystemBlockType

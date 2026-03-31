@@ -2,7 +2,7 @@
 import { createSignal, createMemo, createEffect, For, onCleanup } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { useTerminalDimensions } from "@opentui/solid"
-import { COMMANDS } from "@tui/config/commands"
+import { COMMANDS } from "@tui/commands"
 import fuzzysort from "fuzzysort"
 import type { PromptProps } from "./types"
 import type { BoxRenderable, ScrollBoxRenderable, InputAction } from "@opentui/core"

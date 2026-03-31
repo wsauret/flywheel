@@ -21,7 +21,7 @@ import type {
   ToolBlock,
   AgentBlock,
   SystemBlock,
-} from "../routes/work/state/types";
+} from "../types";
 
 const BLOCKS_CAP = 5000;
 const AGENT_CHILDREN_CAP = 50;

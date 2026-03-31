@@ -16,7 +16,7 @@
 
 import { Show, For, createMemo, createEffect, createSignal } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { useTimer } from "@tui/shared/services"
+import { useTimer } from "@tui/shared/services/timer"
 import { Spinner } from "@tui/shared/components/spinner"
 import {
   computeQueueProgress,
@@ -26,7 +26,7 @@ import {
 } from "./workflow-panel-logic"
 import { truncate } from "../utils/text"
 import type { Theme } from "@tui/shared/context/theme"
-import type { WorkState, QueueStepState } from "../routes/work/state/types"
+import type { WorkState, QueueStepState } from "../types"
 
 // Re-export pure logic for consumers
 export {

@@ -24,7 +24,7 @@ import {
 import type {
   QueueResult,
   CompletedStepResult,
-} from "../src/queue/queue-types";
+} from "../src/queue/types";
 import type { SessionLifecycleState } from "../src/session/state-machine";
 import { isValidTransition } from "../src/session/state-machine";
 

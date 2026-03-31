@@ -3,7 +3,7 @@ import { EventBus } from "../src/events/event-bus";
 import { createFlywheelEmitter } from "../src/events/event-bus";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { computeQueueProgress } from "../src/tui/components/workflow-panel-logic";
-import type { QueueStepState } from "../src/tui/routes/work/state/types";
+import type { QueueStepState } from "../src/tui/types";
 
 // ---------------------------------------------------------------------------
 // Queue panel reactivity — verifies that queue step state propagates

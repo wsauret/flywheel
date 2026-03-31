@@ -7,10 +7,10 @@
 
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { BaseUIAdapter } from "./base"
-import type { AdapterType } from "./types"
-import type { FlywheelEvent } from "../../events/types"
-import { assertNever } from "../../events/types"
+import { BaseUIAdapter } from "../../src/tui/adapters/base"
+import type { AdapterType } from "../../src/tui/adapters/types"
+import type { FlywheelEvent } from "../../src/events/types"
+import { assertNever } from "../../src/events/types"
 
 export interface HeadlessAdapterOptions {
   /** Path to log file (if not set, logs to console) */

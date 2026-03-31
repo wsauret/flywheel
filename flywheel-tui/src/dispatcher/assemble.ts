@@ -5,20 +5,16 @@
  * Parses JSON plans directly via parseJsonPlan.
  *
  * Single safety-valve cap: 100KB total. If the assembled input exceeds
- * this cap, available_context arrays are truncated to 10 entries each.
+ * this cap, available_context arrays are truncated to 10 entries each
+ * (via the shared applyBudgetTruncation helper).
  */
 
-import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "./schemas";
-import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas";
-import type { StepContext } from "../queue/step-context";
-import { parseJsonPlan } from "../queue/shared/plan-parser";
-import { parseContextFile } from "../utils/file-cache";
-
-// ---------------------------------------------------------------------------
-// Budget constant (bytes) — single safety-valve cap
-// ---------------------------------------------------------------------------
-
-const BUDGET_TOTAL = 102400; // 100KB
+import type { DispatcherInput, DispatcherConfig, WorkflowInfo } from "./schemas.js";
+import type { SessionBudgetStatus, AvailableContext, LastWorkerResult } from "../schemas.js";
+import type { StepContext } from "../queue/step-context.js";
+import { parseJsonPlan } from "../queue/shared/plan-parser.js";
+import { parseContextFile } from "../utils/file-cache.js";
+import { applyBudgetTruncation } from "./truncation.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,14 +113,8 @@ export function assembleDispatcherInput(raw: AssemblerInput): AssembledInput {
     step_context: raw.stepContext,
   };
 
-  // Safety valve — if total exceeds 100KB, truncate available_context as last resort
-  if (byteLength(JSON.stringify(input)) > BUDGET_TOTAL) {
-    input.available_context = {
-      conventions: input.available_context.conventions.slice(0, 10),
-      standards: input.available_context.standards.slice(0, 10),
-      learnings: input.available_context.learnings.slice(0, 10),
-    };
-  }
+  // Safety valve — shared 100KB budget truncation on available_context
+  applyBudgetTruncation(input);
 
   return {
     input,
@@ -162,11 +152,5 @@ function buildJsonPlanSteps(content: string): Array<{
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
-function byteLength(str: string): number {
-  return Buffer.byteLength(str, "utf8");
-}
 

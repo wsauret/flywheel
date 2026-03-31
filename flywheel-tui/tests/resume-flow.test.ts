@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { injectOutputBlocks } from "../src/tui/session/resume-utils";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/routes/work/state/types";
+import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/types";
 import { snapshotToBlocks } from "../src/session/output-schemas";
 import type { OutputSnapshot } from "../src/session/output-schemas";
 

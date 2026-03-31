@@ -17,7 +17,7 @@ import {
   handleQueueCompletion,
   type QueueCompletionDeps,
 } from "../src/tui/session/queue-completion";
-import type { QueueResult, CompletedStepResult } from "../src/queue/queue-types";
+import type { QueueResult, CompletedStepResult } from "../src/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

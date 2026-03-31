@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
-import { MockAdapter } from "../src/tui/adapters/mock";
+import { MockAdapter } from "./helpers/mock-adapter";
 import type { FlywheelEvent } from "../src/events/types";
 
 describe("EventBus", () => {

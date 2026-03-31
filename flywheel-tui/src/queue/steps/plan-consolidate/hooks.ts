@@ -23,6 +23,7 @@ import { ProtoStepArraySchema, formalizeProtoSteps } from "./proto-step";
 import { insertAfter, type MutationResult, type Provenance } from "../../queue";
 import type { OnStepCompletedHook, OnStepCompletedResult } from "../../shared/hooks";
 import { parseJsonPlan } from "../../shared/plan-parser";
+import type { PlanImportResult } from "../../shared/plan-import";
 import { resolveSessionFile } from "../../../config/paths";
 import { randomUUID } from "crypto";
 import { Log } from "../../../utils/log";
@@ -153,6 +154,99 @@ export function insertWorkStepsFromPlanOutput(
 }
 
 // ---------------------------------------------------------------------------
+// Confirmation callback type
+// ---------------------------------------------------------------------------
+
+/**
+ * Optional callback for interactive plan confirmation (HITL).
+ * When provided, the hook calls this before inserting work steps.
+ * The callback receives the parsed plan data and returns true (approved)
+ * or false (rejected). When rejected, work steps are NOT inserted.
+ */
+export type ConfirmBeforeInsert = (planResult: PlanImportResult) => Promise<boolean>;
+
+// ---------------------------------------------------------------------------
+// buildPlanImportResult — converts parsed plan data to PlanImportResult
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts parsed plan JSON or proto-steps into a PlanImportResult for
+ * use by the plan confirmation UI.
+ */
+function buildPlanImportResult(
+  source:
+    | { kind: "json"; plan: import("../../shared/plan-parser").PlanJson }
+    | { kind: "proto"; protoSteps: ProtoStep[] },
+): PlanImportResult {
+  if (source.kind === "json") {
+    const plan = source.plan;
+    const totalCriteria = plan.steps.reduce(
+      (acc, s) => acc + s.acceptanceCriteria.length,
+      0,
+    );
+    return {
+      status: "ready",
+      steps: plan.steps.map((s) => ({
+        title: s.title,
+        description: s.description,
+        acceptanceCriteria: s.acceptanceCriteria,
+        ...(s.fileReferences ? { fileReferences: s.fileReferences } : {}),
+        ...(s.feature ? { feature: s.feature } : {}),
+        ...(s.fulfills ? { fulfills: s.fulfills } : {}),
+        ...(s.milestone ? { milestone: s.milestone } : {}),
+        ...(s.estimatedComplexity ? { estimatedComplexity: s.estimatedComplexity } : {}),
+      })),
+      behavioralContract: plan.behavioralContract,
+      decisions: plan.decisions,
+      risks: plan.risks,
+      issues: [],
+      summary: {
+        stepCount: plan.steps.length,
+        totalSteps: totalCriteria,
+        hasAcceptanceCriteria: plan.steps.every(
+          (s) => s.acceptanceCriteria.length > 0,
+        ),
+        contentHash: "",
+      },
+      isJsonPlan: true,
+    };
+  }
+
+  // Proto-steps source (from handoff data)
+  const steps = source.protoSteps;
+  const totalCriteria = steps.reduce(
+    (acc, s) => acc + s.acceptanceCriteria.length,
+    0,
+  );
+  return {
+    status: "ready",
+    steps: steps.map((s) => ({
+      title: s.title,
+      description: s.description,
+      acceptanceCriteria: s.acceptanceCriteria,
+      ...(s.fileReferences ? { fileReferences: s.fileReferences } : {}),
+      ...(s.feature ? { feature: s.feature } : {}),
+      ...(s.fulfills ? { fulfills: s.fulfills } : {}),
+      ...(s.milestone ? { milestone: s.milestone } : {}),
+      ...(s.estimatedComplexity ? { estimatedComplexity: s.estimatedComplexity } : {}),
+    })),
+    behavioralContract: [],
+    decisions: [],
+    risks: [],
+    issues: [],
+    summary: {
+      stepCount: steps.length,
+      totalSteps: totalCriteria,
+      hasAcceptanceCriteria: steps.every(
+        (s) => s.acceptanceCriteria.length > 0,
+      ),
+      contentHash: "",
+    },
+    isJsonPlan: true,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // createPlanIntegrationHook — onStepCompleted hook for plan output insertion
 // ---------------------------------------------------------------------------
 
@@ -168,9 +262,16 @@ export function insertWorkStepsFromPlanOutput(
  *
  * @param projectCwd The project root directory (for resolving relative plan paths)
  * @param sessionId Optional session ID for fallback path resolution via centralized paths
+ * @param confirmBeforeInsert Optional callback for interactive plan confirmation (HITL).
+ *   When provided, the hook calls this before inserting work steps.
+ *   Returns true to approve (insert steps) or false to reject (skip insertion).
  * @returns An OnStepCompletedHook suitable for passing to StepExecutorOptions
  */
-export function createPlanIntegrationHook(projectCwd?: string, sessionId?: string): OnStepCompletedHook {
+export function createPlanIntegrationHook(
+  projectCwd?: string,
+  sessionId?: string,
+  confirmBeforeInsert?: ConfirmBeforeInsert,
+): OnStepCompletedHook {
   return async (
     step: Step,
     status: "completed" | "failed",
@@ -191,6 +292,20 @@ export function createPlanIntegrationHook(projectCwd?: string, sessionId?: strin
       const parseResult = ProtoStepArraySchema.safeParse(handoffData.steps);
       if (parseResult.success) {
         const protoSteps = parseResult.data;
+
+        // Interactive confirmation gate (HITL)
+        if (confirmBeforeInsert) {
+          const planResult = buildPlanImportResult({ kind: "proto", protoSteps });
+          const approved = await confirmBeforeInsert(planResult);
+          if (!approved) {
+            log.info("plan integration: user rejected plan from handoff steps", {
+              stepId: step.id,
+              count: protoSteps.length,
+            });
+            return { continueExecution: false };
+          }
+        }
+
         const result = insertWorkStepsFromPlanOutput(queue, step.id, protoSteps);
 
         if (result.success) {
@@ -233,19 +348,32 @@ export function createPlanIntegrationHook(projectCwd?: string, sessionId?: strin
 
       try {
         const content = await fs.readFile(planFilePath, "utf-8");
-        const parseResult = parseJsonPlan(content);
+        const jsonParseResult = parseJsonPlan(content);
 
-        if (!parseResult.ok) {
+        if (!jsonParseResult.ok) {
           log.warn("plan integration: failed to parse plan file", {
             stepId: step.id,
             planFilePath,
-            error: parseResult.error,
+            error: jsonParseResult.error,
           });
           return { continueExecution: false };
         }
 
+        // Interactive confirmation gate (HITL)
+        if (confirmBeforeInsert) {
+          const planResult = buildPlanImportResult({ kind: "json", plan: jsonParseResult.plan });
+          const approved = await confirmBeforeInsert(planResult);
+          if (!approved) {
+            log.info("plan integration: user rejected plan from plan file", {
+              stepId: step.id,
+              planFilePath,
+            });
+            return { continueExecution: false };
+          }
+        }
+
         // Convert PlanStep[] to ProtoStep[] (compatible schemas)
-        const protoSteps: ProtoStep[] = parseResult.plan.steps.map((s) => ({
+        const protoSteps: ProtoStep[] = jsonParseResult.plan.steps.map((s) => ({
           title: s.title,
           description: s.description,
           acceptanceCriteria: s.acceptanceCriteria,

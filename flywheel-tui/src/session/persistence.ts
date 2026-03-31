@@ -111,13 +111,13 @@ export function updateSession(
 }
 
 /** Entry in the list result: session ID + validated data. */
-export interface SessionEntry {
+interface SessionEntry {
   id: string;
   data: Session;
 }
 
 /** Per-file parse error for error isolation. */
-export interface SessionListError {
+interface SessionListError {
   file: string;
   error: string;
 }
@@ -175,25 +175,6 @@ export function listSessions(baseDir: string): SessionListResult {
   }
 
   return { sessions, errors };
-}
-
-/**
- * Delete a session by ID. Removes the entire session directory.
- *
- * @returns `true` if the directory was deleted, `false` if it didn't exist.
- */
-export function deleteSession(id: string, baseDir: string): boolean {
-  const dirPath = resolveSessionDir(id, baseDir);
-
-  try {
-    if (!fs.existsSync(dirPath)) {
-      return false;
-    }
-    fs.rmSync(dirPath, { recursive: true, force: true });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ---------------------------------------------------------------------------

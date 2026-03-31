@@ -14,7 +14,7 @@
 
 import { Show, type JSX } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
-import { BrandingHeader } from "@tui/shared/components/layout/branding-header"
+import { BrandingHeader } from "@tui/shared/components/branding-header"
 
 import { StopModal } from "./modals/stop-modal"
 import { ErrorModal } from "./modals/error-modal"
@@ -24,7 +24,7 @@ import {
   SIDEBAR_WIDTH,
   PANEL_WIDTH,
 } from "../../../shell/shell-modes"
-import type { WorkState } from "../state/types"
+import type { WorkState } from "@tui/types"
 export interface SharedLayoutProps {
   state: WorkState
   showStopModal: boolean

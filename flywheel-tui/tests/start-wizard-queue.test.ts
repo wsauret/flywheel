@@ -18,7 +18,6 @@ import { describe, it, expect, mock } from "bun:test";
 import {
   WORKFLOW_OPTIONS,
   workflowHasReview,
-  modeHasReview,
   type WorkflowName,
 } from "../src/tui/shell/start-command";
 import {
@@ -137,12 +136,7 @@ describe("VAL-SHELL-010: Review triage appears conditionally", () => {
     expect(workflowHasReview("sprint")).toBe(false);
   });
 
-  it("modeHasReview alias matches workflowHasReview", () => {
-    const allWorkflows: WorkflowName[] = ["plan-only", "plan-work", "plan-work-review", "full", "sprint"];
-    for (const wf of allWorkflows) {
-      expect(modeHasReview(wf)).toBe(workflowHasReview(wf));
-    }
-  });
+
 });
 
 // ===========================================================================

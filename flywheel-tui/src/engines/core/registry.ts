@@ -6,8 +6,8 @@
  */
 
 import type { Engine } from "./types";
-import { claudeEngine } from "../providers/claude/index";
-import { opencodeEngine } from "../providers/opencode/index";
+import { claudeEngine } from "../providers/claude.js";
+import { opencodeEngine } from "../providers/opencode.js";
 
 const engines = new Map<string, Engine>();
 
@@ -29,19 +29,6 @@ export function getEngine(id: string): Engine {
     throw new Error(`Unknown engine "${id}". Available engines: ${available}`);
   }
   return engine;
-}
-
-/**
- * Check if an engine's CLI binary is available on the system.
- */
-export function isEngineAvailable(id: string): boolean {
-  const engine = engines.get(id);
-  if (!engine) return false;
-  try {
-    return Bun.which(engine.metadata.cliBinary) !== null;
-  } catch {
-    return false;
-  }
 }
 
 

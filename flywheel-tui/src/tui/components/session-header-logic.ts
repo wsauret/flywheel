@@ -6,7 +6,7 @@
  */
 
 import type { SessionLifecycleState } from "../../session/state-machine"
-import type { WorkflowStatus } from "../routes/work/state/types"
+import type { WorkflowStatus } from "../types"
 import type { SessionSummary } from "../../session/manager"
 
 // ---------------------------------------------------------------------------

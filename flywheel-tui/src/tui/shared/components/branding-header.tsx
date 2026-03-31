@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
-import { SIMPLE_LOGO } from "../logo"
+import { SIMPLE_LOGO } from "./logo"
 
 export function BrandingHeader(props: { version: string; currentDir: string }) {
   const themeCtx = useTheme()

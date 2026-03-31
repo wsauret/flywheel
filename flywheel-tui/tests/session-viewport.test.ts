@@ -16,7 +16,7 @@ import {
 } from "../src/tui/session/session-viewport";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
-import type { WorkState } from "../src/tui/routes/work/state/types";
+import type { WorkState } from "../src/tui/types";
 import type { AppState } from "../src/tui/shell/shell-modes";
 import type { SessionOrchestrator } from "../src/tui/session/session-orchestrator";
 
@@ -362,7 +362,7 @@ describe("SessionViewport loading state", () => {
 
 describe("SessionViewport queue signal population", () => {
   it("populates setShellQueueSteps on disk-loaded historical session", async () => {
-    let capturedSteps: import("../src/tui/routes/work/state/types").QueueStepState[] = [];
+    let capturedSteps: import("../src/tui/types").QueueStepState[] = [];
     const { deps } = makeMockDeps({
       orchestrator: makeMockOrchestrator({
         handleResumeSession: async () => ({
@@ -441,7 +441,7 @@ describe("SessionViewport queue signal population", () => {
   });
 
   it("populates queue signals on LRU cache-hit for non-running session", async () => {
-    let capturedSteps: import("../src/tui/routes/work/state/types").QueueStepState[] = [];
+    let capturedSteps: import("../src/tui/types").QueueStepState[] = [];
     let capturedInfo: any = undefined;
     const store = createStore("cached-plan");
     store.setQueueSteps([

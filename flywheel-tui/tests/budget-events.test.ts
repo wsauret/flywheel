@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test"
 import { EventBus } from "../src/events/event-bus"
-import { HeadlessAdapter } from "../src/tui/adapters/headless"
+import { HeadlessAdapter } from "./helpers/headless-adapter"
 import type {
   FlywheelEvent,
   BudgetWarning,
