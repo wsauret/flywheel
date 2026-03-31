@@ -449,10 +449,10 @@ describe("buildScaffolding — review consolidate scaffolding", () => {
     expect(result.postamble).toContain("Handoff Instructions");
   });
 
-  it("includes review document persistence instruction to docs/reviews/", () => {
+  it("does not include docs/reviews/ persistent copy instruction", () => {
     const step = makeStep({ type: "review", dispatcherHint: "consolidate-review" });
     const result = buildScaffolding(step, TEST_PATHS);
-    expect(result.postamble).toContain("docs/reviews/");
+    expect(result.postamble).not.toContain("docs/reviews/");
   });
 });
 

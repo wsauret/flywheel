@@ -113,7 +113,7 @@ export class SubprocessTransport implements DispatcherTransport {
 
     // Create subprocess logger if logBaseDir is configured (OUTSIDE retry loop)
     const spLogger = this.logBaseDir
-      ? new SubprocessLogger({ baseDir: this.logBaseDir, role: "dispatcher", invocationId })
+      ? new SubprocessLogger({ baseDir: this.logBaseDir, role: "dispatcher", invocationId, sessionId: this.sessionId })
       : null;
     const { onStdout: effectiveOnStdout, onStderr: effectiveOnStderr } = spLogger
       ? createLoggedCallbacks(spLogger, { onStdout: this.onStdout, onStderr: this.onStderr })

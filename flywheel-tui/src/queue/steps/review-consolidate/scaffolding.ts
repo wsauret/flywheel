@@ -23,9 +23,6 @@ ${REVIEW_DOC_TEMPLATE}
 Write the final review document to:
 \`${resolvedPath}\`
 
-Also persist a copy to \`docs/reviews/\` with a date-prefixed filename (e.g., \`docs/reviews/YYYY-MM-DD-<slug>.md\`).
-Create the parent directory if it does not exist.
-
 ${renderHandoffInstruction(fields, paths.handoffPath)}`;
 
   return { preamble: "", postamble };

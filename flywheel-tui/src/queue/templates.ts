@@ -80,7 +80,7 @@ function buildGranularPlanSteps(): Step[] {
   return [
     makeStep("plan", "Research codebase", {
       dispatcherHint: "research",
-      evaluationCriteria: "Produces a .context.md with file references and architectural summary",
+      evaluationCriteria: "Produces a context.md in the session directory with file references and architectural summary",
       toolScoping: { read: true, bash: true, write: true, edit: false, task: true },
     }),
     makeStep("plan", "Draft implementation plan", {

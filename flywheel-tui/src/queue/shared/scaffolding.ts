@@ -12,6 +12,7 @@ export interface ScaffoldingPaths {
   planPath?: string;
   researchPath?: string;
   reviewPath?: string;
+  contextPath?: string;
 }
 
 export type StepVariantKey = string;

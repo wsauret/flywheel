@@ -4,9 +4,17 @@ import { PLAN_RESEARCH_PREAMBLE } from "./prompts";
 import { PLAN_RESEARCH_FIELDS } from "./fields";
 
 function buildScaffolding(paths: ScaffoldingPaths): ScaffoldingResult {
+  const contextPath = paths.contextPath ?? "context.md";
+
   return {
     preamble: `${PLAN_RESEARCH_PREAMBLE}\n\n---`,
-    postamble: `---\n## Output Requirements\n\n${renderHandoffInstruction(PLAN_RESEARCH_FIELDS, paths.handoffPath)}`,
+    postamble: `---
+## Output Requirements
+
+Write the context/research file to:
+\`${contextPath}\`
+
+${renderHandoffInstruction(PLAN_RESEARCH_FIELDS, paths.handoffPath)}`,
   };
 }
 

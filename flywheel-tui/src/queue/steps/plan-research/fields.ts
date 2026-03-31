@@ -15,6 +15,6 @@ export const PLAN_RESEARCH_FIELDS: HandoffFieldSpec[] = [
   {
     key: "artifacts",
     description: "Files created during research (e.g., context files)",
-    example: '{"files_created": ["hello-world.context.md"]}',
+    example: '{"files_created": [".flywheel/sessions/<session-id>/context.md"]}',
   },
 ];

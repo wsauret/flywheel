@@ -844,7 +844,8 @@ export function FlywheelShell() {
 
       // ── Telemetry Logger ──
       const telemetryDir = `${capturedProjectCwd}/.flywheel/telemetry`
-      const telemetryLogger = new TelemetryLogger(telemetryDir)
+      const sessionTelemetryDir = queueSessionId ? `${capturedProjectCwd}/.flywheel/sessions/${queueSessionId}` : undefined
+      const telemetryLogger = new TelemetryLogger(telemetryDir, 50, sessionTelemetryDir)
       const telemetryRecord = telemetryLogger.startRecord(
         queue.steps.map((s) => s.type).join("-"),
         workflowIdRef.current,
@@ -1553,7 +1554,8 @@ export function FlywheelShell() {
 
         // ── Telemetry Logger (resume) ──
         const resumeTelemetryDir = `${capturedProjectCwd}/.flywheel/telemetry`
-        const resumeTelemetryLogger = new TelemetryLogger(resumeTelemetryDir)
+        const resumeSessionTelemetryDir = sessionId ? `${capturedProjectCwd}/.flywheel/sessions/${sessionId}` : undefined
+        const resumeTelemetryLogger = new TelemetryLogger(resumeTelemetryDir, 50, resumeSessionTelemetryDir)
         const resumeTelemetryRecord = resumeTelemetryLogger.startRecord(
           resumeQueue.steps.map((s) => s.type).join("-"),
           workflowIdRef.current,

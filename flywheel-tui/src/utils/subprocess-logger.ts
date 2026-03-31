@@ -12,7 +12,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { SUBPROCESS_LOG_DIR } from "../config/paths.js";
+import { SUBPROCESS_LOG_DIR, sessionDir } from "../config/paths.js";
 import { Log } from "./log.js";
 
 const log = Log.create({ service: "subprocess-logger" });
@@ -30,6 +30,8 @@ export interface SubprocessLoggerOptions {
   role: SubprocessRole;
   /** Unique invocation identifier. */
   invocationId: string;
+  /** Session ID — when provided, logs are colocated under the session directory instead of the global date-based dir. */
+  sessionId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,8 +43,9 @@ export class SubprocessLogger {
   private closed = false;
 
   constructor(options: SubprocessLoggerOptions) {
-    const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const logDir = path.resolve(options.baseDir, SUBPROCESS_LOG_DIR, dateStr);
+    const logDir = options.sessionId
+      ? path.resolve(options.baseDir, sessionDir(options.sessionId), "logs/subprocess")
+      : path.resolve(options.baseDir, SUBPROCESS_LOG_DIR, new Date().toISOString().slice(0, 10));
     fs.mkdirSync(logDir, { recursive: true });
 
     const logFile = path.join(logDir, `${options.role}-${options.invocationId}.jsonl`);

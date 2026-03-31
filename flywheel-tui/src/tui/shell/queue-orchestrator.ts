@@ -360,6 +360,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
       planPath: `${sessionDir(execSessionId)}/plan.json`,
       researchPath: `${sessionDir(execSessionId)}/research.md`,
       reviewPath: `${sessionDir(execSessionId)}/review.md`,
+      contextPath: `${sessionDir(execSessionId)}/context.md`,
     }
 
     // Build deterministic scaffolding (preamble before task_content, postamble after)

@@ -61,10 +61,12 @@ const ALLOWED_KEYS = new Set<string>([
 export class TelemetryLogger {
   private readonly dir: string;
   private readonly maxFiles: number;
+  private readonly sessionDir?: string;
 
-  constructor(dir: string, maxFiles: number = 50) {
+  constructor(dir: string, maxFiles: number = 50, sessionDir?: string) {
     this.dir = dir;
     this.maxFiles = maxFiles;
+    this.sessionDir = sessionDir;
   }
 
   /**
@@ -112,10 +114,11 @@ export class TelemetryLogger {
   /**
    * Finalize and persist the record to disk.
    * Strips any fields not in the allowed set (security: no worker output).
+   *
+   * Always writes to the global telemetry dir with eviction.
+   * When sessionDir is set, also writes a single `telemetry.json` to the session directory.
    */
   async persist(record: TelemetryRecord): Promise<void> {
-    mkdirSync(this.dir, { recursive: true });
-
     // Strip to allowed keys only (security)
     const safe: Record<string, unknown> = {};
     for (const key of ALLOWED_KEYS) {
@@ -126,17 +129,21 @@ export class TelemetryLogger {
 
     // Validate before writing
     const validated = TelemetryRecordSchema.parse(safe);
+    const json = JSON.stringify(validated, null, 2) + "\n";
 
-    // Generate filename: <workflow>-<timestamp>-<pid>.json
+    // Always write to global telemetry dir
+    mkdirSync(this.dir, { recursive: true });
     const timestamp = Date.now();
     const pid = process.pid;
     const filename = `${validated.workflow}-${timestamp}-${pid}.json`;
-    const filePath = join(this.dir, filename);
-
-    writeFileSync(filePath, JSON.stringify(validated, null, 2) + "\n", "utf-8");
-
-    // Evict oldest if over limit
+    writeFileSync(join(this.dir, filename), json, "utf-8");
     await this.evict();
+
+    // Also write to session dir if configured
+    if (this.sessionDir) {
+      mkdirSync(this.sessionDir, { recursive: true });
+      writeFileSync(join(this.sessionDir, "telemetry.json"), json, "utf-8");
+    }
   }
 
   /**
