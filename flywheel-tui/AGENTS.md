@@ -27,6 +27,12 @@ The queue engine executes a sequence of typed steps. Each step type + variant is
 
 **No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Tests exist to verify production behavior, not to keep unused code alive. Git history is the recovery mechanism.
 
+**No single-file directories.** If a directory contains exactly one file, flatten it. `src/telemetry/logger.ts` becomes `src/telemetry.ts`. The directory earns its existence when a second file joins it.
+
+**Imports reveal misplacement.** If a file's imports all reach three or more levels up (`../../../`), it probably lives too deep. If every consumer of a module reaches across subsystem boundaries to import it, the module is in the wrong subsystem. Let import paths guide where things belong.
+
+**One domain, one home.** Each concept (plan parsing, handoff schemas, sprint types) lives in exactly one place. No re-exports, bridge files, or compatibility shims. When a module moves, update every import -- do not leave a forwarding address.
+
 ## Agent Behavior
 
 Always test your changes by running the code. Then fix any errors that arise.
