@@ -98,6 +98,16 @@ export interface Step {
   dependsOn?: string[];
   /** Milestone this step belongs to. */
   milestone?: string;
+
+  // --- P3 triage result (review steps only) ---
+
+  /** P3 triage result from review step. Contains either explicit user selections or an auto-directive. */
+  p3Triage?: {
+    included?: Array<{ description: string; location?: string; suggestion: string }>;
+    excluded?: Array<{ description: string; location?: string; suggestion: string }>;
+    source?: string;
+    directive?: string;
+  };
 }
 
 // ---------------------------------------------------------------------------

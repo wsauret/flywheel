@@ -22,8 +22,6 @@ import {
 } from "../src/session/manager";
 import { readSession, updateSession } from "../src/session/persistence";
 import { createOutputPersistence } from "../src/session/output-persistence";
-import type { WorkflowSession } from "../src/tui/session/workflow-session";
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -39,27 +37,12 @@ function makeTmpDir(): string {
   return dir;
 }
 
-function makeMockWorkflowSession(planPath: string): WorkflowSession {
-  return {
-    store: {} as WorkflowSession["store"],
-    adapter: {
-      stop: () => {},
-      disconnect: () => {},
-    } as WorkflowSession["adapter"],
-    eventBus: {} as WorkflowSession["eventBus"],
-    planPath,
-  };
-}
-
 function makeDeps(
   baseDir: string,
   overrides?: Partial<SessionManagerDeps>,
 ): SessionManagerDeps {
   return {
     baseDir,
-    createWorkflowSessionFn: (planPath: string) =>
-      makeMockWorkflowSession(planPath),
-    destroyWorkflowSessionFn: (_session: WorkflowSession) => {},
     ...overrides,
   };
 }

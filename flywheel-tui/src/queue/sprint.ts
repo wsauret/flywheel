@@ -373,6 +373,12 @@ export function createSprintQueueHandler(
     queue: Queue,
     handoffData: Record<string, unknown> | null,
   ): Promise<OnStepCompletedResult> {
+    // After escalation, inserted steps (plan/work/review) should not be
+    // processed by sprint iteration logic — just let the executor run them.
+    if (escalated) {
+      return { continueExecution: false };
+    }
+
     // --- Handle work step completion ---
     if (step.type === "work") {
       return handleWorkStepCompleted(step, status, queue, handoffData);

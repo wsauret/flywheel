@@ -64,20 +64,12 @@ export function isRunningRuntime(rt: SessionRuntime): rt is RunningRuntime {
 }
 
 // ---------------------------------------------------------------------------
-// Fields needed to promote PendingRuntime → RunningRuntime
-// ---------------------------------------------------------------------------
-
-export type PromoteFields = Omit<RunningRuntime, "kind" | "sessionId" | "session">
-
-// ---------------------------------------------------------------------------
 // Manager interface
 // ---------------------------------------------------------------------------
 
 export interface SessionRuntimeManager {
   /** Register a runtime (pending or running). */
   register(id: string, runtime: SessionRuntime): void
-  /** Promote a pending runtime to running by supplying the remaining fields. */
-  promote(id: string, fields: PromoteFields): void
   /** Get a runtime by session ID. */
   get(id: string): SessionRuntime | undefined
   /** Check if a runtime exists. */
@@ -90,8 +82,6 @@ export interface SessionRuntimeManager {
   teardownAll(): void
   /** Pause adapter flush for a backgrounded running session. */
   background(id: string): void
-  /** Resume adapter flush for a foregrounded running session. */
-  foreground(id: string): void
   /** Get IDs of all running (not pending) runtimes. */
   getRunningIds(): string[]
   /** Remove a runtime from the map WITHOUT disposing resources (for already-completed queues). */
@@ -118,20 +108,6 @@ export function createSessionRuntimeManager(
 
   function register(id: string, runtime: SessionRuntime): void {
     runtimes.set(id, runtime)
-  }
-
-  function promote(id: string, fields: PromoteFields): void {
-    const existing = runtimes.get(id)
-    if (!existing) {
-      throw new Error(`Cannot promote unknown runtime: ${id}`)
-    }
-    const running: RunningRuntime = {
-      kind: "running",
-      sessionId: existing.sessionId,
-      session: existing.session,
-      ...fields,
-    }
-    runtimes.set(id, running)
   }
 
   function get(id: string): SessionRuntime | undefined {
@@ -214,28 +190,18 @@ export function createSessionRuntimeManager(
     }
   }
 
-  function foreground(id: string): void {
-    const runtime = runtimes.get(id)
-    if (!runtime || runtime.kind !== "running") return
-    try { runtime.session.adapter.resumeFlush() } catch (e) {
-      log.warn("resumeFlush failed", { session: id, error: e instanceof Error ? e : String(e) })
-    }
-  }
-
   function remove(id: string): void {
     runtimes.delete(id)
   }
 
   return {
     register,
-    promote,
     get,
     has,
     get size() { return runtimes.size },
     teardown,
     teardownAll,
     background,
-    foreground,
     getRunningIds,
     remove,
   }

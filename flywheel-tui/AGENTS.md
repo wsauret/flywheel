@@ -55,8 +55,6 @@ tmux send-keys -t flywheel Up          # Arrow up / Down / Left / Right
 tmux send-keys -t flywheel BSpace      # Backspace
 tmux send-keys -t flywheel C-u         # Ctrl+U (clear input line)
 tmux send-keys -t flywheel C-c         # Ctrl+C (stop/exit)
-tmux send-keys -t flywheel C-s         # Ctrl+S (skip phase)
-tmux send-keys -t flywheel C-t         # Ctrl+T (toggle theme)
 
 # Timing: sleep 0.5 for keystrokes, 1-2 for state transitions, 3-5 for process starts
 

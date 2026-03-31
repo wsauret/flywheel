@@ -17,8 +17,6 @@ import {
   createSessionManager,
   type SessionManagerDeps,
 } from "../src/session/manager";
-import type { WorkflowSession } from "../src/tui/session/workflow-session";
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -233,19 +231,6 @@ describe("deleteSessionWithCompanions", () => {
 // ---------------------------------------------------------------------------
 
 describe("SessionManager.sweepTrashed", () => {
-  /** Create a mock WorkflowSession. */
-  function makeMockWorkflowSession(planPath: string): WorkflowSession {
-    return {
-      store: {} as WorkflowSession["store"],
-      adapter: {
-        stop: () => {},
-        disconnect: () => {},
-      } as WorkflowSession["adapter"],
-      eventBus: {} as WorkflowSession["eventBus"],
-      planPath,
-    };
-  }
-
   /** Build deps for SessionManager. */
   function makeDeps(
     baseDir: string,
@@ -253,9 +238,6 @@ describe("SessionManager.sweepTrashed", () => {
   ): SessionManagerDeps {
     return {
       baseDir,
-      createWorkflowSessionFn: (planPath: string) =>
-        makeMockWorkflowSession(planPath),
-      destroyWorkflowSessionFn: (_session: WorkflowSession) => {},
       ...overrides,
     };
   }

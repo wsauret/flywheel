@@ -12,7 +12,7 @@ import type { AppState } from "../shell/shell-modes"
  * - "command": slash commands + autocomplete (idle/completed)
  * - "active": user can type to steer/inject (working — both with and without approval)
  * - "passive": reserved for future use (currently unused)
- * - "disabled": prompt not usable (importing)
+ * - "disabled": prompt not usable (reserved for future use)
  */
 export type PromptMode = "command" | "active" | "passive" | "disabled"
 
@@ -33,7 +33,5 @@ export function resolvePromptMode(
       return "command"
     case "working":
       return "active"
-    case "importing":
-      return "disabled"
   }
 }

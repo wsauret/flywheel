@@ -20,7 +20,6 @@ import {
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
 import { isValidTransition, type SessionLifecycleState } from "./state-machine";
-import type { WorkflowSession } from "../tui/session/workflow-session";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/loader";
 import { Log } from "../utils/log";
@@ -56,18 +55,6 @@ export interface SessionListResult {
 /** Dependencies injected into the session manager. */
 export interface SessionManagerDeps {
   baseDir: string;
-  /**
-   * @deprecated No longer used by SessionManager — kept for backward
-   * compatibility with existing test harnesses. Will be removed in a
-   * future step.
-   */
-  createWorkflowSessionFn?: (planPath: string) => WorkflowSession;
-  /**
-   * @deprecated No longer used by SessionManager — kept for backward
-   * compatibility with existing test harnesses. Will be removed in a
-   * future step.
-   */
-  destroyWorkflowSessionFn?: (session: WorkflowSession) => void;
   /** Optional worktree manager for git worktree lifecycle integration. */
   worktreeManager?: IWorktreeManager;
   /** Optional config — defaults to CONFIG_DEFAULTS when omitted. */
@@ -291,7 +278,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       // This session was work:active on disk but has no running queue
       // (since we just started up). Transition to work:paused.
       try {
-        updateSession(entry.id, { sessionLifecycleState: "work:paused" }, baseDir);
+        updateState(entry.id, "work:paused");
         log.info("recovered stale session", { session: entry.data.name || entry.id, to: "work:paused" });
         recovered++;
       } catch {

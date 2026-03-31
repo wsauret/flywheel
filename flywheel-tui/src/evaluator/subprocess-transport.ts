@@ -69,6 +69,8 @@ export interface SubprocessEvaluatorTransportOptions {
   sessionId?: string;
   /** Project base directory for path resolution. */
   baseDir?: string;
+  /** Optional addendum appended to the evaluator system prompt (e.g. sprint adversarial instructions). */
+  systemPromptAddendum?: string;
 }
 
 export class SubprocessEvaluatorTransport implements EvaluatorTransport {
@@ -81,6 +83,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private readonly logBaseDir?: string;
   private readonly sessionId?: string;
   private readonly baseDir: string;
+  private readonly systemPrompt: string;
 
   constructor(options: SubprocessEvaluatorTransportOptions) {
     this.spawner = options.spawner;
@@ -90,6 +93,9 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
     this.logBaseDir = options.logBaseDir;
     this.sessionId = options.sessionId;
     this.baseDir = options.baseDir ?? process.cwd();
+    this.systemPrompt = options.systemPromptAddendum
+      ? `${EVALUATOR_SYSTEM_PROMPT}\n\n${options.systemPromptAddendum}`
+      : EVALUATOR_SYSTEM_PROMPT;
 
     // Resolve engine from registry — defaults to "opencode" for backward compat
     const engineName = options.engineName ?? "opencode";
@@ -137,7 +143,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
         // Build the engine-specific evaluator command (with tool access)
         const engineCmd = this.engine.buildEvaluatorCommand({
           prompt: fullPrompt + retryNote,
-          systemPrompt: EVALUATOR_SYSTEM_PROMPT,
+          systemPrompt: this.systemPrompt,
           model: this.evaluatorModel,
         });
 
@@ -155,7 +161,7 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
         // Determine stdin content — Claude uses -p flag (no stdin), OpenCode uses stdin
         const stdinContent = engineCmd.stdinPrompt
-          ? `${EVALUATOR_SYSTEM_PROMPT}\n\n---\n\n${fullPrompt}${retryNote}`
+          ? `${this.systemPrompt}\n\n---\n\n${fullPrompt}${retryNote}`
           : undefined;
 
         const { result: resultPromise } = await this.spawner.spawn(

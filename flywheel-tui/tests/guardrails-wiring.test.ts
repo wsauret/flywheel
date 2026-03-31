@@ -2,9 +2,6 @@ import { describe, it, expect } from "bun:test";
 import { createStepExecutor, type StepExecutorOptions } from "../src/queue/executor";
 import { createGuardrails, type Guardrails } from "../src/queue/guardrails";
 import { createQueue } from "../src/queue/queue";
-import { createPlanIntegrationHook } from "../src/queue/plan-integration";
-import { createCompositeHook } from "../src/queue/hooks";
-import { createFeatureQualityGateHook } from "../src/queue/feature-quality-gates";
 import type { Step, Queue } from "../src/queue/types";
 import type { FlywheelEmitter } from "../src/events/event-bus";
 
@@ -167,75 +164,6 @@ describe("Guardrails wiring into executor", () => {
       expect(budget.currentQueueLength).toBe(3);
       expect(budget.remainingQueueCapacity).toBe(7);
     }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Feature quality gates hook wiring via createCompositeHook
-// ---------------------------------------------------------------------------
-
-describe("Feature quality gates hook wiring via createCompositeHook", () => {
-  it("createCompositeHook chains plan-integration and feature-quality-gates hooks", async () => {
-    const planHook = createPlanIntegrationHook();
-    const featureGateHook = createFeatureQualityGateHook();
-
-    const composite = createCompositeHook([
-      planHook,
-      featureGateHook.onStepCompleted,
-    ]);
-
-    // Simulate a non-plan step completing — neither hook should insert
-    const step = makeStep({ id: "s1", feature: "auth" });
-    const queue = createQueue([step]);
-    step.status = "completed";
-
-    const result = await composite(step, "completed", queue, null);
-    expect(result.continueExecution).toBe(false);
-  });
-
-  it("feature quality gate inserts quality check when all feature steps complete", async () => {
-    const featureGateHook = createFeatureQualityGateHook();
-
-    const step1 = makeStep({ id: "s1", feature: "auth" });
-    const step2 = makeStep({ id: "s2", feature: "auth" });
-    const queue = createQueue([step1, step2]);
-
-    // Manually transition steps to completed (simulating executor behavior)
-    queue.steps[0].status = "completed";
-    queue.steps[1].status = "completed";
-
-    // Trigger the hook on the last step completion
-    await featureGateHook.onStepCompleted(queue.steps[1], "completed", queue, null);
-
-    // A quality check step should have been inserted
-    const qualitySteps = queue.steps.filter(
-      (s) => s.type === "verify" && s.title.includes("feature quality check"),
-    );
-    expect(qualitySteps.length).toBe(1);
-    expect(qualitySteps[0].feature).toBe("auth");
-  });
-
-  it("composite hook with all three hooks (plan + sprint + feature gates)", async () => {
-    const planHook = createPlanIntegrationHook();
-    const featureGateHook = createFeatureQualityGateHook();
-    // Sprint hook is a function, not an object — use a no-op for testing
-    const sprintHook = async () => ({ continueExecution: false });
-
-    const composite = createCompositeHook([
-      planHook,
-      sprintHook,
-      featureGateHook.onStepCompleted,
-    ]);
-
-    expect(composite).toBeDefined();
-    expect(typeof composite).toBe("function");
-
-    // A completed work step with no plan output and no feature
-    const step = makeStep({ id: "s1" });
-    const queue = createQueue([step]);
-    step.status = "completed";
-    const result = await composite(step, "completed", queue, null);
-    expect(result.continueExecution).toBe(false);
   });
 });
 

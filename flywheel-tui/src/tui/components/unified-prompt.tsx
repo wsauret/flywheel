@@ -14,7 +14,7 @@
  *   - "command": Prompt with autocomplete (idle/completed)
  *   - "active": Prompt with approval-aware placeholder (working + approval)
  *   - "passive": Disabled Prompt with "Step executing..." placeholder
- *   - "disabled": Prompt fully disabled (importing)
+ *   - "disabled": Prompt fully disabled (reserved for future use)
  */
 
 import { Prompt } from "@tui/shared/components/prompt/index"

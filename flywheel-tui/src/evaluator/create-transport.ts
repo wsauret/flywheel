@@ -15,8 +15,7 @@
 import type { ProcessSpawner } from "../worker/spawner";
 import type { EvaluatorTransport } from "./transport";
 import { SubprocessEvaluatorTransport } from "./subprocess-transport";
-import { SDK_AVAILABLE } from "../dispatcher/sdk-transport.js";
-import { getOrCreateSdkSpawner } from "../dispatcher/auto-detect.js";
+import { SDK_AVAILABLE, getOrCreateSdkSpawner } from "../dispatcher/auto-detect.js";
 import { Log } from "../utils/log";
 
 const log = Log.create({ service: "evaluator-transport-factory" });
@@ -41,6 +40,8 @@ export interface CreateEvaluatorTransportOptions {
   sessionId?: string;
   /** Project base directory for path resolution. */
   baseDir?: string;
+  /** Optional addendum appended to the evaluator system prompt (e.g. sprint adversarial instructions). */
+  systemPromptAddendum?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,5 +94,6 @@ export async function createEvaluatorTransport(
     logBaseDir: options.logBaseDir,
     sessionId: options.sessionId,
     baseDir: options.baseDir,
+    systemPromptAddendum: options.systemPromptAddendum,
   });
 }

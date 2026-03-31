@@ -16,7 +16,6 @@ import {
 } from "../src/session/persistence";
 import type { Session } from "../src/session/schemas";
 import type { SessionLifecycleState } from "../src/session/state-machine";
-import type { WorkflowSession } from "../src/tui/session/workflow-session";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader";
 
 // ---------------------------------------------------------------------------
@@ -47,19 +46,6 @@ function minimalSession(overrides?: Partial<Session>): Session {
   };
 }
 
-/** Create a mock WorkflowSession (plain object, not a real one). */
-function makeMockWorkflowSession(planPath: string): WorkflowSession {
-  return {
-    store: {} as WorkflowSession["store"],
-    adapter: {
-      stop: () => {},
-      disconnect: () => {},
-    } as WorkflowSession["adapter"],
-    eventBus: {} as WorkflowSession["eventBus"],
-    planPath,
-  };
-}
-
 /** Build deps with mock create/destroy functions. */
 function makeDeps(
   baseDir: string,
@@ -67,9 +53,6 @@ function makeDeps(
 ): SessionManagerDeps {
   return {
     baseDir,
-    createWorkflowSessionFn: (planPath: string) =>
-      makeMockWorkflowSession(planPath),
-    destroyWorkflowSessionFn: (_session: WorkflowSession) => {},
     ...overrides,
   };
 }
@@ -167,21 +150,7 @@ describe("SessionManager.create()", () => {
     expect(persisted!.label).toBe("plans/test.md");
   });
 
-  it("does NOT create a live WorkflowSession (no side-effect)", () => {
-    const baseDir = makeTmpDir();
-    let createCalled = false;
-    const deps = makeDeps(baseDir, {
-      createWorkflowSessionFn: (planPath: string) => {
-        createCalled = true;
-        return makeMockWorkflowSession(planPath);
-      },
-    });
-    const mgr = createSessionManager(deps);
 
-    mgr.create("plans/test.md");
-
-    expect(createCalled).toBe(false);
-  });
 });
 
 // ---------------------------------------------------------------------------

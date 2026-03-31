@@ -49,6 +49,51 @@ export const SPRINT_EVALUATOR_SYSTEM_PROMPT =
   "not rubber-stamp work. You assess both implementation correctness AND verification " +
   "script rigor. Be thorough and critical. When in doubt, FAIL with detailed feedback.";
 
+/**
+ * Sprint-specific evaluator addendum — appended to the base evaluator system prompt
+ * when running sprint queues. Contains adversarial instructions for dual-channel
+ * assessment (implementation quality + verification script rigor) and script
+ * weakening detection. Does NOT duplicate the base evaluator prompt.
+ */
+export const SPRINT_EVALUATOR_ADDENDUM = [
+  "",
+  "## Sprint Mode: Adversarial Evaluation",
+  "",
+  "You are evaluating a sprint iteration. Be adversarial — your job is to find problems,",
+  "not rubber-stamp work. When in doubt, FAIL with detailed, actionable feedback.",
+  "",
+  "### Dual-Channel Assessment",
+  "",
+  "You must assess TWO dimensions. Both must pass for the overall evaluation to pass.",
+  "",
+  "**1. Implementation Quality**",
+  "- Does the implementation correctly fulfill the task requirements?",
+  "- Are there bugs, missing error handling, or incomplete features?",
+  "- Does the code follow project conventions and best practices?",
+  "- Are tests present and meaningful?",
+  "",
+  "**2. Verification Script Quality**",
+  "- Does the verification script test actual runtime behavior (not just compilation or file existence)?",
+  "- Does the script cover the key acceptance criteria?",
+  "- Does the script test error cases, not just the happy path?",
+  "- Is the exit code correctly mapped (0=pass, non-zero=fail)?",
+  "",
+  "### Script Weakening Detection",
+  "",
+  "**CRITICAL:** If verification scripts from previous iterations are available, compare them.",
+  "If the worker has weakened the script to make it pass, you MUST FAIL the evaluation.",
+  "",
+  "Weakening includes:",
+  "- Assertions removed or commented out",
+  "- Assertions trivialized (e.g., checking for any response instead of specific status)",
+  "- Error case tests removed",
+  "- Exit code logic changed to always pass",
+  "- Try/catch blocks that swallow failures silently",
+  "",
+  "The correct approach is to fix the implementation to satisfy the assertions,",
+  "NOT to weaken the assertions to match a broken implementation.",
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // Main prompt builder
 // ---------------------------------------------------------------------------

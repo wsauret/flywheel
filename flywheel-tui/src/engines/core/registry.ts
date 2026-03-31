@@ -2,7 +2,7 @@
  * Engine registry.
  *
  * All engines are registered at import time. Use `getEngine(id)` to look up
- * by config value, `getAllEngines()` to list available engines.
+ * by config value.
  */
 
 import type { Engine } from "./types";
@@ -32,20 +32,6 @@ export function getEngine(id: string): Engine {
 }
 
 /**
- * Get all registered engines.
- */
-export function getAllEngines(): Engine[] {
-  return Array.from(engines.values());
-}
-
-/**
- * Check if an engine ID is valid.
- */
-export function isValidEngine(id: string): boolean {
-  return engines.has(id);
-}
-
-/**
  * Check if an engine's CLI binary is available on the system.
  */
 export function isEngineAvailable(id: string): boolean {
@@ -58,10 +44,4 @@ export function isEngineAvailable(id: string): boolean {
   }
 }
 
-/**
- * Get install instructions for an engine. Returns undefined if engine is not registered.
- */
-export function getEngineInstallInstructions(id: string): string | undefined {
-  const engine = engines.get(id);
-  return engine?.metadata.installCommand;
-}
+

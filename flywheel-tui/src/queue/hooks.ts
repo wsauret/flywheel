@@ -4,8 +4,8 @@
 //
 // Shared types and utilities for onStepCompleted hooks used by the
 // step executor. Extracted here so that plan-integration, sprint,
-// debug-loop, review-fix-injection, review-p3-triage, and
-// feature-quality-gates can all import from a single location without
+// debug-loop, review-fix-injection, and review-p3-triage
+// can all import from a single location without
 // pulling in the full executor module.
 //
 // Placement: src/queue/hooks.ts

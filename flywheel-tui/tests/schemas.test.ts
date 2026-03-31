@@ -14,7 +14,6 @@ import {
   WorkerFailureReasonSchema,
 } from "../src/worker/schemas";
 import { SessionSchema, migrateSession } from "../src/session/schemas";
-import { WorkflowDefinitionSchema } from "../src/schemas/workflow";
 import { ExecutionStatusSchema, SessionStatusSchema } from "../src/schemas/execution";
 import {
   EvaluationCriteriaSchema,
@@ -852,57 +851,6 @@ describe("SessionSchema", () => {
     const { planPath, ...noPlanPath } = validSession;
     const result = SessionSchema.safeParse(noPlanPath);
     expect(result.success).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// WorkflowDefinitionSchema
-// ---------------------------------------------------------------------------
-describe("WorkflowDefinitionSchema", () => {
-  const validWorkflow = {
-    name: "Build Feature",
-    description: "Build the feature end to end",
-    steps: [
-      {
-        description: "Implement the feature",
-        dispatcherHint: "Use TDD",
-        evaluationCriteria: "Tests pass",
-        requiredOutputs: ["src/feature.ts"],
-        dependencies: [],
-      },
-    ],
-  };
-
-  it("parses a valid workflow definition", () => {
-    const result = WorkflowDefinitionSchema.safeParse(validWorkflow);
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts steps with minimal fields", () => {
-    const result = WorkflowDefinitionSchema.safeParse({
-      name: "Simple",
-      description: "A simple workflow",
-      steps: [{ description: "Do it" }],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects empty steps array", () => {
-    const result = WorkflowDefinitionSchema.safeParse({
-      name: "Empty",
-      description: "No steps",
-      steps: [],
-    });
-    // steps should have at least one item
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects missing name", () => {
-    const result = WorkflowDefinitionSchema.safeParse({
-      description: "No name",
-      steps: [{ description: "Step" }],
-    });
-    expect(result.success).toBe(false);
   });
 });
 

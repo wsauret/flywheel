@@ -12,6 +12,7 @@ import { buildSprintRevisionPrompt } from "../src/queue/prompts/sprint-revision"
 import {
   buildSprintEvaluatorPrompt,
   SPRINT_EVALUATOR_SYSTEM_PROMPT,
+  SPRINT_EVALUATOR_ADDENDUM,
 } from "../src/queue/prompts/sprint-evaluator";
 
 // ---------------------------------------------------------------------------
@@ -657,6 +658,45 @@ describe("buildSprintEvaluatorPrompt — handoff instruction", () => {
     expect(result).toContain("passed");
     expect(result).toContain("reasoning");
     expect(result).toContain("feedback");
+  });
+});
+
+// ===========================================================================
+// SPRINT_EVALUATOR_ADDENDUM — sprint-specific system prompt addendum
+// ===========================================================================
+
+describe("SPRINT_EVALUATOR_ADDENDUM", () => {
+  it("is a non-empty string", () => {
+    expect(typeof SPRINT_EVALUATOR_ADDENDUM).toBe("string");
+    expect(SPRINT_EVALUATOR_ADDENDUM.length).toBeGreaterThan(0);
+  });
+
+  it("contains dual-channel assessment instructions", () => {
+    expect(SPRINT_EVALUATOR_ADDENDUM).toContain("Dual-Channel Assessment");
+    expect(SPRINT_EVALUATOR_ADDENDUM).toContain("Implementation Quality");
+    expect(SPRINT_EVALUATOR_ADDENDUM).toContain("Verification Script Quality");
+  });
+
+  it("contains script weakening detection instructions", () => {
+    expect(SPRINT_EVALUATOR_ADDENDUM).toContain("Script Weakening Detection");
+    expect(SPRINT_EVALUATOR_ADDENDUM).toContain("CRITICAL");
+  });
+
+  it("contains adversarial framing", () => {
+    expect(SPRINT_EVALUATOR_ADDENDUM).toContain("adversarial");
+    expect(SPRINT_EVALUATOR_ADDENDUM.toLowerCase()).toContain("when in doubt");
+    expect(SPRINT_EVALUATOR_ADDENDUM.toLowerCase()).toContain("fail");
+  });
+
+  it("does NOT duplicate the base evaluator system prompt", () => {
+    // The addendum should not contain the full base prompt text
+    expect(SPRINT_EVALUATOR_ADDENDUM).not.toContain("You are a verification agent");
+    expect(SPRINT_EVALUATOR_ADDENDUM).not.toContain("Re-run claimed commands");
+  });
+
+  it("does NOT contain bias-toward-passing language", () => {
+    expect(SPRINT_EVALUATOR_ADDENDUM).not.toContain("Bias Toward Passing");
+    expect(SPRINT_EVALUATOR_ADDENDUM).not.toContain("When in doubt, pass");
   });
 });
 

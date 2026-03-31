@@ -22,10 +22,7 @@ import { DialogProvider } from "@tui/shared/context/dialog"
 import { SessionProvider } from "@tui/shared/context/session"
 import { ErrorComponent } from "./components/error-boundary"
 import { createSessionManager } from "../session/manager"
-import {
-  createWorkflowSession,
-  destroyWorkflowSession,
-} from "./session/workflow-session"
+
 import { loadConfig } from "../config/loader"
 import { CONFIG_FILES } from "../config/paths"
 
@@ -61,8 +58,6 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     // Create session manager for the current working directory
     const sessionManager = createSessionManager({
       baseDir: process.cwd(),
-      createWorkflowSessionFn: createWorkflowSession,
-      destroyWorkflowSessionFn: destroyWorkflowSession,
       config,
     })
 

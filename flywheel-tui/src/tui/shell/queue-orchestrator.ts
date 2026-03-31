@@ -46,7 +46,7 @@ const log = Log.create({ service: "shell" })
  * Resolve dispatcher and evaluator transports for queue execution.
  * Shared between startQueueExecution and resumeSession queue paths.
  */
-export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string, sessionId?: string, baseDir?: string) {
+export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string, sessionId?: string, baseDir?: string, evaluatorSystemPromptAddendum?: string) {
   const engineName = deps.config.engine
 
   let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
@@ -85,6 +85,7 @@ export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, 
         logBaseDir,
         sessionId,
         baseDir,
+        systemPromptAddendum: evaluatorSystemPromptAddendum,
       })
       log.info("queue evaluator transport created", { engine: engineName })
     } catch (err) {

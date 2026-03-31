@@ -24,32 +24,7 @@
  * - "completed" = either "the workflow finished/stopped/failed" OR "I'm viewing
  *   a non-running session's snapshot (read-only historical view)".
  */
-export type AppState = "idle" | "working" | "completed" | "importing"
-
-// ---------------------------------------------------------------------------
-// resolveAppState — derives AppState from session signals
-// ---------------------------------------------------------------------------
-
-/**
- * Derive AppState from current session state.
- *
- * Priority:
- * 1. `isImporting` → "importing"
- * 2. `focusedId` with a running runtime → "working"
- * 3. `viewedId` exists → "completed" (viewing a non-running session)
- * 4. else → "idle"
- */
-export function resolveAppState(
-  focusedId: string | null,
-  hasRuntime: (id: string) => boolean,
-  viewedId: string | null,
-  isImporting: boolean,
-): AppState {
-  if (isImporting) return "importing"
-  if (focusedId && hasRuntime(focusedId)) return "working"
-  if (viewedId) return "completed"
-  return "idle"
-}
+export type AppState = "idle" | "working" | "completed"
 
 // ---------------------------------------------------------------------------
 // Escape behavior per state
@@ -59,7 +34,6 @@ export type EscapeStateBehavior =
   | "exit-tui"        // idle: Esc exits the application
   | "double-esc-stop" // working: first Esc shows hint, second stops
   | "return-idle"     // completed: go back to idle
-  | "cancel-import"   // importing: cancel the import flow
 
 /**
  * What should happen when Esc is pressed in a given AppState.
@@ -69,7 +43,6 @@ export function escapeForState(state: AppState): EscapeStateBehavior {
     case "idle":        return "exit-tui"
     case "working":     return "double-esc-stop"
     case "completed":   return "return-idle"
-    case "importing":   return "cancel-import"
     default:            return assertNever(state)
   }
 }
@@ -88,7 +61,6 @@ export function ctrlCForState(state: AppState): CtrlCStateBehavior {
     case "idle":        return "exit-tui"
     case "working":     return "stop-workflow"
     case "completed":   return "return-idle"
-    case "importing":   return "exit-tui"
     default:            return assertNever(state)
   }
 }

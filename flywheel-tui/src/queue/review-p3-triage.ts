@@ -31,16 +31,6 @@ interface P3Finding {
   suggestion: string;
 }
 
-interface P3TriageExplicit {
-  included: P3Finding[];
-  excluded: P3Finding[];
-  source: string;
-}
-
-interface P3TriageDirective {
-  directive: string;
-}
-
 export interface ReviewP3TriageOptions {
   questionService?: QuestionService | null;
 }
@@ -75,7 +65,7 @@ export function createReviewP3TriageHook(
     const { questionService } = options;
     if (!questionService) {
       // Store auto-directive on the step's extra data
-      (step as any)._p3Triage = { directive: REVIEW_P3_DIRECTIVE };
+      step.p3Triage = { directive: REVIEW_P3_DIRECTIVE };
       log.info("no QuestionService, auto-triaging P3 findings", { count: p3Findings.length });
       return { continueExecution: false };
     }
@@ -100,11 +90,11 @@ export function createReviewP3TriageHook(
       });
       const excluded = p3Findings.filter((f) => !included.includes(f));
 
-      (step as any)._p3Triage = { included, excluded, source: "user" } satisfies P3TriageExplicit;
+      step.p3Triage = { included, excluded, source: "user" };
       log.info("P3 triage completed by user", { included: included.length, excluded: excluded.length });
     } catch (err) {
       if (err instanceof QuestionRejectedError) {
-        (step as any)._p3Triage = { directive: REVIEW_P3_DIRECTIVE } satisfies P3TriageDirective;
+        step.p3Triage = { directive: REVIEW_P3_DIRECTIVE };
         log.info("user dismissed P3 triage, using auto-directive");
       } else {
         log.error("unexpected error during P3 triage", { error: err instanceof Error ? err : String(err) });

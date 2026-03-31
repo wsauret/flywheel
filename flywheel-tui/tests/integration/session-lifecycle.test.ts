@@ -19,7 +19,6 @@ import {
 } from "../../src/session/manager";
 import { readSession, deleteSessionWithCompanions } from "../../src/session/persistence";
 import { isValidTransition, VALID_TRANSITIONS, type SessionLifecycleState } from "../../src/session/state-machine";
-import type { WorkflowSession } from "../../src/tui/session/workflow-session";
 import { createOutputPersistence } from "../../src/session/output-persistence";
 import { createSessionOrchestrator, type SessionOrchestratorDeps } from "../../src/tui/session/session-orchestrator";
 import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../../src/session/output-schemas";
@@ -39,27 +38,12 @@ function makeTmpDir(): string {
   return dir;
 }
 
-function makeMockWorkflowSession(planPath: string): WorkflowSession {
-  return {
-    store: {} as WorkflowSession["store"],
-    adapter: {
-      stop: () => {},
-      disconnect: () => {},
-    } as WorkflowSession["adapter"],
-    eventBus: {} as WorkflowSession["eventBus"],
-    planPath,
-  };
-}
-
 function makeDeps(
   baseDir: string,
   overrides?: Partial<SessionManagerDeps>,
 ): SessionManagerDeps {
   return {
     baseDir,
-    createWorkflowSessionFn: (planPath: string) =>
-      makeMockWorkflowSession(planPath),
-    destroyWorkflowSessionFn: (_session: WorkflowSession) => {},
     ...overrides,
   };
 }

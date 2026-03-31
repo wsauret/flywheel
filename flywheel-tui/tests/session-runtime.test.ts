@@ -203,44 +203,6 @@ describe("createSessionRuntimeManager", () => {
     });
   });
 
-  describe("promote", () => {
-    it("promotes pending to running", () => {
-      const session = mockSession();
-      manager.register("s1", { kind: "pending", sessionId: "s1", session });
-
-      const fields = {
-
-        flusher: mockFlusher(),
-        budgetTracker: mockBudgetTracker(),
-        storeUnsub: () => {},
-        questionCleanup: () => {},
-        queueCleanup: () => {},
-        contextIndexer: null,
-        workerPid: null,
-      };
-      manager.promote("s1", fields);
-
-      const runtime = manager.get("s1");
-      expect(runtime?.kind).toBe("running");
-      expect((runtime as RunningRuntime).session).toBe(session);
-      expect((runtime as RunningRuntime).flusher).toBe(fields.flusher);
-    });
-
-    it("throws when promoting a non-existent ID", () => {
-      expect(() =>
-        manager.promote("nonexistent", {
-          flusher: mockFlusher(),
-          budgetTracker: mockBudgetTracker(),
-          storeUnsub: () => {},
-          questionCleanup: () => {},
-          queueCleanup: () => {},
-          contextIndexer: null,
-          workerPid: null,
-        })
-      ).toThrow();
-    });
-  });
-
   describe("getRunningIds", () => {
     it("returns only IDs with kind 'running'", () => {
       manager.register("s1", { kind: "pending", sessionId: "s1", session: mockSession() });
@@ -268,7 +230,7 @@ describe("createSessionRuntimeManager", () => {
     });
   });
 
-  describe("background + foreground", () => {
+  describe("background", () => {
     it("background calls adapter.pauseFlush on a running runtime", () => {
       let paused = false;
       const session = mockSession();
@@ -292,40 +254,15 @@ describe("createSessionRuntimeManager", () => {
       expect(paused).toBe(true);
     });
 
-    it("foreground calls adapter.resumeFlush on a running runtime", () => {
-      let resumed = false;
-      const session = mockSession();
-      (session.adapter as any).resumeFlush = () => { resumed = true; };
-
-      manager.register("s1", {
-        kind: "running",
-        sessionId: "s1",
-        session,
-
-        flusher: mockFlusher(),
-        budgetTracker: mockBudgetTracker(),
-        storeUnsub: () => {},
-        questionCleanup: () => {},
-        queueCleanup: () => {},
-        contextIndexer: null,
-        workerPid: null,
-      });
-
-      manager.foreground("s1");
-      expect(resumed).toBe(true);
-    });
-
-    it("background/foreground is no-op for pending runtimes", () => {
+    it("background is no-op for pending runtimes", () => {
       manager.register("s1", { kind: "pending", sessionId: "s1", session: mockSession() });
       // Should not throw
       manager.background("s1");
-      manager.foreground("s1");
     });
 
-    it("background/foreground is no-op for unknown IDs", () => {
+    it("background is no-op for unknown IDs", () => {
       // Should not throw
       manager.background("nonexistent");
-      manager.foreground("nonexistent");
     });
   });
 
@@ -513,23 +450,15 @@ describe("createSessionRuntimeManager", () => {
 
   describe("multiple concurrent runtimes", () => {
     it("three runtimes coexist independently", () => {
-      const sessions = ["s1", "s2", "s3"].map((id) => ({
-        id,
-        session: mockSession(`${id}.md`),
-      }));
+      const s1Session = mockSession("s1.md");
+      const s2Session = mockSession("s2.md");
+      const s3Session = mockSession("s3.md");
 
-      for (const { id, session } of sessions) {
-        manager.register(id, { kind: "pending", sessionId: id, session });
-      }
-
-      expect(manager.size).toBe(3);
-      for (const { id, session } of sessions) {
-        expect(manager.get(id)?.session).toBe(session);
-      }
-
-      // Promote one
-      manager.promote("s2", {
-
+      manager.register("s1", { kind: "pending", sessionId: "s1", session: s1Session });
+      manager.register("s2", {
+        kind: "running",
+        sessionId: "s2",
+        session: s2Session,
         flusher: mockFlusher(),
         budgetTracker: mockBudgetTracker(),
         storeUnsub: () => {},
@@ -538,6 +467,12 @@ describe("createSessionRuntimeManager", () => {
         contextIndexer: null,
         workerPid: 1234,
       });
+      manager.register("s3", { kind: "pending", sessionId: "s3", session: s3Session });
+
+      expect(manager.size).toBe(3);
+      expect(manager.get("s1")?.session).toBe(s1Session);
+      expect(manager.get("s2")?.session).toBe(s2Session);
+      expect(manager.get("s3")?.session).toBe(s3Session);
 
       expect(manager.get("s1")?.kind).toBe("pending");
       expect(manager.get("s2")?.kind).toBe("running");

@@ -64,7 +64,7 @@ describe("createReviewP3TriageHook", () => {
       ],
     };
     await hook(step, "completed", queue, handoff);
-    expect((step as any)._p3Triage).toEqual({ directive: REVIEW_P3_DIRECTIVE });
+    expect(step.p3Triage).toEqual({ directive: REVIEW_P3_DIRECTIVE });
   });
 
   test("presents triage to user via QuestionService", async () => {
@@ -83,7 +83,7 @@ describe("createReviewP3TriageHook", () => {
     };
     await hook(step, "completed", queue, handoff);
     expect(mockQS.ask).toHaveBeenCalledTimes(1);
-    const triage = (step as any)._p3Triage;
+    const triage = step.p3Triage;
     expect(triage.source).toBe("user");
     expect(triage.included.length).toBe(1);
     expect(triage.excluded.length).toBe(1);
@@ -103,7 +103,7 @@ describe("createReviewP3TriageHook", () => {
       ],
     };
     await hook(step, "completed", queue, handoff);
-    expect((step as any)._p3Triage).toEqual({ directive: REVIEW_P3_DIRECTIVE });
+    expect(step.p3Triage).toEqual({ directive: REVIEW_P3_DIRECTIVE });
   });
 
   test("only triggers once per hook instance", async () => {
@@ -113,8 +113,8 @@ describe("createReviewP3TriageHook", () => {
     const queue = makeQueue([step1, step2]);
     const handoff = { p3_findings: [{ description: "test", suggestion: "fix" }] };
     await hook(step1, "completed", queue, handoff);
-    expect((step1 as any)._p3Triage).toBeDefined();
+    expect(step1.p3Triage).toBeDefined();
     await hook(step2, "completed", queue, handoff);
-    expect((step2 as any)._p3Triage).toBeUndefined();
+    expect(step2.p3Triage).toBeUndefined();
   });
 });

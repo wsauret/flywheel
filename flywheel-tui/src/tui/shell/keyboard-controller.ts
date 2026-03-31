@@ -129,12 +129,6 @@ export function handleShellKeyEvent(evt: KeyEvent, ctx: KeyboardContext): void {
       return
     }
 
-    // Ctrl+S: skip current step
-    if (evt.ctrl && evt.name === "s") {
-      evt.preventDefault()
-      return
-    }
-
     // Ctrl+D: toggle raw output mode
     if (evt.ctrl && evt.name === "d") {
       evt.preventDefault()
@@ -218,7 +212,7 @@ export function handleShellKeyEvent(evt: KeyEvent, ctx: KeyboardContext): void {
   // When a question is pending, let the QuestionPrompt handle Escape (to dismiss the question).
   if (evt.name === "escape" && !ctx.pendingQuestion()) {
     const currentState = ctx.appState()
-    if (currentState === "working" || currentState === "importing" || currentState === "completed") {
+    if (currentState === "working" || currentState === "completed") {
       evt.preventDefault()
       ctx.handleEscape()
       return

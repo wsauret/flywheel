@@ -138,6 +138,9 @@ export interface FlywheelEmitter {
   // Queue mutation events
   queueStepInserted(workflowId: string, stepId: string, stepType: string, stepTitle: string, afterStepId: string): void;
   queueStepRemoved(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
+  // Budget events
+  budgetWarning(workflowId: string, metric: string, used: number, limit: number, remaining: number): void;
+  budgetExhausted(workflowId: string, reason: string): void;
 }
 
 function now(): string {
@@ -199,5 +202,10 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "queue:step-inserted", workflowId, stepId, stepType, stepTitle, afterStepId, timestamp: now() }),
     queueStepRemoved: (workflowId, stepId, stepType, stepTitle) =>
       bus.emit({ type: "queue:step-removed", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
+    // Budget events
+    budgetWarning: (workflowId, metric, used, limit, remaining) =>
+      bus.emit({ type: "budget:warning", workflowId, metric: metric as import("./types").BudgetWarning["metric"], used, limit, remaining, timestamp: now() }),
+    budgetExhausted: (workflowId, reason) =>
+      bus.emit({ type: "budget:exhausted", workflowId, reason, timestamp: now() }),
   };
 }

@@ -3,9 +3,7 @@ import { claudeEngine } from "../src/engines/providers/claude/index";
 import { opencodeEngine } from "../src/engines/providers/opencode/index";
 import {
   getEngine,
-  getAllEngines,
   isEngineAvailable,
-  getEngineInstallInstructions,
 } from "../src/engines/core/registry";
 
 // ---------------------------------------------------------------------------
@@ -127,14 +125,7 @@ describe("Engine registry", () => {
     expect(() => getEngine("nonexistent")).toThrow(/Unknown engine/);
   });
 
-  it("lists all engines", () => {
-    const engines = getAllEngines();
-    expect(engines.length).toBeGreaterThanOrEqual(2);
 
-    const ids = engines.map((e) => e.metadata.id);
-    expect(ids).toContain("claude");
-    expect(ids).toContain("opencode");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -285,13 +276,5 @@ describe("Engine availability", () => {
     expect(isEngineAvailable("nonexistent-engine-xyz")).toBe(false);
   });
 
-  it("getEngineInstallInstructions returns install command for valid engine", () => {
-    const instructions = getEngineInstallInstructions("claude");
-    expect(instructions).toBe("npm install -g @anthropic-ai/claude-code");
-  });
 
-  it("getEngineInstallInstructions returns undefined for unknown engine", () => {
-    const instructions = getEngineInstallInstructions("nonexistent");
-    expect(instructions).toBeUndefined();
-  });
 });

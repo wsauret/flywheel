@@ -156,6 +156,43 @@ describe("createFlywheelEmitter", () => {
     }
   });
 
+  it("emits budget:warning with correct fields", () => {
+    const bus = new EventBus();
+    const emitter = createFlywheelEmitter(bus);
+    const received: FlywheelEvent[] = [];
+    bus.subscribe((e) => received.push(e));
+
+    emitter.budgetWarning("wf-1", "invocations", 8, 10, 2);
+
+    expect(received).toHaveLength(1);
+    expect(received[0].type).toBe("budget:warning");
+    if (received[0].type === "budget:warning") {
+      expect(received[0].workflowId).toBe("wf-1");
+      expect(received[0].metric).toBe("invocations");
+      expect(received[0].used).toBe(8);
+      expect(received[0].limit).toBe(10);
+      expect(received[0].remaining).toBe(2);
+      expect(received[0].timestamp).toBeTruthy();
+    }
+  });
+
+  it("emits budget:exhausted with correct fields", () => {
+    const bus = new EventBus();
+    const emitter = createFlywheelEmitter(bus);
+    const received: FlywheelEvent[] = [];
+    bus.subscribe((e) => received.push(e));
+
+    emitter.budgetExhausted("wf-1", "Invocation limit reached");
+
+    expect(received).toHaveLength(1);
+    expect(received[0].type).toBe("budget:exhausted");
+    if (received[0].type === "budget:exhausted") {
+      expect(received[0].workflowId).toBe("wf-1");
+      expect(received[0].reason).toBe("Invocation limit reached");
+      expect(received[0].timestamp).toBeTruthy();
+    }
+  });
+
   it("emits worker:retrying with correct fields", () => {
     const bus = new EventBus();
     const emitter = createFlywheelEmitter(bus);

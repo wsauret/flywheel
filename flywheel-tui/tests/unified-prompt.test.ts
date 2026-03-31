@@ -36,19 +36,9 @@ describe("resolvePromptMode", () => {
     });
   });
 
-  describe("disabled mode", () => {
-    it("importing → disabled", () => {
-      expect(resolvePromptMode("importing", false)).toBe("disabled");
-    });
-
-    it("importing with approval → disabled", () => {
-      expect(resolvePromptMode("importing", true)).toBe("disabled");
-    });
-  });
-
   describe("exhaustive coverage", () => {
     it("covers all AppState values", () => {
-      const states: AppState[] = ["idle", "working", "completed", "importing"];
+      const states: AppState[] = ["idle", "working", "completed"];
       for (const state of states) {
         expect(() => resolvePromptMode(state, false)).not.toThrow();
         expect(() => resolvePromptMode(state, true)).not.toThrow();

@@ -17,9 +17,6 @@ import {
 import {
   readValidationState,
   writeValidationState,
-  initializeValidationState,
-  type CoverageReport,
-  checkAssertionCoverage,
   checkEndOfSessionGate,
   type EndOfSessionGateResult,
 } from "../src/session/validation-state";
@@ -206,42 +203,7 @@ describe("readValidationState / writeValidationState", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// initializeValidationState
-// ---------------------------------------------------------------------------
 
-describe("initializeValidationState", () => {
-  it("creates a validation-state.json with all assertions as pending", () => {
-    const filePath = stateFilePath();
-    const assertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-CHECKOUT-001"];
-
-    initializeValidationState(filePath, assertionIds);
-
-    const loaded = readValidationState(filePath);
-    expect(loaded).not.toBeNull();
-    expect(Object.keys(loaded!.assertions)).toHaveLength(3);
-    for (const id of assertionIds) {
-      expect(loaded!.assertions[id].status).toBe("pending");
-    }
-  });
-
-  it("handles empty assertion IDs", () => {
-    const filePath = stateFilePath();
-    initializeValidationState(filePath, []);
-
-    const loaded = readValidationState(filePath);
-    expect(loaded).not.toBeNull();
-    expect(Object.keys(loaded!.assertions)).toHaveLength(0);
-  });
-
-  it("creates parent directories if needed", () => {
-    const deepPath = path.join(tmpDir, "a", "b", "validation-state.json");
-    initializeValidationState(deepPath, ["VAL-1"]);
-
-    const loaded = readValidationState(deepPath);
-    expect(loaded).not.toBeNull();
-  });
-});
 
 // ---------------------------------------------------------------------------
 // VAL-CONTRACT-003: StepInfo type includes optional fulfills: string[] field
@@ -273,117 +235,7 @@ describe("StepInfo fulfills field", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// VAL-CONTRACT-005: Coverage check utility
-// ---------------------------------------------------------------------------
 
-describe("checkAssertionCoverage", () => {
-  it("reports no issues when every assertion is claimed by exactly one step", () => {
-    const contractAssertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-API-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Auth", fulfills: ["VAL-AUTH-001", "VAL-AUTH-002"] },
-      { title: "API", fulfills: ["VAL-API-001"] },
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.orphaned).toEqual([]);
-    expect(report.duplicates).toEqual([]);
-    expect(report.isComplete).toBe(true);
-  });
-
-  it("reports orphaned assertions (not claimed by any step)", () => {
-    const contractAssertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-API-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Auth", fulfills: ["VAL-AUTH-001"] },
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.orphaned).toEqual(["VAL-AUTH-002", "VAL-API-001"]);
-    expect(report.isComplete).toBe(false);
-  });
-
-  it("reports duplicate assertions (claimed by multiple steps)", () => {
-    const contractAssertionIds = ["VAL-AUTH-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Auth", fulfills: ["VAL-AUTH-001"] },
-      { title: "Auth v2", fulfills: ["VAL-AUTH-001"] },
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.duplicates).toHaveLength(1);
-    expect(report.duplicates[0].assertionId).toBe("VAL-AUTH-001");
-    expect(report.duplicates[0].claimedBy).toEqual(["Auth", "Auth v2"]);
-    expect(report.isComplete).toBe(false);
-  });
-
-  it("handles steps without fulfills (they claim nothing)", () => {
-    const contractAssertionIds = ["VAL-AUTH-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Setup" },
-      { title: "Auth", fulfills: ["VAL-AUTH-001"] },
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.orphaned).toEqual([]);
-    expect(report.duplicates).toEqual([]);
-    expect(report.isComplete).toBe(true);
-  });
-
-  it("handles empty contract assertions", () => {
-    const contractAssertionIds: string[] = [];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Auth", fulfills: ["VAL-AUTH-001"] },
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.orphaned).toEqual([]);
-    expect(report.isComplete).toBe(true);
-  });
-
-  it("handles empty steps", () => {
-    const contractAssertionIds = ["VAL-AUTH-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.orphaned).toEqual(["VAL-AUTH-001"]);
-    expect(report.isComplete).toBe(false);
-  });
-
-  it("detects both orphaned and duplicates in same report", () => {
-    const contractAssertionIds = ["VAL-AUTH-001", "VAL-AUTH-002", "VAL-API-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Auth A", fulfills: ["VAL-AUTH-001"] },
-      { title: "Auth B", fulfills: ["VAL-AUTH-001"] },
-      // VAL-AUTH-002 and VAL-API-001 are orphaned
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    expect(report.orphaned).toEqual(["VAL-AUTH-002", "VAL-API-001"]);
-    expect(report.duplicates).toHaveLength(1);
-    expect(report.duplicates[0].assertionId).toBe("VAL-AUTH-001");
-    expect(report.isComplete).toBe(false);
-  });
-
-  it("reports extra assertions claimed by steps but not in contract", () => {
-    // Step claims an assertion that doesn't exist in the contract
-    const contractAssertionIds = ["VAL-AUTH-001"];
-    const steps: Array<{ title: string; fulfills?: string[] }> = [
-      { title: "Auth", fulfills: ["VAL-AUTH-001", "VAL-EXTRA-001"] },
-    ];
-
-    const report = checkAssertionCoverage(contractAssertionIds, steps);
-
-    // VAL-EXTRA-001 is not in the contract — it should be reported as unclaimed
-    expect(report.unclaimed).toEqual(["VAL-EXTRA-001"]);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // VAL-EXEC-007: End-of-session gate checks assertions

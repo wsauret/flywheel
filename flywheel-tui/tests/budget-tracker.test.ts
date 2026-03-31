@@ -752,3 +752,158 @@ describe("BudgetTracker — getBudgetStatus", () => {
     tracker.dispose();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Budget event emission via emitter
+// ---------------------------------------------------------------------------
+
+describe("BudgetTracker — budget event emission", () => {
+  it("emits budgetExhausted once when budget transitions to exhausted", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+
+    const calls: { method: string; args: unknown[] }[] = [];
+    const mockEmitter = {
+      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
+      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
+    };
+
+    const tracker = createBudgetTracker({
+      sessionId,
+      baseDir,
+      debounceMs: 1000,
+      emitter: mockEmitter as any,
+      workflowId: "wf-test-1",
+    });
+
+    const limits = unlimitedLimits({ max_invocations: 2 });
+
+    // Not exhausted yet
+    tracker.incrementInvocations();
+    expect(tracker.isExhausted(limits)).toBe(false);
+    expect(calls).toHaveLength(0);
+
+    // Reaches limit — should emit once
+    tracker.incrementInvocations();
+    expect(tracker.isExhausted(limits)).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("budgetExhausted");
+    expect(calls[0].args[0]).toBe("wf-test-1");
+    expect((calls[0].args[1] as string)).toContain("Invocation limit reached");
+
+    tracker.dispose();
+  });
+
+  it("does NOT emit budgetExhausted on subsequent isExhausted calls", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+
+    const calls: { method: string; args: unknown[] }[] = [];
+    const mockEmitter = {
+      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
+      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
+    };
+
+    const tracker = createBudgetTracker({
+      sessionId,
+      baseDir,
+      debounceMs: 1000,
+      emitter: mockEmitter as any,
+      workflowId: "wf-test-2",
+    });
+
+    const limits = unlimitedLimits({ max_invocations: 1 });
+
+    tracker.incrementInvocations();
+
+    // First call — emits
+    expect(tracker.isExhausted(limits)).toBe(true);
+    expect(calls).toHaveLength(1);
+
+    // Subsequent calls — should NOT emit again
+    expect(tracker.isExhausted(limits)).toBe(true);
+    expect(tracker.isExhausted(limits)).toBe(true);
+    expect(tracker.isExhausted(limits)).toBe(true);
+    expect(calls).toHaveLength(1); // still just 1
+
+    tracker.dispose();
+  });
+
+  it("does NOT emit when emitter is not provided (backward compat)", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+
+    // No emitter — should not throw
+    const tracker = createBudgetTracker({
+      sessionId,
+      baseDir,
+      debounceMs: 1000,
+    });
+
+    const limits = unlimitedLimits({ max_invocations: 1 });
+    tracker.incrementInvocations();
+
+    // Should work fine without emitter
+    expect(tracker.isExhausted(limits)).toBe(true);
+
+    tracker.dispose();
+  });
+
+  it("does NOT emit when workflowId is not provided", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+
+    const calls: { method: string; args: unknown[] }[] = [];
+    const mockEmitter = {
+      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
+      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
+    };
+
+    const tracker = createBudgetTracker({
+      sessionId,
+      baseDir,
+      debounceMs: 1000,
+      emitter: mockEmitter as any,
+      // workflowId intentionally omitted
+    });
+
+    const limits = unlimitedLimits({ max_invocations: 1 });
+    tracker.incrementInvocations();
+    expect(tracker.isExhausted(limits)).toBe(true);
+
+    // No emission because workflowId is missing
+    expect(calls).toHaveLength(0);
+
+    tracker.dispose();
+  });
+
+  it("emits correct reason for token limit exhaustion", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+
+    const calls: { method: string; args: unknown[] }[] = [];
+    const mockEmitter = {
+      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
+      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
+    };
+
+    const tracker = createBudgetTracker({
+      sessionId,
+      baseDir,
+      debounceMs: 1000,
+      emitter: mockEmitter as any,
+      workflowId: "wf-token-test",
+    });
+
+    tracker.handleEvent(stepFinishEvent(0.01, 5000, 3000)); // 8000 tokens
+
+    const limits = unlimitedLimits({ max_tokens: 5000 });
+    expect(tracker.isExhausted(limits)).toBe(true);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("budgetExhausted");
+    expect((calls[0].args[1] as string)).toContain("Token limit reached");
+
+    tracker.dispose();
+  });
+});

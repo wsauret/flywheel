@@ -96,9 +96,11 @@ import { createEvaluatorTransport } from "../../evaluator/create-transport"
 import { killAllActiveProcesses, interruptAllActiveProcesses } from "../../worker/process-lifecycle"
 import { Log } from "../../utils/log"
 import { SubprocessLogger } from "../../utils/subprocess-logger.js"
+import { TelemetryLogger, type TelemetryRecord } from "../../telemetry/logger"
 
 import type { StdinHandle } from "../../worker/spawner"
 import { resolveTransports, buildExecutorDeps } from "../shell/queue-orchestrator"
+import { SPRINT_EVALUATOR_ADDENDUM } from "../../queue/prompts/sprint-evaluator"
 import {
   resumeWorkerWithMessage as resumeWorkerWithMessageImpl,
   resetInterruptState,
@@ -810,8 +812,38 @@ export function FlywheelShell() {
       // Session ID must exist at this point
       const effectiveSessionId = queueSessionId ?? crypto.randomUUID()
 
+      // Detect sprint queue early for evaluator system prompt addendum
+      const isDebugQueueEarly = queue.steps.some(s => s.type === "debug")
+      const isSprintQueueEarly = !isDebugQueueEarly && queue.steps.some(s => s.type === "verify")
+      const evalAddendum = isSprintQueueEarly ? SPRINT_EVALUATOR_ADDENDUM : undefined
+
       const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-        deps, session.eventBus, workflowIdRef, queueLogBaseDir, effectiveSessionId, capturedProjectCwd,
+        deps, session.eventBus, workflowIdRef, queueLogBaseDir, effectiveSessionId, capturedProjectCwd, evalAddendum,
+      )
+
+      // ── Telemetry Logger ──
+      const telemetryDir = `${capturedProjectCwd}/.flywheel/telemetry`
+      const telemetryLogger = new TelemetryLogger(telemetryDir)
+      const telemetryRecord = telemetryLogger.startRecord(
+        queue.steps.map((s) => s.type).join("-"),
+        workflowIdRef.current,
+        {
+          stepsTotal: queue.steps.length,
+          dispatcherMode: dispatcherTransport ? "dispatcher" : "static",
+        },
+      )
+      // Subscribe to queue events for telemetry updates
+      queueUnsubs.push(
+        session.eventBus.subscribeToType("queue:step-completed", () => {
+          telemetryLogger.updateRecord(telemetryRecord, {
+            steps_completed: telemetryRecord.steps_completed + 1,
+          })
+        }),
+        session.eventBus.subscribeToType("queue:step-failed", (e) => {
+          telemetryLogger.updateRecord(telemetryRecord, {
+            errors: [{ step: telemetryRecord.steps_completed, kind: "step-failed", message: e.reason ?? "unknown" }],
+          })
+        }),
       )
 
       const emitter = createFlywheelEmitter(session.eventBus)
@@ -1030,6 +1062,17 @@ export function FlywheelShell() {
           } catch (completionErr) {
             log.error("queue completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
           }
+        }
+
+        // Persist telemetry record
+        try {
+          telemetryLogger.updateRecord(telemetryRecord, {
+            completed_at: new Date().toISOString(),
+            duration_ms: Date.now() - new Date(telemetryRecord.started_at).getTime(),
+          })
+          await telemetryLogger.persist(telemetryRecord)
+        } catch (telErr) {
+          log.warn("telemetry persist failed", { error: telErr instanceof Error ? telErr.message : String(telErr) })
         }
       }
     })
@@ -1468,12 +1511,47 @@ export function FlywheelShell() {
 
         // Resolve dispatcher and evaluator transports
         const capturedProjectCwdResume = deps.config.project_cwd ?? process.cwd()
+        const resumeQueue = result.queue!
+
+        // Detect sprint queue early for evaluator system prompt addendum
+        const isDebugQueueResume = resumeQueue.steps.some(s => s.type === "debug")
+        const isSprintQueueResume = !isDebugQueueResume && resumeQueue.steps.some(s => s.type === "verify")
+        const evalAddendumResume = isSprintQueueResume ? SPRINT_EVALUATOR_ADDENDUM : undefined
+
         const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-          deps, session.eventBus, workflowIdRef, queueLogBaseDir, sessionId, capturedProjectCwdResume,
+          deps, session.eventBus, workflowIdRef, queueLogBaseDir, sessionId, capturedProjectCwdResume, evalAddendumResume,
+        )
+
+        // ── Telemetry Logger (resume) ──
+        const resumeTelemetryDir = `${capturedProjectCwd}/.flywheel/telemetry`
+        const resumeTelemetryLogger = new TelemetryLogger(resumeTelemetryDir)
+        const resumeTelemetryRecord = resumeTelemetryLogger.startRecord(
+          resumeQueue.steps.map((s) => s.type).join("-"),
+          workflowIdRef.current,
+          {
+            stepsTotal: resumeQueue.steps.length,
+            dispatcherMode: dispatcherTransport ? "dispatcher" : "static",
+          },
+        )
+        // Pre-fill completed step count from previously completed steps
+        const alreadyCompleted = resumeQueue.steps.filter((s) => s.status === "completed").length
+        if (alreadyCompleted > 0) {
+          resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, { steps_completed: alreadyCompleted })
+        }
+        queueUnsubs.push(
+          session.eventBus.subscribeToType("queue:step-completed", () => {
+            resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, {
+              steps_completed: resumeTelemetryRecord.steps_completed + 1,
+            })
+          }),
+          session.eventBus.subscribeToType("queue:step-failed", (e) => {
+            resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, {
+              errors: [{ step: resumeTelemetryRecord.steps_completed, kind: "step-failed", message: e.reason ?? "unknown" }],
+            })
+          }),
         )
 
         const emitter = createFlywheelEmitter(session.eventBus)
-        const resumeQueue = result.queue!
         const resumeProjectCwd = deps.config.project_cwd ?? process.cwd()
 
         // Build shared executor dependencies (dispatcher, accumulator, evaluator, hooks, worker, handoff reader)
@@ -1643,6 +1721,17 @@ export function FlywheelShell() {
             } catch (completionErr) {
               log.error("queue resume completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
             }
+          }
+
+          // Persist telemetry record (resume path)
+          try {
+            resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, {
+              completed_at: new Date().toISOString(),
+              duration_ms: Date.now() - new Date(resumeTelemetryRecord.started_at).getTime(),
+            })
+            await resumeTelemetryLogger.persist(resumeTelemetryRecord)
+          } catch (telErr) {
+            log.warn("telemetry persist failed (resume)", { error: telErr instanceof Error ? telErr.message : String(telErr) })
           }
         }
       })
@@ -2227,9 +2316,7 @@ export function FlywheelShell() {
       case "return-idle":
         returnToIdle()
         return
-      case "cancel-import":
-        setAppState("idle")
-        return
+
     }
   }
 

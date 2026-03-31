@@ -556,6 +556,115 @@ describe("VAL-SPRINT-008: Escalation inserts plan→work→review", () => {
   });
 });
 
+describe("Escalation guard: post-escalation steps bypass sprint iteration logic", () => {
+  test("work step after escalation does not increment iterationCount or insert retry pairs", async () => {
+    const handler = createSprintQueueHandler(createDefaultSprintOptions({
+      sprintConfig: {
+        max_iterations: 1,
+        verification_timeout_ms: 30000,
+        escalate_to_full: true,
+        escalate_on_stuck: false,
+      },
+    }));
+
+    const queue = buildQueueFromTemplate("sprint");
+
+    // -- Trigger escalation: complete work, fail verify at max_iterations=1 --
+    queue.steps[0].status = "completed";
+    await handler.onStepCompleted(queue.steps[0], "completed", queue, {
+      summary: "Attempt 1",
+      verification_script_path: ".flywheel/verify/test.ts",
+    });
+
+    queue.steps[1].status = "failed";
+    await handler.onStepCompleted(queue.steps[1], "failed", queue, {
+      verificationResult: {
+        passed: false, stdout: "FAIL", stderr: "", exitCode: 1, durationMs: 100,
+      },
+    });
+
+    // Confirm escalation occurred
+    const stateAfterEscalation = handler.getState();
+    expect(stateAfterEscalation.escalated).toBe(true);
+    expect(stateAfterEscalation.iterationCount).toBe(1);
+
+    // Escalation steps: [plan, work, review] appended after verify
+    const pendingSteps = queue.steps.filter((s) => s.status === "pending");
+    expect(pendingSteps).toHaveLength(3);
+    expect(pendingSteps.map((s) => s.type)).toEqual(["plan", "work", "review"]);
+
+    const stepsBeforeEscalationWork = queue.steps.length;
+
+    // -- Simulate escalation work step completing --
+    const escalationWorkStep = pendingSteps[1]; // the "work" step from escalation
+    escalationWorkStep.status = "completed";
+    const result = await handler.onStepCompleted(
+      escalationWorkStep, "completed", queue, { summary: "Escalation work done" },
+    );
+
+    // Guard should return continueExecution: false without touching sprint state
+    expect(result.continueExecution).toBe(false);
+
+    const stateAfterEscalationWork = handler.getState();
+    // iterationCount must NOT have changed
+    expect(stateAfterEscalationWork.iterationCount).toBe(1);
+    // No new steps inserted (no retry pair)
+    expect(queue.steps.length).toBe(stepsBeforeEscalationWork);
+  });
+
+  test("plan and review steps after escalation also bypass sprint logic", async () => {
+    const handler = createSprintQueueHandler(createDefaultSprintOptions({
+      sprintConfig: {
+        max_iterations: 1,
+        verification_timeout_ms: 30000,
+        escalate_to_full: true,
+        escalate_on_stuck: false,
+      },
+    }));
+
+    const queue = buildQueueFromTemplate("sprint");
+
+    // Trigger escalation
+    queue.steps[0].status = "completed";
+    await handler.onStepCompleted(queue.steps[0], "completed", queue, {
+      summary: "Attempt 1",
+      verification_script_path: ".flywheel/verify/test.ts",
+    });
+
+    queue.steps[1].status = "failed";
+    await handler.onStepCompleted(queue.steps[1], "failed", queue, {
+      verificationResult: {
+        passed: false, stdout: "FAIL", stderr: "", exitCode: 1, durationMs: 100,
+      },
+    });
+
+    const pendingSteps = queue.steps.filter((s) => s.status === "pending");
+    const [planStep, workStep, reviewStep] = pendingSteps;
+
+    // Complete escalation plan step
+    planStep.status = "completed";
+    const planResult = await handler.onStepCompleted(planStep, "completed", queue, null);
+    expect(planResult.continueExecution).toBe(false);
+
+    // Complete escalation work step
+    workStep.status = "completed";
+    const workResult = await handler.onStepCompleted(workStep, "completed", queue, {
+      summary: "Escalation implementation done",
+    });
+    expect(workResult.continueExecution).toBe(false);
+
+    // Complete escalation review step
+    reviewStep.status = "completed";
+    const reviewResult = await handler.onStepCompleted(reviewStep, "completed", queue, null);
+    expect(reviewResult.continueExecution).toBe(false);
+
+    // Sprint state unchanged after all escalation steps
+    const finalState = handler.getState();
+    expect(finalState.iterationCount).toBe(1);
+    expect(finalState.escalated).toBe(true);
+  });
+});
+
 describe("VAL-SPRINT-009: Escalation context carries iteration history", () => {
   test("getState returns escalation context with full history", async () => {
     const handler = createSprintQueueHandler(createDefaultSprintOptions({

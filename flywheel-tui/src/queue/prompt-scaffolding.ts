@@ -8,6 +8,12 @@
 //
 // Each step type gets appropriate output format instructions and handoff
 // writing instructions. Gate steps get no scaffolding.
+//
+// NOTE: Sprint work/revision steps bypass this entire pipeline. The sprint
+// handler builds their prompts from scratch via buildSprintStepPrompt() and
+// buildSprintRevisionPrompt() (in queue/prompts/sprint-step.ts and
+// sprint-revision.ts), using WorkflowStepContext instead of StepContext.
+// See queue/prompts/types.ts for why the two architectures coexist.
 // ---------------------------------------------------------------------------
 
 import type { Step, StepType } from "./types";

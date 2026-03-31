@@ -14,9 +14,25 @@
 
 import type { DispatcherTransport } from "./transport";
 import type { ProcessSpawner } from "../worker/spawner";
-import { SDK_AVAILABLE } from "./sdk-transport";
 import { SubprocessTransport } from "./subprocess-transport";
 import { Log } from "../utils/log";
+
+// ---------------------------------------------------------------------------
+// SDK availability detection
+// ---------------------------------------------------------------------------
+
+let _sdkAvailable = false;
+
+try {
+  const sdk = await import("@opencode-ai/sdk");
+  if ("createOpencodeClient" in sdk) {
+    _sdkAvailable = true;
+  }
+} catch {
+  // SDK not available — that's fine
+}
+
+export const SDK_AVAILABLE: boolean = _sdkAvailable;
 
 const log = Log.create({ service: "dispatcher" });
 

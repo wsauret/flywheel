@@ -1,7 +1,6 @@
 import type { DispatcherDecision } from "../dispatcher/schemas";
 import type { EvaluatorResult } from "../evaluator/schemas";
 import type { WorkerResult, WorkerFailureReason } from "../worker/schemas";
-import type { ExecutionStatus } from "../schemas/execution";
 import type { QuestionInfo, QuestionAnswer } from "../queue/question-service";
 
 // ---------------------------------------------------------------------------

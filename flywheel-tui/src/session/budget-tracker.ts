@@ -54,6 +54,10 @@ export interface BudgetTrackerDeps {
   baseDir: string;
   /** Debounce interval in ms. Default: 100ms */
   debounceMs?: number;
+  /** Optional emitter for budget events. When provided, budget:exhausted is emitted on first exhaustion. */
+  emitter?: Pick<import("../events/event-bus").FlywheelEmitter, "budgetExhausted" | "budgetWarning">;
+  /** Workflow ID used when emitting budget events. */
+  workflowId?: string;
 }
 
 export interface BudgetTracker {
@@ -84,7 +88,7 @@ export interface BudgetTracker {
 const DEFAULT_DEBOUNCE_MS = 100;
 
 export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
-  const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS } = deps;
+  const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId } = deps;
 
   let totalCost = 0;
   let tokensUsed = 0;
@@ -92,6 +96,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   let pendingWrite = false;
   let timerId: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
+  let wasExhausted = false;
 
   // -------------------------------------------------------------------------
   // Persistence
@@ -177,26 +182,40 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   // -------------------------------------------------------------------------
 
   function isExhausted(budgetLimits: BudgetLimits): boolean {
+    let exhausted = false;
+    let reason = "";
+
     // Check invocation limit (0 = unlimited)
     if (budgetLimits.max_invocations > 0 && invocationsUsed >= budgetLimits.max_invocations) {
-      return true;
+      exhausted = true;
+      reason = `Invocation limit reached (${invocationsUsed}/${budgetLimits.max_invocations})`;
     }
 
     // Check token limit (null = unlimited)
-    if (budgetLimits.max_tokens !== null && tokensUsed >= budgetLimits.max_tokens) {
-      return true;
+    if (!exhausted && budgetLimits.max_tokens !== null && tokensUsed >= budgetLimits.max_tokens) {
+      exhausted = true;
+      reason = `Token limit reached (${tokensUsed}/${budgetLimits.max_tokens})`;
     }
 
     // Check wall clock deadline (null = no deadline)
-    if (budgetLimits.wall_clock_deadline !== null) {
+    if (!exhausted && budgetLimits.wall_clock_deadline !== null) {
       const deadlineMs = new Date(budgetLimits.wall_clock_deadline).getTime();
       // Guard against invalid date strings (NaN)
       if (!Number.isNaN(deadlineMs) && Date.now() >= deadlineMs) {
-        return true;
+        exhausted = true;
+        reason = "Wall clock deadline exceeded";
       }
     }
 
-    return false;
+    // Emit budget:exhausted on first transition from non-exhausted to exhausted
+    if (exhausted && !wasExhausted && emitter && workflowId) {
+      wasExhausted = true;
+      emitter.budgetExhausted(workflowId, reason);
+    } else if (exhausted) {
+      wasExhausted = true;
+    }
+
+    return exhausted;
   }
 
   // -------------------------------------------------------------------------

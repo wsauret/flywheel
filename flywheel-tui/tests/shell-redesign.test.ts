@@ -49,12 +49,8 @@ describe("escapeForState", () => {
     expect(escapeForState("completed")).toBe("return-idle");
   });
 
-  it("importing -> cancel-import", () => {
-    expect(escapeForState("importing")).toBe("cancel-import");
-  });
-
-  it("covers all four states", () => {
-    const states: AppState[] = ["idle", "working", "completed", "importing"];
+  it("covers all three states", () => {
+    const states: AppState[] = ["idle", "working", "completed"];
     for (const state of states) {
       expect(() => escapeForState(state)).not.toThrow();
     }
@@ -78,9 +74,7 @@ describe("ctrlCForState", () => {
     expect(ctrlCForState("completed")).toBe("return-idle");
   });
 
-  it("importing -> exit-tui", () => {
-    expect(ctrlCForState("importing")).toBe("exit-tui");
-  });
+
 });
 
 // ---------------------------------------------------------------------------
