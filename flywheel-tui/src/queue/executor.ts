@@ -535,6 +535,9 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       // (6) Invoke evaluator for quality check (if configured)
       if (evaluator) {
+        const stepIndex = queue.steps.findIndex((s) => s.id === step.id);
+        emitter.evaluatorInvoked(workflowId, stepIndex);
+
         let evalResult = await evaluator(step, workerOutput.output, evaluationCriteria, handoffData);
         lastEvalResult = evalResult;
 
@@ -544,8 +547,18 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
             stepId: step.id,
             reason: evalResult.reason,
           });
-          // Skip evaluation entirely — treat as pass
+          emitter.evaluatorFailed(workflowId, evalResult.reason ?? "transport error");
         } else {
+          emitter.evaluatorCompleted(workflowId, {
+            passed: evalResult.passed,
+            reasoning: evalResult.reason ?? "",
+            suggestions: evalResult.suggestions,
+            confidence: 0,
+            feedback: evalResult.feedback ?? "",
+            files_to_review: [],
+            issues: [],
+          });
+
           // (7) Handle revision loop (up to max_revisions)
           let revisionAttempt = 0;
           while (!evalResult.passed && !evalResult.skipped && revisionAttempt < maxRevisions) {
@@ -557,6 +570,8 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
               maxRevisions,
               reason: evalResult.reason,
             });
+
+            emitter.evaluatorRevisionRequested(workflowId, stepIndex, revisionAttempt, maxRevisions, evalResult.reason ?? "revision needed");
 
             // Build revision prompt with evaluator feedback
             currentPrompt = buildRevisionPrompt(currentPrompt, evalResult);
@@ -572,6 +587,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
             }
 
             // Re-evaluate (pass evaluationCriteria and handoff through revision loop)
+            emitter.evaluatorInvoked(workflowId, stepIndex);
             evalResult = await evaluator(step, workerOutput.output, evaluationCriteria, handoffData);
             lastEvalResult = evalResult;
 
@@ -581,8 +597,19 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
                 stepId: step.id,
                 revisionAttempt,
               });
+              emitter.evaluatorFailed(workflowId, evalResult.reason ?? "transport error during revision");
               break;
             }
+
+            emitter.evaluatorCompleted(workflowId, {
+              passed: evalResult.passed,
+              reasoning: evalResult.reason ?? "",
+              suggestions: evalResult.suggestions,
+              confidence: 0,
+              feedback: evalResult.feedback ?? "",
+              files_to_review: [],
+              issues: [],
+            });
           }
 
           // After revision loop: check if evaluation passed

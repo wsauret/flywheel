@@ -97,6 +97,23 @@ describe("OpenTUIAdapter", () => {
       expect(adapter.timer.isStopped()).toBe(true);
     });
 
+    it("queue:step-started adds a visible step boundary system block", () => {
+      const { bus, store } = createHarness();
+      bus.emit({
+        type: "queue:step-started",
+        workflowId: "w1",
+        stepId: "s1",
+        stepType: "work",
+        stepTitle: "Implement feature",
+        timestamp: ts(),
+      });
+
+      const systemBlocks = store.getState().outputBlocks.filter((b: any) => b.kind === "system");
+      expect(systemBlocks.length).toBeGreaterThanOrEqual(1);
+      expect(systemBlocks[0].message).toContain("[step-boundary]");
+      expect(systemBlocks[0].message).toContain("WORK · Implement feature");
+    });
+
     // -- Worker events --
 
     it("worker:output stdout → structured outputBlocks", () => {

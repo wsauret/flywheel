@@ -406,7 +406,6 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
     expect(prompt).toContain("issues");
-    expect(prompt).toContain("Issue");
   });
 
   it("prompt describes severity enum values", async () => {
@@ -486,7 +485,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
 // ---------------------------------------------------------------------------
 
 describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)", () => {
-  it("prompt instructs evaluator to verify claims and classify issues", async () => {
+  it("prompt instructs evaluator to classify issues with severity and category", async () => {
     const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
@@ -497,9 +496,6 @@ describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)"
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
-    // Should instruct re-running commands and checking acceptance criteria
-    expect(prompt).toContain("Re-run Claimed Commands");
-    expect(prompt).toContain("Check Acceptance Criteria");
     expect(prompt).toContain("blocking");
     expect(prompt).toContain("test_failure");
     expect(prompt).toContain("type_error");
@@ -561,7 +557,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     expect(securitySectionMatch).toBe(true);
   });
 
-  it("prompt mentions common secret patterns (API keys, tokens)", async () => {
+  it("prompt mentions secrets as a fail condition", async () => {
     const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
@@ -572,8 +568,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     });
     await transport.invoke(baseEvaluatorInput());
     const prompt = getPrompt();
-    // Should mention specific patterns like API keys, passwords, tokens
-    expect(prompt.toLowerCase()).toMatch(/api.?key|password|token|credential/);
+    expect(prompt.toLowerCase()).toContain("secrets");
   });
 });
 

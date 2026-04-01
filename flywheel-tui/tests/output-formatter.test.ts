@@ -1,8 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import {
   extractDisplayText,
+  formatDisplayPath,
   getToolDetail,
 } from "../src/tui/adapters/output-formatter";
+import * as path from "node:path";
 
 describe("output-formatter", () => {
   // ── extractDisplayText ──
@@ -110,9 +112,8 @@ describe("output-formatter", () => {
 
   describe("getToolDetail", () => {
     it("Read shows file_path", () => {
-      expect(getToolDetail("Read", { file_path: "/src/index.ts" })).toBe(
-        "/src/index.ts",
-      );
+      const filePath = path.join(process.cwd(), "src/index.ts");
+      expect(getToolDetail("Read", { file_path: filePath })).toBe("src/index.ts");
     });
 
     it("Write shows file_path", () => {
@@ -170,6 +171,17 @@ describe("output-formatter", () => {
 
     it("unknown tool with no string values returns null", () => {
       expect(getToolDetail("CustomTool", { count: 5 })).toBeNull();
+    });
+  });
+
+  describe("formatDisplayPath", () => {
+    it("returns relative paths unchanged", () => {
+      expect(formatDisplayPath("src/index.ts")).toBe("src/index.ts");
+    });
+
+    it("converts absolute project paths to relative paths", () => {
+      const filePath = path.join(process.cwd(), "src/index.ts");
+      expect(formatDisplayPath(filePath)).toBe("src/index.ts");
     });
   });
 

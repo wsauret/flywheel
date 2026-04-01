@@ -205,12 +205,12 @@ describe("sidebarKeyHandler", () => {
 // ---------------------------------------------------------------------------
 
 describe("Session selection actions", () => {
-  it("selecting a work:paused session returns 'open' action", () => {
+  it("selecting a work:paused session returns 'resume' action", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
     const sessions = [session];
     const result = sidebarKeyHandler("select", sessions, 0);
     expect(result.selectedSessionId).toBe(session.id);
-    expect(result.action).toBe("open");
+    expect(result.action).toBe("resume");
   });
 
   it("selecting a work:active session returns 'open' action", () => {
@@ -259,9 +259,14 @@ describe("Session selection actions", () => {
 // ---------------------------------------------------------------------------
 
 describe("getOpenAction (extended)", () => {
-  it("work:paused → 'open'", () => {
+  it("work:paused → 'resume'", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getOpenAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("resume");
+  });
+
+  it("budget_exhausted → 'resume'", () => {
+    const session = makeSession({ lifecycleState: "budget_exhausted" });
+    expect(getOpenAction(session)).toBe("resume");
   });
 
   it("work:active → 'open'", () => {
@@ -269,7 +274,7 @@ describe("getOpenAction (extended)", () => {
     expect(getOpenAction(session)).toBe("open");
   });
 
-  it("completed → 'open'", () => {
+  it("completed → 'open' (view-only, not resume)", () => {
     const session = makeSession({ lifecycleState: "completed" });
     expect(getOpenAction(session)).toBe("open");
   });
@@ -310,9 +315,14 @@ describe("getOpenAction", () => {
     expect(getOpenAction(session)).toBe("open");
   });
 
-  it("work:paused → 'open'", () => {
+  it("work:paused → 'resume'", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getOpenAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("resume");
+  });
+
+  it("budget_exhausted → 'resume'", () => {
+    const session = makeSession({ lifecycleState: "budget_exhausted" });
+    expect(getOpenAction(session)).toBe("resume");
   });
 
   it("completed → 'open'", () => {

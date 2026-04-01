@@ -412,6 +412,16 @@ describe("buildScaffolding — field spec integration", () => {
       expect(output).toContain("/tmp/test-handoff.json");
     }
   });
+
+  it("renderHandoffInstruction requires writing artifacts before the handoff file", () => {
+    const { renderHandoffInstruction } = require("../src/queue/shared/handoff-render");
+    const { PLAN_RESEARCH_FIELDS } = require("../src/queue/steps/plan-research/fields");
+
+    const output = renderHandoffInstruction(PLAN_RESEARCH_FIELDS, "/tmp/test-handoff.json");
+
+    expect(output).toContain("complete those artifact writes first and write the handoff file last");
+    expect(output).toContain("the queue may auto-complete the step immediately");
+  });
 });
 
 // ---------------------------------------------------------------------------

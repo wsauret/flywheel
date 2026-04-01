@@ -1,4 +1,9 @@
 import { describe, it, expect } from "bun:test";
+import {
+  getDisplayedStepStatus,
+  getDisplayedWorkflowStatus,
+  getStepTitleMaxWidth,
+} from "../src/tui/components/workflow-panel-logic";
 
 /**
  * WorkflowView / WorkShell / StepProgress / TelemetryBar generalization tests.
@@ -75,6 +80,30 @@ describe("TelemetryBar display text", () => {
 
   it("uses custom stepLabel 'Cycle'", () => {
     expect(stepDisplayText(0, 2, "Cycle")).toBe("Cycle 0/2");
+  });
+});
+
+describe("Workflow panel step title truncation", () => {
+  it("uses a shorter title width when a duration is visible", () => {
+    expect(getStepTitleMaxWidth(true)).toBeLessThan(getStepTitleMaxWidth(false));
+  });
+
+  it("preserves the existing wider width when no duration is shown", () => {
+    expect(getStepTitleMaxWidth(false)).toBe(22);
+  });
+});
+
+describe("Interrupted display state", () => {
+  it("maps a running step to paused when interrupted", () => {
+    expect(getDisplayedStepStatus("running", true)).toBe("paused");
+  });
+
+  it("keeps non-running step statuses unchanged when interrupted", () => {
+    expect(getDisplayedStepStatus("completed", true)).toBe("completed");
+  });
+
+  it("maps running workflow status to interrupted when interrupted", () => {
+    expect(getDisplayedWorkflowStatus("running", true)).toBe("interrupted");
   });
 });
 

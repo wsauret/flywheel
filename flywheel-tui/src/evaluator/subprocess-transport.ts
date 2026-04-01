@@ -43,12 +43,9 @@ const MAX_RETRIES = 1;
 
 /** Evaluator system prompt — used as --system-prompt for Claude (separate for caching). */
 const EVALUATOR_SYSTEM_PROMPT =
-  "You are a verification agent with a strict 60-second time limit. " +
-  "Your ONLY job is to evaluate the worker's output against acceptance criteria and write a JSON verdict. " +
-  "You have tools (Read, Bash, Grep, Glob, Write) but use them SPARINGLY — at most 2-3 quick checks. " +
-  "Do NOT explore the codebase broadly. Do NOT read files unless directly needed to verify a specific claim. " +
-  "Evaluate from the provided input first. Only use tools to spot-check suspicious claims. " +
-  "WRITE THE HANDOFF JSON FILE IMMEDIATELY after forming your verdict — do not delay.";
+  "You are a 60-second verification agent. Read the input, form a verdict, write the JSON file. " +
+  "You have tools but should almost never need them. Only use a tool if you see a specific red flag " +
+  "that requires one quick check to confirm. Write the verdict file IMMEDIATELY — every second counts.";
 
 // ---------------------------------------------------------------------------
 // SubprocessEvaluatorTransport
@@ -222,18 +219,17 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
 
     // Task context
     if (input.task_context) {
-      sections.push("## Task Context", input.task_context, "");
+      sections.push(`## Task\n${input.task_context}`, "");
     }
 
-    // Worker handoff data
+    // Worker handoff data (compact)
     if (input.handoff) {
-      sections.push("## Worker Summary", input.handoff.summary, "");
+      sections.push(`## Worker Summary\n${input.handoff.summary}`, "");
 
       if (input.handoff.verification) {
-        sections.push(
-          "## Worker-Reported Verification",
-          `Tests passed: ${input.handoff.verification.tests_passed === null ? "unknown" : input.handoff.verification.tests_passed ? "yes" : "no"}`,
-        );
+        const testStatus = input.handoff.verification.tests_passed === null ? "unknown"
+          : input.handoff.verification.tests_passed ? "yes" : "no";
+        sections.push(`Tests passed: ${testStatus}`);
         if (input.handoff.verification.test_output_summary) {
           sections.push(input.handoff.verification.test_output_summary);
         }
@@ -241,136 +237,41 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
       }
 
       if (input.handoff.artifacts) {
-        const filesCreated = input.handoff.artifacts.files_created ?? [];
-        const filesModified = input.handoff.artifacts.files_modified ?? [];
-        const commandsRun = input.handoff.artifacts.commands_run ?? [];
-        if (filesCreated.length > 0 || filesModified.length > 0 || commandsRun.length > 0) {
-          sections.push("## Worker-Reported Artifacts");
-          if (filesCreated.length > 0) {
-            sections.push("Files created:", ...filesCreated.map((f) => `- \`${f}\``));
-          }
-          if (filesModified.length > 0) {
-            sections.push("Files modified:", ...filesModified.map((f) => `- \`${f}\``));
-          }
-          if (commandsRun.length > 0) {
-            sections.push("Commands run:", ...commandsRun.map((c) => {
-              if (typeof c === "string") return `- \`${c}\` (claimed exit code: 0)`;
-              const obj = c as Record<string, unknown>;
-              return `- \`${obj.command}\` (claimed exit code: ${obj.exitCode ?? obj.exit_code ?? 0})`;
-            }));
-          }
-          sections.push("");
+        const created = input.handoff.artifacts.files_created ?? [];
+        const modified = input.handoff.artifacts.files_modified ?? [];
+        const all = [...created.map(f => `+ ${f}`), ...modified.map(f => `~ ${f}`)];
+        if (all.length > 0) {
+          sections.push(`## Artifacts\n${all.join("\n")}`, "");
         }
       }
-
-      if (input.handoff.files_to_review && input.handoff.files_to_review.length > 0) {
-        sections.push(
-          "## Files to Review",
-          ...input.handoff.files_to_review.map((f) => `- \`${f}\``),
-          "",
-        );
-      }
     } else {
-      sections.push("## Worker Output", input.worker_output, "");
+      sections.push(`## Worker Output\n${input.worker_output}`, "");
     }
 
-    sections.push("## Evaluation Criteria", input.evaluation_criteria, "");
+    if (input.evaluation_criteria) {
+      sections.push(`## Criteria\n${input.evaluation_criteria}`, "");
+    }
 
     if (input.acceptance_criteria.length > 0) {
-      sections.push(
-        "## Acceptance Criteria",
-        ...input.acceptance_criteria.map((c) => `- ${c}`),
-        "",
-      );
+      sections.push(`## Acceptance\n${input.acceptance_criteria.map(c => `- ${c}`).join("\n")}`, "");
     }
 
-    if (input.artifacts_produced.length > 0) {
-      sections.push(
-        "## Artifacts Produced",
-        ...input.artifacts_produced.map((a) => `- ${a}`),
-        "",
-      );
-    }
-
-    if (input.tests_passed !== null) {
-      sections.push("## Test Results", `Tests passed: ${input.tests_passed ? "yes" : "no"}`, "");
-    }
-
-    if (input.context_files.length > 0) {
-      sections.push(
-        "## Files the Worker Had Access To",
-        ...input.context_files.map((f) => `- \`${f}\``),
-        "",
-      );
-    }
-
-    sections.push("## Timing", `Step took ${input.duration_seconds}s to complete.`, "");
-
-    // -----------------------------------------------------------------------
-    // Verification instructions — the evaluator has tools to investigate
-    // -----------------------------------------------------------------------
+    // Verdict instructions — kept minimal for speed
     sections.push(
-      "## Verification Procedure",
+      `## Verdict`,
       "",
-      "You have tools: Read, Bash, Grep, Glob, Write. Use them to verify the worker's claims.",
+      "You have 60 seconds. Read the above, decide pass/fail, write the JSON verdict file.",
+      "Only use tools if you see a specific red flag that needs one quick check to confirm.",
       "",
-      "### Step 1: Verify Files Exist",
-      "For each file the worker claims to have created or modified, check that it exists on disk.",
-      "If a claimed file is missing, use Grep/Glob to search for it — the worker may have written",
-      "it to a slightly different path. If you find it elsewhere, note the discrepancy but do NOT",
-      "fail the step for a path mismatch alone.",
+      "Fail ONLY for hard evidence: tests actually failing, secrets in code, critical deliverables missing, or fundamentally wrong output.",
+      "When in doubt, pass with suggestions. Revision loops are expensive.",
       "",
-      "### Step 2: Re-run Claimed Commands",
-      "For each command the worker claims to have run (listed under Worker-Reported Artifacts),",
-      "re-run it using Bash and compare the exit code to what the worker claimed. If a command",
-      "fails when the worker said it passed, investigate why — read the output, check if the",
-      "failure is due to environment differences, or if the worker genuinely fabricated results.",
-      "A grep returning no matches (exit code 1) when the worker claimed exit code 0 may mean",
-      "the code was already cleaned up correctly — investigate before failing.",
+      "Write this JSON to the handoff file:",
+      "```json",
+      `{ "passed": true, "reasoning": "...", "suggestions": [], "confidence": 0.9, "feedback": "", "files_to_review": [], "issues": [] }`,
+      "```",
       "",
-      "### Step 3: Check Acceptance Criteria",
-      "Compare the worker's output against each acceptance criterion. Use your tools to spot-check",
-      "claims — e.g., if a criterion says 'tests pass', run the test command. If it says 'file",
-      "contains X', read the file and verify.",
-      "",
-      "### Step 4: Security Scan",
-      "Scan the worker's output and any created/modified files for secrets, credentials, or API keys",
-      "(patterns: AKIA..., sk-..., ghp_..., passwords, connection strings).",
-      "",
-    );
-
-    // -----------------------------------------------------------------------
-    // Verdict instructions
-    // -----------------------------------------------------------------------
-    sections.push(
-      "## Verdict Instructions",
-      "",
-      "After investigating, write your JSON verdict to the handoff file. Schema:",
-      '`{ "passed": boolean, "reasoning": string, "suggestions": string[], "confidence": number, "feedback": string, "files_to_review": string[], "issues": Issue[] }`',
-      "",
-      "Field definitions:",
-      "- **passed**: true if the output substantially meets acceptance criteria. Bias toward passing.",
-      "- **reasoning**: your assessment based on what you investigated and found.",
-      "- **suggestions**: improvement suggestions (empty array [] if none).",
-      "- **confidence**: float 0.0-1.0. 0.9+ = clear verdict, 0.5-0.7 = borderline.",
-      "- **feedback**: actionable feedback for the worker if retrying. Empty string if passed.",
-      "- **files_to_review**: file paths needing further review (empty array [] if none).",
-      "- **issues**: structured issues found. Each: `{description, severity, category}`",
-      '  - severity: "blocking" or "non_blocking"',
-      '  - category: "test_failure" | "type_error" | "security" | "regression" | "incomplete" | "other"',
-      "",
-      "## CRITICAL: Bias Toward Passing",
-      "",
-      "Revision loops are EXPENSIVE — they double the cost and time of a step.",
-      "Only fail when you have HARD EVIDENCE from your investigation:",
-      "- You re-ran tests and they actually fail",
-      "- You found secrets/credentials in files you read",
-      "- Critical deliverables are genuinely missing (not just at a different path)",
-      "- The worker's output is fundamentally wrong or addresses the wrong task",
-      "",
-      "Do NOT fail for: path discrepancies (if the file exists elsewhere), format deviations,",
-      "the worker taking a different but valid approach, or minor differences from criteria wording.",
-      "When in doubt, pass with suggestions.",
+      "issues schema: `{description: string, severity: \"blocking\"|\"non_blocking\", category: \"test_failure\"|\"type_error\"|\"security\"|\"regression\"|\"incomplete\"|\"other\"}`",
     );
 
     return sections.join("\n");

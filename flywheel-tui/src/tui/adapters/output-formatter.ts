@@ -13,6 +13,8 @@
  * Falls back to raw text for non-JSON input.
  */
 
+import * as path from "node:path";
+
 /**
  * Extract displayable text from a stream-json NDJSON line.
  *
@@ -86,12 +88,12 @@ export function getToolDetail(
 ): string | null {
   switch (name) {
     case "Read":
-      return truncate(input.file_path as string, 80);
+      return truncate(formatDisplayPath(input.file_path as string), 80);
     case "Write":
-      return truncate(input.file_path as string, 80);
+      return truncate(formatDisplayPath(input.file_path as string), 80);
     case "Edit": {
       const fp = input.file_path as string | undefined;
-      return fp ? truncate(fp, 80) : null;
+      return fp ? truncate(formatDisplayPath(fp), 80) : null;
     }
     case "Bash": {
       const cmd = input.command as string | undefined;
@@ -121,6 +123,18 @@ export function getToolDetail(
       return null;
     }
   }
+}
+
+export function formatDisplayPath(filePath: string | undefined | null): string | null {
+  if (!filePath) return null;
+  if (!path.isAbsolute(filePath)) return filePath;
+
+  const relativePath = path.relative(process.cwd(), filePath);
+  if (relativePath.length === 0) {
+    return path.basename(filePath);
+  }
+
+  return relativePath;
 }
 
 function truncate(

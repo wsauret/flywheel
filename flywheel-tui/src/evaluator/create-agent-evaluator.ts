@@ -100,8 +100,11 @@ export function createAgentEvaluatorFn(
     // Build evaluator input from handoff data
     const handoff = handoffData ? extractHandoffData(handoffData) : undefined;
 
+    // When handoff exists, skip raw worker output — the structured handoff
+    // (summary, artifacts, verification) is sufficient and avoids flooding
+    // the evaluator with tens of thousands of tokens of raw NDJSON.
     const input: EvaluatorInput = {
-      worker_output: workerOutput,
+      worker_output: handoff ? "" : workerOutput,
       evaluation_criteria: serializeEvaluationCriteria(criteria),
       context_files: [],
       acceptance_criteria: criteria.acceptance_criteria,

@@ -582,7 +582,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     expect(prompt).not.toContain("## Worker Summary");
   });
 
-  it("renders Verification section from handoff", async () => {
+  it("renders verification info from handoff", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -602,12 +602,11 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Worker-Reported Verification");
     expect(prompt).toContain("Tests passed: yes");
     expect(prompt).toContain("24/24 tests pass");
   });
 
-  it("renders Artifacts section from handoff", async () => {
+  it("renders artifacts from handoff", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -628,13 +627,11 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Worker-Reported Artifacts");
     expect(prompt).toContain("src/auth.ts");
     expect(prompt).toContain("src/app.ts");
-    expect(prompt).toContain("bun test");
   });
 
-  it("renders Files to Review section from handoff", async () => {
+  it("renders files to review from handoff (not currently in lean prompt)", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -651,12 +648,11 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Files to Review");
-    expect(prompt).toContain("src/auth.ts");
-    expect(prompt).toContain("tests/auth.test.ts");
+    // Lean prompt still includes the worker summary; files_to_review removed for speed
+    expect(prompt).toContain("Worker Summary");
   });
 
-  it("still includes evaluation criteria, timing, and instructions alongside handoff data", async () => {
+  it("includes evaluation criteria and verdict section alongside handoff data", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -674,10 +670,8 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
     }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Evaluation Criteria");
+    expect(prompt).toContain("## Criteria");
     expect(prompt).toContain("All tests must pass");
-    expect(prompt).toContain("## Timing");
-    expect(prompt).toContain("42s");
-    expect(prompt).toContain("## Verdict Instructions");
+    expect(prompt).toContain("## Verdict");
   });
 });

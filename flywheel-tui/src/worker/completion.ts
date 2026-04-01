@@ -10,6 +10,7 @@
  */
 
 import * as fs from "node:fs";
+import { WorkerHandoffSchema } from "../queue/shared/handoff-schemas";
 
 /**
  * Regex for NDJSON result event indicating successful completion.
@@ -59,13 +60,24 @@ export class CompletionDetector {
   }
 
   /**
-   * Check if a handoff file exists at the given path.
-   * Returns true if the file exists, false otherwise.
+   * Check if a handoff file exists and already contains a valid worker handoff.
+   * Returns true only when the file parses and satisfies the handoff schema,
+   * including the required summary field.
    */
   checkHandoffFile(handoffPath: string): boolean {
     if (!handoffPath) return false;
     try {
-      return fs.existsSync(handoffPath);
+      if (!fs.existsSync(handoffPath)) {
+        return false;
+      }
+
+      const text = fs.readFileSync(handoffPath, "utf-8");
+      if (text.trim().length === 0) {
+        return false;
+      }
+
+      const parsed = JSON.parse(text) as unknown;
+      return WorkerHandoffSchema.safeParse(parsed).success;
     } catch {
       return false;
     }

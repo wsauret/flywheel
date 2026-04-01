@@ -42,6 +42,7 @@ export interface OutputWindowProps {
   isPromptFocused: boolean
   availableWidth?: number
   currentStep?: CurrentStepInfo | null
+  isInterrupted?: boolean
 }
 
 export function OutputWindow(props: OutputWindowProps) {
@@ -65,8 +66,14 @@ export function OutputWindow(props: OutputWindowProps) {
 
   const activityPhrase = () => {
     if (props.approvalPending) return "Waiting for approval..."
-    if (props.currentStep?.status === "running") return "Executing step..."
     return null
+  }
+
+  const currentStepStatusLabel = () => (props.isInterrupted ? "interrupted" : props.currentStep?.status ?? "")
+
+  const currentStepStatusColor = () => {
+    if (props.isInterrupted) return themeCtx.theme.warning
+    return props.currentStep ? getStepStatusColor(props.currentStep.status, themeCtx.theme) : themeCtx.theme.text
   }
 
   return (
@@ -107,8 +114,8 @@ export function OutputWindow(props: OutputWindowProps) {
                 {/* Line 2: Status icon */}
                 <box flexDirection="row">
                   <text fg={themeCtx.theme.border}>{" "}</text>
-                  <Show when={step().status === "running"} fallback={
-                    <text fg={statusColor()}>{getStepStatusIcon(step().status)} {step().status}</text>
+                  <Show when={step().status === "running" && !props.isInterrupted} fallback={
+                    <text fg={currentStepStatusColor()}>{props.isInterrupted ? "⏸" : getStepStatusIcon(step().status)} {currentStepStatusLabel()}</text>
                   }>
                     <Spinner color={statusColor()} />
                     <text fg={statusColor()}> {step().status}</text>
@@ -147,8 +154,8 @@ export function OutputWindow(props: OutputWindowProps) {
                     </text>
                   </box>
                   <box flexDirection="row">
-                    <Show when={step().status === "running"} fallback={
-                      <text fg={statusColor()}>{getStepStatusIcon(step().status)} {step().status}</text>
+                    <Show when={step().status === "running" && !props.isInterrupted} fallback={
+                      <text fg={currentStepStatusColor()}>{props.isInterrupted ? "⏸" : getStepStatusIcon(step().status)} {currentStepStatusLabel()}</text>
                     }>
                       <Spinner color={statusColor()} />
                       <text fg={statusColor()}> {step().status}</text>

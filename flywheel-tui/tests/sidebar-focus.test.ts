@@ -189,10 +189,10 @@ describe("sidebar navigation (shell perspective)", () => {
 // ---------------------------------------------------------------------------
 
 describe("sidebar selection from focused state", () => {
-  it("select on paused session returns open action", () => {
+  it("select on paused session returns resume action", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
     const result = sidebarKeyHandler("select", [session], 0);
-    expect(result.action).toBe("open");
+    expect(result.action).toBe("resume");
     expect(result.selectedSessionId).toBe(session.id);
   });
 
@@ -292,9 +292,9 @@ describe("sidebar focus guard conditions", () => {
 // ---------------------------------------------------------------------------
 
 describe("sidebar mouse click behavior", () => {
-  it("getOpenAction returns open for paused session", () => {
+  it("getOpenAction returns resume for paused session", () => {
     const session = makeSession({ lifecycleState: "work:paused" });
-    expect(getOpenAction(session)).toBe("open");
+    expect(getOpenAction(session)).toBe("resume");
   });
 
   it("getOpenAction returns open for active session", () => {
@@ -312,9 +312,9 @@ describe("sidebar mouse click behavior", () => {
     expect(getOpenAction(session)).toBeNull();
   });
 
-  it("getOpenAction returns open for all non-terminal sessions", () => {
+  it("getOpenAction returns open or resume for all non-terminal sessions", () => {
     expect(getOpenAction(makeSession({ lifecycleState: "work:active" }))).toBe("open");
-    expect(getOpenAction(makeSession({ lifecycleState: "work:paused" }))).toBe("open");
+    expect(getOpenAction(makeSession({ lifecycleState: "work:paused" }))).toBe("resume");
     expect(getOpenAction(makeSession({ lifecycleState: "completed" }))).toBe("open");
     expect(getOpenAction(makeSession({ lifecycleState: "work:review" }))).toBe("open");
     expect(getOpenAction(makeSession({ lifecycleState: "new" }))).toBe("open");
@@ -349,9 +349,9 @@ describe("sidebar mouse click behavior", () => {
     expect(completedIdx).toBe(2);
     expect(archivedIdx).toBe(3);
 
-    // All selectable sessions now return "open"
+    // Selectable sessions return "open" or "resume" based on resumability
     expect(sidebarKeyHandler("select", sessions, activeIdx).action).toBe("open");
-    expect(sidebarKeyHandler("select", sessions, pausedIdx).action).toBe("open");
+    expect(sidebarKeyHandler("select", sessions, pausedIdx).action).toBe("resume");
     expect(sidebarKeyHandler("select", sessions, completedIdx).action).toBe("open");
     // Archived is not selectable
     expect(sidebarKeyHandler("select", sessions, archivedIdx).action).toBeUndefined();

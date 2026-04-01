@@ -23,6 +23,7 @@ import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
 import { TimerService } from "../shared/services/timer";
 import { extractDisplayText } from "./output-formatter";
+import { formatDisplayPath } from "./output-formatter";
 import { NDJSONParser } from "../../worker/ndjson-parser";
 import { SubagentTraceParser } from "./subagent-tracing/parser";
 import { StructuredOutputBuilder } from "./structured-output-builder";
@@ -34,6 +35,8 @@ const FLUSH_INTERVAL_MS = 16;
 
 /** Timeout (ms) after which an agent with no activity is auto-completed. */
 const AGENT_STALE_TIMEOUT_MS = 30_000;
+
+const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
 export interface OpenTUIAdapterOptions {
   actions: UIActions;
@@ -391,6 +394,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       // Queue step lifecycle events — update store for panel display
       case "queue:step-started":
         log.info("Queue step started", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
+        this.builder.resetTracking();
+        this.pushSystemText(
+          `${STEP_BOUNDARY_PREFIX} ${this.formatStepBoundaryLabel(event.stepType, event.stepTitle)}\n`,
+          event.timestamp,
+        );
         this.actions.startQueueStep(event.stepId);
         break;
 
@@ -434,6 +442,10 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   private pushSystemText(text: string, timestamp: string): void {
     this.builder.pushSystemMessage(text, new Date(timestamp).getTime() || Date.now());
     this.flushBlocks();
+  }
+
+  private formatStepBoundaryLabel(stepType: string, stepTitle: string): string {
+    return `${stepType.toUpperCase()} · ${stepTitle}`;
   }
 
   /**
@@ -592,11 +604,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     if (!input) return "";
     // For Write/Edit tools, show the file path
     if (input.file_path && typeof input.file_path === "string") {
-      return input.file_path;
+      return formatDisplayPath(input.file_path) ?? "";
     }
     // For Read tools, show the file path
     if (input.path && typeof input.path === "string") {
-      return input.path;
+      return formatDisplayPath(input.path) ?? "";
     }
     // For Bash tools, show truncated command
     if (input.command && typeof input.command === "string") {

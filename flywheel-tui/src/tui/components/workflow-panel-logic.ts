@@ -18,6 +18,9 @@ export interface PanelProgress {
   failed: number
 }
 
+const STEP_TITLE_MAX_WITH_DURATION = 14
+const STEP_TITLE_MAX_WITHOUT_DURATION = 22
+
 // ---------------------------------------------------------------------------
 // computeQueueProgress — queue step progress
 // ---------------------------------------------------------------------------
@@ -51,6 +54,16 @@ export function getStepStatusIcon(status: QueueStepStatus): string {
   }
 }
 
+export function getDisplayedStepStatus(status: QueueStepStatus, isInterrupted: boolean): QueueStepStatus | "paused" {
+  if (isInterrupted && status === "running") return "paused"
+  return status
+}
+
+export function getDisplayedWorkflowStatus(status: WorkflowStatus, isInterrupted: boolean): WorkflowStatus | "paused" {
+  if (isInterrupted && status === "running") return "interrupted"
+  return status
+}
+
 // ---------------------------------------------------------------------------
 // getStepTypeLabel — human-readable step type label
 // ---------------------------------------------------------------------------
@@ -59,6 +72,14 @@ export function getStepStatusIcon(status: QueueStepStatus): string {
 export function getStepTypeLabel(type: string): string {
   if (type.length === 0) return type
   return type.charAt(0).toUpperCase() + type.slice(1)
+}
+
+/**
+ * Get the max visible title width for a queue step row.
+ * Keeps enough room for the right-aligned duration column.
+ */
+export function getStepTitleMaxWidth(hasDuration: boolean): number {
+  return hasDuration ? STEP_TITLE_MAX_WITH_DURATION : STEP_TITLE_MAX_WITHOUT_DURATION
 }
 
 // ---------------------------------------------------------------------------

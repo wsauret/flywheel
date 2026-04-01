@@ -35,6 +35,7 @@ import { SessionHeader } from "./session-header"
 import { BrandingHeader } from "@tui/shared/components/branding-header"
 import { EmptyState } from "./empty-state"
 import { useUnifiedPrompt } from "./unified-prompt"
+import { shouldShowThinkingIndicator } from "./thinking-indicator-state"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
 import { Selection } from "../utils/selection"
@@ -58,6 +59,8 @@ import type { QuestionRequest } from "../../queue/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
+import { Spinner } from "@tui/shared/components/spinner"
+import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "../shell/start-command"
 import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, createEndOfSessionGate as createQueueEndOfSessionGate } from "../shell/shell-queue"
 import { buildQueueFromTemplate } from "../../queue/templates"
@@ -433,6 +436,14 @@ export function FlywheelShell() {
   })
 
   const approvalPending = () => workState()?.approvalState?.pending ?? false
+  const showThinkingIndicator = createMemo(() =>
+    shouldShowThinkingIndicator({
+      appState: appState(),
+      approvalPending: approvalPending(),
+      hasPendingQuestion: pendingQuestion() !== null,
+      isInterrupted: isInterrupted(),
+    })
+  )
 
   // Derived: is the currently viewed session resumable (work:paused)?
   const isSessionResumable = createMemo(() => {
@@ -1802,10 +1813,24 @@ export function FlywheelShell() {
     return s?.name || s?.label || id.slice(0, 8)
   }
 
+  /** Session IDs currently being resumed — prevents duplicate concurrent resumes. */
+  const resumingSessionIds = new Set<string>()
+
   const handleSessionSelect = (sessionId: string, action: SelectionAction) => {
     switch (action) {
       case "open":
         viewport.openSession(sessionId)
+        return
+      case "resume":
+        if (resumingSessionIds.has(sessionId)) return
+        resumingSessionIds.add(sessionId)
+        resumeSession(sessionId)
+          .catch(() => {
+            toast.show({ message: `Failed to resume ${sessionName(sessionId)}`, variant: "error" })
+          })
+          .finally(() => {
+            resumingSessionIds.delete(sessionId)
+          })
         return
       case "delete":
         orchestrator.handleDeleteSession(sessionId).then(() => {
@@ -1835,6 +1860,10 @@ export function FlywheelShell() {
           sessionCtx.refreshList()
         })
         return
+      default: {
+        const _exhaustive: never = action
+        throw new Error(`Unhandled action: ${_exhaustive}`)
+      }
     }
   }
 
@@ -2286,6 +2315,7 @@ export function FlywheelShell() {
 
   const hasActiveWorkflow = () => activeStore() !== null && workState() !== null
   const runtime = () => runtimeText()
+  const promptWidth = () => Math.min(100, Math.max(50, Math.floor((dimensions()?.width ?? 80) * 0.8)))
 
   // Default work state for SharedLayout when no workflow is active
   const defaultWorkState: WorkState = {
@@ -2387,6 +2417,7 @@ export function FlywheelShell() {
               stepLabel={activeStepLabel()}
               selectedStepIndex={layoutState().selectedStepIndex}
               queueSteps={shellQueueSteps()}
+              isInterrupted={isInterrupted()}
             />
           ) : undefined
         }
@@ -2430,6 +2461,7 @@ export function FlywheelShell() {
                 isPromptFocused={isPromptFocused() || sidebarFocused()}
                 availableWidth={dimensions()?.width}
                 currentStep={currentStep()}
+                isInterrupted={isInterrupted()}
               />
             </box>
           </Show>
@@ -2437,6 +2469,16 @@ export function FlywheelShell() {
       </SharedLayout>
 
       {/* Bottom slot: QuestionPrompt (when pending) OR normal Prompt input */}
+      <Show when={showThinkingIndicator()}>
+        <box flexShrink={0} alignItems="center" justifyContent="center" paddingBottom={1}>
+          <box width={promptWidth()} paddingLeft={1} paddingRight={1} flexDirection="row">
+            <Spinner color={themeCtx.theme.primary} />
+            <text fg={themeCtx.theme.textMuted}>{" "}</text>
+            <ShimmerText text="Thinking..." color={themeCtx.theme.primary} />
+          </box>
+        </box>
+      </Show>
+
       <Show
         when={pendingQuestion() && activeQuestionWiring}
         fallback={

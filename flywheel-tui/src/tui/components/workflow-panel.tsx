@@ -23,6 +23,9 @@ import {
   statusLabel,
   getStepStatusIcon,
   getStepTypeLabel,
+  getStepTitleMaxWidth,
+  getDisplayedStepStatus,
+  getDisplayedWorkflowStatus,
 } from "./workflow-panel-logic"
 import { truncate } from "../utils/text"
 import type { Theme } from "@tui/shared/context/theme"
@@ -34,6 +37,9 @@ export {
   statusLabel,
   getStepStatusIcon,
   getStepTypeLabel,
+  getStepTitleMaxWidth,
+  getDisplayedStepStatus,
+  getDisplayedWorkflowStatus,
   type PanelProgress,
 } from "./workflow-panel-logic"
 
@@ -63,6 +69,7 @@ export interface WorkflowPanelProps {
    * activeQueueInfo (telemetry bar).
    */
   queueSteps?: QueueStepState[]
+  isInterrupted?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +94,7 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
   const progress = () => computeQueueProgress(queueSteps())
 
   const statusColor = () => {
-    switch (props.state.workflowStatus) {
+    switch (getDisplayedWorkflowStatus(props.state.workflowStatus, props.isInterrupted ?? false)) {
       case "running":     return themeCtx.theme.info
       case "completed":   return themeCtx.theme.success
       case "failed":      return themeCtx.theme.error
@@ -137,7 +144,7 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
         <box paddingLeft={1} paddingRight={1} flexShrink={0} marginTop={1}>
           <text fg={themeCtx.theme.textMuted}>Status: </text>
           <text fg={statusColor()}>
-            {statusLabel(props.state.workflowStatus)}
+            {statusLabel(getDisplayedWorkflowStatus(props.state.workflowStatus, props.isInterrupted ?? false) as typeof props.state.workflowStatus)}
           </text>
         </box>
 
@@ -148,10 +155,18 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
           </text>
         </box>
 
-        <Show when={progress().running > 0}>
+        <Show when={progress().running > 0 && !props.isInterrupted}>
           <box paddingLeft={1} paddingRight={1} flexShrink={0}>
             <text fg={themeCtx.theme.info}>
               Running: {progress().running}
+            </text>
+          </box>
+        </Show>
+
+        <Show when={props.isInterrupted}>
+          <box paddingLeft={1} paddingRight={1} flexShrink={0}>
+            <text fg={themeCtx.theme.warning}>
+              Interrupted
             </text>
           </box>
         </Show>
@@ -191,6 +206,7 @@ export function WorkflowPanel(props: WorkflowPanelProps) {
                   step={step}
                   timer={timer}
                   theme={themeCtx.theme}
+                  isInterrupted={props.isInterrupted ?? false}
                 />
               )}
             </For>
@@ -209,13 +225,17 @@ interface QueueStepRowProps {
   step: QueueStepState
   timer: ReturnType<typeof useTimer>
   theme: Theme
+  isInterrupted: boolean
 }
 
 function QueueStepRow(props: QueueStepRowProps) {
+  const displayStatus = () => getDisplayedStepStatus(props.step.status, props.isInterrupted)
+
   const stepColor = () => {
-    switch (props.step.status) {
+    switch (displayStatus()) {
       case "completed": return props.theme.success
       case "running":   return props.theme.info
+      case "paused":    return props.theme.warning
       case "failed":    return props.theme.error
       case "skipped":   return props.theme.textMuted
       default:          return props.theme.text
@@ -232,34 +252,38 @@ function QueueStepRow(props: QueueStepRowProps) {
       const sec = s % 60
       return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`
     }
-    if (props.step.status === "running") {
+    if (props.step.status === "running" && !props.isInterrupted) {
       return props.timer.agentDuration(`queue-step-${props.step.id}`)
     }
     return ""
   }
 
+  const title = () => truncate(props.step.title, getStepTitleMaxWidth(duration().length > 0))
+
   return (
     <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-      <box flexDirection="row" overflow="hidden">
-        <Show
-          when={props.step.status === "running"}
-          fallback={
-            <text wrapMode="none" fg={stepColor()}>
-              {getStepStatusIcon(props.step.status)}{" "}
-            </text>
-          }
-        >
-          <Spinner color={stepColor()} />
-          <text wrapMode="none"> </text>
-        </Show>
-        <text wrapMode="none" fg={props.theme.textMuted}>
-          {getStepTypeLabel(props.step.type)}{" "}
-        </text>
-        <text wrapMode="none" fg={props.theme.text} attributes={props.step.status === "running" ? 1 : 0}>
-          {truncate(props.step.title, 22)}
-        </text>
-        <Show when={duration()}>
+      <box flexDirection="row" justifyContent="space-between" overflow="hidden">
+        <box flexDirection="row" overflow="hidden" flexGrow={1} flexShrink={1}>
+          <Show
+            when={displayStatus() === "running"}
+            fallback={
+              <text wrapMode="none" fg={stepColor()}>
+                {displayStatus() === "paused" ? "⏸" : getStepStatusIcon(props.step.status)}{" "}
+              </text>
+            }
+          >
+            <Spinner color={stepColor()} />
+            <text wrapMode="none"> </text>
+          </Show>
           <text wrapMode="none" fg={props.theme.textMuted}>
+            {getStepTypeLabel(props.step.type)}{" "}
+          </text>
+          <text wrapMode="none" fg={props.theme.text} attributes={displayStatus() === "running" ? 1 : 0}>
+            {title()}
+          </text>
+        </box>
+        <Show when={duration()}>
+          <text wrapMode="none" fg={props.theme.textMuted} flexShrink={0}>
             {" "}&bull; {duration()}
           </text>
         </Show>

@@ -9,7 +9,7 @@
  * in the app.tsx provider stack.
  */
 
-import { createSignal } from "solid-js"
+import { createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper"
 import type { SessionManager, SessionSummary, SessionListResult } from "../../../session/manager"
 import type { WorktreeManager } from "../../../session/worktree-manager.js"
@@ -78,6 +78,16 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
       setSessions(result.sessions)
       return result
     }
+
+    // Poll for session changes from other instances (every 5s)
+    const pollInterval = setInterval(() => {
+      try {
+        refreshList()
+      } catch {
+        // Non-fatal — don't crash on transient disk errors
+      }
+    }, 5_000)
+    onCleanup(() => clearInterval(pollInterval))
 
     return {
       manager: props.manager,

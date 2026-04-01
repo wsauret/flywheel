@@ -5,6 +5,7 @@ import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { timerService } from "../src/tui/shared/services/timer";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { TextBlock, ToolBlock, AgentBlock } from "../src/tui/types";
+import * as path from "node:path";
 
 function createHarness() {
   const bus = new EventBus();
@@ -48,11 +49,12 @@ describe("OpenTUI Adapter — output formatting", () => {
 
     it("formats tool_use from assistant NDJSON → ToolBlock (or Context AgentBlock for context tools)", () => {
       const { bus, store } = createHarness();
+      const filePath = path.join(process.cwd(), "src/index.ts");
       const ndjson = JSON.stringify({
         type: "assistant",
         message: {
           content: [
-            { type: "tool_use", name: "Read", input: { file_path: "src/index.ts" } },
+            { type: "tool_use", name: "Read", input: { file_path: filePath } },
           ],
         },
       });

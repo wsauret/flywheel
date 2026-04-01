@@ -841,9 +841,9 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const pIdx = spawnedArgs.indexOf("-p");
     expect(pIdx).toBeGreaterThan(-1);
     const prompt = spawnedArgs[pIdx + 1];
-    // Should contain evaluator-specific content
-    expect(prompt).toContain("Worker Output");
-    expect(prompt).toContain("Evaluation Criteria");
+    // Should contain evaluator-specific content (verdict, pass/fail)
+    expect(prompt).toContain("Verdict");
+    expect(prompt).toContain("passed");
     // Should NOT contain dispatcher-specific content
     expect(prompt).not.toContain("prompt engineering specialist");
   });
@@ -912,7 +912,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
   // 2. context_files section removed or changed to informational-only
   // -----------------------------------------------------------------------
 
-  it("context_files section is informational-only (no '## Context Files' action-implying header)", async () => {
+  it("context_files section is not included in the lean prompt", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -924,13 +924,9 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     await transport.invoke(baseEvaluatorInput({ context_files: ["src/foo.ts", "src/bar.ts"] }));
 
     const prompt = getPrompt();
-    // Should NOT have the old actionable header
+    // Lean prompt omits context_files to save tokens and time
     expect(prompt).not.toContain("## Context Files");
-    // Should have informational framing instead
-    expect(prompt).toContain("Worker Had Access To");
-    // The file paths should still appear
-    expect(prompt).toContain("src/foo.ts");
-    expect(prompt).toContain("src/bar.ts");
+    expect(prompt).not.toContain("Worker Had Access To");
   });
 
   it("context_files informational section is omitted when no context files provided", async () => {
@@ -952,7 +948,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
   // 3. duration_seconds surfaced in the prompt
   // -----------------------------------------------------------------------
 
-  it("surfaces duration_seconds in a Timing section", async () => {
+  it("lean prompt omits timing section to save tokens", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -964,32 +960,15 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     await transport.invoke(baseEvaluatorInput({ duration_seconds: 45 }));
 
     const prompt = getPrompt();
-    expect(prompt).toContain("## Timing");
-    expect(prompt).toContain("45");
-  });
-
-  it("surfaces duration_seconds = 0 correctly", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      engineName: "claude",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput({ duration_seconds: 0 }));
-
-    const prompt = getPrompt();
-    // Should still show the timing section even if 0s
-    expect(prompt).toContain("## Timing");
-    expect(prompt).toContain("0s");
+    // Timing removed from lean prompt — evaluator doesn't need it
+    expect(prompt).not.toContain("## Timing");
   });
 
   // -----------------------------------------------------------------------
   // 4. Pass/fail threshold guidance added
   // -----------------------------------------------------------------------
 
-  it("includes pass/fail threshold guidance about substantial compliance", async () => {
+  it("includes pass/fail guidance biased toward passing", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -1001,17 +980,12 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     await transport.invoke(baseEvaluatorInput());
 
     const prompt = getPrompt();
-    // Should contain guidance about biasing toward passing
-    expect(prompt).toContain("substantially meets");
-    expect(prompt).toContain("Bias Toward Passing");
-    expect(prompt).toContain("HARD EVIDENCE");
+    // Should contain lean guidance about passing by default
+    expect(prompt).toContain("hard evidence");
+    expect(prompt).toContain("pass with suggestions");
   });
 
-  // -----------------------------------------------------------------------
-  // 5. Confidence scale guidance added
-  // -----------------------------------------------------------------------
-
-  it("includes confidence scale guidance with specific thresholds", async () => {
+  it("includes verdict JSON schema with confidence field", async () => {
     const { spawner, getPrompt } = createPromptCapturingSpawner();
 
     const transport = new SubprocessEvaluatorTransport({
@@ -1023,9 +997,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
     await transport.invoke(baseEvaluatorInput());
 
     const prompt = getPrompt();
-    // Should contain confidence scale explanation
+    expect(prompt).toContain("confidence");
     expect(prompt).toContain("0.9");
-    expect(prompt).toContain("clear verdict");
-    expect(prompt).toContain("borderline");
   });
 });

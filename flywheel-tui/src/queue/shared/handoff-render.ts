@@ -62,9 +62,12 @@ ${fieldLines.join("\n\n")}
 1. The \`summary\` field is REQUIRED (100-5000 characters, single paragraph, no newlines).
 2. All other fields are optional but strongly encouraged — they improve downstream quality assessment.
 3. Do NOT include fields not listed above — unknown fields cause a validation error and the step will be retried.
-4. Write the file using your file-writing tool (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
-5. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.
-6. **Accuracy is critical.** A verification agent will re-execute commands from \`artifacts.commands_run\` and check that files in \`artifacts.files_created\`/\`files_modified\` exist on disk. If any reported command returns a different exit code than you claimed, or a reported file does not exist, the step fails verification and you will be asked to retry. Only report commands you actually ran and files that actually exist.`;
+4. If this step also requires writing other artifacts (for example \`context.md\`, \`plan.json\`, or edits to \`plan.json\`), complete those artifact writes first and write the handoff file last.
+5. If you want to present the user with a summary or final message, print it BEFORE writing the handoff file. Any output after the handoff write may not be seen.
+6. Treat the handoff file as your final completion signal: once the handoff is written, the queue may auto-complete the step immediately.
+7. Write the file using your file-writing tool (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
+8. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.
+9. **Accuracy is critical.** A verification agent will re-execute commands from \`artifacts.commands_run\` and check that files in \`artifacts.files_created\`/\`files_modified\` exist on disk. If any reported command returns a different exit code than you claimed, or a reported file does not exist, the step fails verification and you will be asked to retry. Only report commands you actually ran and files that actually exist.`;
 }
 
 export function renderEvaluatorHandoffInstruction(handoffPath: string): string {

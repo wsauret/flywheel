@@ -393,6 +393,26 @@ export class BunProcessSpawner implements ProcessSpawner {
           }
         };
 
+        const watchHandoff = async () => {
+          if (!handoffPath) return;
+
+          while (pipeOpen && !workerTimeout.signal.aborted) {
+            if (completionDetector.hasSeenCompletion) {
+              return;
+            }
+
+            if (completionDetector.checkHandoffFile(handoffPath)) {
+              if (_onCompletionDetected) {
+                _onCompletionDetected();
+                _onCompletionDetected = null;
+              }
+              return;
+            }
+
+            await Bun.sleep(100);
+          }
+        };
+
         // In pipe mode, handle completion detection based on whether the caller
         // wants turn-boundary callbacks (2-tier interrupt system) or the default
         // close-on-completion behavior.
@@ -423,7 +443,7 @@ export class BunProcessSpawner implements ProcessSpawner {
         // The result promise: read streams + wait for exit + build result
         const resultPromise = (async (): Promise<WorkerResult> => {
           try {
-            await Promise.all([readStdout(), readStderr(), writeInitialStdin()]);
+            await Promise.all([readStdout(), readStderr(), writeInitialStdin(), watchHandoff()]);
             const exitCode = await proc.exited;
             workerTimeout.cancel();
             unregister();

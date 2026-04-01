@@ -8,6 +8,7 @@
 
 import type { SessionSummary } from "../../session/manager";
 import type { SessionLifecycleState } from "../../session/state-machine";
+import { isResumable } from "../../session/state-machine";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,7 +21,7 @@ export type SessionGroupKey = "active" | "paused" | "other" | "archived" | "tras
 export type SessionGroup = Record<SessionGroupKey, SessionSummary[]>;
 
 /** Actions the sidebar can trigger when a session is selected. */
-export type SelectionAction = "open" | "delete";
+export type SelectionAction = "open" | "resume" | "delete";
 
 /** Keyboard actions the sidebar handles. */
 export type SidebarAction = "move-up" | "move-down" | "select" | "delete";
@@ -131,7 +132,7 @@ export function getOpenAction(session: SessionSummary): SelectionAction | null {
     case "archived":
       return null;
     default:
-      return "open";
+      return isResumable(session.lifecycleState) ? "resume" : "open";
   }
 }
 
