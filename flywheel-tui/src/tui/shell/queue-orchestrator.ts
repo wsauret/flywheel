@@ -29,7 +29,9 @@ import {
 } from "../../config/paths"
 import { resolveModels } from "../../config/loader"
 import { createFlywheelEmitter } from "../../events/event-bus"
-import { formatClaudeStdinMessage } from "../../worker/stdin-format"
+import { formatStdinMessage } from "../../worker/stdin-format"
+import { buildInitializeSession, buildAddUserMessage, createStdoutAdapter } from "../../worker/droid-jsonrpc-adapter"
+import { resolveModel as resolveDroidModel } from "../../engines/providers/droid"
 import { Log } from "../../utils/log"
 import { ContextIndexer } from "../../memory/indexer"
 import type { WorkflowDeps } from "../../engines/workflow-deps"
@@ -381,13 +383,33 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
       toolScoping: step.toolScoping ?? undefined,
     })
     const startTime = Date.now()
+    const isDroid = deps.engine.metadata.id === "droid"
     const rawStdinContent = engineCmd.stdinPrompt
       ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + fullPrompt : fullPrompt)
       : undefined
-    // NDJSON-wrap stdin content when using streaming pipe (Claude's --input-format stream-json)
-    const stdinContent = useStdinPipe && rawStdinContent
-      ? formatClaudeStdinMessage(rawStdinContent)
-      : rawStdinContent
+
+    // Compose initial stdin content (engine-specific format)
+    let stdinContent: string | undefined
+    if (useStdinPipe && rawStdinContent) {
+      if (isDroid) {
+        // Droid JSON-RPC: send initialize_session then add_user_message
+        const rawModel = deps.config.worker?.model ?? deps.config.model ?? deps.engine.metadata.defaultModel
+        const model = resolveDroidModel(rawModel)
+        stdinContent =
+          buildInitializeSession({ cwd: projectCwd, modelId: model }) +
+          buildAddUserMessage(rawStdinContent)
+      } else {
+        stdinContent = formatStdinMessage(deps.engine.metadata.id, rawStdinContent)
+      }
+    } else {
+      stdinContent = rawStdinContent
+    }
+
+    // For droid JSON-RPC workers, create a stdout transform that translates
+    // JSON-RPC notifications into flat NDJSON for the existing pipeline
+    // (NDJSON parser, completion detector, structured event parser).
+    const jsonrpcAdapter = isDroid ? createStdoutAdapter() : null
+
     // Turn-complete callback: when the worker finishes a turn (result event)
     // and the stdin pipe is still open, either inject a pending message or
     // close the pipe to let the step advance.
@@ -398,7 +420,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
       if (pendingInjection.current && stdinHandleRef?.current?.isOpen) {
         const message = pendingInjection.current
         pendingInjection.current = null
-        const written = stdinHandleRef.current.write(formatClaudeStdinMessage(message))
+        const written = stdinHandleRef.current.write(formatStdinMessage(deps.engine.metadata.id, message))
         if (written) {
           log.info("turn-boundary injection sent to worker", { length: message.length })
           // Emit event for TUI display
@@ -430,6 +452,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
       onSessionId: (sessionId) => {
         capturedWorkerSessionId.current = sessionId
       },
+      stdoutTransform: jsonrpcAdapter ? (chunk) => jsonrpcAdapter.translate(chunk) : undefined,
       onStdout: (chunk) => {
         emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
       },

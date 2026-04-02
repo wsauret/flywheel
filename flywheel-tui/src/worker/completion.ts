@@ -1,12 +1,13 @@
 /**
  * Completion detection for worker output streams.
  *
- * Two signals indicate completion (either one is sufficient):
+ * Three signals indicate completion (any one is sufficient):
  *   1. NDJSON `{"type":"result","subtype":"success"}` event (Claude Code stream-json)
- *   2. Clean exit (exit code 0) — the process ending successfully IS completion
+ *   2. NDJSON `{"type":"completion"}` event (Droid stream-json)
+ *   3. Clean exit (exit code 0) — the process ending successfully IS completion
  *
- * Signal 2 is checked in `categorizeFailure` (errors.ts), not here.
- * This class tracks signal 1 incrementally during streaming.
+ * Signal 3 is checked in `categorizeFailure` (errors.ts), not here.
+ * This class tracks signals 1 and 2 incrementally during streaming.
  */
 
 import * as fs from "node:fs";
@@ -14,9 +15,11 @@ import { WorkerHandoffSchema } from "../queue/shared/handoff-schemas";
 
 /**
  * Regex for NDJSON result event indicating successful completion.
- * Matches `"type":"result"` with `"subtype":"success"` on the same line.
+ * Matches either:
+ *   - Claude: `"type":"result"` with `"subtype":"success"` on the same line
+ *   - Droid:  `"type":"completion"` on the same line
  */
-const NDJSON_RESULT_REGEX = /"type"\s*:\s*"result"[^}]*"subtype"\s*:\s*"success"/;
+const NDJSON_RESULT_REGEX = /"type"\s*:\s*"result"[^}]*"subtype"\s*:\s*"success"|"type"\s*:\s*"completion"/;
 
 /** Size of the fallback check window (last 32KB of stdout). */
 export const FALLBACK_CHECK_SIZE = 32_768;

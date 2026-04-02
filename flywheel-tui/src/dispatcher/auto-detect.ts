@@ -69,12 +69,12 @@ export async function autoDetectTransport(
 ): Promise<ResolvedTransport> {
   const engineName = options.engineName ?? "opencode";
 
-  // Claude engine: skip SDK entirely — SDK is OpenCode-only
-  if (engineName === "claude") {
-    log.info("claude engine — using subprocess transport (SDK is OpenCode-only)");
+  // Subprocess-based engines: skip SDK entirely — SDK is OpenCode-only
+  if (engineName !== "opencode") {
+    log.info(`${engineName} engine — using subprocess transport (SDK is OpenCode-only)`);
     const transport = new SubprocessTransport({
       spawner: options.spawner,
-      engineName: "claude",
+      engineName,
       dispatcherModel: options.dispatcherModel,
       onStdout: options.onStdout,
       onStderr: options.onStderr,

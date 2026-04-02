@@ -11,7 +11,7 @@
 
 import { randomUUID } from "node:crypto"
 import { createFlywheelEmitter } from "../../events/event-bus"
-import { formatClaudeStdinMessage } from "../../worker/stdin-format"
+import { formatStdinMessage } from "../../worker/stdin-format"
 import { Log } from "../../utils/log"
 
 import type { WorkflowDeps } from "../../engines/workflow-deps"
@@ -184,7 +184,7 @@ export function resumeWorkerWithMessage(
   })
 
   const stdinContent = useStdinPipe
-    ? formatClaudeStdinMessage(message)
+    ? formatStdinMessage(wfDeps.engine.metadata.id, message)
     : (engineCmd.stdinPrompt
         ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + message : message)
         : undefined)
@@ -214,7 +214,7 @@ export function resumeWorkerWithMessage(
         if (pendingInjection.current && activeStdinHandleRef.current?.isOpen) {
           const injectMsg = pendingInjection.current
           pendingInjection.current = null
-          const written = activeStdinHandleRef.current.write(formatClaudeStdinMessage(injectMsg))
+          const written = activeStdinHandleRef.current.write(formatStdinMessage(wfDeps.engine.metadata.id, injectMsg))
           if (written) {
             log.info("turn-boundary injection sent to resumed worker", { length: injectMsg.length })
           }

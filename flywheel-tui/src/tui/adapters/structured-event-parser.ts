@@ -62,6 +62,8 @@ export class StructuredEventParser {
       this.dispatchClaudeEvent(event, now);
     } else if (engineId === "opencode") {
       this.dispatchOpenCodeEvent(event, now);
+    } else if (engineId === "droid") {
+      this.dispatchDroidEvent(event, now);
     } else {
       // Unknown engine: fall back to text extraction
       this.dispatchFallbackEvent(event, now);
@@ -224,6 +226,45 @@ export class StructuredEventParser {
       const detail = input ? (getToolDetail(toolName, input) ?? "") : "";
       this.builder.pushTool(toolName, detail, now);
     }
+  }
+
+  // ── Droid handler ──
+
+  /**
+   * Handle Droid stream-json events.
+   *
+   * Droid emits flat event types (not nested like Claude):
+   *   - {"type":"system","subtype":"init",...} — session init (skip)
+   *   - {"type":"message","role":"user",...} — echo of user input (skip)
+   *   - {"type":"message","role":"assistant","text":"...",...} — assistant response text
+   *   - {"type":"tool_call","toolName":"Read","parameters":{...},...} — tool invocation
+   *   - {"type":"tool_result","toolId":"Read","value":"...",...} — tool result (skip)
+   *   - {"type":"completion",...} — turn complete (handled by CompletionDetector, skip)
+   *   - {"type":"error","message":"...",...} — error
+   */
+  private dispatchDroidEvent(event: NDJSONEvent, now: number): void {
+    const data = event.data;
+    const type = data.type as string | undefined;
+
+    if (type === "message") {
+      const role = data.role as string | undefined;
+      if (role === "assistant") {
+        const text = data.text as string | undefined;
+        if (text && text.length > 0) {
+          this.builder.pushText(text, now);
+        }
+      }
+      // role === "user" — echo of user input, skip
+    } else if (type === "tool_call") {
+      const toolName = data.toolName as string | undefined;
+      if (toolName) {
+        const params = data.parameters as Record<string, unknown> | undefined;
+        const detail = params ? (getToolDetail(toolName, params) ?? "") : "";
+        this.builder.pushTool(toolName, detail, now);
+      }
+    }
+    // system, tool_result, completion, error — skip for display purposes
+    // (completion is handled by CompletionDetector, errors are in stderr)
   }
 
   // ── Fallback handler (unknown engine) ──

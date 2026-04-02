@@ -281,39 +281,47 @@ export class BunProcessSpawner implements ProcessSpawner {
       let sessionIdReported = false;
 
       const readStdout = async () => {
+        const transform = options?.stdoutTransform;
         try {
           while (true) {
             const { done, value } = await stdoutReader!.read();
             if (done) break;
-            const text = stdoutDecoder.decode(value, { stream: true });
-            rawStdoutChunks.push(text);
-            options?.onStdout?.(text);
-            ndjsonParser.write(text);
-            // Fire once when session_id is first captured from NDJSON init event
-            if (!sessionIdReported && ndjsonParser.sessionId && options?.onSessionId) {
-              options.onSessionId(ndjsonParser.sessionId);
-              sessionIdReported = true;
-            }
-            const wasDetected = completionDetector.hasSeenCompletion;
-            completionDetector.check(text);
-            // Fire once on transition from undetected → detected
-            if (!wasDetected && completionDetector.hasSeenCompletion && _onCompletionDetected) {
-              _onCompletionDetected();
-              _onCompletionDetected = null;
+            const rawText = stdoutDecoder.decode(value, { stream: true });
+            rawStdoutChunks.push(rawText);
+            // Apply protocol transform (e.g., JSON-RPC → flat NDJSON for droid)
+            const text = transform ? transform(rawText) : rawText;
+            if (text) {
+              options?.onStdout?.(text);
+              ndjsonParser.write(text);
+              // Fire once when session_id is first captured from NDJSON init event
+              if (!sessionIdReported && ndjsonParser.sessionId && options?.onSessionId) {
+                options.onSessionId(ndjsonParser.sessionId);
+                sessionIdReported = true;
+              }
+              const wasDetected = completionDetector.hasSeenCompletion;
+              completionDetector.check(text);
+              // Fire once on transition from undetected → detected
+              if (!wasDetected && completionDetector.hasSeenCompletion && _onCompletionDetected) {
+                _onCompletionDetected();
+                _onCompletionDetected = null;
+              }
             }
           }
           // Flush decoder
           const remaining = stdoutDecoder.decode(undefined, { stream: false });
           if (remaining) {
             rawStdoutChunks.push(remaining);
-            options?.onStdout?.(remaining);
-            ndjsonParser.write(remaining);
-            // Check session_id after flush too
-            if (!sessionIdReported && ndjsonParser.sessionId && options?.onSessionId) {
-              options.onSessionId(ndjsonParser.sessionId);
-              sessionIdReported = true;
+            const flushed = transform ? transform(remaining) : remaining;
+            if (flushed) {
+              options?.onStdout?.(flushed);
+              ndjsonParser.write(flushed);
+              // Check session_id after flush too
+              if (!sessionIdReported && ndjsonParser.sessionId && options?.onSessionId) {
+                options.onSessionId(ndjsonParser.sessionId);
+                sessionIdReported = true;
+              }
+              completionDetector.check(flushed);
             }
-            completionDetector.check(remaining);
           }
         } catch {
           // Stream may be closed due to process kill or reader cancellation

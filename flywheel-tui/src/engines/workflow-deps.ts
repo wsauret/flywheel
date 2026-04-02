@@ -8,7 +8,9 @@
  * Errors propagate (throw) — callers decide how to surface them.
  */
 
+import * as fs from "node:fs"
 import { loadConfig } from "../config/loader"
+import { CONFIG_FILES } from "../config/paths"
 import { getEngine } from "./core/registry"
 import { BunProcessSpawner } from "../worker/bun-spawner"
 import { SdkSpawner } from "../worker/sdk-spawner"
@@ -49,7 +51,10 @@ function defaultCreateSpawner(timeout: number, engine: Engine): ProcessSpawner {
 }
 
 export function prepareWorkflowDeps(overrides?: WorkflowDepsOverrides): WorkflowDeps {
-  const load = overrides?.loadConfig ?? loadConfig
+  const load = overrides?.loadConfig ?? (() => {
+    const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
+    return loadConfig(configPath)
+  })
   const resolve = overrides?.getEngine ?? getEngine
 
   const { config } = load()

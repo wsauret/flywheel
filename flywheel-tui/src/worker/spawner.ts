@@ -91,4 +91,13 @@ export interface SpawnOptions {
    * well before turn completion or process exit.
    */
   onSessionId?: (sessionId: string) => void;
+  /**
+   * Optional transform applied to raw stdout text before it reaches
+   * the NDJSON parser, completion detector, and onStdout callback.
+   *
+   * Used by the Droid engine to translate JSON-RPC envelopes into flat
+   * NDJSON that the existing pipeline expects. Returns the transformed
+   * text, or empty string to suppress the chunk entirely.
+   */
+  stdoutTransform?: (chunk: string) => string;
 }

@@ -64,7 +64,7 @@ export async function createEvaluatorTransport(
   let spawner = options.spawner;
 
   // OpenCode engine: try SdkSpawner for streaming (shared singleton with dispatcher)
-  if (engineName !== "claude" && SDK_AVAILABLE) {
+  if (engineName === "opencode" && SDK_AVAILABLE) {
     const sdkSpawner = await getOrCreateSdkSpawner();
     if (sdkSpawner) {
       log.info("using shared SdkSpawner for evaluator transport (streaming mode)", {

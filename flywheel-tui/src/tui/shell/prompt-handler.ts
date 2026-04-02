@@ -11,7 +11,7 @@
  */
 
 import { parseCommand } from "../utils/command-parser"
-import { formatClaudeStdinMessage } from "../../worker/stdin-format"
+import { formatStdinMessage } from "../../worker/stdin-format"
 import { Log } from "../../utils/log"
 
 import type { AppState } from "./shell-modes"
@@ -174,12 +174,13 @@ export function createPromptHandler(deps: PromptHandlerDeps) {
         // Working mode without approval: inject message into running worker's stdin
         const handle = activeStdinHandleRef.current
         if (handle && handle.isOpen) {
-          // Write directly to the worker. For Claude CLI (stream-json stdin),
-          // wrap as NDJSON. For SDK engines (OpenCode), send raw text —
+          // Write directly to the worker. For engines with streaming input
+          // (Claude stream-json, Droid stream-json), wrap in engine-specific
+          // NDJSON format. For SDK engines (OpenCode), send raw text —
           // the SDK handle wraps it in its own API format.
           const wfDeps = getDepsOrWarn()
           const payload = wfDeps?.engine.metadata.supportsStreamingInput
-            ? formatClaudeStdinMessage(message)
+            ? formatStdinMessage(wfDeps.engine.metadata.id, message)
             : message
           const written = handle.write(payload)
           if (written) {

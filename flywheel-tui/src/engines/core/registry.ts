@@ -8,6 +8,7 @@
 import type { Engine } from "./types";
 import { claudeEngine } from "../providers/claude.js";
 import { opencodeEngine } from "../providers/opencode.js";
+import { droidEngine } from "../providers/droid.js";
 
 const engines = new Map<string, Engine>();
 
@@ -18,6 +19,7 @@ function register(engine: Engine): void {
 // Register all built-in engines
 register(claudeEngine);
 register(opencodeEngine);
+register(droidEngine);
 
 /**
  * Get an engine by ID. Throws if not found.
