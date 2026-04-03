@@ -1,0 +1,22 @@
+[package]
+name = "flywheel-ripgrep"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "3", features = ["napi10"] }
+napi-derive = "3"
+grep-regex = "0.1"
+grep-searcher = "0.1"
+grep-matcher = "0.1"
+globset = "0.4"
+ignore = "0.4"
+rayon = "1.10"
+smallvec = "1.15"
+memmap2 = "0.9"
+
+[build-dependencies]
+napi-build = "2"

@@ -14,6 +14,7 @@ import { CONFIG_FILES } from "../config/paths"
 import { getEngine } from "./core/registry"
 import { BunProcessSpawner } from "../worker/bun-spawner"
 import { SdkSpawner } from "../worker/sdk-spawner"
+import { HarnessSpawner } from "../worker/harness-spawner"
 import type { FlywheelConfig } from "../config/loader"
 import type { Engine } from "./core/types"
 import type { ProcessSpawner } from "../worker/spawner"
@@ -45,6 +46,10 @@ function defaultCreateSpawner(timeout: number, engine: Engine): ProcessSpawner {
   // OpenCode uses the SDK spawner (HTTP API, not subprocess)
   if (engine.metadata.id === "opencode") {
     return new SdkSpawner()
+  }
+  // Harness runs in-process via the agent loop
+  if (engine.metadata.id === "harness") {
+    return new HarnessSpawner()
   }
   // All other engines use subprocess spawning
   return new BunProcessSpawner({ timeoutMinutes: timeout })

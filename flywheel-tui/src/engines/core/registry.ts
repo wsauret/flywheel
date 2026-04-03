@@ -9,6 +9,7 @@ import type { Engine } from "./types";
 import { claudeEngine } from "../providers/claude.js";
 import { opencodeEngine } from "../providers/opencode.js";
 import { droidEngine } from "../providers/droid.js";
+import { harnessEngine } from "../providers/harness.js";
 
 const engines = new Map<string, Engine>();
 
@@ -20,6 +21,7 @@ function register(engine: Engine): void {
 register(claudeEngine);
 register(opencodeEngine);
 register(droidEngine);
+register(harnessEngine);
 
 /**
  * Get an engine by ID. Throws if not found.
