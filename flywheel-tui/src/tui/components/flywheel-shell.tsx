@@ -3,10 +3,10 @@
  * FlywheelShell — Top-level persistent shell component
  *
  * Single always-on SharedLayout with content varying by AppState:
- *   IDLE:      EmptyState (logo, help, slogan) + UnifiedPrompt in command mode
- *   WORKING:   OutputWindow + UnifiedPrompt in passive/active mode
+ *   IDLE:      EmptyState (API key missing fallback) + UnifiedPrompt in command mode
+ *   CHATTING:  ChatHeader + OutputWindow (chat messages) + UnifiedPrompt in chat mode
+ *   WORKING:   SessionHeader + OutputWindow + UnifiedPrompt in passive/active mode
  *   COMPLETED: OutputWindow (or EmptyState if no output) + UnifiedPrompt in command mode
- *   IMPORTING: Plan import UI + UnifiedPrompt disabled
  *
  * AppState describes *what the app is doing* — the layout is always SharedLayout.
  *
@@ -32,6 +32,7 @@ import { OutputWindow, type CurrentStepInfo } from "../routes/work/components/ou
 import { SessionSidebar } from "./session-sidebar"
 import { WorkflowPanel } from "./workflow-panel"
 import { SessionHeader } from "./session-header"
+import { ChatHeader } from "./chat-header"
 import { BrandingHeader } from "@tui/shared/components/branding-header"
 import { EmptyState } from "./empty-state"
 import { useUnifiedPrompt } from "./unified-prompt"
@@ -921,7 +922,7 @@ export function FlywheelShell() {
       const execDeps = buildExecutorDeps({
         deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
         contextIndexer: queueContextIndexer, projectCwd: projectCwdForExec,
-        sessionObjective: args.description, queue,
+        sessionObjective: args.description, chatContext: args.chatContext, queue,
         sessionId: effectiveSessionId,
         stdinHandleRef: activeStdinHandleRef,
         seedHandoff,
@@ -1997,21 +1998,27 @@ export function FlywheelShell() {
 
   // ── Command Handler (via ActionDispatcher) ──
 
-  const launchWorkWithQueue = (planPath: string) => {
+  const launchWorkWithQueue = async (planPath: string) => {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
+
+    // Destroy chat session before starting workflow (capture context for downstream use)
+    const chatContext = chatController.isActive() ? await chatController.destroyChat() : ""
 
     // Parse the plan file and create work steps from its steps
     const queue = buildQueueFromPlan(planPath, deps.config)
-    startQueueExecution(queue, { planPath }, deps)
+    startQueueExecution(queue, { planPath, ...(chatContext ? { chatContext } : {}) }, deps)
   }
 
-  const launchGenericWithQueue = (name: string, args: Record<string, string>) => {
+  const launchGenericWithQueue = async (name: string, args: Record<string, string>) => {
     const deps = getDepsOrReturnIdle()
     if (!deps) return
 
+    // Destroy chat session before starting workflow (capture context for downstream use)
+    const chatContext = chatController.isActive() ? await chatController.destroyChat() : ""
+
     const queue = buildQueueForSlashCommand(name, deps.config)
-    startQueueExecution(queue, args, deps)
+    startQueueExecution(queue, { ...args, ...(chatContext ? { chatContext } : {}) }, deps)
   }
 
   /**
@@ -2022,6 +2029,9 @@ export function FlywheelShell() {
    * + QuestionService to drive the existing QuestionPrompt component.
    */
   const launchStartFlow = async (args: Record<string, string>) => {
+    // Destroy chat session before starting workflow (capture context for downstream use)
+    const chatContext = chatController.isActive() ? await chatController.destroyChat() : ""
+
     // Create a temporary event bus + question wiring for pre-queue questions
     const startBus = new EventBus()
     cleanupQuestionSubscriptions()
@@ -2127,7 +2137,7 @@ export function FlywheelShell() {
         return
       }
       const startFlowQueue = buildQueue(workflow, startDeps.config)
-      startQueueExecution(startFlowQueue, { description }, startDeps, {
+      startQueueExecution(startFlowQueue, { description, ...(chatContext ? { chatContext } : {}) }, startDeps, {
         plan: planInteractive,
         review: reviewInteractive,
       })
@@ -2420,7 +2430,9 @@ export function FlywheelShell() {
         approvalPending={approvalPending()}
         isPromptFocused={isPromptFocused()}
         header={
-          hasActiveWorkflow() ? (
+          appState() === "chatting" ? (
+            <ChatHeader version="0.0.1" />
+          ) : hasActiveWorkflow() ? (
             <SessionHeader
               info={{
                 sessionName: layoutState().planName,
@@ -2466,7 +2478,7 @@ export function FlywheelShell() {
           ) : undefined
         }
         panel={
-          hasActiveWorkflow() ? (
+          hasActiveWorkflow() && appState() !== "chatting" ? (
             <WorkflowPanel
               state={layoutState()}
               stepLabel={activeStepLabel()}

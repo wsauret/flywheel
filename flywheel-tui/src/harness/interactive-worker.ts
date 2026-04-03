@@ -20,7 +20,6 @@ import type {
   Message,
   StreamOptions,
   ToolDefinition,
-  UsageInfo,
   AssistantMessage,
   TextContent,
   ToolCallContent,
@@ -33,7 +32,6 @@ import type { ToolRegistry } from "./tools/registry.js";
 import { createToolRegistry } from "./tools/registry.js";
 import { normalizeTools } from "./intent-trace.js";
 import { DoomLoopDetector, extractToolSignature } from "./doom-loop.js";
-import { estimateTokens } from "./context.js";
 import { truncateHistory } from "./agent-loop.js";
 import {
   executeTurn,
@@ -78,6 +76,14 @@ export interface InteractiveWorkerOptions {
   onStdout?: (chunk: string) => void;
   /** Custom system prompt instructions appended to the default. */
   customInstructions?: string;
+  /** Internal: inject a pre-built provider (used in tests to avoid real API calls). */
+  _provider?: LLMProvider;
+  /** Internal: inject a pre-built tool registry (used in tests). */
+  _registry?: ToolRegistry;
+  /** Internal: inject tool definitions (used in tests). */
+  _toolDefs?: ToolDefinition[];
+  /** Internal: inject a system prompt (used in tests to skip workspace gathering). */
+  _systemPrompt?: string;
 }
 
 export interface InteractiveWorkerHandle {
@@ -182,14 +188,15 @@ function resolveModel(modelOverride?: string): string {
  * Create an interactive worker for persistent multi-turn chat.
  *
  * Uses executeTurn() directly with its own message history — not runAgentLoop().
- * Validates ANTHROPIC_API_KEY at creation time.
+ * Validates ANTHROPIC_API_KEY at creation time (unless _provider is injected).
  */
 export function createInteractiveWorker(
   options: InteractiveWorkerOptions = {},
 ): InteractiveWorkerHandle {
-  // Resolve and validate API key
+  // Resolve and validate API key (skip if provider is injected for testing)
+  const hasInjectedProvider = options._provider !== undefined;
   const apiKey = options.apiKey ?? process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey) {
+  if (!apiKey && !hasInjectedProvider) {
     throw new Error(
       "ANTHROPIC_API_KEY is not set. Set the ANTHROPIC_API_KEY environment variable " +
       "or pass apiKey in options to use the interactive worker. " +
@@ -206,19 +213,30 @@ export function createInteractiveWorker(
   const onStdout = options.onStdout;
 
   // Create provider and tools (no task_complete)
-  const provider: LLMProvider = createProvider(apiKey);
-  const tools = createChatTools();
-  const registry: ToolRegistry = createToolRegistry();
-  for (const tool of tools) {
-    registry.register(tool);
+  const provider: LLMProvider = hasInjectedProvider
+    ? options._provider!
+    : createProvider(apiKey!);
+
+  let registry: ToolRegistry;
+  let toolDefs: ToolDefinition[];
+
+  if (options._registry && options._toolDefs) {
+    registry = options._registry;
+    toolDefs = options._toolDefs;
+  } else {
+    const tools = createChatTools();
+    registry = createToolRegistry();
+    for (const tool of tools) {
+      registry.register(tool);
+    }
+    toolDefs = normalizeTools(
+      registry.toLLMDefinitions() as ToolDefinition[],
+    );
   }
-  const toolDefs = normalizeTools(
-    registry.toLLMDefinitions() as ToolDefinition[],
-  );
 
   // Persistent state
   const messages: Message[] = [];
-  let systemPrompt: string | null = null;
+  let systemPrompt: string | null = options._systemPrompt ?? null;
   let running = false;
   const mutex = createMutex();
 

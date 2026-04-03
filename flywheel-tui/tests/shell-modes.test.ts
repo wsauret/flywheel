@@ -55,8 +55,8 @@ describe("ctrlCForState", () => {
     expect(ctrlCForState("working")).toBe("stop-workflow");
   });
 
-  it("chatting → exit-tui", () => {
-    expect(ctrlCForState("chatting")).toBe("exit-tui");
+  it("chatting \u2192 return-idle", () => {
+    expect(ctrlCForState("chatting")).toBe("return-idle");
   });
 
   it("completed → return-chat", () => {

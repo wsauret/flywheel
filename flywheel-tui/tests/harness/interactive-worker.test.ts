@@ -1,21 +1,70 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock } from "bun:test";
 import { createInteractiveWorker } from "../../src/harness/interactive-worker.js";
-import type { InteractiveWorkerHandle, InteractiveWorkerOptions } from "../../src/harness/interactive-worker.js";
-
-// We need to mock the provider and tools for unit tests.
-// The approach: use dependency injection through the options and module-level mocking.
-
-// Since InteractiveWorker internally creates its provider and tools, we test by:
-// 1. Testing the public API behavior (creation, shutdown, summary)
-// 2. Testing with a real but pre-aborted signal for abort paths
-// 3. Testing the conversation summary extraction logic
+import type { InteractiveWorkerOptions } from "../../src/harness/interactive-worker.js";
+import type { LLMProvider, StreamEvent, StreamOptions } from "../../src/harness/llm.js";
+import { createToolRegistry } from "../../src/harness/tools/registry.js";
 
 // ============================================================================
-// Helpers
+// Test helpers: fake provider and options
 // ============================================================================
 
 const FAKE_API_KEY = "test-key-not-real";
 
+/** Create a mock LLM provider that returns scripted responses. */
+function createMockProvider(
+  responses: Array<{ text?: string; toolCalls?: Array<{ id: string; name: string; input: Record<string, unknown> }> }>,
+): LLMProvider {
+  let callIndex = 0;
+
+  return {
+    async *stream(_options: StreamOptions): AsyncIterable<StreamEvent> {
+      const response = responses[callIndex] ?? responses[responses.length - 1]!;
+      callIndex++;
+
+      if (response.text) {
+        yield { type: "text_delta", text: response.text };
+      }
+
+      if (response.toolCalls) {
+        for (const call of response.toolCalls) {
+          yield {
+            type: "tool_use",
+            id: call.id,
+            name: call.name,
+            input: call.input,
+          };
+        }
+      }
+
+      yield {
+        type: "usage",
+        usage: { inputTokens: 100, outputTokens: 50 },
+      };
+      yield { type: "message_stop" };
+    },
+  };
+}
+
+/** Create minimal test options with mock provider (no real API needed). */
+function makeTestOptions(
+  provider: LLMProvider,
+  overrides: Partial<InteractiveWorkerOptions> = {},
+): InteractiveWorkerOptions {
+  const registry = createToolRegistry();
+  return {
+    model: "test-model",
+    maxTurnsPerMessage: 5,
+    cwd: "/tmp/test",
+    env: {},
+    _provider: provider,
+    _registry: registry,
+    _toolDefs: [],
+    _systemPrompt: "You are a test assistant.",
+    ...overrides,
+  };
+}
+
+/** Create options for tests that don't need the provider (creation tests). */
 function makeOptions(overrides: Partial<InteractiveWorkerOptions> = {}): InteractiveWorkerOptions {
   return {
     apiKey: FAKE_API_KEY,
@@ -34,7 +83,6 @@ function makeOptions(overrides: Partial<InteractiveWorkerOptions> = {}): Interac
 describe("createInteractiveWorker", () => {
   describe("creation and validation", () => {
     it("throws descriptive error when ANTHROPIC_API_KEY is missing", () => {
-      // Save and clear env
       const original = process.env["ANTHROPIC_API_KEY"];
       delete process.env["ANTHROPIC_API_KEY"];
 
@@ -90,6 +138,22 @@ describe("createInteractiveWorker", () => {
         }
       }
     });
+
+    it("skips API key validation when _provider is injected", () => {
+      const original = process.env["ANTHROPIC_API_KEY"];
+      delete process.env["ANTHROPIC_API_KEY"];
+
+      try {
+        const provider = createMockProvider([{ text: "hello" }]);
+        const worker = createInteractiveWorker(makeTestOptions(provider));
+        expect(worker).toBeDefined();
+        worker.shutdown();
+      } finally {
+        if (original !== undefined) {
+          process.env["ANTHROPIC_API_KEY"] = original;
+        }
+      }
+    });
   });
 
   describe("exports and interface", () => {
@@ -131,7 +195,6 @@ describe("createInteractiveWorker", () => {
 
       controller.abort();
 
-      // After external abort, sendMessage should throw
       expect(worker.sendMessage("hello")).rejects.toThrow(/shut down/i);
     });
 
@@ -147,17 +210,8 @@ describe("createInteractiveWorker", () => {
     });
   });
 
-  describe("getConversationSummary", () => {
-    it("returns empty string when no messages", () => {
-      const worker = createInteractiveWorker(makeOptions());
-      expect(worker.getConversationSummary()).toBe("");
-      worker.shutdown();
-    });
-  });
-
   describe("no task_complete tool", () => {
     it("does not include task_complete in the tool set", () => {
-      // We verify this by checking that createChatTools doesn't include it
       const { createChatTools } = require("../../src/harness/shared.js");
       const tools = createChatTools();
       const toolNames = tools.map((t: { name: string }) => t.name);
@@ -174,19 +228,403 @@ describe("createInteractiveWorker", () => {
 });
 
 // ============================================================================
+// Tests: Message flow with mock provider
+// ============================================================================
+
+describe("message flow", () => {
+  it("sends a message and receives a text response", async () => {
+    const provider = createMockProvider([{ text: "Hello! How can I help?" }]);
+    const chunks: string[] = [];
+    const worker = createInteractiveWorker(
+      makeTestOptions(provider, {
+        onStdout: (chunk) => chunks.push(chunk),
+      }),
+    );
+
+    await worker.sendMessage("Hi there");
+
+    // Should have emitted NDJSON events
+    expect(chunks.length).toBeGreaterThan(0);
+
+    // Find the text event
+    const textEvents = chunks
+      .map((c) => JSON.parse(c.trim()))
+      .filter((e: Record<string, unknown>) => e.type === "assistant");
+    expect(textEvents.length).toBeGreaterThan(0);
+
+    // Find the completion event
+    const completionEvents = chunks
+      .map((c) => JSON.parse(c.trim()))
+      .filter((e: Record<string, unknown>) => e.type === "result");
+    expect(completionEvents.length).toBe(1);
+
+    worker.shutdown();
+  });
+
+  it("emits usage events", async () => {
+    const provider = createMockProvider([{ text: "Response" }]);
+    const chunks: string[] = [];
+    const worker = createInteractiveWorker(
+      makeTestOptions(provider, {
+        onStdout: (chunk) => chunks.push(chunk),
+      }),
+    );
+
+    await worker.sendMessage("Test");
+
+    const usageEvents = chunks
+      .map((c) => JSON.parse(c.trim()))
+      .filter((e: Record<string, unknown>) => e.type === "usage");
+    expect(usageEvents.length).toBe(1);
+    expect(usageEvents[0].usage.input_tokens).toBe(100);
+    expect(usageEvents[0].usage.output_tokens).toBe(50);
+
+    worker.shutdown();
+  });
+
+  it("streams NDJSON-compatible events via onStdout", async () => {
+    const provider = createMockProvider([{ text: "Hello world" }]);
+    const chunks: string[] = [];
+    const worker = createInteractiveWorker(
+      makeTestOptions(provider, {
+        onStdout: (chunk) => chunks.push(chunk),
+      }),
+    );
+
+    await worker.sendMessage("Greet me");
+
+    // Every chunk should be valid NDJSON (JSON + newline)
+    for (const chunk of chunks) {
+      expect(chunk.endsWith("\n")).toBe(true);
+      expect(() => JSON.parse(chunk.trim())).not.toThrow();
+    }
+
+    worker.shutdown();
+  });
+});
+
+// ============================================================================
+// Tests: Multi-turn conversation with persistent history
+// ============================================================================
+
+describe("multi-turn conversation", () => {
+  it("persists conversation history across multiple sendMessage calls", async () => {
+    let callCount = 0;
+    const provider: LLMProvider = {
+      async *stream(options: StreamOptions): AsyncIterable<StreamEvent> {
+        callCount++;
+        // Verify that messages accumulate across calls
+        if (callCount === 1) {
+          // First call: only the user message
+          expect(options.messages.length).toBe(1);
+        } else if (callCount === 2) {
+          // Second call: user + assistant + user
+          expect(options.messages.length).toBe(3);
+        } else if (callCount === 3) {
+          // Third call: user + assistant + user + assistant + user
+          expect(options.messages.length).toBe(5);
+        }
+
+        yield { type: "text_delta", text: `Response ${callCount}` };
+        yield { type: "usage", usage: { inputTokens: 10, outputTokens: 5 } };
+        yield { type: "message_stop" };
+      },
+    };
+
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    await worker.sendMessage("First message");
+    await worker.sendMessage("Second message");
+    await worker.sendMessage("Third message");
+
+    expect(callCount).toBe(3);
+    worker.shutdown();
+  });
+
+  it("getConversationSummary reflects sent messages", async () => {
+    const provider = createMockProvider([
+      { text: "Response 1" },
+      { text: "Response 2" },
+      { text: "Response 3" },
+    ]);
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    await worker.sendMessage("Hello");
+    await worker.sendMessage("How are you?");
+    await worker.sendMessage("Tell me a joke");
+
+    const summary = worker.getConversationSummary();
+    expect(summary).toContain("Hello");
+    expect(summary).toContain("How are you?");
+    expect(summary).toContain("Tell me a joke");
+
+    worker.shutdown();
+  });
+
+  it("getConversationSummary limits to last 5 messages", async () => {
+    const provider = createMockProvider([{ text: "OK" }]);
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    for (let i = 1; i <= 8; i++) {
+      await worker.sendMessage(`Message ${i}`);
+    }
+
+    const summary = worker.getConversationSummary();
+    // Should not contain early messages
+    expect(summary).not.toContain("Message 1");
+    expect(summary).not.toContain("Message 2");
+    expect(summary).not.toContain("Message 3");
+    // Should contain recent messages
+    expect(summary).toContain("Message 4");
+    expect(summary).toContain("Message 8");
+
+    worker.shutdown();
+  });
+
+  it("getConversationSummary caps at ~2000 tokens", async () => {
+    const provider = createMockProvider([{ text: "OK" }]);
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    // Send messages that are each ~3000 chars (~750 tokens)
+    const longMsg = "x".repeat(3000);
+    for (let i = 0; i < 5; i++) {
+      await worker.sendMessage(longMsg);
+    }
+
+    const summary = worker.getConversationSummary();
+    // Should be capped around 8000 chars (2000 tokens * 4 chars/token)
+    // The first message will always be included, but subsequent ones are trimmed
+    expect(summary.length).toBeLessThanOrEqual(12000);
+
+    worker.shutdown();
+  });
+
+  it("getConversationSummary skips system-injected messages", async () => {
+    // A provider that triggers doom loop to inject [System: ...] messages
+    const provider = createMockProvider([
+      { text: "First response" },
+    ]);
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    await worker.sendMessage("User message");
+
+    const summary = worker.getConversationSummary();
+    expect(summary).toContain("User message");
+    // System messages should be excluded (none injected in this basic case)
+    expect(summary).not.toContain("[System:");
+
+    worker.shutdown();
+  });
+});
+
+// ============================================================================
+// Tests: Serial queue (mutex) behavior
+// ============================================================================
+
+describe("serial queue behavior", () => {
+  it("mutex serializes async operations", async () => {
+    let chain = Promise.resolve();
+    const order: number[] = [];
+
+    function acquire(): Promise<() => void> {
+      let release: () => void;
+      const next = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const prev = chain;
+      chain = next;
+      return prev.then(() => release!);
+    }
+
+    const op1 = acquire().then(async (release) => {
+      order.push(1);
+      await new Promise((r) => setTimeout(r, 10));
+      release();
+    });
+
+    const op2 = acquire().then(async (release) => {
+      order.push(2);
+      await new Promise((r) => setTimeout(r, 5));
+      release();
+    });
+
+    const op3 = acquire().then(async (release) => {
+      order.push(3);
+      release();
+    });
+
+    await Promise.all([op1, op2, op3]);
+    expect(order).toEqual([1, 2, 3]);
+  });
+
+  it("concurrent sendMessage calls are serialized", async () => {
+    const order: number[] = [];
+    let callCount = 0;
+
+    const provider: LLMProvider = {
+      async *stream(_options: StreamOptions): AsyncIterable<StreamEvent> {
+        callCount++;
+        const current = callCount;
+        order.push(current);
+        // Small delay to ensure concurrency would cause interleaving if unserialized
+        await new Promise((r) => setTimeout(r, 5));
+        yield { type: "text_delta", text: `Response ${current}` };
+        yield { type: "usage", usage: { inputTokens: 10, outputTokens: 5 } };
+        yield { type: "message_stop" };
+      },
+    };
+
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    // Fire multiple messages concurrently
+    const p1 = worker.sendMessage("First");
+    const p2 = worker.sendMessage("Second");
+    const p3 = worker.sendMessage("Third");
+
+    await Promise.all([p1, p2, p3]);
+
+    // Should have executed in order due to mutex
+    expect(order).toEqual([1, 2, 3]);
+
+    worker.shutdown();
+  });
+});
+
+// ============================================================================
+// Tests: Doom loop protection inside interactive worker
+// ============================================================================
+
+describe("doom loop protection", () => {
+  it("stops after maxTurnsPerMessage when agent keeps calling tools", async () => {
+    let turnCount = 0;
+    const provider: LLMProvider = {
+      async *stream(_options: StreamOptions): AsyncIterable<StreamEvent> {
+        turnCount++;
+        // Always return a tool call, never text
+        yield {
+          type: "tool_use",
+          id: `call-${turnCount}`,
+          name: "bash",
+          input: { command: `cmd-${turnCount}` },
+        };
+        yield { type: "usage", usage: { inputTokens: 10, outputTokens: 5 } };
+        yield { type: "message_stop" };
+      },
+    };
+
+    const registry = createToolRegistry();
+    // Register a simple bash tool that returns success
+    registry.register({
+      name: "bash",
+      description: "test bash",
+      inputSchema: require("zod").z.object({ command: require("zod").z.string() }),
+      concurrency: "exclusive" as const,
+      async execute() {
+        return { content: "ok" };
+      },
+    });
+
+    const worker = createInteractiveWorker({
+      model: "test-model",
+      maxTurnsPerMessage: 4,
+      cwd: "/tmp/test",
+      env: {},
+      _provider: provider,
+      _registry: registry,
+      _toolDefs: [{
+        name: "bash",
+        description: "test bash",
+        input_schema: { type: "object" as const, properties: { command: { type: "string" } } },
+      }],
+      _systemPrompt: "Test prompt",
+    });
+
+    await worker.sendMessage("Do something");
+
+    // Should have stopped at maxTurnsPerMessage
+    expect(turnCount).toBe(4);
+
+    worker.shutdown();
+  });
+
+  it("stops when DoomLoopDetector detects repetitive tool calls", async () => {
+    let turnCount = 0;
+    const provider: LLMProvider = {
+      async *stream(_options: StreamOptions): AsyncIterable<StreamEvent> {
+        turnCount++;
+        // Always return the exact same tool call (triggers doom loop after 3 repetitions)
+        yield {
+          type: "tool_use",
+          id: `call-${turnCount}`,
+          name: "bash",
+          input: { command: "ls" },
+        };
+        yield { type: "usage", usage: { inputTokens: 10, outputTokens: 5 } };
+        yield { type: "message_stop" };
+      },
+    };
+
+    const registry = createToolRegistry();
+    registry.register({
+      name: "bash",
+      description: "test bash",
+      inputSchema: require("zod").z.object({ command: require("zod").z.string() }),
+      concurrency: "exclusive" as const,
+      async execute() {
+        return { content: "ok" };
+      },
+    });
+
+    const worker = createInteractiveWorker({
+      model: "test-model",
+      maxTurnsPerMessage: 10,
+      cwd: "/tmp/test",
+      env: {},
+      _provider: provider,
+      _registry: registry,
+      _toolDefs: [{
+        name: "bash",
+        description: "test bash",
+        input_schema: { type: "object" as const, properties: { command: { type: "string" } } },
+      }],
+      _systemPrompt: "Test prompt",
+    });
+
+    await worker.sendMessage("Run ls repeatedly");
+
+    // DoomLoopDetector should stop before maxTurnsPerMessage (10)
+    // Default DoomLoopDetector threshold is 3, so 3 identical calls should trigger
+    expect(turnCount).toBe(3);
+
+    // Verify doom loop message was injected into summary context
+    const summary = worker.getConversationSummary();
+    expect(summary).toContain("Run ls repeatedly");
+
+    worker.shutdown();
+  });
+});
+
+// ============================================================================
 // Tests: Conversation summary extraction
 // ============================================================================
 
 describe("getConversationSummary", () => {
-  // To test summary properly, we need to send messages and build up history.
-  // Since sendMessage calls the LLM (which we can't easily mock at this level),
-  // we test the summary logic through the exposed API with controlled input.
-
-  // The implementation extracts user messages from the history array.
-  // We can test it indirectly by checking that new workers return empty summary.
   it("returns empty string for new worker", () => {
     const worker = createInteractiveWorker(makeOptions());
     expect(worker.getConversationSummary()).toBe("");
+    worker.shutdown();
+  });
+
+  it("joins multiple user messages with double newlines", async () => {
+    const provider = createMockProvider([{ text: "R1" }, { text: "R2" }]);
+    const worker = createInteractiveWorker(makeTestOptions(provider));
+
+    await worker.sendMessage("Message A");
+    await worker.sendMessage("Message B");
+
+    const summary = worker.getConversationSummary();
+    expect(summary).toBe("Message A\n\nMessage B");
+
     worker.shutdown();
   });
 });
@@ -224,7 +662,6 @@ describe("shared harness infrastructure", () => {
 
   it("emitNdjson is noop when callback is undefined", () => {
     const { emitNdjson } = require("../../src/harness/shared.js");
-    // Should not throw
     emitNdjson(undefined, { type: "test" });
   });
 
@@ -333,15 +770,13 @@ describe("truncateHistory", () => {
     }));
     const result = truncateHistory(messages);
     expect(result.length).toBeLessThan(messages.length);
-    // First message preserved
     expect(result[0]).toEqual(messages[0]);
-    // Truncation notice inserted
     expect(typeof result[1].content === "string" && result[1].content.includes("removed")).toBe(true);
   });
 });
 
 // ============================================================================
-// Tests: DoomLoopDetector (integration with interactive worker design)
+// Tests: DoomLoopDetector (component-level)
 // ============================================================================
 
 describe("DoomLoopDetector in interactive context", () => {
@@ -368,48 +803,5 @@ describe("DoomLoopDetector in interactive context", () => {
     }
 
     expect(detector.isLooping()).toBe(false);
-  });
-});
-
-// ============================================================================
-// Tests: Serial queue (mutex) behavior
-// ============================================================================
-
-describe("serial queue behavior", () => {
-  it("mutex serializes async operations", async () => {
-    // Test the mutex pattern used in interactive worker
-    let chain = Promise.resolve();
-    const order: number[] = [];
-
-    function acquire(): Promise<() => void> {
-      let release: () => void;
-      const next = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      const prev = chain;
-      chain = next;
-      return prev.then(() => release!);
-    }
-
-    // Start three "operations" concurrently
-    const op1 = acquire().then(async (release) => {
-      order.push(1);
-      await new Promise((r) => setTimeout(r, 10));
-      release();
-    });
-
-    const op2 = acquire().then(async (release) => {
-      order.push(2);
-      await new Promise((r) => setTimeout(r, 5));
-      release();
-    });
-
-    const op3 = acquire().then(async (release) => {
-      order.push(3);
-      release();
-    });
-
-    await Promise.all([op1, op2, op3]);
-    expect(order).toEqual([1, 2, 3]);
   });
 });

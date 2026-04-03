@@ -30,6 +30,16 @@ describe("resolvePromptMode", () => {
     });
   });
 
+  describe("active mode (chatting)", () => {
+    it("chatting \u2192 active (accepts free text input)", () => {
+      expect(resolvePromptMode("chatting", false)).toBe("active");
+    });
+
+    it("chatting with approval pending \u2192 active", () => {
+      expect(resolvePromptMode("chatting", true)).toBe("active");
+    });
+  });
+
   describe("active mode (injection)", () => {
     it("working without approval → active (allows mid-execution injection)", () => {
       expect(resolvePromptMode("working", false)).toBe("active");
@@ -38,7 +48,7 @@ describe("resolvePromptMode", () => {
 
   describe("exhaustive coverage", () => {
     it("covers all AppState values", () => {
-      const states: AppState[] = ["idle", "working", "completed"];
+      const states: AppState[] = ["idle", "chatting", "working", "completed"];
       for (const state of states) {
         expect(() => resolvePromptMode(state, false)).not.toThrow();
         expect(() => resolvePromptMode(state, true)).not.toThrow();

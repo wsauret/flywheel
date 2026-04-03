@@ -112,6 +112,8 @@ export interface BuildExecutorDepsOpts {
   contextIndexer: ContextIndexer;
   projectCwd: string;
   sessionObjective: string | undefined;
+  /** Chat conversation context captured before workflow transition (not prepended to description). */
+  chatContext?: string;
   queue: Queue;
   /** Session ID for session-scoped file paths. */
   sessionId: string;

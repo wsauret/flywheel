@@ -85,6 +85,10 @@ export function useUnifiedPrompt(props: UnifiedPromptProps): UnifiedPromptResult
     get disabled() { return isDisabled() },
     get focused() { return !isDisabled() && !props.sidebarFocused },
     get placeholder() {
+      // Chatting state: always show chat-specific placeholder
+      if (props.appState === "chatting") {
+        return "Ask anything..."
+      }
       // Interrupted state: override placeholder to prompt for resume text
       if (props.isInterrupted && mode() === "active") {
         return "Type to resume worker..."

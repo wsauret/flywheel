@@ -64,7 +64,7 @@ export type CtrlCStateBehavior = "exit-tui" | "stop-workflow" | "return-idle" | 
 export function ctrlCForState(state: AppState): CtrlCStateBehavior {
   switch (state) {
     case "idle":        return "exit-tui"
-    case "chatting":    return "exit-tui"
+    case "chatting":    return "return-idle"
     case "working":     return "stop-workflow"
     case "completed":   return "return-chat"
     default:            return assertNever(state)

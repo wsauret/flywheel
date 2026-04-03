@@ -2,10 +2,13 @@
 /**
  * Empty State Component
  *
- * Renders welcome/branding content in the output area when no session
- * is active. Replaces the WelcomeSection from the old LauncherView.
+ * Fallback UI shown when the chat session fails to start (e.g., missing
+ * ANTHROPIC_API_KEY). Since the TUI boots directly into chat mode, this
+ * component only renders when that initialization fails and the app falls
+ * back to idle state.
  *
- * Shows: FULL_LOGO, version, HOME_HELP_COMMANDS help rows, random slogan.
+ * Shows: FULL_LOGO, version, HOME_HELP_COMMANDS help rows, random slogan,
+ * plus a hint about setting the API key to enable chat mode.
  * Centered vertically and horizontally in available space.
  */
 
@@ -50,6 +53,13 @@ export function EmptyState() {
       {/* Version */}
       <box marginTop={1} marginBottom={1}>
         <text fg={themeCtx.theme.textMuted}>v0.0.1</text>
+      </box>
+
+      {/* API key hint — this is the idle fallback when chat can't start */}
+      <box marginBottom={1}>
+        <text fg={themeCtx.theme.warning}>
+          Set ANTHROPIC_API_KEY to enable chat mode
+        </text>
       </box>
 
       {/* Help rows for top commands */}
