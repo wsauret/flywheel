@@ -89,3 +89,6 @@ flywheel-tui/inspiration/
 .flywheel/
 plugin/.flywheel/
 flywheel-tui/.flywheel/
+
+# Terminal-bench runs
+flywheel-tui/jobs/

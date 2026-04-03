@@ -18,10 +18,25 @@ import { createConsoleTracer, estimateCost } from "./tracer.js";
 import { createBashTool } from "./tools/bash.js";
 import { createReadTool } from "./tools/read.js";
 import { editTool } from "./tools/edit.js";
-import { textSearchTool } from "./tools/text-search.js";
-import { astSearchTool } from "./tools/ast-search.js";
 import { taskCompleteTool } from "./tools/task-complete.js";
 import type { HarnessTool } from "./tools/types.js";
+
+function tryLoadNativeTools(): HarnessTool[] {
+  const tools: HarnessTool[] = [];
+  try {
+    const { textSearchTool } = require("./tools/text-search.js") as { textSearchTool: HarnessTool };
+    tools.push(textSearchTool);
+  } catch {
+    // Native ripgrep addon not available (e.g. Linux container without cross-compiled binary)
+  }
+  try {
+    const { astSearchTool } = require("./tools/ast-search.js") as { astSearchTool: HarnessTool };
+    tools.push(astSearchTool);
+  } catch {
+    // Native ast-grep addon not available
+  }
+  return tools;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -195,13 +210,12 @@ export async function runCli(args: string[]): Promise<void> {
   const context = await gatherWorkspaceContext();
   const systemPrompt = buildSystemPrompt(context);
 
-  // 6. Create all tools
+  // 6. Create all tools (native search tools are optional)
   const tools: HarnessTool[] = [
     createBashTool(),
     createReadTool(),
     editTool,
-    textSearchTool,
-    astSearchTool,
+    ...tryLoadNativeTools(),
     taskCompleteTool,
   ];
 
