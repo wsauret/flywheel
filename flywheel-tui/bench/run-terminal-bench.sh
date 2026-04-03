@@ -5,9 +5,9 @@ set -euo pipefail
 # run-terminal-bench.sh -- Run the Flywheel harness against Terminal-Bench 2.0
 #
 # Usage:
-#   ./bench/run-terminal-bench.sh                        # defaults: opus 4.6, 4 concurrent
+#   ./bench/run-terminal-bench.sh                        # defaults: opus 4.6, 4 concurrent, no prebuild
 #   ./bench/run-terminal-bench.sh --model claude-sonnet-4-6 --concurrency 8
-#   ./bench/run-terminal-bench.sh --skip-prebuild        # skip Docker image pre-build
+#   ./bench/run-terminal-bench.sh --prebuild             # pre-build all Docker images first
 #   ./bench/run-terminal-bench.sh --tasks 5              # only run first N tasks
 #
 # Prerequisites:
@@ -23,7 +23,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MODEL="anthropic/claude-opus-4-6"
 CONCURRENCY=4
 DATASET="terminal-bench/terminal-bench-2"
-SKIP_PREBUILD=false
+SKIP_PREBUILD=true
 N_TASKS=""
 JOB_NAME=""
 EXTRA_ARGS=()
@@ -35,6 +35,7 @@ while [[ $# -gt 0 ]]; do
     --concurrency) CONCURRENCY="$2"; shift 2 ;;
     --dataset)     DATASET="$2"; shift 2 ;;
     --skip-prebuild) SKIP_PREBUILD=true; shift ;;
+    --prebuild)      SKIP_PREBUILD=false; shift ;;
     --tasks)       N_TASKS="$2"; shift 2 ;;
     --job-name)    JOB_NAME="$2"; shift 2 ;;
     --help|-h)
@@ -132,8 +133,8 @@ if [ "$SKIP_PREBUILD" = false ]; then
     pids+=($!)
     dirs+=("$task_name")
 
-    # Limit parallelism
-    if [ ${#pids[@]} -ge $((CONCURRENCY * 2)) ]; then
+    # Limit parallelism (keep it moderate to avoid Docker metadata corruption)
+    if [ ${#pids[@]} -ge "$CONCURRENCY" ]; then
       for i in "${!pids[@]}"; do
         if wait "${pids[$i]}" 2>/dev/null; then
           built=$((built + 1))
@@ -178,6 +179,7 @@ HARBOR_ARGS=(
   -y
   -o "$JOBS_DIR"
   --job-name "$JOB_NAME"
+  --force-build
   --environment-build-timeout-multiplier 5.0
   --timeout-multiplier 2.0
 )

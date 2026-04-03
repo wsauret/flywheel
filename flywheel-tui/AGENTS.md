@@ -1,15 +1,15 @@
 # Flywheel CLI — Agent Instructions
 
-## Project overview
+## Project Overview
 
-Flywheel CLI is a terminal UI application that executes workflow plans. It spawns AI worker processes (Claude or OpenCode), runs plan phases sequentially, and provides a rich TUI built with OpenTUI + SolidJS.
+Flywheel CLI is a terminal UI application that executes workflow plans. It spawns AI worker processes (Claude Code, OpenCode, Droid, or its own harness), runs plan phases sequentially, and provides a rich TUI built with OpenTUI + SolidJS.
 
 **Runtime:** Bun (not Node)
 **TUI framework:** OpenTUI (`@opentui/core` + `@opentui/solid`) with SolidJS signals
 **Config format:** TOML (`flywheel.toml`), not YAML
 **Important:** SolidJS must resolve with the `"browser"` export condition. The `bin/flywheel` wrapper handles this with `bun --conditions=browser`.
 
-## Queue Architecture
+## Architecture Principles
 
 The queue engine executes a sequence of typed steps. Each step type + variant is a self-contained module under `src/queue/steps/`. Shared infrastructure lives in `src/queue/shared/`.
 
@@ -50,8 +50,8 @@ Do not ever use emojis in your code.
 
 DRY - Reuse existing code instead of writing it from scratch. Use grep to determine whether the logic already exists and extend that implementation instead then import it.
 SOLID - Always follow the solid principles, especially single responsibility. It makes code composable and reusable making it easier to follow DRY.
-Never mock anything. Never use a placeholder. Never omit code.
-Always fully wire any new code into the system! Verify the wiring by running the TUI and exercising the feature end-to-end. Unit tests alone do not prove wiring -- if you cannot trigger it from the running app, it is unwired.
+Never mock anything (except in tests when absolutely necessary). Never use a placeholder in real code.
+Always fully wire any new code into the system! Verify the wiring by running the TUI and exercising the feature end-to-end. Unit tests alone do not prove wiring - if you cannot trigger it from the running app, it is unwired.
 
 ## Using TypeScript
 

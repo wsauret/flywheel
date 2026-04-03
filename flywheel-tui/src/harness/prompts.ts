@@ -94,6 +94,9 @@ ${context.directoryListing}`);
   }
 
   sections.push(`
+# Rules
+- Always READ the README before acting in the codebase.
+
 # Tools
 You have access to tools for file I/O, shell execution, and code search.
 - Use file tools to read, write, and edit files
