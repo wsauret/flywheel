@@ -57,6 +57,16 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** When true, queue:failed skips setError (user-initiated pause). */
   public suppressQueueError = false;
 
+  /**
+   * Current model activity state. Updated by the structured output builder
+   * as events flow through the pipeline. Consumers can poll this or register
+   * a callback via `onModelActivityChange`.
+   */
+  public modelActivity: import("./structured-output-builder").ModelActivity = "idle";
+
+  /** Optional callback fired when model activity changes. */
+  public onModelActivityChange?: (activity: import("./structured-output-builder").ModelActivity) => void;
+
   /** Current engine ID for routing events. Updated per worker:output event. */
   private currentEngineId: string | undefined;
 
@@ -103,6 +113,12 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       builder: this.builder,
     });
     this.ndjsonParser = new NDJSONParser();
+
+    // Wire builder callback for model activity tracking
+    this.builder.onModelActivityChange = (activity) => {
+      this.modelActivity = activity;
+      this.onModelActivityChange?.(activity);
+    };
 
     // Wire builder callbacks for stale agent tracking
     this.builder.onAgentLifecycle = (type, id) => {
@@ -379,6 +395,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
         this.timer.stop();
         this.flushBlocks();
+        this.modelActivity = "idle";
+        this.onModelActivityChange?.("idle");
         this.actions.stopWorkflow("completed");
         break;
 
@@ -386,6 +404,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         this.timer.stop();
         this.flushBlocks();
+        this.modelActivity = "idle";
+        this.onModelActivityChange?.("idle");
         if (!this.suppressQueueError) {
           this.actions.setError(event.reason);
         }

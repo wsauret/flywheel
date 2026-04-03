@@ -242,7 +242,7 @@ describe("Structured Adapter Integration", () => {
       expect(allText).toContain("more text");
     });
 
-    it("tool_use produces ToolBlocks (non-context) or Context AgentBlock (context tools)", async () => {
+    it("tool_use produces Tools AgentBlock grouping all tools", async () => {
       const { bus, store } = createHarness();
 
       emitOutput(bus, claudeToolLine("Read", { file_path: "src/index.ts" }), "claude");
@@ -251,12 +251,10 @@ describe("Structured Adapter Integration", () => {
       await wait();
 
       const blocks = store.getState().outputBlocks;
-      // Read is a context tool → absorbed into a "Context" AgentBlock
+      // All tools are grouped into a "Tools" AgentBlock
       const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
-      expect(agentBlocks.some((a) => a.agentLabel === "Context" && a.children.some((c) => c.name === "Read"))).toBe(true);
-      // Bash is a non-context tool → standalone ToolBlock
-      const toolBlocks = blocks.filter((b) => b.kind === "tool") as ToolBlock[];
-      expect(toolBlocks.some((t) => t.name === "Bash")).toBe(true);
+      expect(agentBlocks.some((a) => a.agentLabel === "Tools" && a.children.some((c) => c.name === "Read"))).toBe(true);
+      expect(agentBlocks.some((a) => a.agentLabel === "Tools" && a.children.some((c) => c.name === "Bash"))).toBe(true);
     });
 
     it("Task tool_use produces AgentBlock with children", async () => {
@@ -433,7 +431,7 @@ describe("Structured Adapter Integration", () => {
       expect(contextGroups).toHaveLength(0);
     });
 
-    it("mixed sequence: text -> agent -> child tools -> text -> standalone tool", async () => {
+    it("mixed sequence: text -> agent -> child tools -> text -> grouped tool", async () => {
       const { bus, store } = createHarness();
       const taskId = "task_mixed";
 
@@ -445,7 +443,7 @@ describe("Structured Adapter Integration", () => {
       emitOutput(bus, claudeToolResultLine(taskId, "Research complete"), "claude");
       // 4. More text
       emitOutput(bus, claudeTextLine("Now implementing...\n"), "claude");
-      // 5. Standalone tool
+      // 5. Tool (grouped into Tools AgentBlock)
       emitOutput(bus, claudeToolLine("Bash", { command: "npm test" }), "claude");
 
       await wait();
@@ -453,11 +451,12 @@ describe("Structured Adapter Integration", () => {
       const blocks = store.getState().outputBlocks;
       expect(blocks.length).toBeGreaterThanOrEqual(4);
 
-      // Verify ordering: text, agent, text, tool
       const kinds = blocks.map((b) => b.kind);
       expect(kinds).toContain("text");
       expect(kinds).toContain("agent");
-      expect(kinds).toContain("tool");
+      // Bash is now grouped into a Tools AgentBlock, not a standalone ToolBlock
+      const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
+      expect(agentBlocks.some((a) => a.agentLabel === "Tools")).toBe(true);
     });
   });
 
@@ -478,7 +477,7 @@ describe("Structured Adapter Integration", () => {
       expect(allText).toContain("Hello from OpenCode");
     });
 
-    it("tool_use produces Context AgentBlock for context tools", async () => {
+    it("tool_use produces Tools AgentBlock for grouped tools", async () => {
       const { bus, store } = createHarness();
 
       emitOutput(
@@ -490,10 +489,9 @@ describe("Structured Adapter Integration", () => {
       await wait();
 
       const blocks = store.getState().outputBlocks;
-      // Read is a context tool → absorbed into a "Context" AgentBlock
       const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
       expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(agentBlocks[0].agentLabel).toBe("Context");
+      expect(agentBlocks[0].agentLabel).toBe("Tools");
       expect(agentBlocks[0].children[0].name).toBe("Read");
     });
 

@@ -12,6 +12,8 @@
 
 import { runAgentLoop } from "./agent-loop.js";
 import type { AgentLoopStatus } from "./agent-loop.js";
+import type { CollectedToolCall, ToolCallResult } from "./turn-executor.js";
+import type { UsageInfo } from "./llm.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { gatherWorkspaceContext, buildSystemPrompt } from "./prompts.js";
 import { createConsoleTracer, estimateCost } from "./tracer.js";
@@ -58,6 +60,7 @@ Options:
   --model <model>         LLM model to use (default: ${DEFAULT_MODEL})
   --max-turns <n>         Maximum conversation turns (default: ${DEFAULT_MAX_TURNS})
   --max-tokens <n>        Maximum output tokens per turn (default: ${DEFAULT_MAX_TOKENS})
+  --output-format <fmt>   Output format: "text" (default) or "stream-json" (NDJSON)
   --verbose, -v           Enable verbose tracing output
   --thinking <budget>     Enable extended thinking with budget_tokens
   --help, -h              Show this help message
@@ -66,6 +69,7 @@ Examples:
   bin/harness "read package.json and tell me the project name"
   bin/harness "find all TypeScript files that import from zod" --verbose
   bin/harness "add a comment at the top of src/harness/llm.ts" --model claude-sonnet-4-6
+  bin/harness "read package.json" --output-format stream-json
   bin/harness --help
 `.trim();
 
@@ -73,11 +77,14 @@ Examples:
 // Arg parsing
 // ---------------------------------------------------------------------------
 
+type OutputFormat = "text" | "stream-json";
+
 interface ParsedArgs {
   task: string;
   model: string;
   maxTurns: number;
   maxTokens: number;
+  outputFormat: OutputFormat;
   verbose: boolean;
   thinking: number | null;
   help: boolean;
@@ -88,6 +95,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   let model = DEFAULT_MODEL;
   let maxTurns = DEFAULT_MAX_TURNS;
   let maxTokens = DEFAULT_MAX_TOKENS;
+  let outputFormat: OutputFormat = "text";
   let verbose = false;
   let thinking: number | null = null;
   let help = false;
@@ -130,6 +138,16 @@ export function parseArgs(args: string[]): ParsedArgs {
       }
       maxTokens = Math.floor(n);
       i++;
+    } else if (arg === "--output-format") {
+      const next = args[i + 1];
+      if (next === undefined || next.startsWith("-")) {
+        throw new Error("--output-format requires a value");
+      }
+      if (next !== "text" && next !== "stream-json") {
+        throw new Error(`--output-format must be "text" or "stream-json", got: ${next}`);
+      }
+      outputFormat = next;
+      i++;
     } else if (arg === "--thinking") {
       const next = args[i + 1];
       if (next === undefined || next.startsWith("-")) {
@@ -150,7 +168,68 @@ export function parseArgs(args: string[]): ParsedArgs {
 
   task = positional.join(" ");
 
-  return { task, model, maxTurns, maxTokens, verbose, thinking, help };
+  return { task, model, maxTurns, maxTokens, outputFormat, verbose, thinking, help };
+}
+
+// ---------------------------------------------------------------------------
+// Stream-json NDJSON emitters (Anthropic-compatible format)
+// ---------------------------------------------------------------------------
+
+function emitStreamJson(event: Record<string, unknown>): void {
+  process.stdout.write(JSON.stringify(event) + "\n");
+}
+
+function emitStreamText(text: string): void {
+  emitStreamJson({
+    type: "assistant",
+    message: { content: [{ type: "text", text }] },
+  });
+}
+
+function emitStreamToolUse(call: CollectedToolCall): void {
+  emitStreamJson({
+    type: "assistant",
+    message: {
+      content: [{
+        type: "tool_use",
+        id: call.id,
+        name: call.name,
+        input: call.input,
+      }],
+    },
+  });
+}
+
+function emitStreamThinking(thinking: string): void {
+  emitStreamJson({
+    type: "assistant",
+    message: { content: [{ type: "thinking", thinking }] },
+  });
+}
+
+function emitStreamToolResult(result: ToolCallResult): void {
+  emitStreamJson({
+    type: "tool_result",
+    tool_use_id: result.toolCallId,
+    content: result.name,
+    is_error: result.isError,
+  });
+}
+
+function emitStreamUsage(usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens?: number; cacheCreationInputTokens?: number }): void {
+  emitStreamJson({
+    type: "usage",
+    usage: {
+      input_tokens: usage.inputTokens,
+      output_tokens: usage.outputTokens,
+      cache_read_input_tokens: usage.cacheReadInputTokens ?? 0,
+      cache_creation_input_tokens: usage.cacheCreationInputTokens ?? 0,
+    },
+  });
+}
+
+function emitStreamCompletion(): void {
+  emitStreamJson({ type: "result", subtype: "success" });
 }
 
 // ---------------------------------------------------------------------------
@@ -245,6 +324,8 @@ export async function runCli(args: string[]): Promise<void> {
   const startTime = Date.now();
 
   try {
+    const isStreamJson = parsed.outputFormat === "stream-json";
+
     const result = await runAgentLoop({
       provider,
       tools,
@@ -260,10 +341,26 @@ export async function runCli(args: string[]): Promise<void> {
       cwd: process.cwd(),
       env: process.env as Record<string, string>,
       onTrace: tracer,
-      onTextDelta: (text: string) => {
-        process.stdout.write(text);
-      },
+      onTextDelta: isStreamJson
+        ? (text: string) => { emitStreamText(text); }
+        : (text: string) => { process.stdout.write(text); },
+      onThinking: isStreamJson
+        ? (thinking: string) => { emitStreamThinking(thinking); }
+        : undefined,
+      onToolUse: isStreamJson
+        ? (call: CollectedToolCall) => { emitStreamToolUse(call); }
+        : undefined,
+      onToolResult: isStreamJson
+        ? (toolResult: ToolCallResult) => { emitStreamToolResult(toolResult); }
+        : undefined,
+      onUsage: isStreamJson
+        ? (usage: UsageInfo) => { emitStreamUsage(usage); }
+        : undefined,
     });
+
+    if (isStreamJson) {
+      emitStreamCompletion();
+    }
 
     const durationSec = (Date.now() - startTime) / 1000;
 

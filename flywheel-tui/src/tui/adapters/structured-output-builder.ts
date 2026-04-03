@@ -26,11 +26,13 @@ import type {
 const BLOCKS_CAP = 5000;
 const AGENT_CHILDREN_CAP = 50;
 
-/** Tool names that qualify for context grouping (matched case-insensitively). */
-const CONTEXT_TOOL_NAMES = new Set(["read", "glob", "grep", "websearch", "webfetch"]);
+export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing";
+
+/** Tool names excluded from context grouping (these break the group). */
+const NON_CONTEXT_TOOL_NAMES = new Set(["task_complete"]);
 
 function isContextTool(name: string): boolean {
-  return CONTEXT_TOOL_NAMES.has(name.toLowerCase());
+  return !NON_CONTEXT_TOOL_NAMES.has(name.toLowerCase());
 }
 
 export class StructuredOutputBuilder {
@@ -67,9 +69,24 @@ export class StructuredOutputBuilder {
    */
   onAgentLifecycle?: (type: "start" | "complete" | "error", agentId: string) => void;
 
+  /**
+   * Optional callback fired when model activity changes.
+   * Used by the TUI to show context-aware thinking/generating indicators.
+   */
+  onModelActivityChange?: (activity: ModelActivity) => void;
+
   // ── Public API ──
 
+  pushThinking(text: string, timestamp: number): void {
+    this.onModelActivityChange?.("thinking");
+    // Thinking content is not displayed in the output blocks --
+    // it's used only for activity signaling.
+    void text;
+    void timestamp;
+  }
+
   pushText(text: string, timestamp: number): void {
+    this.onModelActivityChange?.("generating");
     this.breakContextRun(timestamp);
 
     const last = this.blocks[this.blocks.length - 1];
@@ -99,6 +116,7 @@ export class StructuredOutputBuilder {
   }
 
   pushTool(name: string, detail: string, timestamp: number): void {
+    this.onModelActivityChange?.("tool_executing");
     const tool: ToolBlock = { kind: "tool", name, detail, timestamp };
 
     // If inside an active (real) agent, add as child — context tools inside
@@ -275,7 +293,7 @@ export class StructuredOutputBuilder {
       // Create the synthetic agent block via startAgent (contextAgentId is still
       // null, so startAgent's breakContextRun is a no-op). Set contextAgentId
       // AFTER startAgent to avoid premature completion.
-      this.startAgent(id, "Context", "Gathering context...", timestamp);
+      this.startAgent(id, "Tools", "Using tools...", timestamp);
       this.contextAgentId = id;
     }
 

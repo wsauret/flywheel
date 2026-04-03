@@ -16,6 +16,8 @@ import { SystemBlock } from "./system-block"
 
 export interface BlockRendererProps {
   block: AnyBlock
+  expandedIds?: Set<string>
+  onToggleExpand?: (id: string) => void
 }
 
 export function BlockRenderer(props: BlockRendererProps) {
@@ -28,7 +30,13 @@ export function BlockRenderer(props: BlockRendererProps) {
         {(block) => <ToolBlock block={block()} />}
       </Match>
       <Match when={props.block.kind === "agent" ? props.block : undefined}>
-        {(block) => <AgentBlock block={block()} />}
+        {(block) => (
+          <AgentBlock
+            block={block()}
+            expanded={props.expandedIds?.has(block().id) ?? false}
+            onToggleExpand={props.onToggleExpand}
+          />
+        )}
       </Match>
       <Match when={props.block.kind === "contextGroup" ? props.block : undefined}>
         {(block) => <ContextGroupBlock block={block()} />}

@@ -58,6 +58,9 @@ export interface PromptHandlerDeps {
   resumeSession: (id: string) => void
   resumeWorkerWithMessage: (message: string) => void
 
+  // Chat
+  sendChatMessage?: (text: string) => void
+
   // Dispatch (from createActionDispatcher)
   dispatch: (workflow: string, args: Record<string, string>) => { stepLabel: string; workflowName: string } | null
 
@@ -115,6 +118,27 @@ export function createPromptHandler(deps: PromptHandlerDeps) {
 
   const handlePromptInput = (input: string) => {
     const currentAppState = appState()
+
+    // Chatting state: route to chat session or parse as command
+    if (currentAppState === "chatting") {
+      const trimmed = input.trim()
+      if (!trimmed) return
+
+      // Slash commands work during chat
+      if (trimmed.startsWith("/")) {
+        const result = parseCommand(trimmed)
+        if (result) {
+          handleCommand(result.workflow, result.args)
+          return
+        }
+        toast.show({ message: `Unknown command: ${trimmed}`, variant: "error" })
+        return
+      }
+
+      // Route to chat controller
+      deps.sendChatMessage?.(trimmed)
+      return
+    }
 
     if (currentAppState === "idle" || currentAppState === "completed") {
       const trimmed = input.trim()

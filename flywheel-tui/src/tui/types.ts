@@ -77,6 +77,8 @@ export interface AgentBlock {
   toolCount?: number;
   errorMessage?: string;
   timestamp: number;
+  /** Whether the block's children are expanded (visible). Default: false (collapsed). */
+  expanded?: boolean;
 }
 
 export interface ContextGroupBlock {

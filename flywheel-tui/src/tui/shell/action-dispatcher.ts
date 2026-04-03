@@ -49,6 +49,7 @@ export interface ActionDispatcherDeps {
   launchTestStep?: (args: Record<string, string>) => void
   exit: () => void
   returnToIdle?: () => void
+  returnToChat?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +117,11 @@ export function createActionDispatcher(deps: ActionDispatcherDeps) {
     }
 
     if (workflow === "new") {
-      deps.returnToIdle?.()
+      if (deps.returnToChat) {
+        deps.returnToChat()
+      } else {
+        deps.returnToIdle?.()
+      }
       return null
     }
 

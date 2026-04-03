@@ -20,7 +20,7 @@
  * On completion it switches to a summary with count + duration.
  */
 
-import { Show } from "solid-js"
+import { Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { truncate, MAX_BLOCK_LINE_LENGTH } from "@tui/utils/text"
@@ -28,6 +28,8 @@ import type { AgentBlock as AgentBlockType } from "@tui/types"
 
 export interface AgentBlockProps {
   block: AgentBlockType
+  expanded?: boolean
+  onToggleExpand?: (id: string) => void
 }
 
 /**
@@ -48,6 +50,15 @@ export function AgentBlock(props: AgentBlockProps) {
 
   const label = () => `${props.block.agentLabel}: ${props.block.description}`
   const toolCount = () => props.block.toolCount ?? props.block.children.length
+  const isExpanded = () => props.expanded ?? false
+  const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
+  const expandIcon = () => isExpanded() ? "▾" : "▸"
+
+  const handleClick = () => {
+    if (canToggle() && props.onToggleExpand) {
+      props.onToggleExpand(props.block.id)
+    }
+  }
 
   return (
     <box flexDirection="column" marginTop={1}>
@@ -60,11 +71,15 @@ export function AgentBlock(props: AgentBlockProps) {
       </Show>
 
       <Show when={props.block.status === "completed"}>
-        <text fg={themeCtx.theme.secondary}>{`✓ ${label()}`}</text>
+        <box onMouseDown={handleClick}>
+          <text fg={themeCtx.theme.secondary}>{`${expandIcon()} ${label()}`}</text>
+        </box>
       </Show>
 
       <Show when={props.block.status === "paused"}>
-        <text fg={themeCtx.theme.textMuted}>{`⏸ ${label()}`}</text>
+        <box onMouseDown={handleClick}>
+          <text fg={themeCtx.theme.textMuted}>{`${expandIcon()} ${label()}`}</text>
+        </box>
       </Show>
 
       <Show when={props.block.status === "error"}>
@@ -76,11 +91,27 @@ export function AgentBlock(props: AgentBlockProps) {
         <text fg={themeCtx.theme.textMuted}>{`  ↳ ${truncate(props.block.latestChild!, MAX_BLOCK_LINE_LENGTH - 4)}`}</text>
       </Show>
 
-      {/* Completed/Paused: show tool count + duration */}
-      <Show when={props.block.status === "completed" || props.block.status === "paused"}>
-        <text fg={themeCtx.theme.textMuted}>
-          {`  └ ${toolCount()} toolcalls${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`}
-        </text>
+      {/* Completed/Paused collapsed: show tool count + duration summary */}
+      <Show when={(props.block.status === "completed" || props.block.status === "paused") && !isExpanded()}>
+        <box onMouseDown={handleClick}>
+          <text fg={themeCtx.theme.textMuted}>
+            {`  └ ${toolCount()} toolcalls${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`}
+          </text>
+        </box>
+      </Show>
+
+      {/* Completed/Paused expanded: show all children */}
+      <Show when={(props.block.status === "completed" || props.block.status === "paused") && isExpanded()}>
+        <For each={props.block.children}>
+          {(child) => (
+            <text fg={themeCtx.theme.textMuted}>{`  ▸ ${child.name}: ${truncate(child.detail, MAX_BLOCK_LINE_LENGTH - child.name.length - 6)}`}</text>
+          )}
+        </For>
+        <box onMouseDown={handleClick}>
+          <text fg={themeCtx.theme.textMuted}>
+            {`  └ ${toolCount()} toolcalls${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`}
+          </text>
+        </box>
       </Show>
 
       {/* Error: show error message */}

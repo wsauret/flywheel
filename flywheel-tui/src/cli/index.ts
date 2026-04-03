@@ -10,6 +10,7 @@
 
 import { Log } from "../utils/log"
 import { installAgents } from "../agents/installer"
+import { ensureRipgrepAddon } from "../harness/tools/ripgrep-build.js"
 
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,9 @@ export async function main(): Promise<void> {
     print: process.argv.includes("--print-logs"),
     level: process.env.FLYWHEEL_LOG_LEVEL as Log.Level | undefined,
   })
+
+  // Ensure ripgrep native addon is up to date (blocks if rebuild needed).
+  ensureRipgrepAddon();
 
   // Sync agent personas to engine discovery paths (~/.claude/agents/fly/,
   // ~/.config/opencode/agents/fly/) so worker subprocesses can resolve

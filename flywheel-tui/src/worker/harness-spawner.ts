@@ -68,61 +68,78 @@ function emit(onStdout: ((chunk: string) => void) | undefined, event: Record<str
 
 function emitText(
   onStdout: ((chunk: string) => void) | undefined,
-  sessionId: string,
+  _sessionId: string,
   text: string,
 ): void {
   emit(onStdout, {
-    type: "text",
-    timestamp: Date.now(),
-    sessionID: sessionId,
-    part: {
-      sessionID: sessionId,
-      type: "text",
-      text: sanitize(text),
+    type: "assistant",
+    message: {
+      content: [{ type: "text", text: sanitize(text) }],
     },
   });
 }
 
 function emitToolUse(
   onStdout: ((chunk: string) => void) | undefined,
-  sessionId: string,
+  _sessionId: string,
   call: CollectedToolCall,
 ): void {
   emit(onStdout, {
-    type: "tool_use",
-    timestamp: Date.now(),
-    sessionID: sessionId,
-    part: {
-      sessionID: sessionId,
-      type: "tool-use",
-      id: call.id,
-      name: call.name,
-      input: call.input,
+    type: "assistant",
+    message: {
+      content: [{
+        type: "tool_use",
+        id: call.id,
+        name: call.name,
+        input: call.input,
+      }],
+    },
+  });
+}
+
+function emitThinking(
+  onStdout: ((chunk: string) => void) | undefined,
+  _sessionId: string,
+  thinking: string,
+): void {
+  emit(onStdout, {
+    type: "assistant",
+    message: {
+      content: [{ type: "thinking", thinking: sanitize(thinking) }],
     },
   });
 }
 
 function emitToolResult(
   onStdout: ((chunk: string) => void) | undefined,
-  sessionId: string,
+  _sessionId: string,
   result: ToolCallResult,
 ): void {
   emit(onStdout, {
     type: "tool_result",
-    timestamp: Date.now(),
-    sessionID: sessionId,
-    part: {
-      sessionID: sessionId,
-      type: "tool-result",
-      toolCallId: result.toolCallId,
-      name: result.name,
-      isError: result.isError,
+    tool_use_id: result.toolCallId,
+    content: result.name,
+    is_error: result.isError,
+  });
+}
+
+function emitUsage(
+  onStdout: ((chunk: string) => void) | undefined,
+  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens?: number; cacheCreationInputTokens?: number },
+): void {
+  emit(onStdout, {
+    type: "usage",
+    usage: {
+      input_tokens: usage.inputTokens,
+      output_tokens: usage.outputTokens,
+      cache_read_input_tokens: usage.cacheReadInputTokens ?? 0,
+      cache_creation_input_tokens: usage.cacheCreationInputTokens ?? 0,
     },
   });
 }
 
 function emitCompletion(onStdout: ((chunk: string) => void) | undefined): void {
-  emit(onStdout, { type: "completion" });
+  emit(onStdout, { type: "result", subtype: "success" });
 }
 
 export class HarnessSpawner implements ProcessSpawner {
@@ -221,11 +238,17 @@ export class HarnessSpawner implements ProcessSpawner {
             textChunks.push(text);
             emitText(options?.onStdout, sessionId, text);
           },
+          onThinking: (thinking) => {
+            emitThinking(options?.onStdout, sessionId, thinking);
+          },
           onToolUse: (call) => {
             emitToolUse(options?.onStdout, sessionId, call);
           },
           onToolResult: (toolResult) => {
             emitToolResult(options?.onStdout, sessionId, toolResult);
+          },
+          onUsage: (usage) => {
+            emitUsage(options?.onStdout, usage);
           },
         });
 

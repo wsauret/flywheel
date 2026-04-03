@@ -19,12 +19,15 @@
  * The layout is always SharedLayout; only content varies based on state.
  *
  * Dual meanings after session viewport switching:
+ * - "chatting" = interactive chat with the AI agent (default boot state when
+ *   API key is present). User types messages and sees agent responses.
  * - "working" = either "a session I started is executing" OR "I'm viewing a
  *   running session started elsewhere (read-only live view)".
  * - "completed" = either "the workflow finished/stopped/failed" OR "I'm viewing
  *   a non-running session's snapshot (read-only historical view)".
+ * - "idle" = fallback state (API key missing or chat failed to start).
  */
-export type AppState = "idle" | "working" | "completed"
+export type AppState = "idle" | "chatting" | "working" | "completed"
 
 // ---------------------------------------------------------------------------
 // Escape behavior per state
@@ -32,8 +35,9 @@ export type AppState = "idle" | "working" | "completed"
 
 export type EscapeStateBehavior =
   | "exit-tui"        // idle: Esc exits the application
+  | "return-idle"     // chatting: Esc returns to idle (shuts down chat)
   | "double-esc-stop" // working: first Esc shows hint, second stops
-  | "return-idle"     // completed: go back to idle
+  | "return-chat"     // completed: go back to chatting (or idle if no API key)
 
 /**
  * What should happen when Esc is pressed in a given AppState.
@@ -41,8 +45,9 @@ export type EscapeStateBehavior =
 export function escapeForState(state: AppState): EscapeStateBehavior {
   switch (state) {
     case "idle":        return "exit-tui"
+    case "chatting":    return "return-idle"
     case "working":     return "double-esc-stop"
-    case "completed":   return "return-idle"
+    case "completed":   return "return-chat"
     default:            return assertNever(state)
   }
 }
@@ -51,7 +56,7 @@ export function escapeForState(state: AppState): EscapeStateBehavior {
 // Ctrl+C behavior per state
 // ---------------------------------------------------------------------------
 
-export type CtrlCStateBehavior = "exit-tui" | "stop-workflow" | "return-idle"
+export type CtrlCStateBehavior = "exit-tui" | "stop-workflow" | "return-idle" | "return-chat"
 
 /**
  * What should happen when Ctrl+C is pressed in a given AppState.
@@ -59,8 +64,9 @@ export type CtrlCStateBehavior = "exit-tui" | "stop-workflow" | "return-idle"
 export function ctrlCForState(state: AppState): CtrlCStateBehavior {
   switch (state) {
     case "idle":        return "exit-tui"
+    case "chatting":    return "exit-tui"
     case "working":     return "stop-workflow"
-    case "completed":   return "return-idle"
+    case "completed":   return "return-chat"
     default:            return assertNever(state)
   }
 }

@@ -176,7 +176,7 @@ function buildToolResultMessage(results: ToolCallResult[]): ToolResultMessage {
 }
 
 /** Truncate oldest messages to recover from context overflow. */
-function truncateHistory(messages: Message[]): Message[] {
+export function truncateHistory(messages: Message[]): Message[] {
   if (messages.length <= MIN_MESSAGES_AFTER_TRUNCATION) {
     return messages;
   }

@@ -68,7 +68,7 @@ export interface KeyboardContext {
   exitTUI(): void
   stopWorkflow(): Promise<void>
   returnToIdle(): void
-
+  returnToChat(): void
   // TUI helpers
   activeSession: WorkflowSession | null
   renderer: RendererLike
@@ -207,12 +207,12 @@ export function handleShellKeyEvent(evt: KeyEvent, ctx: KeyboardContext): void {
   }
 
   // Escape: handle at shell level for non-idle states.
-  // "completed" is included because the prompt may not always capture Escape
+  // "completed" and "chatting" are included because the prompt may not always capture Escape
   // (e.g., when viewing a read-only session and prompt focus is ambiguous).
   // When a question is pending, let the QuestionPrompt handle Escape (to dismiss the question).
   if (evt.name === "escape" && !ctx.pendingQuestion()) {
     const currentState = ctx.appState()
-    if (currentState === "working" || currentState === "completed") {
+    if (currentState === "working" || currentState === "completed" || currentState === "chatting") {
       evt.preventDefault()
       ctx.handleEscape()
       return
@@ -243,6 +243,9 @@ export function handleShellKeyEvent(evt: KeyEvent, ctx: KeyboardContext): void {
         return
       case "return-idle":
         ctx.returnToIdle()
+        return
+      case "return-chat":
+        ctx.returnToChat()
         return
     }
     return

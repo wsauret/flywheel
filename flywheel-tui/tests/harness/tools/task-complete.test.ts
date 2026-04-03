@@ -62,18 +62,14 @@ describe("task-complete tool — invalid handoff", () => {
 		expect(result.content).toContain("validation failed");
 	});
 
-	it("accepts short summary at tool level (full validation is in CompletionStateMachine)", async () => {
-		// The tool-level schema only enforces presence of summary.
-		// Length/newline/cross-field constraints are enforced by WorkerHandoffSchema
-		// in the CompletionStateMachine for better error feedback to the model.
+	it("rejects short summary (WorkerHandoffSchema enforces 20-char minimum)", async () => {
 		const result = await taskCompleteTool.execute(
 			{ summary: "Done" },
 			ctx,
 		);
 
-		expect(result.isError).toBeUndefined();
-		const parsed = JSON.parse(result.content);
-		expect(parsed.status).toBe("completion_requested");
+		expect(result.isError).toBe(true);
+		expect(result.content).toContain("validation failed");
 	});
 
 	it("rejects handoff with non-string summary", async () => {

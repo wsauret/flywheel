@@ -36,6 +36,7 @@ import { BrandingHeader } from "@tui/shared/components/branding-header"
 import { EmptyState } from "./empty-state"
 import { useUnifiedPrompt } from "./unified-prompt"
 import { shouldShowThinkingIndicator } from "./thinking-indicator-state"
+import type { ModelActivity } from "../adapters/structured-output-builder"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
 import { Selection } from "../utils/selection"
@@ -126,6 +127,7 @@ import {
   type QueueCleanupRefs,
   type ClearQueueRuntimeRefs,
 } from "../shell/shell-lifecycle"
+import { createChatController, type ChatController } from "../shell/chat-controller"
 
 const log = Log.create({ service: "shell" })
 
@@ -144,6 +146,7 @@ export function FlywheelShell() {
   const sessionCtx = useSession()
   const [appState, setAppState] = createSignal<AppState>("idle")
   const [escHint, setEscHint] = createSignal("")
+  const [modelActivity, setModelActivity] = createSignal<ModelActivity>("idle")
 
   // Active workflow metadata
   const [activeStepLabel, setActiveStepLabel] = createSignal("Step")
@@ -390,6 +393,35 @@ export function FlywheelShell() {
     })
   }
 
+
+  // ── Chat Controller ──
+  // Manages interactive chat session lifecycle (chatting state).
+  const chatController: ChatController = createChatController({
+    setAppState,
+    setActiveStore,
+    setWorkState,
+    subscribeToStore,
+    unsubscribeStore: () => {
+      if (storeUnsub) {
+        storeUnsub()
+        storeUnsub = null
+      }
+    },
+    setModelActivity,
+    toast,
+    getProjectCwd,
+  })
+
+  // Boot into chatting state if API key is available
+  // Use queueMicrotask to ensure SolidJS reactivity is ready
+  queueMicrotask(() => {
+    if (appState() === "idle") {
+      const started = chatController.startChat()
+      if (started) {
+        setIsPromptFocused(true)
+      }
+    }
+  })
   // ── Session Viewport ──
   // Handles switching the visible session in the viewport without
   // mutating lifecycle state or creating new WorkflowSession instances.
@@ -442,6 +474,7 @@ export function FlywheelShell() {
       approvalPending: approvalPending(),
       hasPendingQuestion: pendingQuestion() !== null,
       isInterrupted: isInterrupted(),
+      modelActivity: modelActivity(),
     })
   )
 
@@ -584,6 +617,8 @@ export function FlywheelShell() {
     const session = createWorkflowSession(sessionLabel)
     activeSession = session
     activeQueue = queue
+    session.adapter.onModelActivityChange = (activity) => setModelActivity(activity)
+    setModelActivity("idle")
     setActiveStore(session.store)
     subscribeToStore(session.store)
     subscribeToTimer(session.timer)
@@ -1392,6 +1427,8 @@ export function FlywheelShell() {
       const session = createWorkflowSession(result.planPath)
       activeSession = session
       activeQueue = result.queue
+      session.adapter.onModelActivityChange = (activity) => setModelActivity(activity)
+      setModelActivity("idle")
       setActiveStore(session.store)
       subscribeToStore(session.store)
       subscribeToTimer(session.timer)
@@ -1877,6 +1914,20 @@ export function FlywheelShell() {
     setAppState("idle")
   }
 
+  const returnToChat = () => {
+    teardownActiveWorkflow()
+    viewport.cancelInjection()
+    setSessionLoading(false)
+    setViewedSessionId(null)
+    setWorkState(null)
+    resetInterruptState({ setIsInterrupted, pendingInjection, capturedWorkerSessionId })
+    // Try to restart chat; fall back to idle if it fails
+    const started = chatController.restartChat()
+    if (!started) {
+      setAppState("idle")
+    }
+  }
+
   /**
    * Background the current session: deselect it from the viewport and return
    * to idle, but keep the queue/controller running. The session stays in
@@ -1938,6 +1989,7 @@ export function FlywheelShell() {
   // Clean up on component unmount
   onCleanup(() => {
     escapeHandler.dispose()
+    chatController.dispose()
     teardownActiveWorkflow()
     runtimes.teardownAll()
     _indexerCache.dispose()
@@ -2166,8 +2218,8 @@ export function FlywheelShell() {
     launchTestStep,
     exit: exitTUI,
     returnToIdle,
+    returnToChat,
   })
-
   // ── Prompt Handler (extracted to prompt-handler.ts) ──
 
   const { handlePromptInput, handleCommand, handleApprovalDecision } = createPromptHandler({
@@ -2188,8 +2240,8 @@ export function FlywheelShell() {
     dispatch,
     setActiveStepLabel,
     setActiveWorkflowName,
+    sendChatMessage: (text: string) => chatController.sendMessage(text),
   })
-
   // ── Escape Handling ──
 
   const handleEscape = () => {
@@ -2259,6 +2311,9 @@ export function FlywheelShell() {
       case "return-idle":
         returnToIdle()
         return
+      case "return-chat":
+        returnToChat()
+        return
 
     }
   }
@@ -2301,7 +2356,7 @@ export function FlywheelShell() {
     exitTUI,
     stopWorkflow,
     returnToIdle,
-
+    returnToChat,
     // TUI helpers
     get activeSession() { return activeSession },
     renderer,

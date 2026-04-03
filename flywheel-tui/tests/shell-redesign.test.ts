@@ -45,12 +45,16 @@ describe("escapeForState", () => {
     expect(escapeForState("working")).toBe("double-esc-stop");
   });
 
-  it("completed -> return-idle", () => {
-    expect(escapeForState("completed")).toBe("return-idle");
+  it("chatting -> return-idle", () => {
+    expect(escapeForState("chatting")).toBe("return-idle");
   });
 
-  it("covers all three states", () => {
-    const states: AppState[] = ["idle", "working", "completed"];
+  it("completed -> return-chat", () => {
+    expect(escapeForState("completed")).toBe("return-chat");
+  });
+
+  it("covers all states", () => {
+    const states: AppState[] = ["idle", "chatting", "working", "completed"];
     for (const state of states) {
       expect(() => escapeForState(state)).not.toThrow();
     }
@@ -70,8 +74,12 @@ describe("ctrlCForState", () => {
     expect(ctrlCForState("working")).toBe("stop-workflow");
   });
 
-  it("completed -> return-idle", () => {
-    expect(ctrlCForState("completed")).toBe("return-idle");
+  it("chatting -> exit-tui", () => {
+    expect(ctrlCForState("chatting")).toBe("exit-tui");
+  });
+
+  it("completed -> return-chat", () => {
+    expect(ctrlCForState("completed")).toBe("return-chat");
   });
 
 

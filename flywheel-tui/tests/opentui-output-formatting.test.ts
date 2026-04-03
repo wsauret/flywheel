@@ -47,7 +47,7 @@ describe("OpenTUI Adapter — output formatting", () => {
       expect(textBlocks[0].content).toContain("Hello world");
     });
 
-    it("formats tool_use from assistant NDJSON → ToolBlock (or Context AgentBlock for context tools)", () => {
+    it("formats tool_use from assistant NDJSON → Tools AgentBlock for grouped tools", () => {
       const { bus, store } = createHarness();
       const filePath = path.join(process.cwd(), "src/index.ts");
       const ndjson = JSON.stringify({
@@ -66,10 +66,9 @@ describe("OpenTUI Adapter — output formatting", () => {
         timestamp: ts(),
       });
       const blocks = store.getState().outputBlocks;
-      // Read is a context tool — it creates a synthetic "Context" AgentBlock
       const agentBlocks = blocks.filter((b) => b.kind === "agent") as AgentBlock[];
       expect(agentBlocks.length).toBeGreaterThanOrEqual(1);
-      expect(agentBlocks[0].agentLabel).toBe("Context");
+      expect(agentBlocks[0].agentLabel).toBe("Tools");
       expect(agentBlocks[0].children.length).toBeGreaterThanOrEqual(1);
       expect(agentBlocks[0].children[0].name).toBe("Read");
       expect(agentBlocks[0].children[0].detail).toContain("src/index.ts");

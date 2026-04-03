@@ -58,7 +58,7 @@ export class StructuredEventParser {
   dispatch(event: NDJSONEvent, engineId?: string): void {
     const now = Date.now();
 
-    if (engineId === "claude") {
+    if (engineId === "claude" || engineId === "harness") {
       this.dispatchClaudeEvent(event, now);
     } else if (engineId === "opencode") {
       this.dispatchOpenCodeEvent(event, now);
@@ -117,7 +117,11 @@ export class StructuredEventParser {
     for (const block of content) {
       const blockType = block.type as string | undefined;
 
-      if (blockType === "text" && typeof block.text === "string") {
+      if (blockType === "thinking" && typeof block.thinking === "string") {
+        if (!parentAgentId) {
+          this.builder.pushThinking(block.thinking, now);
+        }
+      } else if (blockType === "text" && typeof block.text === "string") {
         // Text inside a child message: skip (agent text is not useful for display)
         if (!parentAgentId) {
           if (block.text.length > 0) {
