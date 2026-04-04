@@ -2,29 +2,36 @@
 /**
  * AgentBlock Component
  *
- * Renders a subagent block following OpenCode's display pattern:
+ * Renders a subagent/tool-group block:
  *
  * Running:
- *   ◐ Explore: Find settings page files
- *     ↳ Glob src/tui/routes/**
+ *   ┌─ Worker (3) ──────────────────────┐
+ *   │  → Read  package.json             │
+ *   │  ← Write  fib.ts                  │
+ *   │  $ Bash  bun test                 │
+ *   │  ↳ Running...                     │
+ *   └──────────────────────────────────-┘
  *
- * Completed:
- *   ✓ Explore: Find settings page files
- *     └ 14 toolcalls · 2.3s
+ * Completed (collapsed):
+ *   ▸ Worker · 3 tools · 14.3s
  *
- * Error:
- *   ✗ Explore: Find settings page files
- *     error message
- *
- * The ↳ line live-updates in place showing the latest tool the subagent is calling.
- * On completion it switches to a summary with count + duration.
+ * Completed (expanded):
+ *   ▾ Worker · 3 tools · 14.3s
+ *   ┌──────────────────────────────────-┐
+ *   │  → Read  package.json             │
+ *   │  ← Write  fib.ts                  │
+ *   │  $ Bash  bun test                 │
+ *   └──────────────────────────────────-┘
  */
 
-import { Show, For } from "solid-js"
+import { createSignal, Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
-import { truncate, MAX_BLOCK_LINE_LENGTH } from "@tui/utils/text"
-import type { AgentBlock as AgentBlockType } from "@tui/types"
+import { truncate } from "@tui/utils/text"
+import { getToolIcon, displayToolName } from "./tool-block"
+import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@tui/types"
+
+const MAX_VISIBLE_TOOLS = 6
 
 export interface AgentBlockProps {
   block: AgentBlockType
@@ -32,10 +39,6 @@ export interface AgentBlockProps {
   onToggleExpand?: (id: string) => void
 }
 
-/**
- * Format milliseconds to human-readable duration.
- * Exported for testing.
- */
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
   const seconds = ms / 1000
@@ -45,78 +48,109 @@ export function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds.toFixed(0)}s`
 }
 
+function ToolRow(props: { tool: ToolBlockType }) {
+  const { theme } = useTheme()
+  return (
+    <box flexDirection="row" gap={1} paddingLeft={1}>
+      <text fg={theme.textMuted}>{getToolIcon(props.tool.name)}</text>
+      <text fg={theme.text}>{displayToolName(props.tool.name)}</text>
+      <text fg={theme.textMuted}>{truncate(props.tool.detail, 70)}</text>
+    </box>
+  )
+}
+
 export function AgentBlock(props: AgentBlockProps) {
-  const themeCtx = useTheme()
+  const { theme } = useTheme()
+  const [showAll, setShowAll] = createSignal(false)
 
-  const label = () => `${props.block.agentLabel}: ${props.block.description}`
   const toolCount = () => props.block.toolCount ?? props.block.children.length
-  const isExpanded = () => props.expanded ?? false
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
-  const expandIcon = () => isExpanded() ? "▾" : "▸"
+  const summary = () => `${toolCount()} tools${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`
 
-  const handleClick = () => {
-    if (canToggle() && props.onToggleExpand) {
-      props.onToggleExpand(props.block.id)
-    }
+  const visibleChildren = () => {
+    const all = props.block.children
+    if (showAll() || all.length <= MAX_VISIBLE_TOOLS) return all
+    // Show first (MAX - 1) + always the latest one so active tool is visible
+    const head = all.slice(0, MAX_VISIBLE_TOOLS - 1)
+    const last = all[all.length - 1]
+    return [...head, last]
+  }
+  const hiddenCount = () => {
+    const all = props.block.children
+    if (showAll() || all.length <= MAX_VISIBLE_TOOLS) return 0
+    // head (MAX-1) + last (1) = MAX shown, rest hidden
+    return all.length - MAX_VISIBLE_TOOLS
   }
 
   return (
     <box flexDirection="column" marginTop={1}>
-      {/* Header line */}
+      {/* ── Active: bordered container with live tool list ── */}
       <Show when={props.block.status === "active"}>
-        <box flexDirection="row">
-          <Spinner color={themeCtx.theme.primary} />
-          <text fg={themeCtx.theme.primary}>{` ${label()}`}</text>
+        <box
+          flexDirection="column"
+          border={true}
+          borderColor={theme.borderSubtle}
+          paddingTop={0}
+          paddingBottom={0}
+          onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
+        >
+          {/* Header */}
+          <box flexDirection="row" gap={1} paddingLeft={1}>
+            <Spinner color={theme.primary} />
+            <text fg={theme.primary} style={{ bold: true }}>{props.block.agentLabel}</text>
+            <Show when={toolCount() > 0}>
+              <text fg={theme.textMuted}>({toolCount()})</text>
+            </Show>
+          </box>
+          {/* Tool list */}
+          <For each={visibleChildren()}>
+            {(child) => <ToolRow tool={child} />}
+          </For>
+          {/* Show more */}
+          <Show when={!showAll() && hiddenCount() > 0}>
+            <box paddingLeft={1}>
+              <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
+            </box>
+          </Show>
         </box>
       </Show>
 
-      <Show when={props.block.status === "completed"}>
-        <box onMouseDown={handleClick}>
-          <text fg={themeCtx.theme.secondary}>{`${expandIcon()} ${label()}`}</text>
+      {/* ── Completed/Paused: header + bordered tool list (always visible) ── */}
+      <Show when={canToggle()}>
+        <box flexDirection="row" gap={1}>
+          <text fg={theme.secondary}>▸</text>
+          <text fg={theme.secondary} style={{ bold: true }}>{props.block.agentLabel}</text>
+          <text fg={theme.textMuted}>· {summary()}</text>
+        </box>
+        <box
+          flexDirection="column"
+          border={true}
+          borderColor={theme.borderSubtle}
+          paddingTop={0}
+          paddingBottom={0}
+          onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
+        >
+          <For each={visibleChildren()}>
+            {(child) => <ToolRow tool={child} />}
+          </For>
+          <Show when={!showAll() && hiddenCount() > 0}>
+            <box paddingLeft={1}>
+              <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
+            </box>
+          </Show>
         </box>
       </Show>
 
-      <Show when={props.block.status === "paused"}>
-        <box onMouseDown={handleClick}>
-          <text fg={themeCtx.theme.textMuted}>{`${expandIcon()} ${label()}`}</text>
-        </box>
-      </Show>
-
+      {/* ── Error ── */}
       <Show when={props.block.status === "error"}>
-        <text fg={themeCtx.theme.error}>{`✗ ${label()}`}</text>
-      </Show>
-
-      {/* Running: show latest tool being called */}
-      <Show when={props.block.status === "active" && props.block.latestChild}>
-        <text fg={themeCtx.theme.textMuted}>{`  ↳ ${truncate(props.block.latestChild!, MAX_BLOCK_LINE_LENGTH - 4)}`}</text>
-      </Show>
-
-      {/* Completed/Paused collapsed: show tool count + duration summary */}
-      <Show when={(props.block.status === "completed" || props.block.status === "paused") && !isExpanded()}>
-        <box onMouseDown={handleClick}>
-          <text fg={themeCtx.theme.textMuted}>
-            {`  └ ${toolCount()} toolcalls${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`}
-          </text>
+        <box flexDirection="row" gap={1}>
+          <text fg={theme.error}>✗</text>
+          <text fg={theme.error} style={{ bold: true }}>{props.block.agentLabel}</text>
+          <text fg={theme.error}>{props.block.description}</text>
         </box>
-      </Show>
-
-      {/* Completed/Paused expanded: show all children */}
-      <Show when={(props.block.status === "completed" || props.block.status === "paused") && isExpanded()}>
-        <For each={props.block.children}>
-          {(child) => (
-            <text fg={themeCtx.theme.textMuted}>{`  ▸ ${child.name}: ${truncate(child.detail, MAX_BLOCK_LINE_LENGTH - child.name.length - 6)}`}</text>
-          )}
-        </For>
-        <box onMouseDown={handleClick}>
-          <text fg={themeCtx.theme.textMuted}>
-            {`  └ ${toolCount()} toolcalls${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`}
-          </text>
-        </box>
-      </Show>
-
-      {/* Error: show error message */}
-      <Show when={props.block.status === "error" && props.block.errorMessage}>
-        <text fg={themeCtx.theme.error}>{`    ${props.block.errorMessage}`}</text>
+        <Show when={props.block.errorMessage}>
+          <text fg={theme.error} paddingLeft={2}>{props.block.errorMessage}</text>
+        </Show>
       </Show>
     </box>
   )

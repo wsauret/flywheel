@@ -286,9 +286,9 @@ describe("applyCacheBreakpoints", () => {
 
     applyCacheBreakpoints(params);
 
-    // System prompt gets cache_control
-    const systemBlocks = params.system as Array<{ type: string; text: string; cache_control?: { type: string } }>;
-    expect(systemBlocks[0]!.cache_control).toEqual({ type: "ephemeral" });
+    // System prompt gets cache_control with 1h TTL
+    const systemBlocks = params.system as Array<{ type: string; text: string; cache_control?: { type: string; ttl?: string } }>;
+    expect(systemBlocks[0]!.cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
 
     // Last message gets cache_control
     const lastMessage = params.messages[params.messages.length - 1]!;
@@ -384,7 +384,7 @@ describe("AnthropicProvider thinking params", () => {
       system: "You are helpful",
       messages: [{ role: "user", content: "Solve this" }],
       maxTokens: 16000,
-      thinking: { type: "enabled", budgetTokens: 10000 },
+      thinking: { effort: "high" },
     };
 
     const events: StreamEvent[] = [];
@@ -399,8 +399,7 @@ describe("AnthropicProvider thinking params", () => {
 
     // Verify thinking options were passed through
     expect(provider.calls[0]!.thinking).toEqual({
-      type: "enabled",
-      budgetTokens: 10000,
+      effort: "high",
     });
   });
 });

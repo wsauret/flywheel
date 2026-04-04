@@ -63,6 +63,10 @@ export interface ToolBlock {
   name: string;
   detail: string;
   timestamp: number;
+  /** Unified diff string for Edit/Write/ApplyPatch tools */
+  diff?: string;
+  /** File type for syntax highlighting in diff rendering */
+  filetype?: string;
 }
 
 export interface AgentBlock {
@@ -93,7 +97,19 @@ export interface SystemBlock {
   timestamp: number;
 }
 
-export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock;
+export interface ThinkingBlock {
+  kind: "thinking";
+  content: string;
+  timestamp: number;
+}
+
+export interface UserMessageBlock {
+  kind: "userMessage";
+  content: string;
+  timestamp: number;
+}
+
+export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock | ThinkingBlock | UserMessageBlock;
 
 export interface WorkState {
   planName: string;

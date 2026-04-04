@@ -11,6 +11,7 @@ import type {
   LLMProvider,
   Message,
   StreamOptions,
+  ThinkingEffort,
   ToolDefinition,
   UsageInfo,
   AssistantMessage,
@@ -47,7 +48,7 @@ export interface AgentLoopOptions {
   maxTokens?: number;
   maxTurns?: number;
   maxToolFailures?: number;
-  thinking?: { type: "enabled"; budgetTokens: number };
+  thinking?: { effort: ThinkingEffort } | null;
   abortSignal?: AbortSignal;
   cwd?: string;
   env?: Record<string, string>;
@@ -100,6 +101,7 @@ export class OutputLengthExceededError extends Error {
 const DEFAULT_MAX_TURNS = 100;
 const DEFAULT_MAX_TOOL_FAILURES = 3;
 const DEFAULT_MAX_TOKENS = 16384;
+const DEFAULT_THINKING_EFFORT: ThinkingEffort = "medium";
 const CONTEXT_WARNING_RATIO = 0.5;
 const MIN_MESSAGES_AFTER_TRUNCATION = 4;
 
@@ -241,6 +243,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     onUsage,
   } = options;
 
+  // undefined = use default effort; null = explicitly disabled; object = use as-is
+  const resolvedThinking = thinking === undefined
+    ? { effort: DEFAULT_THINKING_EFFORT }
+    : thinking ?? undefined;
+
   const emitter = createTraceEmitter(onTrace);
 
   // Setup
@@ -286,7 +293,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       messages: [...messages],
       tools: toolDefs,
       maxTokens,
-      ...(thinking ? { thinking } : {}),
+      thinking: resolvedThinking,
       ...(abortSignal ? { abortSignal } : {}),
     };
 
@@ -317,7 +324,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             messages: [...messages],
             tools: toolDefs,
             maxTokens,
-            ...(thinking ? { thinking } : {}),
+            thinking: resolvedThinking,
             ...(abortSignal ? { abortSignal } : {}),
           };
           turnResult = await executeTurn({

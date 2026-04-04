@@ -52,6 +52,8 @@ export type CommandsConfig = z.infer<typeof CommandsSchema>;
 export const FlywheelConfigSchema = z.object({
   /** Engine ID: "claude", "opencode", etc. */
   engine: z.string().default("claude"),
+  /** TUI theme name: "opencode", "tokyonight", "dracula", "catppuccin", "nord", "gruvbox". */
+  theme: z.string().optional(),
   /** Per-tier model config for the dispatcher */
   dispatcher: z.object({
     model: z.string().optional(),

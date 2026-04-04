@@ -15,8 +15,6 @@ export type Theme = {
   border: RGBA
   borderActive: RGBA
   borderSubtle: RGBA
-  purple: RGBA
-  blue: RGBA
   accent: RGBA
   diffAdded: RGBA
   diffRemoved: RGBA

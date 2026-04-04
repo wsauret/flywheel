@@ -149,6 +149,11 @@ export class BunProcessSpawner implements ProcessSpawner {
     const completionDetector = new CompletionDetector();
     const ndjsonParser = new NDJSONParser(buffer);
 
+    // Wire NDJSON event handler for budget tracking (cost/token capture)
+    if (options?.onNDJSONEvent) {
+      ndjsonParser.onEvent = options.onNDJSONEvent;
+    }
+
     // Raw chunk collectors (unprocessed stdout/stderr)
     const rawStdoutChunks: string[] = [];
     const rawStderrChunks: string[] = [];
@@ -300,10 +305,11 @@ export class BunProcessSpawner implements ProcessSpawner {
               }
               const wasDetected = completionDetector.hasSeenCompletion;
               completionDetector.check(text);
-              // Fire once on transition from undetected → detected
+              // Fire on transition from undetected → detected
               if (!wasDetected && completionDetector.hasSeenCompletion && _onCompletionDetected) {
                 _onCompletionDetected();
-                _onCompletionDetected = null;
+                // Only null for single-shot mode; multi-turn (onTurnComplete) keeps the callback
+                if (!options?.onTurnComplete) _onCompletionDetected = null;
               }
             }
           }
@@ -368,6 +374,7 @@ export class BunProcessSpawner implements ProcessSpawner {
             if (!pipeOpen) return false;
             try {
               stdinSink.write(encoder.encode(message));
+              stdinSink.flush();
               return true;
             } catch {
               pipeOpen = false;
@@ -412,7 +419,7 @@ export class BunProcessSpawner implements ProcessSpawner {
             if (completionDetector.checkHandoffFile(handoffPath)) {
               if (_onCompletionDetected) {
                 _onCompletionDetected();
-                _onCompletionDetected = null;
+                if (!options?.onTurnComplete) _onCompletionDetected = null;
               }
               return;
             }
@@ -428,9 +435,12 @@ export class BunProcessSpawner implements ProcessSpawner {
           // Turn-complete mode: notify the caller at turn boundaries so they
           // can inject messages via the still-open stdin pipe. The pipe stays
           // open until the caller explicitly closes it or the process exits.
+          // Reset the completion detector after each turn so it can detect
+          // the next turn's result event (enables multi-turn chat).
           const turnCallback = options.onTurnComplete;
           _onCompletionDetected = () => {
             if (!pipeOpen) return;
+            completionDetector.reset();
             turnCallback(ndjsonParser.sessionId ?? undefined);
           };
         } else {

@@ -45,6 +45,28 @@ const StepFinishCostSchema = z
   })
   .passthrough();
 
+/**
+ * Schema for Claude CLI "result" events where total_cost_usd is at top level
+ * and usage contains token counts (including cache tokens).
+ *
+ * Claude CLI result format:
+ *   { "type": "result", "total_cost_usd": 0.031, "usage": { "input_tokens": 1000, "output_tokens": 500, "cache_read_input_tokens": 15000, ... }, ... }
+ */
+const ResultCostSchema = z
+  .object({
+    total_cost_usd: z.number(),
+    usage: z
+      .object({
+        input_tokens: z.number().optional(),
+        output_tokens: z.number().optional(),
+        cache_creation_input_tokens: z.number().optional(),
+        cache_read_input_tokens: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -137,19 +159,35 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   // -------------------------------------------------------------------------
 
   function handleEvent(event: NDJSONEvent): void {
-    if (event.type !== "step_finish") return;
+    // Handle step_finish events (legacy/generic format: usage.cost_usd)
+    if (event.type === "step_finish") {
+      const parsed = StepFinishCostSchema.safeParse(event.data);
+      if (!parsed.success) return;
 
-    const parsed = StepFinishCostSchema.safeParse(event.data);
-    if (!parsed.success) return;
+      totalCost += parsed.data.usage.cost_usd;
+      const inputTokens = parsed.data.usage.input_tokens ?? 0;
+      const outputTokens = parsed.data.usage.output_tokens ?? 0;
+      tokensUsed += inputTokens + outputTokens;
 
-    totalCost += parsed.data.usage.cost_usd;
+      scheduleWrite();
+      return;
+    }
 
-    // Accumulate tokens — graceful: 0 if fields absent
-    const inputTokens = parsed.data.usage.input_tokens ?? 0;
-    const outputTokens = parsed.data.usage.output_tokens ?? 0;
-    tokensUsed += inputTokens + outputTokens;
+    // Handle result events (Claude CLI format: top-level total_cost_usd, usage with token breakdown)
+    if (event.type === "result") {
+      const parsed = ResultCostSchema.safeParse(event.data);
+      if (!parsed.success) return;
 
-    scheduleWrite();
+      totalCost += parsed.data.total_cost_usd;
+      const inputTokens = parsed.data.usage?.input_tokens ?? 0;
+      const outputTokens = parsed.data.usage?.output_tokens ?? 0;
+      const cacheCreation = parsed.data.usage?.cache_creation_input_tokens ?? 0;
+      const cacheRead = parsed.data.usage?.cache_read_input_tokens ?? 0;
+      tokensUsed += inputTokens + outputTokens + cacheCreation + cacheRead;
+
+      scheduleWrite();
+      return;
+    }
   }
 
   // -------------------------------------------------------------------------

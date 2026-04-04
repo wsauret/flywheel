@@ -81,7 +81,7 @@ export function OutputWindow(props: OutputWindowProps) {
   const isRunning = () => props.workflowStatus === "running"
   const hasContent = () => props.outputBlocks.length > 0
   const isWide = () => (props.availableWidth ?? 80) >= MIN_WIDTH_FOR_INLINE_STATUS
-  const blockCountText = () => `${props.outputBlocks.length} blocks`
+  // Block count removed — not a user-relevant metric
 
   const statusHeading = () => {
     if (isRunning()) return "Starting..."
@@ -108,23 +108,7 @@ export function OutputWindow(props: OutputWindowProps) {
   return (
     <box flexDirection="column" flexGrow={1}>
       {/* Rich Header (when step is active) */}
-      <Show when={props.currentStep} fallback={
-        /* Simple header: no active step — show status-aware heading */
-        <box flexDirection="column" paddingLeft={1} height={2} flexShrink={0}>
-          <text fg={themeCtx.theme.border}>{"\u2500\u2500"}</text>
-          <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
-            <box flexDirection="row">
-              <text fg={themeCtx.theme.border}>{" "}</text>
-              <text fg={themeCtx.theme.text} attributes={1}>
-                {hasContent() ? "Output" : statusHeading()}
-              </text>
-            </box>
-            <Show when={hasContent()}>
-              <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
-            </Show>
-          </box>
-        </box>
-      }>
+      <Show when={props.currentStep}>
         {(step) => {
           const statusColor = () => getStepStatusColor(step().status, themeCtx.theme)
 
@@ -155,18 +139,18 @@ export function OutputWindow(props: OutputWindowProps) {
                   <box flexDirection="row">
                     <text fg={themeCtx.theme.border}>{" "}</text>
                     <Show when={activityPhrase()} fallback={
-                      <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}{blockCountText()}</text>
+                      <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}{""}</text>
                     }>
                       {(phrase) => (
                         <>
                           <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}</text>
-                          <ShimmerText text={phrase()} />
+                          <ShimmerText text={phrase()} color={themeCtx.theme.textMuted} />
                         </>
                       )}
                     </Show>
                   </box>
                   <Show when={activityPhrase()}>
-                    <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
+                    <text fg={themeCtx.theme.textMuted}>{""}</text>
                   </Show>
                 </box>
               </box>
@@ -201,12 +185,12 @@ export function OutputWindow(props: OutputWindowProps) {
                       {(phrase) => (
                         <>
                           <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}</text>
-                          <ShimmerText text={phrase()} />
+                          <ShimmerText text={phrase()} color={themeCtx.theme.textMuted} />
                         </>
                       )}
                     </Show>
                   </box>
-                  <text fg={themeCtx.theme.textMuted}>{blockCountText()}</text>
+                  <text fg={themeCtx.theme.textMuted}>{""}</text>
                 </box>
               </box>
             </Show>
@@ -218,8 +202,9 @@ export function OutputWindow(props: OutputWindowProps) {
       <box paddingLeft={1} paddingRight={1} flexDirection="column" flexGrow={1}>
         <Show when={!hasContent() && isRunning()}>
           <box flexDirection="row">
-            <text fg={themeCtx.theme.text}>{"\u25CF "}</text>
-            <ShimmerText text="Waiting for output..." />
+            <Spinner color={themeCtx.theme.primary} />
+            <text> </text>
+            <ShimmerText text="Starting worker..." color={themeCtx.theme.textMuted} />
           </box>
         </Show>
 
@@ -242,10 +227,15 @@ export function OutputWindow(props: OutputWindowProps) {
             width="100%"
             stickyScroll={true}
             stickyStart="bottom"
-            scrollbarOptions={{
+            viewportOptions={{
+              paddingRight: 1,
+            }}
+            verticalScrollbarOptions={{
+              paddingLeft: 1,
+              visible: true,
               trackOptions: {
-                foregroundColor: themeCtx.theme.info,
-                backgroundColor: themeCtx.theme.border,
+                foregroundColor: themeCtx.theme.border,
+                backgroundColor: themeCtx.theme.backgroundElement,
               },
             }}
             viewportCulling={true}

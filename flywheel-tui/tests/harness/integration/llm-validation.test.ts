@@ -41,7 +41,7 @@ describe.skipIf(!process.env.RUN_INTEGRATION)("Anthropic integration (@slow)", (
       system: "Think step by step.",
       messages: [{ role: "user", content: "What is 15 * 23?" }],
       maxTokens: 16000,
-      thinking: { type: "enabled", budgetTokens: 5000 },
+      thinking: { effort: "high" },
     };
 
     const events: StreamEvent[] = [];

@@ -5,6 +5,12 @@
  */
 
 // ---------------------------------------------------------------------------
+// Thinking effort levels — provider-agnostic, mapped per adapter
+// ---------------------------------------------------------------------------
+
+export type ThinkingEffort = "low" | "medium" | "high" | "max";
+
+// ---------------------------------------------------------------------------
 // Message types
 // ---------------------------------------------------------------------------
 
@@ -92,7 +98,7 @@ export interface StreamOptions {
   messages: Message[];
   tools?: ToolDefinition[];
   maxTokens: number;
-  thinking?: { type: "enabled"; budgetTokens: number };
+  thinking?: { effort: ThinkingEffort };
   abortSignal?: AbortSignal;
 }
 

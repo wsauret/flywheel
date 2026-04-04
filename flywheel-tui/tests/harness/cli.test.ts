@@ -67,13 +67,23 @@ describe("parseArgs", () => {
     expect(result.verbose).toBe(false);
   });
 
-  it("parses --thinking flag with budget", () => {
-    const result = parseArgs(["task", "--thinking", "10000"]);
-    expect(result.thinking).toBe(10000);
+  it("parses --thinking flag with effort level", () => {
+    const result = parseArgs(["task", "--thinking", "medium"]);
+    expect(result.thinking).toBe("medium");
   });
 
-  it("defaults thinking to null", () => {
+  it("defaults thinking to high", () => {
     const result = parseArgs(["task"]);
+    expect(result.thinking).toBe("high");
+  });
+
+  it("disables thinking with --thinking off", () => {
+    const result = parseArgs(["task", "--thinking", "off"]);
+    expect(result.thinking).toBeNull();
+  });
+
+  it("disables thinking with --thinking 0", () => {
+    const result = parseArgs(["task", "--thinking", "0"]);
     expect(result.thinking).toBeNull();
   });
 
@@ -99,14 +109,14 @@ describe("parseArgs", () => {
       "--max-turns", "20",
       "--max-tokens", "4096",
       "--verbose",
-      "--thinking", "5000",
+      "--thinking", "max",
     ]);
     expect(result.task).toBe("do the thing");
     expect(result.model).toBe("claude-opus-4-6");
     expect(result.maxTurns).toBe(20);
     expect(result.maxTokens).toBe(4096);
     expect(result.verbose).toBe(true);
-    expect(result.thinking).toBe(5000);
+    expect(result.thinking).toBe("max");
   });
 
   it("handles flags interspersed with positional args", () => {
@@ -158,11 +168,11 @@ describe("parseArgs error handling", () => {
   });
 
   it("throws when --thinking has no value", () => {
-    expect(() => parseArgs(["task", "--thinking"])).toThrow("--thinking requires a budget_tokens value");
+    expect(() => parseArgs(["task", "--thinking"])).toThrow("--thinking requires an effort level");
   });
 
-  it("throws when --thinking is not a number", () => {
-    expect(() => parseArgs(["task", "--thinking", "abc"])).toThrow("--thinking must be a positive integer");
+  it("throws when --thinking is not a valid effort level", () => {
+    expect(() => parseArgs(["task", "--thinking", "abc"])).toThrow("--thinking must be one of");
   });
 });
 

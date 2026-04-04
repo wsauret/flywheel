@@ -15,6 +15,7 @@ import { editTool } from "./tools/edit.js";
 import { textSearchTool } from "./tools/text-search.js";
 import { astSearchTool } from "./tools/ast-search.js";
 import { taskCompleteTool } from "./tools/task-complete.js";
+import { writeTool } from "./tools/write.js";
 
 // ---------------------------------------------------------------------------
 // Tool set builders
@@ -25,6 +26,7 @@ export function createStandardTools(): HarnessTool[] {
   return [
     createBashTool(),
     createReadTool(),
+    writeTool,
     editTool,
     textSearchTool,
     astSearchTool,
@@ -37,6 +39,7 @@ export function createChatTools(): HarnessTool[] {
   return [
     createBashTool(),
     createReadTool(),
+    writeTool,
     editTool,
     textSearchTool,
     astSearchTool,

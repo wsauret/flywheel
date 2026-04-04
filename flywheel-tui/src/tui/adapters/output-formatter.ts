@@ -95,9 +95,15 @@ export function getToolDetail(
       const fp = input.file_path as string | undefined;
       return fp ? truncate(formatDisplayPath(fp), 80) : null;
     }
-    case "Bash": {
+    case "Bash":
+    case "PowerShell":
+    case "REPL": {
       const cmd = input.command as string | undefined;
-      return cmd ? truncate(cmd, 100) : null;
+      if (!cmd) return null;
+      // Replace absolute paths in the command with relative paths
+      const cwd = process.cwd();
+      const shortened = cwd ? cmd.replaceAll(cwd + "/", "").replaceAll(cwd, ".") : cmd;
+      return truncate(shortened, 100);
     }
     case "Glob":
       return truncate(input.pattern as string, 80);
@@ -111,10 +117,52 @@ export function getToolDetail(
     }
     case "WebFetch":
       return truncate(input.url as string, 100);
+    case "WebSearch":
+      return truncate(input.query as string ?? input.search_query as string, 100);
+    case "LSP": {
+      const method = input.method as string | undefined;
+      const fp = input.file_path as string | undefined;
+      return truncate(method ? `${method}${fp ? ` ${formatDisplayPath(fp)}` : ""}` : (fp ? formatDisplayPath(fp) : null), 100);
+    }
+    case "NotebookEdit": {
+      const fp = input.notebook_path as string ?? input.file_path as string | undefined;
+      return fp ? truncate(formatDisplayPath(fp), 80) : null;
+    }
+    case "PowerShell":
+    case "REPL": {
+      const cmd = input.command as string | undefined;
+      return cmd ? truncate(cmd, 100) : null;
+    }
+    case "Skill": {
+      const skill = input.skill as string ?? input.name as string | undefined;
+      return skill ? truncate(skill, 80) : null;
+    }
+    case "SendMessage": {
+      const to = input.to as string | undefined;
+      return to ? truncate(`to ${to}`, 80) : null;
+    }
+    case "AskUserQuestion": {
+      const q = input.question as string | undefined;
+      return q ? truncate(q, 100) : null;
+    }
+    case "ToolSearch": {
+      const query = input.query as string | undefined;
+      return query ? truncate(query, 80) : null;
+    }
     case "TodoWrite":
-      return null; // not interesting
+    case "EnterPlanMode":
+    case "ExitPlanMode":
+    case "EnterWorktree":
+    case "ExitWorktree":
+      return null;
     default: {
-      // For unknown tools, show first string-valued key
+      // MCP tools: show first string-valued key
+      // Task tools: show subject or description
+      const subject = input.subject as string | undefined;
+      if (subject) return truncate(subject, 80);
+      const desc = input.description as string | undefined;
+      if (desc) return truncate(desc, 80);
+      // Fallback: first string value
       for (const val of Object.values(input)) {
         if (typeof val === "string" && val.length > 0) {
           return truncate(val, 80);
@@ -127,14 +175,26 @@ export function getToolDetail(
 
 export function formatDisplayPath(filePath: string | undefined | null): string | null {
   if (!filePath) return null;
-  if (!path.isAbsolute(filePath)) return filePath;
 
-  const relativePath = path.relative(process.cwd(), filePath);
-  if (relativePath.length === 0) {
-    return path.basename(filePath);
+  let relative: string;
+  if (path.isAbsolute(filePath)) {
+    relative = path.relative(process.cwd(), filePath);
+    if (relative.length === 0) return "./";
+  } else {
+    relative = filePath;
   }
 
-  return relativePath;
+  // Shorten internal .flywheel/sessions/<uuid>/handoffs/<file> paths
+  const sessionHandoffMatch = relative.match(/\.flywheel\/sessions\/[^/]+\/handoffs\/(.+)$/);
+  if (sessionHandoffMatch) {
+    return `[handoff] ${sessionHandoffMatch[1]}`;
+  }
+
+  // Always use ./ prefix for files that aren't parent-relative
+  if (!relative.startsWith("./") && !relative.startsWith("../")) {
+    return `./${relative}`;
+  }
+  return relative;
 }
 
 function truncate(
@@ -146,4 +206,86 @@ function truncate(
   const oneLine = s.replace(/\n/g, " ").trim();
   if (oneLine.length <= max) return oneLine;
   return oneLine.slice(0, max - 1) + "…";
+}
+
+// ── Diff generation ──
+
+/** Generate a unified diff from Edit tool's old_string → new_string. */
+export function createEditDiff(filePath: string, oldContent: string, newContent: string): string {
+  const oldLines = oldContent.split("\n");
+  const newLines = newContent.split("\n");
+  let result = `--- a/${filePath}\n+++ b/${filePath}\n`;
+  result += `@@ -1,${oldLines.length} +1,${newLines.length} @@\n`;
+  for (const line of oldLines) result += `-${line}\n`;
+  for (const line of newLines) result += `+${line}\n`;
+  return result;
+}
+
+/** Generate a unified diff for Write tool (all content as additions). */
+export function createWriteDiff(filePath: string, content: string): string {
+  const lines = content.split("\n");
+  let result = `--- /dev/null\n+++ b/${filePath}\n`;
+  result += `@@ -0,0 +1,${lines.length} @@\n`;
+  for (const line of lines) result += `+${line}\n`;
+  return result;
+}
+
+/** Max lines for capturing Write diffs (full-file content can be huge). */
+const MAX_WRITE_DIFF_LINES = 200;
+
+/**
+ * Extract diff info from a tool_use input block.
+ * Returns unified diff string + filetype for Edit, Write, and ApplyPatch tools.
+ */
+export function extractToolDiff(
+  name: string,
+  input: Record<string, unknown>,
+): { diff: string; filetype: string | undefined } | undefined {
+  const fp = (input.file_path as string) ?? "";
+  const ft = getFiletype(fp);
+
+  if (name === "Edit") {
+    const oldStr = input.old_string as string | undefined;
+    const newStr = input.new_string as string | undefined;
+    if (oldStr != null && newStr != null) {
+      return { diff: createEditDiff(fp, oldStr, newStr), filetype: ft };
+    }
+  }
+
+  if (name === "Write") {
+    const content = input.content as string | undefined;
+    if (content) {
+      const lineCount = content.split("\n").length;
+      if (lineCount <= MAX_WRITE_DIFF_LINES) {
+        return { diff: createWriteDiff(fp, content), filetype: ft };
+      }
+    }
+  }
+
+  if (name === "ApplyPatch") {
+    const patch = input.patch as string | undefined;
+    if (patch) {
+      return { diff: patch, filetype: ft };
+    }
+  }
+
+  return undefined;
+}
+
+/** Derive filetype from file extension for syntax highlighting. */
+export function getFiletype(filePath: string): string | undefined {
+  if (!filePath) return undefined;
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  if (!ext) return undefined;
+  const map: Record<string, string> = {
+    ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
+    py: "python", rs: "rust", go: "go", rb: "ruby",
+    json: "json", yaml: "yaml", yml: "yaml", toml: "toml",
+    md: "markdown", css: "css", scss: "scss", html: "html",
+    sql: "sql", sh: "bash", bash: "bash", zsh: "zsh",
+    c: "c", cpp: "cpp", h: "c", hpp: "cpp",
+    java: "java", kt: "kotlin", swift: "swift",
+    lua: "lua", vim: "vim", xml: "xml", graphql: "graphql",
+  };
+  return map[ext] ?? ext;
 }

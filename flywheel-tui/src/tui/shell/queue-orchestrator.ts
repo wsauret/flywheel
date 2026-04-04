@@ -135,6 +135,8 @@ export interface BuildExecutorDepsOpts {
   pendingInjection: { current: string | null };
   /** Ref to the active workflow session (for event bus access in turn-complete callback). */
   activeSessionRef: { current: WorkflowSession | null };
+  /** Budget tracker for cost/token tracking from worker NDJSON events. */
+  budgetTracker?: import("../../session/budget-tracker").BudgetTracker | null;
 }
 
 /**
@@ -150,6 +152,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     questionService, reviewTriageInteractive, confirmBeforeInsert,
     setShellQueueSteps,
     capturedWorkerSessionId, pendingInjection, activeSessionRef,
+    budgetTracker,
   } = opts
   const { dispatcherModel, workerModel } = resolveModels(deps.config)
 
@@ -461,6 +464,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
       onStderr: (chunk) => {
         emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
       },
+      onNDJSONEvent: budgetTracker ? (event) => budgetTracker.handleEvent(event) : undefined,
     })
     // Expose stdinHandle for mid-execution injection (user steering)
     if (stdinHandleRef && spawnResult.stdinHandle) {

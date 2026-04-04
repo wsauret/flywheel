@@ -52,7 +52,17 @@ export async function gatherWorkspaceContext(): Promise<WorkspaceContext> {
     });
     if (statusResult.exitCode === 0) {
       const output = statusResult.stdout.toString().trim();
-      gitStatus = output || "clean";
+      if (!output) {
+        gitStatus = "clean";
+      } else {
+        const lines = output.split("\n");
+        const MAX_STATUS_LINES = 20;
+        if (lines.length > MAX_STATUS_LINES) {
+          gitStatus = lines.slice(0, MAX_STATUS_LINES).join("\n") + `\n... (${lines.length - MAX_STATUS_LINES} more files)`;
+        } else {
+          gitStatus = output;
+        }
+      }
     }
   } catch {
     // Not a git repo

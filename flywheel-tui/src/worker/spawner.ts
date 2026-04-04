@@ -100,4 +100,9 @@ export interface SpawnOptions {
    * text, or empty string to suppress the chunk entirely.
    */
   stdoutTransform?: (chunk: string) => string;
+  /**
+   * Called for each parsed NDJSON event (step_finish, tool_use, text, etc.).
+   * Wire to BudgetTracker.handleEvent to capture cost/token data from worker output.
+   */
+  onNDJSONEvent?: (event: import("./ndjson-parser").NDJSONEvent) => void;
 }

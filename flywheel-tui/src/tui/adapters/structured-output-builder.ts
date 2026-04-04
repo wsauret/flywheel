@@ -25,6 +25,7 @@ import type {
 
 const BLOCKS_CAP = 5000;
 const AGENT_CHILDREN_CAP = 50;
+const AGENT_STALE_TIMEOUT_MS = 5_000;
 
 export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing";
 
@@ -57,6 +58,13 @@ export class StructuredOutputBuilder {
   private contextRunCounter = 0;
   private contextRunStartTime = 0;
 
+  /** Tracks last activity timestamp per agent for stale detection. */
+  private agentLastActivity = new Map<string, number>();
+  /** Tracks spawn timestamp per agent for duration calculation on stale completion. */
+  private agentSpawnTime = new Map<string, number>();
+  /** Interval handle for stale agent checks (1s). Started on first agent spawn. */
+  private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
+
   /**
    * Optional callback fired when an agent has activity (tool added).
    * Notification-only — does not alter accumulator behavior.
@@ -79,10 +87,21 @@ export class StructuredOutputBuilder {
 
   pushThinking(text: string, timestamp: number): void {
     this.onModelActivityChange?.("thinking");
-    // Thinking content is not displayed in the output blocks --
-    // it's used only for activity signaling.
-    void text;
-    void timestamp;
+    if (!text.trim()) return;
+    // Append to existing thinking block or create new one
+    const last = this.blocks.length > 0 ? this.blocks[this.blocks.length - 1] : null;
+    if (last && last.kind === "thinking") {
+      this.blocks[this.blocks.length - 1] = { ...last, content: last.content + text };
+    } else {
+      this.blocks.push({ kind: "thinking", content: text, timestamp });
+    }
+    this.dirty = true;
+  }
+
+  pushUserMessage(text: string, timestamp: number): void {
+    this.breakContextRun(timestamp);
+    this.blocks.push({ kind: "userMessage", content: text, timestamp });
+    this.dirty = true;
   }
 
   pushText(text: string, timestamp: number): void {
@@ -115,9 +134,9 @@ export class StructuredOutputBuilder {
     this.markDirty();
   }
 
-  pushTool(name: string, detail: string, timestamp: number): void {
+  pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string): void {
     this.onModelActivityChange?.("tool_executing");
-    const tool: ToolBlock = { kind: "tool", name, detail, timestamp };
+    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(diff && { diff }), ...(filetype && { filetype }) };
 
     // If inside an active (real) agent, add as child — context tools inside
     // real agents stay as plain children, not grouped.
@@ -142,8 +161,8 @@ export class StructuredOutputBuilder {
    * Used when Claude's `parent_tool_use_id` identifies the owning agent.
    * Returns false if the agent was not found (caller should fall through to top-level).
    */
-  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number): boolean {
-    const tool: ToolBlock = { kind: "tool", name, detail, timestamp };
+  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string): boolean {
+    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(diff && { diff }), ...(filetype && { filetype }) };
     return this.appendToolToAgent(agentId, tool);
   }
 
@@ -159,10 +178,13 @@ export class StructuredOutputBuilder {
     if (children.length > AGENT_CHILDREN_CAP) {
       children.splice(0, children.length - AGENT_CHILDREN_CAP);
     }
-    // Update latestChild for live display (single-line "↳ ToolName: detail")
+    // Update latestChild for live display (single-line "↳ icon ToolName: detail")
     const latestChild = `${tool.name}: ${tool.detail}`;
-    this.blocks[agentIdx] = { ...agent, children, latestChild };
+    // Also update the agent description to show the most recent tool
+    const description = `${tool.name}: ${tool.detail}`;
+    this.blocks[agentIdx] = { ...agent, children, latestChild, description };
     this.markDirty();
+    this.agentLastActivity.set(agentId, Date.now());
     this.onAgentActivity?.(agentId);
     return true;
   }
@@ -182,6 +204,9 @@ export class StructuredOutputBuilder {
     this.blocks.push(agent);
     this.agentIndexById.set(id, this.blocks.length - 1);
     this.activeAgentId = id;
+    this.agentLastActivity.set(id, Date.now());
+    this.agentSpawnTime.set(id, Date.now());
+    this.startStaleCheck();
     this.enforceBlocksCap();
     this.markDirty();
     this.onAgentLifecycle?.("start", id);
@@ -192,10 +217,13 @@ export class StructuredOutputBuilder {
     if (idx === undefined) return;
 
     const agent = this.blocks[idx] as AgentBlock;
+    if (agent.status !== "active") return; // already completed/errored
     // Use actual children count if caller passes 0 (common when count isn't known upstream)
     const actualCount = toolCount > 0 ? toolCount : agent.children.length;
     this.blocks[idx] = { ...agent, status: "completed", duration, toolCount: actualCount };
 
+    this.agentLastActivity.delete(id);
+    this.agentSpawnTime.delete(id);
     if (this.activeAgentId === id) {
       this.activeAgentId = null;
     }
@@ -258,6 +286,37 @@ export class StructuredOutputBuilder {
     this.contextAgentId = null;
     this.contextRunCounter = 0;
     this.contextRunStartTime = 0;
+    this.agentLastActivity.clear();
+    this.agentSpawnTime.clear();
+  }
+
+  /**
+   * Start the stale agent check interval (1s). Idempotent — only one interval runs.
+   * Auto-completes agents with no activity for AGENT_STALE_TIMEOUT_MS.
+   */
+  private startStaleCheck(): void {
+    if (this.staleCheckInterval) return;
+    this.staleCheckInterval = setInterval(() => this.checkStaleAgents(), 1000);
+  }
+
+  private checkStaleAgents(): void {
+    const now = Date.now();
+    for (const [id, lastActivity] of this.agentLastActivity) {
+      if (now - lastActivity > AGENT_STALE_TIMEOUT_MS) {
+        const spawned = this.agentSpawnTime.get(id) ?? lastActivity;
+        this.completeAgent(id, now - spawned, 0);
+      }
+    }
+  }
+
+  /** Stop the stale check interval and clean up. Call when the builder is no longer needed. */
+  dispose(): void {
+    if (this.staleCheckInterval) {
+      clearInterval(this.staleCheckInterval);
+      this.staleCheckInterval = null;
+    }
+    this.agentLastActivity.clear();
+    this.agentSpawnTime.clear();
   }
 
   /**

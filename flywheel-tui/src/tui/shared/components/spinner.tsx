@@ -1,18 +1,17 @@
 /** @jsxImportSource @opentui/solid */
 /**
  * Animated Spinner Component
- * Simple moon step spinner
+ * Braille dot pattern spinner.
  */
 
 import { createSignal, onMount, onCleanup } from "solid-js"
 import type { RGBA } from "@opentui/core"
 
-// Moon steps - 4 frame rotation
-const FRAMES = ["◐", "◓", "◑", "◒"]
+const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 interface SpinnerProps {
   color?: RGBA
-  interval?: number // default 100ms
+  interval?: number
 }
 
 export function Spinner(props: SpinnerProps) {
@@ -21,7 +20,7 @@ export function Spinner(props: SpinnerProps) {
   onMount(() => {
     const id = setInterval(() => {
       setFrame((f) => (f + 1) % FRAMES.length)
-    }, props.interval ?? 100)
+    }, props.interval ?? 80)
     onCleanup(() => clearInterval(id))
   })
 

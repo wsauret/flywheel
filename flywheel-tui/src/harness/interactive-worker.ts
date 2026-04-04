@@ -102,6 +102,7 @@ export interface InteractiveWorkerHandle {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_MAX_TOKENS = 16384;
+const DEFAULT_THINKING_EFFORT = "high" as const;
 const DEFAULT_MAX_TURNS_PER_MESSAGE = 25;
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const SUMMARY_MAX_MESSAGES = 5;
@@ -283,6 +284,7 @@ export function createInteractiveWorker(
         messages: [...messages],
         tools: toolDefs,
         maxTokens,
+        thinking: { effort: DEFAULT_THINKING_EFFORT },
         abortSignal: shutdownController.signal,
       };
 

@@ -2,7 +2,7 @@
 /**
  * QuestionPrompt — TUI component for interactive question dialogs
  *
- * Adapted from OpenCode's question.tsx. Presents questions with option
+ * Presents questions with option
  * selection, tab navigation for multi-question requests, and a confirm
  * tab for review before submission.
  *

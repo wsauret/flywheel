@@ -140,6 +140,23 @@ tmux kill-session -t flywheel 2>/dev/null
 
 If the TUI exits or crashes, the tmux session is destroyed. Just re-run the setup commands.
 
+### UAT must run in a temp directory
+
+**Never run UAT workflows in the project directory.** Workers create real files (hello.txt, fib.ts, server.ts, etc.) that pollute the workspace. Always use a temp directory:
+
+```bash
+UAT_DIR=$(mktemp -d /tmp/flywheel-uat-XXXXXX)
+cp flywheel.toml "$UAT_DIR/"
+tmux new-session -d -s flywheel -x 120 -y 40 \
+  "cd $UAT_DIR && FLYWHEEL_PROJECT_CWD=$UAT_DIR bun --conditions=browser run /path/to/flywheel-tui/src/cli/index.ts"
+
+# ... run tests ...
+
+# Clean up EVERYTHING when done
+tmux kill-session -t flywheel 2>/dev/null
+rm -rf "$UAT_DIR"
+```
+
 ### Common test sequences
 
 **1. Verify idle screen:**

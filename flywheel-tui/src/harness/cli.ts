@@ -13,7 +13,7 @@
 import { runAgentLoop } from "./agent-loop.js";
 import type { AgentLoopStatus } from "./agent-loop.js";
 import type { CollectedToolCall, ToolCallResult } from "./turn-executor.js";
-import type { UsageInfo } from "./llm.js";
+import type { UsageInfo, ThinkingEffort } from "./llm.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { gatherWorkspaceContext, buildSystemPrompt } from "./prompts.js";
 import { createConsoleTracer, estimateCost } from "./tracer.js";
@@ -47,6 +47,8 @@ function tryLoadNativeTools(): HarnessTool[] {
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const DEFAULT_MAX_TURNS = 100;
 const DEFAULT_MAX_TOKENS = 16384;
+const DEFAULT_THINKING_EFFORT: ThinkingEffort = "high";
+const VALID_EFFORTS: readonly ThinkingEffort[] = ["low", "medium", "high", "max"];
 
 const USAGE_TEXT = `
 Usage: bin/harness <task> [options]
@@ -62,7 +64,7 @@ Options:
   --max-tokens <n>        Maximum output tokens per turn (default: ${DEFAULT_MAX_TOKENS})
   --output-format <fmt>   Output format: "text" (default) or "stream-json" (NDJSON)
   --verbose, -v           Enable verbose tracing output
-  --thinking <budget>     Enable extended thinking with budget_tokens
+  --thinking <effort>     Thinking effort level: low, medium, high, max (default: ${DEFAULT_THINKING_EFFORT}, "off" to disable)
   --help, -h              Show this help message
 
 Examples:
@@ -86,7 +88,7 @@ interface ParsedArgs {
   maxTokens: number;
   outputFormat: OutputFormat;
   verbose: boolean;
-  thinking: number | null;
+  thinking: ThinkingEffort | null;
   help: boolean;
 }
 
@@ -97,7 +99,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   let maxTokens = DEFAULT_MAX_TOKENS;
   let outputFormat: OutputFormat = "text";
   let verbose = false;
-  let thinking: number | null = null;
+  let thinking: ThinkingEffort | null = DEFAULT_THINKING_EFFORT;
   let help = false;
 
   const positional: string[] = [];
@@ -151,13 +153,16 @@ export function parseArgs(args: string[]): ParsedArgs {
     } else if (arg === "--thinking") {
       const next = args[i + 1];
       if (next === undefined || next.startsWith("-")) {
-        throw new Error("--thinking requires a budget_tokens value");
+        throw new Error(`--thinking requires an effort level: ${VALID_EFFORTS.join(", ")} (or "off" to disable)`);
       }
-      const n = Number(next);
-      if (!Number.isFinite(n) || n < 1) {
-        throw new Error(`--thinking must be a positive integer, got: ${next}`);
+      const lower = next.toLowerCase();
+      if (lower === "off" || lower === "none" || lower === "0") {
+        thinking = null;
+      } else if ((VALID_EFFORTS as readonly string[]).includes(lower)) {
+        thinking = lower as ThinkingEffort;
+      } else {
+        throw new Error(`--thinking must be one of: ${VALID_EFFORTS.join(", ")}, off — got: ${next}`);
       }
-      thinking = Math.floor(n);
       i++;
     } else if (arg.startsWith("-")) {
       throw new Error(`Unknown flag: ${arg}`);
@@ -334,9 +339,9 @@ export async function runCli(args: string[]): Promise<void> {
       model: parsed.model,
       maxTokens: parsed.maxTokens,
       maxTurns: parsed.maxTurns,
-      ...(parsed.thinking !== null
-        ? { thinking: { type: "enabled" as const, budgetTokens: parsed.thinking } }
-        : {}),
+      thinking: parsed.thinking !== null
+        ? { effort: parsed.thinking }
+        : null,
       abortSignal: controller.signal,
       cwd: process.cwd(),
       env: process.env as Record<string, string>,

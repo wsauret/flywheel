@@ -16,7 +16,7 @@ import { TieredBuffer } from "./buffer";
 export const MAX_LINE_LENGTH = 1_000_000;
 
 /** Known NDJSON event types from worker output. */
-export type NDJSONEventType = "tool_use" | "text" | "step_finish" | "error" | "unknown";
+export type NDJSONEventType = "tool_use" | "text" | "step_finish" | "result" | "error" | "unknown";
 
 /** A parsed NDJSON event. */
 export interface NDJSONEvent {
@@ -72,6 +72,7 @@ function classifyEvent(data: Record<string, unknown>): NDJSONEventType {
     if (type === "tool_use") return "tool_use";
     if (type === "text") return "text";
     if (type === "step_finish") return "step_finish";
+    if (type === "result") return "result";
     if (type === "error") return "error";
   }
   return "unknown";

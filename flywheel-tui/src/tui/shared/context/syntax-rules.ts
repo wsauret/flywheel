@@ -1,9 +1,35 @@
-// Copied from opencode — packages/opencode/src/cli/cmd/tui/context/theme.tsx
-import { SyntaxStyle } from "@opentui/core"
+// Syntax highlighting rules for theme-aware code rendering
+import { RGBA, SyntaxStyle } from "@opentui/core"
 import type { Theme } from "./theme"
+
+const THINKING_OPACITY = 0.5
 
 export function generateSyntax(theme: Theme) {
   return SyntaxStyle.fromTheme(getSyntaxRules(theme))
+}
+
+/** Dimmed syntax style for thinking blocks — all colors at reduced opacity. */
+export function generateSubtleSyntax(theme: Theme) {
+  return SyntaxStyle.fromTheme(
+    getSyntaxRules(theme).map((rule) => {
+      if (rule.style.foreground) {
+        const fg = rule.style.foreground
+        return {
+          ...rule,
+          style: {
+            ...rule.style,
+            foreground: RGBA.fromInts(
+              Math.round(fg.r * 255),
+              Math.round(fg.g * 255),
+              Math.round(fg.b * 255),
+              Math.round(THINKING_OPACITY * 255),
+            ),
+          },
+        }
+      }
+      return rule
+    }),
+  )
 }
 
 export function getSyntaxRules(theme: Theme) {

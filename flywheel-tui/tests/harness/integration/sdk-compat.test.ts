@@ -15,8 +15,10 @@ import type {
   MessageCreateParamsNonStreaming,
   CacheControlEphemeral,
   TextBlockParam,
+  ThinkingConfigAdaptive,
   ThinkingConfigEnabled,
   ThinkingConfigParam,
+  OutputConfig,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import { parse, Lang } from "@ast-grep/napi";
@@ -132,22 +134,31 @@ describe("Anthropic SDK: extended thinking type compatibility", () => {
     expect(config.budget_tokens).toBe(10000);
   });
 
-  it("ThinkingConfigParam union works in message params", () => {
-    const thinking: ThinkingConfigParam = {
-      type: "enabled",
-      budget_tokens: 5000,
-    };
+  it("ThinkingConfigAdaptive accepts type adaptive", () => {
+    const config: ThinkingConfigAdaptive = { type: "adaptive" };
+    expect(config.type).toBe("adaptive");
+  });
+
+  it("OutputConfig accepts effort levels", () => {
+    const config: OutputConfig = { effort: "high" };
+    expect(config.effort).toBe("high");
+  });
+
+  it("ThinkingConfigParam union works in message params with adaptive thinking", () => {
+    const thinking: ThinkingConfigParam = { type: "adaptive" };
 
     const params: MessageCreateParamsNonStreaming = {
       model: "claude-sonnet-4-6",
       max_tokens: 16000,
       stream: false,
       thinking,
+      output_config: { effort: "high" },
       messages: [{ role: "user", content: "hello" }],
     };
 
     expect(params.thinking).toBeDefined();
-    expect((params.thinking as ThinkingConfigEnabled).budget_tokens).toBe(5000);
+    expect((params.thinking as ThinkingConfigAdaptive).type).toBe("adaptive");
+    expect(params.output_config?.effort).toBe("high");
   });
 });
 

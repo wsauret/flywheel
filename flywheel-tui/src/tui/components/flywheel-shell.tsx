@@ -19,8 +19,6 @@
  *     transitions to completed
  */
 
-import fs from "node:fs"
-import { randomUUID } from "node:crypto"
 import { createSignal, createMemo, onCleanup, Show } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
@@ -40,10 +38,10 @@ import { shouldShowThinkingIndicator } from "./thinking-indicator-state"
 import type { ModelActivity } from "../adapters/structured-output-builder"
 import { exitTUI } from "../app"
 import { createEscapeHandler } from "../utils/escape-handler"
+import { createRef } from "../utils/create-ref"
 import { Selection } from "../utils/selection"
 import { Clipboard } from "../utils/clipboard"
 import { QuitConfirmModal } from "../routes/work/components/modals/quit-confirm-modal"
-import { createActionDispatcher } from "../shell/action-dispatcher"
 import {
   createWorkflowSession,
   destroyWorkflowSession,
@@ -51,41 +49,29 @@ import {
 import {
   createSessionRuntimeManager,
   type SessionRuntimeManager,
-  type RunningRuntime,
 } from "../session/session-runtime"
-// prepareWorkflowDeps now used via createDepsCache in shell-lifecycle
 import type { WorkflowDeps } from "../../engines/workflow-deps"
-import { EventBus } from "../../events/event-bus"
-import type { QueueResult } from "../../queue/types"
 import type { QuestionRequest } from "../../queue/question-service"
 import { QuestionPrompt } from "./question-prompt"
 import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { Spinner } from "@tui/shared/components/spinner"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
-import { workflowHasReview, WORKFLOW_OPTIONS, type WorkflowName } from "../shell/start-command"
-import { buildQueue, buildQueueForSlashCommand, buildQueueFromPlan, type QueueProgressInfo, createEndOfSessionGate as createQueueEndOfSessionGate } from "../shell/shell-queue"
-import { buildQueueFromTemplate } from "../../queue/templates"
-import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../../queue/executor"
-import { createGuardrails } from "../../queue/guardrails"
+import type { QueueProgressInfo } from "../shell/shell-queue"
+import type { StepExecutor } from "../../queue/executor"
 
-import { createFlywheelEmitter } from "../../events/event-bus"
 import { createQueuePersistence } from "../../queue/persistence"
-import { createQueue } from "../../queue/queue"
 import type { Queue } from "../../queue/types"
 import { createQuestionWiring, type QuestionWiring } from "../utils/question-wiring"
 import { SIDEBAR_WIDTH } from "../shell/shell-modes"
-import { createOutputPersistence, type OutputFlusher } from "../../session/output-persistence"
-import { createTranscriptLogger, type TranscriptLogger } from "../../session/transcript"
+import { createOutputPersistence } from "../../session/output-persistence"
+import { createTranscriptLogger } from "../../session/transcript"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
-import { createBudgetTracker, type BudgetTracker } from "../../session/budget-tracker"
-import type { BudgetLimits } from "../../schemas"
+import { createBudgetTracker } from "../../session/budget-tracker"
 import { fromSnapshot, snapshotToBlocks } from "../../session/output-schemas"
 import { createSessionOrchestrator, type SessionOrchestrator } from "../session/session-orchestrator"
-import { handleQueueCompletion } from "../session/queue-completion"
-import { safeUpdateState } from "../../session/safe-transition"
-// ContextIndexer now managed via createContextIndexerCache in shell-lifecycle
 import { injectOutputBlocks } from "../session/resume-utils"
+import { createSessionLifecycleManager, type SessionLifecycleManager } from "../shell/session-lifecycle-runner"
 import type { SprintIterationInfo } from "../utils/format"
 import type { WorkflowSession } from "../session/workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
@@ -93,27 +79,22 @@ import type { WorkState } from "../types"
 import type { AnyBlock } from "../types"
 import type { Unsubscribe } from "../../events/event-bus"
 import { getOpenAction, groupToFlatList, type SelectionAction } from "../session/sidebar-logic"
-import { TEST_STEPS, setupTestFixture, buildTestQueue, type TestStepDef } from "../session/test-step"
+import { createCommandHandlers, createShellDispatcher } from "../shell/command-handlers"
 import { createSessionViewport, type SessionViewport } from "../session/session-viewport"
 import { isResumable } from "../../session/state-machine"
 import { deriveHeaderInfo } from "./session-header-logic"
-import { autoDetectTransport } from "../../dispatcher/auto-detect"
-import { createEvaluatorTransport } from "../../evaluator/create-transport"
-import { killAllActiveProcesses, interruptAllActiveProcesses } from "../../worker/process-lifecycle"
+import { interruptAllActiveProcesses } from "../../worker/process-lifecycle"
 import { Log } from "../../utils/log"
-import { SubprocessLogger } from "../../utils/subprocess-logger.js"
-import { TelemetryLogger, type TelemetryRecord } from "../../telemetry"
 
 import type { StdinHandle } from "../../worker/spawner"
-import { resolveTransports, buildExecutorDeps } from "../shell/queue-orchestrator"
 import { PlanConfirmation } from "./plan-confirmation"
 import type { PlanImportResult } from "../../queue/shared/plan-import"
 import type { ConfirmBeforeInsert } from "../../queue/steps/plan-consolidate/hooks"
-import { SPRINT_EVALUATOR_ADDENDUM } from "../../queue/steps/sprint-work/evaluator"
 import {
-  resumeWorkerWithMessage as resumeWorkerWithMessageImpl,
+  runQueueOnSession,
+} from "../shell/queue-execution-runner"
+import {
   resetInterruptState,
-  type InterruptControllerDeps,
 } from "../shell/interrupt-controller"
 import { handleShellKeyEvent, type KeyboardContext } from "../shell/keyboard-controller"
 import { createPromptHandler } from "../shell/prompt-handler"
@@ -129,6 +110,7 @@ import {
   type ClearQueueRuntimeRefs,
 } from "../shell/shell-lifecycle"
 import { createChatController, type ChatController } from "../shell/chat-controller"
+import { createSessionNavigation } from "../shell/session-navigation"
 
 const log = Log.create({ service: "shell" })
 
@@ -208,11 +190,7 @@ export function FlywheelShell() {
   } | null>(null)
   let activeQuestionWiring: QuestionWiring | null = null
   /** Getter-based ref for passing activeQuestionWiring to extracted lifecycle functions. */
-  const activeQuestionWiringRef: { current: QuestionWiring | null } = Object.defineProperty(
-    {} as { current: QuestionWiring | null },
-    "current",
-    { get: () => activeQuestionWiring, set: (v: QuestionWiring | null) => { activeQuestionWiring = v } },
-  )
+  const activeQuestionWiringRef = createRef<QuestionWiring | null>(() => activeQuestionWiring, (v) => { activeQuestionWiring = v })
 
   // Queue progress indicator tracking
   const [activeQueueInfo, setActiveQueueInfo] = createSignal<QueueProgressInfo | null>(null)
@@ -226,11 +204,7 @@ export function FlywheelShell() {
   const [shellQueueSteps, setShellQueueSteps] = createSignal<import("../types").QueueStepState[]>([])
   let queueUnsubs: Unsubscribe[] = []
   /** Getter-based ref for passing queueUnsubs to extracted lifecycle functions. */
-  const queueUnsubsRef: { current: Unsubscribe[] } = Object.defineProperty(
-    {} as { current: Unsubscribe[] },
-    "current",
-    { get: () => queueUnsubs, set: (v: Unsubscribe[]) => { queueUnsubs = v } },
-  )
+  const queueUnsubsRef = createRef<Unsubscribe[]>(() => queueUnsubs, (v) => { queueUnsubs = v })
 
   // Track the active session's timer for the status bar runtime display.
   // The timer is a per-session instance (not the global singleton).
@@ -257,34 +231,49 @@ export function FlywheelShell() {
     setRuntimeText("00:00")
   }
 
-  // Non-reactive refs for lifecycle management
-  let activeSession: WorkflowSession | null = null
+  // ── Session Lifecycle Manager ──
+  // Owns: activeSession, activeFlusher, activeTranscript, activeBudgetTracker,
+  //       storeUnsub, activeQuestionWiring
+  // Shell accesses them through lifecycle.getXxx() / lifecycle.setXxx()
+
+  // Forward-declared subscribeToStore — defined in terms of lifecycle manager below
+  let _subscribeToStore: (store: UIActions) => void
+  let _unsubscribeStore: () => void
+
+  const lifecycle: SessionLifecycleManager = createSessionLifecycleManager({
+    createWorkflowSession,
+    destroyWorkflowSession,
+    createOutputPersistence: (lOpts) => createOutputPersistence(lOpts),
+    createTranscriptLogger: (lOpts) => createTranscriptLogger(lOpts),
+    createBudgetTracker: (lOpts) => createBudgetTracker(lOpts),
+    readSession: (id, baseDir) => readSession(id, baseDir),
+    createQuestionWiring: (lOpts) => createQuestionWiring(lOpts),
+    injectOutputBlocks: (store, blocks) => injectOutputBlocks(store, blocks),
+    snapshotToBlocks: (snapshots) => snapshotToBlocks(snapshots) as AnyBlock[],
+    onModelActivityChange: (activity) => setModelActivity(activity),
+    setActiveStore,
+    setWorkState: () => setWorkState(null),
+    subscribeToStore: (store) => _subscribeToStore(store),
+    unsubscribeStore: () => _unsubscribeStore(),
+    subscribeToTimer,
+    unsubscribeTimer,
+    onQuestionChange: (q) => setPendingQuestion(q),
+    onQuestionWiringChange: (wiring) => { activeQuestionWiring = wiring },
+    cleanupQueueSubscriptions: () => cleanupQueueSubscriptionsImpl(_queueCleanupRefs),
+  })
+
   /** Getter-based ref for passing activeSession to extracted queue-orchestrator functions. */
-  const activeSessionRef: { current: WorkflowSession | null } = Object.defineProperty(
-    {} as { current: WorkflowSession | null },
-    "current",
-    { get: () => activeSession, set: (v: WorkflowSession | null) => { activeSession = v } },
-  )
+  const activeSessionRef = createRef<WorkflowSession | null>(() => lifecycle.getActiveSession(), (v) => lifecycle.setActiveSession(v))
+
+  // Non-reactive refs for queue execution (kept in shell — shared across sessions)
   let activeStepExecutor: StepExecutor | null = null
   /** Getter-based ref for passing activeStepExecutor to extracted lifecycle functions. */
-  const activeStepExecutorRef: { current: StepExecutor | null } = Object.defineProperty(
-    {} as { current: StepExecutor | null },
-    "current",
-    { get: () => activeStepExecutor, set: (v: StepExecutor | null) => { activeStepExecutor = v } },
-  )
+  const activeStepExecutorRef = createRef<StepExecutor | null>(() => activeStepExecutor, (v) => { activeStepExecutor = v })
   let activeQueue: Queue | null = null
   /** Getter-based ref for passing activeQueue to extracted lifecycle functions. */
-  const activeQueueRef: { current: Queue | null } = Object.defineProperty(
-    {} as { current: Queue | null },
-    "current",
-    { get: () => activeQueue, set: (v: Queue | null) => { activeQueue = v } },
-  )
+  const activeQueueRef = createRef<Queue | null>(() => activeQueue, (v) => { activeQueue = v })
   /** Mutable ref for the currently running worker's stdin handle (mid-execution injection). */
   const activeStdinHandleRef: { current: StdinHandle | null } = { current: null }
-  let activeFlusher: OutputFlusher | null = null
-  let activeTranscript: TranscriptLogger | null = null
-  let activeBudgetTracker: BudgetTracker | null = null
-  let storeUnsub: (() => void) | null = null
 
   // ── 2-Tier Interrupt System ──
   // Tracks whether the worker has been interrupted (first Esc / SIGINT)
@@ -299,21 +288,7 @@ export function FlywheelShell() {
   // during queue execution (step-transition events handle it instead)
   let _isQueueRunning = false
   /** Getter-based ref for passing _isQueueRunning to extracted lifecycle functions. */
-  const isQueueRunningRef: { current: boolean } = Object.defineProperty(
-    {} as { current: boolean },
-    "current",
-    { get: () => _isQueueRunning, set: (v: boolean) => { _isQueueRunning = v } },
-  )
-
-  // User-initiated pause flag: set when double-Esc pauses a queue.
-  // Distinguishes pause from failure so ErrorModal is suppressed.
-  let _userInitiatedPause = false
-
-  // Interrupt-abort flag: set when first Esc aborts the executor mid-step.
-  // Unlike _userInitiatedPause (which is set by the full pause/kill flow),
-  // this flag tells the queue result handler to transition to work:paused
-  // and "completed" app state WITHOUT showing the ErrorModal.
-  let _interruptAbort = false
+  const isQueueRunningRef = createRef<boolean>(() => _isQueueRunning, (v) => { _isQueueRunning = v })
 
   // ── Lazy-cached workflow deps (via shell-lifecycle) ──
   const _depsCache = createDepsCache(toast)
@@ -380,19 +355,34 @@ export function FlywheelShell() {
   }
 
   // ── Store subscription helper ──
+  // Uses lifecycle manager to track storeUnsub ref (owned by lifecycle manager)
 
   const subscribeToStore = (store: UIActions) => {
     // Unsubscribe previous
-    if (storeUnsub) storeUnsub()
+    const prevUnsub = lifecycle.getStoreUnsub()
+    if (prevUnsub) prevUnsub()
 
     // Initial state
     setWorkState(store.getState())
 
     // Subscribe to updates
-    storeUnsub = store.subscribe(() => {
+    const unsub = store.subscribe(() => {
       setWorkState(store.getState())
     })
+    lifecycle.setStoreUnsub(unsub)
   }
+
+  const unsubscribeStore = () => {
+    const unsub = lifecycle.getStoreUnsub()
+    if (unsub) {
+      unsub()
+      lifecycle.setStoreUnsub(null)
+    }
+  }
+
+  // Wire the forward-declared subscribeToStore/unsubscribeStore
+  _subscribeToStore = subscribeToStore
+  _unsubscribeStore = unsubscribeStore
 
 
   // ── Chat Controller ──
@@ -402,12 +392,7 @@ export function FlywheelShell() {
     setActiveStore,
     setWorkState,
     subscribeToStore,
-    unsubscribeStore: () => {
-      if (storeUnsub) {
-        storeUnsub()
-        storeUnsub = null
-      }
-    },
+    unsubscribeStore,
     setModelActivity,
     toast,
     getProjectCwd,
@@ -432,12 +417,7 @@ export function FlywheelShell() {
     activeStore: () => activeStore(),
     setActiveStore,
     subscribeToStore,
-    unsubscribeStore: () => {
-      if (storeUnsub) {
-        storeUnsub();
-        storeUnsub = null;
-      }
-    },
+    unsubscribeStore,
     setWorkState,
     setAppState,
     sessionControllers,
@@ -550,621 +530,6 @@ export function FlywheelShell() {
     })
   }
 
-  /**
-   * Start queue-based execution. Creates a new session, builds the queue,
-   * wires events, and runs the step executor.
-   *
-   * VAL-SHELL-013: Shell transitions idle→working on queue start
-   * VAL-SHELL-014: Shell transitions working→completed on queue success
-   * VAL-SHELL-015: Shell transitions working→completed on queue failure
-   * VAL-SHELL-019: Session created when queue starts
-   * VAL-SHELL-020: Session lifecycle follows queue progression
-   * VAL-SHELL-035: Output blocks render during step execution
-   */
-  const startQueueExecution = (
-    queue: Queue,
-    args: Record<string, string>,
-    preloadedDeps?: WorkflowDeps,
-    interactiveOverrides?: { plan?: boolean; review?: boolean },
-    /** Pre-seed the context accumulator with fixture handoff data (for /test). */
-    seedHandoff?: Record<string, unknown> | null,
-  ) => {
-    // Background previous session (don't destroy — allow concurrent queues)
-    const prevFocused = focusedSessionId()
-    if (prevFocused && runtimes.has(prevFocused)) {
-      runtimes.background(prevFocused)
-      activeSession = null
-      activeStepExecutor = null
-      activeQueue = null
-      activeStdinHandleRef.current = null
-      activeFlusher = null
-      if (activeTranscript) {
-        activeTranscript.dispose()
-        activeTranscript = null
-      }
-      activeBudgetTracker = null
-      if (storeUnsub) {
-        storeUnsub()
-        storeUnsub = null
-      }
-      cleanupQuestionSubscriptions()
-      cleanupQueueSubscriptions()
-      setActiveStore(null)
-      setWorkState(null)
-    } else if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-      activeStepExecutor = null
-      activeQueue = null
-      activeStdinHandleRef.current = null
-      if (activeFlusher) {
-        activeFlusher.dispose()
-        activeFlusher = null
-      }
-      if (activeTranscript) {
-        activeTranscript.dispose()
-        activeTranscript = null
-      }
-      if (activeBudgetTracker) {
-        activeBudgetTracker.dispose()
-        activeBudgetTracker = null
-      }
-      setActiveStore(null)
-      setWorkState(null)
-    }
-
-    // Create fresh session
-    const sessionLabel = queue.steps.map((s) => s.type).join(" → ")
-    const session = createWorkflowSession(sessionLabel)
-    activeSession = session
-    activeQueue = queue
-    session.adapter.onModelActivityChange = (activity) => setModelActivity(activity)
-    setModelActivity("idle")
-    setActiveStore(session.store)
-    subscribeToStore(session.store)
-    subscribeToTimer(session.timer)
-
-    // Start workflow — sets workflowStatus to "running" and initializes store
-    const planLabel = args.planPath ?? args.description ?? queue.steps.map((s) => s.type).join(" → ")
-    session.store.startWorkflow(planLabel)
-
-    // Populate queue step display state for workflow panel BEFORE setting
-    // appState to "working". This ensures the panel has step data available
-    // on its first render (avoids "Steps: 0/0" / "No steps yet" flash).
-    const initialQueueStepStates = queue.steps.map((s) => ({
-      id: s.id,
-      type: s.type,
-      title: s.title,
-      status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-    }))
-    session.store.setQueueSteps(initialQueueStepStates)
-    // Also update the direct reactive signal (bypasses store → workState chain)
-    setShellQueueSteps(initialQueueStepStates)
-
-    setAppState("working")
-
-    // Config loaded once at queue start
-    let deps: WorkflowDeps
-    if (preloadedDeps) {
-      deps = preloadedDeps
-    } else {
-      const resolved = getDepsOrReturnIdle()
-      if (!resolved) return
-      deps = resolved
-    }
-
-    // Create persistent Session for pause/resume support
-    const planPathForSession = args.planPath ?? sessionLabel
-    const placeholderName = args.description || args.topic || undefined
-    let persistedSessionId: string | null = null
-    try {
-      persistedSessionId = sessionCtx.manager.create(planPathForSession, placeholderName)
-
-      const projectCwd = deps.config.project_cwd ?? "."
-      updateSession(persistedSessionId, { outputPath: "output.json" }, projectCwd)
-
-      // Transition to work:active
-      sessionCtx.manager.updateState(persistedSessionId, "plan:imported")
-      sessionCtx.manager.updateState(persistedSessionId, "plan:approved")
-      sessionCtx.manager.updateState(persistedSessionId, "work:active")
-
-      // Start output flusher
-      const persistence = createOutputPersistence({
-        sessionId: persistedSessionId,
-        baseDir: projectCwd,
-      })
-      const sessionStore = session.store
-      const getOutputBlocks = () => (sessionStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[]
-      activeFlusher = persistence.createFlusher(getOutputBlocks, { intervalMs: 5000 })
-
-      // Start transcript logger — append-only JSONL capturing ALL events
-      activeTranscript = createTranscriptLogger({
-        sessionId: persistedSessionId,
-        baseDir: projectCwd,
-      })
-      activeTranscript.subscribeTo(session.eventBus)
-
-      sessionStores.set(persistedSessionId, session.store)
-      sessionCtx.refreshList()
-    } catch (err) {
-      toast.show({
-        message: `Session persistence failed: ${err instanceof Error ? err.message : String(err)}`,
-        variant: "warning",
-      })
-    }
-
-    // Create BudgetTracker
-    let queueBudgetTracker: BudgetTracker | null = null
-    let queueBudgetLimits: import("../../schemas").BudgetLimits | null = null
-    if (persistedSessionId) {
-      const projectCwd = deps.config.project_cwd ?? "."
-      const persistedSession = readSession(persistedSessionId, projectCwd)
-      if (persistedSession) {
-        queueBudgetLimits = persistedSession.budgetLimits
-        queueBudgetTracker = createBudgetTracker({
-          sessionId: persistedSessionId,
-          baseDir: projectCwd,
-        })
-        activeBudgetTracker = queueBudgetTracker
-      }
-    }
-
-    // Question wiring
-    cleanupQuestionSubscriptions()
-    const questionWiring = createQuestionWiring({
-      eventBus: session.eventBus,
-      onQuestion: (q) => setPendingQuestion(q),
-      onClear: () => setPendingQuestion(null),
-    })
-    activeQuestionWiring = questionWiring
-
-    // Queue event subscriptions (replaces queue event subscriptions)
-    cleanupQueueSubscriptions()
-    // Re-populate shellQueueSteps after cleanup (cleanupQueueSubscriptions resets
-    // the signal to [], overwriting the initial population from line ~909).
-    setShellQueueSteps(initialQueueStepStates)
-    let stepCounter = 0
-    // Sprint detection: a queue with verify-type steps is a sprint queue
-    let isSprintQueue = queue.steps.some(s => s.type === "verify")
-    let sprintWorkStepCount = 0
-    queueUnsubs.push(
-      session.eventBus.subscribeToType("queue:initialized", (e) => {
-        stepCounter = 0
-        sprintWorkStepCount = 0
-        // Re-check sprint status in case queue was rebuilt
-        isSprintQueue = queue.steps.some(s => s.type === "verify")
-        if (isSprintQueue) {
-          const maxIter = deps.config.sprint?.max_iterations ?? 5
-          setActiveSprintInfo({ iteration: 0, maxIterations: maxIter })
-        }
-        setActiveQueueInfo({
-          currentStep: 1,
-          totalSteps: e.stepIds.length,
-          stepName: queue.steps[0]?.type ?? "step",
-        })
-        setActiveWorkflowName(queue.steps[0]?.type ?? "work")
-      }),
-      session.eventBus.subscribeToType("queue:step-started", (e) => {
-        stepCounter++
-        setActiveQueueInfo({
-          currentStep: stepCounter,
-          totalSteps: queue.steps.length,
-          stepName: e.stepType,
-        })
-        setActiveWorkflowName(e.stepType)
-      }),
-      session.eventBus.subscribeToType("queue:completed", () => {
-        setActiveQueueInfo(null)
-        setActiveSprintInfo(null)
-        // Final flush on queue completion
-        if (activeFlusher) {
-          activeFlusher.schedule()
-          activeFlusher.flush().catch(() => {})
-        }
-      }),
-      session.eventBus.subscribeToType("queue:failed", () => {
-        setActiveQueueInfo(null)
-        setActiveSprintInfo(null)
-      }),
-      // Event-driven flush: persist output after each step completes
-      session.eventBus.subscribeToType("queue:step-completed", () => {
-        if (activeFlusher) {
-          activeFlusher.schedule()
-        }
-      }),
-      // Sprint iteration tracking for telemetry bar — derived from queue step events.
-      // Sprint queues are identified by having verify-type steps. The iteration
-      // count is derived from counting work steps that have started.
-      // Escalation clears sprint info (non-work/verify steps in sprint queue).
-      session.eventBus.subscribeToType("queue:step-started", (e) => {
-        if (!isSprintQueue) return
-        if (e.stepType === "work") {
-          sprintWorkStepCount++
-          const maxIter = deps.config.sprint?.max_iterations ?? 5
-          setActiveSprintInfo({ iteration: sprintWorkStepCount, maxIterations: maxIter })
-        } else if (e.stepType !== "verify") {
-          // Non-sprint step (escalation: plan/review) — clear sprint info
-          setActiveSprintInfo(null)
-        }
-      }),
-      // Direct reactive queue steps signal updates (bypasses store → workState chain).
-      // These mirror the adapter's store mutations but update the dedicated signal
-      // so the WorkflowPanel gets reliable fine-grained reactivity.
-      session.eventBus.subscribeToType("queue:step-started", (e) => {
-        setShellQueueSteps((prev) =>
-          prev.map((s) =>
-            s.id === e.stepId
-              ? { ...s, status: "running" as const, startTime: Date.now() }
-              : s,
-          ),
-        )
-      }),
-      session.eventBus.subscribeToType("queue:step-completed", (e) => {
-        setShellQueueSteps((prev) =>
-          prev.map((s) => {
-            if (s.id !== e.stepId) return s
-            const now = Date.now()
-            const duration = s.startTime ? (now - s.startTime) / 1000 : 0
-            return { ...s, status: "completed" as const, endTime: now, duration }
-          }),
-        )
-      }),
-      session.eventBus.subscribeToType("queue:step-failed", (e) => {
-        setShellQueueSteps((prev) =>
-          prev.map((s) => {
-            if (s.id !== e.stepId) return s
-            const now = Date.now()
-            return { ...s, status: "failed" as const, endTime: now, error: e.reason }
-          }),
-        )
-      }),
-      session.eventBus.subscribeToType("queue:step-inserted", (e) => {
-        setShellQueueSteps((prev) => {
-          const idx = prev.findIndex((s) => s.id === e.afterStepId)
-          const insertIdx = idx >= 0 ? idx + 1 : prev.length
-          const newStep: import("../types").QueueStepState = {
-            id: e.stepId,
-            type: e.stepType,
-            title: e.stepTitle,
-            status: "pending",
-          }
-          return [...prev.slice(0, insertIdx), newStep, ...prev.slice(insertIdx)]
-        })
-      }),
-      session.eventBus.subscribeToType("queue:step-removed", (e) => {
-        setShellQueueSteps((prev) => prev.filter((s) => s.id !== e.stepId))
-      }),
-    )
-
-    // Shared context indexer
-    const queueContextIndexer = getOrCreateContextIndexer()
-
-    const capturedSessionId = persistedSessionId
-    const capturedProjectCwd = deps.config.project_cwd ?? "."
-    const queueSessionId = persistedSessionId
-    _isQueueRunning = true
-    _userInitiatedPause = false
-    _interruptAbort = false
-
-    const capturedFlusher = activeFlusher
-
-    // Register in runtimes and sessionControllers BEFORE the async execution starts
-    if (queueSessionId) {
-      setViewedSessionId(queueSessionId)
-      setFocusedSessionId(queueSessionId)
-    }
-
-    queueMicrotask(async () => {
-      const isStillViewed = () => viewedSessionId() === queueSessionId
-
-      // Start context indexing
-      if (!_indexerStarted) {
-        try {
-          await queueContextIndexer.startIndexing()
-          _indexerStarted = true
-        } catch { /* silently fall back to empty context */ }
-      }
-
-      // Prune old subprocess log dirs
-      const queueLogBaseDir = deps.config.project_cwd ?? process.cwd()
-      try { SubprocessLogger.cleanup(queueLogBaseDir) } catch { /* best-effort */ }
-
-      // Track current workflowId
-      const workflowIdRef = { current: `queue-${queueSessionId ?? "unknown"}` }
-      const workflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
-        workflowIdRef.current = ev.workflowId
-      })
-      queueUnsubs.push(workflowIdUnsub)
-
-      // Resolve dispatcher and evaluator transports
-      // Session ID must exist at this point
-      const effectiveSessionId = queueSessionId ?? crypto.randomUUID()
-
-      // Detect sprint queue early for evaluator system prompt addendum
-      const isDebugQueueEarly = queue.steps.some(s => s.type === "debug")
-      const isSprintQueueEarly = !isDebugQueueEarly && queue.steps.some(s => s.type === "verify")
-      const evalAddendum = isSprintQueueEarly ? SPRINT_EVALUATOR_ADDENDUM : undefined
-
-      const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-        deps, session.eventBus, workflowIdRef, queueLogBaseDir, effectiveSessionId, capturedProjectCwd, evalAddendum,
-      )
-
-      // ── Telemetry Logger ──
-      const telemetryDir = `${capturedProjectCwd}/.flywheel/telemetry`
-      const sessionTelemetryDir = queueSessionId ? `${capturedProjectCwd}/.flywheel/sessions/${queueSessionId}` : undefined
-      const telemetryLogger = new TelemetryLogger(telemetryDir, 50, sessionTelemetryDir)
-      const telemetryRecord = telemetryLogger.startRecord(
-        queue.steps.map((s) => s.type).join("-"),
-        workflowIdRef.current,
-        {
-          stepsTotal: queue.steps.length,
-          dispatcherMode: dispatcherTransport ? "dispatcher" : "static",
-        },
-      )
-      // Subscribe to queue events for telemetry updates
-      queueUnsubs.push(
-        session.eventBus.subscribeToType("queue:step-completed", () => {
-          telemetryLogger.updateRecord(telemetryRecord, {
-            steps_completed: telemetryRecord.steps_completed + 1,
-          })
-        }),
-        session.eventBus.subscribeToType("queue:step-failed", (e) => {
-          telemetryLogger.updateRecord(telemetryRecord, {
-            errors: [{ step: telemetryRecord.steps_completed, kind: "step-failed", message: e.reason ?? "unknown" }],
-          })
-        }),
-      )
-
-      const emitter = createFlywheelEmitter(session.eventBus)
-      const projectCwdForExec = deps.config.project_cwd ?? process.cwd()
-
-      // Build shared executor dependencies (dispatcher, accumulator, evaluator, hooks, worker, handoff reader)
-      const execDeps = buildExecutorDeps({
-        deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
-        contextIndexer: queueContextIndexer, projectCwd: projectCwdForExec,
-        sessionObjective: args.description, chatContext: args.chatContext, queue,
-        sessionId: effectiveSessionId,
-        stdinHandleRef: activeStdinHandleRef,
-        seedHandoff,
-        questionService: activeQuestionWiring?.service ?? null,
-        reviewTriageInteractive: interactiveOverrides?.review,
-        confirmBeforeInsert: interactiveOverrides?.plan ? confirmPlanBeforeInsert : undefined,
-        setShellQueueSteps,
-        capturedWorkerSessionId,
-        pendingInjection,
-        activeSessionRef,
-      })
-
-      // Create guardrails for mutation budget tracking and convergence detection.
-      const guardrails = createGuardrails({
-        maxQueueLength: deps.config.queue?.max_steps ?? 50,
-        maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
-        maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
-        sessionObjective: args.description ?? "",
-      })
-
-      // Create step executor with real per-step execution.
-      const stepExec = createStepExecutor({
-        queue,
-        workflowId: workflowIdRef.current,
-        sessionId: effectiveSessionId,
-        emitter,
-        dispatcher: execDeps.dispatcherFn,
-        worker: execDeps.workerFn,
-        evaluator: execDeps.evaluator,
-        handoffReader: execDeps.handoffReader,
-        budgetChecker: queueBudgetTracker && queueBudgetLimits
-          ? { isExhausted: () => queueBudgetTracker!.isExhausted(queueBudgetLimits!) }
-          : { isExhausted: () => false },
-        persist: async (q) => {
-          if (queueSessionId && deps.config.queue?.persist_queue !== false) {
-            try {
-              const queuePersistence = createQueuePersistence({
-                sessionId: queueSessionId,
-                baseDir: capturedProjectCwd,
-              })
-              await queuePersistence.save(q)
-            } catch { /* best-effort */ }
-          }
-        },
-        accumulator: execDeps.contextAccumulator,
-        maxRevisions: deps.config.max_revisions ?? 1,
-        onStepCompleted: execDeps.compositeHook,
-        guardrails,
-        onSessionName: (name) => {
-          if (queueSessionId) {
-            updateSession(queueSessionId, { name, label: name }, capturedProjectCwd)
-          }
-          session.store.setPlanName(name)
-          sessionCtx.refreshList()
-        },
-      })
-
-      activeStepExecutor = stepExec
-
-      // Register in sessionControllers
-      if (queueSessionId) {
-        sessionControllers.set(queueSessionId, {
-          shutdown: async () => { stepExec.requestShutdown() },
-        })
-
-        runtimes.register(queueSessionId, {
-          kind: "running" as const,
-          sessionId: queueSessionId,
-          session,
-          flusher: activeFlusher!,
-          budgetTracker: queueBudgetTracker!,
-          storeUnsub: storeUnsub!,
-          questionCleanup: () => cleanupQuestionSubscriptions(),
-          queueCleanup: () => cleanupQueueSubscriptions(),
-          contextIndexer: queueContextIndexer,
-          workerPid: null,
-          stepExecutor: stepExec,
-          queue,
-        })
-      }
-
-      let queueResult: StepExecutorResult | undefined
-      // Track whether this run was interrupted (for skip-cleanup in finally)
-      let wasInterruptedRun = false
-      try {
-        queueResult = await stepExec.run()
-
-        if (!queueResult.completed && !_userInitiatedPause) {
-          const isBudgetExhausted = /budget[_ ]exhausted/i.test(queueResult.reason ?? "")
-          const isRateLimitPause = /rate limit/i.test(queueResult.reason ?? "")
-          const wasInterrupted = _interruptAbort
-          // Reset interrupt flag after capturing it
-          _interruptAbort = false
-
-          if (wasInterrupted) {
-            // Interrupt-abort: step was aborted by first Esc (SIGINT + executor abort).
-            // Stay in "working" state so the user can type to resume the worker.
-            // Do NOT transition to completed, do NOT show ErrorModal.
-            wasInterruptedRun = true
-            _isQueueRunning = false
-            // Clear the step executor (it's done) but keep everything else alive
-            activeStepExecutor = null
-            toast.show({
-              message: "Worker interrupted — type to resume, or Esc to kill",
-              variant: "warning",
-              duration: 5000,
-            })
-            // Update the failed step's display to show "interrupted" instead of "failed"
-            setShellQueueSteps((prev) =>
-              prev.map((s) =>
-                s.status === "failed"
-                  ? { ...s, status: "failed" as const, error: "interrupted" }
-                  : s,
-              ),
-            )
-            log.info("queue interrupted — staying in working state for resume", {
-              sessionId: queueSessionId,
-              capturedWorkerSession: capturedWorkerSessionId.current,
-            })
-            // Don't transition app state — stay in "working"
-            return
-          } else if (isRateLimitPause) {
-            toast.show({
-              message: "Queue paused — rate limit reached. Resume when limits lift.",
-              variant: "warning",
-              duration: 5000,
-            })
-          } else if (isBudgetExhausted) {
-            toast.show({
-              message: "Queue stopped — budget exhausted.",
-              variant: "warning",
-              duration: 5000,
-            })
-          } else {
-            activeStore()?.setError(queueResult.reason ?? "Queue execution failed")
-          }
-
-          if (queueSessionId) {
-            // VAL-SHELL-020: Budget exhaustion transitions to budget_exhausted
-            const targetState = isBudgetExhausted ? "budget_exhausted" : "work:paused"
-            safeUpdateState(
-              (id, s) => sessionCtx.manager.updateState(id, s),
-              queueSessionId,
-              targetState,
-            )
-            sessionCtx.refreshList()
-          }
-          if (isStillViewed()) setAppState("completed")
-        }
-      } catch (err) {
-        if (!_userInitiatedPause) {
-          // Check if this was an interrupt abort that threw
-          const wasInterrupted = _interruptAbort
-          _interruptAbort = false
-
-          if (wasInterrupted) {
-            wasInterruptedRun = true
-            _isQueueRunning = false
-            activeStepExecutor = null
-            toast.show({
-              message: "Worker interrupted — type to resume, or Esc to kill",
-              variant: "warning",
-              duration: 5000,
-            })
-            log.info("queue interrupted (exception path) — staying in working state", {
-              sessionId: queueSessionId,
-            })
-            return
-          }
-
-          activeStore()?.setError(String(err))
-          if (queueSessionId) {
-            safeUpdateState(
-              (id, s) => sessionCtx.manager.updateState(id, s),
-              queueSessionId,
-              "work:paused",
-            )
-            sessionCtx.refreshList()
-          }
-          if (isStillViewed()) setAppState("completed")
-        }
-      } finally {
-        // Skip cleanup if this was an interrupted run — resources stay alive for resume
-        if (wasInterruptedRun) return
-
-        _isQueueRunning = false
-
-        if (queueBudgetTracker) {
-          queueBudgetTracker.dispose()
-          if (activeBudgetTracker === queueBudgetTracker) {
-            activeBudgetTracker = null
-          }
-        }
-
-        if (queueSessionId) {
-          sessionControllers.delete(queueSessionId)
-          runtimes.remove(queueSessionId)
-        }
-
-        // Handle completion
-        if (queueResult && !_userInitiatedPause) {
-          try {
-            // Convert queue result to QueueResult format for handleQueueCompletion
-            const queueResultCompat: QueueResult = {
-              completed: queueResult.completed,
-              stepsCompleted: queueResult.stepsCompleted,
-              stepsTotal: queueResult.stepsTotal,
-              reason: queueResult.reason,
-              stepResults: queue.steps
-                .filter((s) => s.status === "completed")
-                .map((s) => ({
-                  workflow: s.type as any,
-                  completed: true,
-                })),
-            }
-            await handleQueueCompletion(queueResultCompat, {
-              orchestrator,
-              sessionId: queueSessionId ?? null,
-              flusher: capturedFlusher,
-              toast,
-              updateState: (id, s) => sessionCtx.manager.updateState(id, s),
-              refreshList: () => sessionCtx.refreshList(),
-            })
-          } catch (completionErr) {
-            log.error("queue completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
-          }
-        }
-
-        // Persist telemetry record
-        try {
-          telemetryLogger.updateRecord(telemetryRecord, {
-            completed_at: new Date().toISOString(),
-            duration_ms: Date.now() - new Date(telemetryRecord.started_at).getTime(),
-          })
-          await telemetryLogger.persist(telemetryRecord)
-        } catch (telErr) {
-          log.warn("telemetry persist failed", { error: telErr instanceof Error ? telErr.message : String(telErr) })
-        }
-      }
-    })
-  }
-
   // ── Lifecycle cleanup refs (wired to extracted shell-lifecycle functions) ──
   const _questionCleanupRefs: QuestionCleanupRefs = {
     activeQuestionWiring: activeQuestionWiringRef,
@@ -1190,801 +555,214 @@ export function FlywheelShell() {
   const _clearQueueRuntime = (): Promise<void> | undefined => clearQueueRuntime(_clearQueueRuntimeRefs)
 
   const teardownActiveWorkflow = (): Promise<void> | undefined => {
-    cleanupQuestionSubscriptions()
-    cleanupQueueSubscriptions()
-    unsubscribeTimer()
-    if (storeUnsub) {
-      storeUnsub()
-      storeUnsub = null
-    }
-    // Dispose output flusher (does NOT flush — just cancels timers)
-    if (activeFlusher) {
-      activeFlusher.dispose()
-      activeFlusher = null
-    }
-    // Dispose transcript logger (flushes remaining buffer, closes file handle)
-    if (activeTranscript) {
-      activeTranscript.dispose()
-      activeTranscript = null
-    }
-    // Dispose budget tracker (flushes pending data, cancels timers)
-    if (activeBudgetTracker) {
-      activeBudgetTracker.dispose()
-      activeBudgetTracker = null
-    }
+    lifecycle.teardown()
     const shutdownPromise = _clearQueueRuntime()
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-    }
-    setActiveStore(null)
     // Note: we do NOT clear workState here so completed view can still show output
     return shutdownPromise
   }
 
-  const stopWorkflow = async () => {
-    escapeHandler.reset()
-    setEscHint("")
-    resetInterruptState({ setIsInterrupted, pendingInjection, capturedWorkerSessionId })
+  // User-initiated pause flag: set when double-Esc pauses a queue.
+  // Distinguishes pause from failure so ErrorModal is suppressed.
+  let _userInitiatedPause = false
 
-    // Capture session ID before teardown clears it
-    const sessionId = focusedSessionId()
+  // Interrupt-abort flag: set when first Esc aborts the executor mid-step.
+  let _interruptAbort = false
 
-    await teardownActiveWorkflow()
-
-    // Remove from sessionControllers so sidebar shows "Paused" not "Active"
-    if (sessionId) {
-      runtimes.teardown(sessionId)
-      sessionControllers.delete(sessionId)
-    }
-
-    // Persist lifecycle state as work:paused (manual stop ≠ completed)
-    if (sessionId) {
-      try {
-        sessionCtx.manager.updateState(sessionId, "work:paused")
-      } catch (stateErr) {
-        // Session may already be in a terminal state
-        log.warn("state transition failed (stop)", { session: sessionId, error: stateErr instanceof Error ? stateErr : String(stateErr) })
-      }
-      sessionCtx.refreshList()
-    }
-
-    setAppState("completed")
-  }
-
-  /**
-   * Pause the queue (user-initiated via double-Esc).
-   *
-   * Unlike stopWorkflow(), this does NOT fully tear down the session:
-   * - Sets suppressQueueError on the adapter so queue:failed doesn't trigger ErrorModal
-   * - Requests queue shutdown (which internally fires queue:failed)
-   * - Persists session state as work:paused (if a persistent session exists)
-   * - Pushes a pause system message to output
-   * - Transitions app state to "completed" (keeps output visible)
-   */
-  const pauseQueue = async () => {
-    _userInitiatedPause = true
-    escapeHandler.reset()
-    setEscHint("")
-    resetInterruptState({ setIsInterrupted, pendingInjection, capturedWorkerSessionId })
-
-    // Suppress ErrorModal from the queue:failed event that shutdown triggers
-    if (activeSession?.adapter) {
-      activeSession.adapter.suppressQueueError = true
-    }
-
-    // Flush output BEFORE shutting down runtime (data must be persisted first)
-    if (activeFlusher) {
-      try {
-        activeFlusher.schedule()
-        await activeFlusher.flush()
-      } catch {
-        // Best effort — don't block pause on flush failure
-      }
-      activeFlusher.dispose()
-      activeFlusher = null
-    }
-
-    // Flush and dispose transcript logger (persists final buffered entries)
-    if (activeTranscript) {
-      activeTranscript.dispose()
-      activeTranscript = null
-    }
-
-    // Flush and dispose budget tracker (persists final cost/usage data)
-    if (activeBudgetTracker) {
-      activeBudgetTracker.dispose()
-      activeBudgetTracker = null
-    }
-
-    // Clean up subscriptions (question wiring, queue event bus listeners)
-    cleanupQuestionSubscriptions()
-    cleanupQueueSubscriptions()
-
-    // Unsubscribe from timer so the runtime display stops ticking
-    unsubscribeTimer()
-
-    // Clean up store subscription
-    if (storeUnsub) {
-      storeUnsub()
-      storeUnsub = null
-    }
-
-    // Shut down queue runtime (executor, processes, stdin handles)
-    _clearQueueRuntime()
-
-    // Push pause message through the event bus BEFORE destroying the session
-    if (activeSession) {
-      activeSession.eventBus.emit({
-        type: "worker:output",
-        workflowId: "queue-pause",
-        stream: "stderr",
-        data: "⏸ Execution paused. Resume with /work or select from session sidebar.\n",
-        timestamp: new Date().toISOString(),
-      })
-    }
-
-    // Destroy the workflow session (stops timer interval, stops and disconnects adapter)
-    if (activeSession) {
-      destroyWorkflowSession(activeSession)
-      activeSession = null
-    }
-    setActiveStore(null)
-
-    // Persist session state as work:paused and remove from sessionControllers
-    // so the sidebar groups them as "Paused" instead of "Active".
-    const runningSessionIds = [...sessionControllers.keys()]
-    for (const sessionId of runningSessionIds) {
-      try {
-        sessionCtx.manager.updateState(sessionId, "work:paused")
-      } catch (err) {
-        log.warn("state transition failed (pause)", { session: sessionId, error: err instanceof Error ? err : String(err) })
-      }
-      runtimes.teardown(sessionId)
-      sessionControllers.delete(sessionId)
-    }
-    if (runningSessionIds.length > 0) {
-      sessionCtx.refreshList()
-    }
-
-    // Transition to completed (keeps output visible, enables /work to restart)
-    setAppState("completed")
-  }
+  // ── Queue execution deps (shared across runQueueOnSession calls) ──
+  const _runQueueDeps = () => ({
+    lifecycle,
+    setShellQueueSteps,
+    setFocusedSessionId,
+    setViewedSessionId,
+    setAppState,
+    setActiveQueueInfo,
+    setActiveSprintInfo,
+    setActiveWorkflowName,
+    sessionControllers,
+    runtimes,
+    sessionStores,
+    activeStdinHandleRef,
+    capturedWorkerSessionId,
+    pendingInjection,
+    activeSessionRef,
+    isQueueRunningRef,
+    queueUnsubs: queueUnsubsRef,
+    getUserInitiatedPause: () => _userInitiatedPause,
+    setUserInitiatedPause: (v: boolean) => { _userInitiatedPause = v },
+    getInterruptAbort: () => _interruptAbort,
+    setInterruptAbort: (v: boolean) => { _interruptAbort = v },
+    getIndexerStarted: () => _indexerStarted,
+    setIndexerStarted: (v: boolean) => { _indexerStarted = v },
+    getOrCreateContextIndexer,
+    sessionCtx: {
+      manager: sessionCtx.manager,
+      refreshList: () => sessionCtx.refreshList(),
+    },
+    orchestrator,
+    toast,
+    viewedSessionId,
+    activeStore,
+    setActiveStepExecutor: (v: StepExecutor | null) => { activeStepExecutor = v },
+    confirmPlanBeforeInsert,
+    cleanupQuestionSubscriptions,
+    cleanupQueueSubscriptions,
+  })
 
   /**
-   * Resume the worker after an interrupt.
-   * Delegates to the extracted interrupt-controller module.
+   * Shared wiring for steps 6-13 of queue execution (both new + resumed sessions).
+   * Delegates to the extracted runQueueOnSession in queue-execution-runner.ts.
    */
-  const resumeWorkerWithMessage = (message: string) => {
-    const interruptDeps: InterruptControllerDeps = {
-      activeStdinHandleRef,
-      getDepsOrWarn,
-      getActiveSession: () => activeSession,
-      getActiveQueue: () => activeQueue,
-      getActiveStepExecutor: () => activeStepExecutor,
-      stopWorkflow,
-      toast,
-      escapeHandler,
-      capturedWorkerSessionId,
-      pendingInjection,
-      setShellQueueSteps,
-      setEscHint,
-      setIsInterrupted,
-    }
-    resumeWorkerWithMessageImpl(message, interruptDeps)
+  const _runQueueOnSession = (init: {
+    session: WorkflowSession
+    queue: Queue
+    sessionId: string | null
+    deps: WorkflowDeps
+    budgetTracker: import("../../session/budget-tracker").BudgetTracker | null
+    budgetLimits: import("../../schemas").BudgetLimits | null
+    sessionObjective?: string
+    chatContext?: string
+    interactiveOverrides?: { plan?: boolean; review?: boolean }
+    seedHandoff?: Record<string, unknown> | null
+    alreadyCompletedSteps?: number
+  }) => {
+    runQueueOnSession(init, _runQueueDeps())
   }
 
+  // ── Session Navigation (extracted to session-navigation.ts) ──
+  const sessionNav = createSessionNavigation({
+    lifecycle,
+    activeStepExecutor: activeStepExecutorRef,
+    activeQueue: activeQueueRef,
+    activeStdinHandleRef,
+    setAppState,
+    setIsInterrupted,
+    setEscHint,
+    setViewedSessionId,
+    setFocusedSessionId,
+    setSessionLoading,
+    setWorkState,
+    setActiveStore,
+    setShellQueueSteps,
+    setIsPromptFocused,
+    setSidebarFocused,
+    setSidebarSelectedIndex,
+    sessionControllers,
+    runtimes,
+    sessionStores,
+    orchestrator,
+    viewport,
+    escapeHandler,
+    toast,
+    sessionCtx,
+    chatController,
+    runQueueOnSession: _runQueueOnSession,
+    getDepsOrWarn,
+    teardownActiveWorkflow,
+    cleanupQuestionSubscriptions,
+    cleanupQueueSubscriptions,
+    unsubscribeTimer,
+    pendingInjection,
+    capturedWorkerSessionId,
+    sessionsMap,
+    focusedSessionId,
+    sidebarSelectedIndex,
+    isInterrupted,
+    setUserInitiatedPause: (v: boolean) => { _userInitiatedPause = v },
+    getActiveSession: () => lifecycle.getActiveSession(),
+    getActiveQueue: () => activeQueue,
+    getActiveStepExecutor: () => activeStepExecutor,
+  })
+
+  // Expose navigation functions as local names for the rest of the shell
+  const { handleSessionSelect, returnToIdle, returnToChat, backgroundSession,
+          stopWorkflow, pauseQueue, resumeWorkerWithMessage, resumeSession } = sessionNav
+
   /**
-   * Resume a previously paused session.
+   * Start queue-based execution. Creates a new session, builds the queue,
+   * wires events, and runs the step executor.
    *
-   * VAL-SHELL-022: Paused session resumable
-   * VAL-SHELL-023: Resume continues from correct queue position
-   *
-   * Queue-based resume:
-   *   1. Loads session data + output blocks + queue state via orchestrator
-   *   2. If queue state exists, uses startQueueExecution with the loaded queue
-   *      (completed steps are NOT re-executed — cursor starts at first pending)
-   *   3. All sessions use queue-based execution
+   * VAL-SHELL-019: Session created when queue starts
+   * VAL-SHELL-020: Session lifecycle follows queue progression
    */
-  const resumeSession = async (sessionId: string) => {
-    // 1. Clean up any current workflow
-    if (activeSession) {
-      teardownActiveWorkflow()
+  const startQueueExecution = (
+    queue: Queue,
+    args: Record<string, string>,
+    preloadedDeps?: WorkflowDeps,
+    interactiveOverrides?: { plan?: boolean; review?: boolean },
+    /** Pre-seed the context accumulator with fixture handoff data (for /test). */
+    seedHandoff?: Record<string, unknown> | null,
+  ) => {
+    // 1. Background/destroy previous session
+    const prevFocused = focusedSessionId()
+    if (prevFocused && runtimes.has(prevFocused)) {
+      runtimes.background(prevFocused)
+      lifecycle.backgroundCurrent()
+      activeStepExecutor = null
+      activeQueue = null
+      activeStdinHandleRef.current = null
+    } else if (lifecycle.getActiveSession()) {
+      lifecycle.destroyCurrent()
+      activeStepExecutor = null
+      activeQueue = null
+      activeStdinHandleRef.current = null
     }
 
-    // 2. Get session data + output + queue from orchestrator
-    const result = await orchestrator.handleResumeSession(sessionId)
-    if (!result) {
-      toast.show({ message: "Session not found or corrupt", variant: "error" })
-      return
+    // 2. Load deps (config, engine, spawner)
+    let deps: WorkflowDeps
+    if (preloadedDeps) {
+      deps = preloadedDeps
+    } else {
+      const resolved = getDepsOrReturnIdle()
+      if (!resolved) return
+      deps = resolved
     }
 
-    // 3. Load workflow deps (config, engine, spawner)
-    const deps = getDepsOrWarn()
-    if (!deps) {
-      toast.show({ message: "Failed to load config for resume", variant: "error" })
-      return
-    }
+    // 3. Create persistent Session for pause/resume support
+    let persistedSessionId: string | null = null
+    try {
+      const sessionLabel = queue.steps.map((s) => s.type).join(" -> ")
+      const planPathForSession = args.planPath ?? sessionLabel
+      const placeholderName = args.description || args.topic || undefined
+      persistedSessionId = sessionCtx.manager.create(planPathForSession, placeholderName)
 
-    // 4. Resume via queue-based execution.
-    //    The loaded queue has completed steps already marked, and the cursor
-    //    is positioned at the first pending step (crash recovery already applied).
-    {
-      // Transition session state before starting execution
-      // (budget_exhausted → work:active or work:paused → work:active)
-      try {
-        sessionCtx.manager.updateState(sessionId, "work:active")
-        sessionCtx.refreshList()
-      } catch (err) {
-        toast.show({
-          message: `Failed to update session state: ${err instanceof Error ? err.message : String(err)}`,
-          variant: "warning",
-        })
-      }
-
-      // Create a fresh workflow session, inject output blocks, then start queue execution.
-      // We use a modified path: create session manually (not via startQueueExecution)
-      // to preserve the existing session ID instead of creating a new one.
-      const session = createWorkflowSession(result.planPath)
-      activeSession = session
-      activeQueue = result.queue
-      session.adapter.onModelActivityChange = (activity) => setModelActivity(activity)
-      setModelActivity("idle")
-      setActiveStore(session.store)
-      subscribeToStore(session.store)
-      subscribeToTimer(session.timer)
-
-      // Start workflow — sets workflowStatus to "running"
-      session.store.startWorkflow(result.planPath ?? "Resumed session")
-
-      // Inject restored output blocks
-      injectOutputBlocks(session.store, snapshotToBlocks(result.outputBlocks) as AnyBlock[])
-
-      // Populate queue step display state for workflow panel (resume)
-      const resumeQueueStepStates = result.queue.steps.map((s) => ({
-        id: s.id,
-        type: s.type,
-        title: s.title,
-        status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-      }))
-      session.store.setQueueSteps(resumeQueueStepStates)
-      // Also update the direct reactive signal (bypasses store → workState chain)
-      setShellQueueSteps(resumeQueueStepStates)
-
-      setFocusedSessionId(sessionId)
-      setViewedSessionId(sessionId)
-      setAppState("working")
-
-      // Start output flusher
       const projectCwd = deps.config.project_cwd ?? "."
-      const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-      const resumedStore = session.store
-      activeFlusher = outputPersistence.createFlusher(
-        () => (resumedStore.getState().outputBlocks ?? []) as unknown as { kind: string; [key: string]: unknown }[],
-        { intervalMs: 5000 },
-      )
+      updateSession(persistedSessionId, { outputPath: "output.json" }, projectCwd)
 
-      // Start transcript logger (append-only — resumes appending to existing file)
-      activeTranscript = createTranscriptLogger({ sessionId, baseDir: projectCwd })
-      activeTranscript.subscribeTo(session.eventBus)
-      activeTranscript.logEntry("session:resumed", { sessionId })
-
-      sessionStores.set(sessionId, session.store)
-
-      // Create BudgetTracker
-      let resumeBudgetTracker: BudgetTracker | null = null
-      let resumeBudgetLimits: import("../../schemas").BudgetLimits | null = null
-      const persistedSession = readSession(sessionId, projectCwd)
-      if (persistedSession) {
-        resumeBudgetLimits = persistedSession.budgetLimits
-        resumeBudgetTracker = createBudgetTracker({ sessionId, baseDir: projectCwd })
-        activeBudgetTracker = resumeBudgetTracker
-      }
-
-      // Question wiring
-      cleanupQuestionSubscriptions()
-      const questionWiring = createQuestionWiring({
-        eventBus: session.eventBus,
-        onQuestion: (q) => setPendingQuestion(q),
-        onClear: () => setPendingQuestion(null),
-      })
-      activeQuestionWiring = questionWiring
-
-      // Queue event subscriptions
-      cleanupQueueSubscriptions()
-      // Re-populate shellQueueSteps after cleanup (cleanupQueueSubscriptions resets
-      // the signal to [], overwriting the initial population above).
-      setShellQueueSteps(resumeQueueStepStates)
-      let stepCounter = result.queue.steps.filter((s) => s.status === "completed").length
-      queueUnsubs.push(
-        session.eventBus.subscribeToType("queue:initialized", (e) => {
-          setActiveQueueInfo({
-            currentStep: stepCounter + 1,
-            totalSteps: e.stepIds.length,
-            stepName: result.queue.steps[result.queue.cursor]?.type ?? "step",
-          })
-          setActiveWorkflowName(result.queue.steps[result.queue.cursor]?.type ?? "work")
-        }),
-        session.eventBus.subscribeToType("queue:step-started", (e) => {
-          stepCounter++
-          setActiveQueueInfo({
-            currentStep: stepCounter,
-            totalSteps: result.queue.steps.length,
-            stepName: e.stepType,
-          })
-          setActiveWorkflowName(e.stepType)
-        }),
-        session.eventBus.subscribeToType("queue:completed", () => {
-          setActiveQueueInfo(null)
-          if (activeFlusher) {
-            activeFlusher.schedule()
-            activeFlusher.flush().catch(() => {})
-          }
-        }),
-        session.eventBus.subscribeToType("queue:failed", () => {
-          setActiveQueueInfo(null)
-        }),
-        session.eventBus.subscribeToType("queue:step-completed", () => {
-          if (activeFlusher) activeFlusher.schedule()
-        }),
-        // Direct reactive queue steps signal updates for resume path
-        session.eventBus.subscribeToType("queue:step-started", (e) => {
-          setShellQueueSteps((prev) =>
-            prev.map((s) =>
-              s.id === e.stepId
-                ? { ...s, status: "running" as const, startTime: Date.now() }
-                : s,
-            ),
-          )
-        }),
-        session.eventBus.subscribeToType("queue:step-completed", (e) => {
-          setShellQueueSteps((prev) =>
-            prev.map((s) => {
-              if (s.id !== e.stepId) return s
-              const now = Date.now()
-              const duration = s.startTime ? (now - s.startTime) / 1000 : 0
-              return { ...s, status: "completed" as const, endTime: now, duration }
-            }),
-          )
-        }),
-        session.eventBus.subscribeToType("queue:step-failed", (e) => {
-          setShellQueueSteps((prev) =>
-            prev.map((s) => {
-              if (s.id !== e.stepId) return s
-              const now = Date.now()
-              return { ...s, status: "failed" as const, endTime: now, error: e.reason }
-            }),
-          )
-        }),
-        session.eventBus.subscribeToType("queue:step-inserted", (e) => {
-          setShellQueueSteps((prev) => {
-            const idx = prev.findIndex((s) => s.id === e.afterStepId)
-            const insertIdx = idx >= 0 ? idx + 1 : prev.length
-            const newStep: import("../types").QueueStepState = {
-              id: e.stepId,
-              type: e.stepType,
-              title: e.stepTitle,
-              status: "pending",
-            }
-            return [...prev.slice(0, insertIdx), newStep, ...prev.slice(insertIdx)]
-          })
-        }),
-        session.eventBus.subscribeToType("queue:step-removed", (e) => {
-          setShellQueueSteps((prev) => prev.filter((s) => s.id !== e.stepId))
-        }),
-      )
-
-      const capturedProjectCwd = projectCwd
-      const capturedFlusher = activeFlusher
-      _isQueueRunning = true
-      _userInitiatedPause = false
-      _interruptAbort = false
-
-      queueMicrotask(async () => {
-        const isStillViewed = () => viewedSessionId() === sessionId
-        const queueContextIndexer = getOrCreateContextIndexer()
-
-        if (!_indexerStarted) {
-          try {
-            await queueContextIndexer.startIndexing()
-            _indexerStarted = true
-          } catch { /* silently fall back to empty context */ }
-        }
-
-        const queueLogBaseDir = deps.config.project_cwd ?? process.cwd()
-        const workflowIdRef = { current: `queue-resume-${sessionId}` }
-        const workflowIdUnsub = session.eventBus.subscribeToType("queue:initialized", (ev) => {
-          workflowIdRef.current = ev.workflowId
-        })
-        queueUnsubs.push(workflowIdUnsub)
-
-        // Resolve dispatcher and evaluator transports
-        const capturedProjectCwdResume = deps.config.project_cwd ?? process.cwd()
-        const resumeQueue = result.queue
-
-        // Detect sprint queue early for evaluator system prompt addendum
-        const isDebugQueueResume = resumeQueue.steps.some(s => s.type === "debug")
-        const isSprintQueueResume = !isDebugQueueResume && resumeQueue.steps.some(s => s.type === "verify")
-        const evalAddendumResume = isSprintQueueResume ? SPRINT_EVALUATOR_ADDENDUM : undefined
-
-        const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-          deps, session.eventBus, workflowIdRef, queueLogBaseDir, sessionId, capturedProjectCwdResume, evalAddendumResume,
-        )
-
-        // ── Telemetry Logger (resume) ──
-        const resumeTelemetryDir = `${capturedProjectCwd}/.flywheel/telemetry`
-        const resumeSessionTelemetryDir = sessionId ? `${capturedProjectCwd}/.flywheel/sessions/${sessionId}` : undefined
-        const resumeTelemetryLogger = new TelemetryLogger(resumeTelemetryDir, 50, resumeSessionTelemetryDir)
-        const resumeTelemetryRecord = resumeTelemetryLogger.startRecord(
-          resumeQueue.steps.map((s) => s.type).join("-"),
-          workflowIdRef.current,
-          {
-            stepsTotal: resumeQueue.steps.length,
-            dispatcherMode: dispatcherTransport ? "dispatcher" : "static",
-          },
-        )
-        // Pre-fill completed step count from previously completed steps
-        const alreadyCompleted = resumeQueue.steps.filter((s) => s.status === "completed").length
-        if (alreadyCompleted > 0) {
-          resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, { steps_completed: alreadyCompleted })
-        }
-        queueUnsubs.push(
-          session.eventBus.subscribeToType("queue:step-completed", () => {
-            resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, {
-              steps_completed: resumeTelemetryRecord.steps_completed + 1,
-            })
-          }),
-          session.eventBus.subscribeToType("queue:step-failed", (e) => {
-            resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, {
-              errors: [{ step: resumeTelemetryRecord.steps_completed, kind: "step-failed", message: e.reason ?? "unknown" }],
-            })
-          }),
-        )
-
-        const emitter = createFlywheelEmitter(session.eventBus)
-        const resumeProjectCwd = deps.config.project_cwd ?? process.cwd()
-
-        // Build shared executor dependencies (dispatcher, accumulator, evaluator, hooks, worker, handoff reader)
-        // Use the session name (original user description) as objective, not the label
-        // (which falls back to planPath when no description was provided).
-        const execDeps = buildExecutorDeps({
-          deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
-          contextIndexer: queueContextIndexer, projectCwd: resumeProjectCwd,
-          sessionObjective: result.session.name ?? undefined, queue: resumeQueue,
-          sessionId,
-          stdinHandleRef: activeStdinHandleRef,
-          questionService: activeQuestionWiring?.service ?? null,
-          setShellQueueSteps,
-          capturedWorkerSessionId,
-          pendingInjection,
-          activeSessionRef,
-        })
-
-        const resumeGuardrails = createGuardrails({
-          maxQueueLength: deps.config.queue?.max_steps ?? 50,
-          maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
-          maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
-          sessionObjective: result.session.name ?? "",
-        })
-
-        const stepExec = createStepExecutor({
-          queue: resumeQueue,
-          workflowId: workflowIdRef.current,
-          sessionId,
-          emitter,
-          dispatcher: execDeps.dispatcherFn,
-          worker: execDeps.workerFn,
-          evaluator: execDeps.evaluator,
-          handoffReader: execDeps.handoffReader,
-          budgetChecker: resumeBudgetTracker && resumeBudgetLimits
-            ? { isExhausted: () => resumeBudgetTracker!.isExhausted(resumeBudgetLimits!) }
-            : { isExhausted: () => false },
-          persist: async (q) => {
-            if (deps.config.queue?.persist_queue !== false) {
-              try {
-                const qp = createQueuePersistence({ sessionId, baseDir: capturedProjectCwd })
-                await qp.save(q)
-              } catch { /* best-effort */ }
-            }
-          },
-          accumulator: execDeps.contextAccumulator,
-          maxRevisions: deps.config.max_revisions ?? 1,
-          onStepCompleted: execDeps.compositeHook,
-          guardrails: resumeGuardrails,
-          onSessionName: (name) => {
-            updateSession(sessionId, { name, label: name }, capturedProjectCwd)
-            session.store.setPlanName(name)
-            sessionCtx.refreshList()
-          },
-        })
-
-        activeStepExecutor = stepExec
-
-        sessionControllers.set(sessionId, {
-          shutdown: async () => { stepExec.requestShutdown() },
-        })
-        runtimes.register(sessionId, {
-          kind: "running" as const,
-          sessionId,
-          session,
-          flusher: activeFlusher!,
-          budgetTracker: resumeBudgetTracker!,
-          storeUnsub: storeUnsub!,
-          questionCleanup: () => cleanupQuestionSubscriptions(),
-          queueCleanup: () => cleanupQueueSubscriptions(),
-          contextIndexer: queueContextIndexer,
-          workerPid: null,
-          stepExecutor: stepExec,
-          queue: resumeQueue,
-        })
-
-        let queueResult: StepExecutorResult | undefined
-        let wasInterruptedRun = false
-        try {
-          queueResult = await stepExec.run()
-          if (!queueResult.completed && !_userInitiatedPause) {
-            const isBudgetExhausted = /budget[_ ]exhausted/i.test(queueResult.reason ?? "")
-            const wasInterrupted = _interruptAbort
-            _interruptAbort = false
-
-            if (wasInterrupted) {
-              // Interrupt-abort: stay in "working" state for resume
-              wasInterruptedRun = true
-              _isQueueRunning = false
-              activeStepExecutor = null
-              toast.show({
-                message: "Worker interrupted — type to resume, or Esc to kill",
-                variant: "warning",
-                duration: 5000,
-              })
-              setShellQueueSteps((prev) =>
-                prev.map((s) =>
-                  s.status === "failed"
-                    ? { ...s, status: "failed" as const, error: "interrupted" }
-                    : s,
-                ),
-              )
-              log.info("queue interrupted (resume path) — staying in working state", {
-                sessionId,
-                capturedWorkerSession: capturedWorkerSessionId.current,
-              })
-              return
-            } else if (isBudgetExhausted) {
-              toast.show({ message: "Queue stopped — budget exhausted.", variant: "warning", duration: 5000 })
-            } else {
-              activeStore()?.setError(queueResult.reason ?? "Queue execution failed")
-            }
-            safeUpdateState(
-              (id, s) => sessionCtx.manager.updateState(id, s),
-              sessionId,
-              isBudgetExhausted ? "budget_exhausted" : "work:paused",
-            )
-            sessionCtx.refreshList()
-            if (isStillViewed()) setAppState("completed")
-          }
-        } catch (err) {
-          if (!_userInitiatedPause) {
-            const wasInterrupted = _interruptAbort
-            _interruptAbort = false
-
-            if (wasInterrupted) {
-              wasInterruptedRun = true
-              _isQueueRunning = false
-              activeStepExecutor = null
-              toast.show({
-                message: "Worker interrupted — type to resume, or Esc to kill",
-                variant: "warning",
-                duration: 5000,
-              })
-              log.info("queue interrupted (resume exception path) — staying in working state", {
-                sessionId,
-              })
-              return
-            }
-
-            activeStore()?.setError(String(err))
-            safeUpdateState(
-              (id, s) => sessionCtx.manager.updateState(id, s),
-              sessionId,
-              "work:paused",
-            )
-            sessionCtx.refreshList()
-            if (isStillViewed()) setAppState("completed")
-          }
-        } finally {
-          // Skip cleanup if this was an interrupted run — resources stay alive for resume
-          if (wasInterruptedRun) return
-
-          _isQueueRunning = false
-          if (resumeBudgetTracker) {
-            resumeBudgetTracker.dispose()
-            if (activeBudgetTracker === resumeBudgetTracker) activeBudgetTracker = null
-          }
-          sessionControllers.delete(sessionId)
-          runtimes.remove(sessionId)
-          if (queueResult && !_userInitiatedPause) {
-            try {
-              const queueResultCompat: QueueResult = {
-                completed: queueResult.completed,
-                stepsCompleted: queueResult.stepsCompleted,
-                stepsTotal: queueResult.stepsTotal,
-                reason: queueResult.reason,
-                stepResults: resumeQueue.steps
-                  .filter((s) => s.status === "completed")
-                  .map((s) => ({ workflow: s.type as any, completed: true })),
-              }
-              await handleQueueCompletion(queueResultCompat, {
-                orchestrator,
-                sessionId,
-                flusher: capturedFlusher,
-                toast,
-                updateState: (id, s) => sessionCtx.manager.updateState(id, s),
-                refreshList: () => sessionCtx.refreshList(),
-              })
-            } catch (completionErr) {
-              log.error("queue resume completion failed", { error: completionErr instanceof Error ? completionErr : String(completionErr) })
-            }
-          }
-
-          // Persist telemetry record (resume path)
-          try {
-            resumeTelemetryLogger.updateRecord(resumeTelemetryRecord, {
-              completed_at: new Date().toISOString(),
-              duration_ms: Date.now() - new Date(resumeTelemetryRecord.started_at).getTime(),
-            })
-            await resumeTelemetryLogger.persist(resumeTelemetryRecord)
-          } catch (telErr) {
-            log.warn("telemetry persist failed (resume)", { error: telErr instanceof Error ? telErr.message : String(telErr) })
-          }
-        }
+      // Transition to work:active
+      sessionCtx.manager.updateState(persistedSessionId, "plan:imported")
+      sessionCtx.manager.updateState(persistedSessionId, "plan:approved")
+      sessionCtx.manager.updateState(persistedSessionId, "work:active")
+    } catch (err) {
+      toast.show({
+        message: `Session persistence failed: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "warning",
       })
     }
-  }
 
-  /**
-   * Handle session selection from the sidebar.
-   * Routes to open (viewport switch) or delete.
-   */
-  /** Look up a session's display name by ID (O(1) via memoized Map). */
-  const sessionName = (id: string): string => {
-    const s = sessionsMap().get(id)
-    return s?.name || s?.label || id.slice(0, 8)
-  }
+    // 4. Delegate session creation + persistence wiring to lifecycle manager
+    const projectCwd = deps.config.project_cwd ?? "."
+    const initResult = lifecycle.initSession({
+      queue,
+      args,
+      projectCwd,
+      persistedSessionId,
+      sessionStore: null as any, // session store created internally by lifecycle manager
+    })
+    activeQueue = queue
 
-  /** Session IDs currently being resumed — prevents duplicate concurrent resumes. */
-  const resumingSessionIds = new Set<string>()
-
-  const handleSessionSelect = (sessionId: string, action: SelectionAction) => {
-    switch (action) {
-      case "open":
-        viewport.openSession(sessionId)
-        return
-      case "resume":
-        if (resumingSessionIds.has(sessionId)) return
-        resumingSessionIds.add(sessionId)
-        resumeSession(sessionId)
-          .catch(() => {
-            toast.show({ message: `Failed to resume ${sessionName(sessionId)}`, variant: "error" })
-          })
-          .finally(() => {
-            resumingSessionIds.delete(sessionId)
-          })
-        return
-      case "delete":
-        orchestrator.handleDeleteSession(sessionId).then(() => {
-          toast.show({ message: `Deleted ${sessionName(sessionId)}`, variant: "info" })
-          sessionCtx.refreshList()
-
-          // Evict any cached store for the deleted session
-          sessionStores.delete(sessionId)
-
-          // After deletion, open the next openable session at the selected
-          // index so the viewport stays in sync with the sidebar highlight.
-          const flatList = groupToFlatList(sessionCtx.sessions())
-          const idx = sidebarSelectedIndex()
-          const clampedIdx = Math.min(idx, flatList.length - 1)
-          if (clampedIdx >= 0) {
-            const nextSession = flatList[clampedIdx]
-            if (nextSession && getOpenAction(nextSession) !== null) {
-              setSidebarSelectedIndex(clampedIdx)
-              viewport.openSession(nextSession.id)
-              return
-            }
-          }
-          // No openable sessions left — return to idle
-          returnToIdle()
-        }).catch(() => {
-          toast.show({ message: `Failed to delete ${sessionName(sessionId)}`, variant: "error" })
-          sessionCtx.refreshList()
-        })
-        return
-      default: {
-        const _exhaustive: never = action
-        throw new Error(`Unhandled action: ${_exhaustive}`)
-      }
-    }
-  }
-
-  const returnToIdle = () => {
-    teardownActiveWorkflow()
-    viewport.cancelInjection()
-    setSessionLoading(false)
-    setViewedSessionId(null)
-    setWorkState(null)
-    resetInterruptState({ setIsInterrupted, pendingInjection, capturedWorkerSessionId })
-    setAppState("idle")
-  }
-
-  const returnToChat = () => {
-    teardownActiveWorkflow()
-    viewport.cancelInjection()
-    setSessionLoading(false)
-    setViewedSessionId(null)
-    setWorkState(null)
-    resetInterruptState({ setIsInterrupted, pendingInjection, capturedWorkerSessionId })
-    // Try to restart chat; fall back to idle if it fails
-    const started = chatController.restartChat()
-    if (!started) {
-      setAppState("idle")
-    }
-  }
-
-  /**
-   * Background the current session: deselect it from the viewport and return
-   * to idle, but keep the queue/controller running. The session stays in
-   * `sessionControllers` and can be re-opened from the sidebar.
-   *
-   * Unlike returnToIdle(), this does NOT tear down the workflow — the worker
-   * process continues executing in the background.
-   */
-  const backgroundSession = () => {
-    // Background in runtimes manager (pauses adapter flush)
-    const currentFocused = focusedSessionId()
-    if (currentFocused) {
-      runtimes.background(currentFocused)
-    }
-
-    // Unsubscribe from the active store so we stop driving workState
-    if (storeUnsub) {
-      storeUnsub()
-      storeUnsub = null
-    }
-
-    // Detach the live session references from the shell's "active" slots
-    // without destroying them. The session, controller, queue, and flusher
-    // continue to run — they're still tracked in sessionControllers/sessionStores.
-    //
-    // IMPORTANT: We null these refs so the shell doesn't try to interact with
-    // them, but the queue's async closure captured its own local references.
-    // The queue executor will clean up sessionControllers when it finishes.
-    activeSession = null
-    activeStepExecutor = null
-    activeStdinHandleRef.current = null
-    activeFlusher = null
-    activeTranscript = null  // Detached but NOT disposed — still running with the backgrounded queue
-    activeBudgetTracker = null
-
-    // Clear question/queue UI subscriptions (the queue executor itself doesn't need
-    // these signals to function — they only drive UI state like pendingQuestion).
-    cleanupQuestionSubscriptions()
-    cleanupQueueSubscriptions()
-    unsubscribeTimer()
-
-    // Reset viewport and shell state
-    viewport.cancelInjection()
-    setSessionLoading(false)
-    setActiveStore(null)
-    setWorkState(null)
-    setViewedSessionId(null)
-    setFocusedSessionId(null)
-    setAppState("idle")
-    setEscHint("")
-    escapeHandler.reset()
-    // Force the Prompt component to re-acquire keyboard focus.
-    // Toggle sidebarFocused to trigger a focused prop change on the Prompt,
-    // which forces the underlying input to regain focus after mode switch.
-    setSidebarFocused(true)
-    queueMicrotask(() => setSidebarFocused(false))
+    // 5. Hand off to shared queue wiring (steps 6-13)
+    _runQueueOnSession({
+      session: initResult.session,
+      queue,
+      sessionId: persistedSessionId,
+      deps,
+      budgetTracker: initResult.budgetTracker,
+      budgetLimits: initResult.budgetLimits,
+      sessionObjective: args.description,
+      chatContext: args.chatContext,
+      interactiveOverrides,
+      seedHandoff,
+    })
   }
 
   // Clean up on component unmount
@@ -1996,240 +774,28 @@ export function FlywheelShell() {
     _indexerCache.dispose()
   })
 
-  // ── Command Handler (via ActionDispatcher) ──
+  // ── Command Handlers (extracted to command-handlers.ts) ──
 
-  const launchWorkWithQueue = async (planPath: string) => {
-    const deps = getDepsOrReturnIdle()
-    if (!deps) return
-
-    // Destroy chat session before starting workflow (capture context for downstream use)
-    const chatContext = chatController.isActive() ? await chatController.destroyChat() : ""
-
-    // Parse the plan file and create work steps from its steps
-    const queue = buildQueueFromPlan(planPath, deps.config)
-    startQueueExecution(queue, { planPath, ...(chatContext ? { chatContext } : {}) }, deps)
-  }
-
-  const launchGenericWithQueue = async (name: string, args: Record<string, string>) => {
-    const deps = getDepsOrReturnIdle()
-    if (!deps) return
-
-    // Destroy chat session before starting workflow (capture context for downstream use)
-    const chatContext = chatController.isActive() ? await chatController.destroyChat() : ""
-
-    const queue = buildQueueForSlashCommand(name, deps.config)
-    startQueueExecution(queue, { ...args, ...(chatContext ? { chatContext } : {}) }, deps)
-  }
-
-  /**
-   * /start flow: guided question wizard that collects a description and
-   * queue mode, then starts the appropriate queue.
-   *
-   * Questions happen BEFORE the queue starts. Uses a temporary EventBus
-   * + QuestionService to drive the existing QuestionPrompt component.
-   */
-  const launchStartFlow = async (args: Record<string, string>) => {
-    // Destroy chat session before starting workflow (capture context for downstream use)
-    const chatContext = chatController.isActive() ? await chatController.destroyChat() : ""
-
-    // Create a temporary event bus + question wiring for pre-queue questions
-    const startBus = new EventBus()
-    cleanupQuestionSubscriptions()
-    const startWiring = createQuestionWiring({
-      eventBus: startBus,
-      onQuestion: (q) => setPendingQuestion(q),
-      onClear: () => setPendingQuestion(null),
-    })
-    activeQuestionWiring = startWiring
-    const startQS = startWiring.service
-
-    try {
-      // Step 1: Get description (skip if already provided via /start <description>)
-      let description = args.description ?? ""
-      if (!description) {
-        const descAnswers = await startQS.ask([{
-          question: "What do you want to build?",
-          header: "Description",
-          options: [],
-          textOnly: true,
-        }])
-        description = descAnswers[0]?.[0] ?? ""
-        if (!description) {
-          // User dismissed the question
-          cleanupQuestionSubscriptions()
-          return
-        }
-      }
-
-      // Step 2: Pick workflow type
-      const workflowAnswers = await startQS.ask([{
-        question: "How far should the workflow go?",
-        header: "Workflow",
-        options: WORKFLOW_OPTIONS.map((o) => ({
-          label: o.label,
-          description: o.description,
-        })),
-        custom: false,
-        default: "Plan + Work + Review",
-      }])
-      const selectedLabel = workflowAnswers[0]?.[0]
-      if (!selectedLabel) {
-        // User dismissed
-        cleanupQuestionSubscriptions()
-        return
-      }
-
-      // Map label back to WorkflowName value
-      const selectedOption = WORKFLOW_OPTIONS.find((o) => o.label === selectedLabel)
-      const workflow: WorkflowName = selectedOption?.value ?? "plan-work-review"
-
-      // Step 3: Consolidation preference (skip for sprint — no planning phase)
-      let planInteractive = false
-      if (workflow !== "sprint") {
-        const consolidationAnswers = await startQS.ask([{
-          question: "Do you want to participate in plan consolidation?",
-          header: "Consolidation",
-          options: [
-            { label: "Yes, let me review", description: "Review and consolidate the plan interactively (Recommended)" },
-            { label: "No, handle automatically", description: "Auto-consolidate without prompts" },
-          ],
-          custom: false,
-          default: "Yes, let me review",
-        }])
-        const consolidationLabel = consolidationAnswers[0]?.[0]
-        if (!consolidationLabel) {
-          cleanupQuestionSubscriptions()
-          return
-        }
-        planInteractive = consolidationLabel === "Yes, let me review"
-      }
-
-      // Step 4: Review triage preference (only if workflow includes review)
-      let reviewInteractive = false
-      if (workflowHasReview(workflow)) {
-        const triageAnswers = await startQS.ask([{
-          question: "Do you want to triage review findings?",
-          header: "Review Triage",
-          options: [
-            { label: "Yes, let me triage", description: "Review P3 findings interactively (Recommended)" },
-            { label: "No, handle automatically", description: "Auto-resolve P3 findings" },
-          ],
-          custom: false,
-          default: "Yes, let me triage",
-        }])
-        const triageLabel = triageAnswers[0]?.[0]
-        if (!triageLabel) {
-          cleanupQuestionSubscriptions()
-          return
-        }
-        reviewInteractive = triageLabel === "Yes, let me triage"
-      }
-
-      // Clean up question subscriptions before starting queue
-      // (queue execution will create its own QuestionService)
-      cleanupQuestionSubscriptions()
-
-      // Step 5: Build queue from workflow template and start execution
-      // HITL preferences are stored as queue-level metadata and passed to step configs
-      const startDeps = getDepsOrWarn()
-      if (!startDeps) {
-        cleanupQuestionSubscriptions()
-        return
-      }
-      const startFlowQueue = buildQueue(workflow, startDeps.config)
-      startQueueExecution(startFlowQueue, { description, ...(chatContext ? { chatContext } : {}) }, startDeps, {
-        plan: planInteractive,
-        review: reviewInteractive,
-      })
-    } catch {
-      // QuestionRejectedError or other: user dismissed, clean up
-      cleanupQuestionSubscriptions()
-    }
-  }
-
-  // ── /test command ──
-  const launchTestStep = async (args: Record<string, string>) => {
-    // If stepName provided as argument, look it up directly
-    const directMatch = args.stepName
-      ? TEST_STEPS.find((s) => s.id === args.stepName)
-      : null
-
-    let selectedStep: TestStepDef | null = directMatch ?? null
-
-    if (!selectedStep) {
-      // Show picker
-      cleanupQuestionSubscriptions()
-      const startBus = new EventBus()
-      const startWiring = createQuestionWiring({
-        eventBus: startBus,
-        onQuestion: (q) => setPendingQuestion(q),
-        onClear: () => setPendingQuestion(null),
-      })
-      activeQuestionWiring = startWiring
-
-      try {
-        const qs = startWiring.service
-
-        const stepOptions = TEST_STEPS.map((s) => ({
-          label: s.label,
-          description: `${s.type} step (${s.dispatcherHint ?? s.type})`,
-        }))
-
-        const answers = await qs.ask([{
-          question: "Which step type do you want to test?",
-          header: "Test Step",
-          options: stepOptions,
-        }])
-
-        cleanupQuestionSubscriptions()
-        const selectedLabel = answers[0]?.[0]
-        if (selectedLabel) {
-          selectedStep = TEST_STEPS.find((s) => s.label === selectedLabel) ?? null
-        }
-      } catch {
-        cleanupQuestionSubscriptions()
-        return
-      }
-    }
-
-    if (!selectedStep) {
-      toast.show({ message: "No step selected", variant: "warning" })
-      return
-    }
-
-    // Set up fixture files
-    const deps = getDepsOrReturnIdle()
-    if (!deps) return
-    const projectCwd = deps.config.project_cwd ?? process.cwd()
-    const fixture = setupTestFixture(selectedStep, projectCwd)
-
-    // Build single-step queue
-    const queue = buildTestQueue(selectedStep, fixture)
-
-    // Launch it through the normal queue execution path
-    const testArgs: Record<string, string> = {
-      description: `[test] ${selectedStep.label}`,
-    }
-    startQueueExecution(queue, testArgs, deps, undefined, fixture.handoffData)
-  }
-
-  const dispatch = createActionDispatcher({
-    fileExists: (path) => fs.existsSync(path),
-    notify: (message, variant) => {
-      toast.show({
-        message,
-        variant: variant as "info" | "error" | "warning",
-        ...(variant === "info" ? { duration: 8000 } : {}),
-      })
-    },
-    launchWorkWorkflow: launchWorkWithQueue,
-    launchGenericWorkflow: launchGenericWithQueue,
-    launchStartFlow,
-    launchTestStep,
-    exit: exitTUI,
+  const commandHandlers = createCommandHandlers({
+    getDepsOrWarn,
+    getDepsOrReturnIdle,
+    toast,
+    getProjectCwd,
+    chatController,
+    startQueueExecution,
+    cleanupQuestionSubscriptions,
+    setActiveQuestionWiring: (wiring) => { activeQuestionWiring = wiring },
+    setPendingQuestion,
     returnToIdle,
     returnToChat,
   })
+
+  const dispatch = createShellDispatcher(commandHandlers, {
+    toast,
+    returnToIdle,
+    returnToChat,
+  })
+
   // ── Prompt Handler (extracted to prompt-handler.ts) ──
 
   const { handlePromptInput, handleCommand, handleApprovalDecision } = createPromptHandler({
@@ -2242,7 +808,7 @@ export function FlywheelShell() {
     isQueueRunning: () => _isQueueRunning,
     activeStdinHandleRef,
     pendingInjection,
-    getActiveSession: () => activeSession,
+    getActiveSession: () => lifecycle.getActiveSession(),
     getDepsOrWarn,
     toast,
     resumeSession,
@@ -2290,8 +856,8 @@ export function FlywheelShell() {
             // the step executor so the evaluator is skipped and the step is
             // NOT marked as completed (queue does not advance).
             // Suppress ErrorModal from the queue:failed event that abort triggers
-            if (activeSession?.adapter) {
-              activeSession.adapter.suppressQueueError = true
+            if (lifecycle.getActiveSession()?.adapter) {
+              lifecycle.getActiveSession()!.adapter.suppressQueueError = true
             }
             interruptAllActiveProcesses()
             if (activeStepExecutor) {
@@ -2368,7 +934,7 @@ export function FlywheelShell() {
     returnToIdle,
     returnToChat,
     // TUI helpers
-    get activeSession() { return activeSession },
+    get activeSession() { return lifecycle.getActiveSession() },
     renderer,
     toast,
     dimensions,

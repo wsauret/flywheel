@@ -1,2 +1,4 @@
-engine = "harness"
-model = "claude-opus-4-6"
+engine = "claude"
+model = "sonnet"
+theme = "tokyonight"
+# Note: harness engine requires Phase 6A for full integration (dispatcher transport support)

@@ -106,6 +106,7 @@ describe("Guardrails wiring into executor", () => {
     const queue = createQueue([makeStep({ id: "s1" })]);
     const opts = makeExecutorOptions(queue, {
       guardrails,
+      sessionObjective: "Implement auth middleware",
       dispatcher: async (_step, context) => {
         capturedContext = context;
         return { prompt: "test", evaluationCriteria: null };

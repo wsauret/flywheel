@@ -4,8 +4,7 @@
  * Extracted from the JSX component so unit tests can import
  * and exercise all state transitions without pulling in OpenTUI/SolidJS.
  *
- * Adapted from OpenCode's question.tsx, replacing SDK calls with
- * QuestionService props.
+ * Uses QuestionService props for state management.
  */
 
 import type {
@@ -16,7 +15,7 @@ import type {
 } from "../../queue/question-service"
 
 // ---------------------------------------------------------------------------
-// Store shape (mirrors OpenCode's createStore shape)
+// Store shape
 // ---------------------------------------------------------------------------
 
 export interface QuestionStore {

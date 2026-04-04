@@ -133,6 +133,8 @@ export type PersistFn = (queue: Queue) => Promise<void>;
 export interface StepContextAccumulator {
   accumulate(data: unknown): void;
   getContext(): Record<string, unknown>;
+  /** Optional: serialize state for persistence. */
+  serialize?(): unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,15 +191,35 @@ export interface StepExecutorOptions {
   /**
    * Guardrails instance for mutation budget tracking and enforcement.
    * When provided, the executor passes mutation_budget to the dispatcher
-   * context and session objective from the guardrails.
+   * context.
    */
   guardrails?: import("./guardrails").Guardrails | null;
+
+  /**
+   * Session objective — the original feature description.
+   * Always passed to the dispatcher context per ADR-003 Decision 4.
+   * Also used by guardrails for objective anchoring if guardrails are active.
+   */
+  sessionObjective?: string;
+
+  /**
+   * Persist accumulated context state alongside queue state.
+   * Called after each step completion per ADR-003 Decision 8.
+   * When null, accumulator state is not persisted (test-only).
+   */
+  persistAccumulatorState?: ((state: unknown) => void) | null;
 
   /**
    * Callback invoked when the dispatcher returns a session name (first call only).
    * Used to persist the LLM-generated session name to disk and update the UI.
    */
   onSessionName?: ((name: string) => void) | null;
+
+  /**
+   * Called each time a worker is dispatched (before the worker runs).
+   * Wire to BudgetTracker.incrementInvocations() to track invocation counts.
+   */
+  onWorkerDispatched?: (() => void) | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -330,7 +352,10 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     questionService,
     onStepCompleted,
     guardrails,
+    sessionObjective,
+    persistAccumulatorState,
     onSessionName,
+    onWorkerDispatched,
   } = options;
 
   let shutdownRequested = false;
@@ -473,14 +498,23 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       }
 
       // (3) Invoke dispatcher for prompt assembly
+      // ADR-003 Decision 4: dispatcher receives queue state, previous handoff,
+      // accumulated context, budget, and session objective on every call.
+      const compactQueueState = queue.steps.map((s) => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        status: s.status,
+      }));
       const dispatcherContext: Record<string, unknown> = {
         ...accumulator.getContext(),
+        queueState: compactQueueState,
+        ...(sessionObjective !== undefined ? { session_objective: sessionObjective } : {}),
         ...(previousHandoff ? { previousHandoff } : {}),
         ...(previousAssessment ? { previousAssessment } : {}),
         ...(hitlResponse !== null ? { hitlResponse } : {}),
         ...(guardrails ? {
           mutation_budget: guardrails.getMutationBudget(step.id, queue.steps.length),
-          session_objective: guardrails.getSessionObjective(),
         } : {}),
       };
       const dispatcherResult = await dispatcher(step, dispatcherContext);
@@ -514,6 +548,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       }
 
       // (4) Spawn worker — race against abort signal
+      onWorkerDispatched?.();
       let workerOutput = await raceAbort(worker(step, currentPrompt), abortController.signal);
 
       // (5) Read handoff (best-effort)
@@ -577,6 +612,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
             currentPrompt = buildRevisionPrompt(currentPrompt, evalResult);
 
             // Re-execute worker with revision prompt — race against abort signal
+            onWorkerDispatched?.();
             workerOutput = await raceAbort(worker(step, currentPrompt), abortController.signal);
 
             // Read revised handoff
@@ -653,6 +689,17 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       // (9) Transition step to completed
       await safeTransition(step.id, "completed", "step execution completed successfully");
       emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+
+      // (9b) Persist accumulator state alongside queue (ADR-003 Decision 8)
+      if (persistAccumulatorState && accumulator.serialize) {
+        try {
+          persistAccumulatorState(accumulator.serialize());
+        } catch (err) {
+          log.warn("failed to persist accumulator state", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
 
       // Call onStepCompleted hook
       if (onStepCompleted) {

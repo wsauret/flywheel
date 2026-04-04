@@ -158,12 +158,13 @@ type CacheControlBlock = {
  */
 export function applyCacheBreakpoints(params: MessageCreateParamsStreaming): void {
   const cacheControl: CacheControlEphemeral = { type: "ephemeral" };
+  const longTtlCacheControl: CacheControlEphemeral = { type: "ephemeral", ttl: "1h" };
 
-  // Breakpoint 1: Cache system prompt
+  // Breakpoint 1: Cache system prompt (1h TTL — prompt never changes within a session)
   if (params.system && Array.isArray(params.system) && params.system.length > 0) {
     const firstBlock = params.system[0] as TextBlockParam & CacheControlBlock;
     if (firstBlock) {
-      firstBlock.cache_control = cacheControl;
+      firstBlock.cache_control = longTtlCacheControl;
     }
   }
 
@@ -316,12 +317,10 @@ export class AnthropicProvider implements LLMProvider {
       params.tools = convertTools(options.tools);
     }
 
-    // Extended thinking
+    // Adaptive thinking with effort level
     if (options.thinking) {
-      params.thinking = {
-        type: "enabled",
-        budget_tokens: options.thinking.budgetTokens,
-      };
+      params.thinking = { type: "adaptive" };
+      params.output_config = { effort: options.thinking.effort };
       // API requirement: temperature must be 1 when thinking is enabled
       params.temperature = 1;
     }

@@ -19,7 +19,7 @@ import {
   openCodeTaskToClaudeMessages,
 } from "./subagent-tracing/opencode-adapter";
 import type { OpenCodeJsonlMessage } from "./subagent-tracing/opencode-adapter";
-import { getToolDetail } from "./output-formatter";
+import { getToolDetail, extractToolDiff } from "./output-formatter";
 
 // ── Types ──
 
@@ -157,14 +157,15 @@ export class StructuredEventParser {
         } else if (name) {
           // Regular tool use — route to parent agent if this is a child message
           const detail = input ? (getToolDetail(name, input) ?? "") : "";
+          const diffInfo = input ? extractToolDiff(name, input) : undefined;
           if (parentAgentId) {
             // This tool belongs to a subagent — add as child of that agent
-            if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now)) {
+            if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype)) {
               // Agent not found (already evicted?) — fall through to top-level
-              this.builder.pushTool(name, detail, now);
+              this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype);
             }
           } else {
-            this.builder.pushTool(name, detail, now);
+            this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype);
           }
         }
       }
@@ -228,7 +229,8 @@ export class StructuredEventParser {
       const state = (part.state as Record<string, unknown>) ?? {};
       const input = state.input as Record<string, unknown> | undefined;
       const detail = input ? (getToolDetail(toolName, input) ?? "") : "";
-      this.builder.pushTool(toolName, detail, now);
+      const diffInfo = input ? extractToolDiff(toolName, input) : undefined;
+      this.builder.pushTool(toolName, detail, now, diffInfo?.diff, diffInfo?.filetype);
     }
   }
 
@@ -258,13 +260,20 @@ export class StructuredEventParser {
           this.builder.pushText(text, now);
         }
       }
-      // role === "user" — echo of user input, skip
+      // role === "user" — render as user message block (injected messages, interrupts)
+      if (role === "user") {
+        const text = data.text as string | undefined;
+        if (text && text.length > 0) {
+          this.builder.pushUserMessage(text, now);
+        }
+      }
     } else if (type === "tool_call") {
       const toolName = data.toolName as string | undefined;
       if (toolName) {
         const params = data.parameters as Record<string, unknown> | undefined;
         const detail = params ? (getToolDetail(toolName, params) ?? "") : "";
-        this.builder.pushTool(toolName, detail, now);
+        const diffInfo = params ? extractToolDiff(toolName, params) : undefined;
+        this.builder.pushTool(toolName, detail, now, diffInfo?.diff, diffInfo?.filetype);
       }
     }
     // system, tool_result, completion, error — skip for display purposes

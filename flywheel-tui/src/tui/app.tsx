@@ -2,7 +2,6 @@
 /**
  * TUI Application Entry Point
  *
- * Copies OpenCode's lifecycle exactly:
  * 1. startTUI() returns new Promise<void> that blocks until exit
  * 2. render() fires the Solid tree with an ExitProvider
  * 3. ExitProvider uses useRenderer() to get the renderer from INSIDE the tree
@@ -18,14 +17,10 @@ import type { ParentProps } from "solid-js"
 import { Clipboard } from "./utils/clipboard"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
-import { DialogProvider } from "@tui/shared/context/dialog"
-import { SessionProvider } from "@tui/shared/context/session"
 import { ErrorComponent } from "./components/error-boundary"
-import { createSessionManager } from "../session/manager"
-import { createWorktreeManager, createWtClient } from "../session/worktree-manager.js"
-
-import { loadConfig, CONFIG_DEFAULTS } from "../config/loader"
+import { loadConfig } from "../config/loader"
 import { CONFIG_FILES } from "../config/paths"
+import * as fs from "node:fs"
 
 export interface TUIOptions {
   mode?: "dark" | "light"
@@ -37,40 +32,24 @@ let globalExit: (() => void) | null = null
 export function startTUI(options: TUIOptions = {}): Promise<void> {
   const mode = options.mode ?? "dark"
 
+  // Load config to get theme name (best-effort)
+  let themeName: string | undefined
+  try {
+    const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
+    const { config } = loadConfig(configPath)
+    themeName = config.theme
+  } catch {
+    // Config load failure is non-fatal
+  }
+
   return new Promise<void>(async (resolve) => {
     const onExit = () => {
       resolve()
     }
 
-    // Lazy import FlywheelShell to ensure OpenTUI preload has registered
-    const { FlywheelShell } = await import("./components/flywheel-shell")
-
-    // Load config (best-effort: falls back to defaults on error)
-    let config: import("../config/loader").FlywheelConfig | undefined
-    try {
-      const configPath = CONFIG_FILES.find(
-        (p) => require("node:fs").existsSync(p),
-      )
-      config = loadConfig(configPath).config
-    } catch {
-      // Config load failure is non-fatal — session manager will use CONFIG_DEFAULTS
-    }
-
-    // Create worktree manager (gracefully inert when wt CLI is unavailable)
-    const wtConfig = (config ?? CONFIG_DEFAULTS).worktree
-    const worktreeManager = createWorktreeManager({
-      client: createWtClient({ cwd: process.cwd() }),
-      enabled: wtConfig.enabled,
-      autoRemoveOnArchive: wtConfig.auto_remove,
-      gracePeriodMs: wtConfig.grace_period_ms,
-    })
-
-    // Create session manager for the current working directory
-    const sessionManager = createSessionManager({
-      baseDir: process.cwd(),
-      config,
-      worktreeManager,
-    })
+    // Lazy import MinimalShell to ensure OpenTUI preload has registered
+    // Phase 3: uses minimal shell instead of full FlywheelShell
+    const { MinimalShell } = await import("./minimal/shell")
 
     render(
       () => (
@@ -84,12 +63,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
         }}>
           <ExitProvider onExit={onExit}>
             <ToastProvider>
-              <ThemeProvider mode={mode}>
-                <DialogProvider>
-                  <SessionProvider manager={sessionManager} worktreeManager={worktreeManager}>
-                    <FlywheelShell />
-                  </SessionProvider>
-                </DialogProvider>
+              <ThemeProvider mode={mode} themeName={themeName}>
+                <MinimalShell />
               </ThemeProvider>
             </ToastProvider>
           </ExitProvider>
@@ -99,6 +74,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
         targetFps: 30,
         gatherStats: false,
         exitOnCtrlC: false,
+        autoFocus: true,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
@@ -124,8 +100,7 @@ export function exitTUI(): void {
 }
 
 /**
- * ExitProvider — exactly like OpenCode's.
- * Uses useRenderer() to access the renderer from inside the Solid tree.
+ * ExitProvider — uses useRenderer() to access the renderer from inside the Solid tree.
  */
 function ExitProvider(props: ParentProps<{ onExit: () => void }>) {
   const renderer = useRenderer()

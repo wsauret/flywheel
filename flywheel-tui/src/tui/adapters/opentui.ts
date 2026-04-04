@@ -34,7 +34,7 @@ import { Log } from "../../utils/log";
 const FLUSH_INTERVAL_MS = 16;
 
 /** Timeout (ms) after which an agent with no activity is auto-completed. */
-const AGENT_STALE_TIMEOUT_MS = 30_000;
+// Stale agent timeout moved to StructuredOutputBuilder
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
@@ -80,14 +80,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Interval handle for batched flush. */
   private flushInterval: ReturnType<typeof setInterval> | null = null;
 
-  /** Tracks last-activity timestamp per active agent for stale detection. */
-  private agentActivityMap = new Map<string, number>();
-
-  /** Tracks spawn timestamp per agent for accurate duration on stale completion. */
-  private agentSpawnTimeMap = new Map<string, number>();
-
-  /** Interval handle for stale agent checks (1s). */
-  private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
+  // Stale agent detection is now handled by StructuredOutputBuilder.
+  // The adapter no longer tracks agent activity or runs stale checks.
 
   // ── Dispatcher/evaluator agent block tracking ──
 
@@ -120,23 +114,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       this.onModelActivityChange?.(activity);
     };
 
-    // Wire builder callbacks for stale agent tracking
-    this.builder.onAgentLifecycle = (type, id) => {
-      if (type === "start") {
-        const now = Date.now();
-        this.agentActivityMap.set(id, now);
-        this.agentSpawnTimeMap.set(id, now);
-      } else {
-        // "complete" or "error" — agent is no longer active
-        this.agentActivityMap.delete(id);
-        this.agentSpawnTimeMap.delete(id);
-      }
-    };
-    this.builder.onAgentActivity = (id) => {
-      if (this.agentActivityMap.has(id)) {
-        this.agentActivityMap.set(id, Date.now());
-      }
-    };
+    // Stale agent detection is handled by the builder itself (startStaleCheck).
 
     // Wire NDJSONParser events to StructuredEventParser
     this.ndjsonParser.onEvent = (event) => {
@@ -169,10 +147,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       this.flushBlocks();
     }, FLUSH_INTERVAL_MS);
 
-    // Start stale agent check interval (1s)
-    this.staleCheckInterval = setInterval(() => {
-      this.checkStaleAgents();
-    }, 1000);
   }
 
   /** Toggle raw output mode. Returns the new state. */
@@ -193,10 +167,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       clearInterval(this.flushInterval);
       this.flushInterval = null;
     }
-    if (this.staleCheckInterval !== null) {
-      clearInterval(this.staleCheckInterval);
-      this.staleCheckInterval = null;
-    }
+    this.builder.dispose();
   }
 
   /**
@@ -647,27 +618,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     }
   }
 
-  /**
-   * Auto-complete agents that haven't had any activity for AGENT_STALE_TIMEOUT_MS.
-   * Runs on a 1-second interval, separate from the 16ms flush cycle.
-   * Stale agents are completed normally (not errored) since they likely
-   * did finish — we just missed the completion signal.
-   */
-  private checkStaleAgents(): void {
-    const now = Date.now();
-    for (const [id, lastActivity] of this.agentActivityMap) {
-      if (now - lastActivity > AGENT_STALE_TIMEOUT_MS) {
-        // Compute elapsed time from when the agent was first seen (spawned),
-        // not from last activity, so the duration is meaningful.
-        const spawnedAt = this.agentSpawnTimeMap.get(id) ?? lastActivity;
-        const elapsed = now - spawnedAt;
-        this.builder.completeAgent(id, elapsed, 0);
-        this.agentActivityMap.delete(id);
-        this.agentSpawnTimeMap.delete(id);
-        this.flushBlocks();
-      }
-    }
-  }
+  // Stale agent detection moved to StructuredOutputBuilder.checkStaleAgents()
 }
 
 /** Factory function for creating an OpenTUI adapter */
