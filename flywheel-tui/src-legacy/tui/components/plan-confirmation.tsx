@@ -1,0 +1,274 @@
+/** @jsxImportSource @opentui/solid */
+/**
+ * Plan Confirmation Component
+ *
+ * Displays a plan summary and offers Approve / Edit actions.
+ * Only JSON plans are supported (steps with acceptance criteria,
+ * behavioral contract).
+ *
+ * Pure logic (data preparation, action defs, types) lives in
+ * `./plan-confirmation-logic.ts` for testability.
+ */
+
+import { For, Show, createSignal } from "solid-js"
+import { useTheme } from "@tui/shared/context/theme"
+import { useKeyboard } from "@opentui/solid"
+import { ModalBase } from "@tui/shared/components/modal/modal-base"
+import type { PlanImportResult } from "../../queue/shared/plan-import"
+import {
+  preparePlanSummary,
+  PLAN_ACTIONS,
+  type PlanAction,
+  type PlanSummaryDisplay,
+} from "./plan-confirmation-logic"
+
+// Re-export for consumers
+export {
+  preparePlanSummary,
+  PLAN_ACTIONS,
+  type PlanAction,
+  type PlanSummaryDisplay,
+  type StepSummaryItem,
+  type AssertionSummaryItem,
+  type PlanActionDef,
+} from "./plan-confirmation-logic"
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+export interface PlanConfirmationProps {
+  plan: PlanImportResult
+  onApprove: () => void
+  onEdit: () => void
+  onClose?: () => void
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function PlanConfirmation(props: PlanConfirmationProps) {
+  const theme = useTheme()
+  const summary = () => preparePlanSummary(props.plan)
+  const [selectedAction, setSelectedAction] = createSignal(0)
+
+  // Keyboard navigation for action buttons
+  useKeyboard((event) => {
+    switch (event.name) {
+      case "left":
+        setSelectedAction((prev) => Math.max(0, prev - 1))
+        break
+      case "right":
+        setSelectedAction((prev) =>
+          Math.min(PLAN_ACTIONS.length - 1, prev + 1)
+        )
+        break
+      case "return": {
+        const action = PLAN_ACTIONS[selectedAction()]
+        if (action?.value === "approve") props.onApprove()
+        else if (action?.value === "edit") props.onEdit()
+        break
+      }
+      case "escape":
+        props.onClose?.()
+        break
+    }
+  })
+
+  return (
+    <ModalBase width={70} onClose={props.onClose}>
+      <box flexDirection="column">
+        {/* Title */}
+        <box marginBottom={1}>
+          <text fg={theme.theme.primary} attributes={1}>
+            Plan Review
+          </text>
+        </box>
+
+        {/* Status indicator */}
+        <box marginBottom={1}>
+          <text
+            fg={
+              summary().status === "ready"
+                ? theme.theme.success
+                : theme.theme.warning
+            }
+          >
+            Status: {summary().status === "ready" ? "Ready" : "Needs Fix"}
+          </text>
+        </box>
+
+        {/* Summary stats */}
+        <box flexDirection="row" marginBottom={1} gap={3}>
+          <text fg={theme.theme.text}>
+            {summary().stepCount} step{summary().stepCount !== 1 ? "s" : ""}
+          </text>
+          <text fg={theme.theme.text}>
+            {summary().totalSteps} criteria
+          </text>
+          <text
+            fg={
+              summary().hasAcceptanceCriteria
+                ? theme.theme.success
+                : theme.theme.warning
+            }
+          >
+            Acceptance criteria:{" "}
+            {summary().hasAcceptanceCriteria ? "Yes" : "Missing"}
+          </text>
+        </box>
+
+        {/* JSON plan steps */}
+        <Show when={summary().isJsonPlan && summary().steps.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Steps
+            </text>
+            <For each={summary().steps}>
+              {(step, i) => (
+                <box flexDirection="column" paddingLeft={1} marginBottom={0}>
+                  <box>
+                    <text fg={theme.theme.text} attributes={1}>
+                      {i() + 1}. {step.title}
+                    </text>
+                    <Show when={step.estimatedComplexity}>
+                      <text fg={theme.theme.textMuted}>
+                        {" "}[{step.estimatedComplexity}]
+                      </text>
+                    </Show>
+                  </box>
+                  <Show when={step.feature || step.milestone}>
+                    <box paddingLeft={2}>
+                      <Show when={step.feature}>
+                        <text fg={theme.theme.textMuted}>
+                          feature: {step.feature}
+                        </text>
+                      </Show>
+                      <Show when={step.milestone}>
+                        <text fg={theme.theme.textMuted}>
+                          {step.feature ? "  " : ""}milestone: {step.milestone}
+                        </text>
+                      </Show>
+                    </box>
+                  </Show>
+                  <For each={step.acceptanceCriteria}>
+                    {(criteria) => (
+                      <box paddingLeft={3}>
+                        <text fg={theme.theme.textMuted}>
+                          ✓ {criteria}
+                        </text>
+                      </box>
+                    )}
+                  </For>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Behavioral contract (JSON plans) */}
+        <Show when={summary().behavioralContract.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Behavioral Contract
+            </text>
+            <For each={summary().behavioralContract}>
+              {(assertion) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.text}>
+                    [{assertion.id}] {assertion.title}
+                  </text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Decisions (JSON plans) */}
+        <Show when={summary().decisions.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Decisions
+            </text>
+            <For each={summary().decisions}>
+              {(decision) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.text}>• {decision}</text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Risks (JSON plans) */}
+        <Show when={summary().risks.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.textMuted} attributes={1}>
+              Risks
+            </text>
+            <For each={summary().risks}>
+              {(risk) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.warning}>⚠ {risk}</text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Only JSON plans are supported */}
+
+        {/* Issues */}
+        <Show when={summary().issues.length > 0}>
+          <box flexDirection="column" marginBottom={1}>
+            <text fg={theme.theme.warning} attributes={1}>
+              Issues
+            </text>
+            <For each={summary().issues}>
+              {(issue) => (
+                <box paddingLeft={1}>
+                  <text fg={theme.theme.warning}>• {issue}</text>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+
+        {/* Action buttons */}
+        <box flexDirection="row" gap={2} marginTop={1}>
+          <For each={PLAN_ACTIONS}>
+            {(action, i) => {
+              const isSelected = () => selectedAction() === i()
+              return (
+                <box
+                  paddingLeft={1}
+                  paddingRight={1}
+                  backgroundColor={
+                    isSelected() ? theme.theme.primary : theme.theme.backgroundElement
+                  }
+                >
+                  <text
+                    fg={isSelected() ? theme.theme.background : theme.theme.text}
+                    attributes={isSelected() ? 1 : 0}
+                  >
+                    {action.label}
+                  </text>
+                </box>
+              )
+            }}
+          </For>
+        </box>
+
+        {/* Hint */}
+        <box marginTop={1}>
+          <text fg={theme.theme.textMuted}>
+            ←→ select action  enter confirm  esc cancel
+          </text>
+        </box>
+      </box>
+    </ModalBase>
+  )
+}
+
+export default PlanConfirmation
