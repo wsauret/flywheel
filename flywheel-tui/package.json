@@ -2,13 +2,13 @@
   "name": "flywheel-tui",
   "version": "0.0.1",
   "type": "module",
-  "main": "src/cli/index.ts",
+  "main": "src/orchestration/cli/index.ts",
   "bin": {
     "flywheel": "bin/flywheel"
   },
   "scripts": {
-    "dev": "bun --conditions=browser run src/cli/index.ts",
-    "start": "bun --conditions=browser run src/cli/index.ts",
+    "dev": "bun --conditions=browser run src/orchestration/cli/index.ts",
+    "start": "bun --conditions=browser run src/orchestration/cli/index.ts",
     "test": "bun test",
     "build": "bun run scripts/build.ts",
     "typecheck": "tsc --noEmit",

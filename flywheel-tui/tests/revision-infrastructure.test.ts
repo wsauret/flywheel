@@ -3,10 +3,10 @@ import {
   loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
-} from "../src/config/loader";
-import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
-import type { FlywheelEvent } from "../src/events/types";
-import { WorkerResultSchema } from "../src/worker/schemas";
+} from "../src/orchestration/config/loader";
+import { EventBus, createFlywheelEmitter } from "../src/protocol/event-bus";
+import type { FlywheelEvent } from "../src/protocol/events";
+import { WorkerResultSchema } from "../src/orchestration/worker/schemas";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
 
 // ---------------------------------------------------------------------------

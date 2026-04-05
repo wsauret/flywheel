@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import type { DispatcherInput, DispatcherDecision } from "../src/dispatcher/schemas";
-import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
-import { DispatcherDecisionSchema } from "../src/dispatcher/schemas";
-import type { DispatcherDecisionHandoff } from "../src/dispatcher/schemas";
+import type { DispatcherInput, DispatcherDecision } from "../src/workflows/dispatcher/schemas";
+import type { ProcessSpawner, SpawnOptions } from "../src/orchestration/worker/spawner";
+import { DispatcherDecisionSchema } from "../src/workflows/dispatcher/schemas";
+import type { DispatcherDecisionHandoff } from "../src/workflows/dispatcher/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,7 +79,7 @@ async function writeHandoffFromPrompt(prompt: string, handoff: Record<string, un
 }
 
 /**
- * Extract the prompt from spawner args (Claude: -p flag, OpenCode: stdin).
+ * Extract the prompt from spawner args (Claude: -p flag).
  */
 function extractPromptFromArgs(args: string[], options?: { stdin?: string }): string {
   const pIdx = args.indexOf("-p");
@@ -133,10 +133,10 @@ function createHandoffSpawner(
 // ---------------------------------------------------------------------------
 
 describe("SubprocessTransport: engine-aware command building", () => {
-  let SubprocessTransport: typeof import("../src/dispatcher/subprocess-transport").SubprocessTransport;
+  let SubprocessTransport: typeof import("../src/workflows/dispatcher/subprocess-transport").SubprocessTransport;
 
   beforeEach(async () => {
-    const mod = await import("../src/dispatcher/subprocess-transport");
+    const mod = await import("../src/workflows/dispatcher/subprocess-transport");
     SubprocessTransport = mod.SubprocessTransport;
   });
 
@@ -168,31 +168,6 @@ describe("SubprocessTransport: engine-aware command building", () => {
     expect(spawnedArgs).toContain("--tools");
     expect(spawnedArgs).toContain("--no-session-persistence");
     expect(spawnedArgs).toContain("--effort");
-  });
-
-  it("spawns 'opencode' engine when engineName is 'opencode'", async () => {
-    let spawnedCommand = "";
-    let spawnedArgs: string[] = [];
-
-    const { spawner } = createHandoffSpawner(validHandoff(), {
-      onSpawn: (command, args) => {
-        spawnedCommand = command;
-        spawnedArgs = args;
-      },
-    });
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseDispatcherInput());
-
-    expect(spawnedCommand).toBe("opencode");
-    expect(spawnedArgs).toContain("run");
-    expect(spawnedArgs).toContain("--format");
-    expect(spawnedArgs).toContain("json");
   });
 
   // -----------------------------------------------------------------------
@@ -247,32 +222,6 @@ describe("SubprocessTransport: engine-aware command building", () => {
   });
 
   // -----------------------------------------------------------------------
-  // VAL-DISP-003: OpenCode dispatcher optimization flags
-  // -----------------------------------------------------------------------
-
-  it("OpenCode route passes prompt via stdin", async () => {
-    let receivedStdin = "";
-
-    const { spawner } = createHandoffSpawner(validHandoff(), {
-      onSpawn: (_cmd, _args, options) => {
-        receivedStdin = options?.stdin ?? "";
-      },
-    });
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseDispatcherInput());
-
-    // OpenCode uses stdin for prompt delivery
-    expect(receivedStdin).toBeTruthy();
-    expect(receivedStdin).toContain("prompt engineering specialist");
-  });
-
-  // -----------------------------------------------------------------------
   // VAL-DISP-004: Dispatcher model configuration flow
   // -----------------------------------------------------------------------
 
@@ -295,27 +244,6 @@ describe("SubprocessTransport: engine-aware command building", () => {
     expect(spawnedArgs).toContain("--model");
     const modelIdx = spawnedArgs.indexOf("--model");
     expect(spawnedArgs[modelIdx + 1]).toBe("haiku");
-  });
-
-  it("config.dispatcher.model flows through to --model for opencode", async () => {
-    let spawnedArgs: string[] = [];
-
-    const { spawner } = createHandoffSpawner(validHandoff(), {
-      onSpawn: (_cmd, args) => { spawnedArgs = args; },
-    });
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      dispatcherModel: "anthropic/claude-haiku-4-5",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseDispatcherInput());
-
-    expect(spawnedArgs).toContain("--model");
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(spawnedArgs[modelIdx + 1]).toBe("anthropic/claude-haiku-4-5");
   });
 
   // -----------------------------------------------------------------------
@@ -343,26 +271,6 @@ describe("SubprocessTransport: engine-aware command building", () => {
     expect(spawnedArgs[modelIdx + 1]).toBe("sonnet");
   });
 
-  it("defaults to 'anthropic/claude-sonnet-4-6' model for opencode when not configured", async () => {
-    let spawnedArgs: string[] = [];
-
-    const { spawner } = createHandoffSpawner(validHandoff(), {
-      onSpawn: (_cmd, args) => { spawnedArgs = args; },
-    });
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseDispatcherInput());
-
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(modelIdx).toBeGreaterThan(-1);
-    expect(spawnedArgs[modelIdx + 1]).toBe("anthropic/claude-sonnet-4-6");
-  });
-
   // -----------------------------------------------------------------------
   // VAL-DISP-005: Dispatcher produces valid decision (handoff → decision mapping)
   // -----------------------------------------------------------------------
@@ -385,40 +293,9 @@ describe("SubprocessTransport: engine-aware command building", () => {
     expect(result.task_content).toBe(handoff.task_content);
   });
 
-  it("response validates against DispatcherDecisionSchema (opencode route)", async () => {
-    const handoff = validHandoff();
-    const { spawner } = createHandoffSpawner(handoff);
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    const result = await transport.invoke(baseDispatcherInput());
-
-    const parsed = DispatcherDecisionSchema.safeParse(result);
-    expect(parsed.success).toBe(true);
-    expect(result.task_content).toBe(handoff.task_content);
-  });
-
   // -----------------------------------------------------------------------
   // VAL-DISP-007: Handoff-based output reading (replaces stdout parsing)
   // -----------------------------------------------------------------------
-
-  it("decision read from handoff file (opencode route)", async () => {
-    const handoff = validHandoff({ task_content: "Handoff-based decision (opencode)" });
-    const { spawner } = createHandoffSpawner(handoff);
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    const result = await transport.invoke(baseDispatcherInput());
-    expect(result.task_content).toBe("Handoff-based decision (opencode)");
-  });
 
   it("decision read from handoff file (claude route)", async () => {
     const handoff = validHandoff({ task_content: "Handoff-based decision (claude)" });
@@ -556,24 +433,6 @@ describe("SubprocessTransport: engine-aware command building", () => {
   });
 
   // -----------------------------------------------------------------------
-  // VAL-CFG-003: Backward compatibility — no engineName defaults to opencode
-  // -----------------------------------------------------------------------
-
-  it("backward compat: no engineName defaults to legacy opencode behavior", async () => {
-    let spawnedCommand = "";
-
-    const { spawner } = createHandoffSpawner(validHandoff(), {
-      onSpawn: (command) => { spawnedCommand = command; },
-    });
-
-    // Construct without engineName — should still work like before
-    const transport = new SubprocessTransport({ spawner, sessionId: "test-session", baseDir: "/tmp/test" });
-    await transport.invoke(baseDispatcherInput());
-
-    expect(spawnedCommand).toBe("opencode");
-  });
-
-  // -----------------------------------------------------------------------
   // Prompt includes handoff instruction
   // -----------------------------------------------------------------------
 
@@ -607,10 +466,10 @@ describe("SubprocessTransport: engine-aware command building", () => {
 // ---------------------------------------------------------------------------
 
 describe("Auto-detect transport: engine-aware", () => {
-  let autoDetectTransport: typeof import("../src/dispatcher/auto-detect").autoDetectTransport;
+  let autoDetectTransport: typeof import("../src/workflows/dispatcher/auto-detect").autoDetectTransport;
 
   beforeEach(async () => {
-    const mod = await import("../src/dispatcher/auto-detect");
+    const mod = await import("../src/workflows/dispatcher/auto-detect");
     autoDetectTransport = mod.autoDetectTransport;
   });
 
@@ -629,18 +488,6 @@ describe("Auto-detect transport: engine-aware", () => {
 
     // Claude should always use CLI (subprocess), never SDK
     expect(result.label).toBe("cli");
-  });
-
-  it("tries SDK first for opencode engine (existing behavior)", async () => {
-    const { spawner } = createHandoffSpawner(validHandoff());
-
-    const result = await autoDetectTransport({
-      spawner,
-      engineName: "opencode",
-    });
-
-    // OpenCode can be SDK or CLI depending on SDK availability
-    expect(["sdk", "cli"]).toContain(result.label);
   });
 
   it("passes engineName through to SubprocessTransport on fallback", async () => {
@@ -679,10 +526,6 @@ describe("Auto-detect transport: engine-aware", () => {
     expect(spawnedArgs[modelIdx + 1]).toBe("haiku");
   });
 
-  // -----------------------------------------------------------------------
-  // VAL-SDK-003: SDK transport is OpenCode-only
-  // -----------------------------------------------------------------------
-
   it("never attempts SDK for claude engine even when SDK is available", async () => {
     const { spawner } = createHandoffSpawner(validHandoff());
 
@@ -701,10 +544,10 @@ describe("Auto-detect transport: engine-aware", () => {
 // ---------------------------------------------------------------------------
 
 describe("Config model flow through transport chain", () => {
-  let SubprocessTransport: typeof import("../src/dispatcher/subprocess-transport").SubprocessTransport;
+  let SubprocessTransport: typeof import("../src/workflows/dispatcher/subprocess-transport").SubprocessTransport;
 
   beforeEach(async () => {
-    const mod = await import("../src/dispatcher/subprocess-transport");
+    const mod = await import("../src/workflows/dispatcher/subprocess-transport");
     SubprocessTransport = mod.SubprocessTransport;
   });
 
@@ -733,26 +576,6 @@ describe("Config model flow through transport chain", () => {
     expect(spawnedArgs[modelIdx + 1]).toBe("opus");
   });
 
-  it("dispatcher.model in config changes the --model flag (opencode)", async () => {
-    let spawnedArgs: string[] = [];
-
-    const { spawner } = createHandoffSpawner(validHandoff(), {
-      onSpawn: (_cmd, args) => { spawnedArgs = args; },
-    });
-
-    const transport = new SubprocessTransport({
-      spawner,
-      engineName: "opencode",
-      dispatcherModel: "anthropic/claude-opus-4-6",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseDispatcherInput());
-
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(modelIdx).toBeGreaterThan(-1);
-    expect(spawnedArgs[modelIdx + 1]).toBe("anthropic/claude-opus-4-6");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -763,7 +586,7 @@ describe("Config model flow through transport chain", () => {
 
 describe("Worker spawn path unaffected", () => {
   it("SubprocessTransport does not export or modify StepExecutor", async () => {
-    const mod = await import("../src/dispatcher/subprocess-transport");
+    const mod = await import("../src/workflows/dispatcher/subprocess-transport");
     // SubprocessTransport is the only export that matters here
     expect(mod.SubprocessTransport).toBeDefined();
     // Should not have any step-executor-related exports

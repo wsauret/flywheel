@@ -79,53 +79,9 @@
       "dark": "nord2",
       "light": "nord3"
     },
-    "diffAdded": {
-      "dark": "nord14",
-      "light": "nord14"
-    },
-    "diffRemoved": {
-      "dark": "nord11",
-      "light": "nord11"
-    },
-    "diffContext": {
-      "dark": "#8B95A7",
-      "light": "nord3"
-    },
-    "diffHunkHeader": {
-      "dark": "#8B95A7",
-      "light": "nord3"
-    },
-    "diffHighlightAdded": {
-      "dark": "nord14",
-      "light": "nord14"
-    },
-    "diffHighlightRemoved": {
-      "dark": "nord11",
-      "light": "nord11"
-    },
-    "diffAddedBg": {
-      "dark": "#3B4252",
-      "light": "#E5E9F0"
-    },
-    "diffRemovedBg": {
-      "dark": "#3B4252",
-      "light": "#E5E9F0"
-    },
-    "diffContextBg": {
-      "dark": "nord1",
-      "light": "nord5"
-    },
     "diffLineNumber": {
       "dark": "nord2",
       "light": "nord4"
-    },
-    "diffAddedLineNumberBg": {
-      "dark": "#3B4252",
-      "light": "#E5E9F0"
-    },
-    "diffRemovedLineNumberBg": {
-      "dark": "#3B4252",
-      "light": "#E5E9F0"
     },
     "markdownText": {
       "dark": "nord4",

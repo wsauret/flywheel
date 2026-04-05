@@ -642,15 +642,21 @@ describe("StructuredOutputBuilder", () => {
   // ── Stale agent detection ──
 
   describe("stale agent detection", () => {
+    /** Access the internal StaleAgentDetector via the builder's private field. */
+    function getDetector(b: StructuredOutputBuilder) {
+      return (b as any).staleDetector;
+    }
+
     it("checkStaleAgents completes agents inactive for >5s", () => {
       builder.startAgent("stale-1", "Explore", "Searching", Date.now());
 
       // Simulate staleness by backdating the activity timestamp
-      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
       activityMap.set("stale-1", Date.now() - 6_000);
 
       // Trigger the check
-      (builder as any).checkStaleAgents();
+      (detector as any).checkStaleAgents();
 
       const blocks = builder.getBlocks();
       const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "stale-1") as AgentBlock;
@@ -662,7 +668,8 @@ describe("StructuredOutputBuilder", () => {
       builder.startAgent("fresh-1", "Explore", "Searching", Date.now());
 
       // Activity is recent — should not be completed
-      (builder as any).checkStaleAgents();
+      const detector = getDetector(builder);
+      (detector as any).checkStaleAgents();
 
       const blocks = builder.getBlocks();
       const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "fresh-1") as AgentBlock;
@@ -677,7 +684,8 @@ describe("StructuredOutputBuilder", () => {
       builder.pushTool("Read", "file.ts", Date.now());
 
       // The builder internally updates agentLastActivity on appendToolToAgent
-      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
       expect(activityMap.has("a1")).toBe(true);
       // Activity timestamp should be very recent
       expect(Date.now() - activityMap.get("a1")!).toBeLessThan(1000);
@@ -685,7 +693,8 @@ describe("StructuredOutputBuilder", () => {
 
     it("completed agent is removed from activity tracking", () => {
       builder.startAgent("a1", "Explore", "Searching", Date.now());
-      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
       expect(activityMap.has("a1")).toBe(true);
 
       builder.completeAgent("a1", 500, 2);
@@ -694,7 +703,8 @@ describe("StructuredOutputBuilder", () => {
 
     it("errored agent is removed from activity tracking", () => {
       builder.startAgent("a1", "Explore", "Searching", Date.now());
-      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
       expect(activityMap.has("a1")).toBe(true);
 
       builder.errorAgent("a1", "timeout");
@@ -706,9 +716,10 @@ describe("StructuredOutputBuilder", () => {
       builder.pushTool("Read", "file1.ts", Date.now());
       builder.pushTool("Grep", "pattern", Date.now());
 
-      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
       activityMap.set("a1", Date.now() - 6_000);
-      (builder as any).checkStaleAgents();
+      (detector as any).checkStaleAgents();
 
       const blocks = builder.getBlocks();
       const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
@@ -719,11 +730,12 @@ describe("StructuredOutputBuilder", () => {
 
     it("dispose clears stale check interval and maps", () => {
       builder.startAgent("a1", "Explore", "Searching", Date.now());
-      expect((builder as any).staleCheckInterval).not.toBeNull();
+      const detector = getDetector(builder);
+      expect(detector.staleCheckInterval).not.toBeNull();
 
       builder.dispose();
-      expect((builder as any).staleCheckInterval).toBeNull();
-      expect((builder as any).agentLastActivity.size).toBe(0);
+      expect(detector.staleCheckInterval).toBeNull();
+      expect(detector.agentLastActivity.size).toBe(0);
     });
   });
 });

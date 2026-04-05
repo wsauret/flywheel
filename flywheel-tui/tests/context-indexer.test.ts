@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { ContextIndexer } from "../src/memory/indexer";
-import type { ContextQuery } from "../src/memory/indexer";
-import { AvailableContextSchema } from "../src/schemas";
+import { ContextIndexer } from "../src/orchestration/memory/indexer";
+import type { ContextQuery } from "../src/orchestration/memory/indexer";
+import { AvailableContextSchema } from "../src/workflows/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,26 +31,6 @@ async function writeStandard(
   await writeFile(join(dir, name), lines.join("\n"), "utf-8");
 }
 
-/** Write a solution file with frontmatter (learning). */
-async function writeSolution(
-  name: string,
-  opts: { title: string; tags: string[]; content: string },
-) {
-  const dir = join(projectCwd, ".flywheel", "solutions");
-  await mkdir(dir, { recursive: true });
-  const tagsYaml = `[${opts.tags.join(", ")}]`;
-  const doc = [
-    "---",
-    `title: "${opts.title}"`,
-    `tags: ${tagsYaml}`,
-    `extraction_hash: "abc123"`,
-    "---",
-    "",
-    opts.content,
-  ].join("\n");
-  await writeFile(join(dir, name), doc, "utf-8");
-}
-
 const defaultQuery: ContextQuery = {
   stepType: "work",
   stepDescription: "implement the feature",
@@ -71,7 +51,6 @@ describe("ContextIndexer", () => {
 
   it("constructor accepts projectCwd and options", () => {
     const indexer = new ContextIndexer(projectCwd, {
-      solutionsDir: "custom/solutions/",
       standardsDir: "custom/standards/",
       conventionFiles: ["CUSTOM.md"],
       refreshCadenceMs: 120_000,
@@ -305,67 +284,6 @@ describe("ContextIndexer", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Learnings scanner
-  // -------------------------------------------------------------------------
-
-  describe("learnings scanner", () => {
-    it("maps LearningEntry to ContextEntry: title -> name, filePath -> path", async () => {
-      await writeSolution("docker-fix.md", {
-        title: "Docker Fix",
-        tags: ["docker"],
-        content: "Use delegated volumes. This fixes the permission issue.",
-      });
-      const indexer = new ContextIndexer(projectCwd);
-      await indexer.startIndexing();
-      const ctx = indexer.getRelevantContext({
-        stepType: "work",
-        stepDescription: "fix docker issue",
-      });
-      expect(ctx.learnings.length).toBeGreaterThanOrEqual(1);
-      const learning = ctx.learnings.find((l) => l.name === "Docker Fix");
-      expect(learning).toBeDefined();
-      expect(learning!.path).toBe(".flywheel/solutions/docker-fix.md");
-      indexer.dispose();
-    });
-
-    it("summary is first sentence of content (capped 100 chars)", async () => {
-      await writeSolution("summary-test.md", {
-        title: "Summary Test",
-        tags: ["test"],
-        content: "First sentence here. Second sentence follows.",
-      });
-      const indexer = new ContextIndexer(projectCwd);
-      await indexer.startIndexing();
-      const ctx = indexer.getRelevantContext({
-        stepType: "work",
-        stepDescription: "run test suite",
-      });
-      const learning = ctx.learnings.find((l) => l.name === "Summary Test");
-      expect(learning).toBeDefined();
-      expect(learning!.summary).toBe("First sentence here.");
-      indexer.dispose();
-    });
-
-    it("empty content in LearningEntry produces empty summary (no crash)", async () => {
-      await writeSolution("empty-content.md", {
-        title: "Empty Content",
-        tags: ["empty"],
-        content: "",
-      });
-      const indexer = new ContextIndexer(projectCwd);
-      await indexer.startIndexing();
-      const ctx = indexer.getRelevantContext({
-        stepType: "work",
-        stepDescription: "handle empty cases",
-      });
-      const learning = ctx.learnings.find((l) => l.name === "Empty Content");
-      expect(learning).toBeDefined();
-      expect(learning!.summary).toBe("");
-      indexer.dispose();
-    });
-  });
-
-  // -------------------------------------------------------------------------
   // Empty project
   // -------------------------------------------------------------------------
 
@@ -401,60 +319,6 @@ describe("ContextIndexer", () => {
       // Validate against schema (which enforces max 20)
       const result = AvailableContextSchema.safeParse(ctx);
       expect(result.success).toBe(true);
-      indexer.dispose();
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Tag extraction
-  // -------------------------------------------------------------------------
-
-  describe("tag extraction", () => {
-    it("extracts keywords from step description for learnings query", async () => {
-      // Write learnings with specific tags
-      await writeSolution("docker-fix.md", {
-        title: "Docker Fix",
-        tags: ["docker", "compose"],
-        content: "Fix docker compose issues. Use delegated volumes.",
-      });
-      await writeSolution("node-fix.md", {
-        title: "Node Fix",
-        tags: ["node", "npm"],
-        content: "Fix node module resolution. Use correct paths.",
-      });
-
-      const indexer = new ContextIndexer(projectCwd);
-      await indexer.startIndexing();
-
-      // Query with "docker compose" should match docker-fix via tag extraction
-      const ctx = indexer.getRelevantContext({
-        stepType: "work",
-        stepDescription: "fix docker compose configuration",
-      });
-      // Should find docker-related learnings
-      const dockerLearning = ctx.learnings.find((l) => l.name === "Docker Fix");
-      expect(dockerLearning).toBeDefined();
-      indexer.dispose();
-    });
-
-    it("filters stopwords and short words from tags", async () => {
-      await writeSolution("the-fix.md", {
-        title: "The Fix",
-        tags: ["the"],
-        content: "The fix. More info.",
-      });
-
-      const indexer = new ContextIndexer(projectCwd);
-      await indexer.startIndexing();
-
-      // "the" is a stopword, "is" and "a" are too short — no tags should match
-      const ctx = indexer.getRelevantContext({
-        stepType: "work",
-        stepDescription: "the is a",
-      });
-      // "the" tagged learning should NOT appear (stopword filtered out)
-      const learning = ctx.learnings.find((l) => l.name === "The Fix");
-      expect(learning).toBeUndefined();
       indexer.dispose();
     });
   });

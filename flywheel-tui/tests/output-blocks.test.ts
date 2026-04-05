@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { truncate, MAX_BLOCK_LINE_LENGTH } from "../src/tui/utils/text";
+import { formatDuration } from "../src/tui/format";
 import type {
   AnyBlock,
   TextBlock,
@@ -57,18 +58,6 @@ describe("TextBlock expected props", () => {
 });
 
 // ── Duration formatting ──
-
-/**
- * Replicated from agent-block.tsx: format milliseconds to human-readable duration
- */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
-}
 
 describe("formatDuration", () => {
   it("formats sub-second durations in milliseconds", () => {

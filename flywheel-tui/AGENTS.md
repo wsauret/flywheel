@@ -41,7 +41,7 @@ The queue engine executes a sequence of typed steps. Each step type + variant is
 
 ## Agent Behavior
 
-Always test your changes by running the code. Then fix any errors that arise.
+Always test your changes by running the code, then fix any errors that arise.
 If you write new code and the linter has an error or warning, you must fix the code before moving on.
 Do not add comments when editing a file unless they explain the new logic in the code you are adding.
 Do not ever use emojis in your code.
@@ -50,6 +50,7 @@ Do not ever use emojis in your code.
 
 DRY - Reuse existing code instead of writing it from scratch. Use grep to determine whether the logic already exists and extend that implementation instead then import it.
 SOLID - Always follow the solid principles, especially single responsibility. It makes code composable and reusable making it easier to follow DRY.
+No god modules, split them up according to responsibility.
 Never mock anything (except in tests when absolutely necessary). Never use a placeholder in real code.
 Always fully wire any new code into the system! Verify the wiring by running the TUI and exercising the feature end-to-end. Unit tests alone do not prove wiring - if you cannot trigger it from the running app, it is unwired.
 

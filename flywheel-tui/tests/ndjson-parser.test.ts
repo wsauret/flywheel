@@ -5,8 +5,8 @@ import {
   extractJSON,
   MAX_LINE_LENGTH,
   type NDJSONEvent,
-} from "../src/worker/ndjson-parser";
-import { TieredBuffer } from "../src/worker/buffer";
+} from "../src/orchestration/worker/ndjson-parser";
+import { TieredBuffer } from "../src/orchestration/worker/buffer";
 
 // ---------------------------------------------------------------------------
 // stripAnsi
@@ -175,6 +175,31 @@ describe("NDJSONParser", () => {
   it("event routing: classifies unknown events", () => {
     parser.write('{"type":"custom","data":"value"}\n');
     expect(events[0]!.type).toBe("unknown");
+  });
+
+  it("event routing: classifies assistant events (Claude Code stream-json)", () => {
+    parser.write('{"type":"assistant","message":{"content":[]}}\n');
+    expect(events[0]!.type).toBe("assistant");
+  });
+
+  it("event routing: classifies system events (Claude Code stream-json)", () => {
+    parser.write('{"type":"system","subtype":"init","session_id":"s-1"}\n');
+    expect(events[0]!.type).toBe("system");
+  });
+
+  it("event routing: classifies user events (Claude Code stream-json)", () => {
+    parser.write('{"type":"user","message":{"content":"hello"}}\n');
+    expect(events[0]!.type).toBe("user");
+  });
+
+  it("event routing: classifies tool_result events (Claude Code stream-json)", () => {
+    parser.write('{"type":"tool_result","tool_use_id":"tu-1","content":"ok"}\n');
+    expect(events[0]!.type).toBe("tool_result");
+  });
+
+  it("event routing: classifies result events (Claude Code stream-json)", () => {
+    parser.write('{"type":"result","subtype":"success","total_cost_usd":0.01}\n');
+    expect(events[0]!.type).toBe("result");
   });
 
   it("captures sessionID from first JSON event", () => {

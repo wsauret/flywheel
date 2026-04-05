@@ -16,12 +16,12 @@ import {
   createSessionManager,
   type SessionManager,
   type SessionManagerDeps,
-} from "../src/session/manager";
-import { readSession, deleteSessionWithCompanions } from "../src/session/persistence";
-import { isValidTransition, VALID_TRANSITIONS, type SessionLifecycleState } from "../src/session/state-machine";
-import { createOutputPersistence } from "../src/session/output-persistence";
+} from "../src/orchestration/session/manager";
+import { readSession, deleteSessionWithCompanions } from "../src/orchestration/session/persistence";
+import { isValidTransition, VALID_TRANSITIONS, type SessionLifecycleState } from "../src/orchestration/session/state-machine";
+import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 import { createSessionOrchestrator, type SessionOrchestratorDeps } from "../src/orchestration/session-orchestrator";
-import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../src/session/output-schemas";
+import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../src/orchestration/session/output-schemas";
 
 // ---------------------------------------------------------------------------
 // Test helpers

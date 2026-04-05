@@ -13,9 +13,9 @@ import {
   readSession,
   updateSession,
   listSessions,
-} from "../src/session/persistence";
-import { SessionSchema, type Session } from "../src/session/schemas";
-import type { SessionLifecycleState } from "../src/session/state-machine";
+} from "../src/orchestration/session/persistence";
+import { SessionSchema, type Session } from "../src/orchestration/session/schemas";
+import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
 
 // ---------------------------------------------------------------------------
 // Helpers

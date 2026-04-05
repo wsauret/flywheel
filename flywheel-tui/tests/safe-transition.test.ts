@@ -11,8 +11,8 @@ import {
   findTransitionPath,
   isValidTransition,
   type SessionLifecycleState,
-} from "../src/session/state-machine";
-import { safeUpdateState } from "../src/session/safe-transition";
+} from "../src/orchestration/session/state-machine";
+import { safeUpdateState } from "../src/orchestration/session/safe-transition";
 
 // ---------------------------------------------------------------------------
 // findTransitionPath

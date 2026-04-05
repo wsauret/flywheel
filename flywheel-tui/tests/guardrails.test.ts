@@ -25,14 +25,14 @@ import {
   replaceStep,
   transitionStep,
   type Provenance,
-} from "../src/queue/queue";
-import type { Step, Queue, MutationLogEntry } from "../src/queue/types";
+} from "../src/workflows/queue/queue";
+import type { Step, Queue, MutationLogEntry } from "../src/workflows/queue/types";
 import {
   createGuardrails,
   type Guardrails,
   type GuardrailOptions,
   type MutationBudget,
-} from "../src/queue/guardrails";
+} from "../src/workflows/queue/guardrails";
 
 // ---------------------------------------------------------------------------
 // Helpers

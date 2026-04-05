@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
-import { loadConfig, ConfigLoadError } from "../src/config/loader";
+import { loadConfig, ConfigLoadError } from "../src/orchestration/config/loader";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 

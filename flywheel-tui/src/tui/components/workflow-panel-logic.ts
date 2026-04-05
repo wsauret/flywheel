@@ -82,21 +82,4 @@ export function getStepTitleMaxWidth(hasDuration: boolean): number {
   return hasDuration ? STEP_TITLE_MAX_WITH_DURATION : STEP_TITLE_MAX_WITHOUT_DURATION
 }
 
-// ---------------------------------------------------------------------------
-// statusLabel
-// ---------------------------------------------------------------------------
-
 import type { WorkflowStatus } from "../types"
-
-/** Map workflow status to a human-readable label. */
-export function statusLabel(status: WorkflowStatus): string {
-  switch (status) {
-    case "idle":        return "Idle"
-    case "running":     return "Running"
-    case "completed":   return "Completed"
-    case "failed":      return "Failed"
-    case "interrupted": return "Interrupted"
-    case "stopping":    return "Stopping"
-    default:            return String(status)
-  }
-}

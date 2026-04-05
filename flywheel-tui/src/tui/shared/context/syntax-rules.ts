@@ -489,22 +489,21 @@ export function getSyntaxRules(theme: Theme) {
     {
       scope: ["diff.plus"],
       style: {
-        foreground: theme.diffAdded,
+        foreground: theme.diffHighlightAdded,
         background: theme.diffAddedBg,
       },
     },
     {
       scope: ["diff.minus"],
       style: {
-        foreground: theme.diffRemoved,
+        foreground: theme.diffHighlightRemoved,
         background: theme.diffRemovedBg,
       },
     },
     {
       scope: ["diff.delta"],
       style: {
-        foreground: theme.diffContext,
-        background: theme.diffContextBg,
+        foreground: theme.textMuted,
       },
     },
     {

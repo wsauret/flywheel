@@ -68,15 +68,15 @@ test_pause_resume() {
   local TEST_SCRIPT="$SCRIPT_DIR/resilience-pause-resume.ts"
   cat > "$TEST_SCRIPT" << 'PAUSE_RESUME_EOF'
 import { randomUUID } from "crypto"
-import { createQueue, advanceCursor } from "../../src/queue/queue"
+import { createQueue, advanceCursor } from "../../src/workflows/queue/queue"
 import {
   createStepExecutor,
   type WorkerFn,
   type DispatcherFn,
   type StepExecutor,
-} from "../../src/queue/executor"
-import type { Step, Queue } from "../../src/queue/types"
-import type { FlywheelEmitter } from "../../src/events/event-bus"
+} from "../../src/workflows/queue/executor"
+import type { Step, Queue } from "../../src/workflows/queue/types"
+import type { FlywheelEmitter } from "../../src/protocol/event-bus"
 
 const emittedEvents: Array<{ method: string; args: unknown[] }> = []
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
@@ -247,14 +247,14 @@ test_worker_crash() {
   local TEST_SCRIPT="$SCRIPT_DIR/resilience-worker-crash.ts"
   cat > "$TEST_SCRIPT" << 'WORKER_CRASH_PART1'
 import { randomUUID } from "crypto"
-import { createQueue } from "../../src/queue/queue"
+import { createQueue } from "../../src/workflows/queue/queue"
 import {
   createStepExecutor,
   type WorkerFn,
   type DispatcherFn,
-} from "../../src/queue/executor"
-import type { Step, Queue } from "../../src/queue/types"
-import type { FlywheelEmitter } from "../../src/events/event-bus"
+} from "../../src/workflows/queue/executor"
+import type { Step, Queue } from "../../src/workflows/queue/types"
+import type { FlywheelEmitter } from "../../src/protocol/event-bus"
 
 const emittedEvents: Array<{ method: string; args: unknown[] }> = []
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
@@ -343,8 +343,8 @@ WORKER_CRASH_PART1
 
 // ----- Part B: Sprint mode — worker crash triggers retry -----
 
-import { buildQueueFromTemplate } from "../../src/queue/templates"
-import { createSprintQueueHandler, type SprintQueueOptions } from "../../src/queue/sprint"
+import { buildQueueFromTemplate } from "../../src/workflows/queue/templates"
+import { createSprintQueueHandler, type SprintQueueOptions } from "../../src/workflows/queue/sprint"
 
 const sprintEvents: Array<{ method: string; args: unknown[] }> = []
 const sprintEmitter = new Proxy({} as FlywheelEmitter, {
@@ -459,14 +459,14 @@ test_budget_exhaustion() {
   local TEST_SCRIPT="$SCRIPT_DIR/resilience-budget.ts"
   cat > "$TEST_SCRIPT" << 'BUDGET_EOF'
 import { randomUUID } from "crypto"
-import { createQueue } from "../../src/queue/queue"
+import { createQueue } from "../../src/workflows/queue/queue"
 import {
   createStepExecutor,
   type WorkerFn,
   type DispatcherFn,
-} from "../../src/queue/executor"
-import type { Step } from "../../src/queue/types"
-import type { FlywheelEmitter } from "../../src/events/event-bus"
+} from "../../src/workflows/queue/executor"
+import type { Step } from "../../src/workflows/queue/types"
+import type { FlywheelEmitter } from "../../src/protocol/event-bus"
 
 const emittedEvents: Array<{ method: string; args: unknown[] }> = []
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
@@ -593,15 +593,15 @@ test_queue_persistence() {
 import { randomUUID } from "crypto"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { createQueue, transitionStep } from "../../src/queue/queue"
-import { createQueuePersistence } from "../../src/queue/persistence"
+import { createQueue, transitionStep } from "../../src/workflows/queue/queue"
+import { createQueuePersistence } from "../../src/workflows/queue/persistence"
 import {
   createStepExecutor,
   type WorkerFn,
   type DispatcherFn,
-} from "../../src/queue/executor"
-import type { Step, Queue } from "../../src/queue/types"
-import type { FlywheelEmitter } from "../../src/events/event-bus"
+} from "../../src/workflows/queue/executor"
+import type { Step, Queue } from "../../src/workflows/queue/types"
+import type { FlywheelEmitter } from "../../src/protocol/event-bus"
 
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
   get(_t, prop: string) {
@@ -745,14 +745,14 @@ test_context_accumulation() {
   local TEST_SCRIPT="$SCRIPT_DIR/resilience-context.ts"
   cat > "$TEST_SCRIPT" << 'CONTEXT_PART1'
 import { randomUUID } from "crypto"
-import { createQueue } from "../../src/queue/queue"
+import { createQueue } from "../../src/workflows/queue/queue"
 import {
   createStepExecutor,
   type WorkerFn,
   type DispatcherFn,
-} from "../../src/queue/executor"
-import type { Step } from "../../src/queue/types"
-import type { FlywheelEmitter } from "../../src/events/event-bus"
+} from "../../src/workflows/queue/executor"
+import type { Step } from "../../src/workflows/queue/types"
+import type { FlywheelEmitter } from "../../src/protocol/event-bus"
 
 const mockEmitter = new Proxy({} as FlywheelEmitter, {
   get(_t, prop: string) {

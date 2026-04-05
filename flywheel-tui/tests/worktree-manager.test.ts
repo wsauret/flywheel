@@ -4,8 +4,8 @@ import {
   type IWorktreeClient,
   type WorktreeInfo,
   type WorktreeManagerDeps,
-} from "../src/session/worktree-manager";
-import type { Session } from "../src/session/schemas";
+} from "../src/orchestration/session/worktree-manager";
+import type { Session } from "../src/orchestration/session/schemas";
 
 // ---------------------------------------------------------------------------
 // Mock IWorktreeClient

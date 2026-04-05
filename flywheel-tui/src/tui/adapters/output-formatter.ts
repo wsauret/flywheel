@@ -82,105 +82,85 @@ function formatToolUse(block: Record<string, unknown>): string {
 }
 
 /**
+ * Per-tool detail handlers.
+ * Adding a new tool just means adding an entry to this map.
+ */
+type ToolDetailHandler = (input: Record<string, unknown>, cwd: string) => string | null;
+
+function shellDetail(input: Record<string, unknown>, cwd: string): string | null {
+  const cmd = input.command as string | undefined;
+  if (!cmd) return null;
+  const shortened = cwd ? cmd.replaceAll(cwd + "/", "").replaceAll(cwd, ".") : cmd;
+  return truncateLine(shortened, 100);
+}
+
+const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
+  ["Read", (input, cwd) => truncateLine(formatDisplayPath(input.file_path as string, cwd), 80)],
+  ["Write", (input, cwd) => truncateLine(formatDisplayPath(input.file_path as string, cwd), 80)],
+  ["Edit", (input, cwd) => { const fp = input.file_path as string | undefined; return fp ? truncateLine(formatDisplayPath(fp, cwd), 80) : null }],
+  ["Bash", shellDetail],
+  ["PowerShell", shellDetail],
+  ["REPL", shellDetail],
+  ["Glob", (input) => truncateLine(input.pattern as string, 80)],
+  ["Grep", (input) => truncateLine(input.pattern as string, 80)],
+  ["Agent", (input) => truncateLine((input.description as string | undefined) ?? (input.prompt as string | undefined), 100)],
+  ["Task", (input) => truncateLine((input.description as string | undefined) ?? (input.prompt as string | undefined), 100)],
+  ["WebFetch", (input) => truncateLine(input.url as string, 100)],
+  ["WebSearch", (input) => truncateLine((input.query as string | undefined) ?? (input.search_query as string | undefined), 100)],
+  ["LSP", (input, cwd) => {
+    const method = input.method as string | undefined;
+    const fp = input.file_path as string | undefined;
+    return truncateLine(method ? `${method}${fp ? ` ${formatDisplayPath(fp, cwd)}` : ""}` : (fp ? formatDisplayPath(fp, cwd) : null), 100);
+  }],
+  ["NotebookEdit", (input, cwd) => {
+    const fp = (input.notebook_path as string | undefined) ?? (input.file_path as string | undefined);
+    return fp ? truncateLine(formatDisplayPath(fp, cwd), 80) : null;
+  }],
+  ["Skill", (input) => {
+    const skill = (input.skill as string | undefined) ?? (input.name as string | undefined);
+    return skill ? truncateLine(skill, 80) : null;
+  }],
+  ["SendMessage", (input) => { const to = input.to as string | undefined; return to ? truncateLine(`to ${to}`, 80) : null }],
+  ["AskUserQuestion", (input) => { const q = input.question as string | undefined; return q ? truncateLine(q, 100) : null }],
+  ["ToolSearch", (input) => { const query = input.query as string | undefined; return query ? truncateLine(query, 80) : null }],
+  ["TodoWrite", () => null],
+  ["EnterPlanMode", () => null],
+  ["ExitPlanMode", () => null],
+  ["EnterWorktree", () => null],
+  ["ExitWorktree", () => null],
+]);
+
+/**
  * Extract a short, useful detail string from tool input.
  */
 export function getToolDetail(
   name: string,
   input: Record<string, unknown>,
+  cwd: string = process.cwd(),
 ): string | null {
-  switch (name) {
-    case "Read":
-      return truncate(formatDisplayPath(input.file_path as string), 80);
-    case "Write":
-      return truncate(formatDisplayPath(input.file_path as string), 80);
-    case "Edit": {
-      const fp = input.file_path as string | undefined;
-      return fp ? truncate(formatDisplayPath(fp), 80) : null;
-    }
-    case "Bash":
-    case "PowerShell":
-    case "REPL": {
-      const cmd = input.command as string | undefined;
-      if (!cmd) return null;
-      // Replace absolute paths in the command with relative paths
-      const cwd = process.cwd();
-      const shortened = cwd ? cmd.replaceAll(cwd + "/", "").replaceAll(cwd, ".") : cmd;
-      return truncate(shortened, 100);
-    }
-    case "Glob":
-      return truncate(input.pattern as string, 80);
-    case "Grep":
-      return truncate(input.pattern as string, 80);
-    case "Agent":
-    case "Task": {
-      const prompt = input.prompt as string | undefined;
-      const desc = input.description as string | undefined;
-      return truncate(desc ?? prompt, 100);
-    }
-    case "WebFetch":
-      return truncate(input.url as string, 100);
-    case "WebSearch":
-      return truncate(input.query as string ?? input.search_query as string, 100);
-    case "LSP": {
-      const method = input.method as string | undefined;
-      const fp = input.file_path as string | undefined;
-      return truncate(method ? `${method}${fp ? ` ${formatDisplayPath(fp)}` : ""}` : (fp ? formatDisplayPath(fp) : null), 100);
-    }
-    case "NotebookEdit": {
-      const fp = input.notebook_path as string ?? input.file_path as string | undefined;
-      return fp ? truncate(formatDisplayPath(fp), 80) : null;
-    }
-    case "PowerShell":
-    case "REPL": {
-      const cmd = input.command as string | undefined;
-      return cmd ? truncate(cmd, 100) : null;
-    }
-    case "Skill": {
-      const skill = input.skill as string ?? input.name as string | undefined;
-      return skill ? truncate(skill, 80) : null;
-    }
-    case "SendMessage": {
-      const to = input.to as string | undefined;
-      return to ? truncate(`to ${to}`, 80) : null;
-    }
-    case "AskUserQuestion": {
-      const q = input.question as string | undefined;
-      return q ? truncate(q, 100) : null;
-    }
-    case "ToolSearch": {
-      const query = input.query as string | undefined;
-      return query ? truncate(query, 80) : null;
-    }
-    case "TodoWrite":
-    case "EnterPlanMode":
-    case "ExitPlanMode":
-    case "EnterWorktree":
-    case "ExitWorktree":
-      return null;
-    default: {
-      // MCP tools: show first string-valued key
-      // Task tools: show subject or description
-      const subject = input.subject as string | undefined;
-      if (subject) return truncate(subject, 80);
-      const desc = input.description as string | undefined;
-      if (desc) return truncate(desc, 80);
-      // Fallback: first string value
-      for (const val of Object.values(input)) {
-        if (typeof val === "string" && val.length > 0) {
-          return truncate(val, 80);
-        }
-      }
-      return null;
+  const handler = TOOL_DETAIL_HANDLERS.get(name);
+  if (handler) return handler(input, cwd);
+
+  // Fallback for unknown tools (MCP, etc.): subject, description, first string value
+  const subject = input.subject as string | undefined;
+  if (subject) return truncateLine(subject, 80);
+  const desc = input.description as string | undefined;
+  if (desc) return truncateLine(desc, 80);
+  for (const val of Object.values(input)) {
+    if (typeof val === "string" && val.length > 0) {
+      return truncateLine(val, 80);
     }
   }
+  return null;
 }
 
-export function formatDisplayPath(filePath: string | undefined | null): string | null {
+export function formatDisplayPath(filePath: string | undefined | null, cwd?: string): string | null {
   if (!filePath) return null;
 
+  const cwdPath = cwd ?? process.cwd();
   let relative: string;
   if (path.isAbsolute(filePath)) {
-    relative = path.relative(process.cwd(), filePath);
+    relative = path.relative(cwdPath, filePath);
     if (relative.length === 0) return "./";
   } else {
     relative = filePath;
@@ -199,7 +179,7 @@ export function formatDisplayPath(filePath: string | undefined | null): string |
   return relative;
 }
 
-function truncate(
+function truncateLine(
   s: string | undefined | null,
   max: number,
 ): string | null {
@@ -219,9 +199,9 @@ const CONTEXT_LINES = 3;
  * Reads the file to produce context lines around the change.
  * Falls back to a minimal no-context diff if the file can't be read.
  */
-export function createEditDiff(filePath: string, oldStr: string, newStr: string): string {
+function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: string = process.cwd()): string {
   try {
-    const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+    const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
     const fileContent = fs.readFileSync(resolved, "utf-8");
 
     let oldContent: string;

@@ -9,19 +9,19 @@
 import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { randomUUID } from "crypto";
 
-import type { Step, Queue } from "../src/queue/types";
-import type { FlywheelEmitter } from "../src/events/event-bus";
+import type { Step, Queue } from "../src/workflows/queue/types";
+import type { FlywheelEmitter } from "../src/protocol/event-bus";
 import {
   createStepDispatcher,
   type StepDispatcherInput,
   type StepDispatcherDecision,
   type StepDispatcherOptions,
   type MutationRequest,
-} from "../src/queue/step-dispatcher";
-import type { DispatcherTransport } from "../src/dispatcher/transport";
-import type { DispatcherInput, DispatcherDecision } from "../src/dispatcher/schemas";
-import type { AccumulatedContext } from "../src/queue/context-accumulator";
-import type { EvalResult } from "../src/queue/executor";
+} from "../src/workflows/queue/step-dispatcher";
+import type { DispatcherTransport } from "../src/workflows/dispatcher/transport";
+import type { DispatcherInput, DispatcherDecision } from "../src/workflows/dispatcher/schemas";
+import type { AccumulatedContext } from "../src/workflows/queue/context-accumulator";
+import type { EvalResult } from "../src/workflows/queue/executor";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -945,7 +945,7 @@ describe("Step dispatcher edge cases", () => {
       });
       expect(false).toBe(true);
     } catch (err) {
-      const e = err as import("../src/queue/step-dispatcher").StepDispatcherError;
+      const e = err as import("../src/workflows/queue/step-dispatcher").StepDispatcherError;
       expect(e.name).toBe("StepDispatcherError");
       expect(e.stepId).toBe("step-123");
       expect(e.message).toContain("dispatcher");

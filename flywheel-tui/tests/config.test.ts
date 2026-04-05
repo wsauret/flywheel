@@ -5,7 +5,7 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
   resolveModels,
-} from "../src/config/loader";
+} from "../src/orchestration/config/loader";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 

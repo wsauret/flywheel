@@ -15,15 +15,15 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BunProcessSpawner } from "../../src/worker/bun-spawner";
-import { getEngine } from "../../src/engines/core/registry";
-import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/config/paths";
-import { buildScaffolding, type ScaffoldingPaths } from "../../src/queue/shared/scaffolding";
-import { formatStdinMessage } from "../../src/worker/stdin-format";
-import type { Step } from "../../src/queue/types";
+import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
+import { getEngine } from "../../src/orchestration/engines/core/registry";
+import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/orchestration/config/paths";
+import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
+import { formatStdinMessage } from "../../src/orchestration/worker/stdin-format";
+import type { Step } from "../../src/workflows/queue/types";
 
 // Engine registration side effects
-import "../../src/engines/providers/claude";
+import "../../src/orchestration/engines/providers/claude";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures

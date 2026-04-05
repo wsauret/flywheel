@@ -1,46 +1,34 @@
 /**
- * OpenTUI Adapter
+ * OpenTUI Adapter — translates FlywheelEvent → UIActions (store mutations).
  *
- * Translates FlywheelEvent → UIActions (store mutations).
- * Uses assertNever for exhaustive switch — adding a new event type
- * without a case here causes a compile-time error.
+ * Pipeline: worker stdout → NDJSONParser → StructuredEventParser
+ *   → SubagentTraceParser → StructuredOutputBuilder → setOutputBlocks
  *
- * Structured output pipeline:
- *   worker stdout chunks → NDJSONParser (line buffering + JSON parsing)
- *     → StructuredEventParser (engine routing + format normalization)
- *       → SubagentTraceParser (agent lifecycle tracking)
- *       → StructuredOutputBuilder (block accumulation)
- *         → setOutputBlocks (batched flush)
- *
- * Timer service integration: converts step indexes to string IDs
- * ("step-0", "step-1", …) for the agent-based timer API.
+ * Dispatcher/evaluator NDJSON handling is delegated to NdjsonPipeline.
  */
 
-import type { FlywheelEvent } from "../../events/types";
-import { assertNever } from "../../events/types";
+import { assertNever, type FlywheelEvent } from "../../protocol/events.js";
 import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
 import { TimerService } from "../shared/services/timer";
-import { extractDisplayText } from "./output-formatter";
-import { formatDisplayPath } from "./output-formatter";
-import { NDJSONParser } from "../../worker/ndjson-parser";
+import { NDJSONParser } from "../../orchestration/worker/ndjson-parser";
 import { SubagentTraceParser } from "./subagent-tracing/parser";
 import { StructuredOutputBuilder } from "./structured-output-builder";
 import { StructuredEventParser } from "./structured-event-parser";
-import { Log } from "../../utils/log";
+import { NdjsonPipeline } from "./ndjson-pipeline.js";
+import { Log } from "../../workflows/shared/log";
 
 /** Flush interval for batched block updates (ms). */
 const FLUSH_INTERVAL_MS = 16;
-
-/** Timeout (ms) after which an agent with no activity is auto-completed. */
-// Stale agent timeout moved to StructuredOutputBuilder
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
 export interface OpenTUIAdapterOptions {
   actions: UIActions;
   timer?: TimerService;
+  /** Engine metadata — used to configure engine-specific adapter behaviour (e.g. synthetic thinking timer). */
+  engineMetadata?: import("../../orchestration/engines/core/types").EngineMetadata;
 }
 
 const log = Log.create({ service: "opentui-adapter" });
@@ -57,11 +45,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** When true, queue:failed skips setError (user-initiated pause). */
   public suppressQueueError = false;
 
-  /**
-   * Current model activity state. Updated by the structured output builder
-   * as events flow through the pipeline. Consumers can poll this or register
-   * a callback via `onModelActivityChange`.
-   */
+  /** Current model activity state, updated via the structured output builder. */
   public modelActivity: import("./structured-output-builder").ModelActivity = "idle";
 
   /** Optional callback fired when model activity changes. */
@@ -80,24 +64,18 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Interval handle for batched flush. */
   private flushInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Stale agent detection is now handled by StructuredOutputBuilder.
-  // The adapter no longer tracks agent activity or runs stale checks.
+  /** Synthetic thinking timer for engines that batch thinking blocks. */
+  private syntheticThinkingTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly syntheticThinkingMs: number | undefined;
 
-  // ── Dispatcher/evaluator agent block tracking ──
-
-  private _dispatcherBlockId: string | null = null;
-  private _dispatcherStartedAt: number = 0;
-  private _evaluatorBlockId: string | null = null;
-  private _evaluatorStartedAt: number = 0;
-
-  /** Separate NDJSON parsers for dispatcher/evaluator (isolate from worker pipeline). */
-  private dispatcherNdjsonParser: NDJSONParser;
-  private evaluatorNdjsonParser: NDJSONParser;
+  /** Dispatcher/evaluator NDJSON pipeline (block tracking + activity extraction). */
+  private pipeline: NdjsonPipeline;
 
   constructor(options: OpenTUIAdapterOptions) {
     super();
     this.actions = options.actions;
     this.timer = options.timer ?? new TimerService();
+    this.syntheticThinkingMs = options.engineMetadata?.syntheticThinkingMs;
 
     // Initialize structured pipeline
     this.traceParser = new SubagentTraceParser();
@@ -108,13 +86,25 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     });
     this.ndjsonParser = new NDJSONParser();
 
-    // Wire builder callback for model activity tracking
+    // Initialize dispatcher/evaluator NDJSON pipeline
+    this.pipeline = new NdjsonPipeline(this.builder);
+
+    // Wire builder → model activity tracking + synthetic thinking timer
     this.builder.onModelActivityChange = (activity) => {
+      if (this.syntheticThinkingTimer) {
+        clearTimeout(this.syntheticThinkingTimer);
+        this.syntheticThinkingTimer = null;
+      }
       this.modelActivity = activity;
       this.onModelActivityChange?.(activity);
+      if (this.syntheticThinkingMs !== undefined && (activity === "tool_executing" || activity === "generating")) {
+        this.syntheticThinkingTimer = setTimeout(() => {
+          this.syntheticThinkingTimer = null;
+          this.modelActivity = "thinking";
+          this.onModelActivityChange?.("thinking");
+        }, this.syntheticThinkingMs);
+      }
     };
-
-    // Stale agent detection is handled by the builder itself (startStaleCheck).
 
     // Wire NDJSONParser events to StructuredEventParser
     this.ndjsonParser.onEvent = (event) => {
@@ -128,25 +118,9 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       }
     };
 
-    // Dispatcher NDJSON parser — routes tool events into the dispatcher agent block
-    this.dispatcherNdjsonParser = new NDJSONParser();
-    this.dispatcherNdjsonParser.onEvent = (event) => {
-      this.handleDispatcherNdjsonEvent(event);
-    };
-    this.dispatcherNdjsonParser.onRawText = () => {}; // Discard raw text from dispatcher
-
-    // Evaluator NDJSON parser — routes tool events into the evaluator agent block
-    this.evaluatorNdjsonParser = new NDJSONParser();
-    this.evaluatorNdjsonParser.onEvent = (event) => {
-      this.handleEvaluatorNdjsonEvent(event);
-    };
-    this.evaluatorNdjsonParser.onRawText = () => {}; // Discard raw text from evaluator
-
-    // Start batched flush interval
     this.flushInterval = setInterval(() => {
       this.flushBlocks();
     }, FLUSH_INTERVAL_MS);
-
   }
 
   /** Toggle raw output mode. Returns the new state. */
@@ -167,13 +141,14 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       clearInterval(this.flushInterval);
       this.flushInterval = null;
     }
+    if (this.syntheticThinkingTimer !== null) {
+      clearTimeout(this.syntheticThinkingTimer);
+      this.syntheticThinkingTimer = null;
+    }
     this.builder.dispose();
   }
 
-  /**
-   * Suspend the periodic flush interval.
-   * Called when a session is backgrounded to avoid wasting ticks on a non-viewed session.
-   */
+  /** Suspend the periodic flush interval (session backgrounded). */
   pauseFlush(): void {
     if (this.flushInterval !== null) {
       clearInterval(this.flushInterval);
@@ -181,10 +156,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     }
   }
 
-  /**
-   * Resume the periodic flush interval.
-   * Called when a session is brought back to the foreground.
-   */
+  /** Resume the periodic flush interval (session foregrounded). */
   resumeFlush(): void {
     if (this.flushInterval !== null) return; // already running
     this.flushInterval = setInterval(() => {
@@ -210,8 +182,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.clearApproval();
         break;
 
-      // Worker lifecycle events — spawned/completed are suppressed from TUI
-      // output (noise) but logged for debugging. Failures remain visible.
       case "worker:spawned":
         log.debug(`Worker spawned for step ${event.stepIndex}`, { step: event.stepIndex });
         break;
@@ -224,26 +194,14 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.pushSystemText(`◉ Worker failed: ${event.failure.message}\n`, event.timestamp);
         break;
 
-      // Dispatcher events
-      case "dispatcher:invoked": {
-        const blockId = `dispatcher_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        this._dispatcherBlockId = blockId;
-        this._dispatcherStartedAt = Date.now();
-        this.dispatcherNdjsonParser.flush();
-        this.builder.startAgent(blockId, "Dispatcher", "Analyzing step and crafting worker prompt", Date.now());
+      case "dispatcher:invoked":
+        this.pipeline.startDispatcher();
         this.flushBlocks();
         break;
-      }
 
       case "dispatcher:completed": {
-        if (this._dispatcherBlockId) {
-          const elapsed = Date.now() - this._dispatcherStartedAt;
-          this.dispatcherNdjsonParser.flush();
-          this.builder.completeAgent(this._dispatcherBlockId, elapsed, 0);
-          this._dispatcherBlockId = null;
-          this.flushBlocks();
-        }
-        // Follow-up system message with summary (outside the agent block)
+        this.pipeline.completeDispatcher();
+        this.flushBlocks();
         const warnings = event.decision.warnings;
         const warningText = warnings && warnings.length > 0
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
@@ -252,37 +210,20 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
       }
 
-      case "dispatcher:failed": {
-        if (this._dispatcherBlockId) {
-          this.dispatcherNdjsonParser.flush();
-          this.builder.errorAgent(this._dispatcherBlockId, event.reason);
-          this._dispatcherBlockId = null;
-          this.flushBlocks();
-        }
+      case "dispatcher:failed":
+        this.pipeline.failDispatcher(event.reason);
+        this.flushBlocks();
         this.pushSystemText(`⚠ Dispatcher unavailable: ${event.reason}. Using static prompt.\n`, event.timestamp);
         break;
-      }
 
-      // Evaluator events
-      case "evaluator:invoked": {
-        const blockId = `evaluator_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        this._evaluatorBlockId = blockId;
-        this._evaluatorStartedAt = Date.now();
-        this.evaluatorNdjsonParser.flush();
-        this.builder.startAgent(blockId, "Evaluator", "Checking output quality", Date.now());
+      case "evaluator:invoked":
+        this.pipeline.startEvaluator();
         this.flushBlocks();
         break;
-      }
 
       case "evaluator:completed": {
-        if (this._evaluatorBlockId) {
-          const elapsed = Date.now() - this._evaluatorStartedAt;
-          this.evaluatorNdjsonParser.flush();
-          this.builder.completeAgent(this._evaluatorBlockId, elapsed, 0);
-          this._evaluatorBlockId = null;
-          this.flushBlocks();
-        }
-        // Follow-up system message with the verdict (outside the agent block)
+        this.pipeline.completeEvaluator();
+        this.flushBlocks();
         this.pushSystemText(
           `🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`,
           event.timestamp,
@@ -290,40 +231,26 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
       }
 
-      case "evaluator:failed": {
-        if (this._evaluatorBlockId) {
-          this.evaluatorNdjsonParser.flush();
-          this.builder.errorAgent(this._evaluatorBlockId, event.reason);
-          this._evaluatorBlockId = null;
-          this.flushBlocks();
-        }
+      case "evaluator:failed":
+        this.pipeline.failEvaluator(event.reason);
+        this.flushBlocks();
         this.pushSystemText(`⚠ Evaluator failed: ${event.reason}. Skipping.\n`, event.timestamp);
         break;
-      }
 
-      case "evaluator:revision-requested": {
-        // Complete the current evaluator block first (it's done evaluating)
-        if (this._evaluatorBlockId) {
-          const elapsed = Date.now() - this._evaluatorStartedAt;
-          this.evaluatorNdjsonParser.flush();
-          this.builder.completeAgent(this._evaluatorBlockId, elapsed, 0);
-          this._evaluatorBlockId = null;
-          this.flushBlocks();
-        }
+      case "evaluator:revision-requested":
+        this.pipeline.completeEvaluator();
+        this.flushBlocks();
         this.pushSystemText(
           `🔄 Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions}) — re-running worker...\n`,
           new Date(event.timestamp).toISOString(),
         );
         break;
-      }
 
-      // Question events — handled by QuestionPrompt component, not adapter
       case "question:asked":
       case "question:replied":
       case "question:rejected":
         break;
 
-      // Budget events
       case "budget:warning":
         log.info("Budget warning", { metric: event.metric, used: event.used, limit: event.limit, remaining: event.remaining });
         break;
@@ -333,28 +260,25 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.pushSystemText(`⚠ Budget exhausted: ${event.reason}\n`, event.timestamp);
         break;
 
-      // Worker injection events
       case "worker:injected":
         log.info("Worker stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
         this.pushSystemText(`↳ Injected: ${event.message.slice(0, 100)}${event.message.length > 100 ? "..." : ""}\n`, event.timestamp);
         break;
 
-      // Dispatcher/evaluator output streaming events
       case "dispatcher:output":
         if (event.stream === "stdout") {
-          this.dispatcherNdjsonParser.write(event.data);
+          this.pipeline.dispatcherParser.write(event.data);
           this.flushBlocks();
         }
         break;
 
       case "evaluator:output":
         if (event.stream === "stdout") {
-          this.evaluatorNdjsonParser.write(event.data);
+          this.pipeline.evaluatorParser.write(event.data);
           this.flushBlocks();
         }
         break;
 
-      // Queue lifecycle events — timer lifecycle + store state
       case "queue:initialized":
         log.info("Queue initialized", { workflowId: event.workflowId, steps: event.stepIds.length });
         // Start timer when queue execution begins
@@ -382,7 +306,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         }
         break;
 
-      // Queue step lifecycle events — update store for panel display
       case "queue:step-started":
         log.info("Queue step started", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
         this.builder.resetTracking();
@@ -403,7 +326,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.failQueueStep(event.stepId, event.reason);
         break;
 
-      // Queue mutation events — update store for dynamic insertion display
       case "queue:step-inserted":
         log.info("Queue step inserted", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, afterStepId: event.afterStepId });
         this.actions.insertQueueStep(
@@ -422,14 +344,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     }
   }
 
-  /**
-   * Push a system message through the structured block pipeline and flush.
-   * Used for lifecycle events (queue:step-started, worker:failed, etc.) that
-   * are user-relevant. Produces SystemBlock objects.
-   *
-   * Timestamp conversion: `new Date(timestamp).getTime()` handles ISO strings;
-   * falls back to `Date.now()` if parsing returns NaN (e.g., empty string).
-   */
+  /** Push a system message through the block pipeline and flush. */
   private pushSystemText(text: string, timestamp: string): void {
     this.builder.pushSystemMessage(text, new Date(timestamp).getTime() || Date.now());
     this.flushBlocks();
@@ -439,12 +354,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     return `${stepType.toUpperCase()} · ${stepTitle}`;
   }
 
-  /**
-   * Handle worker output chunks.
-   * - stderr: push through builder as text blocks (structured pipeline)
-   * - raw mode: pass through to appendOutput (bypass structured pipeline)
-   * - formatted mode: feed to NDJSONParser → structured pipeline → setOutputBlocks
-   */
+  /** Route worker output: stderr → system text, raw → passthrough, formatted → NDJSON pipeline. */
   private handleWorkerOutput(
     stream: "stdout" | "stderr",
     data: string,
@@ -478,138 +388,6 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   }
 
   /**
-   * Handle NDJSON event from dispatcher subprocess.
-   * Routes tool-use events as agent children; thinking text as status-only updates.
-   */
-  private handleDispatcherNdjsonEvent(event: import("../../worker/ndjson-parser").NDJSONEvent): void {
-    if (!this._dispatcherBlockId) return;
-    const activity = this.extractActivityInfo(event.data);
-    if (!activity) return;
-
-    if (activity.name === "Thinking") {
-      this.builder.updateAgentLatestChild(this._dispatcherBlockId, `Thinking: ${activity.detail}`);
-    } else {
-      this.builder.pushToolToAgent(this._dispatcherBlockId, activity.name, activity.detail, Date.now());
-    }
-    this.flushBlocks();
-  }
-
-  /**
-   * Handle NDJSON event from evaluator subprocess.
-   * Routes tool-use events as agent children; thinking text as status-only updates.
-   */
-  private handleEvaluatorNdjsonEvent(event: import("../../worker/ndjson-parser").NDJSONEvent): void {
-    if (!this._evaluatorBlockId) return;
-    const activity = this.extractActivityInfo(event.data);
-    if (!activity) return;
-
-    if (activity.name === "Thinking") {
-      this.builder.updateAgentLatestChild(this._evaluatorBlockId, `Thinking: ${activity.detail}`);
-    } else {
-      this.builder.pushToolToAgent(this._evaluatorBlockId, activity.name, activity.detail, Date.now());
-    }
-    this.flushBlocks();
-  }
-
-  /**
-   * Extract activity info from a Claude NDJSON event data payload.
-   * Returns tool-use info OR thinking text from assistant messages.
-   * Returns null if the event contains no actionable activity.
-   */
-  private extractActivityInfo(data: Record<string, unknown>): { name: string; detail: string } | null {
-    // Claude assistant message — content may be at data.content or data.message.content
-    const content =
-      (Array.isArray(data.content) ? data.content : null) ??
-      (data.message && typeof data.message === "object"
-        ? (Array.isArray((data.message as Record<string, unknown>).content)
-            ? (data.message as Record<string, unknown>).content as unknown[]
-            : null)
-        : null);
-
-    if (data.type === "assistant" && content) {
-      // Prefer tool_use blocks over text/thinking blocks
-      for (const block of content as Record<string, unknown>[]) {
-        if (block.type === "tool_use" && typeof block.name === "string") {
-          const input = block.input as Record<string, unknown> | undefined;
-          const detail = this.extractToolDetail(block.name, input);
-          return { name: block.name, detail };
-        }
-      }
-      // Fall back to thinking blocks, then text blocks
-      for (const block of content as Record<string, unknown>[]) {
-        if (block.type === "thinking" && typeof block.thinking === "string") {
-          const line = this.extractLastMeaningfulLine(block.thinking);
-          if (line) return { name: "Thinking", detail: line };
-        }
-        if (block.type === "text" && typeof block.text === "string") {
-          const line = this.extractLastMeaningfulLine(block.text);
-          if (line) return { name: "Thinking", detail: line };
-        }
-      }
-    }
-
-    // Claude tool_use event (direct)
-    if (data.type === "tool_use" && typeof data.name === "string") {
-      const input = data.input as Record<string, unknown> | undefined;
-      const detail = this.extractToolDetail(data.name, input);
-      return { name: data.name, detail };
-    }
-
-    // Claude streaming content_block_delta with text_delta or thinking_delta
-    if (data.type === "content_block_delta") {
-      const delta = data.delta as Record<string, unknown> | undefined;
-      if (delta) {
-        if (delta.type === "thinking_delta" && typeof delta.thinking === "string") {
-          const line = this.extractLastMeaningfulLine(delta.thinking);
-          if (line) return { name: "Thinking", detail: line };
-        }
-        if (delta.type === "text_delta" && typeof delta.text === "string") {
-          const line = this.extractLastMeaningfulLine(delta.text);
-          if (line) return { name: "Thinking", detail: line };
-        }
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Extract the last non-empty, meaningful line from text, truncated to 80 chars.
-   * Skips lines that are only whitespace or punctuation.
-   */
-  private extractLastMeaningfulLine(text: string): string | null {
-    const lines = text.split("\n");
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const trimmed = lines[i].trim();
-      // Skip empty or whitespace/punctuation-only lines
-      if (trimmed.length === 0 || /^[\s\p{P}]+$/u.test(trimmed)) continue;
-      return trimmed.length > 80 ? trimmed.slice(0, 77) + "..." : trimmed;
-    }
-    return null;
-  }
-
-  /**
-   * Extract a short detail string from tool input for display.
-   */
-  private extractToolDetail(toolName: string, input?: Record<string, unknown>): string {
-    if (!input) return "";
-    // For Write/Edit tools, show the file path
-    if (input.file_path && typeof input.file_path === "string") {
-      return formatDisplayPath(input.file_path) ?? "";
-    }
-    // For Read tools, show the file path
-    if (input.path && typeof input.path === "string") {
-      return formatDisplayPath(input.path) ?? "";
-    }
-    // For Bash tools, show truncated command
-    if (input.command && typeof input.command === "string") {
-      const cmd = input.command as string;
-      return cmd.length > 60 ? cmd.slice(0, 57) + "..." : cmd;
-    }
-    return "";
-  }
-
-  /**
    * Flush builder blocks to the store if the builder has pending changes.
    */
   private flushBlocks(): void {
@@ -618,10 +396,4 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     }
   }
 
-  // Stale agent detection moved to StructuredOutputBuilder.checkStaleAgents()
-}
-
-/** Factory function for creating an OpenTUI adapter */
-export function createOpenTUIAdapter(actions: UIActions, timer?: TimerService): OpenTUIAdapter {
-  return new OpenTUIAdapter({ actions, timer });
 }

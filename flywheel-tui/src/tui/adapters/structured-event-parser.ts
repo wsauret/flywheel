@@ -10,15 +10,10 @@
  *     SubagentTraceParser + StructuredOutputBuilder
  */
 
-import type { NDJSONEvent } from "../../worker/ndjson-parser";
+import type { NDJSONEvent } from "../../orchestration/worker/ndjson-parser";
 import { isSubagentToolName, type ClaudeJsonlMessage } from "./subagent-tracing/types";
 import type { SubagentTraceParser } from "./subagent-tracing/parser";
 import type { StructuredOutputBuilder } from "./structured-output-builder";
-import {
-  isOpenCodeTaskTool,
-  openCodeTaskToClaudeMessages,
-} from "./subagent-tracing/opencode-adapter";
-import type { OpenCodeJsonlMessage } from "./subagent-tracing/opencode-adapter";
 import { getToolDetail, extractToolDiff } from "./output-formatter";
 
 // ── Types ──
@@ -53,19 +48,15 @@ export class StructuredEventParser {
 
   /**
    * Dispatch a parsed NDJSON event through the correct engine handler.
-   * Falls back to text extraction for unknown engines.
+   * Falls back to Claude format for unknown engines.
    */
   dispatch(event: NDJSONEvent, engineId?: string): void {
     const now = Date.now();
 
     if (engineId === "claude" || engineId === "harness") {
       this.dispatchClaudeEvent(event, now);
-    } else if (engineId === "opencode") {
-      this.dispatchOpenCodeEvent(event, now);
-    } else if (engineId === "droid") {
-      this.dispatchDroidEvent(event, now);
     } else {
-      // Unknown engine: fall back to text extraction
+      // Unknown engine: fall back to Claude format (most common)
       this.dispatchFallbackEvent(event, now);
     }
   }
@@ -172,118 +163,10 @@ export class StructuredEventParser {
     }
   }
 
-  // ── OpenCode handler ──
-
-  private dispatchOpenCodeEvent(event: NDJSONEvent, now: number): void {
-    const data = event.data;
-    const type = data.type as string | undefined;
-
-    if (type === "text") {
-      const part = data.part as { text?: string } | undefined;
-      if (part?.text && part.text.length > 0) {
-        this.builder.pushText(part.text, now);
-      }
-    } else if (type === "tool_use") {
-      this.handleOpenCodeToolUse(data, now);
-    }
-    // step_start, step_finish, reasoning, error — currently skipped
-    // (can be added in future steps)
-  }
-
-  private handleOpenCodeToolUse(data: Record<string, unknown>, now: number): void {
-    const part = data.part as Record<string, unknown> | undefined;
-    if (!part) return;
-
-    const toolName = part.tool as string | undefined;
-    if (!toolName) return;
-
-    // Build OpenCodeJsonlMessage for task detection
-    const ocMsg: OpenCodeJsonlMessage = {
-      source: "opencode",
-      type: "tool_use",
-      timestamp: typeof data.timestamp === "number" ? data.timestamp : undefined,
-      part: part as any,
-      raw: data,
-    };
-
-    if (isOpenCodeTaskTool(ocMsg)) {
-      // Convert to Claude format for SubagentTraceParser compatibility
-      const claudeMessages = openCodeTaskToClaudeMessages(ocMsg);
-      for (const claudeMsg of claudeMessages) {
-        const subEvents = this.traceParser.processMessage(claudeMsg);
-        for (const subEvent of subEvents) {
-          if (subEvent.type === "spawn") {
-            const state = (part.state as Record<string, unknown>) ?? {};
-            const input = state.input as Record<string, unknown> | undefined;
-            const desc = (input?.description as string) || subEvent.description || toolName;
-            this.builder.startAgent(subEvent.id, "Task", desc, now);
-          } else if (subEvent.type === "complete") {
-            this.builder.completeAgent(subEvent.id, subEvent.durationMs, 0);
-          } else if (subEvent.type === "error") {
-            this.builder.errorAgent(subEvent.id, subEvent.errorMessage);
-          }
-        }
-      }
-    } else {
-      // Regular tool use
-      const state = (part.state as Record<string, unknown>) ?? {};
-      const input = state.input as Record<string, unknown> | undefined;
-      const detail = input ? (getToolDetail(toolName, input) ?? "") : "";
-      const diffInfo = input ? extractToolDiff(toolName, input) : undefined;
-      this.builder.pushTool(toolName, detail, now, diffInfo?.diff, diffInfo?.filetype);
-    }
-  }
-
-  // ── Droid handler ──
-
-  /**
-   * Handle Droid stream-json events.
-   *
-   * Droid emits flat event types (not nested like Claude):
-   *   - {"type":"system","subtype":"init",...} — session init (skip)
-   *   - {"type":"message","role":"user",...} — echo of user input (skip)
-   *   - {"type":"message","role":"assistant","text":"...",...} — assistant response text
-   *   - {"type":"tool_call","toolName":"Read","parameters":{...},...} — tool invocation
-   *   - {"type":"tool_result","toolId":"Read","value":"...",...} — tool result (skip)
-   *   - {"type":"completion",...} — turn complete (handled by CompletionDetector, skip)
-   *   - {"type":"error","message":"...",...} — error
-   */
-  private dispatchDroidEvent(event: NDJSONEvent, now: number): void {
-    const data = event.data;
-    const type = data.type as string | undefined;
-
-    if (type === "message") {
-      const role = data.role as string | undefined;
-      if (role === "assistant") {
-        const text = data.text as string | undefined;
-        if (text && text.length > 0) {
-          this.builder.pushText(text, now);
-        }
-      }
-      // role === "user" — render as user message block (injected messages, interrupts)
-      if (role === "user") {
-        const text = data.text as string | undefined;
-        if (text && text.length > 0) {
-          this.builder.pushUserMessage(text, now);
-        }
-      }
-    } else if (type === "tool_call") {
-      const toolName = data.toolName as string | undefined;
-      if (toolName) {
-        const params = data.parameters as Record<string, unknown> | undefined;
-        const detail = params ? (getToolDetail(toolName, params) ?? "") : "";
-        const diffInfo = params ? extractToolDiff(toolName, params) : undefined;
-        this.builder.pushTool(toolName, detail, now, diffInfo?.diff, diffInfo?.filetype);
-      }
-    }
-    // system, tool_result, completion, error — skip for display purposes
-    // (completion is handled by CompletionDetector, errors are in stderr)
-  }
-
   // ── Fallback handler (unknown engine) ──
 
   private dispatchFallbackEvent(event: NDJSONEvent, now: number): void {
-    // Best-effort: try Claude format first (most common)
+    // Best-effort: try Claude format (most common)
     const data = event.data;
     const type = data.type as string | undefined;
 
@@ -292,15 +175,6 @@ export class StructuredEventParser {
     } else if (type === "result") {
       // Skip — same rationale as dispatchClaudeEvent: result text duplicates
       // content already streamed via assistant events.
-    } else if (type === "text") {
-      // OpenCode text format
-      const part = data.part as { text?: string } | undefined;
-      if (part?.text && part.text.length > 0) {
-        this.builder.pushText(part.text, now);
-      }
-    } else if (type === "tool_use") {
-      // Could be OpenCode tool_use
-      this.handleOpenCodeToolUse(data, now);
     }
     // Unknown format — silently skip
   }

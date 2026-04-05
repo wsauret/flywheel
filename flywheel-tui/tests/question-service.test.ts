@@ -1,11 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { EventBus } from "../src/events/event-bus";
+import { EventBus } from "../src/protocol/event-bus";
 import {
   QuestionService,
   QuestionRejectedError,
   type QuestionInfo,
   type QuestionAnswer,
-} from "../src/queue/question-service";
+} from "../src/workflows/queue/question-service";
 
 // ---------------------------------------------------------------------------
 // Helpers

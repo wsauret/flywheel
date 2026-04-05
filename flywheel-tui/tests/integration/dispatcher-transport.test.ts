@@ -16,23 +16,22 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BunProcessSpawner } from "../../src/worker/bun-spawner";
-import { autoDetectTransport, type ResolvedTransport } from "../../src/dispatcher/auto-detect";
+import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
+import { autoDetectTransport, type ResolvedTransport } from "../../src/workflows/dispatcher/auto-detect";
 import {
   createStepDispatcher,
   StepDispatcherError,
   type StepDispatcher,
   type StepDispatchContext,
-} from "../../src/queue/step-dispatcher";
-import { createQueue } from "../../src/queue/queue";
-import { EventBus, createFlywheelEmitter } from "../../src/events/event-bus";
-import { ensureSessionDir } from "../../src/config/paths";
-import type { Step, Queue } from "../../src/queue/types";
-import type { ProcessSpawner, SpawnResult } from "../../src/worker/spawner";
+} from "../../src/workflows/queue/step-dispatcher";
+import { createQueue } from "../../src/workflows/queue/queue";
+import { EventBus, createFlywheelEmitter } from "../../src/protocol/event-bus";
+import { ensureSessionDir } from "../../src/orchestration/config/paths";
+import type { Step, Queue } from "../../src/workflows/queue/types";
+import type { ProcessSpawner, SpawnResult } from "../../src/orchestration/worker/spawner";
 
 // Engine registration side effects
-import "../../src/engines/providers/claude";
-import "../../src/engines/providers/opencode";
+import "../../src/orchestration/engines/providers/claude";
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures

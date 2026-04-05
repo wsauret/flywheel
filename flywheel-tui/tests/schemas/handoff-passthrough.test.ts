@@ -3,8 +3,8 @@ import {
   WorkerHandoffSchema,
   WorkerHandoffBaseSchema,
 } from "../../src/protocol/handoff-schemas";
-import { EvaluatorVerdictSchema } from "../../src/evaluator/schemas";
-import { DispatcherDecisionHandoffSchema } from "../../src/dispatcher/schemas";
+import { EvaluatorVerdictSchema } from "../../src/workflows/evaluator/schemas";
+import { DispatcherDecisionHandoffSchema } from "../../src/workflows/dispatcher/schemas";
 
 // ---------------------------------------------------------------------------
 // Tests for passthrough behavior on incoming handoff schemas.

@@ -1,0 +1,72 @@
+/**
+ * Factory for creating an engine-aware evaluator transport.
+ *
+ * Uses the configured engine and model to create a SubprocessEvaluatorTransport
+ * with the correct engine-aware command building.
+ *
+ * The evaluator model falls back to: evaluator.model -> dispatcher.model -> engine default.
+ */
+
+import type { ProcessSpawner } from "../../orchestration/worker/spawner";
+import type { EvaluatorTransport } from "./transport";
+import { SubprocessEvaluatorTransport } from "./subprocess-transport";
+import { Log } from "../shared/log";
+
+const log = Log.create({ service: "evaluator-transport-factory" });
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface CreateEvaluatorTransportOptions {
+  spawner: ProcessSpawner;
+  /** Engine name — "claude" or "opencode". Defaults to "opencode". */
+  engineName?: string;
+  /** Evaluator model override — flows to --model CLI flag. Uses engine default when not set. */
+  evaluatorModel?: string;
+  /** Called with each decoded stdout chunk as it arrives from the evaluator subprocess. */
+  onStdout?: (chunk: string) => void;
+  /** Called with each decoded stderr chunk as it arrives from the evaluator subprocess. */
+  onStderr?: (chunk: string) => void;
+  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
+  logBaseDir?: string;
+  /** Flywheel session ID for session-scoped handoff paths. */
+  sessionId?: string;
+  /** Project base directory for path resolution. */
+  baseDir?: string;
+  /** Optional addendum appended to the evaluator system prompt (e.g. sprint adversarial instructions). */
+  systemPromptAddendum?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Create an engine-aware evaluator transport.
+ *
+ * Uses the SubprocessEvaluatorTransport with the configured engine and model,
+ * passing per-engine optimization flags (tools disabled, fast model, etc.).
+ */
+export async function createEvaluatorTransport(
+  options: CreateEvaluatorTransportOptions,
+): Promise<EvaluatorTransport> {
+  const engineName = options.engineName ?? "opencode";
+
+  log.info("creating evaluator transport", {
+    engine: engineName,
+    model: options.evaluatorModel ?? "(default)",
+  });
+
+  return new SubprocessEvaluatorTransport({
+    spawner: options.spawner,
+    engineName,
+    evaluatorModel: options.evaluatorModel,
+    onStdout: options.onStdout,
+    onStderr: options.onStderr,
+    logBaseDir: options.logBaseDir,
+    sessionId: options.sessionId,
+    baseDir: options.baseDir,
+    systemPromptAddendum: options.systemPromptAddendum,
+  });
+}

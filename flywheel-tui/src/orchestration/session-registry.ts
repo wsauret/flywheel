@@ -9,8 +9,10 @@
  */
 
 import { createWorkflowRunner, type WorkflowRunner, type WorkflowResult, type StepState } from "./workflow-runner"
+import { errorMessage } from "../workflows/shared/error-message"
 import type { AnyBlock } from "../tui/types"
-import type { Queue } from "../queue/types"
+import type { Queue } from "../workflows/queue/types"
+import type { ModelActivity } from "../tui/adapters/structured-output-builder"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +27,7 @@ export interface SessionEntry {
   cost: number
   startedAt: number
   status: "running" | "paused" | "completed" | "error"
+  modelActivity: ModelActivity
   result?: WorkflowResult
   errorMessage?: string
 }
@@ -55,6 +58,12 @@ export interface SessionRegistry {
 
   /** Subscribe to registry changes. Returns unsubscribe function. */
   subscribe(cb: () => void): () => void
+
+  /** Inject a user message into a running session's worker. */
+  injectMessage(sessionId: string, text: string): boolean
+
+  /** Cancel shutdown for a session so it continues after current step. */
+  cancelShutdown(sessionId: string): void
 
   /** Number of running sessions. */
   runningCount(): number
@@ -91,6 +100,7 @@ export function createSessionRegistry(): SessionRegistry {
       cost: 0,
       startedAt: Date.now(),
       status: "running",
+      modelActivity: "idle",
     }
 
     const runner = createWorkflowRunner({
@@ -103,6 +113,7 @@ export function createSessionRegistry(): SessionRegistry {
         onTokens: (n) => { entry.tokens = n; notify() },
         onCost: (n) => { entry.cost = n; notify() },
         onSessionName: (name) => { entry.description = name; notify() },
+        onModelActivity: (activity) => { entry.modelActivity = activity; notify() },
       },
       priorBlocks,
     })
@@ -120,7 +131,7 @@ export function createSessionRegistry(): SessionRegistry {
       },
       (err) => {
         entry.status = "error"
-        entry.errorMessage = err instanceof Error ? err.message : String(err)
+        entry.errorMessage = errorMessage(err)
         notify()
       },
     )
@@ -165,6 +176,22 @@ export function createSessionRegistry(): SessionRegistry {
     notify()
   }
 
+  function injectMessage(sessionId: string, text: string): boolean {
+    const entry = entries.get(sessionId)
+    if (!entry) return false
+    return entry.runner.injectMessage(text)
+  }
+
+  function cancelShutdown(sessionId: string): void {
+    const entry = entries.get(sessionId)
+    if (!entry) return
+    entry.runner.cancelShutdown()
+    if (entry.status === "paused") {
+      entry.status = "running"
+      notify()
+    }
+  }
+
   function subscribe(cb: () => void): () => void {
     subscribers.add(cb)
     return () => { subscribers.delete(cb) }
@@ -178,5 +205,5 @@ export function createSessionRegistry(): SessionRegistry {
     return count
   }
 
-  return { start, get, activeIds, pause, abort, remove, subscribe, runningCount }
+  return { start, get, activeIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount }
 }

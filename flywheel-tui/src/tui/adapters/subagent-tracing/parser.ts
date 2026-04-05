@@ -15,7 +15,12 @@ import {
   type SubagentEventCallback,
   type SubagentTraceParserOptions,
   type SubagentTraceSummary,
-} from './types';
+} from './types.js';
+import {
+  isTaskToolInvocation,
+  isToolResult,
+  isErrorMessage,
+} from './message-classifier.js';
 
 /**
  * Generates a unique ID for subagent tracking.
@@ -76,7 +81,7 @@ export class SubagentTraceParser {
     const detectedEvents: SubagentEvent[] = [];
 
     // Check for Task tool invocation (subagent spawn)
-    if (this.isTaskToolInvocation(message)) {
+    if (isTaskToolInvocation(message)) {
       const spawnEvent = this.handleTaskToolSpawn(message);
       if (spawnEvent) {
         detectedEvents.push(spawnEvent);
@@ -84,7 +89,7 @@ export class SubagentTraceParser {
     }
 
     // Check for tool result (potential subagent completion)
-    if (this.isToolResult(message)) {
+    if (isToolResult(message)) {
       const completionEvent = this.handleToolResult(message);
       if (completionEvent) {
         detectedEvents.push(completionEvent);
@@ -92,7 +97,7 @@ export class SubagentTraceParser {
     }
 
     // Check for subagent error patterns
-    if (this.isErrorMessage(message)) {
+    if (isErrorMessage(message)) {
       const errorEvent = this.handleErrorMessage(message);
       if (errorEvent) {
         detectedEvents.push(errorEvent);
@@ -115,65 +120,6 @@ export class SubagentTraceParser {
       allEvents.push(...events);
     }
     return allEvents;
-  }
-
-  /**
-   * Check if a message represents a Task tool invocation.
-   * Handles both "Task" (Claude) and "task" (OpenCode) tool names.
-   */
-  private isTaskToolInvocation(message: ClaudeJsonlMessage): boolean {
-    // Subagent invocations appear as tool_use with name "Task" or "Agent"
-    if (message.tool?.name && isSubagentToolName(message.tool.name)) {
-      return true;
-    }
-
-    // Also check raw message for tool_use content blocks
-    // Claude's format: {"type": "assistant", "message": {"content": [...]}}
-    const raw = message.raw;
-    const rawMessage = raw.message as { content?: unknown[] } | undefined;
-    const contentArray = Array.isArray(raw.content)
-      ? raw.content
-      : Array.isArray(rawMessage?.content)
-        ? rawMessage.content
-        : null;
-
-    if (raw.type === 'assistant' && contentArray) {
-      for (const block of contentArray) {
-        if (
-          typeof block === 'object' &&
-          block !== null &&
-          'type' in block &&
-          block.type === 'tool_use' &&
-          'name' in block &&
-          typeof block.name === 'string' &&
-          isSubagentToolName(block.name)
-        ) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * Check if a message represents a tool result.
-   */
-  private isToolResult(message: ClaudeJsonlMessage): boolean {
-    const raw = message.raw;
-    return raw.type === 'tool_result' || message.type === 'result';
-  }
-
-  /**
-   * Check if a message represents an error.
-   */
-  private isErrorMessage(message: ClaudeJsonlMessage): boolean {
-    const raw = message.raw;
-    return (
-      raw.type === 'error' ||
-      message.type === 'error' ||
-      (typeof raw.error === 'object' && raw.error !== null)
-    );
   }
 
   /**

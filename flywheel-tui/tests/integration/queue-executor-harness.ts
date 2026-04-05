@@ -13,11 +13,11 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createQueue, type Provenance } from "../../src/queue/queue";
-import { createQueuePersistence } from "../../src/queue/persistence";
-import { createContextAccumulator } from "../../src/queue/context-accumulator";
-import { createGuardrails, type GuardrailOptions } from "../../src/queue/guardrails";
-import { EventBus, createFlywheelEmitter, type FlywheelEmitter } from "../../src/events/event-bus";
+import { createQueue, type Provenance } from "../../src/workflows/queue/queue";
+import { createQueuePersistence } from "../../src/workflows/queue/persistence";
+import { createContextAccumulator } from "../../src/workflows/queue/context-accumulator";
+import { createGuardrails, type GuardrailOptions } from "../../src/workflows/queue/guardrails";
+import { EventBus, createFlywheelEmitter, type FlywheelEmitter } from "../../src/protocol/event-bus";
 import {
   createStepExecutor,
   type StepExecutorOptions,
@@ -32,11 +32,11 @@ import {
   type PersistFn,
   type StepContextAccumulator,
   type GateQuestionService,
-} from "../../src/queue/executor";
-import type { OnStepCompletedHook } from "../../src/queue/shared/hooks";
-import type { Step, StepType, Queue } from "../../src/queue/types";
-import type { FlywheelEvent } from "../../src/events/types";
-import { ensureSessionDir } from "../../src/config/paths";
+} from "../../src/workflows/queue/executor";
+import type { OnStepCompletedHook } from "../../src/workflows/queue/shared/hooks";
+import type { Step, StepType, Queue } from "../../src/workflows/queue/types";
+import type { FlywheelEvent } from "../../src/protocol/events";
+import { ensureSessionDir } from "../../src/orchestration/config/paths";
 
 // ---------------------------------------------------------------------------
 // Step factory — builds Step objects with sensible defaults
@@ -458,7 +458,7 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
   const persistAccumulatorState = opts.persistAccumulatorStateFn !== undefined
     ? opts.persistAccumulatorStateFn
     : ((state: unknown) => {
-        persistence.saveAccumulatorState(state as import("../../src/queue/context-accumulator").AccumulatorState);
+        persistence.saveAccumulatorState(state as import("../../src/workflows/queue/context-accumulator").AccumulatorState);
       });
 
   // Create executor

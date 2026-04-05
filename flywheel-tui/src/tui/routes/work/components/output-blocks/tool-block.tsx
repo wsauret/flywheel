@@ -14,6 +14,11 @@
  *
  * Diff rendering uses Claude Code's color-diff algorithm: word-level
  * highlighting within changed lines, colored backgrounds, line numbers.
+ *
+ * Diffs default to expanded and can be collapsed by clicking the header.
+ * Toggle avoids <Show> (which removes/re-adds DOM nodes and causes flicker)
+ * in favour of a conditional array inside <For>, keeping the container box
+ * stable in the layout tree.
  */
 
 import { createSignal, createMemo, Show, For } from "solid-js"
@@ -51,17 +56,6 @@ export function displayToolName(name: string): string {
   return name
 }
 
-/** Threshold: diffs with more lines than this start collapsed. */
-const COLLAPSE_THRESHOLD = 20
-
-function countDiffLines(diff: string): number {
-  let count = 0
-  for (let i = 0; i < diff.length; i++) {
-    if (diff[i] === "\n") count++
-  }
-  return count
-}
-
 const BOLD = createTextAttributes({ bold: true })
 
 export interface ToolBlockProps {
@@ -72,15 +66,9 @@ export function ToolBlock(props: ToolBlockProps) {
   const { theme } = useTheme()
   const name = () => displayToolName(props.block.name)
 
-  // Diff rendering state
+  // Diff rendering state — defaults open, user can collapse
   const hasDiff = () => !!props.block.diff
-  const lineCount = createMemo(() => props.block.diff ? countDiffLines(props.block.diff) : 0)
   const [expanded, setExpanded] = createSignal(true)
-
-  // Auto-collapse large diffs on first render
-  createMemo(() => {
-    if (lineCount() > COLLAPSE_THRESHOLD) setExpanded(false)
-  })
 
   // Map TUI theme → diff theme colors (RGBA passthrough, no conversion)
   const diffColors = createMemo((): DiffThemeColors => ({
@@ -124,17 +112,19 @@ export function ToolBlock(props: ToolBlockProps) {
     <Show when={hasDiff()} fallback={header()}>
       <box flexDirection="column">
         {header()}
-        <Show when={expanded()}>
-          <box flexDirection="column" paddingLeft={4} paddingRight={4}>
-            <For each={diffStyledLines()}>
-              {(line) => (
-                <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
-                  <text ref={(el: TextRenderable) => { el.content = line.styled }} />
-                </box>
-              )}
-            </For>
-          </box>
-        </Show>
+        {/* Keep the container box in the layout tree at all times so toggling
+            doesn't shift everything below (which causes the white-flash flicker).
+            Instead, swap between the full lines array and an empty array inside
+            the stable <For> — only the row nodes are added/removed. */}
+        <box flexDirection="column" paddingLeft={4} paddingRight={4}>
+          <For each={expanded() ? diffStyledLines() : []}>
+            {(line) => (
+              <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
+                <text ref={(el: TextRenderable) => { el.content = line.styled }} />
+              </box>
+            )}
+          </For>
+        </box>
       </box>
     </Show>
   )

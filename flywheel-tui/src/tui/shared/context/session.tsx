@@ -11,8 +11,8 @@
 
 import { createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper"
-import type { SessionManager, SessionSummary, SessionListResult } from "../../../session/manager"
-import type { WorktreeManager } from "../../../session/worktree-manager.js"
+import type { SessionManager, SessionSummary, SessionListResult } from "../../../orchestration/session/manager"
+import type { WorktreeManager } from "../../../orchestration/session/worktree-manager.js"
 
 
 // ---------------------------------------------------------------------------

@@ -18,21 +18,21 @@ import {
   createSessionManager,
   type SessionManager,
   type SessionManagerDeps,
-} from "../src/session/manager";
+} from "../src/orchestration/session/manager";
 import {
   readSession,
   deleteSessionWithCompanions,
   createSession,
-} from "../src/session/persistence";
-import { safeUpdateState } from "../src/session/safe-transition";
-import { createOutputPersistence } from "../src/session/output-persistence";
-import { createQueuePersistence } from "../src/queue/persistence";
+} from "../src/orchestration/session/persistence";
+import { safeUpdateState } from "../src/orchestration/session/safe-transition";
+import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
+import { createQueuePersistence } from "../src/workflows/queue/persistence";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
 } from "../src/orchestration/session-orchestrator";
-import { fromSnapshot } from "../src/session/output-schemas";
-import type { SessionLifecycleState } from "../src/session/state-machine";
+import { fromSnapshot } from "../src/orchestration/session/output-schemas";
+import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
 
 // ---------------------------------------------------------------------------
 // Test helpers

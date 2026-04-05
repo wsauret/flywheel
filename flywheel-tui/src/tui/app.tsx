@@ -12,20 +12,21 @@
 import { render } from "@opentui/solid"
 import { useRenderer } from "@opentui/solid"
 import { ErrorBoundary } from "solid-js"
-import { Log } from "../utils/log"
+import { Log } from "../workflows/shared/log"
 import type { ParentProps } from "solid-js"
 import { Clipboard } from "./utils/clipboard"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
 import { SessionProvider } from "@tui/shared/context/session"
-import { createSessionManager } from "../session/manager"
+import { createSessionManager } from "../orchestration/session/manager"
 import { ErrorComponent } from "./components/error-boundary"
-import { loadConfig } from "../config/loader"
-import { CONFIG_FILES } from "../config/paths"
+import { loadConfig } from "../orchestration/config/loader"
+import { CONFIG_FILES } from "../orchestration/config/paths"
 import * as fs from "node:fs"
 
 export interface TUIOptions {
   mode?: "dark" | "light"
+  projectCwd?: string
 }
 
 // Global exit function — set by ExitProvider inside the Solid tree
@@ -33,6 +34,7 @@ let globalExit: (() => void) | null = null
 
 export function startTUI(options: TUIOptions = {}): Promise<void> {
   const mode = options.mode ?? "dark"
+  const projectCwd = options.projectCwd ?? process.cwd()
 
   // Load config to get theme name (best-effort)
   let themeName: string | undefined
@@ -49,11 +51,10 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
       resolve()
     }
 
-    // Lazy import MinimalShell to ensure OpenTUI preload has registered
-    // Phase 3: uses minimal shell instead of full FlywheelShell
-    const { MinimalShell } = await import("./minimal/shell")
+    // Lazy import FlywheelShell to ensure OpenTUI preload has registered
+    const { FlywheelShell } = await import("./shell")
 
-    const manager = createSessionManager({ baseDir: process.cwd() })
+    const manager = createSessionManager({ baseDir: projectCwd })
 
     render(
       () => (
@@ -69,7 +70,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
                 <SessionProvider manager={manager}>
-                  <MinimalShell />
+                  <FlywheelShell />
                 </SessionProvider>
               </ThemeProvider>
             </ToastProvider>

@@ -22,19 +22,13 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "borderSubtle",
   // Accent
   "accent",
-  // Diff tokens
-  "diffAdded",
-  "diffRemoved",
-  "diffContext",
-  "diffHunkHeader",
-  "diffHighlightAdded",
-  "diffHighlightRemoved",
+  // Diff tokens (hardcoded in resolve.ts, not in JSON)
   "diffAddedBg",
   "diffRemovedBg",
-  "diffContextBg",
+  "diffHighlightAdded",
+  "diffHighlightRemoved",
+  // Diff token from JSON
   "diffLineNumber",
-  "diffAddedLineNumberBg",
-  "diffRemovedLineNumberBg",
   // Markdown tokens
   "markdownText",
   "markdownHeading",
@@ -95,14 +89,16 @@ describe("theme resolution", () => {
 
   it("resolved theme key count matches expected token count", () => {
     const theme = resolveTheme(flywheelTheme as any, "dark")
-    const resolvedKeys = Object.keys(theme)
-    expect(resolvedKeys.length).toBe(EXPECTED_KEYS.length)
+    const resolvedKeys = Object.keys(theme).sort()
+    const expectedSorted = [...EXPECTED_KEYS].sort()
+    expect(resolvedKeys).toEqual(expectedSorted)
   })
 
-  it("JSON theme keys match expected token list", () => {
+  it("JSON theme keys match expected token list (excluding hardcoded diff tokens)", () => {
     const jsonKeys = Object.keys(flywheelTheme.theme).sort()
-    const expectedKeys = [...EXPECTED_KEYS].sort()
-    expect(jsonKeys).toEqual(expectedKeys)
+    const hardcodedDiffKeys = new Set(["diffAddedBg", "diffRemovedBg", "diffHighlightAdded", "diffHighlightRemoved"])
+    const expectedJsonKeys = [...EXPECTED_KEYS].filter(k => !hardcodedDiffKeys.has(k)).sort()
+    expect(jsonKeys).toEqual(expectedJsonKeys)
   })
 
   it("accent resolves to valid RGBA in both modes", () => {

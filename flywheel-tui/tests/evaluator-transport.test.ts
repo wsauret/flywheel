@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import type { EvaluatorInput, EvaluatorResult } from "../src/evaluator/schemas";
-import type { ProcessSpawner, SpawnOptions } from "../src/worker/spawner";
-import { EvaluatorResultSchema } from "../src/evaluator/schemas";
+import type { EvaluatorInput, EvaluatorResult } from "../src/workflows/evaluator/schemas";
+import type { ProcessSpawner, SpawnOptions } from "../src/orchestration/worker/spawner";
+import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,13 +33,6 @@ function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput
 }
 
 /**
- * Wrap text as NDJSON output (mimicking opencode run --format json)
- */
-function wrapNDJSON(text: string): string {
-  return `{"type":"text","part":{"type":"text","text":${JSON.stringify(text)}}}\n`;
-}
-
-/**
  * Extract the handoff path from an evaluator prompt and write a verdict file.
  * The evaluator transport now reads verdicts from handoff files, not stdout.
  */
@@ -51,7 +44,7 @@ async function writeVerdictFromPrompt(prompt: string, verdict: Record<string, un
 }
 
 /**
- * Extract the prompt from spawner args (Claude: -p flag, OpenCode: stdin).
+ * Extract the prompt from spawner args (Claude: -p flag).
  */
 function extractPromptFromArgs(args: string[], options?: { stdin?: string }): string {
   const pIdx = args.indexOf("-p");
@@ -106,10 +99,10 @@ function createHandoffSpawner(
 // ---------------------------------------------------------------------------
 
 describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
-  let SubprocessEvaluatorTransport: typeof import("../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
+  let SubprocessEvaluatorTransport: typeof import("../src/workflows/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
 
   beforeEach(async () => {
-    const mod = await import("../src/evaluator/subprocess-transport");
+    const mod = await import("../src/workflows/evaluator/subprocess-transport");
     SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
   });
 
@@ -154,41 +147,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(spawnedArgs).not.toContain("--effort");
   });
 
-  it("spawns 'opencode' engine when engineName is 'opencode'", async () => {
-    let spawnedCommand = "";
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedCommand = command;
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedCommand).toBe("opencode");
-    expect(spawnedArgs).toContain("run");
-    expect(spawnedArgs).toContain("--format");
-    expect(spawnedArgs).toContain("json");
-  });
-
   it("uses engine registry for command building (not hardcoded)", async () => {
     let spawnedCommand = "";
     let spawnedArgs: string[] = [];
@@ -218,8 +176,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     });
     await transport.invoke(baseEvaluatorInput());
 
-    // Should use engine-built command, not hardcoded "opencode run --format json"
-    expect(spawnedCommand).not.toBe("opencode");
+    // Should use engine-built command
     expect(spawnedCommand).toBe("claude");
   });
 
@@ -335,68 +292,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(receivedStdin).toBeUndefined();
   });
 
-  it("OpenCode route passes --model flag", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedArgs).toContain("--model");
-  });
-
-  it("OpenCode route passes evaluator input via stdin", async () => {
-    let receivedStdin = "";
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        receivedStdin = options?.stdin ?? "";
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    // OpenCode uses stdin for prompt delivery
-    expect(receivedStdin).toBeTruthy();
-    expect(receivedStdin).toContain("verification agent");
-  });
-
   // -----------------------------------------------------------------------
   // Default model behavior
   // -----------------------------------------------------------------------
@@ -432,38 +327,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const modelIdx = spawnedArgs.indexOf("--model");
     expect(modelIdx).toBeGreaterThan(-1);
     expect(spawnedArgs[modelIdx + 1]).toBe("sonnet");
-  });
-
-  it("defaults to 'anthropic/claude-sonnet-4-6' model for opencode when not configured", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(modelIdx).toBeGreaterThan(-1);
-    expect(spawnedArgs[modelIdx + 1]).toBe("anthropic/claude-sonnet-4-6");
   });
 
   // -----------------------------------------------------------------------
@@ -503,39 +366,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(spawnedArgs[modelIdx + 1]).toBe("haiku");
   });
 
-  it("evaluatorModel flows through to --model CLI flag (opencode)", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      engineName: "opencode",
-      evaluatorModel: "anthropic/claude-haiku-4-5",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedArgs).toContain("--model");
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(spawnedArgs[modelIdx + 1]).toBe("anthropic/claude-haiku-4-5");
-  });
-
   // -----------------------------------------------------------------------
   // Engine binary not found → clear error
   // -----------------------------------------------------------------------
@@ -573,20 +403,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   // Output parsing: both engines
   // -----------------------------------------------------------------------
 
-  it("verdict read from handoff file (opencode route)", async () => {
-    const verdict = validEvaluatorResult({ reasoning: "Handoff-based verdict (opencode)" });
-    const { spawner } = createHandoffSpawner(verdict);
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      engineName: "opencode",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(evalResult.reasoning).toBe("Handoff-based verdict (opencode)");
-  });
-
   it("verdict read from handoff file (claude route)", async () => {
     const verdict = validEvaluatorResult({ reasoning: "Handoff-based verdict (claude)" });
     const { spawner } = createHandoffSpawner(verdict);
@@ -607,21 +423,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const transport = new SubprocessEvaluatorTransport({
       spawner,
       engineName: "claude",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    const evalResult = await transport.invoke(baseEvaluatorInput());
-
-    const parsed = EvaluatorResultSchema.safeParse(evalResult);
-    expect(parsed.success).toBe(true);
-  });
-
-  it("response validates against EvaluatorResultSchema (opencode route)", async () => {
-    const { spawner } = createHandoffSpawner(validEvaluatorResult());
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      engineName: "opencode",
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -693,32 +494,6 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(receivedTimeout).toBe(60_000);
   });
 
-  it("backward compat: no engineName defaults to legacy opencode behavior", async () => {
-    let spawnedCommand = "";
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedCommand = command;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: wrapNDJSON(JSON.stringify(validEvaluatorResult())),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    // Construct without engineName — should still work like before
-    const transport = new SubprocessEvaluatorTransport({ spawner: mockSpawner, sessionId: "test-session", baseDir: "/tmp/test" });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedCommand).toBe("opencode");
-  });
-
   it("applies env filter via createEnvFilter()", async () => {
     let receivedEnv: Record<string, string> | undefined;
 
@@ -771,7 +546,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
         if (pIdx > -1) {
           capturedPrompt = args[pIdx + 1];
         }
-        // For OpenCode, prompt is in stdin
+        // Fallback: prompt may be in stdin
         if (options?.stdin) {
           capturedPrompt = options.stdin;
         }
@@ -854,7 +629,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 // ---------------------------------------------------------------------------
 
 describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", () => {
-  let SubprocessEvaluatorTransport: typeof import("../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
+  let SubprocessEvaluatorTransport: typeof import("../src/workflows/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
 
   /** Helper to capture the prompt text from the -p flag (Claude engine route). */
   function createPromptCapturingSpawner(): { spawner: ProcessSpawner; getPrompt: () => string } {
@@ -884,7 +659,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
   }
 
   beforeEach(async () => {
-    const mod = await import("../src/evaluator/subprocess-transport");
+    const mod = await import("../src/workflows/evaluator/subprocess-transport");
     SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
   });
 

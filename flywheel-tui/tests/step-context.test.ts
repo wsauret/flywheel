@@ -12,7 +12,7 @@ import {
   STEP_CONTEXT_FILE,
   type StepContext,
   type StepHandoffSummary,
-} from "../src/queue/step-context";
+} from "../src/workflows/queue/step-context";
 
 // ---------------------------------------------------------------------------
 // Helpers

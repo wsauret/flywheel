@@ -3,11 +3,11 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
-import { createBudgetTracker } from "../src/session/budget-tracker";
-import { createSession, readSession } from "../src/session/persistence";
-import type { Session } from "../src/session/schemas";
-import type { BudgetLimits } from "../src/schemas";
-import type { NDJSONEvent } from "../src/worker/ndjson-parser";
+import { createBudgetTracker } from "../src/orchestration/session/budget-tracker";
+import { createSession, readSession } from "../src/orchestration/session/persistence";
+import type { Session } from "../src/orchestration/session/schemas";
+import type { BudgetLimits } from "../src/workflows/schemas";
+import type { NDJSONEvent } from "../src/orchestration/worker/ndjson-parser";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,64 +36,84 @@ function minimalSession(overrides?: Partial<Session>): Session {
   };
 }
 
-/** Build a step_finish NDJSONEvent with cost_usd and token counts. */
-function stepFinishEvent(costUsd: number, inputTokens = 1000, outputTokens = 500): NDJSONEvent {
+/** Build a Claude Code "result" NDJSONEvent with total_cost_usd and token counts. */
+function resultEvent(
+  costUsd: number,
+  inputTokens = 1000,
+  outputTokens = 500,
+  cacheRead = 0,
+  cacheCreation = 0,
+): NDJSONEvent {
   return {
-    type: "step_finish",
+    type: "result",
     data: {
-      type: "step_finish",
-      sessionID: "abc-123",
+      type: "result",
+      subtype: "success",
+      session_id: "abc-123",
+      total_cost_usd: costUsd,
       usage: {
         input_tokens: inputTokens,
         output_tokens: outputTokens,
-        cost_usd: costUsd,
+        cache_read_input_tokens: cacheRead,
+        cache_creation_input_tokens: cacheCreation,
       },
     },
     raw: JSON.stringify({
-      type: "step_finish",
-      sessionID: "abc-123",
-      usage: { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd },
-    }),
-  };
-}
-
-/** Build a step_finish event with cost but no token fields. */
-function stepFinishNoTokens(costUsd: number): NDJSONEvent {
-  return {
-    type: "step_finish",
-    data: {
-      type: "step_finish",
-      sessionID: "abc-123",
+      type: "result",
+      subtype: "success",
+      session_id: "abc-123",
+      total_cost_usd: costUsd,
       usage: {
-        cost_usd: costUsd,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cache_read_input_tokens: cacheRead,
+        cache_creation_input_tokens: cacheCreation,
       },
-    },
-    raw: JSON.stringify({
-      type: "step_finish",
-      sessionID: "abc-123",
-      usage: { cost_usd: costUsd },
     }),
   };
 }
 
-/** Build a step_finish event with no cost data. */
-function stepFinishNoCost(): NDJSONEvent {
+/** Build a result event with no usage field (cost only). */
+function resultNoUsage(costUsd: number): NDJSONEvent {
   return {
-    type: "step_finish",
+    type: "result",
     data: {
-      type: "step_finish",
-      sessionID: "abc-123",
+      type: "result",
+      subtype: "success",
+      session_id: "abc-123",
+      total_cost_usd: costUsd,
     },
-    raw: JSON.stringify({ type: "step_finish", sessionID: "abc-123" }),
+    raw: JSON.stringify({
+      type: "result",
+      subtype: "success",
+      session_id: "abc-123",
+      total_cost_usd: costUsd,
+    }),
   };
 }
 
-/** Build a non-step_finish event (text). */
-function textEvent(text: string): NDJSONEvent {
+/** Build a result event with no cost data (should be ignored). */
+function resultNoCost(): NDJSONEvent {
   return {
-    type: "text",
-    data: { type: "text", content: text },
-    raw: JSON.stringify({ type: "text", content: text }),
+    type: "result",
+    data: {
+      type: "result",
+      subtype: "success",
+      session_id: "abc-123",
+    },
+    raw: JSON.stringify({ type: "result", subtype: "success", session_id: "abc-123" }),
+  };
+}
+
+/** Build an assistant event (non-cost, should be ignored by budget tracker). */
+function assistantEvent(text: string): NDJSONEvent {
+  return {
+    type: "assistant",
+    data: {
+      type: "assistant",
+      message: { content: [{ type: "text", text }] },
+    },
+    raw: JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text }] } }),
   };
 }
 
@@ -125,59 +145,71 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Cost parsing from step_finish events
+// Cost parsing from result events
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — cost parsing", () => {
-  it("extracts cost_usd from a step_finish event", () => {
+  it("extracts total_cost_usd from a result event", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.025));
+    tracker.handleEvent(resultEvent(0.025));
 
     expect(tracker.getTotalCost()).toBe(0.025);
     tracker.dispose();
   });
 
-  it("ignores non-step_finish events", () => {
+  it("ignores non-result events (assistant, system, etc.)", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(textEvent("hello world"));
+    tracker.handleEvent(assistantEvent("hello world"));
 
     expect(tracker.getTotalCost()).toBe(0);
     tracker.dispose();
   });
 
-  it("ignores step_finish events without usage/cost data", () => {
+  it("ignores result events without total_cost_usd", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishNoCost());
+    tracker.handleEvent(resultNoCost());
 
     expect(tracker.getTotalCost()).toBe(0);
     tracker.dispose();
   });
 
-  it("ignores step_finish events with invalid cost (non-number)", () => {
+  it("ignores result events with invalid cost (non-number)", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
     const event: NDJSONEvent = {
-      type: "step_finish",
+      type: "result",
       data: {
-        type: "step_finish",
-        usage: { cost_usd: "not-a-number" },
+        type: "result",
+        total_cost_usd: "not-a-number",
       },
       raw: "{}",
     };
     tracker.handleEvent(event);
 
     expect(tracker.getTotalCost()).toBe(0);
+    tracker.dispose();
+  });
+
+  it("tracks cost when usage field is absent", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    tracker.handleEvent(resultNoUsage(0.01));
+
+    expect(tracker.getTotalCost()).toBe(0.01);
+    expect(tracker.getTokensUsed()).toBe(0);
     tracker.dispose();
   });
 });
@@ -187,14 +219,14 @@ describe("BudgetTracker — cost parsing", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — accumulation", () => {
-  it("accumulates cost across multiple step_finish events", () => {
+  it("accumulates cost across multiple result events", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.025));
-    tracker.handleEvent(stepFinishEvent(0.050));
-    tracker.handleEvent(stepFinishEvent(0.010));
+    tracker.handleEvent(resultEvent(0.025));
+    tracker.handleEvent(resultEvent(0.050));
+    tracker.handleEvent(resultEvent(0.010));
 
     expect(tracker.getTotalCost()).toBeCloseTo(0.085, 10);
     tracker.dispose();
@@ -205,10 +237,10 @@ describe("BudgetTracker — accumulation", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.01));
-    tracker.handleEvent(textEvent("some output"));
-    tracker.handleEvent(stepFinishNoCost());
-    tracker.handleEvent(stepFinishEvent(0.02));
+    tracker.handleEvent(resultEvent(0.01));
+    tracker.handleEvent(assistantEvent("some output"));
+    tracker.handleEvent(resultNoCost());
+    tracker.handleEvent(resultEvent(0.02));
 
     expect(tracker.getTotalCost()).toBeCloseTo(0.03, 10);
     tracker.dispose();
@@ -220,24 +252,24 @@ describe("BudgetTracker — accumulation", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — token tracking", () => {
-  it("accumulates input_tokens + output_tokens from step_finish events", () => {
+  it("accumulates input_tokens + output_tokens from result events", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.01, 1000, 500));
-    tracker.handleEvent(stepFinishEvent(0.02, 2000, 800));
+    tracker.handleEvent(resultEvent(0.01, 1000, 500));
+    tracker.handleEvent(resultEvent(0.02, 2000, 800));
 
     expect(tracker.getTokensUsed()).toBe(4300); // (1000+500) + (2000+800)
     tracker.dispose();
   });
 
-  it("returns 0 tokens when token fields are absent in NDJSON", () => {
+  it("returns 0 tokens when usage field is absent", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishNoTokens(0.01));
+    tracker.handleEvent(resultNoUsage(0.01));
 
     expect(tracker.getTokensUsed()).toBe(0);
     expect(tracker.getTotalCost()).toBe(0.01); // cost still tracked
@@ -249,11 +281,51 @@ describe("BudgetTracker — token tracking", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.01, 500, 200)); // 700 tokens
-    tracker.handleEvent(stepFinishNoTokens(0.005));         // 0 tokens
-    tracker.handleEvent(stepFinishEvent(0.02, 300, 100));  // 400 tokens
+    tracker.handleEvent(resultEvent(0.01, 500, 200)); // 700 tokens
+    tracker.handleEvent(resultNoUsage(0.005));          // 0 tokens
+    tracker.handleEvent(resultEvent(0.02, 300, 100));  // 400 tokens
 
     expect(tracker.getTokensUsed()).toBe(1100);
+    tracker.dispose();
+  });
+
+  it("excludes cache_read_input_tokens from token budget counter", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // 1000 input + 500 output + 50000 cache reads (cheap, excluded)
+    tracker.handleEvent(resultEvent(0.05, 1000, 500, 50_000, 0));
+
+    // Only input + output count toward the token budget
+    expect(tracker.getTokensUsed()).toBe(1500);
+    tracker.dispose();
+  });
+
+  it("excludes cache_creation_input_tokens from token budget counter", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // 1000 input + 500 output + 5000 cache creation tokens (excluded)
+    tracker.handleEvent(resultEvent(0.05, 1000, 500, 0, 5_000));
+
+    expect(tracker.getTokensUsed()).toBe(1500);
+    tracker.dispose();
+  });
+
+  it("total_cost_usd is accurate even when cache tokens are present", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // Claude Code already accounts for cache pricing in total_cost_usd
+    tracker.handleEvent(resultEvent(0.031, 1000, 500, 15_000, 2_000));
+
+    // Cost should be exactly what Claude Code reported
+    expect(tracker.getTotalCost()).toBeCloseTo(0.031, 10);
+    // Token budget reflects only non-cache tokens
+    expect(tracker.getTokensUsed()).toBe(1500);
     tracker.dispose();
   });
 });
@@ -291,7 +363,7 @@ describe("BudgetTracker — debounced persistence", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 50 });
 
-    tracker.handleEvent(stepFinishEvent(0.025));
+    tracker.handleEvent(resultEvent(0.025));
 
     // Should NOT have written yet (debounce hasn't fired)
     const session = readSession(sessionId, baseDir);
@@ -304,7 +376,7 @@ describe("BudgetTracker — debounced persistence", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 10 });
 
-    tracker.handleEvent(stepFinishEvent(0.025));
+    tracker.handleEvent(resultEvent(0.025));
 
     // Wait for debounce to fire
     await wait(50);
@@ -321,9 +393,9 @@ describe("BudgetTracker — debounced persistence", () => {
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 30 });
 
     // Fire 3 events quickly — should coalesce into one debounced write
-    tracker.handleEvent(stepFinishEvent(0.01));
-    tracker.handleEvent(stepFinishEvent(0.02));
-    tracker.handleEvent(stepFinishEvent(0.03));
+    tracker.handleEvent(resultEvent(0.01));
+    tracker.handleEvent(resultEvent(0.02));
+    tracker.handleEvent(resultEvent(0.03));
 
     // Wait for debounce to fire
     await wait(80);
@@ -340,14 +412,14 @@ describe("BudgetTracker — debounced persistence", () => {
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 10 });
 
     // First batch
-    tracker.handleEvent(stepFinishEvent(0.01));
+    tracker.handleEvent(resultEvent(0.01));
     await wait(50);
 
     const session1 = readSession(sessionId, baseDir);
     expect(session1!.totalCost).toBeCloseTo(0.01, 10);
 
     // Second batch
-    tracker.handleEvent(stepFinishEvent(0.02));
+    tracker.handleEvent(resultEvent(0.02));
     await wait(50);
 
     const session2 = readSession(sessionId, baseDir);
@@ -366,7 +438,7 @@ describe("BudgetTracker — flush", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    tracker.handleEvent(stepFinishEvent(0.05, 2000, 1000));
+    tracker.handleEvent(resultEvent(0.05, 2000, 1000));
     tracker.incrementInvocations();
     tracker.flush();
 
@@ -385,8 +457,8 @@ describe("BudgetTracker — flush", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    tracker.handleEvent(stepFinishEvent(0.10, 5000, 2000));
-    tracker.handleEvent(stepFinishEvent(0.25, 8000, 3000));
+    tracker.handleEvent(resultEvent(0.10, 5000, 2000));
+    tracker.handleEvent(resultEvent(0.25, 8000, 3000));
     tracker.incrementInvocations();
     tracker.incrementInvocations();
     tracker.flush();
@@ -406,6 +478,21 @@ describe("BudgetTracker — flush", () => {
       cost_usd: expect.closeTo(0.35, 10),
     });
 
+    tracker.dispose();
+  });
+
+  it("cache tokens are excluded from persisted tokens_used", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
+
+    // 2000 input + 1000 output + 50000 cache reads + 5000 cache creation
+    tracker.handleEvent(resultEvent(0.05, 2000, 1000, 50_000, 5_000));
+    tracker.flush();
+
+    const filePath = path.join(baseDir, ".flywheel", "sessions", sessionId, "session.json");
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    expect(raw.budgetUsage.tokens_used).toBe(3000); // only 2000+1000
     tracker.dispose();
   });
 
@@ -432,7 +519,7 @@ describe("BudgetTracker — flush", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 30 });
 
-    tracker.handleEvent(stepFinishEvent(0.01));
+    tracker.handleEvent(resultEvent(0.01));
     tracker.flush();
 
     // Verify the write happened immediately
@@ -458,7 +545,7 @@ describe("BudgetTracker — dispose", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    tracker.handleEvent(stepFinishEvent(0.07));
+    tracker.handleEvent(resultEvent(0.07));
     tracker.dispose();
 
     const session = readSession(sessionId, baseDir);
@@ -470,7 +557,7 @@ describe("BudgetTracker — dispose", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    tracker.handleEvent(stepFinishEvent(0.01));
+    tracker.handleEvent(resultEvent(0.01));
     tracker.dispose();
     tracker.dispose(); // should not throw
 
@@ -489,8 +576,8 @@ describe("BudgetTracker — session summary", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    tracker.handleEvent(stepFinishEvent(0.10, 3000, 1000));
-    tracker.handleEvent(stepFinishEvent(0.25, 6000, 2000));
+    tracker.handleEvent(resultEvent(0.10, 3000, 1000));
+    tracker.handleEvent(resultEvent(0.25, 6000, 2000));
     tracker.incrementInvocations();
     tracker.flush();
 
@@ -524,7 +611,7 @@ describe("BudgetTracker — session summary", () => {
     );
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    tracker.handleEvent(stepFinishEvent(0.05));
+    tracker.handleEvent(resultEvent(0.05));
     tracker.flush();
 
     const session = readSession(sessionId, baseDir);
@@ -584,15 +671,30 @@ describe("BudgetTracker — isExhausted", () => {
     // null max_tokens = unlimited
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: null }))).toBe(false);
 
-    tracker.handleEvent(stepFinishEvent(0.01, 500, 300)); // 800 tokens
+    tracker.handleEvent(resultEvent(0.01, 500, 300)); // 800 tokens
 
     // Token limit not reached
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(false);
 
-    tracker.handleEvent(stepFinishEvent(0.01, 100, 200)); // +300 = 1100 total
+    tracker.handleEvent(resultEvent(0.01, 100, 200)); // +300 = 1100 total
 
     // Token limit exceeded
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(true);
+
+    tracker.dispose();
+  });
+
+  it("token limit is not prematurely exhausted by cache tokens", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // 500 input + 300 output = 800 real tokens, but 50000 cache reads
+    // Without cache exclusion this would exhaust a 1000-token limit immediately
+    tracker.handleEvent(resultEvent(0.01, 500, 300, 50_000, 0));
+
+    expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(false);
+    expect(tracker.getTokensUsed()).toBe(800);
 
     tracker.dispose();
   });
@@ -646,7 +748,7 @@ describe("BudgetTracker — isExhausted", () => {
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
     tracker.incrementInvocations();
-    tracker.handleEvent(stepFinishEvent(0.50, 10000, 5000));
+    tracker.handleEvent(resultEvent(0.50, 10000, 5000));
 
     expect(tracker.isExhausted(unlimitedLimits())).toBe(false);
     tracker.dispose();
@@ -716,11 +818,24 @@ describe("BudgetTracker — getBudgetStatus", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.01, 1000, 500)); // 1500 tokens
+    tracker.handleEvent(resultEvent(0.01, 1000, 500)); // 1500 tokens
 
     const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: 10000 }));
     expect(status.token_budget_remaining).toBe(8500);
 
+    tracker.dispose();
+  });
+
+  it("token_budget_remaining is not reduced by cache tokens", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // 1000 input + 500 output + 50000 cache reads (excluded)
+    tracker.handleEvent(resultEvent(0.05, 1000, 500, 50_000, 0));
+
+    const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: 10000 }));
+    expect(status.token_budget_remaining).toBe(8500); // only 1500 consumed
     tracker.dispose();
   });
 
@@ -729,7 +844,7 @@ describe("BudgetTracker — getBudgetStatus", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    tracker.handleEvent(stepFinishEvent(0.01, 5000, 3000)); // 8000 tokens
+    tracker.handleEvent(resultEvent(0.01, 5000, 3000)); // 8000 tokens
 
     const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: 5000 }));
     expect(status.token_budget_remaining).toBe(0);
@@ -895,7 +1010,7 @@ describe("BudgetTracker — budget event emission", () => {
       workflowId: "wf-token-test",
     });
 
-    tracker.handleEvent(stepFinishEvent(0.01, 5000, 3000)); // 8000 tokens
+    tracker.handleEvent(resultEvent(0.01, 5000, 3000)); // 8000 tokens
 
     const limits = unlimitedLimits({ max_tokens: 5000 });
     expect(tracker.isExhausted(limits)).toBe(true);

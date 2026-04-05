@@ -20,9 +20,9 @@ import {
   resetStepCounter,
   type Harness,
 } from "./helpers/queue-executor-harness";
-import type { OnStepCompletedHook } from "../src/queue/shared/hooks";
-import { removeStep } from "../src/queue/queue";
-import type { Step } from "../src/queue/types";
+import type { OnStepCompletedHook } from "../src/workflows/queue/shared/hooks";
+import { removeStep } from "../src/workflows/queue/queue";
+import type { Step } from "../src/workflows/queue/types";
 
 /**
  * Build a Step literal without touching the shared counter.

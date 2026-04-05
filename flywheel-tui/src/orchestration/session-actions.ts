@@ -5,13 +5,13 @@
  * view, resume, archive, delete. Pure functions with injected dependencies.
  */
 
-import { createOutputPersistence } from "../session/output-persistence"
-import { createQueuePersistence } from "../queue/persistence"
-import { readSession, deleteSessionWithCompanions } from "../session/persistence"
-import { fromSnapshot } from "../session/output-schemas"
-import { isResumable } from "../session/state-machine"
+import { createOutputPersistence } from "./session/output-persistence"
+import { createQueuePersistence } from "../workflows/queue/persistence"
+import { readSession, deleteSessionWithCompanions } from "./session/persistence"
+import { fromSnapshot } from "./session/output-schemas"
+import { isResumable } from "./session/state-machine"
 import { createSessionOrchestrator } from "./session-orchestrator"
-import type { SessionManager, SessionSummary } from "../session/manager"
+import type { SessionManager, SessionSummary } from "./session/manager"
 import type { AnyBlock } from "../tui/types"
 
 // ---------------------------------------------------------------------------
@@ -22,6 +22,7 @@ export interface SessionActionDeps {
   manager: SessionManager
   refreshList: () => void
   activeSessionId: () => string | undefined
+  projectCwd?: string
 }
 
 export interface ResumeData {
@@ -35,9 +36,9 @@ export interface ResumeData {
 // ---------------------------------------------------------------------------
 
 /** Load a session's persisted output blocks for viewing. */
-export async function loadSessionOutput(sessionId: string): Promise<AnyBlock[]> {
-  const projectCwd = process.cwd()
-  const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+export async function loadSessionOutput(sessionId: string, projectCwd?: string): Promise<AnyBlock[]> {
+  const cwd = projectCwd ?? process.cwd()
+  const persistence = createOutputPersistence({ sessionId, baseDir: cwd })
   return (await persistence.load()) as AnyBlock[]
 }
 
@@ -46,7 +47,7 @@ export async function loadResumeData(
   sessionId: string,
   deps: SessionActionDeps,
 ): Promise<ResumeData | null> {
-  const projectCwd = process.cwd()
+  const projectCwd = deps.projectCwd ?? process.cwd()
   const orchestrator = createSessionOrchestrator({
     readSession: (id) => readSession(id, projectCwd),
     createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
@@ -83,7 +84,7 @@ export function archiveSession(sessionId: string, deps: SessionActionDeps): void
 
 /** Delete a session via the orchestrator (trash → cleanup → delete → refresh). */
 export function deleteSession(sessionId: string, deps: SessionActionDeps): void {
-  const projectCwd = process.cwd()
+  const projectCwd = deps.projectCwd ?? process.cwd()
   const orchestrator = createSessionOrchestrator({
     readSession: (id) => readSession(id, projectCwd),
     createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),

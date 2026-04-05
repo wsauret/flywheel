@@ -14,8 +14,8 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import type { Queue, Step } from "../src/queue/types";
-import { createQueuePersistence } from "../src/queue/persistence";
+import type { Queue, Step } from "../src/workflows/queue/types";
+import { createQueuePersistence } from "../src/workflows/queue/persistence";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -269,11 +269,11 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     expect(loaded).toBeNull();
   });
 
-  it("load returns null on invalid schema (missing required field)", async () => {
+  it("load returns null when steps field is missing", async () => {
     const sessionId = "test-bad-schema";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    // Write valid JSON but invalid queue structure (directory-per-session layout)
+    // Write valid JSON but no steps array
     const sessionDir = path.join(
       tmpDir,
       ".flywheel",
@@ -281,14 +281,14 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
       sessionId,
     );
     fs.mkdirSync(sessionDir, { recursive: true });
-    fs.writeFileSync(path.join(sessionDir, "queue.json"), JSON.stringify({ steps: [] }), "utf-8");
+    fs.writeFileSync(path.join(sessionDir, "queue.json"), JSON.stringify({ cursor: 0 }), "utf-8");
 
     const loaded = await persistence.load();
     expect(loaded).toBeNull();
   });
 
-  it("load validates step types via Zod schema", async () => {
-    const sessionId = "test-invalid-type";
+  it("load returns null when steps is not an array", async () => {
+    const sessionId = "test-invalid-steps";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
     const sessionDir = path.join(
@@ -300,12 +300,7 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     fs.mkdirSync(sessionDir, { recursive: true });
     fs.writeFileSync(
       path.join(sessionDir, "queue.json"),
-      JSON.stringify({
-        steps: [{ id: "x", type: "INVALID_TYPE", title: "Bad", status: "pending" }],
-        cursor: 0,
-        status: "idle",
-        mutationLog: [],
-      }),
+      JSON.stringify({ steps: "not-an-array", cursor: 0, status: "idle", mutationLog: [] }),
       "utf-8",
     );
 

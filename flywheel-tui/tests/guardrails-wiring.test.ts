@@ -1,9 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { createStepExecutor, type StepExecutorOptions } from "../src/queue/executor";
-import { createGuardrails, type Guardrails } from "../src/queue/guardrails";
-import { createQueue } from "../src/queue/queue";
-import type { Step, Queue } from "../src/queue/types";
-import type { FlywheelEmitter } from "../src/events/event-bus";
+import { createStepExecutor, type StepExecutorOptions } from "../src/workflows/queue/executor";
+import { createGuardrails, type Guardrails } from "../src/workflows/queue/guardrails";
+import { createQueue } from "../src/workflows/queue/queue";
+import type { Step, Queue } from "../src/workflows/queue/types";
+import type { FlywheelEmitter } from "../src/protocol/event-bus";
 
 // ---------------------------------------------------------------------------
 // Helpers

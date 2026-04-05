@@ -4,7 +4,7 @@ import {
   type SessionLifecycleState,
   VALID_TRANSITIONS,
   isValidTransition,
-} from "../src/session/state-machine";
+} from "../src/orchestration/session/state-machine";
 
 // ---------------------------------------------------------------------------
 // SessionLifecycleStateSchema (z.enum — boundary type)

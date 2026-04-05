@@ -8,7 +8,7 @@ import {
   HandoffMissingError,
   HandoffInvalidError,
   HandoffReadTimeoutError,
-} from "../../src/queue/shared/handoff-reader";
+} from "../../src/workflows/queue/shared/handoff-reader";
 import { WorkerHandoffSchema } from "../../src/protocol/handoff-schemas";
 
 let tmpDir: string;

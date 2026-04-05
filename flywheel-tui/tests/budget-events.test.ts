@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from "bun:test"
-import { EventBus } from "../src/events/event-bus"
+import { EventBus } from "../src/protocol/event-bus"
 import { HeadlessAdapter } from "./helpers/headless-adapter"
 import type {
   FlywheelEvent,
   BudgetWarning,
   BudgetExhausted,
-} from "../src/events/types"
+} from "../src/protocol/events"
 
 const ts = "2026-01-01T00:00:00Z"
 const wfId = "wf-budget-1"

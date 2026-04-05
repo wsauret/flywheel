@@ -19,9 +19,9 @@ import * as os from "node:os";
 import {
   createSessionManager,
   type SessionManagerDeps,
-} from "../src/session/manager";
-import { readSession, updateSession } from "../src/session/persistence";
-import { createOutputPersistence } from "../src/session/output-persistence";
+} from "../src/orchestration/session/manager";
+import { readSession, updateSession } from "../src/orchestration/session/persistence";
+import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

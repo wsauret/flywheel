@@ -3,8 +3,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { resolveSessionHandoffsDir } from "../src/config/paths";
-import { BunProcessSpawner } from "../src/worker/bun-spawner";
+import { resolveSessionHandoffsDir } from "../src/orchestration/config/paths";
+import { BunProcessSpawner } from "../src/orchestration/worker/bun-spawner";
 
 describe("BunProcessSpawner", () => {
   afterEach(() => {
@@ -36,7 +36,7 @@ describe("BunProcessSpawner", () => {
     ].join("\n");
 
     const spawner = new BunProcessSpawner({ timeoutMinutes: 1 });
-    let stdinHandle: import("../src/worker/spawner").StdinHandle | undefined;
+    let stdinHandle: import("../src/orchestration/worker/spawner").StdinHandle | undefined;
     let turnCompleteCalls = 0;
 
     const spawnResult = await spawner.spawn(process.execPath, ["-e", script], {
@@ -89,7 +89,7 @@ describe("BunProcessSpawner", () => {
     ].join("\n");
 
     const spawner = new BunProcessSpawner({ timeoutMinutes: 1 });
-    let stdinHandle: import("../src/worker/spawner").StdinHandle | undefined;
+    let stdinHandle: import("../src/orchestration/worker/spawner").StdinHandle | undefined;
     let turnCompleteCalls = 0;
 
     const spawnResult = await spawner.spawn(process.execPath, ["-e", script], {

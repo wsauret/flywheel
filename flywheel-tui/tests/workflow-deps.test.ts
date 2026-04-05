@@ -1,8 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { prepareWorkflowDeps } from "../src/engines/workflow-deps";
-import type { FlywheelConfig } from "../src/config/loader";
-import type { Engine } from "../src/engines/core/types";
-import type { WorkflowDepsOverrides } from "../src/engines/workflow-deps";
+import { prepareWorkflowDeps } from "../src/orchestration/engines/workflow-deps";
+import type { FlywheelConfig } from "../src/orchestration/config/loader";
+import type { Engine } from "../src/orchestration/engines/core/types";
+import type { WorkflowDepsOverrides } from "../src/orchestration/engines/workflow-deps";
 
 // ---------------------------------------------------------------------------
 // Test helpers

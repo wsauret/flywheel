@@ -11,9 +11,9 @@ import {
   replaceStep,
   advanceCursor,
   isFinished,
-} from "../src/queue/queue";
+} from "../src/workflows/queue/queue";
 
-import type { Step, Queue } from "../src/queue/types";
+import type { Step, Queue } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

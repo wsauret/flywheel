@@ -44,6 +44,8 @@ export interface OutputWindowProps {
   availableWidth?: number
   currentStep?: CurrentStepInfo | null
   isInterrupted?: boolean
+  /** Seconds since the last output block arrived. Used to show "Thinking... Xs" while the model is silent. */
+  thinkingElapsed?: number
 }
 
 export function OutputWindow(props: OutputWindowProps) {
@@ -95,6 +97,8 @@ export function OutputWindow(props: OutputWindowProps) {
 
   const activityPhrase = () => {
     if (props.approvalPending) return "Waiting for approval..."
+    const elapsed = props.thinkingElapsed ?? 0
+    if (isRunning() && hasContent() && elapsed >= 1) return `Thinking... ${elapsed}s`
     return null
   }
 
@@ -232,7 +236,6 @@ export function OutputWindow(props: OutputWindowProps) {
             }}
             verticalScrollbarOptions={{
               paddingLeft: 1,
-              visible: true,
               trackOptions: {
                 foregroundColor: themeCtx.theme.border,
                 backgroundColor: themeCtx.theme.backgroundElement,

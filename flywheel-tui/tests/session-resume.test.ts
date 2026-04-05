@@ -18,12 +18,12 @@ import {
   createSessionManager,
   type SessionManager,
   type SessionManagerDeps,
-} from "../src/session/manager";
-import { readSession } from "../src/session/persistence";
-import { safeUpdateState } from "../src/session/safe-transition";
-import { createOutputPersistence } from "../src/session/output-persistence";
-import { createQueuePersistence } from "../src/queue/persistence";
-import { createBudgetTracker } from "../src/session/budget-tracker";
+} from "../src/orchestration/session/manager";
+import { readSession } from "../src/orchestration/session/persistence";
+import { safeUpdateState } from "../src/orchestration/session/safe-transition";
+import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
+import { createQueuePersistence } from "../src/workflows/queue/persistence";
+import { createBudgetTracker } from "../src/orchestration/session/budget-tracker";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
@@ -32,9 +32,9 @@ import {
   toSnapshot,
   fromSnapshot,
   type OutputSnapshot,
-} from "../src/session/output-schemas";
-import { isResumable } from "../src/session/state-machine";
-import type { Queue } from "../src/queue/types";
+} from "../src/orchestration/session/output-schemas";
+import { isResumable } from "../src/orchestration/session/state-machine";
+import type { Queue } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -390,25 +390,19 @@ describe("budget continuity across session resume", () => {
       debounceMs: 0, // Immediate writes for testing
     });
 
-    // Simulate step_finish events
+    // Simulate Claude result events (NDJSON format: type + data envelope)
     tracker1.handleEvent({
-      type: "step_finish",
+      type: "result",
       data: {
-        usage: {
-          cost_usd: 0.05,
-          input_tokens: 1000,
-          output_tokens: 500,
-        },
+        total_cost_usd: 0.05,
+        usage: { input_tokens: 1000, output_tokens: 500 },
       },
     });
     tracker1.handleEvent({
-      type: "step_finish",
+      type: "result",
       data: {
-        usage: {
-          cost_usd: 0.03,
-          input_tokens: 800,
-          output_tokens: 300,
-        },
+        total_cost_usd: 0.03,
+        usage: { input_tokens: 800, output_tokens: 300 },
       },
     });
     tracker1.incrementInvocations();
@@ -440,13 +434,10 @@ describe("budget continuity across session resume", () => {
 
     // Add more usage in the resumed session
     tracker2.handleEvent({
-      type: "step_finish",
+      type: "result",
       data: {
-        usage: {
-          cost_usd: 0.02,
-          input_tokens: 400,
-          output_tokens: 200,
-        },
+        total_cost_usd: 0.02,
+        usage: { input_tokens: 400, output_tokens: 200 },
       },
     });
     tracker2.incrementInvocations();

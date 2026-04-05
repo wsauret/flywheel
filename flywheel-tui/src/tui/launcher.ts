@@ -16,7 +16,7 @@
  * to ensure the plugin is registered before any JSX files are parsed.
  */
 
-import { Log } from "../utils/log"
+import { Log } from "../workflows/shared/log"
 
 const log = Log.create({ service: "launcher" })
 

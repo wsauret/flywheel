@@ -9,10 +9,10 @@
 import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { randomUUID } from "crypto";
 
-import { createQueue, transitionStep, advanceCursor } from "../src/queue/queue";
-import type { Step, Queue } from "../src/queue/types";
-import type { FlywheelEmitter } from "../src/events/event-bus";
-import type { FlywheelEvent } from "../src/events/types";
+import { createQueue, transitionStep, advanceCursor } from "../src/workflows/queue/queue";
+import type { Step, Queue } from "../src/workflows/queue/types";
+import type { FlywheelEmitter } from "../src/protocol/event-bus";
+import type { FlywheelEvent } from "../src/protocol/events";
 import {
   createStepExecutor,
   type StepExecutorOptions,
@@ -25,7 +25,7 @@ import {
   type PersistFn,
   type StepContextAccumulator,
   type GateQuestionService,
-} from "../src/queue/executor";
+} from "../src/workflows/queue/executor";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1640,7 +1640,7 @@ describe("VAL-EXEC-010: onStepCompleted hook called after step completion", () =
     const handoffData = { summary: "implemented the feature", tests: 5 };
     const handoffReader: HandoffReaderFn = async () => handoffData;
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, status, _queue, handoff) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, status, _queue, handoff) => {
       hookCalls.push({ stepId: step.id, status, handoff });
       return { continueExecution: true };
     };
@@ -1663,7 +1663,7 @@ describe("VAL-EXEC-010: onStepCompleted hook called after step completion", () =
   test("hook called with failed status and null handoff on worker crash", async () => {
     const hookCalls: Array<{ stepId: string; status: string; handoff: unknown }> = [];
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, status, _queue, handoff) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, status, _queue, handoff) => {
       hookCalls.push({ stepId: step.id, status, handoff });
       return { continueExecution: false };
     };
@@ -1806,25 +1806,22 @@ describe("VAL-EXEC-012: HITL field on steps enables user interaction", () => {
 
 // ===========================================================================
 // VAL-EXEC-013: Workflow templates expand into visible granular steps
+// (Advanced template tests moved to tests-legacy/ — only work template remains)
 // ===========================================================================
 
 describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", () => {
-  test("plan-work-review template produces 6+ individual steps (fix step injected dynamically)", async () => {
-    const { buildQueueFromTemplate } = await import("../src/queue/templates");
-    const queue = buildQueueFromTemplate("plan-work-review");
+  test("work template produces a single work step", async () => {
+    const { buildQueueFromTemplate } = await import("../src/workflows/queue/templates");
+    const queue = buildQueueFromTemplate("work");
 
-    // 4 plan sub-steps + 2 review sub-steps = 6 steps (fix step injected at runtime)
-    expect(queue.steps.length).toBeGreaterThanOrEqual(6);
-
-    // Each step has an individual title
-    const titles = queue.steps.map((s) => s.title);
-    const uniqueTitles = new Set(titles);
-    expect(uniqueTitles.size).toBe(titles.length); // all titles unique
+    expect(queue.steps.length).toBe(1);
+    expect(queue.steps[0].type).toBe("work");
+    expect(queue.steps[0].title).toBe("Execute work");
   });
 
   test("each step is independently visible with unique ID and title", async () => {
-    const { buildQueueFromTemplate } = await import("../src/queue/templates");
-    const queue = buildQueueFromTemplate("plan-work-review");
+    const { buildQueueFromTemplate } = await import("../src/workflows/queue/templates");
+    const queue = buildQueueFromTemplate("work");
 
     for (const step of queue.steps) {
       expect(step.id).toBeTruthy();
@@ -1836,48 +1833,6 @@ describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", 
     // All IDs are unique
     const ids = queue.steps.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  test("full template produces 8+ individual steps (fix step injected dynamically)", async () => {
-    const { buildQueueFromTemplate } = await import("../src/queue/templates");
-    const queue = buildQueueFromTemplate("full");
-
-    // 4 plan + 2 review + 2 ship = 8 steps (fix step injected at runtime)
-    expect(queue.steps.length).toBeGreaterThanOrEqual(8);
-  });
-
-  test("plan sub-steps have expected granular titles", async () => {
-    const { buildQueueFromTemplate } = await import("../src/queue/templates");
-    const queue = buildQueueFromTemplate("plan-only");
-    const titles = queue.steps.map((s) => s.title.toLowerCase());
-
-    expect(titles.some((t) => t.includes("research"))).toBe(true);
-    expect(titles.some((t) => t.includes("draft"))).toBe(true);
-    expect(titles.some((t) => t.includes("review"))).toBe(true);
-    expect(titles.some((t) => t.includes("consolidate"))).toBe(true);
-  });
-
-  test("review sub-steps have expected granular titles (fix step injected dynamically)", async () => {
-    const { buildQueueFromTemplate } = await import("../src/queue/templates");
-    const queue = buildQueueFromTemplate("plan-work-review");
-    const reviewSteps = queue.steps.filter((s) => s.type === "review");
-    const titles = reviewSteps.map((s) => s.title.toLowerCase());
-
-    // Review steps: dispatch + consolidate (fix step is no longer static — injected at runtime)
-    expect(titles.some((t) => t.includes("code review") || t.includes("multi-agent"))).toBe(true);
-    expect(titles.some((t) => t.includes("consolidate"))).toBe(true);
-  });
-
-  test("ship sub-steps have expected granular titles", async () => {
-    const { buildQueueFromTemplate } = await import("../src/queue/templates");
-    const queue = buildQueueFromTemplate("full");
-    const shipSteps = queue.steps.filter((s) => s.type === "ship");
-    const titles = shipSteps.map((s) => s.title.toLowerCase());
-
-    expect(titles.some((t) => t.includes("stage"))).toBe(true);
-    expect(titles.some((t) => t.includes("commit"))).toBe(true);
-    expect(titles.some((t) => t.includes("pull request") || t.includes("pr"))).toBe(true);
-    expect(titles.some((t) => t.includes("learning"))).toBe(true);
   });
 });
 
@@ -1968,9 +1923,9 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
     const s2 = makeStep({ title: "Step 2" });
     const queue = createQueue([s1, s2]);
 
-    const { insertAfter: qInsert } = await import("../src/queue/queue");
+    const { insertAfter: qInsert } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         const newStep = makeStep({ title: "Inserted by hook" });
         const result = qInsert(q, step.id, [newStep], { actor: "test-hook", reason: "hook insert test" });
@@ -1995,9 +1950,9 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
     const s3 = makeStep({ title: "Step 3" });
     const queue = createQueue([s1, s2, s3]);
 
-    const { removeStep: qRemove } = await import("../src/queue/queue");
+    const { removeStep: qRemove } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         const result = qRemove(q, s2.id, { actor: "test-hook", reason: "hook remove test" });
         expect(result.success).toBe(true);
@@ -2021,14 +1976,14 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
     const s3 = makeStep({ title: "Step 3" });
     const queue = createQueue([s1, s2, s3]);
 
-    const { skipStep: qSkip } = await import("../src/queue/queue");
+    const { skipStep: qSkip } = await import("../src/workflows/queue/queue");
     const workerCalls: string[] = [];
     const worker: WorkerFn = async (step) => {
       workerCalls.push(step.title);
       return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
     };
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         const result = qSkip(q, s2.id, { actor: "test-hook", reason: "hook skip test" });
         expect(result.success).toBe(true);
@@ -2052,14 +2007,14 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
     const s3 = makeStep({ title: "Step 3" });
     const queue = createQueue([s1, s2, s3]);
 
-    const { reorderSteps: qReorder } = await import("../src/queue/queue");
+    const { reorderSteps: qReorder } = await import("../src/workflows/queue/queue");
     const workerOrder: string[] = [];
     const worker: WorkerFn = async (step) => {
       workerOrder.push(step.title);
       return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
     };
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         // Reorder s3 before s2
         const result = qReorder(q, [s3.id, s2.id], { actor: "test-hook", reason: "hook reorder test" });
@@ -2083,7 +2038,7 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
     const s2 = makeStep({ title: "Original step" });
     const queue = createQueue([s1, s2]);
 
-    const { replaceStep: qReplace } = await import("../src/queue/queue");
+    const { replaceStep: qReplace } = await import("../src/workflows/queue/queue");
     const workerTitles: string[] = [];
     const worker: WorkerFn = async (step) => {
       workerTitles.push(step.title);
@@ -2092,7 +2047,7 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
 
     const replacement = makeStep({ title: "Replacement step" });
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         const result = qReplace(q, s2.id, replacement, { actor: "test-hook", reason: "hook replace test" });
         expect(result.success).toBe(true);
@@ -2119,9 +2074,9 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     const s1 = makeStep({ title: "Step 1" });
     const queue = createQueue([s1]);
 
-    const { insertAfter: qInsert } = await import("../src/queue/queue");
+    const { insertAfter: qInsert } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         const newStep = makeStep({ title: "Inserted" });
         qInsert(q, step.id, [newStep], { actor: "hook-actor", reason: "insert reason" });
@@ -2147,9 +2102,9 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     const s3 = makeStep({ title: "Step 3" });
     const queue = createQueue([s1, s2, s3]);
 
-    const { skipStep: qSkip } = await import("../src/queue/queue");
+    const { skipStep: qSkip } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         qSkip(q, s2.id, { actor: "skip-actor", reason: "skip reason" });
       }
@@ -2170,10 +2125,10 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     const s2 = makeStep({ title: "Original" });
     const queue = createQueue([s1, s2]);
 
-    const { replaceStep: qReplace } = await import("../src/queue/queue");
+    const { replaceStep: qReplace } = await import("../src/workflows/queue/queue");
     const replacement = makeStep({ title: "Replaced" });
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         qReplace(q, s2.id, replacement, { actor: "replace-actor", reason: "replace reason" });
       }
@@ -2196,9 +2151,9 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     const s3 = makeStep({ title: "Step 3" });
     const queue = createQueue([s1, s2, s3]);
 
-    const { removeStep: qRemove } = await import("../src/queue/queue");
+    const { removeStep: qRemove } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         qRemove(q, s2.id, { actor: "remove-actor", reason: "remove reason" });
       }
@@ -2220,9 +2175,9 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     const s3 = makeStep({ title: "Pending B" });
     const queue = createQueue([s1, s2, s3]);
 
-    const { reorderSteps: qReorder } = await import("../src/queue/queue");
+    const { reorderSteps: qReorder } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       if (step.id === s1.id) {
         qReorder(q, [s3.id, s2.id], { actor: "reorder-actor", reason: "reorder reason" });
       }
@@ -2243,9 +2198,9 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     const s2 = makeStep({ title: "Step 2" });
     const queue = createQueue([s1, s2]);
 
-    const { insertAfter: qInsert } = await import("../src/queue/queue");
+    const { insertAfter: qInsert } = await import("../src/workflows/queue/queue");
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
       // Only insert on the first step to avoid infinite loop
       if (step.id === s1.id) {
         const newStep = makeStep({ title: "Inserted" });
@@ -2288,7 +2243,7 @@ describe("VAL-HOOK-003: Hook continueExecution overrides failure behavior", () =
     const s2 = makeStep({ title: "Should still run" });
     const queue = createQueue([s1, s2]);
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (_step, status) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (_step, status) => {
       if (status === "failed") {
         return { continueExecution: true };
       }
@@ -2315,7 +2270,7 @@ describe("VAL-HOOK-003: Hook continueExecution overrides failure behavior", () =
     const s2 = makeStep({ title: "Never runs" });
     const queue = createQueue([s1, s2]);
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async () => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async () => {
       return { continueExecution: false };
     };
 
@@ -2345,7 +2300,7 @@ describe("VAL-HOOK-003: Hook continueExecution overrides failure behavior", () =
         reason: "ok", feedback: null, suggestions: [], cyclesUsed: 1 };
     };
 
-    const onStepCompleted: import("../src/queue/executor").OnStepCompletedHook = async (_step, status) => {
+    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (_step, status) => {
       return { continueExecution: status === "failed" };
     };
 

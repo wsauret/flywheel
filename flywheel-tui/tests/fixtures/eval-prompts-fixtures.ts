@@ -6,8 +6,8 @@
  * eval-prompts.ts script and its unit tests.
  */
 
-import type { DispatcherInput } from "../../src/dispatcher/schemas";
-import type { EvaluatorInput } from "../../src/evaluator/schemas";
+import type { DispatcherInput } from "../../src/workflows/dispatcher/schemas";
+import type { EvaluatorInput } from "../../src/workflows/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Types

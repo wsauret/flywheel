@@ -4,10 +4,10 @@ import {
   EvaluatorIssueSeverityEnum,
   EvaluatorIssueCategoryEnum,
   EvaluatorIssueSchema,
-} from "../src/evaluator/schemas";
-import type { EvaluatorInput, EvaluatorResult } from "../src/evaluator/schemas";
-import type { ProcessSpawner } from "../src/worker/spawner";
-import { renderEvaluatorHandoffInstruction } from "../src/queue/shared/handoff-render";
+} from "../src/workflows/evaluator/schemas";
+import type { EvaluatorInput, EvaluatorResult } from "../src/workflows/evaluator/schemas";
+import type { ProcessSpawner } from "../src/orchestration/worker/spawner";
+import { renderEvaluatorHandoffInstruction } from "../src/workflows/queue/shared/handoff-render";
 
 // ---------------------------------------------------------------------------
 // VAL-EVAL-001: Evaluator verdict has structured issues
@@ -395,7 +395,7 @@ function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput
 
 describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", () => {
   it("prompt includes issues in the JSON schema description", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -409,7 +409,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
   });
 
   it("prompt describes severity enum values", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -424,7 +424,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
   });
 
   it("prompt describes all category enum values", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -443,7 +443,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
   });
 
   it("prompt includes examples of issue extraction", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -463,7 +463,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
   });
 
   it("prompt contains Issue Extraction Guidelines section", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -486,7 +486,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
 
 describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)", () => {
   it("prompt instructs evaluator to classify issues with severity and category", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -502,7 +502,7 @@ describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)"
   });
 
   it("prompt mentions classifying test failures as blocking test_failure", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -525,7 +525,7 @@ describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)"
 
 describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => {
   it("prompt instructs evaluator to check for secrets patterns", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -540,7 +540,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
   });
 
   it("prompt classifies secrets as blocking security", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
@@ -558,7 +558,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
   });
 
   it("prompt mentions secrets as a fail condition", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,

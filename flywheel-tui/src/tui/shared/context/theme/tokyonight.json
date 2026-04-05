@@ -99,53 +99,9 @@
       "dark": "darkStep6",
       "light": "lightStep6"
     },
-    "diffAdded": {
-      "dark": "#4fd6be",
-      "light": "#1e725c"
-    },
-    "diffRemoved": {
-      "dark": "#c53b53",
-      "light": "#c53b53"
-    },
-    "diffContext": {
-      "dark": "#828bb8",
-      "light": "#7086b5"
-    },
-    "diffHunkHeader": {
-      "dark": "#828bb8",
-      "light": "#7086b5"
-    },
-    "diffHighlightAdded": {
-      "dark": "#b8db87",
-      "light": "#4db380"
-    },
-    "diffHighlightRemoved": {
-      "dark": "#e26a75",
-      "light": "#f52a65"
-    },
-    "diffAddedBg": {
-      "dark": "#20303b",
-      "light": "#d5e5d5"
-    },
-    "diffRemovedBg": {
-      "dark": "#37222c",
-      "light": "#f7d8db"
-    },
-    "diffContextBg": {
-      "dark": "darkStep2",
-      "light": "lightStep2"
-    },
     "diffLineNumber": {
       "dark": "darkStep3",
       "light": "lightStep3"
-    },
-    "diffAddedLineNumberBg": {
-      "dark": "#1b2b34",
-      "light": "#c5d5c5"
-    },
-    "diffRemovedLineNumberBg": {
-      "dark": "#2d1f26",
-      "light": "#e7c8cb"
     },
     "markdownText": {
       "dark": "darkStep12",

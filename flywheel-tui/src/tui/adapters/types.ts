@@ -1,5 +1,5 @@
-import type { EventBus } from "../../events/event-bus";
-import type { FlywheelEvent } from "../../events/types";
+import type { EventBus } from "../../protocol/event-bus.js";
+import type { FlywheelEvent } from "../../protocol/events.js";
 
 export type AdapterType = "opentui" | "mock" | "headless";
 

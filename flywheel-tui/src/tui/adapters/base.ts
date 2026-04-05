@@ -1,5 +1,5 @@
-import type { EventBus, Unsubscribe } from "../../events/event-bus";
-import type { FlywheelEvent } from "../../events/types";
+import type { EventBus, Unsubscribe } from "../../protocol/event-bus.js";
+import type { FlywheelEvent } from "../../protocol/events.js";
 import type { AdapterType, IWorkflowUI } from "./types";
 
 /**

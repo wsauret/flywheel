@@ -6,8 +6,8 @@ import {
   type HandoffEntry,
   type HandoffSummary,
   type AccumulatedContext,
-} from "../src/queue/context-accumulator";
-import type { StepType } from "../src/queue/types";
+} from "../src/workflows/queue/context-accumulator";
+import type { StepType } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

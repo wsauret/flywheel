@@ -8,8 +8,8 @@
 import {
   groupToFlatList,
 } from "../../src/tui/session/sidebar-logic";
-import type { SessionSummary } from "../../src/session/manager";
-import type { SessionLifecycleState } from "../../src/session/state-machine";
+import type { SessionSummary } from "../../src/orchestration/session/manager";
+import type { SessionLifecycleState } from "../../src/orchestration/session/state-machine";
 
 // Re-export the canonical groupToFlatList from sidebar-logic
 export { groupToFlatList } from "../../src/tui/session/sidebar-logic";

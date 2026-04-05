@@ -7,25 +7,26 @@
  * No UI imports — pure orchestration logic with callback-based notifications.
  */
 
-import { prepareWorkflowDeps } from "../engines/workflow-deps"
+import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { buildQueueForSlashCommand } from "./queue-builder"
 import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
-import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../queue/executor"
-import { createQueuePersistence } from "../queue/persistence"
-import { createGuardrails } from "../queue/guardrails"
-import { createBudgetTracker, type BudgetTracker } from "../session/budget-tracker"
-import { createOutputPersistence, type OutputFlusher } from "../session/output-persistence"
+import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../workflows/queue/executor"
+import { createQueuePersistence } from "../workflows/queue/persistence"
+import { createGuardrails } from "../workflows/queue/guardrails"
+import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
+import { createOutputPersistence, type OutputFlusher } from "./session/output-persistence"
 import { OpenTUIAdapter } from "../tui/adapters/opentui"
 import { createStore as createUIStore } from "../tui/routes/work/context/ui-state/store"
-import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../events/event-bus"
-import { ContextIndexer } from "../memory/indexer"
+import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../protocol/event-bus"
+import { ContextIndexer } from "./memory/indexer"
 import { randomUUID } from "node:crypto"
-import { Log } from "../utils/log"
-import type { StdinHandle } from "../worker/spawner"
-import type { Queue } from "../queue/types"
-import type { SessionManager } from "../session/manager"
+import { Log } from "../workflows/shared/log"
+import { formatStdinMessage } from "./worker/stdin-format"
+import type { StdinHandle } from "./worker/spawner"
+import type { Queue } from "../workflows/queue/types"
+import type { SessionManager } from "./session/manager"
 import type { AnyBlock } from "../tui/types"
-import "../queue/steps/register-all"
+import "../workflows/queue/steps/register-all"
 
 const log = Log.create({ service: "workflow-runner" })
 
@@ -44,6 +45,7 @@ export interface WorkflowCallbacks {
   onTokens: (n: number) => void
   onCost: (n: number) => void
   onSessionName: (name: string) => void
+  onModelActivity?: (activity: import("../tui/adapters/structured-output-builder").ModelActivity) => void
 }
 
 export interface WorkflowResult {
@@ -55,6 +57,13 @@ export interface WorkflowResult {
   reason?: string
 }
 
+export interface WorkflowRunnerOverrides {
+  projectCwd?: string
+  eventBus?: EventBus
+  contextIndexer?: ContextIndexer
+  budgetTracker?: BudgetTracker
+}
+
 export interface WorkflowRunner {
   /** Run the executor to completion. Resolves with result. */
   run(): Promise<WorkflowResult>
@@ -62,6 +71,10 @@ export interface WorkflowRunner {
   pause(): void
   /** Force abort — kill worker immediately. */
   abort(): void
+  /** Inject a user message into the running worker. Returns true if delivered or queued. */
+  injectMessage(text: string): boolean
+  /** Cancel a pending shutdown so execution continues after current step. */
+  cancelShutdown(): void
   /** The session ID for this workflow. */
   readonly sessionId: string
   /** Clean up all resources. Called automatically after run() resolves. */
@@ -87,20 +100,22 @@ export function createWorkflowRunner(opts: {
   description: string
   callbacks: WorkflowCallbacks
   priorBlocks?: AnyBlock[]
+  projectCwd?: string
+  overrides?: WorkflowRunnerOverrides
 }): WorkflowRunner {
   const { sessionId, queue, description, callbacks, priorBlocks } = opts
-  const projectCwd = process.cwd()
+  const projectCwd = opts.overrides?.projectCwd ?? opts.projectCwd ?? process.cwd()
 
   // Prepare workflow deps (config, engine, etc.)
   const deps = prepareWorkflowDeps()
 
   // Event bus + emitter
-  const eventBus = new EventBus()
+  const eventBus = opts.overrides?.eventBus ?? new EventBus()
   const emitter = createFlywheelEmitter(eventBus)
   const workflowIdRef = { current: randomUUID() }
 
   // Budget tracker
-  const budgetTracker = createBudgetTracker({ sessionId, baseDir: projectCwd })
+  const budgetTracker = opts.overrides?.budgetTracker ?? createBudgetTracker({ sessionId, baseDir: projectCwd })
 
   // Metrics poll
   const metricsTimer = setInterval(() => {
@@ -111,7 +126,8 @@ export function createWorkflowRunner(opts: {
   // Structured output pipeline
   const uiActions = createUIStore("workflow")
   uiActions.startWorkflow(description)
-  const adapter = new OpenTUIAdapter({ actions: uiActions })
+  const adapter = new OpenTUIAdapter({ actions: uiActions, engineMetadata: deps.engine.metadata })
+  adapter.onModelActivityChange = (activity) => callbacks.onModelActivity?.(activity)
   adapter.connect(eventBus)
 
   // Output persistence
@@ -151,6 +167,10 @@ export function createWorkflowRunner(opts: {
   let executor: StepExecutor | null = null
   let disposed = false
 
+  // Hoisted refs so injectMessage can access them outside run()
+  const stdinHandleRef: { current: StdinHandle | null } = { current: null }
+  const pendingInjection: { current: string | null } = { current: null }
+
   async function run(): Promise<WorkflowResult> {
     const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
       deps, eventBus, workflowIdRef, "", sessionId, projectCwd,
@@ -160,8 +180,7 @@ export function createWorkflowRunner(opts: {
       throw new Error("Dispatcher transport unavailable. Check your engine configuration.")
     }
 
-    const contextIndexer = new ContextIndexer(projectCwd)
-    const stdinHandleRef: { current: StdinHandle | null } = { current: null }
+    const contextIndexer = opts.overrides?.contextIndexer ?? new ContextIndexer(projectCwd)
 
     const execDeps = buildExecutorDeps({
       deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
@@ -169,7 +188,7 @@ export function createWorkflowRunner(opts: {
       stdinHandleRef,
       setShellQueueSteps: () => {},
       capturedWorkerSessionId: { current: undefined },
-      pendingInjection: { current: null },
+      pendingInjection,
       activeSessionRef: { current: null },
       budgetTracker,
     })
@@ -226,6 +245,30 @@ export function createWorkflowRunner(opts: {
     executor?.abort()
   }
 
+  function injectMessage(text: string): boolean {
+    const engineId = deps.engine?.metadata?.id ?? "claude"
+    const formatted = formatStdinMessage(engineId, text)
+
+    // Try direct write if pipe is open
+    if (stdinHandleRef.current) {
+      const handle = stdinHandleRef.current as any
+      if (handle.isOpen !== false) {
+        try {
+          handle.write(formatted)
+          return true
+        } catch { /* fall through to queuing */ }
+      }
+    }
+
+    // Queue for turn-boundary injection
+    pendingInjection.current = text
+    return true
+  }
+
+  function cancelShutdown(): void {
+    executor?.cancelShutdown()
+  }
+
   async function dispose(): Promise<void> {
     if (disposed) return
     disposed = true
@@ -239,7 +282,7 @@ export function createWorkflowRunner(opts: {
     executor = null
   }
 
-  return { run, pause, abort, sessionId, dispose }
+  return { run, pause, abort, injectMessage, cancelShutdown, sessionId, dispose }
 }
 
 // ---------------------------------------------------------------------------

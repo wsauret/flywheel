@@ -11,14 +11,14 @@ import {
   ValidationStateSchema,
   AssertionStatusSchema,
   type ValidationState,
-} from "../src/session/validation-schemas";
+} from "../src/orchestration/session/validation-schemas";
 
 import {
   readValidationState,
   writeValidationState,
   checkEndOfSessionGate,
   type EndOfSessionGateResult,
-} from "../src/session/validation-state";
+} from "../src/orchestration/session/validation-state";
 
 
 

@@ -17,41 +17,41 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // Core infrastructure
-import { BunProcessSpawner } from "../../src/worker/bun-spawner";
-import { autoDetectTransport, type ResolvedTransport } from "../../src/dispatcher/auto-detect";
-import { createEvaluatorTransport } from "../../src/evaluator/create-transport";
-import { createStepDispatcher, type StepDispatchContext } from "../../src/queue/step-dispatcher";
-import { createAgentEvaluatorFn } from "../../src/evaluator/create-agent-evaluator";
-import { createQueue } from "../../src/queue/queue";
-import { createQueuePersistence } from "../../src/queue/persistence";
-import { createContextAccumulator } from "../../src/queue/context-accumulator";
-import { createGuardrails } from "../../src/queue/guardrails";
+import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
+import { autoDetectTransport, type ResolvedTransport } from "../../src/workflows/dispatcher/auto-detect";
+import { createEvaluatorTransport } from "../../src/workflows/evaluator/create-transport";
+import { createStepDispatcher, type StepDispatchContext } from "../../src/workflows/queue/step-dispatcher";
+import { createAgentEvaluatorFn } from "../../src/workflows/evaluator/create-agent-evaluator";
+import { createQueue } from "../../src/workflows/queue/queue";
+import { createQueuePersistence } from "../../src/workflows/queue/persistence";
+import { createContextAccumulator } from "../../src/workflows/queue/context-accumulator";
+import { createGuardrails } from "../../src/workflows/queue/guardrails";
 import {
   createStepExecutor,
   type DispatcherFn,
   type WorkerFn,
   type EvaluatorFn,
   type HandoffReaderFn,
-} from "../../src/queue/executor";
-import { EventBus, createFlywheelEmitter } from "../../src/events/event-bus";
-import { readHandoff } from "../../src/queue/shared/handoff-reader";
+} from "../../src/workflows/queue/executor";
+import { EventBus, createFlywheelEmitter } from "../../src/protocol/event-bus";
+import { readHandoff } from "../../src/workflows/queue/shared/handoff-reader";
 import { WorkerHandoffSchema } from "../../src/protocol/handoff-schemas";
-import { buildScaffolding, type ScaffoldingPaths } from "../../src/queue/shared/scaffolding";
-import { ContextIndexer } from "../../src/memory/indexer";
+import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
+import { ContextIndexer } from "../../src/orchestration/memory/indexer";
 import {
   ensureSessionDir,
   buildWorkerHandoffPath,
   sessionDir,
-} from "../../src/config/paths";
-import { getEngine } from "../../src/engines/core/registry";
-import { createBudgetTracker, type BudgetTracker } from "../../src/session/budget-tracker";
-import { formatStdinMessage } from "../../src/worker/stdin-format";
-import type { Step, Queue } from "../../src/queue/types";
+} from "../../src/orchestration/config/paths";
+import { getEngine } from "../../src/orchestration/engines/core/registry";
+import { createBudgetTracker, type BudgetTracker } from "../../src/orchestration/session/budget-tracker";
+import { formatStdinMessage } from "../../src/orchestration/worker/stdin-format";
+import type { Step, Queue } from "../../src/workflows/queue/types";
 
 // Engine registration side effects
-import "../../src/engines/providers/claude";
+import "../../src/orchestration/engines/providers/claude";
 // Scaffolding registration (work step handoff instructions)
-import "../../src/queue/steps/register-all";
+import "../../src/workflows/queue/steps/register-all";
 
 // ---------------------------------------------------------------------------
 // Constants

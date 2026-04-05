@@ -12,7 +12,7 @@
  *   5. adapter.connect(bus) + adapter.start()
  */
 
-import { EventBus } from "../events/event-bus";
+import { EventBus } from "../protocol/event-bus";
 import { OpenTUIAdapter } from "../tui/adapters/opentui";
 import { createStore } from "../tui/routes/work/context/ui-state/store";
 import { TimerService } from "../tui/shared/services/timer";
@@ -32,7 +32,7 @@ export interface WorkflowSession {
  *
  * Creates per-session timer → store → adapter → event bus in strict init order.
  */
-export function createWorkflowSession(planPath: string): WorkflowSession {
+function createWorkflowSession(planPath: string): WorkflowSession {
   // 1. Per-session timer (replaces the old global singleton reset)
   const timer = new TimerService();
 
@@ -57,7 +57,7 @@ export function createWorkflowSession(planPath: string): WorkflowSession {
  *
  * Stops timer, stops and disconnects adapter.
  */
-export function destroyWorkflowSession(session: WorkflowSession): void {
+function destroyWorkflowSession(session: WorkflowSession): void {
   session.timer.stop();
   session.adapter.stop();
   session.adapter.disconnect();

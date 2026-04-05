@@ -15,16 +15,16 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EvaluatorInput, EvaluatorResult } from "../../src/evaluator/schemas";
-import type { ProcessSpawner, SpawnOptions } from "../../src/worker/spawner";
-import { EvaluatorInputSchema, EvaluatorHandoffDataSchema } from "../../src/evaluator/schemas";
-import { EvaluatorVerdictSchema } from "../../src/evaluator/schemas";
+import type { EvaluatorInput, EvaluatorResult } from "../../src/workflows/evaluator/schemas";
+import type { ProcessSpawner, SpawnOptions } from "../../src/orchestration/worker/spawner";
+import { EvaluatorInputSchema, EvaluatorHandoffDataSchema } from "../../src/workflows/evaluator/schemas";
+import { EvaluatorVerdictSchema } from "../../src/workflows/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function validVerdict(overrides?: Partial<import("../../src/evaluator/schemas").EvaluatorVerdict>) {
+function validVerdict(overrides?: Partial<import("../../src/workflows/evaluator/schemas").EvaluatorVerdict>) {
   return {
     passed: true,
     reasoning: "All evaluation criteria met",
@@ -131,11 +131,11 @@ describe("EvaluatorHandoffDataSchema", () => {
 // ---------------------------------------------------------------------------
 
 describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
-  let SubprocessEvaluatorTransport: typeof import("../../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
+  let SubprocessEvaluatorTransport: typeof import("../../src/workflows/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
   let tmpDir: string;
 
   beforeEach(async () => {
-    const mod = await import("../../src/evaluator/subprocess-transport");
+    const mod = await import("../../src/workflows/evaluator/subprocess-transport");
     SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
     tmpDir = await mkdtemp(join(tmpdir(), "eval-handoff-test-"));
   });
@@ -501,7 +501,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 // ---------------------------------------------------------------------------
 
 describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
-  let SubprocessEvaluatorTransport: typeof import("../../src/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
+  let SubprocessEvaluatorTransport: typeof import("../../src/workflows/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
 
   /** Helper to capture the prompt text from the -p flag (Claude engine route). */
   function createPromptCapturingSpawner(): { spawner: ProcessSpawner; getPrompt: () => string } {
@@ -537,7 +537,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
   }
 
   beforeEach(async () => {
-    const mod = await import("../../src/evaluator/subprocess-transport");
+    const mod = await import("../../src/workflows/evaluator/subprocess-transport");
     SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
   });
 

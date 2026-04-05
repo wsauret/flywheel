@@ -10,13 +10,13 @@ import {
   deleteSessionWithCompanions,
   listSessions,
   type DeleteResult,
-} from "../src/session/persistence";
-import type { Session } from "../src/session/schemas";
-import type { SessionLifecycleState } from "../src/session/state-machine";
+} from "../src/orchestration/session/persistence";
+import type { Session } from "../src/orchestration/session/schemas";
+import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
 import {
   createSessionManager,
   type SessionManagerDeps,
-} from "../src/session/manager";
+} from "../src/orchestration/session/manager";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

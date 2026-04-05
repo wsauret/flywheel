@@ -29,6 +29,7 @@ import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { truncate } from "@tui/utils/text"
+import { formatDuration } from "../../../../format.js"
 import { displayToolName } from "./tool-block"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@tui/types"
 
@@ -38,15 +39,6 @@ export interface AgentBlockProps {
   block: AgentBlockType
   expanded?: boolean
   onToggleExpand?: (id: string) => void
-}
-
-export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  const seconds = ms / 1000
-  if (seconds < 60) return `${seconds.toFixed(1)}s`
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}m ${remainingSeconds.toFixed(0)}s`
 }
 
 function ToolRow(props: { tool: ToolBlockType }) {
@@ -114,30 +106,33 @@ export function AgentBlock(props: AgentBlockProps) {
         </Show>
       </Show>
 
-      {/* ── Completed/Paused: header + bordered tool list (always visible) ── */}
+      {/* ── Completed/Paused: collapsible header + bordered tool list ── */}
       <Show when={canToggle()}>
-        <box flexDirection="row" gap={1}>
+        <box flexDirection="row" gap={1} onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
           <text fg={theme.secondary}>✓</text>
           <text fg={theme.secondary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
+          <text fg={theme.textMuted}>{props.expanded ? "▾" : "▸"}</text>
           <text fg={theme.textMuted}>· {summary()}</text>
         </box>
-        <box
-          flexDirection="column"
-          border={true}
-          borderColor={theme.borderSubtle}
-          paddingTop={0}
-          paddingBottom={0}
-          onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
-        >
-          <For each={visibleChildren()}>
-            {(child) => <ToolRow tool={child} />}
-          </For>
-          <Show when={!showAll() && hiddenCount() > 0}>
-            <box paddingLeft={1}>
-              <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
-            </box>
-          </Show>
-        </box>
+        <Show when={props.expanded}>
+          <box
+            flexDirection="column"
+            border={true}
+            borderColor={theme.borderSubtle}
+            paddingTop={0}
+            paddingBottom={0}
+            onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
+          >
+            <For each={visibleChildren()}>
+              {(child) => <ToolRow tool={child} />}
+            </For>
+            <Show when={!showAll() && hiddenCount() > 0}>
+              <box paddingLeft={1}>
+                <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
+              </box>
+            </Show>
+          </box>
+        </Show>
       </Show>
 
       {/* ── Error ── */}

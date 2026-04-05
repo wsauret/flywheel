@@ -245,8 +245,8 @@ test_headless_mode() {
   local HEADLESS_SCRIPT="$SCRIPT_DIR/headless-smoke.ts"
   cat > "$HEADLESS_SCRIPT" << 'HEADLESS_EOF'
 import { HeadlessAdapter } from "../../src/tui/adapters/headless"
-import { EventBus } from "../../src/events/event-bus"
-import type { FlywheelEvent } from "../../src/events/types"
+import { EventBus } from "../../src/protocol/event-bus"
+import type { FlywheelEvent } from "../../src/protocol/events"
 
 const messages: string[] = []
 const adapter = new HeadlessAdapter({

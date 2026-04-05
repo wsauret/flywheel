@@ -5,10 +5,10 @@ import {
   type SessionOrchestratorDeps,
   type ResumeResult,
 } from "../src/orchestration/session-orchestrator";
-import { createQueue } from "../src/queue/queue";
-import type { Session } from "../src/session/schemas";
-import type { OutputSnapshot } from "../src/session/output-schemas";
-import type { CompletedStepResult } from "../src/queue/types";
+import { createQueue } from "../src/workflows/queue/queue";
+import type { Session } from "../src/orchestration/session/schemas";
+import type { OutputSnapshot } from "../src/orchestration/session/output-schemas";
+import type { CompletedStepResult } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

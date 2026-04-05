@@ -4,16 +4,16 @@ import {
   DispatcherDecisionSchema,
   WorkflowInfoSchema,
   DispatcherConfigSchema,
-} from "../src/dispatcher/schemas";
+} from "../src/workflows/dispatcher/schemas";
 import {
   EvaluatorInputSchema,
   EvaluatorResultSchema,
-} from "../src/evaluator/schemas";
+} from "../src/workflows/evaluator/schemas";
 import {
   WorkerResultSchema,
   WorkerFailureReasonSchema,
-} from "../src/worker/schemas";
-import { SessionSchema, migrateSession } from "../src/session/schemas";
+} from "../src/orchestration/worker/schemas";
+import { SessionSchema, migrateSession } from "../src/orchestration/session/schemas";
 import {
   EvaluationCriteriaSchema,
   ToolScopingSchema,
@@ -22,10 +22,8 @@ import {
   AvailableContextSchema,
   LastWorkerResultSchema,
   WorkflowStepBaseSchema,
-} from "../src/schemas";
-import { assembleDispatcherInput } from "../src/dispatcher/assemble";
-
-import { EventBus, createFlywheelEmitter } from "../src/events/event-bus";
+} from "../src/workflows/schemas";
+import { EventBus, createFlywheelEmitter } from "../src/protocol/event-bus";
 
 // ---------------------------------------------------------------------------
 // DispatcherDecisionSchema (.strip() — LLM output)
@@ -1406,58 +1404,6 @@ describe("migrateSession", () => {
 // Integration — full data contract flow
 // ---------------------------------------------------------------------------
 describe("Integration — full data contract flow", () => {
-  // --- Shared test fixtures ---
-
-  const planContent = JSON.stringify({
-    steps: [
-      { title: "Setup", description: "Initialize project structure and configure build tooling", acceptanceCriteria: ["Structure created", "Tooling configured"] },
-      { title: "Implementation", description: "Implement core feature with error handling", acceptanceCriteria: ["Feature works", "Errors handled"] },
-    ],
-    behavioralContract: [], decisions: [], risks: [],
-  });
-
-  const contextContent = `- src/index.ts
-- src/utils.ts
-- tests/index.test.ts`;
-
-  const fullAssemblerInput: import("../src/dispatcher/assemble").AssemblerInput = {
-    planContent,
-    stateContent: "",
-    contextContent,
-    lastWorkerResult: {
-      step: 1,
-      status: "completed",
-      output_summary: "Step 1 setup completed — project structure initialized and build tooling configured.",
-      artifacts_produced: ["src/index.ts", "tsconfig.json"],
-      tests_passed: true,
-      duration_seconds: 45,
-    },
-    workflowContext: {
-      workflowId: "wf-integration-test",
-      name: "work",
-      stepNumber: 2,
-      totalSteps: 4,
-      stepDescription: "Implement core feature",
-    },
-    configContext: {
-      maxEvalCycles: 3,
-      worktreePath: "/tmp/wt-integration",
-      projectCwd: "/home/project",
-      workerModel: "opus",
-      dispatcherModel: "sonnet",
-    },
-    sessionBudget: {
-      invocations_remaining: 48,
-      token_budget_remaining: 180000,
-      wall_clock_deadline: "2026-03-20T18:00:00Z",
-    },
-    availableContext: {
-      conventions: [{ name: "coding-standards", path: "docs/standards.md", summary: "Project coding standards" }],
-      standards: [],
-      learnings: [{ name: "lesson-1", path: "docs/lessons/1.md", summary: "Lesson from past sprint" }],
-    },
-  };
-
   const fullDecision = {
     schema_version: 1 as const,
     step_index: 1,
@@ -1491,51 +1437,6 @@ describe("Integration — full data contract flow", () => {
     feedback: "Solid implementation with good error handling coverage.",
     files_to_review: ["src/feature.ts", "tests/feature.test.ts"],
   };
-
-  // --- 8.1a: assembleDispatcherInput with all expanded fields ---
-
-  it("assembles DispatcherInput with all expanded fields", () => {
-    const { input, planTruncated, historyTruncated } = assembleDispatcherInput(fullAssemblerInput);
-
-    // Core fields populated — plan now uses step-based schema
-    const plan = input.plan as { steps?: unknown[] };
-    expect(plan.steps!.length).toBeGreaterThan(0);
-    expect(input.state.completed_steps).toBeDefined();
-    expect(input.context.files).toEqual(["src/index.ts", "src/utils.ts", "tests/index.test.ts"]);
-
-    // New fields populated
-    expect(input.workflow_id).toBe("wf-integration-test");
-    expect(input.workflow).toEqual({
-      name: "work",
-      step_number: 2,
-      total_steps: 4,
-      step_description: "Implement core feature",
-    });
-    expect(input.last_worker_result).toBeDefined();
-    expect(input.last_worker_result!.step).toBe(1);
-    expect(input.last_worker_result!.status).toBe("completed");
-    expect(input.last_worker_result!.tests_passed).toBe(true);
-    expect(input.config).toEqual({
-      max_eval_cycles: 3,
-      worktree_path: "/tmp/wt-integration",
-      project_cwd: "/home/project",
-      worker_model: "opus",
-      dispatcher_model: "sonnet",
-    });
-    expect(input.session_budget).toEqual({
-      invocations_remaining: 48,
-      token_budget_remaining: 180000,
-      wall_clock_deadline: "2026-03-20T18:00:00Z",
-    });
-    expect(input.available_context.conventions).toHaveLength(1);
-    expect(input.available_context.learnings).toHaveLength(1);
-
-    // Schema-validates the assembled output
-    const parsed = DispatcherInputSchema.safeParse(input);
-    expect(parsed.success).toBe(true);
-  });
-
-  // --- 8.1b: DispatcherDecision rejects string evaluation_criteria ---
 
   it("rejects DispatcherDecision with string evaluation_criteria", () => {
     const result = DispatcherDecisionSchema.safeParse({
@@ -1617,7 +1518,7 @@ describe("Integration — full data contract flow", () => {
   it("event payloads carry expanded types correctly", () => {
     const bus = new EventBus();
     const emitter = createFlywheelEmitter(bus);
-    const events: import("../src/events/types").FlywheelEvent[] = [];
+    const events: import("../src/protocol/events").FlywheelEvent[] = [];
     bus.subscribe((e) => events.push(e));
 
     // Emit dispatcher:completed with a decision containing new fields
@@ -1630,7 +1531,7 @@ describe("Integration — full data contract flow", () => {
 
     // Verify dispatcher event payload
     const dispEvent = events.find((e) => e.type === "dispatcher:completed") as
-      import("../src/events/types").DispatcherCompleted;
+      import("../src/protocol/events").DispatcherCompleted;
     expect(dispEvent).toBeDefined();
     expect(dispEvent.decision.schema_version).toBe(1);
     expect(dispEvent.decision.reasoning).toBe("Step 2 requires both implementation and test coverage.");
@@ -1640,7 +1541,7 @@ describe("Integration — full data contract flow", () => {
 
     // Verify evaluator event payload
     const evalEvent = events.find((e) => e.type === "evaluator:completed") as
-      import("../src/events/types").EvaluatorCompleted;
+      import("../src/protocol/events").EvaluatorCompleted;
     expect(evalEvent).toBeDefined();
     expect(evalEvent.result.confidence).toBe(0.92);
     expect(evalEvent.result.feedback).toBe("Solid implementation with good error handling coverage.");

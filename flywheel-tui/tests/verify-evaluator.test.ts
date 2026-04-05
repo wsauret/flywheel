@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { EvaluatorResultSchema } from "../src/evaluator/schemas";
+import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
 
 // ---------------------------------------------------------------------------
 // Test fixtures — realistic evaluator inputs
@@ -193,7 +193,7 @@ describe("verify-evaluator: schema validation", () => {
 
 describe("verify-evaluator: engine binary availability", () => {
   it("SubprocessEvaluatorTransport throws clear error when engine binary is not found", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/evaluator/subprocess-transport");
+    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
 
     const mockSpawner = {
       async spawn() {

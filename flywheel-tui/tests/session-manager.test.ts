@@ -8,15 +8,15 @@ import {
   type SessionManager,
   type SessionSummary,
   type SessionManagerDeps,
-} from "../src/session/manager";
+} from "../src/orchestration/session/manager";
 import {
   createSession as persistCreateSession,
   readSession,
   listSessions,
-} from "../src/session/persistence";
-import type { Session } from "../src/session/schemas";
-import type { SessionLifecycleState } from "../src/session/state-machine";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/config/loader";
+} from "../src/orchestration/session/persistence";
+import type { Session } from "../src/orchestration/session/schemas";
+import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/orchestration/config/loader";
 
 // ---------------------------------------------------------------------------
 // Helpers

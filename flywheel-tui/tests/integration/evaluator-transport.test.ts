@@ -14,17 +14,17 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BunProcessSpawner } from "../../src/worker/bun-spawner";
-import { createEvaluatorTransport } from "../../src/evaluator/create-transport";
-import { createAgentEvaluatorFn } from "../../src/evaluator/create-agent-evaluator";
-import { ensureSessionDir } from "../../src/config/paths";
-import type { EvaluatorTransport } from "../../src/evaluator/transport";
-import type { EvalResult } from "../../src/queue/executor";
-import type { Step } from "../../src/queue/types";
-import type { ProcessSpawner, SpawnResult } from "../../src/worker/spawner";
+import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
+import { createEvaluatorTransport } from "../../src/workflows/evaluator/create-transport";
+import { createAgentEvaluatorFn } from "../../src/workflows/evaluator/create-agent-evaluator";
+import { ensureSessionDir } from "../../src/orchestration/config/paths";
+import type { EvaluatorTransport } from "../../src/workflows/evaluator/transport";
+import type { EvalResult } from "../../src/workflows/queue/executor";
+import type { Step } from "../../src/workflows/queue/types";
+import type { ProcessSpawner, SpawnResult } from "../../src/orchestration/worker/spawner";
 
 // Engine registration side effects
-import "../../src/engines/providers/claude";
+import "../../src/orchestration/engines/providers/claude";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures

@@ -1,5 +1,4 @@
 import { platform } from "os"
-import { Process } from "./process"
 
 /**
  * Writes text to clipboard via OSC 52 escape sequence.
@@ -35,7 +34,7 @@ export namespace Clipboard {
       console.log("clipboard: using osascript")
       return async (text: string) => {
         const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-        await Process.run(["osascript", "-e", `set the clipboard to "${escaped}"`], { nothrow: true })
+        Bun.spawnSync(["osascript", "-e", `set the clipboard to "${escaped}"`])
       }
     }
 
@@ -43,7 +42,7 @@ export namespace Clipboard {
       if (process.env["WAYLAND_DISPLAY"] && Bun.which("wl-copy")) {
         console.log("clipboard: using wl-copy")
         return async (text: string) => {
-          const proc = Process.spawn(["wl-copy"], { stdin: "pipe", stdout: "ignore", stderr: "ignore" })
+          const proc = Bun.spawn(["wl-copy"], { stdin: "pipe", stdout: "ignore", stderr: "ignore" })
           if (!proc.stdin) return
           proc.stdin.write(text)
           proc.stdin.end()
@@ -53,7 +52,7 @@ export namespace Clipboard {
       if (Bun.which("xclip")) {
         console.log("clipboard: using xclip")
         return async (text: string) => {
-          const proc = Process.spawn(["xclip", "-selection", "clipboard"], {
+          const proc = Bun.spawn(["xclip", "-selection", "clipboard"], {
             stdin: "pipe",
             stdout: "ignore",
             stderr: "ignore",
@@ -67,7 +66,7 @@ export namespace Clipboard {
       if (Bun.which("xsel")) {
         console.log("clipboard: using xsel")
         return async (text: string) => {
-          const proc = Process.spawn(["xsel", "--clipboard", "--input"], {
+          const proc = Bun.spawn(["xsel", "--clipboard", "--input"], {
             stdin: "pipe",
             stdout: "ignore",
             stderr: "ignore",
@@ -84,7 +83,7 @@ export namespace Clipboard {
       console.log("clipboard: using powershell")
       return async (text: string) => {
         // Pipe via stdin to avoid PowerShell string interpolation ($env:FOO, $(), etc.)
-        const proc = Process.spawn(
+        const proc = Bun.spawn(
           [
             "powershell.exe",
             "-NonInteractive",

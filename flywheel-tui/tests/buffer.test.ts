@@ -6,7 +6,7 @@ import {
   TIER_1_LIMIT,
   TIER_2_LIMIT,
   TIER_3_LIMIT,
-} from "../src/worker/buffer";
+} from "../src/orchestration/worker/buffer";
 
 // ---------------------------------------------------------------------------
 // appendWithCharLimit

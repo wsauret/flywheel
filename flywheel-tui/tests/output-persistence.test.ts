@@ -3,8 +3,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
-import { createOutputPersistence } from "../src/session/output-persistence";
-import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../src/session/output-schemas";
+import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
+import { toSnapshot, fromSnapshot, type OutputSnapshot } from "../src/orchestration/session/output-schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
