@@ -17,6 +17,8 @@ import type { ParentProps } from "solid-js"
 import { Clipboard } from "./utils/clipboard"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
+import { SessionProvider } from "@tui/shared/context/session"
+import { createSessionManager } from "../session/manager"
 import { ErrorComponent } from "./components/error-boundary"
 import { loadConfig } from "../config/loader"
 import { CONFIG_FILES } from "../config/paths"
@@ -51,6 +53,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     // Phase 3: uses minimal shell instead of full FlywheelShell
     const { MinimalShell } = await import("./minimal/shell")
 
+    const manager = createSessionManager({ baseDir: process.cwd() })
+
     render(
       () => (
         <ErrorBoundary fallback={(error) => {
@@ -64,7 +68,9 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
           <ExitProvider onExit={onExit}>
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
-                <MinimalShell />
+                <SessionProvider manager={manager}>
+                  <MinimalShell />
+                </SessionProvider>
               </ThemeProvider>
             </ToastProvider>
           </ExitProvider>

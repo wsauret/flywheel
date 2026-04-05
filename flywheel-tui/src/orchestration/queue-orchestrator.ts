@@ -6,40 +6,40 @@
  */
 
 import { randomUUID } from "node:crypto"
-import { autoDetectTransport } from "../../dispatcher/auto-detect"
-import { createEvaluatorTransport } from "../../evaluator/create-transport"
-import { createStepDispatcher, type StepDispatchContext } from "../../queue/step-dispatcher"
-import { createAgentEvaluatorFn } from "../../evaluator/create-agent-evaluator"
-import { readHandoff } from "../../queue/shared/handoff-reader"
-import { WorkerHandoffSchema } from "../../queue/shared/handoff-schemas"
-import { createContextAccumulator } from "../../queue/context-accumulator"
-import { createPlanIntegrationHook, type ConfirmBeforeInsert } from "../../queue/steps/plan-consolidate/hooks"
-import { createCompositeHook } from "../../queue/shared/hooks"
-import { createReviewFixInjectionHook } from "../../queue/steps/review-consolidate/hooks"
-import { createReviewP3TriageHook } from "../../queue/steps/review-dispatch/hooks"
-import { createSprintQueueHandler, type SprintQueueHandler } from "../../queue/steps/sprint-work/hooks"
-import { createDebugQueueHandler } from "../../queue/steps/debug-fix/hooks"
-import { runVerificationScript } from "../../queue/steps/sprint-work/verification-runner"
-import "../../queue/steps/register-all"
-import { buildScaffolding, type ScaffoldingPaths } from "../../queue/shared/scaffolding"
+import { autoDetectTransport } from "../dispatcher/auto-detect"
+import { createEvaluatorTransport } from "../evaluator/create-transport"
+import { createStepDispatcher, type StepDispatchContext } from "../queue/step-dispatcher"
+import { createAgentEvaluatorFn } from "../evaluator/create-agent-evaluator"
+import { readHandoff } from "../queue/shared/handoff-reader"
+import { WorkerHandoffSchema } from "../protocol/handoff-schemas"
+import { createContextAccumulator } from "../queue/context-accumulator"
+import { createPlanIntegrationHook, type ConfirmBeforeInsert } from "../queue/steps/plan-consolidate/hooks"
+import { createCompositeHook } from "../queue/shared/hooks"
+import { createReviewFixInjectionHook } from "../queue/steps/review-consolidate/hooks"
+import { createReviewP3TriageHook } from "../queue/steps/review-dispatch/hooks"
+import { createSprintQueueHandler, type SprintQueueHandler } from "../queue/steps/sprint-work/hooks"
+import { createDebugQueueHandler } from "../queue/steps/debug-fix/hooks"
+import { runVerificationScript } from "../queue/steps/sprint-work/verification-runner"
+import "../queue/steps/register-all"
+import { buildScaffolding, type ScaffoldingPaths } from "../queue/shared/scaffolding"
 import {
   sessionDir,
   buildWorkerHandoffPath,
   ensureSessionDir,
-} from "../../config/paths"
-import { resolveModels } from "../../config/loader"
-import { createFlywheelEmitter } from "../../events/event-bus"
-import { formatStdinMessage } from "../../worker/stdin-format"
-import { buildInitializeSession, buildAddUserMessage, createStdoutAdapter } from "../../worker/droid-jsonrpc-adapter"
-import { resolveModel as resolveDroidModel } from "../../engines/providers/droid"
-import { Log } from "../../utils/log"
-import { ContextIndexer } from "../../memory/indexer"
-import type { WorkflowDeps } from "../../engines/workflow-deps"
-import type { EventBus } from "../../events/event-bus"
-import type { Queue } from "../../queue/types"
-import type { StdinHandle } from "../../worker/spawner"
-import type { QuestionService } from "../../queue/question-service"
-import type { WorkflowSession } from "../session/workflow-session"
+} from "../config/paths"
+import { resolveModels } from "../config/loader"
+import { createFlywheelEmitter } from "../events/event-bus"
+import { formatStdinMessage } from "../worker/stdin-format"
+import { buildInitializeSession, buildAddUserMessage, createStdoutAdapter } from "../worker/droid-jsonrpc-adapter"
+import { resolveModel as resolveDroidModel } from "../engines/providers/droid"
+import { Log } from "../utils/log"
+import { ContextIndexer } from "../memory/indexer"
+import type { WorkflowDeps } from "../engines/workflow-deps"
+import type { EventBus } from "../events/event-bus"
+import type { Queue } from "../queue/types"
+import type { StdinHandle } from "../worker/spawner"
+import type { QuestionService } from "../queue/question-service"
+import type { WorkflowSession } from "./workflow-session"
 
 const log = Log.create({ service: "shell" })
 
@@ -52,9 +52,9 @@ const log = Log.create({ service: "shell" })
 export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string, sessionId?: string, baseDir?: string, evaluatorSystemPromptAddendum?: string) {
   const engineName = deps.config.engine
 
-  let dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined
+  let dispatcherTransport: import("../dispatcher/transport").DispatcherTransport | undefined
   try {
-    const { resolveModels } = await import("../../config/loader")
+    const { resolveModels } = await import("../config/loader")
     const { dispatcherModel } = resolveModels(deps.config)
     const resolved = await autoDetectTransport({
       spawner: deps.spawner,
@@ -74,10 +74,10 @@ export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, 
     })
   }
 
-  let evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined
+  let evaluatorTransport: import("../evaluator/transport").EvaluatorTransport | undefined
   if (!deps.config.skip_evaluation) {
     try {
-      const { resolveModels: resolveModelsForEval } = await import("../../config/loader")
+      const { resolveModels: resolveModelsForEval } = await import("../config/loader")
       const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
       evaluatorTransport = await createEvaluatorTransport({
         spawner: deps.spawner,
@@ -107,8 +107,8 @@ export interface BuildExecutorDepsOpts {
   deps: WorkflowDeps;
   emitter: ReturnType<typeof createFlywheelEmitter>;
   workflowIdRef: { current: string };
-  dispatcherTransport: import("../../dispatcher/transport").DispatcherTransport | undefined;
-  evaluatorTransport: import("../../evaluator/transport").EvaluatorTransport | undefined;
+  dispatcherTransport: import("../dispatcher/transport").DispatcherTransport | undefined;
+  evaluatorTransport: import("../evaluator/transport").EvaluatorTransport | undefined;
   contextIndexer: ContextIndexer;
   projectCwd: string;
   sessionObjective: string | undefined;
@@ -136,7 +136,7 @@ export interface BuildExecutorDepsOpts {
   /** Ref to the active workflow session (for event bus access in turn-complete callback). */
   activeSessionRef: { current: WorkflowSession | null };
   /** Budget tracker for cost/token tracking from worker NDJSON events. */
-  budgetTracker?: import("../../session/budget-tracker").BudgetTracker | null;
+  budgetTracker?: import("../session/budget-tracker").BudgetTracker | null;
 }
 
 /**
@@ -191,7 +191,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     ? createAgentEvaluatorFn({ transport: evaluatorTransport })
     : null
   const evaluator = baseEvaluator
-    ? async (step: import("../../queue/types").Step, workerOutput: string, evaluationCriteria?: unknown | null, handoffData?: Record<string, unknown> | null) => {
+    ? async (step: import("../queue/types").Step, workerOutput: string, evaluationCriteria?: unknown | null, handoffData?: Record<string, unknown> | null) => {
         // Skip evaluation for verify steps (sprint verification is handled by the sprint handler)
         if (step.type === "verify") {
           return { passed: true, skipped: true, transportError: false, reason: null, feedback: null, suggestions: [], cyclesUsed: 0 }
@@ -271,7 +271,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
 
   // Dispatcher callback: real dispatcher with fallback to step metadata
   // Sprint work steps use the sprint handler's prompt builder for iteration-aware prompts
-  const dispatcherFn = async (step: import("../../queue/types").Step, context: { previousHandoff?: unknown; previousAssessment?: unknown; hitlResponse?: unknown }) => {
+  const dispatcherFn = async (step: import("../queue/types").Step, context: { previousHandoff?: unknown; previousAssessment?: unknown; hitlResponse?: unknown }) => {
     // Sprint work steps: use sprint handler's prompt builder (iteration-aware)
     if (sprintHandler && step.type === "work" && isSprintQueue) {
       const sprintPrompt = sprintHandler.buildWorkStepPrompt(step)
@@ -316,7 +316,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
 
   // Worker callback: spawn engine process (or run verification script for verify steps)
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
-  const workerFn = async (step: import("../../queue/types").Step, prompt: string) => {
+  const workerFn = async (step: import("../queue/types").Step, prompt: string) => {
     // Sprint verify steps: run verification script directly (no dispatcher/worker/evaluator)
     if (step.type === "verify" && sprintHandler) {
       const startTime = Date.now()

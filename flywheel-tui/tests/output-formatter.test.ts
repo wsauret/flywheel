@@ -111,18 +111,18 @@ describe("output-formatter", () => {
   // ── getToolDetail ──
 
   describe("getToolDetail", () => {
-    it("Read shows file_path", () => {
+    it("Read shows file_path with ./ prefix", () => {
       const filePath = path.join(process.cwd(), "src/index.ts");
-      expect(getToolDetail("Read", { file_path: filePath })).toBe("src/index.ts");
+      expect(getToolDetail("Read", { file_path: filePath })).toBe("./src/index.ts");
     });
 
-    it("Write shows file_path", () => {
-      expect(getToolDetail("Write", { file_path: "out.txt" })).toBe("out.txt");
+    it("Write shows file_path with ./ prefix", () => {
+      expect(getToolDetail("Write", { file_path: "out.txt" })).toBe("./out.txt");
     });
 
-    it("Edit shows file_path", () => {
+    it("Edit shows file_path with ./ prefix", () => {
       expect(getToolDetail("Edit", { file_path: "config.json" })).toBe(
-        "config.json",
+        "./config.json",
       );
     });
 
@@ -175,13 +175,13 @@ describe("output-formatter", () => {
   });
 
   describe("formatDisplayPath", () => {
-    it("returns relative paths unchanged", () => {
-      expect(formatDisplayPath("src/index.ts")).toBe("src/index.ts");
+    it("returns relative paths with ./ prefix", () => {
+      expect(formatDisplayPath("src/index.ts")).toBe("./src/index.ts");
     });
 
-    it("converts absolute project paths to relative paths", () => {
+    it("converts absolute project paths to relative paths with ./ prefix", () => {
       const filePath = path.join(process.cwd(), "src/index.ts");
-      expect(formatDisplayPath(filePath)).toBe("src/index.ts");
+      expect(formatDisplayPath(filePath)).toBe("./src/index.ts");
     });
   });
 

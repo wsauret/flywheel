@@ -28,7 +28,7 @@ import {
   makeSteps,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
+} from "./helpers/queue-executor-harness";
 import type { OnStepCompletedHook } from "../../src/queue/shared/hooks";
 import type { EvaluatorFn, HandoffReaderFn } from "../../src/queue/executor";
 

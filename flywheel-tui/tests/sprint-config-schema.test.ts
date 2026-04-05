@@ -4,7 +4,7 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
 } from "../src/config/loader";
-import { WorkerHandoffBaseSchema, WorkerHandoffSchema } from "../src/queue/shared/handoff-schemas";
+import { WorkerHandoffBaseSchema, WorkerHandoffSchema } from "../src/protocol/handoff-schemas";
 import {
   SPRINT_FIELDS,
 } from "../src/queue/steps/sprint-work/fields";

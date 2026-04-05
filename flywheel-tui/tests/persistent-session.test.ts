@@ -5,7 +5,7 @@ import {
   createWorkflowSession,
   destroyWorkflowSession,
   type WorkflowSession,
-} from "../src/tui/session/workflow-session";
+} from "../src/orchestration/workflow-session";
 import { createEscapeHandler, type EscapeHandler } from "../src/tui/utils/escape-handler";
 
 /** Shell state — matches the AppState type used in flywheel-shell.tsx */

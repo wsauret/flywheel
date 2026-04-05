@@ -5,7 +5,7 @@ import {
   createWorkflowSession,
   destroyWorkflowSession,
   type WorkflowSession,
-} from "../src/tui/session/workflow-session";
+} from "../src/orchestration/workflow-session";
 
 /**
  * Shell Lifecycle Tests

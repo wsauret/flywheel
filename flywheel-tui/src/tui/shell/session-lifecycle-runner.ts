@@ -13,7 +13,7 @@
  * (they're shared across sessions / used by viewport logic).
  */
 
-import type { WorkflowSession } from "../session/workflow-session"
+import type { WorkflowSession } from "../../orchestration/workflow-session"
 import type { OutputFlusher } from "../../session/output-persistence"
 import type { TranscriptLogger } from "../../session/transcript"
 import type { BudgetTracker } from "../../session/budget-tracker"

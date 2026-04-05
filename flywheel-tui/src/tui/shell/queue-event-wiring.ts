@@ -12,7 +12,7 @@ import type { Queue } from "../../queue/types"
 import type { EventBus, Unsubscribe } from "../../events/event-bus"
 import type { OutputFlusher } from "../../session/output-persistence"
 import type { QueueStepState } from "../types"
-import type { QueueProgressInfo } from "./shell-queue"
+import type { QueueProgressInfo } from "../../orchestration/queue-builder"
 import type { SprintIterationInfo } from "../utils/format"
 import type { FlywheelConfig } from "../../config/loader"
 

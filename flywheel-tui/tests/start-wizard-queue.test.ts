@@ -26,7 +26,7 @@ import {
   buildQueueFromPlan,
   formatQueueProgress,
   type QueueProgressInfo,
-} from "../src/tui/shell/shell-queue";
+} from "../src/orchestration/queue-builder";
 import {
   createActionDispatcher,
   type ActionDispatcherDeps,

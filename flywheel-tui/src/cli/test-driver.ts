@@ -52,7 +52,7 @@ import {
 } from "../queue/executor";
 import { EventBus, createFlywheelEmitter } from "../events/event-bus";
 import { readHandoff } from "../queue/shared/handoff-reader";
-import { WorkerHandoffSchema } from "../queue/shared/handoff-schemas";
+import { WorkerHandoffSchema } from "../protocol/handoff-schemas";
 import { buildScaffolding, type ScaffoldingPaths } from "../queue/shared/scaffolding";
 import { ContextIndexer } from "../memory/indexer";
 import { createBudgetTracker } from "../session/budget-tracker";

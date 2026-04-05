@@ -12,11 +12,11 @@
  *   5. adapter.connect(bus) + adapter.start()
  */
 
-import { EventBus } from "../../events/event-bus";
-import { OpenTUIAdapter } from "../adapters/opentui";
-import { createStore } from "../routes/work/context/ui-state/store";
-import { TimerService } from "../shared/services/timer";
-import type { UIActions } from "../routes/work/context/ui-state/types";
+import { EventBus } from "../events/event-bus";
+import { OpenTUIAdapter } from "../tui/adapters/opentui";
+import { createStore } from "../tui/routes/work/context/ui-state/store";
+import { TimerService } from "../tui/shared/services/timer";
+import type { UIActions } from "../tui/routes/work/context/ui-state/types";
 
 export interface WorkflowSession {
   store: UIActions;

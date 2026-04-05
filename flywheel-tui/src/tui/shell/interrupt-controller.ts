@@ -16,7 +16,7 @@ import { Log } from "../../utils/log"
 
 import type { WorkflowDeps } from "../../engines/workflow-deps"
 import type { StdinHandle } from "../../worker/spawner"
-import type { WorkflowSession } from "../session/workflow-session"
+import type { WorkflowSession } from "../../orchestration/workflow-session"
 import type { Queue } from "../../queue/types"
 import type { StepExecutor } from "../../queue/executor"
 import type { EscapeHandler } from "../utils/escape-handler"

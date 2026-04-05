@@ -15,9 +15,9 @@ import {
   makeSteps,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
-import type { Queue } from "../../src/queue/types";
-import { resolveSessionFile } from "../../src/config/paths";
+} from "./helpers/queue-executor-harness";
+import type { Queue } from "../src/queue/types";
+import { resolveSessionFile } from "../src/config/paths";
 
 describe("queue crash recovery and resume", () => {
   const harnesses: Harness[] = [];

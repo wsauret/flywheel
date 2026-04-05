@@ -59,8 +59,8 @@ const ResultCostSchema = z
       .object({
         input_tokens: z.number().optional(),
         output_tokens: z.number().optional(),
-        cache_creation_input_tokens: z.number().optional(),
         cache_read_input_tokens: z.number().optional(),
+        cache_creation_input_tokens: z.number().optional(),
       })
       .passthrough()
       .optional(),
@@ -181,9 +181,9 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       totalCost += parsed.data.total_cost_usd;
       const inputTokens = parsed.data.usage?.input_tokens ?? 0;
       const outputTokens = parsed.data.usage?.output_tokens ?? 0;
-      const cacheCreation = parsed.data.usage?.cache_creation_input_tokens ?? 0;
       const cacheRead = parsed.data.usage?.cache_read_input_tokens ?? 0;
-      tokensUsed += inputTokens + outputTokens + cacheCreation + cacheRead;
+      const cacheCreation = parsed.data.usage?.cache_creation_input_tokens ?? 0;
+      tokensUsed += inputTokens + outputTokens + cacheRead + cacheCreation;
 
       scheduleWrite();
       return;

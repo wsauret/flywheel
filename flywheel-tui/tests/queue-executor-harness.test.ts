@@ -1,5 +1,5 @@
 import { describe, expect, test, afterEach } from "bun:test";
-import { createHarness, resetStepCounter, type Harness } from "./queue-executor-harness";
+import { createHarness, resetStepCounter, type Harness } from "./helpers/queue-executor-harness";
 
 describe("queue-executor-harness smoke test", () => {
   let harness: Harness;

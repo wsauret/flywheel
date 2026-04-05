@@ -23,7 +23,7 @@ import {
   type ChatSession,
   type ChatAgentHandle,
 } from "../session/chat-session.js"
-import { createInteractiveWorker, type InteractiveWorkerHandle } from "../../harness/interactive-worker.js"
+import { createInteractiveWorker, type InteractiveWorkerHandle } from "../../harness/index.js"
 import { Log } from "../../utils/log.js"
 
 import type { UIActions } from "../routes/work/context/ui-state/types.js"

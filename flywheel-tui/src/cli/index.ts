@@ -10,7 +10,7 @@
 
 import { Log } from "../utils/log"
 import { installAgents } from "../agents/installer"
-import { ensureRipgrepAddon } from "../harness/tools/ripgrep-build.js"
+import { ensureRipgrepAddon } from "../harness/index.js"
 
 
 // ---------------------------------------------------------------------------

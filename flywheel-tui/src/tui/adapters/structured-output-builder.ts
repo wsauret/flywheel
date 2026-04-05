@@ -144,8 +144,9 @@ export class StructuredOutputBuilder {
       if (this.appendToolToAgent(this.activeAgentId, tool)) return;
     }
 
-    // Top-level tool: check context grouping
-    if (isContextTool(name)) {
+    // Top-level tool: check context grouping.
+    // Tools with diff data render standalone (not grouped) so the diff is visible.
+    if (isContextTool(name) && !diff) {
       this.pushContextTool(tool, timestamp);
     } else {
       this.breakContextRun(timestamp);
@@ -241,6 +242,8 @@ export class StructuredOutputBuilder {
     if (this.activeAgentId === id) {
       this.activeAgentId = null;
     }
+    this.agentLastActivity.delete(id);
+    this.agentSpawnTime.delete(id);
     this.markDirty();
     this.onAgentLifecycle?.("error", id);
   }

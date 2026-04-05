@@ -18,7 +18,7 @@ import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 import type { WorkState } from "../src/tui/types";
 import type { AppState } from "../src/tui/shell/shell-modes";
-import type { SessionOrchestrator } from "../src/tui/session/session-orchestrator";
+import type { SessionOrchestrator } from "../src/orchestration/session-orchestrator";
 
 // ---------------------------------------------------------------------------
 // Helpers

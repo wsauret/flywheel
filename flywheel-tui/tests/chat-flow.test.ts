@@ -4,28 +4,34 @@ import {
   type ChatControllerDeps,
   type ChatController,
   type ToastLike,
-} from "../../src/tui/shell/chat-controller";
+} from "../src/tui/shell/chat-controller";
 import {
   createChatSession,
   destroyChatSession,
   type ChatSession,
   type ChatAgentHandle,
   type ChatSessionConfig,
-} from "../../src/tui/session/chat-session";
-import { createInteractiveWorker } from "../../src/harness/interactive-worker";
-import type { InteractiveWorkerOptions } from "../../src/harness/interactive-worker";
-import type { LLMProvider, StreamEvent, StreamOptions } from "../../src/harness/llm";
-import { createToolRegistry } from "../../src/harness/tools/registry";
-import { createPromptHandler, type PromptHandlerDeps } from "../../src/tui/shell/prompt-handler";
+} from "../src/tui/session/chat-session";
+import {
+  createInteractiveWorker,
+  createToolRegistry,
+} from "../src/harness";
+import type {
+  InteractiveWorkerOptions,
+  LLMProvider,
+  StreamEvent,
+  StreamOptions,
+} from "../src/harness";
+import { createPromptHandler, type PromptHandlerDeps } from "../src/tui/shell/prompt-handler";
 import {
   escapeForState,
   ctrlCForState,
   type AppState,
-} from "../../src/tui/shell/shell-modes";
-import type { UIActions } from "../../src/tui/routes/work/context/ui-state/types";
-import type { WorkState } from "../../src/tui/types";
-import type { ModelActivity } from "../../src/tui/adapters/structured-output-builder";
-import type { AgentLoopResult } from "../../src/harness/agent-loop";
+} from "../src/tui/shell/shell-modes";
+import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
+import type { WorkState } from "../src/tui/types";
+import type { ModelActivity } from "../src/tui/adapters/structured-output-builder";
+import type { AgentLoopResult } from "../src/harness";
 
 /**
  * Integration Test: Full Chat Flow

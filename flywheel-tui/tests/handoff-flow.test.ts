@@ -19,27 +19,27 @@ import {
   readHandoff,
   HandoffMissingError,
   HandoffInvalidError,
-} from "../../src/queue/shared/handoff-reader";
+} from "../src/queue/shared/handoff-reader";
 import {
   WorkerHandoffSchema,
-} from "../../src/queue/shared/handoff-schemas";
-import type { WorkerHandoff } from "../../src/queue/shared/handoff-schemas";
-import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "../../src/evaluator/schemas";
-import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "../../src/dispatcher/schemas";
+} from "../src/protocol/handoff-schemas";
+import type { WorkerHandoff } from "../src/protocol/handoff-schemas";
+import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "../src/evaluator/schemas";
+import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "../src/dispatcher/schemas";
 import {
   renderHandoffInstruction,
   renderEvaluatorHandoffInstruction,
   renderDispatcherHandoffInstruction,
-} from "../../src/queue/shared/handoff-render";
+} from "../src/queue/shared/handoff-render";
 import {
   WORK_STEP_FIELDS,
-} from "../../src/queue/steps/work/fields";
+} from "../src/queue/steps/work/fields";
 import {
   PLAN_CONSOLIDATE_FIELDS,
-} from "../../src/queue/steps/plan-consolidate/fields";
+} from "../src/queue/steps/plan-consolidate/fields";
 import {
   REVIEW_FIELDS,
-} from "../../src/queue/steps/review-consolidate/fields";
+} from "../src/queue/steps/review-consolidate/fields";
 
 // ---------------------------------------------------------------------------
 // Temp directory management

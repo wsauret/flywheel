@@ -2,48 +2,27 @@
 /**
  * ToolBlock Component
  *
- * Renders a standalone tool invocation as a compact single-line entry:
- *   → Read  package.json
- *   $ Bash  npm test
- *   ← Write  output.json
- *   ✎ Edit  src/app.ts
- *   ✱ Grep  "auth middleware"
- *   ◈ WebSearch  query
+ * Renders a standalone tool invocation. Two modes:
+ *
+ * 1. Compact single-line (default):
+ *    ✎ Edit  src/app.ts
+ *
+ * 2. Expanded with inline diff (when block.diff is present):
+ *    ✎ Edit  src/app.ts
+ *      1 -old code
+ *      1 +new code
+ *
+ * Diff rendering uses Claude Code's color-diff algorithm: word-level
+ * highlighting within changed lines, colored backgrounds, line numbers.
  */
 
+import { createSignal, createMemo, Show, For } from "solid-js"
+import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { truncate } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@tui/types"
-
-/** Map tool names to semantic icons. */
-export function getToolIcon(name: string): string {
-  const lower = name.toLowerCase()
-  // File operations
-  if (lower === "read") return "→"
-  if (lower === "write") return "←"
-  if (lower === "edit") return "✎"
-  if (lower === "notebookedit") return "✎"
-  // Execution
-  if (lower === "bash" || lower === "powershell" || lower === "repl") return "$"
-  // Search
-  if (lower === "glob" || lower === "grep" || lower === "lsp" || lower === "toolsearch") return "✱"
-  // Web
-  if (lower === "webfetch" || lower === "websearch") return "◈"
-  // Agent/task management
-  if (lower === "agent" || lower === "task" || lower === "sendmessage") return "⊕"
-  if (lower.startsWith("task")) return "☐" // TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop, TaskOutput
-  if (lower === "skill") return "⚙"
-  // Mode transitions
-  if (lower === "enterplanmode" || lower === "exitplanmode") return "◇"
-  if (lower === "enterworktree" || lower === "exitworktree") return "⌥"
-  // Scheduling
-  if (lower === "remotetrigger" || lower.startsWith("schedulecron") || lower.startsWith("cron")) return "⏱"
-  // MCP tools
-  if (lower.startsWith("mcp_") || lower.startsWith("mcp__")) return "⊙"
-  // User interaction
-  if (lower === "askuserquestion") return "?"
-  return "▸"
-}
+import { renderHunk, parseUnifiedDiff, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
 
 /** Normalize tool name for display. */
 export function displayToolName(name: string): string {
@@ -72,20 +51,91 @@ export function displayToolName(name: string): string {
   return name
 }
 
+/** Threshold: diffs with more lines than this start collapsed. */
+const COLLAPSE_THRESHOLD = 20
+
+function countDiffLines(diff: string): number {
+  let count = 0
+  for (let i = 0; i < diff.length; i++) {
+    if (diff[i] === "\n") count++
+  }
+  return count
+}
+
+const BOLD = createTextAttributes({ bold: true })
+
 export interface ToolBlockProps {
   block: ToolBlockType
 }
 
 export function ToolBlock(props: ToolBlockProps) {
   const { theme } = useTheme()
-  const icon = () => getToolIcon(props.block.name)
   const name = () => displayToolName(props.block.name)
 
-  return (
-    <box flexDirection="row" gap={1}>
-      <text fg={theme.textMuted}>{icon()}</text>
-      <text fg={theme.text} style={{ bold: true }}>{name()}</text>
+  // Diff rendering state
+  const hasDiff = () => !!props.block.diff
+  const lineCount = createMemo(() => props.block.diff ? countDiffLines(props.block.diff) : 0)
+  const [expanded, setExpanded] = createSignal(true)
+
+  // Auto-collapse large diffs on first render
+  createMemo(() => {
+    if (lineCount() > COLLAPSE_THRESHOLD) setExpanded(false)
+  })
+
+  // Map TUI theme → diff theme colors (RGBA passthrough, no conversion)
+  const diffColors = createMemo((): DiffThemeColors => ({
+    text: theme.text,
+    textMuted: theme.textMuted,
+    addedBg: theme.diffAddedBg,
+    removedBg: theme.diffRemovedBg,
+    highlightAdded: theme.diffHighlightAdded,
+    highlightRemoved: theme.diffHighlightRemoved,
+    lineNumber: theme.diffLineNumber,
+  }))
+
+  // Render diff hunks → DiffLines → StyledText (RGBA passed directly to fg/bg builders)
+  const diffStyledLines = createMemo(() => {
+    if (!props.block.diff) return []
+    const hunks = parseUnifiedDiff(props.block.diff)
+    const lines = hunks.flatMap((hunk) => renderHunk(hunk, diffColors()))
+    return lines.map((line) => {
+      const chunks: TextChunk[] = line.segments.map((seg) => {
+        let c: any = seg.text
+        if (seg.fg) c = stFg(seg.fg)(c)
+        if (seg.bg) c = stBg(seg.bg)(c)
+        return c as TextChunk
+      })
+      return { styled: new StyledText(chunks), lineBg: line.lineBg }
+    })
+  })
+
+  // Header line (shared between compact and expanded modes)
+  const header = () => (
+    <box flexDirection="row" gap={1} onMouseDown={hasDiff() ? () => setExpanded(prev => !prev) : undefined}>
+      <text fg={theme.text} attributes={BOLD}>{name()}</text>
       <text fg={theme.textMuted}>{truncate(props.block.detail, 80)}</text>
+      <Show when={hasDiff()}>
+        <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
+      </Show>
     </box>
+  )
+
+  return (
+    <Show when={hasDiff()} fallback={header()}>
+      <box flexDirection="column">
+        {header()}
+        <Show when={expanded()}>
+          <box flexDirection="column" paddingLeft={4} paddingRight={4}>
+            <For each={diffStyledLines()}>
+              {(line) => (
+                <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
+                  <text ref={(el: TextRenderable) => { el.content = line.styled }} />
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
+      </box>
+    </Show>
   )
 }

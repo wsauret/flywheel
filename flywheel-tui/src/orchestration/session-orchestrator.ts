@@ -15,13 +15,13 @@
  *   const result = await orchestrator.handleResumeSession(sessionId);
  */
 
-import type { OutputSnapshot } from "../../session/output-schemas";
-import type { Session } from "../../session/schemas";
-import type { Queue, CompletedStepResult } from "../../queue/types";
-import type { DeleteResult } from "../../session/persistence";
-import type { SessionLifecycleState } from "../../session/state-machine";
-import type { WorktreeManager } from "../../session/worktree-manager.js";
-import { safeUpdateState } from "../../session/safe-transition";
+import type { OutputSnapshot } from "../session/output-schemas";
+import type { Session } from "../session/schemas";
+import type { Queue, CompletedStepResult } from "../queue/types";
+import type { DeleteResult } from "../session/persistence";
+import type { SessionLifecycleState } from "../session/state-machine";
+import type { WorktreeManager } from "../session/worktree-manager.js";
+import { safeUpdateState } from "../session/safe-transition";
 
 // ---------------------------------------------------------------------------
 // Types

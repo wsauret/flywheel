@@ -4,7 +4,7 @@ import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
   type ResumeResult,
-} from "../src/tui/session/session-orchestrator";
+} from "../src/orchestration/session-orchestrator";
 import { createQueue } from "../src/queue/queue";
 import type { Session } from "../src/session/schemas";
 import type { OutputSnapshot } from "../src/session/output-schemas";

@@ -17,10 +17,10 @@ import {
   makeSteps,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
-import type { OnStepCompletedHook } from "../../src/queue/shared/hooks";
-import { insertAfter, createQueue } from "../../src/queue/queue";
-import type { Step } from "../../src/queue/types";
+} from "./helpers/queue-executor-harness";
+import type { OnStepCompletedHook } from "../src/queue/shared/hooks";
+import { insertAfter, createQueue } from "../src/queue/queue";
+import type { Step } from "../src/queue/types";
 
 /**
  * Build a Step literal without touching the shared counter.

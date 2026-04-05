@@ -16,7 +16,7 @@ import {
   makeStep,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
+} from "./helpers/queue-executor-harness";
 
 describe("queue linear execution", () => {
   let harness: Harness;

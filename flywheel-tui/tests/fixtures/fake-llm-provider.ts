@@ -10,7 +10,7 @@ import type {
   LLMProvider,
   StreamEvent,
   StreamOptions,
-} from "../../src/harness/llm.js";
+} from "../../src/harness";
 
 export class FakeLLMProvider implements LLMProvider {
   /** Predetermined events to yield on each stream() call (FIFO). */

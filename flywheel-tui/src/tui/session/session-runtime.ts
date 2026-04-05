@@ -10,7 +10,7 @@
  */
 
 import { Log } from "../../utils/log"
-import type { WorkflowSession } from "./workflow-session"
+import type { WorkflowSession } from "../../orchestration/workflow-session"
 import type { StepExecutor } from "../../queue/executor"
 import type { Queue } from "../../queue/types"
 import type { OutputFlusher } from "../../session/output-persistence"

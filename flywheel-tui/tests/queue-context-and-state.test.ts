@@ -18,7 +18,7 @@ import {
   makeSteps,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
+} from "./helpers/queue-executor-harness";
 
 describe("dispatcher context and state", () => {
   let harness: Harness;

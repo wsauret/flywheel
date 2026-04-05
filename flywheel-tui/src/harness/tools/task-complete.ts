@@ -7,7 +7,7 @@
  * completion.ts, Phase 4) — this tool only validates and signals intent.
  */
 
-import { WorkerHandoffSchema } from "../../queue/shared/handoff-schemas.js";
+import { WorkerHandoffSchema } from "../../protocol/handoff-schemas.js";
 import type { ConcurrencyMode, HarnessTool, ToolContext, ToolResult } from "./types.js";
 
 async function execute(input: unknown, _context: ToolContext): Promise<ToolResult> {

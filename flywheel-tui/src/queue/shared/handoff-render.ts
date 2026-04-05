@@ -1,4 +1,4 @@
-import type { WorkerHandoff } from "./handoff-schemas";
+import type { WorkerHandoff } from "../../protocol/handoff-schemas";
 
 export interface HandoffFieldSpec {
   key: keyof WorkerHandoff;

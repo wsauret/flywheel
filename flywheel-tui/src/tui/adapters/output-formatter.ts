@@ -13,7 +13,9 @@
  * Falls back to raw text for non-JSON input.
  */
 
+import * as fs from "node:fs";
 import * as path from "node:path";
+import { createPatch } from "diff";
 
 /**
  * Extract displayable text from a stream-json NDJSON line.
@@ -210,8 +212,41 @@ function truncate(
 
 // ── Diff generation ──
 
-/** Generate a unified diff from Edit tool's old_string → new_string. */
-export function createEditDiff(filePath: string, oldContent: string, newContent: string): string {
+const CONTEXT_LINES = 3;
+
+/**
+ * Generate a unified diff from Edit tool's old_string → new_string.
+ * Reads the file to produce context lines around the change.
+ * Falls back to a minimal no-context diff if the file can't be read.
+ */
+export function createEditDiff(filePath: string, oldStr: string, newStr: string): string {
+  try {
+    const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+    const fileContent = fs.readFileSync(resolved, "utf-8");
+
+    let oldContent: string;
+    let newContent: string;
+    if (fileContent.includes(oldStr)) {
+      // File not yet modified — apply replacement
+      oldContent = fileContent;
+      newContent = fileContent.replace(oldStr, newStr);
+    } else if (fileContent.includes(newStr)) {
+      // File already modified — reverse to reconstruct old
+      newContent = fileContent;
+      oldContent = fileContent.replace(newStr, oldStr);
+    } else {
+      // Neither found — fall back to minimal diff
+      return createMinimalDiff(filePath, oldStr, newStr);
+    }
+
+    return createPatch(filePath, oldContent, newContent, "", "", { context: CONTEXT_LINES });
+  } catch {
+    return createMinimalDiff(filePath, oldStr, newStr);
+  }
+}
+
+/** Minimal diff without context (fallback when file can't be read). */
+function createMinimalDiff(filePath: string, oldContent: string, newContent: string): string {
   const oldLines = oldContent.split("\n");
   const newLines = newContent.split("\n");
   let result = `--- a/${filePath}\n+++ b/${filePath}\n`;

@@ -15,7 +15,7 @@ import { describe, it, expect } from "bun:test";
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
-} from "../src/tui/session/session-orchestrator";
+} from "../src/orchestration/session-orchestrator";
 import { handleQueueCompletion, type QueueCompletionDeps } from "../src/tui/session/queue-completion";
 import { isResumable, isValidTransition, VALID_TRANSITIONS } from "../src/session/state-machine";
 import { groupSessions, type SessionGroupKey } from "../src/tui/session/sidebar-logic";

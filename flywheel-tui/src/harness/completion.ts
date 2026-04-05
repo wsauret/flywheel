@@ -6,7 +6,7 @@
  * 2. Second call: confirms completion after review
  */
 
-import { WorkerHandoffSchema } from "../queue/shared/handoff-schemas.js";
+import { WorkerHandoffSchema } from "../protocol/handoff-schemas.js";
 import { getCompletionChecklist } from "./verification.js";
 
 export type CompletionResult =

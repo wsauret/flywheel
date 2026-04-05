@@ -1,326 +1,262 @@
 /** @jsxImportSource @opentui/solid */
 /**
- * MinimalShell — Phase 3 stripped-down TUI shell.
+ * MinimalShell — Thin wiring layer.
  *
- * Layout: Header → StepProgress → OutputWindow (structured blocks) → Prompt → Footer
- *
- * Does exactly three things:
- * 1. Accept `/start work "description"` (or /start <workflow>)
- * 2. Show live structured output as the worker runs
- * 3. Display completion state
- *
- * No sidebar, no session switching, no resume, no chat, no HITL.
+ * Declares signals, imports modules, wires callbacks, renders JSX.
+ * No business logic lives here — it's all in:
+ *   - workflow.ts     (executor lifecycle)
+ *   - session-actions.ts (session CRUD)
+ *   - session-modal.tsx  (session browser UI)
+ *   - format.ts       (display formatting)
  */
 
-import { createSignal, createMemo, createEffect, For, Show, onCleanup } from "solid-js"
+import { createSignal, createMemo, For, Show, onCleanup } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { createTextAttributes } from "@opentui/core"
+import type { TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
+import { useSession } from "@tui/shared/context/session"
 import { Selection } from "../utils/selection"
 import { exitTUI } from "../app"
 import { OutputWindow } from "../routes/work/components/output-window"
-import { OpenTUIAdapter } from "../adapters/opentui"
-import { createStore as createUIStore } from "../routes/work/context/ui-state/store"
-import { prepareWorkflowDeps, type WorkflowDeps } from "../../engines/workflow-deps"
-import { buildQueueForSlashCommand } from "../shell/shell-queue"
-import { resolveTransports, buildExecutorDeps } from "../shell/queue-orchestrator"
-import { createStepExecutor, type StepExecutor } from "../../queue/executor"
-import { createQueuePersistence } from "../../queue/persistence"
-import { createGuardrails } from "../../queue/guardrails"
-import { createBudgetTracker, type BudgetTracker } from "../../session/budget-tracker"
-import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../../events/event-bus"
-import { ContextIndexer } from "../../memory/indexer"
-import { ensureSessionDir } from "../../config/paths"
-import { randomUUID } from "node:crypto"
-import { Log } from "../../utils/log"
-import { startChatSession, type ChatSession } from "./chat"
-import { FULL_LOGO, SIMPLE_LOGO } from "@tui/shared/components/logo"
+import { safeUpdateState } from "../../session/safe-transition"
+import { buildQueueForSlashCommand } from "../../orchestration/queue-builder"
+import { prepareWorkflowDeps } from "../../engines/workflow-deps"
 import { SplitBorder } from "../shared/ui/border"
-import type { StdinHandle } from "../../worker/spawner"
+import { FULL_LOGO, SIMPLE_LOGO } from "@tui/shared/components/logo"
+import { startChatSession, type ChatSession } from "./chat"
+import { SessionModal, buildSessionList } from "./session-modal"
+import { createSessionRegistry } from "../../orchestration/session-registry"
+import type { StepState } from "../../orchestration/workflow-runner"
+import { loadSessionOutput, loadResumeData, findResumableSession, archiveSession, deleteSession, type SessionActionDeps } from "../../orchestration/session-actions"
+import { formatTokens, formatElapsed, formatCost, relativeTime } from "./format"
 import type { AnyBlock } from "../types"
-import "../../queue/steps/register-all"
 
-const log = Log.create({ service: "minimal-shell" })
+const SPINNER_FRAMES = ["⠋", "⠙", "⠸", "⠴", "⠦", "⠇"]
 
-// ── Formatting helpers ──
+// ---------------------------------------------------------------------------
+// AppState
+// ---------------------------------------------------------------------------
 
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return String(n)
-}
+type AppState = "idle" | "working" | "paused" | "completed" | "error" | "chatting"
 
-function formatElapsed(ms: number): string {
-  const totalSec = Math.floor(ms / 1000)
-  if (totalSec < 60) return `${totalSec}s`
-  const min = Math.floor(totalSec / 60)
-  const sec = totalSec % 60
-  return `${min}m ${sec}s`
-}
-
-function formatCost(usd: number): string {
-  if (usd < 0.01) return `$${usd.toFixed(4)}`
-  return `$${usd.toFixed(2)}`
-}
-
-function relativeTime(ms: number): string {
-  const ago = Date.now() - ms
-  if (ago < 5_000) return "just now"
-  if (ago < 60_000) return `${Math.floor(ago / 1000)}s ago`
-  if (ago < 3_600_000) return `${Math.floor(ago / 60_000)}m ago`
-  return `${Math.floor(ago / 3_600_000)}h ago`
-}
-
-// ── Types ──
-
-type AppState = "idle" | "working" | "completed" | "error" | "chatting"
-type StepState = {
-  id: string; type: string; title: string; status: string
-  durationMs?: number; startedAt?: number; completedAt?: number
-}
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function MinimalShell() {
   const { theme } = useTheme()
   const toast = useToast()
+  const { manager, refreshList, sessions } = useSession()
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
 
-  // ── State ──
+  // ── Signals ──
   const [appState, setAppState] = createSignal<AppState>("idle")
   const [outputBlocks, setOutputBlocks] = createSignal<AnyBlock[]>([])
   const [steps, setSteps] = createSignal<StepState[]>([])
   const [errorMessage, setErrorMessage] = createSignal("")
   const [sessionTitle, setSessionTitle] = createSignal("")
   const [statusLine, setStatusLine] = createSignal("")
-
-  // Re-focus prompt after chat turn completes
-  createEffect(() => {
-    if (appState() === "chatting" && !chatWaiting()) {
-      queueMicrotask(() => promptRef?.focus?.())
-    }
-  })
-
-  // Live metrics (updated during execution)
   const [liveTokens, setLiveTokens] = createSignal(0)
   const [liveCost, setLiveCost] = createSignal(0)
   const [workStartTime, setWorkStartTime] = createSignal(0)
   const [elapsed, setElapsed] = createSignal(0)
-
-  // Chat mode state
   const [chatWaiting, setChatWaiting] = createSignal(false)
+  const [promptHeight, setPromptHeight] = createSignal(1)
+  const [spinnerTick, setSpinnerTick] = createSignal(0)
+
+  // Session modal
+  const [sessionsModalOpen, setSessionsModalOpen] = createSignal(false)
+  const [modalCursor, setModalCursor] = createSignal(0)
+  const [modalConfirmDelete, setModalConfirmDelete] = createSignal<string | undefined>()
+
+  // Active workflow tracking — foregroundId is the session whose output is displayed
+  const [foregroundId, setForegroundId] = createSignal<string | undefined>()
+
+  // ── Session registry ──
+  const registry = createSessionRegistry()
 
   // ── Mutable refs ──
-  let activeExecutor: StepExecutor | null = null
-  let activeBudgetTracker: BudgetTracker | null = null
-  let activeAdapter: OpenTUIAdapter | null = null
-  let storeUnsub: (() => void) | null = null
-  let eventUnsubs: Unsubscribe[] = []
-  let promptRef: any = null
+  let chatSession: ChatSession | null = null
+  let promptRef: TextareaRenderable | null = null
   let elapsedTimer: ReturnType<typeof setInterval> | null = null
-  let metricsTimer: ReturnType<typeof setInterval> | null = null
-  let activeChatSession: ChatSession | null = null
+  let elapsedAccum = 0
+  let elapsedRunStart = 0
+
+  // Session action deps (stable reference)
+  const actionDeps: SessionActionDeps = { manager, refreshList, activeSessionId: foregroundId }
+
+  // Spinner
+  const spinnerTimer = setInterval(() => setSpinnerTick((t) => (t + 1) % SPINNER_FRAMES.length), 150)
+  onCleanup(() => clearInterval(spinnerTimer))
 
   // ── Cleanup ──
   onCleanup(() => {
-    eventUnsubs.forEach((u) => u())
-    storeUnsub?.()
-    activeAdapter?.disconnect()
-    activeBudgetTracker?.dispose()
-    activeChatSession?.end()
-    if (elapsedTimer) clearInterval(elapsedTimer)
-    if (metricsTimer) clearInterval(metricsTimer)
+    registryUnsub()
+    for (const id of registry.activeIds()) registry.abort(id)
+    chatSession?.end()
+    stopElapsedTimer()
     renderer.setTerminalTitle("")
   })
 
-  // ── Start workflow ──
+  // ── Elapsed timer ──
+  function startElapsedTimer() {
+    if (elapsedTimer) return
+    elapsedRunStart = Date.now()
+    elapsedTimer = setInterval(() => setElapsed(elapsedAccum + (Date.now() - elapsedRunStart)), 1000)
+  }
+  function pauseElapsedTimer() {
+    if (!elapsedTimer) return
+    elapsedAccum += Date.now() - elapsedRunStart
+    clearInterval(elapsedTimer)
+    elapsedTimer = null
+  }
+  function stopElapsedTimer() { pauseElapsedTimer() }
+  function resetMetrics() {
+    setWorkStartTime(Date.now())
+    setElapsed(0)
+    elapsedAccum = 0
+    setLiveTokens(0)
+    setLiveCost(0)
+  }
+
+  // ── Workflow lifecycle ──
+
   async function startWorkflow(command: string, description: string) {
-    setAppState("working")
     setOutputBlocks([])
     setSteps([])
     setErrorMessage("")
     setStatusLine("")
     setSessionTitle(description || command)
-    setWorkStartTime(Date.now())
-    setElapsed(0)
-    setLiveTokens(0)
-    setLiveCost(0)
-
-    // Terminal title
+    resetMetrics()
+    startElapsedTimer()
+    setAppState("working")
     renderer.setTerminalTitle(`flywheel · ${description || command}`)
 
-    // Elapsed timer — ticks every second
-    elapsedTimer = setInterval(() => {
-      setElapsed(Date.now() - workStartTime())
-    }, 1000)
-
-    let deps: WorkflowDeps
+    let queue
     try {
-      deps = prepareWorkflowDeps()
+      const deps = prepareWorkflowDeps()
+      queue = buildQueueForSlashCommand(command, deps.config)
     } catch (err) {
       setErrorMessage(`Config error: ${err instanceof Error ? err.message : String(err)}`)
       setAppState("error")
-      stopTimers()
       return
     }
 
-    const queue = buildQueueForSlashCommand(command, deps.config)
-    const sessionId = randomUUID()
-    const projectCwd = process.cwd()
-    ensureSessionDir(sessionId, projectCwd)
+    const sessionId = manager.create(description, description, command as any)
+    safeUpdateState((id, s) => manager.updateState(id, s), sessionId, "work:active")
 
-    // Initialize step display
-    setSteps(queue.steps.map((s) => ({ id: s.id, type: s.type, title: s.title, status: s.status })))
-
-    // Event bus + emitter
-    const eventBus = new EventBus()
-    const emitter = createFlywheelEmitter(eventBus)
-    const workflowIdRef = { current: randomUUID() }
-
-    // Budget tracker
-    activeBudgetTracker = createBudgetTracker({ sessionId, baseDir: projectCwd })
-
-    // Live metrics poll — update cost/tokens from budget tracker every 500ms
-    metricsTimer = setInterval(() => {
-      if (activeBudgetTracker) {
-        setLiveTokens(activeBudgetTracker.getTokensUsed())
-        setLiveCost(activeBudgetTracker.getTotalCost())
-      }
-    }, 500)
-
-    // ── Structured output pipeline ──
-    const uiActions = createUIStore("workflow")
-    uiActions.startWorkflow(command)
-    activeAdapter = new OpenTUIAdapter({ actions: uiActions })
-    activeAdapter.connect(eventBus)
-
-    storeUnsub = uiActions.subscribe(() => {
-      const state = uiActions.getState()
-      setOutputBlocks(state.outputBlocks ?? [])
-    })
-
-    // Subscribe to queue events for step progress
-    eventUnsubs.push(
-      eventBus.subscribe((event) => {
-        if (event.type === "queue:step-started") {
-          const e = event as any
-          setSteps((prev) =>
-            prev.map((s) => (s.id === e.stepId ? { ...s, status: "running", startedAt: Date.now() } : s)),
-          )
-        }
-        if (event.type === "queue:step-completed") {
-          const e = event as any
-          const now = Date.now()
-          setSteps((prev) =>
-            prev.map((s) => {
-              if (s.id !== e.stepId) return s
-              return { ...s, status: "completed", completedAt: now, durationMs: s.startedAt ? now - s.startedAt : undefined }
-            }),
-          )
-        }
-        if (event.type === "queue:step-failed") {
-          const e = event as any
-          setSteps((prev) =>
-            prev.map((s) => (s.id === e.stepId ? { ...s, status: "failed", completedAt: Date.now() } : s)),
-          )
-        }
-      }),
-    )
-
-    try {
-      const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-        deps, eventBus, workflowIdRef, "", sessionId, projectCwd,
-      )
-
-      if (!dispatcherTransport) {
-        setErrorMessage("Dispatcher transport unavailable. Check your engine configuration.")
-        setAppState("error")
-        stopTimers()
-        return
-      }
-
-      const contextIndexer = new ContextIndexer(projectCwd)
-      const stdinHandleRef: { current: StdinHandle | null } = { current: null }
-
-      const execDeps = buildExecutorDeps({
-        deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
-        contextIndexer, projectCwd, sessionObjective: description, queue, sessionId,
-        stdinHandleRef,
-        setShellQueueSteps: () => {},
-        capturedWorkerSessionId: { current: undefined },
-        pendingInjection: { current: null },
-        activeSessionRef: { current: null },
-        budgetTracker: activeBudgetTracker,
-      })
-
-      const guardrails = createGuardrails({
-        maxQueueLength: deps.config.queue?.max_steps ?? 50,
-        maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
-        maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
-      })
-
-      const persistence = createQueuePersistence({ sessionId, baseDir: projectCwd })
-
-      const executor = createStepExecutor({
-        queue,
-        workflowId: workflowIdRef.current,
-        sessionId,
-        emitter,
-        dispatcher: execDeps.dispatcherFn,
-        worker: execDeps.workerFn,
-        evaluator: execDeps.evaluator,
-        handoffReader: execDeps.handoffReader,
-        budgetChecker: { isExhausted: () => false },
-        persist: async (q) => { try { await persistence.save(q) } catch { /* best-effort */ } },
-        accumulator: execDeps.contextAccumulator,
-        maxRevisions: deps.config.max_revisions ?? 1,
-        onStepCompleted: execDeps.compositeHook,
-        guardrails,
-        sessionObjective: description,
-        onWorkerDispatched: activeBudgetTracker ? () => activeBudgetTracker!.incrementInvocations() : null,
-        onSessionName: (name) => {
-          setSessionTitle(name)
-          renderer.setTerminalTitle(`flywheel · ${name}`)
-        },
-      })
-      activeExecutor = executor
-
-      const result = await executor.run()
-
-      // Final step states from queue
-      setSteps(queue.steps.map((s) => ({ id: s.id, type: s.type, title: s.title, status: s.status })))
-
-      activeBudgetTracker?.flush()
-      const cost = activeBudgetTracker?.getTotalCost() ?? 0
-      const tokens = activeBudgetTracker?.getTokensUsed() ?? 0
-      const totalElapsed = formatElapsed(Date.now() - workStartTime())
-      if (result.completed) {
-        setStatusLine(`✓ ${result.stepsCompleted}/${result.stepsTotal} steps · ${totalElapsed} · ${formatCost(cost)} · ${formatTokens(tokens)} tokens`)
-      } else {
-        setStatusLine(`✗ ${result.reason ?? "stopped"} (${result.stepsCompleted}/${result.stepsTotal}) · ${totalElapsed} · ${formatCost(cost)}`)
-      }
-      setAppState("completed")
-      renderer.setTerminalTitle("flywheel · done")
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      log.error("workflow execution failed", { error: msg })
-      setErrorMessage(msg)
-      setAppState("error")
-      renderer.setTerminalTitle("flywheel · error")
-    } finally {
-      stopTimers()
-      activeExecutor = null
-      activeAdapter?.disconnect()
-      activeAdapter = null
-      storeUnsub?.()
-      storeUnsub = null
-      activeBudgetTracker?.dispose()
-      activeBudgetTracker = null
-    }
+    registry.start({ sessionId, queue, description })
+    setForegroundId(sessionId)
   }
 
-  function stopTimers() {
-    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null }
-    if (metricsTimer) { clearInterval(metricsTimer); metricsTimer = null }
+  async function resumeWorkflow(sessionId: string) {
+    const data = await loadResumeData(sessionId, actionDeps)
+    if (!data) {
+      toast.show({ message: "Failed to resume — missing data", variant: "error" })
+      return
+    }
+
+    const description = data.session.name || data.session.label || ""
+    setOutputBlocks(data.outputBlocks)
+    setSteps([])
+    setErrorMessage("")
+    setStatusLine("")
+    setSessionTitle(description || "Resumed session")
+    resetMetrics()
+    startElapsedTimer()
+    setAppState("working")
+    renderer.setTerminalTitle(`flywheel · ${description || "resume"}`)
+
+    safeUpdateState((id, s) => manager.updateState(id, s), sessionId, "work:active")
+
+    registry.start({ sessionId, queue: data.queue, description, priorBlocks: data.outputBlocks })
+    setForegroundId(sessionId)
+  }
+
+  // ── Registry subscription — sync foreground entry to display signals ──
+
+  const registryUnsub = registry.subscribe(() => {
+    setRunningCount(registry.runningCount())
+
+    const fgId = foregroundId()
+    if (!fgId) return
+
+    const entry = registry.get(fgId)
+    if (!entry) return
+
+    // Sync display signals from the foreground entry
+    setOutputBlocks(entry.outputBlocks)
+    setSteps(entry.steps)
+    setLiveTokens(entry.tokens)
+    setLiveCost(entry.cost)
+    setSessionTitle(entry.description)
+    renderer.setTerminalTitle(`flywheel · ${entry.description}`)
+
+    // Handle terminal states
+    if (entry.status === "completed" || entry.status === "error") {
+      stopElapsedTimer()
+      const totalElapsed = formatElapsed(Date.now() - workStartTime())
+
+      if (entry.status === "completed" && entry.result) {
+        const r = entry.result
+        if (r.completed) {
+          safeUpdateState((id, s) => manager.updateState(id, s), fgId, "completed")
+          setStatusLine(`\u2713 ${r.stepsCompleted}/${r.stepsTotal} steps \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)} \u00b7 ${formatTokens(r.tokens)} tokens`)
+        } else {
+          safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
+          setStatusLine(`\u2717 ${r.reason ?? "stopped"} (${r.stepsCompleted}/${r.stepsTotal}) \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)}`)
+        }
+        refreshList()
+        setAppState("completed")
+        renderer.setTerminalTitle("flywheel \u00b7 done")
+      } else if (entry.status === "error") {
+        safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
+        refreshList()
+        setErrorMessage(entry.errorMessage ?? "Unknown error")
+        setAppState("error")
+        renderer.setTerminalTitle("flywheel \u00b7 error")
+      }
+
+      // Clean up: remove from registry, clear foreground
+      registry.remove(fgId)
+      setForegroundId(undefined)
+    }
+
+    // Toast for background session completions
+    for (const id of registry.activeIds()) {
+      if (id === fgId) continue
+      const bg = registry.get(id)
+      if (bg && (bg.status === "completed" || bg.status === "error")) {
+        const label = bg.description || id.slice(0, 8)
+        toast.show({
+          message: bg.status === "completed" ? `Background session "${label}" completed` : `Background session "${label}" errored`,
+          variant: bg.status === "completed" ? "info" : "error",
+        })
+        registry.remove(id)
+      }
+    }
+  })
+
+  // ── Pause / abort ──
+
+  function pauseForeground() {
+    const fgId = foregroundId()
+    if (!fgId) return
+    registry.pause(fgId)
+    pauseElapsedTimer()
+    setAppState("paused")
+    toast.show({ message: "Pausing after current step... (Esc to force stop)", variant: "info" })
+  }
+
+  function abortForeground() {
+    const fgId = foregroundId()
+    if (!fgId) return
+    registry.abort(fgId)
+    toast.show({ message: "Force-stopping workflow", variant: "warning" })
+    // runner.run() will resolve → registry subscription handles state transition
   }
 
   // ── Chat mode ──
@@ -333,15 +269,11 @@ export function MinimalShell() {
     setStatusLine("")
     setSessionTitle("Chat")
     setChatWaiting(false)
-    setWorkStartTime(Date.now())
-    setElapsed(0)
-    setLiveTokens(0)
-    setLiveCost(0)
+    resetMetrics()
     renderer.setTerminalTitle("flywheel · chat")
-    elapsedTimer = setInterval(() => setElapsed(Date.now() - workStartTime()), 1000)
 
     try {
-      activeChatSession = await startChatSession({
+      chatSession = await startChatSession({
         onBlocksChanged: setOutputBlocks,
         onWaitingChanged: setChatWaiting,
         onTokensChanged: setLiveTokens,
@@ -349,11 +281,11 @@ export function MinimalShell() {
         onError: (msg) => { setErrorMessage(msg); setAppState("error") },
         onEnded: () => {
           if (appState() !== "chatting") return
-          stopTimers()
-          const cost = activeChatSession?.budgetTracker.getTotalCost() ?? 0
-          const tokens = activeChatSession?.budgetTracker.getTokensUsed() ?? 0
+          stopElapsedTimer()
+          const cost = chatSession?.budgetTracker.getTotalCost() ?? 0
+          const tokens = chatSession?.budgetTracker.getTokensUsed() ?? 0
           setStatusLine(`Chat ended · ${formatElapsed(Date.now() - workStartTime())} · ${formatCost(cost)} · ${formatTokens(tokens)} tokens`)
-          activeChatSession = null
+          chatSession = null
           setAppState("completed")
           renderer.setTerminalTitle("flywheel · done")
         },
@@ -361,32 +293,120 @@ export function MinimalShell() {
     } catch (err) {
       setErrorMessage(`Chat error: ${err instanceof Error ? err.message : String(err)}`)
       setAppState("error")
-      stopTimers()
     }
   }
 
   function endChat() {
-    stopTimers()
-    activeChatSession?.end()
-    activeChatSession = null
+    stopElapsedTimer()
+    chatSession?.end()
+    chatSession = null
+  }
+
+  // ── Resume ──
+
+  async function handleResume(sessionIdArg?: string) {
+    let targetId = sessionIdArg
+    if (!targetId) {
+      const session = findResumableSession(actionDeps)
+      if (!session) {
+        toast.show({ message: "No resumable sessions found", variant: "warning" })
+        return
+      }
+      targetId = session.id
+    }
+    await resumeWorkflow(targetId)
+  }
+
+  // ── Foreground switching ──
+
+  function switchForeground(sessionId: string) {
+    const entry = registry.get(sessionId)
+    if (!entry) return
+
+    // Save elapsed time for current foreground
+    pauseElapsedTimer()
+
+    // Switch foreground pointer — registry subscription will sync display signals
+    setForegroundId(sessionId)
+    setAppState(entry.status === "running" ? "working" : entry.status === "paused" ? "paused" : "completed")
+
+    // Reset elapsed to this session's runtime
+    elapsedAccum = Date.now() - entry.startedAt
+    setElapsed(elapsedAccum)
+    if (entry.status === "running") {
+      elapsedRunStart = Date.now()
+      elapsedTimer = setInterval(() => setElapsed(elapsedAccum + (Date.now() - elapsedRunStart)), 1000)
+    }
+
+    setStatusLine("")
+    setErrorMessage("")
+    renderer.setTerminalTitle(`flywheel · ${entry.description}`)
+  }
+
+  // ── Session modal callbacks ──
+
+  async function handleSessionView(sessionId: string) {
+    setSessionsModalOpen(false)
+
+    // If this session is running in the registry, switch foreground to it
+    const entry = registry.get(sessionId)
+    if (entry) {
+      switchForeground(sessionId)
+      return
+    }
+
+    // Historical session — load from disk
+    const blocks = await loadSessionOutput(sessionId)
+    setOutputBlocks(blocks)
+
+    const { sessions: list } = manager.list()
+    const session = list.find(s => s.id === sessionId)
+    if (session) {
+      setSessionTitle(session.label || session.name || sessionId.slice(0, 8))
+      setStatusLine(`Viewing session · ${formatCost(session.totalCost)}`)
+    }
+    setForegroundId(undefined)
+    setAppState("completed")
+  }
+
+  function handleSessionResume(sessionId: string) {
+    setSessionsModalOpen(false)
+    handleResume(sessionId)
+  }
+
+  function handleSessionArchive(sessionId: string) {
+    try {
+      archiveSession(sessionId, actionDeps)
+      toast.show({ message: "Session archived", variant: "info" })
+    } catch (err) {
+      toast.show({ message: `Cannot archive: ${err instanceof Error ? err.message : String(err)}`, variant: "error" })
+    }
+  }
+
+  function handleSessionDelete(sessionId: string) {
+    deleteSession(sessionId, actionDeps)
+    toast.show({ message: "Session deleted", variant: "info" })
   }
 
   // ── Command dispatch ──
+
   function handlePromptSubmit(text: string) {
     const trimmed = text.trim()
     if (!trimmed) return
 
-    // Chat mode: send message to worker (unless it's a command)
+    // Chat mode
     if (appState() === "chatting") {
       if (trimmed === "/exit" || trimmed === "/quit") { endChat(); exitTUI(); return }
       if (trimmed === "/end" || trimmed === "/stop") { endChat(); return }
-      activeChatSession?.send(trimmed)
+      chatSession?.send(trimmed)
       return
     }
 
     if (trimmed === "/exit" || trimmed === "/quit") { exitTUI(); return }
-
-    // /chat — start interactive chat mode
+    if (trimmed === "/sessions") { openSessionsModal(); return }
+    if (trimmed === "/resume") { handleResume(); return }
+    const resumeMatch = trimmed.match(/^\/resume\s+(.+)$/i)
+    if (resumeMatch) { handleResume(resumeMatch[1]); return }
     if (trimmed === "/chat") { startChat(); return }
     const chatMatch = trimmed.match(/^\/chat\s+(.+)$/i)
     if (chatMatch) { startChat(chatMatch[1]); return }
@@ -401,189 +421,253 @@ export function MinimalShell() {
       startWorkflow(slashMatch[1], slashMatch[2]); return
     }
 
-    toast.show({ message: `Unknown command. Try /chat, /start work "desc", or /exit`, variant: "warning" })
+    toast.show({ message: `Unknown command. Try /chat, /sessions, /start work "desc", or /exit`, variant: "warning" })
+  }
+
+  function openSessionsModal() {
+    setSessionsModalOpen(true)
+    setModalCursor(0)
+    setModalConfirmDelete(undefined)
   }
 
   // ── Keyboard ──
+
   useKeyboard((evt) => {
-    if (evt.ctrl && evt.name === "c") {
+    // Modal mode — drive modal from here (see session-modal.tsx for why)
+    if (sessionsModalOpen()) {
+      handleModalKey(evt)
+      return
+    }
+
+    // Esc — context-dependent interrupt
+    if (evt.name === "escape") {
+      if (appState() === "working") {
+        pauseForeground()
+        const bg = runningCount()
+        if (bg > 0) toast.show({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
+        return
+      }
+      if (appState() === "paused") { abortForeground(); return }
       if (appState() === "chatting") {
         endChat()
         setStatusLine(`Chat ended · ${formatElapsed(Date.now() - workStartTime())}`)
         setAppState("completed")
         return
       }
-      if (activeExecutor && appState() === "working") {
-        activeExecutor.requestShutdown()
-      } else {
-        exitTUI()
+      // Esc from completed/error — return to idle without affecting background sessions
+      if (appState() === "completed" || appState() === "error") {
+        setAppState("idle")
+        setOutputBlocks([])
+        setSteps([])
+        setStatusLine("")
+        setErrorMessage("")
+        setSessionTitle("")
+        setForegroundId(undefined)
+        renderer.setTerminalTitle("flywheel")
+        return
       }
+    }
+
+    // Ctrl+B — open sessions modal
+    if (evt.ctrl && evt.name === "b") { openSessionsModal() }
+
+    // Ctrl+R — resume most recent paused session
+    if (evt.ctrl && evt.name === "r") { handleResume() }
+
+    // Ctrl+C — exit only from idle (no running sessions)
+    if (evt.ctrl && evt.name === "c") {
+      if (registry.runningCount() === 0 && appState() !== "chatting") { exitTUI() }
     }
   })
 
+  function handleModalKey(evt: any) {
+    if (evt.name === "escape" || (evt.ctrl && evt.name === "b")) {
+      evt.preventDefault()
+      setSessionsModalOpen(false)
+      setModalConfirmDelete(undefined)
+      return
+    }
+    const items = buildSessionList(sessions())
+    const total = items.length
+    if (total === 0) return
+
+    if (evt.name === "up" || evt.name === "k") {
+      evt.preventDefault()
+      setModalCursor((c) => (c - 1 + total) % total)
+      setModalConfirmDelete(undefined)
+      return
+    }
+    if (evt.name === "down" || evt.name === "j") {
+      evt.preventDefault()
+      setModalCursor((c) => (c + 1) % total)
+      setModalConfirmDelete(undefined)
+      return
+    }
+    const selected = items[modalCursor()]?.session
+    if (!selected) return
+
+    if (evt.name === "return") {
+      evt.preventDefault()
+      if (selected.lifecycleState === "work:active" && registry.get(selected.id)) {
+        // Running session — switch foreground to it
+        setSessionsModalOpen(false)
+        switchForeground(selected.id)
+      } else if (selected.lifecycleState === "work:paused" || selected.lifecycleState === "budget_exhausted") {
+        handleSessionResume(selected.id)
+      } else {
+        handleSessionView(selected.id)
+      }
+      return
+    }
+    if (evt.name === "r") {
+      if (selected.lifecycleState === "work:paused" || selected.lifecycleState === "budget_exhausted") { evt.preventDefault(); handleSessionResume(selected.id) }
+      return
+    }
+    if (evt.name === "a" && selected.lifecycleState === "completed") {
+      evt.preventDefault(); handleSessionArchive(selected.id); return
+    }
+    if (evt.name === "d" && selected.id !== foregroundId()) {
+      evt.preventDefault()
+      if (modalConfirmDelete() === selected.id) { setModalConfirmDelete(undefined); handleSessionDelete(selected.id) }
+      else { setModalConfirmDelete(selected.id) }
+    }
+  }
+
   // ── Derived state ──
+
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
   const currentStep = createMemo(() => {
     const running = steps().find((s) => s.status === "running")
     if (!running) return null
-    const idx = steps().indexOf(running)
-    return { index: idx, name: running.title, status: "running" as const }
+    return { index: steps().indexOf(running), name: running.title, status: "running" as const }
   })
 
-  // Header right-side info: live metrics while working, final summary when done
+  const [runningCount, setRunningCount] = createSignal(0)
+
   const headerRight = createMemo(() => {
     const state = appState()
-    if (state === "idle") return "ready"
-    if (state === "error") return "error"
+    const bgCount = runningCount()
+    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && state !== "working" ? ` (1 running)` : ""
+    if (state === "idle") return bgCount > 0 ? `${bgCount} running` : "ready"
+    if (state === "error") return "error" + bgSuffix
+    if (state === "paused") return "paused" + bgSuffix
     if (state === "working" || state === "chatting") {
       const parts: string[] = [formatElapsed(elapsed())]
       const t = liveTokens()
       if (t > 0) parts.push(formatTokens(t))
       const c = liveCost()
       if (c > 0) parts.push(formatCost(c))
-      return parts.join(" · ")
+      return parts.join(" · ") + bgSuffix
     }
-    return "done"
+    return "done" + bgSuffix
   })
 
   const showLogo = createMemo(() => appState() === "idle" && dimensions().height >= 20)
+  const showPrompt = createMemo(() => appState() !== "working" && !sessionsModalOpen())
+
+  // ── JSX ──
 
   return (
     <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background} onMouseUp={() => Selection.copy(renderer, toast)}>
 
-      {/* Header — panel background + left border */}
-      <box
-        flexShrink={0}
-        paddingTop={1}
-        paddingBottom={1}
-        paddingLeft={2}
-        paddingRight={1}
-        backgroundColor={theme.backgroundPanel}
-        {...SplitBorder}
-        border={["left"]}
-        borderColor={theme.border}
-      >
+      {/* Header */}
+      <box flexShrink={0} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}
+        backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
         <box flexDirection="row" justifyContent="space-between">
-          <text fg={theme.primary} style={{ bold: true }}>flywheel</text>
-          <Show when={sessionTitle()}><text fg={theme.text} style={{ bold: true }}>{sessionTitle()}</text></Show>
+          <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>flywheel</text>
+          <Show when={sessionTitle()}><text fg={theme.text} attributes={createTextAttributes({ bold: true })}>{sessionTitle()}</text></Show>
           <text fg={theme.textMuted}>{headerRight()}</text>
         </box>
       </box>
 
-      {/* Main content area */}
+      {/* Content */}
       <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} gap={1}>
 
-        {/* Step Progress */}
         <Show when={steps().length > 0}>
           <box flexShrink={0}>
             <For each={steps()}>
-              {(step) => {
-                const color = () =>
-                  step.status === "completed" ? theme.success
-                  : step.status === "running" ? theme.primary
-                  : step.status === "failed" ? theme.error
-                  : theme.textMuted
-                const icon = () =>
-                  step.status === "completed" ? "✓"
-                  : step.status === "running" ? "▸"
-                  : step.status === "failed" ? "✗"
-                  : "○"
-                const detail = () => {
-                  if (step.durationMs) return ` (${(step.durationMs / 1000).toFixed(1)}s)`
-                  if (step.completedAt) return ` · ${relativeTime(step.completedAt)}`
-                  if (step.status === "running" && step.startedAt) return ` · ${relativeTime(step.startedAt)}`
-                  return ""
-                }
-                return (
-                  <text fg={color()}>
-                    {icon()} {step.title}{detail()}
-                  </text>
-                )
-              }}
+              {(step) => (
+                <text fg={step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted}>
+                  {step.status === "completed" ? "✓" : step.status === "running" ? "▸" : step.status === "failed" ? "✗" : "○"} {step.title}
+                  {step.durationMs ? ` (${(step.durationMs / 1000).toFixed(1)}s)` : step.completedAt ? ` · ${relativeTime(step.completedAt)}` : step.status === "running" && step.startedAt ? ` · ${relativeTime(step.startedAt)}` : ""}
+                </text>
+              )}
             </For>
           </box>
         </Show>
 
-        {/* Idle: logo + help text */}
-        <Show when={appState() === "idle"}>
+        <Show when={appState() === "idle" && !sessionsModalOpen()}>
           <scrollbox flexGrow={1}>
             <Show when={showLogo()}>
               <box paddingTop={2} paddingBottom={1}>
-                <For each={FULL_LOGO}>
-                  {(line) => <text fg={theme.primary}>{line}</text>}
-                </For>
+                <For each={FULL_LOGO}>{(line) => <text fg={theme.primary}>{line}</text>}</For>
               </box>
             </Show>
             <Show when={!showLogo()}>
               <box paddingTop={1} paddingBottom={1}>
-                <For each={SIMPLE_LOGO}>
-                  {(line) => <text fg={theme.primary} style={{ bold: true }}>{line}</text>}
-                </For>
+                <For each={SIMPLE_LOGO}>{(line) => <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{line}</text>}</For>
               </box>
             </Show>
             <text fg={theme.textMuted}>/chat              start an interactive session</text>
             <text fg={theme.textMuted}>/start work "desc"  run a workflow pipeline</text>
+            <text fg={theme.textMuted}>/resume            resume an interrupted session</text>
+            <text fg={theme.textMuted}>/sessions          manage sessions (Ctrl+B)</text>
             <text fg={theme.textMuted}>/exit              quit</text>
           </scrollbox>
         </Show>
 
-        {/* Error */}
         <Show when={appState() === "error"}>
           <scrollbox flexGrow={1}>
-            <text fg={theme.error} style={{ bold: true }}>Error</text>
+            <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Error</text>
             <text fg={theme.error}>{errorMessage()}</text>
           </scrollbox>
         </Show>
 
-        {/* Active output */}
-        <Show when={appState() === "working" || appState() === "completed" || appState() === "chatting"}>
+        <Show when={appState() === "working" || appState() === "paused" || appState() === "completed" || appState() === "chatting"}>
           <OutputWindow
             outputBlocks={outputBlocks()}
-            workflowStatus={appState() === "working" ? "running" : appState() === "chatting" ? "running" : "completed"}
+            workflowStatus={appState() === "working" || appState() === "chatting" ? "running" : appState() === "paused" ? "interrupted" : "completed"}
             approvalPending={false}
             isPromptFocused={appState() !== "working"}
             currentStep={appState() === "chatting" ? null : currentStep()}
           />
         </Show>
 
-        {/* Status line */}
         <Show when={statusLine()}>
-          <box flexShrink={0}>
-            <text fg={theme.success}>{statusLine()}</text>
-          </box>
+          <box flexShrink={0}><text fg={theme.success}>{statusLine()}</text></box>
         </Show>
-
       </box>
 
-      {/* Prompt — distinct background, left border */}
+      {/* Prompt */}
       <box flexShrink={0}>
-        <Show when={appState() !== "working"}>
-          <box
-            paddingLeft={2}
-            paddingRight={2}
-            paddingTop={1}
-            paddingBottom={1}
-            backgroundColor={theme.backgroundElement}
-            border={["left"]}
-            borderColor={theme.primary}
-          >
-            <input
-              ref={(r: any) => { promptRef = r; queueMicrotask(() => r?.focus?.()) }}
-              width={lineWidth()}
+        <Show when={showPrompt()}>
+          <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1}
+            backgroundColor={theme.backgroundElement} border={["left"]} borderColor={theme.primary}>
+            <textarea
+              ref={(r: TextareaRenderable) => {
+                promptRef = r
+                r.onContentChange = () => setPromptHeight(Math.min(3, Math.max(1, r.virtualLineCount)))
+                queueMicrotask(() => r?.focus?.())
+              }}
+              width={lineWidth()} height={promptHeight()} wrapMode="word"
               placeholder={
                 appState() === "chatting"
                   ? (chatWaiting() ? "Waiting for response..." : "Send a message (/end to exit chat)")
-                  : appState() === "idle"
-                    ? '/chat or /start work "description"'
-                    : "Enter command..."
+                  : appState() === "paused"
+                    ? "Type a message to the worker, or Esc to stop"
+                    : appState() === "idle"
+                      ? '/chat or /start work "description"'
+                      : "Enter command..."
               }
-              onSubmit={() => { const v = promptRef?.value ?? ""; handlePromptSubmit(v); if (promptRef) promptRef.value = "" }}
+              backgroundColor="transparent" focusedBackgroundColor="transparent"
+              onSubmit={() => { const v = promptRef?.plainText ?? ""; handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
+              keyBindings={[{ name: "return", action: "submit" as TextareaAction }]}
             />
           </box>
         </Show>
         <Show when={appState() === "working"}>
           <box paddingLeft={2} paddingTop={1} paddingBottom={1} backgroundColor={theme.backgroundElement}>
-            <text fg={theme.textMuted}>Running... Press Ctrl+C to stop.</text>
+            <text fg={theme.textMuted}>Running... Press Esc to pause.</text>
           </box>
         </Show>
       </box>
@@ -593,11 +677,25 @@ export function MinimalShell() {
         <text fg={theme.textMuted}>{process.cwd()}</text>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.textMuted}>
-            {appState() === "chatting" ? "/end · Ctrl+C" : "/chat · /exit · Ctrl+C"}
+            {appState() === "chatting" ? "Esc · /end"
+              : appState() === "paused" ? "Esc (stop) · Ctrl+R (resume)"
+              : appState() === "working" ? `Esc (pause)${runningCount() > 1 ? ` · ${runningCount()} sessions` : ""}`
+              : `Esc · Ctrl+B · /chat · /exit${runningCount() > 0 ? ` · ${runningCount()} running` : ""}`}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>
         </box>
       </box>
+
+      {/* Session modal overlay */}
+      <Show when={sessionsModalOpen()}>
+        <SessionModal
+          activeSessionId={foregroundId()}
+          cursor={modalCursor()}
+          confirmDeleteId={modalConfirmDelete()}
+          onClose={() => setSessionsModalOpen(false)}
+          onSelect={(idx) => { setModalCursor(idx); setModalConfirmDelete(undefined) }}
+        />
+      </Show>
     </box>
   )
 }

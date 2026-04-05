@@ -4,7 +4,7 @@ import {
   makeStep,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
+} from "./helpers/queue-executor-harness";
 
 describe("queue executor — gate steps and HITL", () => {
   let harness: Harness;

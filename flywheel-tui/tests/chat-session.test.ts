@@ -6,7 +6,7 @@ import {
   type ChatAgentHandle,
   type ChatSessionConfig,
 } from "../src/tui/session/chat-session";
-import type { AgentLoopResult } from "../src/harness/agent-loop";
+import type { AgentLoopResult } from "../src/harness";
 import type { FlywheelEvent } from "../src/events/types";
 
 /**

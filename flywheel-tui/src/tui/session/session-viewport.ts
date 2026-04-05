@@ -25,8 +25,8 @@ import { snapshotToBlocks } from "../../session/output-schemas";
 import { computeQueueProgress } from "../components/workflow-panel-logic";
 import type { UIActions } from "../routes/work/context/ui-state/types";
 import type { AnyBlock, QueueStepState } from "../types";
-import type { QueueProgressInfo } from "../shell/shell-queue";
-import type { SessionOrchestrator } from "./session-orchestrator";
+import type { QueueProgressInfo } from "../../orchestration/queue-builder";
+import type { SessionOrchestrator } from "../../orchestration/session-orchestrator";
 import type { AppState } from "../shell/shell-modes";
 
 // ---------------------------------------------------------------------------

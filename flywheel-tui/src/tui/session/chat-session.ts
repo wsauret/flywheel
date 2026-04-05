@@ -26,7 +26,7 @@ import { EventBus } from "../../events/event-bus.js";
 import { OpenTUIAdapter } from "../adapters/opentui.js";
 import { createStore } from "../routes/work/context/ui-state/store.js";
 import type { UIActions } from "../routes/work/context/ui-state/types.js";
-import type { AgentLoopResult } from "../../harness/agent-loop.js";
+import type { AgentLoopResult } from "../../harness/index.js";
 import { Log } from "../../utils/log.js";
 
 const log = Log.create({ service: "chat-session" });

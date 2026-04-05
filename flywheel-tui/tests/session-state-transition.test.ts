@@ -20,7 +20,7 @@ import {
 import {
   createSessionOrchestrator,
   type SessionOrchestratorDeps,
-} from "../src/tui/session/session-orchestrator";
+} from "../src/orchestration/session-orchestrator";
 import type {
   QueueResult,
   CompletedStepResult,

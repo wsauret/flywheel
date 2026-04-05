@@ -20,14 +20,14 @@ import {
   resetInterruptState,
   type InterruptControllerDeps,
 } from "./interrupt-controller"
-import { destroyWorkflowSession } from "../session/workflow-session"
+import { destroyWorkflowSession } from "../../orchestration/workflow-session"
 import { updateSession } from "../../session/persistence"
 import { killAllActiveProcesses } from "../../worker/process-lifecycle"
 import { groupToFlatList, getOpenAction, type SelectionAction } from "../session/sidebar-logic"
 import { Log } from "../../utils/log"
 
 import type { SessionLifecycleManager } from "./session-lifecycle-runner"
-import type { SessionOrchestrator } from "../session/session-orchestrator"
+import type { SessionOrchestrator } from "../../orchestration/session-orchestrator"
 import type { SessionViewport } from "../session/session-viewport"
 import type { EscapeHandler } from "../utils/escape-handler"
 import type { ChatController } from "./chat-controller"
@@ -106,7 +106,7 @@ export interface SessionNavigationDeps {
 
   // Queue execution
   runQueueOnSession: (init: {
-    session: import("../session/workflow-session").WorkflowSession
+    session: import("../../orchestration/workflow-session").WorkflowSession
     queue: Queue
     sessionId: string | null
     deps: WorkflowDeps
@@ -138,7 +138,7 @@ export interface SessionNavigationDeps {
   setUserInitiatedPause: (v: boolean) => void
 
   // Interrupt controller additional deps (for resumeWorkerWithMessage)
-  getActiveSession: () => import("../session/workflow-session").WorkflowSession | null
+  getActiveSession: () => import("../../orchestration/workflow-session").WorkflowSession | null
   getActiveQueue: () => Queue | null
   getActiveStepExecutor: () => StepExecutor | null
 }

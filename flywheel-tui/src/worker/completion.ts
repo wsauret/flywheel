@@ -11,7 +11,7 @@
  */
 
 import * as fs from "node:fs";
-import { WorkerHandoffSchema } from "../queue/shared/handoff-schemas";
+import { WorkerHandoffSchema } from "../protocol/handoff-schemas";
 
 /**
  * Regex for NDJSON result event indicating successful completion.

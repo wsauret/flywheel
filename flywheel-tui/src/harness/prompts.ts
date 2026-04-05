@@ -16,7 +16,6 @@ export interface WorkspaceContext {
   homeDir: string;
   gitBranch?: string;
   gitStatus?: string;
-  directoryListing?: string;
   customInstructions?: string;
 }
 
@@ -68,20 +67,7 @@ export async function gatherWorkspaceContext(): Promise<WorkspaceContext> {
     // Not a git repo
   }
 
-  try {
-    const lsResult = Bun.spawnSync(["ls", "-la"], {
-      cwd,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    if (lsResult.exitCode === 0) {
-      directoryListing = lsResult.stdout.toString().trim();
-    }
-  } catch {
-    // ls not available
-  }
-
-  return { os: osName, cwd, shell, homeDir, gitBranch, gitStatus, directoryListing };
+  return { os: osName, cwd, shell, homeDir, gitBranch, gitStatus };
 }
 
 /** Build the system prompt from workspace context. */
@@ -96,12 +82,6 @@ export function buildSystemPrompt(context: WorkspaceContext): string {
 - Shell: ${context.shell}
 - Working directory: ${context.cwd}
 - Home: ${context.homeDir}${context.gitBranch ? `\n- Git branch: ${context.gitBranch}` : ""}${context.gitStatus ? `\n- Git status: ${context.gitStatus}` : ""}`);
-
-  if (context.directoryListing) {
-    sections.push(`
-# Directory Listing
-${context.directoryListing}`);
-  }
 
   sections.push(`
 # Rules

@@ -20,8 +20,6 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "border",
   "borderActive",
   "borderSubtle",
-  "purple",
-  "blue",
   // Accent
   "accent",
   // Diff tokens
@@ -107,11 +105,10 @@ describe("theme resolution", () => {
     expect(jsonKeys).toEqual(expectedKeys)
   })
 
-  it("accent resolves to purple in both modes", () => {
+  it("accent resolves to valid RGBA in both modes", () => {
     const dark = resolveTheme(flywheelTheme as any, "dark")
     const light = resolveTheme(flywheelTheme as any, "light")
-    // accent should equal purple in both modes
-    expect(dark.accent).toEqual(dark.purple)
-    expect(light.accent).toEqual(light.purple)
+    expect(dark.accent).toBeInstanceOf(RGBA)
+    expect(light.accent).toBeInstanceOf(RGBA)
   })
 })

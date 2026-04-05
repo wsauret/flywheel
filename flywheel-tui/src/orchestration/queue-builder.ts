@@ -1,5 +1,5 @@
 /**
- * Shell Queue — queue-based workflow composition and step executor factory.
+ * Queue Builder — queue-based workflow composition and step executor factory.
  *
  * Queue-based workflow composition. Contains:
  *   - `buildQueue` — pure function to create a Queue from a WorkflowName + config
@@ -23,14 +23,14 @@ import {
   buildGranularShipSteps,
   buildGranularDebugSteps,
   type WorkflowName,
-} from "../../queue/templates";
-import { researchPersistEvaluationCriteria } from "../../queue/steps/research/prompts";
-import { shipCompoundEvaluationCriteria } from "../../queue/steps/ship-learnings/prompts";
-import type { Queue, Step, StepType, EndOfSessionGateCheck } from "../../queue/types";
-import { createQueue } from "../../queue/queue";
-import type { FlywheelConfig } from "../../config/loader";
-import { checkEndOfSessionGate } from "../../session/validation-state";
-import { parseJsonPlan } from "../../queue/shared/plan-parser";
+} from "../queue/templates";
+import { researchPersistEvaluationCriteria } from "../queue/steps/research/prompts";
+import { shipCompoundEvaluationCriteria } from "../queue/steps/ship-learnings/prompts";
+import type { Queue, Step, StepType, EndOfSessionGateCheck } from "../queue/types";
+import { createQueue } from "../queue/queue";
+import type { FlywheelConfig } from "../config/loader";
+import { checkEndOfSessionGate } from "../session/validation-state";
+import { parseJsonPlan } from "../queue/shared/plan-parser";
 import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ export function buildQueueForSlashCommand(command: string, config: FlywheelConfi
     }
     if (command === "work") {
       // work with auto_chain creates work + review
-      const steps: import("../../queue/types").Step[] = [
+      const steps: import("../queue/types").Step[] = [
         { id: randomUUID(), type: "work", title: "Execute work", status: "pending" },
         { id: randomUUID(), type: "review", title: "Review changes", status: "pending" },
       ];

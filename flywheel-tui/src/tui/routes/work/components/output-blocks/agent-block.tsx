@@ -25,10 +25,11 @@
  */
 
 import { createSignal, Show, For } from "solid-js"
+import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { truncate } from "@tui/utils/text"
-import { getToolIcon, displayToolName } from "./tool-block"
+import { displayToolName } from "./tool-block"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@tui/types"
 
 const MAX_VISIBLE_TOOLS = 6
@@ -52,7 +53,6 @@ function ToolRow(props: { tool: ToolBlockType }) {
   const { theme } = useTheme()
   return (
     <box flexDirection="row" gap={1} paddingLeft={1}>
-      <text fg={theme.textMuted}>{getToolIcon(props.tool.name)}</text>
       <text fg={theme.text}>{displayToolName(props.tool.name)}</text>
       <text fg={theme.textMuted}>{truncate(props.tool.detail, 70)}</text>
     </box>
@@ -84,42 +84,41 @@ export function AgentBlock(props: AgentBlockProps) {
 
   return (
     <box flexDirection="column" marginTop={1}>
-      {/* ── Active: bordered container with live tool list ── */}
+      {/* ── Active: header above bordered tool list ── */}
       <Show when={props.block.status === "active"}>
-        <box
-          flexDirection="column"
-          border={true}
-          borderColor={theme.borderSubtle}
-          paddingTop={0}
-          paddingBottom={0}
-          onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
-        >
-          {/* Header */}
-          <box flexDirection="row" gap={1} paddingLeft={1}>
-            <Spinner color={theme.primary} />
-            <text fg={theme.primary} style={{ bold: true }}>{props.block.agentLabel}</text>
-            <Show when={toolCount() > 0}>
-              <text fg={theme.textMuted}>({toolCount()})</text>
-            </Show>
-          </box>
-          {/* Tool list */}
-          <For each={visibleChildren()}>
-            {(child) => <ToolRow tool={child} />}
-          </For>
-          {/* Show more */}
-          <Show when={!showAll() && hiddenCount() > 0}>
-            <box paddingLeft={1}>
-              <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
-            </box>
+        <box flexDirection="row" gap={1}>
+          <Spinner color={theme.primary} />
+          <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
+          <Show when={toolCount() > 0}>
+            <text fg={theme.textMuted}>({toolCount()})</text>
           </Show>
         </box>
+        <Show when={visibleChildren().length > 0}>
+          <box
+            flexDirection="column"
+            border={true}
+            borderColor={theme.borderSubtle}
+            paddingTop={0}
+            paddingBottom={0}
+            onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
+          >
+            <For each={visibleChildren()}>
+              {(child) => <ToolRow tool={child} />}
+            </For>
+            <Show when={!showAll() && hiddenCount() > 0}>
+              <box paddingLeft={1}>
+                <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
+              </box>
+            </Show>
+          </box>
+        </Show>
       </Show>
 
       {/* ── Completed/Paused: header + bordered tool list (always visible) ── */}
       <Show when={canToggle()}>
         <box flexDirection="row" gap={1}>
-          <text fg={theme.secondary}>▸</text>
-          <text fg={theme.secondary} style={{ bold: true }}>{props.block.agentLabel}</text>
+          <text fg={theme.secondary}>✓</text>
+          <text fg={theme.secondary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <text fg={theme.textMuted}>· {summary()}</text>
         </box>
         <box
@@ -145,7 +144,7 @@ export function AgentBlock(props: AgentBlockProps) {
       <Show when={props.block.status === "error"}>
         <box flexDirection="row" gap={1}>
           <text fg={theme.error}>✗</text>
-          <text fg={theme.error} style={{ bold: true }}>{props.block.agentLabel}</text>
+          <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <text fg={theme.error}>{props.block.description}</text>
         </box>
         <Show when={props.block.errorMessage}>

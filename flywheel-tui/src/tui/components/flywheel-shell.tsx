@@ -45,7 +45,7 @@ import { QuitConfirmModal } from "../routes/work/components/modals/quit-confirm-
 import {
   createWorkflowSession,
   destroyWorkflowSession,
-} from "../session/workflow-session"
+} from "../../orchestration/workflow-session"
 import {
   createSessionRuntimeManager,
   type SessionRuntimeManager,
@@ -57,7 +57,7 @@ import { StatusFooter } from "../routes/work/components/status-footer"
 import { TelemetryBar } from "../routes/work/components/telemetry-bar"
 import { Spinner } from "@tui/shared/components/spinner"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
-import type { QueueProgressInfo } from "../shell/shell-queue"
+import type { QueueProgressInfo } from "../../orchestration/queue-builder"
 import type { StepExecutor } from "../../queue/executor"
 
 import { createQueuePersistence } from "../../queue/persistence"
@@ -69,11 +69,11 @@ import { createTranscriptLogger } from "../../session/transcript"
 import { readSession, updateSession, deleteSessionWithCompanions } from "../../session/persistence"
 import { createBudgetTracker } from "../../session/budget-tracker"
 import { fromSnapshot, snapshotToBlocks } from "../../session/output-schemas"
-import { createSessionOrchestrator, type SessionOrchestrator } from "../session/session-orchestrator"
+import { createSessionOrchestrator, type SessionOrchestrator } from "../../orchestration/session-orchestrator"
 import { injectOutputBlocks } from "../session/resume-utils"
 import { createSessionLifecycleManager, type SessionLifecycleManager } from "../shell/session-lifecycle-runner"
 import type { SprintIterationInfo } from "../utils/format"
-import type { WorkflowSession } from "../session/workflow-session"
+import type { WorkflowSession } from "../../orchestration/workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 import type { WorkState } from "../types"
 import type { AnyBlock } from "../types"

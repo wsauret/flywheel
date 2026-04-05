@@ -13,9 +13,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ProcessSpawner, SpawnOptions, SpawnResult, StdinHandle } from "./spawner.js";
 import type { WorkerResult } from "./schemas.js";
-import { runAgentLoop } from "../harness/agent-loop.js";
-import { gatherWorkspaceContext, buildSystemPrompt } from "../harness/prompts.js";
 import {
+  runAgentLoop,
+  gatherWorkspaceContext,
+  buildSystemPrompt,
   createStandardTools,
   createProvider,
   sanitize,
@@ -25,7 +26,7 @@ import {
   emitToolResult,
   emitUsage,
   emitCompletion,
-} from "../harness/shared.js";
+} from "../harness/index.js";
 import { resolveSessionHandoffsDir, ensureSessionDir } from "../config/paths.js";
 import { Log } from "../utils/log.js";
 

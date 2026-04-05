@@ -10,7 +10,7 @@ import {
   SkillDeviationSchema,
   SkillFeedbackSchema,
   countSentences,
-} from "../../src/queue/shared/handoff-schemas";
+} from "../../src/protocol/handoff-schemas";
 import { EvaluatorVerdictSchema } from "../../src/evaluator/schemas";
 import { DispatcherDecisionHandoffSchema } from "../../src/dispatcher/schemas";
 

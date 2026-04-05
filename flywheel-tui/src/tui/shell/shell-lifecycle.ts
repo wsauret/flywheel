@@ -27,7 +27,7 @@ import type { StdinHandle } from "../../worker/spawner"
 import type { QuestionWiring } from "../utils/question-wiring"
 import type { Unsubscribe } from "../../events/event-bus"
 import type { QuestionRequest } from "../../queue/question-service"
-import type { QueueProgressInfo } from "./shell-queue"
+import type { QueueProgressInfo } from "../../orchestration/queue-builder"
 import type { QueueStepState } from "../types"
 
 // ---------------------------------------------------------------------------

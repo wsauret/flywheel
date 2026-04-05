@@ -170,7 +170,7 @@ describe("StructuredOutputBuilder", () => {
       expect(blocks[0].kind).toBe("agent");
       const agent = blocks[0] as AgentBlock;
       expect(agent.agentLabel).toBe("Tools");
-      expect(agent.description).toBe("Using tools...");
+      expect(agent.description).toBe("Read: file1.ts");
       expect(agent.status).toBe("active");
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].name).toBe("Read");
@@ -636,6 +636,94 @@ describe("StructuredOutputBuilder", () => {
       expect(agent1.children[0].name).toBe("Read");
       expect(agent2.children).toHaveLength(1);
       expect(agent2.children[0].name).toBe("Grep");
+    });
+  });
+
+  // ── Stale agent detection ──
+
+  describe("stale agent detection", () => {
+    it("checkStaleAgents completes agents inactive for >5s", () => {
+      builder.startAgent("stale-1", "Explore", "Searching", Date.now());
+
+      // Simulate staleness by backdating the activity timestamp
+      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      activityMap.set("stale-1", Date.now() - 6_000);
+
+      // Trigger the check
+      (builder as any).checkStaleAgents();
+
+      const blocks = builder.getBlocks();
+      const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "stale-1") as AgentBlock;
+      expect(agent).toBeDefined();
+      expect(agent.status).toBe("completed");
+    });
+
+    it("does not complete recently active agents", () => {
+      builder.startAgent("fresh-1", "Explore", "Searching", Date.now());
+
+      // Activity is recent — should not be completed
+      (builder as any).checkStaleAgents();
+
+      const blocks = builder.getBlocks();
+      const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "fresh-1") as AgentBlock;
+      expect(agent.status).toBe("active");
+    });
+
+    it("tool activity resets the stale timer via onAgentActivity", () => {
+      let activityCallCount = 0;
+      builder.onAgentActivity = () => { activityCallCount++; };
+
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.pushTool("Read", "file.ts", Date.now());
+
+      // The builder internally updates agentLastActivity on appendToolToAgent
+      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      expect(activityMap.has("a1")).toBe(true);
+      // Activity timestamp should be very recent
+      expect(Date.now() - activityMap.get("a1")!).toBeLessThan(1000);
+    });
+
+    it("completed agent is removed from activity tracking", () => {
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      expect(activityMap.has("a1")).toBe(true);
+
+      builder.completeAgent("a1", 500, 2);
+      expect(activityMap.has("a1")).toBe(false);
+    });
+
+    it("errored agent is removed from activity tracking", () => {
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      expect(activityMap.has("a1")).toBe(true);
+
+      builder.errorAgent("a1", "timeout");
+      expect(activityMap.has("a1")).toBe(false);
+    });
+
+    it("stale completion uses children.length for toolCount", () => {
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      builder.pushTool("Read", "file1.ts", Date.now());
+      builder.pushTool("Grep", "pattern", Date.now());
+
+      const activityMap = (builder as any).agentLastActivity as Map<string, number>;
+      activityMap.set("a1", Date.now() - 6_000);
+      (builder as any).checkStaleAgents();
+
+      const blocks = builder.getBlocks();
+      const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      expect(agent.status).toBe("completed");
+      // completeAgent(id, duration, 0) is called — toolCount stays 0 but children are preserved
+      expect(agent.children).toHaveLength(2);
+    });
+
+    it("dispose clears stale check interval and maps", () => {
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+      expect((builder as any).staleCheckInterval).not.toBeNull();
+
+      builder.dispose();
+      expect((builder as any).staleCheckInterval).toBeNull();
+      expect((builder as any).agentLastActivity.size).toBe(0);
     });
   });
 });

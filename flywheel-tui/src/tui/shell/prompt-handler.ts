@@ -18,7 +18,7 @@ import type { AppState } from "./shell-modes"
 import type { WorkState } from "../types"
 import type { StdinHandle } from "../../worker/spawner"
 import type { WorkflowDeps } from "../../engines/workflow-deps"
-import type { WorkflowSession } from "../session/workflow-session"
+import type { WorkflowSession } from "../../orchestration/workflow-session"
 import type { UIActions } from "../routes/work/context/ui-state/types"
 
 const log = Log.create({ service: "shell" })

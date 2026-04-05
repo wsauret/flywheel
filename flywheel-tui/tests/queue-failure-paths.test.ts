@@ -4,7 +4,7 @@ import {
   makeStep,
   resetStepCounter,
   type Harness,
-} from "./queue-executor-harness";
+} from "./helpers/queue-executor-harness";
 
 describe("queue executor failure paths", () => {
   let harness: Harness;

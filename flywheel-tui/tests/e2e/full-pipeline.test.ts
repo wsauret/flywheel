@@ -35,7 +35,7 @@ import {
 } from "../../src/queue/executor";
 import { EventBus, createFlywheelEmitter } from "../../src/events/event-bus";
 import { readHandoff } from "../../src/queue/shared/handoff-reader";
-import { WorkerHandoffSchema } from "../../src/queue/shared/handoff-schemas";
+import { WorkerHandoffSchema } from "../../src/protocol/handoff-schemas";
 import { buildScaffolding, type ScaffoldingPaths } from "../../src/queue/shared/scaffolding";
 import { ContextIndexer } from "../../src/memory/indexer";
 import {

@@ -135,7 +135,6 @@ export async function startChatSession(
     onStderr: (chunk) => {
       if (chunk.trim()) builder.pushText(chunk, Date.now())
     },
-    onNDJSONEvent: (event) => budgetTracker.handleEvent(event),
     onTurnComplete: () => {
       callbacks.onWaitingChanged(false)
       if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())

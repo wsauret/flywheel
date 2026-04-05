@@ -11,7 +11,8 @@
     "start": "bun --conditions=browser run src/cli/index.ts",
     "test": "bun test",
     "build": "bun run scripts/build.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:boundaries": "bun run scripts/check-boundaries.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
