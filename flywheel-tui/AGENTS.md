@@ -33,8 +33,6 @@ The queue engine executes a sequence of typed steps. Each step type + variant is
 
 **Test the wiring, not just the parts.** When you connect a new module to the system, the E2E verification must exercise the actual integration path: start the TUI, trigger the feature, observe the result on screen or in logs. Calling `bun test` is necessary but never sufficient for wiring changes.
 
-**No single-file directories.** If a directory contains exactly one file, flatten it. `src/telemetry/logger.ts` becomes `src/telemetry.ts`. The directory earns its existence when a second file joins it.
-
 **Imports reveal misplacement.** If a file's imports all reach three or more levels up (`../../../`), it probably lives too deep. If every consumer of a module reaches across subsystem boundaries to import it, the module is in the wrong subsystem. Let import paths guide where things belong.
 
 **One domain, one home.** Each concept (plan parsing, handoff schemas, sprint types) lives in exactly one place. No re-exports, bridge files, or compatibility shims. When a module moves, update every import -- do not leave a forwarding address.
