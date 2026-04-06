@@ -17,6 +17,15 @@ import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { AnyBlock } from "../types.js"
 import type { SessionStatus } from "./use-workflow-lifecycle.js"
 
+/** Snapshot of UI state captured before viewing a completed session. */
+interface ViewSnapshot {
+  sessionStatus: SessionStatus
+  outputBlocks: AnyBlock[]
+  foregroundId: string | undefined
+  sessionTitle: string
+  statusLine: string
+}
+
 export interface SessionModalDeps {
   sessions: Accessor<SessionSummary[]>
   manager: SessionManager
@@ -24,9 +33,13 @@ export interface SessionModalDeps {
   registry: SessionRegistry
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
+  sessionStatus: Accessor<SessionStatus>
   setSessionStatus: (status: SessionStatus) => void
+  outputBlocks: Accessor<AnyBlock[]>
   setOutputBlocks: (blocks: AnyBlock[]) => void
+  sessionTitle: Accessor<string>
   setSessionTitle: (title: string) => void
+  statusLine: Accessor<string>
   setStatusLine: (line: string) => void
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
@@ -39,6 +52,8 @@ export interface SessionModalHook {
   sessionsModalOpen: Accessor<boolean>
   modalCursor: Accessor<number>
   modalConfirmDelete: Accessor<string | undefined>
+  /** True when the user is viewing a historical session and prior state can be restored. */
+  isViewingSession: Accessor<boolean>
   openSessionsModal(): void
   closeSessionsModal(): void
   selectModalItem(index: number): void
@@ -47,12 +62,18 @@ export interface SessionModalHook {
   handleSessionResume(sessionId: string): void
   handleSessionArchive(sessionId: string): void
   handleSessionDelete(sessionId: string): void
+  /** Dismiss the viewed session and restore the UI state that existed before viewing. */
+  dismissViewedSession(): void
 }
 
 export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   const [sessionsModalOpen, setSessionsModalOpen] = createSignal(false)
   const [modalCursor, setModalCursor] = createSignal(0)
   const [modalConfirmDelete, setModalConfirmDelete] = createSignal<string | undefined>()
+
+  // State saved before viewing a completed session, so we can restore on dismiss.
+  let priorState: ViewSnapshot | undefined
+  let viewedSessionId: string | undefined
 
   function openSessionsModal(): void {
     setSessionsModalOpen(true)
@@ -73,6 +94,21 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     setSessionsModalOpen(false)
     const entry = deps.registry.get(sessionId)
     if (entry) { deps.switchForeground(sessionId); return }
+
+    // Snapshot current state on the first view only — preserve the original
+    // state across multiple view→delete cycles so we always restore back to
+    // where the user was (e.g. mid-chat), not to an intermediate viewed session.
+    if (!priorState) {
+      priorState = {
+        sessionStatus: deps.sessionStatus(),
+        outputBlocks: deps.outputBlocks(),
+        foregroundId: deps.foregroundId(),
+        sessionTitle: deps.sessionTitle(),
+        statusLine: deps.statusLine(),
+      }
+    }
+    viewedSessionId = sessionId
+
     const blocks = await loadSessionOutput(sessionId)
     deps.setOutputBlocks(blocks)
     const { sessions: list } = deps.manager.list()
@@ -103,9 +139,26 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     try {
       deleteSession(sessionId, deps.actionDeps)
       deps.showToast({ message: "Session deleted", variant: "info" })
+      // If we were viewing this session's transcript, restore prior state.
+      if (viewedSessionId === sessionId) {
+        restorePriorState()
+      }
     } catch (err) {
       deps.showToast({ message: `Delete failed: ${extractErrorMessage(err)}`, variant: "error" })
     }
+  }
+
+  /** Restore the UI state that existed before handleSessionView was called. */
+  function restorePriorState(): void {
+    if (priorState) {
+      deps.setSessionStatus(priorState.sessionStatus)
+      deps.setOutputBlocks(priorState.outputBlocks)
+      deps.setForegroundId(priorState.foregroundId)
+      deps.setSessionTitle(priorState.sessionTitle)
+      deps.setStatusLine(priorState.statusLine)
+    }
+    priorState = undefined
+    viewedSessionId = undefined
   }
 
   function handleModalKey(evt: any): void {
@@ -160,10 +213,17 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     }
   }
 
+  function dismissViewedSession(): void {
+    restorePriorState()
+  }
+
+  const isViewingSession: Accessor<boolean> = () => viewedSessionId !== undefined
+
   return {
     sessionsModalOpen,
     modalCursor,
     modalConfirmDelete,
+    isViewingSession,
     openSessionsModal,
     closeSessionsModal,
     selectModalItem,
@@ -172,5 +232,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     handleSessionResume,
     handleSessionArchive,
     handleSessionDelete,
+    dismissViewedSession,
   }
 }

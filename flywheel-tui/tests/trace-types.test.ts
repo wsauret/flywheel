@@ -102,6 +102,36 @@ describe("SpanSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("validates a worker span with ndjsonEventCount", () => {
+    const span = {
+      ...baseFields,
+      kind: "worker",
+      input: { stepIndex: 0 },
+      output: { resultSummary: "done", failureReason: null, ndjsonEventCount: 42 },
+    };
+    const result = SpanSchema.safeParse(span);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const worker = result.data as WorkerSpan;
+      expect(worker.output.ndjsonEventCount).toBe(42);
+    }
+  });
+
+  it("validates a worker span without ndjsonEventCount (backward compat)", () => {
+    const span = {
+      ...baseFields,
+      kind: "worker",
+      input: { stepIndex: 0 },
+      output: { resultSummary: "done", failureReason: null },
+    };
+    const result = SpanSchema.safeParse(span);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const worker = result.data as WorkerSpan;
+      expect(worker.output.ndjsonEventCount).toBeUndefined();
+    }
+  });
+
   it("validates a correct subagent span", () => {
     const span = {
       ...baseFields,

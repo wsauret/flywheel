@@ -157,3 +157,14 @@ export function buildEvaluatorHandoffPath(
 export function resolveTraceFile(sessionId: string, baseDir: string): string {
   return path.resolve(baseDir, TRACES_DIR, `${sessionId}.jsonl`);
 }
+
+/**
+ * Returns absolute path to a session's transcript file: `.flywheel/traces/<session-id>.ndjson`
+ *
+ * This is the permanent transcript in the global traces directory, distinct from
+ * `SESSION_FILES.transcript` which is session-scoped and lives under
+ * `.flywheel/sessions/<id>/transcript.jsonl`.
+ */
+export function resolveTranscriptFile(sessionId: string, baseDir: string): string {
+  return path.resolve(baseDir, TRACES_DIR, `${sessionId}.ndjson`);
+}

@@ -26,6 +26,7 @@ import { StructuredEventParser } from "./adapters/structured-event-parser"
 import { createBudgetTracker, type BudgetTracker } from "../orchestration/session/budget-tracker"
 import { prepareWorkflowDeps } from "../orchestration/engines/workflow-deps"
 import type { TraceCollector } from "../orchestration/session/trace-collector"
+import { createTranscriptWriter, type TranscriptWriter } from "../orchestration/session/transcript-writer"
 import { feedChatEventToTrace } from "./chat-tracing"
 import type { ProcessSpawner, StdinHandle } from "../orchestration/engines/subprocess/spawner"
 import type { AnyBlock } from "./types"
@@ -87,6 +88,11 @@ export async function startChatSession(
   // Budget tracker
   const budgetTracker = createBudgetTracker({ sessionId, baseDir: projectCwd })
 
+  // Transcript writer (session-scoped, survives worker reconnects)
+  const transcriptWriter: TranscriptWriter | null = deps.config.tracing?.enabled
+    ? createTranscriptWriter({ sessionId, baseDir: projectCwd })
+    : null
+
   // Structured output pipeline — shared across worker respawns
   const builder = new StructuredOutputBuilder()
   let agentActive = false
@@ -107,6 +113,7 @@ export async function startChatSession(
     }
     eventParser.dispatch(event, engineName)
     budgetTracker.handleEvent(event)
+    transcriptWriter?.handleEvent(event)
     if (traceCollector) feedChatEventToTrace(event, traceCollector, toolSpanMap)
   }
   ndjsonParser.onRawText = (text) => {
@@ -210,6 +217,7 @@ export async function startChatSession(
       traceCollector.finalize("ok")
       traceCollector.dispose()
     }
+    transcriptWriter?.dispose()
     builder.dispose()
     budgetTracker.flush()
     if (stdinHandle?.isOpen) {

@@ -85,6 +85,10 @@ function traceFilePath(sessionId: string, baseDir: string): string {
   return path.resolve(baseDir, TRACES_DIR, `${sessionId}.jsonl`);
 }
 
+function transcriptFilePath(sessionId: string, baseDir: string): string {
+  return path.resolve(baseDir, TRACES_DIR, `${sessionId}.ndjson`);
+}
+
 function indexFilePath(baseDir: string): string {
   return path.resolve(baseDir, TRACES_DIR, "index.jsonl");
 }
@@ -302,6 +306,72 @@ describe("TraceWriter — rotation", () => {
     expect(fs.existsSync(traceFilePath("s1", tmpDir))).toBe(true);
     // Evicted trace file deleted
     expect(fs.existsSync(traceFilePath("s2", tmpDir))).toBe(false);
+  });
+
+  it("eviction deletes companion .ndjson transcript file", () => {
+    const maxTraces = 2;
+
+    // Write 2 traces, each with a companion .ndjson file
+    for (let i = 1; i <= 2; i++) {
+      const w = createTraceWriter({ sessionId: `s${i}`, baseDir: tmpDir, maxTraces });
+      w.writeSpan(makeSpan({ sessionId: `s${i}`, traceId: `t${i}` }));
+      w.flush();
+      w.finalizeTrace(makeIndexEntry({ traceId: `t${i}`, sessionId: `s${i}`, startTimeMs: i * 1000, status: "ok" }));
+      w.dispose();
+
+      // Simulate a companion .ndjson transcript file
+      const ndjsonPath = transcriptFilePath(`s${i}`, tmpDir);
+      fs.writeFileSync(ndjsonPath, '{"type":"assistant","content":"hello"}\n');
+    }
+
+    // Both .ndjson files exist
+    expect(fs.existsSync(transcriptFilePath("s1", tmpDir))).toBe(true);
+    expect(fs.existsSync(transcriptFilePath("s2", tmpDir))).toBe(true);
+
+    // Write a 3rd trace — should evict s1 (oldest)
+    const w3 = createTraceWriter({ sessionId: "s3", baseDir: tmpDir, maxTraces });
+    w3.writeSpan(makeSpan({ sessionId: "s3", traceId: "t3" }));
+    w3.flush();
+    w3.finalizeTrace(makeIndexEntry({ traceId: "t3", sessionId: "s3", startTimeMs: 3000, status: "ok" }));
+    w3.dispose();
+
+    // s1 trace and transcript both deleted
+    expect(fs.existsSync(traceFilePath("s1", tmpDir))).toBe(false);
+    expect(fs.existsSync(transcriptFilePath("s1", tmpDir))).toBe(false);
+
+    // s2 trace and transcript still exist
+    expect(fs.existsSync(traceFilePath("s2", tmpDir))).toBe(true);
+    expect(fs.existsSync(transcriptFilePath("s2", tmpDir))).toBe(true);
+  });
+
+  it("eviction succeeds even when companion .ndjson does not exist", () => {
+    const maxTraces = 2;
+
+    // Write 2 traces WITHOUT companion .ndjson files
+    for (let i = 1; i <= 2; i++) {
+      const w = createTraceWriter({ sessionId: `s${i}`, baseDir: tmpDir, maxTraces });
+      w.writeSpan(makeSpan({ sessionId: `s${i}`, traceId: `t${i}` }));
+      w.flush();
+      w.finalizeTrace(makeIndexEntry({ traceId: `t${i}`, sessionId: `s${i}`, startTimeMs: i * 1000, status: "ok" }));
+      w.dispose();
+    }
+
+    // No .ndjson files exist
+    expect(fs.existsSync(transcriptFilePath("s1", tmpDir))).toBe(false);
+
+    // Write a 3rd trace — should evict s1 without error
+    const w3 = createTraceWriter({ sessionId: "s3", baseDir: tmpDir, maxTraces });
+    w3.writeSpan(makeSpan({ sessionId: "s3", traceId: "t3" }));
+    w3.flush();
+    w3.finalizeTrace(makeIndexEntry({ traceId: "t3", sessionId: "s3", startTimeMs: 3000, status: "ok" }));
+    w3.dispose();
+
+    const index = readIndex(tmpDir);
+    expect(index.length).toBe(2);
+    const traceIds = index.map((e) => e.traceId);
+    expect(traceIds).not.toContain("t1");
+    expect(traceIds).toContain("t2");
+    expect(traceIds).toContain("t3");
   });
 
   it("index references never point to deleted files", () => {

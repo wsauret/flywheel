@@ -15,6 +15,7 @@ import { createStore as createUIStore } from "../tui/routes/work/context/ui-stat
 import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
 import { createTraceWriter, type TraceWriter } from "./session/trace-writer"
+import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
 import { createTraceCollector, type TraceCollector } from "./session/trace-collector"
 import { createTraceEventHandler } from "./engines/subprocess/trace-event-handler"
 import { createWarmPools } from "./engines/pool/create-warm-pools"
@@ -118,6 +119,7 @@ export function createWorkflowRunner(opts: {
 
   // Tracing (gated by config)
   let traceWriter: TraceWriter | null = null
+  let transcriptWriter: TranscriptWriter | null = null
   let traceCollector: TraceCollector | null = null
   let traceFinalized = false
 
@@ -127,6 +129,7 @@ export function createWorkflowRunner(opts: {
       baseDir: projectCwd,
       maxTraces: deps.config.tracing.max_traces,
     })
+    transcriptWriter = createTranscriptWriter({ sessionId, baseDir: projectCwd })
     traceCollector = createTraceCollector({
       writer: traceWriter,
       sessionId,
@@ -243,6 +246,7 @@ export function createWorkflowRunner(opts: {
       activeSessionRef: { current: null },
       budgetTracker,
       traceEventHandler,
+      transcriptWriter,
       subprocessPool,
     })
 
@@ -342,6 +346,7 @@ export function createWorkflowRunner(opts: {
       traceCollector.finalize("error")
     }
     traceWriter?.dispose()
+    transcriptWriter?.dispose()
     budgetTracker.dispose()
     // Shut down warm pools (covers complete, abort, and error paths)
     await Promise.all([

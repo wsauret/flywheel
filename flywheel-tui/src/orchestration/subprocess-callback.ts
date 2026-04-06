@@ -24,6 +24,7 @@ import type { WorkflowSession } from "./workflow-session"
 import type { Step } from "../workflows/queue/types"
 import type { BudgetTracker } from "./session/budget-tracker"
 import type { TraceEventHandler } from "./engines/subprocess/trace-event-handler"
+import type { TranscriptWriter } from "./session/transcript-writer"
 
 const log = Log.create({ service: "subprocess-callback" })
 
@@ -47,6 +48,7 @@ export interface SubprocessCallbackDeps {
   activeSessionRef: { current: WorkflowSession | null }
   budgetTracker?: BudgetTracker | null
   traceEventHandler?: TraceEventHandler | null
+  transcriptWriter?: TranscriptWriter | null
   /** Optional pre-warmed subprocess pool. When provided, acquires a raw process
    * from the pool and wires the stream pipeline with step-specific callbacks.
    * When absent, falls back to `deps.spawner.spawn()`. */
@@ -70,7 +72,7 @@ export function createSubprocessCallback(
   const {
     deps, emitter, workflowIdRef, sessionId, projectCwd,
     stdinHandleRef, capturedSubprocessSessionId, pendingInjection,
-    activeSessionRef, budgetTracker, traceEventHandler, subprocessPool,
+    activeSessionRef, budgetTracker, traceEventHandler, transcriptWriter, subprocessPool,
   } = opts
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
 
@@ -164,10 +166,11 @@ export function createSubprocessCallback(
       onStderr: (chunk: string) => {
         emitter.subprocessOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
       },
-      onNDJSONEvent: (budgetTracker || traceEventHandler)
+      onNDJSONEvent: (budgetTracker || traceEventHandler || transcriptWriter)
         ? (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
             budgetTracker?.handleEvent(event);
             traceEventHandler?.handleEvent(event);
+            transcriptWriter?.handleEvent(event);
           }
         : undefined,
     }
@@ -184,6 +187,21 @@ export function createSubprocessCallback(
       spawnResult = wireStreamPipeline(rawProc, { timeoutMs, spawnOptions })
     } else {
       spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, spawnOptions)
+    }
+
+    // Write a boundary marker so transcript analysis can segment per-subprocess
+    if (transcriptWriter) {
+      const boundaryPayload = {
+        type: "flywheel:subprocess_boundary",
+        timestamp: new Date().toISOString(),
+        workflowId: workflowIdRef.current,
+        stepId: step.id,
+      }
+      transcriptWriter.handleEvent({
+        type: "unknown" as any,
+        data: boundaryPayload,
+        raw: JSON.stringify(boundaryPayload),
+      })
     }
 
     // Expose stdinHandle for mid-execution injection (user steering)

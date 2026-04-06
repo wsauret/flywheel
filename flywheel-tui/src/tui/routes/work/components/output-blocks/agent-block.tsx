@@ -55,6 +55,7 @@ function ToolRow(props: { tool: ToolBlockType }) {
 export function AgentBlock(props: AgentBlockProps) {
   const { theme } = useTheme()
   const [showAll, setShowAll] = createSignal(false)
+  const [activeCollapsed, setActiveCollapsed] = createSignal(false)
 
   const toolCount = () => props.block.toolCount ?? props.block.children.length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
@@ -75,36 +76,37 @@ export function AgentBlock(props: AgentBlockProps) {
     return all.length - MAX_VISIBLE_TOOLS
   }
 
+  const toggleShowAll = () => setShowAll((v) => !v)
+
   return (
     <box flexDirection="column" marginTop={1}>
       {/* ── Active: header above bordered tool list ── */}
       <Show when={props.block.status === "active"}>
-        <box flexDirection="row" gap={1}>
+        <box flexDirection="row" gap={1} onMouseDown={() => setActiveCollapsed((v) => !v)}>
           <Spinner color={theme.primary} />
           <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <Show when={toolCount() > 0}>
             <text fg={theme.textMuted}>({toolCount()})</text>
           </Show>
+          <text fg={theme.textMuted}>{activeCollapsed() ? "▸" : "▾"}</text>
         </box>
-        <Show when={visibleChildren().length > 0}>
-          <box
-            flexDirection="column"
-            border={true}
-            borderColor={theme.borderSubtle}
-            paddingTop={0}
-            paddingBottom={0}
-            onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
-          >
-            <For each={visibleChildren()}>
-              {(child) => <ToolRow tool={child} />}
-            </For>
-            <Show when={!showAll() && hiddenCount() > 0}>
-              <box paddingLeft={1}>
-                <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
-              </box>
-            </Show>
-          </box>
-        </Show>
+        <CollapsibleBox
+          expanded={!activeCollapsed() && visibleChildren().length > 0}
+          border={true}
+          borderColor={theme.borderSubtle}
+          paddingTop={0}
+          paddingBottom={0}
+          onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}
+        >
+          <For each={visibleChildren()}>
+            {(child) => <ToolRow tool={child} />}
+          </For>
+          <Show when={hiddenCount() > 0}>
+            <box paddingLeft={1}>
+              <text fg={theme.textMuted}>{showAll() ? "▾ show less" : `▸ ${hiddenCount()} more`}</text>
+            </box>
+          </Show>
+        </CollapsibleBox>
       </Show>
 
       {/* ── Completed/Paused: collapsible header + bordered tool list ── */}
@@ -121,14 +123,14 @@ export function AgentBlock(props: AgentBlockProps) {
           borderColor={theme.borderSubtle}
           paddingTop={0}
           paddingBottom={0}
-          onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
+          onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}
         >
           <For each={visibleChildren()}>
             {(child) => <ToolRow tool={child} />}
           </For>
-          <Show when={!showAll() && hiddenCount() > 0}>
+          <Show when={hiddenCount() > 0}>
             <box paddingLeft={1}>
-              <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
+              <text fg={theme.textMuted}>{showAll() ? "▾ show less" : `▸ ${hiddenCount()} more`}</text>
             </box>
           </Show>
         </CollapsibleBox>

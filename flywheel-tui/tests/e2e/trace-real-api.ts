@@ -14,7 +14,8 @@ import { createTraceCollector } from "../../src/orchestration/session/trace-coll
 import { createTraceEventHandler } from "../../src/orchestration/engines/subprocess/trace-event-handler";
 import { NDJSONParser } from "../../src/orchestration/engines/subprocess/ndjson-parser";
 import { parseSpanLine, type Span } from "../../src/infra/trace-types";
-import { TRACES_DIR, resolveTraceFile } from "../../src/infra/paths";
+import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../src/infra/paths";
+import { createTranscriptWriter } from "../../src/orchestration/session/transcript-writer";
 import { randomUUID } from "node:crypto";
 
 const baseDir = fs.mkdtempSync(path.join(import.meta.dir, ".trace-real-"));
@@ -35,6 +36,9 @@ const collector = createTraceCollector({ writer, sessionId, workflowName });
 const unsubs = collector.subscribeToEvents(bus);
 
 const traceHandler = createTraceEventHandler({ emitter, workflowIdRef });
+
+// Transcript writer — captures raw NDJSON events
+const transcriptWriter = createTranscriptWriter({ sessionId, baseDir });
 
 // Emit workflow start events
 bus.emit({
@@ -67,6 +71,8 @@ const ndjsonParser = new NDJSONParser();
 ndjsonParser.onEvent = (event) => {
   // Feed to trace handler (converts tool_use/tool_result to trace events)
   traceHandler.handleEvent(event);
+  // Feed to transcript writer (captures raw NDJSON lines)
+  transcriptWriter.handleEvent(event);
 };
 
 const proc = Bun.spawn(
@@ -152,6 +158,7 @@ collector.finalize(exitCode === 0 ? "ok" : "error");
 writer.flush();
 unsubs.forEach(u => u());
 writer.dispose();
+transcriptWriter.dispose();
 
 // --- Verify ---
 console.log("--- Verifying trace output ---\n");
@@ -238,6 +245,59 @@ for (let i = 0; i < Math.min(5, lines.length); i++) {
   console.log(JSON.stringify(parsed, null, 2).slice(0, 200) + "...");
   console.log();
 }
+
+// --- Verify transcript file ---
+console.log(`--- Verifying transcript output ---\n`);
+
+const transcriptFile = resolveTranscriptFile(sessionId, baseDir);
+if (!fs.existsSync(transcriptFile)) {
+  console.error("FAIL: Transcript file missing:", transcriptFile);
+  process.exit(1);
+}
+console.log(`✓ Transcript file exists: ${transcriptFile}`);
+
+const transcriptLines = fs.readFileSync(transcriptFile, "utf-8").split("\n").filter(l => l.trim());
+console.log(`✓ ${transcriptLines.length} transcript lines`);
+console.log(`✓ ${transcriptWriter.getEventCount()} events counted by TranscriptWriter`);
+
+if (transcriptLines.length === 0) {
+  console.error("FAIL: Transcript file is empty");
+  process.exit(1);
+}
+
+// Verify each line is valid JSON
+let jsonErrors = 0;
+const eventTypes: Record<string, number> = {};
+for (const line of transcriptLines) {
+  try {
+    const obj = JSON.parse(line);
+    const t = obj.type ?? "unknown";
+    eventTypes[t] = (eventTypes[t] || 0) + 1;
+  } catch {
+    jsonErrors++;
+  }
+}
+if (jsonErrors > 0) {
+  console.error(`FAIL: ${jsonErrors} transcript lines are not valid JSON`);
+  process.exit(1);
+}
+console.log(`✓ All transcript lines are valid JSON`);
+console.log(`\nTranscript event types:`, eventTypes);
+
+// Verify expected event types are present
+if (!eventTypes.system) { console.error("FAIL: No system event in transcript"); process.exit(1); }
+if (!eventTypes.assistant) { console.error("FAIL: No assistant event in transcript"); process.exit(1); }
+if (!eventTypes.result) { console.error("FAIL: No result event in transcript"); process.exit(1); }
+console.log(`✓ Required event types present (system, assistant, result)`);
+
+// Print first and last transcript lines for inspection
+console.log(`\n--- Transcript (first line) ---`);
+const firstEvent = JSON.parse(transcriptLines[0]);
+console.log(JSON.stringify(firstEvent, null, 2).slice(0, 500));
+
+console.log(`\n--- Transcript (last line) ---`);
+const lastEvent = JSON.parse(transcriptLines[transcriptLines.length - 1]);
+console.log(JSON.stringify(lastEvent, null, 2).slice(0, 500));
 
 // Cleanup
 fs.rmSync(baseDir, { recursive: true, force: true });

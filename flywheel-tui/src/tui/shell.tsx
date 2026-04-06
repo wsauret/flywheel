@@ -96,9 +96,13 @@ export function FlywheelShell() {
     registry,
     foregroundId,
     setForegroundId,
+    sessionStatus,
     setSessionStatus,
+    outputBlocks,
     setOutputBlocks,
+    sessionTitle,
     setSessionTitle,
+    statusLine,
     setStatusLine,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     showToast: (opts) => toast.show(opts),
@@ -186,6 +190,11 @@ export function FlywheelShell() {
         return
       }
       if (sessionStatus() === "completed" || sessionStatus() === "error") {
+        // If we're viewing a historical session, restore the state from before viewing.
+        if (sessionModal.isViewingSession()) {
+          sessionModal.dismissViewedSession()
+          return
+        }
         setAgentState("idle")
         setSessionStatus(null)
         setOutputBlocks([])

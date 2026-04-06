@@ -49,6 +49,8 @@ export interface WorkerSpanInput {
 export interface WorkerSpanOutput {
   resultSummary: string;
   failureReason: string | null;
+  /** Number of ndjson transcript events emitted during this worker's lifetime (delta, not total). */
+  ndjsonEventCount?: number;
 }
 
 export interface SubagentSpanInput {
@@ -187,6 +189,7 @@ const WorkerSpanSchema = SpanBaseSchema.extend({
   output: z.object({
     resultSummary: z.string(),
     failureReason: z.string().nullable(),
+    ndjsonEventCount: z.number().optional(),
   }),
 });
 

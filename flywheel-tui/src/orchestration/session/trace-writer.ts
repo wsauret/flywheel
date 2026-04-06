@@ -22,8 +22,9 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TRACES_DIR, resolveTraceFile } from "../../infra/paths";
+import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths";
 import { writeFileAtomic } from "../../workflows/shared/atomic-write";
+import { createDebouncedWriter } from "../../workflows/shared/debounced-writer";
 import type { Span } from "../../infra/trace-types";
 
 // ---------------------------------------------------------------------------
@@ -114,11 +115,10 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   const fd = fs.openSync(traceFilePath, "a");
 
   let buffer: Span[] = [];
-  let timerId: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
 
   // -------------------------------------------------------------------------
-  // Buffer drain
+  // Buffer drain (uses shared DebouncedWriter for timer scheduling)
   // -------------------------------------------------------------------------
 
   function drainBuffer(): void {
@@ -127,25 +127,16 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
     buffer = [];
 
     try {
-      for (const span of spans) {
-        const line = JSON.stringify(span) + "\n";
-        fs.writeSync(fd, line);
-      }
+      const content = spans.map((span) => JSON.stringify(span) + "\n").join("");
+      fs.writeSync(fd, content);
     } catch {
       // Best-effort — don't crash on write failure (SubprocessLogger precedent)
     }
   }
 
-  function scheduleFlush(): void {
-    if (disposed) return;
-    if (timerId !== null) {
-      clearTimeout(timerId);
-    }
-    timerId = setTimeout(() => {
-      timerId = null;
-      drainBuffer();
-    }, debounceMs);
-  }
+  const debouncer = createDebouncedWriter<undefined>(async () => {
+    drainBuffer();
+  }, { intervalMs: debounceMs });
 
   // -------------------------------------------------------------------------
   // Public API
@@ -154,7 +145,7 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   function writeSpan(span: Span): void {
     if (disposed) return;
     buffer.push(span);
-    scheduleFlush();
+    debouncer.schedule(undefined);
   }
 
   function finalizeTrace(summary: TraceIndexEntry): void {
@@ -171,10 +162,7 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   }
 
   function flush(): void {
-    if (timerId !== null) {
-      clearTimeout(timerId);
-      timerId = null;
-    }
+    debouncer.dispose();
     drainBuffer();
   }
 
@@ -220,7 +208,7 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
 
       const evicted = entries.splice(evictIdx, 1)[0];
 
-      // Delete the trace file for the evicted entry
+      // Delete the trace file and companion transcript file for the evicted entry
       try {
         const filePath = resolveTraceFile(evicted.sessionId, baseDir);
         if (fs.existsSync(filePath)) {
@@ -228,6 +216,14 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
         }
       } catch {
         // Best-effort deletion
+      }
+      try {
+        const transcriptPath = resolveTranscriptFile(evicted.sessionId, baseDir);
+        if (fs.existsSync(transcriptPath)) {
+          fs.unlinkSync(transcriptPath);
+        }
+      } catch {
+        // Best-effort — companion .ndjson may not exist for old traces
       }
     }
   }

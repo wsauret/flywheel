@@ -124,6 +124,8 @@ export interface BuildExecutorExtensions {
   budgetTracker?: import("./session/budget-tracker").BudgetTracker | null;
   /** Trace event handler for converting NDJSON events into trace spans. */
   traceEventHandler?: import("./engines/subprocess/trace-event-handler").TraceEventHandler | null;
+  /** Transcript writer for persisting raw NDJSON events to .ndjson files. */
+  transcriptWriter?: import("./session/transcript-writer").TranscriptWriter | null;
   /** Pre-warmed subprocess pool for raw process spawning. */
   subprocessPool?: WarmPool<RawSpawnedProcess> | null;
 }
@@ -145,6 +147,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     capturedSubprocessSessionId, pendingInjection, activeSessionRef,
     budgetTracker,
     traceEventHandler,
+    transcriptWriter,
   } = opts
   const tiers = resolveTierConfigs(deps.config)
 
@@ -191,6 +194,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     stdinHandleRef, capturedSubprocessSessionId, pendingInjection,
     activeSessionRef, budgetTracker,
     traceEventHandler,
+    transcriptWriter,
     subprocessPool: opts.subprocessPool,
   })
 

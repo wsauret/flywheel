@@ -4,10 +4,10 @@
  *
  * Stable-layout container for expand/collapse toggling.
  *
- * The container box stays in the layout tree at all times. When collapsed,
- * children are swapped out via <For each={[1] | []}> instead of <Show>,
- * which would remove/re-add DOM nodes and cause a white-flash flicker
- * from layout shift.
+ * The container box stays in the layout tree at all times to avoid
+ * white-flash flicker from layout shift on remount. When collapsed,
+ * children are swapped out via <For each={[1] | []}> and the box is
+ * hidden with height={0} and no border/padding.
  */
 
 import { For } from "solid-js"
