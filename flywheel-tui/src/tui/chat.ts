@@ -193,8 +193,8 @@ export async function startChatSession(
   function interrupt() {
     if (ended || !stdinHandle?.isOpen) return
     log.info("chat interrupted by user", { pid: workerPid })
-    // Kill the worker process. The session stays alive (ended === false),
-    // so next send() will reconnect via --resume using claudeSessionId.
+    // Kill the worker process and immediately respawn via --resume so
+    // the next send() doesn't have to wait for the cold-start.
     if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
     stdinHandle.close()
     stdinHandle = null
@@ -207,6 +207,13 @@ export async function startChatSession(
     builder.resolvePendingMessages()
     builder.pushSystemMessage("Interrupted", Date.now())
     if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
+
+    // Eagerly reconnect so the worker is warm when the user sends the next message
+    if (claudeSessionId) {
+      spawnWorker(claudeSessionId).catch((err) => {
+        log.warn("eager reconnect after interrupt failed", { error: errorMessage(err) })
+      })
+    }
   }
 
   function end() {
@@ -235,7 +242,10 @@ export async function startChatSession(
   function send(text: string) {
     if (ended) { log.warn("chat send after ended"); return }
 
-    const isPending = agentActive
+    // Message is "pending" only when there's an active agent turn in progress
+    // (i.e. we're injecting into a running conversation). After interrupt or
+    // idle-exit, the agent isn't working so the message is the start of a new turn.
+    const isPending = agentActive && stdinHandle?.isOpen === true
     callbacks.onWaitingChanged(true)
     builder.pushUserMessage(text, Date.now(), isPending)
     callbacks.onBlocksChanged(builder.getBlocks())

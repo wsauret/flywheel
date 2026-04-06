@@ -14,6 +14,7 @@
  */
 
 import type { NDJSONEvent } from "./ndjson-parser";
+import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events";
 import type { FlywheelEmitter } from "../../../infra/event-bus";
 import { truncateField } from "../../../infra/trace-types";
 
@@ -54,53 +55,30 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
   function handleEvent(event: NDJSONEvent): void {
     const wfId = workflowIdRef.current;
 
-    if (event.type === "assistant") {
-      handleAssistantEvent(event, wfId);
-    } else if (event.type === "tool_result") {
-      handleToolResultEvent(event, wfId);
-    }
-  }
+    for (const record of extractToolUseRecords(event)) {
+      const rawInput = truncateField(record.toolInput, MAX_FIELD_BYTES);
 
-  function handleAssistantEvent(event: NDJSONEvent, wfId: string): void {
-    // Extract content blocks from assistant message
-    const message = event.data.message as Record<string, unknown> | undefined;
-    if (!message) return;
-
-    const content = message.content;
-    if (!Array.isArray(content)) return;
-
-    for (const block of content) {
-      if (typeof block !== "object" || block === null) continue;
-      const typedBlock = block as Record<string, unknown>;
-      if (typedBlock.type !== "tool_use") continue;
-
-      const toolUseId = String(typedBlock.id ?? "");
-      const toolName = String(typedBlock.name ?? "");
-      const rawInput = truncateField(typedBlock.input, MAX_FIELD_BYTES);
-
-      if (SUBAGENT_TOOL_NAMES.has(toolName)) {
-        subagentToolUseIds.add(toolUseId);
-        // Extract description/prompt from input for subagent spans
-        const input = typedBlock.input as Record<string, unknown> | undefined;
-        const description = String(input?.description ?? input?.task ?? toolName);
+      if (SUBAGENT_TOOL_NAMES.has(record.toolName)) {
+        subagentToolUseIds.add(record.toolUseId);
+        const input = record.toolInput as Record<string, unknown> | undefined;
+        const description = String(input?.description ?? input?.task ?? record.toolName);
         const prompt = truncateField(input?.prompt ?? input?.task ?? "", MAX_FIELD_BYTES);
-        emitter.traceSubagentStarted(wfId, toolUseId, toolName, description, prompt);
+        emitter.traceSubagentStarted(wfId, record.toolUseId, record.toolName, description, prompt);
       } else {
-        emitter.traceToolStarted(wfId, toolUseId, toolName, rawInput);
+        emitter.traceToolStarted(wfId, record.toolUseId, record.toolName, rawInput);
       }
     }
-  }
 
-  function handleToolResultEvent(event: NDJSONEvent, wfId: string): void {
-    const toolUseId = String(event.data.tool_use_id ?? "");
-    const isError = Boolean(event.data.is_error);
-    const rawOutput = truncateField(event.data.content ?? "", MAX_FIELD_BYTES);
+    const result = extractToolResultRecord(event);
+    if (result) {
+      const rawOutput = truncateField(result.toolOutput, MAX_FIELD_BYTES);
 
-    if (subagentToolUseIds.has(toolUseId)) {
-      subagentToolUseIds.delete(toolUseId);
-      emitter.traceSubagentCompleted(wfId, toolUseId, rawOutput, isError);
-    } else {
-      emitter.traceToolCompleted(wfId, toolUseId, rawOutput, isError);
+      if (subagentToolUseIds.has(result.toolUseId)) {
+        subagentToolUseIds.delete(result.toolUseId);
+        emitter.traceSubagentCompleted(wfId, result.toolUseId, rawOutput, result.isError);
+      } else {
+        emitter.traceToolCompleted(wfId, result.toolUseId, rawOutput, result.isError);
+      }
     }
   }
 

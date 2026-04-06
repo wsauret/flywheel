@@ -20,8 +20,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TRACES_DIR } from "../../infra/paths";
-import { createDebouncedWriter } from "../../workflows/shared/debounced-writer";
+import { TRACES_DIR, resolveTranscriptFile } from "../../infra/paths";
+import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser";
 
 // ---------------------------------------------------------------------------
@@ -48,8 +48,6 @@ export interface TranscriptWriterDeps {
 // Factory
 // ---------------------------------------------------------------------------
 
-const DEFAULT_DEBOUNCE_MS = 100;
-
 export function createTranscriptWriter(deps: TranscriptWriterDeps): TranscriptWriter {
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS } = deps;
 
@@ -57,68 +55,23 @@ export function createTranscriptWriter(deps: TranscriptWriterDeps): TranscriptWr
   const tracesDir = path.resolve(baseDir, TRACES_DIR);
   fs.mkdirSync(tracesDir, { recursive: true });
 
-  // Open transcript file for append
-  const transcriptFilePath = path.resolve(tracesDir, `${sessionId}.ndjson`);
-  const fd = fs.openSync(transcriptFilePath, "a");
+  // Buffered line writer (fd-append + debounce)
+  const writer = createBufferedFileWriter<string>({
+    filePath: resolveTranscriptFile(sessionId, baseDir),
+    serialize: (lines) => lines.map((line) => line + "\n").join(""),
+    debounceMs,
+  });
 
-  let buffer: string[] = [];
-  let disposed = false;
   let eventCount = 0;
 
-  // -------------------------------------------------------------------------
-  // Buffer drain (uses shared DebouncedWriter for timer scheduling)
-  // -------------------------------------------------------------------------
-
-  function drainBuffer(): void {
-    if (buffer.length === 0) return;
-    const lines = buffer;
-    buffer = [];
-
-    try {
-      const content = lines.map((line) => line + "\n").join("");
-      fs.writeSync(fd, content);
-    } catch {
-      // Best-effort — don't crash on write failure (SubprocessLogger precedent)
-    }
-  }
-
-  const debouncer = createDebouncedWriter<undefined>(async () => {
-    drainBuffer();
-  }, { intervalMs: debounceMs });
-
-  // -------------------------------------------------------------------------
-  // Internal flush (not on public interface)
-  // -------------------------------------------------------------------------
-
-  function flush(): void {
-    debouncer.dispose();
-    drainBuffer();
-  }
-
-  // -------------------------------------------------------------------------
-  // Public API
-  // -------------------------------------------------------------------------
-
   function handleEvent(event: NDJSONEvent): void {
-    if (disposed) return;
     if (!event.raw) return;
-
-    buffer.push(event.raw);
+    writer.push(event.raw);
     eventCount++;
-    debouncer.schedule(undefined);
   }
 
   function dispose(): void {
-    if (disposed) return;
-    disposed = true;
-
-    flush();
-
-    try {
-      fs.closeSync(fd);
-    } catch {
-      // Ignore close errors
-    }
+    writer.dispose();
   }
 
   function getEventCount(): number {

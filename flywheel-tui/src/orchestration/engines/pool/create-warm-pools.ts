@@ -6,7 +6,6 @@
  */
 
 import { WarmPool } from "./warm-pool"
-import { BunProcessSpawner } from "../subprocess/bun-spawner"
 import { resolveTierConfigs } from "../../config/loader"
 import { getEngine } from "../core/registry"
 import { createEnvFilter } from "../subprocess/env-filter"
@@ -54,18 +53,18 @@ export function createWarmPools(
   }
 
   // Subprocess pool — uses spawnRaw() for pre-warming with unconsumed streams.
-  // Only available when the spawner supports raw spawning (BunProcessSpawner).
+  // Only available when the spawner implements the optional spawnRaw() method.
   let subprocess: WarmPool<RawSpawnedProcess> | null = null
-  if (deps.spawner instanceof BunProcessSpawner) {
+  if (deps.spawner.spawnRaw) {
     const wCmd = engine.buildCommand({
       model: deps.config.subprocess?.model ?? deps.config.model,
     })
-    const rawSpawner = deps.spawner as BunProcessSpawner
+    const spawnRaw = deps.spawner.spawnRaw.bind(deps.spawner)
     const rawSpawnOpts = { stdinPipe: true as const, cwd: subprocessCwd ?? cwd, env }
 
     subprocess = new WarmPool<RawSpawnedProcess>({
       label: "subprocess",
-      spawn: () => Promise.resolve(rawSpawner.spawnRaw(wCmd.command, wCmd.args, rawSpawnOpts)),
+      spawn: () => Promise.resolve(spawnRaw(wCmd.command, wCmd.args, rawSpawnOpts)),
       getPid: (raw) => raw.proc.pid,
       getExitPromise: (raw) => raw.proc.exited,
       killProc: (raw) => {

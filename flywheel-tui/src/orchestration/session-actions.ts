@@ -7,12 +7,14 @@
 
 import { createOutputPersistence } from "./session/output-persistence"
 import { createQueuePersistence } from "../workflows/queue/persistence"
-import { readSession, deleteSessionWithCompanions } from "./session/persistence"
+import { readSession, deleteSessionWithCompanions, type DeleteResult } from "./session/persistence"
 import { fromSnapshot } from "./session/output-schemas"
 import { isResumable } from "./session/state-machine"
 import { createSessionOrchestrator } from "./session-orchestrator"
+import type { Session } from "./session/schemas"
+import type { Queue } from "../workflows/queue/types"
 import type { SessionManager, SessionSummary } from "./session/manager"
-import type { AnyBlock } from "../tui/types"
+import type { AnyBlock } from "../infra/output-blocks"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,9 +28,26 @@ export interface SessionActionDeps {
 }
 
 export interface ResumeData {
-  session: any
+  session: Session
   outputBlocks: AnyBlock[]
-  queue: any
+  queue: Queue
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function buildOrchestrator(deps: SessionActionDeps, extra?: { deleteSessionFiles?: (id: string, activeSessionId?: string | null) => DeleteResult }) {
+  const projectCwd = deps.projectCwd ?? process.cwd()
+  return createSessionOrchestrator({
+    readSession: (id) => readSession(id, projectCwd),
+    createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
+    createQueuePersistence: (id) => createQueuePersistence({ sessionId: id, baseDir: projectCwd }),
+    fromSnapshot,
+    manager: deps.manager,
+    refreshList: deps.refreshList,
+    ...extra,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -47,16 +66,7 @@ export async function loadResumeData(
   sessionId: string,
   deps: SessionActionDeps,
 ): Promise<ResumeData | null> {
-  const projectCwd = deps.projectCwd ?? process.cwd()
-  const orchestrator = createSessionOrchestrator({
-    readSession: (id) => readSession(id, projectCwd),
-    createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
-    createQueuePersistence: (id) => createQueuePersistence({ sessionId: id, baseDir: projectCwd }),
-    fromSnapshot,
-    manager: deps.manager,
-    refreshList: deps.refreshList,
-  })
-
+  const orchestrator = buildOrchestrator(deps)
   const result = await orchestrator.handleResumeSession(sessionId)
   if (!result) return null
 
@@ -85,13 +95,7 @@ export function archiveSession(sessionId: string, deps: SessionActionDeps): void
 /** Delete a session via the orchestrator (trash → cleanup → delete → refresh). */
 export function deleteSession(sessionId: string, deps: SessionActionDeps): void {
   const projectCwd = deps.projectCwd ?? process.cwd()
-  const orchestrator = createSessionOrchestrator({
-    readSession: (id) => readSession(id, projectCwd),
-    createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
-    createQueuePersistence: (id) => createQueuePersistence({ sessionId: id, baseDir: projectCwd }),
-    fromSnapshot,
-    manager: deps.manager,
-    refreshList: deps.refreshList,
+  const orchestrator = buildOrchestrator(deps, {
     deleteSessionFiles: (id) => deleteSessionWithCompanions(id, projectCwd, deps.activeSessionId()),
   })
   orchestrator.handleDeleteSession(sessionId)

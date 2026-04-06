@@ -194,19 +194,6 @@ export interface CompletedStepResult {
   completed: boolean;
 }
 
-/**
- * Result from queue execution, used by queue-completion and shell.
- *
- * @deprecated Prefer StepExecutorResult from src/queue/executor.ts for new code.
- * This shim is retained for handleQueueCompletion() and session-orchestrator.
- */
-export interface QueueResult {
-  completed: boolean;
-  stepsCompleted: number;
-  stepsTotal: number;
-  reason?: string;
-  stepResults: CompletedStepResult[];
-}
 
 /**
  * End-of-session gate check function.

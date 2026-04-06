@@ -24,7 +24,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths";
 import { writeFileAtomic } from "../../workflows/shared/atomic-write";
-import { createDebouncedWriter } from "../../workflows/shared/debounced-writer";
+import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 import type { Span } from "../../infra/trace-types";
 
 // ---------------------------------------------------------------------------
@@ -96,7 +96,6 @@ function writeIndex(baseDir: string, entries: TraceIndexEntry[]): void {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_MAX_TRACES = 100;
-const DEFAULT_DEBOUNCE_MS = 100;
 
 export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   const {
@@ -110,42 +109,15 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   const tracesDir = path.resolve(baseDir, TRACES_DIR);
   fs.mkdirSync(tracesDir, { recursive: true });
 
-  // Open trace file for append — SubprocessLogger pattern
-  const traceFilePath = resolveTraceFile(sessionId, baseDir);
-  const fd = fs.openSync(traceFilePath, "a");
-
-  let buffer: Span[] = [];
-  let disposed = false;
-
-  // -------------------------------------------------------------------------
-  // Buffer drain (uses shared DebouncedWriter for timer scheduling)
-  // -------------------------------------------------------------------------
-
-  function drainBuffer(): void {
-    if (buffer.length === 0) return;
-    const spans = buffer;
-    buffer = [];
-
-    try {
-      const content = spans.map((span) => JSON.stringify(span) + "\n").join("");
-      fs.writeSync(fd, content);
-    } catch {
-      // Best-effort — don't crash on write failure (SubprocessLogger precedent)
-    }
-  }
-
-  const debouncer = createDebouncedWriter<undefined>(async () => {
-    drainBuffer();
-  }, { intervalMs: debounceMs });
-
-  // -------------------------------------------------------------------------
-  // Public API
-  // -------------------------------------------------------------------------
+  // Buffered span writer (fd-append + debounce)
+  const writer = createBufferedFileWriter<Span>({
+    filePath: resolveTraceFile(sessionId, baseDir),
+    serialize: (spans) => spans.map((s) => JSON.stringify(s) + "\n").join(""),
+    debounceMs,
+  });
 
   function writeSpan(span: Span): void {
-    if (disposed) return;
-    buffer.push(span);
-    debouncer.schedule(undefined);
+    writer.push(span);
   }
 
   function finalizeTrace(summary: TraceIndexEntry): void {
@@ -162,21 +134,11 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   }
 
   function flush(): void {
-    debouncer.dispose();
-    drainBuffer();
+    writer.flush();
   }
 
   function dispose(): void {
-    if (disposed) return;
-    disposed = true;
-
-    flush();
-
-    try {
-      fs.closeSync(fd);
-    } catch {
-      // Ignore close errors
-    }
+    writer.dispose();
   }
 
   // -------------------------------------------------------------------------

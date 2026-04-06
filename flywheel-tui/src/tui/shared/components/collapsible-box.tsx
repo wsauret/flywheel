@@ -2,15 +2,12 @@
 /**
  * CollapsibleBox
  *
- * Stable-layout container for expand/collapse toggling.
- *
- * The container box stays in the layout tree at all times to avoid
- * white-flash flicker from layout shift on remount. When collapsed,
- * children are swapped out via <For each={[1] | []}> and the box is
- * hidden with height={0} and no border/padding.
+ * Conditionally renders a bordered container for expand/collapse toggling.
+ * When collapsed, the box is completely removed from the tree.
+ * When expanded, a bordered box wraps the children.
  */
 
-import { For } from "solid-js"
+import { Show } from "solid-js"
 import type { JSX } from "solid-js"
 import type { RGBA } from "@opentui/core"
 
@@ -29,20 +26,19 @@ export interface CollapsibleBoxProps {
 
 export function CollapsibleBox(props: CollapsibleBoxProps) {
   return (
-    <box
-      flexDirection="column"
-      border={props.expanded ? (props.border ?? false) : false}
-      borderColor={props.borderColor}
-      paddingLeft={props.expanded ? props.paddingLeft : 0}
-      paddingRight={props.expanded ? props.paddingRight : 0}
-      paddingTop={props.expanded ? props.paddingTop : 0}
-      paddingBottom={props.expanded ? props.paddingBottom : 0}
-      height={props.expanded ? undefined : 0}
-      onMouseDown={props.expanded ? props.onMouseDown : undefined}
-    >
-      <For each={props.expanded ? [true] : []}>
-        {() => <>{props.children}</>}
-      </For>
-    </box>
+    <Show when={props.expanded}>
+      <box
+        flexDirection="column"
+        border={props.border ?? false}
+        borderColor={props.borderColor}
+        paddingLeft={props.paddingLeft}
+        paddingRight={props.paddingRight}
+        paddingTop={props.paddingTop}
+        paddingBottom={props.paddingBottom}
+        onMouseDown={props.onMouseDown}
+      >
+        {props.children}
+      </box>
+    </Show>
   )
 }

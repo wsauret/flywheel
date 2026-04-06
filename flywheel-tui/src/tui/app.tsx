@@ -21,6 +21,7 @@ import { SessionProvider } from "@tui/shared/context/session"
 import { createSessionManager } from "../orchestration/session/manager"
 import { ErrorComponent } from "./components/error-boundary"
 import { loadConfig } from "../orchestration/config/loader"
+import { provideSessionFactories } from "../orchestration/workflow-session"
 import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
 
@@ -50,6 +51,18 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     const onExit = () => {
       resolve()
     }
+
+    // Wire concrete TUI factories into the orchestration layer (DIP boundary)
+    const { OpenTUIAdapter } = await import("./adapters/opentui")
+    const { createStore } = await import("./routes/work/context/ui-state/store")
+    const { TimerService } = await import("./shared/services/timer")
+    provideSessionFactories({
+      createStore: (key) => createStore(key),
+      // Safe: createStore() returns UIActions which satisfies WorkflowStore.
+      // The adapter needs the full UIActions at runtime, which is what it gets.
+      createAdapter: (opts) => new OpenTUIAdapter(opts as unknown as import("./adapters/opentui").OpenTUIAdapterOptions),
+      createTimer: () => new TimerService(),
+    })
 
     // Lazy import FlywheelShell to ensure OpenTUI preload has registered
     const { FlywheelShell } = await import("./shell")

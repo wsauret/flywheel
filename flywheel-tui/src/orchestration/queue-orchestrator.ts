@@ -99,8 +99,6 @@ export interface BuildExecutorCoreDeps {
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
   subprocessCwd?: string;
   contextIndexer: ContextIndexer;
-  /** Setter for TUI queue step state (SolidJS signal setter passed from shell). */
-  setShellQueueSteps: (updater: any) => void;
   /** Mutable ref tracking captured subprocess session ID for resume/interrupt. */
   capturedSubprocessSessionId: { current: string | undefined };
   /** Mutable ref for pending injection message at turn boundaries. */
@@ -143,7 +141,6 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
     contextIndexer, projectCwd, sessionObjective, queue, stdinHandleRef,
     seedHandoff, sessionId: execSessionId,
-    setShellQueueSteps,
     capturedSubprocessSessionId, pendingInjection, activeSessionRef,
     budgetTracker,
     traceEventHandler,
@@ -164,21 +161,8 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     ? createAgentEvaluatorFn({ transport: evaluatorTransport })
     : null
 
-  // Composite hook: TUI step refresh callback
-  const compositeHook = createCompositeHook([
-    async (step, status, q, _handoffData) => {
-      if (status === "completed") {
-        const updatedQueueStepStates = q.steps.map(s => ({
-          id: s.id,
-          type: s.type,
-          title: s.title,
-          status: s.status as "pending" | "running" | "completed" | "failed" | "skipped",
-        }))
-        setShellQueueSteps(updatedQueueStepStates)
-      }
-      return { continueExecution: false }
-    },
-  ])
+  // Composite hook (extensible — currently empty; Phase 5 adds step-type hooks here)
+  const compositeHook = createCompositeHook([])
 
   // Dispatcher callback (real dispatcher with fallback to step metadata)
   const dispatcherFn = createDispatcherCallback({

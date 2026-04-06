@@ -75,8 +75,8 @@ export class WarmPool<T = SpawnResult> {
   constructor(options: WarmPoolOptions<T>) {
     this.spawnFactory = options.spawn;
     this.label = options.label;
-    this.getPidFn = options.getPid ?? ((proc) => (proc as any).pid);
-    this.getExitPromiseFn = options.getExitPromise ?? ((proc) => (proc as any).result);
+    this.getPidFn = options.getPid ?? ((proc) => (proc as unknown as SpawnResult).pid);
+    this.getExitPromiseFn = options.getExitPromise ?? ((proc) => (proc as unknown as SpawnResult).result);
     this.killProcFn = options.killProc;
 
     // Pre-warm immediately

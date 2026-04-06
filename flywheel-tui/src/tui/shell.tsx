@@ -269,13 +269,13 @@ export function FlywheelShell() {
     if (activity === "idle") return null
 
     const spinner = SPINNER_FRAMES[metrics.spinnerTick()]
+    const ms = metrics.elapsed()
     let label = activityLabel()!
-    if (activity === "thinking" && metrics.thinkingElapsed() > 0) {
-      label = `${label} (${metrics.thinkingElapsed()}s)`
+    if (ms >= 1000) {
+      label = `${label} (${formatElapsed(ms)})`
     }
 
-    const hint = "(Press ESC to stop)"
-    return `${spinner} ${label} ${hint}`
+    return `${spinner} ${label}`
   })
 
   // ── JSX ──
@@ -399,9 +399,9 @@ export function FlywheelShell() {
         <text fg={theme.textMuted}>{process.cwd()}</text>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.textMuted}>
-            {inChat() ? "/end"
-              : sessionStatus() === "paused" ? "Esc (stop) · Ctrl+R (resume)"
-              : agentState() === "active" ? `Esc (pause)${runningCount() > 1 ? ` · ${runningCount()} sessions` : ""}`
+            {agentState() === "active" ? `esc to interrupt${inChat() ? " · /end" : ""}${runningCount() > 1 ? ` · ${runningCount()} sessions` : ""}`
+              : inChat() ? "/end"
+              : sessionStatus() === "paused" ? "esc to stop · Ctrl+R to resume"
               : `Esc · Ctrl+B · /chat · /exit${runningCount() > 0 ? ` · ${runningCount()} running` : ""}`}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>

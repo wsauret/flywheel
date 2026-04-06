@@ -20,6 +20,7 @@
 
 import * as fs from "node:fs";
 import { writeFileAtomic } from "../../workflows/shared/atomic-write";
+import type { AnyBlock } from "../../infra/output-blocks";
 import {
   toSnapshot,
   fromSnapshot,
@@ -63,19 +64,13 @@ export interface OutputFlusher {
 
 export interface OutputPersistence {
   /** Save blocks to disk (synchronous atomic write). */
-  save(blocks: AnyBlockLike[]): void;
+  save(blocks: AnyBlock[]): void;
   /** Load blocks from disk (async via Bun.file). Returns [] on missing/corrupt. */
   load(): Promise<OutputSnapshot[]>;
   /** Delete the output file. Returns true if deleted, false if not found. */
   delete(): Promise<boolean>;
   /** Create a debounced flusher that calls save() with getBlocks() on each tick. */
-  createFlusher(getBlocks: () => AnyBlockLike[], opts?: OutputFlusherOpts): OutputFlusher;
-}
-
-/** Loose block shape — avoids importing TUI types. */
-interface AnyBlockLike {
-  kind: string;
-  [key: string]: unknown;
+  createFlusher(getBlocks: () => AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +84,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
     return resolveSessionFile(sessionId, "output", baseDir);
   }
 
-  function save(blocks: AnyBlockLike[]): void {
+  function save(blocks: AnyBlock[]): void {
     const snapshots = toSnapshot(blocks);
     let json = JSON.stringify(snapshots);
 
@@ -138,7 +133,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
   }
 
   function createFlusher(
-    getBlocks: () => AnyBlockLike[],
+    getBlocks: () => AnyBlock[],
     opts?: OutputFlusherOpts,
   ): OutputFlusher {
     const intervalMs = opts?.intervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;

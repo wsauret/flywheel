@@ -186,10 +186,13 @@ When wiring new features, pass dependencies through existing options objects. Do
 ## 10. Writing and Running Tests
 
 ```bash
-cd flywheel-tui
-bun test                   # all tests
-bun test tests/foo.test.ts # single file
+bun run test                   # unit tests (tests/*.test.ts)
+bun test tests/foo.test.ts     # single file
+bun run test:integration       # integration tests (tests/integration/)
+bun run test:e2e               # end-to-end tests (tests/e2e/)
 ```
+
+**Always use `bun run test`, not bare `bun test`.** Bare `bun test` crawls the entire repo including `node_modules/` and `inspiration/`, running thousands of irrelevant tests. The `test` script in `package.json` applies the correct path filter.
 
 - Write unit tests for new functionality. Maintain coverage when refactoring.
 - Test observable behavior (what the system does), not implementation details (how it does it).

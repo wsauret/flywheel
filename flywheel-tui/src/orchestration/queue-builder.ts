@@ -4,8 +4,6 @@
  * Contains:
  *   - `buildQueue` — pure function to create a Queue from a WorkflowName + config
  *   - `buildQueueForSlashCommand` — creates queue from slash command name + config
- *   - `QueueProgressInfo` — progress tracking type for telemetry bar
- *   - `formatQueueProgress` — format progress string for display
  *   - `createEndOfSessionGate` — validation state gate
  */
 
@@ -19,34 +17,6 @@ import { createQueue } from "../workflows/queue/queue";
 import type { FlywheelConfig } from "./config/loader";
 import { checkEndOfSessionGate } from "./session/validation-state";
 import { randomUUID } from "crypto";
-
-// ---------------------------------------------------------------------------
-// QueueProgressInfo — queue progress tracking for telemetry bar
-// ---------------------------------------------------------------------------
-
-export interface QueueProgressInfo {
-  /** 1-based index of the current step. */
-  currentStep: number;
-  /** Total number of steps in the queue. */
-  totalSteps: number;
-  /** Name/type of the current step. */
-  stepName: string;
-}
-
-// ---------------------------------------------------------------------------
-// formatQueueProgress — format queue progress string for display
-// ---------------------------------------------------------------------------
-
-/**
- * Format a queue progress indicator string.
- *
- * @example formatQueueProgress({ currentStep: 1, totalSteps: 3, stepName: "plan" }) → "Plan (1/3)"
- */
-function formatQueueProgress(info: QueueProgressInfo | null | undefined): string {
-  if (!info || !info.currentStep || !info.totalSteps) return "";
-  const name = info.stepName.charAt(0).toUpperCase() + info.stepName.slice(1);
-  return `${name} (${info.currentStep}/${info.totalSteps})`;
-}
 
 // ---------------------------------------------------------------------------
 // buildQueue — create a Queue from a workflow template name + config

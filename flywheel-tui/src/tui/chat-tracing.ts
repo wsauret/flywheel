@@ -11,6 +11,7 @@
  */
 
 import type { NDJSONEvent } from "../orchestration/engines/subprocess/ndjson-parser";
+import { extractToolUseRecords, extractToolResultRecord } from "../orchestration/engines/subprocess/ndjson-tool-events";
 import type { TraceCollector } from "../orchestration/session/trace-collector";
 
 /**
@@ -26,58 +27,25 @@ export function feedChatEventToTrace(
   collector: TraceCollector,
   toolSpanMap: Map<string, string>,
 ): void {
-  if (event.type === "assistant") {
-    handleAssistantEvent(event, collector, toolSpanMap);
-  } else if (event.type === "tool_result") {
-    handleToolResultEvent(event, collector, toolSpanMap);
-  }
-}
-
-function handleAssistantEvent(
-  event: NDJSONEvent,
-  collector: TraceCollector,
-  toolSpanMap: Map<string, string>,
-): void {
-  const message = event.data.message as Record<string, unknown> | undefined;
-  if (!message) return;
-
-  const content = message.content;
-  if (!Array.isArray(content)) return;
-
-  for (const block of content) {
-    if (typeof block !== "object" || block === null) continue;
-    const typedBlock = block as Record<string, unknown>;
-    if (typedBlock.type !== "tool_use") continue;
-
-    const toolUseId = String(typedBlock.id ?? "");
-    const toolName = String(typedBlock.name ?? "");
-    const toolInput = typedBlock.input;
-
-    const spanId = collector.startSpan("tool_call", toolName, {
-      toolName,
-      toolInput,
+  for (const record of extractToolUseRecords(event)) {
+    const spanId = collector.startSpan("tool_call", record.toolName, {
+      toolName: record.toolName,
+      toolInput: record.toolInput,
     });
-    toolSpanMap.set(toolUseId, spanId);
+    toolSpanMap.set(record.toolUseId, spanId);
   }
-}
 
-function handleToolResultEvent(
-  event: NDJSONEvent,
-  collector: TraceCollector,
-  toolSpanMap: Map<string, string>,
-): void {
-  const toolUseId = String(event.data.tool_use_id ?? "");
-  const spanId = toolSpanMap.get(toolUseId);
-  if (!spanId) return;
+  const result = extractToolResultRecord(event);
+  if (result) {
+    const spanId = toolSpanMap.get(result.toolUseId);
+    if (!spanId) return;
 
-  const isError = Boolean(event.data.is_error);
-  const toolOutput = event.data.content ?? "";
-
-  collector.endSpan(
-    spanId,
-    { toolOutput, isError },
-    isError ? "error" : "ok",
-    isError ? { message: "tool returned error" } : undefined,
-  );
-  toolSpanMap.delete(toolUseId);
+    collector.endSpan(
+      spanId,
+      { toolOutput: result.toolOutput, isError: result.isError },
+      result.isError ? "error" : "ok",
+      result.isError ? { message: "tool returned error" } : undefined,
+    );
+    toolSpanMap.delete(result.toolUseId);
+  }
 }

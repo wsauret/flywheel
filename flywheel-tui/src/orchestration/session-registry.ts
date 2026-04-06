@@ -10,7 +10,7 @@
 
 import { createWorkflowRunner, type WorkflowRunner, type WorkflowResult, type StepState } from "./workflow-runner"
 import { errorMessage } from "../infra/error-message"
-import type { AnyBlock } from "../tui/types"
+import type { AnyBlock } from "../infra/output-blocks"
 import type { Queue } from "../workflows/queue/types"
 import type { ModelActivity } from "../infra/events"
 

@@ -43,6 +43,9 @@ export interface SpawnResult {
  */
 export interface ProcessSpawner {
   spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult>;
+  /** Spawn a raw process without consuming streams (for subprocess pooling).
+   *  Optional — only implemented by spawners that support pre-warming. */
+  spawnRaw?(command: string, args: string[], options?: SpawnOptions): import("./stream-pipeline").RawSpawnedProcess;
 }
 
 export interface SpawnOptions {

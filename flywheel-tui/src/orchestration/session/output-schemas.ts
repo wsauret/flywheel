@@ -2,8 +2,7 @@
  * Output Snapshot Schema
  *
  * Zod schemas for serializing structured output blocks to disk.
- * These are standalone types that mirror the TUI AnyBlock shapes but live
- * in the schema layer — no TUI imports allowed here.
+ * Uses AnyBlock from infra/output-blocks.ts for the canonical block shapes.
  *
  * Key behavior:
  * - `toSnapshot()` normalizes runtime state (e.g., active → paused)
@@ -11,6 +10,7 @@
  */
 
 import { z } from "zod";
+import type { AnyBlock } from "../../infra/output-blocks";
 
 // ---------------------------------------------------------------------------
 // Zod schemas for each block variant
@@ -87,14 +87,6 @@ export type OutputSnapshot = z.infer<typeof OutputSnapshotSchema>;
 // Converters
 // ---------------------------------------------------------------------------
 
-/**
- * AnyBlock-like shape — deliberately loose to avoid importing TUI types.
- * Callers pass their runtime blocks; we normalize and validate.
- */
-interface AnyBlockLike {
-  kind: string;
-  [key: string]: unknown;
-}
 
 /**
  * Convert runtime blocks to serializable snapshots.
@@ -102,7 +94,7 @@ interface AnyBlockLike {
  * - AgentBlock with status "active" is normalized to "paused"
  * - Unknown block kinds are silently skipped
  */
-export function toSnapshot(blocks: AnyBlockLike[]): OutputSnapshot[] {
+export function toSnapshot(blocks: AnyBlock[]): OutputSnapshot[] {
   const snapshots: OutputSnapshot[] = [];
 
   for (const block of blocks) {

@@ -61,9 +61,10 @@ export function AgentBlock(props: AgentBlockProps) {
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
   const summary = () => `${toolCount()} tools${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`
 
+  const isActive = () => props.block.status === "active"
   const visibleChildren = () => {
     const all = props.block.children
-    if (showAll() || all.length <= MAX_VISIBLE_TOOLS) return all
+    if (!isActive() || showAll() || all.length <= MAX_VISIBLE_TOOLS) return all
     // Show first (MAX - 1) + always the latest one so active tool is visible
     const head = all.slice(0, MAX_VISIBLE_TOOLS - 1)
     const last = all[all.length - 1]
@@ -71,7 +72,7 @@ export function AgentBlock(props: AgentBlockProps) {
   }
   const hiddenCount = () => {
     const all = props.block.children
-    if (showAll() || all.length <= MAX_VISIBLE_TOOLS) return 0
+    if (!isActive() || showAll() || all.length <= MAX_VISIBLE_TOOLS) return 0
     // head (MAX-1) + last (1) = MAX shown, rest hidden
     return all.length - MAX_VISIBLE_TOOLS
   }

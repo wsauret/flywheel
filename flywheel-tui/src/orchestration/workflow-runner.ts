@@ -10,8 +10,7 @@ import { createQueuePersistence } from "../workflows/queue/persistence"
 import { createGuardrails } from "../workflows/queue/guardrails"
 import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
 import { createOutputPersistence } from "./session/output-persistence"
-import { OpenTUIAdapter } from "../tui/adapters/opentui"
-import { createStore as createUIStore } from "../tui/routes/work/context/ui-state/store"
+import { createWorkflowSession, destroyWorkflowSession, type WorkflowSession, type WorkflowStore } from "./workflow-session"
 import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
 import { createTraceWriter, type TraceWriter } from "./session/trace-writer"
@@ -25,7 +24,7 @@ import { randomUUID } from "node:crypto"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import type { StdinHandle, SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
-import type { AnyBlock } from "../tui/types"
+import type { AnyBlock } from "../infra/output-blocks"
 import "../workflows/queue/steps/register-all"
 
 
@@ -109,8 +108,15 @@ export function createWorkflowRunner(opts: {
   // Prepare workflow deps (config, engine, etc.)
   const deps = prepareWorkflowDeps()
 
-  // Event bus + emitter
-  const eventBus = opts.overrides?.eventBus ?? new EventBus()
+  // Session resources (timer, store, adapter, event bus)
+  const session = createWorkflowSession({
+    description,
+    engineMetadata: deps.engine.metadata,
+    eventBus: opts.overrides?.eventBus,
+  })
+  const { eventBus, store: uiActions } = session
+  const activeSessionRef: { current: WorkflowSession | null } = { current: session }
+
   const emitter = createFlywheelEmitter(eventBus)
   const workflowIdRef = { current: randomUUID() }
 
@@ -143,12 +149,6 @@ export function createWorkflowRunner(opts: {
     callbacks.onCost(budgetTracker.getTotalCost())
   }, 500)
 
-  // Structured output pipeline
-  const uiActions = createUIStore("workflow")
-  uiActions.startWorkflow(description)
-  const adapter = new OpenTUIAdapter({ actions: uiActions, engineMetadata: deps.engine.metadata })
-  adapter.connect(eventBus)
-
   // Wire store → model activity callback
   let execUnsub: (() => void) | null = null
   if (callbacks.onModelActivity) {
@@ -165,7 +165,7 @@ export function createWorkflowRunner(opts: {
   // Output persistence
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
   let currentBlocks: AnyBlock[] = []
-  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks as any[])
+  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
   // Wire store → blocks callback
   const storeUnsub = uiActions.subscribe(() => {
@@ -180,10 +180,9 @@ export function createWorkflowRunner(opts: {
   eventUnsubs.push(
     eventBus.subscribe((event) => {
       if (event.type === "queue:step-started") {
-        const e = event as any
         callbacks.onSteps(queue.steps.map((s) => ({
           ...toStepState(s),
-          ...(s.id === e.stepId ? { status: "running", startedAt: Date.now() } : {}),
+          ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
         })))
       }
       if (event.type === "queue:step-completed" || event.type === "queue:step-failed") {
@@ -240,10 +239,9 @@ export function createWorkflowRunner(opts: {
       deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
       contextIndexer, projectCwd, subprocessCwd, sessionObjective: description, queue, sessionId,
       stdinHandleRef,
-      setShellQueueSteps: () => {},
       capturedSubprocessSessionId: { current: undefined },
       pendingInjection,
-      activeSessionRef: { current: null },
+      activeSessionRef,
       budgetTracker,
       traceEventHandler,
       transcriptWriter,
@@ -314,10 +312,9 @@ export function createWorkflowRunner(opts: {
 
     // Try direct write if pipe is open
     if (stdinHandleRef.current) {
-      const handle = stdinHandleRef.current as any
-      if (handle.isOpen !== false) {
+      if (stdinHandleRef.current.isOpen) {
         try {
-          handle.write(formatted)
+          stdinHandleRef.current.write(formatted)
           return true
         } catch { /* fall through to queuing */ }
       }
@@ -339,7 +336,8 @@ export function createWorkflowRunner(opts: {
     eventUnsubs.forEach((u) => u())
     storeUnsub()
     execUnsub?.()
-    adapter.disconnect()
+    destroyWorkflowSession(session)
+    activeSessionRef.current = null
     // Finalize trace if not already finalized (abort path)
     if (traceCollector && !traceFinalized) {
       traceFinalized = true

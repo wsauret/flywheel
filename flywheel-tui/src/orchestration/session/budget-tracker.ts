@@ -27,6 +27,7 @@ import { z } from "zod";
 import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser";
 import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../../workflows/schemas";
 import { updateSession } from "./persistence";
+import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 
 // ---------------------------------------------------------------------------
 // Zod schema for safe cost/token extraction
@@ -110,8 +111,6 @@ export interface BudgetTracker {
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
-
-const DEFAULT_DEBOUNCE_MS = 100;
 
 export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId } = deps;

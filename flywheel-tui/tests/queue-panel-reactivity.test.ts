@@ -110,8 +110,8 @@ describe("queue panel reactivity — event bus → direct signal updates", () =>
   ];
 
   /**
-   * Simulates the shell's direct signal update pattern:
-   * event bus subscription → setShellQueueSteps(updater)
+   * Simulates the shell's step state update pattern:
+   * event bus subscription → callbacks.onSteps(steps)
    *
    * Instead of SolidJS signals (which need browser conditions), we
    * simulate the updater pattern with a simple variable + callback.
