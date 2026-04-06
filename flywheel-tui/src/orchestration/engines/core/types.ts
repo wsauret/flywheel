@@ -74,29 +74,18 @@ export interface ToolScopingConfig {
 }
 
 export interface EngineCommandOptions {
-  /** The prompt to execute */
-  prompt: string;
   /** Model override (engine-native format, e.g., "opus" for claude, "anthropic/claude-opus-4-6" for opencode) */
   model?: string;
-  /** Session ID to resume */
+  /** Session ID to resume (worker resume path) */
   resumeSessionId?: string;
   /** Tool scoping restrictions — controls which tool categories the worker can access */
   toolScoping?: ToolScopingConfig;
-}
-
-/**
- * Options for building a dispatcher/evaluator command.
- *
- * Dispatcher commands are optimized for speed: tools disabled, fast model,
- * separate system prompt for caching, no session persistence.
- */
-export interface DispatcherCommandOptions {
-  /** The user prompt to send */
-  prompt: string;
-  /** System prompt (separate from user prompt for caching) */
-  systemPrompt: string;
-  /** Resolved tier config blob (model, effort, future fields). */
-  tierConfig?: { model?: string; effort?: string };
+  /** Explicit tools string for dispatcher/evaluator (e.g., "Write", "Read,Bash,Write,Grep,Glob") */
+  tools?: string;
+  /** System prompt (separate from user prompt for caching, passed as --system-prompt flag) */
+  systemPrompt?: string;
+  /** Effort level override (e.g., "low", "medium", "high") */
+  effort?: string;
 }
 
 export interface ModelInfo {
@@ -110,41 +99,15 @@ export interface ModelInfo {
   isAlias: boolean;
 }
 
-/**
- * Options for building an evaluator command.
- *
- * Evaluator commands are agent-based: they have Read, Bash, and Write tools
- * so they can investigate mismatches (grep for renamed files, re-run commands,
- * etc.), but no Edit tool (evaluators must not modify the codebase).
- */
-export interface EvaluatorCommandOptions {
-  /** The evaluator prompt */
-  prompt: string;
-  /** System prompt (separate from user prompt for caching) */
-  systemPrompt: string;
-  /** Resolved tier config blob (model, effort, future fields). */
-  tierConfig?: { model?: string; effort?: string };
-}
-
 export interface Engine {
   metadata: EngineMetadata;
-  /** Build the CLI command + args for worker execution */
+  /**
+   * Build the CLI command + args for execution.
+   *
+   * Unified builder used by all roles (worker, dispatcher, evaluator).
+   * All roles use --input-format stream-json with stdin pipes.
+   */
   buildCommand(options: EngineCommandOptions): EngineCommand;
-  /**
-   * Build a CLI command optimized for dispatcher/evaluator use.
-   *
-   * Dispatcher commands disable tools, use a fast model, pass a separate
-   * system prompt for caching, and disable session persistence.
-   */
-  buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand;
-  /**
-   * Build a CLI command for agent-based evaluation.
-   *
-   * Evaluator commands have Read, Bash, and Write tools (for investigation
-   * and handoff writing) but no Edit tool (evaluators must not modify code).
-   * Uses a fast model, no session persistence.
-   */
-  buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineCommand;
   /**
    * List available models.
    * @param provider - Optional provider filter (e.g., "anthropic"). If omitted, returns all.

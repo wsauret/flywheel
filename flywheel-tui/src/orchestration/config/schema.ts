@@ -18,15 +18,15 @@ function noShellMetachars(fieldName: string) {
 // ---------------------------------------------------------------------------
 
 /**
- * Boundaries sub-schema — constraints workers must never violate.
+ * Boundaries sub-schema — constraints subprocesses must never violate.
  * Extracted so the type can be shared with prompt builders (e.g. step-prompt.ts).
  */
 export const BoundariesSchema = z.object({
   /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
   port_ranges: z.array(z.string()).optional(),
-  /** Directories workers must not modify. */
+  /** Directories subprocesses must not modify. */
   off_limits_dirs: z.array(z.string()).optional(),
-  /** External services workers should be aware of. */
+  /** External services subprocesses should be aware of. */
   external_services: z.array(z.string()).optional(),
 });
 
@@ -65,8 +65,8 @@ export const FlywheelConfigSchema = z.object({
     model: z.string().optional(),
     effort: z.enum(["low", "medium", "high", "max"]).optional(),
   }).default({}),
-  /** Per-tier config for the worker */
-  worker: z.object({
+  /** Per-tier config for the subprocess */
+  subprocess: z.object({
     model: z.string().optional(),
   }).default({}),
   /** Per-tier config for the evaluator */
@@ -74,7 +74,7 @@ export const FlywheelConfigSchema = z.object({
     model: z.string().optional(),
     effort: z.enum(["low", "medium", "high", "max"]).optional(),
   }).default({}),
-  /** Convenience: sets dispatcher.model, worker.model, and evaluator.model if not individually overridden */
+  /** Convenience: sets dispatcher.model, subprocess.model, and evaluator.model if not individually overridden */
   model: z.string().optional(),
   max_retries: z.number().int().min(0).max(10).default(3),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
@@ -101,7 +101,7 @@ export const FlywheelConfigSchema = z.object({
 
   /** Budget limits for workflow execution. 0 = unlimited for all fields. */
   budget: z.object({
-    /** Max total worker invocations across all steps. 0 = unlimited. */
+    /** Max total subprocess invocations across all steps. 0 = unlimited. */
     max_invocations: z.number().int().min(0).default(0),
     /** Max total tokens consumed. 0 = unlimited. */
     max_tokens: z.number().int().min(0).default(0),
@@ -128,7 +128,7 @@ export const FlywheelConfigSchema = z.object({
     standards: z.string().optional(),
   }).default({}),
 
-  /** Mission boundaries — constraints workers must never violate. */
+  /** Mission boundaries — constraints subprocesses must never violate. */
   boundaries: BoundariesSchema.optional(),
 
   /** Project commands for scrutiny validation (test, typecheck, lint). */
@@ -164,6 +164,14 @@ export const FlywheelConfigSchema = z.object({
     handoff_detail_window: z.number().int().min(1).max(20).default(3),
   }).default({}),
 
+  /** Tracing configuration. */
+  tracing: z.object({
+    /** Enable trace collection. Default: true. */
+    enabled: z.boolean().default(true),
+    /** Maximum number of traces to keep in the index. Default: 100. */
+    max_traces: z.number().int().min(1).default(100),
+  }).default({}),
+
   /** Sprint mode configuration. */
   sprint: z.object({
     /** Max sprint iterations before escalation. Default: 5. */
@@ -172,8 +180,8 @@ export const FlywheelConfigSchema = z.object({
     verification_timeout_ms: z.number().int().min(1000).default(30000),
     /** Escalate to full queue when sprint exhausts iterations. Default: true. */
     escalate_to_full: z.boolean().default(true),
-    /** Allow worker to signal escalation via needs_plan. Default: false. */
-    worker_can_escalate: z.boolean().default(false),
+    /** Allow subprocess to signal escalation via needs_plan. Default: false. */
+    subprocess_can_escalate: z.boolean().default(false),
     /** Escalate early on repeated identical verification failures. Default: false. */
     escalate_on_stuck: z.boolean().default(false),
   }).default({}),
@@ -188,7 +196,7 @@ export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
 export const CONFIG_DEFAULTS: FlywheelConfig = {
   engine: "claude",
   dispatcher: {},
-  worker: {},
+  subprocess: {},
   evaluator: {},
   max_retries: 3,
   timeout_minutes: 60,
@@ -225,11 +233,15 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
     replan_cost_budget_usd: 0,
     handoff_detail_window: 3,
   },
+  tracing: {
+    enabled: true,
+    max_traces: 100,
+  },
   sprint: {
     max_iterations: 5,
     verification_timeout_ms: 30_000,
     escalate_to_full: true,
-    worker_can_escalate: false,
+    subprocess_can_escalate: false,
     escalate_on_stuck: false,
   },
 };
@@ -240,7 +252,7 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
 
 /**
  * Resolve the final model for each tier.
- * Precedence: tier-specific (dispatcher.model / worker.model / evaluator.model) > convenience (model) > undefined (engine default).
+ * Precedence: tier-specific (dispatcher.model / subprocess.model / evaluator.model) > convenience (model) > undefined (engine default).
  */
 /**
  * Resolved per-tier config blob. Passed as a single object through the
@@ -254,12 +266,12 @@ export interface ResolvedTierConfig {
 const DEFAULT_EFFORT = "low";
 
 /**
- * Resolve per-tier config for dispatcher, worker, and evaluator.
+ * Resolve per-tier config for dispatcher, subprocess, and evaluator.
  * Each field has a tier-specific override > convenience global > default fallback chain.
  */
 export function resolveTierConfigs(config: FlywheelConfig): {
   dispatcher: ResolvedTierConfig;
-  worker: ResolvedTierConfig;
+  subprocess: ResolvedTierConfig;
   evaluator: ResolvedTierConfig;
 } {
   return {
@@ -267,8 +279,8 @@ export function resolveTierConfigs(config: FlywheelConfig): {
       model: config.dispatcher.model ?? config.model,
       effort: config.dispatcher.effort ?? DEFAULT_EFFORT,
     },
-    worker: {
-      model: config.worker.model ?? config.model,
+    subprocess: {
+      model: config.subprocess.model ?? config.model,
     },
     evaluator: {
       model: config.evaluator.model ?? config.model,

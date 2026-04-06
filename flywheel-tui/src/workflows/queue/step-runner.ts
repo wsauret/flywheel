@@ -47,7 +47,7 @@ export interface StepRunnerDeps {
   sessionObjective?: string;
   persistAccumulatorState?: ((state: unknown) => void) | null;
   onSessionName?: ((name: string) => void) | null;
-  onWorkerDispatched?: (() => void) | null;
+  onSubprocessDispatched?: (() => void) | null;
 
   // Mutable state shared with the executor loop
   previousHandoff: Record<string, unknown> | null;
@@ -98,7 +98,7 @@ export async function executeStep(
     sessionObjective,
     persistAccumulatorState,
     onSessionName,
-    onWorkerDispatched,
+    onSubprocessDispatched,
     safeTransition,
     persistQueue,
   } = deps;
@@ -186,7 +186,7 @@ export async function executeStep(
     }
 
     // Spawn worker — race against abort signal
-    onWorkerDispatched?.();
+    onSubprocessDispatched?.();
     let workerOutput: WorkerOutput = await raceAbort(worker(step, currentPrompt), abortSignal);
 
     // Read handoff (best-effort)
@@ -221,7 +221,7 @@ export async function executeStep(
           workflowId,
           maxRevisions,
           abortSignal,
-          onWorkerDispatched,
+          onSubprocessDispatched,
         },
       );
 

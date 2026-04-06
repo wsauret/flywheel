@@ -120,7 +120,29 @@ When wiring new features, pass dependencies through existing options objects. Do
 
 ---
 
-## 6. Dead Code and Wiring Rules
+## 6. Reactive State — State Is the Source of Truth
+
+**State drives effects, never the reverse.** When something dynamic needs to change, update state. Other code reacts to state changes via `createEffect`, subscriptions, or derived accessors. Never trigger side effects imperatively alongside state updates.
+
+**The rule:** Adapters and event handlers write to stores. UI effects (timers, spinners, display updates) derive from store state via `createEffect` or `subscribe`. No imperative side-channels that bypass state.
+
+**What this means in practice:**
+
+| Do this | Not this |
+|---------|----------|
+| `actions.stopWorkflow("completed")` then timer stops via `createEffect` reacting to status | `timer.stop(); actions.stopWorkflow("completed")` in the same handler |
+| `actions.setModelActivity("thinking")` then spinner derives from store | `this.modelActivity = "thinking"; this.onModelActivityChange?.("thinking")` |
+| `updateEntry(id, { status: "paused" })` atomic replacement + notify | `entry.status = "paused"; notify()` with mutation/notify gap |
+
+**No parallel state.** A dynamic value must have exactly one source of truth. If model activity lives in the store, it does not also live as a mutable property on the adapter AND a field on a registry entry AND a signal in a hook. Those downstream representations are derived views, updated by reacting to the source.
+
+**No leaked mutable refs.** If a hook needs internal mutable tracking (e.g., a start time for computing elapsed duration), keep it private. Expose only derived accessors or signals. Never expose `{ current: number }` refs for external code to mutate.
+
+**No public imperative flags.** Mutable booleans like `suppressQueueError` that change how events are processed are implicit state that must be set at the right time by the right caller. Move behavioral flags into the store where they can be set declaratively and read reactively.
+
+---
+
+## 7. Dead Code and Wiring Rules
 
 **No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Git history is the recovery mechanism.
 
@@ -136,7 +158,7 @@ When wiring new features, pass dependencies through existing options objects. Do
 
 ---
 
-## 7. TypeScript Conventions
+## 8. TypeScript Conventions
 
 - Runtime: Bun on Node 20+, TypeScript targeting ES2022, strict mode enabled (`noUncheckedIndexedAccess`, `noImplicitOverride`).
 - ESM modules (`import`/`export`), not CommonJS. All local imports must include `.js` extension.
@@ -150,7 +172,7 @@ When wiring new features, pass dependencies through existing options objects. Do
 
 ---
 
-## 8. Agent Behavior
+## 9. Agent Behavior
 
 - Always test changes by running the code, then fix any errors that arise.
 - Fix linter errors and warnings before moving on.
@@ -161,7 +183,7 @@ When wiring new features, pass dependencies through existing options objects. Do
 
 ---
 
-## 9. Writing and Running Tests
+## 10. Writing and Running Tests
 
 ```bash
 cd flywheel-tui
@@ -178,7 +200,7 @@ bun test tests/foo.test.ts # single file
 
 ---
 
-## 10. TUI Verification with tmux
+## 11. TUI Verification with tmux
 
 After any change under `src/tui/`, verify in the live TUI. See **[docs/tmux-uat-guide.md](docs/tmux-uat-guide.md)** for the full tmux setup, test sequences, and cleanup checklist.
 

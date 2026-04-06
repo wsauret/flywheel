@@ -28,6 +28,7 @@ export interface UIActions {
   appendOutputBlocks(blocks: AnyBlock[]): void;
   setApprovalPending(description: string): void;
   clearApproval(): void;
+  setModelActivity(activity: "idle" | "thinking" | "generating" | "tool_executing"): void;
 
   // Queue step actions (queue-based panel display)
   setQueueSteps(steps: QueueStepState[]): void;
@@ -41,6 +42,10 @@ export interface UIActions {
   selectNext(): void;
   selectPrevious(): void;
   selectStep(index: number): void;
+
+  // Targeted subscriptions (subscriber isolation)
+  subscribeExecution?(fn: Listener): () => void;
+  subscribeOutput?(fn: Listener): () => void;
 
   // Reset
   reset(planName: string): void;

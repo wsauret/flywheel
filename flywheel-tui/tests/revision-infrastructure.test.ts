@@ -6,7 +6,7 @@ import {
 } from "../src/orchestration/config/loader";
 import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import { WorkerResultSchema } from "../src/orchestration/worker/schemas";
+import { SubprocessResultSchema } from "../src/orchestration/engines/subprocess/schemas";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
 
 // ---------------------------------------------------------------------------
@@ -146,12 +146,12 @@ describe("evaluator:revision-requested event type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-REV-002: WorkerResult.sessionId field
+// VAL-REV-002: SubprocessResult.sessionId field
 // ---------------------------------------------------------------------------
 
-describe("WorkerResult.sessionId field", () => {
+describe("SubprocessResult.sessionId field", () => {
   it("schema accepts sessionId field", () => {
-    const result = WorkerResultSchema.safeParse({
+    const result = SubprocessResultSchema.safeParse({
       output: "test output",
       exitCode: 0,
       truncated: false,
@@ -166,7 +166,7 @@ describe("WorkerResult.sessionId field", () => {
   });
 
   it("schema accepts missing sessionId (optional)", () => {
-    const result = WorkerResultSchema.safeParse({
+    const result = SubprocessResultSchema.safeParse({
       output: "test output",
       exitCode: 0,
       truncated: false,

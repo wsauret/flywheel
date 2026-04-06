@@ -1,7 +1,7 @@
 /**
- * Worker callback factory — spawns the engine process for a queue step.
+ * Subprocess callback factory — spawns the engine process for a queue step.
  *
- * Extracted from queue-orchestrator.ts to isolate the ~110-line workerFn
+ * Extracted from queue-orchestrator.ts to isolate the ~110-line subprocessFn
  * into a focused, testable unit.
  */
 
@@ -9,42 +9,51 @@ import { randomUUID } from "node:crypto"
 import { buildScaffolding, type ScaffoldingPaths } from "../workflows/queue/shared/scaffolding"
 import {
   sessionDir,
-  buildWorkerHandoffPath,
+  buildSubprocessHandoffPath,
   ensureSessionDir,
 } from "../infra/paths"
-import { formatStdinMessage } from "./worker/stdin-format"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { Log } from "../infra/log"
+import { wireStreamPipeline } from "./engines/subprocess/stream-pipeline"
+import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
+import type { WarmPool } from "./engines/pool/warm-pool"
 import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { FlywheelEmitter } from "../infra/event-bus"
-import type { StdinHandle } from "./worker/spawner"
+import type { StdinHandle } from "./engines/subprocess/spawner"
 import type { WorkflowSession } from "./workflow-session"
 import type { Step } from "../workflows/queue/types"
 import type { BudgetTracker } from "./session/budget-tracker"
+import type { TraceEventHandler } from "./engines/subprocess/trace-event-handler"
 
-const log = Log.create({ service: "worker-callback" })
+const log = Log.create({ service: "subprocess-callback" })
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface WorkerCallbackDeps {
+export interface SubprocessCallbackDeps {
   deps: WorkflowDeps
   emitter: FlywheelEmitter
   workflowIdRef: { current: string }
   sessionId: string
   projectCwd: string
-  /** Override the worker process cwd. Defaults to projectCwd.
+  /** Override the subprocess cwd. Defaults to projectCwd.
    * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
-  workerCwd?: string
+  subprocessCwd?: string
   stdinHandleRef?: { current: StdinHandle | null }
-  capturedWorkerSessionId: { current: string | undefined }
+  capturedSubprocessSessionId: { current: string | undefined }
   pendingInjection: { current: string | null }
   activeSessionRef: { current: WorkflowSession | null }
   budgetTracker?: BudgetTracker | null
+  traceEventHandler?: TraceEventHandler | null
+  /** Optional pre-warmed subprocess pool. When provided, acquires a raw process
+   * from the pool and wires the stream pipeline with step-specific callbacks.
+   * When absent, falls back to `deps.spawner.spawn()`. */
+  subprocessPool?: WarmPool<RawSpawnedProcess> | null
 }
 
-export interface WorkerCallbackResult {
+export interface SubprocessCallbackResult {
   output: string
   handoffPath: string
   durationMs: number
@@ -55,21 +64,21 @@ export interface WorkerCallbackResult {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createWorkerCallback(
-  opts: WorkerCallbackDeps,
-): (step: Step, prompt: string) => Promise<WorkerCallbackResult> {
+export function createSubprocessCallback(
+  opts: SubprocessCallbackDeps,
+): (step: Step, prompt: string) => Promise<SubprocessCallbackResult> {
   const {
     deps, emitter, workflowIdRef, sessionId, projectCwd,
-    stdinHandleRef, capturedWorkerSessionId, pendingInjection,
-    activeSessionRef, budgetTracker,
+    stdinHandleRef, capturedSubprocessSessionId, pendingInjection,
+    activeSessionRef, budgetTracker, traceEventHandler, subprocessPool,
   } = opts
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
 
-  return async (step: Step, prompt: string): Promise<WorkerCallbackResult> => {
+  return async (step: Step, prompt: string): Promise<SubprocessCallbackResult> => {
     const invocationId = randomUUID()
 
     // Compute handoff path BEFORE spawning — session-scoped with meaningful name
-    const handoffPath = buildWorkerHandoffPath(sessionId, step.type, step.id, projectCwd)
+    const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, projectCwd)
     ensureSessionDir(sessionId, projectCwd)
 
     // Build session-scoped paths for scaffolding
@@ -90,8 +99,7 @@ export function createWorkerCallback(
     const fullPrompt = parts.join("\n\n")
 
     const engineCmd = deps.engine.buildCommand({
-      prompt: fullPrompt,
-      model: deps.config.worker?.model ?? deps.config.model,
+      model: deps.config.subprocess?.model ?? deps.config.model,
       toolScoping: step.toolScoping ?? undefined,
     })
     const startTime = Date.now()
@@ -107,20 +115,20 @@ export function createWorkerCallback(
       stdinContent = rawStdinContent
     }
 
-    // Turn-complete callback: when the worker finishes a turn (result event)
+    // Turn-complete callback: when the subprocess finishes a turn (result event)
     // and the stdin pipe is still open, either inject a pending message or
     // close the pipe to let the step advance.
-    const onTurnComplete = useStdinPipe ? (workerSessionId: string | undefined) => {
-      capturedWorkerSessionId.current = workerSessionId
+    const onTurnComplete = useStdinPipe ? (subprocessSessionId: string | undefined) => {
+      capturedSubprocessSessionId.current = subprocessSessionId
       if (pendingInjection.current && stdinHandleRef?.current?.isOpen) {
         const message = pendingInjection.current
         pendingInjection.current = null
         const written = stdinHandleRef.current.write(formatStdinMessage(deps.engine.metadata.id, message))
         if (written) {
-          log.info("turn-boundary injection sent to worker", { length: message.length })
+          log.info("turn-boundary injection sent to subprocess", { length: message.length })
           if (activeSessionRef.current) {
             activeSessionRef.current.eventBus.emit({
-              type: "worker:injected",
+              type: "subprocess:injected",
               workflowId: workflowIdRef.current,
               message,
               timestamp: new Date().toISOString(),
@@ -136,28 +144,47 @@ export function createWorkerCallback(
 
     // Reset cumulative-cost baselines before each spawn so delta accounting
     // starts from zero for this new process.
-    budgetTracker?.onNewWorker()
+    budgetTracker?.onNewSubprocess()
 
-    const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-      cwd: opts.workerCwd ?? projectCwd,
+    const spawnOptions = {
+      cwd: opts.subprocessCwd ?? projectCwd,
       invocationId,
       sessionId,
       handoffFileName: `${step.type}_${step.id}.json`,
       stdin: stdinContent,
       stdinPipe: useStdinPipe && stdinContent !== undefined,
       onTurnComplete,
-      onSessionId: (id) => {
-        capturedWorkerSessionId.current = id
+      onSessionId: (id: string) => {
+        capturedSubprocessSessionId.current = id
       },
-      stdoutTransform: undefined,
-      onStdout: (chunk) => {
-        emitter.workerOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
+      stdoutTransform: undefined as undefined,
+      onStdout: (chunk: string) => {
+        emitter.subprocessOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
       },
-      onStderr: (chunk) => {
-        emitter.workerOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
+      onStderr: (chunk: string) => {
+        emitter.subprocessOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
       },
-      onNDJSONEvent: budgetTracker ? (event) => budgetTracker.handleEvent(event) : undefined,
-    })
+      onNDJSONEvent: (budgetTracker || traceEventHandler)
+        ? (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
+            budgetTracker?.handleEvent(event);
+            traceEventHandler?.handleEvent(event);
+          }
+        : undefined,
+    }
+
+    // Acquire from pool or fall back to deps.spawner.spawn()
+    let spawnResult: import("./engines/subprocess/spawner").SpawnResult
+    let rawProc: RawSpawnedProcess | null = null
+
+    if (subprocessPool) {
+      rawProc = await subprocessPool.acquire()
+      const timeoutMs = deps.config.timeout_minutes
+        ? deps.config.timeout_minutes * 60_000
+        : 60 * 60_000
+      spawnResult = wireStreamPipeline(rawProc, { timeoutMs, spawnOptions })
+    } else {
+      spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, spawnOptions)
+    }
 
     // Expose stdinHandle for mid-execution injection (user steering)
     if (stdinHandleRef && spawnResult.stdinHandle) {
@@ -165,21 +192,25 @@ export function createWorkerCallback(
     }
 
     try {
-      const workerResult = await spawnResult.result
-      // Capture session ID from worker result (fallback for non-streaming engines)
-      if (workerResult.sessionId) {
-        capturedWorkerSessionId.current = workerResult.sessionId
+      const subprocessResult = await spawnResult.result
+      // Capture session ID from subprocess result (fallback for non-streaming engines)
+      if (subprocessResult.sessionId) {
+        capturedSubprocessSessionId.current = subprocessResult.sessionId
       }
       return {
-        output: workerResult.exitCode === 0 ? "completed" : (workerResult.failure?.message ?? "failed"),
-        handoffPath: workerResult.handoffPath ?? "",
+        output: subprocessResult.exitCode === 0 ? "completed" : (subprocessResult.failure?.message ?? "failed"),
+        handoffPath: subprocessResult.handoffPath ?? "",
         durationMs: Date.now() - startTime,
-        sessionId: workerResult.sessionId,
+        sessionId: subprocessResult.sessionId,
       }
     } finally {
-      // Clear handle when worker finishes (pipe is closed)
+      // Clear handle when subprocess finishes (pipe is closed)
       if (stdinHandleRef) {
         stdinHandleRef.current = null
+      }
+      // Return raw process to pool for cleanup and replacement
+      if (subprocessPool && rawProc) {
+        subprocessPool.release(rawProc)
       }
     }
   }

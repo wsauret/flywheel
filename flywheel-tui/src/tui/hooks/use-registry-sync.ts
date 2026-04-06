@@ -68,13 +68,8 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     if (!entry) return
 
     metrics.setActivity(entry.modelActivity)
-    if (entry.modelActivity === "thinking" && metrics.thinkingStartTimeRef.current === 0) {
-      metrics.thinkingStartTimeRef.current = Date.now()
-    } else if (entry.modelActivity !== "thinking" && metrics.thinkingStartTimeRef.current > 0) {
-      metrics.thinkingStartTimeRef.current = 0
-    }
-    setOutputBlocks(entry.outputBlocks)
-    setSteps(entry.steps)
+    setOutputBlocks([...entry.outputBlocks])
+    setSteps([...entry.steps])
     metrics.setTokens(entry.tokens)
     metrics.setCost(entry.cost)
     setSessionTitle(entry.description)

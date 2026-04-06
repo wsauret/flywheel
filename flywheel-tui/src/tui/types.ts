@@ -32,13 +32,6 @@ export interface QueueStepState {
   duration?: number;
 }
 
-export interface WorkerState {
-  stepIndex: number;
-  status: "running" | "completed" | "failed" | "retrying";
-  attempt?: number;
-  maxAttempts?: number;
-}
-
 export interface ApprovalState {
   pending: boolean;
   description?: string;
@@ -113,7 +106,13 @@ export interface UserMessageBlock {
 
 export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock | ThinkingBlock | UserMessageBlock;
 
-export interface WorkState {
+// ---------------------------------------------------------------------------
+// Split state types — ExecutionState and OutputState are independent stores
+// composed behind the UIActions facade. WorkState is their union (backward compat).
+// ---------------------------------------------------------------------------
+
+/** Workflow lifecycle, queue steps, approval, navigation, error. */
+export interface ExecutionState {
   planName: string;
   version: string;
   startTime: number;
@@ -121,6 +120,16 @@ export interface WorkState {
   workflowStatus: WorkflowStatus;
   /** Queue step display states for the workflow panel. */
   queueSteps: QueueStepState[];
+  approvalState: ApprovalState;
+  selectedStepIndex: number;
+  scrollOffset: number;
+  visibleItemCount: number;
+  error?: string;
+  modelActivity: "idle" | "thinking" | "generating" | "tool_executing";
+}
+
+/** Structured output blocks and legacy output lines. */
+export interface OutputState {
   /**
    * @deprecated Prefer `outputBlocks` for display. `outputLines` is retained
    * for the console adapter and raw-mode passthrough. The OpenTUI adapter now
@@ -129,9 +138,7 @@ export interface WorkState {
    */
   outputLines: OutputLine[];
   outputBlocks: AnyBlock[];
-  approvalState: ApprovalState;
-  selectedStepIndex: number;
-  scrollOffset: number;
-  visibleItemCount: number;
-  error?: string;
 }
+
+/** Combined state — backward compatible union of ExecutionState + OutputState. */
+export interface WorkState extends ExecutionState, OutputState {}

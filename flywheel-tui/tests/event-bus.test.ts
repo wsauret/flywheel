@@ -193,16 +193,16 @@ describe("createFlywheelEmitter", () => {
     }
   });
 
-  it("emits worker:retrying with correct fields", () => {
+  it("emits subprocess:retrying with correct fields", () => {
     const bus = new EventBus();
     const emitter = createFlywheelEmitter(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.workerRetrying("wf-1", 2, 5, "transient error");
+    emitter.subprocessRetrying("wf-1", 2, 5, "transient error");
 
     expect(received).toHaveLength(1);
-    if (received[0].type === "worker:retrying") {
+    if (received[0].type === "subprocess:retrying") {
       expect(received[0].attempt).toBe(2);
       expect(received[0].maxAttempts).toBe(5);
       expect(received[0].reason).toBe("transient error");

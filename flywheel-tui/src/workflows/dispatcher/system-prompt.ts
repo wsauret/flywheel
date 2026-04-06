@@ -47,7 +47,7 @@ JSON object with:
 - \`workflow_id\`: Execution ID for traceability
 - \`workflow\`: Step context (\`workflow.name\`, \`workflow.step_number\`, \`workflow.total_steps\`, \`workflow.step_description\`)
 - \`last_worker_result\`: Previous step results (step, status, output_summary, artifacts_produced, tests_passed, duration_seconds)
-- \`config\`: Runtime config (\`config.max_eval_cycles\`, \`config.worktree_path\`, \`config.project_cwd\`, \`config.worker_model\`, \`config.dispatcher_model\`)
+- \`config\`: Runtime config (\`config.max_eval_cycles\`, \`config.worktree_path\`, \`config.project_cwd\`, \`config.subprocess_model\`, \`config.dispatcher_model\`)
 - \`session_budget\`: Remaining budget (\`session_budget.invocations_remaining\`, token_budget_remaining, wall_clock_deadline)
 - \`available_context\`: Metadata for conventions, standards, and learnings (name, path, summary each)
 

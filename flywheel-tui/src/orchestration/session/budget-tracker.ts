@@ -24,7 +24,7 @@
  */
 
 import { z } from "zod";
-import type { NDJSONEvent } from "../worker/ndjson-parser";
+import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser";
 import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../../workflows/schemas";
 import { updateSession } from "./persistence";
 
@@ -99,12 +99,12 @@ export interface BudgetTracker {
   dispose(): void;
   /**
    * Reset the "last seen" cost/token baselines to zero.
-   * Must be called before each new worker process is spawned so that
+   * Must be called before each new subprocess is spawned so that
    * delta accounting works correctly across process boundaries.
    * (Claude Code's total_cost_usd is cumulative within a process; a new
    * process resets to 0, so the baseline must follow.)
    */
-  onNewWorker(): void;
+  onNewSubprocess(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,10 +126,10 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
 
   // Baselines for delta accounting.
   // Claude Code's total_cost_usd / input_tokens / output_tokens are cumulative
-  // within a single process. We compute deltas so that multi-turn workers
+  // within a single process. We compute deltas so that multi-turn subprocesses
   // (turn-boundary injection) don't double-count earlier turns, and so that
-  // sequential worker spawns (new process → counters reset to 0) are handled
-  // correctly via onNewWorker().
+  // sequential subprocess spawns (new process → counters reset to 0) are handled
+  // correctly via onNewSubprocess().
   let lastSeenCost = 0;
   let lastSeenInputTokens = 0;
   let lastSeenOutputTokens = 0;
@@ -183,7 +183,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
 
       // Compute deltas against last-seen values. total_cost_usd and token counts
       // are cumulative within a process, so we only add what's new since the last
-      // result event. onNewWorker() resets baselines to 0 before each new spawn.
+      // result event. onNewSubprocess() resets baselines to 0 before each new spawn.
       const rawCost = parsed.data.total_cost_usd;
 
       totalCost += rawCost - lastSeenCost;
@@ -301,10 +301,10 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   }
 
   // -------------------------------------------------------------------------
-  // Worker process boundary
+  // Subprocess process boundary
   // -------------------------------------------------------------------------
 
-  function onNewWorker(): void {
+  function onNewSubprocess(): void {
     lastSeenCost = 0;
     lastSeenInputTokens = 0;
     lastSeenOutputTokens = 0;
@@ -347,6 +347,6 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     getBudgetStatus,
     flush,
     dispose,
-    onNewWorker,
+    onNewSubprocess,
   };
 }

@@ -127,7 +127,7 @@ export interface StepDispatcherOptions {
     maxEvalCycles: number;
     worktreePath: string;
     projectCwd: string;
-    workerModel: string;
+    subprocessModel: string;
     dispatcherModel: string;
   };
   /** Session budget status. */
@@ -211,7 +211,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         max_eval_cycles: configContext.maxEvalCycles,
         worktree_path: configContext.worktreePath,
         project_cwd: configContext.projectCwd,
-        worker_model: configContext.workerModel,
+        subprocess_model: configContext.subprocessModel,
         dispatcher_model: configContext.dispatcherModel,
       };
 

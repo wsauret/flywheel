@@ -19,17 +19,17 @@ import type { ModelActivity } from "../infra/events"
 // ---------------------------------------------------------------------------
 
 export interface SessionEntry {
-  runner: WorkflowRunner
-  description: string
-  outputBlocks: AnyBlock[]
-  steps: StepState[]
-  tokens: number
-  cost: number
-  startedAt: number
-  status: "running" | "paused" | "completed" | "error"
-  modelActivity: ModelActivity
-  result?: WorkflowResult
-  errorMessage?: string
+  readonly runner: WorkflowRunner
+  readonly description: string
+  readonly outputBlocks: readonly AnyBlock[]
+  readonly steps: readonly StepState[]
+  readonly tokens: number
+  readonly cost: number
+  readonly startedAt: number
+  readonly status: "running" | "paused" | "completed" | "error"
+  readonly modelActivity: ModelActivity
+  readonly result?: WorkflowResult
+  readonly errorMessage?: string
 }
 
 export interface SessionRegistry {
@@ -39,10 +39,10 @@ export interface SessionRegistry {
     queue: Queue
     description: string
     priorBlocks?: AnyBlock[]
-    /** Override the worker process cwd. Defaults to projectCwd.
+    /** Override the subprocess cwd. Defaults to projectCwd.
      * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
      * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
-    workerCwd?: string
+    subprocessCwd?: string
     /** Called when the run completes or errors (e.g., temp dir cleanup). */
     onComplete?: () => void
   }): string
@@ -89,18 +89,41 @@ export function createSessionRegistry(): SessionRegistry {
     }
   }
 
+  function updateEntry(sessionId: string, patch: Partial<SessionEntry>): void {
+    const existing = entries.get(sessionId)
+    if (!existing) return
+    entries.set(sessionId, { ...existing, ...patch })
+    notify()
+  }
+
   function start(opts: {
     sessionId: string
     queue: Queue
     description: string
     priorBlocks?: AnyBlock[]
-    workerCwd?: string
+    subprocessCwd?: string
     onComplete?: () => void
   }): string {
     const { sessionId, queue, description, priorBlocks } = opts
 
+    const runner = createWorkflowRunner({
+      sessionId,
+      queue,
+      description,
+      callbacks: {
+        onBlocks: (blocks) => updateEntry(sessionId, { outputBlocks: blocks }),
+        onSteps: (steps) => updateEntry(sessionId, { steps }),
+        onTokens: (n) => updateEntry(sessionId, { tokens: n }),
+        onCost: (n) => updateEntry(sessionId, { cost: n }),
+        onSessionName: (name) => updateEntry(sessionId, { description: name }),
+        onModelActivity: (activity) => updateEntry(sessionId, { modelActivity: activity }),
+      },
+      priorBlocks,
+      overrides: opts.subprocessCwd ? { subprocessCwd: opts.subprocessCwd } : undefined,
+    })
+
     const entry: SessionEntry = {
-      runner: null as unknown as WorkflowRunner, // set below
+      runner,
       description,
       outputBlocks: priorBlocks ? [...priorBlocks] : [],
       steps: [],
@@ -111,38 +134,23 @@ export function createSessionRegistry(): SessionRegistry {
       modelActivity: "idle",
     }
 
-    const runner = createWorkflowRunner({
-      sessionId,
-      queue,
-      description,
-      callbacks: {
-        onBlocks: (blocks) => { entry.outputBlocks = blocks; notify() },
-        onSteps: (steps) => { entry.steps = steps; notify() },
-        onTokens: (n) => { entry.tokens = n; notify() },
-        onCost: (n) => { entry.cost = n; notify() },
-        onSessionName: (name) => { entry.description = name; notify() },
-        onModelActivity: (activity) => { entry.modelActivity = activity; notify() },
-      },
-      priorBlocks,
-      overrides: opts.workerCwd ? { workerCwd: opts.workerCwd } : undefined,
-    })
-
-    entry.runner = runner
     entries.set(sessionId, entry)
     notify()
 
     // Run in background — do NOT await
     runner.run().then(
       (result) => {
-        entry.status = result.completed ? "completed" : "paused"
-        entry.result = result
-        notify()
+        updateEntry(sessionId, {
+          status: result.completed ? "completed" : "paused",
+          result,
+        })
         opts.onComplete?.()
       },
       (err) => {
-        entry.status = "error"
-        entry.errorMessage = errorMessage(err)
-        notify()
+        updateEntry(sessionId, {
+          status: "error",
+          errorMessage: errorMessage(err),
+        })
         opts.onComplete?.()
       },
     )
@@ -168,8 +176,7 @@ export function createSessionRegistry(): SessionRegistry {
     const entry = entries.get(sessionId)
     if (!entry || entry.status !== "running") return
     entry.runner.pause()
-    entry.status = "paused"
-    notify()
+    updateEntry(sessionId, { status: "paused" })
   }
 
   function abort(sessionId: string): void {
@@ -198,8 +205,7 @@ export function createSessionRegistry(): SessionRegistry {
     if (!entry) return
     entry.runner.cancelShutdown()
     if (entry.status === "paused") {
-      entry.status = "running"
-      notify()
+      updateEntry(sessionId, { status: "running" })
     }
   }
 

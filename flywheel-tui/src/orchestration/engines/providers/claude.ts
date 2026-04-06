@@ -5,7 +5,7 @@
  * Model can be a short name (opus, sonnet, haiku) or a full claude model ID.
  */
 
-import type { DispatcherCommandOptions, EvaluatorCommandOptions, Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../core/types";
+import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../core/types";
 
 export const metadata: EngineMetadata = {
   id: "claude",
@@ -34,6 +34,21 @@ const TOOL_NAME_MAP: Record<string, string> = {
   task: "Task",
 };
 
+/**
+ * Unified command builder for all roles (worker, dispatcher, evaluator).
+ *
+ * All roles use --input-format stream-json with stdin pipes (stdinPrompt: true).
+ * Does NOT include --no-session-persistence (incompatible with stream-json).
+ * Does NOT include -p (prompt delivered via stdin NDJSON).
+ *
+ * Supports:
+ * - --system-prompt when provided (for dispatcher/evaluator)
+ * - --tools as explicit string when provided (for dispatcher/evaluator)
+ * - --tools derived from ToolScopingConfig when toolScoping provided (for workers)
+ * - --resume when resumeSessionId provided (for workers)
+ * - --effort when provided
+ * - --model when provided
+ */
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
   const args: string[] = [
     "--output-format", "stream-json",
@@ -49,9 +64,20 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     args.push("--model", options.model.trim());
   }
 
-  // Tool scoping: use --tools to restrict available tools
-  // Write is ALWAYS included — workers must be able to write the handoff file.
-  if (options.toolScoping) {
+  if (options.systemPrompt?.trim()) {
+    args.push("--system-prompt", options.systemPrompt.trim());
+  }
+
+  if (options.effort?.trim()) {
+    args.push("--effort", options.effort.trim());
+  }
+
+  // Explicit tools string takes precedence over toolScoping
+  if (options.tools?.trim()) {
+    args.push("--tools", options.tools.trim());
+  } else if (options.toolScoping) {
+    // Tool scoping: use --tools to restrict available tools
+    // Write is ALWAYS included — workers must be able to write the handoff file.
     const allowed: string[] = [];
     for (const [key, cliName] of Object.entries(TOOL_NAME_MAP)) {
       if (options.toolScoping[key as keyof typeof options.toolScoping]) {
@@ -74,76 +100,6 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   };
 }
 
-/** Default model for dispatcher/evaluator commands (fast Sonnet-class) */
-const DISPATCHER_DEFAULT_MODEL = "sonnet";
-
-/**
- * Build a CLI command optimized for dispatcher/evaluator use.
- *
- * Flags:
- * - `--print` — non-interactive output
- * - `--output-format stream-json` — NDJSON output for TUI streaming
- * - `--tools Write` — only allow file writing (needed for handoff file)
- * - `--model <model>` — fast model (default: sonnet)
- * - `--system-prompt <prompt>` — separate system prompt for prompt caching
- * - `--no-session-persistence` — skip writing session to disk
- * - `--effort low` — reduced reasoning overhead
- * - `-p <prompt>` — pass prompt directly (print mode, one-shot)
- * - `--dangerously-skip-permissions` — skip permission prompts
- */
-export function buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand {
-  const model = options.tierConfig?.model?.trim() || DISPATCHER_DEFAULT_MODEL;
-  const effort = options.tierConfig?.effort?.trim() || "low";
-
-  const args: string[] = [
-    "--output-format", "stream-json",
-    "--dangerously-skip-permissions",
-    "--no-session-persistence",
-    "--tools", "Write",
-    "--model", model,
-    "--system-prompt", options.systemPrompt,
-    "--effort", effort,
-    "-p", options.prompt,
-  ];
-
-  return {
-    command: metadata.cliBinary,
-    args,
-    stdinPrompt: false,
-  };
-}
-
-/**
- * Build a CLI command for agent-based evaluation.
- *
- * Like dispatcher but with Read, Bash, Write tools so the evaluator can
- * investigate mismatches (grep for files, re-run commands, check outputs).
- * No Edit tool — evaluators must not modify the codebase.
- *
- * Uses -p (print mode) for one-shot execution with tool access.
- */
-export function buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineCommand {
-  const model = options.tierConfig?.model?.trim() || DISPATCHER_DEFAULT_MODEL;
-  const effort = options.tierConfig?.effort?.trim() || "low";
-
-  const args: string[] = [
-    "--output-format", "stream-json",
-    "--dangerously-skip-permissions",
-    "--no-session-persistence",
-    "--tools", "Read,Bash,Write,Grep,Glob",
-    "--model", model,
-    "--system-prompt", options.systemPrompt,
-    "--effort", effort,
-    "-p", options.prompt,
-  ];
-
-  return {
-    command: metadata.cliBinary,
-    args,
-    stdinPrompt: false,
-  };
-}
-
 /**
  * Hardcoded model list for Claude Code.
  *
@@ -161,4 +117,4 @@ async function listModels(_provider?: string): Promise<ModelInfo[]> {
   return CLAUDE_MODELS;
 }
 
-export const claudeEngine: Engine = { metadata, buildCommand, buildDispatcherCommand, buildEvaluatorCommand, listModels };
+export const claudeEngine: Engine = { metadata, buildCommand, listModels };

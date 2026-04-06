@@ -7,7 +7,7 @@ import { createBudgetTracker } from "../src/orchestration/session/budget-tracker
 import { createSession, readSession } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
 import type { BudgetLimits } from "../src/workflows/schemas";
-import type { NDJSONEvent } from "../src/orchestration/worker/ndjson-parser";
+import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -234,15 +234,15 @@ describe("BudgetTracker — accumulation", () => {
     tracker.dispose();
   });
 
-  it("accumulates cost across separate worker processes via onNewWorker()", () => {
+  it("accumulates cost across separate worker processes via onNewSubprocess()", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
     // First worker: cumulative 0.025
     tracker.handleEvent(resultEvent(0.025));
-    // Second worker: onNewWorker resets baseline, so 0.010 is a fresh cumulative
-    tracker.onNewWorker();
+    // Second worker: onNewSubprocess resets baseline, so 0.010 is a fresh cumulative
+    tracker.onNewSubprocess();
     tracker.handleEvent(resultEvent(0.010));
 
     expect(tracker.getTotalCost()).toBeCloseTo(0.035, 10);
@@ -304,7 +304,7 @@ describe("BudgetTracker — token tracking", () => {
     // First worker: 500+200 = 700 tokens
     tracker.handleEvent(resultEvent(0.01, 500, 200));
     // Second worker: reset baselines, then 300+100 = 400 tokens
-    tracker.onNewWorker();
+    tracker.onNewSubprocess();
     tracker.handleEvent(resultEvent(0.02, 300, 100));
 
     expect(tracker.getTokensUsed()).toBe(1100); // 700 + 400
@@ -714,7 +714,7 @@ describe("BudgetTracker — isExhausted", () => {
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(false);
 
     // Second worker process — reset baselines
-    tracker.onNewWorker();
+    tracker.onNewSubprocess();
     tracker.handleEvent(resultEvent(0.01, 100, 200)); // fresh cumulative: +300 = 1100 total
 
     // Token limit exceeded

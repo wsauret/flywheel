@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 /**
- * WorkerFailureReasonSchema — discriminated union of failure kinds.
+ * SubprocessFailureReasonSchema — discriminated union of failure kinds.
  */
-export const WorkerFailureReasonSchema = z.discriminatedUnion("kind", [
+export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("timeout"),
     timeoutMs: z.number(),
@@ -44,21 +44,21 @@ export const WorkerFailureReasonSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export type WorkerFailureReason = z.infer<typeof WorkerFailureReasonSchema>;
+export type SubprocessFailureReason = z.infer<typeof SubprocessFailureReasonSchema>;
 
 /**
- * WorkerResultSchema — includes `truncated: boolean` field.
+ * SubprocessResultSchema — includes `truncated: boolean` field.
  */
-export const WorkerResultSchema = z.object({
+export const SubprocessResultSchema = z.object({
   output: z.string(),
   rawOutput: z.string().optional(),
   rawStderr: z.string().optional(),
   exitCode: z.number(),
   truncated: z.boolean(),
   durationMs: z.number(),
-  failure: WorkerFailureReasonSchema.optional(),
+  failure: SubprocessFailureReasonSchema.optional(),
   sessionId: z.string().optional(),
   handoffPath: z.string(),
 });
 
-export type WorkerResult = z.infer<typeof WorkerResultSchema>;
+export type SubprocessResult = z.infer<typeof SubprocessResultSchema>;

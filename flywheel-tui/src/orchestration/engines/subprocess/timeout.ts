@@ -1,5 +1,5 @@
 /**
- * AbortController-based timeout for worker processes.
+ * AbortController-based timeout for subprocess execution.
  *
  * Default: 60 minutes. Configurable via config (bounds: 1-120 minutes).
  * No idle timeout — agents can "think" for >5 min with no output.
@@ -32,7 +32,7 @@ export function minutesToMs(minutes: number): number {
   return minutes * 60 * 1000;
 }
 
-export interface WorkerTimeout {
+export interface SubprocessTimeout {
   /** The AbortController — pass `signal` to observe cancellation. */
   controller: AbortController;
   /** The AbortSignal for external consumers. */
@@ -43,19 +43,19 @@ export interface WorkerTimeout {
   interrupted: boolean;
   /** Cancel the timeout (prevents it from firing). */
   cancel(): void;
-  /** Interrupt the worker (user-initiated, not a timeout). */
+  /** Interrupt the subprocess (user-initiated, not a timeout). */
   interrupt(): void;
   /** Wire up process-group-kill when the signal aborts. */
   attachProcess(child: ChildHandle): void;
 }
 
 /**
- * Create a worker timeout that will abort after the specified duration.
+ * Create a subprocess timeout that will abort after the specified duration.
  *
  * @param timeoutMs - Timeout in milliseconds. Use `minutesToMs(clampTimeoutMinutes(n))`
  *                    to convert from user-configured minutes.
  */
-export function createWorkerTimeout(timeoutMs: number): WorkerTimeout {
+export function createSubprocessTimeout(timeoutMs: number): SubprocessTimeout {
   const controller = new AbortController();
   let timedOut = false;
   let interrupted = false;
@@ -63,7 +63,7 @@ export function createWorkerTimeout(timeoutMs: number): WorkerTimeout {
 
   timer = setTimeout(() => {
     timedOut = true;
-    controller.abort(new Error(`Worker timed out after ${timeoutMs}ms`));
+    controller.abort(new Error(`Subprocess timed out after ${timeoutMs}ms`));
   }, timeoutMs);
 
   return {
@@ -87,7 +87,7 @@ export function createWorkerTimeout(timeoutMs: number): WorkerTimeout {
         clearTimeout(timer);
         timer = null;
       }
-      controller.abort(new Error("Worker interrupted by user"));
+      controller.abort(new Error("Subprocess interrupted by user"));
     },
     attachProcess(child: ChildHandle) {
       // If already aborted, kill immediately

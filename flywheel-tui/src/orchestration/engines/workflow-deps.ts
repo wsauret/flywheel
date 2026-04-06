@@ -12,10 +12,10 @@ import * as fs from "node:fs"
 import { loadConfig } from "../config/loader"
 import { CONFIG_FILES } from "../../infra/paths"
 import { getEngine } from "./core/registry"
-import { BunProcessSpawner } from "../worker/bun-spawner"
+import { BunProcessSpawner } from "./subprocess/bun-spawner"
 import type { FlywheelConfig } from "../config/loader"
 import type { Engine } from "./core/types"
-import type { ProcessSpawner } from "../worker/spawner"
+import type { ProcessSpawner } from "./subprocess/spawner"
 
 export interface WorkflowDeps {
   config: FlywheelConfig

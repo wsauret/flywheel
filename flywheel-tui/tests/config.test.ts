@@ -21,7 +21,7 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.engine).toBe("claude");
       expect(result.data.model).toBeUndefined();
       expect(result.data.dispatcher).toEqual({});
-      expect(result.data.worker).toEqual({});
+      expect(result.data.subprocess).toEqual({});
       expect(result.data.max_retries).toBe(3);
       expect(result.data.timeout_minutes).toBe(60);
       expect(result.data.skip_approval_gates).toBe(false);
@@ -236,13 +236,13 @@ describe("loadConfig: validation errors", () => {
 // ---------------------------------------------------------------------------
 
 describe("Per-tier model config", () => {
-  it("dispatcher.model and worker.model are separate fields", () => {
+  it("dispatcher.model and subprocess.model are separate fields", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_DISPATCHER_MODEL: "dispatcher-model",
-      FLYWHEEL_WORKER_MODEL: "worker-model",
+      FLYWHEEL_SUBPROCESS_MODEL: "subprocess-model",
     });
     expect(config.dispatcher.model).toBe("dispatcher-model");
-    expect(config.worker.model).toBe("worker-model");
+    expect(config.subprocess.model).toBe("subprocess-model");
   });
 
   it("FLYWHEEL_ENGINE sets engine for both tiers", () => {
@@ -252,13 +252,13 @@ describe("Per-tier model config", () => {
     expect(config.engine).toBe("opencode");
   });
 
-  it("FLYWHEEL_WORKER_MODEL overrides worker model only", () => {
+  it("FLYWHEEL_SUBPROCESS_MODEL overrides subprocess model only", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_MODEL: "base-model",
-      FLYWHEEL_WORKER_MODEL: "worker-override",
+      FLYWHEEL_SUBPROCESS_MODEL: "subprocess-override",
     });
     const tiers = resolveTierConfigs(config);
-    expect(tiers.worker.model).toBe("worker-override");
+    expect(tiers.subprocess.model).toBe("subprocess-override");
     expect(tiers.dispatcher.model).toBe("base-model");
   });
 
@@ -269,16 +269,16 @@ describe("Per-tier model config", () => {
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.model).toBe("dispatcher-override");
-    expect(tiers.worker.model).toBe("base-model");
+    expect(tiers.subprocess.model).toBe("base-model");
   });
 
-  it("FLYWHEEL_MODEL sets both dispatcher and worker model (convenience)", () => {
+  it("FLYWHEEL_MODEL sets both dispatcher and subprocess model (convenience)", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_MODEL: "shared-model",
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.model).toBe("shared-model");
-    expect(tiers.worker.model).toBe("shared-model");
+    expect(tiers.subprocess.model).toBe("shared-model");
   });
 
   it("precedence: specific > general > config file > defaults", () => {
@@ -286,13 +286,13 @@ describe("Per-tier model config", () => {
       path.join(FIXTURES_DIR, "flywheel.toml"),
       {
         FLYWHEEL_MODEL: "general-env-model",
-        FLYWHEEL_WORKER_MODEL: "specific-worker-model",
+        FLYWHEEL_SUBPROCESS_MODEL: "specific-subprocess-model",
       },
     );
     const tiers = resolveTierConfigs(config);
 
-    // Worker: specific env (FLYWHEEL_WORKER_MODEL) wins
-    expect(tiers.worker.model).toBe("specific-worker-model");
+    // Subprocess: specific env (FLYWHEEL_SUBPROCESS_MODEL) wins
+    expect(tiers.subprocess.model).toBe("specific-subprocess-model");
     // Dispatcher: general env (FLYWHEEL_MODEL) wins over config file
     expect(tiers.dispatcher.model).toBe("general-env-model");
   });
@@ -301,7 +301,7 @@ describe("Per-tier model config", () => {
     const { config } = loadConfig(undefined, {});
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.model).toBeUndefined();
-    expect(tiers.worker.model).toBeUndefined();
+    expect(tiers.subprocess.model).toBeUndefined();
   });
 
   it("config file model serves as convenience fallback via resolveTierConfigs", () => {
@@ -312,7 +312,7 @@ describe("Per-tier model config", () => {
     const tiers = resolveTierConfigs(config);
     // flywheel.toml has model = "claude-sonnet-4-20250514"
     expect(tiers.dispatcher.model).toBe("claude-sonnet-4-20250514");
-    expect(tiers.worker.model).toBe("claude-sonnet-4-20250514");
+    expect(tiers.subprocess.model).toBe("claude-sonnet-4-20250514");
   });
 });
 

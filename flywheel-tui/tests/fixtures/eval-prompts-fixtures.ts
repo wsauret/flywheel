@@ -97,7 +97,7 @@ export function buildSimpleScenario(): TestScenario {
       max_eval_cycles: 3,
       worktree_path: "",
       project_cwd: "/tmp/test-project",
-      worker_model: "opus",
+      subprocess_model: "opus",
       dispatcher_model: "sonnet",
     },
     session_budget: {
@@ -188,7 +188,7 @@ export function buildComplexScenario(): TestScenario {
       max_eval_cycles: 3,
       worktree_path: "/tmp/worktree-complex",
       project_cwd: "/tmp/test-project",
-      worker_model: "opus",
+      subprocess_model: "opus",
       dispatcher_model: "sonnet",
     },
     session_budget: {
@@ -312,7 +312,7 @@ export function buildEdgeScenario(): TestScenario {
       max_eval_cycles: 1,
       worktree_path: "/tmp/worktree-edge",
       project_cwd: "/tmp/test-project",
-      worker_model: "sonnet",
+      subprocess_model: "sonnet",
       dispatcher_model: "sonnet",
     },
     session_budget: {

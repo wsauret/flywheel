@@ -77,7 +77,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     sessionObjective,
     persistAccumulatorState,
     onSessionName,
-    onWorkerDispatched,
+    onSubprocessDispatched,
   } = options;
 
   let shutdownRequested = false;
@@ -223,7 +223,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         sessionObjective,
         persistAccumulatorState,
         onSessionName,
-        onWorkerDispatched,
+        onSubprocessDispatched,
         previousHandoff,
         previousAssessment,
         sessionNameEmitted,

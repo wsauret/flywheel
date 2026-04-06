@@ -7,14 +7,14 @@
 
 import * as path from "node:path";
 import type { SpawnOptions, StdinHandle } from "./spawner.js";
-import type { WorkerResult } from "./schemas.js";
+import type { SubprocessResult } from "./schemas.js";
 import type { TieredBuffer } from "./buffer.js";
 import type { CompletionDetector } from "./completion.js";
 import type { NDJSONParser } from "./ndjson-parser.js";
 import { categorizeFailure } from "./errors.js";
-import { createWorkerTimeout } from "./timeout.js";
-import { resolveSessionHandoffsDir } from "../../infra/paths.js";
-import { errorMessage } from "../../infra/error-message.js";
+import { createSubprocessTimeout } from "./timeout.js";
+import { resolveSessionHandoffsDir } from "../../../infra/paths.js";
+import { errorMessage } from "../../../infra/error-message.js";
 
 // ---------------------------------------------------------------------------
 // Argument validation
@@ -142,16 +142,16 @@ export interface ResultContext {
   completionDetector: CompletionDetector;
   rawStdoutChunks: string[];
   rawStderrChunks: string[];
-  workerTimeout: ReturnType<typeof createWorkerTimeout>;
+  subprocessTimeout: ReturnType<typeof createSubprocessTimeout>;
   timeoutMs: number;
   startTime: number;
   handoffPath: string;
 }
 
-export function buildWorkerResult(ctx: ResultContext, exitCode: number): WorkerResult {
+export function buildSubprocessResult(ctx: ResultContext, exitCode: number): SubprocessResult {
   ctx.ndjsonParser.flush();
 
-  const interrupted = ctx.workerTimeout.interrupted || isSignalExit(exitCode);
+  const interrupted = ctx.subprocessTimeout.interrupted || isSignalExit(exitCode);
 
   const tier1 = ctx.buffer.getTier1();
   ctx.completionDetector.checkFallback(tier1.content);
@@ -163,7 +163,7 @@ export function buildWorkerResult(ctx: ResultContext, exitCode: number): WorkerR
     exitCode,
     stdout: tier1.content,
     stderr: stderrContent,
-    timedOut: ctx.workerTimeout.timedOut,
+    timedOut: ctx.subprocessTimeout.timedOut,
     timeoutMs: ctx.timeoutMs,
     completionDetected: ctx.completionDetector.hasSeenCompletion,
     interrupted,
@@ -182,7 +182,7 @@ export function buildWorkerResult(ctx: ResultContext, exitCode: number): WorkerR
   };
 }
 
-export function buildErrorResult(ctx: ResultContext, error: unknown): WorkerResult {
+export function buildErrorResult(ctx: ResultContext, error: unknown): SubprocessResult {
   const durationMs = Date.now() - ctx.startTime;
   return {
     output: ctx.buffer.getTier1().content,
@@ -354,7 +354,7 @@ export function writeInitialStdin(
 export function watchHandoff(
   handoffPath: string,
   stdinHandle: StdinHandle,
-  workerTimeout: ReturnType<typeof createWorkerTimeout>,
+  subprocessTimeout: ReturnType<typeof createSubprocessTimeout>,
   completionDetector: CompletionDetector,
   state: StdoutProcessorState,
   options: SpawnOptions | undefined,
@@ -362,7 +362,7 @@ export function watchHandoff(
   return async () => {
     if (!handoffPath) return;
 
-    while (stdinHandle.isOpen && !workerTimeout.signal.aborted) {
+    while (stdinHandle.isOpen && !subprocessTimeout.signal.aborted) {
       if (completionDetector.hasSeenCompletion) return;
 
       if (completionDetector.checkHandoffFile(handoffPath)) {

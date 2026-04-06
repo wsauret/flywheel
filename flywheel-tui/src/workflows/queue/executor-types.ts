@@ -186,10 +186,10 @@ export interface StepExecutorHooks {
   onSessionName?: ((name: string) => void) | null;
 
   /**
-   * Called each time a worker is dispatched (before the worker runs).
+   * Called each time a subprocess is dispatched (before the subprocess runs).
    * Wire to BudgetTracker.incrementInvocations() to track invocation counts.
    */
-  onWorkerDispatched?: (() => void) | null;
+  onSubprocessDispatched?: (() => void) | null;
 }
 
 /** Full options = core + hooks. */

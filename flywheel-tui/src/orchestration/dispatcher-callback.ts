@@ -32,7 +32,7 @@ export interface DispatcherCallbackDeps {
   sessionObjective: string | undefined
   queue: Queue
   dispatcherModel: string | undefined
-  workerModel: string | undefined
+  subprocessModel: string | undefined
 }
 
 export interface DispatcherResult {
@@ -55,7 +55,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
   const {
     deps, dispatcherTransport, contextIndexer, contextAccumulator,
     projectCwd, sessionObjective, queue, emitter, workflowIdRef,
-    dispatcherModel, workerModel,
+    dispatcherModel, subprocessModel,
   } = opts
 
   // Build real StepDispatcher if transport is available
@@ -68,7 +68,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
           maxEvalCycles: deps.config.max_revisions ?? 1,
           worktreePath: projectCwd,
           projectCwd,
-          workerModel: workerModel ?? "sonnet",
+          subprocessModel: subprocessModel ?? "sonnet",
           dispatcherModel: dispatcherModel ?? "sonnet",
         },
         sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },

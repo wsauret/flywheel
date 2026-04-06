@@ -1,14 +1,14 @@
 /**
- * Worker error categorization and retryability classification.
+ * Subprocess error categorization and retryability classification.
  *
- * Maps `WorkerFailureReason` kinds to retryable/non-retryable, and provides
+ * Maps `SubprocessFailureReason` kinds to retryable/non-retryable, and provides
  * `isTransientError()` to detect transient network/connection errors from
  * error messages and stderr output.
  *
- * `ExecutionStatus.interrupted` = cancellation, NOT a WorkerFailureReason kind.
+ * `ExecutionStatus.interrupted` = cancellation, NOT a SubprocessFailureReason kind.
  */
 
-import type { WorkerFailureReason } from "./schemas";
+import type { SubprocessFailureReason } from "./schemas";
 import { RateLimitDetector } from "./rate-limit";
 
 // ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ function isTransientError(message: string): boolean {
 // ---------------------------------------------------------------------------
 
 /** Failure kinds that are retryable. */
-const RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
+const RETRYABLE_KINDS = new Set<SubprocessFailureReason["kind"]>([
   "timeout",
   "api_error",
   "rate_limited",
@@ -72,7 +72,7 @@ const RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
 ]);
 
 /** Failure kinds that are NOT retryable. */
-const NON_RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
+const NON_RETRYABLE_KINDS = new Set<SubprocessFailureReason["kind"]>([
   "exit_code",
   "schema_error",
   "interrupted",
@@ -80,16 +80,16 @@ const NON_RETRYABLE_KINDS = new Set<WorkerFailureReason["kind"]>([
 ]);
 
 /**
- * Determine if a `WorkerFailureReason` is retryable.
+ * Determine if a `SubprocessFailureReason` is retryable.
  *
  * Pass this as the `isRetryable` predicate to `retry<T>()`.
  */
-function isRetryable(reason: WorkerFailureReason): boolean {
+function isRetryable(reason: SubprocessFailureReason): boolean {
   return RETRYABLE_KINDS.has(reason.kind);
 }
 
 /**
- * Categorize an error into a `WorkerFailureReason` based on exit code,
+ * Categorize an error into a `SubprocessFailureReason` based on exit code,
  * output content, and other signals.
  */
 export function categorizeFailure(opts: {
@@ -101,7 +101,7 @@ export function categorizeFailure(opts: {
   completionDetected: boolean;
   /** Whether the process was killed by user interrupt (SIGINT/SIGTERM) */
   interrupted?: boolean;
-}): WorkerFailureReason | undefined {
+}): SubprocessFailureReason | undefined {
   const { exitCode, stdout, stderr, timedOut, timeoutMs, completionDetected, interrupted } = opts;
 
   // Interrupted by user (Ctrl+C / SIGINT / SIGTERM) — never retry
@@ -133,7 +133,7 @@ export function categorizeFailure(opts: {
   }
 
   // Transient errors — only check stderr (not stdout) to avoid false positives
-  // from code/text the worker produces containing transient-like patterns
+  // from code/text the subprocess produces containing transient-like patterns
   if (isTransientError(stderr)) {
     return {
       kind: "transient",

@@ -66,14 +66,14 @@ const DIFF_COLORS = {
   dark: {
     diffAddedBg:        RGBA.fromHex("#1a3d2b"), // deep forest green line bg
     diffRemovedBg:      RGBA.fromHex("#3d1a22"), // deep burgundy line bg
-    diffHighlightAdded:   RGBA.fromHex("#38a660"), // medium green word highlight
-    diffHighlightRemoved: RGBA.fromHex("#b3596b"), // muted rose word highlight
+    diffHighlightAdded:   RGBA.fromHex("#2a7a48"), // muted green word highlight
+    diffHighlightRemoved: RGBA.fromHex("#8a4455"), // muted rose word highlight
   },
   light: {
     diffAddedBg:        RGBA.fromHex("#c7e1cb"), // soft green line bg
     diffRemovedBg:      RGBA.fromHex("#fdd2d8"), // soft pink line bg
-    diffHighlightAdded:   RGBA.fromHex("#2f9d44"), // medium green word highlight
-    diffHighlightRemoved: RGBA.fromHex("#d1454b"), // medium red word highlight
+    diffHighlightAdded:   RGBA.fromHex("#4a8a5a"), // muted green word highlight
+    diffHighlightRemoved: RGBA.fromHex("#b06070"), // muted red word highlight
   },
 }
 

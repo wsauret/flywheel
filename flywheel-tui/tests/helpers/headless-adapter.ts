@@ -73,30 +73,30 @@ export class HeadlessAdapter extends BaseUIAdapter {
 
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      // ── Worker events (normal+) ──
-      case "worker:spawned":
+      // ── Subprocess events (normal+) ──
+      case "subprocess:spawned":
         if (this.logLevel !== "minimal") {
-          this.log(`  Worker spawned for step ${event.stepIndex}`)
+          this.log(`  Subprocess spawned for step ${event.stepIndex}`)
         }
         break
 
-      case "worker:completed":
+      case "subprocess:completed":
         if (this.logLevel !== "minimal") {
-          this.log("  Worker completed")
+          this.log("  Subprocess completed")
         }
         break
 
-      case "worker:failed":
-        this.log(`  Worker FAILED: ${event.failure.message}`)
+      case "subprocess:failed":
+        this.log(`  Subprocess FAILED: ${event.failure.message}`)
         break
 
-      case "worker:retrying":
+      case "subprocess:retrying":
         if (this.logLevel !== "minimal") {
-          this.log(`  Worker retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}`)
+          this.log(`  Subprocess retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}`)
         }
         break
 
-      case "worker:output":
+      case "subprocess:output":
         if (this.logLevel !== "minimal") {
           const prefix = event.stream === "stderr" ? "[stderr] " : ""
           // Trim trailing newline for cleaner log output
@@ -191,10 +191,10 @@ export class HeadlessAdapter extends BaseUIAdapter {
         this.log(`  Budget EXHAUSTED: ${event.reason}`)
         break
 
-      // Worker injection events
-      case "worker:injected":
+      // Subprocess injection events
+      case "subprocess:injected":
         if (this.logLevel !== "minimal") {
-          this.log(`  Worker stdin injected (${event.message.length} chars)`)
+          this.log(`  Subprocess stdin injected (${event.message.length} chars)`)
         }
         break
 

@@ -7,7 +7,7 @@
  * Init order (strict):
  *   1. new TimerService() — fresh per-session timer
  *   2. createStore(planPath) — fresh store
- *   3. new OpenTUIAdapter({ actions: store, timer }) — adapter with store and timer
+ *   3. new OpenTUIAdapter({ actions: store }) — adapter wired to store
  *   4. new EventBus() — fresh event bus
  *   5. adapter.connect(bus) + adapter.start()
  */
@@ -39,8 +39,8 @@ function createWorkflowSession(planPath: string): WorkflowSession {
   // 2. Fresh store (always returns a new isolated instance)
   const store = createStore(planPath);
 
-  // 3. Adapter wired to store and timer
-  const adapter = new OpenTUIAdapter({ actions: store, timer });
+  // 3. Adapter wired to store
+  const adapter = new OpenTUIAdapter({ actions: store });
 
   // 4. Fresh event bus
   const eventBus = new EventBus();

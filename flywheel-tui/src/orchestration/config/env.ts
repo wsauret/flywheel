@@ -14,9 +14,9 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   FLYWHEEL_MODEL: (val, config) => {
     config.model = val;
   },
-  FLYWHEEL_WORKER_MODEL: (val, config) => {
-    if (!config.worker) config.worker = {};
-    (config.worker as Record<string, unknown>).model = val;
+  FLYWHEEL_SUBPROCESS_MODEL: (val, config) => {
+    if (!config.subprocess) config.subprocess = {};
+    (config.subprocess as Record<string, unknown>).model = val;
   },
   FLYWHEEL_DISPATCHER_MODEL: (val, config) => {
     if (!config.dispatcher) config.dispatcher = {};
@@ -124,9 +124,9 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
     if (!config.sprint) config.sprint = {};
     (config.sprint as Record<string, unknown>).escalate_to_full = val === "true" || val === "1";
   },
-  FLYWHEEL_SPRINT_WORKER_CAN_ESCALATE: (val, config) => {
+  FLYWHEEL_SPRINT_SUBPROCESS_CAN_ESCALATE: (val, config) => {
     if (!config.sprint) config.sprint = {};
-    (config.sprint as Record<string, unknown>).worker_can_escalate = val === "true" || val === "1";
+    (config.sprint as Record<string, unknown>).subprocess_can_escalate = val === "true" || val === "1";
   },
   FLYWHEEL_SPRINT_ESCALATE_ON_STUCK: (val, config) => {
     if (!config.sprint) config.sprint = {};

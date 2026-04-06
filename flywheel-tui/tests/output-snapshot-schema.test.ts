@@ -55,7 +55,7 @@ function contextGroupBlock(tools?: ReturnType<typeof toolBlock>[]) {
   };
 }
 
-function systemBlock(message = "worker:spawned") {
+function systemBlock(message = "subprocess:spawned") {
   return { kind: "system" as const, message, timestamp: Date.now() };
 }
 

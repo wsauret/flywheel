@@ -67,7 +67,7 @@ export interface RevisionLoopDeps {
   workflowId: string;
   maxRevisions: number;
   abortSignal: AbortSignal;
-  onWorkerDispatched?: (() => void) | null;
+  onSubprocessDispatched?: (() => void) | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ export async function executeWithRevisions(
     workflowId,
     maxRevisions,
     abortSignal,
-    onWorkerDispatched,
+    onSubprocessDispatched,
   } = deps;
 
   let prompt = currentPrompt;
@@ -167,7 +167,7 @@ export async function executeWithRevisions(
 
     prompt = buildRevisionPrompt(prompt, evalResult);
 
-    onWorkerDispatched?.();
+    onSubprocessDispatched?.();
     output = await raceAbort(worker(step, prompt), abortSignal);
 
     try {

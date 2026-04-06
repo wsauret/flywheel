@@ -1,8 +1,8 @@
 /**
  * OpenTUI Adapter — translates FlywheelEvent → UIActions (store mutations).
  *
- * Pipeline: worker stdout → NDJSONParser → StructuredEventParser
- *   → SubagentTraceParser → StructuredOutputBuilder → setOutputBlocks
+ * Pipeline: subprocess stdout → NDJSONParser → StructuredEventParser
+ *   → StructuredOutputBuilder → setOutputBlocks
  *
  * Dispatcher/evaluator NDJSON handling is delegated to NdjsonPipeline.
  */
@@ -11,9 +11,7 @@ import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
-import { TimerService } from "../shared/services/timer";
-import { NDJSONParser } from "../../orchestration/worker/ndjson-parser";
-import { SubagentTraceParser } from "./subagent-tracing/parser";
+import { NDJSONParser } from "../../orchestration/engines/subprocess/ndjson-parser";
 import { StructuredOutputBuilder } from "./structured-output-builder";
 import { StructuredEventParser } from "./structured-event-parser";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
@@ -26,7 +24,6 @@ const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
 export interface OpenTUIAdapterOptions {
   actions: UIActions;
-  timer?: TimerService;
   /** Engine metadata — used to configure engine-specific adapter behaviour (e.g. synthetic thinking timer). */
   engineMetadata?: import("../../orchestration/engines/core/types").EngineMetadata;
 }
@@ -36,28 +33,16 @@ const log = Log.create({ service: "opentui-adapter" });
 export class OpenTUIAdapter extends BaseUIAdapter {
   readonly adapterType: AdapterType = "opentui";
   private actions: UIActions;
-  /** Per-session timer instance. Injected via constructor; falls back to a private instance. */
-  readonly timer: TimerService;
 
   /** When true, pass raw output without NDJSON parsing */
   private _rawMode = false;
 
-  /** When true, queue:failed skips setError (user-initiated pause). */
-  public suppressQueueError = false;
-
-  /** Current model activity state, updated via the structured output builder. */
-  public modelActivity: import("./structured-output-builder").ModelActivity = "idle";
-
-  /** Optional callback fired when model activity changes. */
-  public onModelActivityChange?: (activity: import("./structured-output-builder").ModelActivity) => void;
-
-  /** Current engine ID for routing events. Updated per worker:output event. */
+  /** Current engine ID for routing events. Updated per subprocess:output event. */
   private currentEngineId: string | undefined;
 
   // ── Structured pipeline components ──
 
   private ndjsonParser: NDJSONParser;
-  private traceParser: SubagentTraceParser;
   private builder: StructuredOutputBuilder;
   private eventParser: StructuredEventParser;
 
@@ -74,16 +59,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   constructor(options: OpenTUIAdapterOptions) {
     super();
     this.actions = options.actions;
-    this.timer = options.timer ?? new TimerService();
     this.syntheticThinkingMs = options.engineMetadata?.syntheticThinkingMs;
 
     // Initialize structured pipeline
-    this.traceParser = new SubagentTraceParser();
     this.builder = new StructuredOutputBuilder();
-    this.eventParser = new StructuredEventParser({
-      traceParser: this.traceParser,
-      builder: this.builder,
-    });
+    this.eventParser = new StructuredEventParser({ builder: this.builder });
     this.ndjsonParser = new NDJSONParser();
 
     // Initialize dispatcher/evaluator NDJSON pipeline
@@ -95,13 +75,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         clearTimeout(this.syntheticThinkingTimer);
         this.syntheticThinkingTimer = null;
       }
-      this.modelActivity = activity;
-      this.onModelActivityChange?.(activity);
+      this.actions.setModelActivity(activity);
       if (this.syntheticThinkingMs !== undefined && (activity === "tool_executing" || activity === "generating")) {
         this.syntheticThinkingTimer = setTimeout(() => {
           this.syntheticThinkingTimer = null;
-          this.modelActivity = "thinking";
-          this.onModelActivityChange?.("thinking");
+          this.actions.setModelActivity("thinking");
         }, this.syntheticThinkingMs);
       }
     };
@@ -148,29 +126,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     this.builder.dispose();
   }
 
-  /** Suspend the periodic flush interval (session backgrounded). */
-  pauseFlush(): void {
-    if (this.flushInterval !== null) {
-      clearInterval(this.flushInterval);
-      this.flushInterval = null;
-    }
-  }
-
-  /** Resume the periodic flush interval (session foregrounded). */
-  resumeFlush(): void {
-    if (this.flushInterval !== null) return; // already running
-    this.flushInterval = setInterval(() => {
-      this.flushBlocks();
-    }, FLUSH_INTERVAL_MS);
-  }
-
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      case "worker:output":
-        this.handleWorkerOutput(event.stream, event.data, event.timestamp, event.engineId);
+      case "subprocess:output":
+        this.handleSubprocessOutput(event.stream, event.data, event.timestamp, event.engineId);
         break;
 
-      case "worker:retrying":
+      case "subprocess:retrying":
         this.pushSystemText(`↻ Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`, event.timestamp);
         break;
 
@@ -182,16 +144,16 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.clearApproval();
         break;
 
-      case "worker:spawned":
-        log.debug(`Worker spawned for step ${event.stepIndex}`, { step: event.stepIndex });
+      case "subprocess:spawned":
+        log.debug(`Subprocess spawned for step ${event.stepIndex}`, { step: event.stepIndex });
         break;
 
-      case "worker:completed":
-        log.debug("Worker finished");
+      case "subprocess:completed":
+        log.debug("Subprocess finished");
         break;
 
-      case "worker:failed":
-        this.pushSystemText(`◉ Worker failed: ${event.failure.message}\n`, event.timestamp);
+      case "subprocess:failed":
+        this.pushSystemText(`◉ Subprocess failed: ${event.failure.message}\n`, event.timestamp);
         break;
 
       case "dispatcher:invoked":
@@ -206,7 +168,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         const warningText = warnings && warnings.length > 0
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
           : "";
-        this.pushSystemText(`⚡ Dispatcher: prompt ready${warningText} — launching worker\n`, event.timestamp);
+        this.pushSystemText(`⚡ Dispatcher: prompt ready${warningText} — launching subprocess\n`, event.timestamp);
         break;
       }
 
@@ -241,7 +203,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.pipeline.completeEvaluator();
         this.flushBlocks();
         this.pushSystemText(
-          `🔄 Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions}) — re-running worker...\n`,
+          `🔄 Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions}) — re-running subprocess...\n`,
           new Date(event.timestamp).toISOString(),
         );
         break;
@@ -260,8 +222,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.pushSystemText(`⚠ Budget exhausted: ${event.reason}\n`, event.timestamp);
         break;
 
-      case "worker:injected":
-        log.info("Worker stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
+      case "subprocess:injected":
+        log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
         this.pushSystemText(`↳ Injected: ${event.message.slice(0, 100)}${event.message.length > 100 ? "..." : ""}\n`, event.timestamp);
         break;
 
@@ -281,29 +243,20 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "queue:initialized":
         log.info("Queue initialized", { workflowId: event.workflowId, steps: event.stepIds.length });
-        // Start timer when queue execution begins
-        this.timer.reset();
-        this.timer.start();
         break;
 
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
-        this.timer.stop();
         this.flushBlocks();
-        this.modelActivity = "idle";
-        this.onModelActivityChange?.("idle");
+        this.actions.setModelActivity("idle");
         this.actions.stopWorkflow("completed");
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
-        this.timer.stop();
         this.flushBlocks();
-        this.modelActivity = "idle";
-        this.onModelActivityChange?.("idle");
-        if (!this.suppressQueueError) {
-          this.actions.setError(event.reason);
-        }
+        this.actions.setModelActivity("idle");
+        this.actions.setError(event.reason);
         break;
 
       case "queue:step-started":
@@ -339,6 +292,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         this.actions.removeQueueStep(event.stepId);
         break;
 
+      // Trace events — handled by TraceCollector, no TUI rendering needed
+      case "trace:tool-started":
+      case "trace:tool-completed":
+      case "trace:subagent-started":
+      case "trace:subagent-completed":
+        break;
+
       default:
         assertNever(event);
     }
@@ -354,8 +314,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     return `${stepType.toUpperCase()} · ${stepTitle}`;
   }
 
-  /** Route worker output: stderr → system text, raw → passthrough, formatted → NDJSON pipeline. */
-  private handleWorkerOutput(
+  /** Route subprocess output: stderr → system text, raw → passthrough, formatted → NDJSON pipeline. */
+  private handleSubprocessOutput(
     stream: "stdout" | "stderr",
     data: string,
     timestamp: string,

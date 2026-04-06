@@ -212,7 +212,7 @@ export function OutputWindow(props: OutputWindowProps) {
           </box>
         </Show>
 
-        <Show when={!hasContent() && !isRunning()}>
+        <Show when={!hasContent() && !isRunning() && props.workflowStatus !== "idle"}>
           <text fg={themeCtx.theme.textMuted}>
             {props.workflowStatus === "completed"
               ? "Workflow completed with no output"
@@ -220,7 +220,7 @@ export function OutputWindow(props: OutputWindowProps) {
                 ? "Workflow was stopped before producing output"
                 : props.workflowStatus === "failed"
                   ? "Workflow failed before producing output"
-                  : "No output yet"}
+                  : ""}
           </text>
         </Show>
 

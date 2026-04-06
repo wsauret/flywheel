@@ -58,7 +58,7 @@ export const DispatcherConfigSchema = z.object({
   max_eval_cycles: z.number(),
   worktree_path: z.string(),
   project_cwd: z.string(),
-  worker_model: z.string(),
+  subprocess_model: z.string(),
   dispatcher_model: z.string(),
 }).strip();
 

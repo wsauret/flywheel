@@ -24,6 +24,7 @@ const LIBRARY_DIR = `${FLYWHEEL_DIR}/library`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
 const CACHE_DIR = `${FLYWHEEL_DIR}/cache`;
 export const SUBPROCESS_LOG_DIR = `${FLYWHEEL_DIR}/subprocess-logs`;
+export const TRACES_DIR = `${FLYWHEEL_DIR}/traces`;
 
 // ---------------------------------------------------------------------------
 // Global directories (cross-session)
@@ -112,10 +113,10 @@ export function resolveSessionFile(
 // ---------------------------------------------------------------------------
 
 /**
- * Build a handoff file path for a worker step.
+ * Build a handoff file path for a subprocess step.
  * Pattern: `.flywheel/sessions/<session-id>/handoffs/<type>_<step-id>.json`
  */
-export function buildWorkerHandoffPath(
+export function buildSubprocessHandoffPath(
   sessionId: string,
   stepType: string,
   stepId: string,
@@ -148,4 +149,11 @@ export function buildEvaluatorHandoffPath(
   return path.resolve(baseDir, sessionHandoffsDir(sessionId), `evaluator_${invocationId}.json`);
 }
 
+// ---------------------------------------------------------------------------
+// Trace file path helpers
+// ---------------------------------------------------------------------------
 
+/** Returns absolute path to a session's trace file: `.flywheel/traces/<session-id>.jsonl` */
+export function resolveTraceFile(sessionId: string, baseDir: string): string {
+  return path.resolve(baseDir, TRACES_DIR, `${sessionId}.jsonl`);
+}

@@ -28,7 +28,7 @@ function makeEmitter(): FlywheelEmitter {
     queueStepCompleted: () => {},
     queueStepFailed: () => {},
     queueStepInserted: () => {},
-    workerOutput: () => {},
+    subprocessOutput: () => {},
   } as unknown as FlywheelEmitter;
 }
 

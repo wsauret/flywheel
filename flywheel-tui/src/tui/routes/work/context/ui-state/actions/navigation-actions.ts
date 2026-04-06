@@ -4,9 +4,10 @@
  * Factory that takes store context and returns navigation mutation functions.
  */
 
-import type { StoreContext } from "./workflow-actions";
+import type { ExecutionState } from "@tui/types";
+import type { StoreContext } from "./workflow-actions.js";
 
-export function createNavigationActions(ctx: StoreContext) {
+export function createNavigationActions(ctx: StoreContext<ExecutionState>) {
   const { getState, setState, notify } = ctx;
 
   return {

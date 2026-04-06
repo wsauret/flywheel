@@ -3,7 +3,7 @@ import {
   RateLimitDetector,
   RATE_LIMIT_RETRY_OPTIONS,
   type RateLimitDetectionInput,
-} from "../src/orchestration/worker/rate-limit";
+} from "../src/orchestration/engines/subprocess/rate-limit";
 
 // ---------------------------------------------------------------------------
 // RateLimitDetector — class-based detection

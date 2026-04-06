@@ -1,22 +1,10 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import type { EvaluatorInput, EvaluatorResult } from "../src/workflows/evaluator/schemas";
-import type { ProcessSpawner, SpawnOptions } from "../src/orchestration/worker/spawner";
 import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
-import { getEngine } from "../src/orchestration/engines/core/registry";
-import { createEnvFilter } from "../src/orchestration/worker/env-filter";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Create DI deps for evaluator transport tests. */
-function makeTransportDeps(engineName = "claude") {
-  const engine = getEngine(engineName);
-  const envFilter = createEnvFilter();
-  const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
-    engine.buildEvaluatorCommand(opts);
-  return { engine, envFilter, buildCommand };
-}
 
 function validEvaluatorResult(overrides?: Partial<EvaluatorResult>): EvaluatorResult {
   return {
@@ -43,731 +31,329 @@ function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput
   };
 }
 
-/**
- * Extract the handoff path from an evaluator prompt and write a verdict file.
- * The evaluator transport now reads verdicts from handoff files, not stdout.
- */
-async function writeVerdictFromPrompt(prompt: string, verdict: Record<string, unknown>): Promise<void> {
-  const pathMatch = prompt.match(/`([^`]+\.json)`/);
-  if (pathMatch) {
-    await Bun.write(pathMatch[1], JSON.stringify(verdict));
-  }
-}
+// ---------------------------------------------------------------------------
+// PooledSubprocessEvaluatorTransport — pool-based evaluator tests
+// ---------------------------------------------------------------------------
+
+import type { PoolHandle, PooledSpawnResult } from "../src/workflows/evaluator/subprocess-transport";
+import type { PooledSpawnResult as SharedPooledSpawnResult } from "../src/workflows/shared/invoke-pooled";
 
 /**
- * Extract the prompt from spawner args (Claude: -p flag).
- */
-function extractPromptFromArgs(args: string[], options?: { stdin?: string }): string {
-  const pIdx = args.indexOf("-p");
-  if (pIdx > -1) return args[pIdx + 1];
-  if (options?.stdin) return options.stdin;
-  return "";
-}
-
-/**
- * Create a mock spawner that auto-writes a verdict handoff file.
- * Wraps any existing spawn function to also extract the handoff path from
- * the prompt and write the verdict JSON file.
+ * Create a mock PoolHandle for evaluator tests.
  *
- * @param verdictOrFn - static verdict object, or a function(callCount) => verdict | null.
- *   When null, no verdict is written (simulating handoff-missing).
- * @param hooks - optional hooks for capturing args, env, stdin, etc.
+ * @param handoffOrFn - static handoff object, or (acquireCount) => handoff | null.
+ *   When null, no handoff file is written (simulating handoff-missing).
+ * @param hooks - optional hooks for capturing stdin writes, acquire/release calls, etc.
  */
-function createHandoffSpawner(
-  verdictOrFn: Record<string, unknown> | ((callCount: number) => Record<string, unknown> | null),
+function createMockEvaluatorPool(
+  handoffOrFn: Record<string, unknown> | ((acquireCount: number) => Record<string, unknown> | null),
   hooks?: {
-    onSpawn?: (command: string, args: string[], options?: SpawnOptions) => void;
+    onAcquire?: (count: number) => void;
+    onRelease?: (proc: PooledSpawnResult) => void;
+    onStdinWrite?: (message: string) => void;
+    onStdinClose?: () => void;
   },
-): { spawner: ProcessSpawner; callCount: () => number } {
-  let calls = 0;
-  const spawner: ProcessSpawner = {
-    async spawn(command, args, options) {
-      calls++;
-      hooks?.onSpawn?.(command, args, options);
+): { pool: PoolHandle; acquireCount: () => number; releaseCount: () => number } {
+  let acquires = 0;
+  let releases = 0;
 
-      const prompt = extractPromptFromArgs(args, options);
-      const verdict = typeof verdictOrFn === "function" ? verdictOrFn(calls) : verdictOrFn;
-      if (verdict) {
-        await writeVerdictFromPrompt(prompt, verdict);
-      }
+  const pool: PoolHandle = {
+    async acquire(): Promise<PooledSpawnResult> {
+      acquires++;
+      hooks?.onAcquire?.(acquires);
 
-      return {
-        result: Promise.resolve({
-          output: "",
-          exitCode: 0,
-          truncated: false,
-          durationMs: 100,
-          handoffPath: "/tmp/unused",
-        }),
+      let stdinWritten = "";
+      let stdinClosed = false;
+      let resolveResult: (value: any) => void;
+
+      const resultPromise = new Promise<any>((resolve) => {
+        resolveResult = resolve;
+      });
+
+      const proc: PooledSpawnResult = {
+        pid: 20000 + acquires,
+        stdinHandle: {
+          write(message: string) {
+            stdinWritten += message;
+            hooks?.onStdinWrite?.(message);
+            return true;
+          },
+          close() {
+            stdinClosed = true;
+            hooks?.onStdinClose?.();
+
+            // On stdin close, extract handoff path from written content and write handoff file
+            const handoff = typeof handoffOrFn === "function" ? handoffOrFn(acquires) : handoffOrFn;
+            const pathMatch = stdinWritten.match(/`([^`]+\.json)`/);
+
+            if (handoff && pathMatch) {
+              Bun.write(pathMatch[1], JSON.stringify(handoff)).then(() => {
+                resolveResult!({
+                  output: "",
+                  exitCode: 0,
+                  truncated: false,
+                  durationMs: 50,
+                  handoffPath: pathMatch[1],
+                });
+              });
+            } else {
+              resolveResult!({
+                output: "",
+                exitCode: 0,
+                truncated: false,
+                durationMs: 50,
+                handoffPath: "/tmp/no-handoff",
+              });
+            }
+          },
+          get isOpen() {
+            return !stdinClosed;
+          },
+        },
+        result: resultPromise,
       };
+
+      return proc;
+    },
+    release(proc: PooledSpawnResult) {
+      releases++;
+      hooks?.onRelease?.(proc);
     },
   };
-  return { spawner, callCount: () => calls };
+
+  return { pool, acquireCount: () => acquires, releaseCount: () => releases };
 }
 
-// ---------------------------------------------------------------------------
-// SubprocessEvaluatorTransport — engine-aware tests
-// ---------------------------------------------------------------------------
+/** Simple NDJSON formatter for tests — mirrors formatStdinMessage. */
+function testFormatStdinMessage(text: string): string {
+  return JSON.stringify({ type: "user", message: { role: "user", content: text } }) + "\n";
+}
 
-describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
-  let SubprocessEvaluatorTransport: typeof import("../src/workflows/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
+describe("PooledSubprocessEvaluatorTransport: pool-based evaluator", () => {
+  let PooledSubprocessEvaluatorTransport: typeof import("../src/workflows/evaluator/subprocess-transport").PooledSubprocessEvaluatorTransport;
 
   beforeEach(async () => {
     const mod = await import("../src/workflows/evaluator/subprocess-transport");
-    SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
+    PooledSubprocessEvaluatorTransport = mod.PooledSubprocessEvaluatorTransport;
   });
 
   // -----------------------------------------------------------------------
-  // VAL-EVAL-001: Engine-aware evaluator transport
+  // Basic flow: acquire from pool, write NDJSON prompt via stdin, read verdict
   // -----------------------------------------------------------------------
 
-  it("spawns 'claude' engine when engineName is 'claude'", async () => {
-    let spawnedCommand = "";
-    let spawnedArgs: string[] = [];
+  it("acquires from pool, writes NDJSON prompt via formatStdinMessage, reads verdict", async () => {
+    let capturedStdinWrite = "";
+    const verdict = validEvaluatorResult({ reasoning: "Pool-based verdict" });
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedCommand = command;
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
+    const { pool } = createMockEvaluatorPool(verdict, {
+      onStdinWrite: (msg) => { capturedStdinWrite += msg; },
+    });
 
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
       baseDir: "/tmp/test",
     });
-    await transport.invoke(baseEvaluatorInput());
 
-    expect(spawnedCommand).toBe("claude");
-    expect(spawnedArgs).toContain("-p");
-    expect(spawnedArgs).toContain("--tools");
-    expect(spawnedArgs).toContain("--no-session-persistence");
-    // Effort defaults to "low" when no tierConfig is set
-    expect(spawnedArgs).toContain("--effort");
-    const effortIdx = spawnedArgs.indexOf("--effort");
-    expect(spawnedArgs[effortIdx + 1]).toBe("low");
+    const result = await transport.invoke(baseEvaluatorInput());
+
+    // Verify NDJSON format was used for stdin
+    expect(capturedStdinWrite).toContain('"type":"user"');
+    expect(capturedStdinWrite).toContain('"role":"user"');
+    // Verify the prompt contains evaluator content
+    expect(capturedStdinWrite).toContain("Verdict");
+    expect(capturedStdinWrite).toContain("passed");
+    // Verify the result was correctly mapped from handoff
+    expect(result.reasoning).toBe("Pool-based verdict");
+    expect(result.passed).toBe(true);
   });
 
-  it("uses engine registry for command building (not hardcoded)", async () => {
-    let spawnedCommand = "";
-    let spawnedArgs: string[] = [];
+  // -----------------------------------------------------------------------
+  // EvaluatorVerdictSchema validation still works on handoff file
+  // -----------------------------------------------------------------------
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedCommand = command;
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
+  it("EvaluatorVerdictSchema validation still works on handoff file", async () => {
+    const verdict = validEvaluatorResult({
+      reasoning: "Schema-validated verdict",
+      confidence: 0.85,
+      suggestions: ["Consider edge cases"],
+    });
 
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
+    const { pool } = createMockEvaluatorPool(verdict);
+
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
       baseDir: "/tmp/test",
     });
-    await transport.invoke(baseEvaluatorInput());
 
-    // Should use engine-built command
-    expect(spawnedCommand).toBe("claude");
-  });
+    const result = await transport.invoke(baseEvaluatorInput());
 
-  // -----------------------------------------------------------------------
-  // VAL-EVAL-002: Evaluator optimization flags
-  // -----------------------------------------------------------------------
-
-  it("Claude route includes evaluator flags (tools for investigation, model, no session persistence)", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    // Agent-based evaluator: -p for one-shot, investigation tools, no session persistence
-    expect(spawnedArgs).toContain("-p");
-    expect(spawnedArgs).toContain("--dangerously-skip-permissions");
-    expect(spawnedArgs).toContain("--no-session-persistence");
-    expect(spawnedArgs).toContain("--tools");
-    const toolsIdx = spawnedArgs.indexOf("--tools");
-    expect(spawnedArgs[toolsIdx + 1]).toBe("Read,Bash,Write,Grep,Glob");
-    expect(spawnedArgs).toContain("--model");
-    // Effort defaults to "low" when no tierConfig is set
-    expect(spawnedArgs).toContain("--effort");
-  });
-
-  it("Claude route uses --system-prompt for evaluator prompt (separate for caching)", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedArgs).toContain("--system-prompt");
-    const sysIdx = spawnedArgs.indexOf("--system-prompt");
-    expect(sysIdx).toBeGreaterThan(-1);
-    // The system prompt should contain verification agent instructions
-    expect(spawnedArgs[sysIdx + 1]).toBeTruthy();
-    expect(spawnedArgs[sysIdx + 1]).toContain("verification agent");
-  });
-
-  it("Claude route passes evaluator input via -p flag (not stdin)", async () => {
-    let spawnedArgs: string[] = [];
-    let receivedStdin: string | undefined;
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        receivedStdin = options?.stdin;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedArgs).toContain("-p");
-    // Claude route should NOT use stdin for prompt delivery
-    expect(receivedStdin).toBeUndefined();
-  });
-
-  // -----------------------------------------------------------------------
-  // Default model behavior
-  // -----------------------------------------------------------------------
-
-  it("defaults to 'sonnet' model for claude when not configured", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      // No tierConfig.model — should use engine default
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(modelIdx).toBeGreaterThan(-1);
-    expect(spawnedArgs[modelIdx + 1]).toBe("sonnet");
-  });
-
-  // -----------------------------------------------------------------------
-  // Config model override
-  // -----------------------------------------------------------------------
-
-  it("evaluatorModel flows through to --model CLI flag (claude)", async () => {
-    let spawnedArgs: string[] = [];
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      tierConfig: { model: "haiku" },
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(spawnedArgs).toContain("--model");
-    const modelIdx = spawnedArgs.indexOf("--model");
-    expect(spawnedArgs[modelIdx + 1]).toBe("haiku");
-  });
-
-  // -----------------------------------------------------------------------
-  // Engine binary not found → clear error
-  // -----------------------------------------------------------------------
-
-  it("throws clear error when engine binary not found (unknown engine)", async () => {
-    // getEngine throws for unknown engines — verify the registry rejects bad names
-    try {
-      makeTransportDeps("nonexistent-engine");
-      // If we get here, the test should fail
-      expect(true).toBe(false);
-    } catch (err: any) {
-      expect(err.message).toContain("nonexistent-engine");
-    }
-  });
-
-  // -----------------------------------------------------------------------
-  // Output parsing: both engines
-  // -----------------------------------------------------------------------
-
-  it("verdict read from handoff file (claude route)", async () => {
-    const verdict = validEvaluatorResult({ reasoning: "Handoff-based verdict (claude)" });
-    const { spawner } = createHandoffSpawner(verdict);
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(evalResult.reasoning).toBe("Handoff-based verdict (claude)");
-  });
-
-  it("response validates against EvaluatorResultSchema (claude route)", async () => {
-    const { spawner } = createHandoffSpawner(validEvaluatorResult());
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    const evalResult = await transport.invoke(baseEvaluatorInput());
-
-    const parsed = EvaluatorResultSchema.safeParse(evalResult);
+    const parsed = EvaluatorResultSchema.safeParse(result);
     expect(parsed.success).toBe(true);
+    expect(result.reasoning).toBe("Schema-validated verdict");
+    expect(result.confidence).toBe(0.85);
+    expect(result.suggestions).toEqual(["Consider edge cases"]);
   });
 
   // -----------------------------------------------------------------------
-  // Existing behavior preserved (handoff-based retry)
+  // Transport releases process after verdict read
   // -----------------------------------------------------------------------
 
-  it("retries once on handoff missing then succeeds", async () => {
-    const verdict = validEvaluatorResult();
-    // First call: no verdict file; second call: verdict written
-    const { spawner, callCount } = createHandoffSpawner((n) => n >= 2 ? verdict : null);
+  it("releases process after verdict read", async () => {
+    const { pool, releaseCount } = createMockEvaluatorPool(validEvaluatorResult());
 
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
       baseDir: "/tmp/test",
     });
-    const evalResult = await transport.invoke(baseEvaluatorInput());
-    expect(callCount()).toBe(2);
-    expect(evalResult.passed).toBe(true);
+
+    await transport.invoke(baseEvaluatorInput());
+    expect(releaseCount()).toBe(1);
   });
+
+  // -----------------------------------------------------------------------
+  // Retry on handoff error acquires fresh from pool
+  // -----------------------------------------------------------------------
+
+  it("retry on handoff error acquires fresh from pool", async () => {
+    const verdict = validEvaluatorResult();
+
+    // First acquire: no handoff file; second acquire: handoff written
+    const { pool, acquireCount, releaseCount } = createMockEvaluatorPool((n) => n >= 2 ? verdict : null);
+
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
+      baseDir: "/tmp/test",
+    });
+
+    const result = await transport.invoke(baseEvaluatorInput());
+
+    expect(acquireCount()).toBe(2);
+    expect(releaseCount()).toBe(2); // Both processes are released
+    expect(result.passed).toBe(true);
+  });
+
+  // -----------------------------------------------------------------------
+  // Throws after both handoff reads fail
+  // -----------------------------------------------------------------------
 
   it("throws after both handoff reads fail", async () => {
-    // Never write a verdict file
-    const { spawner } = createHandoffSpawner(() => null);
+    const { pool, acquireCount, releaseCount } = createMockEvaluatorPool(() => null);
 
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
       baseDir: "/tmp/test",
     });
-    await expect(transport.invoke(baseEvaluatorInput())).rejects.toThrow();
-  });
 
-  it("respects 60s timeout (agent needs time for investigation)", async () => {
-    let receivedTimeout: number | undefined;
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        receivedTimeout = options?.timeoutMs;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-    expect(receivedTimeout).toBe(60_000);
-  });
-
-  it("applies env filter via createEnvFilter()", async () => {
-    let receivedEnv: Record<string, string> | undefined;
-
-    const mockSpawner: ProcessSpawner = {
-      async spawn(_command, _args, options) {
-        receivedEnv = options?.env;
-        await writeVerdictFromPrompt(extractPromptFromArgs(_args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    expect(receivedEnv).toBeDefined();
-    if (receivedEnv) {
-      const keys = Object.keys(receivedEnv);
-      for (const key of keys) {
-        expect(key).not.toMatch(/_API_KEY$/);
-        expect(key).not.toMatch(/_SECRET_KEY$/);
-        expect(key).not.toMatch(/_SECRET$/);
-      }
-    }
+    await expect(transport.invoke(baseEvaluatorInput())).rejects.toThrow(/pooled invoke failed/);
+    expect(acquireCount()).toBe(2); // Tried twice
+    expect(releaseCount()).toBe(2); // Both released
   });
 
   // -----------------------------------------------------------------------
-  // Evaluator uses its OWN prompt (not dispatcher's system prompt)
+  // Stdin is closed after writing prompt (triggers process exit)
   // -----------------------------------------------------------------------
 
-  it("buildPrompt includes all 6 EvaluatorResultSchema fields in instructions", async () => {
-    let capturedPrompt = "";
+  it("closes stdin after writing prompt", async () => {
+    let stdinClosed = false;
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        // For Claude, prompt is in -p flag
-        const pIdx = args.indexOf("-p");
-        if (pIdx > -1) {
-          capturedPrompt = args[pIdx + 1];
-        }
-        // Fallback: prompt may be in stdin
-        if (options?.stdin) {
-          capturedPrompt = options.stdin;
-        }
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
+    const { pool } = createMockEvaluatorPool(validEvaluatorResult(), {
+      onStdinClose: () => { stdinClosed = true; },
+    });
 
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
       baseDir: "/tmp/test",
     });
+
     await transport.invoke(baseEvaluatorInput());
-
-    // All 6 fields from EvaluatorResultSchema must be mentioned in the prompt
-    expect(capturedPrompt).toContain("passed");
-    expect(capturedPrompt).toContain("reasoning");
-    expect(capturedPrompt).toContain("suggestions");
-    expect(capturedPrompt).toContain("confidence");
-    expect(capturedPrompt).toContain("feedback");
-    expect(capturedPrompt).toContain("files_to_review");
-
-    // Confidence must be explicitly specified as 0.0-1.0
-    expect(capturedPrompt).toMatch(/0\.0.*1\.0/);
+    expect(stdinClosed).toBe(true);
   });
 
-  it("evaluator prompt contains evaluator-specific content (not dispatcher content)", async () => {
-    let spawnedArgs: string[] = [];
-    let receivedStdin: string | undefined;
+  // -----------------------------------------------------------------------
+  // System prompt is included in stdin message
+  // -----------------------------------------------------------------------
 
-    const mockSpawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        spawnedArgs = args;
-        receivedStdin = options?.stdin;
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
+  it("includes evaluator system prompt in stdin content", async () => {
+    let capturedStdin = "";
 
-    const transport = new SubprocessEvaluatorTransport({
-      spawner: mockSpawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
+    const { pool } = createMockEvaluatorPool(validEvaluatorResult(), {
+      onStdinWrite: (msg) => { capturedStdin += msg; },
+    });
+
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
       baseDir: "/tmp/test",
     });
+
     await transport.invoke(baseEvaluatorInput());
 
-    // For Claude route, prompt is in -p flag
-    const pIdx = spawnedArgs.indexOf("-p");
-    expect(pIdx).toBeGreaterThan(-1);
-    const prompt = spawnedArgs[pIdx + 1];
-    // Should contain evaluator-specific content (verdict, pass/fail)
-    expect(prompt).toContain("Verdict");
-    expect(prompt).toContain("passed");
-    // Should NOT contain dispatcher-specific content
-    expect(prompt).not.toContain("prompt engineering specialist");
+    // System prompt should be present in the stdin content
+    expect(capturedStdin).toContain("verification agent");
+  });
+
+  // -----------------------------------------------------------------------
+  // Handoff path contains session-scoped evaluator path
+  // -----------------------------------------------------------------------
+
+  it("handoff path contains session-scoped evaluator path", async () => {
+    let capturedStdin = "";
+
+    const { pool } = createMockEvaluatorPool(validEvaluatorResult(), {
+      onStdinWrite: (msg) => { capturedStdin += msg; },
+    });
+
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
+      baseDir: "/tmp/test",
+    });
+
+    await transport.invoke(baseEvaluatorInput());
+
+    expect(capturedStdin).toContain("Evaluator");
+    expect(capturedStdin).toContain(".flywheel/sessions/test-pool-session/handoffs/");
+    expect(capturedStdin).toContain(".json");
+  });
+
+  // -----------------------------------------------------------------------
+  // No stdin handle throws clear error
+  // -----------------------------------------------------------------------
+
+  it("throws clear error when process has no stdin handle", async () => {
+    const pool: PoolHandle = {
+      async acquire() {
+        return {
+          pid: 99999,
+          // No stdinHandle!
+          result: Promise.resolve({ output: "", exitCode: 0 }),
+        };
+      },
+      release() {},
+    };
+
+    const transport = new PooledSubprocessEvaluatorTransport({
+      pool,
+      formatStdinMessage: testFormatStdinMessage,
+      sessionId: "test-pool-session",
+      baseDir: "/tmp/test",
+    });
+
+    await expect(transport.invoke(baseEvaluatorInput())).rejects.toThrow(/no stdin handle/i);
   });
 });
 
-// ---------------------------------------------------------------------------
-// VAL-PROMPT-003: Evaluator prompt optimized for clarity
-// ---------------------------------------------------------------------------
-
-describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", () => {
-  let SubprocessEvaluatorTransport: typeof import("../src/workflows/evaluator/subprocess-transport").SubprocessEvaluatorTransport;
-
-  /** Helper to capture the prompt text from the -p flag (Claude engine route). */
-  function createPromptCapturingSpawner(): { spawner: ProcessSpawner; getPrompt: () => string } {
-    let capturedPrompt = "";
-    const spawner: ProcessSpawner = {
-      async spawn(command, args, options) {
-        const pIdx = args.indexOf("-p");
-        if (pIdx > -1) {
-          capturedPrompt = args[pIdx + 1];
-        }
-        if (options?.stdin) {
-          capturedPrompt = options.stdin;
-        }
-        await writeVerdictFromPrompt(extractPromptFromArgs(args, options), validEvaluatorResult());
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-    return { spawner, getPrompt: () => capturedPrompt };
-  }
-
-  beforeEach(async () => {
-    const mod = await import("../src/workflows/evaluator/subprocess-transport");
-    SubprocessEvaluatorTransport = mod.SubprocessEvaluatorTransport;
-  });
-
-  // -----------------------------------------------------------------------
-  // 1. No duplicate role framing between system prompt and buildPrompt()
-  // -----------------------------------------------------------------------
-
-  it("buildPrompt() does NOT start with 'You are an evaluator' (role set via system prompt only)", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    const prompt = getPrompt();
-    // The prompt should NOT contain the role framing sentence — it's in the system prompt
-    expect(prompt).not.toContain("You are an evaluator");
-  });
-
-  // -----------------------------------------------------------------------
-  // 2. context_files section removed or changed to informational-only
-  // -----------------------------------------------------------------------
-
-  it("context_files section is not included in the lean prompt", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput({ context_files: ["src/foo.ts", "src/bar.ts"] }));
-
-    const prompt = getPrompt();
-    // Lean prompt omits context_files to save tokens and time
-    expect(prompt).not.toContain("## Context Files");
-    expect(prompt).not.toContain("Worker Had Access To");
-  });
-
-  it("context_files informational section is omitted when no context files provided", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput({ context_files: [] }));
-
-    const prompt = getPrompt();
-    expect(prompt).not.toContain("worker was given access to these files");
-  });
-
-  // -----------------------------------------------------------------------
-  // 3. duration_seconds surfaced in the prompt
-  // -----------------------------------------------------------------------
-
-  it("lean prompt omits timing section to save tokens", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput({ duration_seconds: 45 }));
-
-    const prompt = getPrompt();
-    // Timing removed from lean prompt — evaluator doesn't need it
-    expect(prompt).not.toContain("## Timing");
-  });
-
-  // -----------------------------------------------------------------------
-  // 4. Pass/fail threshold guidance added
-  // -----------------------------------------------------------------------
-
-  it("includes pass/fail guidance biased toward passing", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    const prompt = getPrompt();
-    // Should contain lean guidance about passing by default
-    expect(prompt).toContain("hard evidence");
-    expect(prompt).toContain("pass with suggestions");
-  });
-
-  it("includes verdict JSON schema with confidence field", async () => {
-    const { spawner, getPrompt } = createPromptCapturingSpawner();
-
-    const transport = new SubprocessEvaluatorTransport({
-      spawner,
-      ...makeTransportDeps("claude"),
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-    });
-    await transport.invoke(baseEvaluatorInput());
-
-    const prompt = getPrompt();
-    expect(prompt).toContain("confidence");
-    expect(prompt).toContain("0.9");
-  });
-});

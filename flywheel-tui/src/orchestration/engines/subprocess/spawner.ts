@@ -1,4 +1,4 @@
-import type { WorkerResult } from "./schemas";
+import type { SubprocessResult } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // StdinHandle — mid-execution stdin injection
@@ -27,7 +27,7 @@ export interface StdinHandle {
  *   early access to write to the process before it finishes.
  */
 export interface SpawnResult {
-  result: Promise<WorkerResult>;
+  result: Promise<SubprocessResult>;
   stdinHandle?: StdinHandle;
   /** PID of the spawned process (when available). */
   pid?: number;
@@ -38,7 +38,7 @@ export interface SpawnResult {
 // ---------------------------------------------------------------------------
 
 /**
- * DI seam for worker process spawning.
+ * DI seam for subprocess spawning.
  * Allows tests to substitute a mock spawner.
  */
 export interface ProcessSpawner {
@@ -102,7 +102,7 @@ export interface SpawnOptions {
   stdoutTransform?: (chunk: string) => string;
   /**
    * Called for each parsed NDJSON event (step_finish, tool_use, text, etc.).
-   * Wire to BudgetTracker.handleEvent to capture cost/token data from worker output.
+   * Wire to BudgetTracker.handleEvent to capture cost/token data from subprocess output.
    */
   onNDJSONEvent?: (event: import("./ndjson-parser").NDJSONEvent) => void;
 }

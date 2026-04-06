@@ -11,7 +11,7 @@
  */
 
 import * as fs from "node:fs";
-import { WorkerHandoffSchema } from "../../infra/handoff-schemas";
+import { SubprocessHandoffSchema } from "../../../infra/handoff-schemas";
 
 /**
  * Regex for NDJSON result event indicating successful completion.
@@ -80,7 +80,7 @@ export class CompletionDetector {
       }
 
       const parsed = JSON.parse(text) as unknown;
-      return WorkerHandoffSchema.safeParse(parsed).success;
+      return SubprocessHandoffSchema.safeParse(parsed).success;
     } catch {
       return false;
     }

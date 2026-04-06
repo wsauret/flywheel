@@ -179,7 +179,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       sessionId,
       queue,
       description: `[test] ${stepDef.label}`,
-      workerCwd: testWorkdir.path,
+      subprocessCwd: testWorkdir.path,
       onComplete: () => testWorkdir.cleanup(),
     })
     deps.setForegroundId(sessionId)

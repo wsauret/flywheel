@@ -31,13 +31,13 @@ export class MockAdapter extends BaseUIAdapter {
       case "evaluator:failed":
       case "evaluator:revision-requested":
       case "evaluator:output":
-      // Worker events
-      case "worker:spawned":
-      case "worker:completed":
-      case "worker:failed":
-      case "worker:retrying":
-      case "worker:output":
-      case "worker:injected":
+      // Subprocess events
+      case "subprocess:spawned":
+      case "subprocess:completed":
+      case "subprocess:failed":
+      case "subprocess:retrying":
+      case "subprocess:output":
+      case "subprocess:injected":
       // Approval events
       case "approval:requested":
       case "approval:received":

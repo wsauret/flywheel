@@ -46,7 +46,7 @@ describe("Queue event types", () => {
       const specific: FlywheelEvent[] = [];
       bus.subscribeToType("queue:initialized", (e) => specific.push(e));
       emitter.queueInitialized("wf-1", ["s1"]);
-      emitter.workerSpawned("wf-1", 0);
+      emitter.subprocessSpawned("wf-1", 0);
       expect(specific).toHaveLength(1);
       expect(specific[0].type).toBe("queue:initialized");
     });

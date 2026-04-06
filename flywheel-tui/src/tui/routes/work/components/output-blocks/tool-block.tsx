@@ -16,15 +16,14 @@
  * highlighting within changed lines, colored backgrounds, line numbers.
  *
  * Diffs default to expanded and can be collapsed by clicking the header.
- * Toggle avoids <Show> (which removes/re-adds DOM nodes and causes flicker)
- * in favour of a conditional array inside <For>, keeping the container box
- * stable in the layout tree.
+ * Uses CollapsibleBox to keep the container stable in the layout tree.
  */
 
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
+import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { truncate } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@tui/types"
 import { renderHunk, parseUnifiedDiff, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
@@ -112,19 +111,15 @@ export function ToolBlock(props: ToolBlockProps) {
     <Show when={hasDiff()} fallback={header()}>
       <box flexDirection="column">
         {header()}
-        {/* Keep the container box in the layout tree at all times so toggling
-            doesn't shift everything below (which causes the white-flash flicker).
-            Instead, swap between the full lines array and an empty array inside
-            the stable <For> — only the row nodes are added/removed. */}
-        <box flexDirection="column" paddingLeft={4} paddingRight={4}>
-          <For each={expanded() ? diffStyledLines() : []}>
+        <CollapsibleBox expanded={expanded()} paddingLeft={4} paddingRight={4}>
+          <For each={diffStyledLines()}>
             {(line) => (
               <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
                 <text ref={(el: TextRenderable) => { el.content = line.styled }} />
               </box>
             )}
           </For>
-        </box>
+        </CollapsibleBox>
       </box>
     </Show>
   )

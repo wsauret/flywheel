@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
 import { getEngine } from "../src/orchestration/engines/core/registry";
-import { createEnvFilter } from "../src/orchestration/worker/env-filter";
+import { createEnvFilter } from "../src/orchestration/engines/subprocess/env-filter";
 
 // ---------------------------------------------------------------------------
 // Test fixtures — realistic evaluator inputs
@@ -194,30 +194,7 @@ describe("verify-evaluator: schema validation", () => {
 // ---------------------------------------------------------------------------
 
 describe("verify-evaluator: engine binary availability", () => {
-  it("SubprocessEvaluatorTransport throws clear error when engine binary is not found", async () => {
-    const { SubprocessEvaluatorTransport } = await import("../src/workflows/evaluator/subprocess-transport");
-
-    const mockSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({ output: "", exitCode: 1, truncated: false, durationMs: 0 }),
-        };
-      },
-    };
-
-    // If claude is not installed, this should throw with a descriptive message
-    const claudeAvailable = Bun.which("claude") !== null;
-    if (!claudeAvailable) {
-      const engine = getEngine("claude");
-      const envFilter = createEnvFilter();
-      const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
-        engine.buildEvaluatorCommand(opts);
-      expect(() => {
-        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engine, envFilter, buildCommand, sessionId: "test-session", baseDir: "/tmp/test" });
-      }).toThrow(/claude CLI not found/);
-    }
-
-    // Unknown engine always throws via getEngine
+  it("unknown engine throws via getEngine", () => {
     expect(() => {
       getEngine("nonexistent");
     }).toThrow(/Unknown engine/);

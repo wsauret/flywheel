@@ -1,38 +1,34 @@
 /**
- * Workflow Runner
- *
- * Encapsulates the full executor lifecycle: setup, execution, pause, abort, cleanup.
- * The shell creates one runner per workflow and wires its callbacks to signals.
- *
- * No UI imports — pure orchestration logic with callback-based notifications.
+ * Workflow Runner — full executor lifecycle: setup, execution, pause, abort, cleanup.
+ * Pure orchestration logic with callback-based notifications.
  */
 
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
-import { buildQueueForSlashCommand } from "./queue-builder"
 import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
-import { createStepExecutor, type StepExecutor, type StepExecutorResult } from "../workflows/queue/executor"
+import { createStepExecutor, type StepExecutor } from "../workflows/queue/executor"
 import { createQueuePersistence } from "../workflows/queue/persistence"
 import { createGuardrails } from "../workflows/queue/guardrails"
 import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
-import { createOutputPersistence, type OutputFlusher } from "./session/output-persistence"
+import { createOutputPersistence } from "./session/output-persistence"
 import { OpenTUIAdapter } from "../tui/adapters/opentui"
 import { createStore as createUIStore } from "../tui/routes/work/context/ui-state/store"
 import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
+import { createTraceWriter, type TraceWriter } from "./session/trace-writer"
+import { createTraceCollector, type TraceCollector } from "./session/trace-collector"
+import { createTraceEventHandler } from "./engines/subprocess/trace-event-handler"
+import { createWarmPools } from "./engines/pool/create-warm-pools"
+import type { WarmPool } from "./engines/pool/warm-pool"
+import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
 import { randomUUID } from "node:crypto"
-import { Log } from "../infra/log"
-import { formatStdinMessage } from "./worker/stdin-format"
-import type { StdinHandle } from "./worker/spawner"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format"
+import type { StdinHandle, SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
-import type { SessionManager } from "./session/manager"
 import type { AnyBlock } from "../tui/types"
 import "../workflows/queue/steps/register-all"
 
-const log = Log.create({ service: "workflow-runner" })
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ── Types ──
 
 export type StepState = {
   id: string; type: string; title: string; status: string
@@ -59,10 +55,10 @@ export interface WorkflowResult {
 
 export interface WorkflowRunnerOverrides {
   projectCwd?: string
-  /** Override the worker process cwd. Defaults to projectCwd.
+  /** Override the subprocess cwd. Defaults to projectCwd.
    * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
-  workerCwd?: string
+  subprocessCwd?: string
   eventBus?: EventBus
   contextIndexer?: ContextIndexer
   budgetTracker?: BudgetTracker
@@ -73,9 +69,9 @@ export interface WorkflowRunner {
   run(): Promise<WorkflowResult>
   /** Graceful pause — finish current step then stop. */
   pause(): void
-  /** Force abort — kill worker immediately. */
+  /** Force abort — kill subprocess immediately. */
   abort(): void
-  /** Inject a user message into the running worker. Returns true if delivered or queued. */
+  /** Inject a user message into the running subprocess. Returns true if delivered or queued. */
   injectMessage(text: string): boolean
   /** Cancel a pending shutdown so execution continues after current step. */
   cancelShutdown(): void
@@ -85,9 +81,7 @@ export interface WorkflowRunner {
   dispose(): Promise<void>
 }
 
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
+// ── Factory ──
 
 /**
  * Create a workflow runner for a new or resumed session.
@@ -109,7 +103,7 @@ export function createWorkflowRunner(opts: {
 }): WorkflowRunner {
   const { sessionId, queue, description, callbacks, priorBlocks } = opts
   const projectCwd = opts.overrides?.projectCwd ?? opts.projectCwd ?? process.cwd()
-  const workerCwd = opts.overrides?.workerCwd
+  const subprocessCwd = opts.overrides?.subprocessCwd
 
   // Prepare workflow deps (config, engine, etc.)
   const deps = prepareWorkflowDeps()
@@ -122,6 +116,24 @@ export function createWorkflowRunner(opts: {
   // Budget tracker
   const budgetTracker = opts.overrides?.budgetTracker ?? createBudgetTracker({ sessionId, baseDir: projectCwd })
 
+  // Tracing (gated by config)
+  let traceWriter: TraceWriter | null = null
+  let traceCollector: TraceCollector | null = null
+  let traceFinalized = false
+
+  if (deps.config.tracing.enabled) {
+    traceWriter = createTraceWriter({
+      sessionId,
+      baseDir: projectCwd,
+      maxTraces: deps.config.tracing.max_traces,
+    })
+    traceCollector = createTraceCollector({
+      writer: traceWriter,
+      sessionId,
+      workflowName: description,
+    })
+  }
+
   // Metrics poll
   const metricsTimer = setInterval(() => {
     callbacks.onTokens(budgetTracker.getTokensUsed())
@@ -132,8 +144,20 @@ export function createWorkflowRunner(opts: {
   const uiActions = createUIStore("workflow")
   uiActions.startWorkflow(description)
   const adapter = new OpenTUIAdapter({ actions: uiActions, engineMetadata: deps.engine.metadata })
-  adapter.onModelActivityChange = (activity) => callbacks.onModelActivity?.(activity)
   adapter.connect(eventBus)
+
+  // Wire store → model activity callback
+  let execUnsub: (() => void) | null = null
+  if (callbacks.onModelActivity) {
+    let lastActivity = uiActions.getState().modelActivity;
+    execUnsub = uiActions.subscribeExecution!(() => {
+      const activity = uiActions.getState().modelActivity;
+      if (activity !== lastActivity) {
+        lastActivity = activity;
+        callbacks.onModelActivity!(activity);
+      }
+    });
+  }
 
   // Output persistence
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
@@ -165,6 +189,12 @@ export function createWorkflowRunner(opts: {
     }),
   )
 
+  // Wire trace collector to event bus
+  if (traceCollector) {
+    const traceUnsubs = traceCollector.subscribeToEvents(eventBus)
+    eventUnsubs.push(...traceUnsubs)
+  }
+
   // Initialize step display
   callbacks.onSteps(queue.steps.map(toStepState))
 
@@ -176,26 +206,44 @@ export function createWorkflowRunner(opts: {
   const stdinHandleRef: { current: StdinHandle | null } = { current: null }
   const pendingInjection: { current: string | null } = { current: null }
 
-  async function run(): Promise<WorkflowResult> {
-    const { dispatcherTransport, evaluatorTransport } = await resolveTransports(
-      deps, eventBus, workflowIdRef, "", sessionId, projectCwd,
-    )
+  // Pool refs — created inside run(), shut down in dispose()
+  let dispatcherPool: WarmPool<SpawnResult> | null = null
+  let evaluatorPool: WarmPool<SpawnResult> | null = null
+  let subprocessPool: WarmPool<RawSpawnedProcess> | null = null
 
-    if (!dispatcherTransport) {
-      throw new Error("Dispatcher transport unavailable. Check your engine configuration.")
-    }
+  async function run(): Promise<WorkflowResult> {
+    // Create warm pools for dispatcher, evaluator, and subprocess (session-scoped)
+    const pools = createWarmPools(deps, projectCwd, subprocessCwd)
+    dispatcherPool = pools.dispatcher
+    evaluatorPool = pools.evaluator
+    subprocessPool = pools.subprocess
+
+    const stdinFormatter = (text: string) => formatStdinMessage(deps.engine.metadata.id, text)
+
+    const { dispatcherTransport, evaluatorTransport } = resolveTransports(
+      deps, eventBus, workflowIdRef, "", sessionId, projectCwd,
+      undefined, // evaluatorSystemPromptAddendum
+      { dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage: stdinFormatter },
+    )
 
     const contextIndexer = opts.overrides?.contextIndexer ?? new ContextIndexer(projectCwd)
 
+    // Create trace event handler (gated by tracing config)
+    const traceEventHandler = deps.config.tracing.enabled
+      ? createTraceEventHandler({ emitter, workflowIdRef })
+      : null
+
     const execDeps = buildExecutorDeps({
       deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
-      contextIndexer, projectCwd, workerCwd, sessionObjective: description, queue, sessionId,
+      contextIndexer, projectCwd, subprocessCwd, sessionObjective: description, queue, sessionId,
       stdinHandleRef,
       setShellQueueSteps: () => {},
-      capturedWorkerSessionId: { current: undefined },
+      capturedSubprocessSessionId: { current: undefined },
       pendingInjection,
       activeSessionRef: { current: null },
       budgetTracker,
+      traceEventHandler,
+      subprocessPool,
     })
 
     const guardrails = createGuardrails({
@@ -212,7 +260,7 @@ export function createWorkflowRunner(opts: {
       sessionId,
       emitter,
       dispatcher: execDeps.dispatcherFn,
-      worker: execDeps.workerFn,
+      worker: execDeps.subprocessFn,
       evaluator: execDeps.evaluator,
       handoffReader: execDeps.handoffReader,
       budgetChecker: { isExhausted: () => false },
@@ -222,11 +270,17 @@ export function createWorkflowRunner(opts: {
       onStepCompleted: execDeps.compositeHook,
       guardrails,
       sessionObjective: description,
-      onWorkerDispatched: () => budgetTracker.incrementInvocations(),
+      onSubprocessDispatched: () => budgetTracker.incrementInvocations(),
       onSessionName: callbacks.onSessionName,
     })
 
     const result = await executor.run()
+
+    // Finalize trace with result status
+    if (traceCollector && !traceFinalized) {
+      traceFinalized = true
+      traceCollector.finalize(result.completed ? "ok" : "error")
+    }
 
     // Final step states
     callbacks.onSteps(queue.steps.map(toStepState))
@@ -280,8 +334,24 @@ export function createWorkflowRunner(opts: {
     clearInterval(metricsTimer)
     eventUnsubs.forEach((u) => u())
     storeUnsub()
+    execUnsub?.()
     adapter.disconnect()
+    // Finalize trace if not already finalized (abort path)
+    if (traceCollector && !traceFinalized) {
+      traceFinalized = true
+      traceCollector.finalize("error")
+    }
+    traceWriter?.dispose()
     budgetTracker.dispose()
+    // Shut down warm pools (covers complete, abort, and error paths)
+    await Promise.all([
+      dispatcherPool?.shutdown(),
+      evaluatorPool?.shutdown(),
+      subprocessPool?.shutdown(),
+    ])
+    dispatcherPool = null
+    evaluatorPool = null
+    subprocessPool = null
     await outputFlusher.flush()
     outputFlusher.dispose()
     executor = null
@@ -290,10 +360,9 @@ export function createWorkflowRunner(opts: {
   return { run, pause, abort, injectMessage, cancelShutdown, sessionId, dispose }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// ── Helpers ──
 
 function toStepState(s: { id: string; type: string; title: string; status: string }): StepState {
   return { id: s.id, type: s.type, title: s.title, status: s.status }
 }
+

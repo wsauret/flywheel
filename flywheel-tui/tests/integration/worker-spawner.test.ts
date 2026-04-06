@@ -15,11 +15,11 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
+import { BunProcessSpawner } from "../../src/orchestration/engines/subprocess/bun-spawner";
 import { getEngine } from "../../src/orchestration/engines/core/registry";
-import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/infra/paths";
+import { ensureSessionDir, buildSubprocessHandoffPath } from "../../src/infra/paths";
 import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
-import { formatStdinMessage } from "../../src/orchestration/worker/stdin-format";
+import { formatStdinMessage } from "../../src/orchestration/engines/subprocess/stdin-format";
 import type { Step } from "../../src/workflows/queue/types";
 
 // Engine registration side effects
@@ -72,7 +72,7 @@ async function spawnWorker(
   baseDir: string,
   opts?: { timeoutMs?: number },
 ) {
-  const handoffPath = buildWorkerHandoffPath(sessionId, step.type, step.id, baseDir);
+  const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, baseDir);
   const scaffoldingPaths: ScaffoldingPaths = {
     handoffPath,
     planPath: "",

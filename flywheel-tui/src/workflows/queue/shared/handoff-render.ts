@@ -1,7 +1,7 @@
-import type { WorkerHandoff } from "../../../infra/handoff-schemas";
+import type { SubprocessHandoff } from "../../../infra/handoff-schemas";
 
 export interface HandoffFieldSpec {
-  key: keyof WorkerHandoff;
+  key: keyof SubprocessHandoff;
   description: string;
   example: string;
   required?: boolean;

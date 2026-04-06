@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import type { UIActions } from "../src/tui/routes/work/context/ui-state/types";
 
@@ -377,6 +377,128 @@ describe("Work Store", () => {
     it("selectPrevious is no-op when no steps", () => {
       store.selectPrevious();
       expect(store.getState().selectedStepIndex).toBe(0);
+    });
+  });
+
+  // ── Subscriber Isolation (Phase 2) ──
+
+  describe("subscriber isolation", () => {
+    it("mutating output does NOT notify execution-only subscribers", async () => {
+      let execNotified = 0;
+      store.subscribeExecution!(() => { execNotified++; });
+
+      store.appendOutput({ stream: "stdout", data: "line\n", timestamp: "t1" });
+
+      // Wait for throttle to flush
+      await new Promise((r) => setTimeout(r, 30));
+
+      expect(execNotified).toBe(0);
+      // Output should still be in state
+      expect(store.getState().outputLines).toHaveLength(1);
+    });
+
+    it("mutating execution does NOT notify output-only subscribers", () => {
+      let outputNotified = 0;
+      store.subscribeOutput!(() => { outputNotified++; });
+
+      store.setApprovalPending("Approve?");
+
+      expect(outputNotified).toBe(0);
+      expect(store.getState().approvalState.pending).toBe(true);
+    });
+
+    it("facade getState() returns merged state from both sub-stores", () => {
+      store.startWorkflow("merged-test");
+      store.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
+
+      const state = store.getState();
+      // Execution fields
+      expect(state.planName).toBe("merged-test");
+      expect(state.workflowStatus).toBe("running");
+      // Output fields
+      expect(state.outputLines).toHaveLength(1);
+      expect(state.outputLines[0].data).toBe("hello\n");
+    });
+
+    it("facade subscribe() fires on changes to either store", async () => {
+      let facadeNotified = 0;
+      store.subscribe(() => { facadeNotified++; });
+
+      // Execution change (immediate)
+      store.setApprovalPending("Approve?");
+      expect(facadeNotified).toBeGreaterThanOrEqual(1);
+      const afterExec = facadeNotified;
+
+      // Output change (throttled)
+      store.appendOutput({ stream: "stdout", data: "line\n", timestamp: "t1" });
+      await new Promise((r) => setTimeout(r, 30));
+
+      expect(facadeNotified).toBeGreaterThan(afterExec);
+    });
+
+    it("reset() resets both stores and notifies all subscribers", () => {
+      let execNotified = 0;
+      let outputNotified = 0;
+      let facadeNotified = 0;
+
+      store.startWorkflow("plan");
+      store.appendOutput({ stream: "stdout", data: "data\n", timestamp: "t1" });
+
+      store.subscribeExecution!(() => { execNotified++; });
+      store.subscribeOutput!(() => { outputNotified++; });
+      store.subscribe(() => { facadeNotified++; });
+
+      store.reset("fresh-plan");
+
+      // All subscribers should be notified
+      expect(execNotified).toBeGreaterThanOrEqual(1);
+      expect(outputNotified).toBeGreaterThanOrEqual(1);
+      // Facade subscribes to both, so gets notified at least once
+      expect(facadeNotified).toBeGreaterThanOrEqual(1);
+
+      // State should be reset
+      const state = store.getState();
+      expect(state.planName).toBe("fresh-plan");
+      expect(state.workflowStatus).toBe("idle");
+      expect(state.outputLines).toEqual([]);
+      expect(state.outputBlocks).toEqual([]);
+      expect(state.queueSteps).toEqual([]);
+    });
+
+    it("execution-only subscriber fires on queue step changes", () => {
+      let execNotified = 0;
+      store.subscribeExecution!(() => { execNotified++; });
+
+      store.setQueueSteps([
+        { id: "s1", type: "work", title: "Step", status: "pending" },
+      ]);
+
+      expect(execNotified).toBeGreaterThanOrEqual(1);
+    });
+
+    it("output-only subscriber fires on appendOutputBlocks", async () => {
+      let outputNotified = 0;
+      store.subscribeOutput!(() => { outputNotified++; });
+
+      store.appendOutputBlocks([
+        { kind: "text", content: "block", timestamp: Date.now() },
+      ]);
+
+      await new Promise((r) => setTimeout(r, 30));
+      expect(outputNotified).toBeGreaterThanOrEqual(1);
+    });
+
+    it("startWorkflow notifies both execution and output subscribers", () => {
+      let execNotified = 0;
+      let outputNotified = 0;
+
+      store.subscribeExecution!(() => { execNotified++; });
+      store.subscribeOutput!(() => { outputNotified++; });
+
+      store.startWorkflow("new-plan");
+
+      expect(execNotified).toBeGreaterThanOrEqual(1);
+      expect(outputNotified).toBeGreaterThanOrEqual(1);
     });
   });
 });

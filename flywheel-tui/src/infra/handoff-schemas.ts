@@ -99,7 +99,7 @@ export const SkillFeedbackSchema = z.object({
 export type SkillFeedback = z.infer<typeof SkillFeedbackSchema>;
 
 // ---------------------------------------------------------------------------
-// WorkerHandoffSchema
+// SubprocessHandoffSchema
 // ---------------------------------------------------------------------------
 
 const SUMMARY_MIN_LENGTH = 20;
@@ -107,7 +107,7 @@ const SUMMARY_MAX_LENGTH = 5000;
 const SUMMARY_MAX_SENTENCES = 10;
 const TEST_OUTPUT_MIN_LENGTH = 10;
 
-export const WorkerHandoffBaseSchema = z.object({
+export const SubprocessHandoffBaseSchema = z.object({
   summary: z.string()
     .min(SUMMARY_MIN_LENGTH, {
       message: `summary must be at least ${SUMMARY_MIN_LENGTH} characters. Provide a more detailed summary describing what was accomplished.`,
@@ -145,7 +145,7 @@ export const WorkerHandoffBaseSchema = z.object({
   p3_findings: z.array(P3FindingSchema).optional(),
   compound_docs: z.array(CompoundDocSchema).optional(),
   skillFeedback: SkillFeedbackSchema.optional()
-    .describe("Feedback on the skill procedure. Fill this out to help improve future workers."),
+    .describe("Feedback on the skill procedure. Fill this out to help improve future subprocesses."),
   verification_script_path: z.string().optional(),
   iteration_number: z.number().optional(),
   needs_plan: z.boolean().optional(),
@@ -153,7 +153,7 @@ export const WorkerHandoffBaseSchema = z.object({
   document_path: z.string().optional(),
 }).passthrough();
 
-export const WorkerHandoffSchema = WorkerHandoffBaseSchema.superRefine((data, ctx) => {
+export const SubprocessHandoffSchema = SubprocessHandoffBaseSchema.superRefine((data, ctx) => {
   if (data.verification?.tests_passed === true) {
     const summary = data.verification.test_output_summary;
     if (!summary || summary.length < TEST_OUTPUT_MIN_LENGTH) {
@@ -166,4 +166,4 @@ export const WorkerHandoffSchema = WorkerHandoffBaseSchema.superRefine((data, ct
   }
 });
 
-export type WorkerHandoff = z.infer<typeof WorkerHandoffSchema>;
+export type SubprocessHandoff = z.infer<typeof SubprocessHandoffSchema>;

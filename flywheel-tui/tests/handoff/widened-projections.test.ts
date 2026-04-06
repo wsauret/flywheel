@@ -9,9 +9,9 @@
  */
 import { describe, it, expect } from "bun:test";
 import {
-  WorkerHandoffSchema,
+  SubprocessHandoffSchema,
 } from "../../src/infra/handoff-schemas";
-import type { WorkerHandoff } from "../../src/infra/handoff-schemas";
+import type { SubprocessHandoff } from "../../src/infra/handoff-schemas";
 import { EvaluatorHandoffDataSchema } from "../../src/workflows/evaluator/schemas";
 import { LastWorkerResultSchema } from "../../src/workflows/schemas";
 
@@ -19,7 +19,7 @@ import { LastWorkerResultSchema } from "../../src/workflows/schemas";
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function fullHandoff(overrides?: Partial<WorkerHandoff>): WorkerHandoff {
+function fullHandoff(overrides?: Partial<SubprocessHandoff>): SubprocessHandoff {
   return {
     summary: "Implemented authentication module with JWT tokens, rate limiting, and session management. All tests pass.",
     artifacts: {
@@ -41,7 +41,7 @@ function fullHandoff(overrides?: Partial<WorkerHandoff>): WorkerHandoff {
     },
     files_to_review: ["src/auth/jwt.ts", "src/auth/session.ts"],
     ...overrides,
-  } as WorkerHandoff;
+  } as SubprocessHandoff;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ function fullHandoff(overrides?: Partial<WorkerHandoff>): WorkerHandoff {
 // ---------------------------------------------------------------------------
 
 describe("VAL-HANDOFF-001: EvaluatorHandoffData includes warnings", () => {
-  it("EvaluatorHandoffDataSchema includes warnings field from WorkerHandoff", () => {
+  it("EvaluatorHandoffDataSchema includes warnings field from SubprocessHandoff", () => {
     const handoff = fullHandoff();
     const projected = EvaluatorHandoffDataSchema.parse({
       summary: handoff.summary,
@@ -81,7 +81,7 @@ describe("VAL-HANDOFF-001: EvaluatorHandoffData includes warnings", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-HANDOFF-002: EvaluatorHandoffData includes decisions", () => {
-  it("EvaluatorHandoffDataSchema includes decisions field from WorkerHandoff", () => {
+  it("EvaluatorHandoffDataSchema includes decisions field from SubprocessHandoff", () => {
     const handoff = fullHandoff();
     const projected = EvaluatorHandoffDataSchema.parse({
       summary: handoff.summary,
@@ -233,7 +233,7 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
     }
   });
 
-  it("existing handoff JSON from old schema still parses through WorkerHandoffSchema", () => {
+  it("existing handoff JSON from old schema still parses through SubprocessHandoffSchema", () => {
     const oldHandoff = {
       summary: "A".repeat(100),
       artifacts: {
@@ -246,7 +246,7 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
         test_output_summary: "10 tests pass",
       },
     };
-    const result = WorkerHandoffSchema.safeParse(oldHandoff);
+    const result = SubprocessHandoffSchema.safeParse(oldHandoff);
     expect(result.success).toBe(true);
   });
 });
@@ -257,7 +257,7 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
 
 describe("VAL-HANDOFF-008: Graceful fallback on invalid handoffs", () => {
   it("EvaluatorHandoffData is undefined when handoff is missing (no crash)", () => {
-    const cachedHandoff: WorkerHandoff | undefined = undefined;
+    const cachedHandoff: SubprocessHandoff | undefined = undefined;
     const evaluatorHandoff = cachedHandoff
       ? EvaluatorHandoffDataSchema.parse({
           summary: cachedHandoff.summary,

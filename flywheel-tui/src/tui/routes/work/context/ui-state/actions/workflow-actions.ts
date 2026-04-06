@@ -4,134 +4,145 @@
  * Factory that takes store context and returns workflow mutation functions.
  */
 
-import type { WorkState, OutputLine, AnyBlock } from "@tui/types";
+import type { ExecutionState, OutputState, OutputLine, AnyBlock } from "@tui/types";
 
-export interface StoreContext {
-  getState(): WorkState;
-  setState(s: WorkState): void;
+export interface StoreContext<S = any> {
+  getState(): S;
+  setState(s: S): void;
   notify(): void;
   notifyImmediate(): void;
 }
 
 const OUTPUT_LINES_CAP = 5000;
 
-export function createWorkflowActions(ctx: StoreContext) {
-  const { getState, setState, notify, notifyImmediate } = ctx;
-
+export function createWorkflowActions(
+  exec: StoreContext<ExecutionState>,
+  output: StoreContext<OutputState>,
+) {
   return {
     startWorkflow(planName: string): void {
-      setState({
+      const { version, visibleItemCount } = exec.getState();
+      exec.setState({
         planName,
-        version: getState().version,
+        version,
         startTime: Date.now(),
         workflowStatus: "running",
         queueSteps: [],
-        outputLines: [],
-        outputBlocks: [],
         approvalState: { pending: false },
         selectedStepIndex: 0,
         scrollOffset: 0,
-        visibleItemCount: getState().visibleItemCount,
+        visibleItemCount,
+        modelActivity: "idle",
       });
-      notifyImmediate();
+      output.setState({
+        outputLines: [],
+        outputBlocks: [],
+      });
+      exec.notifyImmediate();
+      output.notifyImmediate();
     },
 
     continueStep(planName: string): void {
-      const state = getState();
-      setState({
+      const state = exec.getState();
+      exec.setState({
         ...state,
         planName,
         workflowStatus: "running",
         approvalState: { pending: false },
         error: undefined,
-        // Preserve: outputBlocks, outputLines, steps, startTime, scrollOffset
       });
-      notifyImmediate();
+      exec.notifyImmediate();
     },
 
     setPlanName(name: string): void {
-      const state = getState();
-      setState({ ...state, planName: name });
-      notify();
+      const state = exec.getState();
+      exec.setState({ ...state, planName: name });
+      exec.notify();
     },
 
     stopWorkflow(status: "completed" | "interrupted"): void {
-      const state = getState();
-      setState({
+      const state = exec.getState();
+      exec.setState({
         ...state,
         workflowStatus: status,
         endTime: Date.now(),
       });
-      notify();
+      exec.notify();
     },
 
     setError(reason: string): void {
-      const state = getState();
-      setState({
+      const state = exec.getState();
+      exec.setState({
         ...state,
         workflowStatus: "failed",
         error: reason,
       });
-      notify();
+      exec.notify();
     },
 
     clearError(): void {
-      const state = getState();
-      setState({
+      const state = exec.getState();
+      exec.setState({
         ...state,
         error: undefined,
       });
-      notify();
+      exec.notify();
     },
 
     appendOutput(line: OutputLine): void {
-      const state = getState();
+      const state = output.getState();
       let lines = [...state.outputLines, line];
       if (lines.length > OUTPUT_LINES_CAP) {
         lines = lines.slice(lines.length - OUTPUT_LINES_CAP);
       }
-      setState({
+      output.setState({
         ...state,
         outputLines: lines,
       });
-      notify();
+      output.notify();
     },
 
     setApprovalPending(description: string): void {
-      const state = getState();
-      setState({
+      const state = exec.getState();
+      exec.setState({
         ...state,
         approvalState: { pending: true, description },
       });
-      notifyImmediate();
+      exec.notifyImmediate();
     },
 
     clearApproval(): void {
-      const state = getState();
-      setState({
+      const state = exec.getState();
+      exec.setState({
         ...state,
         approvalState: { pending: false },
       });
-      notifyImmediate();
+      exec.notifyImmediate();
     },
 
     setOutputBlocks(blocks: AnyBlock[]): void {
-      const state = getState();
-      setState({
+      const state = output.getState();
+      output.setState({
         ...state,
         outputBlocks: blocks,
       });
-      notify();
+      output.notify();
     },
 
     appendOutputBlocks(blocks: AnyBlock[]): void {
       if (blocks.length === 0) return;
-      const state = getState();
-      setState({
+      const state = output.getState();
+      output.setState({
         ...state,
         outputBlocks: [...state.outputBlocks, ...blocks],
       });
-      notify();
+      output.notify();
+    },
+
+    setModelActivity(activity: ExecutionState["modelActivity"]): void {
+      const state = exec.getState();
+      exec.setState({ ...state, modelActivity: activity });
+      exec.notifyImmediate();
     },
   };
 }

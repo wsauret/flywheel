@@ -53,6 +53,12 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
         onBlocksChanged: deps.setOutputBlocks,
         onWaitingChanged: (waiting) => {
           deps.setAgentState(waiting ? "active" : "idle")
+          // Eagerly show "Thinking…" as soon as the agent becomes active.
+          // The builder will refine this to "generating" / "tool_executing"
+          // once actual output arrives.  Without this, there's a race window
+          // where agentState is "active" but liveActivity is still "idle",
+          // causing the prompt status line to not render.
+          if (waiting) deps.setActivity("thinking")
           // sessionStatus stays "running" — only the agent's activity changes
         },
         onTokensChanged: deps.setTokens,

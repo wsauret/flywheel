@@ -9,7 +9,7 @@ import {
   HandoffInvalidError,
   HandoffReadTimeoutError,
 } from "../../src/workflows/queue/shared/handoff-reader";
-import { WorkerHandoffSchema } from "../../src/infra/handoff-schemas";
+import { SubprocessHandoffSchema } from "../../src/infra/handoff-schemas";
 
 let tmpDir: string;
 
@@ -34,7 +34,7 @@ describe("readHandoff", () => {
     const path = join(tmpDir, "handoff.json");
     await Bun.write(path, JSON.stringify(data));
 
-    const result = await readHandoff(path, WorkerHandoffSchema);
+    const result = await readHandoff(path, SubprocessHandoffSchema);
     expect(result.summary).toBe("A".repeat(100));
     expect(result.decisions).toEqual(["Used approach A"]);
   });
@@ -57,7 +57,7 @@ describe("readHandoff — missing file", () => {
   it("throws HandoffMissingError for nonexistent file", async () => {
     const path = join(tmpDir, "nonexistent.json");
     try {
-      await readHandoff(path, WorkerHandoffSchema);
+      await readHandoff(path, SubprocessHandoffSchema);
       expect(true).toBe(false); // should not reach here
     } catch (err) {
       expect(err).toBeInstanceOf(HandoffMissingError);
@@ -72,7 +72,7 @@ describe("readHandoff — invalid JSON", () => {
     await Bun.write(path, "{ not valid json !!! }");
 
     try {
-      await readHandoff(path, WorkerHandoffSchema);
+      await readHandoff(path, SubprocessHandoffSchema);
       expect(true).toBe(false);
     } catch (err) {
       expect(err).toBeInstanceOf(HandoffInvalidError);
@@ -88,7 +88,7 @@ describe("readHandoff — schema failure", () => {
     await Bun.write(path, JSON.stringify({ decisions: ["A"] }));
 
     try {
-      await readHandoff(path, WorkerHandoffSchema);
+      await readHandoff(path, SubprocessHandoffSchema);
       expect(true).toBe(false);
     } catch (err) {
       expect(err).toBeInstanceOf(HandoffInvalidError);
@@ -103,7 +103,7 @@ describe("readHandoff — schema failure", () => {
     await Bun.write(path, JSON.stringify({ summary: "too short" }));
 
     try {
-      await readHandoff(path, WorkerHandoffSchema);
+      await readHandoff(path, SubprocessHandoffSchema);
       expect(true).toBe(false);
     } catch (err) {
       expect(err).toBeInstanceOf(HandoffInvalidError);
@@ -119,7 +119,7 @@ describe("readHandoff — empty file", () => {
     await Bun.write(path, "");
 
     try {
-      await readHandoff(path, WorkerHandoffSchema);
+      await readHandoff(path, SubprocessHandoffSchema);
       expect(true).toBe(false);
     } catch (err) {
       expect(err).toBeInstanceOf(HandoffInvalidError);
@@ -128,7 +128,7 @@ describe("readHandoff — empty file", () => {
 });
 
 describe("readHandoff — passthrough tolerance", () => {
-  it("tolerates unknown fields via .passthrough() on WorkerHandoffSchema", async () => {
+  it("tolerates unknown fields via .passthrough() on SubprocessHandoffSchema", async () => {
     const path = join(tmpDir, "extra-fields.json");
     await Bun.write(
       path,
@@ -138,8 +138,8 @@ describe("readHandoff — passthrough tolerance", () => {
       }),
     );
 
-    // WorkerHandoffBaseSchema now uses .passthrough() — extra fields are accepted
-    const result = await readHandoff(path, WorkerHandoffSchema);
+    // SubprocessHandoffBaseSchema now uses .passthrough() — extra fields are accepted
+    const result = await readHandoff(path, SubprocessHandoffSchema);
     expect(result.summary).toBe("A".repeat(100));
   });
 });
@@ -156,7 +156,7 @@ describe("readHandoff — timeout", () => {
     // The reader supports a timeout parameter (5s default).
     // We'll use a 1ms timeout which should race-fail on any real file read.
     try {
-      await readHandoff(path, WorkerHandoffSchema, { timeoutMs: 1 });
+      await readHandoff(path, SubprocessHandoffSchema, { timeoutMs: 1 });
       // If it succeeds (fast disk), that's ok — the test is best-effort.
       // But on most systems, 1ms will timeout.
     } catch (err) {

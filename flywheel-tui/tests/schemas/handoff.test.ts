@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
-  WorkerHandoffSchema,
+  SubprocessHandoffSchema,
   ArtifactsSchema,
   VerificationSchema,
   OpenQuestionSchema,
@@ -233,10 +233,10 @@ describe("CompoundDocSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WorkerHandoffSchema
+// SubprocessHandoffSchema
 // ---------------------------------------------------------------------------
 
-describe("WorkerHandoffSchema", () => {
+describe("SubprocessHandoffSchema", () => {
   // A valid summary: >= 20 chars, 1-10 sentences, no newlines
   const validSummary = "Implemented feature X with full test coverage. All 42 tests pass. Typecheck clean.";
 
@@ -280,17 +280,17 @@ describe("WorkerHandoffSchema", () => {
   };
 
   it("parses valid full handoff", () => {
-    const result = WorkerHandoffSchema.safeParse(validFull);
+    const result = SubprocessHandoffSchema.safeParse(validFull);
     expect(result.success).toBe(true);
   });
 
   it("parses valid minimal handoff (summary only)", () => {
-    const result = WorkerHandoffSchema.safeParse(validMinimal);
+    const result = SubprocessHandoffSchema.safeParse(validMinimal);
     expect(result.success).toBe(true);
   });
 
   it("fails when summary is missing", () => {
-    const result = WorkerHandoffSchema.safeParse({});
+    const result = SubprocessHandoffSchema.safeParse({});
     expect(result.success).toBe(false);
     if (!result.success) {
       const summaryError = result.error.issues.find(
@@ -301,7 +301,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("enforces .min(20) on summary", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: "Too short string.", // < 20 chars
     });
     expect(result.success).toBe(false);
@@ -309,7 +309,7 @@ describe("WorkerHandoffSchema", () => {
 
   it("enforces .max(5000) on summary", () => {
     // Single very long sentence to avoid sentence count issues
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: "A".repeat(5001),
     });
     expect(result.success).toBe(false);
@@ -317,16 +317,16 @@ describe("WorkerHandoffSchema", () => {
 
   it("accepts summary at exact boundaries (20 and 5000)", () => {
     // 20 chars, 1 sentence — valid
-    const atMin = WorkerHandoffSchema.safeParse({ summary: "This is twenty chars." });
+    const atMin = SubprocessHandoffSchema.safeParse({ summary: "This is twenty chars." });
     expect(atMin.success).toBe(true);
 
     // 5000 chars, 1 sentence (no periods except at end) — valid
-    const atMax = WorkerHandoffSchema.safeParse({ summary: "A".repeat(4999) + "." });
+    const atMax = SubprocessHandoffSchema.safeParse({ summary: "A".repeat(4999) + "." });
     expect(atMax.success).toBe(true);
   });
 
   it("tolerates unknown fields (.passthrough())", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       ...validMinimal,
       hallucinated_field: "should be tolerated",
     });
@@ -334,7 +334,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("parses handoff with partial artifacts (only files_created)", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       artifacts: {
         files_created: ["src/new.ts"],
@@ -349,7 +349,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("parses handoff with partial artifacts (only commands_run)", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       artifacts: {
         commands_run: ["bun test", "bunx tsc --noEmit"],
@@ -362,7 +362,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("parses handoff with empty artifacts object", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       artifacts: {},
     });
@@ -370,7 +370,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("validates nested sub-schemas strictly", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       artifacts: {
         files_created: [],
@@ -383,7 +383,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("validates open_questions sub-schema strictly", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       open_questions: [
         { question: "Q?", options: ["A"], extra: "fail" },
@@ -393,7 +393,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("validates verification sub-schema strictly", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       verification: {
         tests_passed: true,
@@ -405,7 +405,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("validates finding_counts sub-schema strictly", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       finding_counts: {
         p1_critical: 0,
@@ -418,7 +418,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("validates p3_findings sub-schema strictly", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       p3_findings: [
         { description: "d", suggestion: "s", extra: "fail" },
@@ -428,7 +428,7 @@ describe("WorkerHandoffSchema", () => {
   });
 
   it("validates compound_docs sub-schema strictly", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       compound_docs: [
         { title: "t", type: "ty", tags: [], problem: "p", solution: "s", extra: "fail" },
@@ -444,7 +444,7 @@ describe("WorkerHandoffSchema", () => {
   describe("content quality enforcement", () => {
     // VAL-QUALITY-001: Summary minimum length enforced (20 chars)
     it("rejects summary shorter than 20 chars with descriptive error", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Short summary.",
       });
       expect(result.success).toBe(false);
@@ -458,7 +458,7 @@ describe("WorkerHandoffSchema", () => {
 
     // VAL-QUALITY-005: Summary must not contain newlines
     it("rejects summary containing \\n with instruction to remove them", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "First line of summary.\nSecond line of summary here.",
       });
       expect(result.success).toBe(false);
@@ -469,7 +469,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("rejects summary containing \\r\\n with instruction to remove them", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "First line of summary.\r\nSecond line of summary here.",
       });
       expect(result.success).toBe(false);
@@ -481,28 +481,28 @@ describe("WorkerHandoffSchema", () => {
 
     // VAL-QUALITY-003: Sentence counting (1-10 sentences)
     it("accepts summary with exactly 1 sentence", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Implemented the full feature with comprehensive test coverage and type checking.",
       });
       expect(result.success).toBe(true);
     });
 
     it("accepts summary with exactly 10 sentences", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "First sentence done. Second sentence done. Third sentence done. Fourth sentence done. Fifth sentence done. Sixth sentence done. Seventh sentence done. Eighth sentence done. Ninth sentence done. Tenth sentence done.",
       });
       expect(result.success).toBe(true);
     });
 
     it("accepts summary with 7-8 sentences (previously rejected at max 6)", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "One. Two. Three. Four. Five. Six. Seven sentences total.",
       });
       expect(result.success).toBe(true);
     });
 
     it("rejects summary with more than 10 sentences with error stating count and range", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "One. Two. Three. Four. Five. Six. Seven. Eight. Nine. Ten. Eleven sentences total.",
       });
       expect(result.success).toBe(false);
@@ -516,7 +516,7 @@ describe("WorkerHandoffSchema", () => {
 
     it("rejects summary with 0 sentences (empty-ish content)", () => {
       // A string of spaces/punctuation with >= 20 chars but 0 detectable sentences
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "                              ",
       });
       expect(result.success).toBe(false);
@@ -524,7 +524,7 @@ describe("WorkerHandoffSchema", () => {
 
     // VAL-QUALITY-002: Verification required for success claims
     it("requires test_output_summary >= 10 chars when tests_passed is true", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Implemented feature with full test coverage and type safety.",
         verification: {
           tests_passed: true,
@@ -540,7 +540,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("requires test_output_summary when tests_passed is true (missing field)", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Implemented feature with full test coverage and type safety.",
         verification: {
           tests_passed: true,
@@ -555,7 +555,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("allows missing test_output_summary when tests_passed is false", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Implemented feature but tests are currently failing.",
         verification: {
           tests_passed: false,
@@ -565,7 +565,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("allows missing test_output_summary when tests_passed is null", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Implemented feature and tests were not applicable here.",
         verification: {
           tests_passed: null,
@@ -575,7 +575,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("accepts test_output_summary with >= 10 chars when tests_passed is true", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Implemented feature with full test coverage and type safety.",
         verification: {
           tests_passed: true,
@@ -587,7 +587,7 @@ describe("WorkerHandoffSchema", () => {
 
     // VAL-QUALITY-004: All quality errors include field name, constraint, and fix instruction
     it("summary min-length error includes field name, constraint, and fix", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "Way too short.",
       });
       expect(result.success).toBe(false);
@@ -601,7 +601,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("sentence count error includes field name, constraint, and range", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "One. Two. Three. Four. Five. Six. Seven. Eight. Nine. Ten. Eleven sentences is too many overall.",
       });
       expect(result.success).toBe(false);
@@ -614,7 +614,7 @@ describe("WorkerHandoffSchema", () => {
     });
 
     it("newline error includes instruction to remove line breaks", () => {
-      const result = WorkerHandoffSchema.safeParse({
+      const result = SubprocessHandoffSchema.safeParse({
         summary: "First part of summary.\nSecond part continues here.",
       });
       expect(result.success).toBe(false);
@@ -628,7 +628,7 @@ describe("WorkerHandoffSchema", () => {
 
     // Backward compatibility: existing valid handoffs still parse
     it("existing valid handoffs still parse correctly (backward compat)", () => {
-      const result = WorkerHandoffSchema.safeParse(validFull);
+      const result = SubprocessHandoffSchema.safeParse(validFull);
       expect(result.success).toBe(true);
     });
   });
@@ -979,15 +979,15 @@ describe("SkillFeedbackSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WorkerHandoffSchema — skillFeedback field (VAL-FEEDBACK-001, VAL-FEEDBACK-003)
+// SubprocessHandoffSchema — skillFeedback field (VAL-FEEDBACK-001, VAL-FEEDBACK-003)
 // ---------------------------------------------------------------------------
 
-describe("WorkerHandoffSchema — skillFeedback", () => {
+describe("SubprocessHandoffSchema — skillFeedback", () => {
   const validSummary = "Implemented feature X with full test coverage. All 42 tests pass. Typecheck clean.";
 
   // VAL-FEEDBACK-001: Handoff schema accepts skillFeedback field
   it("accepts handoff with valid skillFeedback", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       skillFeedback: {
         followedProcedure: true,
@@ -1003,7 +1003,7 @@ describe("WorkerHandoffSchema — skillFeedback", () => {
   });
 
   it("accepts handoff with skillFeedback containing deviations", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       skillFeedback: {
         followedProcedure: false,
@@ -1024,7 +1024,7 @@ describe("WorkerHandoffSchema — skillFeedback", () => {
 
   // VAL-FEEDBACK-003: Skill feedback is backward compatible
   it("accepts handoff without skillFeedback (backward compat)", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
     });
     expect(result.success).toBe(true);
@@ -1034,7 +1034,7 @@ describe("WorkerHandoffSchema — skillFeedback", () => {
   });
 
   it("rejects invalid skillFeedback (missing followedProcedure)", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       skillFeedback: {
         deviations: [],
@@ -1044,7 +1044,7 @@ describe("WorkerHandoffSchema — skillFeedback", () => {
   });
 
   it("rejects skillFeedback with unknown fields (.strict())", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       skillFeedback: {
         followedProcedure: true,
@@ -1057,14 +1057,14 @@ describe("WorkerHandoffSchema — skillFeedback", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WorkerHandoffSchema — hypothesis field
+// SubprocessHandoffSchema — hypothesis field
 // ---------------------------------------------------------------------------
 
-describe("WorkerHandoffSchema — hypothesis field", () => {
+describe("SubprocessHandoffSchema — hypothesis field", () => {
   const validSummary = "Investigated the failing test and identified a race condition in the event handler setup.";
 
   it("accepts handoff with hypothesis field", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       hypothesis: "The race condition occurs because the event listener is registered after the initial emit",
     });
@@ -1075,7 +1075,7 @@ describe("WorkerHandoffSchema — hypothesis field", () => {
   });
 
   it("accepts handoff without hypothesis (backward compat)", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
     });
     expect(result.success).toBe(true);
@@ -1085,7 +1085,7 @@ describe("WorkerHandoffSchema — hypothesis field", () => {
   });
 
   it("rejects non-string hypothesis", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       hypothesis: 42,
     });
@@ -1094,14 +1094,14 @@ describe("WorkerHandoffSchema — hypothesis field", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WorkerHandoffSchema — document_path field
+// SubprocessHandoffSchema — document_path field
 // ---------------------------------------------------------------------------
 
-describe("WorkerHandoffSchema — document_path field", () => {
+describe("SubprocessHandoffSchema — document_path field", () => {
   const validSummary = "Researched authentication patterns in the codebase and persisted findings to a research document.";
 
   it("accepts handoff with document_path field", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       document_path: "docs/research/2026-03-29-auth-patterns.md",
     });
@@ -1112,7 +1112,7 @@ describe("WorkerHandoffSchema — document_path field", () => {
   });
 
   it("accepts handoff without document_path (backward compat)", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
     });
     expect(result.success).toBe(true);
@@ -1122,7 +1122,7 @@ describe("WorkerHandoffSchema — document_path field", () => {
   });
 
   it("rejects non-string document_path", () => {
-    const result = WorkerHandoffSchema.safeParse({
+    const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
       document_path: 123,
     });

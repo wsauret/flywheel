@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerHandoffBaseSchema } from "../../infra/handoff-schemas";
+import { SubprocessHandoffBaseSchema } from "../../infra/handoff-schemas";
 import { StepContextSchema } from "../queue/step-context";
 
 // ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
 // EvaluatorHandoffDataSchema (projection of worker handoff for evaluator)
 // ---------------------------------------------------------------------------
 
-export const EvaluatorHandoffDataSchema = WorkerHandoffBaseSchema.pick({
+export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
   summary: true,
   verification: true,
   artifacts: true,

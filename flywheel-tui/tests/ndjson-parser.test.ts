@@ -5,8 +5,8 @@ import {
   extractJSON,
   MAX_LINE_LENGTH,
   type NDJSONEvent,
-} from "../src/orchestration/worker/ndjson-parser";
-import { TieredBuffer } from "../src/orchestration/worker/buffer";
+} from "../src/orchestration/engines/subprocess/ndjson-parser";
+import { TieredBuffer } from "../src/orchestration/engines/subprocess/buffer";
 
 // ---------------------------------------------------------------------------
 // stripAnsi

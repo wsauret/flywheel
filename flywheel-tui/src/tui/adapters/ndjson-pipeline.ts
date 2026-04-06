@@ -6,8 +6,8 @@
  * dispatcher and evaluator event handling here.
  */
 
-import { NDJSONParser } from "../../orchestration/worker/ndjson-parser.js";
-import type { NDJSONEvent } from "../../orchestration/worker/ndjson-parser.js";
+import { NDJSONParser } from "../../orchestration/engines/subprocess/ndjson-parser.js";
+import type { NDJSONEvent } from "../../orchestration/engines/subprocess/ndjson-parser.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
 import { formatDisplayPath } from "./output-formatter.js";
 

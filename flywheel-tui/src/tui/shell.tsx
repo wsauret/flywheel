@@ -229,7 +229,8 @@ export function FlywheelShell() {
     if (status === null) return bgCount > 0 ? `${bgCount} running` : "ready"
     if (status === "error") return "error" + bgSuffix
     if (status === "paused") return "paused" + bgSuffix
-    if (agentState() === "active") {
+    const hasMetrics = agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0
+    if (hasMetrics) {
       const parts: string[] = [formatElapsed(metrics.elapsed())]
       const t = metrics.liveTokens()
       if (t > 0) parts.push(`${formatTokens(t)} tokens`)

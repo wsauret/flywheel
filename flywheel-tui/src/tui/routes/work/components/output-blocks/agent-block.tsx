@@ -28,6 +28,7 @@ import { createSignal, Show, For } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
+import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { truncate } from "@tui/utils/text"
 import { formatDuration } from "../../../../format.js"
 import { displayToolName } from "./tool-block"
@@ -114,25 +115,23 @@ export function AgentBlock(props: AgentBlockProps) {
           <text fg={theme.textMuted}>{props.expanded ? "▾" : "▸"}</text>
           <text fg={theme.textMuted}>· {summary()}</text>
         </box>
-        <Show when={props.expanded}>
-          <box
-            flexDirection="column"
-            border={true}
-            borderColor={theme.borderSubtle}
-            paddingTop={0}
-            paddingBottom={0}
-            onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
-          >
-            <For each={visibleChildren()}>
-              {(child) => <ToolRow tool={child} />}
-            </For>
-            <Show when={!showAll() && hiddenCount() > 0}>
-              <box paddingLeft={1}>
-                <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
-              </box>
-            </Show>
-          </box>
-        </Show>
+        <CollapsibleBox
+          expanded={props.expanded ?? false}
+          border={true}
+          borderColor={theme.borderSubtle}
+          paddingTop={0}
+          paddingBottom={0}
+          onMouseDown={!showAll() && hiddenCount() > 0 ? () => setShowAll(true) : undefined}
+        >
+          <For each={visibleChildren()}>
+            {(child) => <ToolRow tool={child} />}
+          </For>
+          <Show when={!showAll() && hiddenCount() > 0}>
+            <box paddingLeft={1}>
+              <text fg={theme.textMuted}>▸ {hiddenCount()} more</text>
+            </box>
+          </Show>
+        </CollapsibleBox>
       </Show>
 
       {/* ── Error ── */}

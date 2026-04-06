@@ -1,6 +1,6 @@
 import type { DispatcherDecision } from "../workflows/dispatcher/schemas";
 import type { EvaluatorResult } from "../workflows/evaluator/schemas";
-import type { WorkerResult, WorkerFailureReason } from "../orchestration/worker/schemas";
+import type { SubprocessResult, SubprocessFailureReason } from "../orchestration/engines/subprocess/schemas";
 import type { QuestionInfo, QuestionAnswer } from "../workflows/queue/question-service";
 
 // ---------------------------------------------------------------------------
@@ -17,12 +17,12 @@ export type FlywheelEvent =
   | EvaluatorFailed
   | EvaluatorRevisionRequested
   | EvaluatorOutput
-  | WorkerSpawned
-  | WorkerCompleted
-  | WorkerFailed
-  | WorkerRetrying
-  | WorkerOutput
-  | WorkerInjected
+  | SubprocessSpawned
+  | SubprocessCompleted
+  | SubprocessFailed
+  | SubprocessRetrying
+  | SubprocessOutput
+  | SubprocessInjected
   | ApprovalRequested
   | ApprovalReceived
   | QuestionAsked
@@ -37,7 +37,11 @@ export type FlywheelEvent =
   | QueueStepCompleted
   | QueueStepFailed
   | QueueStepInserted
-  | QueueStepRemoved;
+  | QueueStepRemoved
+  | TraceToolStarted
+  | TraceToolCompleted
+  | TraceSubagentStarted
+  | TraceSubagentCompleted;
 
 // -- Dispatcher events --
 
@@ -113,31 +117,31 @@ export interface EvaluatorOutput {
   timestamp: number;
 }
 
-// -- Worker events --
+// -- Subprocess events --
 
-export interface WorkerSpawned {
-  type: "worker:spawned";
+export interface SubprocessSpawned {
+  type: "subprocess:spawned";
   workflowId: string;
   stepIndex: number;
   timestamp: string;
 }
 
-export interface WorkerCompleted {
-  type: "worker:completed";
+export interface SubprocessCompleted {
+  type: "subprocess:completed";
   workflowId: string;
-  result: WorkerResult;
+  result: SubprocessResult;
   timestamp: string;
 }
 
-export interface WorkerFailed {
-  type: "worker:failed";
+export interface SubprocessFailed {
+  type: "subprocess:failed";
   workflowId: string;
-  failure: WorkerFailureReason;
+  failure: SubprocessFailureReason;
   timestamp: string;
 }
 
-export interface WorkerRetrying {
-  type: "worker:retrying";
+export interface SubprocessRetrying {
+  type: "subprocess:retrying";
   workflowId: string;
   attempt: number;
   maxAttempts: number;
@@ -145,8 +149,8 @@ export interface WorkerRetrying {
   timestamp: string;
 }
 
-export interface WorkerOutput {
-  type: "worker:output";
+export interface SubprocessOutput {
+  type: "subprocess:output";
   workflowId: string;
   stream: "stdout" | "stderr";
   data: string;
@@ -155,8 +159,8 @@ export interface WorkerOutput {
   engineId?: string;
 }
 
-export interface WorkerInjected {
-  type: "worker:injected";
+export interface SubprocessInjected {
+  type: "subprocess:injected";
   workflowId: string;
   message: string;
   timestamp: string;
@@ -297,6 +301,45 @@ export interface QueueStepRemoved {
   stepId: string;
   stepType: string;
   stepTitle: string;
+  timestamp: string;
+}
+
+// -- Trace events (from NDJSON pipeline) --
+
+export interface TraceToolStarted {
+  type: "trace:tool-started";
+  workflowId: string;
+  toolUseId: string;
+  toolName: string;
+  toolInput: string;
+  timestamp: string;
+}
+
+export interface TraceToolCompleted {
+  type: "trace:tool-completed";
+  workflowId: string;
+  toolUseId: string;
+  toolOutput: string;
+  isError: boolean;
+  timestamp: string;
+}
+
+export interface TraceSubagentStarted {
+  type: "trace:subagent-started";
+  workflowId: string;
+  toolUseId: string;
+  agentType: string;
+  description: string;
+  prompt: string;
+  timestamp: string;
+}
+
+export interface TraceSubagentCompleted {
+  type: "trace:subagent-completed";
+  workflowId: string;
+  toolUseId: string;
+  result: string;
+  isError: boolean;
   timestamp: string;
 }
 

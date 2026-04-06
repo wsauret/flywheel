@@ -1,7 +1,7 @@
 import type { FlywheelEvent, BudgetWarning } from "./events";
 import type { DispatcherDecision } from "../workflows/dispatcher/schemas";
 import type { EvaluatorResult } from "../workflows/evaluator/schemas";
-import type { WorkerResult, WorkerFailureReason } from "../orchestration/worker/schemas";
+import type { SubprocessResult, SubprocessFailureReason } from "../orchestration/engines/subprocess/schemas";
 
 export type Listener = (event: FlywheelEvent) => void;
 export type TypedListener<T extends FlywheelEvent["type"]> = (
@@ -119,12 +119,12 @@ export interface FlywheelEmitter {
   evaluatorFailed(workflowId: string, reason: string): void;
   evaluatorRevisionRequested(workflowId: string, stepIndex: number, revisionAttempt: number, maxRevisions: number, reason: string): void;
   evaluatorOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
-  workerSpawned(workflowId: string, stepIndex: number): void;
-  workerCompleted(workflowId: string, result: WorkerResult): void;
-  workerFailed(workflowId: string, failure: WorkerFailureReason): void;
-  workerRetrying(workflowId: string, attempt: number, maxAttempts: number, reason: string): void;
-  workerOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineId?: string): void;
-  workerInjected(workflowId: string, message: string): void;
+  subprocessSpawned(workflowId: string, stepIndex: number): void;
+  subprocessCompleted(workflowId: string, result: SubprocessResult): void;
+  subprocessFailed(workflowId: string, failure: SubprocessFailureReason): void;
+  subprocessRetrying(workflowId: string, attempt: number, maxAttempts: number, reason: string): void;
+  subprocessOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineId?: string): void;
+  subprocessInjected(workflowId: string, message: string): void;
   approvalRequested(workflowId: string, stepIndex: number, description: string): void;
   approvalReceived(workflowId: string, approved: boolean, skipped: boolean): void;
   // Queue lifecycle events
@@ -141,6 +141,11 @@ export interface FlywheelEmitter {
   // Budget events
   budgetWarning(workflowId: string, metric: string, used: number, limit: number, remaining: number): void;
   budgetExhausted(workflowId: string, reason: string): void;
+  // Trace events (from NDJSON pipeline)
+  traceToolStarted(workflowId: string, toolUseId: string, toolName: string, toolInput: string): void;
+  traceToolCompleted(workflowId: string, toolUseId: string, toolOutput: string, isError: boolean): void;
+  traceSubagentStarted(workflowId: string, toolUseId: string, agentType: string, description: string, prompt: string): void;
+  traceSubagentCompleted(workflowId: string, toolUseId: string, result: string, isError: boolean): void;
 }
 
 function now(): string {
@@ -167,18 +172,18 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "evaluator:revision-requested", workflowId, stepIndex, revisionAttempt, maxRevisions, reason, timestamp: Date.now() }),
     evaluatorOutput: (workflowId, stream, data, engineName) =>
       bus.emit({ type: "evaluator:output", workflowId, stream, data, engineName, timestamp: Date.now() }),
-    workerSpawned: (workflowId, stepIndex) =>
-      bus.emit({ type: "worker:spawned", workflowId, stepIndex, timestamp: now() }),
-    workerCompleted: (workflowId, result) =>
-      bus.emit({ type: "worker:completed", workflowId, result, timestamp: now() }),
-    workerFailed: (workflowId, failure) =>
-      bus.emit({ type: "worker:failed", workflowId, failure, timestamp: now() }),
-    workerRetrying: (workflowId, attempt, maxAttempts, reason) =>
-      bus.emit({ type: "worker:retrying", workflowId, attempt, maxAttempts, reason, timestamp: now() }),
-    workerOutput: (workflowId, stream, data, engineId?) =>
-      bus.emit({ type: "worker:output", workflowId, stream, data, timestamp: now(), ...(engineId !== undefined ? { engineId } : {}) }),
-    workerInjected: (workflowId, message) =>
-      bus.emit({ type: "worker:injected", workflowId, message, timestamp: now() }),
+    subprocessSpawned: (workflowId, stepIndex) =>
+      bus.emit({ type: "subprocess:spawned", workflowId, stepIndex, timestamp: now() }),
+    subprocessCompleted: (workflowId, result) =>
+      bus.emit({ type: "subprocess:completed", workflowId, result, timestamp: now() }),
+    subprocessFailed: (workflowId, failure) =>
+      bus.emit({ type: "subprocess:failed", workflowId, failure, timestamp: now() }),
+    subprocessRetrying: (workflowId, attempt, maxAttempts, reason) =>
+      bus.emit({ type: "subprocess:retrying", workflowId, attempt, maxAttempts, reason, timestamp: now() }),
+    subprocessOutput: (workflowId, stream, data, engineId?) =>
+      bus.emit({ type: "subprocess:output", workflowId, stream, data, timestamp: now(), ...(engineId !== undefined ? { engineId } : {}) }),
+    subprocessInjected: (workflowId, message) =>
+      bus.emit({ type: "subprocess:injected", workflowId, message, timestamp: now() }),
     approvalRequested: (workflowId, stepIndex, description) =>
       bus.emit({ type: "approval:requested", workflowId, stepIndex, description, timestamp: now() }),
     approvalReceived: (workflowId, approved, skipped) =>
@@ -207,5 +212,14 @@ export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
       bus.emit({ type: "budget:warning", workflowId, metric: metric as BudgetWarning["metric"], used, limit, remaining, timestamp: now() }),
     budgetExhausted: (workflowId, reason) =>
       bus.emit({ type: "budget:exhausted", workflowId, reason, timestamp: now() }),
+    // Trace events
+    traceToolStarted: (workflowId, toolUseId, toolName, toolInput) =>
+      bus.emit({ type: "trace:tool-started", workflowId, toolUseId, toolName, toolInput, timestamp: now() }),
+    traceToolCompleted: (workflowId, toolUseId, toolOutput, isError) =>
+      bus.emit({ type: "trace:tool-completed", workflowId, toolUseId, toolOutput, isError, timestamp: now() }),
+    traceSubagentStarted: (workflowId, toolUseId, agentType, description, prompt) =>
+      bus.emit({ type: "trace:subagent-started", workflowId, toolUseId, agentType, description, prompt, timestamp: now() }),
+    traceSubagentCompleted: (workflowId, toolUseId, result, isError) =>
+      bus.emit({ type: "trace:subagent-completed", workflowId, toolUseId, result, isError, timestamp: now() }),
   };
 }

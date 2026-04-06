@@ -17,16 +17,17 @@
  */
 
 import { randomUUID } from "node:crypto"
-import { BunProcessSpawner } from "../orchestration/worker/bun-spawner"
-import { formatStdinMessage } from "../orchestration/worker/stdin-format"
+import { BunProcessSpawner } from "../orchestration/engines/subprocess/bun-spawner"
+import { formatStdinMessage } from "../orchestration/engines/subprocess/stdin-format"
 import { getEngine } from "../orchestration/engines/core/registry"
-import { NDJSONParser } from "../orchestration/worker/ndjson-parser"
+import { NDJSONParser } from "../orchestration/engines/subprocess/ndjson-parser"
 import { StructuredOutputBuilder } from "./adapters/structured-output-builder"
 import { StructuredEventParser } from "./adapters/structured-event-parser"
-import { SubagentTraceParser } from "./adapters/subagent-tracing/parser"
 import { createBudgetTracker, type BudgetTracker } from "../orchestration/session/budget-tracker"
 import { prepareWorkflowDeps } from "../orchestration/engines/workflow-deps"
-import type { ProcessSpawner, StdinHandle } from "../orchestration/worker/spawner"
+import type { TraceCollector } from "../orchestration/session/trace-collector"
+import { feedChatEventToTrace } from "./chat-tracing"
+import type { ProcessSpawner, StdinHandle } from "../orchestration/engines/subprocess/spawner"
 import type { AnyBlock } from "./types"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
@@ -64,6 +65,7 @@ export interface ChatSessionOptions {
   projectCwd?: string
   deps?: ReturnType<typeof prepareWorkflowDeps>
   spawner?: ProcessSpawner
+  traceCollector?: TraceCollector
 }
 
 export async function startChatSession(
@@ -75,9 +77,11 @@ export async function startChatSession(
   const deps = overrides?.deps ?? prepareWorkflowDeps()
   const engineName = deps.config.engine
   const engine = getEngine(engineName)
-  const model = deps.config.worker?.model ?? deps.config.model ?? engine.metadata.defaultModel
+  const model = deps.config.subprocess?.model ?? deps.config.model ?? engine.metadata.defaultModel
 
   const spawner = overrides?.spawner ?? new BunProcessSpawner()
+  const traceCollector = overrides?.traceCollector ?? null
+  const toolSpanMap = new Map<string, string>()
   const sessionId = randomUUID()
 
   // Budget tracker
@@ -88,17 +92,9 @@ export async function startChatSession(
   let agentActive = false
   builder.onModelActivityChange = (activity) => {
     callbacks.onModelActivity(activity)
-    if (activity === "idle" && agentActive) {
-      agentActive = false
-      if (builder.resolvePendingMessages()) {
-        callbacks.onBlocksChanged(builder.getBlocks())
-      }
-    } else if (activity !== "idle") {
-      agentActive = true
-    }
+    if (activity !== "idle") agentActive = true
   }
-  const traceParser = new SubagentTraceParser()
-  const eventParser = new StructuredEventParser({ traceParser, builder })
+  const eventParser = new StructuredEventParser({ builder })
   const ndjsonParser = new NDJSONParser()
 
   ndjsonParser.onEvent = (event) => {
@@ -111,6 +107,7 @@ export async function startChatSession(
     }
     eventParser.dispatch(event, engineName)
     budgetTracker.handleEvent(event)
+    if (traceCollector) feedChatEventToTrace(event, traceCollector, toolSpanMap)
   }
   ndjsonParser.onRawText = (text) => {
     if (text.trim().length > 0) builder.pushText(text + "\n", Date.now())
@@ -139,8 +136,8 @@ export async function startChatSession(
   // messageToSend: written to stdin immediately after spawn (used for reconnect path
   //                where the user message triggered the respawn).
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
-    budgetTracker.onNewWorker()
-    const engineCmd = engine.buildCommand({ prompt: "", model, resumeSessionId })
+    budgetTracker.onNewSubprocess()
+    const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
     // Only send content if there's a message — an empty pipe lets Claude idle and
     // wait rather than responding to a no-op greeting and potentially exiting.
@@ -157,6 +154,8 @@ export async function startChatSession(
       onTurnComplete: () => {
         // Capture Claude's session ID on every turn so reconnect is always possible
         if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
+        agentActive = false
+        builder.resolvePendingMessages()
         callbacks.onWaitingChanged(false)
         callbacks.onModelActivity("idle")
         if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
@@ -207,6 +206,10 @@ export async function startChatSession(
     if (ended) return
     ended = true
     clearInterval(flushInterval)
+    if (traceCollector) {
+      traceCollector.finalize("ok")
+      traceCollector.dispose()
+    }
     builder.dispose()
     budgetTracker.flush()
     if (stdinHandle?.isOpen) {

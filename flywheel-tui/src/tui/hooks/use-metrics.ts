@@ -17,7 +17,6 @@ export interface MetricsHook {
   stopTimer(): void
   resetMetrics(): void
   resetElapsedTo(ms: number): void
-  thinkingStartTimeRef: { current: number }
 }
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠸", "⠴", "⠦", "⠇"]
@@ -34,12 +33,20 @@ export function useMetrics(): MetricsHook {
   let elapsedTimer: ReturnType<typeof setInterval> | null = null
   let elapsedAccum = 0
   let elapsedRunStart = 0
-  const thinkingStartTimeRef = { current: 0 }
+  let thinkingStart = 0
 
   const spinnerTimer = setInterval(() => {
     setSpinnerTick((t) => (t + 1) % SPINNER_FRAMES.length)
-    if (thinkingStartTimeRef.current > 0) {
-      setThinkingElapsed(Math.floor((Date.now() - thinkingStartTimeRef.current) / 1000))
+    // Derive thinking elapsed from liveActivity — no external ref needed
+    const activity = liveActivity()
+    if (activity === "thinking") {
+      if (thinkingStart === 0) thinkingStart = Date.now()
+      setThinkingElapsed(Math.floor((Date.now() - thinkingStart) / 1000))
+    } else {
+      if (thinkingStart !== 0) {
+        thinkingStart = 0
+        setThinkingElapsed(0)
+      }
     }
   }, 150)
   onCleanup(() => clearInterval(spinnerTimer))
@@ -65,7 +72,7 @@ export function useMetrics(): MetricsHook {
     elapsedAccum = 0
     setLiveTokens(0)
     setLiveCost(0)
-    thinkingStartTimeRef.current = 0
+    thinkingStart = 0
     setThinkingElapsed(0)
     setLiveActivity("idle")
   }
@@ -93,7 +100,6 @@ export function useMetrics(): MetricsHook {
     stopTimer,
     resetMetrics,
     resetElapsedTo,
-    thinkingStartTimeRef,
   }
 }
 

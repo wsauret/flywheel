@@ -7,43 +7,61 @@
  *
  * Pipeline position:
  *   NDJSONParser.onEvent → StructuredEventParser.dispatch() →
- *     SubagentTraceParser + StructuredOutputBuilder
+ *     StructuredOutputBuilder
  */
 
-import type { NDJSONEvent } from "../../orchestration/worker/ndjson-parser";
-import { isSubagentToolName, type ClaudeJsonlMessage } from "./subagent-tracing/types";
-import type { SubagentTraceParser } from "./subagent-tracing/parser";
+import { randomUUID } from "node:crypto";
+import type { NDJSONEvent } from "../../orchestration/engines/subprocess/ndjson-parser";
 import type { StructuredOutputBuilder } from "./structured-output-builder";
 import { getToolDetail, extractToolDiff } from "./output-formatter";
+
+// ── Helpers ──
+
+/**
+ * Tool names that indicate a subagent spawn (matched case-insensitively).
+ *
+ * Claude Code uses two names depending on the agent type:
+ * - "Task" — user-dispatched subagents
+ * - "Agent" — Claude Code's built-in agents (Explore, Plan, etc.)
+ */
+const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
+
+/** Check if a tool name represents a subagent spawn. */
+export function isSubagentToolName(name: string): boolean {
+  return SUBAGENT_TOOL_NAMES.has(name.toLowerCase());
+}
 
 // ── Types ──
 
 export interface StructuredEventParserOptions {
-  traceParser: SubagentTraceParser;
   builder: StructuredOutputBuilder;
+}
+
+/** Tracked subagent state for duration computation. */
+interface TrackedSubagent {
+  agentId: string;
+  spawnedAt: number;
 }
 
 // ── Parser ──
 
 export class StructuredEventParser {
-  private traceParser: SubagentTraceParser;
   private builder: StructuredOutputBuilder;
 
   /**
-   * Maps Claude tool_use IDs to builder agent IDs.
-   * When a Task tool_use spawns an agent, we store toolUseId → builderAgentId.
+   * Maps Claude tool_use IDs to builder agent IDs + spawn timestamps.
+   * When a Task tool_use spawns an agent, we store toolUseId → { agentId, spawnedAt }.
    * Child messages with `parent_tool_use_id` use this to route tools to the correct agent.
    */
-  private toolUseIdToAgentId = new Map<string, string>();
+  private toolUseIdToAgent = new Map<string, TrackedSubagent>();
 
   constructor(options: StructuredEventParserOptions) {
-    this.traceParser = options.traceParser;
     this.builder = options.builder;
   }
 
   /** Reset parser state (call on step transitions). */
   reset(): void {
-    this.toolUseIdToAgentId.clear();
+    this.toolUseIdToAgent.clear();
   }
 
   /**
@@ -76,17 +94,19 @@ export class StructuredEventParser {
       // result event is handled by CompletionDetector for completion signaling.
     } else if (type === "tool_result") {
       // Tool results correlate with subagent completions
-      const claudeMsg: ClaudeJsonlMessage = {
-        type: "result",
-        result: typeof data.content === "string" ? data.content : undefined,
-        raw: data,
-      };
-      const events = this.traceParser.processMessage(claudeMsg);
-      for (const subEvent of events) {
-        if (subEvent.type === "complete") {
-          this.builder.completeAgent(subEvent.id, subEvent.durationMs, 0);
-        } else if (subEvent.type === "error") {
-          this.builder.errorAgent(subEvent.id, subEvent.errorMessage);
+      const toolUseId = data.tool_use_id as string | undefined;
+      if (toolUseId) {
+        const tracked = this.toolUseIdToAgent.get(toolUseId);
+        if (tracked) {
+          const durationMs = now - tracked.spawnedAt;
+          const isError = data.is_error === true;
+          if (isError) {
+            const content = typeof data.content === "string" ? data.content : "Unknown error";
+            this.builder.errorAgent(tracked.agentId, content);
+          } else {
+            this.builder.completeAgent(tracked.agentId, durationMs, 0);
+          }
+          this.toolUseIdToAgent.delete(toolUseId);
         }
       }
     }
@@ -103,7 +123,7 @@ export class StructuredEventParser {
     // Claude Code stream-json: each assistant message has parent_tool_use_id
     // (null for top-level, tool_use ID for child messages inside a subagent).
     const parentToolUseId = (message?.parent_tool_use_id ?? data.parent_tool_use_id) as string | null | undefined;
-    const parentAgentId = parentToolUseId ? this.toolUseIdToAgentId.get(parentToolUseId) : undefined;
+    const parentAgentId = parentToolUseId ? this.toolUseIdToAgent.get(parentToolUseId)?.agentId : undefined;
 
     for (const block of content) {
       const blockType = block.type as string | undefined;
@@ -125,25 +145,15 @@ export class StructuredEventParser {
         const toolUseId = block.id as string | undefined;
 
         if (name && isSubagentToolName(name)) {
-          // Subagent spawn: send through trace parser, then create AgentBlock
-          const claudeMsg: ClaudeJsonlMessage = {
-            type: "assistant",
-            tool: { name, input },
-            raw: data,
-          };
-          const subEvents = this.traceParser.processMessage(claudeMsg);
-          for (const subEvent of subEvents) {
-            if (subEvent.type === "spawn") {
-              const desc = (input?.description as string) || subEvent.description || name;
-              // Use subagent_type from input if available, otherwise use the tool name
-              const label = (input?.subagent_type as string) || name;
-              this.builder.startAgent(subEvent.id, label, desc, now);
-              // Map the tool_use ID to the builder agent ID so child messages
-              // with parent_tool_use_id can route tools to this agent.
-              if (toolUseId) {
-                this.toolUseIdToAgentId.set(toolUseId, subEvent.id);
-              }
-            }
+          // Subagent spawn: generate ID, create AgentBlock, track for completion
+          const agentId = randomUUID();
+          const desc = (input?.description as string) || name;
+          const label = (input?.subagent_type as string) || name;
+          this.builder.startAgent(agentId, label, desc, now);
+          // Map the tool_use ID to the agent so child messages with
+          // parent_tool_use_id can route tools, and tool_result can complete it.
+          if (toolUseId) {
+            this.toolUseIdToAgent.set(toolUseId, { agentId, spawnedAt: now });
           }
         } else if (name) {
           // Regular tool use — route to parent agent if this is a child message
