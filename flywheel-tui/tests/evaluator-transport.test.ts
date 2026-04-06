@@ -2,10 +2,21 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import type { EvaluatorInput, EvaluatorResult } from "../src/workflows/evaluator/schemas";
 import type { ProcessSpawner, SpawnOptions } from "../src/orchestration/worker/spawner";
 import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
+import { getEngine } from "../src/orchestration/engines/core/registry";
+import { createEnvFilter } from "../src/orchestration/worker/env-filter";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Create DI deps for evaluator transport tests. */
+function makeTransportDeps(engineName = "claude") {
+  const engine = getEngine(engineName);
+  const envFilter = createEnvFilter();
+  const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
+    engine.buildEvaluatorCommand(opts);
+  return { engine, envFilter, buildCommand };
+}
 
 function validEvaluatorResult(overrides?: Partial<EvaluatorResult>): EvaluatorResult {
   return {
@@ -133,7 +144,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -143,8 +154,10 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     expect(spawnedArgs).toContain("-p");
     expect(spawnedArgs).toContain("--tools");
     expect(spawnedArgs).toContain("--no-session-persistence");
-    // No --effort flag — agent needs full reasoning for investigation
-    expect(spawnedArgs).not.toContain("--effort");
+    // Effort defaults to "low" when no tierConfig is set
+    expect(spawnedArgs).toContain("--effort");
+    const effortIdx = spawnedArgs.indexOf("--effort");
+    expect(spawnedArgs[effortIdx + 1]).toBe("low");
   });
 
   it("uses engine registry for command building (not hardcoded)", async () => {
@@ -170,7 +183,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -205,7 +218,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -219,8 +232,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
     const toolsIdx = spawnedArgs.indexOf("--tools");
     expect(spawnedArgs[toolsIdx + 1]).toBe("Read,Bash,Write,Grep,Glob");
     expect(spawnedArgs).toContain("--model");
-    // No --effort flag — agent needs full reasoning for investigation
-    expect(spawnedArgs).not.toContain("--effort");
+    // Effort defaults to "low" when no tierConfig is set
+    expect(spawnedArgs).toContain("--effort");
   });
 
   it("Claude route uses --system-prompt for evaluator prompt (separate for caching)", async () => {
@@ -244,7 +257,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -281,7 +294,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -317,8 +330,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
-      // No evaluatorModel — should use engine default
+      ...makeTransportDeps("claude"),
+      // No tierConfig.model — should use engine default
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -354,8 +367,8 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
-      evaluatorModel: "haiku",
+      ...makeTransportDeps("claude"),
+      tierConfig: { model: "haiku" },
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -371,27 +384,9 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
   // -----------------------------------------------------------------------
 
   it("throws clear error when engine binary not found (unknown engine)", async () => {
-    const mockSpawner: ProcessSpawner = {
-      async spawn() {
-        return {
-          result: Promise.resolve({
-            output: JSON.stringify(validEvaluatorResult()),
-            exitCode: 0,
-            truncated: false,
-            durationMs: 100,
-            handoffPath: "/tmp/unused",
-          }),
-        };
-      },
-    };
-
+    // getEngine throws for unknown engines — verify the registry rejects bad names
     try {
-      new SubprocessEvaluatorTransport({
-        spawner: mockSpawner,
-        engineName: "nonexistent-engine",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-      });
+      makeTransportDeps("nonexistent-engine");
       // If we get here, the test should fail
       expect(true).toBe(false);
     } catch (err: any) {
@@ -409,7 +404,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -422,7 +417,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -443,7 +438,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -458,7 +453,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -486,7 +481,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -515,7 +510,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -565,7 +560,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -606,7 +601,7 @@ describe("SubprocessEvaluatorTransport: engine-aware command building", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -672,7 +667,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -692,7 +687,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -709,7 +704,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -728,7 +723,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -748,7 +743,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -765,7 +760,7 @@ describe("SubprocessEvaluatorTransport: prompt optimization (VAL-PROMPT-003)", (
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });

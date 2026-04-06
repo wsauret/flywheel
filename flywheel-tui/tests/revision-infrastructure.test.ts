@@ -4,8 +4,8 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
 } from "../src/orchestration/config/loader";
-import { EventBus, createFlywheelEmitter } from "../src/protocol/event-bus";
-import type { FlywheelEvent } from "../src/protocol/events";
+import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
+import type { FlywheelEvent } from "../src/infra/events";
 import { WorkerResultSchema } from "../src/orchestration/worker/schemas";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
 

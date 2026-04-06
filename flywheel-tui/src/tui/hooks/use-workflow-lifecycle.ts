@@ -3,14 +3,16 @@ import type { SessionManager } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { Accessor } from "solid-js"
 import type { AnyBlock } from "../types.js"
-import type { StepType } from "../../workflows/queue/types.js"
+import type { StepType } from "../../infra/step-types.js"
 import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
 import { buildQueueForSlashCommand } from "../../orchestration/queue-builder.js"
 import { prepareWorkflowDeps } from "../../orchestration/engines/workflow-deps.js"
 import { loadResumeData, findResumableSession } from "../../orchestration/session-actions.js"
-import { errorMessage as extractErrorMessage } from "../../workflows/shared/error-message.js"
+import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
+import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from "../../orchestration/test-step.js"
 
-export type AppState = "idle" | "working" | "paused" | "completed" | "error" | "chatting"
+export type AgentState = "idle" | "active"
+export type SessionStatus = null | "running" | "paused" | "completed" | "error"
 
 export interface WorkflowLifecycleDeps {
   registry: SessionRegistry
@@ -18,7 +20,8 @@ export interface WorkflowLifecycleDeps {
   refreshList: () => void
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
-  setAppState: (state: AppState) => void
+  setAgentState: (state: AgentState) => void
+  setSessionStatus: (status: SessionStatus) => void
   setOutputBlocks: (blocks: AnyBlock[]) => void
   setSteps: (steps: import("../../orchestration/workflow-runner.js").StepState[]) => void
   setErrorMessage: (msg: string) => void
@@ -26,14 +29,12 @@ export interface WorkflowLifecycleDeps {
   setSessionTitle: (title: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
-  startTimer: () => void
-  pauseTimer: () => void
-  stopTimer: () => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }
 
 export interface WorkflowLifecycleHook {
   startWorkflow(command: string, description: string): Promise<void>
+  startTestStep(stepId?: string): Promise<void>
   resumeWorkflow(sessionId: string): Promise<void>
   pauseForeground(): void
   abortForeground(): void
@@ -55,8 +56,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     deps.setStatusLine("")
     deps.setSessionTitle(description || command)
     deps.resetMetrics()
-    deps.startTimer()
-    deps.setAppState("working")
+    deps.setAgentState("active")
+    deps.setSessionStatus("running")
     deps.setTerminalTitle(`flywheel · ${description || command}`)
 
     let queue
@@ -65,7 +66,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       queue = buildQueueForSlashCommand(command, wfDeps.config)
     } catch (err) {
       deps.setErrorMessage(`Config error: ${extractErrorMessage(err)}`)
-      deps.setAppState("error")
+      deps.setAgentState("idle")
+      deps.setSessionStatus("error")
       return
     }
 
@@ -90,8 +92,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     deps.setStatusLine("")
     deps.setSessionTitle(description || "Resumed session")
     deps.resetMetrics()
-    deps.startTimer()
-    deps.setAppState("working")
+    deps.setAgentState("active")
+    deps.setSessionStatus("running")
     deps.setTerminalTitle(`flywheel · ${description || "resume"}`)
 
     safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
@@ -104,9 +106,9 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     const fgId = deps.foregroundId()
     if (!fgId) return
     deps.registry.pause(fgId)
-    deps.pauseTimer()
     deps.resetMetrics()
-    deps.setAppState("paused")
+    deps.setAgentState("idle")
+    deps.setSessionStatus("paused")
     deps.showToast({ message: "Pausing after current step... (Esc to force stop)", variant: "info" })
   }
 
@@ -130,5 +132,58 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     await resumeWorkflow(targetId)
   }
 
-  return { startWorkflow, resumeWorkflow, pauseForeground, abortForeground, handleResume, actionDeps }
+  async function startTestStep(stepId?: string): Promise<void> {
+    if (!stepId) {
+      const ids = TEST_STEPS.map(s => s.id).join(", ")
+      deps.showToast({ message: `Available test steps: ${ids}. Usage: /test <step-id>`, variant: "info" })
+      return
+    }
+
+    const stepDef = TEST_STEPS.find(s => s.id === stepId)
+    if (!stepDef) {
+      deps.showToast({ message: `Unknown test step "${stepId}". Available: ${TEST_STEPS.map(s => s.id).join(", ")}`, variant: "error" })
+      return
+    }
+
+    deps.setOutputBlocks([])
+    deps.setSteps([])
+    deps.setErrorMessage("")
+    deps.setStatusLine("")
+    deps.setSessionTitle(`[test] ${stepDef.label}`)
+    deps.resetMetrics()
+    deps.setAgentState("active")
+    deps.setSessionStatus("running")
+    deps.setTerminalTitle(`flywheel · [test] ${stepDef.label}`)
+
+    let queue
+    let workdir: ReturnType<typeof createTestWorkdir> | null = null
+    try {
+      const wfDeps = prepareWorkflowDeps()
+      const projectCwd = wfDeps.config.project_cwd ?? process.cwd()
+      workdir = createTestWorkdir(projectCwd)
+      const fixture = setupTestFixture(stepDef, projectCwd)
+      queue = buildTestQueue(stepDef, fixture)
+    } catch (err) {
+      workdir?.cleanup()
+      deps.setErrorMessage(`Test step error: ${extractErrorMessage(err)}`)
+      deps.setAgentState("idle")
+      deps.setSessionStatus("error")
+      return
+    }
+
+    const testWorkdir = workdir
+    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, stepDef.type)
+    safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
+
+    deps.registry.start({
+      sessionId,
+      queue,
+      description: `[test] ${stepDef.label}`,
+      workerCwd: testWorkdir.path,
+      onComplete: () => testWorkdir.cleanup(),
+    })
+    deps.setForegroundId(sessionId)
+  }
+
+  return { startWorkflow, startTestStep, resumeWorkflow, pauseForeground, abortForeground, handleResume, actionDeps }
 }

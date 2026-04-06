@@ -1,5 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
+import { getEngine } from "../src/orchestration/engines/core/registry";
+import { createEnvFilter } from "../src/orchestration/worker/env-filter";
 
 // ---------------------------------------------------------------------------
 // Test fixtures — realistic evaluator inputs
@@ -206,22 +208,18 @@ describe("verify-evaluator: engine binary availability", () => {
     // If claude is not installed, this should throw with a descriptive message
     const claudeAvailable = Bun.which("claude") !== null;
     if (!claudeAvailable) {
+      const engine = getEngine("claude");
+      const envFilter = createEnvFilter();
+      const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
+        engine.buildEvaluatorCommand(opts);
       expect(() => {
-        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "claude", sessionId: "test-session", baseDir: "/tmp/test" });
+        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engine, envFilter, buildCommand, sessionId: "test-session", baseDir: "/tmp/test" });
       }).toThrow(/claude CLI not found/);
     }
 
-    // If opencode is not installed, this should throw with a descriptive message
-    const opencodeAvailable = Bun.which("opencode") !== null;
-    if (!opencodeAvailable) {
-      expect(() => {
-        new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "opencode", sessionId: "test-session", baseDir: "/tmp/test" });
-      }).toThrow(/opencode CLI not found/);
-    }
-
-    // Unknown engine always throws
+    // Unknown engine always throws via getEngine
     expect(() => {
-      new SubprocessEvaluatorTransport({ spawner: mockSpawner, engineName: "nonexistent", sessionId: "test-session", baseDir: "/tmp/test" });
+      getEngine("nonexistent");
     }).toThrow(/Unknown engine/);
   });
 });

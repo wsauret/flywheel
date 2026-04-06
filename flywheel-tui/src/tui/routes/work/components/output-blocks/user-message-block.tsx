@@ -6,6 +6,7 @@
  * Left border in secondary color + panel background + padded text.
  */
 
+import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { EmptyBorder } from "@tui/shared/ui/border"
 import type { UserMessageBlock as UserMessageBlockType } from "@tui/types"
@@ -16,12 +17,13 @@ export interface UserMessageBlockProps {
 
 export function UserMessageBlock(props: UserMessageBlockProps) {
   const { theme, syntax } = useTheme()
+  const pending = () => props.block.pending === true
 
   return (
     <box
       marginTop={1}
       border={["left"]}
-      borderColor={theme.secondary}
+      borderColor={pending() ? theme.textMuted : theme.secondary}
       customBorderChars={{
         ...EmptyBorder,
         vertical: "┃",
@@ -40,8 +42,9 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
           content={props.block.content}
           streaming={false}
           conceal={true}
-          fg={theme.text}
+          fg={pending() ? theme.textMuted : theme.text}
         />
+        {pending() && <text fg={theme.textMuted} attributes={createTextAttributes({ italic: true })}> (queued)</text>}
       </box>
     </box>
   )

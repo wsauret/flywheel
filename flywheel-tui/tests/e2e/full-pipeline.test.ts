@@ -33,16 +33,16 @@ import {
   type EvaluatorFn,
   type HandoffReaderFn,
 } from "../../src/workflows/queue/executor";
-import { EventBus, createFlywheelEmitter } from "../../src/protocol/event-bus";
+import { EventBus, createFlywheelEmitter } from "../../src/infra/event-bus";
 import { readHandoff } from "../../src/workflows/queue/shared/handoff-reader";
-import { WorkerHandoffSchema } from "../../src/protocol/handoff-schemas";
+import { WorkerHandoffSchema } from "../../src/infra/handoff-schemas";
 import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
 import { ContextIndexer } from "../../src/orchestration/memory/indexer";
 import {
   ensureSessionDir,
   buildWorkerHandoffPath,
   sessionDir,
-} from "../../src/orchestration/config/paths";
+} from "../../src/infra/paths";
 import { getEngine } from "../../src/orchestration/engines/core/registry";
 import { createBudgetTracker, type BudgetTracker } from "../../src/orchestration/session/budget-tracker";
 import { formatStdinMessage } from "../../src/orchestration/worker/stdin-format";

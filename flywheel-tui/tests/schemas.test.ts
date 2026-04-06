@@ -23,7 +23,7 @@ import {
   LastWorkerResultSchema,
   WorkflowStepBaseSchema,
 } from "../src/workflows/schemas";
-import { EventBus, createFlywheelEmitter } from "../src/protocol/event-bus";
+import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
 
 // ---------------------------------------------------------------------------
 // DispatcherDecisionSchema (.strip() — LLM output)
@@ -1518,7 +1518,7 @@ describe("Integration — full data contract flow", () => {
   it("event payloads carry expanded types correctly", () => {
     const bus = new EventBus();
     const emitter = createFlywheelEmitter(bus);
-    const events: import("../src/protocol/events").FlywheelEvent[] = [];
+    const events: import("../src/infra/events").FlywheelEvent[] = [];
     bus.subscribe((e) => events.push(e));
 
     // Emit dispatcher:completed with a decision containing new fields
@@ -1531,7 +1531,7 @@ describe("Integration — full data contract flow", () => {
 
     // Verify dispatcher event payload
     const dispEvent = events.find((e) => e.type === "dispatcher:completed") as
-      import("../src/protocol/events").DispatcherCompleted;
+      import("../src/infra/events").DispatcherCompleted;
     expect(dispEvent).toBeDefined();
     expect(dispEvent.decision.schema_version).toBe(1);
     expect(dispEvent.decision.reasoning).toBe("Step 2 requires both implementation and test coverage.");
@@ -1541,7 +1541,7 @@ describe("Integration — full data contract flow", () => {
 
     // Verify evaluator event payload
     const evalEvent = events.find((e) => e.type === "evaluator:completed") as
-      import("../src/protocol/events").EvaluatorCompleted;
+      import("../src/infra/events").EvaluatorCompleted;
     expect(evalEvent).toBeDefined();
     expect(evalEvent.result.confidence).toBe(0.92);
     expect(evalEvent.result.feedback).toBe("Solid implementation with good error handling coverage.");

@@ -311,3 +311,5 @@ export interface QueueStepRemoved {
 export function assertNever(event: never): never {
   throw new Error(`Unhandled event type: ${(event as FlywheelEvent).type}`);
 }
+
+export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing";

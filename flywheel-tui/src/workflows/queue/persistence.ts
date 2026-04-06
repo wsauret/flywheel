@@ -28,7 +28,7 @@ import {
   createDebouncedWriter,
   type DebouncedWriter,
 } from "../shared/debounced-writer";
-import { resolveSessionFile } from "../../orchestration/config/paths";
+import { resolveSessionFile } from "../../infra/paths";
 import type { Queue } from "./types";
 import type { AccumulatorState } from "./context-accumulator";
 

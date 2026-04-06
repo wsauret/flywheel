@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
 import { getEngine } from "../../src/orchestration/engines/core/registry";
-import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/orchestration/config/paths";
+import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/infra/paths";
 import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
 import { formatStdinMessage } from "../../src/orchestration/worker/stdin-format";
 import type { Step } from "../../src/workflows/queue/types";

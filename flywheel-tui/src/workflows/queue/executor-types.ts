@@ -8,7 +8,7 @@
 
 import type { Step, Queue } from "./types";
 import type { OnStepCompletedHook } from "./shared/hooks";
-import type { FlywheelEmitter } from "../../protocol/event-bus";
+import type { FlywheelEmitter } from "../../infra/event-bus";
 
 // ---------------------------------------------------------------------------
 // Gate step — QuestionService interface (minimal, for DI)

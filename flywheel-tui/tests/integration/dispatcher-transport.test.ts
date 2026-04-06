@@ -25,8 +25,8 @@ import {
   type StepDispatchContext,
 } from "../../src/workflows/queue/step-dispatcher";
 import { createQueue } from "../../src/workflows/queue/queue";
-import { EventBus, createFlywheelEmitter } from "../../src/protocol/event-bus";
-import { ensureSessionDir } from "../../src/orchestration/config/paths";
+import { EventBus, createFlywheelEmitter } from "../../src/infra/event-bus";
+import { ensureSessionDir } from "../../src/infra/paths";
 import type { Step, Queue } from "../../src/workflows/queue/types";
 import type { ProcessSpawner, SpawnResult } from "../../src/orchestration/worker/spawner";
 

@@ -10,10 +10,9 @@
 
 import * as fs from "node:fs"
 import { loadConfig } from "../config/loader"
-import { CONFIG_FILES } from "../config/paths"
+import { CONFIG_FILES } from "../../infra/paths"
 import { getEngine } from "./core/registry"
 import { BunProcessSpawner } from "../worker/bun-spawner"
-import { loadAgentsJson } from "../../workflows/agents/loader.js"
 import type { FlywheelConfig } from "../config/loader"
 import type { Engine } from "./core/types"
 import type { ProcessSpawner } from "../worker/spawner"
@@ -22,8 +21,6 @@ export interface WorkflowDeps {
   config: FlywheelConfig
   engine: Engine
   spawner: ProcessSpawner
-  /** Pre-serialized agent definitions JSON for --agents flag (--bare mode). */
-  agentsJson: string
 }
 
 /** Dependency injection hooks for testing. */
@@ -61,7 +58,5 @@ export function prepareWorkflowDeps(overrides?: WorkflowDepsOverrides): Workflow
     ? overrides.createSpawner(config.timeout_minutes)
     : defaultCreateSpawner(config.timeout_minutes, engine)
 
-  const agentsJson = loadAgentsJson()
-
-  return { config, engine, spawner, agentsJson }
+  return { config, engine, spawner }
 }

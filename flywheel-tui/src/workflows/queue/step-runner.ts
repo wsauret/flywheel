@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
-import type { FlywheelEmitter } from "../../protocol/event-bus";
+import type { FlywheelEmitter } from "../../infra/event-bus";
 import type {
   EvalResult,
   DispatcherFn,
@@ -19,8 +19,8 @@ import type { Guardrails } from "./guardrails";
 import { type Provenance } from "./queue";
 import { executeWithRevisions } from "./revision-loop.js";
 import { raceAbort } from "./abort-utils.js";
-import { Log } from "../shared/log";
-import { errorMessage } from "../shared/error-message";
+import { Log } from "../../infra/log";
+import { errorMessage } from "../../infra/error-message";
 
 const log = Log.create({ service: "step-executor" });
 

@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { resolveSessionHandoffsDir } from "../src/orchestration/config/paths";
+import { resolveSessionHandoffsDir } from "../src/infra/paths";
 import { BunProcessSpawner } from "../src/orchestration/worker/bun-spawner";
 
 describe("BunProcessSpawner", () => {

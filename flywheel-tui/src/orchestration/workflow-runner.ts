@@ -17,10 +17,10 @@ import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracke
 import { createOutputPersistence, type OutputFlusher } from "./session/output-persistence"
 import { OpenTUIAdapter } from "../tui/adapters/opentui"
 import { createStore as createUIStore } from "../tui/routes/work/context/ui-state/store"
-import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../protocol/event-bus"
+import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
 import { randomUUID } from "node:crypto"
-import { Log } from "../workflows/shared/log"
+import { Log } from "../infra/log"
 import { formatStdinMessage } from "./worker/stdin-format"
 import type { StdinHandle } from "./worker/spawner"
 import type { Queue } from "../workflows/queue/types"
@@ -45,7 +45,7 @@ export interface WorkflowCallbacks {
   onTokens: (n: number) => void
   onCost: (n: number) => void
   onSessionName: (name: string) => void
-  onModelActivity?: (activity: import("../tui/adapters/structured-output-builder").ModelActivity) => void
+  onModelActivity?: (activity: import("../infra/events").ModelActivity) => void
 }
 
 export interface WorkflowResult {
@@ -59,6 +59,10 @@ export interface WorkflowResult {
 
 export interface WorkflowRunnerOverrides {
   projectCwd?: string
+  /** Override the worker process cwd. Defaults to projectCwd.
+   * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
+   * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
+  workerCwd?: string
   eventBus?: EventBus
   contextIndexer?: ContextIndexer
   budgetTracker?: BudgetTracker
@@ -105,6 +109,7 @@ export function createWorkflowRunner(opts: {
 }): WorkflowRunner {
   const { sessionId, queue, description, callbacks, priorBlocks } = opts
   const projectCwd = opts.overrides?.projectCwd ?? opts.projectCwd ?? process.cwd()
+  const workerCwd = opts.overrides?.workerCwd
 
   // Prepare workflow deps (config, engine, etc.)
   const deps = prepareWorkflowDeps()
@@ -184,7 +189,7 @@ export function createWorkflowRunner(opts: {
 
     const execDeps = buildExecutorDeps({
       deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
-      contextIndexer, projectCwd, sessionObjective: description, queue, sessionId,
+      contextIndexer, projectCwd, workerCwd, sessionObjective: description, queue, sessionId,
       stdinHandleRef,
       setShellQueueSteps: () => {},
       capturedWorkerSessionId: { current: undefined },

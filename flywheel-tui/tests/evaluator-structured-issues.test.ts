@@ -8,6 +8,8 @@ import {
 import type { EvaluatorInput, EvaluatorResult } from "../src/workflows/evaluator/schemas";
 import type { ProcessSpawner } from "../src/orchestration/worker/spawner";
 import { renderEvaluatorHandoffInstruction } from "../src/workflows/queue/shared/handoff-render";
+import { getEngine } from "../src/orchestration/engines/core/registry";
+import { createEnvFilter } from "../src/orchestration/worker/env-filter";
 
 // ---------------------------------------------------------------------------
 // VAL-EVAL-001: Evaluator verdict has structured issues
@@ -348,6 +350,15 @@ function passingVerdict(): EvaluatorResult {
   };
 }
 
+/** Create DI deps for evaluator transport tests. */
+function makeTransportDeps(engineName = "claude") {
+  const engine = getEngine(engineName);
+  const envFilter = createEnvFilter();
+  const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
+    engine.buildEvaluatorCommand(opts);
+  return { engine, envFilter, buildCommand };
+}
+
 function createPromptCapturingSpawner(): { spawner: ProcessSpawner; getPrompt: () => string } {
   let capturedPrompt = "";
   const spawner: ProcessSpawner = {
@@ -399,7 +410,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -413,7 +424,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -428,7 +439,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -447,7 +458,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -467,7 +478,7 @@ describe("Evaluator prompt — issue extraction instructions (VAL-EVAL-002)", ()
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -490,7 +501,7 @@ describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)"
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -506,7 +517,7 @@ describe("Evaluator prompt — test/typecheck check instructions (VAL-EVAL-003)"
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -529,7 +540,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -544,7 +555,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -562,7 +573,7 @@ describe("Evaluator prompt — secrets/credentials check (VAL-EVAL-004)", () => 
     const { spawner, getPrompt } = createPromptCapturingSpawner();
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });

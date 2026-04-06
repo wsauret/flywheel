@@ -6,10 +6,10 @@
  */
 
 import { createStepDispatcher, type StepDispatchContext, type MutationRequest } from "../workflows/queue/step-dispatcher"
-import { Log } from "../workflows/shared/log"
-import { errorMessage } from "../workflows/shared/error-message"
+import { Log } from "../infra/log"
+import { errorMessage } from "../infra/error-message"
 import type { ContextIndexer } from "./memory/indexer"
-import type { FlywheelEmitter } from "../protocol/event-bus"
+import type { FlywheelEmitter } from "../infra/event-bus"
 import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
 import type { Step, Queue } from "../workflows/queue/types"

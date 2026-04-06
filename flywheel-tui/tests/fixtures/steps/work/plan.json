@@ -1,0 +1,10 @@
+{
+  "steps": [
+    {
+      "title": "Create a hello world HTTP server",
+      "description": "Create a basic Bun HTTP server that responds with 'Hello World' on the root route.",
+      "acceptanceCriteria": ["Server responds to GET / with 'Hello World'", "Server listens on port 3000"],
+      "fileReferences": []
+    }
+  ]
+}

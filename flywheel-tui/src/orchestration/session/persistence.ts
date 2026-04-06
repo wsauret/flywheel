@@ -14,8 +14,8 @@ import {
   resolveSessionDir,
   resolveSessionFile,
   ensureSessionDir,
-} from "../config/paths";
-import { errorMessage } from "../../workflows/shared/error-message";
+} from "../../infra/paths";
+import { errorMessage } from "../../infra/error-message";
 
 // ---------------------------------------------------------------------------
 // Helpers

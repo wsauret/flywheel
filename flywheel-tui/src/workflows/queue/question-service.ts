@@ -10,7 +10,7 @@
  * Decision #12: questions presented all at once with tab navigation.
  */
 
-import type { EventBus } from "../../protocol/event-bus";
+import type { EventBus } from "../../infra/event-bus";
 
 // ---------------------------------------------------------------------------
 // Types — formerly in question-parser.ts, now canonical home

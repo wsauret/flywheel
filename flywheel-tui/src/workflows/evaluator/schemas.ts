@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerHandoffBaseSchema } from "../../protocol/handoff-schemas";
+import { WorkerHandoffBaseSchema } from "../../infra/handoff-schemas";
 import { StepContextSchema } from "../queue/step-context";
 
 // ---------------------------------------------------------------------------

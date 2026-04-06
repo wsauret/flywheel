@@ -15,7 +15,7 @@ import { buildDispatcherSystemPrompt, buildTruncationNotes } from "./system-prom
 import { renderDispatcherHandoffInstruction } from "../queue/shared/handoff-render.js";
 import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "./schemas.js";
 import { mapHandoffToDecision } from "./map-handoff.js";
-import { buildDispatcherHandoffPath } from "../../orchestration/config/paths.js";
+import { buildDispatcherHandoffPath } from "../../infra/paths.js";
 import {
   type SubprocessTransportBaseOptions,
   type ResolvedTransportBase,
@@ -28,18 +28,17 @@ import {
 // ---------------------------------------------------------------------------
 
 export interface SubprocessTransportOptions extends SubprocessTransportBaseOptions {
-  /** Dispatcher model override — flows to --model CLI flag. Uses engine default when not set. */
-  dispatcherModel?: string;
+  /** Injected command builder — orchestration provides the engine-specific implementation. */
+  buildCommand: (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) => { command: string; args: string[]; stdinPrompt: boolean };
 }
 
 export class SubprocessTransport implements DispatcherTransport {
   private readonly base: ResolvedTransportBase;
+  private readonly buildCommand: SubprocessTransportOptions["buildCommand"];
 
   constructor(options: SubprocessTransportOptions) {
-    this.base = resolveTransportBase({
-      ...options,
-      model: options.dispatcherModel ?? options.model,
-    });
+    this.base = resolveTransportBase(options);
+    this.buildCommand = options.buildCommand;
   }
 
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
@@ -55,8 +54,8 @@ export class SubprocessTransport implements DispatcherTransport {
         return `${userContent}\n\n${handoffInstruction}`;
       },
       systemPrompt,
-      buildEngineCommand: (engine, prompt, sysPrompt, model) =>
-        engine.buildDispatcherCommand({ prompt, systemPrompt: sysPrompt, model }),
+      buildEngineCommand: (prompt, sysPrompt, tierConfig) =>
+        this.buildCommand({ prompt, systemPrompt: sysPrompt, tierConfig }),
       handoffSchema: DispatcherDecisionHandoffSchema,
       mapResult: mapHandoffToDecision,
     });

@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-type ModuleName = "workflows" | "orchestration" | "tui" | "protocol";
+type ModuleName = "workflows" | "orchestration" | "tui" | "infra";
 
 interface ImportRef {
   sourcePath: string;
@@ -32,25 +32,15 @@ const temporaryAllowlist = new Set<string>([
   "src/orchestration/session-registry.ts -> src/tui/types.ts",
   // cli → tui: fundamental entrypoint
   "src/orchestration/cli/index.ts -> src/tui/launcher.ts",
-  // workflows → orchestration: dispatcher/evaluator transports need spawner/engine infra
-  "src/workflows/dispatcher/auto-detect.ts -> src/orchestration/worker/spawner.ts",
-  "src/workflows/dispatcher/subprocess-transport.ts -> src/orchestration/worker/spawner.ts",
-  "src/workflows/dispatcher/subprocess-transport.ts -> src/orchestration/engines/core/types.ts",
-  "src/workflows/dispatcher/subprocess-transport.ts -> src/orchestration/worker/env-filter.ts",
-  "src/workflows/dispatcher/subprocess-transport.ts -> src/orchestration/engines/core/registry.ts",
-  "src/workflows/evaluator/create-transport.ts -> src/orchestration/worker/spawner.ts",
-  "src/workflows/evaluator/subprocess-transport.ts -> src/orchestration/worker/spawner.ts",
-  "src/workflows/evaluator/subprocess-transport.ts -> src/orchestration/engines/core/types.ts",
-  "src/workflows/evaluator/subprocess-transport.ts -> src/orchestration/worker/env-filter.ts",
-  "src/workflows/evaluator/subprocess-transport.ts -> src/orchestration/engines/core/registry.ts",
+
 ]);
 
 const rules: BoundaryRule[] = [
   {
-    id: "protocol-purity",
-    description: "protocol/ imports nothing from other modules (type-only imports are allowed).",
+    id: "infra-purity",
+    description: "infra/ imports nothing from other modules (type-only imports are allowed).",
     matches(importRef): boolean {
-      if (!isUnder(importRef.sourcePath, "src/protocol/")) return false;
+      if (!isUnder(importRef.sourcePath, "src/infra/")) return false;
       if (importRef.isTypeOnly) return false;
       return ["workflows", "orchestration", "tui"].some((moduleName) =>
         isModulePath(importRef.targetPath, moduleName as ModuleName),
@@ -58,8 +48,8 @@ const rules: BoundaryRule[] = [
     },
   },
   {
-    id: "workflows-imports-protocol-only",
-    description: "workflows/ may only import from protocol/ (not orchestration/ or tui/).",
+    id: "workflows-imports-infra-only",
+    description: "workflows/ may only import from infra/ (not orchestration/ or tui/).",
     matches(importRef): boolean {
       if (!isUnder(importRef.sourcePath, "src/workflows/")) return false;
       if (!isModulePath(importRef.targetPath, "orchestration") &&
@@ -68,8 +58,8 @@ const rules: BoundaryRule[] = [
     },
   },
   {
-    id: "orchestration-imports-workflows-protocol",
-    description: "orchestration/ may import from workflows/ and protocol/, not tui/.",
+    id: "orchestration-imports-workflows-infra",
+    description: "orchestration/ may import from workflows/ and infra/, not tui/.",
     matches(importRef): boolean {
       if (!isUnder(importRef.sourcePath, "src/orchestration/")) return false;
       if (!isModulePath(importRef.targetPath, "tui")) return false;
@@ -77,12 +67,11 @@ const rules: BoundaryRule[] = [
     },
   },
   {
-    id: "tui-imports-orchestration-only",
-    description: "tui/ may only import from orchestration/ (not workflows/ or protocol/ directly).",
+    id: "tui-imports-orchestration-or-infra",
+    description: "tui/ may import from orchestration/ and infra/, not workflows/ directly.",
     matches(importRef): boolean {
       if (!isUnder(importRef.sourcePath, "src/tui/")) return false;
-      return isModulePath(importRef.targetPath, "workflows") ||
-        isModulePath(importRef.targetPath, "protocol");
+      return isModulePath(importRef.targetPath, "workflows");
     },
   },
 ];
@@ -95,8 +84,8 @@ function isModulePath(relPath: string, moduleName: ModuleName): boolean {
       return isUnder(relPath, "src/orchestration/");
     case "tui":
       return isUnder(relPath, "src/tui/");
-    case "protocol":
-      return isUnder(relPath, "src/protocol/");
+    case "infra":
+      return isUnder(relPath, "src/infra/");
   }
 }
 

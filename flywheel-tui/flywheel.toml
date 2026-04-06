@@ -1,4 +1,11 @@
 engine = "claude"
-model = "sonnet"
+model = "opus"
 theme = "tokyonight"
-# Note: harness engine requires Phase 6A for full integration (dispatcher transport support)
+
+[dispatcher]
+model = "sonnet"
+effort = "low"
+
+[evaluator]
+model = "sonnet"
+effort = "low"

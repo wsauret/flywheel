@@ -19,7 +19,7 @@ import {
   DEFAULT_STANDARDS_DIR,
   DEFAULT_CONVENTION_FILES,
   CONFIG_DIRS,
-} from "../config/paths";
+} from "../../infra/paths";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -29,7 +29,7 @@ import {
   createDebouncedWriter,
   type DebouncedWriter,
 } from "../../workflows/shared/debounced-writer";
-import { resolveSessionFile, ensureSessionDir } from "../config/paths";
+import { resolveSessionFile, ensureSessionDir } from "../../infra/paths";
 
 // ---------------------------------------------------------------------------
 // Constants

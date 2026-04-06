@@ -11,8 +11,8 @@ import { randomUUID } from "crypto";
 
 import { createQueue, transitionStep, advanceCursor } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";
-import type { FlywheelEmitter } from "../src/protocol/event-bus";
-import type { FlywheelEvent } from "../src/protocol/events";
+import type { FlywheelEmitter } from "../src/infra/event-bus";
+import type { FlywheelEvent } from "../src/infra/events";
 import {
   createStepExecutor,
   type StepExecutorOptions,

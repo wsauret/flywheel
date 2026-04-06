@@ -60,15 +60,21 @@ export const FlywheelConfigSchema = z.object({
   engine: z.string().default("claude"),
   /** TUI theme name: "opencode", "tokyonight", "dracula", "catppuccin", "nord", "gruvbox". */
   theme: z.string().optional(),
-  /** Per-tier model config for the dispatcher */
+  /** Per-tier config for the dispatcher */
   dispatcher: z.object({
     model: z.string().optional(),
+    effort: z.enum(["low", "medium", "high", "max"]).optional(),
   }).default({}),
-  /** Per-tier model config for the worker */
+  /** Per-tier config for the worker */
   worker: z.object({
     model: z.string().optional(),
   }).default({}),
-  /** Convenience: sets both dispatcher.model and worker.model if not individually overridden */
+  /** Per-tier config for the evaluator */
+  evaluator: z.object({
+    model: z.string().optional(),
+    effort: z.enum(["low", "medium", "high", "max"]).optional(),
+  }).default({}),
+  /** Convenience: sets dispatcher.model, worker.model, and evaluator.model if not individually overridden */
   model: z.string().optional(),
   max_retries: z.number().int().min(0).max(10).default(3),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
@@ -183,6 +189,7 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   engine: "claude",
   dispatcher: {},
   worker: {},
+  evaluator: {},
   max_retries: 3,
   timeout_minutes: 60,
   skip_approval_gates: false,
@@ -233,11 +240,39 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
 
 /**
  * Resolve the final model for each tier.
- * Precedence: tier-specific (dispatcher.model / worker.model) > convenience (model) > undefined (engine default).
+ * Precedence: tier-specific (dispatcher.model / worker.model / evaluator.model) > convenience (model) > undefined (engine default).
  */
-export function resolveModels(config: FlywheelConfig): { dispatcherModel?: string; workerModel?: string } {
+/**
+ * Resolved per-tier config blob. Passed as a single object through the
+ * transport/command pipeline so new fields don't require plumbing changes.
+ */
+export interface ResolvedTierConfig {
+  model?: string;
+  effort?: string;
+}
+
+const DEFAULT_EFFORT = "low";
+
+/**
+ * Resolve per-tier config for dispatcher, worker, and evaluator.
+ * Each field has a tier-specific override > convenience global > default fallback chain.
+ */
+export function resolveTierConfigs(config: FlywheelConfig): {
+  dispatcher: ResolvedTierConfig;
+  worker: ResolvedTierConfig;
+  evaluator: ResolvedTierConfig;
+} {
   return {
-    dispatcherModel: config.dispatcher.model ?? config.model,
-    workerModel: config.worker.model ?? config.model,
+    dispatcher: {
+      model: config.dispatcher.model ?? config.model,
+      effort: config.dispatcher.effort ?? DEFAULT_EFFORT,
+    },
+    worker: {
+      model: config.worker.model ?? config.model,
+    },
+    evaluator: {
+      model: config.evaluator.model ?? config.model,
+      effort: config.evaluator.effort ?? DEFAULT_EFFORT,
+    },
   };
 }

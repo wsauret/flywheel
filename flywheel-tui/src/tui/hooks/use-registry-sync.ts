@@ -11,7 +11,7 @@ import type { SessionRegistry, SessionEntry } from "../../orchestration/session-
 import type { MetricsHook } from "./use-metrics.js"
 import type { AnyBlock } from "../types.js"
 import type { StepState } from "../../orchestration/workflow-runner.js"
-import type { AppState } from "./use-workflow-lifecycle.js"
+import type { AgentState, SessionStatus } from "./use-workflow-lifecycle.js"
 import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
 import { formatElapsed, formatCost, formatTokens } from "../format.js"
 
@@ -19,7 +19,8 @@ export interface RegistrySyncDeps {
   registry: SessionRegistry
   foregroundId: Accessor<string | undefined>
   setForegroundId: Setter<string | undefined>
-  setAppState: Setter<AppState>
+  setAgentState: Setter<AgentState>
+  setSessionStatus: Setter<SessionStatus>
   setOutputBlocks: Setter<AnyBlock[]>
   setSteps: Setter<StepState[]>
   setRunningCount: Setter<number>
@@ -42,7 +43,8 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     registry,
     foregroundId,
     setForegroundId,
-    setAppState,
+    setAgentState,
+    setSessionStatus,
     setOutputBlocks,
     setSteps,
     setRunningCount,
@@ -79,7 +81,6 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     setTerminalTitle(`flywheel · ${entry.description}`)
 
     if (entry.status === "completed" || entry.status === "error") {
-      metrics.stopTimer()
       const totalElapsed = formatElapsed(Date.now() - metrics.workStartTime())
 
       if (entry.status === "completed" && entry.result) {
@@ -92,13 +93,15 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
           setStatusLine(`\u2717 ${r.reason ?? "stopped"} (${r.stepsCompleted}/${r.stepsTotal}) \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)}`)
         }
         refreshList()
-        setAppState("completed")
+        setAgentState("idle")
+        setSessionStatus("completed")
         setTerminalTitle("flywheel \u00b7 done")
       } else if (entry.status === "error") {
         safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
         refreshList()
         setErrorMessage(entry.errorMessage ?? "Unknown error")
-        setAppState("error")
+        setAgentState("idle")
+        setSessionStatus("error")
         setTerminalTitle("flywheel \u00b7 error")
       }
 

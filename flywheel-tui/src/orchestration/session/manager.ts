@@ -22,7 +22,7 @@ import {
 import { isValidTransition, type SessionLifecycleState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/loader";
-import { Log } from "../../workflows/shared/log";
+import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "session.manager" });
 

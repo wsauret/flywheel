@@ -16,9 +16,9 @@ import type {
   WorkerOutput,
   HandoffReaderFn,
 } from "./executor-types.js";
-import type { FlywheelEmitter } from "../../protocol/event-bus";
+import type { FlywheelEmitter } from "../../infra/event-bus";
 import { raceAbort } from "./abort-utils.js";
-import { Log } from "../shared/log";
+import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "step-executor" });
 

@@ -4,7 +4,7 @@ import {
   loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
-  resolveModels,
+  resolveTierConfigs,
 } from "../src/orchestration/config/loader";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
@@ -257,9 +257,9 @@ describe("Per-tier model config", () => {
       FLYWHEEL_MODEL: "base-model",
       FLYWHEEL_WORKER_MODEL: "worker-override",
     });
-    const models = resolveModels(config);
-    expect(models.workerModel).toBe("worker-override");
-    expect(models.dispatcherModel).toBe("base-model");
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe("worker-override");
+    expect(tiers.dispatcher.model).toBe("base-model");
   });
 
   it("FLYWHEEL_DISPATCHER_MODEL overrides dispatcher model only", () => {
@@ -267,24 +267,21 @@ describe("Per-tier model config", () => {
       FLYWHEEL_MODEL: "base-model",
       FLYWHEEL_DISPATCHER_MODEL: "dispatcher-override",
     });
-    const models = resolveModels(config);
-    expect(models.dispatcherModel).toBe("dispatcher-override");
-    expect(models.workerModel).toBe("base-model");
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.dispatcher.model).toBe("dispatcher-override");
+    expect(tiers.worker.model).toBe("base-model");
   });
 
   it("FLYWHEEL_MODEL sets both dispatcher and worker model (convenience)", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_MODEL: "shared-model",
     });
-    const models = resolveModels(config);
-    expect(models.dispatcherModel).toBe("shared-model");
-    expect(models.workerModel).toBe("shared-model");
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.dispatcher.model).toBe("shared-model");
+    expect(tiers.worker.model).toBe("shared-model");
   });
 
   it("precedence: specific > general > config file > defaults", () => {
-    // Config file sets model = "claude-sonnet-4-20250514"
-    // FLYWHEEL_MODEL overrides that for both tiers
-    // FLYWHEEL_WORKER_MODEL overrides worker specifically
     const { config } = loadConfig(
       path.join(FIXTURES_DIR, "flywheel.toml"),
       {
@@ -292,30 +289,30 @@ describe("Per-tier model config", () => {
         FLYWHEEL_WORKER_MODEL: "specific-worker-model",
       },
     );
-    const models = resolveModels(config);
+    const tiers = resolveTierConfigs(config);
 
     // Worker: specific env (FLYWHEEL_WORKER_MODEL) wins
-    expect(models.workerModel).toBe("specific-worker-model");
+    expect(tiers.worker.model).toBe("specific-worker-model");
     // Dispatcher: general env (FLYWHEEL_MODEL) wins over config file
-    expect(models.dispatcherModel).toBe("general-env-model");
+    expect(tiers.dispatcher.model).toBe("general-env-model");
   });
 
-  it("resolveModels returns undefined when no model is set", () => {
+  it("resolveTierConfigs returns undefined model when no model is set", () => {
     const { config } = loadConfig(undefined, {});
-    const models = resolveModels(config);
-    expect(models.dispatcherModel).toBeUndefined();
-    expect(models.workerModel).toBeUndefined();
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.dispatcher.model).toBeUndefined();
+    expect(tiers.worker.model).toBeUndefined();
   });
 
-  it("config file model serves as convenience fallback via resolveModels", () => {
+  it("config file model serves as convenience fallback via resolveTierConfigs", () => {
     const { config } = loadConfig(
       path.join(FIXTURES_DIR, "flywheel.toml"),
       {},
     );
-    const models = resolveModels(config);
+    const tiers = resolveTierConfigs(config);
     // flywheel.toml has model = "claude-sonnet-4-20250514"
-    expect(models.dispatcherModel).toBe("claude-sonnet-4-20250514");
-    expect(models.workerModel).toBe("claude-sonnet-4-20250514");
+    expect(tiers.dispatcher.model).toBe("claude-sonnet-4-20250514");
+    expect(tiers.worker.model).toBe("claude-sonnet-4-20250514");
   });
 });
 

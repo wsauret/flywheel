@@ -13,8 +13,8 @@ import type { CompletionDetector } from "./completion.js";
 import type { NDJSONParser } from "./ndjson-parser.js";
 import { categorizeFailure } from "./errors.js";
 import { createWorkerTimeout } from "./timeout.js";
-import { resolveSessionHandoffsDir } from "../config/paths.js";
-import { errorMessage } from "../../workflows/shared/error-message.js";
+import { resolveSessionHandoffsDir } from "../../infra/paths.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 // ---------------------------------------------------------------------------
 // Argument validation

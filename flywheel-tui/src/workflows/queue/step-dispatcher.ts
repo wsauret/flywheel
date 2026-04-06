@@ -31,7 +31,7 @@ import type {
   DispatcherConfig,
   WorkflowInfo,
 } from "../dispatcher/schemas.js";
-import type { FlywheelEmitter } from "../../protocol/event-bus.js";
+import type { FlywheelEmitter } from "../../infra/event-bus.js";
 import type {
   SessionBudgetStatus,
   AvailableContext,
@@ -41,8 +41,8 @@ import type {
 import type { AccumulatedContext } from "./context-accumulator.js";
 import type { EvalResult } from "./executor.js";
 import { applyBudgetTruncation } from "../dispatcher/truncation.js";
-import { Log } from "../shared/log.js";
-import { errorMessage } from "../shared/error-message.js";
+import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 import {
   buildCompactQueueState,
   handoffToLastWorkerResult,

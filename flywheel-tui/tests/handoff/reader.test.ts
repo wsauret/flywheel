@@ -9,7 +9,7 @@ import {
   HandoffInvalidError,
   HandoffReadTimeoutError,
 } from "../../src/workflows/queue/shared/handoff-reader";
-import { WorkerHandoffSchema } from "../../src/protocol/handoff-schemas";
+import { WorkerHandoffSchema } from "../../src/infra/handoff-schemas";
 
 let tmpDir: string;
 

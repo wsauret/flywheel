@@ -12,7 +12,7 @@
 import { render } from "@opentui/solid"
 import { useRenderer } from "@opentui/solid"
 import { ErrorBoundary } from "solid-js"
-import { Log } from "../workflows/shared/log"
+import { Log } from "../infra/log.js"
 import type { ParentProps } from "solid-js"
 import { Clipboard } from "./utils/clipboard"
 import { ToastProvider } from "@tui/shared/context/toast"
@@ -21,7 +21,7 @@ import { SessionProvider } from "@tui/shared/context/session"
 import { createSessionManager } from "../orchestration/session/manager"
 import { ErrorComponent } from "./components/error-boundary"
 import { loadConfig } from "../orchestration/config/loader"
-import { CONFIG_FILES } from "../orchestration/config/paths"
+import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
 
 export interface TUIOptions {

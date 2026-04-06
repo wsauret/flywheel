@@ -38,25 +38,11 @@ export interface EndOfSessionGateResult {
 }
 
 // ---------------------------------------------------------------------------
-// StepType — the 8 kinds of step the queue can execute
+// StepType — re-exported from infra/ (canonical definition)
 // ---------------------------------------------------------------------------
 
-/**
- * Union of valid step types.
- *
- * - plan / work / review / ship / debug / research — correspond to workflow runners
- * - verify — runs a verification script (sprint mode)
- * - gate   — pauses execution for user approval
- */
-export type StepType =
-  | "plan"
-  | "work"
-  | "review"
-  | "ship"
-  | "debug"
-  | "research"
-  | "verify"
-  | "gate";
+import type { StepType } from "../../infra/step-types.js";
+export type { StepType };
 
 // ---------------------------------------------------------------------------
 // StepStatus — lifecycle state of a single step

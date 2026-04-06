@@ -24,8 +24,8 @@ import {
 } from "./queue";
 import { handleGateStep } from "./gate-handler.js";
 import { executeStep } from "./step-runner.js";
-import { Log } from "../shared/log";
-import { errorMessage } from "../shared/error-message";
+import { Log } from "../../infra/log";
+import { errorMessage } from "../../infra/error-message";
 
 // Re-export public types so external consumers don't need to change imports
 export type {

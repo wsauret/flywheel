@@ -391,6 +391,7 @@ describe("budget continuity across session resume", () => {
     });
 
     // Simulate Claude result events (NDJSON format: type + data envelope)
+    // Values are cumulative within a process (delta accounting applies)
     tracker1.handleEvent({
       type: "result",
       data: {
@@ -401,8 +402,8 @@ describe("budget continuity across session resume", () => {
     tracker1.handleEvent({
       type: "result",
       data: {
-        total_cost_usd: 0.03,
-        usage: { input_tokens: 800, output_tokens: 300 },
+        total_cost_usd: 0.08,
+        usage: { input_tokens: 1800, output_tokens: 800 },
       },
     });
     tracker1.incrementInvocations();

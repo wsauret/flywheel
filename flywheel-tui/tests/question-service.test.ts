@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { EventBus } from "../src/protocol/event-bus";
+import { EventBus } from "../src/infra/event-bus";
 import {
   QuestionService,
   QuestionRejectedError,

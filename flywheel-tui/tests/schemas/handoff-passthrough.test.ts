@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   WorkerHandoffSchema,
   WorkerHandoffBaseSchema,
-} from "../../src/protocol/handoff-schemas";
+} from "../../src/infra/handoff-schemas";
 import { EvaluatorVerdictSchema } from "../../src/workflows/evaluator/schemas";
 import { DispatcherDecisionHandoffSchema } from "../../src/workflows/dispatcher/schemas";
 

@@ -3,10 +3,21 @@ import type { DispatcherInput, DispatcherDecision } from "../src/workflows/dispa
 import type { ProcessSpawner, SpawnOptions } from "../src/orchestration/worker/spawner";
 import { DispatcherDecisionSchema } from "../src/workflows/dispatcher/schemas";
 import type { DispatcherDecisionHandoff } from "../src/workflows/dispatcher/schemas";
+import { getEngine } from "../src/orchestration/engines/core/registry";
+import { createEnvFilter } from "../src/orchestration/worker/env-filter";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Create DI deps for transport tests. */
+function makeTransportDeps(engineName = "claude") {
+  const engine = getEngine(engineName);
+  const envFilter = createEnvFilter();
+  const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
+    engine.buildDispatcherCommand(opts);
+  return { engine, envFilter, buildCommand };
+}
 
 /**
  * Valid DispatcherDecisionHandoff — the shape the LLM writes to the handoff file.
@@ -157,7 +168,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -183,7 +194,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -210,7 +221,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -234,8 +245,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
-      dispatcherModel: "haiku",
+      ...makeTransportDeps("claude"),
+      tierConfig: { model: "haiku" },
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -259,8 +270,8 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
-      // No dispatcherModel — should use engine default
+      ...makeTransportDeps("claude"),
+      // No tierConfig.model — should use engine default
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -281,7 +292,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -303,7 +314,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -327,7 +338,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -343,7 +354,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -362,17 +373,9 @@ describe("SubprocessTransport: engine-aware command building", () => {
   // -----------------------------------------------------------------------
 
   it("throws clear error when engine binary not found (claude)", async () => {
-    const { spawner } = createHandoffSpawner(validHandoff());
-
-    // Use a fake engine name that won't match any registered engine
+    // getEngine throws for unknown engines — verify the registry rejects bad names
     try {
-      const transport = new SubprocessTransport({
-        spawner,
-        engineName: "nonexistent-engine",
-      sessionId: "test-session",
-      baseDir: "/tmp/test",
-      });
-      await transport.invoke(baseDispatcherInput());
+      makeTransportDeps("nonexistent-engine");
       // If we get here, the test should fail
       expect(true).toBe(false);
     } catch (err: any) {
@@ -391,7 +394,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -406,7 +409,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -424,7 +427,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -447,7 +450,7 @@ describe("SubprocessTransport: engine-aware command building", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -483,7 +486,7 @@ describe("Auto-detect transport: engine-aware", () => {
 
     const result = await autoDetectTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
     });
 
     // Claude should always use CLI (subprocess), never SDK
@@ -495,7 +498,7 @@ describe("Auto-detect transport: engine-aware", () => {
 
     const result = await autoDetectTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
     });
 
     // The transport should be a SubprocessTransport configured for claude
@@ -512,8 +515,8 @@ describe("Auto-detect transport: engine-aware", () => {
 
     const result = await autoDetectTransport({
       spawner,
-      engineName: "claude",
-      dispatcherModel: "haiku",
+      ...makeTransportDeps("claude"),
+      tierConfig: { model: "haiku" },
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -531,7 +534,7 @@ describe("Auto-detect transport: engine-aware", () => {
 
     const result = await autoDetectTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
     });
 
     // Claude should NEVER get SDK transport
@@ -564,8 +567,8 @@ describe("Config model flow through transport chain", () => {
 
     const transport = new SubprocessTransport({
       spawner,
-      engineName: "claude",
-      dispatcherModel: "opus",
+      ...makeTransportDeps("claude"),
+      tierConfig: { model: "opus" },
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });

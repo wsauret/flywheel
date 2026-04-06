@@ -7,7 +7,7 @@
  * Dispatcher/evaluator NDJSON handling is delegated to NdjsonPipeline.
  */
 
-import { assertNever, type FlywheelEvent } from "../../protocol/events.js";
+import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
@@ -17,7 +17,7 @@ import { SubagentTraceParser } from "./subagent-tracing/parser";
 import { StructuredOutputBuilder } from "./structured-output-builder";
 import { StructuredEventParser } from "./structured-event-parser";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
-import { Log } from "../../workflows/shared/log";
+import { Log } from "../../infra/log.js";
 
 /** Flush interval for batched block updates (ms). */
 const FLUSH_INTERVAL_MS = 16;

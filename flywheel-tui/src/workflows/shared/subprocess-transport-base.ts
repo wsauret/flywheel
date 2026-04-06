@@ -10,15 +10,45 @@
  * handoff path construction, and result mapping.
  */
 
-import type { ProcessSpawner } from "../../orchestration/worker/spawner.js";
-import type { Engine, EngineCommand } from "../../orchestration/engines/core/types.js";
 import type { ZodType } from "zod";
-import { createEnvFilter } from "../../orchestration/worker/env-filter.js";
-import { getEngine } from "../../orchestration/engines/core/registry.js";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../queue/shared/handoff-reader.js";
-import { Log } from "./log.js";
+import { Log } from "../../infra/log.js";
 import { type SubprocessRole, SubprocessLogger, createLoggedCallbacks } from "./subprocess-logger.js";
-import { ensureSessionDir } from "../../orchestration/config/paths.js";
+import { ensureSessionDir } from "../../infra/paths.js";
+
+// ---------------------------------------------------------------------------
+// Structural types — avoids importing from orchestration. Callers inject
+// concrete implementations; TypeScript's structural typing ensures
+// compatibility without a shared interface definition.
+// ---------------------------------------------------------------------------
+
+/** Minimal spawner contract needed by transport base. */
+interface TransportSpawner {
+  spawn(command: string, args: string[], options?: {
+    timeoutMs?: number;
+    stdin?: string;
+    env?: Record<string, string>;
+    onStdout?: (chunk: string) => void;
+    onStderr?: (chunk: string) => void;
+  }): Promise<{ result: Promise<unknown> }>;
+}
+
+/** Minimal engine contract needed by transport base. */
+interface TransportEngine {
+  metadata: { id: string; cliBinary: string; installCommand: string };
+}
+
+/** Command returned by engine command builders. */
+interface TransportEngineCommand {
+  command: string;
+  args: string[];
+  stdinPrompt: boolean;
+}
+
+/** Environment filter contract. */
+interface TransportEnvFilter {
+  filter(env: Record<string, string | undefined>): Record<string, string>;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -32,11 +62,13 @@ const MAX_RETRIES = 1;
 // ---------------------------------------------------------------------------
 
 export interface SubprocessTransportBaseOptions {
-  spawner: ProcessSpawner;
-  /** Engine name — "claude" or "opencode". Defaults to "opencode" for backward compatibility. */
-  engineName?: string;
-  /** Model override — flows to --model CLI flag. Uses engine default when not set. */
-  model?: string;
+  spawner: TransportSpawner;
+  /** Resolved engine instance — injected by the orchestration layer. */
+  engine: TransportEngine;
+  /** Environment filter — injected by the orchestration layer. */
+  envFilter: TransportEnvFilter;
+  /** Resolved tier config blob (model, effort, future fields). Passed as one object to avoid per-field plumbing. */
+  tierConfig?: { model?: string; effort?: string };
   /** Called with each decoded stdout chunk as it arrives from the subprocess. */
   onStdout?: (chunk: string) => void;
   /** Called with each decoded stderr chunk as it arrives from the subprocess. */
@@ -54,10 +86,10 @@ export interface SubprocessTransportBaseOptions {
 // ---------------------------------------------------------------------------
 
 export interface ResolvedTransportBase {
-  readonly spawner: ProcessSpawner;
-  readonly envFilter: ReturnType<typeof createEnvFilter>;
-  readonly engine: Engine;
-  readonly model: string | undefined;
+  readonly spawner: TransportSpawner;
+  readonly envFilter: TransportEnvFilter;
+  readonly engine: TransportEngine;
+  readonly tierConfig: { model?: string; effort?: string };
   readonly onStdout?: (chunk: string) => void;
   readonly onStderr?: (chunk: string) => void;
   readonly logBaseDir?: string;
@@ -66,13 +98,12 @@ export interface ResolvedTransportBase {
 }
 
 /**
- * Resolve shared constructor logic: engine lookup, binary availability check, env filter.
+ * Resolve shared constructor logic: validate injected engine, check binary availability.
  *
  * Throws immediately if the engine binary is not found on PATH.
  */
 export function resolveTransportBase(options: SubprocessTransportBaseOptions): ResolvedTransportBase {
-  const engineName = options.engineName ?? "opencode";
-  const engine = getEngine(engineName);
+  const { engine } = options;
 
   const binary = engine.metadata.cliBinary;
   if (!Bun.which(binary)) {
@@ -84,9 +115,9 @@ export function resolveTransportBase(options: SubprocessTransportBaseOptions): R
 
   return {
     spawner: options.spawner,
-    envFilter: createEnvFilter(),
+    envFilter: options.envFilter,
     engine,
-    model: options.model,
+    tierConfig: options.tierConfig ?? {},
     onStdout: options.onStdout,
     onStderr: options.onStderr,
     logBaseDir: options.logBaseDir,
@@ -108,8 +139,8 @@ export interface InvokeCallbacks<THandoff, TResult> {
   buildFullPrompt: (handoffPath: string) => string;
   /** The system prompt (separate from user prompt for caching). */
   systemPrompt: string;
-  /** Build the engine command for this invocation. */
-  buildEngineCommand: (engine: Engine, prompt: string, systemPrompt: string, model: string | undefined) => EngineCommand;
+  /** Build the engine command for this invocation. Engine is available via closure from the caller. */
+  buildEngineCommand: (prompt: string, systemPrompt: string, tierConfig: { model?: string; effort?: string }) => TransportEngineCommand;
   // Zod schemas with .default() have Input ≠ Output; widening Input avoids a false type mismatch
   handoffSchema: ZodType<THandoff, any, any>;
   /** Map the parsed handoff to the final result type. */
@@ -154,17 +185,16 @@ export async function invokeSubprocess<THandoff, TResult>(
         : "";
 
       const engineCmd = callbacks.buildEngineCommand(
-        base.engine,
         fullPrompt + retryNote,
         callbacks.systemPrompt,
-        base.model,
+        base.tierConfig,
       );
 
       log.info(`spawning ${callbacks.role}`, {
         engine: base.engine.metadata.id,
         command: engineCmd.command,
         attempt: attempt + 1,
-        model: base.model ?? "(default)",
+        model: base.tierConfig.model ?? "(default)",
         handoffPath,
       });
 

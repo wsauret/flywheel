@@ -9,10 +9,10 @@
  */
 
 import { createWorkflowRunner, type WorkflowRunner, type WorkflowResult, type StepState } from "./workflow-runner"
-import { errorMessage } from "../workflows/shared/error-message"
+import { errorMessage } from "../infra/error-message"
 import type { AnyBlock } from "../tui/types"
 import type { Queue } from "../workflows/queue/types"
-import type { ModelActivity } from "../tui/adapters/structured-output-builder"
+import type { ModelActivity } from "../infra/events"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +39,12 @@ export interface SessionRegistry {
     queue: Queue
     description: string
     priorBlocks?: AnyBlock[]
+    /** Override the worker process cwd. Defaults to projectCwd.
+     * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
+     * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
+    workerCwd?: string
+    /** Called when the run completes or errors (e.g., temp dir cleanup). */
+    onComplete?: () => void
   }): string
 
   /** Get a session entry by ID. */
@@ -88,6 +94,8 @@ export function createSessionRegistry(): SessionRegistry {
     queue: Queue
     description: string
     priorBlocks?: AnyBlock[]
+    workerCwd?: string
+    onComplete?: () => void
   }): string {
     const { sessionId, queue, description, priorBlocks } = opts
 
@@ -116,6 +124,7 @@ export function createSessionRegistry(): SessionRegistry {
         onModelActivity: (activity) => { entry.modelActivity = activity; notify() },
       },
       priorBlocks,
+      overrides: opts.workerCwd ? { workerCwd: opts.workerCwd } : undefined,
     })
 
     entry.runner = runner
@@ -128,11 +137,13 @@ export function createSessionRegistry(): SessionRegistry {
         entry.status = result.completed ? "completed" : "paused"
         entry.result = result
         notify()
+        opts.onComplete?.()
       },
       (err) => {
         entry.status = "error"
         entry.errorMessage = errorMessage(err)
         notify()
+        opts.onComplete?.()
       },
     )
 

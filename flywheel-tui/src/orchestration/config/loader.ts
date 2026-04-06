@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { errorMessage } from "../../workflows/shared/error-message";
+import { errorMessage } from "../../infra/error-message";
 import { FlywheelConfigSchema, type FlywheelConfig } from "./schema";
 import { applyEnvOverrides } from "./env";
 
@@ -12,7 +12,8 @@ export {
   CommandsSchema,
   type CommandsConfig,
   CONFIG_DEFAULTS,
-  resolveModels,
+  resolveTierConfigs,
+  type ResolvedTierConfig,
   type FlywheelConfig,
 } from "./schema";
 

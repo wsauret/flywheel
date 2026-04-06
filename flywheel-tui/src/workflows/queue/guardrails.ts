@@ -32,7 +32,7 @@ import {
   type Provenance,
   type MutationResult,
 } from "./queue";
-import { Log } from "../shared/log";
+import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "guardrails" });
 

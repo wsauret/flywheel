@@ -9,7 +9,7 @@
 
 import type { Step } from "./types";
 import type { GateQuestionService } from "./executor-types.js";
-import { Log } from "../shared/log";
+import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "step-executor" });
 

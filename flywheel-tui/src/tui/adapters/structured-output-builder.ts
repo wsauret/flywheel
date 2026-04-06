@@ -26,7 +26,8 @@ import { ContextGroupTracker, isContextTool } from "./context-group-tracker.js";
 const BLOCKS_CAP = 5000;
 const AGENT_CHILDREN_CAP = 50;
 
-export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing";
+import type { ModelActivity } from "../../infra/events.js";
+export type { ModelActivity };
 
 export class StructuredOutputBuilder {
   private blocks: AnyBlock[] = [];
@@ -92,10 +93,24 @@ export class StructuredOutputBuilder {
     this.dirty = true;
   }
 
-  pushUserMessage(text: string, timestamp: number): void {
+  pushUserMessage(text: string, timestamp: number, pending?: boolean): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.blocks.push({ kind: "userMessage", content: text, timestamp });
+    this.blocks.push({ kind: "userMessage", content: text, timestamp, pending });
     this.dirty = true;
+  }
+
+  /** Transition all pending user messages to sent (pending = false). */
+  resolvePendingMessages(): boolean {
+    let resolved = false;
+    for (let i = 0; i < this.blocks.length; i++) {
+      const b = this.blocks[i];
+      if (b.kind === "userMessage" && b.pending) {
+        this.blocks[i] = { ...b, pending: false };
+        resolved = true;
+      }
+    }
+    if (resolved) this.dirty = true;
+    return resolved;
   }
 
   pushText(text: string, timestamp: number): void {

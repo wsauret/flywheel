@@ -12,7 +12,7 @@
  *   5. adapter.connect(bus) + adapter.start()
  */
 
-import { EventBus } from "../protocol/event-bus";
+import { EventBus } from "../infra/event-bus";
 import { OpenTUIAdapter } from "../tui/adapters/opentui";
 import { createStore } from "../tui/routes/work/context/ui-state/store";
 import { TimerService } from "../tui/shared/services/timer";

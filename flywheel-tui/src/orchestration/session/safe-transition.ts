@@ -16,7 +16,7 @@ import {
   findTransitionPath,
   type SessionLifecycleState,
 } from "./state-machine";
-import { Log } from "../../workflows/shared/log";
+import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "session.safe-transition" });
 

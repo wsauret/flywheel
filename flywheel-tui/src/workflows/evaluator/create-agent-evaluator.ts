@@ -13,8 +13,8 @@ import type { EvaluatorFn, EvalResult } from "../queue/executor";
 import type { EvaluatorTransport } from "./transport";
 import type { EvaluatorInput, EvaluatorResult } from "./schemas";
 import type { EvaluationCriteria } from "../schemas";
-import { Log } from "../shared/log";
-import { errorMessage } from "../shared/error-message";
+import { Log } from "../../infra/log";
+import { errorMessage } from "../../infra/error-message";
 
 const log = Log.create({ service: "evaluator-agent-factory" });
 

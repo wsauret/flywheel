@@ -2,13 +2,13 @@ import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { startChatSession, type ChatSession } from "../chat.js"
 import { formatElapsed, formatCost, formatTokens } from "../format.js"
-import { errorMessage as extractErrorMessage } from "../../workflows/shared/error-message.js"
+import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { AnyBlock } from "../types.js"
-import type { AppState } from "./use-workflow-lifecycle.js"
+import type { AgentState, SessionStatus } from "./use-workflow-lifecycle.js"
 
 export interface ChatModeDeps {
-  appState: Accessor<AppState>
-  setAppState: (state: AppState) => void
+  setAgentState: (state: AgentState) => void
+  setSessionStatus: (status: SessionStatus) => void
   setOutputBlocks: (blocks: AnyBlock[]) => void
   setSteps: (steps: never[]) => void
   setErrorMessage: (msg: string) => void
@@ -16,8 +16,6 @@ export interface ChatModeDeps {
   setSessionTitle: (title: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
-  startTimer: () => void
-  stopTimer: () => void
   workStartTime: Accessor<number>
   setTokens: (n: number) => void
   setCost: (n: number) => void
@@ -25,56 +23,70 @@ export interface ChatModeDeps {
 }
 
 export interface ChatModeHook {
-  chatWaiting: Accessor<boolean>
+  /** True while a chat session is open (regardless of whose turn it is). */
+  chatActive: Accessor<boolean>
   startChat(initialMessage?: string): Promise<void>
+  interruptChat(): void
   endChat(): void
   sendMessage(text: string): void
   getChatSession(): ChatSession | null
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
-  const [chatWaiting, setChatWaiting] = createSignal(false)
+  const [chatActive, setChatActive] = createSignal(false)
   let chatSession: ChatSession | null = null
 
   async function startChat(initialMessage?: string): Promise<void> {
-    deps.setAppState("chatting")
+    setChatActive(true)
+    deps.setAgentState("active")     // show "Starting worker..." while spawning
+    deps.setSessionStatus("running") // session is live from this point
     deps.setOutputBlocks([])
     deps.setSteps([])
     deps.setErrorMessage("")
     deps.setStatusLine("")
     deps.setSessionTitle("Chat")
-    setChatWaiting(false)
     deps.resetMetrics()
-    deps.startTimer()
     deps.setTerminalTitle("flywheel · chat")
 
     try {
       chatSession = await startChatSession({
         onBlocksChanged: deps.setOutputBlocks,
-        onWaitingChanged: setChatWaiting,
+        onWaitingChanged: (waiting) => {
+          deps.setAgentState(waiting ? "active" : "idle")
+          // sessionStatus stays "running" — only the agent's activity changes
+        },
         onTokensChanged: deps.setTokens,
         onCostChanged: deps.setCost,
         onModelActivity: deps.setActivity,
-        onError: (msg) => { deps.setErrorMessage(msg); deps.setAppState("error") },
+        onError: (msg) => { deps.setErrorMessage(msg); deps.setAgentState("idle"); deps.setSessionStatus("error") },
         onEnded: () => {
-          if (deps.appState() !== "chatting") return
-          deps.stopTimer()
+          if (!chatActive()) return
           const cost = chatSession?.budgetTracker.getTotalCost() ?? 0
           const tokens = chatSession?.budgetTracker.getTokensUsed() ?? 0
           deps.setStatusLine(`Chat ended · ${formatElapsed(Date.now() - deps.workStartTime())} · ${formatCost(cost)} · ${formatTokens(tokens)} tokens`)
           chatSession = null
-          deps.setAppState("completed")
+          setChatActive(false)
+          deps.setAgentState("idle")
+          deps.setSessionStatus("completed")
           deps.setTerminalTitle("flywheel · done")
         },
       }, initialMessage)
+      // Worker is spawned. If no initial message was sent, the agent is now
+      // idle waiting for user input — clear the "Starting worker..." indicator.
+      if (!initialMessage?.trim()) deps.setAgentState("idle")
     } catch (err) {
       deps.setErrorMessage(`Chat error: ${extractErrorMessage(err)}`)
-      deps.setAppState("error")
+      setChatActive(false)
+      deps.setAgentState("idle")
+      deps.setSessionStatus("error")
     }
   }
 
+  function interruptChat(): void {
+    chatSession?.interrupt()
+  }
+
   function endChat(): void {
-    deps.stopTimer()
     chatSession?.end()
     chatSession = null
   }
@@ -87,5 +99,5 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     return chatSession
   }
 
-  return { chatWaiting, startChat, endChat, sendMessage, getChatSession }
+  return { chatActive, startChat, interruptChat, endChat, sendMessage, getChatSession }
 }

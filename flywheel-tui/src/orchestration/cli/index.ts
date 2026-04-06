@@ -8,8 +8,8 @@
  * Run via `bin/flywheel` or `bun --conditions=browser run src/cli/index.ts`.
  */
 
-import { Log } from "../../workflows/shared/log"
-import { errorMessage } from "../../workflows/shared/error-message"
+import { Log } from "../../infra/log"
+import { errorMessage } from "../../infra/error-message"
 import { installAgents } from "../../workflows/agents/installer"
 
 

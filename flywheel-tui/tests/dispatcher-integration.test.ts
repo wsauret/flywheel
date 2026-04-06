@@ -10,7 +10,7 @@ import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { randomUUID } from "crypto";
 
 import type { Step, Queue } from "../src/workflows/queue/types";
-import type { FlywheelEmitter } from "../src/protocol/event-bus";
+import type { FlywheelEmitter } from "../src/infra/event-bus";
 import {
   createStepDispatcher,
   type StepDispatcherInput,

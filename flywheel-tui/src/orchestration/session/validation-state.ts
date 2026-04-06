@@ -14,7 +14,7 @@ import {
   ValidationStateSchema,
   type ValidationState,
 } from "./validation-schemas";
-import { Log } from "../../workflows/shared/log";
+import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "validation-state" });
 

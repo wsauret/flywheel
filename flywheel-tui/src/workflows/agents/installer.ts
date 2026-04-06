@@ -25,8 +25,8 @@
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
-import { Log } from "../shared/log.js";
-import { errorMessage } from "../shared/error-message.js";
+import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "agent-installer" });
 

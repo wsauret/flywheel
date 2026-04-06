@@ -21,7 +21,7 @@
 
 import path from "path"
 import { mkdirSync, readdirSync, unlinkSync, statSync, createWriteStream } from "node:fs"
-import { LOG_DIR } from "../../orchestration/config/paths"
+import { LOG_DIR } from "./paths"
 
 export namespace Log {
   export type Level = "DEBUG" | "INFO" | "WARN" | "ERROR"

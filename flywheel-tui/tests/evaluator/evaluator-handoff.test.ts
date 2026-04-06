@@ -19,10 +19,21 @@ import type { EvaluatorInput, EvaluatorResult } from "../../src/workflows/evalua
 import type { ProcessSpawner, SpawnOptions } from "../../src/orchestration/worker/spawner";
 import { EvaluatorInputSchema, EvaluatorHandoffDataSchema } from "../../src/workflows/evaluator/schemas";
 import { EvaluatorVerdictSchema } from "../../src/workflows/evaluator/schemas";
+import { getEngine } from "../../src/orchestration/engines/core/registry";
+import { createEnvFilter } from "../../src/orchestration/worker/env-filter";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Create DI deps for evaluator transport tests. */
+function makeTransportDeps(engineName = "claude") {
+  const engine = getEngine(engineName);
+  const envFilter = createEnvFilter();
+  const buildCommand = (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) =>
+    engine.buildEvaluatorCommand(opts);
+  return { engine, envFilter, buildCommand };
+}
 
 function validVerdict(overrides?: Partial<import("../../src/workflows/evaluator/schemas").EvaluatorVerdict>) {
   return {
@@ -180,7 +191,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -223,7 +234,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -268,7 +279,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -315,7 +326,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -362,7 +373,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -390,7 +401,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -435,7 +446,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -481,7 +492,7 @@ describe("SubprocessEvaluatorTransport: handoff file verdict", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner: mockSpawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -546,7 +557,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -568,7 +579,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -587,7 +598,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -611,7 +622,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -636,7 +647,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });
@@ -657,7 +668,7 @@ describe("SubprocessEvaluatorTransport: buildPrompt with handoff data", () => {
 
     const transport = new SubprocessEvaluatorTransport({
       spawner,
-      engineName: "claude",
+      ...makeTransportDeps("claude"),
       sessionId: "test-session",
       baseDir: "/tmp/test",
     });

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { EventBus, createFlywheelEmitter } from "../src/protocol/event-bus";
+import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
 import { MockAdapter } from "./helpers/mock-adapter";
-import type { FlywheelEvent } from "../src/protocol/events";
+import type { FlywheelEvent } from "../src/infra/events";
 
 describe("EventBus", () => {
   let bus: EventBus;

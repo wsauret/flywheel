@@ -14,9 +14,9 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { writeFileAtomic } from "../shared/atomic-write";
-import { Log } from "../shared/log";
-import { errorMessage } from "../shared/error-message";
-import type { SkillFeedback } from "../../protocol/handoff-schemas";
+import { Log } from "../../infra/log";
+import { errorMessage } from "../../infra/error-message";
+import type { SkillFeedback } from "../../infra/handoff-schemas";
 
 const log = Log.create({ service: "step-context" });
 

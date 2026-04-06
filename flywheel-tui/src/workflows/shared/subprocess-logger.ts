@@ -12,9 +12,9 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { SUBPROCESS_LOG_DIR, sessionDir } from "../../orchestration/config/paths.js";
-import { Log } from "./log.js";
-import { errorMessage } from "./error-message.js";
+import { SUBPROCESS_LOG_DIR, sessionDir } from "../../infra/paths.js";
+import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "subprocess-logger" });
 

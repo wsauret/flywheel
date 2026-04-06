@@ -9,19 +9,21 @@ import { autoDetectTransport } from "../workflows/dispatcher/auto-detect"
 import { createEvaluatorTransport } from "../workflows/evaluator/create-transport"
 import { createAgentEvaluatorFn } from "../workflows/evaluator/create-agent-evaluator"
 import { readHandoff } from "../workflows/queue/shared/handoff-reader"
-import { WorkerHandoffSchema } from "../protocol/handoff-schemas"
+import { WorkerHandoffSchema } from "../infra/handoff-schemas"
 import { createContextAccumulator } from "../workflows/queue/context-accumulator"
 import { createCompositeHook } from "../workflows/queue/shared/hooks"
 import "../workflows/queue/steps/register-all"
-import { resolveModels } from "./config/loader"
-import { createFlywheelEmitter } from "../protocol/event-bus"
-import { Log } from "../workflows/shared/log"
-import { errorMessage } from "../workflows/shared/error-message"
+import { resolveTierConfigs } from "./config/loader"
+import { getEngine } from "./engines/core/registry"
+import { createEnvFilter } from "./worker/env-filter"
+import { createFlywheelEmitter } from "../infra/event-bus"
+import { Log } from "../infra/log"
+import { errorMessage } from "../infra/error-message"
 import { ContextIndexer } from "./memory/indexer"
 import { createWorkerCallback } from "./worker-callback"
 import { createDispatcherCallback } from "./dispatcher-callback"
 import type { WorkflowDeps } from "./engines/workflow-deps"
-import type { EventBus } from "../protocol/event-bus"
+import type { EventBus } from "../infra/event-bus"
 import type { Queue } from "../workflows/queue/types"
 import type { StdinHandle } from "./worker/spawner"
 import type { WorkflowSession } from "./workflow-session"
@@ -37,14 +39,18 @@ const log = Log.create({ service: "shell" })
 export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowIdRef: { current: string }, logBaseDir: string, sessionId?: string, baseDir?: string, evaluatorSystemPromptAddendum?: string) {
   const engineName = deps.config.engine
 
+  const tiers = resolveTierConfigs(deps.config)
+  const engine = getEngine(engineName)
+  const envFilter = createEnvFilter()
+
   let dispatcherTransport: import("../workflows/dispatcher/transport").DispatcherTransport | undefined
   try {
-    const { resolveModels } = await import("./config/loader")
-    const { dispatcherModel } = resolveModels(deps.config)
     const resolved = await autoDetectTransport({
       spawner: deps.spawner,
-      engineName,
-      dispatcherModel,
+      engine,
+      envFilter,
+      tierConfig: tiers.dispatcher,
+      buildCommand: (opts) => engine.buildDispatcherCommand(opts),
       onStdout: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
       onStderr: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
       logBaseDir,
@@ -62,12 +68,12 @@ export async function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, 
   let evaluatorTransport: import("../workflows/evaluator/transport").EvaluatorTransport | undefined
   if (!deps.config.skip_evaluation) {
     try {
-      const { resolveModels: resolveModelsForEval } = await import("./config/loader")
-      const { dispatcherModel: evalModel } = resolveModelsForEval(deps.config)
       evaluatorTransport = await createEvaluatorTransport({
         spawner: deps.spawner,
-        engineName,
-        evaluatorModel: evalModel,
+        engine,
+        envFilter,
+        tierConfig: tiers.evaluator,
+        buildCommand: (opts) => engine.buildEvaluatorCommand(opts),
         onStdout: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
         onStderr: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
         logBaseDir,
@@ -97,6 +103,10 @@ export interface BuildExecutorCoreDeps {
   /** Session ID for session-scoped file paths. */
   sessionId: string;
   projectCwd: string;
+  /** Override the worker process cwd. Defaults to projectCwd.
+   * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
+   * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
+  workerCwd?: string;
   contextIndexer: ContextIndexer;
   /** Setter for TUI queue step state (SolidJS signal setter passed from shell). */
   setShellQueueSteps: (updater: any) => void;
@@ -140,7 +150,7 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     capturedWorkerSessionId, pendingInjection, activeSessionRef,
     budgetTracker,
   } = opts
-  const { dispatcherModel, workerModel } = resolveModels(deps.config)
+  const tiers = resolveTierConfigs(deps.config)
 
   // Context accumulator (windowed detail strategy)
   const contextAccumulator = createContextAccumulator({
@@ -175,12 +185,13 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
   const dispatcherFn = createDispatcherCallback({
     deps, emitter, workflowIdRef, dispatcherTransport, contextIndexer,
     contextAccumulator, projectCwd, sessionObjective, queue,
-    dispatcherModel, workerModel,
+    dispatcherModel: tiers.dispatcher.model, workerModel: tiers.worker.model,
   })
 
   // Worker callback (spawn engine process)
   const workerFn = createWorkerCallback({
     deps, emitter, workflowIdRef, sessionId: execSessionId, projectCwd,
+    workerCwd: opts.workerCwd,
     stdinHandleRef, capturedWorkerSessionId, pendingInjection,
     activeSessionRef, budgetTracker,
   })

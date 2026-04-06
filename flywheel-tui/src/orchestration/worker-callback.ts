@@ -11,11 +11,11 @@ import {
   sessionDir,
   buildWorkerHandoffPath,
   ensureSessionDir,
-} from "./config/paths"
+} from "../infra/paths"
 import { formatStdinMessage } from "./worker/stdin-format"
-import { Log } from "../workflows/shared/log"
+import { Log } from "../infra/log"
 import type { WorkflowDeps } from "./engines/workflow-deps"
-import type { FlywheelEmitter } from "../protocol/event-bus"
+import type { FlywheelEmitter } from "../infra/event-bus"
 import type { StdinHandle } from "./worker/spawner"
 import type { WorkflowSession } from "./workflow-session"
 import type { Step } from "../workflows/queue/types"
@@ -33,6 +33,10 @@ export interface WorkerCallbackDeps {
   workflowIdRef: { current: string }
   sessionId: string
   projectCwd: string
+  /** Override the worker process cwd. Defaults to projectCwd.
+   * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
+   * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
+  workerCwd?: string
   stdinHandleRef?: { current: StdinHandle | null }
   capturedWorkerSessionId: { current: string | undefined }
   pendingInjection: { current: string | null }
@@ -89,7 +93,6 @@ export function createWorkerCallback(
       prompt: fullPrompt,
       model: deps.config.worker?.model ?? deps.config.model,
       toolScoping: step.toolScoping ?? undefined,
-      agentsJson: deps.agentsJson,
     })
     const startTime = Date.now()
     const rawStdinContent = engineCmd.stdinPrompt
@@ -131,8 +134,12 @@ export function createWorkerCallback(
       }
     } : undefined
 
+    // Reset cumulative-cost baselines before each spawn so delta accounting
+    // starts from zero for this new process.
+    budgetTracker?.onNewWorker()
+
     const spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, {
-      cwd: projectCwd,
+      cwd: opts.workerCwd ?? projectCwd,
       invocationId,
       sessionId,
       handoffFileName: `${step.type}_${step.id}.json`,

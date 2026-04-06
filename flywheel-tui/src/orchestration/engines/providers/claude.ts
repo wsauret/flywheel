@@ -39,7 +39,6 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     "--output-format", "stream-json",
     "--input-format", "stream-json",
     "--dangerously-skip-permissions",
-    "--bare",
   ];
 
   if (options.resumeSessionId?.trim()) {
@@ -68,10 +67,6 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
     }
   }
 
-  if (options.agentsJson) {
-    args.push("--agents", options.agentsJson);
-  }
-
   return {
     command: metadata.cliBinary,
     args,
@@ -97,7 +92,8 @@ const DISPATCHER_DEFAULT_MODEL = "sonnet";
  * - `--dangerously-skip-permissions` — skip permission prompts
  */
 export function buildDispatcherCommand(options: DispatcherCommandOptions): EngineCommand {
-  const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+  const model = options.tierConfig?.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+  const effort = options.tierConfig?.effort?.trim() || "low";
 
   const args: string[] = [
     "--output-format", "stream-json",
@@ -106,7 +102,7 @@ export function buildDispatcherCommand(options: DispatcherCommandOptions): Engin
     "--tools", "Write",
     "--model", model,
     "--system-prompt", options.systemPrompt,
-    "--effort", "low",
+    "--effort", effort,
     "-p", options.prompt,
   ];
 
@@ -127,7 +123,8 @@ export function buildDispatcherCommand(options: DispatcherCommandOptions): Engin
  * Uses -p (print mode) for one-shot execution with tool access.
  */
 export function buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineCommand {
-  const model = options.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+  const model = options.tierConfig?.model?.trim() || DISPATCHER_DEFAULT_MODEL;
+  const effort = options.tierConfig?.effort?.trim() || "low";
 
   const args: string[] = [
     "--output-format", "stream-json",
@@ -136,6 +133,7 @@ export function buildEvaluatorCommand(options: EvaluatorCommandOptions): EngineC
     "--tools", "Read,Bash,Write,Grep,Glob",
     "--model", model,
     "--system-prompt", options.systemPrompt,
+    "--effort", effort,
     "-p", options.prompt,
   ];
 

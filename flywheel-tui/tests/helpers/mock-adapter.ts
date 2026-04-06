@@ -1,5 +1,5 @@
-import type { FlywheelEvent } from "../../src/protocol/events";
-import { assertNever } from "../../src/protocol/events";
+import type { FlywheelEvent } from "../../src/infra/events";
+import { assertNever } from "../../src/infra/events";
 import type { AdapterType } from "../../src/tui/adapters/types";
 import { BaseUIAdapter } from "../../src/tui/adapters/base";
 

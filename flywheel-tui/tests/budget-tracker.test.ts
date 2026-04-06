@@ -219,16 +219,33 @@ describe("BudgetTracker — cost parsing", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — accumulation", () => {
-  it("accumulates cost across multiple result events", () => {
+  it("accumulates cost across multiple result events (cumulative total_cost_usd with deltas)", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
+    // Claude Code's total_cost_usd is cumulative within a process.
+    // Delta accounting: 0.025, then 0.050-0.025=0.025, then 0.085-0.050=0.035
     tracker.handleEvent(resultEvent(0.025));
     tracker.handleEvent(resultEvent(0.050));
-    tracker.handleEvent(resultEvent(0.010));
+    tracker.handleEvent(resultEvent(0.085));
 
     expect(tracker.getTotalCost()).toBeCloseTo(0.085, 10);
+    tracker.dispose();
+  });
+
+  it("accumulates cost across separate worker processes via onNewWorker()", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // First worker: cumulative 0.025
+    tracker.handleEvent(resultEvent(0.025));
+    // Second worker: onNewWorker resets baseline, so 0.010 is a fresh cumulative
+    tracker.onNewWorker();
+    tracker.handleEvent(resultEvent(0.010));
+
+    expect(tracker.getTotalCost()).toBeCloseTo(0.035, 10);
     tracker.dispose();
   });
 
@@ -237,10 +254,11 @@ describe("BudgetTracker — accumulation", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
+    // Cumulative: 0.01, then 0.03 (delta = 0.02)
     tracker.handleEvent(resultEvent(0.01));
     tracker.handleEvent(assistantEvent("some output"));
     tracker.handleEvent(resultNoCost());
-    tracker.handleEvent(resultEvent(0.02));
+    tracker.handleEvent(resultEvent(0.03));
 
     expect(tracker.getTotalCost()).toBeCloseTo(0.03, 10);
     tracker.dispose();
@@ -252,15 +270,17 @@ describe("BudgetTracker — accumulation", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — token tracking", () => {
-  it("accumulates input_tokens + output_tokens from result events", () => {
+  it("accumulates input_tokens + output_tokens from result events (cumulative with deltas)", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
+    // Cumulative within a process: first event 1000+500, second 2000+800
+    // Deltas: (1000+500) then (2000-1000)+(800-500) = 1000+300
     tracker.handleEvent(resultEvent(0.01, 1000, 500));
     tracker.handleEvent(resultEvent(0.02, 2000, 800));
 
-    expect(tracker.getTokensUsed()).toBe(4300); // (1000+500) + (2000+800)
+    expect(tracker.getTokensUsed()).toBe(2800); // 1500 + 1300
     tracker.dispose();
   });
 
@@ -276,16 +296,31 @@ describe("BudgetTracker — token tracking", () => {
     tracker.dispose();
   });
 
-  it("accumulates tokens from mixed events with and without token fields", () => {
+  it("accumulates tokens across separate worker processes", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = createSession(minimalSession(), baseDir);
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
+
+    // First worker: 500+200 = 700 tokens
+    tracker.handleEvent(resultEvent(0.01, 500, 200));
+    // Second worker: reset baselines, then 300+100 = 400 tokens
+    tracker.onNewWorker();
+    tracker.handleEvent(resultEvent(0.02, 300, 100));
+
+    expect(tracker.getTokensUsed()).toBe(1100); // 700 + 400
+    tracker.dispose();
+  });
+
+  it("cost-only result events (no usage) do not affect token baselines", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
     tracker.handleEvent(resultEvent(0.01, 500, 200)); // 700 tokens
-    tracker.handleEvent(resultNoUsage(0.005));          // 0 tokens
-    tracker.handleEvent(resultEvent(0.02, 300, 100));  // 400 tokens
-
-    expect(tracker.getTokensUsed()).toBe(1100);
+    // cost-only result within the same process (cumulative cost increased)
+    tracker.handleEvent(resultNoUsage(0.015));
+    expect(tracker.getTokensUsed()).toBe(700); // tokens unchanged
+    expect(tracker.getTotalCost()).toBeCloseTo(0.015, 10); // cost updated to cumulative value
     tracker.dispose();
   });
 
@@ -392,10 +427,11 @@ describe("BudgetTracker — debounced persistence", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 30 });
 
-    // Fire 3 events quickly — should coalesce into one debounced write
+    // Fire 3 cumulative events quickly — should coalesce into one debounced write
+    // Cumulative: 0.01, 0.03, 0.06
     tracker.handleEvent(resultEvent(0.01));
-    tracker.handleEvent(resultEvent(0.02));
     tracker.handleEvent(resultEvent(0.03));
+    tracker.handleEvent(resultEvent(0.06));
 
     // Wait for debounce to fire
     await wait(80);
@@ -411,15 +447,15 @@ describe("BudgetTracker — debounced persistence", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 10 });
 
-    // First batch
+    // First batch: cumulative 0.01
     tracker.handleEvent(resultEvent(0.01));
     await wait(50);
 
     const session1 = readSession(sessionId, baseDir);
     expect(session1!.totalCost).toBeCloseTo(0.01, 10);
 
-    // Second batch
-    tracker.handleEvent(resultEvent(0.02));
+    // Second batch: cumulative 0.03 (delta = 0.02, total = 0.03)
+    tracker.handleEvent(resultEvent(0.03));
     await wait(50);
 
     const session2 = readSession(sessionId, baseDir);
@@ -457,13 +493,14 @@ describe("BudgetTracker — flush", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
+    // Cumulative within one process: first 5000+2000, then 8000+3000
+    // Deltas: 7000, then (8000-5000)+(3000-2000)=4000
     tracker.handleEvent(resultEvent(0.10, 5000, 2000));
     tracker.handleEvent(resultEvent(0.25, 8000, 3000));
     tracker.incrementInvocations();
     tracker.incrementInvocations();
     tracker.flush();
 
-    // Read raw file to verify structure (directory-per-session layout)
     const filePath = path.join(
       baseDir,
       ".flywheel",
@@ -474,8 +511,8 @@ describe("BudgetTracker — flush", () => {
     const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     expect(raw.budgetUsage).toEqual({
       invocations_used: 2,
-      tokens_used: 18000, // (5000+2000) + (8000+3000)
-      cost_usd: expect.closeTo(0.35, 10),
+      tokens_used: 11000, // 7000 + 4000
+      cost_usd: expect.closeTo(0.25, 10),
     });
 
     tracker.dispose();
@@ -576,12 +613,13 @@ describe("BudgetTracker — session summary", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
+    // Cumulative: first 3000+1000, then 6000+2000
+    // Deltas: 4000, then (6000-3000)+(2000-1000)=4000
     tracker.handleEvent(resultEvent(0.10, 3000, 1000));
     tracker.handleEvent(resultEvent(0.25, 6000, 2000));
     tracker.incrementInvocations();
     tracker.flush();
 
-    // Read raw file to verify structure (directory-per-session layout)
     const filePath = path.join(
       baseDir,
       ".flywheel",
@@ -590,16 +628,15 @@ describe("BudgetTracker — session summary", () => {
       "session.json",
     );
     const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    expect(raw.totalCost).toBeCloseTo(0.35, 10);
+    expect(raw.totalCost).toBeCloseTo(0.25, 10);
     expect(raw.budgetUsage.invocations_used).toBe(1);
-    expect(raw.budgetUsage.tokens_used).toBe(12000);
-    expect(raw.budgetUsage.cost_usd).toBeCloseTo(0.35, 10);
+    expect(raw.budgetUsage.tokens_used).toBe(8000); // 4000 + 4000
+    expect(raw.budgetUsage.cost_usd).toBeCloseTo(0.25, 10);
 
-    // Also verify via readSession (Zod-validated)
     const session = readSession(sessionId, baseDir);
     expect(session).not.toBeNull();
-    expect(session!.totalCost).toBeCloseTo(0.35, 10);
-    expect(session!.budgetUsage.cost_usd).toBeCloseTo(0.35, 10);
+    expect(session!.totalCost).toBeCloseTo(0.25, 10);
+    expect(session!.budgetUsage.cost_usd).toBeCloseTo(0.25, 10);
     tracker.dispose();
   });
 
@@ -676,7 +713,9 @@ describe("BudgetTracker — isExhausted", () => {
     // Token limit not reached
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(false);
 
-    tracker.handleEvent(resultEvent(0.01, 100, 200)); // +300 = 1100 total
+    // Second worker process — reset baselines
+    tracker.onNewWorker();
+    tracker.handleEvent(resultEvent(0.01, 100, 200)); // fresh cumulative: +300 = 1100 total
 
     // Token limit exceeded
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(true);

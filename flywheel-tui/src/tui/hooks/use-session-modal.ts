@@ -10,11 +10,12 @@ import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
 import { loadSessionOutput, archiveSession, deleteSession } from "../../orchestration/session-actions.js"
 import { formatCost } from "../format.js"
-import { errorMessage as extractErrorMessage } from "../../workflows/shared/error-message.js"
+import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionManager, SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionRegistry } from "../../orchestration/session-registry.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { AnyBlock } from "../types.js"
+import type { SessionStatus } from "./use-workflow-lifecycle.js"
 
 export interface SessionModalDeps {
   sessions: Accessor<SessionSummary[]>
@@ -23,7 +24,7 @@ export interface SessionModalDeps {
   registry: SessionRegistry
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
-  setAppState: (state: string) => void
+  setSessionStatus: (status: SessionStatus) => void
   setOutputBlocks: (blocks: AnyBlock[]) => void
   setSessionTitle: (title: string) => void
   setStatusLine: (line: string) => void
@@ -81,7 +82,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       deps.setStatusLine(`Viewing session · ${formatCost(session.totalCost)}`)
     }
     deps.setForegroundId(undefined)
-    deps.setAppState("completed")
+    deps.setSessionStatus("completed")
   }
 
   function handleSessionResume(sessionId: string): void {

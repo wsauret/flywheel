@@ -1,5 +1,5 @@
 import type { ZodSchema, ZodError } from "zod";
-import { errorMessage } from "../../shared/error-message";
+import { errorMessage } from "../../../infra/error-message";
 
 // ---------------------------------------------------------------------------
 // Error classes

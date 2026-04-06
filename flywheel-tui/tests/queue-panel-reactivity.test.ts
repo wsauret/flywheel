@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { EventBus } from "../src/protocol/event-bus";
-import { createFlywheelEmitter } from "../src/protocol/event-bus";
+import { EventBus } from "../src/infra/event-bus";
+import { createFlywheelEmitter } from "../src/infra/event-bus";
 import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { computeQueueProgress } from "../src/tui/components/workflow-panel-logic";
 import type { QueueStepState } from "../src/tui/types";

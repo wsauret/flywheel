@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { BunProcessSpawner } from "../../src/orchestration/worker/bun-spawner";
 import { createEvaluatorTransport } from "../../src/workflows/evaluator/create-transport";
 import { createAgentEvaluatorFn } from "../../src/workflows/evaluator/create-agent-evaluator";
-import { ensureSessionDir } from "../../src/orchestration/config/paths";
+import { ensureSessionDir } from "../../src/infra/paths";
 import type { EvaluatorTransport } from "../../src/workflows/evaluator/transport";
 import type { EvalResult } from "../../src/workflows/queue/executor";
 import type { Step } from "../../src/workflows/queue/types";

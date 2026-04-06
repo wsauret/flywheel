@@ -107,6 +107,8 @@ export interface UserMessageBlock {
   kind: "userMessage";
   content: string;
   timestamp: number;
+  /** True while the message has been written to stdin but the agent hasn't picked it up yet. */
+  pending?: boolean;
 }
 
 export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock | ThinkingBlock | UserMessageBlock;

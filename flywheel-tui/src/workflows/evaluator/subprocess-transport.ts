@@ -16,7 +16,7 @@ import type { EvaluatorInput, EvaluatorResult } from "./schemas.js";
 import type { EvaluatorTransport } from "./transport.js";
 import { renderEvaluatorHandoffInstruction } from "../queue/shared/handoff-render.js";
 import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "./schemas.js";
-import { buildEvaluatorHandoffPath } from "../../orchestration/config/paths.js";
+import { buildEvaluatorHandoffPath } from "../../infra/paths.js";
 import {
   type SubprocessTransportBaseOptions,
   type ResolvedTransportBase,
@@ -39,21 +39,20 @@ const EVALUATOR_SYSTEM_PROMPT =
 // ---------------------------------------------------------------------------
 
 export interface SubprocessEvaluatorTransportOptions extends SubprocessTransportBaseOptions {
-  /** Evaluator model override — flows to --model CLI flag. Uses engine default when not set. */
-  evaluatorModel?: string;
   /** Optional addendum appended to the evaluator system prompt (e.g. sprint adversarial instructions). */
   systemPromptAddendum?: string;
+  /** Injected command builder — orchestration provides the engine-specific implementation. */
+  buildCommand: (opts: { prompt: string; systemPrompt: string; tierConfig?: { model?: string; effort?: string } }) => { command: string; args: string[]; stdinPrompt: boolean };
 }
 
 export class SubprocessEvaluatorTransport implements EvaluatorTransport {
   private readonly base: ResolvedTransportBase;
   private readonly systemPrompt: string;
+  private readonly buildCommand: SubprocessEvaluatorTransportOptions["buildCommand"];
 
   constructor(options: SubprocessEvaluatorTransportOptions) {
-    this.base = resolveTransportBase({
-      ...options,
-      model: options.evaluatorModel ?? options.model,
-    });
+    this.base = resolveTransportBase(options);
+    this.buildCommand = options.buildCommand;
 
     this.systemPrompt = options.systemPromptAddendum
       ? `${EVALUATOR_SYSTEM_PROMPT}\n\n${options.systemPromptAddendum}`
@@ -71,8 +70,8 @@ export class SubprocessEvaluatorTransport implements EvaluatorTransport {
         return `${userMessage}\n\n${handoffInstruction}`;
       },
       systemPrompt: this.systemPrompt,
-      buildEngineCommand: (engine, prompt, sysPrompt, model) =>
-        engine.buildEvaluatorCommand({ prompt, systemPrompt: sysPrompt, model }),
+      buildEngineCommand: (prompt, sysPrompt, tierConfig) =>
+        this.buildCommand({ prompt, systemPrompt: sysPrompt, tierConfig }),
       handoffSchema: EvaluatorVerdictSchema,
       mapResult: (verdict) => ({
         passed: verdict.passed,

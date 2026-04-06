@@ -17,7 +17,7 @@ import { createQueue, type Provenance } from "../../src/workflows/queue/queue";
 import { createQueuePersistence } from "../../src/workflows/queue/persistence";
 import { createContextAccumulator } from "../../src/workflows/queue/context-accumulator";
 import { createGuardrails, type GuardrailOptions } from "../../src/workflows/queue/guardrails";
-import { EventBus, createFlywheelEmitter, type FlywheelEmitter } from "../../src/protocol/event-bus";
+import { EventBus, createFlywheelEmitter, type FlywheelEmitter } from "../../src/infra/event-bus";
 import {
   createStepExecutor,
   type StepExecutorOptions,
@@ -35,8 +35,8 @@ import {
 } from "../../src/workflows/queue/executor";
 import type { OnStepCompletedHook } from "../../src/workflows/queue/shared/hooks";
 import type { Step, StepType, Queue } from "../../src/workflows/queue/types";
-import type { FlywheelEvent } from "../../src/protocol/events";
-import { ensureSessionDir } from "../../src/orchestration/config/paths";
+import type { FlywheelEvent } from "../../src/infra/events";
+import { ensureSessionDir } from "../../src/infra/paths";
 
 // ---------------------------------------------------------------------------
 // Step factory — builds Step objects with sensible defaults

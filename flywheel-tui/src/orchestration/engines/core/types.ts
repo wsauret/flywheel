@@ -82,8 +82,6 @@ export interface EngineCommandOptions {
   resumeSessionId?: string;
   /** Tool scoping restrictions — controls which tool categories the worker can access */
   toolScoping?: ToolScopingConfig;
-  /** Pre-serialized JSON for --agents flag (used in --bare mode to provide agent definitions) */
-  agentsJson?: string;
 }
 
 /**
@@ -97,8 +95,8 @@ export interface DispatcherCommandOptions {
   prompt: string;
   /** System prompt (separate from user prompt for caching) */
   systemPrompt: string;
-  /** Model override — defaults to a Sonnet-class model per engine */
-  model?: string;
+  /** Resolved tier config blob (model, effort, future fields). */
+  tierConfig?: { model?: string; effort?: string };
 }
 
 export interface ModelInfo {
@@ -124,8 +122,8 @@ export interface EvaluatorCommandOptions {
   prompt: string;
   /** System prompt (separate from user prompt for caching) */
   systemPrompt: string;
-  /** Model override — defaults to a Sonnet-class model per engine */
-  model?: string;
+  /** Resolved tier config blob (model, effort, future fields). */
+  tierConfig?: { model?: string; effort?: string };
 }
 
 export interface Engine {

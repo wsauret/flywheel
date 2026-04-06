@@ -10,8 +10,8 @@
 import { describe, it, expect } from "bun:test";
 import {
   WorkerHandoffSchema,
-} from "../../src/protocol/handoff-schemas";
-import type { WorkerHandoff } from "../../src/protocol/handoff-schemas";
+} from "../../src/infra/handoff-schemas";
+import type { WorkerHandoff } from "../../src/infra/handoff-schemas";
 import { EvaluatorHandoffDataSchema } from "../../src/workflows/evaluator/schemas";
 import { LastWorkerResultSchema } from "../../src/workflows/schemas";
 

@@ -81,8 +81,11 @@ export class BunProcessSpawner implements ProcessSpawner {
     const baseEnv = options?.env ?? (process.env as Record<string, string>);
     const filteredEnv = this.envFilter.filter(baseEnv);
 
-    // Determine stdin mode
-    const usePipe = options?.stdinPipe === true && options?.stdin !== undefined;
+    // Determine stdin mode.
+    // stdinPipe: true opens a writable pipe regardless of whether initial stdin content
+    // is provided. This allows callers (e.g. chat mode) to open a pipe and only write
+    // content when the user sends a message, rather than sending a no-op greeting.
+    const usePipe = options?.stdinPipe === true;
     const stdinEncoded = !usePipe && options?.stdin !== undefined
       ? new TextEncoder().encode(options.stdin)
       : undefined;
@@ -147,7 +150,9 @@ export class BunProcessSpawner implements ProcessSpawner {
 
         wireCompletionDetection(options!, stdinHandle, ndjsonParser, completionDetector, stdoutState);
 
-        const writeInitial = writeInitialStdin(stdinSink, options!.stdin!, stdinHandle);
+        const writeInitial = options?.stdin
+          ? writeInitialStdin(stdinSink, options.stdin, stdinHandle)
+          : async () => {};
         const watchHandoffFn = watchHandoff(handoffPath, stdinHandle, workerTimeout, completionDetector, stdoutState, options);
 
         const resultPromise = (async (): Promise<WorkerResult> => {

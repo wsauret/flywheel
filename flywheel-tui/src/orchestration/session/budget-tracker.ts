@@ -73,7 +73,7 @@ export interface BudgetTrackerDeps {
   /** Debounce interval in ms. Default: 100ms */
   debounceMs?: number;
   /** Optional emitter for budget events. When provided, budget:exhausted is emitted on first exhaustion. */
-  emitter?: Pick<import("../../protocol/event-bus").FlywheelEmitter, "budgetExhausted" | "budgetWarning">;
+  emitter?: Pick<import("../../infra/event-bus").FlywheelEmitter, "budgetExhausted" | "budgetWarning">;
   /** Workflow ID used when emitting budget events. */
   workflowId?: string;
 }
@@ -97,6 +97,14 @@ export interface BudgetTracker {
   flush(): void;
   /** Cancel timers and flush. */
   dispose(): void;
+  /**
+   * Reset the "last seen" cost/token baselines to zero.
+   * Must be called before each new worker process is spawned so that
+   * delta accounting works correctly across process boundaries.
+   * (Claude Code's total_cost_usd is cumulative within a process; a new
+   * process resets to 0, so the baseline must follow.)
+   */
+  onNewWorker(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +123,16 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   let timerId: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
   let wasExhausted = false;
+
+  // Baselines for delta accounting.
+  // Claude Code's total_cost_usd / input_tokens / output_tokens are cumulative
+  // within a single process. We compute deltas so that multi-turn workers
+  // (turn-boundary injection) don't double-count earlier turns, and so that
+  // sequential worker spawns (new process → counters reset to 0) are handled
+  // correctly via onNewWorker().
+  let lastSeenCost = 0;
+  let lastSeenInputTokens = 0;
+  let lastSeenOutputTokens = 0;
 
   // -------------------------------------------------------------------------
   // Persistence
@@ -163,15 +181,31 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       const parsed = ResultCostSchema.safeParse(event.data);
       if (!parsed.success) return;
 
-      totalCost += parsed.data.total_cost_usd;
-      const inputTokens = parsed.data.usage?.input_tokens ?? 0;
-      const outputTokens = parsed.data.usage?.output_tokens ?? 0;
-      // Cache tokens (cache_read_input_tokens, cache_creation_input_tokens) are intentionally
-      // excluded from tokensUsed. They are priced at a fraction of regular input token cost,
-      // and total_cost_usd already reflects their actual price. Counting them at full weight
-      // would inflate the token budget counter relative to actual spending — e.g., 50k cheap
-      // cache-read tokens would exhaust a 100k token budget without a meaningful cost impact.
-      tokensUsed += inputTokens + outputTokens;
+      // Compute deltas against last-seen values. total_cost_usd and token counts
+      // are cumulative within a process, so we only add what's new since the last
+      // result event. onNewWorker() resets baselines to 0 before each new spawn.
+      const rawCost = parsed.data.total_cost_usd;
+
+      totalCost += rawCost - lastSeenCost;
+      lastSeenCost = rawCost;
+
+      // Only update token baselines when usage is present. A cost-only result
+      // (no usage field) should not zero out or subtract from the token count.
+      if (parsed.data.usage) {
+        const rawInputTokens = parsed.data.usage.input_tokens ?? 0;
+        const rawOutputTokens = parsed.data.usage.output_tokens ?? 0;
+
+        const inputDelta = rawInputTokens - lastSeenInputTokens;
+        const outputDelta = rawOutputTokens - lastSeenOutputTokens;
+        lastSeenInputTokens = rawInputTokens;
+        lastSeenOutputTokens = rawOutputTokens;
+
+        // Cache tokens (cache_read_input_tokens, cache_creation_input_tokens) are intentionally
+        // excluded from tokensUsed. They are priced at a fraction of regular input token cost,
+        // and total_cost_usd already reflects their actual price. Counting them at full weight
+        // would inflate the token budget counter relative to actual spending.
+        tokensUsed += inputDelta + outputDelta;
+      }
 
       scheduleWrite();
       return;
@@ -267,6 +301,16 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   }
 
   // -------------------------------------------------------------------------
+  // Worker process boundary
+  // -------------------------------------------------------------------------
+
+  function onNewWorker(): void {
+    lastSeenCost = 0;
+    lastSeenInputTokens = 0;
+    lastSeenOutputTokens = 0;
+  }
+
+  // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
 
@@ -303,5 +347,6 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     getBudgetStatus,
     flush,
     dispose,
+    onNewWorker,
   };
 }

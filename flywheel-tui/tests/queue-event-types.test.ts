@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { EventBus, createFlywheelEmitter } from "../src/protocol/event-bus";
-import type { FlywheelEmitter } from "../src/protocol/event-bus";
+import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
+import type { FlywheelEmitter } from "../src/infra/event-bus";
 import type {
   FlywheelEvent,
   QueueInitialized,
@@ -15,7 +15,7 @@ import type {
   QueueStepFailed,
   QueueStepInserted,
   QueueStepRemoved,
-} from "../src/protocol/events";
+} from "../src/infra/events";
 
 describe("Queue event types", () => {
   let bus: EventBus;
