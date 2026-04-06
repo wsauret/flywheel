@@ -1,4 +1,5 @@
-# Flywheel CLI — Agent Instructions
+<coding_guidelines>
+# Flywheel CLI -- Agent Instructions
 
 ## Project Overview
 
@@ -9,87 +10,158 @@ Flywheel CLI is a terminal UI application that executes workflow plans. It spawn
 **Config format:** TOML (`flywheel.toml`), not YAML
 **Important:** SolidJS must resolve with the `"browser"` export condition. The `bin/flywheel` wrapper handles this with `bun --conditions=browser`.
 
-## Architecture Principles
+---
 
-The queue engine executes a sequence of typed steps. Each step type + variant is a self-contained module under `src/queue/steps/`. Shared infrastructure lives in `src/queue/shared/`.
+## 1. Module Boundaries (most critical)
 
-**Steps are modular and self-contained.** Every step variant is a folder with three files: `fields.ts` (handoff field specs), `scaffolding.ts` (prompt assembly), and `prompts.ts` (prompt text constants). Some variants also have `hooks.ts` for post-completion behavior. A step folder contains everything needed to understand that step's behavior.
+The codebase has a strict 4-module layered architecture. **Every file must live in the correct module. Every import must respect the dependency direction.** Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 
-**Scaffolding is thin assembly, prompts hold the text.** `scaffolding.ts` registers a strategy and composes the preamble/postamble from constants defined in `prompts.ts`. Prompt text, examples, and instructions live in `prompts.ts` -- scaffolding never contains long string literals.
+```
+src/
+  protocol/        --> imports NOTHING from src/
+  workflows/       --> imports only from protocol/
+  orchestration/   --> imports from workflows/ + protocol/
+  tui/             --> imports from orchestration/ (which re-exports what it needs)
+```
 
-**Schemas live with their owners.** Worker handoff schemas (used by all steps) live in `queue/shared/handoff-schemas.ts`. Evaluator-specific schemas live in `evaluator/schemas.ts`. Dispatcher-specific schemas live in `dispatcher/schemas.ts`. If a schema is consumed by exactly one module, it belongs in that module.
+**What lives where:**
 
-**Registration over wiring.** Step variants register their scaffolding strategy via side-effect imports (`registerScaffolding`). A single `register-all.ts` populates the registry. The orchestrator dispatches by variant key without knowing individual step implementations.
+| Module | What belongs here | What does NOT belong here |
+|--------|-------------------|--------------------------|
+| `protocol/` | Event types, handoff schemas. Pure data contracts. | Any logic, any imports from `src/`. |
+| `workflows/` | Queue engine, dispatcher, evaluator, step types, shared utilities. Domain logic with no knowledge of how it's hosted. | Anything that knows about config, sessions, engines, CLI, or rendering. |
+| `orchestration/` | Config loading, session management, engine registry, worker spawning, CLI entry. Composes workflow primitives into runnable pipelines. | Rendering, UI components, hooks, anything visual. |
+| `tui/` | Shell, hooks, adapters, components, routes. Rendering and user interaction only. | Domain logic, session CRUD, transport resolution, queue building. |
 
-**Hooks are step-scoped.** Post-completion hooks (plan integration, sprint loops, review triage, debug loops) live in the step variant folder that owns the behavior, not in a central hooks file. The shared `createCompositeHook` composes them at the orchestrator level.
+**Violations that must never happen:**
+- `tui/` importing from `workflows/` or `protocol/` directly (must go through `orchestration/`)
+- `workflows/` importing from `orchestration/` or `tui/`
+- `protocol/` importing from anything in `src/`
+- `orchestration/` importing from `tui/`
 
-**Colocate what's used once, share what's used across steps.** If a constant, schema, or helper is consumed by a single step variant, it belongs in that variant's folder. It moves to `queue/shared/` only when two or more variants depend on it. Conventions, handoff rendering, and the scaffolding registry are genuinely shared.
+**Where new code goes:**
+- Step scaffolding/fields/prompts/hooks --> `workflows/queue/steps/<type>/`
+- Hook wiring into the executor pipeline --> `orchestration/queue-orchestrator.ts`
+- Shared domain utilities (used by 2+ workflow modules) --> `workflows/shared/`
+- UI components and reactive hooks --> `tui/`
+- Engine providers and spawners --> `orchestration/engines/` and `orchestration/worker/`
 
-**No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Tests exist to verify production behavior, not to keep unused code alive. Git history is the recovery mechanism.
+**Frozen references:** `src-legacy/` contains code not yet migrated back. `tests-legacy/` contains their tests. Neither is in `tsconfig`.
 
-**Built means wired.** A module that compiles but is never called from the production entry point does not exist. Every new module must be imported and invoked in the live application before its PR merges. If you cannot demonstrate the feature running in the TUI via tmux, it is not done.
+---
 
-**Unit tests prove logic, not integration.** A test suite that passes only shows the module works in isolation. It says nothing about whether the module is reachable from the running application. After wiring a feature, verify it in the live TUI -- not just in the test harness.
+## 2. No God Modules -- File Size and SRP
 
-**Test the wiring, not just the parts.** When you connect a new module to the system, the E2E verification must exercise the actual integration path: start the TUI, trigger the feature, observe the result on screen or in logs. Calling `bun test` is necessary but never sufficient for wiring changes.
+**No source file may exceed 400 lines.** If a file grows past this during implementation, extract a responsibility before merging.
 
-**Imports reveal misplacement.** If a file's imports all reach three or more levels up (`../../../`), it probably lives too deep. If every consumer of a module reaches across subsystem boundaries to import it, the module is in the wrong subsystem. Let import paths guide where things belong.
+**Each file owns one concept:**
 
-**One domain, one home.** Each concept (plan parsing, handoff schemas, sprint types) lives in exactly one place. No re-exports, bridge files, or compatibility shims. When a module moves, update every import -- do not leave a forwarding address.
+- **Types and interfaces** go in a dedicated `*-types.ts` file, not inline with logic.
+- **Pure data transformations** go in `*-helpers.ts` files. Stateless, no side effects, easy to test.
+- **Hooks** (SolidJS reactive logic) live in `tui/hooks/`, one hook per file. `shell.tsx` is a thin wiring layer -- it contains no business logic.
+- **Callbacks and factories** that wire dependencies live in their own files (e.g., `worker-callback.ts`). The orchestrator calls them but does not contain their implementation.
+- **Shared utilities** live in `workflows/shared/` when 2+ modules depend on them.
 
-## Agent Behavior
+**Step types are modular and self-contained.** Every step variant is a folder under `workflows/queue/steps/` with: `fields.ts` (handoff field specs), `scaffolding.ts` (prompt assembly), and `prompts.ts` (prompt text constants). Some also have `hooks.ts` for post-completion behavior.
 
-Always test your changes by running the code, then fix any errors that arise.
-If you write new code and the linter has an error or warning, you must fix the code before moving on.
-Do not add comments when editing a file unless they explain the new logic in the code you are adding.
-Do not ever use emojis in your code.
+**Scaffolding is thin assembly, prompts hold the text.** `scaffolding.ts` registers a strategy and composes preamble/postamble from constants in `prompts.ts`. Scaffolding never contains long string literals.
 
-## Coding Rules
+**Schemas live with their owners.** Handoff schemas (cross-step) live in `protocol/handoff-schemas.ts`. Evaluator schemas live in `evaluator/schemas.ts`. Dispatcher schemas live in `dispatcher/schemas.ts`. If a schema is consumed by exactly one module, it belongs in that module.
 
-DRY - Reuse existing code instead of writing it from scratch. Use grep to determine whether the logic already exists and extend that implementation instead then import it.
-SOLID - Always follow the solid principles, especially single responsibility. It makes code composable and reusable making it easier to follow DRY.
-No god modules, split them up according to responsibility.
-Never mock anything (except in tests when absolutely necessary). Never use a placeholder in real code.
-Always fully wire any new code into the system! Verify the wiring by running the TUI and exercising the feature end-to-end. Unit tests alone do not prove wiring - if you cannot trigger it from the running app, it is unwired.
+---
 
-## Using TypeScript
+## 3. DRY -- Search Before Writing
 
-We are using Node 20+ with TypeScript targeting ES2022, please code everything according to modern ES standards.
-Use ESM modules (import/export), not CommonJS (require/module.exports).
-All imports must include the `.js` extension for local files (e.g., `import { foo } from './bar.js'`).
-Do not use scoped imports unless there is a non-negligible performance benefit, prefer putting imports at the top of the file.
-Document any complex logic with concise comments.
-Prefer template literals for string manipulation.
-Prefer hardcoding values over inventing new environment variables.
-Use Temporal API (from @js-temporal/polyfill) for date handling, not Date objects.
-Use Zod for runtime validation of external data.
-Use the strictest TypeScript settings: strict mode, noUncheckedIndexedAccess, noImplicitOverride are all enabled.
-Avoid using `// @ts-ignore` or `// @ts-expect-error` comments unless there is no other feasible alternative. Instead fix the TypeScript violations.
-Use `type` imports for type-only imports (e.g., `import type { Foo } from './foo.js'` or `import { type Foo, bar } from './foo.js'`).
-Always use the most descriptive type hints possible and feel free to import from libraries to give more accurate type hints.
-Do not use `any` as the type. Instead use a descriptive or union type. If truly needed, prefer `unknown` and narrow the type.
-Do not use `Function` as a type. Use specific function signatures instead.
-Use union types with `|` for optional/nullable types (e.g., `string | null`).
-We use ESLint with typescript-eslint for linting. Run `npm run lint` to check for issues and `npm run lint:fix` to auto-fix.
-We use tsc for type checking and cannot use any code with type checking errors. Run `npm run typecheck` to verify. Always fix type checking errors and ensure your code is fully typed.
-Exported functions should have explicit return types; internal functions can rely on inference.
+**Before writing ANY utility function, search `src/` first.** Use grep to determine whether the logic already exists, then extend and import it.
 
-## Writing Tests
+**Key shared utilities that already exist (do not duplicate):**
 
-Use `npm test` to run the full test suite.
-Use `npm run test:watch` for watch mode during development.
-Use `npx vitest run tests/path/to/test.test.ts` to run a specific test file.
-Always write unit tests for new functionality and maintain existing test coverage when we refactor.
-Test the observable behavior, you should be verifying what the system does, not how it does it. This means you should only test public interfaces not private ones.
-Use `describe` blocks to group related tests and `it` blocks for individual test cases.
-Use Vitest's built-in assertions (expect, toEqual, toBeCloseTo, toThrow, etc.).
-Create helper functions and mocks within test files for clarity and reusability.
-Use shared test fixtures whenever possible so that we follow DRY. Put them in `tests/fixtures/`.
-Avoid coupling the tests to implementation so that they continue to work after refactoring the internals.
-Focus the tests on the meaning of the code. They should document expected behavior clearly.
-Use async/await patterns for testing async code with proper error handling.
+| Utility | Location | Replaces |
+|---------|----------|----------|
+| `errorMessage(err)` | `workflows/shared/error-message.ts` | `instanceof Error ? e.message : String(e)` |
+| `formatDuration()` | `tui/format.ts` | Any elapsed time formatting |
+| `formatCost()` | `tui/format.ts` | Any USD cost formatting |
+| `SubprocessTransportBase` | `workflows/shared/subprocess-transport-base.ts` | Shared retry loop + constructor for transports |
+| `log` | `workflows/shared/log.ts` | Any logger creation |
+| `atomicWriteFile()` | `workflows/shared/atomic-write.ts` | Any write-then-rename pattern |
+| `DebouncedWriter` | `workflows/shared/debounced-writer.ts` | Any debounced file writing |
+| `raceAbort()` | `workflows/queue/abort-utils.ts` | Any AbortSignal + Promise.race pattern |
+| `truncateText()` | `workflows/dispatcher/truncation.ts` | Any string truncation |
 
-## Running Tests
+**Colocate what's used once, share what's used across modules.** A constant, schema, or helper consumed by a single step variant belongs in that variant's folder. It moves to `shared/` only when a second consumer appears.
+
+**No barrel re-exports.** Consumers import directly from the owning file. No `index.ts` re-export files that exist solely to shorten import paths.
+
+---
+
+## 4. Registration Over Wiring (OCP)
+
+New behavior is added by **registration**, not by editing dispatch switches.
+
+- **Step types** register via `registerScaffolding()` side-effect imports in `steps/register-all.ts`. Adding a step type never requires editing `executor.ts` or `step-runner.ts`.
+- **Shell commands** register via `CommandRegistry` in `tui/hooks/command-registry.ts`. Adding a command never requires editing `shell.tsx`.
+- **Output formatting** for new tool types uses the Map-based dispatch table in `adapters/output-formatter.ts`.
+- **Engine providers** register via `registerEngine()` in `orchestration/engines/core/registry.ts`.
+
+**Hooks are step-scoped.** Post-completion hooks (plan integration, sprint loops, review triage, debug loops) live in the step variant folder that owns the behavior, not in a central hooks file. `createCompositeHook` composes them at the orchestrator level.
+
+---
+
+## 5. Dependency Injection
+
+High-level modules depend on abstractions, not concretions:
+
+- `executor.ts` accepts dependencies via `StepExecutorOptions` (types in `executor-types.ts`). It never imports transport implementations.
+- `workflow-runner.ts` accepts `WorkflowRunnerOverrides` for injecting test doubles.
+- `chat.ts` accepts an optional `spawner` parameter.
+- `bun-spawner.ts` accepts `projectCwd` as a parameter -- never reads `process.cwd()`.
+
+When wiring new features, pass dependencies through existing options objects. Do not add global imports to concrete implementations from high-level modules.
+
+---
+
+## 6. Dead Code and Wiring Rules
+
+**No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Git history is the recovery mechanism.
+
+**No speculative code.** Do not add functions, types, or exports "for future use." If a future phase needs it, that phase adds it.
+
+**Exports match consumers.** Every exported symbol must have at least one non-test consumer in `src/`.
+
+**`src-legacy/` is the archive.** Dead code goes to `src-legacy/`, not to a comment block.
+
+**Built means wired.** A module that compiles but is never called from the production entry point does not exist. Every new module must be imported and invoked in the live application before merging. If you cannot demonstrate the feature running in the TUI via tmux, it is not done.
+
+**Unit tests prove logic, not integration.** A passing test suite says nothing about whether the module is reachable from the running app. After wiring a feature, verify it in the live TUI -- not just in the test harness.
+
+---
+
+## 7. TypeScript Conventions
+
+- Runtime: Bun on Node 20+, TypeScript targeting ES2022, strict mode enabled (`noUncheckedIndexedAccess`, `noImplicitOverride`).
+- ESM modules (`import`/`export`), not CommonJS. All local imports must include `.js` extension.
+- `type` imports for type-only usage: `import type { Foo }` or `import { type Foo, bar }`.
+- No `any` (use `unknown` and narrow). No `Function` (use specific signatures). No `// @ts-ignore` unless no alternative exists.
+- Union types for optional/nullable: `string | null`.
+- Exported functions: explicit return types. Internal functions: inference is fine.
+- Prefer template literals, hardcoded values over env vars, top-level imports over scoped.
+- Zod for runtime validation of external data. Temporal API (from `@js-temporal/polyfill`) for dates.
+- ESLint with typescript-eslint: `npm run lint` / `npm run lint:fix`. tsc for type checking: `npm run typecheck`.
+
+---
+
+## 8. Agent Behavior
+
+- Always test changes by running the code, then fix any errors that arise.
+- Fix linter errors and warnings before moving on.
+- Do not add comments unless they explain new logic you are adding.
+- Do not use emojis in code.
+- Never mock anything in production code (mocks are for tests only when absolutely necessary).
+- Always fully wire new code into the system. Unit tests alone do not prove wiring.
+
+---
+
+## 9. Writing and Running Tests
 
 ```bash
 cd flywheel-tui
@@ -97,128 +169,34 @@ bun test                   # all tests
 bun test tests/foo.test.ts # single file
 ```
 
-**Fix failing tests, don't just say they're pre-existing.** If you find a failing test, fix it. Don't waste time trying to show it was already broken.
+- Write unit tests for new functionality. Maintain coverage when refactoring.
+- Test observable behavior (what the system does), not implementation details (how it does it).
+- Use `describe`/`it` blocks, Vitest assertions, async/await for async code.
+- Shared fixtures go in `tests/fixtures/`. DRY applies to tests too.
+- Avoid coupling tests to implementation -- they should survive internal refactors.
+- **Fix failing tests, don't say they're pre-existing.** If you find a failing test, fix it.
 
-## Testing the TUI with tmux
+---
 
-Always do extensive UAT after any change. The TUI is a full-screen interactive application — use tmux to run it in a detached session, send keystrokes, and read screen output.
+## 10. TUI Verification with tmux
 
-**When someone asks you to "test the TUI", "verify the UI works", or "make sure your changes work in the actual app", this is what they mean.** Do not skip this step!
+After any change under `src/tui/`, verify in the live TUI. See **[docs/tmux-uat-guide.md](docs/tmux-uat-guide.md)** for the full tmux setup, test sequences, and cleanup checklist.
 
-### Setup and primitives
+**Key rules:**
+- Never run UAT in the project directory (use a temp dir).
+- Check log files for errors even if the TUI looks correct visually.
+- Clean up all artifacts (sessions, files, tmux session) when done.
 
-tmux must be installed (`brew install tmux` on macOS). A test plan is at `tests/fixtures/two-phase-plan.md`.
+---
 
-```bash
-# Start (kill stale session first)
-tmux kill-session -t flywheel 2>/dev/null
-tmux new-session -d -s flywheel -x 120 -y 40 \
-  'cd /path/to/flywheel-tui && bin/flywheel'
-sleep 2
+## Quick Reference: Import Rules
 
-# Read screen (what the user sees, minus colors)
-tmux capture-pane -t flywheel -p              # full screen
-tmux capture-pane -t flywheel -p | tail -5    # prompt area only
-
-# Send text
-tmux send-keys -t flywheel 'some text' Enter
-
-# Special keys
-tmux send-keys -t flywheel Escape      # Escape
-tmux send-keys -t flywheel Tab         # Tab
-tmux send-keys -t flywheel Up          # Arrow up / Down / Left / Right
-tmux send-keys -t flywheel BSpace      # Backspace
-tmux send-keys -t flywheel C-u         # Ctrl+U (clear input line)
-tmux send-keys -t flywheel C-c         # Ctrl+C (stop/exit)
-
-# Timing: sleep 0.5 for keystrokes, 1-2 for state transitions, 3-5 for process starts
-
-# Clean up
-tmux kill-session -t flywheel 2>/dev/null
 ```
+Imports reveal misplacement. If a file's imports all reach 3+ levels up (../../../),
+it probably lives too deep. Let import paths guide where things belong.
 
-If the TUI exits or crashes, the tmux session is destroyed. Just re-run the setup commands.
-
-### UAT must run in a temp directory
-
-**Never run UAT workflows in the project directory.** Workers create real files (hello.txt, fib.ts, server.ts, etc.) that pollute the workspace. Always use a temp directory:
-
-```bash
-UAT_DIR=$(mktemp -d /tmp/flywheel-uat-XXXXXX)
-cp flywheel.toml "$UAT_DIR/"
-tmux new-session -d -s flywheel -x 120 -y 40 \
-  "cd $UAT_DIR && FLYWHEEL_PROJECT_CWD=$UAT_DIR bun --conditions=browser run /path/to/flywheel-tui/src/cli/index.ts"
-
-# ... run tests ...
-
-# Clean up EVERYTHING when done
-tmux kill-session -t flywheel 2>/dev/null
-rm -rf "$UAT_DIR"
+One domain, one home. Each concept lives in exactly one place.
+No re-exports, bridge files, or compatibility shims.
+When a module moves, update every import -- do not leave a forwarding address.
 ```
-
-### Common test sequences
-
-**1. Verify idle screen:**
-
-```bash
-tmux capture-pane -t flywheel -p
-# Expect: branding header, ASCII art, starter chooser, session sidebar (if >= 90 cols), prompt
-```
-
-**2. Start a pipeline with `/start` (recommended E2E UAT):**
-
-```bash
-# With description — skips description question, shows mode picker directly
-tmux send-keys -t flywheel '/start add a hello world endpoint' Enter
-sleep 2
-tmux capture-pane -t flywheel -p
-# Expect: QuestionPrompt with 4 pipeline mode options:
-#   1. Just Plan  2. Plan + Work  3. Plan + Work + Review (recommended)  4. Full Pipeline
-
-tmux send-keys -t flywheel '3'
-sleep 3
-tmux capture-pane -t flywheel -p
-# Expect: working view with pipeline running (plan -> work -> review in telemetry bar)
-```
-
-Without a description, `/start` first asks "What do you want to build?" as a direct text input — just type and press Enter.
-
-**3. Stop a running workflow:**
-
-```bash
-tmux send-keys -t flywheel Escape   # first Esc shows hint
-sleep 1
-tmux send-keys -t flywheel Escape   # second Esc stops
-sleep 2
-tmux capture-pane -t flywheel -p    # should show completed/idle view
-```
-
-**4. Return to idle / test sidebar:**
-
-```bash
-tmux send-keys -t flywheel '/new' Enter
-sleep 1
-tmux capture-pane -t flywheel -p
-# Expect: idle screen; sidebar lists previous session with its lifecycle state
-```
-
-### What to verify after making TUI changes
-
-After modifying any file under `src/tui/`, always:
-
-1. Run `bun test` to ensure unit tests pass
-2. Start the TUI in tmux
-3. Test the specific feature you changed
-4. Test adjacent interactions (e.g., if you changed a modal, also test opening and closing it, keyboard shortcuts within it, and that the view behind it restores correctly)
-5. **Check the log files for errors** — session logs live inside `.flywheel/sessions/<id>/` (transcript.jsonl, telemetry.json, logs/subprocess/*.jsonl). The root `.flywheel/log/` only covers app-level logging between sessions. Check both locations for `ERROR` or `WARN` lines — errors there indicate problems even if the TUI appeared to work visually.
-6. **Clean up ALL artifacts** — delete every file and session created during the tmux test (plans, sessions, worktrees, source files, test fixtures). Never leave behind files that were created solely for manual testing.
-7. Clean up the tmux session
-
-```bash
-# After running a tmux TUI test, check for logged errors:
-# App-level log (startup, between sessions):
-ls -t .flywheel/log/*.log | head -1 | xargs cat | grep -E '^(ERROR|WARN)'
-# Session-level logs (the main logs during a run):
-cat .flywheel/sessions/*/transcript.jsonl | grep -i error
-cat .flywheel/sessions/*/logs/subprocess/*.jsonl | grep -i error
-```
+</coding_guidelines>
