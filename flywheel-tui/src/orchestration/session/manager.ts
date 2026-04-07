@@ -69,7 +69,7 @@ import type { SessionKind } from "./types";
 /** The SessionManager interface. */
 export interface SessionManager {
   /** Create a new session and persist it. Returns session ID. */
-  create(planPath: string, name?: string, kind?: SessionKind): string;
+  create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionLifecycleState): string;
 
   /** List all sessions as summaries. */
   list(): SessionListResult;
@@ -146,7 +146,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   // SessionManager methods
   // -------------------------------------------------------------------------
 
-  function create(planPath: string, name?: string, kind?: SessionKind): string {
+  function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionLifecycleState): string {
     const now = new Date().toISOString();
     const budget = config.budget;
 
@@ -163,7 +163,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
         label: name ?? planPath,
         planPath,
         lastUpdated: now,
-        sessionLifecycleState: "new" as SessionLifecycleState,
+        sessionLifecycleState: (initialState ?? "new") as SessionLifecycleState,
         name,
         createdAt: now,
         budgetLimits: {
@@ -290,8 +290,8 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       let target: SessionLifecycleState | null = null;
       if (state === "work:active") {
         target = "work:paused";
-      } else if (state === "chat:active") {
-        target = "chat:idle";
+      } else if (state === "chat:active" || state === "chat:idle") {
+        target = "completed";
       }
 
       if (!target) continue;

@@ -27,8 +27,6 @@ describe("eval-prompts: fixture assembly", () => {
     expect(scenario.dispatcherInput.available_context.standards).toEqual([]);
     expect(scenario.dispatcherInput.available_context.learnings).toEqual([]);
     expect(scenario.dispatcherInput.last_worker_result).toBeNull();
-    expect(scenario.dispatcherInput.plan_truncated).toBe(false);
-    expect(scenario.dispatcherInput.history_truncated).toBe(false);
     // No budget constraints
     expect(scenario.dispatcherInput.session_budget.invocations_remaining).toBeNull();
     expect(scenario.evaluatorInput.worker_output.length).toBeGreaterThan(0);
@@ -58,8 +56,6 @@ describe("eval-prompts: fixture assembly", () => {
     const scenario = buildEdgeScenario();
 
     expect(scenario.name).toBe("edge");
-    expect(scenario.dispatcherInput.plan_truncated).toBe(true);
-    expect(scenario.dispatcherInput.history_truncated).toBe(true);
     // Tight budget
     expect(scenario.dispatcherInput.session_budget.invocations_remaining).toBeLessThanOrEqual(3);
     // Failed last worker result

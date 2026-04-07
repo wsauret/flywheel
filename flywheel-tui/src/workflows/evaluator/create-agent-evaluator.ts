@@ -12,9 +12,10 @@ import type { Step } from "../queue/types";
 import type { EvaluatorFn, EvalResult } from "../queue/executor";
 import type { EvaluatorTransport } from "./transport";
 import type { EvaluatorInput, EvaluatorResult } from "./schemas";
-import type { EvaluationCriteria } from "../schemas";
+import { type EvaluationCriteria, serializeEvaluationCriteria } from "../schemas";
 import { Log } from "../../infra/log";
 import { errorMessage } from "../../infra/error-message";
+import { parseRawHandoff } from "../queue/shared/handoff-parse.js";
 
 const log = Log.create({ service: "evaluator-agent-factory" });
 
@@ -29,23 +30,6 @@ export interface CreateAgentEvaluatorFnOptions {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function serializeEvaluationCriteria(criteria: EvaluationCriteria): string {
-  const parts: string[] = [];
-  if (criteria.acceptance_criteria.length > 0) {
-    parts.push("Acceptance criteria:", ...criteria.acceptance_criteria.map((c) => `- ${c}`));
-  }
-  if (criteria.required_tests) {
-    parts.push("Required: tests must pass");
-  }
-  if (criteria.custom_checks.length > 0) {
-    parts.push("Custom checks:", ...criteria.custom_checks.map((c) => `- ${c}`));
-  }
-  if (criteria.required_outputs.length > 0) {
-    parts.push("Required outputs:", ...criteria.required_outputs.map((o) => `- ${o}`));
-  }
-  return parts.join("\n");
-}
 
 function resultToEvalResult(result: EvaluatorResult): EvalResult {
   return {
@@ -111,7 +95,6 @@ export function createAgentEvaluatorFn(
       acceptance_criteria: criteria.acceptance_criteria,
       artifacts_produced: [],
       tests_passed: handoff?.verification?.tests_passed ?? null,
-      duration_seconds: 0,
       task_context: step.description ?? step.title,
       handoff,
     };
@@ -148,47 +131,33 @@ export function createAgentEvaluatorFn(
 }
 
 // ---------------------------------------------------------------------------
-// Handoff data extraction
+// Handoff data extraction — delegates to shared parser
 // ---------------------------------------------------------------------------
 
 function extractHandoffData(
   handoffData: Record<string, unknown>,
 ): EvaluatorInput["handoff"] {
-  const summary = typeof handoffData.summary === "string"
-    ? handoffData.summary
-    : "No summary provided";
-
-  const artifacts = handoffData.artifacts as
-    | { files_created?: string[]; files_modified?: string[]; commands_run?: unknown[] }
-    | undefined;
-
-  const verification = handoffData.verification as
-    | { tests_passed?: boolean; test_output_summary?: string; commands_run?: unknown[] }
-    | undefined;
+  const parsed = parseRawHandoff(handoffData);
 
   return {
-    summary,
-    artifacts: artifacts ? {
-      files_created: artifacts.files_created,
-      files_modified: artifacts.files_modified,
-      commands_run: artifacts.commands_run?.map((c) => {
+    summary: parsed.summary || "No summary provided",
+    artifacts: (parsed.filesCreated.length > 0 || parsed.filesModified.length > 0 || parsed.commandsRun.length > 0) ? {
+      files_created: parsed.filesCreated.length > 0 ? parsed.filesCreated : undefined,
+      files_modified: parsed.filesModified.length > 0 ? parsed.filesModified : undefined,
+      commands_run: parsed.commandsRun.length > 0 ? parsed.commandsRun.map((c) => {
         if (typeof c === "string") return c;
         if (c && typeof c === "object") {
           const obj = c as Record<string, unknown>;
           return `${obj.command} (exit code: ${obj.exitCode ?? obj.exit_code ?? 0})`;
         }
         return String(c);
-      }),
+      }) : undefined,
     } : undefined,
-    verification: verification ? {
-      tests_passed: verification.tests_passed ?? null,
-      test_output_summary: verification.test_output_summary,
+    verification: parsed.testsPassed !== null || parsed.testOutputSummary ? {
+      tests_passed: parsed.testsPassed,
+      test_output_summary: parsed.testOutputSummary,
     } : undefined,
-    files_to_review: Array.isArray(handoffData.files_to_review)
-      ? handoffData.files_to_review.filter((f): f is string => typeof f === "string")
-      : undefined,
-    decisions: Array.isArray(handoffData.decisions)
-      ? handoffData.decisions.filter((d): d is string => typeof d === "string")
-      : undefined,
+    files_to_review: parsed.filesToReview.length > 0 ? parsed.filesToReview : undefined,
+    decisions: parsed.decisions.length > 0 ? parsed.decisions : undefined,
   };
 }

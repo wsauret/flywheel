@@ -97,52 +97,24 @@ function buildEvaluatorPrompt(input: EvaluatorInput): string {
 import {
   type PoolHandle,
   type PooledSpawnResult,
+  type BasePooledTransportOptions,
   invokePooled,
+  extractInvokeOptions,
 } from "../shared/invoke-pooled.js";
 
 export type { PoolHandle, PooledSpawnResult };
 
-export interface PooledSubprocessEvaluatorTransportOptions {
-  /** Warm pool handle — injected by the orchestration layer. */
-  pool: PoolHandle;
-  /**
-   * Format a prompt string as an NDJSON stdin message.
-   * Injected to avoid importing from orchestration/engines/subprocess/.
-   */
-  formatStdinMessage: (text: string) => string;
-  /** Flywheel session ID for session-scoped handoff paths. */
-  sessionId: string;
-  /** Project base directory for path resolution. */
-  baseDir: string;
+export interface PooledSubprocessEvaluatorTransportOptions extends BasePooledTransportOptions {
   /** Optional addendum appended to the evaluator system prompt. */
   systemPromptAddendum?: string;
-  /** Base directory for subprocess JSONL logging. When set, all stdout/stderr is logged. */
-  logBaseDir?: string;
-  /** Called with each decoded stdout chunk as it arrives from the subprocess. */
-  onStdout?: (chunk: string) => void;
-  /** Called with each decoded stderr chunk as it arrives from the subprocess. */
-  onStderr?: (chunk: string) => void;
 }
 
 export class PooledSubprocessEvaluatorTransport implements EvaluatorTransport {
-  private readonly pool: PoolHandle;
-  private readonly formatStdinMsg: (text: string) => string;
-  private readonly sessionId: string;
-  private readonly baseDir: string;
+  private readonly opts: BasePooledTransportOptions;
   private readonly systemPrompt: string;
-  private readonly logBaseDir?: string;
-  private readonly onStdout?: (chunk: string) => void;
-  private readonly onStderr?: (chunk: string) => void;
 
   constructor(options: PooledSubprocessEvaluatorTransportOptions) {
-    this.pool = options.pool;
-    this.formatStdinMsg = options.formatStdinMessage;
-    this.sessionId = options.sessionId;
-    this.baseDir = options.baseDir;
-    this.logBaseDir = options.logBaseDir;
-    this.onStdout = options.onStdout;
-    this.onStderr = options.onStderr;
-
+    this.opts = options;
     this.systemPrompt = options.systemPromptAddendum
       ? `${EVALUATOR_SYSTEM_PROMPT}\n\n${options.systemPromptAddendum}`
       : EVALUATOR_SYSTEM_PROMPT;
@@ -152,7 +124,7 @@ export class PooledSubprocessEvaluatorTransport implements EvaluatorTransport {
     const userMessage = buildEvaluatorPrompt(input);
 
     return invokePooled<EvaluatorVerdict, EvaluatorResult>(
-      this.pool,
+      this.opts.pool,
       {
         role: "evaluator",
         buildHandoffPath: buildEvaluatorHandoffPath,
@@ -172,14 +144,7 @@ export class PooledSubprocessEvaluatorTransport implements EvaluatorTransport {
           issues: verdict.issues,
         }),
       },
-      {
-        sessionId: this.sessionId,
-        baseDir: this.baseDir,
-        formatStdinMessage: this.formatStdinMsg,
-        logBaseDir: this.logBaseDir,
-        onStdout: this.onStdout,
-        onStderr: this.onStderr,
-      },
+      extractInvokeOptions(this.opts),
     );
   }
 }

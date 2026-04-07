@@ -201,7 +201,6 @@ function createDefaultOptions(overrides: Partial<StepExecutorOptions> = {}): Ste
     accumulator: overrides.accumulator ?? createNoopAccumulator(),
     maxRevisions: overrides.maxRevisions ?? 0,
     onStepCompleted: overrides.onStepCompleted ?? null,
-    onSessionName: overrides.onSessionName ?? null,
   };
 }
 
@@ -2518,59 +2517,3 @@ describe("VAL-EXEC-006: Graceful shutdown on abort signal", () => {
   });
 });
 
-// ===========================================================================
-// onSessionName callback
-// ===========================================================================
-
-describe("onSessionName callback", () => {
-  test("fires once when dispatcher returns a session name", async () => {
-    const names: string[] = [];
-    let callCount = 0;
-    const dispatcher: DispatcherFn = async () => {
-      callCount++;
-      return { prompt: "do it", evaluationCriteria: null, sessionName: "REST API Pagination" };
-    };
-
-    const s1 = makeStep({ title: "Step 1" });
-    const s2 = makeStep({ title: "Step 2" });
-    const queue = createQueue([s1, s2]);
-    const opts = createDefaultOptions({
-      queue,
-      dispatcher,
-      onSessionName: (name) => { names.push(name); },
-    });
-    const executor = createStepExecutor(opts);
-    await executor.run();
-
-    expect(callCount).toBe(2);
-    expect(names).toEqual(["REST API Pagination"]);
-  });
-
-  test("does not fire when dispatcher returns no session name", async () => {
-    const names: string[] = [];
-    const queue = createQueue([makeStep({ title: "Step 1" })]);
-    const opts = createDefaultOptions({
-      queue,
-      onSessionName: (name) => { names.push(name); },
-    });
-    const executor = createStepExecutor(opts);
-    await executor.run();
-
-    expect(names).toEqual([]);
-  });
-
-  test("does not fire when callback is not provided", async () => {
-    const dispatcher: DispatcherFn = async () => ({
-      prompt: "do it",
-      evaluationCriteria: null,
-      sessionName: "Some Name",
-    });
-
-    const queue = createQueue([makeStep({ title: "Step 1" })]);
-    const opts = createDefaultOptions({ queue, dispatcher });
-    const executor = createStepExecutor(opts);
-    const result = await executor.run();
-
-    expect(result.completed).toBe(true);
-  });
-});

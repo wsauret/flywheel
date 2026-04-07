@@ -77,6 +77,8 @@ export function ToolBlock(props: ToolBlockProps) {
     removedBg: theme.diffRemovedBg,
     highlightAdded: theme.diffHighlightAdded,
     highlightRemoved: theme.diffHighlightRemoved,
+    addedFg: theme.diffAddedFg,
+    removedFg: theme.diffRemovedFg,
     lineNumber: theme.diffLineNumber,
   }))
 

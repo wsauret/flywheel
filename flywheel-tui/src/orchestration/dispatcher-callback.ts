@@ -14,6 +14,7 @@ import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
 import type { Step, Queue } from "../workflows/queue/types"
 import type { DispatcherTransport } from "../workflows/dispatcher/transport"
+import type { EvalResult } from "../workflows/queue/executor"
 
 const log = Log.create({ service: "dispatcher-callback" })
 
@@ -44,7 +45,7 @@ export interface DispatcherResult {
 
 export type DispatcherFn = (
   step: Step,
-  context: { previousHandoff?: unknown; previousAssessment?: unknown; hitlResponse?: unknown },
+  context: { previousHandoff?: Record<string, unknown>; previousAssessment?: EvalResult | null; hitlResponse?: string | null },
 ) => Promise<DispatcherResult>
 
 // ---------------------------------------------------------------------------
@@ -81,10 +82,10 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
     if (realDispatcher) {
       try {
         const dispatchContext: StepDispatchContext = {
-          accumulatedContext: contextAccumulator.getContext() as any,
-          previousHandoff: (context.previousHandoff as Record<string, unknown>) ?? null,
-          previousAssessment: (context.previousAssessment as any) ?? null,
-          hitlResponse: (context.hitlResponse as string) ?? null,
+          accumulatedContext: contextAccumulator.getContext(),
+          previousHandoff: context.previousHandoff ?? null,
+          previousAssessment: context.previousAssessment ?? null,
+          hitlResponse: context.hitlResponse ?? null,
         }
         const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
         return {

@@ -226,9 +226,6 @@ describe("DispatcherInputSchema", () => {
       completed_steps: [],
       current_step_index: 0,
     },
-    context: {
-      files: ["src/foo.ts"],
-    },
     workflow_id: "wf-test-001",
     workflow: { name: "work", step_number: 1, total_steps: 2, step_description: "Setup" },
     last_worker_result: null,
@@ -299,7 +296,6 @@ describe("DispatcherInputSchema", () => {
       output_summary: "Step 1 done",
       artifacts_produced: ["src/setup.ts"],
       tests_passed: true,
-      duration_seconds: 30,
     };
     const result = DispatcherInputSchema.parse({
       ...validInput,
@@ -374,7 +370,6 @@ describe("DispatcherInputSchema", () => {
         output_summary: "Init done",
         artifacts_produced: [],
         tests_passed: null,
-        duration_seconds: 5,
       },
       config: {
         max_eval_cycles: 2,
@@ -427,7 +422,6 @@ describe("DispatcherInputSchema", () => {
     const minimalInput = {
       plan: { steps: [] },
       state: { completed_steps: [], current_step_index: 0 },
-      context: { files: [] },
     };
     const result = DispatcherInputSchema.safeParse(minimalInput);
     expect(result.success).toBe(false);
@@ -556,7 +550,6 @@ describe("EvaluatorInputSchema", () => {
     acceptance_criteria: ["Tests pass"],
     artifacts_produced: ["src/feature.ts"],
     tests_passed: true,
-    duration_seconds: 120,
   };
 
   it("parses valid evaluator input", () => {
@@ -610,14 +603,6 @@ describe("EvaluatorInputSchema", () => {
     expect(result.tests_passed).toBeNull();
   });
 
-  it("requires duration_seconds", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
-      duration_seconds: 42.5,
-    });
-    expect(result.duration_seconds).toBe(42.5);
-  });
-
   it("rejects missing required fields", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
@@ -633,12 +618,10 @@ describe("EvaluatorInputSchema", () => {
       acceptance_criteria: ["feature works"],
       artifacts_produced: ["src/new.ts"],
       tests_passed: true,
-      duration_seconds: 30,
     });
     expect(result.acceptance_criteria).toEqual(["feature works"]);
     expect(result.artifacts_produced).toEqual(["src/new.ts"]);
     expect(result.tests_passed).toBe(true);
-    expect(result.duration_seconds).toBe(30);
   });
 
   it("strips unknown fields", () => {
@@ -1058,7 +1041,6 @@ describe("LastWorkerResultSchema", () => {
     output_summary: "Built feature successfully",
     artifacts_produced: ["src/feature.ts", "tests/feature.test.ts"],
     tests_passed: true,
-    duration_seconds: 45,
   };
 
   it("round-trips valid data", () => {

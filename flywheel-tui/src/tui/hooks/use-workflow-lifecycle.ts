@@ -13,6 +13,9 @@ import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from 
 export type AgentState = "idle" | "active"
 export type SessionStatus = null | "running" | "paused" | "completed" | "error"
 
+/** Shared terminal title prefix used across TUI hooks. */
+export const TERMINAL_TITLE_PREFIX = "flywheel · "
+
 export interface WorkflowLifecycleDeps {
   registry: SessionRegistry
   manager: SessionManager
@@ -48,16 +51,21 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     activeSessionId: deps.foregroundId,
   }
 
-  async function startWorkflow(command: string, description: string): Promise<void> {
+  /** Reset all UI signals to a clean "starting" state. */
+  function resetUIState(title: string, terminalSuffix: string): void {
     deps.setOutputBlocks([])
     deps.setSteps([])
     deps.setErrorMessage("")
     deps.setStatusLine("")
-    deps.setSessionTitle(description || command)
+    deps.setSessionTitle(title)
     deps.resetMetrics()
     deps.setAgentState("active")
     deps.setSessionStatus("running")
-    deps.setTerminalTitle(`flywheel · ${description || command}`)
+    deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${terminalSuffix}`)
+  }
+
+  async function startWorkflow(command: string, description: string): Promise<void> {
+    resetUIState(description || command, description || command)
 
     let queue
     try {
@@ -70,8 +78,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       return
     }
 
-    const sessionId = deps.manager.create(description, description, "workflow")
-    safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
+    const sessionId = deps.manager.create(description, description, "workflow", "work:active")
 
     deps.registry.start({ sessionId, queue, description })
     deps.setForegroundId(sessionId)
@@ -85,15 +92,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     }
 
     const description = data.session.name || data.session.label || ""
+    resetUIState(description || "Resumed session", description || "resume")
     deps.setOutputBlocks(data.outputBlocks)
-    deps.setSteps([])
-    deps.setErrorMessage("")
-    deps.setStatusLine("")
-    deps.setSessionTitle(description || "Resumed session")
-    deps.resetMetrics()
-    deps.setAgentState("active")
-    deps.setSessionStatus("running")
-    deps.setTerminalTitle(`flywheel · ${description || "resume"}`)
 
     safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
 
@@ -144,15 +144,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       return
     }
 
-    deps.setOutputBlocks([])
-    deps.setSteps([])
-    deps.setErrorMessage("")
-    deps.setStatusLine("")
-    deps.setSessionTitle(`[test] ${stepDef.label}`)
-    deps.resetMetrics()
-    deps.setAgentState("active")
-    deps.setSessionStatus("running")
-    deps.setTerminalTitle(`flywheel · [test] ${stepDef.label}`)
+    resetUIState(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`)
 
     let queue
     let workdir: ReturnType<typeof createTestWorkdir> | null = null
@@ -171,8 +163,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     }
 
     const testWorkdir = workdir
-    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, "workflow")
-    safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
+    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, "workflow", "work:active")
 
     deps.registry.start({
       sessionId,

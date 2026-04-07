@@ -27,6 +27,8 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "diffRemovedBg",
   "diffHighlightAdded",
   "diffHighlightRemoved",
+  "diffAddedFg",
+  "diffRemovedFg",
   // Diff token from JSON
   "diffLineNumber",
   // Markdown tokens
@@ -96,7 +98,7 @@ describe("theme resolution", () => {
 
   it("JSON theme keys match expected token list (excluding hardcoded diff tokens)", () => {
     const jsonKeys = Object.keys(flywheelTheme.theme).sort()
-    const hardcodedDiffKeys = new Set(["diffAddedBg", "diffRemovedBg", "diffHighlightAdded", "diffHighlightRemoved"])
+    const hardcodedDiffKeys = new Set(["diffAddedBg", "diffRemovedBg", "diffHighlightAdded", "diffHighlightRemoved", "diffAddedFg", "diffRemovedFg"])
     const expectedJsonKeys = [...EXPECTED_KEYS].filter(k => !hardcodedDiffKeys.has(k)).sort()
     expect(jsonKeys).toEqual(expectedJsonKeys)
   })

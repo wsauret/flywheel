@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  WorkflowStepBaseSchema,
   LastWorkerResultSchema,
   SessionBudgetStatusSchema,
   AvailableContextSchema,
@@ -24,8 +23,6 @@ const PlanStepInputSchema = z.object({
   fileReferences: z.array(z.string()).optional(),
   /** Feature grouping. */
   feature: z.string().optional(),
-  /** Behavioral contract assertion IDs. */
-  fulfills: z.array(z.string()).optional(),
 }).strip();
 
 export type PlanStepInput = z.infer<typeof PlanStepInputSchema>;
@@ -70,11 +67,6 @@ export const DispatcherInputSchema = z.object({
     completed_steps: z.array(z.number()).optional(),
     current_step_index: z.number().optional(),
   }).strip(),
-  context: z.object({
-    files: z.array(z.string()),
-  }).strip(),
-  plan_truncated: z.boolean().default(false),
-  history_truncated: z.boolean().default(false),
   workflow_id: z.string(),
   workflow: WorkflowInfoSchema,
   last_worker_result: LastWorkerResultSchema.nullable(),

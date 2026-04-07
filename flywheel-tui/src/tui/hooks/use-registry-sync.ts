@@ -16,6 +16,7 @@ import type { MetricsHook } from "./use-metrics.js"
 import type { AnyBlock } from "../types.js"
 import type { StepState } from "../../orchestration/workflow-runner.js"
 import type { AgentState, SessionStatus } from "./use-workflow-lifecycle.js"
+import { TERMINAL_TITLE_PREFIX } from "./use-workflow-lifecycle.js"
 import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
 import { formatElapsed, formatCost, formatTokens } from "../format.js"
 
@@ -65,75 +66,57 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
   // Track previous outputBlocks reference for identity-check optimization
   let prevOutputBlocks: readonly import("../../infra/output-blocks.js").AnyBlock[] | null = null
 
-  return registry.subscribe(() => {
-    setRunningCount(registry.runningCount())
+  // ── SRP: terminal state handling ──
 
-    const fgId = foregroundId()
-    if (!fgId) return
-
-    const entry = registry.get(fgId)
-    if (!entry) return
-
-    metrics.setActivity(entry.modelActivity)
-
-    // Identity-check optimization: only update outputBlocks if reference changed
-    if (entry.outputBlocks !== prevOutputBlocks) {
-      prevOutputBlocks = entry.outputBlocks
-      setOutputBlocks([...entry.outputBlocks])
-    }
-
-    // Steps only exist on workflow entries — clear for chat
-    if (entry.kind === "workflow") {
-      setSteps([...entry.steps])
+  function handleWorkflowCompleted(fgId: string, entry: SessionEntry & { kind: "workflow" }, totalElapsed: string): void {
+    const r = entry.result!
+    if (r.completed) {
+      safeUpdateState((id, s) => manager.updateState(id, s), fgId, "completed")
+      setStatusLine(`\u2713 ${r.stepsCompleted}/${r.stepsTotal} steps \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)} \u00b7 ${formatTokens(r.tokens)} tokens`)
     } else {
-      setSteps([])
+      safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
+      setStatusLine(`\u2717 ${r.reason ?? "stopped"} (${r.stepsCompleted}/${r.stepsTotal}) \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)}`)
     }
+    refreshList()
+  }
 
-    metrics.setTokens(entry.tokens)
-    metrics.setCost(entry.cost)
-    setSessionTitle(entry.description)
-    setTerminalTitle(`flywheel · ${entry.description}`)
+  function handleChatCompleted(entry: SessionEntry, totalElapsed: string): void {
+    setStatusLine(`Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(entry.cost)} \u00b7 ${formatTokens(entry.tokens)} tokens`)
+  }
 
-    if (entry.status === "completed" || entry.status === "error") {
-      const totalElapsed = formatElapsed(Date.now() - metrics.workStartTime())
+  function handleTerminalState(fgId: string, entry: SessionEntry): void {
+    const totalElapsed = formatElapsed(Date.now() - metrics.workStartTime())
 
-      if (entry.kind === "workflow" && entry.status === "completed" && entry.result) {
-        const r = entry.result
-        if (r.completed) {
-          safeUpdateState((id, s) => manager.updateState(id, s), fgId, "completed")
-          setStatusLine(`\u2713 ${r.stepsCompleted}/${r.stepsTotal} steps \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)} \u00b7 ${formatTokens(r.tokens)} tokens`)
-        } else {
-          safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
-          setStatusLine(`\u2717 ${r.reason ?? "stopped"} (${r.stepsCompleted}/${r.stepsTotal}) \u00b7 ${totalElapsed} \u00b7 ${formatCost(r.cost)}`)
-        }
-        refreshList()
-        setAgentState("idle")
-        setSessionStatus("completed")
-        setTerminalTitle("flywheel \u00b7 done")
-      } else if (entry.kind === "chat" && entry.status === "completed") {
-        // Chat completed — show summary status line
-        setStatusLine(`Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(entry.cost)} \u00b7 ${formatTokens(entry.tokens)} tokens`)
-        setAgentState("idle")
-        setSessionStatus("completed")
-        setTerminalTitle("flywheel \u00b7 done")
-      } else if (entry.status === "error") {
-        // Error handling for both workflow and chat
-        if (entry.kind === "workflow") {
-          safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
-        }
-        refreshList()
-        setErrorMessage(entry.errorMessage ?? "Unknown error")
-        setAgentState("idle")
-        setSessionStatus("error")
-        setTerminalTitle("flywheel \u00b7 error")
+    if (entry.status === "error") {
+      if (entry.kind === "workflow") {
+        safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
       }
-
-      queueMicrotask(() => {
-        registry.remove(fgId)
-        setForegroundId(undefined)
-      })
+      refreshList()
+      setErrorMessage(entry.errorMessage ?? "Unknown error")
+      setAgentState("idle")
+      setSessionStatus("error")
+      setTerminalTitle(`${TERMINAL_TITLE_PREFIX}error`)
+    } else if (entry.kind === "workflow" && entry.result) {
+      handleWorkflowCompleted(fgId, entry as SessionEntry & { kind: "workflow" }, totalElapsed)
+      setAgentState("idle")
+      setSessionStatus("completed")
+      setTerminalTitle(`${TERMINAL_TITLE_PREFIX}done`)
+    } else if (entry.kind === "chat") {
+      handleChatCompleted(entry, totalElapsed)
+      setAgentState("idle")
+      setSessionStatus("completed")
+      setTerminalTitle(`${TERMINAL_TITLE_PREFIX}done`)
     }
 
+    queueMicrotask(() => {
+      registry.remove(fgId)
+      setForegroundId(undefined)
+    })
+  }
+
+  // ── SRP: background session garbage collection ──
+
+  function gcBackgroundSessions(fgId: string): void {
     const toRemove: string[] = []
     for (const id of registry.activeIds()) {
       if (id === fgId) continue
@@ -150,5 +133,45 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     if (toRemove.length > 0) {
       queueMicrotask(() => { for (const id of toRemove) registry.remove(id) })
     }
+  }
+
+  // ── Main subscriber: sync live state ──
+
+  return registry.subscribe(() => {
+    setRunningCount(registry.runningCount())
+
+    const fgId = foregroundId()
+    if (!fgId) return
+
+    const entry = registry.get(fgId)
+    if (!entry) return
+
+    metrics.setActivity(entry.modelActivity)
+
+    if (entry.status === "running") {
+      setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
+    }
+
+    if (entry.outputBlocks !== prevOutputBlocks) {
+      prevOutputBlocks = entry.outputBlocks
+      setOutputBlocks([...entry.outputBlocks])
+    }
+
+    if (entry.kind === "workflow") {
+      setSteps([...entry.steps])
+    } else {
+      setSteps([])
+    }
+
+    metrics.setTokens(entry.tokens)
+    metrics.setCost(entry.cost)
+    setSessionTitle(entry.description)
+    setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
+
+    if (entry.status === "completed" || entry.status === "error") {
+      handleTerminalState(fgId, entry)
+    }
+
+    gcBackgroundSessions(fgId)
   })
 }

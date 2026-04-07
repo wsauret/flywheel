@@ -12,6 +12,24 @@ export const EvaluationCriteriaSchema = z.object({
 
 export type EvaluationCriteria = z.infer<typeof EvaluationCriteriaSchema>;
 
+/** Serialize evaluation criteria to a human-readable string (for evaluator prompts). */
+export function serializeEvaluationCriteria(criteria: EvaluationCriteria): string {
+  const parts: string[] = [];
+  if (criteria.acceptance_criteria.length > 0) {
+    parts.push("Acceptance criteria:", ...criteria.acceptance_criteria.map((c) => `- ${c}`));
+  }
+  if (criteria.required_tests) {
+    parts.push("Required: tests must pass");
+  }
+  if (criteria.custom_checks.length > 0) {
+    parts.push("Custom checks:", ...criteria.custom_checks.map((c) => `- ${c}`));
+  }
+  if (criteria.required_outputs.length > 0) {
+    parts.push("Required outputs:", ...criteria.required_outputs.map((o) => `- ${o}`));
+  }
+  return parts.join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // ToolScopingSchema
 // ---------------------------------------------------------------------------
@@ -108,7 +126,6 @@ export const LastWorkerResultSchema = z.object({
   output_summary: z.string(),
   artifacts_produced: z.array(z.string()),
   tests_passed: z.boolean().nullable(),
-  duration_seconds: z.number(),
   decisions: z.array(z.string()).optional(),
   warnings: z.array(z.string()).optional(),
   commands_run: z.array(z.string()).optional(),

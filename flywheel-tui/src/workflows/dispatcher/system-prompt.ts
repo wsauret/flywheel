@@ -8,32 +8,6 @@
  * in the user segment.
  */
 
-/**
- * Build truncation warning notes for the user content segment.
- * Returns empty string when nothing is truncated, or a formatted
- * warning block ending with `\n\n` for easy concatenation.
- */
-export function buildTruncationNotes(input: {
-  plan_truncated: boolean;
-  history_truncated: boolean;
-}): string {
-  const notes: string[] = [];
-  if (input.plan_truncated) {
-    notes.push(
-      "- The plan content has been truncated to fit within budget. Some steps or step details may be incomplete.",
-    );
-  }
-  if (input.history_truncated) {
-    notes.push(
-      "- The execution history has been truncated. Older completed steps may be missing.",
-    );
-  }
-
-  if (notes.length === 0) return "";
-
-  return `## Truncation Warnings\n\n${notes.join("\n")}\n\nWork with the available information. Do not hallucinate missing content.\n\n`;
-}
-
 export function buildDispatcherSystemPrompt(): string {
   return `You are a prompt engineering specialist for the flywheel workflow system. You receive a workflow plan, execution state, and context, then craft an optimal task description for a worker AI to execute the current step.
 
@@ -42,14 +16,13 @@ export function buildDispatcherSystemPrompt(): string {
 JSON object with:
 - \`plan.steps[]\`: Steps with name and steps
 - \`state.completed_steps[]\`, \`state.current_step_index\`: Execution progress (0-based)
-- \`context.files[]\`: Relevant file paths
-- \`plan_truncated\`, \`history_truncated\`: Whether content was trimmed
 - \`workflow_id\`: Execution ID for traceability
 - \`workflow\`: Step context (\`workflow.name\`, \`workflow.step_number\`, \`workflow.total_steps\`, \`workflow.step_description\`)
-- \`last_worker_result\`: Previous step results (step, status, output_summary, artifacts_produced, tests_passed, duration_seconds)
+- \`last_worker_result\`: Previous step results (step, status, output_summary, artifacts_produced, tests_passed)
 - \`config\`: Runtime config (\`config.max_eval_cycles\`, \`config.worktree_path\`, \`config.project_cwd\`, \`config.subprocess_model\`, \`config.dispatcher_model\`)
 - \`session_budget\`: Remaining budget (\`session_budget.invocations_remaining\`, token_budget_remaining, wall_clock_deadline)
 - \`available_context\`: Metadata for conventions, standards, and learnings (name, path, summary each)
+- \`step_context\`: Accumulated decisions, issues, and artifacts from previous steps (cumulative_decisions, cumulative_issues, cumulative_artifacts, cumulative_warnings, step_count)
 
 ### Context Injection
 

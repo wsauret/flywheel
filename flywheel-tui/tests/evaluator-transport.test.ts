@@ -26,7 +26,6 @@ function baseEvaluatorInput(overrides?: Partial<EvaluatorInput>): EvaluatorInput
     acceptance_criteria: ["must pass all tests"],
     artifacts_produced: ["src/new-file.ts"],
     tests_passed: true,
-    duration_seconds: 30,
     ...overrides,
   };
 }

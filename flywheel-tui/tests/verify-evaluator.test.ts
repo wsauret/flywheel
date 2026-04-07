@@ -54,7 +54,6 @@ describe("verify-evaluator: input assembly", () => {
       acceptance_criteria: SAMPLE_ACCEPTANCE_CRITERIA,
       artifacts_produced: ["src/routes/hello.ts", "tests/hello.test.ts"],
       tests_passed: true,
-      duration_seconds: 45,
     };
 
     expect(input.worker_output.length).toBeGreaterThan(100);
@@ -62,7 +61,6 @@ describe("verify-evaluator: input assembly", () => {
     expect(input.acceptance_criteria.length).toBe(3);
     expect(input.artifacts_produced.length).toBe(2);
     expect(input.tests_passed).toBe(true);
-    expect(input.duration_seconds).toBeGreaterThan(0);
   });
 
   it("worker output contains realistic code generation details", () => {

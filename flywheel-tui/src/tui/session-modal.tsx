@@ -49,7 +49,7 @@ const GROUP_LABELS: Record<GroupKey, string> = {
 }
 
 const GROUP_ICONS: Record<GroupKey, string> = {
-  active: "\u25B8",
+  active: "\u25CF",
   paused: "\u2759",
   completed: "\u2713",
   archived: "\u2610",

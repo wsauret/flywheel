@@ -21,6 +21,8 @@ export type Theme = {
   diffRemovedBg: RGBA
   diffHighlightAdded: RGBA
   diffHighlightRemoved: RGBA
+  diffAddedFg: RGBA
+  diffRemovedFg: RGBA
   diffLineNumber: RGBA
   markdownText: RGBA
   markdownHeading: RGBA
@@ -64,23 +66,27 @@ type ColorValue = HexColor | RefName | Variant | RGBA
 // their theme.ts), which are well-balanced and widely tested in terminals.
 const DIFF_COLORS = {
   dark: {
-    diffAddedBg:        RGBA.fromHex("#1a3d2b"), // deep forest green line bg
-    diffRemovedBg:      RGBA.fromHex("#3d1a22"), // deep burgundy line bg
+    diffAddedBg:          RGBA.fromHex("#1a3d2b"), // deep forest green line bg
+    diffRemovedBg:        RGBA.fromHex("#3d1a22"), // deep burgundy line bg
     diffHighlightAdded:   RGBA.fromHex("#2a7a48"), // muted green word highlight
     diffHighlightRemoved: RGBA.fromHex("#8a4455"), // muted rose word highlight
+    diffAddedFg:          RGBA.fromHex("#3a9a5c"), // bright green for + marker & line numbers
+    diffRemovedFg:        RGBA.fromHex("#c06070"), // bright rose for - marker & line numbers
   },
   light: {
-    diffAddedBg:        RGBA.fromHex("#c7e1cb"), // soft green line bg
-    diffRemovedBg:      RGBA.fromHex("#fdd2d8"), // soft pink line bg
+    diffAddedBg:          RGBA.fromHex("#c7e1cb"), // soft green line bg
+    diffRemovedBg:        RGBA.fromHex("#fdd2d8"), // soft pink line bg
     diffHighlightAdded:   RGBA.fromHex("#4a8a5a"), // muted green word highlight
     diffHighlightRemoved: RGBA.fromHex("#b06070"), // muted red word highlight
+    diffAddedFg:          RGBA.fromHex("#2e7040"), // darker green for + marker & line numbers
+    diffRemovedFg:        RGBA.fromHex("#a04050"), // darker red for - marker & line numbers
   },
 }
 
 export type ThemeJson = {
   $schema?: string
   defs?: Record<string, HexColor | RefName>
-  theme: Record<Exclude<keyof Theme, "diffAddedBg" | "diffRemovedBg" | "diffHighlightAdded" | "diffHighlightRemoved">, ColorValue>
+  theme: Record<Exclude<keyof Theme, "diffAddedBg" | "diffRemovedBg" | "diffHighlightAdded" | "diffHighlightRemoved" | "diffAddedFg" | "diffRemovedFg">, ColorValue>
 }
 
 export function resolveTheme(theme: ThemeJson, mode: "dark" | "light"): Theme {

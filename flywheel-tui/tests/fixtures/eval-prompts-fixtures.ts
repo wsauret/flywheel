@@ -82,9 +82,6 @@ export function buildSimpleScenario(): TestScenario {
       completed_steps: [],
       current_step_index: 0,
     },
-    context: { files: [] },
-    plan_truncated: false,
-    history_truncated: false,
     workflow_id: "eval-simple-001",
     workflow: {
       name: "work",
@@ -136,7 +133,6 @@ All 2 tests pass:
     ],
     artifacts_produced: ["src/routes/hello.ts", "tests/hello.test.ts", "src/routes/index.ts"],
     tests_passed: true,
-    duration_seconds: 30,
   };
 
   return {
@@ -166,9 +162,6 @@ export function buildComplexScenario(): TestScenario {
       completed_steps: [0, 1],
       current_step_index: 2,
     },
-    context: { files: ["src/models/user.ts", "src/models/post.ts"] },
-    plan_truncated: false,
-    history_truncated: false,
     workflow_id: "eval-complex-001",
     workflow: {
       name: "work",
@@ -182,7 +175,6 @@ export function buildComplexScenario(): TestScenario {
       output_summary: "Created User and Post Zod schemas with validation. All 8 unit tests pass.",
       artifacts_produced: ["src/models/user.ts", "src/models/post.ts", "tests/models.test.ts"],
       tests_passed: true,
-      duration_seconds: 120,
     },
     config: {
       max_eval_cycles: 3,
@@ -263,7 +255,6 @@ export function buildComplexScenario(): TestScenario {
     ],
     artifacts_produced: ["src/routes/users.ts", "src/routes/posts.ts", "tests/api.test.ts"],
     tests_passed: true,
-    duration_seconds: 180,
   };
 
   return {
@@ -290,9 +281,6 @@ export function buildEdgeScenario(): TestScenario {
       completed_steps: [0],
       current_step_index: 1,
     },
-    context: { files: ["src/middleware/auth.ts", "tests/auth.test.ts"] },
-    plan_truncated: true,
-    history_truncated: true,
     workflow_id: "eval-edge-001",
     workflow: {
       name: "work",
@@ -306,7 +294,6 @@ export function buildEdgeScenario(): TestScenario {
       output_summary: "Attempted to fix auth middleware but introduced a regression. 3 tests now failing.",
       artifacts_produced: ["src/middleware/auth.ts"],
       tests_passed: false,
-      duration_seconds: 300,
     },
     config: {
       max_eval_cycles: 1,
@@ -361,7 +348,6 @@ I ran out of time before fixing the remaining test.
     ],
     artifacts_produced: ["src/middleware/auth.ts"],
     tests_passed: false,
-    duration_seconds: 300,
   };
 
   return {

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { TimerService, timerService, useTimer, formatDuration } from "../src/tui/shared/services/timer";
+import { TimerService, timerService, formatDuration } from "../src/tui/shared/services/timer";
+import { useTimer } from "../src/tui/hooks/use-timer";
 
 describe("TimerService", () => {
   beforeEach(() => {

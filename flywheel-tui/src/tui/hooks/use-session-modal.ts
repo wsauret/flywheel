@@ -29,7 +29,6 @@ interface ViewSnapshot {
 export interface SessionModalDeps {
   sessions: Accessor<SessionSummary[]>
   manager: SessionManager
-  refreshList: () => void
   registry: SessionRegistry
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
@@ -41,7 +40,6 @@ export interface SessionModalDeps {
   setSessionTitle: (title: string) => void
   statusLine: Accessor<string>
   setStatusLine: (line: string) => void
-  setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
   handleResume: (sessionId: string) => Promise<void>
   switchForeground: (sessionId: string) => void
@@ -93,7 +91,14 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   async function handleSessionView(sessionId: string): Promise<void> {
     setSessionsModalOpen(false)
     const entry = deps.registry.get(sessionId)
-    if (entry) { deps.switchForeground(sessionId); return }
+    if (entry) {
+      // Switching to a live session — clear any viewed-session state so
+      // isViewingSession() returns false and the UI isn't stuck in read-only mode.
+      priorState = undefined
+      viewedSessionId = undefined
+      deps.switchForeground(sessionId)
+      return
+    }
 
     // Snapshot current state on the first view only — preserve the original
     // state across multiple view→delete cycles so we always restore back to
@@ -123,6 +128,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   function handleSessionResume(sessionId: string): void {
     setSessionsModalOpen(false)
+    priorState = undefined
+    viewedSessionId = undefined
     deps.handleResume(sessionId)
   }
 
@@ -192,6 +199,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       const isActive = (selected.lifecycleState === "work:active" || selected.lifecycleState === "chat:active" || selected.lifecycleState === "chat:idle") && deps.registry.get(selected.id)
       if (isActive) {
         setSessionsModalOpen(false)
+        priorState = undefined
+        viewedSessionId = undefined
         deps.switchForeground(selected.id)
       } else if (selected.lifecycleState === "work:paused" || selected.lifecycleState === "budget_exhausted") {
         handleSessionResume(selected.id)

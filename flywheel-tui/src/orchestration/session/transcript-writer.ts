@@ -18,9 +18,7 @@
  *   writer.getEventCount();       // number of events written
  */
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { TRACES_DIR, resolveTranscriptFile } from "../../infra/paths";
+import { ensureTracesDir, resolveTranscriptFile } from "../../infra/paths";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser";
 
@@ -52,8 +50,7 @@ export function createTranscriptWriter(deps: TranscriptWriterDeps): TranscriptWr
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS } = deps;
 
   // Ensure traces directory exists
-  const tracesDir = path.resolve(baseDir, TRACES_DIR);
-  fs.mkdirSync(tracesDir, { recursive: true });
+  ensureTracesDir(baseDir);
 
   // Buffered line writer (fd-append + debounce)
   const writer = createBufferedFileWriter<string>({

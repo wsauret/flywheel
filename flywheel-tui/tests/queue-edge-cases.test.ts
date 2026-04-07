@@ -8,8 +8,7 @@
 //   3. Gate dismissed by user (questionService throws)
 //   4. HITL dismissed by user (proceeds autonomously)
 //   5. Handoff reader failure (graceful degradation)
-//   6. onSessionName callback fires once
-//   7. Transport error during revision loop
+//   6. Transport error during revision loop
 //   8. onStepCompleted hook on evaluation failure (continueExecution)
 //   9. Persist failure (graceful degradation)
 //  10. persistAccumulatorState failure (graceful degradation)
@@ -17,7 +16,6 @@
 //  12. safeTransition failure (step reported as failed)
 //  13. Handoff reader failure during revision (null handoff)
 //  14. Dispatcher failure (transport error throws)
-//  15. Multiple dispatcher calls return sessionName (only first fires)
 // ---------------------------------------------------------------------------
 
 import { describe, expect, test, afterEach } from "bun:test";
@@ -194,36 +192,7 @@ describe("queue executor edge cases", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 6. onSessionName callback fires once
-  // -------------------------------------------------------------------------
-
-  test("onSessionName fires once for first dispatcher result with sessionName", async () => {
-    resetStepCounter();
-    const steps = [
-      makeStep({ id: "step-1", title: "Step 1" }),
-      makeStep({ id: "step-2", title: "Step 2" }),
-      makeStep({ id: "step-3", title: "Step 3" }),
-    ];
-
-    harness = createHarness({
-      steps,
-      dispatcher: {
-        sessionNameByStepId: {
-          "step-1": "Auth Module Implementation",
-          "step-2": "Second Name Should Be Ignored",
-        },
-      },
-    });
-
-    const result = await harness.executor.run();
-
-    expect(result.completed).toBe(true);
-    // Only the first session name should have been captured
-    expect(harness.sessionNames).toEqual(["Auth Module Implementation"]);
-  });
-
-  // -------------------------------------------------------------------------
-  // 7. Transport error during revision loop
+  // 6. Transport error during revision loop
   // -------------------------------------------------------------------------
 
   test("transport error during revision loop breaks out and continues", async () => {
@@ -546,35 +515,4 @@ describe("queue executor edge cases", () => {
     expect(stepFailed.some((e) => e.stepId === "step-2")).toBe(true);
   });
 
-  // -------------------------------------------------------------------------
-  // 15. Multiple dispatcher calls return sessionName (only first fires)
-  // -------------------------------------------------------------------------
-
-  test("only first dispatcher sessionName triggers onSessionName callback", async () => {
-    resetStepCounter();
-    const steps = [
-      makeStep({ id: "step-1", title: "Step 1" }),
-      makeStep({ id: "step-2", title: "Step 2" }),
-      makeStep({ id: "step-3", title: "Step 3" }),
-    ];
-
-    // All three steps return different session names
-    harness = createHarness({
-      steps,
-      dispatcher: {
-        sessionNameByStepId: {
-          "step-1": "First Session Name",
-          "step-2": "Second Session Name",
-          "step-3": "Third Session Name",
-        },
-      },
-    });
-
-    const result = await harness.executor.run();
-
-    expect(result.completed).toBe(true);
-    // Only the first session name should be captured (sessionNameEmitted guard)
-    expect(harness.sessionNames).toHaveLength(1);
-    expect(harness.sessionNames[0]).toBe("First Session Name");
-  });
 });

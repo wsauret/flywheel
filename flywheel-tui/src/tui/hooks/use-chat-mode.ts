@@ -16,6 +16,7 @@ import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { SessionRegistry, ChatRegistryCallbacks } from "../../orchestration/session-registry.js"
 import type { SessionStatus } from "./use-workflow-lifecycle.js"
+import { TERMINAL_TITLE_PREFIX } from "./use-workflow-lifecycle.js"
 import type { MetricsHook } from "./use-metrics.js"
 import { createChatRunner } from "../../orchestration/chat-runner.js"
 import { createOutputPersistence } from "../../orchestration/session/output-persistence.js"
@@ -27,7 +28,7 @@ export interface ChatModeDeps {
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
   manager: {
-    create(planPath: string, name?: string, kind?: string): string
+    create(planPath: string, name?: string, kind?: string, initialState?: string): string
     updateState(id: string, state: string): void
     updateLabel(id: string, label: string): void
   }
@@ -36,6 +37,8 @@ export interface ChatModeDeps {
   setSessionTitle: (title: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
+  /** Project working directory — injected to avoid hardcoding process.cwd(). */
+  projectCwd: string
 }
 
 export interface ChatModeHook {
@@ -72,7 +75,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     setChatActive(true)
     deps.setSessionStatus("running")
     deps.setSessionTitle("Chat")
-    deps.setTerminalTitle(opts?.priorBlocks ? "flywheel · chat (resumed)" : "flywheel · chat")
+    deps.setTerminalTitle(opts?.priorBlocks ? `${TERMINAL_TITLE_PREFIX}chat (resumed)` : `${TERMINAL_TITLE_PREFIX}chat`)
     deps.resetMetrics()
 
     // Set foregroundId early so inChat() returns true during async startup.
@@ -86,7 +89,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
         createRunner: (registryCallbacks: ChatRegistryCallbacks) =>
           createChatRunner({
             sessionId,
-            projectCwd: process.cwd(),
+            projectCwd: deps.projectCwd,
             updateState: (id, state) => deps.manager.updateState(id, state),
             callbacks: {
               onBlocks: registryCallbacks.onBlocks,
@@ -129,14 +132,13 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   }
 
   async function startChat(initialMessage?: string): Promise<void> {
-    const sessionId = deps.manager.create("chat", "Chat", "chat")
-    safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "chat:active")
+    const sessionId = deps.manager.create("chat", "Chat", "chat", "chat:active")
     deps.refreshList()
     await launchChat(sessionId, { initialMessage })
   }
 
   async function resumeChat(sessionId: string): Promise<void> {
-    const persistence = createOutputPersistence({ sessionId, baseDir: process.cwd() })
+    const persistence = createOutputPersistence({ sessionId, baseDir: deps.projectCwd })
     const loaded = await persistence.load()
     const priorBlocks = loaded as AnyBlock[]
     await launchChat(sessionId, { priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined })

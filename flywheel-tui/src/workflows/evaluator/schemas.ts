@@ -73,7 +73,6 @@ export const EvaluatorInputSchema = z.object({
   acceptance_criteria: z.array(z.string()),
   artifacts_produced: z.array(z.string()),
   tests_passed: z.boolean().nullable(),
-  duration_seconds: z.number(),
   task_context: z.string().optional(),
   handoff: EvaluatorHandoffDataSchema.optional(),
   step_context: StepContextSchema.optional(),
@@ -82,19 +81,12 @@ export const EvaluatorInputSchema = z.object({
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;
 
 // ---------------------------------------------------------------------------
-// EvaluatorResultSchema
+// EvaluatorResultSchema — derived from EvaluatorVerdictSchema
 // ---------------------------------------------------------------------------
+// Identical fields, but `suggestions` is optional and passthrough is stripped.
 
-export const EvaluatorResultSchema = z.object({
-  passed: z.boolean(),
-  reasoning: z.string(),
-  suggestions: z.array(z.string()).optional(),
-  confidence: z.number().min(0).max(1),
-  feedback: z.string(),
-  files_to_review: z.array(z.string()),
-  issues: z.array(EvaluatorIssueSchema).default([]),
-  implementation_feedback: z.string().optional(),
-  script_feedback: z.string().optional(),
-}).strip();
+export const EvaluatorResultSchema = EvaluatorVerdictSchema
+  .extend({ suggestions: z.array(z.string()).optional() })
+  .strip();
 
 export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>;

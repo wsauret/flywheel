@@ -22,6 +22,7 @@ import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
 import { useSessionModal } from "./hooks/use-session-modal.js"
 import type { AgentState, SessionStatus } from "./hooks/use-workflow-lifecycle.js"
+import { TERMINAL_TITLE_PREFIX } from "./hooks/use-workflow-lifecycle.js"
 import type { AnyBlock } from "./types"
 import type { StepState } from "../orchestration/workflow-runner"
 
@@ -83,12 +84,12 @@ export function FlywheelShell() {
     setSessionTitle,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     resetMetrics: metrics.resetMetrics,
+    projectCwd: process.cwd(),
   })
 
   const sessionModal = useSessionModal({
     sessions,
     manager,
-    refreshList,
     registry,
     foregroundId,
     setForegroundId,
@@ -100,7 +101,6 @@ export function FlywheelShell() {
     setSessionTitle,
     statusLine,
     setStatusLine,
-    setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     showToast: (opts) => toast.show(opts),
     handleResume: workflow.handleResume,
     switchForeground,
@@ -172,11 +172,17 @@ export function FlywheelShell() {
     setForegroundId(sessionId)
     setAgentState(entry.status === "running" ? "active" : "idle")
     setSessionStatus(entry.status === "running" ? "running" : entry.status === "paused" ? "paused" : "completed")
+    // Sync display state from the entry — registry sync only fires on entry
+    // updates, so an idle session would never push its blocks to the UI.
+    setOutputBlocks([...entry.outputBlocks])
+    if (entry.kind === "workflow") setSteps([...entry.steps])
+    else setSteps([])
+    setSessionTitle(entry.description)
     metrics.resetElapsedTo(Date.now() - entry.startedAt)
     // effect above handles start/pause based on new agentState
     setStatusLine("")
     setErrorMessage("")
-    renderer.setTerminalTitle(`flywheel · ${entry.description}`)
+    renderer.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
   }
 
   // ── Keyboard ──
@@ -233,8 +239,8 @@ export function FlywheelShell() {
   // ── Cleanup ──
   onCleanup(() => {
     registryUnsub()
-    for (const id of registry.activeIds()) registry.abort(id)
-    chat.endChat()
+    // Dispose all sessions (abort + flush output for every session, including background)
+    registry.disposeAll().catch(() => {})
     metrics.stopTimer()
     renderer.setTerminalTitle("")
   })
@@ -405,7 +411,7 @@ export function FlywheelShell() {
               : sessionStatus() === "paused"
                 ? "Esc to stop · Ctrl+R to resume"
                 : "Ctrl+N · /exit"}
-            {` · Ctrl+B`}{sessions().length > 0 ? ` (${runningCount()} active · ${sessions().length} total)` : ""}
+            {` · Ctrl+B`}{runningCount() > 1 || sessions().length > 1 ? ` (${runningCount()} active · ${sessions().length} total)` : ""}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>
         </box>

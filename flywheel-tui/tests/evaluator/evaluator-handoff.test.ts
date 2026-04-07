@@ -23,7 +23,6 @@ describe("EvaluatorInput schema with handoff field", () => {
       acceptance_criteria: [],
       artifacts_produced: [],
       tests_passed: null,
-      duration_seconds: 10,
     });
     expect(result.success).toBe(true);
   });
@@ -36,7 +35,6 @@ describe("EvaluatorInput schema with handoff field", () => {
       acceptance_criteria: [],
       artifacts_produced: [],
       tests_passed: null,
-      duration_seconds: 10,
       handoff: {
         summary: "A".repeat(100),
         verification: { tests_passed: true, test_output_summary: "12/12 pass" },
@@ -55,7 +53,6 @@ describe("EvaluatorInput schema with handoff field", () => {
       acceptance_criteria: [],
       artifacts_produced: [],
       tests_passed: null,
-      duration_seconds: 10,
       handoff: {
         summary: "A".repeat(100),
       },

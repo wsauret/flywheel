@@ -130,7 +130,7 @@ export interface ContextAccumulator {
   /** Add a completed step's handoff data. */
   accumulate(data: unknown): void;
   /** Get windowed context for the dispatcher. */
-  getContext(): Record<string, unknown>;
+  getContext(): AccumulatedContext;
   /** Serialize for persistence alongside queue state. */
   serialize(): AccumulatorState;
   /** Number of accumulated entries. */
@@ -188,7 +188,7 @@ export function createContextAccumulator(
     });
   }
 
-  function getContext(): Record<string, unknown> {
+  function getContext(): AccumulatedContext {
     if (entries.length === 0) {
       return { summaries: [], recentHandoffs: [], totalSteps: 0 };
     }

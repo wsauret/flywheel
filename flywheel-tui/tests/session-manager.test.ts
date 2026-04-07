@@ -616,7 +616,7 @@ describe("SessionManager.create() budget initialization from config", () => {
 // ---------------------------------------------------------------------------
 
 describe("SessionManager.recoverStaleSessions()", () => {
-  it("recovers chat:active sessions to chat:idle (not work:paused)", () => {
+  it("recovers chat:active sessions to completed (no live runner)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
@@ -633,7 +633,26 @@ describe("SessionManager.recoverStaleSessions()", () => {
     expect(recovered).toBeGreaterThanOrEqual(1);
 
     const after = readSession(id, baseDir);
-    expect(after!.sessionLifecycleState).toBe("chat:idle");
+    expect(after!.sessionLifecycleState).toBe("completed");
+  });
+
+  it("recovers chat:idle sessions to completed (no live runner)", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    // Create a chat session and advance to chat:idle
+    const id = mgr.create("plans/test.md", "Idle Chat", "chat");
+    mgr.updateState(id, "chat:active");
+    mgr.updateState(id, "chat:idle");
+
+    const before = readSession(id, baseDir);
+    expect(before!.sessionLifecycleState).toBe("chat:idle");
+
+    const recovered = mgr.recoverStaleSessions();
+    expect(recovered).toBeGreaterThanOrEqual(1);
+
+    const after = readSession(id, baseDir);
+    expect(after!.sessionLifecycleState).toBe("completed");
   });
 
   it("still recovers work:active sessions to work:paused", () => {
@@ -670,7 +689,7 @@ describe("SessionManager.recoverStaleSessions()", () => {
     const recovered = mgr.recoverStaleSessions();
     expect(recovered).toBe(2);
 
-    expect(readSession(chatId, baseDir)!.sessionLifecycleState).toBe("chat:idle");
+    expect(readSession(chatId, baseDir)!.sessionLifecycleState).toBe("completed");
     expect(readSession(workId, baseDir)!.sessionLifecycleState).toBe("work:paused");
   });
 });

@@ -895,11 +895,8 @@ describe("Step dispatcher edge cases", () => {
     });
 
     expect(decision.taskContent).toBeDefined();
-    // File references should be passed as context files in the input
-    const input = transport.lastInput!;
-    expect(input.context.files).toContain("src/foo.ts");
-    expect(input.context.files).toContain("src/bar.ts");
     // Description should be in step_description
+    const input = transport.lastInput!;
     expect(input.workflow.step_description).toContain("A very detailed step description");
   });
 
@@ -954,7 +951,7 @@ describe("Step dispatcher edge cases", () => {
     }
   });
 
-  test("mutation request parsing from warnings", async () => {
+  test("mutation request parsing from structured mutation_requests", async () => {
     const transport: DispatcherTransport = {
       invoke: async () => ({
         schema_version: 1 as const,
@@ -967,10 +964,19 @@ describe("Step dispatcher edge cases", () => {
           custom_checks: [],
           required_outputs: [],
         },
-        warnings: [
-          "mutation:insert_after:current:fix-lint:Fix lint errors found",
-          "mutation:skip:step-456:Already done",
-          "This is a regular warning, not a mutation",
+        warnings: ["This is a regular warning"],
+        mutation_requests: [
+          {
+            type: "insert_after" as const,
+            target_step_id: "current",
+            steps: [{ type: "work", title: "fix-lint", description: "Fix lint errors found" }],
+            reason: "Fix lint errors found",
+          },
+          {
+            type: "skip" as const,
+            target_step_id: "step-456",
+            reason: "Already done",
+          },
         ],
       }),
     };

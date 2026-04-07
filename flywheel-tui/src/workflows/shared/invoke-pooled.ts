@@ -82,6 +82,28 @@ export interface InvokePooledOptions {
   onStderr?: (chunk: string) => void;
 }
 
+/**
+ * Shared options for pooled subprocess transports.
+ * Both PooledSubprocessTransport and PooledSubprocessEvaluatorTransport
+ * share this shape — only the evaluator adds `systemPromptAddendum`.
+ */
+export interface BasePooledTransportOptions extends InvokePooledOptions {
+  /** Warm pool handle — injected by the orchestration layer. */
+  pool: PoolHandle;
+}
+
+/** Extract `InvokePooledOptions` from a `BasePooledTransportOptions`. */
+export function extractInvokeOptions(opts: BasePooledTransportOptions): InvokePooledOptions {
+  return {
+    sessionId: opts.sessionId,
+    baseDir: opts.baseDir,
+    formatStdinMessage: opts.formatStdinMessage,
+    logBaseDir: opts.logBaseDir,
+    onStdout: opts.onStdout,
+    onStderr: opts.onStderr,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------

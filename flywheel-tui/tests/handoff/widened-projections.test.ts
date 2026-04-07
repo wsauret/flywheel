@@ -120,7 +120,6 @@ describe("VAL-HANDOFF-003: LastWorkerResult includes decisions", () => {
       output_summary: "Built the thing",
       artifacts_produced: ["src/new.ts"],
       tests_passed: true,
-      duration_seconds: 30,
       decisions: ["Used approach A over B"],
     });
     expect(result.success).toBe(true);
@@ -142,7 +141,6 @@ describe("VAL-HANDOFF-004: LastWorkerResult includes warnings", () => {
       output_summary: "Built the thing",
       artifacts_produced: [],
       tests_passed: true,
-      duration_seconds: 30,
       warnings: ["Watch out for this"],
     });
     expect(result.success).toBe(true);
@@ -164,7 +162,6 @@ describe("VAL-HANDOFF-005: LastWorkerResult includes commands_run", () => {
       output_summary: "Built the thing",
       artifacts_produced: [],
       tests_passed: true,
-      duration_seconds: 30,
       commands_run: ["bun test", "bun run build"],
     });
     expect(result.success).toBe(true);
@@ -186,7 +183,6 @@ describe("VAL-HANDOFF-006: LastWorkerResult includes files_to_review", () => {
       output_summary: "Built the thing",
       artifacts_produced: [],
       tests_passed: true,
-      duration_seconds: 30,
       files_to_review: ["src/auth.ts"],
     });
     expect(result.success).toBe(true);
@@ -222,7 +218,6 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
       output_summary: "Built the feature",
       artifacts_produced: ["src/new.ts"],
       tests_passed: true,
-      duration_seconds: 45,
     });
     expect(result.success).toBe(true);
     if (result.success) {

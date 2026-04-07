@@ -94,8 +94,8 @@ export interface SessionRegistry {
   /** Get all active (running/paused) session IDs. */
   activeIds(): string[]
 
-  /** Pause a specific session. No-op for chat entries. */
-  pause(sessionId: string): void
+  /** Pause a specific session. Returns false if the entry doesn't support pausing (e.g. chat). */
+  pause(sessionId: string): boolean
 
   /** Abort a specific session. */
   abort(sessionId: string): void
@@ -109,11 +109,17 @@ export interface SessionRegistry {
   /** Inject a user message into a running session's worker. */
   injectMessage(sessionId: string, text: string): boolean
 
-  /** Cancel shutdown for a session so it continues after current step. No-op for chat entries. */
-  cancelShutdown(sessionId: string): void
+  /** Cancel shutdown for a session so it continues after current step. Returns false for non-workflow entries. */
+  cancelShutdown(sessionId: string): boolean
 
   /** Number of running sessions. */
   runningCount(): number
+
+  /** All session IDs currently in the registry (any status). */
+  allIds(): string[]
+
+  /** Abort and dispose all sessions, flushing output. For clean shutdown. */
+  disposeAll(): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -257,13 +263,13 @@ export function createSessionRegistry(): SessionRegistry {
     return ids
   }
 
-  function pause(sessionId: string): void {
+  function pause(sessionId: string): boolean {
     const entry = entries.get(sessionId)
-    if (!entry || entry.status !== "running") return
-    // Only workflow entries support pause
-    if (entry.kind !== "workflow") return
+    if (!entry || entry.status !== "running") return false
+    if (entry.kind !== "workflow") return false
     entry.runner.pause()
     updateEntry(sessionId, { status: "paused" })
+    return true
   }
 
   function abort(sessionId: string): void {
@@ -287,15 +293,15 @@ export function createSessionRegistry(): SessionRegistry {
     return entry.runner.injectMessage(text)
   }
 
-  function cancelShutdown(sessionId: string): void {
+  function cancelShutdown(sessionId: string): boolean {
     const entry = entries.get(sessionId)
-    if (!entry) return
-    // Only workflow entries support cancelShutdown
-    if (entry.kind !== "workflow") return
+    if (!entry) return false
+    if (entry.kind !== "workflow") return false
     entry.runner.cancelShutdown()
     if (entry.status === "paused") {
       updateEntry(sessionId, { status: "running" })
     }
+    return true
   }
 
   function subscribe(cb: () => void): () => void {
@@ -311,5 +317,26 @@ export function createSessionRegistry(): SessionRegistry {
     return count
   }
 
-  return { start, startChat, get, activeIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount }
+  function allIds(): string[] {
+    return [...entries.keys()]
+  }
+
+  async function disposeAll(): Promise<void> {
+    const ids = [...entries.keys()]
+    // Abort all first (signal subprocesses to stop)
+    for (const id of ids) {
+      const entry = entries.get(id)
+      if (entry) entry.runner.abort()
+    }
+    // Then dispose all (flushes output, cleans up resources)
+    await Promise.all(ids.map(async (id) => {
+      const entry = entries.get(id)
+      if (!entry) return
+      try { await entry.runner.dispose() } catch { /* best-effort */ }
+      entries.delete(id)
+    }))
+    notify()
+  }
+
+  return { start, startChat, get, activeIds, allIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount, disposeAll }
 }

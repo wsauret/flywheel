@@ -113,7 +113,7 @@ High-level modules depend on abstractions, not concretions:
 
 - `executor.ts` accepts dependencies via `StepExecutorOptions` (types in `executor-types.ts`). It never imports transport implementations.
 - `workflow-runner.ts` accepts `WorkflowRunnerOverrides` for injecting test doubles.
-- `chat.ts` accepts an optional `spawner` parameter.
+- `chat-session.ts` (in `orchestration/`) accepts an optional `spawner` parameter. `ChatRunner` accepts deps via `ChatRunnerDeps`.
 - `bun-spawner.ts` accepts `projectCwd` as a parameter -- never reads `process.cwd()`.
 
 When wiring new features, pass dependencies through existing options objects. Do not add global imports to concrete implementations from high-level modules.

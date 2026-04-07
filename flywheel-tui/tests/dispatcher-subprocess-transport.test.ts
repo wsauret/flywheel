@@ -28,9 +28,6 @@ function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherIn
   return {
     plan: { steps: [{ name: "Step 1", steps: [{ description: "step 1" }] }] },
     state: { completed_steps: [], current_step_index: 0 },
-    context: { files: [] },
-    plan_truncated: false,
-    history_truncated: false,
     workflow_id: "wf-test-001",
     workflow: { name: "work", step_number: 1, total_steps: 2, step_description: "Setup" },
     last_worker_result: null,

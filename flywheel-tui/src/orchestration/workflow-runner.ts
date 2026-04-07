@@ -134,59 +134,11 @@ export function createWorkflowRunner(opts: {
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
 
-  // Metrics poll
-  const metricsTimer = setInterval(() => {
-    callbacks.onTokens(budgetTracker.getTokensUsed())
-    callbacks.onCost(budgetTracker.getTotalCost())
-  }, 500)
+  // Wire metrics, model activity, and output persistence
+  const wiring = wireMetricsAndUI(budgetTracker, uiActions, callbacks, sessionId, projectCwd, priorBlocks)
 
-  // Wire store → model activity callback
-  let execUnsub: (() => void) | null = null
-  if (callbacks.onModelActivity) {
-    let lastActivity = uiActions.getState().modelActivity;
-    execUnsub = uiActions.subscribeExecution!(() => {
-      const activity = uiActions.getState().modelActivity;
-      if (activity !== lastActivity) {
-        lastActivity = activity;
-        callbacks.onModelActivity!(activity);
-      }
-    });
-  }
-
-  // Output persistence
-  const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  let currentBlocks: AnyBlock[] = []
-  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
-
-  // Wire store → blocks callback
-  const storeUnsub = uiActions.subscribe(() => {
-    const newBlocks = uiActions.getState().outputBlocks ?? []
-    currentBlocks = priorBlocks ? [...priorBlocks, ...newBlocks] : newBlocks
-    callbacks.onBlocks(currentBlocks)
-    outputFlusher.schedule()
-  })
-
-  // Wire step events
-  const eventUnsubs: Unsubscribe[] = []
-  eventUnsubs.push(
-    eventBus.subscribe((event) => {
-      if (event.type === "queue:step-started") {
-        callbacks.onSteps(queue.steps.map((s) => ({
-          ...toStepState(s),
-          ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
-        })))
-      }
-      if (event.type === "queue:step-completed" || event.type === "queue:step-failed") {
-        callbacks.onSteps(queue.steps.map(toStepState))
-      }
-    }),
-  )
-
-  // Wire trace collector to event bus
-  if (traceCollector) {
-    const traceUnsubs = traceCollector.subscribeToEvents(eventBus)
-    eventUnsubs.push(...traceUnsubs)
-  }
+  // Wire step and trace event subscriptions
+  const eventUnsubs = wireEventSubscriptions(eventBus, queue, callbacks, traceCollector)
 
   // Initialize step display
   callbacks.onSteps(queue.steps.map(toStepState))
@@ -325,10 +277,10 @@ export function createWorkflowRunner(opts: {
   async function dispose(): Promise<void> {
     if (disposed) return
     disposed = true
-    clearInterval(metricsTimer)
+    clearInterval(wiring.metricsTimer)
     eventUnsubs.forEach((u) => u())
-    storeUnsub()
-    execUnsub?.()
+    wiring.storeUnsub()
+    wiring.execUnsub?.()
     destroyWorkflowSession(session)
     activeSessionRef.current = null
     // Finalize trace if not already finalized (abort path)
@@ -348,8 +300,8 @@ export function createWorkflowRunner(opts: {
     dispatcherPool = null
     evaluatorPool = null
     subprocessPool = null
-    await outputFlusher.flush()
-    outputFlusher.dispose()
+    await wiring.outputFlusher.flush()
+    wiring.outputFlusher.dispose()
     executor = null
   }
 
@@ -360,5 +312,91 @@ export function createWorkflowRunner(opts: {
 
 function toStepState(s: { id: string; type: string; title: string; status: string }): StepState {
   return { id: s.id, type: s.type, title: s.title, status: s.status }
+}
+
+// ── Metrics + UI wiring ──
+
+interface MetricsWiring {
+  metricsTimer: ReturnType<typeof setInterval>
+  execUnsub: (() => void) | null
+  storeUnsub: () => void
+  outputFlusher: { schedule(): void; flush(): Promise<void>; dispose(): void }
+  getCurrentBlocks: () => AnyBlock[]
+}
+
+function wireMetricsAndUI(
+  budgetTracker: BudgetTracker,
+  uiActions: WorkflowStore,
+  callbacks: WorkflowCallbacks,
+  sessionId: string,
+  projectCwd: string,
+  priorBlocks: AnyBlock[] | undefined,
+): MetricsWiring {
+  // Metrics poll
+  const metricsTimer = setInterval(() => {
+    callbacks.onTokens(budgetTracker.getTokensUsed())
+    callbacks.onCost(budgetTracker.getTotalCost())
+  }, 500)
+
+  // Wire store → model activity
+  let execUnsub: (() => void) | null = null
+  if (callbacks.onModelActivity) {
+    let lastActivity = uiActions.getState().modelActivity;
+    execUnsub = uiActions.subscribeExecution!(() => {
+      const activity = uiActions.getState().modelActivity;
+      if (activity !== lastActivity) {
+        lastActivity = activity;
+        callbacks.onModelActivity!(activity);
+      }
+    });
+  }
+
+  // Output persistence
+  const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+  let currentBlocks: AnyBlock[] = []
+  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
+
+  // Wire store → blocks callback
+  const storeUnsub = uiActions.subscribe(() => {
+    const newBlocks = uiActions.getState().outputBlocks ?? []
+    currentBlocks = priorBlocks ? [...priorBlocks, ...newBlocks] : newBlocks
+    callbacks.onBlocks(currentBlocks)
+    outputFlusher.schedule()
+  })
+
+  return { metricsTimer, execUnsub, storeUnsub, outputFlusher, getCurrentBlocks: () => currentBlocks }
+}
+
+// ── Event subscription wiring ──
+
+function wireEventSubscriptions(
+  eventBus: import("../infra/event-bus").EventBus,
+  queue: Queue,
+  callbacks: WorkflowCallbacks,
+  traceCollector: TraceCollector | undefined,
+): Unsubscribe[] {
+  const unsubs: Unsubscribe[] = []
+
+  // Step events
+  unsubs.push(
+    eventBus.subscribe((event) => {
+      if (event.type === "queue:step-started") {
+        callbacks.onSteps(queue.steps.map((s) => ({
+          ...toStepState(s),
+          ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
+        })))
+      }
+      if (event.type === "queue:step-completed" || event.type === "queue:step-failed") {
+        callbacks.onSteps(queue.steps.map(toStepState))
+      }
+    }),
+  )
+
+  // Trace collector events
+  if (traceCollector) {
+    unsubs.push(...traceCollector.subscribeToEvents(eventBus))
+  }
+
+  return unsubs
 }
 

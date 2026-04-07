@@ -77,8 +77,6 @@ export interface MockDispatcherOptions {
   mutationsByStepId?: Record<string, StepExecutorOptions["guardrails"] extends null ? never : NonNullable<Awaited<ReturnType<DispatcherFn>>["mutationRequests"]>>;
   /** Step IDs where the dispatcher should throw an error. */
   failOnStepIds?: Set<string>;
-  /** Session names to return for specific step IDs. */
-  sessionNameByStepId?: Record<string, string>;
   /** Track all calls for assertions. */
   calls?: Array<{ step: Step; context: Record<string, unknown> }>;
 }
@@ -96,7 +94,6 @@ export function createMockDispatcher(opts: MockDispatcherOptions = {}): Dispatch
       prompt: opts.promptByStepId?.[step.id] ?? `Execute: ${step.title}`,
       evaluationCriteria: null,
       mutationRequests: opts.mutationsByStepId?.[step.id] ?? undefined,
-      sessionName: opts.sessionNameByStepId?.[step.id] ?? undefined,
     };
   };
 }
@@ -349,8 +346,6 @@ export interface HarnessOptions {
   sessionObjective?: string;
   /** Custom handoff reader (overrides default). */
   handoffReader?: HandoffReaderFn;
-  /** Custom onSessionName callback (overrides default). Set to null to disable. */
-  onSessionName?: ((name: string) => void) | null;
   /** Custom persist function (overrides default). */
   persistFn?: PersistFn;
   /** Custom persistAccumulatorState function (overrides default). */
@@ -386,8 +381,6 @@ export interface Harness {
   questionServiceOpts: MockQuestionServiceOptions | null;
   /** Snapshots of queue state captured on every persist call. */
   persistCalls: Queue[];
-  /** Session names captured via onSessionName callback. */
-  sessionNames: string[];
   /** Cleanup function — call in afterEach. */
   cleanup(): void;
 }
@@ -448,12 +441,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     await persistence.save(q);
   });
 
-  // Session name tracking
-  const sessionNames: string[] = [];
-  const onSessionName = opts.onSessionName !== undefined
-    ? opts.onSessionName
-    : ((name: string) => sessionNames.push(name));
-
   // Accumulator state persistence
   const persistAccumulatorState = opts.persistAccumulatorStateFn !== undefined
     ? opts.persistAccumulatorStateFn
@@ -480,7 +467,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     guardrails,
     sessionObjective: opts.sessionObjective ?? "Test session objective",
     persistAccumulatorState,
-    onSessionName,
   });
 
   function cleanup() {
@@ -506,7 +492,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     evaluatorOpts,
     questionServiceOpts,
     persistCalls,
-    sessionNames,
     cleanup,
   };
 }

@@ -22,7 +22,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths";
+import { TRACES_DIR, ensureTracesDir, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths";
 import { writeFileAtomic } from "../../workflows/shared/atomic-write";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 import type { Span } from "../../infra/trace-types";
@@ -106,8 +106,7 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
   } = deps;
 
   // Ensure traces directory exists
-  const tracesDir = path.resolve(baseDir, TRACES_DIR);
-  fs.mkdirSync(tracesDir, { recursive: true });
+  ensureTracesDir(baseDir);
 
   // Buffered span writer (fd-append + debounce)
   const writer = createBufferedFileWriter<Span>({

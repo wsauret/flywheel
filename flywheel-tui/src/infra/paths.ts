@@ -126,32 +126,36 @@ export function buildSubprocessHandoffPath(
 }
 
 /**
- * Build a handoff file path for a dispatcher invocation.
- * Pattern: `.flywheel/sessions/<session-id>/handoffs/dispatcher_<invocation-id>.json`
+ * Build a handoff file path for a dispatcher or evaluator invocation.
+ * Pattern: `.flywheel/sessions/<session-id>/handoffs/<role>_<invocation-id>.json`
  */
-export function buildDispatcherHandoffPath(
+export function buildInvocationHandoffPath(
+  role: "dispatcher" | "evaluator",
   sessionId: string,
   invocationId: string,
   baseDir: string,
 ): string {
-  return path.resolve(baseDir, sessionHandoffsDir(sessionId), `dispatcher_${invocationId}.json`);
+  return path.resolve(baseDir, sessionHandoffsDir(sessionId), `${role}_${invocationId}.json`);
 }
 
-/**
- * Build a handoff file path for an evaluator invocation.
- * Pattern: `.flywheel/sessions/<session-id>/handoffs/evaluator_<invocation-id>.json`
- */
-export function buildEvaluatorHandoffPath(
-  sessionId: string,
-  invocationId: string,
-  baseDir: string,
-): string {
-  return path.resolve(baseDir, sessionHandoffsDir(sessionId), `evaluator_${invocationId}.json`);
-}
+/** @deprecated Use `buildInvocationHandoffPath("dispatcher", ...)` */
+export const buildDispatcherHandoffPath = (s: string, i: string, b: string) =>
+  buildInvocationHandoffPath("dispatcher", s, i, b);
+
+/** @deprecated Use `buildInvocationHandoffPath("evaluator", ...)` */
+export const buildEvaluatorHandoffPath = (s: string, i: string, b: string) =>
+  buildInvocationHandoffPath("evaluator", s, i, b);
 
 // ---------------------------------------------------------------------------
 // Trace file path helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Ensure the global traces directory exists. Idempotent.
+ */
+export function ensureTracesDir(baseDir: string): void {
+  fs.mkdirSync(path.resolve(baseDir, TRACES_DIR), { recursive: true });
+}
 
 /** Returns absolute path to a session's trace file: `.flywheel/traces/<session-id>.jsonl` */
 export function resolveTraceFile(sessionId: string, baseDir: string): string {

@@ -7,6 +7,24 @@ export interface HandoffFieldSpec {
   required?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Shared preamble + rules used by all handoff instruction renderers
+// ---------------------------------------------------------------------------
+
+function renderHandoffPreamble(role: string, handoffPath: string): string {
+  return `## ${role} Handoff Instructions
+
+**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the queue reads your ${role.toLowerCase() === "handoff" ? "work" : role.toLowerCase() + " decision"}. If missing or invalid, the ${role.toLowerCase()} will be retried.
+
+Write a JSON file to:
+\`${handoffPath}\``;
+}
+
+const SHARED_JSON_RULES = [
+  "Write valid JSON — no trailing commas, no comments, no markdown wrapping.",
+  "Write the file using your file-writing tool, not stdout.",
+];
+
 export function renderHandoffInstruction(
   fields: HandoffFieldSpec[],
   handoffPath: string,
@@ -63,12 +81,7 @@ ${fieldLines.join("\n\n")}
 }
 
 export function renderEvaluatorHandoffInstruction(handoffPath: string): string {
-  return `## Evaluator Handoff Instructions
-
-**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the queue reads your verdict. If missing or invalid, the evaluation will be retried.
-
-Write a JSON file to:
-\`${handoffPath}\`
+  return `${renderHandoffPreamble("Evaluator", handoffPath)}
 
 ### Required format
 
@@ -100,17 +113,12 @@ Write a JSON file to:
 1. ALL fields are required — do not omit any field.
 2. Use empty arrays \`[]\` and empty strings \`""\` for fields with no data — do not use \`null\`.
 3. Do NOT include fields not listed above — unknown fields cause a validation error.
-4. Write valid JSON — no trailing commas, no comments, no markdown wrapping.
-5. Write the file using your file-writing tool, not stdout.`;
+4. ${SHARED_JSON_RULES[0]}
+5. ${SHARED_JSON_RULES[1]}`;
 }
 
 export function renderDispatcherHandoffInstruction(handoffPath: string): string {
-  return `## Dispatcher Handoff Instructions
-
-**CRITICAL:** You MUST write a valid JSON file before finishing. This is how the queue reads your dispatch decision. If missing or invalid, the dispatch will be retried.
-
-Write a JSON file to:
-\`${handoffPath}\`
+  return `${renderHandoffPreamble("Dispatcher", handoffPath)}
 
 ### Required format
 
@@ -144,6 +152,6 @@ Write a JSON file to:
 
 1. ALL required fields must be present.
 2. Do NOT include fields not listed above — unknown fields cause a validation error.
-3. Write valid JSON — no trailing commas, no comments, no markdown wrapping.
-4. Write the file using your file-writing tool, not stdout.`;
+3. ${SHARED_JSON_RULES[0]}
+4. ${SHARED_JSON_RULES[1]}`;
 }

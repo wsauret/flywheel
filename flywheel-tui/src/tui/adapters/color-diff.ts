@@ -35,6 +35,10 @@ export interface DiffThemeColors {
   highlightAdded: RGBA
   /** Removed word highlight (brighter than removedBg) */
   highlightRemoved: RGBA
+  /** Foreground for + marker and added line numbers */
+  addedFg: RGBA
+  /** Foreground for - marker and removed line numbers */
+  removedFg: RGBA
   /** Line number foreground */
   lineNumber: RGBA
 }
@@ -89,10 +93,10 @@ function buildTheme(colors: DiffThemeColors): Theme {
   return {
     addLine: colors.addedBg,
     addWord: colors.highlightAdded,
-    addDecoration: colors.highlightAdded,
+    addDecoration: colors.addedFg,
     deleteLine: colors.removedBg,
     deleteWord: colors.highlightRemoved,
-    deleteDecoration: colors.highlightRemoved,
+    deleteDecoration: colors.removedFg,
     foreground: colors.text,
     background: null,
     lineNumber: colors.lineNumber,
@@ -270,9 +274,15 @@ function wrapText(h: Highlight, width: number, theme: Theme): void {
   h.lines = newLines
 }
 
+function lineNumberColor(marker: Marker | null, theme: Theme): Color {
+  if (marker === "+") return theme.addDecoration
+  if (marker === "-") return theme.deleteDecoration
+  return theme.foreground
+}
+
 function addLineNumber(h: Highlight, theme: Theme, maxDigits: number): void {
   const style: Style = {
-    foreground: theme.lineNumber,
+    foreground: lineNumberColor(h.marker, theme),
     background: h.marker ? lineBackground(h.marker, theme) : theme.background,
   }
   for (let i = 0; i < h.lines.length; i++) {

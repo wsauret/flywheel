@@ -250,9 +250,6 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       const input: DispatcherInput = {
         plan,
         state: queueState,
-        context: { files: step.fileReferences ?? [] },
-        plan_truncated: false,
-        history_truncated: false,
         workflow_id: workflowId,
         workflow: workflowInfo,
         last_worker_result: lastWorkerResult,
