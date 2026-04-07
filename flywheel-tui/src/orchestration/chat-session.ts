@@ -24,6 +24,7 @@ import { NDJSONParser } from "./engines/subprocess/ndjson-parser"
 import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
 import { StructuredEventParser } from "../infra/output/structured-event-parser"
 import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
+import { extractContextUpdate } from "./engines/providers/claude-context"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import type { TraceCollector } from "./session/trace-collector"
 import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
@@ -43,6 +44,7 @@ export interface ChatCallbacks {
   onWaiting: (waiting: boolean) => void
   onTokens: (tokens: number) => void
   onCost: (cost: number) => void
+  onContextPercent: (percent: number) => void
   onModelActivity: (activity: ModelActivity) => void
   onError: (message: string) => void
   onEnded: () => void
@@ -112,6 +114,33 @@ export async function createChatSession(
         callbacks.onBlocks(builder.getBlocks())
       }
     }
+
+    // Detect unrecoverable "Prompt is too long" from Claude Code. When the
+    // accumulated conversation exceeds the context window, every --resume
+    // reloads the same oversized session and fails instantly. Clear the
+    // session ID so the next send() spawns a fresh worker.
+    const data = event.data as Record<string, unknown>
+    if (data.type === "result") {
+      const isError = data.is_error === true || (typeof data.subtype === "string" && data.subtype !== "success")
+      const resultText = typeof data.result === "string" ? data.result : ""
+      if (isError && /prompt is too long/i.test(resultText)) {
+        log.warn("prompt too long — resetting session", { claudeSessionId })
+        claudeSessionId = null
+        builder.pushSystemMessage(
+          "Conversation too long for context window. Next message will start a fresh conversation.",
+          Date.now(),
+        )
+        callbacks.onBlocks(builder.getBlocks())
+        callbacks.onWaiting(false)
+      }
+    }
+
+    // Engine-specific context utilization extraction
+    const ctxUpdate = extractContextUpdate(event)
+    if (ctxUpdate) {
+      budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
+    }
+
     eventParser.dispatch(event, engineName)
     budgetTracker.handleEvent(event)
     transcriptWriter?.handleEvent(event)
@@ -121,11 +150,27 @@ export async function createChatSession(
     if (text.trim().length > 0) builder.pushText(text + "\n", Date.now())
   }
 
+  // Context warning state — only fire the 85% system message once per session
+  let contextWarningFired = false
+
   // Flush builder → callbacks at 16ms
   const flushInterval = setInterval(() => {
     if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
     callbacks.onTokens(budgetTracker.getTokensUsed())
     callbacks.onCost(budgetTracker.getTotalCost())
+
+    const ctx = budgetTracker.getContextUtilization()
+    callbacks.onContextPercent(ctx.percent)
+
+    if (!contextWarningFired && ctx.percent >= 85) {
+      contextWarningFired = true
+      log.warn("context window 85% full", { percent: ctx.percent, promptTokens: ctx.promptTokens, contextWindow: ctx.contextWindow })
+      builder.pushSystemMessage(
+        `Context window is ${ctx.percent}% full. Consider starting a new conversation with /new to avoid losing context.`,
+        Date.now(),
+      )
+      callbacks.onBlocks(builder.getBlocks())
+    }
   }, 16)
 
   // Stale agent detection is handled by the builder (auto-completes after 5s of inactivity)

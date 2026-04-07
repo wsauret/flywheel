@@ -138,7 +138,7 @@ export function createWorkflowRunner(opts: {
   const wiring = wireMetricsAndUI(budgetTracker, uiActions, callbacks, sessionId, projectCwd, priorBlocks)
 
   // Wire step and trace event subscriptions
-  const eventUnsubs = wireEventSubscriptions(eventBus, queue, callbacks, traceCollector)
+  const eventUnsubs = wireEventSubscriptions(eventBus, queue, callbacks, traceCollector ?? undefined)
 
   // Initialize step display
   callbacks.onSteps(queue.steps.map(toStepState))
@@ -342,7 +342,7 @@ function wireMetricsAndUI(
   let execUnsub: (() => void) | null = null
   if (callbacks.onModelActivity) {
     let lastActivity = uiActions.getState().modelActivity;
-    execUnsub = uiActions.subscribeExecution!(() => {
+    execUnsub = uiActions.subscribeExecution(() => {
       const activity = uiActions.getState().modelActivity;
       if (activity !== lastActivity) {
         lastActivity = activity;

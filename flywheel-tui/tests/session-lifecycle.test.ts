@@ -157,13 +157,14 @@ describe("Lifecycle: import -> approve -> work -> review -> complete -> archive"
     mgr.updateState(id, "completed");
     mgr.archive(id);
 
-    // Archived is terminal
+    // Archived only allows transition to trashed (deletion)
     expect(() => mgr.updateState(id, "work:active")).toThrow(
       /Invalid state transition.*archived/,
     );
-    expect(() => mgr.trash(id)).toThrow(
-      /Invalid state transition.*archived/,
-    );
+    // But trashing (for deletion) is allowed
+    mgr.trash(id);
+    const { sessions: afterTrash } = mgr.list();
+    expect(afterTrash.find((s) => s.id === id)!.lifecycleState).toBe("trashed");
   });
 });
 
@@ -573,9 +574,12 @@ describe("State machine transition table exhaustiveness", () => {
     }
   });
 
-  it("terminal states have no outbound transitions", () => {
-    expect(VALID_TRANSITIONS["archived"]).toHaveLength(0);
+  it("trashed is terminal with no outbound transitions", () => {
     expect(VALID_TRANSITIONS["trashed"]).toHaveLength(0);
+  });
+
+  it("archived can only transition to trashed", () => {
+    expect(VALID_TRANSITIONS["archived"]).toEqual(["trashed"]);
   });
 
   it("every listed transition target is a valid state", () => {

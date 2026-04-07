@@ -11,7 +11,7 @@ export const metadata: EngineMetadata = {
   id: "claude",
   name: "Claude Code",
   cliBinary: "claude",
-  defaultModel: "opus",
+  defaultModel: "claude-opus-4-6[1m]",
   installCommand: "npm install -g @anthropic-ai/claude-code",
   description: "Anthropic's Claude Code CLI",
   order: 2,
@@ -108,9 +108,11 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
  * Update this list when new model families ship.
  */
 const CLAUDE_MODELS: ModelInfo[] = [
-  { id: "opus",    name: "Claude Opus (latest)",   family: "opus",   isAlias: true },
-  { id: "sonnet",  name: "Claude Sonnet (latest)", family: "sonnet", isAlias: true },
-  { id: "haiku",   name: "Claude Haiku (latest)",  family: "haiku",  isAlias: true },
+  { id: "claude-opus-4-6[1m]",   name: "Claude Opus (1M context)",   family: "opus",   isAlias: false },
+  { id: "claude-sonnet-4-6[1m]", name: "Claude Sonnet (1M context)", family: "sonnet", isAlias: false },
+  { id: "opus",    name: "Claude Opus (200k)",   family: "opus",   isAlias: true },
+  { id: "sonnet",  name: "Claude Sonnet (200k)", family: "sonnet", isAlias: true },
+  { id: "haiku",   name: "Claude Haiku (200k)",  family: "haiku",  isAlias: true },
 ];
 
 async function listModels(_provider?: string): Promise<ModelInfo[]> {

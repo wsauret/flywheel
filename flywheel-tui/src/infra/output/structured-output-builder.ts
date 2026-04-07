@@ -142,9 +142,9 @@ export class StructuredOutputBuilder {
     this.markDirty();
   }
 
-  pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string): void {
+  pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): void {
     this.onModelActivityChange?.("tool_executing");
-    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(diff && { diff }), ...(filetype && { filetype }) };
+    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
 
     // If inside an active (real) agent, add as child — context tools inside
     // real agents stay as plain children, not grouped.
@@ -153,8 +153,8 @@ export class StructuredOutputBuilder {
     }
 
     // Top-level tool: check context grouping.
-    // Tools with diff data render standalone (not grouped) so the diff is visible.
-    if (isContextTool(name) && !diff) {
+    // Tools with diff/content data render standalone (not grouped) so the content is visible.
+    if (isContextTool(name) && !diff && !content) {
       this.contextTracker.pushContextTool(tool, timestamp);
     } else {
       this.contextTracker.breakContextRun(timestamp);
@@ -170,8 +170,8 @@ export class StructuredOutputBuilder {
    * Used when Claude's `parent_tool_use_id` identifies the owning agent.
    * Returns false if the agent was not found (caller should fall through to top-level).
    */
-  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string): boolean {
-    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(diff && { diff }), ...(filetype && { filetype }) };
+  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): boolean {
+    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
     return this.appendToolToAgent(agentId, tool);
   }
 
@@ -195,7 +195,7 @@ export class StructuredOutputBuilder {
     return true;
   }
 
-  startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
+  startAgent(id: string, agentLabel: string, description: string, timestamp: number, opts?: { skipStaleDetection?: boolean }): void {
     this.contextTracker.breakContextRun(timestamp);
 
     const agent: AgentBlock = {
@@ -210,7 +210,9 @@ export class StructuredOutputBuilder {
     this.blocks.push(agent);
     this.agentIndexById.set(id, this.blocks.length - 1);
     this.activeAgentId = id;
-    this.staleDetector.trackSpawn(id);
+    if (!opts?.skipStaleDetection) {
+      this.staleDetector.trackSpawn(id);
+    }
     this.enforceBlocksCap();
     this.markDirty();
     this.onAgentLifecycle?.("start", id);

@@ -391,7 +391,8 @@ describe("budget continuity across session resume", () => {
     });
 
     // Simulate Claude result events (NDJSON format: type + data envelope)
-    // Values are cumulative within a process (delta accounting applies)
+    // usage.input_tokens / output_tokens are per-turn values (not cumulative);
+    // total_cost_usd IS cumulative within a process.
     tracker1.handleEvent({
       type: "result",
       data: {
@@ -403,7 +404,7 @@ describe("budget continuity across session resume", () => {
       type: "result",
       data: {
         total_cost_usd: 0.08,
-        usage: { input_tokens: 1800, output_tokens: 800 },
+        usage: { input_tokens: 800, output_tokens: 300 },
       },
     });
     tracker1.incrementInvocations();
@@ -418,7 +419,7 @@ describe("budget continuity across session resume", () => {
     expect(session).not.toBeNull();
     expect(session!.totalCost).toBeCloseTo(0.08, 4);
     expect(session!.budgetUsage.cost_usd).toBeCloseTo(0.08, 4);
-    expect(session!.budgetUsage.tokens_used).toBe(2600);
+    expect(session!.budgetUsage.tokens_used).toBe(2600); // (1000+500) + (800+300)
     expect(session!.budgetUsage.invocations_used).toBe(2);
 
     // Create a new budget tracker with the same sessionId

@@ -165,6 +165,7 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
 
     metrics.setTokens(entry.tokens)
     metrics.setCost(entry.cost)
+    metrics.setContextPercent(entry.contextPercent)
     setSessionTitle(entry.description)
     setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
 

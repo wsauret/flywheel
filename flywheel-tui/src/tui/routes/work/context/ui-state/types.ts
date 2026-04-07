@@ -44,7 +44,7 @@ export interface UIActions {
   selectStep(index: number): void;
 
   // Targeted subscriptions (subscriber isolation)
-  subscribeExecution?(fn: Listener): () => void;
+  subscribeExecution(fn: Listener): () => void;
   subscribeOutput?(fn: Listener): () => void;
 
   // Reset

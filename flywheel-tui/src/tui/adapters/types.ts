@@ -1,7 +1,7 @@
 import type { EventBus } from "../../infra/event-bus.js";
 import type { FlywheelEvent } from "../../infra/events.js";
 
-export type AdapterType = "opentui" | "mock" | "headless";
+export type AdapterType = "opentui";
 
 /**
  * IWorkflowUI — interface for workflow UI adapters.

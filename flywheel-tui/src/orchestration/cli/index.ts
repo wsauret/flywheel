@@ -36,7 +36,67 @@ export async function main(): Promise<void> {
     })
   })
 
+  // --headless branch MUST precede runTUI() to avoid singleton collision
+  if (process.argv.includes("--headless")) {
+    await runHeadless()
+    return
+  }
+
   await runTUI();
+}
+
+// ---------------------------------------------------------------------------
+// Headless mode — run workflow without TUI
+// ---------------------------------------------------------------------------
+
+async function runHeadless(): Promise<void> {
+  const descIdx = process.argv.indexOf("--description")
+  const description = descIdx !== -1 ? process.argv[descIdx + 1] : undefined
+
+  if (!description) {
+    console.error(
+      "Usage: flywheel --headless --description <text>\n\n" +
+      "  --headless       Run without TUI (CI/automation)\n" +
+      "  --description    Workflow description (required in headless mode)\n"
+    )
+    process.exit(1)
+  }
+
+  const { provideHeadlessFactories } = await import("../headless")
+  const { createSessionRegistry } = await import("../session-registry")
+  const { buildQueueFromTemplate } = await import("../../workflows/queue/templates")
+  const { randomUUID } = await import("crypto")
+
+  // Wire headless factories before creating any sessions
+  provideHeadlessFactories({ logLevel: "normal", timestamps: true })
+
+  const registry = createSessionRegistry()
+  const sessionId = randomUUID()
+  const queue = buildQueueFromTemplate("work")
+
+  // Start the workflow — runs in background inside the registry
+  registry.start({ sessionId, queue, description })
+
+  // Wait for the session to reach a terminal state
+  const result = await new Promise<boolean>((resolve) => {
+    const check = () => {
+      const entry = registry.get(sessionId)
+      if (!entry) { resolve(false); return }
+      if (entry.status === "completed") { resolve(true); return }
+      if (entry.status === "error") {
+        if (entry.errorMessage) console.error(`Error: ${entry.errorMessage}`)
+        resolve(false)
+        return
+      }
+      // Still running — keep polling via subscription
+    }
+    registry.subscribe(check)
+    // Also check immediately in case it already finished
+    check()
+  })
+
+  await registry.disposeAll()
+  process.exit(result ? 0 : 1)
 }
 
 // ---------------------------------------------------------------------------

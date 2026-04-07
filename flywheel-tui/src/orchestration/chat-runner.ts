@@ -28,6 +28,7 @@ export interface ChatRunnerCallbacks {
   onBlocks: (blocks: AnyBlock[]) => void
   onTokens: (tokens: number) => void
   onCost: (cost: number) => void
+  onContextPercent?: (percent: number) => void
   onModelActivity?: (activity: ModelActivity) => void
   onSessionName?: (name: string) => void
   onError: (message: string) => void
@@ -115,6 +116,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     },
     onTokens: (tokens) => callbacks.onTokens(tokens),
     onCost: (cost) => callbacks.onCost(cost),
+    onContextPercent: (percent) => callbacks.onContextPercent?.(percent),
     onModelActivity: (activity) => callbacks.onModelActivity?.(activity),
     onError: (message) => callbacks.onError(message),
     onEnded: () => callbacks.onEnded(),

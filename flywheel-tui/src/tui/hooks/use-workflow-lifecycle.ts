@@ -105,7 +105,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     const fgId = deps.foregroundId()
     if (!fgId) return
     deps.registry.pause(fgId)
-    deps.resetMetrics()
+    // Don't reset metrics — preserve token/cost display while paused
     deps.setAgentState("idle")
     deps.setSessionStatus("paused")
     deps.showToast({ message: "Pausing after current step... (Esc to force stop)", variant: "info" })

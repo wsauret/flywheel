@@ -230,7 +230,18 @@ function extractLastMeaningfulLine(text: string): string | null {
 function extractToolDetail(toolName: string, input?: Record<string, unknown>): string {
   if (!input) return "";
   if (input.file_path && typeof input.file_path === "string") {
-    return formatDisplayPath(input.file_path) ?? "";
+    const path = formatDisplayPath(input.file_path) ?? "";
+    if (toolName === "Read") {
+      const offset = input.offset as number | undefined;
+      const limit = input.limit as number | undefined;
+      if (offset != null || limit != null) {
+        const start = (offset ?? 0) + 1;
+        const end = limit != null ? start + limit - 1 : undefined;
+        const range = end != null ? `:${start}-${end}` : `:${start}+`;
+        return `${path}${range}`;
+      }
+    }
+    return path;
   }
   if (input.path && typeof input.path === "string") {
     return formatDisplayPath(input.path) ?? "";

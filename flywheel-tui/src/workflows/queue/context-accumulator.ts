@@ -67,6 +67,8 @@ export interface AccumulatedContext {
   recentHandoffs: HandoffEntry[];
   /** Total number of accumulated entries. */
   totalSteps: number;
+  /** Index signature for StepContextAccumulator compatibility. */
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------

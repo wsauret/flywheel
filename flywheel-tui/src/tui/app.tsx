@@ -95,6 +95,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
         gatherStats: false,
         exitOnCtrlC: false,
         autoFocus: true,
+        openConsoleOnError: false,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {

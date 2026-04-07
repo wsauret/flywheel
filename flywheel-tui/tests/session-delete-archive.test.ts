@@ -389,13 +389,9 @@ describe("delete and archive interaction", () => {
     );
     manager.archive(sessionId);
 
-    // archived -> trashed is NOT valid (archived is terminal)
-    // So we cannot trash an archived session through the state machine
-    expect(() => manager.trash(sessionId)).toThrow(
-      /Invalid state transition/,
-    );
+    // archived -> trashed is valid so we can delete archived sessions
+    manager.trash(sessionId);
 
-    // But we can force-delete the files directly
     const result = deleteSessionWithCompanions(sessionId, baseDir);
     expect(result.errors).toHaveLength(0);
     expect(readSession(sessionId, baseDir)).toBeNull();

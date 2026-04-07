@@ -10,7 +10,7 @@
  * Groups sessions by lifecycle state: Active, Paused, Completed, Archived.
  */
 
-import { createMemo, For, Show } from "solid-js"
+import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSession } from "@tui/shared/context/session"
@@ -29,6 +29,8 @@ export interface SessionModalProps {
   activeSessionId?: string
   cursor: number
   confirmDeleteId?: string
+  /** Monotonically increasing counter — bump to refresh the session list snapshot. */
+  refreshTrigger?: number
   onClose: () => void
   onSelect: (flatIndex: number) => void
 }
@@ -97,7 +99,16 @@ export function SessionModal(props: SessionModalProps) {
   const { theme } = useTheme()
   const { sessions } = useSession()
 
-  const flatList = createMemo(() => buildSessionList(sessions()))
+  // Snapshot the session list at mount time. Reactive updates from the
+  // background 5s poll would cause re-renders that corrupt the terminal
+  // (old and new list items overlap on screen). Use a signal+untrack
+  // pattern: read sessions() only when refreshTrigger bumps.
+  const initialSessions = untrack(() => sessions())
+  const [snapshotSessions, setSnapshotSessions] = createSignal(initialSessions)
+  createEffect(on(() => props.refreshTrigger, () => {
+    setSnapshotSessions(sessions())
+  }, { defer: true }))
+  const flatList = createMemo(() => buildSessionList(snapshotSessions()))
 
   const groupedSections = createMemo(() => {
     const items = flatList()
@@ -147,7 +158,19 @@ export function SessionModal(props: SessionModalProps) {
           </box>
         </Show>
 
-        <box maxHeight={18} flexDirection="column">
+        <scrollbox
+          maxHeight={18}
+          viewportOptions={{
+            paddingRight: 1,
+          }}
+          verticalScrollbarOptions={{
+            paddingLeft: 1,
+            trackOptions: {
+              foregroundColor: theme.border,
+              backgroundColor: theme.backgroundElement,
+            },
+          }}
+        >
           <For each={groupedSections()}>
             {(section) => (
               <box flexDirection="column">
@@ -199,7 +222,7 @@ export function SessionModal(props: SessionModalProps) {
               </box>
             )}
           </For>
-        </box>
+        </scrollbox>
       </box>
 
       <ModalFooter shortcuts={footerText()} />

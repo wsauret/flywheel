@@ -212,6 +212,19 @@ After any change under `src/tui/`, verify in the live TUI. See **[docs/tmux-uat-
 - Check log files for errors even if the TUI looks correct visually.
 - Clean up all artifacts (sessions, files, tmux session) when done.
 
+### Automated E2E Regression Tests
+
+Modular tmux-based regression tests live in `tests/e2e/`. Run all or specific modules:
+
+```bash
+tests/e2e/run-all.sh                    # all modules
+tests/e2e/run-all.sh chat workflow      # specific modules
+```
+
+Modules: `chat`, `session-modal`, `multi-session`, `workflow`, `chat-workflow-interaction`, `session-recovery`.
+
+**Every new TUI feature MUST add or extend an E2E regression module.** The test should cover the happy path, transitions into/out of the feature, and state isolation. After assertions pass, review raw log captures for rendering anomalies and state leaks.
+
 ---
 
 ## Quick Reference: Import Rules

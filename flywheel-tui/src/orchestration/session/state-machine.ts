@@ -5,7 +5,8 @@
  * transitions between them. The state is persisted to disk, so the
  * schema uses `z.enum` (boundary type).
  *
- * Terminal states: `archived`, `trashed` — no outbound transitions.
+ * Terminal state: `trashed` — no outbound transitions.
+ * `archived` can only transition to `trashed` (deletion).
  */
 import { z } from "zod";
 
@@ -55,7 +56,7 @@ export const VALID_TRANSITIONS: Readonly<
   "budget_exhausted": ["work:active", "trashed"],
   "work:review": ["work:active", "completed", "trashed"],
   completed: ["archived", "trashed", "work:active"],
-  archived: [],
+  archived: ["trashed"],
   trashed: [],
 });
 

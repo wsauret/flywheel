@@ -30,6 +30,7 @@ interface SessionEntryBase {
   readonly outputBlocks: readonly AnyBlock[]
   readonly tokens: number
   readonly cost: number
+  readonly contextPercent: number
   readonly startedAt: number
   readonly modelActivity: ModelActivity
   readonly errorMessage?: string
@@ -56,6 +57,7 @@ export interface ChatRegistryCallbacks {
   onBlocks: (blocks: AnyBlock[]) => void
   onTokens: (n: number) => void
   onCost: (n: number) => void
+  onContextPercent: (n: number) => void
   onModelActivity: (activity: ModelActivity) => void
   onSessionName: (name: string) => void
   onError: (message: string) => void
@@ -177,6 +179,7 @@ export function createSessionRegistry(): SessionRegistry {
       steps: [],
       tokens: 0,
       cost: 0,
+      contextPercent: 0,
       startedAt: Date.now(),
       status: "running",
       modelActivity: "idle",
@@ -220,6 +223,7 @@ export function createSessionRegistry(): SessionRegistry {
       onBlocks: (blocks) => updateEntry(sessionId, { outputBlocks: blocks }),
       onTokens: (n) => updateEntry(sessionId, { tokens: n }),
       onCost: (n) => updateEntry(sessionId, { cost: n }),
+      onContextPercent: (n) => updateEntry(sessionId, { contextPercent: n }),
       onModelActivity: (activity) => updateEntry(sessionId, { modelActivity: activity }),
       onSessionName: (name) => updateEntry(sessionId, { description: name }),
       onError: (message) => updateEntry(sessionId, { status: "error", errorMessage: message }),
@@ -238,6 +242,7 @@ export function createSessionRegistry(): SessionRegistry {
       outputBlocks: priorBlocks ? [...priorBlocks] : [],
       tokens: 0,
       cost: 0,
+      contextPercent: 0,
       startedAt: Date.now(),
       status: "running",
       modelActivity: "idle",

@@ -18,8 +18,12 @@ export interface ToolBlock {
   name: string;
   detail: string;
   timestamp: number;
-  /** Unified diff string for Edit/Write/ApplyPatch tools */
+  /** Absolute file path — when present, detail is clickable and opens in editor */
+  filePath?: string;
+  /** Unified diff string for Edit/ApplyPatch tools */
   diff?: string;
+  /** Raw file content for Write tool (rendered as plain text, not diff) */
+  content?: string;
   /** File type for syntax highlighting in diff rendering */
   filetype?: string;
 }

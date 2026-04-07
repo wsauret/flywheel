@@ -324,7 +324,4 @@ describe("MockAdapter", () => {
     expect(adapter.events).toHaveLength(2);
   });
 
-  it("adapterType is mock", () => {
-    expect(adapter.adapterType).toBe("mock");
-  });
 });

@@ -5,12 +5,14 @@ export interface MetricsHook {
   elapsed: Accessor<number>
   liveTokens: Accessor<number>
   liveCost: Accessor<number>
+  liveContextPercent: Accessor<number>
   workStartTime: Accessor<number>
   spinnerTick: Accessor<number>
   thinkingElapsed: Accessor<number>
   liveActivity: Accessor<"idle" | "thinking" | "generating" | "tool_executing">
   setTokens(n: number): void
   setCost(n: number): void
+  setContextPercent(n: number): void
   setActivity(a: "idle" | "thinking" | "generating" | "tool_executing"): void
   startTimer(): void
   pauseTimer(): void
@@ -24,6 +26,7 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠸", "⠴", "⠦", "⠇"]
 export function useMetrics(): MetricsHook {
   const [liveTokens, setLiveTokens] = createSignal(0)
   const [liveCost, setLiveCost] = createSignal(0)
+  const [liveContextPercent, setLiveContextPercent] = createSignal(0)
   const [workStartTime, setWorkStartTime] = createSignal(0)
   const [elapsed, setElapsed] = createSignal(0)
   const [spinnerTick, setSpinnerTick] = createSignal(0)
@@ -72,6 +75,7 @@ export function useMetrics(): MetricsHook {
     elapsedAccum = 0
     setLiveTokens(0)
     setLiveCost(0)
+    setLiveContextPercent(0)
     thinkingStart = 0
     setThinkingElapsed(0)
     setLiveActivity("idle")
@@ -88,12 +92,14 @@ export function useMetrics(): MetricsHook {
     elapsed,
     liveTokens,
     liveCost,
+    liveContextPercent,
     workStartTime,
     spinnerTick,
     thinkingElapsed,
     liveActivity,
     setTokens: setLiveTokens,
     setCost: setLiveCost,
+    setContextPercent: setLiveContextPercent,
     setActivity: setLiveActivity,
     startTimer,
     pauseTimer,

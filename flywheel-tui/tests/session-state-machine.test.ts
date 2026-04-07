@@ -70,9 +70,12 @@ describe("VALID_TRANSITIONS", () => {
     }
   });
 
-  it("terminal states (archived, trashed) have empty transition arrays", () => {
-    expect(VALID_TRANSITIONS["archived"]).toEqual([]);
+  it("trashed is terminal with empty transition array", () => {
     expect(VALID_TRANSITIONS["trashed"]).toEqual([]);
+  });
+
+  it("archived can only transition to trashed", () => {
+    expect(VALID_TRANSITIONS["archived"]).toEqual(["trashed"]);
   });
 
   it("every target in a transition array is a valid state", () => {
@@ -165,7 +168,6 @@ describe("isValidTransition — invalid transitions", () => {
     ["plan:approved", "new"],
     // terminal states reject all outbound
     ["archived", "new"],
-    ["archived", "trashed"],
     ["archived", "work:active"],
     ["archived", "completed"],
     ["trashed", "new"],
@@ -242,12 +244,23 @@ describe("isValidTransition — regression: new -> trashed", () => {
 // ---------------------------------------------------------------------------
 describe("isValidTransition — terminal states reject ALL outbound", () => {
   const allStates = SessionLifecycleStateSchema.options;
-  const terminalStates: SessionLifecycleState[] = ["archived", "trashed"];
 
-  for (const terminal of terminalStates) {
-    for (const target of allStates) {
-      it(`${terminal} -> ${target} is rejected`, () => {
-        expect(isValidTransition(terminal, target)).toBe(false);
+  // trashed is fully terminal — no outbound transitions
+  for (const target of allStates) {
+    it(`trashed -> ${target} is rejected`, () => {
+      expect(isValidTransition("trashed", target)).toBe(false);
+    });
+  }
+
+  // archived can only go to trashed
+  for (const target of allStates) {
+    if (target === "trashed") {
+      it(`archived -> trashed is allowed`, () => {
+        expect(isValidTransition("archived", "trashed")).toBe(true);
+      });
+    } else {
+      it(`archived -> ${target} is rejected`, () => {
+        expect(isValidTransition("archived", target)).toBe(false);
       });
     }
   }

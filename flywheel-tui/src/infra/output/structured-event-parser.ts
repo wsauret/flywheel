@@ -159,14 +159,16 @@ export class StructuredEventParser {
           // Regular tool use — route to parent agent if this is a child message
           const detail = input ? (getToolDetail(name, input) ?? "") : "";
           const diffInfo = input ? extractToolDiff(name, input) : undefined;
+          // Extract raw file_path for clickable path support
+          const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
           if (parentAgentId) {
             // This tool belongs to a subagent — add as child of that agent
-            if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype)) {
+            if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath)) {
               // Agent not found (already evicted?) — fall through to top-level
-              this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype);
+              this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
             }
           } else {
-            this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype);
+            this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
           }
         }
       }

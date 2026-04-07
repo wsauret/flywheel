@@ -35,6 +35,7 @@ export interface ChatModeDeps {
   refreshList: () => void
   setSessionStatus: (status: SessionStatus) => void
   setSessionTitle: (title: string) => void
+  setStatusLine: (line: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
   /** Project working directory — injected to avoid hardcoding process.cwd(). */
@@ -75,6 +76,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     setChatActive(true)
     deps.setSessionStatus("running")
     deps.setSessionTitle("Chat")
+    deps.setStatusLine("")
     deps.setTerminalTitle(opts?.priorBlocks ? `${TERMINAL_TITLE_PREFIX}chat (resumed)` : `${TERMINAL_TITLE_PREFIX}chat`)
     deps.resetMetrics()
 
@@ -95,6 +97,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
               onBlocks: registryCallbacks.onBlocks,
               onTokens: registryCallbacks.onTokens,
               onCost: registryCallbacks.onCost,
+              onContextPercent: registryCallbacks.onContextPercent,
               onModelActivity: registryCallbacks.onModelActivity,
               onSessionName: (name) => {
                 registryCallbacks.onSessionName(name)

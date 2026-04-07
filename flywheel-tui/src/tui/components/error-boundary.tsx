@@ -7,6 +7,7 @@
 
 import { createSignal } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
+import { Clipboard } from "../utils/clipboard"
 
 export interface ErrorComponentProps {
   error: Error
@@ -17,17 +18,10 @@ export function ErrorComponent(props: ErrorComponentProps) {
   const term = useTerminalDimensions()
   const [copied, setCopied] = createSignal(false)
 
-  const copyError = () => {
+  const copyError = async () => {
     const errorText = `Flywheel Error:\n\n${props.error.stack || props.error.message}`
-    try {
-      if (typeof navigator !== "undefined" && "clipboard" in navigator) {
-        navigator.clipboard.writeText(errorText).then(() => setCopied(true))
-      } else {
-        setCopied(true)
-      }
-    } catch {
-      setCopied(true)
-    }
+    await Clipboard.copy(errorText)
+    setCopied(true)
   }
 
   const handleExit = () => {

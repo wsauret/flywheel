@@ -82,6 +82,7 @@ export function FlywheelShell() {
     refreshList,
     setSessionStatus,
     setSessionTitle,
+    setStatusLine,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     resetMetrics: metrics.resetMetrics,
     projectCwd: process.cwd(),
@@ -263,10 +264,9 @@ export function FlywheelShell() {
     const hasMetrics = agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0
     if (hasMetrics) {
       const parts: string[] = [formatElapsed(metrics.elapsed())]
-      const t = metrics.liveTokens()
-      if (t > 0) parts.push(`${formatTokens(t)} tokens`)
+      parts.push(`${metrics.liveContextPercent()}% used`)
       const c = metrics.liveCost()
-      if (c > 0) parts.push(formatCost(c))
+      if (c > 0) parts.push(`${formatCost(c)} spent`)
       return parts.join(" · ") + bgSuffix
     }
     if (status === "running") return "waiting" + bgSuffix  // in session, agent idle (user's turn)
@@ -403,7 +403,7 @@ export function FlywheelShell() {
 
       {/* Footer */}
       <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} flexShrink={0}>
-        <text fg={theme.textMuted}>{process.cwd()}</text>
+        <text fg={theme.textMuted} flexShrink={1} overflow="hidden">{process.cwd()}</text>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.textMuted}>
             {agentState() === "active"
@@ -423,6 +423,7 @@ export function FlywheelShell() {
           activeSessionId={foregroundId()}
           cursor={sessionModal.modalCursor()}
           confirmDeleteId={sessionModal.modalConfirmDelete()}
+          refreshTrigger={sessionModal.modalRefreshTrigger()}
           onClose={sessionModal.closeSessionsModal}
           onSelect={sessionModal.selectModalItem}
         />

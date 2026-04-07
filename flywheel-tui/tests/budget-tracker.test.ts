@@ -270,17 +270,16 @@ describe("BudgetTracker — accumulation", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — token tracking", () => {
-  it("accumulates input_tokens + output_tokens from result events (cumulative with deltas)", () => {
+  it("accumulates input_tokens + output_tokens from result events (per-turn values)", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    // Cumulative within a process: first event 1000+500, second 2000+800
-    // Deltas: (1000+500) then (2000-1000)+(800-500) = 1000+300
+    // Per-turn values: each event reports its own turn's tokens, added directly
     tracker.handleEvent(resultEvent(0.01, 1000, 500));
-    tracker.handleEvent(resultEvent(0.02, 2000, 800));
+    tracker.handleEvent(resultEvent(0.02, 800, 300));
 
-    expect(tracker.getTokensUsed()).toBe(2800); // 1500 + 1300
+    expect(tracker.getTokensUsed()).toBe(2600); // 1500 + 1100
     tracker.dispose();
   });
 
@@ -493,10 +492,9 @@ describe("BudgetTracker — flush", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    // Cumulative within one process: first 5000+2000, then 8000+3000
-    // Deltas: 7000, then (8000-5000)+(3000-2000)=4000
+    // Per-turn values: each event reports its own turn's tokens
     tracker.handleEvent(resultEvent(0.10, 5000, 2000));
-    tracker.handleEvent(resultEvent(0.25, 8000, 3000));
+    tracker.handleEvent(resultEvent(0.25, 3000, 1000));
     tracker.incrementInvocations();
     tracker.incrementInvocations();
     tracker.flush();
@@ -613,10 +611,9 @@ describe("BudgetTracker — session summary", () => {
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5000 });
 
-    // Cumulative: first 3000+1000, then 6000+2000
-    // Deltas: 4000, then (6000-3000)+(2000-1000)=4000
+    // Per-turn values: each event reports its own turn's tokens
     tracker.handleEvent(resultEvent(0.10, 3000, 1000));
-    tracker.handleEvent(resultEvent(0.25, 6000, 2000));
+    tracker.handleEvent(resultEvent(0.25, 2000, 800));
     tracker.incrementInvocations();
     tracker.flush();
 
@@ -630,7 +627,7 @@ describe("BudgetTracker — session summary", () => {
     const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     expect(raw.totalCost).toBeCloseTo(0.25, 10);
     expect(raw.budgetUsage.invocations_used).toBe(1);
-    expect(raw.budgetUsage.tokens_used).toBe(8000); // 4000 + 4000
+    expect(raw.budgetUsage.tokens_used).toBe(6800); // 4000 + 2800
     expect(raw.budgetUsage.cost_usd).toBeCloseTo(0.25, 10);
 
     const session = readSession(sessionId, baseDir);

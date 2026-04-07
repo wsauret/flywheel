@@ -50,6 +50,8 @@ export interface SessionModalHook {
   sessionsModalOpen: Accessor<boolean>
   modalCursor: Accessor<number>
   modalConfirmDelete: Accessor<string | undefined>
+  /** Monotonically increasing counter — bumps on delete/archive to refresh modal snapshot. */
+  modalRefreshTrigger: Accessor<number>
   /** True when the user is viewing a historical session and prior state can be restored. */
   isViewingSession: Accessor<boolean>
   openSessionsModal(): void
@@ -68,6 +70,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   const [sessionsModalOpen, setSessionsModalOpen] = createSignal(false)
   const [modalCursor, setModalCursor] = createSignal(0)
   const [modalConfirmDelete, setModalConfirmDelete] = createSignal<string | undefined>()
+  const [modalRefreshTrigger, setModalRefreshTrigger] = createSignal(0)
 
   // State saved before viewing a completed session, so we can restore on dismiss.
   let priorState: ViewSnapshot | undefined
@@ -120,10 +123,12 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     const session = list.find(s => s.id === sessionId)
     if (session) {
       deps.setSessionTitle(session.label || session.name || sessionId.slice(0, 8))
-      deps.setStatusLine(`Viewing session · ${formatCost(session.totalCost)}`)
+      const cost = formatCost(session.totalCost)
+      deps.setStatusLine(cost ? `Viewing session · ${cost}` : "Viewing session")
     }
     deps.setForegroundId(undefined)
-    deps.setSessionStatus("completed")
+    const isPaused = session?.lifecycleState === "work:paused" || session?.lifecycleState === "budget_exhausted"
+    deps.setSessionStatus(isPaused ? "paused" : "completed")
   }
 
   function handleSessionResume(sessionId: string): void {
@@ -136,6 +141,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   function handleSessionArchive(sessionId: string): void {
     try {
       archiveSession(sessionId, deps.actionDeps)
+      setModalRefreshTrigger((n) => n + 1)
       deps.showToast({ message: "Session archived", variant: "info" })
     } catch (err) {
       deps.showToast({ message: `Cannot archive: ${extractErrorMessage(err)}`, variant: "error" })
@@ -145,6 +151,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   function handleSessionDelete(sessionId: string): void {
     try {
       deleteSession(sessionId, deps.actionDeps)
+      setModalRefreshTrigger((n) => n + 1)
       deps.showToast({ message: "Session deleted", variant: "info" })
       // If we were viewing this session's transcript, restore prior state.
       if (viewedSessionId === sessionId) {
@@ -233,6 +240,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     sessionsModalOpen,
     modalCursor,
     modalConfirmDelete,
+    modalRefreshTrigger,
     isViewingSession,
     openSessionsModal,
     closeSessionsModal,

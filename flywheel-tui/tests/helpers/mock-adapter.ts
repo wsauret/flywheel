@@ -1,7 +1,6 @@
 import type { FlywheelEvent } from "../../src/infra/events";
 import { assertNever } from "../../src/infra/events";
-import type { AdapterType } from "../../src/tui/adapters/types";
-import { BaseUIAdapter } from "../../src/tui/adapters/base";
+import { BaseEventConsumer } from "../../src/infra/base-event-consumer";
 
 /**
  * MockAdapter — connects to event bus, records events.
@@ -12,9 +11,7 @@ import { BaseUIAdapter } from "../../src/tui/adapters/base";
  * Uses exhaustive switch for compile-time safety — adding a new event type
  * without a case here causes a compile-time error (matches OpenTUI/Headless pattern).
  */
-export class MockAdapter extends BaseUIAdapter {
-  readonly adapterType: AdapterType = "mock";
-
+export class MockAdapter extends BaseEventConsumer {
   /** All events received since last reset. */
   events: FlywheelEvent[] = [];
 

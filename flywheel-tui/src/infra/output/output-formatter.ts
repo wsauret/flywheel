@@ -95,7 +95,18 @@ function shellDetail(input: Record<string, unknown>, cwd: string): string | null
 }
 
 const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
-  ["Read", (input, cwd) => truncateLine(formatDisplayPath(input.file_path as string, cwd), 80)],
+  ["Read", (input, cwd) => {
+    const path = formatDisplayPath(input.file_path as string, cwd);
+    const offset = input.offset as number | undefined;
+    const limit = input.limit as number | undefined;
+    if (offset != null || limit != null) {
+      const start = (offset ?? 0) + 1;
+      const end = limit != null ? start + limit - 1 : undefined;
+      const range = end != null ? `:${start}-${end}` : `:${start}+`;
+      return truncateLine(`${path}${range}`, 80);
+    }
+    return truncateLine(path, 80);
+  }],
   ["Write", (input, cwd) => truncateLine(formatDisplayPath(input.file_path as string, cwd), 80)],
   ["Edit", (input, cwd) => { const fp = input.file_path as string | undefined; return fp ? truncateLine(formatDisplayPath(fp, cwd), 80) : null }],
   ["Bash", shellDetail],
@@ -248,14 +259,24 @@ export function createWriteDiff(filePath: string, content: string): string {
 /** Max lines for capturing Write diffs (full-file content can be huge). */
 const MAX_WRITE_DIFF_LINES = 200;
 
+/** Result of extracting display info from a tool_use input block. */
+export type ToolDiffInfo = {
+  diff?: string;
+  content?: string;
+  filetype: string | undefined;
+};
+
 /**
- * Extract diff info from a tool_use input block.
- * Returns unified diff string + filetype for Edit, Write, and ApplyPatch tools.
+ * Extract diff/content info from a tool_use input block.
+ *
+ * - Edit → unified diff (red/green rendering)
+ * - Write → raw content (plain text rendering)
+ * - ApplyPatch → unified diff
  */
 export function extractToolDiff(
   name: string,
   input: Record<string, unknown>,
-): { diff: string; filetype: string | undefined } | undefined {
+): ToolDiffInfo | undefined {
   const fp = (input.file_path as string) ?? "";
   const ft = getFiletype(fp);
 
@@ -268,11 +289,11 @@ export function extractToolDiff(
   }
 
   if (name === "Write") {
-    const content = input.content as string | undefined;
-    if (content) {
-      const lineCount = content.split("\n").length;
+    const rawContent = input.content as string | undefined;
+    if (rawContent) {
+      const lineCount = rawContent.split("\n").length;
       if (lineCount <= MAX_WRITE_DIFF_LINES) {
-        return { diff: createWriteDiff(fp, content), filetype: ft };
+        return { content: rawContent, filetype: ft };
       }
     }
   }

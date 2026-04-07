@@ -23,7 +23,7 @@ export interface WorkflowStore {
   startWorkflow(description: string): void;
   getState(): { modelActivity: ModelActivity; outputBlocks?: AnyBlock[] };
   subscribe(cb: () => void): () => void;
-  subscribeExecution?(cb: () => void): () => void;
+  subscribeExecution(cb: () => void): () => void;
 }
 
 /** Minimal adapter interface used by the orchestration layer. */
@@ -61,6 +61,11 @@ export interface WorkflowSessionFactories {
 }
 
 let _factories: WorkflowSessionFactories | null = null;
+
+/** Reset factories to null. Test-only — allows test isolation for factory injection. */
+export function resetSessionFactories(): void {
+  _factories = null;
+}
 
 /** Called once by the TUI layer to provide concrete factories. */
 export function provideSessionFactories(factories: WorkflowSessionFactories): void {

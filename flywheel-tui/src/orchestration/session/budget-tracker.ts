@@ -79,6 +79,16 @@ export interface BudgetTrackerDeps {
   workflowId?: string;
 }
 
+/** Snapshot of how full the context window is. */
+export interface ContextUtilization {
+  /** Prompt tokens used in the most recent main-conversation API call. */
+  promptTokens: number;
+  /** Model's context window size (0 = unknown). */
+  contextWindow: number;
+  /** Utilization as 0..100 percentage. 0 when contextWindow is unknown. */
+  percent: number;
+}
+
 export interface BudgetTracker {
   /** Handle an NDJSON event. Attach this to parser.onEvent. */
   handleEvent(event: NDJSONEvent): void;
@@ -90,6 +100,13 @@ export interface BudgetTracker {
   getInvocationsUsed(): number;
   /** Get total tokens consumed so far (input + output). */
   getTokensUsed(): number;
+  /**
+   * Update context utilization. Called by engine-specific adapters that know
+   * how to extract prompt size and context window from their event format.
+   */
+  updateContextUtilization(promptTokens: number, contextWindow: number): void;
+  /** Get the latest context window utilization. */
+  getContextUtilization(): ContextUtilization;
   /** Check whether any budget limit has been exceeded. */
   isExhausted(budgetLimits: BudgetLimits): boolean;
   /** Get current budget status for dispatcher reporting. */
@@ -123,15 +140,18 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   let disposed = false;
   let wasExhausted = false;
 
-  // Baselines for delta accounting.
-  // Claude Code's total_cost_usd / input_tokens / output_tokens are cumulative
-  // within a single process. We compute deltas so that multi-turn subprocesses
-  // (turn-boundary injection) don't double-count earlier turns, and so that
-  // sequential subprocess spawns (new process → counters reset to 0) are handled
-  // correctly via onNewSubprocess().
+  // Baseline for delta accounting on cost.
+  // Claude Code's total_cost_usd IS cumulative within a single process, so we
+  // compute deltas to avoid double-counting. onNewSubprocess() resets the
+  // baseline when a new process is spawned.
+  //
+  // Note: usage.input_tokens / output_tokens are PER-TURN (not cumulative),
+  // so they are added directly without delta logic.
   let lastSeenCost = 0;
-  let lastSeenInputTokens = 0;
-  let lastSeenOutputTokens = 0;
+
+  // Context utilization — updated by engine-specific adapters via updateContextUtilization().
+  let ctxPromptTokens = 0;
+  let ctxWindow = 0;
 
   // -------------------------------------------------------------------------
   // Persistence
@@ -188,22 +208,20 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       totalCost += rawCost - lastSeenCost;
       lastSeenCost = rawCost;
 
-      // Only update token baselines when usage is present. A cost-only result
+      // Only update tokens when usage is present. A cost-only result
       // (no usage field) should not zero out or subtract from the token count.
+      //
+      // Note: usage.input_tokens / output_tokens are PER-TURN values (they do
+      // NOT accumulate across turns within the same process), unlike total_cost_usd
+      // which IS cumulative. We add them directly — no delta logic needed.
+      //
+      // Cache tokens (cache_read_input_tokens, cache_creation_input_tokens) are
+      // intentionally excluded. They are priced at a fraction of regular input
+      // token cost, and total_cost_usd already reflects their actual price.
       if (parsed.data.usage) {
-        const rawInputTokens = parsed.data.usage.input_tokens ?? 0;
-        const rawOutputTokens = parsed.data.usage.output_tokens ?? 0;
-
-        const inputDelta = rawInputTokens - lastSeenInputTokens;
-        const outputDelta = rawOutputTokens - lastSeenOutputTokens;
-        lastSeenInputTokens = rawInputTokens;
-        lastSeenOutputTokens = rawOutputTokens;
-
-        // Cache tokens (cache_read_input_tokens, cache_creation_input_tokens) are intentionally
-        // excluded from tokensUsed. They are priced at a fraction of regular input token cost,
-        // and total_cost_usd already reflects their actual price. Counting them at full weight
-        // would inflate the token budget counter relative to actual spending.
-        tokensUsed += inputDelta + outputDelta;
+        const inputTokens = parsed.data.usage.input_tokens ?? 0;
+        const outputTokens = parsed.data.usage.output_tokens ?? 0;
+        tokensUsed += inputTokens + outputTokens;
       }
 
       scheduleWrite();
@@ -234,6 +252,22 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
 
   function getTokensUsed(): number {
     return tokensUsed;
+  }
+
+  // -------------------------------------------------------------------------
+  // Context utilization
+  // -------------------------------------------------------------------------
+
+  function updateContextUtilization(promptTokens: number, contextWindow: number): void {
+    if (promptTokens > 0) ctxPromptTokens = promptTokens;
+    if (contextWindow > 0) ctxWindow = contextWindow;
+  }
+
+  function getContextUtilization(): ContextUtilization {
+    const percent = ctxWindow > 0
+      ? Math.min(100, Math.round((ctxPromptTokens / ctxWindow) * 100))
+      : 0;
+    return { promptTokens: ctxPromptTokens, contextWindow: ctxWindow, percent };
   }
 
   // -------------------------------------------------------------------------
@@ -305,8 +339,6 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
 
   function onNewSubprocess(): void {
     lastSeenCost = 0;
-    lastSeenInputTokens = 0;
-    lastSeenOutputTokens = 0;
   }
 
   // -------------------------------------------------------------------------
@@ -342,6 +374,8 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     incrementInvocations,
     getInvocationsUsed,
     getTokensUsed,
+    updateContextUtilization,
+    getContextUtilization,
     isExhausted,
     getBudgetStatus,
     flush,

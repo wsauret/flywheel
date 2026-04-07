@@ -385,7 +385,7 @@ describe("Work Store", () => {
   describe("subscriber isolation", () => {
     it("mutating output does NOT notify execution-only subscribers", async () => {
       let execNotified = 0;
-      store.subscribeExecution!(() => { execNotified++; });
+      store.subscribeExecution(() => { execNotified++; });
 
       store.appendOutput({ stream: "stdout", data: "line\n", timestamp: "t1" });
 
@@ -444,7 +444,7 @@ describe("Work Store", () => {
       store.startWorkflow("plan");
       store.appendOutput({ stream: "stdout", data: "data\n", timestamp: "t1" });
 
-      store.subscribeExecution!(() => { execNotified++; });
+      store.subscribeExecution(() => { execNotified++; });
       store.subscribeOutput!(() => { outputNotified++; });
       store.subscribe(() => { facadeNotified++; });
 
@@ -467,7 +467,7 @@ describe("Work Store", () => {
 
     it("execution-only subscriber fires on queue step changes", () => {
       let execNotified = 0;
-      store.subscribeExecution!(() => { execNotified++; });
+      store.subscribeExecution(() => { execNotified++; });
 
       store.setQueueSteps([
         { id: "s1", type: "work", title: "Step", status: "pending" },
@@ -492,7 +492,7 @@ describe("Work Store", () => {
       let execNotified = 0;
       let outputNotified = 0;
 
-      store.subscribeExecution!(() => { execNotified++; });
+      store.subscribeExecution(() => { execNotified++; });
       store.subscribeOutput!(() => { outputNotified++; });
 
       store.startWorkflow("new-plan");

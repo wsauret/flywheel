@@ -19,6 +19,7 @@
  * Uses CollapsibleBox to keep the container stable in the layout tree.
  */
 
+import * as path from "node:path"
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
@@ -27,6 +28,12 @@ import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { truncate } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@tui/types"
 import { renderHunk, parseUnifiedDiff, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
+
+/** Convert a file path to a file:// URI for OSC 8 hyperlinks. */
+function toFileUri(filePath: string): string {
+  const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
+  return `file://${resolved}`
+}
 
 /** Normalize tool name for display. */
 export function displayToolName(name: string): string {
@@ -65,8 +72,10 @@ export function ToolBlock(props: ToolBlockProps) {
   const { theme } = useTheme()
   const name = () => displayToolName(props.block.name)
 
-  // Diff rendering state — defaults open, user can collapse
+  // Diff/content rendering state — defaults open, user can collapse
   const hasDiff = () => !!props.block.diff
+  const hasContent = () => !!props.block.content
+  const hasExpandable = () => hasDiff() || hasContent()
   const [expanded, setExpanded] = createSignal(true)
 
   // Map TUI theme → diff theme colors (RGBA passthrough, no conversion)
@@ -98,29 +107,50 @@ export function ToolBlock(props: ToolBlockProps) {
     })
   })
 
+  // Split Write content into lines for plain-text rendering
+  const contentLines = createMemo(() => {
+    if (!props.block.content) return []
+    return props.block.content.split("\n")
+  })
+
   // Header line (shared between compact and expanded modes)
   const header = () => (
-    <box flexDirection="row" gap={1} onMouseDown={hasDiff() ? () => setExpanded(prev => !prev) : undefined}>
+    <box flexDirection="row" gap={1} onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
       <text fg={theme.text} attributes={BOLD}>{name()}</text>
-      <text fg={theme.textMuted}>{truncate(props.block.detail, 80)}</text>
-      <Show when={hasDiff()}>
+      <Show when={props.block.filePath} fallback={
+        <text fg={theme.textMuted}>{truncate(props.block.detail, 80)}</text>
+      }>
+        <text fg={theme.textMuted}><a href={toFileUri(props.block.filePath!)}>{truncate(props.block.detail, 80)}</a></text>
+      </Show>
+      <Show when={hasExpandable()}>
         <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
       </Show>
     </box>
   )
 
   return (
-    <Show when={hasDiff()} fallback={header()}>
+    <Show when={hasExpandable()} fallback={header()}>
       <box flexDirection="column">
         {header()}
         <CollapsibleBox expanded={expanded()} paddingLeft={4} paddingRight={4}>
-          <For each={diffStyledLines()}>
-            {(line) => (
-              <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
-                <text ref={(el: TextRenderable) => { el.content = line.styled }} />
-              </box>
-            )}
-          </For>
+          <Show when={hasDiff()}>
+            <For each={diffStyledLines()}>
+              {(line) => (
+                <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
+                  <text ref={(el: TextRenderable) => { el.content = line.styled }} />
+                </box>
+              )}
+            </For>
+          </Show>
+          <Show when={hasContent()}>
+            <For each={contentLines()}>
+              {(line) => (
+                <box paddingLeft={4} paddingRight={4}>
+                  <text fg={theme.textMuted}>{line}</text>
+                </box>
+              )}
+            </For>
+          </Show>
         </CollapsibleBox>
       </box>
     </Show>
