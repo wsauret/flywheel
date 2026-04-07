@@ -107,8 +107,6 @@ export interface StepDispatcherDecision {
   contextFiles: string[];
   /** Queue mutation requests from dispatcher. */
   mutationRequests: MutationRequest[];
-  /** Session name suggestion (first step only). */
-  sessionName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -283,7 +281,6 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         taskContentLength: decision.task_content.length,
         contextFiles: decision.context_files.length,
         hasWorkerConfig: !!decision.worker_config,
-        hasSessionName: !!decision.session_name,
       });
 
       // Emit dispatcher:completed

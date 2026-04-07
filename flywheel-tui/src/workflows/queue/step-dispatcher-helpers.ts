@@ -358,6 +358,5 @@ export function normalizeDecision(
     contextToInline: raw.context_to_inline ?? [],
     contextFiles: raw.context_files,
     mutationRequests,
-    sessionName: raw.session_name,
   };
 }

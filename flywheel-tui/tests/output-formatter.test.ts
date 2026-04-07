@@ -3,7 +3,7 @@ import {
   extractDisplayText,
   formatDisplayPath,
   getToolDetail,
-} from "../src/tui/adapters/output-formatter";
+} from "../src/infra/output/output-formatter";
 import * as path from "node:path";
 
 describe("output-formatter", () => {

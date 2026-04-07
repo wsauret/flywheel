@@ -8,14 +8,15 @@ import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
 import { createStepExecutor, type StepExecutor } from "../workflows/queue/executor"
 import { createQueuePersistence } from "../workflows/queue/persistence"
 import { createGuardrails } from "../workflows/queue/guardrails"
-import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
+import { type BudgetTracker } from "./session/budget-tracker"
 import { createOutputPersistence } from "./session/output-persistence"
+import { createSessionInfra } from "./session/create-session-infra"
 import { createWorkflowSession, destroyWorkflowSession, type WorkflowSession, type WorkflowStore } from "./workflow-session"
 import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
-import { createTraceWriter, type TraceWriter } from "./session/trace-writer"
-import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
-import { createTraceCollector, type TraceCollector } from "./session/trace-collector"
+import type { TraceWriter } from "./session/trace-writer"
+import type { TranscriptWriter } from "./session/transcript-writer"
+import type { TraceCollector } from "./session/trace-collector"
 import { createTraceEventHandler } from "./engines/subprocess/trace-event-handler"
 import { createWarmPools } from "./engines/pool/create-warm-pools"
 import type { WarmPool } from "./engines/pool/warm-pool"
@@ -25,6 +26,8 @@ import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import type { StdinHandle, SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
 import type { AnyBlock } from "../infra/output-blocks"
+import type { SessionRunner } from "./session-runner"
+import { generateSessionTitle } from "./session-title"
 import "../workflows/queue/steps/register-all"
 
 
@@ -64,7 +67,7 @@ export interface WorkflowRunnerOverrides {
   budgetTracker?: BudgetTracker
 }
 
-export interface WorkflowRunner {
+export interface WorkflowRunner extends SessionRunner {
   /** Run the executor to completion. Resolves with result. */
   run(): Promise<WorkflowResult>
   /** Graceful pause — finish current step then stop. */
@@ -120,28 +123,16 @@ export function createWorkflowRunner(opts: {
   const emitter = createFlywheelEmitter(eventBus)
   const workflowIdRef = { current: randomUUID() }
 
-  // Budget tracker
-  const budgetTracker = opts.overrides?.budgetTracker ?? createBudgetTracker({ sessionId, baseDir: projectCwd })
-
-  // Tracing (gated by config)
-  let traceWriter: TraceWriter | null = null
-  let transcriptWriter: TranscriptWriter | null = null
-  let traceCollector: TraceCollector | null = null
+  // Shared session infrastructure (budget, traces, transcripts)
+  const infra = createSessionInfra({
+    sessionId,
+    projectCwd,
+    config: deps.config,
+    description,
+    budgetTracker: opts.overrides?.budgetTracker,
+  })
+  const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
-
-  if (deps.config.tracing.enabled) {
-    traceWriter = createTraceWriter({
-      sessionId,
-      baseDir: projectCwd,
-      maxTraces: deps.config.tracing.max_traces,
-    })
-    transcriptWriter = createTranscriptWriter({ sessionId, baseDir: projectCwd })
-    traceCollector = createTraceCollector({
-      writer: traceWriter,
-      sessionId,
-      workflowName: description,
-    })
-  }
 
   // Metrics poll
   const metricsTimer = setInterval(() => {
@@ -273,8 +264,10 @@ export function createWorkflowRunner(opts: {
       guardrails,
       sessionObjective: description,
       onSubprocessDispatched: () => budgetTracker.incrementInvocations(),
-      onSessionName: callbacks.onSessionName,
     })
+
+    // Generate session title via haiku in parallel — doesn't block execution
+    generateSessionTitle(description, (title) => callbacks.onSessionName(title))
 
     const result = await executor.run()
 

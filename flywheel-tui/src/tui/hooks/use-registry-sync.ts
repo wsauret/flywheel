@@ -4,6 +4,10 @@
  * Subscribes to the session registry and propagates changes to the shell's
  * display signals (output blocks, steps, tokens, cost, etc). Handles terminal
  * states (completed/error) by updating session manager state and cleaning up.
+ *
+ * Uses `kind` guards to safely handle both workflow and chat entries:
+ * - `steps` and `result` only exist on workflow entries
+ * - Chat entries never transition to "paused"
  */
 
 import type { Accessor, Setter } from "solid-js"
@@ -58,6 +62,9 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     showToast,
   } = deps
 
+  // Track previous outputBlocks reference for identity-check optimization
+  let prevOutputBlocks: readonly import("../../infra/output-blocks.js").AnyBlock[] | null = null
+
   return registry.subscribe(() => {
     setRunningCount(registry.runningCount())
 
@@ -68,8 +75,20 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     if (!entry) return
 
     metrics.setActivity(entry.modelActivity)
-    setOutputBlocks([...entry.outputBlocks])
-    setSteps([...entry.steps])
+
+    // Identity-check optimization: only update outputBlocks if reference changed
+    if (entry.outputBlocks !== prevOutputBlocks) {
+      prevOutputBlocks = entry.outputBlocks
+      setOutputBlocks([...entry.outputBlocks])
+    }
+
+    // Steps only exist on workflow entries — clear for chat
+    if (entry.kind === "workflow") {
+      setSteps([...entry.steps])
+    } else {
+      setSteps([])
+    }
+
     metrics.setTokens(entry.tokens)
     metrics.setCost(entry.cost)
     setSessionTitle(entry.description)
@@ -78,7 +97,7 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     if (entry.status === "completed" || entry.status === "error") {
       const totalElapsed = formatElapsed(Date.now() - metrics.workStartTime())
 
-      if (entry.status === "completed" && entry.result) {
+      if (entry.kind === "workflow" && entry.status === "completed" && entry.result) {
         const r = entry.result
         if (r.completed) {
           safeUpdateState((id, s) => manager.updateState(id, s), fgId, "completed")
@@ -91,8 +110,17 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
         setAgentState("idle")
         setSessionStatus("completed")
         setTerminalTitle("flywheel \u00b7 done")
+      } else if (entry.kind === "chat" && entry.status === "completed") {
+        // Chat completed — show summary status line
+        setStatusLine(`Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(entry.cost)} \u00b7 ${formatTokens(entry.tokens)} tokens`)
+        setAgentState("idle")
+        setSessionStatus("completed")
+        setTerminalTitle("flywheel \u00b7 done")
       } else if (entry.status === "error") {
-        safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
+        // Error handling for both workflow and chat
+        if (entry.kind === "workflow") {
+          safeUpdateState((id, s) => manager.updateState(id, s), fgId, "work:paused")
+        }
         refreshList()
         setErrorMessage(entry.errorMessage ?? "Unknown error")
         setAgentState("idle")

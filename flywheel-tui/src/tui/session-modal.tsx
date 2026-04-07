@@ -17,7 +17,7 @@ import { useSession } from "@tui/shared/context/session"
 import { ModalBase, ModalHeader, ModalFooter } from "@tui/shared/components/modal"
 import { isResumable } from "../orchestration/session/state-machine"
 import { truncate } from "./utils/text"
-import { formatCost, relativeTime } from "./format"
+import { formatCost, formatTokens, relativeTime } from "./format"
 import type { SessionSummary } from "../orchestration/session/manager"
 import type { SessionLifecycleState } from "../orchestration/session/state-machine"
 
@@ -57,6 +57,8 @@ const GROUP_ICONS: Record<GroupKey, string> = {
 
 const STATE_TO_GROUP: Partial<Record<SessionLifecycleState, GroupKey>> = {
   "work:active": "active",
+  "chat:active": "active",
+  "chat:idle": "active",
   "work:paused": "paused",
   "budget_exhausted": "paused",
   completed: "completed",
@@ -126,7 +128,7 @@ export function SessionModal(props: SessionModalProps) {
     const s = selectedSession()
     if (!s) return "[Esc] Close"
     const actions: string[] = []
-    if (s.lifecycleState === "work:active") actions.push("[Enter] Switch")
+    if (s.lifecycleState === "work:active" || s.lifecycleState === "chat:active" || s.lifecycleState === "chat:idle") actions.push("[Enter] Switch")
     else if (isResumable(s.lifecycleState)) actions.push("[Enter/R] Resume")
     else actions.push("[Enter] View")
     if (s.lifecycleState === "completed") actions.push("[A] Archive")
@@ -159,8 +161,9 @@ export function SessionModal(props: SessionModalProps) {
                   {(item) => {
                     const isSelected = () => props.cursor === item.flatIndex
                     const isActive = () => item.session.id === props.activeSessionId
-                    const label = () => truncate(item.session.label || item.session.name || item.session.id.slice(0, 8), 40)
+                    const label = () => truncate(item.session.label || item.session.name || item.session.id.slice(0, 8), 34)
                     const isDeletePending = () => props.confirmDeleteId === item.session.id
+                    const typeTag = () => item.session.workflowType === "chat" ? "chat" : item.session.workflowType
 
                     return (
                       <box
@@ -171,14 +174,17 @@ export function SessionModal(props: SessionModalProps) {
                       >
                         <box flexDirection="row" justifyContent="space-between">
                           <text fg={isActive() ? theme.primary : theme.text}>
-                            {isActive() ? "\u25B8 " : "  "}{label()}
+                            {isActive() ? "\u25B8 " : "  "}[{typeTag()}] {label()}
                           </text>
                           <box flexDirection="row" gap={1} flexShrink={0}>
+                            <Show when={item.session.totalTokens > 0}>
+                              <text fg={theme.textMuted}>{formatTokens(item.session.totalTokens)}</text>
+                            </Show>
+                            <Show when={item.session.totalCost > 0}>
+                              <text fg={theme.textMuted}>{formatCost(item.session.totalCost)}</text>
+                            </Show>
                             <Show when={item.session.lastUpdated}>
                               <text fg={theme.textMuted}>{relativeTime(item.session.lastUpdated)}</text>
-                            </Show>
-                            <Show when={formatCost(item.session.totalCost)}>
-                              <text fg={theme.textMuted}>{formatCost(item.session.totalCost)}</text>
                             </Show>
                           </box>
                         </box>

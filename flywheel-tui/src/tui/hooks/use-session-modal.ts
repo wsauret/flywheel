@@ -189,7 +189,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
     if (evt.name === "return") {
       evt.preventDefault()
-      if (selected.lifecycleState === "work:active" && deps.registry.get(selected.id)) {
+      const isActive = (selected.lifecycleState === "work:active" || selected.lifecycleState === "chat:active" || selected.lifecycleState === "chat:idle") && deps.registry.get(selected.id)
+      if (isActive) {
         setSessionsModalOpen(false)
         deps.switchForeground(selected.id)
       } else if (selected.lifecycleState === "work:paused" || selected.lifecycleState === "budget_exhausted") {

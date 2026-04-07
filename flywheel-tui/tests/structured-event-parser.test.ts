@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test";
-import { StructuredEventParser, isSubagentToolName } from "../src/tui/adapters/structured-event-parser";
-import { StructuredOutputBuilder } from "../src/tui/adapters/structured-output-builder";
+import { StructuredEventParser, isSubagentToolName } from "../src/infra/output/structured-event-parser";
+import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
 import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
 import type { AgentBlock, ToolBlock } from "../src/tui/types";
 

@@ -17,19 +17,20 @@
  */
 
 import { randomUUID } from "node:crypto"
-import { BunProcessSpawner } from "../orchestration/engines/subprocess/bun-spawner"
-import { formatStdinMessage } from "../orchestration/engines/subprocess/stdin-format"
-import { getEngine } from "../orchestration/engines/core/registry"
-import { NDJSONParser } from "../orchestration/engines/subprocess/ndjson-parser"
-import { StructuredOutputBuilder } from "./adapters/structured-output-builder"
-import { StructuredEventParser } from "./adapters/structured-event-parser"
-import { createBudgetTracker, type BudgetTracker } from "../orchestration/session/budget-tracker"
-import { prepareWorkflowDeps } from "../orchestration/engines/workflow-deps"
-import type { TraceCollector } from "../orchestration/session/trace-collector"
-import { createTranscriptWriter, type TranscriptWriter } from "../orchestration/session/transcript-writer"
+import { BunProcessSpawner } from "./engines/subprocess/bun-spawner"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format"
+import { getEngine } from "./engines/core/registry"
+import { NDJSONParser } from "./engines/subprocess/ndjson-parser"
+import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
+import { StructuredEventParser } from "../infra/output/structured-event-parser"
+import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
+import { prepareWorkflowDeps } from "./engines/workflow-deps"
+import type { TraceCollector } from "./session/trace-collector"
+import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
 import { feedChatEventToTrace } from "./chat-tracing"
-import type { ProcessSpawner, StdinHandle } from "../orchestration/engines/subprocess/spawner"
-import type { AnyBlock } from "./types"
+import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
+import type { AnyBlock } from "../infra/output-blocks"
+import type { ModelActivity } from "../infra/events"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -38,11 +39,11 @@ const log = Log.create({ service: "chat" })
 // ── Public interface ──
 
 export interface ChatCallbacks {
-  onBlocksChanged: (blocks: AnyBlock[]) => void
-  onWaitingChanged: (waiting: boolean) => void
-  onTokensChanged: (tokens: number) => void
-  onCostChanged: (cost: number) => void
-  onModelActivity: (activity: import("./adapters/structured-output-builder").ModelActivity) => void
+  onBlocks: (blocks: AnyBlock[]) => void
+  onWaiting: (waiting: boolean) => void
+  onTokens: (tokens: number) => void
+  onCost: (cost: number) => void
+  onModelActivity: (activity: ModelActivity) => void
   onError: (message: string) => void
   onEnded: () => void
 }
@@ -69,7 +70,7 @@ export interface ChatSessionOptions {
   traceCollector?: TraceCollector
 }
 
-export async function startChatSession(
+export async function createChatSession(
   callbacks: ChatCallbacks,
   initialMessage?: string,
   overrides?: ChatSessionOptions,
@@ -108,7 +109,7 @@ export async function startChatSession(
     // the CLI received our stdin injection. Resolve any queued messages.
     if (event.type === "user") {
       if (builder.resolvePendingMessages()) {
-        callbacks.onBlocksChanged(builder.getBlocks())
+        callbacks.onBlocks(builder.getBlocks())
       }
     }
     eventParser.dispatch(event, engineName)
@@ -122,9 +123,9 @@ export async function startChatSession(
 
   // Flush builder → callbacks at 16ms
   const flushInterval = setInterval(() => {
-    if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
-    callbacks.onTokensChanged(budgetTracker.getTokensUsed())
-    callbacks.onCostChanged(budgetTracker.getTotalCost())
+    if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
+    callbacks.onTokens(budgetTracker.getTokensUsed())
+    callbacks.onCost(budgetTracker.getTotalCost())
   }, 16)
 
   // Stale agent detection is handled by the builder (auto-completes after 5s of inactivity)
@@ -163,9 +164,9 @@ export async function startChatSession(
         if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
         agentActive = false
         builder.resolvePendingMessages()
-        callbacks.onWaitingChanged(false)
+        callbacks.onWaiting(false)
         callbacks.onModelActivity("idle")
-        if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
+        if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
       },
     })
 
@@ -177,7 +178,7 @@ export async function startChatSession(
     spawnResult.result.then(() => {
       if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
       ndjsonParser.flush()
-      if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
+      if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
       stdinHandle = null
       if (ended) callbacks.onEnded()
       // else: worker exited idle — session stays open, next send() will reconnect
@@ -201,12 +202,12 @@ export async function startChatSession(
     if (workerPid) {
       try { process.kill(workerPid, "SIGTERM") } catch { /* already gone */ }
     }
-    callbacks.onWaitingChanged(false)
+    callbacks.onWaiting(false)
     callbacks.onModelActivity("idle")
     agentActive = false
     builder.resolvePendingMessages()
     builder.pushSystemMessage("Interrupted", Date.now())
-    if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
+    if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
 
     // Eagerly reconnect so the worker is warm when the user sends the next message
     if (claudeSessionId) {
@@ -246,9 +247,9 @@ export async function startChatSession(
     // (i.e. we're injecting into a running conversation). After interrupt or
     // idle-exit, the agent isn't working so the message is the start of a new turn.
     const isPending = agentActive && stdinHandle?.isOpen === true
-    callbacks.onWaitingChanged(true)
+    callbacks.onWaiting(true)
     builder.pushUserMessage(text, Date.now(), isPending)
-    callbacks.onBlocksChanged(builder.getBlocks())
+    callbacks.onBlocks(builder.getBlocks())
 
     if (stdinHandle?.isOpen) {
       // Normal path: worker is alive, write directly to the pipe
@@ -262,7 +263,7 @@ export async function startChatSession(
       log.info("chat worker idle-exited, reconnecting via --resume", { sessionId: claudeSessionId })
       spawnWorker(claudeSessionId, text).catch((err) => {
         log.warn("chat reconnect failed", { error: errorMessage(err) })
-        callbacks.onWaitingChanged(false)
+        callbacks.onWaiting(false)
         callbacks.onError(`Reconnect failed: ${errorMessage(err)}`)
       })
       return
@@ -271,13 +272,13 @@ export async function startChatSession(
     // No worker and no session ID to resume — this should only happen before the
     // first turn completes (session ID not yet emitted by Claude Code).
     log.warn("chat send: no active worker and no session ID to resume")
-    callbacks.onWaitingChanged(false)
+    callbacks.onWaiting(false)
   }
 
   // ── Initial spawn ──
 
   const hasInitialMessage = initialMessage != null && initialMessage.trim().length > 0
-  if (hasInitialMessage) callbacks.onWaitingChanged(true)
+  if (hasInitialMessage) callbacks.onWaiting(true)
 
   await spawnWorker(undefined, hasInitialMessage ? initialMessage : undefined)
 

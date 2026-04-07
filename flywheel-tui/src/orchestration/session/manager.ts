@@ -39,7 +39,10 @@ export interface SessionSummary {
   /** Actual file path to the plan, if one exists on disk. */
   planPath?: string;
   lifecycleState: SessionLifecycleState;
+  /** Session type: "chat", "work", "plan", etc. */
+  workflowType: string;
   totalCost: number;
+  totalTokens: number;
   lastUpdated: string;
   createdAt?: string;
   repo?: string;
@@ -61,21 +64,21 @@ export interface SessionManagerDeps {
   config?: FlywheelConfig;
 }
 
-import type { StepType } from "../../workflows/queue/types";
-
-/** Step type for a session (uses StepType as sole source of truth). */
-export type SessionStepType = StepType;
+import type { SessionKind } from "./types";
 
 /** The SessionManager interface. */
 export interface SessionManager {
   /** Create a new session and persist it. Returns session ID. */
-  create(planPath: string, name?: string, stepType?: SessionStepType): string;
+  create(planPath: string, name?: string, kind?: SessionKind): string;
 
   /** List all sessions as summaries. */
   list(): SessionListResult;
 
   /** Update session lifecycle state with validation. */
   updateState(id: string, newState: SessionLifecycleState): void;
+
+  /** Update session label (display name). */
+  updateLabel(id: string, label: string): void;
 
   /** Transition session to trashed state. */
   trash(id: string): void;
@@ -143,7 +146,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   // SessionManager methods
   // -------------------------------------------------------------------------
 
-  function create(planPath: string, name?: string, stepType?: SessionStepType): string {
+  function create(planPath: string, name?: string, kind?: SessionKind): string {
     const now = new Date().toISOString();
     const budget = config.budget;
 
@@ -169,7 +172,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
           wall_clock_deadline: wallClockDeadline,
         },
         budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-        workflowType: stepType ?? "work",
+        workflowType: kind === "chat" ? "chat" : "work",
       },
       baseDir,
     );
@@ -186,7 +189,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       label: entry.data.label,
       planPath: entry.data.planPath,
       lifecycleState: getLifecycleState(entry.data),
-      totalCost: entry.data.totalCost ?? 0,
+      workflowType: entry.data.workflowType ?? "work",
+      totalCost: entry.data.totalCost ?? entry.data.budgetUsage?.cost_usd ?? 0,
+      totalTokens: entry.data.budgetUsage?.tokens_used ?? 0,
       lastUpdated: entry.data.lastUpdated,
       createdAt: entry.data.createdAt,
       repo: entry.data.repo,
@@ -214,6 +219,14 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
         // Resuming from paused — switch to existing worktree
         worktreeManager.switchToSession(id).catch(() => {});
       }
+    }
+  }
+
+  function updateLabel(id: string, label: string): void {
+    try {
+      updateSession(id, { label, name: label }, baseDir);
+    } catch {
+      // Non-fatal — label update failure shouldn't crash anything
     }
   }
 
@@ -273,13 +286,19 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
     for (const entry of sessions) {
       const state = entry.data.sessionLifecycleState;
-      if (state !== "work:active") continue;
 
-      // This session was work:active on disk but has no running queue
-      // (since we just started up). Transition to work:paused.
+      let target: SessionLifecycleState | null = null;
+      if (state === "work:active") {
+        target = "work:paused";
+      } else if (state === "chat:active") {
+        target = "chat:idle";
+      }
+
+      if (!target) continue;
+
       try {
-        updateState(entry.id, "work:paused");
-        log.info("recovered stale session", { session: entry.data.name || entry.id, to: "work:paused" });
+        updateState(entry.id, target);
+        log.info("recovered stale session", { session: entry.data.name || entry.id, to: target });
         recovered++;
       } catch {
         // Non-fatal — skip sessions that fail to update
@@ -293,6 +312,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     create,
     list,
     updateState,
+    updateLabel,
     trash,
     archive,
     sweepTrashed,

@@ -6,13 +6,13 @@
  * endSpan. This mirrors the detection logic in TraceEventHandler but skips
  * the EventBus intermediary.
  *
- * Extracted as a standalone function for testability — chat.ts calls this
+ * Extracted as a standalone function for testability — chat-session.ts calls this
  * from its ndjsonParser.onEvent handler.
  */
 
-import type { NDJSONEvent } from "../orchestration/engines/subprocess/ndjson-parser";
-import { extractToolUseRecords, extractToolResultRecord } from "../orchestration/engines/subprocess/ndjson-tool-events";
-import type { TraceCollector } from "../orchestration/session/trace-collector";
+import type { NDJSONEvent } from "./engines/subprocess/ndjson-parser";
+import { extractToolUseRecords, extractToolResultRecord } from "./engines/subprocess/ndjson-tool-events";
+import type { TraceCollector } from "./session/trace-collector";
 
 /**
  * Process a single NDJSON event for trace collection.

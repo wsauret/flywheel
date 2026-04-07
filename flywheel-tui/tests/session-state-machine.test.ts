@@ -4,6 +4,7 @@ import {
   type SessionLifecycleState,
   VALID_TRANSITIONS,
   isValidTransition,
+  isResumable,
 } from "../src/orchestration/session/state-machine";
 
 // ---------------------------------------------------------------------------
@@ -19,14 +20,16 @@ describe("SessionLifecycleStateSchema", () => {
     "work:active",
     "work:paused",
     "work:review",
+    "chat:active",
+    "chat:idle",
     "budget_exhausted",
     "completed",
     "archived",
     "trashed",
   ];
 
-  it("defines exactly 12 states", () => {
-    expect(SessionLifecycleStateSchema.options).toHaveLength(12);
+  it("defines exactly 14 states", () => {
+    expect(SessionLifecycleStateSchema.options).toHaveLength(14);
   });
 
   for (const state of allStates) {
@@ -94,6 +97,7 @@ describe("isValidTransition — valid transitions", () => {
     ["new", "plan:draft"],
     ["new", "plan:imported"],
     ["new", "trashed"],
+    ["new", "chat:active"],
     // plan:draft ->
     ["plan:draft", "plan:imported"],
     ["plan:draft", "plan:needs-fix"],
@@ -126,6 +130,14 @@ describe("isValidTransition — valid transitions", () => {
     ["work:review", "work:active"],
     ["work:review", "completed"],
     ["work:review", "trashed"],
+    // chat:active ->
+    ["chat:active", "chat:idle"],
+    ["chat:active", "completed"],
+    ["chat:active", "trashed"],
+    // chat:idle ->
+    ["chat:idle", "chat:active"],
+    ["chat:idle", "completed"],
+    ["chat:idle", "trashed"],
     // completed ->
     ["completed", "archived"],
     ["completed", "trashed"],
@@ -169,6 +181,14 @@ describe("isValidTransition — invalid transitions", () => {
     ["completed", "plan:draft"],
     ["completed", "plan:imported"],
     ["completed", "new"],
+    // cross-kind transitions are invalid
+    ["chat:active", "work:active"],
+    ["chat:active", "work:paused"],
+    ["work:active", "chat:idle"],
+    ["work:active", "chat:active"],
+    // self-transitions for chat states
+    ["chat:active", "chat:active"],
+    ["chat:idle", "chat:idle"],
   ];
 
   for (const [from, to] of invalidCases) {
@@ -231,4 +251,55 @@ describe("isValidTransition — terminal states reject ALL outbound", () => {
       });
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// isResumable — chat:idle is NOT resumable
+// ---------------------------------------------------------------------------
+describe("isResumable", () => {
+  it("returns true for work:paused", () => {
+    expect(isResumable("work:paused")).toBe(true);
+  });
+
+  it("returns true for budget_exhausted", () => {
+    expect(isResumable("budget_exhausted")).toBe(true);
+  });
+
+  it("returns false for chat:idle (chat is not resumable)", () => {
+    expect(isResumable("chat:idle")).toBe(false);
+  });
+
+  it("returns false for chat:active", () => {
+    expect(isResumable("chat:active")).toBe(false);
+  });
+
+  it("returns false for other non-resumable states", () => {
+    const nonResumable: SessionLifecycleState[] = [
+      "new", "plan:draft", "plan:imported", "plan:approved",
+      "plan:needs-fix", "work:active", "work:review",
+      "completed", "archived", "trashed",
+    ];
+    for (const state of nonResumable) {
+      expect(isResumable(state)).toBe(false);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Chat lifecycle — skip edges (multi-hop paths)
+// ---------------------------------------------------------------------------
+describe("isValidTransition — chat lifecycle paths", () => {
+  it("new -> chat:active -> chat:idle -> chat:active (idle/active cycle)", () => {
+    expect(isValidTransition("new", "chat:active")).toBe(true);
+    expect(isValidTransition("chat:active", "chat:idle")).toBe(true);
+    expect(isValidTransition("chat:idle", "chat:active")).toBe(true);
+  });
+
+  it("chat:active -> completed (finish a chat)", () => {
+    expect(isValidTransition("chat:active", "completed")).toBe(true);
+  });
+
+  it("chat:idle -> completed (finish an idle chat)", () => {
+    expect(isValidTransition("chat:idle", "completed")).toBe(true);
+  });
 });

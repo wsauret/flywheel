@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 
 import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
 import type { TraceCollector } from "../src/orchestration/session/trace-collector";
-import { feedChatEventToTrace } from "../src/tui/chat-tracing";
+import { feedChatEventToTrace } from "../src/orchestration/chat-tracing";
 
 // ---------------------------------------------------------------------------
 // Mock TraceCollector

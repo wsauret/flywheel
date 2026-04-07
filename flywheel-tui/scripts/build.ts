@@ -1,7 +1,7 @@
 import solidPlugin from "@opentui/solid/bun-plugin"
 
 const result = await Bun.build({
-  entrypoints: ["src/cli/index.ts"],
+  entrypoints: ["src/orchestration/cli/index.ts"],
   outdir: "dist",
   target: "bun",
   plugins: [solidPlugin],

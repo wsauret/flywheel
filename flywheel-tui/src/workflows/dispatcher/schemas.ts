@@ -131,8 +131,6 @@ export const DispatcherDecisionSchema = z.object({
   reasoning: z.string().optional(),
   warnings: z.array(z.string()).optional(),
   worker_config: WorkerConfigSchema.optional(),
-  /** Short session name (2-5 words) summarizing the task. Generated on the first dispatcher call. */
-  session_name: z.string().optional(),
   mutation_requests: MutationRequestSchema,
 }).strip();
 
@@ -149,7 +147,6 @@ export const DispatcherDecisionHandoffSchema = z.object({
   evaluation_criteria: EvaluationCriteriaSchema.optional(),
   context_files: z.array(z.string()),
   context_to_inline: z.array(z.string()).optional(),
-  session_name: z.string().optional(),
   reasoning: z.string().optional(),
   worker_config: WorkerConfigSchema.optional(),
   mutation_requests: MutationRequestSchema,

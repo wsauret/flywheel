@@ -8,8 +8,8 @@
 
 import { NDJSONParser } from "../../orchestration/engines/subprocess/ndjson-parser.js";
 import type { NDJSONEvent } from "../../orchestration/engines/subprocess/ndjson-parser.js";
-import type { StructuredOutputBuilder } from "./structured-output-builder.js";
-import { formatDisplayPath } from "./output-formatter.js";
+import type { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
+import { formatDisplayPath } from "../../infra/output/output-formatter.js";
 
 /** Parsed activity from a Claude NDJSON event. */
 export interface ActivityInfo {

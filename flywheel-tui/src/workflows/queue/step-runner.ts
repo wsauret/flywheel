@@ -46,13 +46,11 @@ export interface StepRunnerDeps {
   guardrails?: Guardrails | null;
   sessionObjective?: string;
   persistAccumulatorState?: ((state: unknown) => void) | null;
-  onSessionName?: ((name: string) => void) | null;
   onSubprocessDispatched?: (() => void) | null;
 
   // Mutable state shared with the executor loop
   previousHandoff: Record<string, unknown> | null;
   previousAssessment: EvalResult | null;
-  sessionNameEmitted: boolean;
 
   // Callbacks for persistence and transitions
   safeTransition: (
@@ -69,8 +67,6 @@ export interface StepRunnerResult {
   previousHandoff: Record<string, unknown> | null;
   /** Updated previousAssessment (may change during execution) */
   previousAssessment: EvalResult | null;
-  /** Updated sessionNameEmitted flag */
-  sessionNameEmitted: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,19 +93,18 @@ export async function executeStep(
     guardrails,
     sessionObjective,
     persistAccumulatorState,
-    onSessionName,
     onSubprocessDispatched,
     safeTransition,
     persistQueue,
   } = deps;
 
-  let { previousHandoff, previousAssessment, sessionNameEmitted } = deps;
+  let { previousHandoff, previousAssessment } = deps;
 
   emitter.queueStepStarted(workflowId, step.id, step.type, step.title);
   const transitioned = await safeTransition(step.id, "running", "starting step execution");
   if (!transitioned) {
     emitter.queueStepFailed(workflowId, step.id, step.type, step.title, "Failed to transition to running");
-    return { outcome: "failed", previousHandoff, previousAssessment, sessionNameEmitted };
+    return { outcome: "failed", previousHandoff, previousAssessment };
   }
 
   try {
@@ -157,12 +152,6 @@ export async function executeStep(
     };
     const dispatcherResult = await dispatcher(step, dispatcherContext);
     const currentPrompt = dispatcherResult.prompt;
-
-    // Emit session name on the first dispatcher call that returns one
-    if (!sessionNameEmitted && dispatcherResult.sessionName && onSessionName) {
-      sessionNameEmitted = true;
-      onSessionName(dispatcherResult.sessionName);
-    }
 
     // Apply dispatcher mutation requests if guardrails are active
     if (dispatcherResult.mutationRequests?.length && guardrails) {
@@ -236,11 +225,11 @@ export async function executeStep(
         if (onStepCompleted) {
           const hookResult = await onStepCompleted(step, "failed", queue, handoffData);
           if (hookResult.continueExecution) {
-            return { outcome: "handled", previousHandoff, previousAssessment, sessionNameEmitted };
+            return { outcome: "handled", previousHandoff, previousAssessment };
           }
         }
 
-        return { outcome: "failed", previousHandoff, previousAssessment, sessionNameEmitted };
+        return { outcome: "failed", previousHandoff, previousAssessment };
       }
     }
 
@@ -279,13 +268,13 @@ export async function executeStep(
       await onStepCompleted(step, "completed", queue, handoffData);
     }
 
-    return { outcome: "completed", previousHandoff, previousAssessment, sessionNameEmitted };
+    return { outcome: "completed", previousHandoff, previousAssessment };
   } catch (error) {
     // Abort/interrupt: revert the step to pending so it can be retried on resume
     if (error instanceof DOMException && error.name === "AbortError") {
       log.info("step interrupted by abort, reverting to pending", { stepId: step.id });
       await safeTransition(step.id, "pending", "interrupted by abort — will retry on resume");
-      return { outcome: "failed", previousHandoff, previousAssessment, sessionNameEmitted };
+      return { outcome: "failed", previousHandoff, previousAssessment };
     }
 
     // Worker crash or other error: mark step failed, don't throw
@@ -298,10 +287,10 @@ export async function executeStep(
     if (onStepCompleted) {
       const hookResult = await onStepCompleted(step, "failed", queue, null);
       if (hookResult.continueExecution) {
-        return { outcome: "handled", previousHandoff, previousAssessment, sessionNameEmitted };
+        return { outcome: "handled", previousHandoff, previousAssessment };
       }
     }
 
-    return { outcome: "failed", previousHandoff, previousAssessment, sessionNameEmitted };
+    return { outcome: "failed", previousHandoff, previousAssessment };
   }
 }

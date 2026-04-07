@@ -12,8 +12,8 @@ import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
 import { NDJSONParser } from "../../orchestration/engines/subprocess/ndjson-parser";
-import { StructuredOutputBuilder } from "./structured-output-builder";
-import { StructuredEventParser } from "./structured-event-parser";
+import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder";
+import { StructuredEventParser } from "../../infra/output/structured-event-parser";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
 import { Log } from "../../infra/log.js";
 

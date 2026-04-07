@@ -91,7 +91,6 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
           prompt: decision.taskContent,
           evaluationCriteria: decision.evaluationCriteria,
           mutationRequests: decision.mutationRequests,
-          sessionName: decision.sessionName,
         }
       } catch (err) {
         log.warn("real dispatcher failed, falling back to step metadata", {

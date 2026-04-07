@@ -74,7 +74,6 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
   },
   "reasoning": <string>,           // (optional) Your prompt strategy rationale
   "warnings": [<string>],          // (optional) risks or concerns for this step
-  "session_name": <string>,        // (optional) 2-5 word task summary, first step only
   "worker_config": {               // (optional) Override defaults when needed
     "model_override": <string|null>,
     "timeout_minutes": <number>,
@@ -149,7 +148,6 @@ Rules:
   },
   "reasoning": "Step 1 completed models successfully. Inlining API standards since they govern endpoint design. Budget is healthy (8 invocations left) so no constraints needed.",
   "warnings": ["Previous step modified src/db/queries.ts — verify no conflicts before editing."],
-  "session_name": "REST API Pagination",
   "worker_config": {
     "timeout_minutes": 30
   }

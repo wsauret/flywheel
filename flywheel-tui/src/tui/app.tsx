@@ -24,14 +24,14 @@ import { loadConfig } from "../orchestration/config/loader"
 import { provideSessionFactories } from "../orchestration/workflow-session"
 import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
+import { setExitHandler } from "./exit.js"
+
+export { exitTUI } from "./exit.js"
 
 export interface TUIOptions {
   mode?: "dark" | "light"
   projectCwd?: string
 }
-
-// Global exit function — set by ExitProvider inside the Solid tree
-let globalExit: (() => void) | null = null
 
 export function startTUI(options: TUIOptions = {}): Promise<void> {
   const mode = options.mode ?? "dark"
@@ -109,27 +109,16 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
 }
 
 /**
- * Exit the TUI. Calls renderer.destroy() from inside the Solid tree
- * (via the ExitProvider), then resolves the startTUI() promise.
- */
-export function exitTUI(): void {
-  if (globalExit) {
-    globalExit()
-    globalExit = null
-  }
-}
-
-/**
  * ExitProvider — uses useRenderer() to access the renderer from inside the Solid tree.
  */
 function ExitProvider(props: ParentProps<{ onExit: () => void }>) {
   const renderer = useRenderer()
 
   // Register the global exit function
-  globalExit = () => {
+  setExitHandler(() => {
     renderer.destroy()
     props.onExit()
-  }
+  })
 
   return props.children
 }

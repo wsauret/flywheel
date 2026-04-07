@@ -1,109 +1,195 @@
+/**
+ * Chat Mode Hook — manages chat lifecycle through the session registry.
+ *
+ * All display state (output blocks, tokens, cost, activity) is driven by
+ * useRegistrySync via the registry's subscriber notifications. This hook
+ * only manages the chat session lifecycle: start, send, interrupt, end.
+ *
+ * Multi-chat: multiple chat sessions can coexist in the registry.
+ * - `/new` and Ctrl+N background the current chat and start a fresh one.
+ * - `/end` actually closes the foreground chat (removes from registry).
+ * - Ctrl+B switches between all live sessions (chats and workflows).
+ * - `sendMessage`, `interruptChat`, `endChat` operate on the foreground session.
+ */
+
 import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
-import { startChatSession, type ChatSession } from "../chat.js"
-import { formatElapsed, formatCost, formatTokens } from "../format.js"
-import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
-import type { AnyBlock } from "../types.js"
-import type { AgentState, SessionStatus } from "./use-workflow-lifecycle.js"
+import type { SessionRegistry, ChatRegistryCallbacks } from "../../orchestration/session-registry.js"
+import type { SessionStatus } from "./use-workflow-lifecycle.js"
+import type { MetricsHook } from "./use-metrics.js"
+import { createChatRunner } from "../../orchestration/chat-runner.js"
+import { createOutputPersistence } from "../../orchestration/session/output-persistence.js"
+import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
+import type { AnyBlock } from "../../infra/output-blocks.js"
 
 export interface ChatModeDeps {
-  setAgentState: (state: AgentState) => void
+  registry: SessionRegistry
+  foregroundId: Accessor<string | undefined>
+  setForegroundId: (id: string | undefined) => void
+  manager: {
+    create(planPath: string, name?: string, kind?: string): string
+    updateState(id: string, state: string): void
+    updateLabel(id: string, label: string): void
+  }
+  refreshList: () => void
   setSessionStatus: (status: SessionStatus) => void
-  setOutputBlocks: (blocks: AnyBlock[]) => void
-  setSteps: (steps: never[]) => void
-  setErrorMessage: (msg: string) => void
-  setStatusLine: (line: string) => void
   setSessionTitle: (title: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
-  workStartTime: Accessor<number>
-  setTokens: (n: number) => void
-  setCost: (n: number) => void
-  setActivity: (a: "idle" | "thinking" | "generating" | "tool_executing") => void
 }
 
 export interface ChatModeHook {
-  /** True while a chat session is open (regardless of whose turn it is). */
+  /** True while a chat session is being created (async startup window). */
   chatActive: Accessor<boolean>
   startChat(initialMessage?: string): Promise<void>
+  /** Resume a previous chat session, loading its persisted output blocks. */
+  resumeChat(sessionId: string): Promise<void>
+  /** Put the current chat in the background without ending it. */
+  backgroundChat(): void
   interruptChat(): void
+  /** Close the foreground chat — removes from registry and marks completed. */
   endChat(): void
   sendMessage(text: string): void
-  getChatSession(): ChatSession | null
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
+  // Only true during the async startup window of a new chat
   const [chatActive, setChatActive] = createSignal(false)
-  let chatSession: ChatSession | null = null
+  // Tracks the chat currently being created (for async startup buffering)
+  let startingChatId: string | null = null
+  let chatReady = false
+  let pendingMessages: string[] = []
+  let isFirstChat = true
 
-  async function startChat(initialMessage?: string): Promise<void> {
+  /** Internal helper: wire up a chat session with the registry. */
+  async function launchChat(
+    sessionId: string,
+    opts?: { initialMessage?: string; priorBlocks?: AnyBlock[] },
+  ): Promise<void> {
+    startingChatId = sessionId
+    chatReady = false
+    pendingMessages = []
     setChatActive(true)
-    deps.setAgentState("active")     // show "Starting worker..." while spawning
-    deps.setSessionStatus("running") // session is live from this point
-    deps.setOutputBlocks([])
-    deps.setSteps([])
-    deps.setErrorMessage("")
-    deps.setStatusLine("")
+    deps.setSessionStatus("running")
     deps.setSessionTitle("Chat")
+    deps.setTerminalTitle(opts?.priorBlocks ? "flywheel · chat (resumed)" : "flywheel · chat")
     deps.resetMetrics()
-    deps.setTerminalTitle("flywheel · chat")
+
+    // Set foregroundId early so inChat() returns true during async startup.
+    deps.setForegroundId(sessionId)
 
     try {
-      chatSession = await startChatSession({
-        onBlocksChanged: deps.setOutputBlocks,
-        onWaitingChanged: (waiting) => {
-          deps.setAgentState(waiting ? "active" : "idle")
-          // Eagerly show "Thinking…" as soon as the agent becomes active.
-          // The builder will refine this to "generating" / "tool_executing"
-          // once actual output arrives.  Without this, there's a race window
-          // where agentState is "active" but liveActivity is still "idle",
-          // causing the prompt status line to not render.
-          if (waiting) deps.setActivity("thinking")
-          // sessionStatus stays "running" — only the agent's activity changes
-        },
-        onTokensChanged: deps.setTokens,
-        onCostChanged: deps.setCost,
-        onModelActivity: deps.setActivity,
-        onError: (msg) => { deps.setErrorMessage(msg); deps.setAgentState("idle"); deps.setSessionStatus("error") },
-        onEnded: () => {
-          if (!chatActive()) return
-          const cost = chatSession?.budgetTracker.getTotalCost() ?? 0
-          const tokens = chatSession?.budgetTracker.getTokensUsed() ?? 0
-          deps.setStatusLine(`Chat ended · ${formatElapsed(Date.now() - deps.workStartTime())} · ${formatCost(cost)} · ${formatTokens(tokens)} tokens`)
-          chatSession = null
-          setChatActive(false)
-          deps.setAgentState("idle")
-          deps.setSessionStatus("completed")
-          deps.setTerminalTitle("flywheel · done")
-        },
-      }, initialMessage)
-      // Worker is spawned. If no initial message was sent, the agent is now
-      // idle waiting for user input — clear the "Starting worker..." indicator.
-      if (!initialMessage?.trim()) deps.setAgentState("idle")
-    } catch (err) {
-      deps.setErrorMessage(`Chat error: ${extractErrorMessage(err)}`)
+      await deps.registry.startChat({
+        sessionId,
+        description: "Chat",
+        priorBlocks: opts?.priorBlocks,
+        createRunner: (registryCallbacks: ChatRegistryCallbacks) =>
+          createChatRunner({
+            sessionId,
+            projectCwd: process.cwd(),
+            updateState: (id, state) => deps.manager.updateState(id, state),
+            callbacks: {
+              onBlocks: registryCallbacks.onBlocks,
+              onTokens: registryCallbacks.onTokens,
+              onCost: registryCallbacks.onCost,
+              onModelActivity: registryCallbacks.onModelActivity,
+              onSessionName: (name) => {
+                registryCallbacks.onSessionName(name)
+                deps.manager.updateLabel(sessionId, name)
+                deps.refreshList()
+              },
+              onError: registryCallbacks.onError,
+              onEnded: () => {
+                registryCallbacks.onEnded()
+              },
+            },
+            initialMessage: opts?.initialMessage?.trim() || undefined,
+            priorBlocks: opts?.priorBlocks,
+            showWelcome: isFirstChat && !opts?.priorBlocks,
+          }),
+      })
+
+      chatReady = true
+      startingChatId = null
+      isFirstChat = false
       setChatActive(false)
-      deps.setAgentState("idle")
+
+      // Replay any messages that arrived during async startup
+      for (const msg of pendingMessages) {
+        deps.registry.injectMessage(sessionId, msg)
+      }
+      pendingMessages = []
+    } catch (err) {
+      startingChatId = null
+      chatReady = false
+      pendingMessages = []
+      setChatActive(false)
       deps.setSessionStatus("error")
     }
   }
 
-  function interruptChat(): void {
-    chatSession?.interrupt()
+  async function startChat(initialMessage?: string): Promise<void> {
+    const sessionId = deps.manager.create("chat", "Chat", "chat")
+    safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "chat:active")
+    deps.refreshList()
+    await launchChat(sessionId, { initialMessage })
   }
 
+  async function resumeChat(sessionId: string): Promise<void> {
+    const persistence = createOutputPersistence({ sessionId, baseDir: process.cwd() })
+    const loaded = await persistence.load()
+    const priorBlocks = loaded as AnyBlock[]
+    await launchChat(sessionId, { priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined })
+  }
+
+  /** Put the foreground chat in the background — stays alive in registry. */
+  function backgroundChat(): void {
+    // Clear async startup state if still in progress
+    startingChatId = null
+    chatReady = false
+    pendingMessages = []
+    setChatActive(false)
+    deps.setForegroundId(undefined)
+  }
+
+  /** Close the foreground chat — removes from registry and marks completed. */
   function endChat(): void {
-    chatSession?.end()
-    chatSession = null
+    const fgId = deps.foregroundId()
+    if (!fgId) return
+    const entry = deps.registry.get(fgId)
+    if (!entry || entry.kind !== "chat") return
+
+    // If ending the chat we're currently starting, clean up startup state
+    if (fgId === startingChatId) {
+      startingChatId = null
+      chatReady = false
+      pendingMessages = []
+    }
+    setChatActive(false)
+
+    deps.registry.remove(fgId)
+    safeUpdateState((sid, s) => deps.manager.updateState(sid, s), fgId, "completed")
+    deps.refreshList()
+    deps.setForegroundId(undefined)
+  }
+
+  function interruptChat(): void {
+    const fgId = deps.foregroundId()
+    if (!fgId) return
+    deps.registry.abort(fgId)
   }
 
   function sendMessage(text: string): void {
-    chatSession?.send(text)
+    // During async startup, buffer messages
+    if (startingChatId && !chatReady) {
+      pendingMessages.push(text)
+      return
+    }
+    // Send to whatever chat is in the foreground
+    const fgId = deps.foregroundId()
+    if (!fgId) return
+    deps.registry.injectMessage(fgId, text)
   }
 
-  function getChatSession(): ChatSession | null {
-    return chatSession
-  }
-
-  return { chatActive, startChat, interruptChat, endChat, sendMessage, getChatSession }
+  return { chatActive, startChat, resumeChat, backgroundChat, interruptChat, endChat, sendMessage }
 }

@@ -10,7 +10,7 @@
  * block accumulation.
  */
 
-import type { ToolBlock } from "../types.js"
+import type { ToolBlock } from "../output-blocks.js"
 
 /** Tool names that break context grouping. */
 const NON_CONTEXT_TOOL_NAMES = new Set(["task_complete"])

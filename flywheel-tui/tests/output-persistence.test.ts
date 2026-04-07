@@ -391,6 +391,83 @@ describe("createOutputPersistence — createFlusher", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Chat resume — save then load round-trip for chat output
+// ---------------------------------------------------------------------------
+
+describe("createOutputPersistence — chat resume", () => {
+  it("chat output blocks written to .flywheel/sessions/<id>/output.json", () => {
+    const baseDir = makeTmpDir();
+    const sessionId = `chat-${crypto.randomUUID().slice(0, 8)}`;
+    const persistence = createOutputPersistence({ sessionId, baseDir });
+
+    const blocks = [textBlock("user: hello"), textBlock("assistant: hi")];
+    persistence.save(blocks);
+
+    const filePath = path.join(
+      baseDir,
+      ".flywheel",
+      "sessions",
+      sessionId,
+      "output.json",
+    );
+    expect(fs.existsSync(filePath)).toBe(true);
+
+    const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    expect(raw).toHaveLength(2);
+  });
+
+  it("resuming a chat loads prior output blocks", async () => {
+    const baseDir = makeTmpDir();
+    const sessionId = `chat-${crypto.randomUUID().slice(0, 8)}`;
+
+    // Simulate first session: save output
+    const persistence1 = createOutputPersistence({ sessionId, baseDir });
+    persistence1.save([
+      textBlock("turn 1"),
+      toolBlock("read", "file.ts"),
+      textBlock("turn 2"),
+    ]);
+
+    // Simulate resume: create new persistence for same sessionId, load
+    const persistence2 = createOutputPersistence({ sessionId, baseDir });
+    const loaded = await persistence2.load();
+
+    expect(loaded).toHaveLength(3);
+    expect(loaded[0].kind).toBe("text");
+    expect((loaded[0] as any).content).toBe("turn 1");
+    expect(loaded[1].kind).toBe("tool");
+    expect(loaded[2].kind).toBe("text");
+    expect((loaded[2] as any).content).toBe("turn 2");
+  });
+
+  it("flush on dispose is the reliable write path", async () => {
+    const baseDir = makeTmpDir();
+    const sessionId = crypto.randomUUID();
+    const persistence = createOutputPersistence({ sessionId, baseDir });
+
+    let currentBlocks = [textBlock("initial")];
+    const flusher = persistence.createFlusher(() => currentBlocks, {
+      intervalMs: 60000, // Very long interval — won't fire naturally
+    });
+
+    // Schedule does NOT immediately write (debounced)
+    flusher.schedule();
+
+    // No write yet (interval hasn't fired)
+    const beforeFlush = await persistence.load();
+    expect(beforeFlush).toEqual([]);
+
+    // Explicit flush (what dispose calls) IS reliable
+    await flusher.flush();
+    const afterFlush = await persistence.load();
+    expect(afterFlush).toHaveLength(1);
+    expect((afterFlush[0] as any).content).toBe("initial");
+
+    flusher.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Async reads (Bun.file)
 // ---------------------------------------------------------------------------
 

@@ -19,14 +19,14 @@ import type {
   ToolBlock,
   AgentBlock,
   SystemBlock,
-} from "../types.js";
+} from "../output-blocks.js";
 import { StaleAgentDetector } from "./stale-agent-detector.js";
 import { ContextGroupTracker, isContextTool } from "./context-group-tracker.js";
 
 const BLOCKS_CAP = 5000;
 const AGENT_CHILDREN_CAP = 50;
 
-import type { ModelActivity } from "../../infra/events.js";
+import type { ModelActivity } from "../events.js";
 export type { ModelActivity };
 
 export class StructuredOutputBuilder {

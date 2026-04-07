@@ -76,7 +76,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     guardrails,
     sessionObjective,
     persistAccumulatorState,
-    onSessionName,
     onSubprocessDispatched,
   } = options;
 
@@ -84,7 +83,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   const abortController = new AbortController();
   let previousHandoff: Record<string, unknown> | null = null;
   let previousAssessment: EvalResult | null = null;
-  let sessionNameEmitted = false;
 
   async function persistQueue(): Promise<void> {
     try {
@@ -222,11 +220,9 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         guardrails,
         sessionObjective,
         persistAccumulatorState,
-        onSessionName,
         onSubprocessDispatched,
         previousHandoff,
         previousAssessment,
-        sessionNameEmitted,
         safeTransition,
         persistQueue,
       });
@@ -234,7 +230,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       // Sync mutable state back from step runner
       previousHandoff = result.previousHandoff;
       previousAssessment = result.previousAssessment;
-      sessionNameEmitted = result.sessionNameEmitted;
 
       if (result.outcome === "completed") {
         stepsCompleted++;

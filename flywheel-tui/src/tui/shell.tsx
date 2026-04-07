@@ -8,10 +8,10 @@ import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
 import { Selection } from "./utils/selection"
-import { exitTUI } from "./app"
+import { exitTUI } from "./exit"
 import { OutputWindow } from "./routes/work/components/output-window"
 import { SplitBorder } from "./shared/ui/border"
-import { FULL_LOGO, SIMPLE_LOGO } from "@tui/shared/components/logo"
+import { SIMPLE_LOGO } from "@tui/shared/components/logo"
 import { SessionModal } from "./session-modal"
 import { createSessionRegistry } from "../orchestration/session-registry"
 import { formatElapsed, formatCost, formatTokens, relativeTime } from "./format"
@@ -74,19 +74,15 @@ export function FlywheelShell() {
   })
 
   const chat = useChatMode({
-    setAgentState,
+    registry,
+    foregroundId,
+    setForegroundId,
+    manager,
+    refreshList,
     setSessionStatus,
-    setOutputBlocks,
-    setSteps: (s) => setSteps(s),
-    setErrorMessage,
-    setStatusLine,
     setSessionTitle,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     resetMetrics: metrics.resetMetrics,
-    workStartTime: metrics.workStartTime,
-    setTokens: metrics.setTokens,
-    setCost: metrics.setCost,
-    setActivity: metrics.setActivity,
   })
 
   const sessionModal = useSessionModal({
@@ -111,7 +107,17 @@ export function FlywheelShell() {
     actionDeps: workflow.actionDeps,
   })
 
-  const inChat = () => sessionStatus() !== null && foregroundId() === undefined
+  const inChat = () => {
+    // chatActive covers the async startup window before the registry entry exists
+    if (chat.chatActive()) return true
+    const fgId = foregroundId()
+    if (!fgId) return false
+    const entry = registry.get(fgId)
+    return entry?.kind === "chat"
+  }
+
+  // Auto-start chat on boot
+  chat.startChat()
 
   const commands = useCommandDispatch({
     agentState,
@@ -124,6 +130,7 @@ export function FlywheelShell() {
     startWorkflow: workflow.startWorkflow,
     startTestStep: workflow.startTestStep,
     startChat: chat.startChat,
+    backgroundChat: chat.backgroundChat,
     endChat: chat.endChat,
     sendMessage: chat.sendMessage,
     handleResume: workflow.handleResume,
@@ -184,7 +191,7 @@ export function FlywheelShell() {
       }
       if (sessionStatus() === "paused") { workflow.abortForeground(); return }
       // In chat mode, Esc interrupts the active worker — never ends the session.
-      // Use /end to close a chat session.
+      // Use /new to start a fresh chat, or Ctrl+B → d to delete.
       if (inChat()) {
         chat.interruptChat()
         return
@@ -207,10 +214,19 @@ export function FlywheelShell() {
         return
       }
     }
+    if (evt.ctrl && evt.name === "n") { chat.backgroundChat(); chat.startChat(); return }
+    if (evt.ctrl && evt.name === "w") {
+      if (inChat()) { chat.endChat(); chat.startChat(); return }
+      // For workflows: abort the foreground session
+      const fgId = foregroundId()
+      if (fgId) { registry.abort(fgId); return }
+    }
     if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }
     if (evt.ctrl && evt.name === "r") { workflow.handleResume() }
     if (evt.ctrl && evt.name === "c") {
-      if (registry.runningCount() === 0 && !inChat()) { exitTUI() }
+      // Exit if no workflows running (chat sessions don't block exit)
+      const hasWorkflows = registry.activeIds().some((id) => registry.get(id)?.kind === "workflow")
+      if (!hasWorkflows) { exitTUI() }
     }
   })
 
@@ -251,7 +267,6 @@ export function FlywheelShell() {
     return "done" + bgSuffix
   })
 
-  const showLogo = createMemo(() => sessionStatus() === null && dimensions().height >= 20)
   const showPrompt = createMemo(() => !sessionModal.sessionsModalOpen())
 
   const activityLabel = createMemo(() => {
@@ -308,24 +323,12 @@ export function FlywheelShell() {
           </box>
         </Show>
 
+        {/* Welcome logo — shown briefly before first chat output arrives */}
         <Show when={sessionStatus() === null && !sessionModal.sessionsModalOpen()}>
           <scrollbox flexGrow={1}>
-            <Show when={showLogo()}>
-              <box paddingTop={2} paddingBottom={1}>
-                <For each={FULL_LOGO}>{(line) => <text fg={theme.primary}>{line}</text>}</For>
-              </box>
-            </Show>
-            <Show when={!showLogo()}>
-              <box paddingTop={1} paddingBottom={1}>
-                <For each={SIMPLE_LOGO}>{(line) => <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{line}</text>}</For>
-              </box>
-            </Show>
-            <text fg={theme.textMuted}>/chat              start an interactive session</text>
-            <text fg={theme.textMuted}>/start work "desc"  run a workflow pipeline</text>
-            <text fg={theme.textMuted}>/resume            resume an interrupted session</text>
-            <text fg={theme.textMuted}>/test {"<step-id>"}    test a single step type in isolation</text>
-            <text fg={theme.textMuted}>/sessions          manage sessions (Ctrl+B)</text>
-            <text fg={theme.textMuted}>/exit              quit</text>
+            <box paddingTop={1} paddingBottom={1}>
+              <For each={SIMPLE_LOGO}>{(line) => <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{line}</text>}</For>
+            </box>
           </scrollbox>
         </Show>
 
@@ -372,14 +375,12 @@ export function FlywheelShell() {
               width={lineWidth()} height={promptHeight()} wrapMode="word"
               placeholder={
                 inChat()
-                  ? (agentState() === "active" ? "Waiting for response..." : "Send a message (/end to exit chat)")
+                  ? (agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
                   : agentState() === "active"
                     ? "Send a message to steer the worker (Esc to pause)"
                     : sessionStatus() === "paused"
                       ? "Send a message to resume, or Esc to force stop"
-                      : sessionStatus() === null
-                        ? '/chat or /start work "description"'
-                        : "Enter command..."
+                      : "Send a message..."
               }
               backgroundColor="transparent" focusedBackgroundColor="transparent"
               onSubmit={() => { const v = promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
@@ -399,10 +400,12 @@ export function FlywheelShell() {
         <text fg={theme.textMuted}>{process.cwd()}</text>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.textMuted}>
-            {agentState() === "active" ? `esc to interrupt${inChat() ? " · /end" : ""}${runningCount() > 1 ? ` · ${runningCount()} sessions` : ""}`
-              : inChat() ? "/end"
-              : sessionStatus() === "paused" ? "esc to stop · Ctrl+R to resume"
-              : `Esc · Ctrl+B · /chat · /exit${runningCount() > 0 ? ` · ${runningCount()} running` : ""}`}
+            {agentState() === "active"
+              ? `Esc to interrupt · Ctrl+N`
+              : sessionStatus() === "paused"
+                ? "Esc to stop · Ctrl+R to resume"
+                : "Ctrl+N · /exit"}
+            {` · Ctrl+B`}{sessions().length > 0 ? ` (${runningCount()} active · ${sessions().length} total)` : ""}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>
         </box>

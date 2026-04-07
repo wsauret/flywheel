@@ -60,7 +60,6 @@ export type DispatcherFn = (
   prompt: string;
   evaluationCriteria: unknown | null;
   mutationRequests?: import("./step-dispatcher").MutationRequest[];
-  sessionName?: string;
 }>;
 
 /**
@@ -178,12 +177,6 @@ export interface StepExecutorHooks {
    * When null, accumulator state is not persisted (test-only).
    */
   persistAccumulatorState?: ((state: unknown) => void) | null;
-
-  /**
-   * Callback invoked when the dispatcher returns a session name (first call only).
-   * Used to persist the LLM-generated session name to disk and update the UI.
-   */
-  onSessionName?: ((name: string) => void) | null;
 
   /**
    * Called each time a subprocess is dispatched (before the subprocess runs).

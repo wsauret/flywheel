@@ -137,7 +137,6 @@ Write a JSON file to:
 - **context_files** (REQUIRED): File paths the worker should reference. Array of strings.
 - **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance; 8 KB cap.
 - **evaluation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: \`acceptance_criteria\` (string[]), \`required_tests\` (boolean), \`custom_checks\` (string[]), \`required_outputs\` (string[]).
-- **session_name** (optional): Name for the worker session (2-5 words).
 - **reasoning** (optional): Why this dispatch decision was made.
 - **worker_config** (optional): Override worker configuration.
 

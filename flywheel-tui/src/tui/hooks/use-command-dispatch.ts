@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import type { SessionRegistry } from "../../orchestration/session-registry.js"
 import type { AgentState, SessionStatus } from "./use-workflow-lifecycle.js"
-import { exitTUI } from "../app.js"
+import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "./command-registry.js"
 
 export interface CommandDispatchDeps {
@@ -15,6 +15,7 @@ export interface CommandDispatchDeps {
   startWorkflow: (command: string, description: string) => Promise<void>
   startTestStep: (stepId?: string) => Promise<void>
   startChat: (initialMessage?: string) => Promise<void>
+  backgroundChat: () => void
   endChat: () => void
   sendMessage: (text: string) => void
   handleResume: (sessionIdArg?: string) => Promise<void>
@@ -48,9 +49,10 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
   })
 
   commandRegistry.register({
-    pattern: /^\/chat(?:\s+(.+))?$/i,
-    execute(match) {
-      deps.startChat(match[1] ?? undefined)
+    pattern: /^\/new$/i,
+    execute() {
+      deps.backgroundChat()
+      deps.startChat()
       return true
     },
   })
@@ -87,10 +89,19 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     const trimmed = text.trim()
     if (!trimmed) return
 
-    // Chat session: route all input to the chat (commands first, then message)
+    // Chat session: slash commands go through the registry, free text goes to chat
     if (deps.inChat()) {
       if (trimmed === "/exit" || trimmed === "/quit") { deps.endChat(); exitTUI(); return }
-      if (trimmed === "/end" || trimmed === "/stop") { deps.endChat(); return }
+      if (trimmed === "/new") { deps.backgroundChat(); deps.startChat(); return }
+      // Try command registry for slash commands (e.g. /work, /sessions, /resume)
+      if (trimmed.startsWith("/")) {
+        void commandRegistry.dispatch(trimmed).then((handled) => {
+          if (!handled) {
+            deps.showToast({ message: `Unknown command: ${trimmed.split(/\s/)[0]}`, variant: "warning" })
+          }
+        })
+        return
+      }
       deps.sendMessage(trimmed)
       return
     }
@@ -120,7 +131,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
       if (deps.sessionStatus() === "paused") {
         deps.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
       } else {
-        deps.showToast({ message: `Unknown command. Try /chat, /sessions, /start work "desc", or /exit`, variant: "warning" })
+        deps.showToast({ message: `Unknown command. Try /new, /sessions, /start work "desc", or /exit`, variant: "warning" })
       }
     })
   }

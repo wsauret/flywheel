@@ -611,8 +611,72 @@ describe("SessionManager.create() budget initialization from config", () => {
   });
 });
 
-describe("SessionManager.create() workflowType parameter", () => {
-  it("defaults workflowType to 'work' when not specified", () => {
+// ---------------------------------------------------------------------------
+// recoverStaleSessions() — chat:active recovery
+// ---------------------------------------------------------------------------
+
+describe("SessionManager.recoverStaleSessions()", () => {
+  it("recovers chat:active sessions to chat:idle (not work:paused)", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    // Create a chat session and manually advance to chat:active
+    const id = mgr.create("plans/test.md", "Chat Session", "chat");
+    mgr.updateState(id, "chat:active");
+
+    // Verify it's chat:active
+    const before = readSession(id, baseDir);
+    expect(before!.sessionLifecycleState).toBe("chat:active");
+
+    // Simulate startup recovery
+    const recovered = mgr.recoverStaleSessions();
+    expect(recovered).toBeGreaterThanOrEqual(1);
+
+    const after = readSession(id, baseDir);
+    expect(after!.sessionLifecycleState).toBe("chat:idle");
+  });
+
+  it("still recovers work:active sessions to work:paused", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    // Create a work session and advance to work:active
+    const id = mgr.create("plans/test.md", "Work Session");
+    mgr.updateState(id, "plan:imported");
+    mgr.updateState(id, "plan:approved");
+    mgr.updateState(id, "work:active");
+
+    const recovered = mgr.recoverStaleSessions();
+    expect(recovered).toBeGreaterThanOrEqual(1);
+
+    const after = readSession(id, baseDir);
+    expect(after!.sessionLifecycleState).toBe("work:paused");
+  });
+
+  it("recovers both chat:active and work:active in the same run", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    // Create chat session -> chat:active
+    const chatId = mgr.create("plans/chat.md", "Chat", "chat");
+    mgr.updateState(chatId, "chat:active");
+
+    // Create work session -> work:active
+    const workId = mgr.create("plans/work.md", "Work");
+    mgr.updateState(workId, "plan:imported");
+    mgr.updateState(workId, "plan:approved");
+    mgr.updateState(workId, "work:active");
+
+    const recovered = mgr.recoverStaleSessions();
+    expect(recovered).toBe(2);
+
+    expect(readSession(chatId, baseDir)!.sessionLifecycleState).toBe("chat:idle");
+    expect(readSession(workId, baseDir)!.sessionLifecycleState).toBe("work:paused");
+  });
+});
+
+describe("SessionManager.create() SessionKind parameter", () => {
+  it("defaults workflowType to 'work' when kind not specified", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
@@ -622,33 +686,23 @@ describe("SessionManager.create() workflowType parameter", () => {
     expect(persisted!.workflowType).toBe("work");
   });
 
-  it("sets workflowType to 'plan' when specified", () => {
+  it("sets workflowType to 'work' for workflow kind", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    const id = mgr.create("plans/test.md", undefined, "plan");
+    const id = mgr.create("plans/test.md", undefined, "workflow");
     const persisted = readSession(id, baseDir);
 
-    expect(persisted!.workflowType).toBe("plan");
+    expect(persisted!.workflowType).toBe("work");
   });
 
-  it("sets workflowType to 'review' when specified", () => {
+  it("sets workflowType to 'chat' for chat kind", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    const id = mgr.create("plans/test.md", "My Session", "review");
+    const id = mgr.create("plans/test.md", "My Session", "chat");
     const persisted = readSession(id, baseDir);
 
-    expect(persisted!.workflowType).toBe("review");
-  });
-
-  it("sets workflowType to 'debug' when specified", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md", undefined, "debug");
-    const persisted = readSession(id, baseDir);
-
-    expect(persisted!.workflowType).toBe("debug");
+    expect(persisted!.workflowType).toBe("chat");
   });
 });

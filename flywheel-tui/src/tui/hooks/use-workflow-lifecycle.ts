@@ -3,7 +3,6 @@ import type { SessionManager } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { Accessor } from "solid-js"
 import type { AnyBlock } from "../types.js"
-import type { StepType } from "../../infra/step-types.js"
 import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
 import { buildQueueForSlashCommand } from "../../orchestration/queue-builder.js"
 import { prepareWorkflowDeps } from "../../orchestration/engines/workflow-deps.js"
@@ -71,7 +70,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       return
     }
 
-    const sessionId = deps.manager.create(description, description, command as StepType)
+    const sessionId = deps.manager.create(description, description, "workflow")
     safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
 
     deps.registry.start({ sessionId, queue, description })
@@ -172,7 +171,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     }
 
     const testWorkdir = workdir
-    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, stepDef.type)
+    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, "workflow")
     safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
 
     deps.registry.start({

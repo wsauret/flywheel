@@ -20,19 +20,8 @@ interface BoundaryRule {
 const repoRoot = path.resolve(import.meta.dir, "..");
 const srcRoot = path.join(repoRoot, "src");
 const temporaryAllowlist = new Set<string>([
-  // orchestration → tui: pre-existing coupling to be unwound in a future phase
-  "src/orchestration/workflow-session.ts -> src/tui/adapters/opentui.ts",
-  "src/orchestration/workflow-session.ts -> src/tui/routes/work/context/ui-state/store.ts",
-  "src/orchestration/workflow-session.ts -> src/tui/shared/services/timer.ts",
-  "src/orchestration/workflow-session.ts -> src/tui/routes/work/context/ui-state/types.ts",
-  "src/orchestration/workflow-runner.ts -> src/tui/adapters/opentui.ts",
-  "src/orchestration/workflow-runner.ts -> src/tui/routes/work/context/ui-state/store.ts",
-  "src/orchestration/workflow-runner.ts -> src/tui/types.ts",
-  "src/orchestration/session-actions.ts -> src/tui/types.ts",
-  "src/orchestration/session-registry.ts -> src/tui/types.ts",
   // cli → tui: fundamental entrypoint
   "src/orchestration/cli/index.ts -> src/tui/launcher.ts",
-
 ]);
 
 const rules: BoundaryRule[] = [
