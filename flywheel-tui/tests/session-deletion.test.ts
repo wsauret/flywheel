@@ -12,7 +12,7 @@ import {
   type DeleteResult,
 } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
-import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
+import type { SessionState } from "../src/orchestration/session/state-machine";
 import {
   createSessionManager,
   type SessionManagerDeps,
@@ -41,7 +41,8 @@ function minimalSession(overrides?: Partial<Session>): Session {
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-    workflowType: "work",
+    kind: "workflow" as const,
+    command: "work" as const,
     ...overrides,
   };
 }
@@ -227,10 +228,10 @@ describe("deleteSessionWithCompanions", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Startup sweep for trashed sessions
+// SessionManager.delete()
 // ---------------------------------------------------------------------------
 
-describe("SessionManager.sweepTrashed", () => {
+describe("SessionManager.delete()", () => {
   /** Build deps for SessionManager. */
   function makeDeps(
     baseDir: string,
@@ -242,65 +243,74 @@ describe("SessionManager.sweepTrashed", () => {
     };
   }
 
-  it("deletes trashed sessions from disk", () => {
+  it("deletes session files from disk immediately", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    // Create two sessions, trash one
+    const id = mgr.create("plans/test.md");
+
+    // Verify session exists before deletion
+    expect(readSession(id, baseDir)).not.toBeNull();
+
+    mgr.delete(id);
+
+    // Session should be gone from disk
+    expect(readSession(id, baseDir)).toBeNull();
+  });
+
+  it("removes session from cache", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    expect(mgr.getState(id)).toBe("active");
+
+    mgr.delete(id);
+    expect(mgr.getState(id)).toBeNull();
+  });
+
+  it("does not affect other sessions", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
     const id1 = mgr.create("plans/keep.md");
-    mgr.updateState(id1, "plan:imported");
+    const id2 = mgr.create("plans/delete-me.md");
 
-    const id2 = mgr.create("plans/trash-me.md");
-    mgr.updateState(id2, "plan:draft");
-    mgr.trash(id2);
+    mgr.delete(id2);
 
-    // Verify trashed session exists on disk before sweep
-    expect(readSession(id2, baseDir)).not.toBeNull();
-
-    // Run sweep
-    const swept = mgr.sweepTrashed();
-
-    // Trashed session should be deleted from disk
+    // Kept session should still exist
+    expect(readSession(id1, baseDir)).not.toBeNull();
+    // Deleted session should be gone
     expect(readSession(id2, baseDir)).toBeNull();
-    // Non-trashed session should still exist
-    expect(readSession(id1, baseDir)).not.toBeNull();
-    // Sweep result reports what was cleaned
-    expect(swept).toBeGreaterThanOrEqual(1);
+
+    const { sessions } = mgr.list();
+    expect(sessions.find((s) => s.id === id1)).toBeTruthy();
+    expect(sessions.find((s) => s.id === id2)).toBeUndefined();
   });
 
-  it("returns 0 when no trashed sessions exist", () => {
+  it("can delete sessions in any lifecycle state", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    const id1 = mgr.create("plans/active.md");
-    mgr.updateState(id1, "plan:imported");
+    // Active
+    const id1 = mgr.create("plans/a.md");
+    mgr.delete(id1);
+    expect(readSession(id1, baseDir)).toBeNull();
 
-    const swept = mgr.sweepTrashed();
-    expect(swept).toBe(0);
+    // Paused
+    const id2 = mgr.create("plans/b.md");
+    mgr.updateState(id2, "paused");
+    mgr.delete(id2);
+    expect(readSession(id2, baseDir)).toBeNull();
+
+    // Completed
+    const id3 = mgr.create("plans/c.md");
+    mgr.updateState(id3, "completed");
+    mgr.delete(id3);
+    expect(readSession(id3, baseDir)).toBeNull();
   });
 
-  it("does not delete non-trashed sessions", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    // Create sessions in various states
-    const id1 = mgr.create("plans/new.md");
-    const id2 = mgr.create("plans/imported.md");
-    mgr.updateState(id2, "plan:imported");
-    const id3 = mgr.create("plans/active.md");
-    mgr.updateState(id3, "plan:imported");
-    mgr.updateState(id3, "plan:approved");
-    mgr.updateState(id3, "work:active");
-
-    mgr.sweepTrashed();
-
-    // All sessions should still exist
-    expect(readSession(id1, baseDir)).not.toBeNull();
-    expect(readSession(id2, baseDir)).not.toBeNull();
-    expect(readSession(id3, baseDir)).not.toBeNull();
-  });
-
-  it("cleans up output files for trashed sessions", () => {
+  it("cleans up output files alongside session", () => {
     const baseDir = makeTmpDir();
 
     const data = minimalSession();
@@ -311,12 +321,8 @@ describe("SessionManager.sweepTrashed", () => {
     const outputPath = path.join(sessionDir, "output.json");
     fs.writeFileSync(outputPath, JSON.stringify([]));
 
-    // Transition to trashed
-    updateSession(id, { sessionLifecycleState: "plan:draft" as SessionLifecycleState }, baseDir);
-    updateSession(id, { sessionLifecycleState: "trashed" as SessionLifecycleState, lastTrashedAt: Date.now() }, baseDir);
-
     const mgr = createSessionManager(makeDeps(baseDir));
-    mgr.sweepTrashed();
+    mgr.delete(id);
 
     // Session directory and all files should be gone
     expect(readSession(id, baseDir)).toBeNull();

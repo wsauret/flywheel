@@ -116,18 +116,18 @@ describe("ChatRunner", () => {
     expect(order[1]).toBe("dispose")
   })
 
-  it("state transitions: chat:active on send, chat:idle when response completes", () => {
+  it("state transitions: active on send, paused when response completes", () => {
     const stateUpdates: string[] = []
     const updateState = (_id: string, state: string) => { stateUpdates.push(state) }
     const sessionId = "test-123"
 
-    // Simulate injectMessage: sets chat:active
-    updateState(sessionId, "chat:active")
+    // Simulate injectMessage: sets active
+    updateState(sessionId, "active")
 
-    // Simulate onWaiting(false) callback: sets chat:idle
-    updateState(sessionId, "chat:idle")
+    // Simulate onWaiting(false) callback: sets paused
+    updateState(sessionId, "paused")
 
-    expect(stateUpdates).toEqual(["chat:active", "chat:idle"])
+    expect(stateUpdates).toEqual(["active", "paused"])
   })
 
   it("onBlocks wired to output flusher schedule", () => {

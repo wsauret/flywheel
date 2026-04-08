@@ -14,7 +14,7 @@ import {
   DEFAULT_TIMEOUT_MS,
   DEFAULT_DEADLINE_MS,
   type NativeCheckResult,
-} from "../../orchestration/engines/native-verification.js";
+} from "../shared/native-verification.js";
 import { extractDeclaredCommands } from "./shared/command-extraction.js";
 
 // ---------------------------------------------------------------------------

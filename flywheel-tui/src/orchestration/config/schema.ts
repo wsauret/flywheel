@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -174,39 +175,7 @@ export const FlywheelConfigSchema = z.object({
   }).default({}),
 
   /** Sprint mode configuration. */
-  sprint: z.object({
-    /** Max sprint iterations before escalation. Default: 5. */
-    max_iterations: z.number().int().min(1).max(10).default(5),
-    /** Escalate to full queue when sprint exhausts iterations. Default: true. */
-    escalate_to_full: z.boolean().default(true),
-    /** Escalate early on repeated identical verification failures. Default: false. */
-    escalate_on_stuck: z.boolean().default(false),
-    /** Per-tier overrides for sprint mode. When set, these override the global
-     *  tier config during sprint execution. Unset fields inherit from the
-     *  corresponding global tier config.
-     *
-     *  Example TOML:
-     *    [sprint.worker]
-     *    model = "opus"
-     *    effort = "max"
-     *
-     *    [sprint.evaluator]
-     *    model = "opus"
-     *    effort = "max"
-     */
-    worker: z.object({
-      model: z.string().optional(),
-      effort: z.enum(["low", "medium", "high", "max"]).optional(),
-    }).default({}),
-    evaluator: z.object({
-      model: z.string().optional(),
-      effort: z.enum(["low", "medium", "high", "max"]).optional(),
-    }).default({}),
-    dispatcher: z.object({
-      model: z.string().optional(),
-      effort: z.enum(["low", "medium", "high", "max"]).optional(),
-    }).default({}),
-  }).default({}),
+  sprint: SprintConfigSchema,
 });
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
@@ -263,6 +232,9 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
     max_iterations: 5,
     escalate_to_full: true,
     escalate_on_stuck: false,
+    dispatcher: {},
+    evaluator: {},
+    worker: {},
   },
 };
 

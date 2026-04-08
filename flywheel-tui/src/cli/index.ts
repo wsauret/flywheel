@@ -8,9 +8,9 @@
  * Run via `bin/flywheel` or `bun --conditions=browser run src/cli/index.ts`.
  */
 
-import { Log } from "../../infra/log"
-import { errorMessage } from "../../infra/error-message"
-import { installAgents } from "../../workflows/agents/installer"
+import { Log } from "../infra/log"
+import { errorMessage } from "../infra/error-message"
+import { installAgents } from "../workflows/agents/installer"
 
 
 // ---------------------------------------------------------------------------
@@ -62,9 +62,9 @@ async function runHeadless(): Promise<void> {
     process.exit(1)
   }
 
-  const { provideHeadlessFactories } = await import("../headless")
-  const { createSessionRegistry } = await import("../session-registry")
-  const { buildQueueFromTemplate } = await import("../../workflows/queue/templates")
+  const { provideHeadlessFactories } = await import("../orchestration/headless")
+  const { createSessionRegistry } = await import("../orchestration/session-registry")
+  const { buildQueueFromTemplate } = await import("../workflows/queue/templates")
   const { randomUUID } = await import("crypto")
 
   // Wire headless factories before creating any sessions
@@ -74,25 +74,18 @@ async function runHeadless(): Promise<void> {
   const sessionId = randomUUID()
   const queue = buildQueueFromTemplate("work")
 
-  // Start the workflow — runs in background inside the registry
-  registry.start({ sessionId, queue, description })
-
-  // Wait for the session to reach a terminal state
+  // Wait for the session to reach a terminal state via callbacks
   const result = await new Promise<boolean>((resolve) => {
-    const check = () => {
-      const entry = registry.get(sessionId)
-      if (!entry) { resolve(false); return }
-      if (entry.status === "completed") { resolve(true); return }
-      if (entry.status === "error") {
-        if (entry.errorMessage) console.error(`Error: ${entry.errorMessage}`)
+    registry.start({
+      sessionId, queue, description,
+      onRunnerDone: (_id, wfResult) => {
+        resolve(wfResult.completed)
+      },
+      onRunnerError: (_id, err) => {
+        console.error(`Error: ${errorMessage(err)}`)
         resolve(false)
-        return
-      }
-      // Still running — keep polling via subscription
-    }
-    registry.subscribe(check)
-    // Also check immediately in case it already finished
-    check()
+      },
+    })
   })
 
   await registry.disposeAll()
@@ -104,7 +97,7 @@ async function runHeadless(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function runTUI(): Promise<void> {
-  const { startTUI } = await import("../../tui/launcher");
+  const { startTUI } = await import("../tui/launcher");
   const tuiPromise = startTUI({ mode: "dark" });
 
   // Block until the shell exits (user types /exit or Ctrl+C)

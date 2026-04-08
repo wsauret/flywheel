@@ -21,8 +21,9 @@ import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
 import { useSessionModal } from "./hooks/use-session-modal.js"
-import type { AgentState, SessionStatus } from "./hooks/use-workflow-lifecycle.js"
+import type { AgentState } from "./hooks/use-workflow-lifecycle.js"
 import { TERMINAL_TITLE_PREFIX } from "./hooks/use-workflow-lifecycle.js"
+import type { SessionState } from "../orchestration/session/state-machine.js"
 import type { AnyBlock } from "./types"
 import type { StepState } from "../orchestration/workflow-runner"
 
@@ -35,7 +36,6 @@ export function FlywheelShell() {
 
   // ── Signals ──
   const [agentState, setAgentState] = createSignal<AgentState>("idle")
-  const [sessionStatus, setSessionStatus] = createSignal<SessionStatus>(null)
   const [outputBlocks, setOutputBlocks] = createSignal<AnyBlock[]>([])
   const [steps, setSteps] = createSignal<StepState[]>([])
   const [errorMessage, setErrorMessage] = createSignal("")
@@ -50,6 +50,17 @@ export function FlywheelShell() {
   // ── Session registry ──
   const registry = createSessionRegistry()
 
+  // ── Derived session state — single source of truth ──
+  // Reads from registry (active runner) and session manager (persisted state).
+  // Re-evaluates when foregroundId changes; registry subscriber triggers UI
+  // updates that cause re-evaluation for runner removal.
+  const sessionState = (): SessionState | null => {
+    const fgId = foregroundId()
+    if (!fgId) return null
+    if (registry.has(fgId)) return "active"
+    return manager.getState(fgId)
+  }
+
   // ── Prompt ref ──
   let promptRef: TextareaRenderable | null = null
 
@@ -63,7 +74,6 @@ export function FlywheelShell() {
     foregroundId,
     setForegroundId,
     setAgentState,
-    setSessionStatus,
     setOutputBlocks,
     setSteps,
     setErrorMessage,
@@ -71,6 +81,7 @@ export function FlywheelShell() {
     setSessionTitle,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     resetMetrics: metrics.resetMetrics,
+    workStartTime: metrics.workStartTime,
     showToast: (opts) => toast.show(opts),
   })
 
@@ -78,13 +89,15 @@ export function FlywheelShell() {
     registry,
     foregroundId,
     setForegroundId,
+    setAgentState,
+    setErrorMessage,
     manager,
     refreshList,
-    setSessionStatus,
     setSessionTitle,
     setStatusLine,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     resetMetrics: metrics.resetMetrics,
+    workStartTime: metrics.workStartTime,
     projectCwd: process.cwd(),
   })
 
@@ -94,8 +107,6 @@ export function FlywheelShell() {
     registry,
     foregroundId,
     setForegroundId,
-    sessionStatus,
-    setSessionStatus,
     outputBlocks,
     setOutputBlocks,
     sessionTitle,
@@ -122,9 +133,8 @@ export function FlywheelShell() {
 
   const commands = useCommandDispatch({
     agentState,
-    sessionStatus,
+    sessionState,
     setAgentState,
-    setSessionStatus,
     foregroundId,
     inChat,
     registry,
@@ -143,20 +153,13 @@ export function FlywheelShell() {
   const registryUnsub = useRegistrySync({
     registry,
     foregroundId,
-    setForegroundId,
     setAgentState,
-    setSessionStatus,
     setOutputBlocks,
     setSteps,
     setRunningCount,
-    setStatusLine,
     setSessionTitle,
-    setErrorMessage,
     setTerminalTitle: (t) => renderer.setTerminalTitle(t),
     metrics,
-    manager,
-    refreshList,
-    showToast: (opts) => toast.show(opts),
   })
 
   // ── Timer — reactive: runs only when the agent is actively working ──
@@ -171,8 +174,8 @@ export function FlywheelShell() {
     if (!entry) return
     metrics.pauseTimer()  // stop old interval before resetting accumulated value
     setForegroundId(sessionId)
-    setAgentState(entry.status === "running" ? "active" : "idle")
-    setSessionStatus(entry.status === "running" ? "running" : entry.status === "paused" ? "paused" : "completed")
+    // Entry exists in registry = active; sessionState() will derive "active" from registry.has
+    setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
     // Sync display state from the entry — registry sync only fires on entry
     // updates, so an idle session would never push its blocks to the UI.
     setOutputBlocks([...entry.outputBlocks])
@@ -190,27 +193,30 @@ export function FlywheelShell() {
   useKeyboard((evt) => {
     if (sessionModal.sessionsModalOpen()) { sessionModal.handleModalKey(evt); return }
     if (evt.name === "escape") {
-      if (sessionStatus() === "running" && !inChat()) {
+      const state = sessionState()
+      // Active workflow (not chat): first Esc pauses, second Esc aborts
+      if (state === "active" && !inChat()) {
         workflow.pauseForeground()
         const bg = runningCount()
         if (bg > 0) toast.show({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
         return
       }
-      if (sessionStatus() === "paused") { workflow.abortForeground(); return }
       // In chat mode, Esc interrupts the active worker — never ends the session.
       // Use /new to start a fresh chat, or Ctrl+B → d to delete.
       if (inChat()) {
         chat.interruptChat()
         return
       }
-      if (sessionStatus() === "completed" || sessionStatus() === "error") {
+      // Paused with runner still alive (winding down): abort it
+      if (state === "active") { workflow.abortForeground(); return }
+      // Completed or paused (no runner): dismiss and return to welcome
+      if (state === "completed" || state === "paused") {
         // If we're viewing a historical session, restore the state from before viewing.
         if (sessionModal.isViewingSession()) {
           sessionModal.dismissViewedSession()
           return
         }
         setAgentState("idle")
-        setSessionStatus(null)
         setOutputBlocks([])
         setSteps([])
         setStatusLine("")
@@ -218,6 +224,11 @@ export function FlywheelShell() {
         setSessionTitle("")
         setForegroundId(undefined)
         renderer.setTerminalTitle("flywheel")
+        return
+      }
+      // Error state (errorMessage set, no foreground session): dismiss
+      if (errorMessage()) {
+        setErrorMessage("")
         return
       }
     }
@@ -232,7 +243,7 @@ export function FlywheelShell() {
     if (evt.ctrl && evt.name === "r") { workflow.handleResume() }
     if (evt.ctrl && evt.name === "c") {
       // Exit if no workflows running (chat sessions don't block exit)
-      const hasWorkflows = registry.activeIds().some((id) => registry.get(id)?.kind === "workflow")
+      const hasWorkflows = registry.allIds().some((id) => registry.get(id)?.kind === "workflow")
       if (!hasWorkflows) { exitTUI() }
     }
   })
@@ -255,12 +266,11 @@ export function FlywheelShell() {
   })
 
   const headerRight = createMemo(() => {
-    const status = sessionStatus()
+    const state = sessionState()
     const bgCount = runningCount()
     const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && agentState() !== "active" ? ` (1 running)` : ""
-    if (status === null) return bgCount > 0 ? `${bgCount} running` : "ready"
-    if (status === "error") return "error" + bgSuffix
-    if (status === "paused") return "paused" + bgSuffix
+    if (state === null) return bgCount > 0 ? `${bgCount} running` : (errorMessage() ? "error" : "ready")
+    if (state === "paused") return (errorMessage() ? "error" : "paused") + bgSuffix
     const hasMetrics = agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0
     if (hasMetrics) {
       const parts: string[] = [formatElapsed(metrics.elapsed())]
@@ -269,7 +279,7 @@ export function FlywheelShell() {
       if (c > 0) parts.push(`${formatCost(c)} spent`)
       return parts.join(" · ") + bgSuffix
     }
-    if (status === "running") return "waiting" + bgSuffix  // in session, agent idle (user's turn)
+    if (state === "active") return "waiting" + bgSuffix  // in session, agent idle (user's turn)
     return "done" + bgSuffix
   })
 
@@ -330,7 +340,7 @@ export function FlywheelShell() {
         </Show>
 
         {/* Welcome logo — shown briefly before first chat output arrives */}
-        <Show when={sessionStatus() === null && !sessionModal.sessionsModalOpen()}>
+        <Show when={sessionState() === null && !errorMessage() && !sessionModal.sessionsModalOpen()}>
           <scrollbox flexGrow={1}>
             <box paddingTop={1} paddingBottom={1}>
               <For each={SIMPLE_LOGO}>{(line) => <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{line}</text>}</For>
@@ -338,17 +348,17 @@ export function FlywheelShell() {
           </scrollbox>
         </Show>
 
-        <Show when={sessionStatus() === "error"}>
+        <Show when={errorMessage()}>
           <scrollbox flexGrow={1}>
             <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Error</text>
             <text fg={theme.error}>{errorMessage()}</text>
           </scrollbox>
         </Show>
 
-        <Show when={sessionStatus() !== null}>
+        <Show when={sessionState() !== null}>
           <OutputWindow
             outputBlocks={outputBlocks()}
-            workflowStatus={agentState() === "active" ? "running" : sessionStatus() === "paused" ? "interrupted" : sessionStatus() === "running" ? (inChat() ? "idle" : "running") : "completed"}
+            workflowStatus={agentState() === "active" ? "running" : sessionState() === "paused" ? "interrupted" : sessionState() === "active" ? (inChat() ? "idle" : "running") : "completed"}
             approvalPending={false}
             isPromptFocused={true}
             currentStep={inChat() ? null : currentStep()}
@@ -371,7 +381,8 @@ export function FlywheelShell() {
       <box flexShrink={0}>
         <Show when={showPrompt()}>
           <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1}
-            backgroundColor={theme.backgroundElement} border={["left"]} borderColor={theme.primary}>
+            backgroundColor={theme.backgroundElement} border={["left"]} borderColor={theme.primary}
+            onMouseDown={() => promptRef?.focus?.()}>
             <textarea
               ref={(r: TextareaRenderable) => {
                 promptRef = r
@@ -384,7 +395,7 @@ export function FlywheelShell() {
                   ? (agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
                   : agentState() === "active"
                     ? "Send a message to steer the worker (Esc to pause)"
-                    : sessionStatus() === "paused"
+                    : sessionState() === "paused"
                       ? "Send a message to resume, or Esc to force stop"
                       : "Send a message..."
               }
@@ -408,7 +419,7 @@ export function FlywheelShell() {
           <text fg={theme.textMuted}>
             {agentState() === "active"
               ? `Esc to interrupt · Ctrl+N`
-              : sessionStatus() === "paused"
+              : sessionState() === "paused"
                 ? "Esc to stop · Ctrl+R to resume"
                 : "Ctrl+N · /exit"}
             {` · Ctrl+B`}{runningCount() > 1 || sessions().length > 1 ? ` (${runningCount()} active · ${sessions().length} total)` : ""}

@@ -12,7 +12,7 @@ import {
   isDeniedCommand,
   runNativeVerification,
   type DeclaredCommand,
-} from "../src/orchestration/engines/native-verification.js";
+} from "../src/workflows/shared/native-verification.js";
 import { extractDeclaredCommands } from "../src/workflows/queue/shared/command-extraction.js";
 
 // ---------------------------------------------------------------------------

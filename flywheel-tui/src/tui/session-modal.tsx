@@ -1,13 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 /**
- * SessionModal — Full-screen overlay for browsing, resuming, archiving, and deleting sessions.
+ * SessionModal — Full-screen overlay for browsing, resuming, and deleting sessions.
  *
  * Pure display component. Keyboard handling lives in the shell's useKeyboard
  * (which reliably receives all events). The shell drives cursor and actions
  * via props.
  *
  * Opens via `/sessions` or Ctrl+B.
- * Groups sessions by lifecycle state: Active, Paused, Completed, Archived.
+ * Groups sessions by state: Active, Paused, Completed.
  */
 
 import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "solid-js"
@@ -19,7 +19,7 @@ import { isResumable } from "../orchestration/session/state-machine"
 import { truncate } from "./utils/text"
 import { formatCost, formatTokens, relativeTime } from "./format"
 import type { SessionSummary } from "../orchestration/session/manager"
-import type { SessionLifecycleState } from "../orchestration/session/state-machine"
+import type { SessionState } from "../orchestration/session/state-machine"
 
 // ---------------------------------------------------------------------------
 // Props
@@ -39,43 +39,37 @@ export interface SessionModalProps {
 // Helpers (exported for shell keyboard handler)
 // ---------------------------------------------------------------------------
 
-type GroupKey = "active" | "paused" | "completed" | "archived"
+type GroupKey = "active" | "paused" | "completed"
 
-const GROUP_ORDER: GroupKey[] = ["active", "paused", "completed", "archived"]
+const GROUP_ORDER: GroupKey[] = ["active", "paused", "completed"]
 
 const GROUP_LABELS: Record<GroupKey, string> = {
   active: "Active",
   paused: "Paused",
   completed: "Completed",
-  archived: "Archived",
 }
 
 const GROUP_ICONS: Record<GroupKey, string> = {
   active: "\u25CF",
   paused: "\u2759",
   completed: "\u2713",
-  archived: "\u2610",
 }
 
-const STATE_TO_GROUP: Partial<Record<SessionLifecycleState, GroupKey>> = {
-  "work:active": "active",
-  "chat:active": "active",
-  "chat:idle": "active",
-  "work:paused": "paused",
-  "budget_exhausted": "paused",
+const STATE_TO_GROUP: Record<SessionState, GroupKey> = {
+  active: "active",
+  paused: "paused",
   completed: "completed",
-  archived: "archived",
 }
 
 /** Build flat session list from reactive sessions signal. Exported for shell use. */
 export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: GroupKey }[] {
   const items: { session: SessionSummary; group: GroupKey }[] = []
   const groups: Record<GroupKey, SessionSummary[]> = {
-    active: [], paused: [], completed: [], archived: [],
+    active: [], paused: [], completed: [],
   }
 
   for (const s of sessions) {
-    const group = STATE_TO_GROUP[s.lifecycleState]
+    const group = STATE_TO_GROUP[s.state]
     if (group) groups[group].push(s)
   }
 
@@ -139,10 +133,9 @@ export function SessionModal(props: SessionModalProps) {
     const s = selectedSession()
     if (!s) return "[Esc] Close"
     const actions: string[] = []
-    if (s.lifecycleState === "work:active" || s.lifecycleState === "chat:active" || s.lifecycleState === "chat:idle") actions.push("[Enter] Switch")
-    else if (isResumable(s.lifecycleState)) actions.push("[Enter/R] Resume")
+    if (s.state === "active") actions.push("[Enter] Switch")
+    else if (isResumable(s.state)) actions.push("[Enter/R] Resume")
     else actions.push("[Enter] View")
-    if (s.lifecycleState === "completed") actions.push("[A] Archive")
     if (s.id !== props.activeSessionId) actions.push("[D] Delete")
     return `\u2191\u2193 Navigate  ${actions.join("  ")}  [Esc] Close`
   })
@@ -186,7 +179,7 @@ export function SessionModal(props: SessionModalProps) {
                     const isActive = () => item.session.id === props.activeSessionId
                     const label = () => truncate(item.session.label || item.session.name || item.session.id.slice(0, 8), 34)
                     const isDeletePending = () => props.confirmDeleteId === item.session.id
-                    const typeTag = () => item.session.workflowType === "chat" ? "chat" : item.session.workflowType
+                    const typeTag = () => item.session.kind === "chat" ? "chat" : item.session.command
 
                     return (
                       <box

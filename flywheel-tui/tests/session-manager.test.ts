@@ -15,7 +15,7 @@ import {
   listSessions,
 } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
-import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
+import type { SessionState } from "../src/orchestration/session/state-machine";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/orchestration/config/loader";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,8 @@ function minimalSession(overrides?: Partial<Session>): Session {
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-    workflowType: "work",
+    kind: "workflow" as const,
+    command: "work" as const,
     ...overrides,
   };
 }
@@ -96,14 +97,14 @@ describe("SessionManager.create()", () => {
     expect(persisted!.planPath).toBe("plans/my-plan.md");
   });
 
-  it("sets initial lifecycle state to 'new'", () => {
+  it("sets initial lifecycle state to 'active'", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
     const persisted = readSession(id, baseDir);
 
-    expect(persisted!.sessionLifecycleState).toBe("new");
+    expect(persisted!.state).toBe("active");
   });
 
   it("stores name when provided", () => {
@@ -150,7 +151,13 @@ describe("SessionManager.create()", () => {
     expect(persisted!.label).toBe("plans/test.md");
   });
 
+  it("populates state cache on create", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
 
+    const id = mgr.create("plans/test.md");
+    expect(mgr.getState(id)).toBe("active");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -182,7 +189,7 @@ describe("SessionManager.list()", () => {
     expect(summary).toHaveProperty("id");
     expect(summary).toHaveProperty("name");
     expect(summary).toHaveProperty("label");
-    expect(summary).toHaveProperty("lifecycleState");
+    expect(summary).toHaveProperty("state");
     expect(summary).toHaveProperty("totalCost");
     expect(summary).toHaveProperty("lastUpdated");
     // Must NOT have WorkflowSession properties
@@ -210,14 +217,14 @@ describe("SessionManager.list()", () => {
     expect(names).toContain("Beta");
   });
 
-  it("defaults lifecycle state to 'new' for sessions with state", () => {
+  it("defaults lifecycle state to 'active' for new sessions", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     mgr.create("plans/test.md");
 
     const result = mgr.list();
-    expect(result.sessions[0].lifecycleState).toBe("new");
+    expect(result.sessions[0].state).toBe("active");
   });
 
   it("handles sessions without lifecycle state gracefully", () => {
@@ -230,8 +237,8 @@ describe("SessionManager.list()", () => {
 
     expect(result.sessions).toHaveLength(1);
     expect(result.sessions[0].planPath).toBe("plans/legacy.md");
-    // Should default to "new" or whatever sensible default
-    expect(result.sessions[0].lifecycleState).toBe("new");
+    // Should default to "active"
+    expect(result.sessions[0].state).toBe("active");
   });
 
   it("passes through errors from persistence layer", () => {
@@ -252,6 +259,20 @@ describe("SessionManager.list()", () => {
     expect(result.sessions).toHaveLength(0);
     expect(result.errors.length).toBeGreaterThan(0);
   });
+
+  it("populates state cache on list", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+
+    // Create a second manager to test cache population from disk
+    const mgr2 = createSessionManager(makeDeps(baseDir));
+    expect(mgr2.getState(id)).toBeNull(); // not in cache yet
+
+    mgr2.list(); // populates cache
+    expect(mgr2.getState(id)).toBe("active");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -264,10 +285,10 @@ describe("SessionManager.updateState()", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
+    mgr.updateState(id, "paused");
 
     const persisted = readSession(id, baseDir);
-    expect(persisted!.sessionLifecycleState).toBe("plan:imported");
+    expect(persisted!.state).toBe("paused");
   });
 
   it("throws on invalid transition", () => {
@@ -275,29 +296,30 @@ describe("SessionManager.updateState()", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    // "new" -> "work:active" is not a valid transition
-    expect(() => mgr.updateState(id, "work:active")).toThrow();
+    mgr.updateState(id, "completed");
+
+    // "completed" -> "active" is not a valid transition
+    expect(() => mgr.updateState(id, "active")).toThrow();
   });
 
   it("throws when session does not exist", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    expect(() => mgr.updateState("non-existent", "plan:draft")).toThrow();
+    expect(() => mgr.updateState("non-existent", "paused")).toThrow();
   });
 
-  it("allows valid multi-step transitions", () => {
+  it("allows valid pause/resume cycle", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    // new -> plan:imported -> plan:approved -> work:active
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
+    // active -> paused -> active
+    mgr.updateState(id, "paused");
+    mgr.updateState(id, "active");
 
     const persisted = readSession(id, baseDir);
-    expect(persisted!.sessionLifecycleState).toBe("work:active");
+    expect(persisted!.state).toBe("active");
   });
 
   it("updates lastUpdated timestamp", () => {
@@ -308,142 +330,94 @@ describe("SessionManager.updateState()", () => {
     const beforeUpdate = readSession(id, baseDir)!.lastUpdated;
 
     // Small delay to ensure different timestamp
-    mgr.updateState(id, "plan:imported");
+    mgr.updateState(id, "paused");
 
     const afterUpdate = readSession(id, baseDir)!.lastUpdated;
     expect(afterUpdate >= beforeUpdate).toBe(true);
   });
+
+  it("updates state cache on updateState", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    expect(mgr.getState(id)).toBe("active");
+
+    mgr.updateState(id, "paused");
+    expect(mgr.getState(id)).toBe("paused");
+
+    mgr.updateState(id, "active");
+    expect(mgr.getState(id)).toBe("active");
+  });
 });
 
 // ---------------------------------------------------------------------------
-// trash()
+// delete()
 // ---------------------------------------------------------------------------
 
-describe("SessionManager.trash()", () => {
-  it("transitions session to 'trashed' state", () => {
+describe("SessionManager.delete()", () => {
+  it("removes session files from disk", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    // new -> plan:draft (has trashed as valid target)
-    mgr.updateState(id, "plan:draft");
-    mgr.trash(id);
+    expect(readSession(id, baseDir)).not.toBeNull();
 
-    const persisted = readSession(id, baseDir);
-    expect(persisted!.sessionLifecycleState).toBe("trashed");
+    mgr.delete(id);
+
+    expect(readSession(id, baseDir)).toBeNull();
   });
 
-  it("persists the trashed state to disk", () => {
+  it("removes session from cache", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:draft");
-    mgr.trash(id);
+    expect(mgr.getState(id)).toBe("active");
 
-    // Re-read from disk to verify persistence
-    const persisted = readSession(id, baseDir);
-    expect(persisted).not.toBeNull();
-    expect(persisted!.sessionLifecycleState).toBe("trashed");
+    mgr.delete(id);
+    expect(mgr.getState(id)).toBeNull();
   });
 
-  it("throws when session is in a terminal state (already trashed)", () => {
+  it("removes session from list", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:draft");
-    mgr.trash(id);
+    expect(mgr.list().sessions.find((s) => s.id === id)).toBeTruthy();
 
-    // Already trashed — terminal state, no outbound transitions
-    expect(() => mgr.trash(id)).toThrow();
+    mgr.delete(id);
+    expect(mgr.list().sessions.find((s) => s.id === id)).toBeUndefined();
   });
 
-  it("throws when session does not exist", () => {
+  it("works from any lifecycle state", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    expect(() => mgr.trash("non-existent")).toThrow();
-  });
-
-  it("works from various lifecycle states", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    // From plan:imported
+    // From active
     const id1 = mgr.create("plans/a.md");
-    mgr.updateState(id1, "plan:imported");
-    mgr.trash(id1);
-    expect(readSession(id1, baseDir)!.sessionLifecycleState).toBe("trashed");
+    mgr.delete(id1);
+    expect(readSession(id1, baseDir)).toBeNull();
 
-    // From work:active
+    // From paused
     const id2 = mgr.create("plans/b.md");
-    mgr.updateState(id2, "plan:imported");
-    mgr.updateState(id2, "plan:approved");
-    mgr.updateState(id2, "work:active");
-    mgr.trash(id2);
-    expect(readSession(id2, baseDir)!.sessionLifecycleState).toBe("trashed");
+    mgr.updateState(id2, "paused");
+    mgr.delete(id2);
+    expect(readSession(id2, baseDir)).toBeNull();
 
     // From completed
     const id3 = mgr.create("plans/c.md");
-    mgr.updateState(id3, "plan:imported");
-    mgr.updateState(id3, "plan:approved");
-    mgr.updateState(id3, "work:active");
     mgr.updateState(id3, "completed");
-    mgr.trash(id3);
-    expect(readSession(id3, baseDir)!.sessionLifecycleState).toBe("trashed");
+    mgr.delete(id3);
+    expect(readSession(id3, baseDir)).toBeNull();
   });
-});
 
-// ---------------------------------------------------------------------------
-// archive()
-// ---------------------------------------------------------------------------
-
-describe("SessionManager.archive()", () => {
-  it("transitions session to 'archived' state from completed", () => {
+  it("does not throw for non-existent session (no files to delete)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.updateState(id, "completed");
-    mgr.archive(id);
-
-    const persisted = readSession(id, baseDir);
-    expect(persisted!.sessionLifecycleState).toBe("archived");
-  });
-
-  it("transitions session to 'archived' from work:paused", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
-    mgr.updateState(id, "work:paused");
-    mgr.archive(id);
-
-    const persisted = readSession(id, baseDir);
-    expect(persisted!.sessionLifecycleState).toBe("archived");
-  });
-
-  it("throws on invalid archive transition (e.g., from 'new')", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    // "new" -> "archived" is not valid
-    expect(() => mgr.archive(id)).toThrow();
-  });
-
-  it("throws when session does not exist", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    expect(() => mgr.archive("non-existent")).toThrow();
+    // Should not throw — no files to delete, just a no-op
+    expect(() => mgr.delete("non-existent")).not.toThrow();
   });
 });
 
@@ -612,116 +586,139 @@ describe("SessionManager.create() budget initialization from config", () => {
 });
 
 // ---------------------------------------------------------------------------
-// recoverStaleSessions() — chat:active recovery
+// recoverStaleSessions()
 // ---------------------------------------------------------------------------
 
 describe("SessionManager.recoverStaleSessions()", () => {
-  it("recovers chat:active sessions to completed (no live runner)", () => {
+  it("recovers active chat sessions to completed (no live runner)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    // Create a chat session and manually advance to chat:active
+    // Create a chat session (starts as active)
     const id = mgr.create("plans/test.md", "Chat Session", "chat");
-    mgr.updateState(id, "chat:active");
 
-    // Verify it's chat:active
+    // Verify it's active
     const before = readSession(id, baseDir);
-    expect(before!.sessionLifecycleState).toBe("chat:active");
+    expect(before!.state).toBe("active");
 
     // Simulate startup recovery
     const recovered = mgr.recoverStaleSessions();
     expect(recovered).toBeGreaterThanOrEqual(1);
 
     const after = readSession(id, baseDir);
-    expect(after!.sessionLifecycleState).toBe("completed");
+    expect(after!.state).toBe("completed");
   });
 
-  it("recovers chat:idle sessions to completed (no live runner)", () => {
+  it("recovers active work sessions to paused", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    // Create a chat session and advance to chat:idle
-    const id = mgr.create("plans/test.md", "Idle Chat", "chat");
-    mgr.updateState(id, "chat:active");
-    mgr.updateState(id, "chat:idle");
-
-    const before = readSession(id, baseDir);
-    expect(before!.sessionLifecycleState).toBe("chat:idle");
-
-    const recovered = mgr.recoverStaleSessions();
-    expect(recovered).toBeGreaterThanOrEqual(1);
-
-    const after = readSession(id, baseDir);
-    expect(after!.sessionLifecycleState).toBe("completed");
-  });
-
-  it("still recovers work:active sessions to work:paused", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    // Create a work session and advance to work:active
+    // Create a work session (starts as active)
     const id = mgr.create("plans/test.md", "Work Session");
-    mgr.updateState(id, "plan:imported");
-    mgr.updateState(id, "plan:approved");
-    mgr.updateState(id, "work:active");
 
     const recovered = mgr.recoverStaleSessions();
     expect(recovered).toBeGreaterThanOrEqual(1);
 
     const after = readSession(id, baseDir);
-    expect(after!.sessionLifecycleState).toBe("work:paused");
+    expect(after!.state).toBe("paused");
   });
 
-  it("recovers both chat:active and work:active in the same run", () => {
+  it("recovers both chat and work active sessions in the same run", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    // Create chat session -> chat:active
+    // Create chat session (active)
     const chatId = mgr.create("plans/chat.md", "Chat", "chat");
-    mgr.updateState(chatId, "chat:active");
 
-    // Create work session -> work:active
+    // Create work session (active)
     const workId = mgr.create("plans/work.md", "Work");
-    mgr.updateState(workId, "plan:imported");
-    mgr.updateState(workId, "plan:approved");
-    mgr.updateState(workId, "work:active");
 
     const recovered = mgr.recoverStaleSessions();
     expect(recovered).toBe(2);
 
-    expect(readSession(chatId, baseDir)!.sessionLifecycleState).toBe("completed");
-    expect(readSession(workId, baseDir)!.sessionLifecycleState).toBe("work:paused");
+    expect(readSession(chatId, baseDir)!.state).toBe("completed");
+    expect(readSession(workId, baseDir)!.state).toBe("paused");
+  });
+
+  it("does not recover paused or completed sessions", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const pausedId = mgr.create("plans/paused.md", "Paused");
+    mgr.updateState(pausedId, "paused");
+
+    const completedId = mgr.create("plans/completed.md", "Completed");
+    mgr.updateState(completedId, "completed");
+
+    const recovered = mgr.recoverStaleSessions();
+    expect(recovered).toBe(0);
+
+    expect(readSession(pausedId, baseDir)!.state).toBe("paused");
+    expect(readSession(completedId, baseDir)!.state).toBe("completed");
   });
 });
 
 describe("SessionManager.create() SessionKind parameter", () => {
-  it("defaults workflowType to 'work' when kind not specified", () => {
+  it("defaults kind to 'workflow' and command to 'work' when kind not specified", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
     const persisted = readSession(id, baseDir);
 
-    expect(persisted!.workflowType).toBe("work");
+    expect(persisted!.kind).toBe("workflow");
+    expect(persisted!.command).toBe("work");
   });
 
-  it("sets workflowType to 'work' for workflow kind", () => {
+  it("sets kind to 'workflow' and command to 'work' for workflow kind", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md", undefined, "workflow");
     const persisted = readSession(id, baseDir);
 
-    expect(persisted!.workflowType).toBe("work");
+    expect(persisted!.kind).toBe("workflow");
+    expect(persisted!.command).toBe("work");
   });
 
-  it("sets workflowType to 'chat' for chat kind", () => {
+  it("sets kind to 'chat' and command to 'chat' for chat kind", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md", "My Session", "chat");
     const persisted = readSession(id, baseDir);
 
-    expect(persisted!.workflowType).toBe("chat");
+    expect(persisted!.kind).toBe("chat");
+    expect(persisted!.command).toBe("chat");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getState() — state cache
+// ---------------------------------------------------------------------------
+
+describe("SessionManager.getState()", () => {
+  it("returns null for unknown session", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    expect(mgr.getState("non-existent")).toBeNull();
+  });
+
+  it("returns cached state after create", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    expect(mgr.getState(id)).toBe("active");
+  });
+
+  it("reflects state changes after updateState", () => {
+    const baseDir = makeTmpDir();
+    const mgr = createSessionManager(makeDeps(baseDir));
+
+    const id = mgr.create("plans/test.md");
+    mgr.updateState(id, "paused");
+    expect(mgr.getState(id)).toBe("paused");
   });
 });

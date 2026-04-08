@@ -10,7 +10,7 @@
  *   import { Log } from "../utils/log"
  *   const log = Log.create({ service: "session" })
  *   log.info("started")
- *   log.error("transition failed", { from: "work:paused", to: "completed" })
+ *   log.error("transition failed", { from: "paused", to: "completed" })
  *
  * Call `Log.init()` once at startup (before any logging).
  * Before init, messages go to stderr as a fallback.

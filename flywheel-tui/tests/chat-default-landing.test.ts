@@ -18,9 +18,8 @@ import type { CommandDispatchDeps } from "../src/tui/hooks/use-command-dispatch.
 function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDispatchDeps {
   return {
     agentState: () => "idle",
-    sessionStatus: () => "running",
+    sessionState: () => "active",
     setAgentState: mock(() => {}),
-    setSessionStatus: mock(() => {}),
     foregroundId: () => "chat-abc",
     inChat: () => true,
     registry: { runningCount: () => 0 } as any,
@@ -121,7 +120,7 @@ describe("Chat as Default Landing — unknown command toast", () => {
   it("unknown commands outside chat show updated toast text (no /chat reference)", async () => {
     const deps = createMockDeps({
       inChat: () => false,
-      sessionStatus: () => null,
+      sessionState: () => null,
     })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 

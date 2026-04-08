@@ -8,7 +8,6 @@ import {
 import { createQueue } from "../src/workflows/queue/queue";
 import type { Session } from "../src/orchestration/session/schemas";
 import type { OutputSnapshot } from "../src/orchestration/session/output-schemas";
-import type { CompletedStepResult } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,11 +19,12 @@ function minimalSession(overrides?: Partial<Session>): Session {
     label: "plans/test.md",
     planPath: "plans/test.md",
     lastUpdated: new Date().toISOString(),
-    sessionLifecycleState: "work:active",
+    state: "active",
     worktreePath: "/tmp/worktrees/test",
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-    workflowType: "work",
+    kind: "workflow" as const,
+    command: "work" as const,
     ...overrides,
   };
 }
@@ -66,20 +66,8 @@ function makeMockDeps(overrides?: Partial<SessionOrchestratorDeps>): {
       updateState: (id: string, newState: string) => {
         calls.push(`manager.updateState:${id}:${newState}`);
       },
-      trash: (id: string) => {
-        calls.push(`manager.trash:${id}`);
-      },
-      archive: (id: string) => {
-        calls.push(`manager.archive:${id}`);
-      },
-    },
-    worktreeManager: {
-      removeForSession: async (id: string) => {
-        calls.push(`worktreeManager.removeForSession:${id}`);
-      },
-      cleanupTrashed: async (id: string) => {
-        calls.push(`worktreeManager.cleanupTrashed:${id}`);
-        return true;
+      delete: (id: string) => {
+        calls.push(`manager.delete:${id}`);
       },
     },
     createQueuePersistence: (sessionId: string) => ({
@@ -202,109 +190,17 @@ describe("SessionOrchestrator.handleResumeSession", () => {
 });
 
 // ---------------------------------------------------------------------------
-// handleAutoArchive
-// ---------------------------------------------------------------------------
-
-describe("SessionOrchestrator.handleAutoArchive", () => {
-  it("archives when ship stage is present and completed", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    const stepResults: CompletedStepResult[] = [
-      { workflow: "work", completed: true },
-      { workflow: "review", completed: true },
-      { workflow: "ship", completed: true },
-    ];
-
-    await orchestrator.handleAutoArchive("session-1", stepResults);
-
-    expect(calls).toContain("manager.updateState:session-1:completed");
-    expect(calls).toContain("manager.archive:session-1");
-    expect(calls).toContain("worktreeManager.removeForSession:session-1");
-    expect(calls).toContain("refreshList");
-  });
-
-  it("does NOT archive when ship stage is not present", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    const stepResults: CompletedStepResult[] = [
-      { workflow: "work", completed: true },
-      { workflow: "review", completed: true },
-    ];
-
-    await orchestrator.handleAutoArchive("session-1", stepResults);
-
-    expect(calls).toContain("manager.updateState:session-1:completed");
-    expect(calls).not.toContain("manager.archive:session-1");
-    expect(calls).not.toContain("worktreeManager.removeForSession:session-1");
-    expect(calls).toContain("refreshList");
-  });
-
-  it("does NOT archive when ship stage is present but not completed", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    const stepResults: CompletedStepResult[] = [
-      { workflow: "work", completed: true },
-      { workflow: "ship", completed: false, reason: "cancelled" },
-    ];
-
-    await orchestrator.handleAutoArchive("session-1", stepResults);
-
-    expect(calls).toContain("manager.updateState:session-1:completed");
-    expect(calls).not.toContain("manager.archive:session-1");
-    expect(calls).toContain("refreshList");
-  });
-
-  it("works without worktreeManager (optional)", async () => {
-    const { deps, calls } = makeMockDeps();
-    deps.worktreeManager = undefined;
-    const orchestrator = createSessionOrchestrator(deps);
-
-    const stepResults: CompletedStepResult[] = [
-      { workflow: "ship", completed: true },
-    ];
-
-    await orchestrator.handleAutoArchive("session-1", stepResults);
-
-    expect(calls).toContain("manager.updateState:session-1:completed");
-    expect(calls).toContain("manager.archive:session-1");
-    expect(calls).not.toContain("worktreeManager.removeForSession:session-1");
-    expect(calls).toContain("refreshList");
-  });
-
-  it("always calls refreshList", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleAutoArchive("session-1", []);
-
-    expect(calls).toContain("refreshList");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // handleDeleteSession
 // ---------------------------------------------------------------------------
 
 describe("SessionOrchestrator.handleDeleteSession", () => {
-  it("trashes the session via manager", async () => {
+  it("deletes the session via manager.delete()", async () => {
     const { deps, calls } = makeMockDeps();
     const orchestrator = createSessionOrchestrator(deps);
 
     await orchestrator.handleDeleteSession("session-1");
 
-    expect(calls).toContain("manager.trash:session-1");
-  });
-
-  it("cleans up worktree after trashing", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(calls).toContain("worktreeManager.cleanupTrashed:session-1");
+    expect(calls).toContain("manager.delete:session-1");
   });
 
   it("calls refreshList after deletion", async () => {
@@ -316,23 +212,12 @@ describe("SessionOrchestrator.handleDeleteSession", () => {
     expect(calls).toContain("refreshList");
   });
 
-  it("trash comes before cleanup, deleteFiles, and refreshList", async () => {
+  it("delete comes before refreshList", async () => {
     const order: string[] = [];
     const { deps } = makeMockDeps();
 
-    deps.manager.trash = (id: string) => {
-      order.push("trash");
-    };
-    deps.worktreeManager = {
-      removeForSession: async () => {},
-      cleanupTrashed: async (id: string) => {
-        order.push("cleanup");
-        return true;
-      },
-    };
-    deps.deleteSessionFiles = (id: string) => {
-      order.push("deleteFiles");
-      return { deleted: [], errors: [] };
+    deps.manager.delete = (id: string) => {
+      order.push("delete");
     };
     deps.refreshList = () => {
       order.push("refreshList");
@@ -341,43 +226,7 @@ describe("SessionOrchestrator.handleDeleteSession", () => {
     const orchestrator = createSessionOrchestrator(deps);
     await orchestrator.handleDeleteSession("session-1");
 
-    expect(order).toEqual(["trash", "cleanup", "deleteFiles", "refreshList"]);
-  });
-
-  it("works without worktreeManager (optional)", async () => {
-    const { deps, calls } = makeMockDeps();
-    deps.worktreeManager = undefined;
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(calls).toContain("manager.trash:session-1");
-    expect(calls).not.toContain("worktreeManager.cleanupTrashed:session-1");
-    expect(calls).toContain("refreshList");
-  });
-
-  it("calls deleteSessionFiles when provided", async () => {
-    const { deps, calls } = makeMockDeps();
-    deps.deleteSessionFiles = (id: string) => {
-      calls.push(`deleteSessionFiles:${id}`);
-      return { deleted: ["a.json", "b.json"], errors: [] };
-    };
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(calls).toContain("deleteSessionFiles:session-1");
-  });
-
-  it("works without deleteSessionFiles (optional)", async () => {
-    const { deps, calls } = makeMockDeps();
-    // deleteSessionFiles is not set — should not crash
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(calls).toContain("manager.trash:session-1");
-    expect(calls).toContain("refreshList");
+    expect(order).toEqual(["delete", "refreshList"]);
   });
 });
 
@@ -391,7 +240,6 @@ describe("SessionOrchestrator dependency injection", () => {
     const orchestrator = createSessionOrchestrator(deps);
 
     expect(typeof orchestrator.handleResumeSession).toBe("function");
-    expect(typeof orchestrator.handleAutoArchive).toBe("function");
     expect(typeof orchestrator.handleDeleteSession).toBe("function");
   });
 

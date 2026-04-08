@@ -5,18 +5,17 @@
  * Delegates all chat subprocess logic to createChatSession(). Adds:
  * 1. SessionRunner interface (sessionId, abort, dispose, injectMessage)
  * 2. Output persistence via OutputFlusher
- * 3. State transitions (chat:active / chat:idle via safeUpdateState)
+ * 3. State transitions (active / paused via updateState)
  * 4. Shared session infra lifecycle (budget, traces, transcripts)
  */
 
 import { createChatSession, type ChatSession, type ChatCallbacks } from "./chat-session"
 import { createSessionInfra } from "./session/create-session-infra"
 import { createOutputPersistence, type OutputFlusher } from "./session/output-persistence"
-import { safeUpdateState } from "./session/safe-transition"
 import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import type { SessionRunner } from "./session-runner"
-import type { SessionLifecycleState } from "./session/state-machine"
+import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/loader"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
 import type { AnyBlock } from "../infra/output-blocks"
@@ -38,7 +37,7 @@ export interface ChatRunnerCallbacks {
 export interface ChatRunnerDeps {
   sessionId: string
   projectCwd: string
-  updateState: (id: string, state: SessionLifecycleState) => void
+  updateState: (id: string, state: SessionState) => void
   callbacks: ChatRunnerCallbacks
   initialMessage?: string
   /** Output blocks from a previous session (for resume — prepended to new output). */
@@ -108,9 +107,9 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     onWaiting: (waiting) => {
       // Only transition when state actually changes to avoid noisy self-transition warnings
       if (waiting && lastWaiting !== true) {
-        safeUpdateState(updateState, sessionId, "chat:active")
+        updateState(sessionId, "active")
       } else if (!waiting && lastWaiting !== false) {
-        safeUpdateState(updateState, sessionId, "chat:idle")
+        updateState(sessionId, "paused")
       }
       lastWaiting = waiting
     },
@@ -137,7 +136,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   }
 
   function injectMessage(text: string): boolean {
-    safeUpdateState(updateState, sessionId, "chat:active")
+    updateState(sessionId, "active")
     chatSession.send(text)
 
     // Auto-name the session from the first user message

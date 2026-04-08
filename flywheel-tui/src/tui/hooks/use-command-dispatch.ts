@@ -1,14 +1,14 @@
 import type { Accessor } from "solid-js"
 import type { SessionRegistry } from "../../orchestration/session-registry.js"
-import type { AgentState, SessionStatus } from "./use-workflow-lifecycle.js"
+import type { AgentState } from "./use-workflow-lifecycle.js"
+import type { SessionState } from "../../orchestration/session/state-machine.js"
 import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "./command-registry.js"
 
 export interface CommandDispatchDeps {
   agentState: Accessor<AgentState>
-  sessionStatus: Accessor<SessionStatus>
+  sessionState: () => SessionState | null
   setAgentState: (state: AgentState) => void
-  setSessionStatus: (status: SessionStatus) => void
   foregroundId: Accessor<string | undefined>
   inChat: Accessor<boolean>
   registry: SessionRegistry
@@ -97,13 +97,13 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     }
 
     // Workflow session: non-command text steers the worker or resumes from pause
-    if (deps.sessionStatus() === "running" || deps.sessionStatus() === "paused") {
+    const state = deps.sessionState()
+    if (state === "active" || state === "paused") {
       const fgId = deps.foregroundId()
       if (fgId && !trimmed.startsWith("/")) {
-        if (deps.sessionStatus() === "paused") {
+        if (state === "paused" && deps.registry.has(fgId)) {
           deps.registry.cancelShutdown(fgId)
           deps.setAgentState("active")
-          deps.setSessionStatus("running")
         }
         const injected = deps.registry.injectMessage(fgId, trimmed)
         if (injected) {
@@ -118,7 +118,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     void commandRegistry.dispatch(trimmed).then((handled) => {
       if (handled) return
 
-      if (deps.sessionStatus() === "paused") {
+      if (deps.sessionState() === "paused") {
         deps.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
       } else {
         deps.showToast({ message: `Unknown command. Try /new, /sessions, /sprint "desc", /work "desc", or /exit`, variant: "warning" })

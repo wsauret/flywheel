@@ -146,7 +146,7 @@ export function ToolBlock(props: ToolBlockProps) {
             <For each={contentLines()}>
               {(line) => (
                 <box paddingLeft={4} paddingRight={4}>
-                  <text fg={theme.textMuted}>{line}</text>
+                  <text fg={theme.text}>{line}</text>
                 </box>
               )}
             </For>

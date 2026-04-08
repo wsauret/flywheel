@@ -455,15 +455,15 @@ describe("StructuredOutputBuilder", () => {
   // ── Block cap ──
 
   describe("block cap", () => {
-    it("caps blocks at 5000, dropping oldest on overflow", () => {
+    it("caps blocks at 20000, dropping oldest on overflow", () => {
       const now = Date.now();
-      for (let i = 0; i < 5010; i++) {
+      for (let i = 0; i < 20_010; i++) {
         // Alternate text and excluded tool to prevent merging/grouping
         builder.pushText(`text-${i}\n`, now + i * 2);
         builder.pushTool("task_complete", `detail-${i}`, now + i * 2 + 1);
       }
       const blocks = builder.getBlocks();
-      expect(blocks.length).toBeLessThanOrEqual(5000);
+      expect(blocks.length).toBeLessThanOrEqual(20_000);
     });
   });
 
@@ -650,13 +650,13 @@ describe("StructuredOutputBuilder", () => {
       return (b as any).staleDetector;
     }
 
-    it("checkStaleAgents completes agents inactive for >5s", () => {
+    it("checkStaleAgents completes agents inactive for >30s", () => {
       builder.startAgent("stale-1", "Explore", "Searching", Date.now());
 
       // Simulate staleness by backdating the activity timestamp
       const detector = getDetector(builder);
       const activityMap = detector.agentLastActivity as Map<string, number>;
-      activityMap.set("stale-1", Date.now() - 6_000);
+      activityMap.set("stale-1", Date.now() - 31_000);
 
       // Trigger the check
       (detector as any).checkStaleAgents();
@@ -721,25 +721,68 @@ describe("StructuredOutputBuilder", () => {
       // Stale detector fires early with short duration
       const detector = getDetector(builder);
       const activityMap = detector.agentLastActivity as Map<string, number>;
-      activityMap.set("a1", Date.now() - 6_000);
+      activityMap.set("a1", Date.now() - 31_000);
       (detector as any).checkStaleAgents();
 
       let agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
       expect(agent.status).toBe("completed");
-      const staleDuration = agent.duration!;
 
-      // Children arrive after stale completion
+      // Children arrive after stale completion — should re-activate the agent
       builder.pushToolToAgent("a1", "Read", "file1.ts", now);
+
+      agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      expect(agent.status).toBe("active");
+
       builder.pushToolToAgent("a1", "Grep", "pattern", now);
 
       // tool_result arrives with accurate (longer) duration
-      builder.completeAgent("a1", 30_000);
+      builder.completeAgent("a1", 60_000);
 
       agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
       expect(agent.status).toBe("completed");
-      expect(agent.duration).toBe(30_000);
-      expect(agent.duration).toBeGreaterThan(staleDuration);
+      expect(agent.duration).toBe(60_000);
       expect(agent.children).toHaveLength(2);
+    });
+
+    it("new tool arriving re-activates a stale-completed agent", () => {
+      const now = Date.now();
+      builder.startAgent("a1", "Explore", "Searching", now);
+
+      // Stale detector fires
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
+      activityMap.set("a1", Date.now() - 31_000);
+      (detector as any).checkStaleAgents();
+
+      let agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      expect(agent.status).toBe("completed");
+
+      // New tool arrives — agent should re-activate
+      builder.pushToolToAgent("a1", "Read", "file.ts", now);
+      agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      expect(agent.status).toBe("active");
+      expect(agent.children).toHaveLength(1);
+    });
+
+    it("updateAgentLatestChild resets stale timer", () => {
+      builder.startAgent("a1", "Explore", "Searching", Date.now());
+
+      const detector = getDetector(builder);
+      const activityMap = detector.agentLastActivity as Map<string, number>;
+
+      // Backdate activity
+      activityMap.set("a1", Date.now() - 20_000);
+
+      // updateAgentLatestChild should reset the timer
+      builder.updateAgentLatestChild("a1", "Thinking: analyzing code");
+
+      // Activity timestamp should now be recent
+      expect(Date.now() - activityMap.get("a1")!).toBeLessThan(1000);
+
+      // Agent should still be active (not stale-completed)
+      (detector as any).checkStaleAgents();
+      const agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      expect(agent.status).toBe("active");
     });
 
     it("dispose clears stale check interval and maps", () => {

@@ -62,11 +62,11 @@ export class NdjsonPipeline {
     return blockId;
   }
 
-  completeDispatcher(): void {
+  completeDispatcher(description?: string): void {
     if (this._dispatcherBlockId) {
       const elapsed = Date.now() - this._dispatcherStartedAt;
       this.dispatcherParser.flush();
-      this.builder.completeAgent(this._dispatcherBlockId, elapsed);
+      this.builder.completeAgent(this._dispatcherBlockId, elapsed, description);
       this._dispatcherBlockId = null;
     }
   }
@@ -74,7 +74,7 @@ export class NdjsonPipeline {
   failDispatcher(reason: string): void {
     if (this._dispatcherBlockId) {
       this.dispatcherParser.flush();
-      this.builder.errorAgent(this._dispatcherBlockId, reason);
+      this.builder.errorAgent(this._dispatcherBlockId, `Unavailable: ${reason}. Using static prompt.`);
       this._dispatcherBlockId = null;
     }
   }
@@ -94,11 +94,11 @@ export class NdjsonPipeline {
     return blockId;
   }
 
-  completeEvaluator(): void {
+  completeEvaluator(description?: string): void {
     if (this._evaluatorBlockId) {
       const elapsed = Date.now() - this._evaluatorStartedAt;
       this.evaluatorParser.flush();
-      this.builder.completeAgent(this._evaluatorBlockId, elapsed);
+      this.builder.completeAgent(this._evaluatorBlockId, elapsed, description);
       this._evaluatorBlockId = null;
     }
   }
@@ -106,7 +106,7 @@ export class NdjsonPipeline {
   failEvaluator(reason: string): void {
     if (this._evaluatorBlockId) {
       this.evaluatorParser.flush();
-      this.builder.errorAgent(this._evaluatorBlockId, reason);
+      this.builder.errorAgent(this._evaluatorBlockId, `Failed: ${reason}. Skipping.`);
       this._evaluatorBlockId = null;
     }
   }

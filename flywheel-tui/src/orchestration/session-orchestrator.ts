@@ -1,27 +1,23 @@
 /**
  * Session Orchestrator
  *
- * Extracts lifecycle orchestration logic out of the shell: resume,
- * auto-archive, and delete operations. All dependencies are
- * injected via factory function — NO direct imports of shell/session/TUI.
+ * Extracts lifecycle orchestration logic out of the shell: resume
+ * and delete operations. All dependencies are injected via factory
+ * function — NO direct imports of shell/session/TUI.
  *
  * Factory pattern matching `createSessionManager(deps)`, `createWorktreeManager(deps)`.
  *
  * Usage:
  *   const orchestrator = createSessionOrchestrator({
  *     readSession, createOutputPersistence, fromSnapshot,
- *     manager, worktreeManager, refreshList,
+ *     manager, refreshList,
  *   });
  *   const result = await orchestrator.handleResumeSession(sessionId);
  */
 
 import type { OutputSnapshot } from "./session/output-schemas";
 import type { Session } from "./session/schemas";
-import type { Queue, CompletedStepResult } from "../workflows/queue/types";
-import type { DeleteResult } from "./session/persistence";
-import type { SessionLifecycleState } from "./session/state-machine";
-import type { WorktreeManager } from "./session/worktree-manager.js";
-import { safeUpdateState } from "./session/safe-transition";
+import type { Queue } from "../workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,8 +46,7 @@ interface QueuePersistenceReader {
 /** Minimal SessionManager interface — only the methods we need. */
 interface ManagerSubset {
   updateState(id: string, newState: string): void;
-  trash(id: string): void;
-  archive(id: string): void;
+  delete(id: string): void;
 }
 
 /** Dependencies injected into the session orchestrator. */
@@ -68,20 +63,11 @@ export interface SessionOrchestratorDeps {
   /** Validate and filter raw snapshot data. */
   fromSnapshot: (snapshots: unknown[]) => OutputSnapshot[];
 
-  /** Session manager for state transitions. */
+  /** Session manager for state transitions and deletion. */
   manager: ManagerSubset;
-
-  /** Optional worktree manager for git worktree lifecycle. */
-  worktreeManager?: Pick<WorktreeManager, "removeForSession" | "cleanupTrashed">;
 
   /** Callback to refresh the session list in the UI. */
   refreshList: () => void;
-
-  /**
-   * Delete session files and companions from disk.
-   * Returns `{ deleted, errors }` for partial failure reporting.
-   */
-  deleteSessionFiles?: (id: string, activeSessionId?: string | null) => DeleteResult;
 }
 
 /** The SessionOrchestrator interface. */
@@ -89,13 +75,7 @@ export interface SessionOrchestrator {
   /** Resume a session: load from disk, restore output blocks. */
   handleResumeSession(sessionId: string): Promise<ResumeResult | null>;
 
-  /** Auto-archive: transition to completed, optionally archive if ship step completed. */
-  handleAutoArchive(
-    sessionId: string,
-    stepResults: CompletedStepResult[],
-  ): Promise<void>;
-
-  /** Delete a session: trash, cleanup worktree, refresh list. */
+  /** Delete a session: remove files, cleanup, refresh list. */
   handleDeleteSession(sessionId: string): Promise<void>;
 }
 
@@ -116,7 +96,6 @@ export function createSessionOrchestrator(
     createOutputPersistence,
     fromSnapshot,
     manager,
-    worktreeManager,
     refreshList,
   } = deps;
 
@@ -165,62 +144,16 @@ export function createSessionOrchestrator(
     };
   }
 
-  async function handleAutoArchive(
-    sessionId: string,
-    stepResults: CompletedStepResult[],
-  ): Promise<void> {
-    // 1. Transition to completed — resilient to sessions stuck in intermediate states.
-    // If the session failed to transition through the proper lifecycle during startup
-    // (e.g., stuck in "new"), chain through the required intermediate states.
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "completed",
-    );
-
-    // 2. Check if ship step is present and completed
-    const shipResult = stepResults.find((r) => r.workflow === "ship");
-    const shouldArchive = shipResult !== undefined && shipResult.completed;
-
-    if (shouldArchive) {
-      // 3. Archive the session
-      try {
-        manager.archive(sessionId);
-      } catch {
-        // Best effort — don't crash on archive failure
-      }
-
-      // 4. Clean up worktree (optional)
-      if (worktreeManager) {
-        await worktreeManager.removeForSession(sessionId);
-      }
-    }
-
-    // 5. Always refresh the session list
-    refreshList();
-  }
-
   async function handleDeleteSession(sessionId: string): Promise<void> {
-    // 1. Trash the session (state transition)
-    manager.trash(sessionId);
+    // Delete session (files + cache + worktree cleanup)
+    manager.delete(sessionId);
 
-    // 2. Clean up worktree (optional)
-    if (worktreeManager) {
-      await worktreeManager.cleanupTrashed(sessionId);
-    }
-
-    // 3. Delete session files + companions from disk
-    if (deps.deleteSessionFiles) {
-      deps.deleteSessionFiles(sessionId);
-    }
-
-    // 4. Refresh the session list
+    // Refresh the session list
     refreshList();
   }
 
   return {
     handleResumeSession,
-    handleAutoArchive,
     handleDeleteSession,
   };
 }

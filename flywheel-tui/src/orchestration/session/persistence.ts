@@ -7,7 +7,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { SessionSchema, migrateSession, type Session } from "./schemas";
+import { SessionSchema, type Session } from "./schemas";
 import { writeFileAtomic } from "../../workflows/shared/atomic-write";
 import {
   SESSIONS_DIR,
@@ -69,15 +69,8 @@ export function readSession(id: string, baseDir: string): Session | null {
     }
 
     const raw = fs.readFileSync(filePath, "utf-8");
-    const json = JSON.parse(raw);
-    const migrated = migrateSession(json);
-    const result = SessionSchema.safeParse(migrated);
-
-    if (!result.success) {
-      return null;
-    }
-
-    return result.data;
+    const result = SessionSchema.safeParse(JSON.parse(raw));
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
@@ -157,9 +150,7 @@ export function listSessions(baseDir: string): SessionListResult {
       if (!fs.existsSync(filePath)) continue;
 
       const raw = fs.readFileSync(filePath, "utf-8");
-      const json = JSON.parse(raw);
-      const migrated = migrateSession(json);
-      const result = SessionSchema.safeParse(migrated);
+      const result = SessionSchema.safeParse(JSON.parse(raw));
 
       if (result.success) {
         sessions.push({ id, data: result.data });

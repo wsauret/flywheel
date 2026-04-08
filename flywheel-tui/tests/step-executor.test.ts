@@ -2378,11 +2378,11 @@ describe("VAL-EXEC-003: Failed step stops execution by default", () => {
 });
 
 // ===========================================================================
-// VAL-EXEC-005: Budget enforcement stops execution with 'budget_exhausted'
+// VAL-EXEC-005: Budget enforcement stops execution with 'budget'
 // ===========================================================================
 
-describe("VAL-EXEC-005: Budget enforcement stops execution with budget_exhausted", () => {
-  test("budget exhaustion returns reason 'budget_exhausted'", async () => {
+describe("VAL-EXEC-005: Budget enforcement stops execution with budget", () => {
+  test("budget exhaustion returns reason 'budget'", async () => {
     const budget = createLimitedBudget(1);
     const s1 = makeStep({ title: "Runs" });
     const s2 = makeStep({ title: "Blocked" });
@@ -2392,12 +2392,12 @@ describe("VAL-EXEC-005: Budget enforcement stops execution with budget_exhausted
     const result = await createStepExecutor(opts).run();
 
     expect(result.completed).toBe(false);
-    expect(result.reason).toBe("budget_exhausted");
+    expect(result.reason).toBe("budget");
     expect(queue.steps[0].status).toBe("completed");
     expect(queue.steps[1].status).toBe("pending");
   });
 
-  test("budget already exhausted before first step returns budget_exhausted", async () => {
+  test("budget already exhausted before first step returns budget", async () => {
     const budget = createExhaustedBudget();
     const queue = createQueue([makeStep({ title: "Never runs" })]);
 
@@ -2406,7 +2406,7 @@ describe("VAL-EXEC-005: Budget enforcement stops execution with budget_exhausted
 
     expect(result.completed).toBe(false);
     expect(result.stepsCompleted).toBe(0);
-    expect(result.reason).toBe("budget_exhausted");
+    expect(result.reason).toBe("budget");
   });
 
   test("no further steps execute after budget exhaustion", async () => {
@@ -2427,7 +2427,7 @@ describe("VAL-EXEC-005: Budget enforcement stops execution with budget_exhausted
     const result = await createStepExecutor(opts).run();
 
     expect(result.completed).toBe(false);
-    expect(result.reason).toBe("budget_exhausted");
+    expect(result.reason).toBe("budget");
     expect(workerCalls).toEqual(["Step 1"]); // only first step runs
   });
 });

@@ -19,7 +19,7 @@ import {
   deleteSessionWithCompanions,
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
-import { isValidTransition, type SessionLifecycleState } from "./state-machine";
+import { isValidTransition, type SessionState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/loader";
 import { Log } from "../../infra/log";
@@ -38,9 +38,11 @@ export interface SessionSummary {
   label: string;
   /** Actual file path to the plan, if one exists on disk. */
   planPath?: string;
-  lifecycleState: SessionLifecycleState;
-  /** Session type: "chat", "work", "plan", etc. */
-  workflowType: string;
+  state: SessionState;
+  /** Session kind: workflow or chat. */
+  kind: "workflow" | "chat";
+  /** The slash command that launched this session. */
+  command: string;
   totalCost: number;
   totalTokens: number;
   lastUpdated: string;
@@ -69,40 +71,38 @@ import type { SessionKind } from "./types";
 /** The SessionManager interface. */
 export interface SessionManager {
   /** Create a new session and persist it. Returns session ID. */
-  create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionLifecycleState): string;
+  create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string;
 
   /** List all sessions as summaries. */
   list(): SessionListResult;
 
   /** Update session lifecycle state with validation. */
-  updateState(id: string, newState: SessionLifecycleState): void;
+  updateState(id: string, newState: SessionState): void;
 
   /** Update session label (display name). */
   updateLabel(id: string, label: string): void;
 
-  /** Transition session to trashed state. */
-  trash(id: string): void;
-
-  /** Transition session to archived state. */
-  archive(id: string): void;
-
   /**
-   * Sweep trashed sessions: delete their files and companions from disk.
-   * Intended for fire-and-forget startup cleanup.
-   *
-   * @returns The number of trashed sessions cleaned up.
+   * Delete a session: remove files from disk, clear cache, clean up worktree.
+   * Immediate and permanent — no trash/archive intermediate state.
    */
-  sweepTrashed(): number;
+  delete(id: string): void;
 
   /**
-   * Recover stale `work:active` sessions that have no running queue execution.
-   * Transitions them to `work:paused` so they can be resumed.
+   * Recover stale `active` sessions that have no running queue execution.
+   * Transitions work sessions to `paused` and chat sessions to `completed`.
    *
-   * Intended for startup crash recovery — call BEFORE `sweepTrashed()`.
+   * Intended for startup crash recovery.
    *
    * @returns The number of sessions recovered.
    */
   recoverStaleSessions(): number;
+
+  /**
+   * Get the cached state for a session.
+   * Returns null if the session is not in the cache.
+   */
+  getState(id: string): SessionState | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +117,9 @@ export interface SessionManager {
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const { baseDir, worktreeManager } = deps;
   const config = deps.config ?? CONFIG_DEFAULTS;
+
+  // In-memory state cache for O(1) reads
+  const stateCache = new Map<string, SessionState>();
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -134,19 +137,19 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   }
 
   /**
-   * Get the current lifecycle state, defaulting to "new" for legacy sessions.
+   * Get the current lifecycle state, defaulting to "active" for legacy sessions.
    */
   function getLifecycleState(
-    session: { sessionLifecycleState?: SessionLifecycleState },
-  ): SessionLifecycleState {
-    return session.sessionLifecycleState ?? "new";
+    session: { state?: SessionState },
+  ): SessionState {
+    return session.state ?? "active";
   }
 
   // -------------------------------------------------------------------------
   // SessionManager methods
   // -------------------------------------------------------------------------
 
-  function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionLifecycleState): string {
+  function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string {
     const now = new Date().toISOString();
     const budget = config.budget;
 
@@ -158,24 +161,30 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       ? new Date(Date.now() + budget.max_wall_clock_minutes * 60_000).toISOString()
       : null;
 
+    const state: SessionState = (initialState ?? "active") as SessionState;
+
     const id = persistCreateSession(
       {
         label: name ?? planPath,
         planPath,
         lastUpdated: now,
-        sessionLifecycleState: (initialState ?? "new") as SessionLifecycleState,
+        state,
         name,
         createdAt: now,
+        kind: kind === "chat" ? "chat" : "workflow",
+        command: kind === "chat" ? "chat" : "work",
         budgetLimits: {
           max_invocations: budget.max_invocations,
           max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
           wall_clock_deadline: wallClockDeadline,
         },
         budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-        workflowType: kind === "chat" ? "chat" : "work",
       },
       baseDir,
     );
+
+    // Populate cache
+    stateCache.set(id, state);
 
     return id;
   }
@@ -183,25 +192,32 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   function list(): SessionListResult {
     const raw = listSessions(baseDir);
 
-    const sessions: SessionSummary[] = raw.sessions.map((entry) => ({
-      id: entry.id,
-      name: entry.data.name ?? "",
-      label: entry.data.label,
-      planPath: entry.data.planPath,
-      lifecycleState: getLifecycleState(entry.data),
-      workflowType: entry.data.workflowType ?? "work",
-      totalCost: entry.data.totalCost ?? entry.data.budgetUsage?.cost_usd ?? 0,
-      totalTokens: entry.data.budgetUsage?.tokens_used ?? 0,
-      lastUpdated: entry.data.lastUpdated,
-      createdAt: entry.data.createdAt,
-      repo: entry.data.repo,
-      branch: entry.data.branch,
-    }));
+    const sessions: SessionSummary[] = raw.sessions.map((entry) => {
+      const state = getLifecycleState(entry.data);
+      // Populate cache on list
+      stateCache.set(entry.id, state);
+
+      return {
+        id: entry.id,
+        name: entry.data.name ?? "",
+        label: entry.data.label,
+        planPath: entry.data.planPath,
+        state: state,
+        kind: entry.data.kind ?? "workflow",
+        command: entry.data.command ?? "work",
+        totalCost: entry.data.totalCost ?? entry.data.budgetUsage?.cost_usd ?? 0,
+        totalTokens: entry.data.budgetUsage?.tokens_used ?? 0,
+        lastUpdated: entry.data.lastUpdated,
+        createdAt: entry.data.createdAt,
+        repo: entry.data.repo,
+        branch: entry.data.branch,
+      };
+    });
 
     return { sessions, errors: raw.errors };
   }
 
-  function updateState(id: string, newState: SessionLifecycleState): void {
+  function updateState(id: string, newState: SessionState): void {
     const persisted = readOrThrow(id);
     const currentState = getLifecycleState(persisted);
 
@@ -211,11 +227,14 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       );
     }
 
-    updateSession(id, { sessionLifecycleState: newState }, baseDir);
+    updateSession(id, { state: newState }, baseDir);
+
+    // Update cache
+    stateCache.set(id, newState);
 
     // --- Worktree lifecycle side-effects (fire-and-forget) ---
     if (worktreeManager) {
-      if (newState === "work:active" && currentState === "work:paused") {
+      if (newState === "active" && currentState === "paused") {
         // Resuming from paused — switch to existing worktree
         worktreeManager.switchToSession(id).catch(() => {});
       }
@@ -230,54 +249,17 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     }
   }
 
-  function trash(id: string): void {
-    const persisted = readOrThrow(id);
-    const currentState = getLifecycleState(persisted);
+  function deleteSession(id: string): void {
+    // Delete session files + companions from disk
+    deleteSessionWithCompanions(id, baseDir);
 
-    if (!isValidTransition(currentState, "trashed")) {
-      throw new Error(
-        `Invalid state transition: ${currentState} -> trashed`,
-      );
-    }
+    // Remove from cache
+    stateCache.delete(id);
 
-    // Persist lastTrashedAt for grace-period worktree cleanup
-    const now = Date.now();
-    updateSession(
-      id,
-      { sessionLifecycleState: "trashed", lastTrashedAt: now },
-      baseDir,
-    );
-
-    // Notify worktree manager about trash (for cleanup scheduling)
+    // Clean up worktree if available (fire-and-forget)
     if (worktreeManager) {
-      worktreeManager.trashSession(id);
+      worktreeManager.cleanupTrashed(id).catch(() => {});
     }
-  }
-
-  function archive(id: string): void {
-    updateState(id, "archived");
-  }
-
-  function sweepTrashed(): number {
-    const { sessions } = listSessions(baseDir);
-    let swept = 0;
-
-    for (const entry of sessions) {
-      const state = entry.data.sessionLifecycleState;
-      if (state !== "trashed") continue;
-
-      // Delete session files + companions
-      deleteSessionWithCompanions(entry.id, baseDir);
-
-      // Also clean up worktree if available
-      if (worktreeManager) {
-        worktreeManager.cleanupTrashed(entry.id).catch(() => {});
-      }
-
-      swept++;
-    }
-
-    return swept;
   }
 
   function recoverStaleSessions(): number {
@@ -285,16 +267,15 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     let recovered = 0;
 
     for (const entry of sessions) {
-      const state = entry.data.sessionLifecycleState;
+      const state = getLifecycleState(entry.data);
 
-      let target: SessionLifecycleState | null = null;
-      if (state === "work:active") {
-        target = "work:paused";
-      } else if (state === "chat:active" || state === "chat:idle") {
-        target = "completed";
-      }
+      // Only active sessions with no running queue need recovery
+      if (state !== "active") continue;
 
-      if (!target) continue;
+      // Chat sessions → completed (no resume for chat)
+      // Work sessions → paused (can be resumed)
+      const isChat = entry.data.kind === "chat";
+      const target: SessionState = isChat ? "completed" : "paused";
 
       try {
         updateState(entry.id, target);
@@ -308,14 +289,17 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     return recovered;
   }
 
+  function getState(id: string): SessionState | null {
+    return stateCache.get(id) ?? null;
+  }
+
   return {
     create,
     list,
     updateState,
     updateLabel,
-    trash,
-    archive,
-    sweepTrashed,
+    delete: deleteSession,
     recoverStaleSessions,
+    getState,
   };
 }

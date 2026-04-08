@@ -237,10 +237,10 @@ describe("queue executor failure paths", () => {
     // Queue status paused
     expect(harness.queue.status).toBe("paused");
 
-    // queue:failed event with budget_exhausted reason
+    // queue:failed event with budget reason
     const queueFailed = harness.events.ofType("queue:failed");
     expect(queueFailed.length).toBeGreaterThanOrEqual(1);
-    expect(queueFailed.some((e) => e.reason.includes("budget_exhausted"))).toBe(true);
+    expect(queueFailed.some((e) => e.reason.includes("budget"))).toBe(true);
 
     // Result
     expect(result.completed).toBe(false);

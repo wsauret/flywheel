@@ -26,6 +26,7 @@ export interface NativeCheckResult {
   skipped?: boolean;
   skipReason?: string;
   discrepancy?: boolean;
+  reportedExitCode?: number;
 }
 
 export interface NativeVerificationResult {
@@ -220,6 +221,7 @@ async function runSingleCommand(
       exitCode,
       durationMs,
       discrepancy,
+      reportedExitCode: discrepancy ? reportedExitCode : undefined,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

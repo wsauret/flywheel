@@ -2,14 +2,11 @@
 // Command Extraction — handoff → DeclaredCommand[]
 // ---------------------------------------------------------------------------
 //
-// Thin adapter over `parseRawHandoff().commandsRun`. Lives in workflows/
-// because it depends on handoff-parse.ts (also in workflows/). Consumers
-// in orchestration/ import DeclaredCommand from native-verification.ts
-// (which is a type-only import with no layer violation).
+// Thin adapter over `parseRawHandoff().commandsRun`.
 // ---------------------------------------------------------------------------
 
 import { parseRawHandoff } from "./handoff-parse.js";
-import type { DeclaredCommand } from "../../../orchestration/engines/native-verification.js";
+import type { DeclaredCommand } from "../native-verification.js";
 
 /**
  * Extract declared commands from a raw handoff record.

@@ -3,15 +3,15 @@ import type { SessionManager } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { Accessor } from "solid-js"
 import type { AnyBlock } from "../types.js"
-import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
+import type { WorkflowResult } from "../../orchestration/workflow-runner.js"
 import { buildQueueForSlashCommand } from "../../orchestration/queue-builder.js"
 import { prepareWorkflowDeps } from "../../orchestration/engines/workflow-deps.js"
 import { loadResumeData, findResumableSession } from "../../orchestration/session-actions.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
+import { formatElapsed, formatCost, formatTokens } from "../format.js"
 import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from "../../orchestration/test-step.js"
 
 export type AgentState = "idle" | "active"
-export type SessionStatus = null | "running" | "paused" | "completed" | "error"
 
 /** Shared terminal title prefix used across TUI hooks. */
 export const TERMINAL_TITLE_PREFIX = "flywheel · "
@@ -23,7 +23,6 @@ export interface WorkflowLifecycleDeps {
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
   setAgentState: (state: AgentState) => void
-  setSessionStatus: (status: SessionStatus) => void
   setOutputBlocks: (blocks: AnyBlock[]) => void
   setSteps: (steps: import("../../orchestration/workflow-runner.js").StepState[]) => void
   setErrorMessage: (msg: string) => void
@@ -31,6 +30,8 @@ export interface WorkflowLifecycleDeps {
   setSessionTitle: (title: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
+  /** workStartTime accessor from metrics hook, for elapsed calculation. */
+  workStartTime: () => number
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }
 
@@ -60,8 +61,34 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     deps.setSessionTitle(title)
     deps.resetMetrics()
     deps.setAgentState("active")
-    deps.setSessionStatus("running")
     deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${terminalSuffix}`)
+  }
+
+  /** Handle workflow runner completion — update session manager and UI. */
+  function handleRunnerDone(id: string, result: WorkflowResult): void {
+    const totalElapsed = formatElapsed(Date.now() - deps.workStartTime())
+    if (result.completed) {
+      deps.manager.updateState(id, "completed")
+      deps.setStatusLine(`\u2713 ${result.stepsCompleted}/${result.stepsTotal} steps \u00b7 ${totalElapsed} \u00b7 ${formatCost(result.cost)} \u00b7 ${formatTokens(result.tokens)} tokens`)
+      deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}done`)
+    } else {
+      deps.manager.updateState(id, "paused")
+      deps.setStatusLine(`\u2717 ${result.reason ?? "stopped"} (${result.stepsCompleted}/${result.stepsTotal}) \u00b7 ${totalElapsed} \u00b7 ${formatCost(result.cost)}`)
+      deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}paused`)
+    }
+    deps.setAgentState("idle")
+    deps.refreshList()
+    deps.setForegroundId(undefined)
+  }
+
+  /** Handle workflow runner error — update session manager and UI. */
+  function handleRunnerError(id: string, err: unknown): void {
+    deps.manager.updateState(id, "paused")
+    deps.setErrorMessage(extractErrorMessage(err))
+    deps.setAgentState("idle")
+    deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}error`)
+    deps.refreshList()
+    deps.setForegroundId(undefined)
   }
 
   async function startWorkflow(command: string, description: string): Promise<void> {
@@ -74,13 +101,16 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     } catch (err) {
       deps.setErrorMessage(`Config error: ${extractErrorMessage(err)}`)
       deps.setAgentState("idle")
-      deps.setSessionStatus("error")
       return
     }
 
-    const sessionId = deps.manager.create(description, description, "workflow", "work:active")
+    const sessionId = deps.manager.create(description, description, "workflow", "active")
 
-    deps.registry.start({ sessionId, queue, description })
+    deps.registry.start({
+      sessionId, queue, description,
+      onRunnerDone: handleRunnerDone,
+      onRunnerError: handleRunnerError,
+    })
     deps.setForegroundId(sessionId)
   }
 
@@ -95,9 +125,13 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     resetUIState(description || "Resumed session", description || "resume")
     deps.setOutputBlocks(data.outputBlocks)
 
-    safeUpdateState((id, s) => deps.manager.updateState(id, s), sessionId, "work:active")
+    deps.manager.updateState(sessionId, "active")
 
-    deps.registry.start({ sessionId, queue: data.queue, description, priorBlocks: data.outputBlocks })
+    deps.registry.start({
+      sessionId, queue: data.queue, description, priorBlocks: data.outputBlocks,
+      onRunnerDone: handleRunnerDone,
+      onRunnerError: handleRunnerError,
+    })
     deps.setForegroundId(sessionId)
   }
 
@@ -105,9 +139,9 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     const fgId = deps.foregroundId()
     if (!fgId) return
     deps.registry.pause(fgId)
+    deps.manager.updateState(fgId, "paused")
     // Don't reset metrics — preserve token/cost display while paused
     deps.setAgentState("idle")
-    deps.setSessionStatus("paused")
     deps.showToast({ message: "Pausing after current step... (Esc to force stop)", variant: "info" })
   }
 
@@ -158,12 +192,11 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       workdir?.cleanup()
       deps.setErrorMessage(`Test step error: ${extractErrorMessage(err)}`)
       deps.setAgentState("idle")
-      deps.setSessionStatus("error")
       return
     }
 
     const testWorkdir = workdir
-    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, "workflow", "work:active")
+    const sessionId = deps.manager.create(`[test] ${stepDef.label}`, `[test] ${stepDef.label}`, "workflow", "active")
 
     deps.registry.start({
       sessionId,
@@ -171,6 +204,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       description: `[test] ${stepDef.label}`,
       subprocessCwd: testWorkdir.path,
       onComplete: () => testWorkdir.cleanup(),
+      onRunnerDone: handleRunnerDone,
+      onRunnerError: handleRunnerError,
     })
     deps.setForegroundId(sessionId)
   }

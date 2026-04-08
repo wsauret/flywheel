@@ -3,8 +3,8 @@
  *
  * Exercises:
  * 1. Create session via manager -> persist -> read back -> assert fields match
- * 2. Create session -> transition to work:active -> persist output blocks ->
- *    "interrupt" -> load via orchestrator.handleResumeSession -> assert restored
+ * 2. Create session -> transition to paused -> persist output blocks ->
+ *    load via orchestrator.handleResumeSession -> assert restored
  * 3. Budget continuity — create tracker -> add tokens/cost -> flush ->
  *    create new tracker with same sessionId -> assert values restored via session file
  */
@@ -20,7 +20,6 @@ import {
   type SessionManagerDeps,
 } from "../src/orchestration/session/manager";
 import { readSession } from "../src/orchestration/session/persistence";
-import { safeUpdateState } from "../src/orchestration/session/safe-transition";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 import { createQueuePersistence } from "../src/workflows/queue/persistence";
 import { createBudgetTracker } from "../src/orchestration/session/budget-tracker";
@@ -134,8 +133,9 @@ describe("session persistence roundtrip", () => {
     expect(session!.label).toBe("Test Session");
     expect(session!.name).toBe("Test Session");
     expect(session!.planPath).toBe("test plan");
-    expect(session!.sessionLifecycleState).toBe("new");
-    expect(session!.workflowType).toBe("work");
+    expect(session!.state).toBe("active");
+    expect(session!.command).toBe("work");
+    expect(session!.kind).toBe("workflow");
     expect(session!.budgetUsage).toEqual({
       invocations_used: 0,
       tokens_used: 0,
@@ -147,54 +147,36 @@ describe("session persistence roundtrip", () => {
     const found = sessions.find((s) => s.id === sessionId);
     expect(found).toBeTruthy();
     expect(found!.name).toBe("Test Session");
-    expect(found!.lifecycleState).toBe("new");
+    expect(found!.state).toBe("active");
   });
 
-  it("transitions through lifecycle states via safeUpdateState", () => {
+  it("transitions through lifecycle states via direct updateState", () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
     const sessionId = manager.create("plan", "Lifecycle Test", "work");
 
-    // Transition new -> work:active (chains through intermediate states)
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:active",
-    );
+    // Verify starts as active
+    const afterCreate = readSession(sessionId, baseDir);
+    expect(afterCreate!.state).toBe("active");
 
-    const afterActive = readSession(sessionId, baseDir);
-    expect(afterActive!.sessionLifecycleState).toBe("work:active");
-
-    // Transition work:active -> work:paused
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:paused",
-    );
+    // Transition active -> paused
+    manager.updateState(sessionId, "paused");
 
     const afterPaused = readSession(sessionId, baseDir);
-    expect(afterPaused!.sessionLifecycleState).toBe("work:paused");
-    expect(isResumable(afterPaused!.sessionLifecycleState!)).toBe(true);
+    expect(afterPaused!.state).toBe("paused");
+    expect(isResumable(afterPaused!.state!)).toBe(true);
 
-    // Transition work:paused -> work:active (resume)
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:active",
-    );
+    // Transition paused -> active (resume)
+    manager.updateState(sessionId, "active");
 
     const afterResume = readSession(sessionId, baseDir);
-    expect(afterResume!.sessionLifecycleState).toBe("work:active");
+    expect(afterResume!.state).toBe("active");
 
-    // Transition work:active -> completed
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "completed",
-    );
+    // Transition active -> completed
+    manager.updateState(sessionId, "completed");
 
     const afterComplete = readSession(sessionId, baseDir);
-    expect(afterComplete!.sessionLifecycleState).toBe("completed");
+    expect(afterComplete!.state).toBe("completed");
   });
 });
 
@@ -207,13 +189,8 @@ describe("session resume via orchestrator", () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
 
-    // 1. Create session and transition to work:active
+    // 1. Create session (starts as active)
     const sessionId = manager.create("plan", "Resume Test", "work");
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:active",
-    );
 
     // 2. Persist output blocks
     const blocks = makeTestBlocks();
@@ -231,17 +208,13 @@ describe("session resume via orchestrator", () => {
     });
     queuePersistence.save(queue);
 
-    // 4. "Interrupt" — transition to work:paused
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:paused",
-    );
+    // 4. "Interrupt" — transition to paused
+    manager.updateState(sessionId, "paused");
 
     // Verify session is resumable
     const session = readSession(sessionId, baseDir);
     expect(session).not.toBeNull();
-    expect(isResumable(session!.sessionLifecycleState!)).toBe(true);
+    expect(isResumable(session!.state!)).toBe(true);
 
     // 5. Resume via orchestrator
     let refreshCalled = false;
@@ -287,11 +260,6 @@ describe("session resume via orchestrator", () => {
     const manager = createSessionManager(makeDeps(baseDir));
 
     const sessionId = manager.create("plan", "No Queue", "work");
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:active",
-    );
 
     // Persist output but NOT queue
     const outputPersistence = createOutputPersistence({
@@ -300,11 +268,7 @@ describe("session resume via orchestrator", () => {
     });
     outputPersistence.save(makeTestBlocks());
 
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:paused",
-    );
+    manager.updateState(sessionId, "paused");
 
     const orchestrator = createSessionOrchestrator({
       readSession: (id) => readSession(id, baseDir),
@@ -328,33 +292,15 @@ describe("session resume via orchestrator", () => {
 
     // Create two sessions, both paused
     const id1 = manager.create("plan1", "First Session", "work");
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      id1,
-      "work:active",
-    );
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      id1,
-      "work:paused",
-    );
+    manager.updateState(id1, "paused");
 
     const id2 = manager.create("plan2", "Second Session", "work");
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      id2,
-      "work:active",
-    );
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      id2,
-      "work:paused",
-    );
+    manager.updateState(id2, "paused");
 
     // Find resumable sessions
     const { sessions } = manager.list();
     const resumable = sessions
-      .filter((s) => isResumable(s.lifecycleState))
+      .filter((s) => isResumable(s.state))
       .sort(
         (a, b) =>
           new Date(b.lastUpdated).getTime() -
@@ -364,7 +310,7 @@ describe("session resume via orchestrator", () => {
     expect(resumable).toHaveLength(2);
     // Most recent should be id2
     expect(resumable[0].id).toBe(id2);
-    expect(resumable[0].lifecycleState).toBe("work:paused");
+    expect(resumable[0].state).toBe("paused");
   });
 });
 
@@ -377,11 +323,6 @@ describe("budget continuity across session resume", () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
     const sessionId = manager.create("plan", "Budget Test", "work");
-    safeUpdateState(
-      (id, state) => manager.updateState(id, state),
-      sessionId,
-      "work:active",
-    );
 
     // Create budget tracker and simulate usage
     const tracker1 = createBudgetTracker({
@@ -424,10 +365,6 @@ describe("budget continuity across session resume", () => {
 
     // Create a new budget tracker with the same sessionId
     // (simulates what happens on resume — tracker reads from session.json)
-    // Note: budget tracker starts from 0 in-memory but the session file
-    // retains the previous usage, so the session file is the source of truth
-    // for total accumulated usage. The tracker's in-memory state tracks
-    // only the current run's incremental usage. The session file accumulates.
     const tracker2 = createBudgetTracker({
       sessionId,
       baseDir,
@@ -449,10 +386,6 @@ describe("budget continuity across session resume", () => {
     // Verify the session file has accumulated all usage
     const sessionAfter = readSession(sessionId, baseDir);
     expect(sessionAfter).not.toBeNull();
-    // The session file should contain the tracker2 values since
-    // budget tracker writes its own in-memory state (not cumulative across runs).
-    // The budget tracker persists its current in-memory totals to the session file.
-    // This is the expected behavior — the tracker handles one run's budget.
     expect(sessionAfter!.budgetUsage.cost_usd).toBeCloseTo(0.02, 4);
     expect(sessionAfter!.budgetUsage.tokens_used).toBe(600);
     expect(sessionAfter!.budgetUsage.invocations_used).toBe(1);

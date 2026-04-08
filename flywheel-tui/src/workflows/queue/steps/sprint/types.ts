@@ -8,7 +8,7 @@
 //   - SPRINT_HINT is a typed const literal
 // ---------------------------------------------------------------------------
 
-import type { FlywheelConfig } from "../../../../orchestration/config/schema.js";
+import type { SprintConfig } from "./config-schema.js";
 
 // ---------------------------------------------------------------------------
 // SPRINT_HINT — typed constant for dispatcher hint, scaffolding key,
@@ -21,7 +21,7 @@ export const SPRINT_HINT = "sprint" as const;
 // SprintConfig — derived from the config schema (single source of truth)
 // ---------------------------------------------------------------------------
 
-export type SprintConfig = FlywheelConfig["sprint"];
+export type { SprintConfig } from "./config-schema.js";
 
 // ---------------------------------------------------------------------------
 // SprintIterationRecord — one iteration of the sprint loop

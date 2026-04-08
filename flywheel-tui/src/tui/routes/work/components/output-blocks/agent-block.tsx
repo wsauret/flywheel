@@ -59,21 +59,31 @@ export function AgentBlock(props: AgentBlockProps) {
 
   const toolCount = () => props.block.children.length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
-  const summary = () => `${toolCount()} tools${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`
+  const descriptionText = () => {
+    const d = props.block.description
+    // Only show description in completed/paused state if it differs from the initial active-state label
+    const isInitial = d === "Analyzing step and crafting worker prompt" || d === "Checking output quality"
+    return (!isInitial && d) ? d : ""
+  }
+  const summary = () => {
+    const parts: string[] = []
+    const desc = descriptionText()
+    if (desc) parts.push(desc)
+    parts.push(`${toolCount()} tools`)
+    if (props.block.duration != null) parts.push(formatDuration(props.block.duration))
+    return parts.join(" · ")
+  }
 
   const isActive = () => props.block.status === "active"
   const visibleChildren = () => {
     const all = props.block.children
     if (!isActive() || showAll() || all.length <= MAX_VISIBLE_TOOLS) return all
-    // Show first (MAX - 1) + always the latest one so active tool is visible
-    const head = all.slice(0, MAX_VISIBLE_TOOLS - 1)
-    const last = all[all.length - 1]
-    return [...head, last]
+    // Show the most recent MAX_VISIBLE_TOOLS — older tools scroll off the top
+    return all.slice(-MAX_VISIBLE_TOOLS)
   }
   const hiddenCount = () => {
     const all = props.block.children
     if (!isActive() || showAll() || all.length <= MAX_VISIBLE_TOOLS) return 0
-    // head (MAX-1) + last (1) = MAX shown, rest hidden
     return all.length - MAX_VISIBLE_TOOLS
   }
 

@@ -142,8 +142,9 @@ describe("sprint hook wiring", () => {
     expect(escalationSteps.length).toBe(3);
     expect(escalationSteps.map((s) => s.type)).toEqual(["plan", "work", "review"]);
 
-    // Execution should have continued through escalation steps
-    expect(result.completed).toBe(true);
+    // Sprint pauses after exhausting iterations — escalation steps are pending for resume
+    expect(result.completed).toBe(false);
+    expect(escalationSteps.every((s) => s.status === "pending")).toBe(true);
   });
 
   // -------------------------------------------------------------------------

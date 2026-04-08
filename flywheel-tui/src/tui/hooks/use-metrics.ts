@@ -70,9 +70,16 @@ export function useMetrics(): MetricsHook {
   function stopTimer(): void { pauseTimer() }
 
   function resetMetrics(): void {
+    // Stop any running timer first — prevents pauseTimer() from re-accumulating
+    // stale time after we reset elapsedAccum to 0.
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer)
+      elapsedTimer = null
+    }
+    elapsedRunStart = 0
+    elapsedAccum = 0
     setWorkStartTime(Date.now())
     setElapsed(0)
-    elapsedAccum = 0
     setLiveTokens(0)
     setLiveCost(0)
     setLiveContextPercent(0)

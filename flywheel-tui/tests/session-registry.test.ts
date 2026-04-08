@@ -1,8 +1,12 @@
 /**
  * Tests for Session Registry — polymorphic entries (workflow + chat).
  *
- * Phase 4+5: Verifies that the registry handles both WorkflowSessionEntry
+ * Verifies that the registry handles both WorkflowSessionEntry
  * and ChatSessionEntry correctly via discriminated union on `kind`.
+ *
+ * After Phase 3: entries have no `status` or `result` fields. Lifecycle
+ * state flows through onRunnerDone/onRunnerError callbacks. Entries are
+ * removed synchronously when runners complete or error.
  */
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
@@ -54,14 +58,15 @@ describe("SessionRegistry — chat entries", () => {
     expect(entry!.kind).toBe("chat")
   })
 
-  it("chat entry is ChatSessionEntry (no steps, no result)", async () => {
+  it("chat entry is ChatSessionEntry (no steps, no result, no status)", async () => {
     await startTestChat()
 
     const entry = registry.get("chat-001")!
     expect(entry.kind).toBe("chat")
-    // Chat entries should NOT have steps or result
+    // Chat entries should NOT have steps, result, or status
     expect("steps" in entry).toBe(false)
     expect("result" in entry).toBe(false)
+    expect("status" in entry).toBe(false)
   })
 
   it("get() returns chat entry by session ID", async () => {
@@ -73,6 +78,12 @@ describe("SessionRegistry — chat entries", () => {
     expect(entry!.description).toBe("Chat")
   })
 
+  it("has() returns true for existing entries", async () => {
+    await startTestChat()
+    expect(registry.has("chat-001")).toBe(true)
+    expect(registry.has("nonexistent")).toBe(false)
+  })
+
   it("activeIds() includes chat session IDs", async () => {
     await startTestChat()
 
@@ -80,22 +91,22 @@ describe("SessionRegistry — chat entries", () => {
     expect(ids).toContain("chat-001")
   })
 
-  it("pause() is a no-op for chat entries", async () => {
+  it("pause() returns false for chat entries (no-op)", async () => {
     await startTestChat()
 
-    // Should not throw, should not change status
-    registry.pause("chat-001")
-    const entry = registry.get("chat-001")
-    expect(entry!.status).toBe("running")
+    const result = registry.pause("chat-001")
+    expect(result).toBe(false)
+    // Entry still exists (not removed)
+    expect(registry.get("chat-001")).toBeDefined()
   })
 
-  it("cancelShutdown() is a no-op for chat entries", async () => {
+  it("cancelShutdown() returns false for chat entries (no-op)", async () => {
     await startTestChat()
 
-    // Should not throw
-    registry.cancelShutdown("chat-001")
-    const entry = registry.get("chat-001")
-    expect(entry!.status).toBe("running")
+    const result = registry.cancelShutdown("chat-001")
+    expect(result).toBe(false)
+    // Entry still exists
+    expect(registry.get("chat-001")).toBeDefined()
   })
 
   it("abort() calls chatRunner.abort()", async () => {
@@ -172,20 +183,66 @@ describe("SessionRegistry — chat entries", () => {
     expect(registry.get("chat-001")!.modelActivity).toBe("thinking")
   })
 
-  it("onError callback sets error status", async () => {
-    await startTestChat()
+  it("onError callback sets errorMessage and removes entry via onRunnerError", async () => {
+    let errorCallbackFired = false
+    let errorSessionId: string | undefined
+    let errorValue: unknown
+
+    await registry.startChat({
+      sessionId: "chat-err",
+      createRunner: async (callbacks) => {
+        capturedCallbacks = callbacks
+        return createMockChatRunner("chat-err")
+      },
+      onRunnerError: (id, err) => {
+        errorCallbackFired = true
+        errorSessionId = id
+        errorValue = err
+      },
+    })
 
     capturedCallbacks!.onError("something broke")
-    const entry = registry.get("chat-001")!
-    expect(entry.status).toBe("error")
-    expect(entry.errorMessage).toBe("something broke")
+
+    // onRunnerError callback should have fired
+    expect(errorCallbackFired).toBe(true)
+    expect(errorSessionId).toBe("chat-err")
+    expect((errorValue as Error).message).toBe("something broke")
+
+    // Entry should be removed synchronously
+    expect(registry.get("chat-err")).toBeUndefined()
   })
 
-  it("onEnded callback sets completed status", async () => {
-    await startTestChat()
+  it("onEnded callback removes entry via onRunnerDone", async () => {
+    let doneCallbackFired = false
+    let doneSessionId: string | undefined
+
+    await registry.startChat({
+      sessionId: "chat-end",
+      createRunner: async (callbacks) => {
+        capturedCallbacks = callbacks
+        return createMockChatRunner("chat-end")
+      },
+      onRunnerDone: (id) => {
+        doneCallbackFired = true
+        doneSessionId = id
+      },
+    })
 
     capturedCallbacks!.onEnded()
-    const entry = registry.get("chat-001")!
-    expect(entry.status).toBe("completed")
+
+    // onRunnerDone callback should have fired
+    expect(doneCallbackFired).toBe(true)
+    expect(doneSessionId).toBe("chat-end")
+
+    // Entry should be removed synchronously
+    expect(registry.get("chat-end")).toBeUndefined()
+  })
+
+  it("runningCount() returns entries.size", async () => {
+    expect(registry.runningCount()).toBe(0)
+    await startTestChat()
+    expect(registry.runningCount()).toBe(1)
+    registry.remove("chat-001")
+    expect(registry.runningCount()).toBe(0)
   })
 })

@@ -6,11 +6,11 @@
  * shells out to the `wt` CLI (Worktrunk), mock implementation for tests.
  *
  * Key behaviors:
- * - plan:approved -> work:active  -> createForSession() (creates worktree)
- * - work:active -> work:paused    -> no action (Worktrunk preserves)
- * - work:paused -> work:active    -> switchToSession() (switches to existing)
- * - * -> archived                 -> optionally removeForSession() (configurable)
- * - * -> trashed                  -> trashSession() + cleanupTrashed() with grace period
+ * - active (new session)          -> createForSession() (creates worktree)
+ * - active -> paused              -> no action (Worktrunk preserves)
+ * - paused -> active              -> switchToSession() (switches to existing)
+ * - * -> completed                -> optionally removeForSession() (configurable)
+ * - trash                         -> trashSession() + cleanupTrashed() with grace period
  *
  * Graceful fallback: all operations return null/no-op when wt is unavailable.
  */
@@ -112,7 +112,7 @@ export interface TrashInfo {
 
 /** The WorktreeManager interface. */
 export interface WorktreeManager {
-  /** Create a worktree for a session entering work:active. Returns null on failure or disabled. */
+  /** Create a worktree for a session entering active state. Returns null on failure or disabled. */
   createForSession(
     sessionId: string,
     branchName: string,

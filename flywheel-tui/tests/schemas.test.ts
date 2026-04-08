@@ -13,7 +13,7 @@ import {
   SubprocessResultSchema,
   SubprocessFailureReasonSchema,
 } from "../src/orchestration/engines/subprocess/schemas";
-import { SessionSchema, migrateSession } from "../src/orchestration/session/schemas";
+import { SessionSchema } from "../src/orchestration/session/schemas";
 import {
   EvaluationCriteriaSchema,
   ToolScopingSchema,
@@ -793,7 +793,8 @@ describe("SessionSchema", () => {
       tokens_used: 0,
       cost_usd: 0,
     },
-    workflowType: "work" as const,
+    kind: "workflow" as const,
+    command: "work" as const,
   };
 
   it("parses a valid session", () => {
@@ -821,9 +822,15 @@ describe("SessionSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing workflowType", () => {
-    const { workflowType, ...noType } = validSession;
-    const result = SessionSchema.safeParse(noType);
+  it("rejects missing kind", () => {
+    const { kind, ...noKind } = validSession;
+    const result = SessionSchema.safeParse(noKind);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing command", () => {
+    const { command, ...noCommand } = validSession;
+    const result = SessionSchema.safeParse(noCommand);
     expect(result.success).toBe(false);
   });
 
@@ -1108,7 +1115,8 @@ describe("SessionSchema — budget fields", () => {
     lastUpdated: "2026-03-15T00:00:00Z",
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-    workflowType: "work" as const,
+    kind: "workflow" as const,
+    command: "work" as const,
   };
 
   const validLimits = {
@@ -1170,30 +1178,41 @@ describe("SessionSchema — budget fields", () => {
     expect(result.budgetLimits.max_invocations).toBe(100);
   });
 
-  it("accepts workflowType for each valid workflow", () => {
-    const types = ["work", "plan", "review", "ship", "debug", "research"] as const;
-    for (const wfType of types) {
+  it("accepts command for each valid command value", () => {
+    const commands = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate", "chat"] as const;
+    for (const cmd of commands) {
+      const kind = cmd === "chat" ? "chat" : "workflow";
       const result = SessionSchema.safeParse({
         ...validSession,
-        workflowType: wfType,
+        kind,
+        command: cmd,
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.workflowType).toBe(wfType);
+        expect(result.data.command).toBe(cmd);
+        expect(result.data.kind).toBe(kind);
       }
     }
   });
 
-  it("rejects invalid workflowType", () => {
+  it("rejects invalid command", () => {
     const result = SessionSchema.safeParse({
       ...validSession,
-      workflowType: "unknown",
+      command: "unknown",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid kind", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      kind: "unknown",
     });
     expect(result.success).toBe(false);
   });
 
   it("rejects missing budget fields", () => {
-    const { budgetLimits, budgetUsage, workflowType, ...noNewFields } = validSession;
+    const { budgetLimits, budgetUsage, kind, command, ...noNewFields } = validSession;
     const result = SessionSchema.safeParse(noNewFields);
     expect(result.success).toBe(false);
   });
@@ -1201,7 +1220,7 @@ describe("SessionSchema — budget fields", () => {
   it("accepts all fields together with optional fields", () => {
     const full = {
       ...validSession,
-      sessionLifecycleState: "work:active",
+      state: "active",
       name: "My session",
       createdAt: "2026-03-15T00:00:00Z",
       repo: "flywheel",
@@ -1211,7 +1230,8 @@ describe("SessionSchema — budget fields", () => {
       worktreePath: "/tmp/wt",
       budgetLimits: validLimits,
       budgetUsage: validUsage,
-      workflowType: "work",
+      kind: "workflow",
+      command: "work",
     };
     const result = SessionSchema.safeParse(full);
     expect(result.success).toBe(true);
@@ -1226,161 +1246,6 @@ describe("SessionSchema — budget fields", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// migrateSession — handles old format → new format
-// ---------------------------------------------------------------------------
-describe("migrateSession", () => {
-  const defaultBudgetLimits = {
-    max_invocations: 0,
-    max_tokens: null,
-    wall_clock_deadline: null,
-  };
-
-  const defaultBudgetUsage = {
-    invocations_used: 0,
-    tokens_used: 0,
-    cost_usd: 0,
-  };
-
-  const oldSession = {
-    planPath: "docs/plans/my-plan.md",
-    statePath: "docs/plans/my-plan.state.md",
-    contextPath: "docs/plans/my-plan.context.md",
-    currentStep: 0,
-    lastUpdated: "2026-03-15T00:00:00Z",
-    workflowId: "550e8400-e29b-41d4-a716-446655440000",
-  };
-
-  it("pre-existing session JSON without budget fields loads correctly after migration", () => {
-    const migrated = migrateSession(oldSession);
-    const result = SessionSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budgetLimits).toEqual(defaultBudgetLimits);
-      expect(result.data.budgetUsage).toEqual(defaultBudgetUsage);
-      expect(result.data.workflowType).toBe("work");
-    }
-  });
-
-  it("preserves existing fields through migration", () => {
-    const withOptionals = {
-      ...oldSession,
-      name: "My session",
-      totalCost: 2.5,
-      sessionLifecycleState: "work:active",
-    };
-    const migrated = migrateSession(withOptionals);
-    const result = SessionSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.name).toBe("My session");
-      expect(result.data.totalCost).toBe(2.5);
-      expect(result.data.sessionLifecycleState).toBe("work:active");
-    }
-  });
-
-  it("migrates old budgetConfig to new budgetLimits", () => {
-    const withBudget = {
-      ...oldSession,
-      budgetConfig: {
-        total_invocations_limit: 100,
-        total_invocations_used: 0,
-        total_token_budget: 500000,
-        total_tokens_used: 0,
-        wall_clock_deadline: null,
-      },
-      budgetUsed: {
-        total_invocations_limit: 100,
-        total_invocations_used: 52,
-        total_token_budget: 500000,
-        total_tokens_used: 320000,
-        wall_clock_deadline: null,
-      },
-      workflowType: "plan",
-    };
-    const migrated = migrateSession(withBudget);
-    const result = SessionSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budgetLimits.max_invocations).toBe(100);
-      expect(result.data.budgetLimits.max_tokens).toBe(500000);
-      expect(result.data.budgetUsage.invocations_used).toBe(52);
-      expect(result.data.budgetUsage.tokens_used).toBe(320000);
-      expect(result.data.workflowType).toBe("plan");
-    }
-  });
-
-  it("maps total_token_budget: 0 to max_tokens: null (unlimited)", () => {
-    const withZeroBudget = {
-      ...oldSession,
-      budgetConfig: {
-        total_invocations_limit: 0,
-        total_invocations_used: 0,
-        total_token_budget: 0,
-        total_tokens_used: 0,
-        wall_clock_deadline: null,
-      },
-    };
-    const migrated = migrateSession(withZeroBudget);
-    const result = SessionSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budgetLimits.max_tokens).toBeNull();
-    }
-  });
-
-  it("removes vestigial fields (statePath, contextPath, currentStep, workflowId)", () => {
-    const migrated = migrateSession(oldSession);
-    expect(migrated.statePath).toBeUndefined();
-    expect(migrated.contextPath).toBeUndefined();
-    expect(migrated.currentStep).toBeUndefined();
-    expect(migrated.workflowId).toBeUndefined();
-    // And the old budget fields
-    expect(migrated.budgetConfig).toBeUndefined();
-    expect(migrated.budgetUsed).toBeUndefined();
-  });
-
-  it("adds label defaulting to planPath for old sessions", () => {
-    const migrated = migrateSession(oldSession);
-    expect(migrated.label).toBe("docs/plans/my-plan.md");
-  });
-
-  it("returns a new object (does not mutate input)", () => {
-    const input = { ...oldSession };
-    const migrated = migrateSession(input);
-    expect(migrated).not.toBe(input);
-  });
-
-  it("result of migrating minimal session parses with SessionSchema", () => {
-    const migrated = migrateSession(oldSession);
-    const result = SessionSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
-  });
-
-  it("adds default budgetLimits, budgetUsage, and workflowType for old sessions", () => {
-    const migrated = migrateSession(oldSession);
-    expect(migrated.budgetLimits).toEqual(defaultBudgetLimits);
-    expect(migrated.budgetUsage).toEqual(defaultBudgetUsage);
-    expect(migrated.workflowType).toBe("work");
-  });
-
-  it("preserves new format fields when already present", () => {
-    const newFormatSession = {
-      label: "my-plan",
-      lastUpdated: "2026-03-15T00:00:00Z",
-      budgetLimits: { max_invocations: 50, max_tokens: 100000, wall_clock_deadline: null },
-      budgetUsage: { invocations_used: 10, tokens_used: 50000, cost_usd: 0.5 },
-      workflowType: "work",
-    };
-    const migrated = migrateSession(newFormatSession);
-    const result = SessionSchema.safeParse(migrated);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budgetLimits.max_invocations).toBe(50);
-      expect(result.data.budgetUsage.invocations_used).toBe(10);
-    }
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Integration — full data contract flow
@@ -1455,43 +1320,34 @@ describe("Integration — full data contract flow", () => {
     expect(result.files_to_review).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
   });
 
-  // --- 8.1f: Session with budget fields round-trips through migration ---
+  // --- 8.1f: Session with budget fields parses correctly ---
 
-  it("Session with old budget fields round-trips through migration", () => {
-    const sessionWithBudget = {
-      planPath: "docs/plans/integration-plan.md",
-      statePath: "docs/plans/integration-plan.state.md",
-      contextPath: "docs/plans/integration-plan.context.md",
-      currentStep: 1,
+  it("Session with budget fields parses correctly", () => {
+    const session = {
+      label: "integration test",
       lastUpdated: "2026-03-20T10:00:00Z",
-      workflowId: "550e8400-e29b-41d4-a716-446655440000",
-      budgetConfig: {
-        total_invocations_limit: 100,
-        total_invocations_used: 0,
-        total_token_budget: 500000,
-        total_tokens_used: 0,
+      budgetLimits: {
+        max_invocations: 100,
+        max_tokens: 500000,
         wall_clock_deadline: "2026-03-20T18:00:00Z",
       },
-      budgetUsed: {
-        total_invocations_limit: 100,
-        total_invocations_used: 52,
-        total_token_budget: 500000,
-        total_tokens_used: 320000,
-        wall_clock_deadline: "2026-03-20T18:00:00Z",
+      budgetUsage: {
+        invocations_used: 52,
+        tokens_used: 320000,
+        cost_usd: 1.5,
       },
-      workflowType: "work" as const,
+      kind: "workflow" as const,
+      command: "work" as const,
     };
 
-    // Migrate
-    const migrated = migrateSession(sessionWithBudget);
-    // Parse
-    const parsed = SessionSchema.safeParse(migrated);
+    const parsed = SessionSchema.safeParse(session);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.budgetLimits.max_invocations).toBe(100);
       expect(parsed.data.budgetUsage.invocations_used).toBe(52);
       expect(parsed.data.budgetUsage.tokens_used).toBe(320000);
-      expect(parsed.data.workflowType).toBe("work");
+      expect(parsed.data.command).toBe("work");
+      expect(parsed.data.kind).toBe("workflow");
     }
   });
 

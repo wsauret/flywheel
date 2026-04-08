@@ -23,7 +23,7 @@ import type {
 import { StaleAgentDetector } from "./stale-agent-detector.js";
 import { ContextGroupTracker, isContextTool } from "./context-group-tracker.js";
 
-const BLOCKS_CAP = 5000;
+const BLOCKS_CAP = 20_000;
 const AGENT_CHILDREN_CAP = 50;
 
 import type { ModelActivity } from "../events.js";
@@ -88,9 +88,9 @@ export class StructuredOutputBuilder {
     this.dirty = true;
   }
 
-  pushUserMessage(text: string, timestamp: number, pending?: boolean): void {
+  pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.blocks.push({ kind: "userMessage", content: text, timestamp, pending });
+    this.blocks.push({ kind: "userMessage", content: text, timestamp, pending, injected });
     this.dirty = true;
   }
 
@@ -183,11 +183,22 @@ export class StructuredOutputBuilder {
     }
     const latestChild = `${tool.name}: ${tool.detail}`;
     const description = `${tool.name}: ${tool.detail}`;
-    this.blocks[agentIdx] = { ...agent, children, latestChild, description };
-    this.markDirty();
-    if (agent.status === "active") {
-      this.staleDetector.trackActivity(agentId);
+
+    // Re-activate agents that were prematurely completed by the stale detector.
+    // The authoritative completion signal is the tool_result event, not the timeout.
+    // Don't set activeAgentId — this agent's tools arrive via explicit pushToolToAgent
+    // routing, and setting it would hijack unrelated top-level tools.
+    if (agent.status === "completed") {
+      this.blocks[agentIdx] = { ...agent, status: "active", children, latestChild, description };
+      this.staleDetector.trackSpawn(agentId);
+    } else {
+      this.blocks[agentIdx] = { ...agent, children, latestChild, description };
+      if (agent.status === "active") {
+        this.staleDetector.trackActivity(agentId);
+      }
     }
+
+    this.markDirty();
     this.onAgentActivity?.(agentId);
     return true;
   }
@@ -215,7 +226,7 @@ export class StructuredOutputBuilder {
     this.onAgentLifecycle?.("start", id);
   }
 
-  completeAgent(id: string, duration: number): void {
+  completeAgent(id: string, duration: number, description?: string): void {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
@@ -231,7 +242,12 @@ export class StructuredOutputBuilder {
     }
     if (agent.status !== "active") return;
 
-    this.blocks[idx] = { ...agent, status: "completed", duration };
+    this.blocks[idx] = {
+      ...agent,
+      status: "completed",
+      duration,
+      ...(description !== undefined ? { description } : {}),
+    };
     this.staleDetector.removeAgent(id);
     if (this.activeAgentId === id) {
       this.activeAgentId = null;
@@ -269,6 +285,7 @@ export class StructuredOutputBuilder {
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
     this.markDirty();
+    this.staleDetector.trackActivity(id);
     this.onAgentActivity?.(id);
   }
 

@@ -90,7 +90,7 @@ export function createSubprocessCallback(
     createNoActionObserver(),
   ])
 
-  return async (step: Step, prompt: string): Promise<SubprocessCallbackResult> => {
+  return async (step: Step, prompt: string, signal?: AbortSignal): Promise<SubprocessCallbackResult> => {
     // Reset observer state between steps so doom-loop history, consecutive
     // error counts, and no-action flags don't bleed across step boundaries.
     observerChain.reset()
@@ -185,6 +185,7 @@ export function createSubprocessCallback(
       handoffFileName: `${step.type}_${step.id}.json`,
       stdin: stdinContent,
       stdinPipe: useStdinPipe && stdinContent !== undefined,
+      signal,
       onTurnComplete,
       onSessionId: (id: string) => {
         capturedSubprocessSessionId.current = id

@@ -200,9 +200,10 @@ export async function executeStep(
       await persistQueue();
     }
 
-    // Spawn worker — race against abort signal
+    // Spawn worker — pass abort signal to kill subprocess, and race so we
+    // don't block waiting for the process to fully exit after SIGTERM.
     onSubprocessDispatched?.();
-    let workerOutput: WorkerOutput = await raceAbort(worker(step, currentPrompt), abortSignal);
+    let workerOutput: WorkerOutput = await raceAbort(worker(step, currentPrompt, abortSignal), abortSignal);
 
     // Read handoff (best-effort)
     let handoffData: Record<string, unknown> | null = null;

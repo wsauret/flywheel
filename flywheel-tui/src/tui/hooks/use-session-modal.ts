@@ -2,24 +2,22 @@
  * Session modal state and keyboard handling, extracted from shell.tsx.
  *
  * Manages the sessions modal overlay: open/close, cursor navigation,
- * and actions (view, resume, archive, delete).
+ * and actions (view, resume, delete).
  */
 
 import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
-import { loadSessionOutput, archiveSession, deleteSession } from "../../orchestration/session-actions.js"
+import { loadSessionOutput, deleteSession } from "../../orchestration/session-actions.js"
 import { formatCost } from "../format.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionManager, SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionRegistry } from "../../orchestration/session-registry.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { AnyBlock } from "../types.js"
-import type { SessionStatus } from "./use-workflow-lifecycle.js"
 
 /** Snapshot of UI state captured before viewing a completed session. */
 interface ViewSnapshot {
-  sessionStatus: SessionStatus
   outputBlocks: AnyBlock[]
   foregroundId: string | undefined
   sessionTitle: string
@@ -32,8 +30,6 @@ export interface SessionModalDeps {
   registry: SessionRegistry
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
-  sessionStatus: Accessor<SessionStatus>
-  setSessionStatus: (status: SessionStatus) => void
   outputBlocks: Accessor<AnyBlock[]>
   setOutputBlocks: (blocks: AnyBlock[]) => void
   sessionTitle: Accessor<string>
@@ -50,7 +46,7 @@ export interface SessionModalHook {
   sessionsModalOpen: Accessor<boolean>
   modalCursor: Accessor<number>
   modalConfirmDelete: Accessor<string | undefined>
-  /** Monotonically increasing counter — bumps on delete/archive to refresh modal snapshot. */
+  /** Monotonically increasing counter — bumps on delete to refresh modal snapshot. */
   modalRefreshTrigger: Accessor<number>
   /** True when the user is viewing a historical session and prior state can be restored. */
   isViewingSession: Accessor<boolean>
@@ -60,7 +56,6 @@ export interface SessionModalHook {
   handleModalKey(evt: any): void
   handleSessionView(sessionId: string): Promise<void>
   handleSessionResume(sessionId: string): void
-  handleSessionArchive(sessionId: string): void
   handleSessionDelete(sessionId: string): void
   /** Dismiss the viewed session and restore the UI state that existed before viewing. */
   dismissViewedSession(): void
@@ -108,7 +103,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     // where the user was (e.g. mid-chat), not to an intermediate viewed session.
     if (!priorState) {
       priorState = {
-        sessionStatus: deps.sessionStatus(),
         outputBlocks: deps.outputBlocks(),
         foregroundId: deps.foregroundId(),
         sessionTitle: deps.sessionTitle(),
@@ -126,9 +120,9 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       const cost = formatCost(session.totalCost)
       deps.setStatusLine(cost ? `Viewing session · ${cost}` : "Viewing session")
     }
-    deps.setForegroundId(undefined)
-    const isPaused = session?.lifecycleState === "work:paused" || session?.lifecycleState === "budget_exhausted"
-    deps.setSessionStatus(isPaused ? "paused" : "completed")
+    // Set foregroundId to the viewed session so sessionState() derives from the manager.
+    // This lets the UI show the session's state (paused/completed) without a separate signal.
+    deps.setForegroundId(sessionId)
   }
 
   function handleSessionResume(sessionId: string): void {
@@ -136,16 +130,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     priorState = undefined
     viewedSessionId = undefined
     deps.handleResume(sessionId)
-  }
-
-  function handleSessionArchive(sessionId: string): void {
-    try {
-      archiveSession(sessionId, deps.actionDeps)
-      setModalRefreshTrigger((n) => n + 1)
-      deps.showToast({ message: "Session archived", variant: "info" })
-    } catch (err) {
-      deps.showToast({ message: `Cannot archive: ${extractErrorMessage(err)}`, variant: "error" })
-    }
   }
 
   function handleSessionDelete(sessionId: string): void {
@@ -165,7 +149,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   /** Restore the UI state that existed before handleSessionView was called. */
   function restorePriorState(): void {
     if (priorState) {
-      deps.setSessionStatus(priorState.sessionStatus)
       deps.setOutputBlocks(priorState.outputBlocks)
       deps.setForegroundId(priorState.foregroundId)
       deps.setSessionTitle(priorState.sessionTitle)
@@ -203,25 +186,21 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
     if (evt.name === "return") {
       evt.preventDefault()
-      const isActive = (selected.lifecycleState === "work:active" || selected.lifecycleState === "chat:active" || selected.lifecycleState === "chat:idle") && deps.registry.get(selected.id)
+      const isActive = selected.state === "active" && deps.registry.get(selected.id)
       if (isActive) {
         setSessionsModalOpen(false)
         priorState = undefined
         viewedSessionId = undefined
         deps.switchForeground(selected.id)
-      } else if (selected.lifecycleState === "work:paused" || selected.lifecycleState === "budget_exhausted") {
-        handleSessionResume(selected.id)
       } else {
+        // Enter always views (read-only). Use 'r' to resume paused sessions.
         handleSessionView(selected.id)
       }
       return
     }
     if (evt.name === "r") {
-      if (selected.lifecycleState === "work:paused" || selected.lifecycleState === "budget_exhausted") { evt.preventDefault(); handleSessionResume(selected.id) }
+      if (selected.state === "paused") { evt.preventDefault(); handleSessionResume(selected.id) }
       return
-    }
-    if (evt.name === "a" && selected.lifecycleState === "completed") {
-      evt.preventDefault(); handleSessionArchive(selected.id); return
     }
     if (evt.name === "d" && selected.id !== deps.foregroundId()) {
       evt.preventDefault()
@@ -248,7 +227,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     handleModalKey,
     handleSessionView,
     handleSessionResume,
-    handleSessionArchive,
     handleSessionDelete,
     dismissViewedSession,
   }

@@ -15,29 +15,31 @@
 import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { SessionRegistry, ChatRegistryCallbacks } from "../../orchestration/session-registry.js"
-import type { SessionStatus } from "./use-workflow-lifecycle.js"
 import { TERMINAL_TITLE_PREFIX } from "./use-workflow-lifecycle.js"
-import type { MetricsHook } from "./use-metrics.js"
 import { createChatRunner } from "../../orchestration/chat-runner.js"
 import { createOutputPersistence } from "../../orchestration/session/output-persistence.js"
-import { safeUpdateState } from "../../orchestration/session/safe-transition.js"
+import { formatElapsed, formatCost, formatTokens } from "../format.js"
+import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { AnyBlock } from "../../infra/output-blocks.js"
 
 export interface ChatModeDeps {
   registry: SessionRegistry
   foregroundId: Accessor<string | undefined>
   setForegroundId: (id: string | undefined) => void
+  setAgentState: (state: import("./use-workflow-lifecycle.js").AgentState) => void
+  setErrorMessage: (msg: string) => void
   manager: {
     create(planPath: string, name?: string, kind?: string, initialState?: string): string
     updateState(id: string, state: string): void
     updateLabel(id: string, label: string): void
   }
   refreshList: () => void
-  setSessionStatus: (status: SessionStatus) => void
   setSessionTitle: (title: string) => void
   setStatusLine: (line: string) => void
   setTerminalTitle: (title: string) => void
   resetMetrics: () => void
+  /** workStartTime accessor from metrics hook, for elapsed calculation. */
+  workStartTime: () => number
   /** Project working directory — injected to avoid hardcoding process.cwd(). */
   projectCwd: string
 }
@@ -74,7 +76,6 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     chatReady = false
     pendingMessages = []
     setChatActive(true)
-    deps.setSessionStatus("running")
     deps.setSessionTitle("Chat")
     deps.setStatusLine("")
     deps.setTerminalTitle(opts?.priorBlocks ? `${TERMINAL_TITLE_PREFIX}chat (resumed)` : `${TERMINAL_TITLE_PREFIX}chat`)
@@ -88,6 +89,26 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
         sessionId,
         description: "Chat",
         priorBlocks: opts?.priorBlocks,
+        onRunnerDone: (id) => {
+          const totalElapsed = formatElapsed(Date.now() - deps.workStartTime())
+          const entry = deps.registry.get(id)
+          const tokens = entry?.tokens ?? 0
+          const cost = entry?.cost ?? 0
+          deps.manager.updateState(id, "completed")
+          deps.setStatusLine(`Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(cost)} \u00b7 ${formatTokens(tokens)} tokens`)
+          deps.setAgentState("idle")
+          deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}done`)
+          deps.refreshList()
+          deps.setForegroundId(undefined)
+        },
+        onRunnerError: (id, err) => {
+          deps.manager.updateState(id, "paused")
+          deps.setErrorMessage(extractErrorMessage(err))
+          deps.setAgentState("idle")
+          deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}error`)
+          deps.refreshList()
+          deps.setForegroundId(undefined)
+        },
         createRunner: (registryCallbacks: ChatRegistryCallbacks) =>
           createChatRunner({
             sessionId,
@@ -130,12 +151,12 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
       chatReady = false
       pendingMessages = []
       setChatActive(false)
-      deps.setSessionStatus("error")
+      deps.setErrorMessage("Chat failed to start")
     }
   }
 
   async function startChat(initialMessage?: string): Promise<void> {
-    const sessionId = deps.manager.create("chat", "Chat", "chat", "chat:active")
+    const sessionId = deps.manager.create("chat", "Chat", "chat", "active")
     deps.refreshList()
     await launchChat(sessionId, { initialMessage })
   }
@@ -173,7 +194,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     setChatActive(false)
 
     deps.registry.remove(fgId)
-    safeUpdateState((sid, s) => deps.manager.updateState(sid, s), fgId, "completed")
+    deps.manager.updateState(fgId, "completed")
     deps.refreshList()
     deps.setForegroundId(undefined)
   }

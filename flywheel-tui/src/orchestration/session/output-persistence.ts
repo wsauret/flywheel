@@ -36,7 +36,7 @@ import { resolveSessionFile, ensureSessionDir } from "../../infra/paths";
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const DEFAULT_FLUSH_INTERVAL_MS = 5000; // 5 seconds
 
 // ---------------------------------------------------------------------------

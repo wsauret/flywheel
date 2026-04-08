@@ -31,7 +31,8 @@ function minimalSession(overrides?: Partial<Session>): Session {
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-    workflowType: "work",
+    kind: "workflow" as const,
+    command: "work" as const,
     ...overrides,
   };
 }

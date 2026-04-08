@@ -20,8 +20,7 @@ interface BoundaryRule {
 const repoRoot = path.resolve(import.meta.dir, "..");
 const srcRoot = path.join(repoRoot, "src");
 const temporaryAllowlist = new Set<string>([
-  // cli → tui: fundamental entrypoint
-  "src/orchestration/cli/index.ts -> src/tui/launcher.ts",
+  // (empty — no exceptions)
 ]);
 
 const rules: BoundaryRule[] = [

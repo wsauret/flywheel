@@ -15,7 +15,7 @@ import {
   listSessions,
 } from "../src/orchestration/session/persistence";
 import { SessionSchema, type Session } from "../src/orchestration/session/schemas";
-import type { SessionLifecycleState } from "../src/orchestration/session/state-machine";
+import type { SessionState } from "../src/orchestration/session/state-machine";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,7 +41,8 @@ function minimalSession(overrides?: Partial<Session>): Session {
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-    workflowType: "work",
+    kind: "workflow" as const,
+    command: "work" as const,
     ...overrides,
   };
 }
@@ -94,7 +95,7 @@ describe("createSession", () => {
   it("stores optional fields when provided", () => {
     const baseDir = makeTmpDir();
     const data = minimalSession({
-      sessionLifecycleState: "work:active",
+      state: "active",
       name: "My Session",
       createdAt: "2026-03-15T12:00:00.000Z",
       repo: "flywheel/flywheel-tui",
@@ -106,7 +107,7 @@ describe("createSession", () => {
     const read = readSession(id, baseDir);
 
     expect(read).not.toBeNull();
-    expect(read!.sessionLifecycleState).toBe("work:active");
+    expect(read!.state).toBe("active");
     expect(read!.name).toBe("My Session");
     expect(read!.createdAt).toBe("2026-03-15T12:00:00.000Z");
     expect(read!.repo).toBe("flywheel/flywheel-tui");
@@ -177,44 +178,10 @@ describe("readSession", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Legacy sessions (optional fields missing)
+// Schema validation
 // ---------------------------------------------------------------------------
 
-describe("legacy session compatibility", () => {
-  it("parses sessions without new optional fields (old format with vestigial fields)", () => {
-    const baseDir = makeTmpDir();
-    const sessionDir = path.join(baseDir, ".flywheel", "sessions", "legacy-id");
-    fs.mkdirSync(sessionDir, { recursive: true });
-
-    // Write a legacy session (old format with statePath, contextPath, etc.)
-    const legacyData = {
-      planPath: "plans/old.md",
-      statePath: ".flywheel/state/old.state.md",
-      contextPath: ".flywheel/context/old.ctx.md",
-      currentStep: 2,
-      lastUpdated: "2026-01-01T00:00:00.000Z",
-      workflowId: crypto.randomUUID(),
-    };
-    fs.writeFileSync(
-      path.join(sessionDir, "session.json"),
-      JSON.stringify(legacyData),
-    );
-
-    const read = readSession("legacy-id", baseDir);
-    expect(read).not.toBeNull();
-    // planPath preserved as optional field
-    expect(read!.planPath).toBe("plans/old.md");
-    // label auto-derived from planPath during migration
-    expect(read!.label).toBe("plans/old.md");
-    // Optional fields should be undefined
-    expect(read!.sessionLifecycleState).toBeUndefined();
-    expect(read!.name).toBeUndefined();
-    expect(read!.createdAt).toBeUndefined();
-    expect(read!.repo).toBeUndefined();
-    expect(read!.branch).toBeUndefined();
-    expect(read!.totalCost).toBeUndefined();
-  });
-
+describe("schema validation", () => {
   it("strict mode rejects unknown fields", () => {
     const baseDir = makeTmpDir();
     const sessionDir = path.join(baseDir, ".flywheel", "sessions", "unknown-field");
@@ -273,12 +240,12 @@ describe("updateSession", () => {
 
     updateSession(
       id,
-      { sessionLifecycleState: "work:active" as SessionLifecycleState },
+      { state: "active" as SessionState },
       baseDir,
     );
 
     const read = readSession(id, baseDir);
-    expect(read!.sessionLifecycleState).toBe("work:active");
+    expect(read!.state).toBe("active");
   });
 
   it("throws when session does not exist", () => {
@@ -344,19 +311,19 @@ describe("listSessions", () => {
 
     createSession(
       minimalSession({
-        sessionLifecycleState: "work:active",
+        state: "active",
       } as Session),
       baseDir,
     );
     createSession(
       minimalSession({
-        sessionLifecycleState: "work:active",
+        state: "active",
       } as Session),
       baseDir,
     );
     createSession(
       minimalSession({
-        sessionLifecycleState: "completed",
+        state: "completed",
       } as Session),
       baseDir,
     );
@@ -366,13 +333,13 @@ describe("listSessions", () => {
     expect(result.sessions).toHaveLength(4);
 
     const active = result.sessions.filter(
-      (s) => s.data.sessionLifecycleState === "work:active",
+      (s) => s.data.state === "active",
     );
     const completed = result.sessions.filter(
-      (s) => s.data.sessionLifecycleState === "completed",
+      (s) => s.data.state === "completed",
     );
     const noState = result.sessions.filter(
-      (s) => s.data.sessionLifecycleState === undefined,
+      (s) => s.data.state === undefined,
     );
 
     expect(active).toHaveLength(2);
@@ -444,7 +411,7 @@ describe("SessionSchema extensions", () => {
       label: "plans/test.md",
       planPath: "plans/test.md",
       lastUpdated: new Date().toISOString(),
-      sessionLifecycleState: "work:active",
+      state: "active",
       name: "Test Session",
       createdAt: "2026-03-15T12:00:00.000Z",
       repo: "flywheel/flywheel-tui",
@@ -452,17 +419,18 @@ describe("SessionSchema extensions", () => {
       totalCost: 2.75,
       budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
       budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
-      workflowType: "work" as const,
+      kind: "workflow" as const,
+      command: "work" as const,
     };
 
     const result = SessionSchema.safeParse(data);
     expect(result.success).toBe(true);
   });
 
-  it("validates sessionLifecycleState against the enum", () => {
+  it("validates state against the enum", () => {
     const data = {
       ...minimalSession(),
-      sessionLifecycleState: "invalid-state",
+      state: "invalid-state",
     };
 
     const result = SessionSchema.safeParse(data);
@@ -479,7 +447,7 @@ describe("SessionSchema extensions", () => {
     expect(result.success).toBe(false);
   });
 
-  it("requires budget and workflowType fields", () => {
+  it("requires budget, kind, and command fields", () => {
     const data = {
       label: "plans/test.md",
       lastUpdated: new Date().toISOString(),

@@ -1,268 +1,178 @@
 <coding_guidelines>
 # Flywheel CLI -- Agent Instructions
 
-## Project Overview
-
-Flywheel CLI is a terminal UI application that executes workflow plans. It spawns AI worker processes (Claude Code, OpenCode, Droid, or its own harness), runs plan phases sequentially, and provides a rich TUI built with OpenTUI + SolidJS.
-
-**Runtime:** Bun (not Node)
-**TUI framework:** OpenTUI (`@opentui/core` + `@opentui/solid`) with SolidJS signals
-**Config format:** TOML (`flywheel.toml`), not YAML
-**Important:** SolidJS must resolve with the `"browser"` export condition. The `bin/flywheel` wrapper handles this with `bun --conditions=browser`.
+**Runtime:** Bun (not Node) | **TUI:** OpenTUI + SolidJS | **Config:** TOML
+**SolidJS requires `"browser"` export condition** — `bin/flywheel` handles this via `bun --conditions=browser`.
 
 ---
 
-## 1. Module Boundaries (most critical)
-
-The codebase has a strict 4-module layered architecture. **Every file must live in the correct module. Every import must respect the dependency direction.** Run `bun run scripts/check-boundaries.ts` after any file addition or move.
+## 1. Module Boundaries
 
 ```
 src/
-  protocol/        --> imports NOTHING from src/
-  workflows/       --> imports only from protocol/
-  orchestration/   --> imports from workflows/ + protocol/
-  tui/             --> imports from orchestration/ (which re-exports what it needs)
+  cli/             --> composition root, imports from everything
+  infra/           --> imports NOTHING from src/
+  workflows/       --> imports only from infra/
+  orchestration/   --> imports from workflows/ + infra/
+  tui/             --> imports from orchestration/
 ```
 
-**What lives where:**
+Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 
-| Module | What belongs here | What does NOT belong here |
-|--------|-------------------|--------------------------|
-| `protocol/` | Event types, handoff schemas. Pure data contracts. | Any logic, any imports from `src/`. |
-| `workflows/` | Queue engine, dispatcher, evaluator, step types, shared utilities. Domain logic with no knowledge of how it's hosted. | Anything that knows about config, sessions, engines, CLI, or rendering. |
-| `orchestration/` | Config loading, session management, engine registry, worker spawning, CLI entry. Composes workflow primitives into runnable pipelines. | Rendering, UI components, hooks, anything visual. |
-| `tui/` | Shell, hooks, adapters, components, routes. Rendering and user interaction only. | Domain logic, session CRUD, transport resolution, queue building. |
+| Module | Owns | Never contains |
+|--------|------|----------------|
+| `cli/` | Entry point, wires all layers | Domain logic, UI components |
+| `infra/` | Logging, error utils, output blocks, events | Logic that imports from `src/` |
+| `workflows/` | Queue engine, dispatcher, evaluator, step types | Config, sessions, engines, rendering |
+| `orchestration/` | Config, sessions, engines, worker spawning | Rendering, UI, hooks |
+| `tui/` | Shell, hooks, adapters, components | Domain logic, session CRUD, queue building |
 
-**Violations that must never happen:**
-- `tui/` importing from `workflows/` or `protocol/` directly (must go through `orchestration/`)
-- `workflows/` importing from `orchestration/` or `tui/`
-- `protocol/` importing from anything in `src/`
-- `orchestration/` importing from `tui/`
+**New code:** Steps → `workflows/queue/steps/<type>/`. Hooks → `tui/hooks/`. Shared utils → `workflows/shared/`. Engines → `orchestration/engines/`.
 
-**Where new code goes:**
-- Step scaffolding/fields/prompts/hooks --> `workflows/queue/steps/<type>/`
-- Hook wiring into the executor pipeline --> `orchestration/queue-orchestrator.ts`
-- Shared domain utilities (used by 2+ workflow modules) --> `workflows/shared/`
-- UI components and reactive hooks --> `tui/`
-- Engine providers and spawners --> `orchestration/engines/` and `orchestration/worker/`
-
-**Frozen references:** `src-legacy/` contains code not yet migrated back. `tests-legacy/` contains their tests. Neither is in `tsconfig`.
+`src-legacy/` and `tests-legacy/` are frozen archives, not in `tsconfig`.
 
 ---
 
-## 2. No God Modules -- File Size and SRP
+## 2. File Size and SRP
 
-**No source file may exceed 400 lines.** If a file grows past this during implementation, extract a responsibility before merging.
+**No file over 400 lines.** Extract before merging.
 
-**Each file owns one concept:**
-
-- **Types and interfaces** go in a dedicated `*-types.ts` file, not inline with logic.
-- **Pure data transformations** go in `*-helpers.ts` files. Stateless, no side effects, easy to test.
-- **Hooks** (SolidJS reactive logic) live in `tui/hooks/`, one hook per file. `shell.tsx` is a thin wiring layer -- it contains no business logic.
-- **Callbacks and factories** that wire dependencies live in their own files (e.g., `worker-callback.ts`). The orchestrator calls them but does not contain their implementation.
-- **Shared utilities** live in `workflows/shared/` when 2+ modules depend on them.
-
-**Step types are modular and self-contained.** Every step variant is a folder under `workflows/queue/steps/` with: `fields.ts` (handoff field specs), `scaffolding.ts` (prompt assembly), and `prompts.ts` (prompt text constants). Some also have `hooks.ts` for post-completion behavior.
-
-**Scaffolding is thin assembly, prompts hold the text.** `scaffolding.ts` registers a strategy and composes preamble/postamble from constants in `prompts.ts`. Scaffolding never contains long string literals.
-
-**Schemas live with their owners.** Handoff schemas (cross-step) live in `protocol/handoff-schemas.ts`. Evaluator schemas live in `evaluator/schemas.ts`. Dispatcher schemas live in `dispatcher/schemas.ts`. If a schema is consumed by exactly one module, it belongs in that module.
+- Types → `*-types.ts`. Helpers → `*-helpers.ts` (stateless). Hooks → `tui/hooks/`, one per file.
+- `shell.tsx` is thin wiring — no business logic.
+- Step variants are self-contained folders: `fields.ts`, `scaffolding.ts`, `prompts.ts`, optionally `hooks.ts`.
+- Scaffolding assembles; prompts hold text. No long strings in scaffolding.
+- Schemas live with their owners. Single-consumer schemas stay in their module.
+- No barrel re-exports. Import directly from the owning file.
 
 ---
 
-## 3. DRY -- Search Before Writing
+## 3. DRY
 
-**Before writing ANY utility function, search `src/` first.** Use grep to determine whether the logic already exists, then extend and import it.
+**Search `src/` before writing any utility.** Key shared utilities:
 
-**Key shared utilities that already exist (do not duplicate):**
+| Utility | Location |
+|---------|----------|
+| `errorMessage(err)` | `workflows/shared/error-message.ts` |
+| `formatDuration()`, `formatCost()` | `tui/format.ts` |
+| `SubprocessTransportBase` | `workflows/shared/subprocess-transport-base.ts` |
+| `log` | `workflows/shared/log.ts` |
+| `atomicWriteFile()` | `workflows/shared/atomic-write.ts` |
+| `DebouncedWriter` | `workflows/shared/debounced-writer.ts` |
+| `raceAbort()` | `workflows/queue/abort-utils.ts` |
+| `truncateText()` | `workflows/dispatcher/truncation.ts` |
 
-| Utility | Location | Replaces |
-|---------|----------|----------|
-| `errorMessage(err)` | `workflows/shared/error-message.ts` | `instanceof Error ? e.message : String(e)` |
-| `formatDuration()` | `tui/format.ts` | Any elapsed time formatting |
-| `formatCost()` | `tui/format.ts` | Any USD cost formatting |
-| `SubprocessTransportBase` | `workflows/shared/subprocess-transport-base.ts` | Shared retry loop + constructor for transports |
-| `log` | `workflows/shared/log.ts` | Any logger creation |
-| `atomicWriteFile()` | `workflows/shared/atomic-write.ts` | Any write-then-rename pattern |
-| `DebouncedWriter` | `workflows/shared/debounced-writer.ts` | Any debounced file writing |
-| `raceAbort()` | `workflows/queue/abort-utils.ts` | Any AbortSignal + Promise.race pattern |
-| `truncateText()` | `workflows/dispatcher/truncation.ts` | Any string truncation |
-
-**Colocate what's used once, share what's used across modules.** A constant, schema, or helper consumed by a single step variant belongs in that variant's folder. It moves to `shared/` only when a second consumer appears.
-
-**No barrel re-exports.** Consumers import directly from the owning file. No `index.ts` re-export files that exist solely to shorten import paths.
+Colocate single-use code. Move to `shared/` only when a second consumer appears.
 
 ---
 
-## 4. Registration Over Wiring (OCP)
+## 4. Registration Over Wiring
 
-New behavior is added by **registration**, not by editing dispatch switches.
+New behavior via registration, not switch edits:
+- Step types → `registerScaffolding()` in `steps/register-all.ts`
+- Commands → `CommandRegistry` in `tui/hooks/command-registry.ts`
+- Output formatting → Map dispatch in `adapters/output-formatter.ts`
+- Engines → `registerEngine()` in `orchestration/engines/core/registry.ts`
 
-- **Step types** register via `registerScaffolding()` side-effect imports in `steps/register-all.ts`. Adding a step type never requires editing `executor.ts` or `step-runner.ts`.
-- **Shell commands** register via `CommandRegistry` in `tui/hooks/command-registry.ts`. Adding a command never requires editing `shell.tsx`.
-- **Output formatting** for new tool types uses the Map-based dispatch table in `adapters/output-formatter.ts`.
-- **Engine providers** register via `registerEngine()` in `orchestration/engines/core/registry.ts`.
-
-**Hooks are step-scoped.** Post-completion hooks (plan integration, sprint loops, review triage, debug loops) live in the step variant folder that owns the behavior, not in a central hooks file. `createCompositeHook` composes them at the orchestrator level.
+Hooks are step-scoped (live in the step folder, composed via `createCompositeHook`).
 
 ---
 
 ## 5. Dependency Injection
 
-High-level modules depend on abstractions, not concretions:
-
-- `executor.ts` accepts dependencies via `StepExecutorOptions` (types in `executor-types.ts`). It never imports transport implementations.
-- `workflow-runner.ts` accepts `WorkflowRunnerOverrides` for injecting test doubles.
-- `chat-session.ts` (in `orchestration/`) accepts an optional `spawner` parameter. `ChatRunner` accepts deps via `ChatRunnerDeps`.
-- `bun-spawner.ts` accepts `projectCwd` as a parameter -- never reads `process.cwd()`.
-
-When wiring new features, pass dependencies through existing options objects. Do not add global imports to concrete implementations from high-level modules.
+High-level modules depend on abstractions. `executor.ts` takes `StepExecutorOptions`. `workflow-runner.ts` takes `WorkflowRunnerOverrides`. `bun-spawner.ts` takes `projectCwd` as param. Pass deps through options objects — never import concretions from high-level modules.
 
 ---
 
-## 6. Reactive State — State Is the Source of Truth
+## 6. State
 
-**State drives effects, never the reverse.** When something dynamic needs to change, update state. Other code reacts to state changes via `createEffect`, subscriptions, or derived accessors. Never trigger side effects imperatively alongside state updates.
+**One source of truth per value. State drives effects, never the reverse.**
 
-**The rule:** Adapters and event handlers write to stores. UI effects (timers, spinners, display updates) derive from store state via `createEffect` or `subscribe`. No imperative side-channels that bypass state.
+```
+Do: actions.stopWorkflow("completed") → timer stops via createEffect reacting to status
+Not: timer.stop(); actions.stopWorkflow("completed")  // imperative side-channel
 
-**What this means in practice:**
+Do: actions.setModelActivity("thinking") → spinner derives from store
+Not: this.modelActivity = "thinking"; this.onModelActivityChange?.("thinking")
+```
 
-| Do this | Not this |
-|---------|----------|
-| `actions.stopWorkflow("completed")` then timer stops via `createEffect` reacting to status | `timer.stop(); actions.stopWorkflow("completed")` in the same handler |
-| `actions.setModelActivity("thinking")` then spinner derives from store | `this.modelActivity = "thinking"; this.onModelActivityChange?.("thinking")` |
-| `updateEntry(id, { status: "paused" })` atomic replacement + notify | `entry.status = "paused"; notify()` with mutation/notify gap |
+**Session lifecycle: `active | paused | completed`.** Session manager is the sole authority.
+- **Registry** = runner pool. Holds runtime data (outputBlocks, tokens, cost, modelActivity). No `status` field, no `result` field, no lifecycle state.
+- **UI** derives state via `sessionState()`: registry presence = active, else reads `manager.getState()`.
+- **Delete is an action**, not a state. No `archived` or `trashed` states.
+- **Never add status fields, shadow signals, or new state stores.** Read `sessionState()`, write `manager.updateState()`.
 
-**No parallel state.** A dynamic value must have exactly one source of truth. If model activity lives in the store, it does not also live as a mutable property on the adapter AND a field on a registry entry AND a signal in a hook. Those downstream representations are derived views, updated by reacting to the source.
+**No parallel state.** If a value exists in the store, it doesn't also live as a property on an adapter, a field on a registry entry, and a signal in a hook. Downstream representations are derived views.
 
-**No leaked mutable refs.** If a hook needs internal mutable tracking (e.g., a start time for computing elapsed duration), keep it private. Expose only derived accessors or signals. Never expose `{ current: number }` refs for external code to mutate.
-
-**No public imperative flags.** Mutable booleans like `suppressQueueError` that change how events are processed are implicit state that must be set at the right time by the right caller. Move behavioral flags into the store where they can be set declaratively and read reactively.
-
----
-
-## 7. Dead Code and Wiring Rules
-
-**No dead code, even if tested.** If a symbol is only imported in test files and never used in production code, delete both the symbol and its tests. Git history is the recovery mechanism.
-
-**No speculative code.** Do not add functions, types, or exports "for future use." If a future phase needs it, that phase adds it.
-
-**Exports match consumers.** Every exported symbol must have at least one non-test consumer in `src/`.
-
-**`src-legacy/` is the archive.** Dead code goes to `src-legacy/`, not to a comment block.
-
-**Built means wired.** A module that compiles but is never called from the production entry point does not exist. Every new module must be imported and invoked in the live application before merging. If you cannot demonstrate the feature running in the TUI via tmux, it is not done.
-
-**Unit tests prove logic, not integration.** A passing test suite says nothing about whether the module is reachable from the running app. After wiring a feature, verify it in the live TUI -- not just in the test harness.
+**No leaked mutable refs.** Keep internal tracking private, expose only derived accessors.
 
 ---
 
-## 8. TypeScript Conventions
+## 7. Dead Code and Refactoring
 
-- Runtime: Bun on Node 20+, TypeScript targeting ES2022, strict mode enabled (`noUncheckedIndexedAccess`, `noImplicitOverride`).
-- ESM modules (`import`/`export`), not CommonJS. All local imports must include `.js` extension.
-- `type` imports for type-only usage: `import type { Foo }` or `import { type Foo, bar }`.
-- No `any` (use `unknown` and narrow). No `Function` (use specific signatures). No `// @ts-ignore` unless no alternative exists.
-- Union types for optional/nullable: `string | null`.
-- Exported functions: explicit return types. Internal functions: inference is fine.
-- Prefer template literals, hardcoded values over env vars, top-level imports over scoped.
-- Zod for runtime validation of external data. Temporal API (from `@js-temporal/polyfill`) for dates.
-- ESLint with typescript-eslint: `npm run lint` / `npm run lint:fix`. tsc for type checking: `npm run typecheck`.
+- **No dead code**, even if tested. Delete symbol + tests. Git is the archive.
+- **No speculative code.** Add it when a phase needs it, not before.
+- **No migration code, no backward compatibility.** No external users. Delete old code, write new code clean. Old data is invalid. Git history is the recovery mechanism.
+- **Exports match consumers.** Every export has a non-test consumer in `src/`.
+- **Built means wired.** If it compiles but isn't called from the production entry point, it doesn't exist. Verify in the live TUI, not just tests.
+
+---
+
+## 8. TypeScript
+
+- Bun, ES2022, strict mode (`noUncheckedIndexedAccess`, `noImplicitOverride`).
+- ESM with `.js` extensions on local imports. `type` imports for type-only usage.
+- No `any` (use `unknown`), no `Function`, no `// @ts-ignore`.
+- Exported functions: explicit return types. Internal: inference fine.
+- Zod for external data validation. Temporal API for dates.
 
 ---
 
 ## 9. Agent Behavior
 
-- Always test changes by running the code, then fix any errors that arise.
+- Test changes by running code. Fix errors before moving on.
 - Fix linter errors and warnings before moving on.
-- Do not add comments unless they explain new logic you are adding.
-- Do not use emojis in code.
-- Never mock anything in production code (mocks are for tests only when absolutely necessary).
-- Always fully wire new code into the system. Unit tests alone do not prove wiring.
+- No comments unless explaining new logic. No emojis.
+- Never mock in production code. Always wire new code into the system.
 
 ---
 
-## 10. Writing and Running Tests
+## 10. Tests
 
 ```bash
-bun run test                   # unit tests only — must complete in <10s
-bun test tests/foo.test.ts     # single file
-bun run test:integration       # integration tests (tests/integration/)
-bun run test:e2e               # end-to-end tests (tests/e2e/)
+bun run test                   # unit (<10s) — ALWAYS this, never bare `bun test`
+bun run test:integration       # real subprocesses, real I/O
+bun run test:e2e               # full TUI via tmux
 ```
 
-**Always use `bun run test`, not bare `bun test`.** Bare `bun test` crawls the entire repo including `node_modules/` and `inspiration/`, running thousands of irrelevant tests. The `test` script in `package.json` applies the correct path filter.
+| Tier | Location | Speed |
+|------|----------|-------|
+| Unit | `tests/*.test.ts`, `tests/{schemas,handoff,evaluator,tui}/` | <10s |
+| Integration | `tests/integration/` | Minutes |
+| E2E | `tests/e2e/` | 30+ min |
 
-### Test placement rules
+**Unit tests must NOT:** make API calls, spawn real processes, use `setTimeout` >30ms, run tmux, or create files in the project directory (use `/tmp/`).
 
-Tests are split into three tiers. **Putting a test in the wrong tier breaks CI speed.**
+New test subdirs must be added to the glob in `package.json`.
 
-| Tier | Location | What belongs here | Speed target |
-|------|----------|-------------------|--------------|
-| **Unit** | `tests/*.test.ts`, `tests/{schemas,handoff,evaluator,tui}/*.test.ts` | Pure logic, mock dependencies, no I/O, no subprocesses, no API calls | <10s total |
-| **Integration** | `tests/integration/*.test.ts` | Real subprocess spawning, real file I/O, anything that takes >500ms | Minutes OK |
-| **E2E** | `tests/e2e/*.sh` | Full TUI via tmux, real API calls, real workflows | 30+ min OK |
-
-**The `bun run test` glob explicitly lists allowed subdirectories.** If you add a new test subdirectory under `tests/`, you must add it to the glob in `package.json`. Never use a wildcard like `tests/*/*.test.ts` — that catches `integration/` and `e2e/`.
-
-### What must NEVER appear in unit tests
-
-1. **No real API calls.** If a function fires a subprocess or HTTP request as a side effect, guard it with `process.env.NODE_ENV === "test"` or inject the dependency so tests can mock it. Every API call adds 1-2s.
-
-2. **No real process spawning.** Tests that call `Bun.spawn`, `BunProcessSpawner`, or any subprocess belong in `tests/integration/`. Unit tests use mock functions that return predetermined results.
-
-3. **No `await wait()` or `setTimeout` over 30ms.** If a test needs a longer wait to exercise real I/O, timers, or debounce behavior, either:
-   - Tighten the production debounce interval in the test to 5-10ms and wait 15-25ms
-   - Or move the test to `tests/integration/`
-
-4. **No tmux commands.** Any test driving the TUI via tmux belongs in `tests/e2e/`.
-
-5. **No file creation in the project directory.** Tests that create temporary files must use `mkdtempSync()` in `/tmp/` and clean up in `afterEach`/`afterAll`. Worker-created artifacts must never land in `tests/` or `src/`.
-
-### General test rules
-
-- Write unit tests for new functionality. Maintain coverage when refactoring.
-- Test observable behavior (what the system does), not implementation details (how it does it).
-- Use `describe`/`it` blocks, Vitest assertions, async/await for async code.
-- Shared fixtures go in `tests/fixtures/`. DRY applies to tests too.
-- Avoid coupling tests to implementation -- they should survive internal refactors.
-- **Fix failing or slow tests immediately.** Don't say they're pre-existing or out of scope.
+- Test observable behavior, not implementation details.
+- Shared fixtures in `tests/fixtures/`.
+- Fix failing or slow tests immediately — never dismiss as pre-existing.
 
 ---
 
-## 11. TUI Verification with tmux
+## 11. TUI Verification
 
-After any change under `src/tui/`, verify in the live TUI. See **[docs/tmux-uat-guide.md](docs/tmux-uat-guide.md)** for the full tmux setup, test sequences, and cleanup checklist.
+After changes under `src/tui/`, verify in live TUI. See [docs/tmux-uat-guide.md](docs/tmux-uat-guide.md).
 
-**Key rules:**
-- Never run UAT in the project directory (use a temp dir).
-- Check log files for errors even if the TUI looks correct visually.
-- Clean up all artifacts (sessions, files, tmux session) when done.
-
-### Automated E2E Regression Tests
-
-Modular tmux-based regression tests live in `tests/e2e/`. Run all or specific modules:
-
-```bash
-tests/e2e/run-all.sh                    # all modules
-tests/e2e/run-all.sh chat workflow      # specific modules
-```
-
-Modules: `chat`, `session-modal`, `multi-session`, `workflow`, `chat-workflow-interaction`, `session-recovery`.
-
-**Every new TUI feature MUST add or extend an E2E regression module.** The test should cover the happy path, transitions into/out of the feature, and state isolation. After assertions pass, review raw log captures for rendering anomalies and state leaks.
+E2E regression: `tests/e2e/run-all.sh`. Every new TUI feature must add or extend an E2E module.
 
 ---
 
-## Quick Reference: Import Rules
+## Import Rules
 
 ```
-Imports reveal misplacement. If a file's imports all reach 3+ levels up (../../../),
-it probably lives too deep. Let import paths guide where things belong.
-
-One domain, one home. Each concept lives in exactly one place.
-No re-exports, bridge files, or compatibility shims.
-When a module moves, update every import -- do not leave a forwarding address.
+Imports reveal misplacement — deep relative paths mean the file is in the wrong place.
+One domain, one home. No re-exports, bridge files, or compatibility shims.
+When a module moves, update every import — no forwarding addresses.
 ```
 </coding_guidelines>

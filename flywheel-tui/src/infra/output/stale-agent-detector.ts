@@ -2,12 +2,12 @@
  * Stale Agent Detector
  *
  * Tracks agent activity timestamps and auto-completes agents that
- * have had no activity for a configurable timeout (default 5s).
+ * have had no activity for a configurable timeout (default 30s).
  * Extracted from StructuredOutputBuilder to isolate timer-based
  * lifecycle management from block accumulation.
  */
 
-const DEFAULT_STALE_TIMEOUT_MS = 5_000
+const DEFAULT_STALE_TIMEOUT_MS = 30_000
 
 export interface StaleAgentCallbacks {
   /** Called when an agent is detected as stale and should be auto-completed. */

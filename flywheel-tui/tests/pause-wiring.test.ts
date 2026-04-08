@@ -1,13 +1,9 @@
 /**
- * Pause Wiring Tests (Step 2)
+ * Pause Wiring Tests
  *
- * Tests the gap where pausePipeline() cannot persist state because:
- * 1. No Session exists (startPipeline never calls manager.create())
- * 2. activeSessionId is never set
- *
- * These tests verify the building blocks that will be wired into startPipeline:
+ * Tests the pause/resume flow with session persistence:
  * - manager.create() returns a usable session ID
- * - updateState() to work:paused succeeds when activeSessionId is set
+ * - updateState() to paused succeeds
  * - Output flusher integration with session lifecycle
  */
 
@@ -64,10 +60,10 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Session creation for pipeline → pause flow
+// Session creation for pipeline -> pause flow
 // ---------------------------------------------------------------------------
 
-describe("Pause wiring — session creation in startPipeline", () => {
+describe("Pause wiring -- session creation in startPipeline", () => {
   it("manager.create() returns a session ID that can be used with updateState", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
@@ -83,20 +79,17 @@ describe("Pause wiring — session creation in startPipeline", () => {
     expect(persisted!.planPath).toBe("plan -> work -> review");
   });
 
-  it("session can be transitioned to work:active and then work:paused", () => {
+  it("session can be transitioned to paused", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const sessionId = mgr.create("plans/test.md");
 
-    // Transition through the required states to reach work:paused
-    mgr.updateState(sessionId, "plan:imported");
-    mgr.updateState(sessionId, "plan:approved");
-    mgr.updateState(sessionId, "work:active");
-    mgr.updateState(sessionId, "work:paused");
+    // active -> paused
+    mgr.updateState(sessionId, "paused");
 
     const persisted = readSession(sessionId, baseDir);
-    expect(persisted!.sessionLifecycleState).toBe("work:paused");
+    expect(persisted!.state).toBe("paused");
   });
 
   it("outputPath can be set on a created session", () => {
@@ -112,11 +105,11 @@ describe("Pause wiring — session creation in startPipeline", () => {
     expect(persisted!.outputPath).toBe(`${sessionId}.output.json`);
   });
 
-  it("updateState to work:paused fails when session does not exist", () => {
+  it("updateState to paused fails when session does not exist", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
-    expect(() => mgr.updateState("non-existent-id", "work:paused")).toThrow();
+    expect(() => mgr.updateState("non-existent-id", "paused")).toThrow();
   });
 });
 
@@ -124,7 +117,7 @@ describe("Pause wiring — session creation in startPipeline", () => {
 // Output flusher integration with pause
 // ---------------------------------------------------------------------------
 
-describe("Pause wiring — output flusher integration", () => {
+describe("Pause wiring -- output flusher integration", () => {
   it("flusher.flush() persists current blocks immediately", async () => {
     const baseDir = makeTmpDir();
     const sessionId = crypto.randomUUID();
@@ -191,7 +184,7 @@ describe("Pause wiring — output flusher integration", () => {
       { kind: "text" as const, content: "step-2-output", timestamp: Date.now() },
     ];
 
-    // Another step completed — schedule + flush for the new data
+    // Another step completed -- schedule + flush for the new data
     flusher.schedule();
     await flusher.flush();
 
@@ -203,27 +196,22 @@ describe("Pause wiring — output flusher integration", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Full pause sequence: create session → set outputPath → flush → updateState
+// Full pause sequence: create session -> flush -> updateState
 // ---------------------------------------------------------------------------
 
-describe("Pause wiring — full pause sequence", () => {
+describe("Pause wiring -- full pause sequence", () => {
   it("simulates the complete startPipeline + pausePipeline flow", async () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     // === startPipeline flow ===
-    // 1. Create session
+    // 1. Create session (starts as active)
     const sessionId = mgr.create("plan -> work -> review");
 
     // 2. Set outputPath
     updateSession(sessionId, { outputPath: `${sessionId}.output.json` }, baseDir);
 
-    // 3. Transition to work:active
-    mgr.updateState(sessionId, "plan:imported");
-    mgr.updateState(sessionId, "plan:approved");
-    mgr.updateState(sessionId, "work:active");
-
-    // 4. Start output flusher
+    // 3. Start output flusher
     const persistence = createOutputPersistence({ sessionId, baseDir });
     const blocks = [
       { kind: "text" as const, content: "work output", timestamp: Date.now() },
@@ -232,17 +220,17 @@ describe("Pause wiring — full pause sequence", () => {
     const flusher = persistence.createFlusher(() => blocks, { intervalMs: 5000 });
 
     // === pausePipeline flow ===
-    // 5. Flush output before shutdown (schedule marks data pending, flush writes)
+    // 4. Flush output before shutdown (schedule marks data pending, flush writes)
     flusher.schedule();
     await flusher.flush();
     flusher.dispose();
 
-    // 6. Persist work:paused state
-    mgr.updateState(sessionId, "work:paused");
+    // 5. Persist paused state
+    mgr.updateState(sessionId, "paused");
 
     // === Verify everything persisted ===
     const session = readSession(sessionId, baseDir);
-    expect(session!.sessionLifecycleState).toBe("work:paused");
+    expect(session!.state).toBe("paused");
     expect(session!.outputPath).toBe(`${sessionId}.output.json`);
 
     const output = await persistence.load();
@@ -254,15 +242,12 @@ describe("Pause wiring — full pause sequence", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const sessionId = mgr.create("plans/resumable.md");
-    mgr.updateState(sessionId, "plan:imported");
-    mgr.updateState(sessionId, "plan:approved");
-    mgr.updateState(sessionId, "work:active");
-    mgr.updateState(sessionId, "work:paused");
+    mgr.updateState(sessionId, "paused");
 
-    // Resume: work:paused -> work:active
-    mgr.updateState(sessionId, "work:active");
+    // Resume: paused -> active
+    mgr.updateState(sessionId, "active");
 
     const session = readSession(sessionId, baseDir);
-    expect(session!.sessionLifecycleState).toBe("work:active");
+    expect(session!.state).toBe("active");
   });
 });

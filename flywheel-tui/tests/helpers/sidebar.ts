@@ -9,17 +9,17 @@ import {
   groupToFlatList,
 } from "../../src/tui/session/sidebar-logic";
 import type { SessionSummary } from "../../src/orchestration/session/manager";
-import type { SessionLifecycleState } from "../../src/orchestration/session/state-machine";
+import type { SessionState } from "../../src/orchestration/session/state-machine";
 
 // Re-export the canonical groupToFlatList from sidebar-logic
 export { groupToFlatList } from "../../src/tui/session/sidebar-logic";
 
 /**
  * Create a minimal SessionSummary for testing.
- * Only lifecycleState is required; all other fields have defaults.
+ * Only state is required; all other fields have defaults.
  */
 export function makeSession(
-  overrides: Partial<SessionSummary> & { lifecycleState: SessionLifecycleState },
+  overrides: Partial<SessionSummary> & { state: SessionState },
 ): SessionSummary {
   return {
     id: crypto.randomUUID(),

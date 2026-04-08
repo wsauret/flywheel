@@ -162,20 +162,18 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "dispatcher:completed": {
-        this.pipeline.completeDispatcher();
-        this.flushBlocks();
         const warnings = event.decision.warnings;
         const warningText = warnings && warnings.length > 0
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
           : "";
-        this.pushSystemText(`⚡ Dispatcher: prompt ready${warningText} — launching subprocess\n`, event.timestamp);
+        this.pipeline.completeDispatcher(`Prompt ready${warningText}`);
+        this.flushBlocks();
         break;
       }
 
       case "dispatcher:failed":
         this.pipeline.failDispatcher(event.reason);
         this.flushBlocks();
-        this.pushSystemText(`⚠ Dispatcher unavailable: ${event.reason}. Using static prompt.\n`, event.timestamp);
         break;
 
       case "evaluator:invoked":
@@ -184,28 +182,21 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "evaluator:completed": {
-        this.pipeline.completeEvaluator();
+        const verdict = event.result.passed ? "Passed" : "Needs revision";
+        const reasoning = event.result.reasoning ? ` — ${event.result.reasoning}` : "";
+        this.pipeline.completeEvaluator(`${verdict}${reasoning}`);
         this.flushBlocks();
-        this.pushSystemText(
-          `🔍 Evaluator: ${event.result.passed ? "passed" : "needs revision"} — ${event.result.reasoning}\n`,
-          event.timestamp,
-        );
         break;
       }
 
       case "evaluator:failed":
         this.pipeline.failEvaluator(event.reason);
         this.flushBlocks();
-        this.pushSystemText(`⚠ Evaluator failed: ${event.reason}. Skipping.\n`, event.timestamp);
         break;
 
       case "evaluator:revision-requested":
-        this.pipeline.completeEvaluator();
+        this.pipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
         this.flushBlocks();
-        this.pushSystemText(
-          `🔄 Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions}) — re-running subprocess...\n`,
-          new Date(event.timestamp).toISOString(),
-        );
         break;
 
       case "question:asked":
@@ -224,7 +215,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "subprocess:injected":
         log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
-        this.pushSystemText(`↳ Injected: ${event.message.slice(0, 100)}${event.message.length > 100 ? "..." : ""}\n`, event.timestamp);
+        this.builder.pushUserMessage(event.message, new Date(event.timestamp).getTime() || Date.now(), false, true);
+        this.flushBlocks();
         break;
 
       case "dispatcher:output":

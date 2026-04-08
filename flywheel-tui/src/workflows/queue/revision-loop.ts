@@ -168,7 +168,7 @@ export async function executeWithRevisions(
     prompt = buildRevisionPrompt(prompt, evalResult);
 
     onSubprocessDispatched?.();
-    output = await raceAbort(worker(step, prompt), abortSignal);
+    output = await raceAbort(worker(step, prompt, abortSignal), abortSignal);
 
     try {
       handoff = await handoffReader(output.handoffPath);

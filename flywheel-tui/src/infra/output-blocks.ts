@@ -67,6 +67,8 @@ export interface UserMessageBlock {
   timestamp: number;
   /** True while the message has been written to stdin but the agent hasn't picked it up yet. */
   pending?: boolean;
+  /** True for injected messages (observer, self-review, user steering). Rendered collapsed by default. */
+  injected?: boolean;
 }
 
 export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock | ThinkingBlock | UserMessageBlock;

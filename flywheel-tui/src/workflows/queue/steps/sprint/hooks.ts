@@ -248,10 +248,10 @@ export function createSprintHook(config: SprintConfig): {
       state.status = "escalated";
       state.reason = "Stuck: identical consecutive failures";
       if (config.escalate_to_full) {
-        const inserted = insertEscalation(queue, step.id, state.history);
-        if (!inserted) return { continueExecution: false };
+        insertEscalation(queue, step.id, state.history);
       }
-      return { continueExecution: config.escalate_to_full };
+      // Always pause — escalation steps (if inserted) will execute on resume
+      return { continueExecution: false };
     }
 
     // -----------------------------------------------------------------------
@@ -261,10 +261,9 @@ export function createSprintHook(config: SprintConfig): {
       state.status = "escalated";
       state.reason = "Max iterations reached";
       if (config.escalate_to_full) {
-        const inserted = insertEscalation(queue, step.id, state.history);
-        if (!inserted) return { continueExecution: false };
-        return { continueExecution: true };
+        insertEscalation(queue, step.id, state.history);
       }
+      // Always pause — escalation steps (if inserted) will execute on resume
       return { continueExecution: false };
     }
 

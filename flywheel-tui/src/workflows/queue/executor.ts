@@ -156,7 +156,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       // Check budget before starting step
       if (budgetChecker.isExhausted()) {
-        const reason = "budget_exhausted";
+        const reason = "budget";
         queue.status = "paused";
         await persistQueue();
         emitter.queueFailed(workflowId, reason, stepsCompleted);

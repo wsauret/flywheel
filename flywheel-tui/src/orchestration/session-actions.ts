@@ -2,12 +2,12 @@
  * Session Actions
  *
  * Handles session lifecycle operations triggered from the modal:
- * view, resume, archive, delete. Pure functions with injected dependencies.
+ * view, resume, delete. Pure functions with injected dependencies.
  */
 
 import { createOutputPersistence } from "./session/output-persistence"
 import { createQueuePersistence } from "../workflows/queue/persistence"
-import { readSession, deleteSessionWithCompanions, type DeleteResult } from "./session/persistence"
+import { readSession } from "./session/persistence"
 import { fromSnapshot } from "./session/output-schemas"
 import { isResumable } from "./session/state-machine"
 import { createSessionOrchestrator } from "./session-orchestrator"
@@ -37,7 +37,7 @@ export interface ResumeData {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildOrchestrator(deps: SessionActionDeps, extra?: { deleteSessionFiles?: (id: string, activeSessionId?: string | null) => DeleteResult }) {
+function buildOrchestrator(deps: SessionActionDeps) {
   const projectCwd = deps.projectCwd ?? process.cwd()
   return createSessionOrchestrator({
     readSession: (id) => readSession(id, projectCwd),
@@ -46,7 +46,6 @@ function buildOrchestrator(deps: SessionActionDeps, extra?: { deleteSessionFiles
     fromSnapshot,
     manager: deps.manager,
     refreshList: deps.refreshList,
-    ...extra,
   })
 }
 
@@ -81,22 +80,13 @@ export async function loadResumeData(
 export function findResumableSession(deps: SessionActionDeps): SessionSummary | null {
   const { sessions } = deps.manager.list()
   const resumable = sessions
-    .filter(s => isResumable(s.lifecycleState))
+    .filter(s => isResumable(s.state))
     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
   return resumable[0] ?? null
 }
 
-/** Archive a completed session. Throws on invalid transition. */
-export function archiveSession(sessionId: string, deps: SessionActionDeps): void {
-  deps.manager.archive(sessionId)
-  deps.refreshList()
-}
-
-/** Delete a session via the orchestrator (trash → cleanup → delete → refresh). */
+/** Delete a session via the orchestrator (delete files + cleanup + refresh). */
 export function deleteSession(sessionId: string, deps: SessionActionDeps): void {
-  const projectCwd = deps.projectCwd ?? process.cwd()
-  const orchestrator = buildOrchestrator(deps, {
-    deleteSessionFiles: (id) => deleteSessionWithCompanions(id, projectCwd, deps.activeSessionId()),
-  })
+  const orchestrator = buildOrchestrator(deps)
   orchestrator.handleDeleteSession(sessionId)
 }

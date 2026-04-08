@@ -39,6 +39,9 @@ function makeSprintConfig(overrides: Partial<SprintConfig> = {}): SprintConfig {
     max_iterations: 5,
     escalate_to_full: true,
     escalate_on_stuck: false,
+    dispatcher: {},
+    evaluator: {},
+    worker: {},
     ...overrides,
   };
 }
@@ -444,7 +447,7 @@ describe("createSprintHook — failed, under max", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — failed, at max iterations", () => {
-  test("inserts escalation steps [plan, work, review]", async () => {
+  test("inserts escalation steps [plan, work, review] and pauses", async () => {
     const config = makeSprintConfig({ max_iterations: 1, escalate_to_full: true });
     const { hook, getState } = createSprintHook(config);
     const step = makeSprintStep();
@@ -456,16 +459,20 @@ describe("createSprintHook — failed, at max iterations", () => {
       eval_feedback: "tests broken",
     });
 
-    expect(result.continueExecution).toBe(true);
+    // Sprint pauses — escalation steps are pending for resume via Ctrl-R
+    expect(result.continueExecution).toBe(false);
     const state = getState();
     expect(state.status).toBe("escalated");
     expect(state.reason).toBe("Max iterations reached");
 
-    // Escalation steps: plan, work, review
+    // Escalation steps: plan, work, review (all pending, will execute on resume)
     expect(queue.steps).toHaveLength(4); // original + 3 escalation
     expect(queue.steps[1].type).toBe("plan");
     expect(queue.steps[2].type).toBe("work");
     expect(queue.steps[3].type).toBe("review");
+    for (const s of queue.steps.slice(1)) {
+      expect(s.status).toBe("pending");
+    }
   });
 
   test("returns stop when escalate_to_full is false", async () => {
@@ -524,12 +531,12 @@ describe("createSprintHook — failed, at max iterations", () => {
     expect(retry2).toBeDefined();
     retry2.status = "failed";
 
-    // Iteration 3 = max_iterations → escalation
+    // Iteration 3 = max_iterations → escalation (paused, pending resume)
     const r3 = await hook(retry2, "failed", queue, {
       summary: "fail 3",
       eval_feedback: "error C",
     });
-    expect(r3.continueExecution).toBe(true);
+    expect(r3.continueExecution).toBe(false);
     expect(getState().status).toBe("escalated");
     expect(getState().iterationCount).toBe(3);
 
@@ -572,13 +579,13 @@ describe("createSprintHook — stuck detection", () => {
     expect(retry).toBeDefined();
     retry.status = "failed";
 
-    // Second failure with same feedback
+    // Second failure with same feedback → stuck → pauses with escalation pending
     const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "TypeError in handler",
     });
 
-    expect(result.continueExecution).toBe(true);
+    expect(result.continueExecution).toBe(false);
     expect(getState().status).toBe("escalated");
     expect(getState().reason).toContain("Stuck");
   });
@@ -606,14 +613,14 @@ describe("createSprintHook — stuck detection", () => {
     )!;
     retry.status = "failed";
 
-    // Same error but different timestamps/lines
+    // Same error but different timestamps/lines → stuck → pauses
     const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "Error at 2026-02-15T12:30:00 in foo.ts:20:3 (500ms)",
     });
 
     expect(getState().status).toBe("escalated");
-    expect(result.continueExecution).toBe(true);
+    expect(result.continueExecution).toBe(false);
   });
 
   test("no escalation when escalate_on_stuck is false", async () => {
@@ -704,7 +711,8 @@ describe("createSprintHook — insertAfter timing", () => {
 
     const result = await hook(step, "failed", queue, { summary: "fail" });
 
-    expect(result.continueExecution).toBe(true);
+    // Sprint pauses — but escalation steps are already in the queue for resume
+    expect(result.continueExecution).toBe(false);
     const types = queue.steps.map((s) => s.type);
     expect(types).toContain("plan");
     expect(types).toContain("review");

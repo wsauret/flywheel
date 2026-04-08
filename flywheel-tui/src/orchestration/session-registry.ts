@@ -1,9 +1,14 @@
 /**
- * Session Registry
+ * Session Registry — pure runner pool.
  *
  * Manages multiple concurrent session runners (workflow and chat). Each
  * registered session runs independently in the background. The shell picks
  * one as "foreground" for display, while others continue executing.
+ *
+ * If an entry exists, the session is active. Entries are removed synchronously
+ * when runners complete or error. Lifecycle state (completed/paused/error)
+ * is NOT tracked here — callers receive `onRunnerDone`/`onRunnerError`
+ * callbacks and update their own state machines.
  *
  * Uses a discriminated union on `kind` ("workflow" | "chat") so consumers
  * can type-narrow to access session-specific fields (e.g. `steps` on
@@ -13,7 +18,6 @@
  */
 
 import { createWorkflowRunner, type WorkflowRunner, type WorkflowResult, type StepState } from "./workflow-runner"
-import { errorMessage } from "../infra/error-message"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { Queue } from "../workflows/queue/types"
 import type { ModelActivity } from "../infra/events"
@@ -40,14 +44,11 @@ export interface WorkflowSessionEntry extends SessionEntryBase {
   readonly kind: "workflow"
   readonly runner: WorkflowRunner
   readonly steps: readonly StepState[]
-  readonly status: "running" | "paused" | "completed" | "error"
-  readonly result?: WorkflowResult
 }
 
 export interface ChatSessionEntry extends SessionEntryBase {
   readonly kind: "chat"
   readonly runner: ChatRunner
-  readonly status: "running" | "completed" | "error"
 }
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
@@ -77,6 +78,10 @@ export interface SessionRegistry {
     subprocessCwd?: string
     /** Called when the run completes or errors (e.g., temp dir cleanup). */
     onComplete?: () => void
+    /** Called when the runner finishes successfully. */
+    onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
+    /** Called when the runner errors. */
+    onRunnerError?: (sessionId: string, err: unknown) => void
   }): string
 
   /** Start a new chat session and register it. Returns sessionId.
@@ -88,12 +93,19 @@ export interface SessionRegistry {
     priorBlocks?: AnyBlock[]
     createRunner: (callbacks: ChatRegistryCallbacks) => Promise<ChatRunner>
     onComplete?: () => void
+    /** Called when the chat session ends normally. */
+    onRunnerDone?: (sessionId: string) => void
+    /** Called when the chat session errors. */
+    onRunnerError?: (sessionId: string, err: unknown) => void
   }): Promise<string>
 
   /** Get a session entry by ID. */
   get(sessionId: string): SessionEntry | undefined
 
-  /** Get all active (running/paused) session IDs. */
+  /** Check if a session exists in the registry. */
+  has(sessionId: string): boolean
+
+  /** Get all active session IDs (every entry is active by definition). */
   activeIds(): string[]
 
   /** Pause a specific session. Returns false if the entry doesn't support pausing (e.g. chat). */
@@ -102,7 +114,7 @@ export interface SessionRegistry {
   /** Abort a specific session. */
   abort(sessionId: string): void
 
-  /** Remove a completed/errored session from the registry (cleanup). */
+  /** Remove a session from the registry (cleanup). */
   remove(sessionId: string): void
 
   /** Subscribe to registry changes. Returns unsubscribe function. */
@@ -114,10 +126,10 @@ export interface SessionRegistry {
   /** Cancel shutdown for a session so it continues after current step. Returns false for non-workflow entries. */
   cancelShutdown(sessionId: string): boolean
 
-  /** Number of running sessions. */
+  /** Number of active sessions (every entry is active). */
   runningCount(): number
 
-  /** All session IDs currently in the registry (any status). */
+  /** All session IDs currently in the registry. */
   allIds(): string[]
 
   /** Abort and dispose all sessions, flushing output. For clean shutdown. */
@@ -152,6 +164,8 @@ export function createSessionRegistry(): SessionRegistry {
     priorBlocks?: AnyBlock[]
     subprocessCwd?: string
     onComplete?: () => void
+    onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
+    onRunnerError?: (sessionId: string, err: unknown) => void
   }): string {
     const { sessionId, queue, description, priorBlocks } = opts
 
@@ -181,7 +195,6 @@ export function createSessionRegistry(): SessionRegistry {
       cost: 0,
       contextPercent: 0,
       startedAt: Date.now(),
-      status: "running",
       modelActivity: "idle",
     }
 
@@ -191,17 +204,13 @@ export function createSessionRegistry(): SessionRegistry {
     // Run in background — do NOT await
     runner.run().then(
       (result) => {
-        updateEntry(sessionId, {
-          status: result.completed ? "completed" : "paused",
-          result,
-        })
+        opts.onRunnerDone?.(sessionId, result)
+        remove(sessionId)
         opts.onComplete?.()
       },
       (err) => {
-        updateEntry(sessionId, {
-          status: "error",
-          errorMessage: errorMessage(err),
-        })
+        opts.onRunnerError?.(sessionId, err)
+        remove(sessionId)
         opts.onComplete?.()
       },
     )
@@ -215,6 +224,8 @@ export function createSessionRegistry(): SessionRegistry {
     priorBlocks?: AnyBlock[]
     createRunner: (callbacks: ChatRegistryCallbacks) => Promise<ChatRunner>
     onComplete?: () => void
+    onRunnerDone?: (sessionId: string) => void
+    onRunnerError?: (sessionId: string, err: unknown) => void
   }): Promise<string> {
     const { sessionId, description = "Chat", priorBlocks } = opts
 
@@ -226,9 +237,15 @@ export function createSessionRegistry(): SessionRegistry {
       onContextPercent: (n) => updateEntry(sessionId, { contextPercent: n }),
       onModelActivity: (activity) => updateEntry(sessionId, { modelActivity: activity }),
       onSessionName: (name) => updateEntry(sessionId, { description: name }),
-      onError: (message) => updateEntry(sessionId, { status: "error", errorMessage: message }),
+      onError: (message) => {
+        updateEntry(sessionId, { errorMessage: message })
+        opts.onRunnerError?.(sessionId, new Error(message))
+        remove(sessionId)
+        opts.onComplete?.()
+      },
       onEnded: () => {
-        updateEntry(sessionId, { status: "completed" })
+        opts.onRunnerDone?.(sessionId)
+        remove(sessionId)
         opts.onComplete?.()
       },
     }
@@ -244,7 +261,6 @@ export function createSessionRegistry(): SessionRegistry {
       cost: 0,
       contextPercent: 0,
       startedAt: Date.now(),
-      status: "running",
       modelActivity: "idle",
     }
 
@@ -258,22 +274,19 @@ export function createSessionRegistry(): SessionRegistry {
     return entries.get(sessionId)
   }
 
+  function has(sessionId: string): boolean {
+    return entries.has(sessionId)
+  }
+
   function activeIds(): string[] {
-    const ids: string[] = []
-    for (const [id, entry] of entries) {
-      if (entry.status === "running" || (entry.kind === "workflow" && entry.status === "paused")) {
-        ids.push(id)
-      }
-    }
-    return ids
+    return [...entries.keys()]
   }
 
   function pause(sessionId: string): boolean {
     const entry = entries.get(sessionId)
-    if (!entry || entry.status !== "running") return false
+    if (!entry) return false
     if (entry.kind !== "workflow") return false
     entry.runner.pause()
-    updateEntry(sessionId, { status: "paused" })
     return true
   }
 
@@ -297,8 +310,7 @@ export function createSessionRegistry(): SessionRegistry {
     if (!entry) return false
     // Optimistically set activity to "thinking" so the UI shows immediate
     // feedback while waiting for the first NDJSON thinking event to arrive.
-    entry.modelActivity = "thinking"
-    notify()
+    updateEntry(sessionId, { modelActivity: "thinking" })
     return entry.runner.injectMessage(text)
   }
 
@@ -307,9 +319,6 @@ export function createSessionRegistry(): SessionRegistry {
     if (!entry) return false
     if (entry.kind !== "workflow") return false
     entry.runner.cancelShutdown()
-    if (entry.status === "paused") {
-      updateEntry(sessionId, { status: "running" })
-    }
     return true
   }
 
@@ -319,11 +328,7 @@ export function createSessionRegistry(): SessionRegistry {
   }
 
   function runningCount(): number {
-    let count = 0
-    for (const entry of entries.values()) {
-      if (entry.status === "running") count++
-    }
-    return count
+    return entries.size
   }
 
   function allIds(): string[] {
@@ -347,5 +352,5 @@ export function createSessionRegistry(): SessionRegistry {
     notify()
   }
 
-  return { start, startChat, get, activeIds, allIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount, disposeAll }
+  return { start, startChat, get, has, activeIds, allIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount, disposeAll }
 }

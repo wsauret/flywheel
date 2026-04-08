@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { TimerService, timerService, formatDuration } from "../src/tui/shared/services/timer";
-import { useTimer } from "../src/tui/hooks/use-timer";
 
 describe("TimerService", () => {
   beforeEach(() => {
@@ -194,22 +193,6 @@ describe("TimerService", () => {
       timerService.start();
       // Immediately after start, should be 00:00 (< 1s elapsed)
       expect(timerService.getWorkflowRuntime()).toBe("00:00");
-    });
-  });
-
-  // ── useTimer null case ──
-
-  describe("useTimer(null)", () => {
-    it("returns idle defaults when timer is null", () => {
-      const result = useTimer(null);
-      expect(result.workflowRuntime()).toBe("00:00");
-      expect(result.agentDuration("step-0")).toBe("");
-      expect(result.status()).toBe("idle");
-      expect(result.isPaused()).toBe(false);
-      expect(result.isRunning()).toBe(false);
-      expect(result.isStopped()).toBe(false);
-      expect(result.pauseReason()).toBeUndefined();
-      expect(result.service).toBeNull();
     });
   });
 

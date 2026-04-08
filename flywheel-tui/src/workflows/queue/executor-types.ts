@@ -78,6 +78,7 @@ export type EvaluatorFn = (
 export type WorkerFn = (
   step: Step,
   prompt: string,
+  signal?: AbortSignal,
 ) => Promise<WorkerOutput>;
 
 /** Handoff reader: reads handoff data from path */

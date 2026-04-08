@@ -99,7 +99,11 @@ export async function createChatSession(
   // Structured output pipeline — shared across worker respawns
   const builder = new StructuredOutputBuilder()
   let agentActive = false
+  // Gate: only forward model activity when a user-triggered turn is in progress.
+  // Prevents subprocess startup noise (stderr, init events) from starting the timer.
+  let userTurnInProgress = false
   builder.onModelActivityChange = (activity) => {
+    if (!userTurnInProgress && activity !== "idle") return
     callbacks.onModelActivity(activity)
     if (activity !== "idle") agentActive = true
   }
@@ -190,6 +194,7 @@ export async function createChatSession(
   //                where the user message triggered the respawn).
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
     budgetTracker.onNewSubprocess()
+    if (messageToSend) userTurnInProgress = true
     const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
     // Only send content if there's a message — an empty pipe lets Claude idle and
@@ -208,6 +213,7 @@ export async function createChatSession(
         // Capture Claude's session ID on every turn so reconnect is always possible
         if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
         agentActive = false
+        userTurnInProgress = false
         builder.resolvePendingMessages()
         callbacks.onWaiting(false)
         callbacks.onModelActivity("idle")
@@ -250,6 +256,7 @@ export async function createChatSession(
     callbacks.onWaiting(false)
     callbacks.onModelActivity("idle")
     agentActive = false
+    userTurnInProgress = false
     builder.resolvePendingMessages()
     builder.pushSystemMessage("Interrupted", Date.now())
     if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
@@ -292,6 +299,7 @@ export async function createChatSession(
     // (i.e. we're injecting into a running conversation). After interrupt or
     // idle-exit, the agent isn't working so the message is the start of a new turn.
     const isPending = agentActive && stdinHandle?.isOpen === true
+    userTurnInProgress = true
     callbacks.onWaiting(true)
     builder.pushUserMessage(text, Date.now(), isPending)
     callbacks.onBlocks(builder.getBlocks())
