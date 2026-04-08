@@ -42,6 +42,7 @@ export type {
   BudgetChecker,
   PersistFn,
   StepContextAccumulator,
+  PostTurnVerificationResult,
 } from "./executor-types.js";
 
 const log = Log.create({ service: "step-executor" });
@@ -66,6 +67,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     dispatcher,
     worker,
     evaluator,
+    skipEvaluation,
     handoffReader,
     budgetChecker,
     persist,
@@ -77,6 +79,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     sessionObjective,
     persistAccumulatorState,
     onSubprocessDispatched,
+    postTurnVerification,
   } = options;
 
   let shutdownRequested = false;
@@ -211,6 +214,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         dispatcher,
         worker,
         evaluator,
+        skipEvaluation,
         handoffReader,
         accumulator,
         maxRevisions,
@@ -221,6 +225,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         sessionObjective,
         persistAccumulatorState,
         onSubprocessDispatched,
+        postTurnVerification,
         previousHandoff,
         previousAssessment,
         safeTransition,

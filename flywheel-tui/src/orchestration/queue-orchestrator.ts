@@ -65,8 +65,10 @@ export function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workfl
   })
   log.info("queue dispatcher transport resolved", { label: "pooled", engine: engineName })
 
+  // Always create evaluator transport when pool is available — the step-runner
+  // decides whether to invoke it based on skipEvaluation + post-turn results.
   let evaluatorTransport: import("../workflows/evaluator/transport").EvaluatorTransport | undefined
-  if (!deps.config.skip_evaluation && pools.evaluatorPool) {
+  if (pools.evaluatorPool) {
     evaluatorTransport = new PooledSubprocessEvaluatorTransport({
       pool: pools.evaluatorPool,
       formatStdinMessage: pools.formatStdinMessage,
@@ -102,7 +104,7 @@ export interface BuildExecutorCoreDeps {
   /** Mutable ref tracking captured subprocess session ID for resume/interrupt. */
   capturedSubprocessSessionId: { current: string | undefined };
   /** Mutable ref for pending injection message at turn boundaries. */
-  pendingInjection: { current: string | null };
+  pendingInjection: { queue: string[] };
   /** Ref to the active workflow session (for event bus access in turn-complete callback). */
   activeSessionRef: { current: WorkflowSession | null };
 }
@@ -126,6 +128,9 @@ export interface BuildExecutorExtensions {
   transcriptWriter?: import("./session/transcript-writer").TranscriptWriter | null;
   /** Pre-warmed subprocess pool for raw process spawning. */
   subprocessPool?: WarmPool<RawSpawnedProcess> | null;
+  /** External hooks to include in the composite step-completed hook.
+   *  Caller-provided (e.g. sprint hook from workflow-runner). */
+  externalHooks?: Array<import("../workflows/queue/shared/hooks").OnStepCompletedHook>;
 }
 
 /** Full options = core + extensions. */
@@ -156,13 +161,14 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
     contextAccumulator.accumulate(seedHandoff)
   }
 
-  // Agent-based evaluator (if evaluation not skipped and transport available)
-  const evaluator = !deps.config.skip_evaluation && evaluatorTransport
+  // Agent-based evaluator — always created when transport is available.
+  // The step-runner decides whether to invoke it based on skipEvaluation + post-turn results.
+  const evaluator = evaluatorTransport
     ? createAgentEvaluatorFn({ transport: evaluatorTransport })
     : null
 
-  // Composite hook (extensible — currently empty; Phase 5 adds step-type hooks here)
-  const compositeHook = createCompositeHook([])
+  // Composite hook (extensible — includes caller-provided hooks like sprint hook)
+  const compositeHook = createCompositeHook([...(opts.externalHooks ?? [])])
 
   // Dispatcher callback (real dispatcher with fallback to step metadata)
   const dispatcherFn = createDispatcherCallback({

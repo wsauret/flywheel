@@ -149,6 +149,12 @@ export function categorizeFailure(opts: {
     };
   }
 
+  // Crash-after-success recovery: if completion was detected before the crash,
+  // treat as success — the worker finished its work, the crash is incidental.
+  if (exitCode !== 0 && completionDetected && !interrupted && !timedOut) {
+    return undefined;
+  }
+
   // Non-zero exit code
   if (exitCode !== 0) {
     return {

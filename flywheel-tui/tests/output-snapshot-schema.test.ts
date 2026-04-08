@@ -28,7 +28,6 @@ function agentBlock(
     children: ReturnType<typeof toolBlock>[];
     latestChild: string;
     duration: number;
-    toolCount: number;
     errorMessage: string;
   }>,
 ) {
@@ -41,7 +40,6 @@ function agentBlock(
     children: overrides?.children ?? [toolBlock()],
     latestChild: overrides?.latestChild,
     duration: overrides?.duration,
-    toolCount: overrides?.toolCount,
     errorMessage: overrides?.errorMessage,
     timestamp: Date.now(),
   };
@@ -161,7 +159,6 @@ describe("toSnapshot — serialization", () => {
       agentBlock({
         latestChild: "read_file",
         duration: 5000,
-        toolCount: 3,
         errorMessage: "something failed",
       }),
     ];
@@ -170,7 +167,6 @@ describe("toSnapshot — serialization", () => {
     const agentSnap = snapshots[0] as any;
     expect(agentSnap.latestChild).toBe("read_file");
     expect(agentSnap.duration).toBe(5000);
-    expect(agentSnap.toolCount).toBe(3);
     expect(agentSnap.errorMessage).toBe("something failed");
   });
 
@@ -219,7 +215,6 @@ describe("fromSnapshot — deserialization", () => {
         status: "completed",
         children: [{ kind: "tool", name: "write", detail: "out.ts", timestamp: 50 }],
         duration: 3000,
-        toolCount: 1,
         timestamp: 100,
       },
     ];

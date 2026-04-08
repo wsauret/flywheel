@@ -5,6 +5,7 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
   resolveTierConfigs,
+  resolveMaxEffort,
 } from "../src/orchestration/config/loader";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
@@ -26,6 +27,23 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.timeout_minutes).toBe(60);
       expect(result.data.skip_approval_gates).toBe(false);
     }
+  });
+
+  it("subprocess schema accepts effort field", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      subprocess: { model: "sonnet", effort: "high" },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.subprocess.effort).toBe("high");
+    }
+  });
+
+  it("subprocess schema rejects invalid effort values", () => {
+    const result = FlywheelConfigSchema.safeParse({
+      subprocess: { effort: "turbo" },
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects max_retries > 10", () => {
@@ -663,5 +681,113 @@ describe("skip_scrutiny and skip_validation config flags", () => {
   it("CONFIG_DEFAULTS includes skip flags", () => {
     expect(CONFIG_DEFAULTS.skip_scrutiny).toBe(false);
     expect(CONFIG_DEFAULTS.skip_validation).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint max-effort enforcement
+// ---------------------------------------------------------------------------
+
+describe("resolveMaxEffort", () => {
+  it("returns 'max' for opus model (short alias)", () => {
+    expect(resolveMaxEffort("opus")).toBe("max");
+  });
+
+  it("returns 'max' for full opus model ID", () => {
+    expect(resolveMaxEffort("claude-opus-4-6[1m]")).toBe("max");
+  });
+
+  it("returns 'high' for sonnet model (short alias)", () => {
+    expect(resolveMaxEffort("sonnet")).toBe("high");
+  });
+
+  it("returns 'high' for full sonnet model ID", () => {
+    expect(resolveMaxEffort("claude-sonnet-4-6[1m]")).toBe("high");
+  });
+
+  it("returns 'high' for haiku model", () => {
+    expect(resolveMaxEffort("haiku")).toBe("high");
+  });
+
+  it("returns 'high' for undefined model", () => {
+    expect(resolveMaxEffort(undefined)).toBe("high");
+  });
+
+  it("is case-insensitive (OPUS)", () => {
+    expect(resolveMaxEffort("OPUS")).toBe("max");
+  });
+});
+
+describe("resolveTierConfigs with sprint mode", () => {
+  it("sprint mode: opus model defaults all tiers to max effort", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_MODEL: "opus",
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.dispatcher.effort).toBe("max");
+    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.evaluator.effort).toBe("max");
+  });
+
+  it("sprint mode: sonnet model defaults all tiers to high effort", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_MODEL: "sonnet",
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.dispatcher.effort).toBe("high");
+    expect(tiers.subprocess.effort).toBe("high");
+    expect(tiers.evaluator.effort).toBe("high");
+  });
+
+  it("sprint tier config overrides global tier config", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "sonnet",
+      sprint: {
+        worker: { model: "opus", effort: "max" },
+        evaluator: { model: "opus", effort: "max" },
+      },
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    // Worker and evaluator overridden by sprint config
+    expect(tiers.subprocess.model).toBe("opus");
+    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.evaluator.model).toBe("opus");
+    expect(tiers.evaluator.effort).toBe("max");
+    // Dispatcher falls back to global model + model-aware max
+    expect(tiers.dispatcher.model).toBe("sonnet");
+    expect(tiers.dispatcher.effort).toBe("high");
+  });
+
+  it("clamps max effort to high for non-opus models", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "sonnet",
+      sprint: {
+        worker: { effort: "max" }, // invalid: sonnet can't do max
+      },
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.subprocess.effort).toBe("high"); // clamped
+  });
+
+  it("non-sprint mode ignores sprint tier config", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "sonnet",
+      sprint: {
+        worker: { model: "opus", effort: "max" },
+      },
+    });
+    const tiers = resolveTierConfigs(config); // no mode
+    expect(tiers.subprocess.model).toBe("sonnet"); // not opus
+    expect(tiers.subprocess.effort).toBeUndefined(); // subprocess default
+  });
+
+  it("explicit tier effort takes precedence over sprint default", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "opus",
+      evaluator: { effort: "medium" },
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    // No sprint.evaluator override, so tier effort "medium" wins over sprint default
+    expect(tiers.evaluator.effort).toBe("medium");
   });
 });

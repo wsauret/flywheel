@@ -42,6 +42,8 @@ export function generateSessionTitle(message: string, onTitle: (title: string) =
 }
 
 async function generateViaLLM(message: string): Promise<string | null> {
+  // Skip real LLM call during unit tests — the sync fallback is sufficient
+  if (process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test") return null
   try {
     const engine = getEngine("claude")
     const cmd = engine.buildCommand({ model: "haiku" })

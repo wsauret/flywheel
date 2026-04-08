@@ -336,7 +336,7 @@ describe("VAL-QUEUE-022: debounced flusher coalesces rapid writes", () => {
     }
 
     // Wait for debounce to fire
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 30));
 
     // Force flush to ensure all writes complete
     await flusher.flush();
@@ -376,7 +376,7 @@ describe("VAL-QUEUE-022: debounced flusher coalesces rapid writes", () => {
     flusher.dispose(); // cancel before fire
 
     // Wait briefly to confirm nothing fires
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 20));
 
     const loaded = await persistence.load();
     expect(loaded).toBeNull(); // nothing was written

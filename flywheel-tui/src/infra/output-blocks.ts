@@ -37,7 +37,6 @@ export interface AgentBlock {
   children: ToolBlock[];
   latestChild?: string;
   duration?: number;
-  toolCount?: number;
   errorMessage?: string;
   timestamp: number;
   /** Whether the block's children are expanded (visible). Default: false (collapsed). */

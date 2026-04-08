@@ -66,7 +66,7 @@ export class NdjsonPipeline {
     if (this._dispatcherBlockId) {
       const elapsed = Date.now() - this._dispatcherStartedAt;
       this.dispatcherParser.flush();
-      this.builder.completeAgent(this._dispatcherBlockId, elapsed, 0);
+      this.builder.completeAgent(this._dispatcherBlockId, elapsed);
       this._dispatcherBlockId = null;
     }
   }
@@ -98,7 +98,7 @@ export class NdjsonPipeline {
     if (this._evaluatorBlockId) {
       const elapsed = Date.now() - this._evaluatorStartedAt;
       this.evaluatorParser.flush();
-      this.builder.completeAgent(this._evaluatorBlockId, elapsed, 0);
+      this.builder.completeAgent(this._evaluatorBlockId, elapsed);
       this._evaluatorBlockId = null;
     }
   }

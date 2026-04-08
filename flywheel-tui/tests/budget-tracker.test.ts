@@ -408,12 +408,12 @@ describe("BudgetTracker — debounced persistence", () => {
   it("writes to session file after debounce interval", async () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 10 });
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5 });
 
     tracker.handleEvent(resultEvent(0.025));
 
     // Wait for debounce to fire
-    await wait(50);
+    await wait(15);
 
     const session = readSession(sessionId, baseDir);
     expect(session!.totalCost).toBeCloseTo(0.025, 10);
@@ -424,7 +424,7 @@ describe("BudgetTracker — debounced persistence", () => {
   it("coalesces multiple events into a single write", async () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 30 });
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 10 });
 
     // Fire 3 cumulative events quickly — should coalesce into one debounced write
     // Cumulative: 0.01, 0.03, 0.06
@@ -433,7 +433,7 @@ describe("BudgetTracker — debounced persistence", () => {
     tracker.handleEvent(resultEvent(0.06));
 
     // Wait for debounce to fire
-    await wait(80);
+    await wait(25);
 
     const session = readSession(sessionId, baseDir);
     expect(session!.totalCost).toBeCloseTo(0.06, 10);
@@ -444,18 +444,18 @@ describe("BudgetTracker — debounced persistence", () => {
   it("fires additional writes when events arrive after debounce", async () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 10 });
+    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 5 });
 
     // First batch: cumulative 0.01
     tracker.handleEvent(resultEvent(0.01));
-    await wait(50);
+    await wait(15);
 
     const session1 = readSession(sessionId, baseDir);
     expect(session1!.totalCost).toBeCloseTo(0.01, 10);
 
     // Second batch: cumulative 0.03 (delta = 0.02, total = 0.03)
     tracker.handleEvent(resultEvent(0.03));
-    await wait(50);
+    await wait(15);
 
     const session2 = readSession(sessionId, baseDir);
     expect(session2!.totalCost).toBeCloseTo(0.03, 10);
@@ -562,7 +562,7 @@ describe("BudgetTracker — flush", () => {
     expect(session1!.totalCost).toBeCloseTo(0.01, 10);
 
     // Wait for the original debounce interval — should NOT double-write
-    await wait(80);
+    await wait(25);
 
     const session2 = readSession(sessionId, baseDir);
     expect(session2!.totalCost).toBeCloseTo(0.01, 10);

@@ -165,7 +165,7 @@ function agentDisplayText(agent: AgentBlock): {
     case "completed": {
       const duration = agent.duration != null ? formatDuration(agent.duration) : "";
       const detail = duration ? ` (${duration})` : "";
-      const toolInfo = agent.toolCount != null ? `└ ${agent.toolCount} tool calls` : undefined;
+      const toolInfo = agent.children.length > 0 ? `└ ${agent.children.length} tool calls` : undefined;
       return { icon: "✓", label, detail, subline: toolInfo };
     }
     case "error": {
@@ -209,15 +209,17 @@ describe("agentDisplayText", () => {
   });
 
   it("completed agent shows checkmark, duration, and tool count", () => {
+    const children: ToolBlock[] = Array.from({ length: 8 }, (_, i) => ({
+      kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
+    }));
     const agent: AgentBlock = {
       kind: "agent",
       id: "a1",
       agentLabel: "Explore",
       description: "Searching codebase",
       status: "completed",
-      children: [],
+      children,
       duration: 12345,
-      toolCount: 8,
       timestamp: 1,
     };
     const result = agentDisplayText(agent);
@@ -228,14 +230,16 @@ describe("agentDisplayText", () => {
   });
 
   it("completed agent without duration has no duration detail", () => {
+    const children: ToolBlock[] = Array.from({ length: 3 }, (_, i) => ({
+      kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
+    }));
     const agent: AgentBlock = {
       kind: "agent",
       id: "a1",
       agentLabel: "Explore",
       description: "Done",
       status: "completed",
-      children: [],
-      toolCount: 3,
+      children,
       timestamp: 1,
     };
     const result = agentDisplayText(agent);

@@ -16,17 +16,23 @@ import type { RawSpawnedProcess } from "../subprocess/stream-pipeline"
 
 export interface WarmPools {
   dispatcher: WarmPool<SpawnResult>
-  evaluator: WarmPool<SpawnResult> | null
+  evaluator: WarmPool<SpawnResult>
   subprocess: WarmPool<RawSpawnedProcess> | null
 }
 
-/** Create warm pools for dispatcher, evaluator, and subprocess. */
+/**
+ * Create warm pools for dispatcher, evaluator, and subprocess.
+ *
+ * When `mode` is "sprint", tier configs are resolved with sprint overrides
+ * from [sprint.worker], [sprint.evaluator], [sprint.dispatcher] in the TOML.
+ */
 export function createWarmPools(
   deps: WorkflowDeps,
   cwd: string,
   subprocessCwd?: string,
+  mode?: "sprint",
 ): WarmPools {
-  const tiers = resolveTierConfigs(deps.config)
+  const tiers = resolveTierConfigs(deps.config, mode)
   const engine = getEngine(deps.config.engine)
   const env = createEnvFilter().filter(process.env as Record<string, string | undefined>)
   const spawnOpts = { stdinPipe: true as const, cwd, env }
@@ -40,24 +46,21 @@ export function createWarmPools(
     spawn: () => deps.spawner.spawn(dCmd.command, dCmd.args, spawnOpts),
   })
 
-  let evaluator: WarmPool<SpawnResult> | null = null
-  if (!deps.config.skip_evaluation) {
-    const eCmd = engine.buildCommand({
-      tools: "Read,Bash,Write,Grep,Glob", model: tiers.evaluator?.model || "sonnet",
-      effort: tiers.evaluator?.effort || "low",
-    })
-    evaluator = new WarmPool<SpawnResult>({
-      label: "evaluator",
-      spawn: () => deps.spawner.spawn(eCmd.command, eCmd.args, spawnOpts),
-    })
-  }
+  const eCmd = engine.buildCommand({
+    tools: "Read,Bash,Write,Grep,Glob", model: tiers.evaluator?.model || "sonnet",
+    effort: tiers.evaluator?.effort || "low",
+  })
+  const evaluator = new WarmPool<SpawnResult>({
+    label: "evaluator",
+    spawn: () => deps.spawner.spawn(eCmd.command, eCmd.args, spawnOpts),
+  })
 
   // Subprocess pool — uses spawnRaw() for pre-warming with unconsumed streams.
-  // Only available when the spawner implements the optional spawnRaw() method.
   let subprocess: WarmPool<RawSpawnedProcess> | null = null
   if (deps.spawner.spawnRaw) {
     const wCmd = engine.buildCommand({
-      model: deps.config.subprocess?.model ?? deps.config.model,
+      model: tiers.subprocess?.model ?? deps.config.model,
+      effort: tiers.subprocess?.effort ?? undefined,
     })
     const spawnRaw = deps.spawner.spawnRaw.bind(deps.spawner)
     const rawSpawnOpts = { stdinPipe: true as const, cwd: subprocessCwd ?? cwd, env }

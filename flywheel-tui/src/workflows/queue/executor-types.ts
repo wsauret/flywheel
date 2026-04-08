@@ -131,6 +131,16 @@ export interface StepExecutorCoreOptions {
   accumulator: StepContextAccumulator;
   /** Maximum revision attempts per step (0 = no revisions) */
   maxRevisions: number;
+  /**
+   * Evaluation preference. When true, the evaluator is skipped for steps where
+   * post-turn verification passes. When post-turn verification FAILS, the
+   * evaluator runs regardless of this setting — it acts as a safety net.
+   *
+   * Set from `config.skip_evaluation`. The evaluator fn itself should still
+   * be provided (non-null) when a transport is available — this flag controls
+   * when it's invoked, not whether it exists.
+   */
+  skipEvaluation: boolean;
 }
 
 /** Optional hooks and extensions for step execution. */
@@ -183,10 +193,53 @@ export interface StepExecutorHooks {
    * Wire to BudgetTracker.incrementInvocations() to track invocation counts.
    */
   onSubprocessDispatched?: (() => void) | null;
+
+  /**
+   * Post-turn verification hook. Runs after worker output + handoff read,
+   * before the evaluator. Returns verification result or null to skip.
+   *
+   * The hook implementation is composed by the orchestrator with access to
+   * stdinHandleRef and projectCwd — the step-runner doesn't know about
+   * native checks, stdin injection, or self-review mechanics.
+   */
+  postTurnVerification?: PostTurnVerificationHook | null;
 }
 
 /** Full options = core + hooks. */
 export type StepExecutorOptions = StepExecutorCoreOptions & StepExecutorHooks;
+
+// ---------------------------------------------------------------------------
+// PostTurnVerificationHook — named type alias for the hook function
+// ---------------------------------------------------------------------------
+
+export type PostTurnVerificationHook = (ctx: {
+  step: Step;
+  workerOutput: WorkerOutput;
+  handoffData: Record<string, unknown> | null;
+}) => Promise<PostTurnVerificationResult | null>;
+
+// ---------------------------------------------------------------------------
+// PostTurnVerificationResult — returned by the post-turn verification hook
+// ---------------------------------------------------------------------------
+
+/** Minimal check result — avoids importing NativeCheckResult from orchestration layer. */
+export interface VerificationCheckResult {
+  command: string;
+  passed: boolean;
+  exitCode: number;
+  stderr: string;
+  durationMs: number;
+  skipped?: boolean;
+  discrepancy?: boolean;
+}
+
+export interface PostTurnVerificationResult {
+  passed: boolean;
+  nativeChecksPassed: boolean;
+  selfReviewCompleted: boolean;
+  fixAttemptsUsed: number;
+  checks: VerificationCheckResult[];
+}
 
 // ---------------------------------------------------------------------------
 // StepExecutorResult — what run() returns

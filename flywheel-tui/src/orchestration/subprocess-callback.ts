@@ -6,27 +6,34 @@
  */
 
 import { randomUUID } from "node:crypto"
-import { buildScaffolding, type ScaffoldingPaths } from "../workflows/queue/shared/scaffolding"
+import { buildScaffolding, type ScaffoldingPaths } from "../workflows/queue/shared/scaffolding.js"
 import {
   sessionDir,
   buildSubprocessHandoffPath,
   ensureSessionDir,
-} from "../infra/paths"
-import { formatStdinMessage } from "./engines/subprocess/stdin-format"
-import { Log } from "../infra/log"
-import { wireStreamPipeline } from "./engines/subprocess/stream-pipeline"
-import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
-import type { WarmPool } from "./engines/pool/warm-pool"
-import type { WorkflowDeps } from "./engines/workflow-deps"
-import type { FlywheelEmitter } from "../infra/event-bus"
-import type { StdinHandle } from "./engines/subprocess/spawner"
-import type { WorkflowSession } from "./workflow-session"
-import type { Step } from "../workflows/queue/types"
-import type { BudgetTracker } from "./session/budget-tracker"
-import type { TraceEventHandler } from "./engines/subprocess/trace-event-handler"
-import type { TranscriptWriter } from "./session/transcript-writer"
+} from "../infra/paths.js"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
+import { Log } from "../infra/log.js"
+import { wireStreamPipeline } from "./engines/subprocess/stream-pipeline.js"
+import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
+import type { WarmPool } from "./engines/pool/warm-pool.js"
+import type { WorkflowDeps } from "./engines/workflow-deps.js"
+import type { FlywheelEmitter } from "../infra/event-bus.js"
+import type { StdinHandle } from "./engines/subprocess/spawner.js"
+import type { WorkflowSession } from "./workflow-session.js"
+import type { Step } from "../workflows/queue/types.js"
+import type { BudgetTracker } from "./session/budget-tracker.js"
+import type { TraceEventHandler } from "./engines/subprocess/trace-event-handler.js"
+import type { TranscriptWriter } from "./session/transcript-writer.js"
+import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers.js"
+import { createDoomLoopObserver } from "./engines/doom-loop.js"
+import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper.js"
+import { SELF_REVIEW_CHECKLIST } from "../workflows/queue/post-turn-verification.js"
 
 const log = Log.create({ service: "subprocess-callback" })
+
+/** Step types that get self-review injection at the first turn boundary. */
+const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,7 +51,7 @@ export interface SubprocessCallbackDeps {
   subprocessCwd?: string
   stdinHandleRef?: { current: StdinHandle | null }
   capturedSubprocessSessionId: { current: string | undefined }
-  pendingInjection: { current: string | null }
+  pendingInjection: { queue: string[] }
   activeSessionRef: { current: WorkflowSession | null }
   budgetTracker?: BudgetTracker | null
   traceEventHandler?: TraceEventHandler | null
@@ -76,7 +83,19 @@ export function createSubprocessCallback(
   } = opts
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
 
+  // Stream observers — always active for workflow mode
+  const observerChain = createObserverChain([
+    createDoomLoopObserver(),
+    createToolFailureObserver(),
+    createNoActionObserver(),
+  ])
+
   return async (step: Step, prompt: string): Promise<SubprocessCallbackResult> => {
+    // Reset observer state between steps so doom-loop history, consecutive
+    // error counts, and no-action flags don't bleed across step boundaries.
+    observerChain.reset()
+    let selfReviewInjected = false
+
     const invocationId = randomUUID()
 
     // Compute handoff path BEFORE spawning — session-scoped with meaningful name
@@ -102,6 +121,7 @@ export function createSubprocessCallback(
 
     const engineCmd = deps.engine.buildCommand({
       model: deps.config.subprocess?.model ?? deps.config.model,
+      effort: deps.config.subprocess?.effort ?? undefined,
       toolScoping: step.toolScoping ?? undefined,
     })
     const startTime = Date.now()
@@ -122,9 +142,19 @@ export function createSubprocessCallback(
     // close the pipe to let the step advance.
     const onTurnComplete = useStdinPipe ? (subprocessSessionId: string | undefined) => {
       capturedSubprocessSessionId.current = subprocessSessionId
-      if (pendingInjection.current && stdinHandleRef?.current?.isOpen) {
-        const message = pendingInjection.current
-        pendingInjection.current = null
+      // Collect observer injection messages and push to queue
+      const observerMessages = observerChain.onTurnComplete()
+      for (const msg of observerMessages) {
+        pendingInjection.queue.push(msg)
+      }
+      // Self-review: inject checklist on first turn-complete for code steps.
+      // Uses the same injection mechanism as observers — no new infrastructure.
+      if (!selfReviewInjected && SELF_REVIEW_STEP_TYPES.has(step.type)) {
+        pendingInjection.queue.push(SELF_REVIEW_CHECKLIST)
+        selfReviewInjected = true
+      }
+      if (pendingInjection.queue.length > 0 && stdinHandleRef?.current?.isOpen) {
+        const message = pendingInjection.queue.shift()!
         const written = stdinHandleRef.current.write(formatStdinMessage(deps.engine.metadata.id, message))
         if (written) {
           log.info("turn-boundary injection sent to subprocess", { length: message.length })
@@ -166,13 +196,15 @@ export function createSubprocessCallback(
       onStderr: (chunk: string) => {
         emitter.subprocessOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
       },
-      onNDJSONEvent: (budgetTracker || traceEventHandler || transcriptWriter)
-        ? (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
-            budgetTracker?.handleEvent(event);
-            traceEventHandler?.handleEvent(event);
-            transcriptWriter?.handleEvent(event);
-          }
-        : undefined,
+      onNDJSONEvent: (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
+        budgetTracker?.handleEvent(event);
+        traceEventHandler?.handleEvent(event);
+        transcriptWriter?.handleEvent(event);
+        // Feed observers
+        for (const engineEvent of mapNDJSONToEngineEvents(event)) {
+          observerChain.onEvent(engineEvent);
+        }
+      },
     }
 
     // Acquire from pool or fall back to deps.spawner.spawn()
@@ -198,6 +230,8 @@ export function createSubprocessCallback(
         stepId: step.id,
       }
       transcriptWriter.handleEvent({
+        // as any: Synthetic boundary event — "unknown" is not in NDJSONEventType union;
+        // using cast to avoid extending the type for a non-NDJSON internal marker event.
         type: "unknown" as any,
         data: boundaryPayload,
         raw: JSON.stringify(boundaryPayload),

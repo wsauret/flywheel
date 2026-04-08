@@ -1,16 +1,18 @@
 // ---------------------------------------------------------------------------
-// Queue System — Workflow Templates (simplified: work only)
+// Queue System — Workflow Templates
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from "crypto";
 import { createQueue, type QueueOptions } from "./queue";
 import type { Step, Queue, StepType, WorkflowTemplate } from "./types";
+import { SPRINT_HINT } from "./steps/sprint/types.js";
+import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria.js";
 
 // ---------------------------------------------------------------------------
-// WorkflowName — only "work" is supported
+// WorkflowName — supported workflow template names
 // ---------------------------------------------------------------------------
 
-export type WorkflowName = "work";
+export type WorkflowName = "work" | "sprint";
 
 // ---------------------------------------------------------------------------
 // BuildQueueOptions — configuration for queue building
@@ -27,7 +29,7 @@ interface BuildQueueOptions {
 // Step factory helper
 // ---------------------------------------------------------------------------
 
-function makeStep(type: StepType, title: string, extra?: Partial<Step>): Step {
+export function makeStep(type: StepType, title: string, extra?: Partial<Step>): Step {
   return {
     id: randomUUID(),
     type,
@@ -52,19 +54,34 @@ export function buildQueueFromTemplate(
   name: WorkflowName,
   options?: BuildQueueOptions,
 ): Queue {
-  if (name !== "work") {
-    throw new Error(`Unknown workflow template: ${name}`);
-  }
-
-  const steps: Step[] = [
-    makeStep("work", "Execute work", {
-      toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
-    }),
-  ];
-
   const queueOpts: QueueOptions | undefined = options?.maxSteps
     ? { maxSteps: options.maxSteps }
     : undefined;
 
-  return createQueue(steps, queueOpts);
+  switch (name) {
+    case "work": {
+      const steps: Step[] = [
+        makeStep("work", "Execute work", {
+          toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
+        }),
+      ];
+      return createQueue(steps, queueOpts);
+    }
+
+    case "sprint": {
+      const steps: Step[] = [
+        makeStep("work", "Execute sprint", {
+          dispatcherHint: SPRINT_HINT,
+          toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
+          evaluationCriteria: buildSprintEvaluationCriteria(),
+        }),
+      ];
+      return createQueue(steps, queueOpts);
+    }
+
+    default: {
+      const _exhaustive: never = name;
+      throw new Error(`Unknown workflow template: ${_exhaustive}`);
+    }
+  }
 }

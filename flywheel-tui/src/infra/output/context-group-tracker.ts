@@ -24,10 +24,8 @@ export interface ContextGroupCallbacks {
   startContextAgent: (id: string, timestamp: number) => void
   /** Append a tool as a child of the current context agent. */
   appendToolToContextAgent: (agentId: string, tool: ToolBlock) => void
-  /** Complete the context agent with duration and tool count. */
-  completeContextAgent: (agentId: string, duration: number, toolCount: number) => void
-  /** Get the number of children for the current context agent. */
-  getContextAgentChildCount: (agentId: string) => number
+  /** Complete the context agent with duration. Tool count is derived from children.length. */
+  completeContextAgent: (agentId: string, duration: number) => void
 }
 
 export class ContextGroupTracker {
@@ -75,8 +73,7 @@ export class ContextGroupTracker {
 
     const id = this.contextAgentId
     const duration = timestamp - this.contextRunStartTime
-    const childCount = this.callbacks.getContextAgentChildCount(id)
-    this.callbacks.completeContextAgent(id, duration, childCount)
+    this.callbacks.completeContextAgent(id, duration)
     this.contextAgentId = null
   }
 

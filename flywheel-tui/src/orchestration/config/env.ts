@@ -113,20 +113,9 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
       (config.sprint as Record<string, unknown>).max_iterations = n;
     }
   },
-  FLYWHEEL_SPRINT_VERIFICATION_TIMEOUT_MS: (val, config) => {
-    const n = parseInt(val, 10);
-    if (!isNaN(n)) {
-      if (!config.sprint) config.sprint = {};
-      (config.sprint as Record<string, unknown>).verification_timeout_ms = n;
-    }
-  },
   FLYWHEEL_SPRINT_ESCALATE_TO_FULL: (val, config) => {
     if (!config.sprint) config.sprint = {};
     (config.sprint as Record<string, unknown>).escalate_to_full = val === "true" || val === "1";
-  },
-  FLYWHEEL_SPRINT_SUBPROCESS_CAN_ESCALATE: (val, config) => {
-    if (!config.sprint) config.sprint = {};
-    (config.sprint as Record<string, unknown>).subprocess_can_escalate = val === "true" || val === "1";
   },
   FLYWHEEL_SPRINT_ESCALATE_ON_STUCK: (val, config) => {
     if (!config.sprint) config.sprint = {};

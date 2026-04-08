@@ -13,6 +13,7 @@ export {
   type CommandsConfig,
   CONFIG_DEFAULTS,
   resolveTierConfigs,
+  resolveMaxEffort,
   type ResolvedTierConfig,
   type FlywheelConfig,
 } from "./schema";

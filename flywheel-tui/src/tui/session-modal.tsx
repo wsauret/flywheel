@@ -154,7 +154,7 @@ export function SessionModal(props: SessionModalProps) {
       <box paddingTop={1} paddingBottom={0} flexDirection="column">
         <Show when={flatList().length === 0}>
           <box paddingTop={1} paddingBottom={1}>
-            <text fg={theme.textMuted}>No sessions yet. Start a workflow with /start work "desc"</text>
+            <text fg={theme.textMuted}>No sessions yet. Try /sprint "desc" or /work "desc"</text>
           </box>
         </Show>
 

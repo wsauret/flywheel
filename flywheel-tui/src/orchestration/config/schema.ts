@@ -68,6 +68,7 @@ export const FlywheelConfigSchema = z.object({
   /** Per-tier config for the subprocess */
   subprocess: z.object({
     model: z.string().optional(),
+    effort: z.enum(["low", "medium", "high", "max"]).optional(),
   }).default({}),
   /** Per-tier config for the evaluator */
   evaluator: z.object({
@@ -176,14 +177,35 @@ export const FlywheelConfigSchema = z.object({
   sprint: z.object({
     /** Max sprint iterations before escalation. Default: 5. */
     max_iterations: z.number().int().min(1).max(10).default(5),
-    /** Timeout (ms) for verification script execution. Default: 30000. */
-    verification_timeout_ms: z.number().int().min(1000).default(30000),
     /** Escalate to full queue when sprint exhausts iterations. Default: true. */
     escalate_to_full: z.boolean().default(true),
-    /** Allow subprocess to signal escalation via needs_plan. Default: false. */
-    subprocess_can_escalate: z.boolean().default(false),
     /** Escalate early on repeated identical verification failures. Default: false. */
     escalate_on_stuck: z.boolean().default(false),
+    /** Per-tier overrides for sprint mode. When set, these override the global
+     *  tier config during sprint execution. Unset fields inherit from the
+     *  corresponding global tier config.
+     *
+     *  Example TOML:
+     *    [sprint.worker]
+     *    model = "opus"
+     *    effort = "max"
+     *
+     *    [sprint.evaluator]
+     *    model = "opus"
+     *    effort = "max"
+     */
+    worker: z.object({
+      model: z.string().optional(),
+      effort: z.enum(["low", "medium", "high", "max"]).optional(),
+    }).default({}),
+    evaluator: z.object({
+      model: z.string().optional(),
+      effort: z.enum(["low", "medium", "high", "max"]).optional(),
+    }).default({}),
+    dispatcher: z.object({
+      model: z.string().optional(),
+      effort: z.enum(["low", "medium", "high", "max"]).optional(),
+    }).default({}),
   }).default({}),
 });
 
@@ -239,21 +261,24 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
   },
   sprint: {
     max_iterations: 5,
-    verification_timeout_ms: 30_000,
     escalate_to_full: true,
-    subprocess_can_escalate: false,
     escalate_on_stuck: false,
   },
 };
 
 // ---------------------------------------------------------------------------
-// Model resolution
+// Model / effort resolution
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the final model for each tier.
- * Precedence: tier-specific (dispatcher.model / subprocess.model / evaluator.model) > convenience (model) > undefined (engine default).
+ * Maximum effort level a model supports.
+ * Opus supports "max"; all other models cap at "high".
  */
+export function resolveMaxEffort(model: string | undefined): "max" | "high" {
+  if (model && model.toLowerCase().includes("opus")) return "max";
+  return "high";
+}
+
 /**
  * Resolved per-tier config blob. Passed as a single object through the
  * transport/command pipeline so new fields don't require plumbing changes.
@@ -263,28 +288,47 @@ export interface ResolvedTierConfig {
   effort?: string;
 }
 
-const DEFAULT_EFFORT = "low";
+/** Default effort per tier when not explicitly configured. */
+const DEFAULT_EFFORTS = {
+  dispatcher: "low",
+  subprocess: undefined,  // workers inherit engine default — no effort flag unless set
+  evaluator: "low",
+} as const;
 
 /**
  * Resolve per-tier config for dispatcher, subprocess, and evaluator.
- * Each field has a tier-specific override > convenience global > default fallback chain.
+ *
+ * Precedence chain (first defined wins):
+ *   sprint.tier > tier-specific > per-tier default (or sprint model-aware max)
+ *
+ * When `mode` is "sprint", the [sprint.worker], [sprint.evaluator], and
+ * [sprint.dispatcher] TOML sections are consulted first. Sprint defaults to
+ * model-aware max effort (opus→"max", else→"high") when nothing is set.
  */
-export function resolveTierConfigs(config: FlywheelConfig): {
+export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
   dispatcher: ResolvedTierConfig;
   subprocess: ResolvedTierConfig;
   evaluator: ResolvedTierConfig;
 } {
+  const sprint = mode === "sprint" ? config.sprint : undefined;
+
+  function resolve(
+    tier: { model?: string; effort?: string },
+    sprintTier: { model?: string; effort?: string } | undefined,
+    tierDefault: string | undefined,
+  ): ResolvedTierConfig {
+    const model = sprintTier?.model ?? tier.model ?? config.model;
+    const raw = sprintTier?.effort
+      ?? tier.effort
+      ?? (sprint ? resolveMaxEffort(model) : tierDefault);
+    // Clamp: "max" is only valid for opus. Downgrade to "high" for other models.
+    const effort = raw === "max" && !model?.toLowerCase().includes("opus") ? "high" : raw;
+    return { model, effort };
+  }
+
   return {
-    dispatcher: {
-      model: config.dispatcher.model ?? config.model,
-      effort: config.dispatcher.effort ?? DEFAULT_EFFORT,
-    },
-    subprocess: {
-      model: config.subprocess.model ?? config.model,
-    },
-    evaluator: {
-      model: config.evaluator.model ?? config.model,
-      effort: config.evaluator.effort ?? DEFAULT_EFFORT,
-    },
+    dispatcher: resolve(config.dispatcher, sprint?.dispatcher, DEFAULT_EFFORTS.dispatcher),
+    subprocess: resolve(config.subprocess, sprint?.worker, DEFAULT_EFFORTS.subprocess),
+    evaluator: resolve(config.evaluator, sprint?.evaluator, DEFAULT_EFFORTS.evaluator),
   };
 }

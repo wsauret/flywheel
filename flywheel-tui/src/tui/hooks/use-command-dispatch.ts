@@ -66,22 +66,12 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
   })
 
   commandRegistry.register({
-    pattern: /^\/start\s+(\w+)\s+"([^"]+)"$/i,
+    pattern: /^\/(work|plan|review|debug|research|sprint)\s+"([^"]+)"$/i,
     execute(match) { deps.startWorkflow(match[1], match[2]); return true },
   })
 
   commandRegistry.register({
-    pattern: /^\/start\s+(\w+)\s+(.+)$/i,
-    execute(match) { deps.startWorkflow(match[1], match[2]); return true },
-  })
-
-  commandRegistry.register({
-    pattern: /^\/(work|plan|review|debug|research)\s+"([^"]+)"$/i,
-    execute(match) { deps.startWorkflow(match[1], match[2]); return true },
-  })
-
-  commandRegistry.register({
-    pattern: /^\/(work|plan|review|debug|research)\s+(.+)$/i,
+    pattern: /^\/(work|plan|review|debug|research|sprint)\s+(.+)$/i,
     execute(match) { deps.startWorkflow(match[1], match[2]); return true },
   })
 
@@ -131,7 +121,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
       if (deps.sessionStatus() === "paused") {
         deps.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
       } else {
-        deps.showToast({ message: `Unknown command. Try /new, /sessions, /start work "desc", or /exit`, variant: "warning" })
+        deps.showToast({ message: `Unknown command. Try /new, /sessions, /sprint "desc", /work "desc", or /exit`, variant: "warning" })
       }
     })
   }

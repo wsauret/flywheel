@@ -47,7 +47,6 @@ const AgentSnapshotSchema = z
     children: z.array(ToolSnapshotSchema),
     latestChild: z.string().optional(),
     duration: z.number().optional(),
-    toolCount: z.number().optional(),
     errorMessage: z.string().optional(),
     timestamp: z.number(),
   })

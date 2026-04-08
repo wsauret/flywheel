@@ -28,6 +28,10 @@ import type { Queue } from "../workflows/queue/types"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { SessionRunner } from "./session-runner"
 import { generateSessionTitle } from "./session-title"
+import { createPostTurnVerificationHook } from "../workflows/queue/post-turn-verification"
+import { createSprintHook } from "../workflows/queue/steps/sprint/hooks"
+import { SPRINT_HINT } from "../workflows/queue/steps/sprint/types"
+import type { OnStepCompletedHook } from "../workflows/queue/shared/hooks"
 import "../workflows/queue/steps/register-all"
 
 
@@ -149,7 +153,7 @@ export function createWorkflowRunner(opts: {
 
   // Hoisted refs so injectMessage can access them outside run()
   const stdinHandleRef: { current: StdinHandle | null } = { current: null }
-  const pendingInjection: { current: string | null } = { current: null }
+  const pendingInjection: { queue: string[] } = { queue: [] }
 
   // Pool refs — created inside run(), shut down in dispose()
   let dispatcherPool: WarmPool<SpawnResult> | null = null
@@ -157,17 +161,35 @@ export function createWorkflowRunner(opts: {
   let subprocessPool: WarmPool<RawSpawnedProcess> | null = null
 
   async function run(): Promise<WorkflowResult> {
-    // Create warm pools for dispatcher, evaluator, and subprocess (session-scoped)
-    const pools = createWarmPools(deps, projectCwd, subprocessCwd)
+    // Sprint detection: if any step has SPRINT_HINT, wire the sprint hook.
+    // Sprint tier config ([sprint.worker], [sprint.evaluator], etc.) is resolved
+    // by resolveTierConfigs when mode="sprint" — no config cloning needed.
+    const isSprint = queue.steps.some((s) => s.dispatcherHint === SPRINT_HINT)
+    const externalHooks: OnStepCompletedHook[] = []
+    if (isSprint) {
+      const { hook } = createSprintHook(deps.config.sprint)
+      externalHooks.push(hook)
+    }
+
+    // Create warm pools — passes mode so resolveTierConfigs applies sprint overrides
+    const pools = createWarmPools(deps, projectCwd, subprocessCwd, isSprint ? "sprint" : undefined)
     dispatcherPool = pools.dispatcher
     evaluatorPool = pools.evaluator
     subprocessPool = pools.subprocess
 
     const stdinFormatter = (text: string) => formatStdinMessage(deps.engine.metadata.id, text)
 
+    // Sprint evaluator uses Opus — override the 60s speed pressure with quality focus
+    const evaluatorAddendum = isSprint
+      ? "You are evaluating sprint mode work. Evaluate against the 6-point self-review checklist " +
+        "(diff review, task alignment, completeness, test coverage, regression, edge cases). " +
+        "PASS work that meets the task requirements. " +
+        "Only FAIL for hard evidence: tests failing, critical deliverables missing, or fundamentally broken output."
+      : undefined
+
     const { dispatcherTransport, evaluatorTransport } = resolveTransports(
       deps, eventBus, workflowIdRef, "", sessionId, projectCwd,
-      undefined, // evaluatorSystemPromptAddendum
+      evaluatorAddendum,
       { dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage: stdinFormatter },
     )
 
@@ -178,8 +200,21 @@ export function createWorkflowRunner(opts: {
       ? createTraceEventHandler({ emitter, workflowIdRef })
       : null
 
+    // Post-turn verification applies to all workflow types, not just sprint.
+    // Native checks re-run commands from the handoff independently via Bun.spawn
+    // after the worker exits. Self-review injection happens at the turn boundary
+    // in subprocess-callback.ts (same mechanism as observer injection —
+    // pushed to pendingInjection.queue).
+    const postTurnVerification = createPostTurnVerificationHook({
+      nativeChecks: true,
+      nativeCheckTypes: ["build", "test", "has-changes"],
+      selfReview: false, // self-review is handled at turn boundary in subprocess-callback, not here
+      maxFixAttempts: 2,
+      projectCwd,
+    })
+
     const execDeps = buildExecutorDeps({
-      deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
+      deps: deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
       contextIndexer, projectCwd, subprocessCwd, sessionObjective: description, queue, sessionId,
       stdinHandleRef,
       capturedSubprocessSessionId: { current: undefined },
@@ -189,6 +224,7 @@ export function createWorkflowRunner(opts: {
       traceEventHandler,
       transcriptWriter,
       subprocessPool,
+      externalHooks,
     })
 
     const guardrails = createGuardrails({
@@ -207,6 +243,7 @@ export function createWorkflowRunner(opts: {
       dispatcher: execDeps.dispatcherFn,
       worker: execDeps.subprocessFn,
       evaluator: execDeps.evaluator,
+      skipEvaluation: deps.config.skip_evaluation ?? false,
       handoffReader: execDeps.handoffReader,
       budgetChecker: { isExhausted: () => false },
       persist: async (q) => { try { await persistence.save(q) } catch { /* best-effort */ } },
@@ -216,6 +253,7 @@ export function createWorkflowRunner(opts: {
       guardrails,
       sessionObjective: description,
       onSubprocessDispatched: () => budgetTracker.incrementInvocations(),
+      postTurnVerification,
     })
 
     // Generate session title via haiku in parallel — doesn't block execution
@@ -266,7 +304,7 @@ export function createWorkflowRunner(opts: {
     }
 
     // Queue for turn-boundary injection
-    pendingInjection.current = text
+    pendingInjection.queue.push(text)
     return true
   }
 

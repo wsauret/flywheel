@@ -18,6 +18,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 SESSION="flywheel-uat-$$"
+UAT_DIR=""
 WAIT_SHORT=3
 WAIT_MEDIUM=10
 WAIT_RESPONSE=18
@@ -38,12 +39,19 @@ init_harness() {
   echo "Log directory: $LOG_DIR" >> "$SUMMARY"
   echo "---" >> "$SUMMARY"
 
+  # Create isolated temp dir per docs/tmux-uat-guide.md
+  # Workers create real files — never run in the project directory.
+  UAT_DIR=$(mktemp -d /tmp/flywheel-uat-XXXXXX)
+  if [ -f "$PROJECT_DIR/flywheel.toml" ]; then
+    cp "$PROJECT_DIR/flywheel.toml" "$UAT_DIR/"
+  fi
+
   # Kill any leftover UAT sessions
   for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^flywheel-uat-' || true); do
     tmux kill-session -t "$s" 2>/dev/null || true
   done
 
-  echo "[$module_name] Starting tests…"
+  echo "[$module_name] Starting tests… (UAT_DIR=$UAT_DIR)"
 }
 
 finish_harness() {

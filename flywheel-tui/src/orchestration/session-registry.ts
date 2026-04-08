@@ -295,6 +295,10 @@ export function createSessionRegistry(): SessionRegistry {
   function injectMessage(sessionId: string, text: string): boolean {
     const entry = entries.get(sessionId)
     if (!entry) return false
+    // Optimistically set activity to "thinking" so the UI shows immediate
+    // feedback while waiting for the first NDJSON thinking event to arrive.
+    entry.modelActivity = "thinking"
+    notify()
     return entry.runner.injectMessage(text)
   }
 

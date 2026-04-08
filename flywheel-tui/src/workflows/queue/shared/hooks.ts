@@ -11,6 +11,13 @@ export type OnStepCompletedHook = (
   handoffData: Record<string, unknown> | null,
 ) => Promise<OnStepCompletedResult>;
 
+/**
+ * Compose multiple step-completed hooks into a single hook.
+ *
+ * Runs all hooks in sequence. Uses OR semantics for `continueExecution`:
+ * if ANY hook returns `continueExecution: true`, the composite returns true.
+ * A single hook saying "continue" overrides all others saying "stop".
+ */
 export function createCompositeHook(
   hooks: Array<OnStepCompletedHook | null | undefined>,
 ): OnStepCompletedHook {

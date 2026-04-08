@@ -1,22 +1,17 @@
 /**
- * Queue Builder — queue-based workflow composition (simplified: work only).
+ * Queue Builder — queue-based workflow composition.
  *
  * Contains:
  *   - `buildQueue` — pure function to create a Queue from a WorkflowName + config
  *   - `buildQueueForSlashCommand` — creates queue from slash command name + config
- *   - `createEndOfSessionGate` — validation state gate
  */
 
-import * as path from "node:path";
 import {
   buildQueueFromTemplate,
   type WorkflowName,
 } from "../workflows/queue/templates";
-import type { Queue, Step, StepType, EndOfSessionGateCheck } from "../workflows/queue/types";
-import { createQueue } from "../workflows/queue/queue";
+import type { Queue } from "../workflows/queue/types";
 import type { FlywheelConfig } from "./config/loader";
-import { checkEndOfSessionGate } from "./session/validation-state";
-import { randomUUID } from "crypto";
 
 // ---------------------------------------------------------------------------
 // buildQueue — create a Queue from a workflow template name + config
@@ -43,42 +38,19 @@ function buildQueue(workflowName: WorkflowName, config: FlywheelConfig): Queue {
 /**
  * Build a Queue for a slash command.
  *
- * Creates a single work step queue. Unknown commands fall back to work.
+ * Maps known commands to their workflow templates. Unknown commands fall back to work.
  *
  * @param command The slash command name (without /)
  * @param config FlywheelConfig
  * @returns A new Queue
  */
 export function buildQueueForSlashCommand(command: string, config: FlywheelConfig): Queue {
-  // All commands produce a single work step
-  return createQueue([{
-    id: randomUUID(),
-    type: "work" as StepType,
-    title: `Execute ${command}`,
-    status: "pending",
-  }], { maxSteps: config.queue?.max_steps });
-}
-
-// ---------------------------------------------------------------------------
-// End-of-session gate factory (re-exported for shell use)
-// ---------------------------------------------------------------------------
-
-/**
- * Create an end-of-session gate check function.
- *
- * The gate reads `validation-state.json` from the project root and verifies
- * that all assertions have passed before declaring queue completion.
- */
-function createEndOfSessionGate(
-  config: FlywheelConfig,
-  projectCwd: string,
-): EndOfSessionGateCheck {
-  const validationStatePath = path.resolve(projectCwd, "validation-state.json");
-
-  return async () => {
-    return checkEndOfSessionGate(validationStatePath, {
-      skipScrutiny: config.skip_scrutiny,
-      skipValidation: config.skip_validation,
-    });
+  const templateMap: Record<string, WorkflowName> = {
+    work: "work",
+    sprint: "sprint",
   };
+
+  const workflowName: WorkflowName = templateMap[command] ?? "work";
+  return buildQueue(workflowName, config);
 }
+

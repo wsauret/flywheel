@@ -186,7 +186,7 @@ When wiring new features, pass dependencies through existing options objects. Do
 ## 10. Writing and Running Tests
 
 ```bash
-bun run test                   # unit tests (tests/*.test.ts)
+bun run test                   # unit tests only — must complete in <10s
 bun test tests/foo.test.ts     # single file
 bun run test:integration       # integration tests (tests/integration/)
 bun run test:e2e               # end-to-end tests (tests/e2e/)
@@ -194,12 +194,40 @@ bun run test:e2e               # end-to-end tests (tests/e2e/)
 
 **Always use `bun run test`, not bare `bun test`.** Bare `bun test` crawls the entire repo including `node_modules/` and `inspiration/`, running thousands of irrelevant tests. The `test` script in `package.json` applies the correct path filter.
 
+### Test placement rules
+
+Tests are split into three tiers. **Putting a test in the wrong tier breaks CI speed.**
+
+| Tier | Location | What belongs here | Speed target |
+|------|----------|-------------------|--------------|
+| **Unit** | `tests/*.test.ts`, `tests/{schemas,handoff,evaluator,tui}/*.test.ts` | Pure logic, mock dependencies, no I/O, no subprocesses, no API calls | <10s total |
+| **Integration** | `tests/integration/*.test.ts` | Real subprocess spawning, real file I/O, anything that takes >500ms | Minutes OK |
+| **E2E** | `tests/e2e/*.sh` | Full TUI via tmux, real API calls, real workflows | 30+ min OK |
+
+**The `bun run test` glob explicitly lists allowed subdirectories.** If you add a new test subdirectory under `tests/`, you must add it to the glob in `package.json`. Never use a wildcard like `tests/*/*.test.ts` — that catches `integration/` and `e2e/`.
+
+### What must NEVER appear in unit tests
+
+1. **No real API calls.** If a function fires a subprocess or HTTP request as a side effect, guard it with `process.env.NODE_ENV === "test"` or inject the dependency so tests can mock it. Every API call adds 1-2s.
+
+2. **No real process spawning.** Tests that call `Bun.spawn`, `BunProcessSpawner`, or any subprocess belong in `tests/integration/`. Unit tests use mock functions that return predetermined results.
+
+3. **No `await wait()` or `setTimeout` over 30ms.** If a test needs a longer wait to exercise real I/O, timers, or debounce behavior, either:
+   - Tighten the production debounce interval in the test to 5-10ms and wait 15-25ms
+   - Or move the test to `tests/integration/`
+
+4. **No tmux commands.** Any test driving the TUI via tmux belongs in `tests/e2e/`.
+
+5. **No file creation in the project directory.** Tests that create temporary files must use `mkdtempSync()` in `/tmp/` and clean up in `afterEach`/`afterAll`. Worker-created artifacts must never land in `tests/` or `src/`.
+
+### General test rules
+
 - Write unit tests for new functionality. Maintain coverage when refactoring.
 - Test observable behavior (what the system does), not implementation details (how it does it).
 - Use `describe`/`it` blocks, Vitest assertions, async/await for async code.
 - Shared fixtures go in `tests/fixtures/`. DRY applies to tests too.
 - Avoid coupling tests to implementation -- they should survive internal refactors.
-- **Fix failing tests, don't say they're pre-existing.** If you find a failing test, fix it.
+- **Fix failing or slow tests immediately.** Don't say they're pre-existing or out of scope.
 
 ---
 

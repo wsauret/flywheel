@@ -75,6 +75,9 @@ export interface Step {
   description?: string;
   /** Guidance for the dispatcher's prompt strategy. */
   dispatcherHint?: string;
+  /** Skip the dispatcher on this step — use scaffolding + step metadata directly.
+   *  Set by sprint hook on retry steps to keep the loop tight (worker → evaluator). */
+  skipDispatcher?: boolean;
   /** Tool permission scoping for the worker. */
   toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task?: boolean };
   /**

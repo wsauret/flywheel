@@ -57,7 +57,7 @@ export function AgentBlock(props: AgentBlockProps) {
   const [showAll, setShowAll] = createSignal(false)
   const [activeCollapsed, setActiveCollapsed] = createSignal(false)
 
-  const toolCount = () => props.block.toolCount ?? props.block.children.length
+  const toolCount = () => props.block.children.length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
   const summary = () => `${toolCount()} tools${props.block.duration != null ? ` · ${formatDuration(props.block.duration)}` : ""}`
 

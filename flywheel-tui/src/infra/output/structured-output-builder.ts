@@ -64,18 +64,13 @@ export class StructuredOutputBuilder {
 
   constructor() {
     this.staleDetector = new StaleAgentDetector({
-      onStaleAgent: (agentId, durationMs) => this.completeAgent(agentId, durationMs, 0),
+      onStaleAgent: (agentId, durationMs) => this.completeAgent(agentId, durationMs),
     });
 
     this.contextTracker = new ContextGroupTracker({
       startContextAgent: (id, timestamp) => this.startAgent(id, "Tools", "Using tools...", timestamp),
       appendToolToContextAgent: (agentId, tool) => this.appendToolToAgent(agentId, tool),
-      completeContextAgent: (agentId, duration, toolCount) => this.completeAgent(agentId, duration, toolCount),
-      getContextAgentChildCount: (agentId) => {
-        const idx = this.agentIndexById.get(agentId);
-        if (idx === undefined) return 0;
-        return (this.blocks[idx] as AgentBlock).children.length;
-      },
+      completeContextAgent: (agentId, duration) => this.completeAgent(agentId, duration),
     });
   }
 
@@ -190,7 +185,9 @@ export class StructuredOutputBuilder {
     const description = `${tool.name}: ${tool.detail}`;
     this.blocks[agentIdx] = { ...agent, children, latestChild, description };
     this.markDirty();
-    this.staleDetector.trackActivity(agentId);
+    if (agent.status === "active") {
+      this.staleDetector.trackActivity(agentId);
+    }
     this.onAgentActivity?.(agentId);
     return true;
   }
@@ -218,15 +215,23 @@ export class StructuredOutputBuilder {
     this.onAgentLifecycle?.("start", id);
   }
 
-  completeAgent(id: string, duration: number, toolCount: number): void {
+  completeAgent(id: string, duration: number): void {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
     const agent = this.blocks[idx] as AgentBlock;
+    if (agent.status === "completed") {
+      // Already completed (e.g. by stale detector) — update duration if the
+      // authoritative signal (tool_result) arrives later with a better value.
+      if (duration > (agent.duration ?? 0)) {
+        this.blocks[idx] = { ...agent, duration };
+        this.markDirty();
+      }
+      return;
+    }
     if (agent.status !== "active") return;
-    const actualCount = toolCount > 0 ? toolCount : agent.children.length;
-    this.blocks[idx] = { ...agent, status: "completed", duration, toolCount: actualCount };
 
+    this.blocks[idx] = { ...agent, status: "completed", duration };
     this.staleDetector.removeAgent(id);
     if (this.activeAgentId === id) {
       this.activeAgentId = null;

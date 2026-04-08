@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "bun --conditions=browser run src/orchestration/cli/index.ts",
     "start": "bun --conditions=browser run src/orchestration/cli/index.ts",
-    "test": "bun test tests/*.test.ts",
+    "test": "bun test tests/*.test.ts tests/schemas/*.test.ts tests/handoff/*.test.ts tests/evaluator/*.test.ts tests/tui/*.test.ts",
     "test:integration": "bun test tests/integration/",
     "test:e2e": "bun test tests/e2e/",
     "test:all": "bun test",

@@ -13,6 +13,7 @@ import type {
   HandoffReaderFn,
   GateQuestionService,
   StepContextAccumulator,
+  PostTurnVerificationHook,
 } from "./executor-types.js";
 import type { OnStepCompletedHook } from "./shared/hooks";
 import type { Guardrails } from "./guardrails";
@@ -35,6 +36,9 @@ export interface StepRunnerDeps {
   dispatcher: DispatcherFn;
   worker: WorkerFn;
   evaluator: EvaluatorFn | null;
+  /** When true, evaluator is skipped if post-turn verification passes.
+   *  When post-turn fails, evaluator runs regardless of this flag. */
+  skipEvaluation: boolean;
   handoffReader: HandoffReaderFn;
   accumulator: StepContextAccumulator;
   maxRevisions: number;
@@ -47,6 +51,7 @@ export interface StepRunnerDeps {
   sessionObjective?: string;
   persistAccumulatorState?: ((state: unknown) => void) | null;
   onSubprocessDispatched?: (() => void) | null;
+  postTurnVerification?: PostTurnVerificationHook | null;
 
   // Mutable state shared with the executor loop
   previousHandoff: Record<string, unknown> | null;
@@ -132,25 +137,46 @@ export async function executeStep(
       }
     }
 
-    // Invoke dispatcher for prompt assembly
-    const compactQueueState = queue.steps.map((s) => ({
-      id: s.id,
-      type: s.type,
-      title: s.title,
-      status: s.status,
-    }));
-    const dispatcherContext: Record<string, unknown> = {
-      ...accumulator.getContext(),
-      queueState: compactQueueState,
-      ...(sessionObjective !== undefined ? { session_objective: sessionObjective } : {}),
-      ...(previousHandoff ? { previousHandoff } : {}),
-      ...(previousAssessment ? { previousAssessment } : {}),
-      ...(hitlResponse !== null ? { hitlResponse } : {}),
-      ...(guardrails ? {
-        mutation_budget: guardrails.getMutationBudget(step.id, queue.steps.length),
-      } : {}),
-    };
-    const dispatcherResult = await dispatcher(step, dispatcherContext);
+    // Build prompt — either via dispatcher or directly from step metadata.
+    // Sprint retry steps set skipDispatcher to keep the loop tight (worker → evaluator).
+    let dispatcherResult: { prompt: string; evaluationCriteria: unknown | null; mutationRequests?: import("./step-dispatcher").MutationRequest[] };
+
+    if (step.skipDispatcher) {
+      // Direct prompt from step metadata + accumulated context (no dispatcher LLM call)
+      const parts = [step.title];
+      if (step.description) parts.push(step.description);
+      if (step.acceptanceCriteria?.length) {
+        parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`));
+      }
+      if (previousHandoff) {
+        const summary = (previousHandoff as Record<string, unknown>).summary;
+        if (typeof summary === "string") {
+          parts.push("", "## Previous iteration output", summary);
+        }
+      }
+      dispatcherResult = { prompt: parts.join("\n"), evaluationCriteria: step.evaluationCriteria ?? null };
+      log.info("dispatcher skipped (step.skipDispatcher)", { stepId: step.id });
+    } else {
+      // Full dispatcher invocation
+      const compactQueueState = queue.steps.map((s) => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        status: s.status,
+      }));
+      const dispatcherContext: Record<string, unknown> = {
+        ...accumulator.getContext(),
+        queueState: compactQueueState,
+        ...(sessionObjective !== undefined ? { session_objective: sessionObjective } : {}),
+        ...(previousHandoff ? { previousHandoff } : {}),
+        ...(previousAssessment ? { previousAssessment } : {}),
+        ...(hitlResponse !== null ? { hitlResponse } : {}),
+        ...(guardrails ? {
+          mutation_budget: guardrails.getMutationBudget(step.id, queue.steps.length),
+        } : {}),
+      };
+      dispatcherResult = await dispatcher(step, dispatcherContext);
+    }
     const currentPrompt = dispatcherResult.prompt;
 
     // Apply dispatcher mutation requests if guardrails are active
@@ -189,11 +215,33 @@ export async function executeStep(
       });
     }
 
+    // Post-turn verification — informational. Runs declared commands, captures
+    // results, and enriches handoffData for the evaluator. Never blocks the step.
+    let postTurnPassed = true;
+    if (deps.postTurnVerification) {
+      const verifyResult = await deps.postTurnVerification({
+        step,
+        workerOutput,
+        handoffData,
+      });
+      if (verifyResult) {
+        postTurnPassed = verifyResult.passed;
+        if (handoffData) {
+          (handoffData as Record<string, unknown>).__nativeChecksPassed = verifyResult.passed;
+          if (verifyResult.checks) {
+            (handoffData as Record<string, unknown>).__nativeChecks = verifyResult.checks;
+          }
+        }
+      }
+    }
+
     const evaluationCriteria = dispatcherResult.evaluationCriteria;
     let lastEvalResult: EvalResult | null = null;
 
-    // Evaluator + revision loop (delegated to revision-loop module)
-    if (evaluator) {
+    // Evaluator decision: skip only when configured to skip AND post-turn passed.
+    // Post-turn failure forces evaluation regardless of config — safety net.
+    const shouldEvaluate = evaluator && (!deps.skipEvaluation || !postTurnPassed);
+    if (shouldEvaluate) {
       const stepIndex = queue.steps.findIndex((s) => s.id === step.id);
       const revisionResult = await executeWithRevisions(
         step,

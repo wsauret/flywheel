@@ -104,7 +104,7 @@ export class StructuredEventParser {
             const content = typeof data.content === "string" ? data.content : "Unknown error";
             this.builder.errorAgent(tracked.agentId, content);
           } else {
-            this.builder.completeAgent(tracked.agentId, durationMs, 0);
+            this.builder.completeAgent(tracked.agentId, durationMs);
           }
           this.toolUseIdToAgent.delete(toolUseId);
         }

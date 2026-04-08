@@ -9,3 +9,11 @@ effort = "low"
 [evaluator]
 model = "sonnet"
 effort = "low"
+
+[sprint.worker]
+model = "opus"
+effort = "max"
+
+[sprint.evaluator]
+model = "opus"
+effort = "max"

@@ -103,12 +103,15 @@ describe("StructuredOutputBuilder", () => {
     it("completeAgent sets status to completed with duration", () => {
       const now = Date.now();
       builder.startAgent("agent-1", "Explore", "Searching", now);
-      builder.completeAgent("agent-1", 1500, 3);
+      builder.pushToolToAgent("agent-1", "Read", "file.ts", now);
+      builder.pushToolToAgent("agent-1", "Grep", "pattern", now);
+      builder.pushToolToAgent("agent-1", "Write", "out.ts", now);
+      builder.completeAgent("agent-1", 1500);
 
       const agent = builder.getBlocks()[0] as AgentBlock;
       expect(agent.status).toBe("completed");
       expect(agent.duration).toBe(1500);
-      expect(agent.toolCount).toBe(3);
+      expect(agent.children).toHaveLength(3);
     });
 
     it("errorAgent sets status to error with message", () => {
@@ -125,7 +128,7 @@ describe("StructuredOutputBuilder", () => {
       const now = Date.now();
       builder.startAgent("agent-1", "Explore", "Searching", now);
       builder.pushTool("Read", "inside.ts", now + 100);
-      builder.completeAgent("agent-1", 500, 1);
+      builder.completeAgent("agent-1", 500);
       builder.pushTool("task_complete", "done", now + 200);
 
       const blocks = builder.getBlocks();
@@ -146,7 +149,7 @@ describe("StructuredOutputBuilder", () => {
 
     it("completeAgent is no-op for unknown agent id", () => {
       builder.pushText("some text", Date.now());
-      builder.completeAgent("unknown-id", 100, 0);
+      builder.completeAgent("unknown-id", 100);
       // Should not throw, blocks unchanged
       expect(builder.getBlocks()).toHaveLength(1);
     });
@@ -221,7 +224,7 @@ describe("StructuredOutputBuilder", () => {
       const agent = blocks[0] as AgentBlock;
       expect(agent.agentLabel).toBe("Tools");
       expect(agent.status).toBe("completed");
-      expect(agent.toolCount).toBe(3);
+      expect(agent.children).toHaveLength(3);
       expect(agent.duration).toBe(300);
       expect(blocks[1].kind).toBe("tool");
     });
@@ -384,7 +387,7 @@ describe("StructuredOutputBuilder", () => {
       const now = Date.now();
       builder.startAgent("agent-1", "Explore", "Searching", now);
       builder.pushText("agent output", now + 100);
-      builder.completeAgent("agent-1", 200, 1);
+      builder.completeAgent("agent-1", 200);
 
       builder.resetTracking();
 
@@ -392,7 +395,7 @@ describe("StructuredOutputBuilder", () => {
       // not try to append to the old one
       builder.startAgent("agent-1", "Explore", "Searching again", now + 300);
       builder.pushText("new agent output", now + 400);
-      builder.completeAgent("agent-1", 200, 1);
+      builder.completeAgent("agent-1", 200);
 
       const blocks = builder.getBlocks();
       const agentBlocks = blocks.filter((b) => b.kind === "agent");
@@ -545,7 +548,7 @@ describe("StructuredOutputBuilder", () => {
       builder.onAgentLifecycle = (type, id) => events.push({ type, id });
 
       builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.completeAgent("a1", 500, 2);
+      builder.completeAgent("a1", 500);
 
       expect(events).toHaveLength(2);
       expect(events[1]).toEqual({ type: "complete", id: "a1" });
@@ -578,7 +581,7 @@ describe("StructuredOutputBuilder", () => {
       builder.onAgentActivity = (id) => activities.push(id);
 
       builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.completeAgent("a1", 100, 0);
+      builder.completeAgent("a1", 100);
       builder.pushToolToAgent("a1", "Read", "file.ts", Date.now());
 
       expect(activities).toEqual(["a1"]);
@@ -588,7 +591,7 @@ describe("StructuredOutputBuilder", () => {
       // No callbacks set — should not throw
       builder.startAgent("a1", "Explore", "Searching", Date.now());
       builder.pushTool("Read", "file.ts", Date.now());
-      builder.completeAgent("a1", 100, 1);
+      builder.completeAgent("a1", 100);
       expect(builder.getBlocks()).toHaveLength(1);
     });
   });
@@ -599,7 +602,7 @@ describe("StructuredOutputBuilder", () => {
     it("pushToolToAgent routes tool to a specific agent by ID", () => {
       const now = Date.now();
       builder.startAgent("a1", "Explore", "First", now);
-      builder.completeAgent("a1", 500, 0);
+      builder.completeAgent("a1", 500);
 
       builder.startAgent("a2", "Plan", "Second", now + 100);
       // Route a tool explicitly to the completed agent a1
@@ -623,7 +626,7 @@ describe("StructuredOutputBuilder", () => {
       const now = Date.now();
       builder.startAgent("a1", "Explore", "First", now);
       builder.pushTool("Read", "inside-a1.ts", now + 100);
-      builder.completeAgent("a1", 500, 1);
+      builder.completeAgent("a1", 500);
 
       builder.startAgent("a2", "Plan", "Second", now + 200);
       builder.pushTool("Grep", "inside-a2.ts", now + 300);
@@ -697,7 +700,7 @@ describe("StructuredOutputBuilder", () => {
       const activityMap = detector.agentLastActivity as Map<string, number>;
       expect(activityMap.has("a1")).toBe(true);
 
-      builder.completeAgent("a1", 500, 2);
+      builder.completeAgent("a1", 500);
       expect(activityMap.has("a1")).toBe(false);
     });
 
@@ -711,20 +714,31 @@ describe("StructuredOutputBuilder", () => {
       expect(activityMap.has("a1")).toBe(false);
     });
 
-    it("stale completion uses children.length for toolCount", () => {
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.pushTool("Read", "file1.ts", Date.now());
-      builder.pushTool("Grep", "pattern", Date.now());
+    it("tool_result overrides stale completion with accurate duration", () => {
+      const now = Date.now();
+      builder.startAgent("a1", "Explore", "Searching", now);
 
+      // Stale detector fires early with short duration
       const detector = getDetector(builder);
       const activityMap = detector.agentLastActivity as Map<string, number>;
       activityMap.set("a1", Date.now() - 6_000);
       (detector as any).checkStaleAgents();
 
-      const blocks = builder.getBlocks();
-      const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      let agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
       expect(agent.status).toBe("completed");
-      // completeAgent(id, duration, 0) is called — toolCount stays 0 but children are preserved
+      const staleDuration = agent.duration!;
+
+      // Children arrive after stale completion
+      builder.pushToolToAgent("a1", "Read", "file1.ts", now);
+      builder.pushToolToAgent("a1", "Grep", "pattern", now);
+
+      // tool_result arrives with accurate (longer) duration
+      builder.completeAgent("a1", 30_000);
+
+      agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
+      expect(agent.status).toBe("completed");
+      expect(agent.duration).toBe(30_000);
+      expect(agent.duration).toBeGreaterThan(staleDuration);
       expect(agent.children).toHaveLength(2);
     });
 
