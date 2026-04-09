@@ -39,7 +39,7 @@ import type {
   WorkerConfig,
 } from "../schemas.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
-import type { EvalResult } from "./executor.js";
+import type { EvalResult } from "./executor-types.js";
 import { applyBudgetTruncation } from "../dispatcher/truncation.js";
 import { Log } from "../../infra/log.js";
 import { errorMessage } from "../../infra/error-message.js";

@@ -14,7 +14,7 @@ import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
 import type { Step, Queue } from "../workflows/queue/types"
 import type { DispatcherTransport } from "../workflows/dispatcher/transport"
-import type { EvalResult } from "../workflows/queue/executor"
+import type { EvalResult } from "../workflows/queue/executor-types"
 
 const log = Log.create({ service: "dispatcher-callback" })
 

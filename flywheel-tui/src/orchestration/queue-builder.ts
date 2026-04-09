@@ -11,7 +11,7 @@ import {
   type WorkflowName,
 } from "../workflows/queue/templates";
 import type { Queue } from "../workflows/queue/types";
-import type { FlywheelConfig } from "./config/loader";
+import type { FlywheelConfig } from "./config/schema";
 
 // ---------------------------------------------------------------------------
 // buildQueue — create a Queue from a workflow template name + config

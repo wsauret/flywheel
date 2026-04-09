@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { truncate, MAX_BLOCK_LINE_LENGTH } from "../src/tui/utils/text";
-import { formatDuration } from "../src/tui/format";
+import { formatDuration } from "../src/infra/format";
 import type {
   AnyBlock,
   TextBlock,

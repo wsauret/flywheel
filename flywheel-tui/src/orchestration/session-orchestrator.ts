@@ -129,12 +129,13 @@ export function createSessionOrchestrator(
       return null;
     }
 
-    // 5. Return structured result
+    // 5. Return structured result (narrow workflow-only fields on kind)
+    const isWorkflow = session.kind === "workflow";
     return {
       session,
       outputBlocks,
-      planPath: session.planPath ?? session.label,
-      worktreePath: session.worktreePath,
+      planPath: isWorkflow ? session.planPath : "",
+      worktreePath: isWorkflow ? session.worktreePath : undefined,
       queue,
     };
   }

@@ -779,9 +779,10 @@ describe("SubprocessResultSchema", () => {
 // SessionSchema (.strict() — internal)
 // ---------------------------------------------------------------------------
 describe("SessionSchema", () => {
-  const validSession = {
+  const validWorkflowSession = {
     label: "docs/plans/my-plan.md",
     planPath: "docs/plans/my-plan.md",
+    worktreePath: "/tmp/worktrees/test",
     lastUpdated: "2026-03-15T00:00:00Z",
     budgetLimits: {
       max_invocations: 0,
@@ -797,47 +798,99 @@ describe("SessionSchema", () => {
     command: "work" as const,
   };
 
-  it("parses a valid session", () => {
-    const result = SessionSchema.safeParse(validSession);
+  const validChatSession = {
+    label: "chat session",
+    lastUpdated: "2026-03-15T00:00:00Z",
+    budgetLimits: {
+      max_invocations: 0,
+      max_tokens: null,
+      wall_clock_deadline: null,
+    },
+    budgetUsage: {
+      invocations_used: 0,
+      tokens_used: 0,
+      cost_usd: 0,
+    },
+    kind: "chat" as const,
+    command: "chat" as const,
+  };
+
+  it("parses a valid workflow session", () => {
+    const result = SessionSchema.safeParse(validWorkflowSession);
     expect(result.success).toBe(true);
   });
 
-  it("rejects unknown fields in strict mode", () => {
+  it("parses a valid chat session", () => {
+    const result = SessionSchema.safeParse(validChatSession);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects unknown fields in strict mode (workflow)", () => {
     const result = SessionSchema.safeParse({
-      ...validSession,
+      ...validWorkflowSession,
+      unknown: "fail",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown fields in strict mode (chat)", () => {
+    const result = SessionSchema.safeParse({
+      ...validChatSession,
       unknown: "fail",
     });
     expect(result.success).toBe(false);
   });
 
   it("rejects missing required fields (label)", () => {
-    const { label, ...noLabel } = validSession;
+    const { label, ...noLabel } = validWorkflowSession;
     const result = SessionSchema.safeParse(noLabel);
     expect(result.success).toBe(false);
   });
 
   it("rejects missing budgetLimits", () => {
-    const { budgetLimits, ...noBudget } = validSession;
+    const { budgetLimits, ...noBudget } = validWorkflowSession;
     const result = SessionSchema.safeParse(noBudget);
     expect(result.success).toBe(false);
   });
 
   it("rejects missing kind", () => {
-    const { kind, ...noKind } = validSession;
+    const { kind, ...noKind } = validWorkflowSession;
     const result = SessionSchema.safeParse(noKind);
     expect(result.success).toBe(false);
   });
 
   it("rejects missing command", () => {
-    const { command, ...noCommand } = validSession;
+    const { command, ...noCommand } = validWorkflowSession;
     const result = SessionSchema.safeParse(noCommand);
     expect(result.success).toBe(false);
   });
 
-  it("allows planPath to be optional", () => {
-    const { planPath, ...noPlanPath } = validSession;
+  it("requires planPath on workflow sessions", () => {
+    const { planPath, ...noPlanPath } = validWorkflowSession;
     const result = SessionSchema.safeParse(noPlanPath);
+    expect(result.success).toBe(false);
+  });
+
+  it("allows workflow sessions without worktreePath (optional)", () => {
+    const { worktreePath, ...noWorktreePath } = validWorkflowSession;
+    const result = SessionSchema.safeParse(noWorktreePath);
     expect(result.success).toBe(true);
+  });
+
+  it("rejects workflow sessions with empty-string worktreePath", () => {
+    const result = SessionSchema.safeParse({
+      ...validWorkflowSession,
+      worktreePath: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("chat sessions have no planPath or worktreePath", () => {
+    const result = SessionSchema.safeParse({
+      ...validChatSession,
+      planPath: "should-fail.md",
+    });
+    expect(result.success).toBe(false);
   });
 });
 
@@ -1112,6 +1165,7 @@ describe("SessionSchema — budget fields", () => {
   const validSession = {
     label: "docs/plans/my-plan.md",
     planPath: "docs/plans/my-plan.md",
+    worktreePath: "/tmp/worktrees/test",
     lastUpdated: "2026-03-15T00:00:00Z",
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
@@ -1181,16 +1235,15 @@ describe("SessionSchema — budget fields", () => {
   it("accepts command for each valid command value", () => {
     const commands = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate", "chat"] as const;
     for (const cmd of commands) {
-      const kind = cmd === "chat" ? "chat" : "workflow";
-      const result = SessionSchema.safeParse({
-        ...validSession,
-        kind,
-        command: cmd,
-      });
+      const isChat = cmd === "chat";
+      const data = isChat
+        ? { label: validSession.label, lastUpdated: validSession.lastUpdated, budgetLimits: validSession.budgetLimits, budgetUsage: validSession.budgetUsage, kind: "chat" as const, command: cmd }
+        : { ...validSession, kind: "workflow" as const, command: cmd };
+      const result = SessionSchema.safeParse(data);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.command).toBe(cmd);
-        expect(result.data.kind).toBe(kind);
+        expect(result.data.kind).toBe(isChat ? "chat" : "workflow");
       }
     }
   });
@@ -1199,6 +1252,27 @@ describe("SessionSchema — budget fields", () => {
     const result = SessionSchema.safeParse({
       ...validSession,
       command: "unknown",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects chat command on workflow session", () => {
+    const result = SessionSchema.safeParse({
+      ...validSession,
+      kind: "workflow",
+      command: "chat",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects workflow command on chat session", () => {
+    const result = SessionSchema.safeParse({
+      label: validSession.label,
+      lastUpdated: validSession.lastUpdated,
+      budgetLimits: validSession.budgetLimits,
+      budgetUsage: validSession.budgetUsage,
+      kind: "chat" as const,
+      command: "work",
     });
     expect(result.success).toBe(false);
   });
@@ -1325,6 +1399,8 @@ describe("Integration — full data contract flow", () => {
   it("Session with budget fields parses correctly", () => {
     const session = {
       label: "integration test",
+      planPath: "plans/integration.md",
+      worktreePath: "/tmp/worktrees/integration",
       lastUpdated: "2026-03-20T10:00:00Z",
       budgetLimits: {
         max_invocations: 100,

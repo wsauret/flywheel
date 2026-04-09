@@ -175,11 +175,11 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     pendingWrite = false;
     timerId = null;
 
-    const budgetUsage: BudgetUsage = {
+    const budgetUsage = {
       invocations_used: invocationsUsed,
       tokens_used: tokensUsed,
       cost_usd: totalCost,
-    };
+    } satisfies BudgetUsage;
 
     try {
       updateSession(sessionId, { totalCost, budgetUsage }, baseDir);

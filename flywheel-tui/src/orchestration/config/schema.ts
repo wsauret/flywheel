@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
+import { SprintConfigSchema, type SprintConfig } from "../../workflows/queue/steps/sprint/config-schema.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -184,7 +184,7 @@ export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
 // Defaults
 // ---------------------------------------------------------------------------
 
-export const CONFIG_DEFAULTS: FlywheelConfig = {
+export const CONFIG_DEFAULTS = {
   engine: "claude",
   dispatcher: {},
   subprocess: {},
@@ -235,8 +235,8 @@ export const CONFIG_DEFAULTS: FlywheelConfig = {
     dispatcher: {},
     evaluator: {},
     worker: {},
-  },
-};
+  } satisfies SprintConfig,
+} satisfies FlywheelConfig;
 
 // ---------------------------------------------------------------------------
 // Model / effort resolution

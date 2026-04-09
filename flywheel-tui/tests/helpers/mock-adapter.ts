@@ -44,7 +44,6 @@ export class MockAdapter extends BaseEventConsumer {
       case "question:replied":
       case "question:rejected":
       // Budget events
-      case "budget:warning":
       case "budget:exhausted":
       // Queue lifecycle events
       case "queue:initialized":
@@ -57,6 +56,11 @@ export class MockAdapter extends BaseEventConsumer {
       // Queue mutation events
       case "queue:step-inserted":
       case "queue:step-removed":
+      // Trace events
+      case "trace:tool-started":
+      case "trace:tool-completed":
+      case "trace:subagent-started":
+      case "trace:subagent-completed":
         this.events.push(event);
         break;
       default:

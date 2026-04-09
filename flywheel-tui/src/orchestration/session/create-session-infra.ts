@@ -14,7 +14,7 @@ import { createBudgetTracker, type BudgetTracker } from "./budget-tracker"
 import { createTraceWriter, type TraceWriter } from "./trace-writer"
 import { createTranscriptWriter, type TranscriptWriter } from "./transcript-writer"
 import { createTraceCollector, type TraceCollector } from "./trace-collector"
-import type { FlywheelConfig } from "../config/loader"
+import type { FlywheelConfig } from "../config/schema"
 
 // ---------------------------------------------------------------------------
 // Types

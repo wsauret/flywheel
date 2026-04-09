@@ -7,12 +7,13 @@
 // depending on the dispatcher's closure state.
 // ---------------------------------------------------------------------------
 
-import type { Step, Queue, StepType } from "./types.js";
+import type { Step, Queue } from "./types.js";
+import type { StepType } from "../../infra/step-types.js";
 import type { LastWorkerResult } from "../schemas.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
 import type { DispatcherDecision } from "../dispatcher/schemas.js";
 import type { StepContext } from "./step-context.js";
-import type { EvalResult } from "./executor.js";
+import type { EvalResult } from "./executor-types.js";
 import type { MutationRequest, StepDispatchContext, StepDispatcherDecision } from "./step-dispatcher.js";
 import { createEmptyStepContext } from "./step-context.js";
 import { parseRawHandoff } from "./shared/handoff-parse.js";

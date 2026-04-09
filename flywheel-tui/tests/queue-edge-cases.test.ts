@@ -28,7 +28,7 @@ import {
   type Harness,
 } from "./helpers/queue-executor-harness";
 import type { OnStepCompletedHook } from "../src/workflows/queue/shared/hooks";
-import type { EvaluatorFn, HandoffReaderFn } from "../src/workflows/queue/executor";
+import type { EvaluatorFn, HandoffReaderFn } from "../src/workflows/queue/executor-types";
 
 describe("queue executor edge cases", () => {
   let harness: Harness;

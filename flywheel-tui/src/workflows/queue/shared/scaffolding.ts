@@ -1,4 +1,5 @@
-import type { Step, StepType } from "../types";
+import type { Step } from "../types";
+import type { StepType } from "../../../infra/step-types";
 
 export interface ScaffoldingResult {
   preamble: string;

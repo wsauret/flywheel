@@ -174,26 +174,6 @@ describe("createEmit", () => {
     }
   });
 
-  it("emits budget:warning with correct fields", () => {
-    const bus = new EventBus();
-    const emit = createEmit(bus);
-    const received: FlywheelEvent[] = [];
-    bus.subscribe((e) => received.push(e));
-
-    emit("budget:warning", { workflowId: "wf-1", metric: "invocations", used: 8, limit: 10, remaining: 2 });
-
-    expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("budget:warning");
-    if (received[0].type === "budget:warning") {
-      expect(received[0].workflowId).toBe("wf-1");
-      expect(received[0].metric).toBe("invocations");
-      expect(received[0].used).toBe(8);
-      expect(received[0].limit).toBe(10);
-      expect(received[0].remaining).toBe(2);
-      expect(received[0].timestamp).toBeTruthy();
-    }
-  });
-
   it("emits budget:exhausted with correct fields", () => {
     const bus = new EventBus();
     const emit = createEmit(bus);

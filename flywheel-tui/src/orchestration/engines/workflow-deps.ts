@@ -13,7 +13,7 @@ import { loadConfig } from "../config/loader"
 import { CONFIG_FILES } from "../../infra/paths"
 import { getEngine } from "./core/registry"
 import { BunProcessSpawner } from "./subprocess/bun-spawner"
-import type { FlywheelConfig } from "../config/loader"
+import type { FlywheelConfig } from "../config/schema"
 import type { Engine } from "./core/types"
 import type { ProcessSpawner } from "./subprocess/spawner"
 

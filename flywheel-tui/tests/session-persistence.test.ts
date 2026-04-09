@@ -38,6 +38,7 @@ function minimalSession(overrides?: Partial<Session>): Session {
   return {
     label: "plans/test.md",
     planPath: "plans/test.md",
+    worktreePath: "/tmp/worktrees/test",
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
@@ -373,7 +374,8 @@ describe("listSessions", () => {
     // Valid session still returned
     expect(result.sessions).toHaveLength(1);
     expect(result.sessions[0].id).toBe(validId);
-    expect(result.sessions[0].data.planPath).toBe("valid.md");
+    const validData = result.sessions[0].data;
+    expect(validData.kind === "workflow" && validData.planPath).toBe("valid.md");
 
     // Errors are reported but don't crash the listing
     expect(result.errors).toHaveLength(2);
@@ -410,6 +412,7 @@ describe("SessionSchema extensions", () => {
     const data = {
       label: "plans/test.md",
       planPath: "plans/test.md",
+      worktreePath: "/tmp/worktrees/test",
       lastUpdated: new Date().toISOString(),
       state: "active",
       name: "Test Session",

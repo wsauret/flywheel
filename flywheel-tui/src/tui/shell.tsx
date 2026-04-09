@@ -1,21 +1,22 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, createMemo, createEffect, For, Show, onCleanup } from "solid-js"
+import { createSignal, createMemo, createEffect, batch, For, Show, onCleanup } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { createTextAttributes } from "@opentui/core"
 import type { TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
-import { Selection } from "./utils/selection"
+import { Clipboard } from "./utils/clipboard"
 import { exitTUI } from "./exit"
 import { OutputWindow } from "./routes/work/components/output-window"
 import { SplitBorder } from "./shared/ui/border"
 import { SIMPLE_LOGO } from "@tui/shared/components/logo"
 import { SessionModal } from "./session-modal"
 import { createSessionRegistry } from "../orchestration/session-registry"
+import type { SessionEntry } from "../orchestration/session-registry"
 import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
-import { formatElapsed, formatCost, formatTokens, relativeTime } from "./format"
+import { formatElapsed, formatCost, formatTokens, relativeTime } from "../infra/format.js"
 import { useMetrics, SPINNER_FRAMES } from "./hooks/use-metrics.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
@@ -35,7 +36,10 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
   const registry = createSessionRegistry(props.factories)
 
   // ── Metrics (local hook — not part of shell state, but injected as a service) ──
-  const metrics = useMetrics()
+  // Entry accessor is late-bound: signals.registryEntry is available after createShellState.
+  // SolidJS memos/effects evaluate lazily — no reads happen during construction.
+  let registryEntryAccessor: () => SessionEntry | undefined = () => undefined
+  const metrics = useMetrics(() => registryEntryAccessor())
 
   // ── Shell state: shared signals + services ──
   const { signals, services } = createShellState({
@@ -46,6 +50,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
     metrics,
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => toast.show(opts),
   })
+  // Wire up the late-bound accessor now that signals exists
+  registryEntryAccessor = signals.registryEntry
 
   // ── Prompt-specific signal (local, not shared) ──
   const [promptHeight, setPromptHeight] = createSignal(1)
@@ -94,16 +100,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
     openSessionsModal: sessionModal.openSessionsModal,
   })
 
-  // ── Metrics sync — registry entry drives metrics via slim effect ──
-  createEffect(() => {
-    const entry = signals.registryEntry()
-    if (!entry) return
-    metrics.setActivity(entry.modelActivity)
-    metrics.setTokens(entry.tokens)
-    metrics.setCost(entry.cost)
-    metrics.setContextPercent(entry.contextPercent)
-  })
-
   // ── Running count — backed by registry's internal createMemo ──
   const runningCount = createMemo(() => registry.runningCount())
 
@@ -120,15 +116,17 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
     const entry = registry.get(sessionId)
     if (!entry) return
     metrics.pauseTimer()  // stop old interval before resetting accumulated value
-    signals.setForegroundId(sessionId)
-    // Clear overlays so live registry data shows through
-    signals.setViewedBlocks(undefined)
-    signals.setViewedTitle(undefined)
-    // Derived memos (agentState, outputBlocks, steps, sessionTitle) update automatically
-    metrics.resetElapsedTo(Date.now() - entry.startedAt)
-    // effect above handles start/pause based on new agentState
-    signals.setStatusLine("")
-    signals.setErrorMessage("")
+    batch(() => {
+      signals.setForegroundId(sessionId)
+      // Clear overlays so live registry data shows through
+      signals.setViewedBlocks(undefined)
+      signals.setViewedTitle(undefined)
+      // Derived memos (agentState, outputBlocks, steps, sessionTitle) update automatically
+      metrics.resetElapsedTo(Date.now() - entry.startedAt)
+      // effect above handles start/pause based on new agentState
+      signals.setStatusLine("")
+      signals.setErrorMessage("")
+    })
     renderer.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
   }
 
@@ -193,7 +191,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
   onCleanup(() => {
     // Dispose all sessions (abort + flush output for every session, including background)
     registry.disposeAll().catch(() => {})
-    metrics.stopTimer()
+    metrics.pauseTimer()
     renderer.setTerminalTitle("")
   })
 
@@ -252,7 +250,14 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
 
   // ── JSX ──
   return (
-    <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background} onMouseUp={() => Selection.copy(renderer, toast)}>
+    <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background} onMouseUp={() => {
+        const text = renderer.getSelection()?.getSelectedText()
+        if (!text) return
+        Clipboard.copy(text)
+          .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
+          .catch((err) => toast.show({ message: String(err), variant: "error" }))
+        renderer.clearSelection()
+      }}>
 
       {/* Header */}
       <box flexShrink={0} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}

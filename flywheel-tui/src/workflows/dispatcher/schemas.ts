@@ -126,7 +126,7 @@ export const DispatcherDecisionSchema = z.object({
   mutation_requests: MutationRequestSchema,
 }).strip();
 
-export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>;
+export type { DispatcherDecision } from "../../infra/workflow-types";
 
 // ---------------------------------------------------------------------------
 // DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess

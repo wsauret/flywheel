@@ -34,22 +34,6 @@ export interface ResumeData {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function buildOrchestrator(deps: SessionActionDeps) {
-  const projectCwd = deps.projectCwd ?? process.cwd()
-  return createSessionOrchestrator({
-    readSession: (id) => readSession(id, projectCwd),
-    createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
-    createQueuePersistence: (id) => createQueuePersistence({ sessionId: id, baseDir: projectCwd }),
-    fromSnapshot,
-    manager: deps.manager,
-    refreshList: deps.refreshList,
-  })
-}
-
-// ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
 
@@ -65,7 +49,15 @@ export async function loadResumeData(
   sessionId: string,
   deps: SessionActionDeps,
 ): Promise<ResumeData | null> {
-  const orchestrator = buildOrchestrator(deps)
+  const projectCwd = deps.projectCwd ?? process.cwd()
+  const orchestrator = createSessionOrchestrator({
+    readSession: (id) => readSession(id, projectCwd),
+    createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
+    createQueuePersistence: (id) => createQueuePersistence({ sessionId: id, baseDir: projectCwd }),
+    fromSnapshot,
+    manager: deps.manager,
+    refreshList: deps.refreshList,
+  })
   const result = await orchestrator.handleResumeSession(sessionId)
   if (!result) return null
 

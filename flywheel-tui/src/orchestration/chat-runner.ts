@@ -11,13 +11,13 @@
 
 import { createChatSession, type ChatSession, type ChatCallbacks } from "./chat-session"
 import { createSessionInfra } from "./session/create-session-infra"
-import { createOutputPersistence, type OutputFlusher } from "./session/output-persistence"
+import { createOutputPersistence } from "./session/output-persistence"
 import { disposeSessionResources, type SessionResources } from "./session/resources"
 import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import type { SessionRunner } from "./session-runner"
 import type { SessionState } from "./session/state-machine"
-import type { FlywheelConfig } from "./config/loader"
+import type { FlywheelConfig } from "./config/schema"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
 import type { AnyBlock } from "../infra/output-blocks"
 
@@ -73,7 +73,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   // Output persistence
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
   let currentBlocks: AnyBlock[] = []
-  const outputFlusher: OutputFlusher = outputPersistence.createFlusher(() => currentBlocks)
+  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
   let disposed = false
   let firstMessageSent = false

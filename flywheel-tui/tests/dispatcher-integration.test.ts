@@ -21,7 +21,7 @@ import {
 import type { DispatcherTransport } from "../src/workflows/dispatcher/transport";
 import type { DispatcherInput, DispatcherDecision } from "../src/workflows/dispatcher/schemas";
 import type { AccumulatedContext } from "../src/workflows/queue/context-accumulator";
-import type { EvalResult } from "../src/workflows/queue/executor";
+import type { EvalResult } from "../src/workflows/queue/executor-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

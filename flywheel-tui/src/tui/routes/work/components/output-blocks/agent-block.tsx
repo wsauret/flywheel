@@ -30,7 +30,7 @@ import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { truncate } from "@tui/utils/text"
-import { formatDuration } from "../../../../format.js"
+import { formatDuration } from "../../../../../infra/format.js"
 import { displayToolName } from "./tool-block"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@tui/types"
 

@@ -92,13 +92,16 @@ export function updateSession(
     throw new Error(`Session not found: ${id}`);
   }
 
-  const merged: Session = {
-    ...existing,
-    ...updates,
-    lastUpdated: new Date().toISOString(),
-  };
+  // Guard: kind is immutable — reject attempts to change it at runtime
+  if (updates.kind && updates.kind !== existing.kind) {
+    throw new Error(`Cannot change session kind from "${existing.kind}" to "${updates.kind}"`);
+  }
 
-  // Validate the merged result
+  // NOTE: `Partial<Session>` distributes across the discriminated union,
+  // so the spread result is too wide for TypeScript to narrow statically.
+  // We rely on Zod's runtime parse to validate the merged object — `existing`
+  // always carries `kind`, preserving the discriminant.
+  const merged = { ...existing, ...updates, lastUpdated: new Date().toISOString() };
   const parsed = SessionSchema.parse(merged);
   const filePath = sessionFilePath(id, baseDir);
   writeFileAtomic(filePath, JSON.stringify(parsed, null, 2));

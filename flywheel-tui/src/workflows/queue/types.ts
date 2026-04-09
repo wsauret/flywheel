@@ -37,12 +37,7 @@ export interface EndOfSessionGateResult {
   passedCount: number;
 }
 
-// ---------------------------------------------------------------------------
-// StepType — re-exported from infra/ (canonical definition)
-// ---------------------------------------------------------------------------
-
 import type { StepType } from "../../infra/step-types.js";
-export type { StepType };
 
 // ---------------------------------------------------------------------------
 // StepStatus — lifecycle state of a single step

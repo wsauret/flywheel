@@ -11,48 +11,13 @@
  */
 
 import type { EventBus } from "../../infra/event-bus";
-
-// ---------------------------------------------------------------------------
-// Types — formerly in question-parser.ts, now canonical home
-// ---------------------------------------------------------------------------
-
-export interface QuestionOption {
-  label: string;
-  description: string;
-}
-
-export interface OpenQuestion {
-  question: string;
-  header: string;
-  options: QuestionOption[];
-  multiple?: boolean;
-  source?: string;
-  default?: string;
-}
+import type { QuestionInfo, QuestionAnswer } from "../../infra/workflow-types";
 
 export interface ResolvedQuestion {
   question: string;
   answers: string[];
   source: "user" | "auto";
 }
-
-// ---------------------------------------------------------------------------
-// Types — QuestionInfo extends OpenQuestion with `custom` for TUI prompts
-// ---------------------------------------------------------------------------
-
-export type QuestionInfo = OpenQuestion & {
-  custom?: boolean;
-  /**
-   * When true, the question renders as a bare text input — no options list,
-   * no "Type your own answer" indirection. The user types directly and
-   * presses Enter to submit. Used for free-form prompts like "What do
-   * you want to build?".
-   */
-  textOnly?: boolean;
-};
-
-/** Per-question answer: array of selected option labels or custom text */
-export type QuestionAnswer = string[];
 
 export interface QuestionRequest {
   id: string;

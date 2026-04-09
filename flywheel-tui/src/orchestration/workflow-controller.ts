@@ -174,11 +174,11 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   /** Handle workflow runner error. */
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
-    const errorResult: RunnerErrorResult = {
+    const errorResult = {
       errorMessage: extractErrorMessage(err),
       statusMessage: "",
       terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
-    }
+    } satisfies RunnerErrorResult
     refreshList()
     _onRunnerError?.(id, errorResult)
   }

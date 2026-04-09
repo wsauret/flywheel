@@ -9,7 +9,8 @@
  */
 
 import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
-import { createStepExecutor, type StepExecutor } from "../workflows/queue/executor"
+import { createStepExecutor } from "../workflows/queue/executor"
+import type { StepExecutor } from "../workflows/queue/executor-types"
 import { createQueuePersistence } from "../workflows/queue/persistence"
 import { createGuardrails } from "../workflows/queue/guardrails"
 import { ContextIndexer } from "./memory/indexer"

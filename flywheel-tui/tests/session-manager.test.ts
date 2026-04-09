@@ -16,7 +16,7 @@ import {
 } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
 import type { SessionState } from "../src/orchestration/session/state-machine";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/orchestration/config/loader";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/orchestration/config/schema";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,6 +38,7 @@ function minimalSession(overrides?: Partial<Session>): Session {
   return {
     label: "plans/test.md",
     planPath: "plans/test.md",
+    worktreePath: "/tmp/worktrees/test",
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },

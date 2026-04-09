@@ -19,9 +19,10 @@ import {
   deleteSessionWithCompanions,
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
+import type { Session } from "./schemas";
 import { isValidTransition, type SessionState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/loader";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema";
 import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "session.manager" });
@@ -161,27 +162,27 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       ? new Date(Date.now() + budget.max_wall_clock_minutes * 60_000).toISOString()
       : null;
 
-    const state: SessionState = (initialState ?? "active") as SessionState;
+    const state = (initialState ?? "active") as SessionState;
 
-    const id = persistCreateSession(
-      {
-        label: name ?? planPath,
-        planPath,
-        lastUpdated: now,
-        state,
-        name,
-        createdAt: now,
-        kind: kind === "chat" ? "chat" : "workflow",
-        command: kind === "chat" ? "chat" : "work",
-        budgetLimits: {
-          max_invocations: budget.max_invocations,
-          max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
-          wall_clock_deadline: wallClockDeadline,
-        },
-        budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+    const sharedFields = {
+      label: name ?? planPath,
+      lastUpdated: now,
+      state,
+      name,
+      createdAt: now,
+      budgetLimits: {
+        max_invocations: budget.max_invocations,
+        max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
+        wall_clock_deadline: wallClockDeadline,
       },
-      baseDir,
-    );
+      budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+    };
+
+    const sessionData: Session = kind === "chat"
+      ? { ...sharedFields, kind: "chat" as const, command: "chat" as const }
+      : { ...sharedFields, kind: "workflow" as const, command: "work" as const, planPath };
+
+    const id = persistCreateSession(sessionData, baseDir);
 
     // Populate cache
     stateCache.set(id, state);
@@ -201,10 +202,10 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
         id: entry.id,
         name: entry.data.name ?? "",
         label: entry.data.label,
-        planPath: entry.data.planPath,
+        planPath: entry.data.kind === "workflow" ? entry.data.planPath : undefined,
         state: state,
-        kind: entry.data.kind ?? "workflow",
-        command: entry.data.command ?? "work",
+        kind: entry.data.kind,
+        command: entry.data.command,
         totalCost: entry.data.totalCost ?? entry.data.budgetUsage?.cost_usd ?? 0,
         totalTokens: entry.data.budgetUsage?.tokens_used ?? 0,
         lastUpdated: entry.data.lastUpdated,
@@ -275,7 +276,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       // Chat sessions → completed (no resume for chat)
       // Work sessions → paused (can be resumed)
       const isChat = entry.data.kind === "chat";
-      const target: SessionState = isChat ? "completed" : "paused";
+      const target = isChat ? "completed" as const : "paused" as const;
 
       try {
         updateState(entry.id, target);

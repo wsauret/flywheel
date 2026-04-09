@@ -1,8 +1,5 @@
-import type { DispatcherDecision } from "../workflows/dispatcher/schemas";
-import type { EvaluatorResult } from "../workflows/evaluator/schemas";
-import type { SubprocessResult, SubprocessFailureReason } from "../orchestration/engines/subprocess/schemas";
-import type { QuestionInfo, QuestionAnswer } from "../workflows/queue/question-service";
-import type { NDJSONEvent } from "../orchestration/engines/subprocess/ndjson-parser";
+import type { DispatcherDecision, EvaluatorResult, QuestionInfo, QuestionAnswer } from "./workflow-types";
+import type { SubprocessResult, SubprocessFailureReason, NDJSONEvent } from "./subprocess-types";
 
 // ---------------------------------------------------------------------------
 // FlywheelEvent discriminated union (~25 event types, namespace:verb naming)
@@ -30,7 +27,6 @@ export type FlywheelEvent =
   | QuestionAsked
   | QuestionReplied
   | QuestionRejected
-  | BudgetWarning
   | BudgetExhausted
   | QueueInitialized
   | QueueCompleted
@@ -223,16 +219,6 @@ export interface QuestionRejected {
 }
 
 // -- Budget events --
-
-export interface BudgetWarning {
-  type: "budget:warning";
-  workflowId: string;
-  metric: "invocations" | "tokens" | "wall_clock";
-  used: number;
-  limit: number;
-  remaining: number;
-  timestamp: number;
-}
 
 export interface BudgetExhausted {
   type: "budget:exhausted";

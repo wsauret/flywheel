@@ -1,12 +1,12 @@
 import { describe, it, expect } from "bun:test";
 import * as path from "node:path";
+import { loadConfig } from "../src/orchestration/config/loader";
 import {
-  loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
   resolveTierConfigs,
   resolveMaxEffort,
-} from "../src/orchestration/config/loader";
+} from "../src/orchestration/config/schema";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 

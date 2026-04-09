@@ -119,19 +119,19 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
           const tokens = entry?.tokens ?? 0
           const cost = entry?.cost ?? 0
           manager.updateState(id, "completed")
-          const doneResult: RunnerDoneResult = {
+          const doneResult = {
             statusMessage: `Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(cost)} \u00b7 ${formatTokens(tokens)} tokens`,
             terminalTitle: `${TERMINAL_TITLE_PREFIX}done`,
-          }
+          } satisfies RunnerDoneResult
           refreshList()
           _onRunnerDone?.(id, doneResult)
         },
         onRunnerError: (id, err) => {
           manager.updateState(id, "paused")
-          const errorResult: RunnerErrorResult = {
+          const errorResult = {
             errorMessage: extractErrorMessage(err),
             terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
-          }
+          } satisfies RunnerErrorResult
           refreshList()
           _onRunnerError?.(id, errorResult)
         },

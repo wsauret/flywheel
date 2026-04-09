@@ -16,7 +16,7 @@
 //   HandoffSummary — compressed record of an older step's handoff
 // ---------------------------------------------------------------------------
 
-import type { StepType } from "./types";
+import type { StepType } from "../../infra/step-types";
 
 // ---------------------------------------------------------------------------
 // Types

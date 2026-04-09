@@ -2,23 +2,45 @@ import { z } from "zod";
 import { SessionStateSchema } from "./state-machine";
 import { BudgetLimitsSchema, BudgetUsageSchema } from "../../workflows/schemas";
 
-export const SessionSchema = z.object({
+// ---------------------------------------------------------------------------
+// Shared base fields (spread into each variant)
+// ---------------------------------------------------------------------------
+
+const baseFields = {
   label: z.string(),
   lastUpdated: z.string().datetime(),
-  state: SessionStateSchema.optional(),
-  kind: z.enum(["workflow", "chat"]),
-  command: z.enum(["work", "plan", "review", "ship", "debug", "research", "verify", "gate", "chat"]),
   budgetLimits: BudgetLimitsSchema.strip(),
   budgetUsage: BudgetUsageSchema.strip(),
-
-  planPath: z.string().optional(),
+  state: SessionStateSchema.optional(),
   name: z.string().optional(),
   createdAt: z.string().datetime().optional(),
-  repo: z.string().optional(),
-  branch: z.string().optional(),
   totalCost: z.number().min(0).optional(),
   outputPath: z.string().optional(),
-  worktreePath: z.string().optional(),
+  repo: z.string().optional(),
+  branch: z.string().optional(),
+};
+
+// ---------------------------------------------------------------------------
+// Discriminated variants
+// ---------------------------------------------------------------------------
+
+export const WorkflowSessionSchema = z.object({
+  ...baseFields,
+  kind: z.literal("workflow"),
+  command: z.enum(["work", "plan", "review", "ship", "debug", "research", "verify", "gate"]),
+  planPath: z.string(),
+  worktreePath: z.string().min(1).optional(),
 }).strict();
+
+export const ChatSessionSchema = z.object({
+  ...baseFields,
+  kind: z.literal("chat"),
+  command: z.literal("chat"),
+}).strict();
+
+export const SessionSchema = z.discriminatedUnion("kind", [
+  WorkflowSessionSchema,
+  ChatSessionSchema,
+]);
 
 export type Session = z.infer<typeof SessionSchema>;

@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { TimerService, timerService, formatDuration } from "../src/tui/shared/services/timer";
+import { TimerService, formatDuration } from "../src/tui/shared/services/timer";
+
+// Create a shared instance for tests (replaces the removed singleton)
+let timerService: TimerService;
 
 describe("TimerService", () => {
   beforeEach(() => {
-    timerService.reset();
+    timerService = new TimerService();
   });
 
   afterEach(() => {

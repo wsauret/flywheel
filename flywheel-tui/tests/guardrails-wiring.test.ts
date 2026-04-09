@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { createStepExecutor, type StepExecutorOptions } from "../src/workflows/queue/executor";
+import { createStepExecutor } from "../src/workflows/queue/executor";
+import type { StepExecutorOptions } from "../src/workflows/queue/executor-types";
 import { createGuardrails, type Guardrails } from "../src/workflows/queue/guardrails";
 import { createQueue } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";

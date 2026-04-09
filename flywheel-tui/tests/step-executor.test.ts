@@ -13,18 +13,18 @@ import { createQueue, transitionStep, advanceCursor } from "../src/workflows/que
 import type { Step, Queue } from "../src/workflows/queue/types";
 import type { EmitFn } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import {
-  createStepExecutor,
-  type StepExecutorOptions,
-  type StepExecutorResult,
-  type DispatcherFn,
-  type EvaluatorFn,
-  type WorkerFn,
-  type HandoffReaderFn,
-  type PersistFn,
-  type StepContextAccumulator,
-  type GateQuestionService,
-} from "../src/workflows/queue/executor";
+import { createStepExecutor } from "../src/workflows/queue/executor";
+import type {
+  StepExecutorOptions,
+  StepExecutorResult,
+  DispatcherFn,
+  EvaluatorFn,
+  WorkerFn,
+  HandoffReaderFn,
+  PersistFn,
+  StepContextAccumulator,
+  GateQuestionService,
+} from "../src/workflows/queue/executor-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -3,9 +3,8 @@ import { EventBus } from "../src/infra/event-bus";
 import {
   QuestionService,
   QuestionRejectedError,
-  type QuestionInfo,
-  type QuestionAnswer,
 } from "../src/workflows/queue/question-service";
+import type { QuestionInfo, QuestionAnswer } from "../src/infra/workflow-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

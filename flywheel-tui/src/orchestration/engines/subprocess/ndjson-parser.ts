@@ -11,33 +11,12 @@
  */
 
 import { TieredBuffer } from "./buffer";
+import type { NDJSONEventType, NDJSONEvent } from "../../../infra/subprocess-types";
 
 /** Maximum line length before flushing as raw text (1MB). */
 export const MAX_LINE_LENGTH = 1_000_000;
 
-/** Known NDJSON event types from worker output. */
-export type NDJSONEventType =
-  // Claude Code stream-json types
-  | "assistant"
-  | "system"
-  | "user"
-  | "tool_result"
-  | "result"
-  // Legacy / alternate-engine types
-  | "tool_use"
-  | "text"
-  | "step_finish"
-  | "error"
-  // Internal markers
-  | "flywheel:subprocess_boundary"
-  | "unknown";
-
-/** A parsed NDJSON event. */
-export interface NDJSONEvent {
-  type: NDJSONEventType;
-  data: Record<string, unknown>;
-  raw: string;
-}
+export type { NDJSONEventType, NDJSONEvent } from "../../../infra/subprocess-types";
 
 /** Callback for parsed NDJSON events. */
 export type NDJSONEventHandler = (event: NDJSONEvent) => void;

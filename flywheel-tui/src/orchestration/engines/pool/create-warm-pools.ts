@@ -6,7 +6,7 @@
  */
 
 import { WarmPool } from "./warm-pool"
-import { resolveTierConfigs } from "../../config/loader"
+import { resolveTierConfigs } from "../../config/schema"
 import { getEngine } from "../core/registry"
 import { createEnvFilter } from "../subprocess/env-filter"
 import { buildDispatcherSystemPrompt } from "../../../workflows/dispatcher/system-prompt"

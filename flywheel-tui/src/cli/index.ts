@@ -62,7 +62,7 @@ async function runHeadless(): Promise<void> {
     process.exit(1)
   }
 
-  const { createHeadlessFactories } = await import("../orchestration/headless")
+  const { createHeadlessFactories } = await import("../orchestration/headless/factories")
   const { createSessionRegistry } = await import("../orchestration/session-registry")
   const { buildQueueFromTemplate } = await import("../workflows/queue/templates")
   const { randomUUID } = await import("crypto")

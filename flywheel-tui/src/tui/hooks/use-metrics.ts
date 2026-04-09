@@ -1,5 +1,6 @@
-import { createSignal, onCleanup } from "solid-js"
+import { createSignal, createMemo, onCleanup, batch } from "solid-js"
 import type { Accessor } from "solid-js"
+import type { SessionEntry } from "../../orchestration/session-registry"
 
 export interface MetricsHook {
   elapsed: Accessor<number>
@@ -10,28 +11,27 @@ export interface MetricsHook {
   spinnerTick: Accessor<number>
   thinkingElapsed: Accessor<number>
   liveActivity: Accessor<"idle" | "thinking" | "generating" | "tool_executing">
-  setTokens(n: number): void
-  setCost(n: number): void
-  setContextPercent(n: number): void
-  setActivity(a: "idle" | "thinking" | "generating" | "tool_executing"): void
   startTimer(): void
   pauseTimer(): void
-  stopTimer(): void
+
   resetMetrics(): void
   resetElapsedTo(ms: number): void
 }
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠸", "⠴", "⠦", "⠇"]
 
-export function useMetrics(): MetricsHook {
-  const [liveTokens, setLiveTokens] = createSignal(0)
-  const [liveCost, setLiveCost] = createSignal(0)
-  const [liveContextPercent, setLiveContextPercent] = createSignal(0)
+export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
+  // Store-derived memos — read directly from the registry entry
+  const liveTokens = createMemo(() => entry()?.tokens ?? 0)
+  const liveCost = createMemo(() => entry()?.cost ?? 0)
+  const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)
+  const liveActivity = createMemo(() => entry()?.modelActivity ?? "idle")
+
+  // Leaf signals — local transient state, not duplicated from the store
   const [workStartTime, setWorkStartTime] = createSignal(0)
   const [elapsed, setElapsed] = createSignal(0)
   const [spinnerTick, setSpinnerTick] = createSignal(0)
   const [thinkingElapsed, setThinkingElapsed] = createSignal(0)
-  const [liveActivity, setLiveActivity] = createSignal<"idle" | "thinking" | "generating" | "tool_executing">("idle")
 
   let elapsedTimer: ReturnType<typeof setInterval> | null = null
   let elapsedAccum = 0
@@ -67,7 +67,6 @@ export function useMetrics(): MetricsHook {
     elapsedTimer = null
   }
 
-  function stopTimer(): void { pauseTimer() }
 
   function resetMetrics(): void {
     // Stop any running timer first — prevents pauseTimer() from re-accumulating
@@ -78,14 +77,14 @@ export function useMetrics(): MetricsHook {
     }
     elapsedRunStart = 0
     elapsedAccum = 0
-    setWorkStartTime(Date.now())
-    setElapsed(0)
-    setLiveTokens(0)
-    setLiveCost(0)
-    setLiveContextPercent(0)
     thinkingStart = 0
-    setThinkingElapsed(0)
-    setLiveActivity("idle")
+    // Only reset leaf signals — the 4 store-derived memos (liveTokens, liveCost,
+    // liveContextPercent, liveActivity) reset implicitly when the store entry is cleared.
+    batch(() => {
+      setWorkStartTime(Date.now())
+      setElapsed(0)
+      setThinkingElapsed(0)
+    })
   }
 
   function resetElapsedTo(ms: number): void {
@@ -93,7 +92,7 @@ export function useMetrics(): MetricsHook {
     setElapsed(ms)
   }
 
-  onCleanup(() => stopTimer())
+  onCleanup(() => pauseTimer())
 
   return {
     elapsed,
@@ -104,13 +103,8 @@ export function useMetrics(): MetricsHook {
     spinnerTick,
     thinkingElapsed,
     liveActivity,
-    setTokens: setLiveTokens,
-    setCost: setLiveCost,
-    setContextPercent: setLiveContextPercent,
-    setActivity: setLiveActivity,
     startTimer,
     pauseTimer,
-    stopTimer,
     resetMetrics,
     resetElapsedTo,
   }

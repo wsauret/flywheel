@@ -18,22 +18,23 @@ import { createQueuePersistence } from "../../src/workflows/queue/persistence";
 import { createContextAccumulator } from "../../src/workflows/queue/context-accumulator";
 import { createGuardrails, type GuardrailOptions } from "../../src/workflows/queue/guardrails";
 import { EventBus, createEmit, type EmitFn } from "../../src/infra/event-bus";
-import {
-  createStepExecutor,
-  type StepExecutorOptions,
-  type StepExecutor,
-  type WorkerOutput,
-  type EvalResult,
-  type DispatcherFn,
-  type WorkerFn,
-  type EvaluatorFn,
-  type HandoffReaderFn,
-  type PersistFn,
-  type StepContextAccumulator,
-  type GateQuestionService,
-} from "../../src/workflows/queue/executor";
+import { createStepExecutor } from "../../src/workflows/queue/executor";
+import type {
+  StepExecutorOptions,
+  StepExecutor,
+  WorkerOutput,
+  EvalResult,
+  DispatcherFn,
+  WorkerFn,
+  EvaluatorFn,
+  HandoffReaderFn,
+  PersistFn,
+  StepContextAccumulator,
+  GateQuestionService,
+} from "../../src/workflows/queue/executor-types";
 import type { OnStepCompletedHook } from "../../src/workflows/queue/shared/hooks";
-import type { Step, StepType, Queue } from "../../src/workflows/queue/types";
+import type { Step, Queue } from "../../src/workflows/queue/types";
+import type { StepType } from "../../src/infra/step-types";
 import type { FlywheelEvent } from "../../src/infra/events";
 import { ensureSessionDir } from "../../src/infra/paths";
 

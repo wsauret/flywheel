@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { NDJSONEvent } from "../../orchestration/engines/subprocess/ndjson-parser";
+import type { NDJSONEvent } from "../subprocess-types";
 import type { StructuredOutputBuilder } from "./structured-output-builder";
 import { getToolDetail, extractToolDiff } from "./output-formatter";
 

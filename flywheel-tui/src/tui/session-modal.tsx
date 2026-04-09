@@ -17,7 +17,7 @@ import { useSession } from "@tui/shared/context/session"
 import { ModalBase, ModalHeader, ModalFooter } from "@tui/shared/components/modal"
 import { isResumable } from "../orchestration/session/state-machine"
 import { truncate } from "./utils/text"
-import { formatCost, formatTokens, relativeTime } from "./format"
+import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
 import type { SessionSummary } from "../orchestration/session/manager"
 import type { SessionState } from "../orchestration/session/state-machine"
 

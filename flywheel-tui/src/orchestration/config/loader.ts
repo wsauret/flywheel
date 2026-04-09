@@ -4,20 +4,6 @@ import { errorMessage } from "../../infra/error-message";
 import { FlywheelConfigSchema, type FlywheelConfig } from "./schema";
 import { applyEnvOverrides } from "./env";
 
-// Re-export schema symbols so existing consumers of config/loader keep working.
-export {
-  FlywheelConfigSchema,
-  BoundariesSchema,
-  type BoundariesConfig,
-  CommandsSchema,
-  type CommandsConfig,
-  CONFIG_DEFAULTS,
-  resolveTierConfigs,
-  resolveMaxEffort,
-  type ResolvedTierConfig,
-  type FlywheelConfig,
-} from "./schema";
-
 // ---------------------------------------------------------------------------
 // Error types
 // ---------------------------------------------------------------------------

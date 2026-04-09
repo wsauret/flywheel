@@ -89,4 +89,4 @@ export const EvaluatorResultSchema = EvaluatorVerdictSchema
   .extend({ suggestions: z.array(z.string()).optional() })
   .strip();
 
-export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>;
+export type { EvaluatorResult } from "../../infra/workflow-types";

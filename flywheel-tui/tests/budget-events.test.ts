@@ -3,7 +3,6 @@ import { EventBus } from "../src/infra/event-bus"
 import { HeadlessAdapter } from "./helpers/headless-adapter"
 import type {
   FlywheelEvent,
-  BudgetWarning,
   BudgetExhausted,
 } from "../src/infra/events"
 
@@ -19,26 +18,6 @@ describe("Budget events — EventBus round-trip", () => {
 
   beforeEach(() => {
     bus = new EventBus()
-  })
-
-  it("budget:warning round-trips through bus.emit → listener", () => {
-    const received: FlywheelEvent[] = []
-    bus.subscribe((e) => received.push(e))
-
-    const event: BudgetWarning = {
-      type: "budget:warning",
-      workflowId: wfId,
-      metric: "invocations",
-      used: 8,
-      limit: 10,
-      remaining: 2,
-      timestamp: ts,
-    }
-    bus.emit(event)
-
-    expect(received).toHaveLength(1)
-    expect(received[0]).toBe(event)
-    expect(received[0].type).toBe("budget:warning")
   })
 
   it("budget:exhausted round-trips through bus.emit → listener", () => {
@@ -58,29 +37,6 @@ describe("Budget events — EventBus round-trip", () => {
     expect(received[0].type).toBe("budget:exhausted")
   })
 
-  it("budget:warning carries correct fields", () => {
-    const received: FlywheelEvent[] = []
-    bus.subscribe((e) => received.push(e))
-
-    bus.emit({
-      type: "budget:warning",
-      workflowId: wfId,
-      metric: "tokens",
-      used: 90000,
-      limit: 100000,
-      remaining: 10000,
-      timestamp: ts,
-    } satisfies BudgetWarning)
-
-    const evt = received[0] as BudgetWarning
-    expect(evt.workflowId).toBe(wfId)
-    expect(evt.metric).toBe("tokens")
-    expect(evt.used).toBe(90000)
-    expect(evt.limit).toBe(100000)
-    expect(evt.remaining).toBe(10000)
-    expect(evt.timestamp).toBe(ts)
-  })
-
   it("budget:exhausted carries correct fields", () => {
     const received: FlywheelEvent[] = []
     bus.subscribe((e) => received.push(e))
@@ -98,41 +54,14 @@ describe("Budget events — EventBus round-trip", () => {
     expect(evt.timestamp).toBe(ts)
   })
 
-  it("subscribeToType works for budget:warning", () => {
-    const received: FlywheelEvent[] = []
-    bus.subscribeToType("budget:warning", (e) => received.push(e))
-
-    // Emit a non-matching event first
-    bus.emit({
-      type: "workflow:started",
-      workflowId: wfId,
-      planPath: "test.md",
-      timestamp: ts,
-    })
-
-    // Emit the matching event
-    bus.emit({
-      type: "budget:warning",
-      workflowId: wfId,
-      metric: "wall_clock",
-      used: 55,
-      limit: 60,
-      remaining: 5,
-      timestamp: ts,
-    } satisfies BudgetWarning)
-
-    expect(received).toHaveLength(1)
-    expect(received[0].type).toBe("budget:warning")
-  })
-
   it("subscribeToType works for budget:exhausted", () => {
     const received: FlywheelEvent[] = []
     bus.subscribeToType("budget:exhausted", (e) => received.push(e))
 
     bus.emit({
-      type: "workflow:failed",
+      type: "queue:completed",
       workflowId: wfId,
-      reason: "something else",
+      stepsCompleted: 1,
       timestamp: ts,
     })
 
@@ -177,19 +106,6 @@ describe("HeadlessAdapter — budget events", () => {
       adapter.start()
     })
 
-    it("logs budget:warning with metric details", () => {
-      emit({
-        type: "budget:warning",
-        workflowId: wfId,
-        metric: "invocations",
-        used: 8,
-        limit: 10,
-        remaining: 2,
-        timestamp: ts,
-      })
-      expect(logs.some((l) => l.includes("Budget warning") && l.includes("invocations") && l.includes("8/10"))).toBe(true)
-    })
-
     it("logs budget:exhausted", () => {
       emit({
         type: "budget:exhausted",
@@ -210,19 +126,6 @@ describe("HeadlessAdapter — budget events", () => {
       })
       adapter.connect(bus)
       adapter.start()
-    })
-
-    it("does NOT log budget:warning in minimal mode", () => {
-      emit({
-        type: "budget:warning",
-        workflowId: wfId,
-        metric: "tokens",
-        used: 90000,
-        limit: 100000,
-        remaining: 10000,
-        timestamp: ts,
-      })
-      expect(logs.some((l) => l.includes("Budget warning"))).toBe(false)
     })
 
     it("still logs budget:exhausted in minimal mode (always visible)", () => {

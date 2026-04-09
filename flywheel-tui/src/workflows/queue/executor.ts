@@ -27,22 +27,6 @@ import { executeStep } from "./step-runner.js";
 import { Log } from "../../infra/log";
 import { errorMessage } from "../../infra/error-message";
 
-// Re-export public types so external consumers don't need to change imports
-export type {
-  StepExecutor,
-  StepExecutorResult,
-  StepExecutorOptions,
-  GateQuestionService,
-  WorkerOutput,
-  EvalResult,
-  DispatcherFn,
-  EvaluatorFn,
-  WorkerFn,
-  HandoffReaderFn,
-  PersistFn,
-  StepContextAccumulator,
-  PostTurnVerificationResult,
-} from "./executor-types.js";
 
 const log = Log.create({ service: "step-executor" });
 

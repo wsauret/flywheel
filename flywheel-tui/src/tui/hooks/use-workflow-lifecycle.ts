@@ -5,6 +5,7 @@
  * controller return values. All business logic lives in the controller.
  */
 
+import { batch } from "solid-js"
 import {
   createWorkflowController,
   type RunnerDoneResult,
@@ -61,11 +62,13 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
 
   /** Reset writable UI signals to a clean "starting" state. */
   function resetUIState(terminalTitle: string): void {
-    signals.setErrorMessage("")
-    signals.setStatusLine("")
-    signals.setViewedBlocks(undefined)
-    signals.setViewedTitle(undefined)
-    services.metrics.resetMetrics()
+    batch(() => {
+      signals.setErrorMessage("")
+      signals.setStatusLine("")
+      signals.setViewedBlocks(undefined)
+      signals.setViewedTitle(undefined)
+      services.metrics.resetMetrics()
+    })
     services.setTerminalTitle(terminalTitle)
   }
 

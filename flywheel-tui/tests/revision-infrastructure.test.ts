@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { loadConfig } from "../src/orchestration/config/loader";
 import {
-  loadConfig,
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
-} from "../src/orchestration/config/loader";
+} from "../src/orchestration/config/schema";
 import { EventBus, createEmit } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
 import { SubprocessResultSchema } from "../src/orchestration/engines/subprocess/schemas";

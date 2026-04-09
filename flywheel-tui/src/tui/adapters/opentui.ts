@@ -114,7 +114,6 @@ export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
         break;
 
       case "approval:requested":
-        // TODO: approval state will move to registry in a future phase
         break;
 
       case "approval:received":
@@ -178,10 +177,6 @@ export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
       case "question:asked":
       case "question:replied":
       case "question:rejected":
-        break;
-
-      case "budget:warning":
-        log.info("Budget warning", { metric: event.metric, used: event.used, limit: event.limit, remaining: event.remaining });
         break;
 
       case "budget:exhausted":

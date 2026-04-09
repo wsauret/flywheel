@@ -42,13 +42,8 @@ function createMockMetrics() {
     spinnerTick: () => 0,
     thinkingElapsed: () => 0,
     liveActivity: () => "idle" as const,
-    setTokens: (_n: number) => {},
-    setCost: (_n: number) => {},
-    setContextPercent: (_n: number) => {},
-    setActivity: (_a: string) => {},
     startTimer: () => {},
     pauseTimer: () => {},
-    stopTimer: () => {},
     resetMetrics: () => {},
     resetElapsedTo: (_ms: number) => {},
   }

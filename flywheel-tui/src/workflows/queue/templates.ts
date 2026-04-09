@@ -4,7 +4,8 @@
 
 import { randomUUID } from "crypto";
 import { createQueue, type QueueOptions } from "./queue";
-import type { Step, Queue, StepType, WorkflowTemplate } from "./types";
+import type { Step, Queue, WorkflowTemplate } from "./types";
+import type { StepType } from "../../infra/step-types";
 import { SPRINT_HINT } from "./steps/sprint/types.js";
 import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria.js";
 
