@@ -55,6 +55,18 @@ const rules: BoundaryRule[] = [
     },
   },
   {
+    id: "orchestration-no-solid-web-or-jsx",
+    description: "orchestration/ may use solid-js and solid-js/store, but NOT solid-js/web. No .tsx files in orchestration.",
+    matches(importRef): boolean {
+      if (!isUnder(importRef.sourcePath, "src/orchestration/")) return false;
+      // Block solid-js/web imports
+      if (importRef.specifier === "solid-js/web" || importRef.specifier.startsWith("solid-js/web/")) return true;
+      // Block .tsx source files in orchestration (any import from a .tsx file triggers)
+      if (importRef.sourcePath.endsWith(".tsx")) return true;
+      return false;
+    },
+  },
+  {
     id: "tui-imports-orchestration-or-infra",
     description: "tui/ may import from orchestration/ and infra/, not workflows/ directly.",
     matches(importRef): boolean {
@@ -211,8 +223,8 @@ function main(): void {
 
     for (const { specifier, line, isTypeOnly } of specifiers) {
       const targetPath = resolveImport(file, specifier);
-      if (!targetPath) continue;
-      imports.push({ sourcePath, targetPath, specifier, line, isTypeOnly });
+      // Include bare package imports (targetPath null) so rules can check specifiers directly
+      imports.push({ sourcePath, targetPath: targetPath ?? "", specifier, line, isTypeOnly });
     }
   }
 

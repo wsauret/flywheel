@@ -1,5 +1,3 @@
 export { HeadlessAdapter, createHeadlessAdapter } from "./headless-adapter"
 export type { HeadlessAdapterOptions } from "./headless-adapter"
-export { createHeadlessStore } from "./headless-store"
-export { createHeadlessTimer } from "./headless-timer"
-export { provideHeadlessFactories } from "./factories"
+export { createHeadlessFactories } from "./factories"

@@ -1,19 +1,21 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
-import { createCommandRegistry } from "./command-registry.js"
+import { createCommandRegistry } from "../../orchestration/command-registry.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface CommandDispatchDeps {
   signals: ShellSignals
   services: ShellServices
   inChat: Accessor<boolean>
-  startWorkflow: (command: string, description: string) => Promise<void>
-  startTestStep: (stepId?: string) => Promise<void>
+  startWorkflow: (command: string, description: string) => void
+  startTestStep: (stepId?: string) => void
   startChat: (initialMessage?: string) => Promise<void>
   backgroundChat: () => void
   endChat: () => void
   sendMessage: (text: string) => void
   handleResume: (sessionIdArg?: string) => Promise<void>
+  /** Steer a running workflow by injecting a user message. */
+  steerWorkflow: (text: string) => boolean
   openSessionsModal: () => void
 }
 
@@ -94,13 +96,8 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     // Workflow session: non-command text steers the worker or resumes from pause
     const state = deps.signals.sessionState()
     if (state === "active" || state === "paused") {
-      const fgId = deps.signals.foregroundId()
-      if (fgId && !trimmed.startsWith("/")) {
-        if (state === "paused" && deps.services.registry.has(fgId)) {
-          deps.services.registry.cancelShutdown(fgId)
-          deps.signals.setAgentState("active")
-        }
-        const injected = deps.services.registry.injectMessage(fgId, trimmed)
+      if (deps.signals.foregroundId() && !trimmed.startsWith("/")) {
+        const injected = deps.steerWorkflow(trimmed)
         if (injected) {
           deps.services.showToast({ message: "Message sent to worker", variant: "info" })
         } else {

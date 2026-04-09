@@ -190,47 +190,6 @@ describe("SessionOrchestrator.handleResumeSession", () => {
 });
 
 // ---------------------------------------------------------------------------
-// handleDeleteSession
-// ---------------------------------------------------------------------------
-
-describe("SessionOrchestrator.handleDeleteSession", () => {
-  it("deletes the session via manager.delete()", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(calls).toContain("manager.delete:session-1");
-  });
-
-  it("calls refreshList after deletion", async () => {
-    const { deps, calls } = makeMockDeps();
-    const orchestrator = createSessionOrchestrator(deps);
-
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(calls).toContain("refreshList");
-  });
-
-  it("delete comes before refreshList", async () => {
-    const order: string[] = [];
-    const { deps } = makeMockDeps();
-
-    deps.manager.delete = (id: string) => {
-      order.push("delete");
-    };
-    deps.refreshList = () => {
-      order.push("refreshList");
-    };
-
-    const orchestrator = createSessionOrchestrator(deps);
-    await orchestrator.handleDeleteSession("session-1");
-
-    expect(order).toEqual(["delete", "refreshList"]);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Dependency injection — pure functions, no direct imports
 // ---------------------------------------------------------------------------
 
@@ -240,7 +199,6 @@ describe("SessionOrchestrator dependency injection", () => {
     const orchestrator = createSessionOrchestrator(deps);
 
     expect(typeof orchestrator.handleResumeSession).toBe("function");
-    expect(typeof orchestrator.handleDeleteSession).toBe("function");
   });
 
   it("factory returns a fresh instance each call", () => {

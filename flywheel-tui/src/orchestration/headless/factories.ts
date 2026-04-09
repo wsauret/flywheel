@@ -1,27 +1,26 @@
 /**
  * Headless Factory Wiring
  *
- * Registers headless implementations (store, timer, adapter) via the
- * existing provideSessionFactories() injection point. This is the
- * single entry point for headless mode setup — no second singleton.
+ * Creates headless implementations (timer, adapter) as a
+ * WorkflowSessionFactories object. Callers pass this to
+ * createSessionRegistry() or createWorkflowRunner().
  */
 
-import { provideSessionFactories } from "../workflow-session"
-import { createHeadlessStore } from "./headless-store"
-import { createHeadlessTimer } from "./headless-timer"
+import type { WorkflowSessionFactories } from "../workflow-session"
 import { createHeadlessAdapter } from "./headless-adapter"
 import type { HeadlessAdapterOptions } from "./headless-adapter"
 
 /**
- * Wire headless factories into the session DI boundary.
+ * Create headless factories for workflow sessions.
  *
- * Call once at startup before any createWorkflowSession() calls.
- * Options are forwarded to HeadlessAdapter for logging configuration.
+ * Returns a WorkflowSessionFactories object — pass it to
+ * createSessionRegistry() or createWorkflowRunner().
  */
-export function provideHeadlessFactories(opts?: HeadlessAdapterOptions): void {
-  provideSessionFactories({
-    createStore: (_key: string) => createHeadlessStore(),
+export function createHeadlessFactories(opts?: HeadlessAdapterOptions): WorkflowSessionFactories {
+  return {
     createAdapter: (_adapterOpts) => createHeadlessAdapter(opts),
-    createTimer: () => createHeadlessTimer(),
-  })
+    // TUI's TimerService drives display refresh ticks. Headless has no display,
+    // so this is intentionally a no-op.
+    createTimer: () => ({ stop() {} }),
+  }
 }

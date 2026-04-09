@@ -1,5 +1,5 @@
 /**
- * Session Registry — pure runner pool.
+ * Session Registry — reactive runner pool backed by SolidJS createStore.
  *
  * Manages multiple concurrent session runners (workflow and chat). Each
  * registered session runs independently in the background. The shell picks
@@ -14,10 +14,15 @@
  * can type-narrow to access session-specific fields (e.g. `steps` on
  * workflow entries, but not on chat entries).
  *
- * No UI imports — pure orchestration with callback-based notifications.
+ * Backed by SolidJS createStore — get() returns reactive proxies that
+ * auto-track inside createEffect/createMemo. Outside reactive context,
+ * reads work as plain property access (no tracking, just a snapshot).
  */
 
+import { createRoot } from "solid-js"
+import { createStore, produce } from "solid-js/store"
 import { createWorkflowRunner, type WorkflowRunner, type WorkflowResult, type StepState } from "./workflow-runner"
+import type { WorkflowSessionFactories } from "./workflow-session"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { Queue } from "../workflows/queue/types"
 import type { ModelActivity } from "../infra/events"
@@ -30,20 +35,20 @@ import type { SessionKind } from "./session/types"
 
 interface SessionEntryBase {
   readonly kind: SessionKind
-  readonly description: string
-  readonly outputBlocks: readonly AnyBlock[]
-  readonly tokens: number
-  readonly cost: number
-  readonly contextPercent: number
+  description: string
+  outputBlocks: readonly AnyBlock[]
+  tokens: number
+  cost: number
+  contextPercent: number
   readonly startedAt: number
-  readonly modelActivity: ModelActivity
-  readonly errorMessage?: string
+  modelActivity: ModelActivity
+  errorMessage?: string
 }
 
 export interface WorkflowSessionEntry extends SessionEntryBase {
   readonly kind: "workflow"
   readonly runner: WorkflowRunner
-  readonly steps: readonly StepState[]
+  steps: readonly StepState[]
 }
 
 export interface ChatSessionEntry extends SessionEntryBase {
@@ -53,17 +58,25 @@ export interface ChatSessionEntry extends SessionEntryBase {
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
 
-/** Callbacks passed into createRunner so the runner can update the registry entry. */
-export interface ChatRegistryCallbacks {
-  onBlocks: (blocks: AnyBlock[]) => void
-  onTokens: (n: number) => void
-  onCost: (n: number) => void
-  onContextPercent: (n: number) => void
-  onModelActivity: (activity: ModelActivity) => void
-  onSessionName: (name: string) => void
+/** Handle passed to workflow adapter factory — write data directly to the reactive store. */
+export interface WorkflowStoreHandle {
+  updateEntry: (patch: Partial<WorkflowSessionEntry>) => void
+}
+
+/** Handle passed to chat runner factory — write data directly to the reactive store. */
+export interface ChatStoreHandle {
+  /** Write data fields directly to the session entry in the reactive store. */
+  updateEntry: (patch: Partial<ChatSessionEntry>) => void
+  /** Signal a fatal error — removes entry and fires onRunnerError.
+   *  Returns void (fire-and-forget). Implementations are async but callers
+   *  intentionally drop the promise — cleanup is best-effort. */
   onError: (message: string) => void
+  /** Signal normal completion — removes entry and fires onRunnerDone.
+   *  Returns void (fire-and-forget). Implementations are async but callers
+   *  intentionally drop the promise — cleanup is best-effort. */
   onEnded: () => void
 }
+
 
 export interface SessionRegistry {
   /** Start a new workflow and register it. Returns sessionId. */
@@ -86,12 +99,12 @@ export interface SessionRegistry {
 
   /** Start a new chat session and register it. Returns sessionId.
    *  Async because ChatRunner creation is async.
-   *  The createRunner factory receives callbacks wired to the registry's updateEntry. */
+   *  The createRunner factory receives a store handle for direct writes. */
   startChat(opts: {
     sessionId: string
     description?: string
     priorBlocks?: AnyBlock[]
-    createRunner: (callbacks: ChatRegistryCallbacks) => Promise<ChatRunner>
+    createRunner: (handle: ChatStoreHandle) => Promise<ChatRunner>
     onComplete?: () => void
     /** Called when the chat session ends normally. */
     onRunnerDone?: (sessionId: string) => void
@@ -99,7 +112,7 @@ export interface SessionRegistry {
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): Promise<string>
 
-  /** Get a session entry by ID. */
+  /** Get a session entry by ID. Returns a reactive proxy — auto-tracks inside createEffect/createMemo. */
   get(sessionId: string): SessionEntry | undefined
 
   /** Check if a session exists in the registry. */
@@ -111,11 +124,11 @@ export interface SessionRegistry {
   /** Abort a specific session. */
   abort(sessionId: string): void
 
-  /** Remove a session from the registry (cleanup). */
-  remove(sessionId: string): void
+  /** Remove a session from the registry (cleanup). Async — awaits dispose/flush. */
+  remove(sessionId: string): Promise<void>
 
-  /** Subscribe to registry changes. Returns unsubscribe function. */
-  subscribe(cb: () => void): () => void
+  /** Update a specific field on an entry. Used by runners to write directly to the store. */
+  updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>): void
 
   /** Inject a user message into a running session's worker. */
   injectMessage(sessionId: string, text: string): boolean
@@ -137,21 +150,27 @@ export interface SessionRegistry {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createSessionRegistry(): SessionRegistry {
-  const entries = new Map<string, SessionEntry>()
-  const subscribers = new Set<() => void>()
-
-  function notify(): void {
-    for (const cb of subscribers) {
-      try { cb() } catch { /* subscriber errors must not propagate */ }
-    }
-  }
+/**
+ * Creates a session registry backed by SolidJS createStore.
+ * Callers MUST call disposeAll() on cleanup to dispose the internal reactive root.
+ */
+export function createSessionRegistry(factories: WorkflowSessionFactories): SessionRegistry {
+  // Create a SolidJS reactive root that owns all effects/memos in this registry.
+  // disposeRoot() tears down the reactive graph on shutdown.
+  // Definite assignment (!) is safe: createRoot's callback runs synchronously.
+  let disposeRoot!: () => void
+  let entries!: Record<string, SessionEntry>
+  let setEntries!: ReturnType<typeof createStore<Record<string, SessionEntry>>>[1]
+  createRoot((dispose) => {
+    disposeRoot = dispose
+    const [store, setter] = createStore<Record<string, SessionEntry>>({})
+    entries = store
+    setEntries = setter
+  })
 
   function updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>): void {
-    const existing = entries.get(sessionId)
-    if (!existing) return
-    entries.set(sessionId, { ...existing, ...patch } as SessionEntry)
-    notify()
+    if (!entries[sessionId]) return
+    setEntries(sessionId, patch)
   }
 
   function start(opts: {
@@ -170,15 +189,8 @@ export function createSessionRegistry(): SessionRegistry {
       sessionId,
       queue,
       description,
-      callbacks: {
-        onBlocks: (blocks) => updateEntry(sessionId, { outputBlocks: blocks }),
-        onSteps: (steps) => updateEntry(sessionId, { steps }),
-        onTokens: (n) => updateEntry(sessionId, { tokens: n }),
-        onCost: (n) => updateEntry(sessionId, { cost: n }),
-        onMetrics: (tokens, cost) => updateEntry(sessionId, { tokens, cost }),
-        onSessionName: (name) => updateEntry(sessionId, { description: name }),
-        onModelActivity: (activity) => updateEntry(sessionId, { modelActivity: activity }),
-      },
+      updateEntry: (id, patch) => updateEntry(id, patch),
+      factories,
       priorBlocks,
       overrides: opts.subprocessCwd ? { subprocessCwd: opts.subprocessCwd } : undefined,
     })
@@ -196,19 +208,18 @@ export function createSessionRegistry(): SessionRegistry {
       modelActivity: "idle",
     }
 
-    entries.set(sessionId, entry)
-    notify()
+    setEntries(sessionId, entry)
 
     // Run in background — do NOT await
     runner.run().then(
-      (result) => {
+      async (result) => {
         opts.onRunnerDone?.(sessionId, result)
-        remove(sessionId)
+        await remove(sessionId)
         opts.onComplete?.()
       },
-      (err) => {
+      async (err) => {
         opts.onRunnerError?.(sessionId, err)
-        remove(sessionId)
+        await remove(sessionId)
         opts.onComplete?.()
       },
     )
@@ -220,35 +231,30 @@ export function createSessionRegistry(): SessionRegistry {
     sessionId: string
     description?: string
     priorBlocks?: AnyBlock[]
-    createRunner: (callbacks: ChatRegistryCallbacks) => Promise<ChatRunner>
+    createRunner: (handle: ChatStoreHandle) => Promise<ChatRunner>
     onComplete?: () => void
     onRunnerDone?: (sessionId: string) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): Promise<string> {
     const { sessionId, description = "Chat", priorBlocks } = opts
 
-    // Wire callbacks to the registry's updateEntry so subscriber notifications fire
-    const registryCallbacks: ChatRegistryCallbacks = {
-      onBlocks: (blocks) => updateEntry(sessionId, { outputBlocks: blocks }),
-      onTokens: (n) => updateEntry(sessionId, { tokens: n }),
-      onCost: (n) => updateEntry(sessionId, { cost: n }),
-      onContextPercent: (n) => updateEntry(sessionId, { contextPercent: n }),
-      onModelActivity: (activity) => updateEntry(sessionId, { modelActivity: activity }),
-      onSessionName: (name) => updateEntry(sessionId, { description: name }),
-      onError: (message) => {
+    // Create a store handle for the runner — data writes go directly to the reactive store
+    const storeHandle: ChatStoreHandle = {
+      updateEntry: (patch) => updateEntry(sessionId, patch),
+      onError: async (message) => {
         updateEntry(sessionId, { errorMessage: message })
         opts.onRunnerError?.(sessionId, new Error(message))
-        remove(sessionId)
+        await remove(sessionId)
         opts.onComplete?.()
       },
-      onEnded: () => {
+      onEnded: async () => {
         opts.onRunnerDone?.(sessionId)
-        remove(sessionId)
+        await remove(sessionId)
         opts.onComplete?.()
       },
     }
 
-    const runner = await opts.createRunner(registryCallbacks)
+    const runner = await opts.createRunner(storeHandle)
 
     const entry: ChatSessionEntry = {
       kind: "chat",
@@ -262,22 +268,21 @@ export function createSessionRegistry(): SessionRegistry {
       modelActivity: "idle",
     }
 
-    entries.set(sessionId, entry)
-    notify()
+    setEntries(sessionId, entry)
 
     return sessionId
   }
 
   function get(sessionId: string): SessionEntry | undefined {
-    return entries.get(sessionId)
+    return entries[sessionId]
   }
 
   function has(sessionId: string): boolean {
-    return entries.has(sessionId)
+    return entries[sessionId] !== undefined
   }
 
   function pause(sessionId: string): boolean {
-    const entry = entries.get(sessionId)
+    const entry = entries[sessionId]
     if (!entry) return false
     if (entry.kind !== "workflow") return false
     entry.runner.pause()
@@ -285,22 +290,23 @@ export function createSessionRegistry(): SessionRegistry {
   }
 
   function abort(sessionId: string): void {
-    const entry = entries.get(sessionId)
+    const entry = entries[sessionId]
     if (!entry) return
     entry.runner.abort()
     // Status transitions happen when run() resolves (workflow) or via callbacks (chat)
   }
 
-  function remove(sessionId: string): void {
-    const entry = entries.get(sessionId)
+  async function remove(sessionId: string): Promise<void> {
+    const entry = entries[sessionId]
     if (!entry) return
-    entry.runner.dispose()
-    entries.delete(sessionId)
-    notify()
+    // Delete entry BEFORE awaiting dispose — UI updates aren't blocked by I/O
+    setEntries(produce((e) => { delete e[sessionId] }))
+    // Then await dispose (flushes output, cleans up resources)
+    await entry.runner.dispose()
   }
 
   function injectMessage(sessionId: string, text: string): boolean {
-    const entry = entries.get(sessionId)
+    const entry = entries[sessionId]
     if (!entry) return false
     // Optimistically set activity to "thinking" so the UI shows immediate
     // feedback while waiting for the first NDJSON thinking event to arrive.
@@ -309,42 +315,44 @@ export function createSessionRegistry(): SessionRegistry {
   }
 
   function cancelShutdown(sessionId: string): boolean {
-    const entry = entries.get(sessionId)
+    const entry = entries[sessionId]
     if (!entry) return false
     if (entry.kind !== "workflow") return false
     entry.runner.cancelShutdown()
     return true
   }
 
-  function subscribe(cb: () => void): () => void {
-    subscribers.add(cb)
-    return () => { subscribers.delete(cb) }
-  }
-
+  /** Number of active sessions. Reading Object.keys(entries) on a SolidJS store
+   *  proxy auto-tracks key additions/removals when called inside a reactive context
+   *  (createEffect, createMemo). Outside reactive context, returns a plain snapshot. */
   function runningCount(): number {
-    return entries.size
+    return Object.keys(entries).length
   }
 
   function allIds(): string[] {
-    return [...entries.keys()]
+    return Object.keys(entries)
   }
 
   async function disposeAll(): Promise<void> {
-    const ids = [...entries.keys()]
+    const ids = Object.keys(entries)
     // Abort all first (signal subprocesses to stop)
     for (const id of ids) {
-      const entry = entries.get(id)
+      const entry = entries[id]
       if (entry) entry.runner.abort()
     }
     // Then dispose all (flushes output, cleans up resources)
     await Promise.all(ids.map(async (id) => {
-      const entry = entries.get(id)
+      const entry = entries[id]
       if (!entry) return
       try { await entry.runner.dispose() } catch { /* best-effort */ }
-      entries.delete(id)
     }))
-    notify()
+    // Clear all entries
+    setEntries(produce((e) => {
+      for (const id of ids) delete e[id]
+    }))
+    // Tear down the reactive root
+    disposeRoot()
   }
 
-  return { start, startChat, get, has, allIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount, disposeAll }
+  return { start, startChat, get, has, allIds, pause, abort, remove, injectMessage, cancelShutdown, updateEntry, runningCount, disposeAll }
 }

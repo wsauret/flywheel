@@ -185,13 +185,11 @@ describe("TraceEventHandler", () => {
   let bus: EventBus;
   let emit: EmitFn;
   let handler: TraceEventHandler;
-  let workflowIdRef: { current: string };
 
   beforeEach(() => {
     bus = new EventBus();
     emit = createEmit(bus);
-    workflowIdRef = { current: "wf-test" };
-    handler = createTraceEventHandler({ emit, workflowIdRef });
+    handler = createTraceEventHandler({ emit, workflowId: "wf-test" });
   });
 
   it("tool_use NDJSONEvent emits trace:tool-started", () => {
@@ -337,15 +335,14 @@ describe("TraceEventHandler", () => {
     expect(received).toHaveLength(0);
   });
 
-  it("uses current workflowId from ref", () => {
+  it("uses workflowId from construction", () => {
     const received: FlywheelEvent[] = [];
     bus.subscribeToType("trace:tool-started", (e) => received.push(e));
 
-    workflowIdRef.current = "wf-updated";
     handler.handleEvent(makeToolUseNDJSON("Read", "toolu_x", {}));
 
     if (received[0].type === "trace:tool-started") {
-      expect(received[0].workflowId).toBe("wf-updated");
+      expect(received[0].workflowId).toBe("wf-test");
     }
   });
 });
@@ -571,8 +568,7 @@ describe("End-to-end: NDJSON → trace event → span", () => {
     });
     collector.subscribeToEvents(bus);
 
-    const workflowIdRef = { current: "wf-e2e" };
-    handler = createTraceEventHandler({ emit, workflowIdRef });
+    handler = createTraceEventHandler({ emit, workflowId: "wf-e2e" });
 
     // Set up workflow context
     bus.emit({ type: "queue:initialized", workflowId: "wf-e2e", stepIds: ["s1"], timestamp: now() });

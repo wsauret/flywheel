@@ -1,6 +1,11 @@
 /**
  * Budget Tracker
  *
+ * Budget enforcement flows through this module: BudgetTracker accumulates
+ * cost/token/invocation data from NDJSON events and emits budget:exhausted
+ * events when limits are hit. The step executor does NOT do its own per-step
+ * budget check — all enforcement is event-driven through this tracker.
+ *
  * Accumulates cost and token usage from Claude Code's NDJSON "result" events,
  * plus invocation counts from the step executor. Persists structured budget
  * usage to the session file with debounced writes. Provides budget exhaustion

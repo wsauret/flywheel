@@ -21,7 +21,6 @@ import {
   type EvaluatorFn,
   type WorkerFn,
   type HandoffReaderFn,
-  type BudgetChecker,
   type PersistFn,
   type StepContextAccumulator,
   type GateQuestionService,
@@ -125,27 +124,6 @@ function createMissingHandoffReader(): HandoffReaderFn {
   return async () => null;
 }
 
-/** Budget checker that is never exhausted */
-function createUnlimitedBudget(): BudgetChecker {
-  return { isExhausted: () => false };
-}
-
-/** Budget checker that is always exhausted */
-function createExhaustedBudget(): BudgetChecker {
-  return { isExhausted: () => true };
-}
-
-/** Budget checker that exhausts after N steps */
-function createLimitedBudget(maxSteps: number): BudgetChecker {
-  let count = 0;
-  return {
-    isExhausted: () => {
-      count++;
-      return count > maxSteps;
-    },
-  };
-}
-
 /** No-op persist function */
 function createNoopPersist(): PersistFn {
   return async () => {};
@@ -192,7 +170,6 @@ function createDefaultOptions(overrides: Partial<StepExecutorOptions> = {}): Ste
     worker: overrides.worker ?? createSuccessWorker(),
     evaluator: overrides.evaluator ?? null,
     handoffReader: overrides.handoffReader ?? createMissingHandoffReader(),
-    budgetChecker: overrides.budgetChecker ?? createUnlimitedBudget(),
     persist: overrides.persist ?? createNoopPersist(),
     accumulator: overrides.accumulator ?? createNoopAccumulator(),
     maxRevisions: overrides.maxRevisions ?? 0,
@@ -500,54 +477,6 @@ describe("VAL-QUEUE-028: Evaluator transport failure graceful degradation", () =
 
     expect(result.completed).toBe(true);
     expect(result.stepsCompleted).toBe(2);
-  });
-});
-
-// ===========================================================================
-// VAL-QUEUE-029: Budget check before each step
-// ===========================================================================
-
-describe("VAL-QUEUE-029: Budget check before each step", () => {
-  test("budget exhaustion stops before next step", async () => {
-    const budget = createLimitedBudget(1); // Only 1 step allowed
-    const s1 = makeStep({ title: "Runs" });
-    const s2 = makeStep({ title: "Blocked by budget" });
-    const queue = createQueue([s1, s2]);
-
-    const opts = createDefaultOptions({ queue, budgetChecker: budget });
-    const executor = createStepExecutor(opts);
-    const result = await executor.run();
-
-    expect(result.completed).toBe(false);
-    expect(result.stepsCompleted).toBe(1);
-    expect(result.reason?.toLowerCase()).toContain("budget");
-    expect(queue.steps[0].status).toBe("completed");
-    expect(queue.steps[1].status).toBe("pending");
-  });
-
-  test("budget already exhausted stops immediately", async () => {
-    const budget = createExhaustedBudget();
-    const queue = createQueue([makeStep()]);
-
-    const opts = createDefaultOptions({ queue, budgetChecker: budget });
-    const executor = createStepExecutor(opts);
-    const result = await executor.run();
-
-    expect(result.completed).toBe(false);
-    expect(result.stepsCompleted).toBe(0);
-    expect(result.reason?.toLowerCase()).toContain("budget");
-  });
-
-  test("unlimited budget processes all steps", async () => {
-    const budget = createUnlimitedBudget();
-    const queue = createQueue([makeStep(), makeStep(), makeStep()]);
-
-    const opts = createDefaultOptions({ queue, budgetChecker: budget });
-    const executor = createStepExecutor(opts);
-    const result = await executor.run();
-
-    expect(result.completed).toBe(true);
-    expect(result.stepsCompleted).toBe(3);
   });
 });
 
@@ -2367,61 +2296,6 @@ describe("VAL-EXEC-003: Failed step stops execution by default", () => {
 
     expect(result.completed).toBe(false);
     expect(result.stepsCompleted).toBe(0);
-  });
-});
-
-// ===========================================================================
-// VAL-EXEC-005: Budget enforcement stops execution with 'budget'
-// ===========================================================================
-
-describe("VAL-EXEC-005: Budget enforcement stops execution with budget", () => {
-  test("budget exhaustion returns reason 'budget'", async () => {
-    const budget = createLimitedBudget(1);
-    const s1 = makeStep({ title: "Runs" });
-    const s2 = makeStep({ title: "Blocked" });
-    const queue = createQueue([s1, s2]);
-
-    const opts = createDefaultOptions({ queue, budgetChecker: budget });
-    const result = await createStepExecutor(opts).run();
-
-    expect(result.completed).toBe(false);
-    expect(result.reason).toBe("budget");
-    expect(queue.steps[0].status).toBe("completed");
-    expect(queue.steps[1].status).toBe("pending");
-  });
-
-  test("budget already exhausted before first step returns budget", async () => {
-    const budget = createExhaustedBudget();
-    const queue = createQueue([makeStep({ title: "Never runs" })]);
-
-    const opts = createDefaultOptions({ queue, budgetChecker: budget });
-    const result = await createStepExecutor(opts).run();
-
-    expect(result.completed).toBe(false);
-    expect(result.stepsCompleted).toBe(0);
-    expect(result.reason).toBe("budget");
-  });
-
-  test("no further steps execute after budget exhaustion", async () => {
-    const workerCalls: string[] = [];
-    const budget = createLimitedBudget(1);
-
-    const worker: WorkerFn = async (step) => {
-      workerCalls.push(step.title);
-      return { output: "ok", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
-    };
-
-    const s1 = makeStep({ title: "Step 1" });
-    const s2 = makeStep({ title: "Step 2" });
-    const s3 = makeStep({ title: "Step 3" });
-    const queue = createQueue([s1, s2, s3]);
-
-    const opts = createDefaultOptions({ queue, worker, budgetChecker: budget });
-    const result = await createStepExecutor(opts).run();
-
-    expect(result.completed).toBe(false);
-    expect(result.reason).toBe("budget");
-    expect(workerCalls).toEqual(["Step 1"]); // only first step runs
   });
 });
 

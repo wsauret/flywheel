@@ -35,8 +35,8 @@ const collector = createTraceCollector({ writer, sessionId, workflowName });
 const unsubs = collector.subscribeToEvents(bus);
 
 // Wire trace event handler
-const workflowIdRef = { current: randomUUID() };
-const traceHandler = createTraceEventHandler({ emit, workflowIdRef });
+const workflowId = randomUUID();
+const traceHandler = createTraceEventHandler({ emit, workflowId });
 
 // --- Simulate a realistic workflow event sequence ---
 // (We can't easily spin up a full workflow runner without the TUI,
@@ -49,7 +49,7 @@ const stepId = "step-1";
 // 1. Queue initialized
 bus.emit({
   type: "queue:initialized",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepIds: [stepId],
   timestamp: Date.now(),
 });
@@ -57,7 +57,7 @@ bus.emit({
 // 2. Step started
 bus.emit({
   type: "queue:step-started",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepId,
   stepType: "work",
   stepTitle: "Implement feature",
@@ -67,7 +67,7 @@ bus.emit({
 // 3. Subprocess spawned
 bus.emit({
   type: "subprocess:spawned",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepIndex: 0,
   timestamp: Date.now(),
 });
@@ -78,7 +78,7 @@ await new Promise(r => setTimeout(r, 50));
 // 4. Simulate tool calls via trace events
 bus.emit({
   type: "trace:tool-started" as any,
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   toolUseId: "toolu_read_1",
   toolName: "Read",
   toolInput: JSON.stringify({ file_path: "src/main.ts" }),
@@ -89,7 +89,7 @@ await new Promise(r => setTimeout(r, 30));
 
 bus.emit({
   type: "trace:tool-completed" as any,
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   toolUseId: "toolu_read_1",
   toolOutput: "// main.ts contents here...",
   isError: false,
@@ -98,7 +98,7 @@ bus.emit({
 
 bus.emit({
   type: "trace:tool-started" as any,
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   toolUseId: "toolu_edit_1",
   toolName: "Edit",
   toolInput: JSON.stringify({ file_path: "src/main.ts", old_string: "old", new_string: "new" }),
@@ -109,7 +109,7 @@ await new Promise(r => setTimeout(r, 20));
 
 bus.emit({
   type: "trace:tool-completed" as any,
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   toolUseId: "toolu_edit_1",
   toolOutput: "Edit applied successfully",
   isError: false,
@@ -119,7 +119,7 @@ bus.emit({
 // 5. Subagent spawn
 bus.emit({
   type: "trace:subagent-started" as any,
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   toolUseId: "toolu_task_1",
   agentType: "Explore",
   description: "Search for related files",
@@ -132,7 +132,7 @@ await new Promise(r => setTimeout(r, 40));
 
 bus.emit({
   type: "trace:subagent-completed" as any,
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   toolUseId: "toolu_task_1",
   result: "Found 3 files importing from main.ts",
   exitStatus: 0,
@@ -145,7 +145,7 @@ await new Promise(r => setTimeout(r, 20));
 // 6. Subprocess completed
 bus.emit({
   type: "subprocess:completed",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   result: { output: "Feature implemented", exitCode: 0, handoffPath: "" } as any,
   timestamp: Date.now(),
 });
@@ -153,7 +153,7 @@ bus.emit({
 // 7. Step completed
 bus.emit({
   type: "queue:step-completed",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepId,
   stepType: "work",
   stepTitle: "Implement feature",
@@ -163,7 +163,7 @@ bus.emit({
 // 8. Queue completed
 bus.emit({
   type: "queue:completed",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepsCompleted: 1,
   timestamp: Date.now(),
 });

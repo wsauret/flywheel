@@ -28,7 +28,6 @@ import {
   type WorkerFn,
   type EvaluatorFn,
   type HandoffReaderFn,
-  type BudgetChecker,
   type PersistFn,
   type StepContextAccumulator,
   type GateQuestionService,
@@ -237,24 +236,6 @@ export function createMockHandoffReader(tmpDir: string): HandoffReaderFn {
   };
 }
 
-export interface MockBudgetCheckerOptions {
-  /** Return exhausted after this many calls to isExhausted(). */
-  exhaustAfterChecks?: number;
-}
-
-export function createMockBudgetChecker(opts: MockBudgetCheckerOptions = {}): BudgetChecker {
-  let checkCount = 0;
-  return {
-    isExhausted() {
-      checkCount++;
-      if (opts.exhaustAfterChecks !== undefined) {
-        return checkCount > opts.exhaustAfterChecks;
-      }
-      return false;
-    },
-  };
-}
-
 export interface MockQuestionServiceOptions {
   /** Answers to return for gate questions by step ID. */
   answersByStepId?: Record<string, string>;
@@ -332,8 +313,6 @@ export interface HarnessOptions {
   evaluator?: MockEvaluatorOptions | null;
   /** Raw evaluator function override (bypasses mock evaluator). */
   evaluatorFn?: EvaluatorFn;
-  /** Mock budget checker options. */
-  budgetChecker?: MockBudgetCheckerOptions;
   /** Mock question service options. Null = no question service. */
   questionService?: MockQuestionServiceOptions | null;
   /** onStepCompleted hook. */
@@ -424,8 +403,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
   }
   const evaluator = opts.evaluatorFn ?? (evaluatorOpts ? createMockEvaluator(evaluatorOpts) : null);
 
-  const budgetChecker = createMockBudgetChecker(opts.budgetChecker ?? {});
-
   const questionServiceOpts = opts.questionService ?? null;
   if (questionServiceOpts) {
     questionServiceOpts.calls = questionServiceOpts.calls ?? [];
@@ -458,7 +435,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     worker,
     evaluator,
     handoffReader: opts.handoffReader ?? createMockHandoffReader(tmpDir),
-    budgetChecker,
     persist,
     accumulator,
     maxRevisions: opts.maxRevisions ?? 0,

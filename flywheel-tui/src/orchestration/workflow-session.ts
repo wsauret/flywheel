@@ -1,30 +1,20 @@
 /**
  * Workflow Session
  *
- * Manages the lifecycle of a single workflow run: store, adapter, timer, event bus.
+ * Manages the lifecycle of a single workflow run: adapter, timer, event bus.
  * WorkflowRunner calls createWorkflowSession() to start and destroyWorkflowSession() to stop.
  *
- * Dependencies are injected via WorkflowSessionFactories — orchestration never
- * imports concrete TUI classes directly. The TUI layer provides the factories
- * via provideSessionFactories().
+ * Dependencies are injected via WorkflowSessionFactories — callers pass factories
+ * explicitly. No global singleton.
  */
 
 import { EventBus } from "../infra/event-bus";
-import type { AnyBlock } from "../infra/output-blocks";
-import type { ModelActivity } from "../infra/events";
 import type { EngineMetadata } from "./engines/core/types";
+import type { WorkflowSessionEntry } from "./session-registry";
 
 // ---------------------------------------------------------------------------
 // Narrow interfaces — what orchestration needs from TUI primitives
 // ---------------------------------------------------------------------------
-
-/** Minimal store interface used by the orchestration layer. */
-export interface WorkflowStore {
-  startWorkflow(description: string): void;
-  getState(): { modelActivity: ModelActivity; outputBlocks?: AnyBlock[] };
-  subscribe(cb: () => void): () => void;
-  subscribeExecution(cb: () => void): () => void;
-}
 
 /** Minimal adapter interface used by the orchestration layer. */
 export interface WorkflowAdapter {
@@ -44,39 +34,18 @@ export interface WorkflowTimer {
 // ---------------------------------------------------------------------------
 
 export interface WorkflowSession {
-  store: WorkflowStore;
   adapter: WorkflowAdapter;
   eventBus: EventBus;
   timer: WorkflowTimer;
 }
 
 // ---------------------------------------------------------------------------
-// Factory injection
+// Factory type
 // ---------------------------------------------------------------------------
 
 export interface WorkflowSessionFactories {
-  createStore: (key: string) => WorkflowStore;
-  createAdapter: (opts: { actions: WorkflowStore; engineMetadata?: EngineMetadata }) => WorkflowAdapter;
+  createAdapter: (opts: { updateEntry: (patch: Partial<WorkflowSessionEntry>) => void; engineMetadata?: EngineMetadata }) => WorkflowAdapter;
   createTimer: () => WorkflowTimer;
-}
-
-let _factories: WorkflowSessionFactories | null = null;
-
-/** Reset factories to null. Test-only — allows test isolation for factory injection. */
-export function resetSessionFactories(): void {
-  _factories = null;
-}
-
-/** Called once by the TUI layer to provide concrete factories. */
-export function provideSessionFactories(factories: WorkflowSessionFactories): void {
-  _factories = factories;
-}
-
-function getFactories(): WorkflowSessionFactories {
-  if (!_factories) {
-    throw new Error("WorkflowSession factories not provided — call provideSessionFactories() at startup");
-  }
-  return _factories;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,36 +57,34 @@ export interface CreateWorkflowSessionOpts {
   engineMetadata?: EngineMetadata;
   /** Provide an existing EventBus (e.g. for test DI). Defaults to a fresh instance. */
   eventBus?: EventBus;
+  /** Required — concrete factories for adapter, timer. */
+  factories: WorkflowSessionFactories;
+  /** Write data directly to the session entry in the reactive store. */
+  updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
 }
 
 /**
  * Create a fresh workflow session.
  *
- * Creates per-session timer → store → adapter → event bus in strict init order.
+ * Creates per-session timer → adapter → event bus in strict init order.
  */
 export function createWorkflowSession(opts: CreateWorkflowSessionOpts): WorkflowSession {
-  const factories = getFactories();
+  const factories = opts.factories;
 
   // 1. Per-session timer
   const timer = factories.createTimer();
 
-  // 2. Fresh store
-  const store = factories.createStore("workflow");
+  // 2. Adapter wired to updateEntry
+  const adapter = factories.createAdapter({ updateEntry: opts.updateEntry, engineMetadata: opts.engineMetadata });
 
-  // 3. Initialize workflow metadata
-  store.startWorkflow(opts.description);
-
-  // 4. Adapter wired to store
-  const adapter = factories.createAdapter({ actions: store, engineMetadata: opts.engineMetadata });
-
-  // 5. Event bus (injected or fresh)
+  // 3. Event bus (injected or fresh)
   const eventBus = opts.eventBus ?? new EventBus();
 
-  // 6. Connect and start
+  // 4. Connect and start
   adapter.connect(eventBus);
   adapter.start();
 
-  return { store, adapter, eventBus, timer };
+  return { adapter, eventBus, timer };
 }
 
 /**

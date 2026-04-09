@@ -19,15 +19,9 @@ import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
 import type { WarmPool } from "./engines/pool/warm-pool.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type { EmitFn } from "../infra/event-bus.js"
-import type { StdinHandle } from "./engines/subprocess/spawner.js"
-import type { WorkflowSession } from "./workflow-session.js"
+import type { EventBus } from "../infra/event-bus.js"
+import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { Step } from "../workflows/queue/types.js"
-import type { BudgetTracker } from "./session/budget-tracker.js"
-import type { TraceEventHandler } from "./engines/subprocess/trace-event-handler.js"
-import type { TranscriptWriter } from "./session/transcript-writer.js"
-import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers.js"
-import { createDoomLoopObserver } from "./engines/doom-loop.js"
-import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper.js"
 import { SELF_REVIEW_CHECKLIST } from "../workflows/queue/post-turn-verification.js"
 
 const log = Log.create({ service: "subprocess-callback" })
@@ -36,26 +30,64 @@ const log = Log.create({ service: "subprocess-callback" })
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
 // ---------------------------------------------------------------------------
+// Pure prompt builder
+// ---------------------------------------------------------------------------
+
+export interface StepPromptResult {
+  fullPrompt: string
+  handoffPath: string
+  scaffoldingPaths: ScaffoldingPaths
+}
+
+/**
+ * Build the full prompt for a subprocess step.
+ *
+ * Pure function — no side effects, no I/O. Computes the handoff path,
+ * scaffolding paths, and assembles preamble + prompt + postamble.
+ */
+export function buildStepPrompt(
+  step: Step,
+  prompt: string,
+  sessionId: string,
+  projectCwd: string,
+): StepPromptResult {
+  const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, projectCwd)
+  const scaffoldingPaths: ScaffoldingPaths = {
+    handoffPath,
+    planPath: `${sessionDir(sessionId)}/plan.json`,
+    researchPath: `${sessionDir(sessionId)}/research.md`,
+    reviewPath: `${sessionDir(sessionId)}/review.md`,
+    contextPath: `${sessionDir(sessionId)}/context.md`,
+  }
+  const scaffolding = buildScaffolding(step, scaffoldingPaths)
+  const parts: string[] = []
+  if (scaffolding.preamble) parts.push(scaffolding.preamble)
+  parts.push(prompt)
+  if (scaffolding.postamble) parts.push(scaffolding.postamble)
+  const fullPrompt = parts.join("\n\n")
+
+  return { fullPrompt, handoffPath, scaffoldingPaths }
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface SubprocessCallbackDeps {
   deps: WorkflowDeps
   emit: EmitFn
-  workflowIdRef: { current: string }
+  workflowId: string
   sessionId: string
   projectCwd: string
   /** Override the subprocess cwd. Defaults to projectCwd.
    * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
   subprocessCwd?: string
-  stdinHandleRef?: { current: StdinHandle | null }
-  capturedSubprocessSessionId: { current: string | undefined }
-  pendingInjection: { queue: string[] }
-  activeSessionRef: { current: WorkflowSession | null }
-  budgetTracker?: BudgetTracker | null
-  traceEventHandler?: TraceEventHandler | null
-  transcriptWriter?: TranscriptWriter | null
+  injectionQueue: InjectionQueue
+  eventBus: EventBus
+  /** Observer chain for stream observers — created by workflow-runner, fed via EventBus.
+   *  Subprocess-callback owns reset (per-step) and turn-complete (injection). */
+  observerChain?: { onTurnComplete(): string[]; reset(): void }
   /** Optional pre-warmed subprocess pool. When provided, acquires a raw process
    * from the pool and wires the stream pipeline with step-specific callbacks.
    * When absent, falls back to `deps.spawner.spawn()`. */
@@ -77,47 +109,23 @@ export function createSubprocessCallback(
   opts: SubprocessCallbackDeps,
 ): (step: Step, prompt: string) => Promise<SubprocessCallbackResult> {
   const {
-    deps, emit, workflowIdRef, sessionId, projectCwd,
-    stdinHandleRef, capturedSubprocessSessionId, pendingInjection,
-    activeSessionRef, budgetTracker, traceEventHandler, transcriptWriter, subprocessPool,
+    deps, emit, workflowId, sessionId, projectCwd,
+    injectionQueue,
+    eventBus, observerChain, subprocessPool,
   } = opts
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
-
-  // Stream observers — always active for workflow mode
-  const observerChain = createObserverChain([
-    createDoomLoopObserver(),
-    createToolFailureObserver(),
-    createNoActionObserver(),
-  ])
 
   return async (step: Step, prompt: string, signal?: AbortSignal): Promise<SubprocessCallbackResult> => {
     // Reset observer state between steps so doom-loop history, consecutive
     // error counts, and no-action flags don't bleed across step boundaries.
-    observerChain.reset()
+    observerChain?.reset()
     let selfReviewInjected = false
 
     const invocationId = randomUUID()
 
-    // Compute handoff path BEFORE spawning — session-scoped with meaningful name
-    const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, projectCwd)
+    // Build prompt + compute paths (pure, no I/O)
+    const { fullPrompt, handoffPath } = buildStepPrompt(step, prompt, sessionId, projectCwd)
     ensureSessionDir(sessionId, projectCwd)
-
-    // Build session-scoped paths for scaffolding
-    const scaffoldingPaths: ScaffoldingPaths = {
-      handoffPath,
-      planPath: `${sessionDir(sessionId)}/plan.json`,
-      researchPath: `${sessionDir(sessionId)}/research.md`,
-      reviewPath: `${sessionDir(sessionId)}/review.md`,
-      contextPath: `${sessionDir(sessionId)}/context.md`,
-    }
-
-    // Build deterministic scaffolding (preamble before task_content, postamble after)
-    const scaffolding = buildScaffolding(step, scaffoldingPaths)
-    const parts: string[] = []
-    if (scaffolding.preamble) parts.push(scaffolding.preamble)
-    parts.push(prompt)
-    if (scaffolding.postamble) parts.push(scaffolding.postamble)
-    const fullPrompt = parts.join("\n\n")
 
     const engineCmd = deps.engine.buildCommand({
       model: deps.config.subprocess?.model ?? deps.config.model,
@@ -140,43 +148,29 @@ export function createSubprocessCallback(
     // Turn-complete callback: when the subprocess finishes a turn (result event)
     // and the stdin pipe is still open, either inject a pending message or
     // close the pipe to let the step advance.
-    const onTurnComplete = useStdinPipe ? (subprocessSessionId: string | undefined) => {
-      capturedSubprocessSessionId.current = subprocessSessionId
-      // Collect observer injection messages and push to queue
-      const observerMessages = observerChain.onTurnComplete()
+    const onTurnComplete = useStdinPipe ? (_subprocessSessionId: string | undefined) => {
+      // Collect observer injection messages and enqueue
+      const observerMessages = observerChain?.onTurnComplete() ?? []
       for (const msg of observerMessages) {
-        pendingInjection.queue.push(msg)
+        injectionQueue.enqueue(msg)
       }
       // Self-review: inject checklist on first turn-complete for code steps.
-      // Uses the same injection mechanism as observers — no new infrastructure.
       if (!selfReviewInjected && SELF_REVIEW_STEP_TYPES.has(step.type)) {
-        pendingInjection.queue.push(SELF_REVIEW_CHECKLIST)
+        injectionQueue.enqueue(SELF_REVIEW_CHECKLIST)
         selfReviewInjected = true
       }
-      if (pendingInjection.queue.length > 0 && stdinHandleRef?.current?.isOpen) {
-        const message = pendingInjection.queue.shift()!
-        const written = stdinHandleRef.current.write(formatStdinMessage(deps.engine.metadata.id, message))
-        if (written) {
-          log.info("turn-boundary injection sent to subprocess", { length: message.length })
-          if (activeSessionRef.current) {
-            activeSessionRef.current.eventBus.emit({
-              type: "subprocess:injected",
-              workflowId: workflowIdRef.current,
-              message,
-              timestamp: Date.now(),
-            })
-          }
-        } else {
-          log.warn("turn-boundary injection failed — pipe closed")
-        }
-      } else {
-        stdinHandleRef?.current?.close()
+      // Drain one item (or close handle if empty)
+      const delivered = injectionQueue.drainAtTurnBoundary()
+      if (delivered) {
+        log.info("turn-boundary injection sent to subprocess")
+        eventBus.emit({
+          type: "subprocess:injected",
+          workflowId: workflowId,
+          message: "(injected via queue)",
+          timestamp: Date.now(),
+        })
       }
     } : undefined
-
-    // Reset cumulative-cost baselines before each spawn so delta accounting
-    // starts from zero for this new process.
-    budgetTracker?.onNewSubprocess()
 
     const spawnOptions = {
       cwd: opts.subprocessCwd ?? projectCwd,
@@ -187,24 +181,17 @@ export function createSubprocessCallback(
       stdinPipe: useStdinPipe && stdinContent !== undefined,
       signal,
       onTurnComplete,
-      onSessionId: (id: string) => {
-        capturedSubprocessSessionId.current = id
-      },
+      onSessionId: undefined,
       stdoutTransform: undefined as undefined,
       onStdout: (chunk: string) => {
-        emit("subprocess:output", { workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
+        emit("subprocess:output", { workflowId: workflowId, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
       },
       onStderr: (chunk: string) => {
-        emit("subprocess:output", { workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
+        emit("subprocess:output", { workflowId: workflowId, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
       },
       onNDJSONEvent: (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
-        budgetTracker?.handleEvent(event);
-        traceEventHandler?.handleEvent(event);
-        transcriptWriter?.handleEvent(event);
-        // Feed observers
-        for (const engineEvent of mapNDJSONToEngineEvents(event)) {
-          observerChain.onEvent(engineEvent);
-        }
+        // Emit to EventBus — subscribers in workflow-runner handle budget, tracing, transcript, observers
+        emit("subprocess:ndjson", { workflowId: workflowId, ndjsonEvent: event });
       },
     }
 
@@ -222,34 +209,32 @@ export function createSubprocessCallback(
       spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, spawnOptions)
     }
 
-    // Write a boundary marker so transcript analysis can segment per-subprocess
-    if (transcriptWriter) {
+    // Write a boundary marker so transcript analysis can segment per-subprocess.
+    // Emitted as subprocess:ndjson — the transcript subscriber persists it alongside real events.
+    {
       const boundaryPayload = {
         type: "flywheel:subprocess_boundary",
         timestamp: new Date().toISOString(),
-        workflowId: workflowIdRef.current,
+        workflowId: workflowId,
         stepId: step.id,
       }
-      transcriptWriter.handleEvent({
-        // as any: Synthetic boundary event — "unknown" is not in NDJSONEventType union;
-        // using cast to avoid extending the type for a non-NDJSON internal marker event.
-        type: "unknown" as any,
-        data: boundaryPayload,
-        raw: JSON.stringify(boundaryPayload),
+      emit("subprocess:ndjson", {
+        workflowId: workflowId,
+        ndjsonEvent: {
+          type: "flywheel:subprocess_boundary",
+          data: boundaryPayload,
+          raw: JSON.stringify(boundaryPayload),
+        },
       })
     }
 
-    // Expose stdinHandle for mid-execution injection (user steering)
-    if (stdinHandleRef && spawnResult.stdinHandle) {
-      stdinHandleRef.current = spawnResult.stdinHandle
+    // Bind stdinHandle to injection queue for mid-execution injection (user steering)
+    if (spawnResult.stdinHandle) {
+      injectionQueue.bindStdin(spawnResult.stdinHandle)
     }
 
     try {
       const subprocessResult = await spawnResult.result
-      // Capture session ID from subprocess result (fallback for non-streaming engines)
-      if (subprocessResult.sessionId) {
-        capturedSubprocessSessionId.current = subprocessResult.sessionId
-      }
       return {
         output: subprocessResult.exitCode === 0 ? "completed" : (subprocessResult.failure?.message ?? "failed"),
         handoffPath: subprocessResult.handoffPath ?? "",
@@ -257,10 +242,8 @@ export function createSubprocessCallback(
         sessionId: subprocessResult.sessionId,
       }
     } finally {
-      // Clear handle when subprocess finishes (pipe is closed)
-      if (stdinHandleRef) {
-        stdinHandleRef.current = null
-      }
+      // Unbind handle when subprocess finishes (pipe is closed)
+      injectionQueue.bindStdin(null)
       // Return raw process to pool for cleanup and replacement
       if (subprocessPool && rawProc) {
         subprocessPool.release(rawProc)

@@ -4,6 +4,14 @@
  * Split into two interfaces:
  * - ShellSignals: pure reactive state (signals, memos)
  * - ShellServices: injected dependencies (non-reactive objects)
+ *
+ * Display state (outputBlocks, steps, agentState, sessionTitle) is derived
+ * from the registry's SolidJS store via createMemo. Changing foregroundId
+ * automatically updates all derived values — no manual sync needed.
+ *
+ * Overlay signals (viewedBlocks, viewedTitle) allow viewing historical
+ * sessions without losing the live session context. When set (non-undefined),
+ * they take precedence over registry-derived values.
  */
 
 import { createSignal, createMemo } from "solid-js"
@@ -11,35 +19,38 @@ import type { Accessor, Setter } from "solid-js"
 import type { AnyBlock } from "../types"
 import type { StepState } from "../../orchestration/workflow-runner"
 import type { SessionState } from "../../orchestration/session/state-machine"
-import type { SessionRegistry } from "../../orchestration/session-registry"
+import type { SessionRegistry, SessionEntry } from "../../orchestration/session-registry"
 import type { SessionManager } from "../../orchestration/session/manager"
 import type { MetricsHook } from "./use-metrics"
 
 export type AgentState = "idle" | "active"
 
-/** Shared terminal title prefix used across TUI hooks. */
-export const TERMINAL_TITLE_PREFIX = "flywheel \u00b7 "
-
 /** Pure reactive state — signals and derived memos. */
 export interface ShellSignals {
+  /** Derived from registry entry modelActivity. Read-only. */
   agentState: Accessor<AgentState>
-  setAgentState: Setter<AgentState>
-  outputBlocks: Accessor<AnyBlock[]>
-  setOutputBlocks: Setter<AnyBlock[]>
-  steps: Accessor<StepState[]>
-  setSteps: Setter<StepState[]>
+  /** Derived: viewedBlocks overlay ?? registry entry outputBlocks ?? []. Read-only. */
+  outputBlocks: Accessor<readonly AnyBlock[]>
+  /** Derived from registry entry steps (workflow) or [] (chat). Read-only. */
+  steps: Accessor<readonly StepState[]>
   errorMessage: Accessor<string>
   setErrorMessage: Setter<string>
+  /** Derived: viewedTitle overlay ?? registry entry description ?? "". Read-only. */
   sessionTitle: Accessor<string>
-  setSessionTitle: Setter<string>
   statusLine: Accessor<string>
   setStatusLine: Setter<string>
   foregroundId: Accessor<string | undefined>
   setForegroundId: Setter<string | undefined>
-  runningCount: Accessor<number>
-  setRunningCount: Setter<number>
-  /** Derived session state — re-evaluates when foregroundId or registryVersion changes. */
+  /** Derived session state — re-evaluates when foregroundId or registry changes. */
   sessionState: Accessor<SessionState | null>
+  /** The foreground session's registry entry (reactive proxy). Undefined when no foreground. */
+  registryEntry: Accessor<SessionEntry | undefined>
+  /** Overlay: when set, outputBlocks returns these instead of registry data. */
+  viewedBlocks: Accessor<readonly AnyBlock[] | undefined>
+  setViewedBlocks: Setter<readonly AnyBlock[] | undefined>
+  /** Overlay: when set, sessionTitle returns this instead of registry description. */
+  viewedTitle: Accessor<string | undefined>
+  setViewedTitle: Setter<string | undefined>
 }
 
 /** Injected dependencies — non-reactive objects. */
@@ -50,8 +61,6 @@ export interface ShellServices {
   setTerminalTitle: (title: string) => void
   metrics: MetricsHook
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
-  /** Increment the registry version signal — drives sessionState memo re-evaluation. */
-  bumpRegistryVersion: () => void
 }
 
 export function createShellState(deps: {
@@ -62,34 +71,62 @@ export function createShellState(deps: {
   metrics: MetricsHook
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }): { signals: ShellSignals; services: ShellServices } {
-  const [agentState, setAgentState] = createSignal<AgentState>("idle")
-  const [outputBlocks, setOutputBlocks] = createSignal<AnyBlock[]>([])
-  const [steps, setSteps] = createSignal<StepState[]>([])
+  // ── Writable signals (user-set, not derived) ──
   const [errorMessage, setErrorMessage] = createSignal("")
-  const [sessionTitle, setSessionTitle] = createSignal("")
   const [statusLine, setStatusLine] = createSignal("")
   const [foregroundId, setForegroundId] = createSignal<string | undefined>()
-  const [runningCount, setRunningCount] = createSignal(0)
-  const [registryVersion, setRegistryVersion] = createSignal(0)
+
+  // ── Overlay signals for historical session viewing ──
+  const [viewedBlocks, setViewedBlocks] = createSignal<readonly AnyBlock[] | undefined>()
+  const [viewedTitle, setViewedTitle] = createSignal<string | undefined>()
+
+  // ── Derived memos — zero-copy, return store proxies directly ──
+
+  const registryEntry = createMemo((): SessionEntry | undefined => {
+    const fgId = foregroundId()
+    return fgId ? deps.registry.get(fgId) : undefined
+  })
+
+  const outputBlocks = createMemo((): readonly AnyBlock[] =>
+    viewedBlocks() ?? registryEntry()?.outputBlocks ?? []
+  )
+
+  const steps = createMemo((): readonly StepState[] => {
+    const e = registryEntry()
+    return e?.kind === "workflow" ? e.steps : []
+  })
+
+  const agentState = createMemo((): AgentState => {
+    const e = registryEntry()
+    return e && e.modelActivity !== "idle" ? "active" : "idle"
+  })
+
+  const sessionTitle = createMemo((): string =>
+    viewedTitle() ?? registryEntry()?.description ?? ""
+  )
 
   const sessionState = createMemo((): SessionState | null => {
     const fgId = foregroundId()
     if (!fgId) return null
-    registryVersion()  // reactive dependency — re-evaluate on any registry change
+    // registry.runningCount() reads Object.keys() on the store proxy —
+    // SolidJS auto-tracks key changes when called inside a reactive context.
+    deps.registry.runningCount()
     if (deps.registry.has(fgId)) return "active"
     return deps.manager.getState(fgId)
   })
 
   const signals: ShellSignals = {
-    agentState, setAgentState,
-    outputBlocks, setOutputBlocks,
-    steps, setSteps,
+    agentState,
+    outputBlocks,
+    steps,
     errorMessage, setErrorMessage,
-    sessionTitle, setSessionTitle,
+    sessionTitle,
     statusLine, setStatusLine,
     foregroundId, setForegroundId,
-    runningCount, setRunningCount,
     sessionState,
+    registryEntry,
+    viewedBlocks, setViewedBlocks,
+    viewedTitle, setViewedTitle,
   }
 
   const services: ShellServices = {
@@ -99,7 +136,6 @@ export function createShellState(deps: {
     setTerminalTitle: deps.setTerminalTitle,
     metrics: deps.metrics,
     showToast: deps.showToast,
-    bumpRegistryVersion: () => setRegistryVersion((v) => v + 1),
   }
 
   return { signals, services }

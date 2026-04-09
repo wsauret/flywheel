@@ -10,7 +10,7 @@ import type { EvaluatorInput, EvaluatorResult } from "./schemas.js";
 import type { EvaluatorTransport } from "./transport.js";
 import { renderEvaluatorHandoffInstruction } from "../queue/shared/handoff-render.js";
 import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "./schemas.js";
-import { buildEvaluatorHandoffPath } from "../../infra/paths.js";
+import { buildInvocationHandoffPath } from "../../infra/paths.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -127,7 +127,8 @@ export class PooledSubprocessEvaluatorTransport implements EvaluatorTransport {
       this.opts.pool,
       {
         role: "evaluator",
-        buildHandoffPath: buildEvaluatorHandoffPath,
+        buildHandoffPath: (sessionId, invocationId, baseDir) =>
+          buildInvocationHandoffPath("evaluator", sessionId, invocationId, baseDir),
         buildFullPrompt: (handoffPath) => {
           const handoffInstruction = renderEvaluatorHandoffInstruction(handoffPath);
           return `${userMessage}\n\n${handoffInstruction}`;

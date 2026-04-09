@@ -62,15 +62,14 @@ async function runHeadless(): Promise<void> {
     process.exit(1)
   }
 
-  const { provideHeadlessFactories } = await import("../orchestration/headless")
+  const { createHeadlessFactories } = await import("../orchestration/headless")
   const { createSessionRegistry } = await import("../orchestration/session-registry")
   const { buildQueueFromTemplate } = await import("../workflows/queue/templates")
   const { randomUUID } = await import("crypto")
 
-  // Wire headless factories before creating any sessions
-  provideHeadlessFactories({ logLevel: "normal", timestamps: true })
-
-  const registry = createSessionRegistry()
+  // Create headless factories and pass to registry
+  const factories = createHeadlessFactories({ logLevel: "normal", timestamps: true })
+  const registry = createSessionRegistry(factories)
   const sessionId = randomUUID()
   const queue = buildQueueFromTemplate("work")
 

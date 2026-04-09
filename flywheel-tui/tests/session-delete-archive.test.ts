@@ -5,7 +5,7 @@
  * 1. Delete session -> session files removed from disk, session disappears from list
  * 2. Cannot delete a session matching the activeSessionId guard (persistence level)
  * 3. Manager.delete() removes files, clears cache, cleans up worktree
- * 4. Orchestrator handleDeleteSession -> delete + refresh
+ * 4. Direct delete: manager.delete() + refreshList()
  * 5. Multiple sessions — delete one, others stay
  */
 
@@ -25,12 +25,6 @@ import {
   createSession,
 } from "../src/orchestration/session/persistence";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
-import { createQueuePersistence } from "../src/workflows/queue/persistence";
-import {
-  createSessionOrchestrator,
-  type SessionOrchestratorDeps,
-} from "../src/orchestration/session-orchestrator";
-import { fromSnapshot } from "../src/orchestration/session/output-schemas";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -174,33 +168,23 @@ describe("session deletion", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 2: Orchestrator handleDeleteSession
+// Test 2: Direct delete: manager.delete() + refreshList()
 // ---------------------------------------------------------------------------
 
-describe("session deletion via orchestrator", () => {
-  it("delete + refresh list in one call", async () => {
+describe("session deletion via direct calls", () => {
+  it("delete + refresh list in sequence", () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
 
-    const sessionId = manager.create("plan", "Orchestrated Delete", "work");
+    const sessionId = manager.create("plan", "Direct Delete", "work");
     manager.updateState(sessionId, "paused");
 
     let refreshCalled = false;
+    const refreshList = () => { refreshCalled = true; };
 
-    const orchestrator = createSessionOrchestrator({
-      readSession: (id) => readSession(id, baseDir),
-      createOutputPersistence: (id) =>
-        createOutputPersistence({ sessionId: id, baseDir }),
-      createQueuePersistence: (id) =>
-        createQueuePersistence({ sessionId: id, baseDir }),
-      fromSnapshot,
-      manager,
-      refreshList: () => {
-        refreshCalled = true;
-      },
-    });
-
-    await orchestrator.handleDeleteSession(sessionId);
+    // Inline pattern: manager.delete() then refreshList()
+    manager.delete(sessionId);
+    refreshList();
 
     // Session should be gone from disk
     expect(readSession(sessionId, baseDir)).toBeNull();

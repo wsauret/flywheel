@@ -1,106 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { EventBus } from "../src/infra/event-bus";
 
-import { createStore } from "../src/tui/routes/work/context/ui-state/store";
 import { computeQueueProgress } from "../src/tui/components/workflow-panel-logic";
 import type { QueueStepState } from "../src/tui/types";
 
 // ---------------------------------------------------------------------------
 // Queue panel reactivity — verifies that queue step state propagates
-// correctly through both the store chain and the direct signal path.
-//
-// The fix introduces a dedicated signal (shellQueueSteps) updated directly
-// from event bus subscriptions, bypassing the store → workState chain that
-// can break SolidJS fine-grained reactivity at runtime.
+// correctly through the event bus → direct signal path.
 // ---------------------------------------------------------------------------
-
-describe("queue panel reactivity — store chain propagation", () => {
-  const makeSteps = (): QueueStepState[] => [
-    { id: "s1", type: "plan", title: "Plan step", status: "pending" },
-    { id: "s2", type: "work", title: "Work step", status: "pending" },
-    { id: "s3", type: "review", title: "Review step", status: "pending" },
-  ];
-
-  it("store subscriber sees queueSteps changes immediately (notifyImmediate)", () => {
-    const store = createStore("test");
-    const states: QueueStepState[][] = [];
-
-    // Subscribe before setting queue steps (mimics shell's subscribeToStore)
-    store.subscribe(() => {
-      states.push([...store.getState().queueSteps]);
-    });
-
-    // Set queue steps — uses notifyImmediate in the store
-    store.setQueueSteps(makeSteps());
-
-    // Subscriber should have been called with the 3 steps
-    expect(states.length).toBeGreaterThanOrEqual(1);
-    const latest = states[states.length - 1];
-    expect(latest.length).toBe(3);
-    expect(latest[0].id).toBe("s1");
-    expect(latest[0].status).toBe("pending");
-  });
-
-  it("store subscriber sees step status transitions via notifyImmediate", () => {
-    const store = createStore("test");
-    const statuses: string[] = [];
-
-    store.setQueueSteps(makeSteps());
-
-    store.subscribe(() => {
-      const steps = store.getState().queueSteps;
-      const s1 = steps.find((s) => s.id === "s1");
-      if (s1) statuses.push(s1.status);
-    });
-
-    store.startQueueStep("s1"); // notifyImmediate
-
-    expect(statuses).toContain("running");
-  });
-
-  it("store subscriber sees step insertion (throttled notify)", async () => {
-    const store = createStore("test");
-    let stepCount = 0;
-
-    store.setQueueSteps(makeSteps());
-
-    store.subscribe(() => {
-      stepCount = store.getState().queueSteps.length;
-    });
-
-    store.insertQueueStep(
-      { id: "s4", type: "verify", title: "Verify", status: "pending" },
-      "s2",
-    );
-
-    // insertQueueStep uses notify() (16ms throttle), not notifyImmediate.
-    // The state is updated immediately, but the listener fires after the throttle.
-    // Verify state is updated directly:
-    expect(store.getState().queueSteps.length).toBe(4);
-
-    // Wait for throttled notification
-    await new Promise((r) => setTimeout(r, 20));
-    expect(stepCount).toBe(4);
-  });
-
-  it("store creates new state object on each mutation (reference equality)", () => {
-    const store = createStore("test");
-    const stateRefs: object[] = [];
-
-    store.subscribe(() => {
-      stateRefs.push(store.getState());
-    });
-
-    store.setQueueSteps(makeSteps());
-    const ref1 = stateRefs[stateRefs.length - 1];
-
-    store.startQueueStep("s1");
-    const ref2 = stateRefs[stateRefs.length - 1];
-
-    // Different references — SolidJS signal should trigger
-    expect(ref1).not.toBe(ref2);
-  });
-});
 
 describe("queue panel reactivity — event bus → direct signal updates", () => {
   const makeSteps = (): QueueStepState[] => [

@@ -28,7 +28,6 @@ import {
   type WorkerFn,
   type EvaluatorFn,
   type WorkerOutput,
-  type BudgetChecker,
   type PersistFn,
   type StepContextAccumulator,
 } from "../src/workflows/queue/executor";
@@ -145,10 +144,6 @@ function createNoopAccumulator(): StepContextAccumulator {
     accumulate: () => {},
     getContext: () => ({}),
   };
-}
-
-function createUnlimitedBudget(): BudgetChecker {
-  return { isExhausted: () => false };
 }
 
 function createSuccessWorker(output = "done"): WorkerFn {
@@ -1086,7 +1081,7 @@ describe("Step executor integration with onStepCompleted hook", () => {
       },
       evaluator: null,
       handoffReader: async () => ({ summary: "done" }),
-      budgetChecker: createUnlimitedBudget(),
+
       persist: createNoopPersist(),
       accumulator: createNoopAccumulator(),
       maxRevisions: 0,
@@ -1138,7 +1133,7 @@ describe("Step executor integration with onStepCompleted hook", () => {
       },
       evaluator: null,
       handoffReader: async () => ({ summary: "done" }),
-      budgetChecker: createUnlimitedBudget(),
+
       persist: createNoopPersist(),
       accumulator: createNoopAccumulator(),
       maxRevisions: 0,
@@ -1169,7 +1164,7 @@ describe("Step executor integration with onStepCompleted hook", () => {
       worker: createSuccessWorker(),
       evaluator: null,
       handoffReader: async () => ({ summary: "done" }),
-      budgetChecker: createUnlimitedBudget(),
+
       persist: createNoopPersist(),
       accumulator: createNoopAccumulator(),
       maxRevisions: 0,
@@ -1198,7 +1193,7 @@ describe("Step executor integration with onStepCompleted hook", () => {
       worker: createSuccessWorker(),
       evaluator: null,
       handoffReader: async () => ({ summary: "done" }),
-      budgetChecker: createUnlimitedBudget(),
+
       persist: createNoopPersist(),
       accumulator: createNoopAccumulator(),
       maxRevisions: 0,

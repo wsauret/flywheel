@@ -10,8 +10,20 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
-import { createSessionRegistry, type SessionEntry, type ChatRegistryCallbacks } from "../src/orchestration/session-registry"
+import { createSessionRegistry, type SessionEntry, type ChatStoreHandle } from "../src/orchestration/session-registry"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
+import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
+
+/** Minimal mock factories for registry tests (workflow features not tested here). */
+const mockFactories: WorkflowSessionFactories = {
+  createAdapter: () => ({
+    connect: () => {},
+    start: () => {},
+    stop: () => {},
+    disconnect: () => {},
+  }),
+  createTimer: () => ({ stop: () => {} }),
+}
 
 // ── Helpers ──
 
@@ -31,19 +43,19 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
 describe("SessionRegistry — chat entries", () => {
   let registry: ReturnType<typeof createSessionRegistry>
   let mockRunner: ReturnType<typeof createMockChatRunner>
-  let capturedCallbacks: ChatRegistryCallbacks | null
+  let capturedHandle: ChatStoreHandle | null
 
   beforeEach(() => {
-    registry = createSessionRegistry()
+    registry = createSessionRegistry(mockFactories)
     mockRunner = createMockChatRunner("chat-001")
-    capturedCallbacks = null
+    capturedHandle = null
   })
 
   function startTestChat(sessionId = "chat-001") {
     return registry.startChat({
       sessionId,
-      createRunner: async (callbacks) => {
-        capturedCallbacks = callbacks
+      createRunner: async (handle) => {
+        capturedHandle = handle
         return mockRunner
       },
     })
@@ -119,7 +131,7 @@ describe("SessionRegistry — chat entries", () => {
   it("remove() calls chatRunner.dispose() and removes entry", async () => {
     await startTestChat()
 
-    registry.remove("chat-001")
+    await registry.remove("chat-001")
     expect(mockRunner.calls).toContain("dispose")
     expect(registry.get("chat-001")).toBeUndefined()
   })
@@ -136,19 +148,14 @@ describe("SessionRegistry — chat entries", () => {
     expect(chatEntry.kind).toBe("chat")
   })
 
-  it("subscriber notifications fire for chat entry changes", async () => {
-    const notifications: number[] = []
-    let count = 0
-    registry.subscribe(() => { count++; notifications.push(count) })
+  it("runningCount() tracks entry additions and removals", async () => {
+    expect(registry.runningCount()).toBe(0)
 
     await startTestChat()
+    expect(registry.runningCount()).toBe(1)
 
-    // At least one notification from startChat
-    expect(notifications.length).toBeGreaterThanOrEqual(1)
-
-    const countBefore = notifications.length
-    registry.remove("chat-001")
-    expect(notifications.length).toBeGreaterThan(countBefore)
+    await registry.remove("chat-001")
+    expect(registry.runningCount()).toBe(0)
   })
 
   it("injectMessage delegates to chat runner", async () => {
@@ -159,39 +166,39 @@ describe("SessionRegistry — chat entries", () => {
     expect(mockRunner.calls).toContain("injectMessage:hello")
   })
 
-  it("registry callbacks update chat entry fields", async () => {
+  it("store handle updates chat entry fields", async () => {
     await startTestChat()
 
-    // Callbacks were captured during createRunner
-    expect(capturedCallbacks).not.toBeNull()
+    // Handle was captured during createRunner
+    expect(capturedHandle).not.toBeNull()
 
-    // onBlocks updates outputBlocks
-    capturedCallbacks!.onBlocks([{ type: "text", content: "hello" }] as any)
+    // updateEntry updates outputBlocks
+    capturedHandle!.updateEntry({ outputBlocks: [{ type: "text", content: "hello" }] } as any)
     const entry1 = registry.get("chat-001")!
     expect(entry1.outputBlocks.length).toBe(1)
 
-    // onTokens updates tokens
-    capturedCallbacks!.onTokens(100)
+    // updateEntry updates tokens
+    capturedHandle!.updateEntry({ tokens: 100 } as any)
     expect(registry.get("chat-001")!.tokens).toBe(100)
 
-    // onCost updates cost
-    capturedCallbacks!.onCost(0.05)
+    // updateEntry updates cost
+    capturedHandle!.updateEntry({ cost: 0.05 } as any)
     expect(registry.get("chat-001")!.cost).toBe(0.05)
 
-    // onModelActivity updates modelActivity
-    capturedCallbacks!.onModelActivity("thinking")
+    // updateEntry updates modelActivity
+    capturedHandle!.updateEntry({ modelActivity: "thinking" } as any)
     expect(registry.get("chat-001")!.modelActivity).toBe("thinking")
   })
 
-  it("onError callback sets errorMessage and removes entry via onRunnerError", async () => {
+  it("onError sets errorMessage and removes entry via onRunnerError", async () => {
     let errorCallbackFired = false
     let errorSessionId: string | undefined
     let errorValue: unknown
 
     await registry.startChat({
       sessionId: "chat-err",
-      createRunner: async (callbacks) => {
-        capturedCallbacks = callbacks
+      createRunner: async (handle) => {
+        capturedHandle = handle
         return createMockChatRunner("chat-err")
       },
       onRunnerError: (id, err) => {
@@ -201,25 +208,25 @@ describe("SessionRegistry — chat entries", () => {
       },
     })
 
-    capturedCallbacks!.onError("something broke")
+    await capturedHandle!.onError("something broke")
 
     // onRunnerError callback should have fired
     expect(errorCallbackFired).toBe(true)
     expect(errorSessionId).toBe("chat-err")
     expect((errorValue as Error).message).toBe("something broke")
 
-    // Entry should be removed synchronously
+    // Entry should be removed
     expect(registry.get("chat-err")).toBeUndefined()
   })
 
-  it("onEnded callback removes entry via onRunnerDone", async () => {
+  it("onEnded removes entry via onRunnerDone", async () => {
     let doneCallbackFired = false
     let doneSessionId: string | undefined
 
     await registry.startChat({
       sessionId: "chat-end",
-      createRunner: async (callbacks) => {
-        capturedCallbacks = callbacks
+      createRunner: async (handle) => {
+        capturedHandle = handle
         return createMockChatRunner("chat-end")
       },
       onRunnerDone: (id) => {
@@ -228,13 +235,13 @@ describe("SessionRegistry — chat entries", () => {
       },
     })
 
-    capturedCallbacks!.onEnded()
+    await capturedHandle!.onEnded()
 
     // onRunnerDone callback should have fired
     expect(doneCallbackFired).toBe(true)
     expect(doneSessionId).toBe("chat-end")
 
-    // Entry should be removed synchronously
+    // Entry should be removed
     expect(registry.get("chat-end")).toBeUndefined()
   })
 
@@ -242,7 +249,46 @@ describe("SessionRegistry — chat entries", () => {
     expect(registry.runningCount()).toBe(0)
     await startTestChat()
     expect(registry.runningCount()).toBe(1)
-    registry.remove("chat-001")
+    await registry.remove("chat-001")
     expect(registry.runningCount()).toBe(0)
+  })
+})
+
+describe("SessionRegistry — updateEntry direct writes (workflow)", () => {
+  let registry: ReturnType<typeof createSessionRegistry>
+
+  beforeEach(() => {
+    registry = createSessionRegistry(mockFactories)
+  })
+
+  it("updateEntry({ outputBlocks }) updates workflow entry outputBlocks", () => {
+    registry.start({
+      sessionId: "wf-001",
+      queue: { steps: [] } as any,
+      description: "test workflow",
+    })
+
+    const blocks = [{ type: "text", content: "hello" }] as any
+    registry.updateEntry("wf-001", { outputBlocks: blocks })
+
+    const entry = registry.get("wf-001")!
+    expect(entry.outputBlocks.length).toBe(1)
+  })
+
+  it("updateEntry({ modelActivity }) updates workflow entry modelActivity", () => {
+    registry.start({
+      sessionId: "wf-002",
+      queue: { steps: [] } as any,
+      description: "test workflow",
+    })
+
+    registry.updateEntry("wf-002", { modelActivity: "thinking" })
+    expect(registry.get("wf-002")!.modelActivity).toBe("thinking")
+
+    registry.updateEntry("wf-002", { modelActivity: "generating" })
+    expect(registry.get("wf-002")!.modelActivity).toBe("generating")
+
+    registry.updateEntry("wf-002", { modelActivity: "idle" })
+    expect(registry.get("wf-002")!.modelActivity).toBe("idle")
   })
 })

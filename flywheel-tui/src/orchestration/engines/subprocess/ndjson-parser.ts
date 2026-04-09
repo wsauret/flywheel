@@ -28,6 +28,8 @@ export type NDJSONEventType =
   | "text"
   | "step_finish"
   | "error"
+  // Internal markers
+  | "flywheel:subprocess_boundary"
   | "unknown";
 
 /** A parsed NDJSON event. */

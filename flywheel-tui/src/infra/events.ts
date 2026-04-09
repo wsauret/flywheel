@@ -2,6 +2,7 @@ import type { DispatcherDecision } from "../workflows/dispatcher/schemas";
 import type { EvaluatorResult } from "../workflows/evaluator/schemas";
 import type { SubprocessResult, SubprocessFailureReason } from "../orchestration/engines/subprocess/schemas";
 import type { QuestionInfo, QuestionAnswer } from "../workflows/queue/question-service";
+import type { NDJSONEvent } from "../orchestration/engines/subprocess/ndjson-parser";
 
 // ---------------------------------------------------------------------------
 // FlywheelEvent discriminated union (~25 event types, namespace:verb naming)
@@ -22,6 +23,7 @@ export type FlywheelEvent =
   | SubprocessFailed
   | SubprocessRetrying
   | SubprocessOutput
+  | SubprocessNDJSON
   | SubprocessInjected
   | ApprovalRequested
   | ApprovalReceived
@@ -157,6 +159,20 @@ export interface SubprocessOutput {
   timestamp: number;
   /** Engine that produced this output (e.g. "claude", "opencode"). Optional for backward compat. */
   engineId?: string;
+}
+
+/**
+ * A parsed NDJSON event from a subprocess.
+ *
+ * Distinct from `subprocess:output` which carries raw stdout/stderr chunks for display.
+ * `subprocess:ndjson` carries parsed NDJSON events for consumption by budget tracking,
+ * tracing, transcript persistence, and stream observers.
+ */
+export interface SubprocessNDJSON {
+  type: "subprocess:ndjson";
+  workflowId: string;
+  ndjsonEvent: NDJSONEvent;
+  timestamp: number;
 }
 
 export interface SubprocessInjected {

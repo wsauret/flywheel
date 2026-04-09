@@ -25,7 +25,7 @@ const log = Log.create({ service: "dispatcher-callback" })
 export interface DispatcherCallbackDeps {
   deps: WorkflowDeps
   emit: EmitFn
-  workflowIdRef: { current: string }
+  workflowId: string
   dispatcherTransport: DispatcherTransport | undefined
   contextIndexer: ContextIndexer
   contextAccumulator: ContextAccumulator
@@ -55,7 +55,7 @@ export type DispatcherFn = (
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {
     deps, dispatcherTransport, contextIndexer, contextAccumulator,
-    projectCwd, sessionObjective, queue, emit, workflowIdRef,
+    projectCwd, sessionObjective, queue, emit, workflowId,
     dispatcherModel, subprocessModel,
   } = opts
 
@@ -64,7 +64,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
     ? createStepDispatcher({
         transport: dispatcherTransport,
         emit,
-        workflowId: workflowIdRef.current,
+        workflowId,
         configContext: {
           maxEvalCycles: deps.config.max_revisions ?? 1,
           worktreePath: projectCwd,

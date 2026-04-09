@@ -29,13 +29,13 @@ console.log(`Session ID: ${sessionId}\n`);
 // --- Setup tracing infrastructure ---
 const bus = new EventBus();
 const emit = createEmit(bus);
-const workflowIdRef = { current: randomUUID() };
+const workflowId = randomUUID();
 
 const writer = createTraceWriter({ sessionId, baseDir, maxTraces: 10 });
 const collector = createTraceCollector({ writer, sessionId, workflowName });
 const unsubs = collector.subscribeToEvents(bus);
 
-const traceHandler = createTraceEventHandler({ emit, workflowIdRef });
+const traceHandler = createTraceEventHandler({ emit, workflowId });
 
 // Transcript writer — captures raw NDJSON events
 const transcriptWriter = createTranscriptWriter({ sessionId, baseDir });
@@ -43,14 +43,14 @@ const transcriptWriter = createTranscriptWriter({ sessionId, baseDir });
 // Emit workflow start events
 bus.emit({
   type: "queue:initialized",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepIds: ["step-1"],
   timestamp: Date.now(),
 });
 
 bus.emit({
   type: "queue:step-started",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepId: "step-1",
   stepType: "work",
   stepTitle: "Quick API test",
@@ -59,7 +59,7 @@ bus.emit({
 
 bus.emit({
   type: "subprocess:spawned",
-  workflowId: workflowIdRef.current,
+  workflowId: workflowId,
   stepIndex: 0,
   timestamp: Date.now(),
 });
@@ -110,13 +110,13 @@ ndjsonParser.flush();
 if (exitCode === 0) {
   bus.emit({
     type: "subprocess:completed",
-    workflowId: workflowIdRef.current,
+    workflowId: workflowId,
     result: { output: "done", exitCode: 0, handoffPath: "" } as any,
     timestamp: Date.now(),
   });
   bus.emit({
     type: "queue:step-completed",
-    workflowId: workflowIdRef.current,
+    workflowId: workflowId,
     stepId: "step-1",
     stepType: "work",
     stepTitle: "Quick API test",
@@ -124,20 +124,20 @@ if (exitCode === 0) {
   });
   bus.emit({
     type: "queue:completed",
-    workflowId: workflowIdRef.current,
+    workflowId: workflowId,
     stepsCompleted: 1,
     timestamp: Date.now(),
   });
 } else {
   bus.emit({
     type: "subprocess:failed",
-    workflowId: workflowIdRef.current,
+    workflowId: workflowId,
     failure: { message: `exit code ${exitCode}`, type: "process_error" } as any,
     timestamp: Date.now(),
   });
   bus.emit({
     type: "queue:step-failed",
-    workflowId: workflowIdRef.current,
+    workflowId: workflowId,
     stepId: "step-1",
     stepType: "work",
     stepTitle: "Quick API test",
@@ -146,7 +146,7 @@ if (exitCode === 0) {
   });
   bus.emit({
     type: "queue:failed",
-    workflowId: workflowIdRef.current,
+    workflowId: workflowId,
     reason: `exit code ${exitCode}`,
     stepsCompleted: 0,
     timestamp: Date.now(),

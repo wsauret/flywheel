@@ -86,11 +86,6 @@ export type HandoffReaderFn = (
   path: string,
 ) => Promise<Record<string, unknown> | null>;
 
-/** Budget checker: checks if budget is exhausted */
-export interface BudgetChecker {
-  isExhausted(): boolean;
-}
-
 /** Persist function: saves queue state to disk */
 export type PersistFn = (queue: Queue) => Promise<void>;
 
@@ -124,8 +119,6 @@ export interface StepExecutorCoreOptions {
   evaluator: EvaluatorFn | null;
   /** Handoff reader for reading worker output */
   handoffReader: HandoffReaderFn;
-  /** Budget checker */
-  budgetChecker: BudgetChecker;
   /** Queue persistence function */
   persist: PersistFn;
   /** Step context accumulator */
@@ -200,7 +193,7 @@ export interface StepExecutorHooks {
    * before the evaluator. Returns verification result or null to skip.
    *
    * The hook implementation is composed by the orchestrator with access to
-   * stdinHandleRef and projectCwd — the step-runner doesn't know about
+   * InjectionQueue and projectCwd — the step-runner doesn't know about
    * native checks, stdin injection, or self-review mechanics.
    */
   postTurnVerification?: PostTurnVerificationHook | null;

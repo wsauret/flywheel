@@ -20,7 +20,7 @@ import { randomUUID } from "node:crypto"
 import { BunProcessSpawner } from "./engines/subprocess/bun-spawner"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { getEngine } from "./engines/core/registry"
-import { createOutputPipeline } from "./output-pipeline"
+import { createOutputPipeline, type OutputPipeline } from "./output-pipeline"
 import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
 import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
 import { extractContextUpdate } from "./engines/providers/claude-context"
@@ -31,6 +31,8 @@ import { feedChatEventToTrace } from "./chat-tracing"
 import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { ModelActivity } from "../infra/events"
+import type { NDJSONParser } from "./engines/subprocess/ndjson-parser"
+import type { StructuredEventParser } from "../infra/output/structured-event-parser"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -62,6 +64,21 @@ export interface ChatSession {
   readonly budgetTracker: BudgetTracker
 }
 
+// ── Shared mutable state ──
+
+/** Mutable state shared across pipeline, worker lifecycle, and controls. */
+interface ChatSessionState {
+  stdinHandle: StdinHandle | null
+  workerPid: number | undefined
+  ended: boolean
+  /** Claude Code session ID — captured after first turn, used for --resume. */
+  claudeSessionId: string | null
+  agentActive: boolean
+  /** Gate: only forward model activity when a user-triggered turn is in progress. */
+  userTurnInProgress: boolean
+  contextWarningFired: boolean
+}
+
 // ── Factory ──
 
 export interface ChatSessionOptions {
@@ -69,48 +86,45 @@ export interface ChatSessionOptions {
   deps?: ReturnType<typeof prepareWorkflowDeps>
   spawner?: ProcessSpawner
   traceCollector?: TraceCollector
+  /** Inject a shared budget tracker (from createSessionInfra). When omitted, a fresh one is created. */
+  budgetTracker?: BudgetTracker
+  /** Inject a shared transcript writer (from createSessionInfra). When omitted, created if tracing enabled. */
+  transcriptWriter?: TranscriptWriter | null
 }
 
-export async function createChatSession(
-  callbacks: ChatCallbacks,
-  initialMessage?: string,
-  overrides?: ChatSessionOptions,
-): Promise<ChatSession> {
-  const projectCwd = overrides?.projectCwd ?? process.cwd()
-  const deps = overrides?.deps ?? prepareWorkflowDeps()
-  const engineName = deps.config.engine
-  const engine = getEngine(engineName)
-  const model = deps.config.subprocess?.model ?? deps.config.model ?? engine.metadata.defaultModel
+// ── Helper 1: setupChatPipeline ──
 
-  const spawner = overrides?.spawner ?? new BunProcessSpawner()
-  const traceCollector = overrides?.traceCollector ?? null
-  const toolSpanMap = new Map<string, string>()
-  const sessionId = randomUUID()
+interface ChatPipelineResult {
+  pipeline: OutputPipeline
+  parser: NDJSONParser
+  builder: StructuredOutputBuilder
+  eventParser: StructuredEventParser
+  stopFlush: () => void
+}
 
-  // Budget tracker
-  const budgetTracker = createBudgetTracker({ sessionId, baseDir: projectCwd })
+interface SetupChatPipelineInput {
+  callbacks: ChatCallbacks
+  engineName: string
+  budgetTracker: BudgetTracker
+  transcriptWriter: TranscriptWriter | null
+  traceCollector: TraceCollector | null
+  toolSpanMap: Map<string, string>
+  state: ChatSessionState
+}
 
-  // Transcript writer (session-scoped, survives worker reconnects)
-  const transcriptWriter: TranscriptWriter | null = deps.config.tracing?.enabled
-    ? createTranscriptWriter({ sessionId, baseDir: projectCwd })
-    : null
-
-  // Structured output pipeline — shared across worker respawns
-  let agentActive = false
-  // Gate: only forward model activity when a user-triggered turn is in progress.
-  // Prevents subprocess startup noise (stderr, init events) from starting the timer.
-  let userTurnInProgress = false
+function setupChatPipeline(input: SetupChatPipelineInput): ChatPipelineResult {
+  const { callbacks, engineName, budgetTracker, transcriptWriter, traceCollector, toolSpanMap, state } = input
 
   const pipeline = createOutputPipeline({
     onModelActivityChange: (activity) => {
-      if (!userTurnInProgress && activity !== "idle") return
+      if (!state.userTurnInProgress && activity !== "idle") return
       callbacks.onModelActivity(activity)
-      if (activity !== "idle") agentActive = true
+      if (activity !== "idle") state.agentActive = true
     },
   })
-  const { parser: ndjsonParser, builder, eventParser } = pipeline
+  const { parser, builder, eventParser } = pipeline
 
-  ndjsonParser.onEvent = (event) => {
+  parser.onEvent = (event) => {
     // Claude Code echoes user messages as {"type":"user"} — this confirms
     // the CLI received our stdin injection. Resolve any queued messages.
     if (event.type === "user") {
@@ -128,8 +142,8 @@ export async function createChatSession(
       const isError = data.is_error === true || (typeof data.subtype === "string" && data.subtype !== "success")
       const resultText = typeof data.result === "string" ? data.result : ""
       if (isError && /prompt is too long/i.test(resultText)) {
-        log.warn("prompt too long — resetting session", { claudeSessionId })
-        claudeSessionId = null
+        log.warn("prompt too long — resetting session", { claudeSessionId: state.claudeSessionId })
+        state.claudeSessionId = null
         builder.pushSystemMessage(
           "Conversation too long for context window. Next message will start a fresh conversation.",
           Date.now(),
@@ -150,10 +164,6 @@ export async function createChatSession(
     transcriptWriter?.handleEvent(event)
     if (traceCollector) feedChatEventToTrace(event, traceCollector, toolSpanMap)
   }
-  // Keep the factory's default onRawText (pushes text blocks)
-
-  // Context warning state — only fire the 85% system message once per session
-  let contextWarningFired = false
 
   // Flush builder → callbacks at 16ms
   const stopFlush = pipeline.startFlush(() => {
@@ -164,8 +174,8 @@ export async function createChatSession(
     const ctx = budgetTracker.getContextUtilization()
     callbacks.onContextPercent(ctx.percent)
 
-    if (!contextWarningFired && ctx.percent >= 85) {
-      contextWarningFired = true
+    if (!state.contextWarningFired && ctx.percent >= 85) {
+      state.contextWarningFired = true
       log.warn("context window 85% full", { percent: ctx.percent, promptTokens: ctx.promptTokens, contextWindow: ctx.contextWindow })
       builder.pushSystemMessage(
         `Context window is ${ctx.percent}% full. Consider starting a new conversation with /new to avoid losing context.`,
@@ -175,24 +185,34 @@ export async function createChatSession(
     }
   }, 16)
 
-  // Stale agent detection is handled by the builder (auto-completes after 5s of inactivity)
+  return { pipeline, parser, builder, eventParser, stopFlush }
+}
 
-  let stdinHandle: StdinHandle | null = null
-  let workerPid: number | undefined
-  let ended = false
-  // The Claude Code session ID emitted in its NDJSON output. Captured after
-  // the first turn and used to reconnect via --resume when the worker exits idle.
-  let claudeSessionId: string | null = null
+// ── Helper 2: createWorkerLifecycle ──
 
-  // ── Worker spawn ──
+interface WorkerLifecycle {
+  spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void>
+}
 
-  // Spawn (or respawn) a Claude Code worker process.
-  // resumeSessionId: pass the captured Claude session ID to reconnect an idle session.
-  // messageToSend: written to stdin immediately after spawn (used for reconnect path
-  //                where the user message triggered the respawn).
+interface WorkerLifecycleInput {
+  engine: ReturnType<typeof getEngine>
+  engineName: string
+  model: string
+  spawner: ProcessSpawner
+  projectCwd: string
+  budgetTracker: BudgetTracker
+  parser: NDJSONParser
+  builder: StructuredOutputBuilder
+  callbacks: ChatCallbacks
+  state: ChatSessionState
+}
+
+function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
+  const { engine, engineName, model, spawner, projectCwd, budgetTracker, parser, builder, callbacks, state } = input
+
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
     budgetTracker.onNewSubprocess()
-    if (messageToSend) userTurnInProgress = true
+    if (messageToSend) state.userTurnInProgress = true
     const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
     // Only send content if there's a message — an empty pipe lets Claude idle and
@@ -203,15 +223,15 @@ export async function createChatSession(
       cwd: projectCwd,
       stdin: initialContent,
       stdinPipe: true,
-      onStdout: (chunk) => ndjsonParser.write(chunk),
+      onStdout: (chunk) => parser.write(chunk),
       onStderr: (chunk) => {
         if (chunk.trim()) builder.pushText(chunk, Date.now())
       },
       onTurnComplete: () => {
         // Capture Claude's session ID on every turn so reconnect is always possible
-        if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
-        agentActive = false
-        userTurnInProgress = false
+        if (parser.sessionId) state.claudeSessionId = parser.sessionId
+        state.agentActive = false
+        state.userTurnInProgress = false
         builder.resolvePendingMessages()
         callbacks.onWaiting(false)
         callbacks.onModelActivity("idle")
@@ -219,57 +239,84 @@ export async function createChatSession(
       },
     })
 
-    stdinHandle = spawnResult.stdinHandle ?? null
-    workerPid = spawnResult.pid
+    state.stdinHandle = spawnResult.stdinHandle ?? null
+    state.workerPid = spawnResult.pid
 
     // When the worker exits, keep the TUI session alive so the user can resume.
     // Only call end() if the session was explicitly terminated by the user.
     spawnResult.result.then(() => {
-      if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
-      ndjsonParser.flush()
+      if (parser.sessionId) state.claudeSessionId = parser.sessionId
+      parser.flush()
       if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
-      stdinHandle = null
-      if (ended) callbacks.onEnded()
+      state.stdinHandle = null
+      if (state.ended) callbacks.onEnded()
       // else: worker exited idle — session stays open, next send() will reconnect
     }).catch((err) => {
       log.warn("chat process error", { error: errorMessage(err) })
-      stdinHandle = null
-      if (ended) callbacks.onEnded()
+      state.stdinHandle = null
+      if (state.ended) callbacks.onEnded()
     })
   }
 
-  // ── Lifecycle ──
+  return { spawnWorker }
+}
+
+// ── Helper 3: createChatControls ──
+
+interface ChatControls {
+  send(text: string): void
+  interrupt(): void
+  end(): void
+}
+
+interface ChatControlsInput {
+  lifecycle: WorkerLifecycle
+  engineName: string
+  parser: NDJSONParser
+  builder: StructuredOutputBuilder
+  pipeline: OutputPipeline
+  stopFlush: () => void
+  callbacks: ChatCallbacks
+  budgetTracker: BudgetTracker
+  traceCollector: TraceCollector | null
+  transcriptWriter: TranscriptWriter | null
+  state: ChatSessionState
+}
+
+function createChatControls(input: ChatControlsInput): ChatControls {
+  const { lifecycle, engineName, parser, builder, pipeline, stopFlush,
+    callbacks, budgetTracker, traceCollector, transcriptWriter, state } = input
 
   function interrupt() {
-    if (ended || !stdinHandle?.isOpen) return
-    log.info("chat interrupted by user", { pid: workerPid })
+    if (state.ended || !state.stdinHandle?.isOpen) return
+    log.info("chat interrupted by user", { pid: state.workerPid })
     // Kill the worker process and immediately respawn via --resume so
     // the next send() doesn't have to wait for the cold-start.
-    if (ndjsonParser.sessionId) claudeSessionId = ndjsonParser.sessionId
-    stdinHandle.close()
-    stdinHandle = null
-    if (workerPid) {
-      try { process.kill(workerPid, "SIGTERM") } catch { /* already gone */ }
+    if (parser.sessionId) state.claudeSessionId = parser.sessionId
+    state.stdinHandle.close()
+    state.stdinHandle = null
+    if (state.workerPid) {
+      try { process.kill(state.workerPid, "SIGTERM") } catch { /* already gone */ }
     }
     callbacks.onWaiting(false)
     callbacks.onModelActivity("idle")
-    agentActive = false
-    userTurnInProgress = false
+    state.agentActive = false
+    state.userTurnInProgress = false
     builder.resolvePendingMessages()
     builder.pushSystemMessage("Interrupted", Date.now())
     if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
 
     // Eagerly reconnect so the worker is warm when the user sends the next message
-    if (claudeSessionId) {
-      spawnWorker(claudeSessionId).catch((err) => {
+    if (state.claudeSessionId) {
+      lifecycle.spawnWorker(state.claudeSessionId).catch((err) => {
         log.warn("eager reconnect after interrupt failed", { error: errorMessage(err) })
       })
     }
   }
 
   function end() {
-    if (ended) return
-    ended = true
+    if (state.ended) return
+    state.ended = true
     stopFlush()
     pipeline.dispose()
     if (traceCollector) {
@@ -278,41 +325,41 @@ export async function createChatSession(
     }
     transcriptWriter?.dispose()
     budgetTracker.flush()
-    if (stdinHandle?.isOpen) {
+    if (state.stdinHandle?.isOpen) {
       // Worker is alive — close the pipe and let the process exit naturally.
       // onEnded fires from the spawnResult.result handler once the process exits.
-      stdinHandle.close()
-      stdinHandle = null
+      state.stdinHandle.close()
+      state.stdinHandle = null
     } else {
       // Worker already idle-exited — fire immediately.
-      stdinHandle = null
+      state.stdinHandle = null
       callbacks.onEnded()
     }
   }
 
   function send(text: string) {
-    if (ended) { log.warn("chat send after ended"); return }
+    if (state.ended) { log.warn("chat send after ended"); return }
 
     // Message is "pending" only when there's an active agent turn in progress
     // (i.e. we're injecting into a running conversation). After interrupt or
     // idle-exit, the agent isn't working so the message is the start of a new turn.
-    const isPending = agentActive && stdinHandle?.isOpen === true
-    userTurnInProgress = true
+    const isPending = state.agentActive && state.stdinHandle?.isOpen === true
+    state.userTurnInProgress = true
     callbacks.onWaiting(true)
     builder.pushUserMessage(text, Date.now(), isPending)
     callbacks.onBlocks(builder.getBlocks())
 
-    if (stdinHandle?.isOpen) {
+    if (state.stdinHandle?.isOpen) {
       // Normal path: worker is alive, write directly to the pipe
-      const ok = stdinHandle.write(formatStdinMessage(engineName, text))
+      const ok = state.stdinHandle.write(formatStdinMessage(engineName, text))
       log.info("chat message sent", { length: text.length, written: ok })
       return
     }
 
     // Worker exited idle — reconnect via --resume and send the message as initial content
-    if (claudeSessionId) {
-      log.info("chat worker idle-exited, reconnecting via --resume", { sessionId: claudeSessionId })
-      spawnWorker(claudeSessionId, text).catch((err) => {
+    if (state.claudeSessionId) {
+      log.info("chat worker idle-exited, reconnecting via --resume", { sessionId: state.claudeSessionId })
+      lifecycle.spawnWorker(state.claudeSessionId, text).catch((err) => {
         log.warn("chat reconnect failed", { error: errorMessage(err) })
         callbacks.onWaiting(false)
         callbacks.onError(`Reconnect failed: ${errorMessage(err)}`)
@@ -326,12 +373,69 @@ export async function createChatSession(
     callbacks.onWaiting(false)
   }
 
-  // ── Initial spawn ──
+  return { send, interrupt, end }
+}
 
+// ── Main Factory ──
+
+export async function createChatSession(
+  callbacks: ChatCallbacks,
+  initialMessage?: string,
+  overrides?: ChatSessionOptions,
+): Promise<ChatSession> {
+  const projectCwd = overrides?.projectCwd ?? process.cwd()
+  const deps = overrides?.deps ?? prepareWorkflowDeps()
+  const engineName = deps.config.engine
+  const engine = getEngine(engineName)
+  const model = deps.config.subprocess?.model ?? deps.config.model ?? engine.metadata.defaultModel
+
+  const spawner = overrides?.spawner ?? new BunProcessSpawner()
+  const traceCollector = overrides?.traceCollector ?? null
+  const toolSpanMap = new Map<string, string>()
+  const sessionId = randomUUID()
+
+  // Budget tracker — use injected instance (from createSessionInfra) or create a fresh one
+  const budgetTracker = overrides?.budgetTracker ?? createBudgetTracker({ sessionId, baseDir: projectCwd })
+
+  // Transcript writer — use injected instance or create if tracing enabled
+  const transcriptWriter: TranscriptWriter | null = overrides?.transcriptWriter !== undefined
+    ? overrides.transcriptWriter
+    : (deps.config.tracing?.enabled
+        ? createTranscriptWriter({ sessionId, baseDir: projectCwd })
+        : null)
+
+  // Shared mutable state — all helpers read/write through this
+  const state: ChatSessionState = {
+    stdinHandle: null,
+    workerPid: undefined,
+    ended: false,
+    claudeSessionId: null,
+    agentActive: false,
+    userTurnInProgress: false,
+    contextWarningFired: false,
+  }
+
+  // 1. Setup output pipeline
+  const { pipeline, parser, builder, stopFlush } = setupChatPipeline({
+    callbacks, engineName, budgetTracker, transcriptWriter, traceCollector, toolSpanMap, state,
+  })
+
+  // 2. Create worker lifecycle (spawn, reconnection, idle-exit)
+  const lifecycle = createWorkerLifecycle({
+    engine, engineName, model, spawner, projectCwd, budgetTracker, parser, builder, callbacks, state,
+  })
+
+  // 3. Create controls (send, interrupt, end)
+  const controls = createChatControls({
+    lifecycle, engineName, parser, builder, pipeline, stopFlush,
+    callbacks, budgetTracker, traceCollector, transcriptWriter, state,
+  })
+
+  // ── Initial spawn ──
   const hasInitialMessage = initialMessage != null && initialMessage.trim().length > 0
   if (hasInitialMessage) callbacks.onWaiting(true)
 
-  await spawnWorker(undefined, hasInitialMessage ? initialMessage : undefined)
+  await lifecycle.spawnWorker(undefined, hasInitialMessage ? initialMessage : undefined)
 
-  return { send, interrupt, end, builder, budgetTracker }
+  return { send: controls.send, interrupt: controls.interrupt, end: controls.end, builder, budgetTracker }
 }

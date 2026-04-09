@@ -85,8 +85,8 @@ export function findResumableSession(deps: SessionActionDeps): SessionSummary | 
   return resumable[0] ?? null
 }
 
-/** Delete a session via the orchestrator (delete files + cleanup + refresh). */
+/** Delete a session: remove files, cleanup, refresh list. */
 export function deleteSession(sessionId: string, deps: SessionActionDeps): void {
-  const orchestrator = buildOrchestrator(deps)
-  orchestrator.handleDeleteSession(sessionId)
+  deps.manager.delete(sessionId)
+  deps.refreshList()
 }

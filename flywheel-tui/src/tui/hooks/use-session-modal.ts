@@ -13,14 +13,11 @@ import { formatCost } from "../format.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
-import type { AnyBlock } from "../types.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 /** Snapshot of UI state captured before viewing a completed session. */
 interface ViewSnapshot {
-  outputBlocks: AnyBlock[]
   foregroundId: string | undefined
-  sessionTitle: string
   statusLine: string
 }
 
@@ -96,20 +93,19 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     // where the user was (e.g. mid-chat), not to an intermediate viewed session.
     if (!priorState) {
       priorState = {
-        outputBlocks: signals.outputBlocks(),
         foregroundId: signals.foregroundId(),
-        sessionTitle: signals.sessionTitle(),
         statusLine: signals.statusLine(),
       }
     }
     viewedSessionId = sessionId
 
     const blocks = await loadSessionOutput(sessionId)
-    signals.setOutputBlocks(blocks)
+    // Use overlay signals — they take precedence over registry-derived values
+    signals.setViewedBlocks(blocks)
     const { sessions: list } = services.manager.list()
     const session = list.find(s => s.id === sessionId)
     if (session) {
-      signals.setSessionTitle(session.label || session.name || sessionId.slice(0, 8))
+      signals.setViewedTitle(session.label || session.name || sessionId.slice(0, 8))
       const cost = formatCost(session.totalCost)
       signals.setStatusLine(cost ? `Viewing session \u00b7 ${cost}` : "Viewing session")
     }
@@ -141,10 +137,11 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   /** Restore the UI state that existed before handleSessionView was called. */
   function restorePriorState(): void {
+    // Clear overlays — live registry data shows through again
+    signals.setViewedBlocks(undefined)
+    signals.setViewedTitle(undefined)
     if (priorState) {
-      signals.setOutputBlocks(priorState.outputBlocks)
       signals.setForegroundId(priorState.foregroundId)
-      signals.setSessionTitle(priorState.sessionTitle)
       signals.setStatusLine(priorState.statusLine)
     }
     priorState = undefined

@@ -34,7 +34,7 @@ const MAX_FIELD_BYTES = 4096;
 
 export interface TraceEventHandlerDeps {
   emit: EmitFn;
-  workflowIdRef: { current: string };
+  workflowId: string;
 }
 
 export interface TraceEventHandler {
@@ -47,13 +47,13 @@ export interface TraceEventHandler {
 // ---------------------------------------------------------------------------
 
 export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEventHandler {
-  const { emit, workflowIdRef } = deps;
+  const { emit, workflowId } = deps;
 
   // Track which toolUseIds are subagents for matching tool_result events
   const subagentToolUseIds = new Set<string>();
 
   function handleEvent(event: NDJSONEvent): void {
-    const wfId = workflowIdRef.current;
+    const wfId = workflowId;
 
     for (const record of extractToolUseRecords(event)) {
       const rawInput = truncateField(record.toolInput, MAX_FIELD_BYTES);

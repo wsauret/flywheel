@@ -12,6 +12,7 @@
 import { createChatSession, type ChatSession, type ChatCallbacks } from "./chat-session"
 import { createSessionInfra } from "./session/create-session-infra"
 import { createOutputPersistence, type OutputFlusher } from "./session/output-persistence"
+import { disposeSessionResources, type SessionResources } from "./session/resources"
 import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import type { SessionRunner } from "./session-runner"
@@ -19,26 +20,24 @@ import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/loader"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
 import type { AnyBlock } from "../infra/output-blocks"
-import type { ModelActivity } from "../infra/events"
 
 // ── Types ──
 
-export interface ChatRunnerCallbacks {
-  onBlocks: (blocks: AnyBlock[]) => void
-  onTokens: (tokens: number) => void
-  onCost: (cost: number) => void
-  onContextPercent?: (percent: number) => void
-  onModelActivity?: (activity: ModelActivity) => void
-  onSessionName?: (name: string) => void
-  onError: (message: string) => void
-  onEnded: () => void
-}
+/** Function to update fields on the session entry in the reactive store. */
+export type ChatUpdateEntryFn = (patch: Partial<import("./session-registry").ChatSessionEntry>) => void
 
 export interface ChatRunnerDeps {
   sessionId: string
   projectCwd: string
   updateState: (id: string, state: SessionState) => void
-  callbacks: ChatRunnerCallbacks
+  /** Write data directly to the reactive session store. */
+  updateEntry: ChatUpdateEntryFn
+  /** Called on session name change (for manager label persistence). */
+  onSessionName?: (name: string) => void
+  /** Signal a fatal error — propagated to registry's onError. */
+  onError: (message: string) => void
+  /** Signal normal completion — propagated to registry's onEnded. */
+  onEnded: () => void
   initialMessage?: string
   /** Output blocks from a previous session (for resume — prepended to new output). */
   priorBlocks?: AnyBlock[]
@@ -57,7 +56,7 @@ export interface ChatRunner extends SessionRunner {
 // ── Factory ──
 
 export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner> {
-  const { sessionId, projectCwd, updateState, callbacks, initialMessage, priorBlocks } = deps
+  const { sessionId, projectCwd, updateState, updateEntry, initialMessage, priorBlocks } = deps
 
   // Prepare workflow deps (config, engine, spawner)
   const workflowDeps = prepareWorkflowDeps()
@@ -83,7 +82,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   // If resuming, emit prior blocks immediately so the UI shows them
   if (priorBlocks && priorBlocks.length > 0) {
     currentBlocks = [...priorBlocks]
-    callbacks.onBlocks(currentBlocks)
+    updateEntry({ outputBlocks: currentBlocks })
   }
 
   // Emit a welcome block on first boot (no prior sessions)
@@ -94,14 +93,14 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       timestamp: Date.now(),
     }
     currentBlocks = [welcomeBlock]
-    callbacks.onBlocks(currentBlocks)
+    updateEntry({ outputBlocks: currentBlocks })
   }
 
-  // Wire ChatCallbacks to ChatRunner's callbacks + infra
+  // Wire ChatCallbacks to write directly to the reactive store
   const chatCallbacks: ChatCallbacks = {
     onBlocks: (newBlocks) => {
       currentBlocks = priorBlocks ? [...priorBlocks, ...newBlocks] : newBlocks
-      callbacks.onBlocks(currentBlocks)
+      updateEntry({ outputBlocks: currentBlocks })
       outputFlusher.schedule()
     },
     onWaiting: (waiting) => {
@@ -113,20 +112,22 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       }
       lastWaiting = waiting
     },
-    onTokens: (tokens) => callbacks.onTokens(tokens),
-    onCost: (cost) => callbacks.onCost(cost),
-    onContextPercent: (percent) => callbacks.onContextPercent?.(percent),
-    onModelActivity: (activity) => callbacks.onModelActivity?.(activity),
-    onError: (message) => callbacks.onError(message),
-    onEnded: () => callbacks.onEnded(),
+    onTokens: (tokens) => updateEntry({ tokens }),
+    onCost: (cost) => updateEntry({ cost }),
+    onContextPercent: (percent) => updateEntry({ contextPercent: percent }),
+    onModelActivity: (activity) => updateEntry({ modelActivity: activity }),
+    onError: (message) => void deps.onError(message),
+    onEnded: () => void deps.onEnded(),
   }
 
-  // Create the underlying ChatSession
+  // Create the underlying ChatSession — pass shared infra to avoid duplicate creation
   const chatSession = await createChatSession(chatCallbacks, initialMessage, {
     projectCwd,
     deps: workflowDeps,
     spawner: deps.spawner,
     traceCollector: infra.traceCollector ?? undefined,
+    budgetTracker: infra.budgetTracker,
+    transcriptWriter: infra.transcriptWriter,
   })
 
   // ── SessionRunner implementation ──
@@ -142,7 +143,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     // Auto-name the session from the first user message
     if (!firstMessageSent) {
       firstMessageSent = true
-      generateSessionTitle(text, (title) => callbacks.onSessionName?.(title))
+      generateSessionTitle(text, (title) => {
+        updateEntry({ description: title })
+        deps.onSessionName?.(title)
+      })
     }
 
     return true
@@ -152,20 +156,20 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     if (disposed) return
     disposed = true
 
-    // Flush BEFORE dispose to prevent DebouncedWriter data loss
-    await outputFlusher.flush()
-    outputFlusher.dispose()
-
-    // End the chat session (closes subprocess)
+    // 1. End the chat session FIRST (signal subprocess to stop).
+    //    Must happen before resource disposal — the subprocess may still write
+    //    to budgetTracker/transcriptWriter while it's shutting down.
     chatSession.end()
 
-    // Clean up infra
-    infra.traceCollector?.finalize("ok")
-    infra.traceCollector?.dispose()
-    infra.traceWriter?.dispose()
-    infra.transcriptWriter?.dispose()
-    infra.budgetTracker.flush()
-    infra.budgetTracker.dispose()
+    // 2. Unified resource disposal (finalize → flush → dispose)
+    const resources: SessionResources = {
+      budgetTracker: infra.budgetTracker,
+      traceWriter: infra.traceWriter,
+      transcriptWriter: infra.transcriptWriter,
+      traceCollector: infra.traceCollector,
+      outputFlusher,
+    }
+    await disposeSessionResources(resources, "ok")
   }
 
   return {

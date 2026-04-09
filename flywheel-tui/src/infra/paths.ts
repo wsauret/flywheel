@@ -138,14 +138,6 @@ export function buildInvocationHandoffPath(
   return path.resolve(baseDir, sessionHandoffsDir(sessionId), `${role}_${invocationId}.json`);
 }
 
-/** @deprecated Use `buildInvocationHandoffPath("dispatcher", ...)` */
-export const buildDispatcherHandoffPath = (s: string, i: string, b: string) =>
-  buildInvocationHandoffPath("dispatcher", s, i, b);
-
-/** @deprecated Use `buildInvocationHandoffPath("evaluator", ...)` */
-export const buildEvaluatorHandoffPath = (s: string, i: string, b: string) =>
-  buildInvocationHandoffPath("evaluator", s, i, b);
-
 // ---------------------------------------------------------------------------
 // Trace file path helpers
 // ---------------------------------------------------------------------------

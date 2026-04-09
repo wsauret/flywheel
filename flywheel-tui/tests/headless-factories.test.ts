@@ -1,28 +1,25 @@
-import { describe, it, expect, beforeEach } from "bun:test"
+import { describe, it, expect } from "bun:test"
 import { EventBus } from "../src/infra/event-bus"
 import {
-  resetSessionFactories,
   createWorkflowSession,
   destroyWorkflowSession,
 } from "../src/orchestration/workflow-session"
-import { provideHeadlessFactories } from "../src/orchestration/headless/factories"
+import { createHeadlessFactories } from "../src/orchestration/headless/factories"
 import type { FlywheelEvent } from "../src/infra/events"
 
 // ---------------------------------------------------------------------------
 // Headless factory wiring tests
 // ---------------------------------------------------------------------------
 
-describe("provideHeadlessFactories", () => {
-  beforeEach(() => {
-    resetSessionFactories()
-  })
+/** No-op updateEntry for headless tests. */
+const noopUpdateEntry = () => {}
 
-  it("wires headless factories so createWorkflowSession succeeds", () => {
-    provideHeadlessFactories()
+describe("createHeadlessFactories", () => {
+  it("creates factories so createWorkflowSession succeeds", () => {
+    const factories = createHeadlessFactories()
 
-    const session = createWorkflowSession({ description: "test workflow" })
+    const session = createWorkflowSession({ description: "test workflow", factories, updateEntry: noopUpdateEntry })
     expect(session).toBeDefined()
-    expect(session.store).toBeDefined()
     expect(session.adapter).toBeDefined()
     expect(session.eventBus).toBeDefined()
     expect(session.timer).toBeDefined()
@@ -30,21 +27,9 @@ describe("provideHeadlessFactories", () => {
     destroyWorkflowSession(session)
   })
 
-  it("session store returns valid modelActivity", () => {
-    provideHeadlessFactories()
-
-    const session = createWorkflowSession({ description: "state test" })
-    const state = session.store.getState()
-
-    expect(state).toHaveProperty("modelActivity")
-    expect(typeof state.modelActivity).toBe("string")
-
-    destroyWorkflowSession(session)
-  })
-
   it("events emitted on bus arrive at adapter", () => {
     const logs: string[] = []
-    provideHeadlessFactories({
+    const factories = createHeadlessFactories({
       logger: (msg) => logs.push(msg),
       timestamps: false,
     })
@@ -53,6 +38,8 @@ describe("provideHeadlessFactories", () => {
     const session = createWorkflowSession({
       description: "event routing test",
       eventBus: bus,
+      factories,
+      updateEntry: noopUpdateEntry,
     })
 
     // Emit a queue:initialized event — logged at all levels
@@ -71,7 +58,7 @@ describe("provideHeadlessFactories", () => {
 
   it("passes adapter options through", () => {
     const logs: string[] = []
-    provideHeadlessFactories({
+    const factories = createHeadlessFactories({
       logLevel: "minimal",
       logger: (msg) => logs.push(msg),
       timestamps: false,
@@ -81,6 +68,8 @@ describe("provideHeadlessFactories", () => {
     const session = createWorkflowSession({
       description: "options passthrough",
       eventBus: bus,
+      factories,
+      updateEntry: noopUpdateEntry,
     })
 
     // Emit a normal-level event — should be filtered at minimal
@@ -97,14 +86,5 @@ describe("provideHeadlessFactories", () => {
     expect(hasSubprocessCompleted).toBe(false)
 
     destroyWorkflowSession(session)
-  })
-
-  it("resetSessionFactories clears headless factories", () => {
-    provideHeadlessFactories()
-    resetSessionFactories()
-
-    expect(() => {
-      createWorkflowSession({ description: "should fail" })
-    }).toThrow(/factories not provided/)
   })
 })

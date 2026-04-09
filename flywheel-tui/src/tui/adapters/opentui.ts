@@ -1,16 +1,16 @@
 /**
- * OpenTUI Adapter — translates FlywheelEvent → UIActions (store mutations).
+ * OpenTUI Adapter — translates FlywheelEvent → registry entry updates.
  *
  * Pipeline: subprocess stdout → NDJSONParser → StructuredEventParser
- *   → StructuredOutputBuilder → setOutputBlocks
+ *   → StructuredOutputBuilder → updateEntry({ outputBlocks })
  *
  * Dispatcher/evaluator NDJSON handling is delegated to NdjsonPipeline.
  */
 
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
-import type { AdapterType } from "./types";
-import { BaseUIAdapter } from "./base";
-import type { UIActions } from "../routes/work/context/ui-state/types";
+import type { AdapterType, IWorkflowUI } from "./types";
+import { BaseEventConsumer } from "../../infra/base-event-consumer";
+import type { WorkflowSessionEntry } from "../../orchestration/session-registry";
 import { createOutputPipeline, type OutputPipeline } from "../../orchestration/output-pipeline";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
 import { Log } from "../../infra/log.js";
@@ -18,16 +18,17 @@ import { Log } from "../../infra/log.js";
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
 export interface OpenTUIAdapterOptions {
-  actions: UIActions;
+  updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
   /** Engine metadata — used to configure engine-specific adapter behaviour (e.g. synthetic thinking timer). */
   engineMetadata?: import("../../orchestration/engines/core/types").EngineMetadata;
 }
 
 const log = Log.create({ service: "opentui-adapter" });
 
-export class OpenTUIAdapter extends BaseUIAdapter {
+export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
   readonly adapterType: AdapterType = "opentui";
-  private actions: UIActions;
+  onApprovalDecision?: (approved: boolean, skip?: boolean) => void;
+  private updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
 
   /** When true, pass raw output without NDJSON parsing */
   private _rawMode = false;
@@ -48,7 +49,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
   constructor(options: OpenTUIAdapterOptions) {
     super();
-    this.actions = options.actions;
+    this.updateEntry = options.updateEntry;
     this.syntheticThinkingMs = options.engineMetadata?.syntheticThinkingMs;
 
     // Initialize structured pipeline via shared factory
@@ -58,11 +59,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
           clearTimeout(this.syntheticThinkingTimer);
           this.syntheticThinkingTimer = null;
         }
-        this.actions.setModelActivity(activity);
+        this.updateEntry({ modelActivity: activity });
         if (this.syntheticThinkingMs !== undefined && (activity === "tool_executing" || activity === "generating")) {
           this.syntheticThinkingTimer = setTimeout(() => {
             this.syntheticThinkingTimer = null;
-            this.actions.setModelActivity("thinking");
+            this.updateEntry({ modelActivity: "thinking" });
           }, this.syntheticThinkingMs);
         }
       },
@@ -109,15 +110,14 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "subprocess:retrying":
-        this.pushSystemText(`↻ Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`, event.timestamp);
+        this.pushSystemText(`\u21bb Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`, event.timestamp);
         break;
 
       case "approval:requested":
-        this.actions.setApprovalPending(event.description);
+        // TODO: approval state will move to registry in a future phase
         break;
 
       case "approval:received":
-        this.actions.clearApproval();
         break;
 
       case "subprocess:spawned":
@@ -129,12 +129,12 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "subprocess:failed":
-        this.pushSystemText(`◉ Subprocess failed: ${event.failure.message}\n`, event.timestamp);
+        this.pushSystemText(`\u25c9 Subprocess failed: ${event.failure.message}\n`, event.timestamp);
         break;
 
       case "dispatcher:invoked":
         this.ndjsonPipeline.startDispatcher();
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
 
       case "dispatcher:completed": {
@@ -143,36 +143,36 @@ export class OpenTUIAdapter extends BaseUIAdapter {
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
           : "";
         this.ndjsonPipeline.completeDispatcher(`Prompt ready${warningText}`);
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
       }
 
       case "dispatcher:failed":
         this.ndjsonPipeline.failDispatcher(event.reason);
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
 
       case "evaluator:invoked":
         this.ndjsonPipeline.startEvaluator();
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
 
       case "evaluator:completed": {
         const verdict = event.result.passed ? "Passed" : "Needs revision";
-        const reasoning = event.result.reasoning ? ` — ${event.result.reasoning}` : "";
+        const reasoning = event.result.reasoning ? ` \u2014 ${event.result.reasoning}` : "";
         this.ndjsonPipeline.completeEvaluator(`${verdict}${reasoning}`);
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
       }
 
       case "evaluator:failed":
         this.ndjsonPipeline.failEvaluator(event.reason);
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
 
       case "evaluator:revision-requested":
         this.ndjsonPipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
 
       case "question:asked":
@@ -186,26 +186,26 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "budget:exhausted":
         log.warn("Budget exhausted", { workflowId: event.workflowId, reason: event.reason });
-        this.pushSystemText(`⚠ Budget exhausted: ${event.reason}\n`, event.timestamp);
+        this.pushSystemText(`\u26a0 Budget exhausted: ${event.reason}\n`, event.timestamp);
         break;
 
       case "subprocess:injected":
         log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
         this.outputPipeline.builder.pushUserMessage(event.message, event.timestamp, false, true);
-        this.flushBlocks();
+        // Flush deferred to 16ms interval
         break;
 
       case "dispatcher:output":
         if (event.stream === "stdout") {
           this.ndjsonPipeline.dispatcherParser.write(event.data);
-          this.flushBlocks();
+          // Flush deferred to 16ms interval
         }
         break;
 
       case "evaluator:output":
         if (event.stream === "stdout") {
           this.ndjsonPipeline.evaluatorParser.write(event.data);
-          this.flushBlocks();
+          // Flush deferred to 16ms interval
         }
         break;
 
@@ -216,15 +216,13 @@ export class OpenTUIAdapter extends BaseUIAdapter {
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
         this.flushBlocks();
-        this.actions.setModelActivity("idle");
-        this.actions.stopWorkflow("completed");
+        this.updateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         this.flushBlocks();
-        this.actions.setModelActivity("idle");
-        this.actions.setError(event.reason);
+        this.updateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:step-started":
@@ -234,30 +232,31 @@ export class OpenTUIAdapter extends BaseUIAdapter {
           `${STEP_BOUNDARY_PREFIX} ${this.formatStepBoundaryLabel(event.stepType, event.stepTitle)}\n`,
           event.timestamp,
         );
-        this.actions.startQueueStep(event.stepId);
+        // Step state is handled by the runner's EventBus catch-all subscription
         break;
 
       case "queue:step-completed":
         log.info("Queue step completed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
-        this.actions.completeQueueStep(event.stepId);
+        // Step state is handled by the runner's EventBus catch-all subscription
         break;
 
       case "queue:step-failed":
         log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
-        this.actions.failQueueStep(event.stepId, event.reason);
+        // Step state is handled by the runner's EventBus catch-all subscription
         break;
 
       case "queue:step-inserted":
         log.info("Queue step inserted", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, afterStepId: event.afterStepId });
-        this.actions.insertQueueStep(
-          { id: event.stepId, type: event.stepType, title: event.stepTitle, status: "pending" },
-          event.afterStepId,
-        );
+        // Step state is handled by the runner's EventBus catch-all subscription
         break;
 
       case "queue:step-removed":
         log.info("Queue step removed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType });
-        this.actions.removeQueueStep(event.stepId);
+        // Step state is handled by the runner's EventBus catch-all subscription
+        break;
+
+      // Subprocess NDJSON events — handled by EventBus subscribers, no TUI rendering needed
+      case "subprocess:ndjson":
         break;
 
       // Trace events — handled by TraceCollector, no TUI rendering needed
@@ -314,11 +313,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   }
 
   /**
-   * Flush builder blocks to the store if the builder has pending changes.
+   * Flush builder blocks to the registry if the builder has pending changes.
    */
   private flushBlocks(): void {
     if (this.outputPipeline.builder.hasChanged()) {
-      this.actions.setOutputBlocks(this.outputPipeline.builder.getBlocks());
+      this.updateEntry({ outputBlocks: this.outputPipeline.builder.getBlocks() });
     }
   }
 

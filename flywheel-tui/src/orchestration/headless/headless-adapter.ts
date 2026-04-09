@@ -3,13 +3,16 @@
  *
  * A minimal UI adapter that logs workflow events to console or file.
  * Used for CI/CD, automation, and non-interactive environments.
+ *
+ * Event handling uses a data-driven mapping (EVENT_HANDLERS) instead of a
+ * switch statement. Adding a new event type requires one line in the record.
+ * Exhaustiveness is enforced at compile time via `satisfies`.
  */
 
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { BaseEventConsumer } from "../../infra/base-event-consumer"
 import type { FlywheelEvent } from "../../infra/events"
-import { assertNever } from "../../infra/events"
 
 export interface HeadlessAdapterOptions {
   /** Path to log file (if not set, logs to console) */
@@ -25,6 +28,99 @@ export interface HeadlessAdapterOptions {
   timestamps?: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Data-driven event handler mapping
+// ---------------------------------------------------------------------------
+
+type LogLevel = "minimal" | "normal" | "verbose"
+
+/** min level to log at, plus a format function. null format = no-op.
+ *
+ *  `event: any` is a deliberate tradeoff: the `satisfies` constraint on
+ *  EVENT_HANDLERS enforces exhaustive key coverage (adding a new FlywheelEvent
+ *  type without a handler is a compile error), while formatter functions use
+ *  loose typing to avoid verbose per-event generics. The handleEvent() entry
+ *  point guarantees the correct event type is routed to each handler. */
+type EventSpec = {
+  minLevel: LogLevel
+  format: ((event: any) => string | null) | null
+}
+
+/** Numeric ordering so we can do `>=` comparisons. */
+const LEVEL_ORDER: Record<LogLevel, number> = { minimal: 0, normal: 1, verbose: 2 }
+
+function sprintLabel(stepType: string, stepTitle: string): string {
+  if (stepType === "verify") return " (sprint verification)"
+  if (stepType === "work" && stepTitle.includes("Sprint")) return " (sprint iteration)"
+  return ""
+}
+
+/**
+ * Exhaustive mapping from every FlywheelEvent type to its headless log spec.
+ * `satisfies` enforces that every member of the discriminated union is covered —
+ * adding a new event type without updating this record is a compile error.
+ */
+const EVENT_HANDLERS = {
+  // ── Subprocess ──
+  "subprocess:spawned":    { minLevel: "normal",  format: (e) => `  Subprocess spawned for step ${e.stepIndex}` },
+  "subprocess:completed":  { minLevel: "normal",  format: () => `  Subprocess completed` },
+  "subprocess:failed":     { minLevel: "minimal", format: (e) => `  Subprocess FAILED: ${e.failure.message}` },
+  "subprocess:retrying":   { minLevel: "normal",  format: (e) => `  Subprocess retrying (${e.attempt}/${e.maxAttempts}): ${e.reason}` },
+  "subprocess:output":     { minLevel: "normal",  format: (e) => { const d = e.data.replace(/\n$/, ""); return d ? `  ${e.stream === "stderr" ? "[stderr] " : ""}${d}` : null } },
+  "subprocess:ndjson":     { minLevel: "verbose", format: null },
+  "subprocess:injected":   { minLevel: "normal",  format: (e) => `  Subprocess stdin injected (${e.message.length} chars)` },
+
+  // ── Dispatcher ──
+  "dispatcher:invoked":    { minLevel: "verbose", format: (e) => `  Dispatcher invoked for step ${e.stepIndex}` },
+  "dispatcher:completed":  { minLevel: "verbose", format: () => `  Dispatcher completed` },
+  "dispatcher:failed":     { minLevel: "normal",  format: (e) => `  Dispatcher failed: ${e.reason}` },
+  "dispatcher:output":     { minLevel: "verbose", format: null },
+
+  // ── Evaluator ──
+  "evaluator:invoked":     { minLevel: "verbose", format: (e) => `  Evaluator invoked for step ${e.stepIndex}` },
+  "evaluator:completed":   { minLevel: "verbose", format: (e) => `  Evaluator: ${e.result.passed ? "PASS" : "FAIL"} — ${e.result.reasoning}` },
+  "evaluator:failed":      { minLevel: "normal",  format: (e) => `  Evaluator failed: ${e.reason}` },
+  "evaluator:revision-requested": { minLevel: "normal", format: (e) => `  Revision requested (attempt ${e.revisionAttempt}/${e.maxRevisions}): ${e.reason}` },
+  "evaluator:output":      { minLevel: "verbose", format: null },
+
+  // ── Approval ──
+  "approval:requested":    { minLevel: "minimal", format: (e) => `  APPROVAL REQUIRED: ${e.description}` },
+  "approval:received":     { minLevel: "normal",  format: (e) => `  Approval: ${e.approved ? "approved" : "rejected"}${e.skipped ? " (skipped)" : ""}` },
+
+  // ── Question ──
+  "question:asked":        { minLevel: "normal",  format: (e) => `  Question asked (${e.questions.length} question(s))` },
+  "question:replied":      { minLevel: "normal",  format: () => `  Question replied` },
+  "question:rejected":     { minLevel: "normal",  format: () => `  Question rejected` },
+
+  // ── Budget ──
+  "budget:warning":        { minLevel: "normal",  format: (e) => `  Budget warning: ${e.metric} ${e.used}/${e.limit} (${e.remaining} remaining)` },
+  "budget:exhausted":      { minLevel: "minimal", format: (e) => `  Budget EXHAUSTED: ${e.reason}` },
+
+  // ── Queue lifecycle ──
+  "queue:initialized":     { minLevel: "minimal", format: (e) => `Queue initialized (${e.stepIds.length} steps)` },
+  "queue:completed":       { minLevel: "minimal", format: (e) => `Queue completed (${e.stepsCompleted} steps)` },
+  "queue:failed":          { minLevel: "minimal", format: (e) => `Queue FAILED: ${e.reason} (${e.stepsCompleted} steps completed)` },
+
+  // ── Queue steps ──
+  "queue:step-started":    { minLevel: "normal",  format: (e) => `  Queue step started: [${e.stepType}] ${e.stepTitle}${sprintLabel(e.stepType, e.stepTitle)}` },
+  "queue:step-completed":  { minLevel: "normal",  format: (e) => `  Queue step completed: [${e.stepType}] ${e.stepTitle}${sprintLabel(e.stepType, e.stepTitle)}` },
+  "queue:step-failed":     { minLevel: "minimal", format: (e) => `  Queue step FAILED: [${e.stepType}] ${e.stepTitle} — ${e.reason}` },
+
+  // ── Queue mutations ──
+  "queue:step-inserted":   { minLevel: "normal",  format: (e) => `  Queue step inserted: [${e.stepType}] ${e.stepTitle} (after ${e.afterStepId})` },
+  "queue:step-removed":    { minLevel: "normal",  format: (e) => `  Queue step removed: [${e.stepType}] ${e.stepTitle}` },
+
+  // ── Trace ──
+  "trace:tool-started":       { minLevel: "verbose", format: (e) => `  Trace: tool started — ${e.toolName} (${e.toolUseId})` },
+  "trace:tool-completed":     { minLevel: "verbose", format: (e) => `  Trace: tool completed — ${e.toolUseId}${e.isError ? " [ERROR]" : ""}` },
+  "trace:subagent-started":   { minLevel: "verbose", format: (e) => `  Trace: subagent started — ${e.agentType}: ${e.description} (${e.toolUseId})` },
+  "trace:subagent-completed": { minLevel: "verbose", format: (e) => `  Trace: subagent completed — ${e.toolUseId}${e.isError ? " [ERROR]" : ""}` },
+} satisfies Record<FlywheelEvent["type"], EventSpec>
+
+// ---------------------------------------------------------------------------
+// Adapter class
+// ---------------------------------------------------------------------------
+
 /**
  * HeadlessAdapter - Logs workflow events without visual UI
  *
@@ -36,7 +132,7 @@ export interface HeadlessAdapterOptions {
 export class HeadlessAdapter extends BaseEventConsumer {
   private logFile: string | null = null
   private logStream: fs.WriteStream | null = null
-  private logLevel: "minimal" | "normal" | "verbose"
+  private logLevel: LogLevel
   private customLogger: ((message: string) => void) | null = null
   private showTimestamps: boolean
   private closingPromise: Promise<void> | null = null
@@ -92,213 +188,11 @@ export class HeadlessAdapter extends BaseEventConsumer {
   }
 
   protected handleEvent(event: FlywheelEvent): void {
-    switch (event.type) {
-      // ── Subprocess events (normal+) ──
-      case "subprocess:spawned":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Subprocess spawned for step ${event.stepIndex}`)
-        }
-        break
-
-      case "subprocess:completed":
-        if (this.logLevel !== "minimal") {
-          this.log("  Subprocess completed")
-        }
-        break
-
-      case "subprocess:failed":
-        this.log(`  Subprocess FAILED: ${event.failure.message}`)
-        break
-
-      case "subprocess:retrying":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Subprocess retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}`)
-        }
-        break
-
-      case "subprocess:output":
-        if (this.logLevel !== "minimal") {
-          const prefix = event.stream === "stderr" ? "[stderr] " : ""
-          // Trim trailing newline for cleaner log output
-          const data = event.data.replace(/\n$/, "")
-          if (data) this.log(`  ${prefix}${data}`)
-        }
-        break
-
-      // ── Dispatcher events (verbose) ──
-      case "dispatcher:invoked":
-        if (this.logLevel === "verbose") {
-          this.log(`  Dispatcher invoked for step ${event.stepIndex}`)
-        }
-        break
-
-      case "dispatcher:completed":
-        if (this.logLevel === "verbose") {
-          this.log("  Dispatcher completed")
-        }
-        break
-
-      case "dispatcher:failed":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Dispatcher failed: ${event.reason}`)
-        }
-        break
-
-      // ── Evaluator events (verbose) ──
-      case "evaluator:invoked":
-        if (this.logLevel === "verbose") {
-          this.log(`  Evaluator invoked for step ${event.stepIndex}`)
-        }
-        break
-
-      case "evaluator:completed":
-        if (this.logLevel === "verbose") {
-          const r = event.result
-          this.log(`  Evaluator: ${r.passed ? "PASS" : "FAIL"} — ${r.reasoning}`)
-        }
-        break
-
-      case "evaluator:failed":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Evaluator failed: ${event.reason}`)
-        }
-        break
-
-      case "evaluator:revision-requested":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Revision requested (attempt ${event.revisionAttempt}/${event.maxRevisions}): ${event.reason}`)
-        }
-        break
-
-      // ── Approval events ──
-      case "approval:requested":
-        this.log(`  APPROVAL REQUIRED: ${event.description}`)
-        break
-
-      case "approval:received":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Approval: ${event.approved ? "approved" : "rejected"}${event.skipped ? " (skipped)" : ""}`)
-        }
-        break
-
-      // ── Question events ──
-      case "question:asked":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Question asked (${event.questions.length} question(s))`)
-        }
-        break
-
-      case "question:replied":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Question replied`)
-        }
-        break
-
-      case "question:rejected":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Question rejected`)
-        }
-        break
-
-      // ── Budget events ──
-      case "budget:warning":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Budget warning: ${event.metric} ${event.used}/${event.limit} (${event.remaining} remaining)`)
-        }
-        break
-
-      case "budget:exhausted":
-        this.log(`  Budget EXHAUSTED: ${event.reason}`)
-        break
-
-      // Subprocess injection events
-      case "subprocess:injected":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Subprocess stdin injected (${event.message.length} chars)`)
-        }
-        break
-
-      // Dispatcher/evaluator output streaming events
-      case "dispatcher:output":
-      case "evaluator:output":
-        // Streaming output from dispatcher/evaluator subprocesses — no-op in headless mode
-        break
-
-      // ── Queue lifecycle events ──
-      case "queue:initialized":
-        this.log(`Queue initialized (${event.stepIds.length} steps)`)
-        break
-
-      case "queue:completed":
-        this.log(`Queue completed (${event.stepsCompleted} steps)`)
-        break
-
-      case "queue:failed":
-        this.log(`Queue FAILED: ${event.reason} (${event.stepsCompleted} steps completed)`)
-        break
-
-      // ── Queue step events (normal+) ──
-      case "queue:step-started":
-        if (this.logLevel !== "minimal") {
-          const sprintLabel = event.stepType === "verify" ? " (sprint verification)" :
-            event.stepType === "work" && event.stepTitle.includes("Sprint") ? " (sprint iteration)" : ""
-          this.log(`  Queue step started: [${event.stepType}] ${event.stepTitle}${sprintLabel}`)
-        }
-        break
-
-      case "queue:step-completed":
-        if (this.logLevel !== "minimal") {
-          const sprintLabel = event.stepType === "verify" ? " (sprint verification)" :
-            event.stepType === "work" && event.stepTitle.includes("Sprint") ? " (sprint iteration)" : ""
-          this.log(`  Queue step completed: [${event.stepType}] ${event.stepTitle}${sprintLabel}`)
-        }
-        break
-
-      case "queue:step-failed":
-        this.log(`  Queue step FAILED: [${event.stepType}] ${event.stepTitle} — ${event.reason}`)
-        break
-
-      // ── Queue mutation events (normal+) ──
-      case "queue:step-inserted":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Queue step inserted: [${event.stepType}] ${event.stepTitle} (after ${event.afterStepId})`)
-        }
-        break
-
-      case "queue:step-removed":
-        if (this.logLevel !== "minimal") {
-          this.log(`  Queue step removed: [${event.stepType}] ${event.stepTitle}`)
-        }
-        break
-
-      // ── Trace events (verbose) ──
-      case "trace:tool-started":
-        if (this.logLevel === "verbose") {
-          this.log(`  Trace: tool started — ${event.toolName} (${event.toolUseId})`)
-        }
-        break
-
-      case "trace:tool-completed":
-        if (this.logLevel === "verbose") {
-          this.log(`  Trace: tool completed — ${event.toolUseId}${event.isError ? " [ERROR]" : ""}`)
-        }
-        break
-
-      case "trace:subagent-started":
-        if (this.logLevel === "verbose") {
-          this.log(`  Trace: subagent started — ${event.agentType}: ${event.description} (${event.toolUseId})`)
-        }
-        break
-
-      case "trace:subagent-completed":
-        if (this.logLevel === "verbose") {
-          this.log(`  Trace: subagent completed — ${event.toolUseId}${event.isError ? " [ERROR]" : ""}`)
-        }
-        break
-
-      default:
-        assertNever(event)
-    }
+    const spec = EVENT_HANDLERS[event.type]
+    if (!spec.format) return
+    if (LEVEL_ORDER[this.logLevel] < LEVEL_ORDER[spec.minLevel]) return
+    const message = spec.format(event)
+    if (message) this.log(message)
   }
 
   /**

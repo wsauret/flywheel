@@ -39,7 +39,6 @@ export type {
   EvaluatorFn,
   WorkerFn,
   HandoffReaderFn,
-  BudgetChecker,
   PersistFn,
   StepContextAccumulator,
   PostTurnVerificationResult,
@@ -69,7 +68,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     evaluator,
     skipEvaluation,
     handoffReader,
-    budgetChecker,
     persist,
     accumulator,
     maxRevisions,
@@ -143,20 +141,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       // Check shutdown request before starting next step
       if (shutdownRequested) {
         const reason = "Shutdown requested";
-        queue.status = "paused";
-        await persistQueue();
-        emit("queue:failed", { workflowId, reason, stepsCompleted });
-        return {
-          completed: false,
-          stepsCompleted,
-          stepsTotal: queue.steps.length,
-          reason,
-        };
-      }
-
-      // Check budget before starting step
-      if (budgetChecker.isExhausted()) {
-        const reason = "budget";
         queue.status = "paused";
         await persistQueue();
         emit("queue:failed", { workflowId, reason, stepsCompleted });

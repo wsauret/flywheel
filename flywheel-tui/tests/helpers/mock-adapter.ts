@@ -34,6 +34,7 @@ export class MockAdapter extends BaseEventConsumer {
       case "subprocess:failed":
       case "subprocess:retrying":
       case "subprocess:output":
+      case "subprocess:ndjson":
       case "subprocess:injected":
       // Approval events
       case "approval:requested":

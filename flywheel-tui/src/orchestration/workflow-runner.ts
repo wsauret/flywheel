@@ -4,34 +4,25 @@
  */
 
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
-import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
-import { createStepExecutor, type StepExecutor } from "../workflows/queue/executor"
-import { createQueuePersistence } from "../workflows/queue/persistence"
-import { createGuardrails } from "../workflows/queue/guardrails"
+import { createExecutor } from "./executor-factory"
+import type { StepExecutor } from "../workflows/queue/executor"
 import { type BudgetTracker } from "./session/budget-tracker"
 import { createOutputPersistence } from "./session/output-persistence"
 import { createSessionInfra } from "./session/create-session-infra"
-import { createWorkflowSession, destroyWorkflowSession, type WorkflowSession, type WorkflowStore } from "./workflow-session"
+import { disposeSessionResources, type SessionResources } from "./session/resources"
+import { createWorkflowSession, destroyWorkflowSession, type WorkflowSessionFactories } from "./workflow-session"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
-import type { TraceWriter } from "./session/trace-writer"
-import type { TranscriptWriter } from "./session/transcript-writer"
-import type { TraceCollector } from "./session/trace-collector"
-import { createTraceEventHandler } from "./engines/subprocess/trace-event-handler"
-import { createWarmPools } from "./engines/pool/create-warm-pools"
 import type { WarmPool } from "./engines/pool/warm-pool"
 import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
 import { randomUUID } from "node:crypto"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
-import type { StdinHandle, SpawnResult } from "./engines/subprocess/spawner"
+import { InjectionQueue } from "./engines/subprocess/injection-queue"
+import type { SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { SessionRunner } from "./session-runner"
 import { generateSessionTitle } from "./session-title"
-import { createPostTurnVerificationHook } from "../workflows/queue/post-turn-verification"
-import { createSprintHook } from "../workflows/queue/steps/sprint/hooks"
-import { SPRINT_HINT } from "../workflows/queue/steps/sprint/types"
-import type { OnStepCompletedHook } from "../workflows/queue/shared/hooks"
 import "../workflows/queue/steps/register-all"
 
 
@@ -42,16 +33,8 @@ export type StepState = {
   durationMs?: number; startedAt?: number; completedAt?: number
 }
 
-export interface WorkflowCallbacks {
-  onBlocks: (blocks: AnyBlock[]) => void
-  onSteps: (steps: StepState[]) => void
-  onTokens: (n: number) => void
-  onCost: (n: number) => void
-  /** Batched metrics update — fires once with both values to avoid double notify(). */
-  onMetrics?: (tokens: number, cost: number) => void
-  onSessionName: (name: string) => void
-  onModelActivity?: (activity: import("../infra/events").ModelActivity) => void
-}
+/** Function to update a session entry in the reactive store. */
+export type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-registry").WorkflowSessionEntry>) => void
 
 export interface WorkflowResult {
   completed: boolean
@@ -98,36 +81,58 @@ export interface WorkflowRunner extends SessionRunner {
  * @param opts.sessionId - Session ID (already created via manager.create or loaded for resume)
  * @param opts.queue - Queue to execute (fresh from buildQueueForSlashCommand or loaded from persistence)
  * @param opts.description - Human-readable session description
- * @param opts.callbacks - UI notification callbacks (blocks, steps, metrics)
+ * @param opts.updateEntry - Function to write updates directly to the reactive session store
  * @param opts.priorBlocks - Output blocks from a previous run (for resume — prepended to new output)
  */
 export function createWorkflowRunner(opts: {
   sessionId: string
   queue: Queue
   description: string
-  callbacks: WorkflowCallbacks
+  updateEntry: UpdateEntryFn
+  factories: WorkflowSessionFactories
   priorBlocks?: AnyBlock[]
-  projectCwd?: string
   overrides?: WorkflowRunnerOverrides
 }): WorkflowRunner {
-  const { sessionId, queue, description, callbacks, priorBlocks } = opts
-  const projectCwd = opts.overrides?.projectCwd ?? opts.projectCwd ?? process.cwd()
+  const { sessionId, queue, description, updateEntry, priorBlocks } = opts
+  const projectCwd = opts.overrides?.projectCwd ?? process.cwd()
   const subprocessCwd = opts.overrides?.subprocessCwd
 
   // Prepare workflow deps (config, engine, etc.)
   const deps = prepareWorkflowDeps()
 
-  // Session resources (timer, store, adapter, event bus)
+  // Output persistence — set up BEFORE session so the adapter captures the wrapper
+  const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+  let currentBlocks: AnyBlock[] = []
+  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
+
+  // Persistence-aware updateEntry: intercepts outputBlocks writes from the adapter
+  // to prepend priorBlocks and schedule disk persistence, then delegates to the
+  // registry's updateEntry for all patches.
+  // priorBlocks is immutable — use concat to avoid spreading both arrays on every write.
+  const priorBlocksPrefix = priorBlocks ?? []
+  const wrappedUpdateEntry = (patch: Partial<import("./session-registry").WorkflowSessionEntry>) => {
+    if (patch.outputBlocks) {
+      currentBlocks = priorBlocksPrefix.length > 0
+        ? priorBlocksPrefix.concat(patch.outputBlocks)
+        : patch.outputBlocks
+      updateEntry(sessionId, { ...patch, outputBlocks: currentBlocks })
+      outputFlusher.schedule()
+      return
+    }
+    updateEntry(sessionId, patch)
+  }
+
+  // Session resources (timer, adapter, event bus)
   const session = createWorkflowSession({
     description,
     engineMetadata: deps.engine.metadata,
     eventBus: opts.overrides?.eventBus,
+    factories: opts.factories,
+    updateEntry: wrappedUpdateEntry,
   })
-  const { eventBus, store: uiActions } = session
-  const activeSessionRef: { current: WorkflowSession | null } = { current: session }
-
+  const { eventBus } = session
   const emit = createEmit(eventBus)
-  const workflowIdRef = { current: randomUUID() }
+  const workflowId = randomUUID()
 
   // Shared session infrastructure (budget, traces, transcripts)
   const infra = createSessionInfra({
@@ -140,22 +145,46 @@ export function createWorkflowRunner(opts: {
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
 
-  // Wire metrics, model activity, and output persistence
-  const wiring = wireMetricsAndUI(budgetTracker, uiActions, callbacks, sessionId, projectCwd, priorBlocks)
+  // Wire metrics: budget tracker writes directly to the session store
+  budgetTracker.onMetricsChange = (tokens, cost) => {
+    const contextPercent = budgetTracker.getContextUtilization().percent
+    updateEntry(sessionId, { tokens, cost, contextPercent })
+  }
 
-  // Wire step and trace event subscriptions
-  const eventUnsubs = wireEventSubscriptions(eventBus, queue, callbacks, traceCollector ?? undefined)
+  // Wire event subscriptions: step events write directly to session store
+  const eventUnsubs: Unsubscribe[] = []
+  eventUnsubs.push(
+    eventBus.subscribe((event) => {
+      if (event.type === "queue:step-started") {
+        updateEntry(sessionId, {
+          steps: queue.steps.map((s) => ({
+            ...toStepState(s),
+            ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
+          })),
+        })
+      }
+      if (event.type === "queue:step-completed" || event.type === "queue:step-failed") {
+        updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
+      }
+    }),
+  )
+
+  // Trace collector events
+  if (traceCollector) {
+    eventUnsubs.push(...traceCollector.subscribeToEvents(eventBus))
+  }
 
   // Initialize step display
-  callbacks.onSteps(queue.steps.map(toStepState))
+  updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
   // Build executor
   let executor: StepExecutor | null = null
   let disposed = false
 
-  // Hoisted refs so injectMessage can access them outside run()
-  const stdinHandleRef: { current: StdinHandle | null } = { current: null }
-  const pendingInjection: { queue: string[] } = { queue: [] }
+  // InjectionQueue — constructed here (after prepareWorkflowDeps) so injectMessage can access it outside run()
+  const injectionQueue = new InjectionQueue(
+    (text: string) => formatStdinMessage(deps.engine.metadata.id, text),
+  )
 
   // Pool refs — created inside run(), shut down in dispose()
   let dispatcherPool: WarmPool<SpawnResult> | null = null
@@ -163,103 +192,20 @@ export function createWorkflowRunner(opts: {
   let subprocessPool: WarmPool<RawSpawnedProcess> | null = null
 
   async function run(): Promise<WorkflowResult> {
-    // Sprint detection: if any step has SPRINT_HINT, wire the sprint hook.
-    // Sprint tier config ([sprint.worker], [sprint.evaluator], etc.) is resolved
-    // by resolveTierConfigs when mode="sprint" — no config cloning needed.
-    const isSprint = queue.steps.some((s) => s.dispatcherHint === SPRINT_HINT)
-    const externalHooks: OnStepCompletedHook[] = []
-    if (isSprint) {
-      const { hook } = createSprintHook(deps.config.sprint)
-      externalHooks.push(hook)
-    }
-
-    // Create warm pools — passes mode so resolveTierConfigs applies sprint overrides
-    const pools = createWarmPools(deps, projectCwd, subprocessCwd, isSprint ? "sprint" : undefined)
-    dispatcherPool = pools.dispatcher
-    evaluatorPool = pools.evaluator
-    subprocessPool = pools.subprocess
-
-    const stdinFormatter = (text: string) => formatStdinMessage(deps.engine.metadata.id, text)
-
-    // Sprint evaluator uses Opus — override the 60s speed pressure with quality focus
-    const evaluatorAddendum = isSprint
-      ? "You are evaluating sprint mode work. Evaluate against the 6-point self-review checklist " +
-        "(diff review, task alignment, completeness, test coverage, regression, edge cases). " +
-        "PASS work that meets the task requirements. " +
-        "Only FAIL for hard evidence: tests failing, critical deliverables missing, or fundamentally broken output."
-      : undefined
-
-    const { dispatcherTransport, evaluatorTransport } = resolveTransports(
-      deps, eventBus, workflowIdRef, "", sessionId, projectCwd,
-      evaluatorAddendum,
-      { dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage: stdinFormatter },
-    )
-
-    const contextIndexer = opts.overrides?.contextIndexer ?? new ContextIndexer(projectCwd)
-
-    // Create trace event handler (gated by tracing config)
-    const traceEventHandler = deps.config.tracing.enabled
-      ? createTraceEventHandler({ emit, workflowIdRef })
-      : null
-
-    // Post-turn verification applies to all workflow types, not just sprint.
-    // Native checks re-run commands from the handoff independently via Bun.spawn
-    // after the worker exits. Self-review injection happens at the turn boundary
-    // in subprocess-callback.ts (same mechanism as observer injection —
-    // pushed to pendingInjection.queue).
-    const postTurnVerification = createPostTurnVerificationHook({
-      nativeChecks: true,
-      nativeCheckTypes: ["build", "test", "has-changes"],
-      selfReview: false, // self-review is handled at turn boundary in subprocess-callback, not here
-      maxFixAttempts: 2,
-      projectCwd,
+    // Build the full executor (sprint hooks, pools, transports, observers, wiring, guardrails, persistence)
+    const created = createExecutor({
+      deps, emit, eventBus, workflowId, sessionId, queue, description,
+      projectCwd, subprocessCwd, budgetTracker, transcriptWriter,
+      injectionQueue, contextIndexer: opts.overrides?.contextIndexer,
     })
-
-    const execDeps = buildExecutorDeps({
-      deps: deps, emit, workflowIdRef, dispatcherTransport, evaluatorTransport,
-      contextIndexer, projectCwd, subprocessCwd, sessionObjective: description, queue, sessionId,
-      stdinHandleRef,
-      capturedSubprocessSessionId: { current: undefined },
-      pendingInjection,
-      activeSessionRef,
-      budgetTracker,
-      traceEventHandler,
-      transcriptWriter,
-      subprocessPool,
-      externalHooks,
-    })
-
-    const guardrails = createGuardrails({
-      maxQueueLength: deps.config.queue?.max_steps ?? 50,
-      maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
-      maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
-    })
-
-    const persistence = createQueuePersistence({ sessionId, baseDir: projectCwd })
-
-    executor = createStepExecutor({
-      queue,
-      workflowId: workflowIdRef.current,
-      sessionId,
-      emit,
-      dispatcher: execDeps.dispatcherFn,
-      worker: execDeps.subprocessFn,
-      evaluator: execDeps.evaluator,
-      skipEvaluation: deps.config.skip_evaluation ?? false,
-      handoffReader: execDeps.handoffReader,
-      budgetChecker: { isExhausted: () => false },
-      persist: async (q) => { try { await persistence.save(q) } catch { /* best-effort */ } },
-      accumulator: execDeps.contextAccumulator,
-      maxRevisions: deps.config.max_revisions ?? 1,
-      onStepCompleted: execDeps.compositeHook,
-      guardrails,
-      sessionObjective: description,
-      onSubprocessDispatched: () => budgetTracker.incrementInvocations(),
-      postTurnVerification,
-    })
+    executor = created.executor
+    dispatcherPool = created.pools.dispatcher
+    evaluatorPool = created.pools.evaluator
+    subprocessPool = created.pools.subprocess
+    eventUnsubs.push(...created.eventUnsubs)
 
     // Generate session title via haiku in parallel — doesn't block execution
-    generateSessionTitle(description, (title) => callbacks.onSessionName(title))
+    generateSessionTitle(description, (title) => updateEntry(sessionId, { description: title }))
 
     const result = await executor.run()
 
@@ -270,7 +216,7 @@ export function createWorkflowRunner(opts: {
     }
 
     // Final step states
-    callbacks.onSteps(queue.steps.map(toStepState))
+    updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
     budgetTracker.flush()
     return {
@@ -292,22 +238,7 @@ export function createWorkflowRunner(opts: {
   }
 
   function injectMessage(text: string): boolean {
-    const engineId = deps.engine?.metadata?.id ?? "claude"
-    const formatted = formatStdinMessage(engineId, text)
-
-    // Try direct write if pipe is open
-    if (stdinHandleRef.current) {
-      if (stdinHandleRef.current.isOpen) {
-        try {
-          stdinHandleRef.current.write(formatted)
-          return true
-        } catch { /* fall through to queuing */ }
-      }
-    }
-
-    // Queue for turn-boundary injection
-    pendingInjection.queue.push(text)
-    return true
+    return injectionQueue.deliverOrEnqueue(text)
   }
 
   function cancelShutdown(): void {
@@ -317,21 +248,12 @@ export function createWorkflowRunner(opts: {
   async function dispose(): Promise<void> {
     if (disposed) return
     disposed = true
+
+    // 1. Unsubscribe event listeners
     budgetTracker.onMetricsChange = undefined
     eventUnsubs.forEach((u) => u())
-    wiring.storeUnsub()
-    wiring.execUnsub?.()
-    destroyWorkflowSession(session)
-    activeSessionRef.current = null
-    // Finalize trace if not already finalized (abort path)
-    if (traceCollector && !traceFinalized) {
-      traceFinalized = true
-      traceCollector.finalize("error")
-    }
-    traceWriter?.dispose()
-    transcriptWriter?.dispose()
-    budgetTracker.dispose()
-    // Shut down warm pools (covers complete, abort, and error paths)
+
+    // 2. Shut down warm pools
     await Promise.all([
       dispatcherPool?.shutdown(),
       evaluatorPool?.shutdown(),
@@ -340,8 +262,22 @@ export function createWorkflowRunner(opts: {
     dispatcherPool = null
     evaluatorPool = null
     subprocessPool = null
-    await wiring.outputFlusher.flush()
-    wiring.outputFlusher.dispose()
+
+    // 3. Unified resource disposal (finalize → flush → dispose)
+    //    If traces were already finalized in run(), pass null traceCollector
+    //    to skip double-finalize. For the abort path, pass the collector so
+    //    open spans get closed with "error" status.
+    const resources: SessionResources = {
+      budgetTracker,
+      traceWriter,
+      transcriptWriter,
+      traceCollector: traceFinalized ? null : traceCollector,
+      outputFlusher,
+    }
+    await disposeSessionResources(resources, traceFinalized ? "ok" : "error")
+
+    // 4. Destroy reactive root LAST (per P1 Finding 1)
+    destroyWorkflowSession(session)
     executor = null
   }
 
@@ -354,87 +290,5 @@ function toStepState(s: { id: string; type: string; title: string; status: strin
   return { id: s.id, type: s.type, title: s.title, status: s.status }
 }
 
-// ── Metrics + UI wiring ──
 
-interface MetricsWiring {
-  execUnsub: (() => void) | null
-  storeUnsub: () => void
-  outputFlusher: { schedule(): void; flush(): Promise<void>; dispose(): void }
-  getCurrentBlocks: () => AnyBlock[]
-}
-
-function wireMetricsAndUI(
-  budgetTracker: BudgetTracker,
-  uiActions: WorkflowStore,
-  callbacks: WorkflowCallbacks,
-  sessionId: string,
-  projectCwd: string,
-  priorBlocks: AnyBlock[] | undefined,
-): MetricsWiring {
-  // Event-driven metrics: batch both updates into a single callback to avoid double notify()
-  budgetTracker.onMetricsChange = (tokens, cost) => {
-    callbacks.onMetrics?.(tokens, cost)
-  }
-
-  // Wire store → model activity
-  let execUnsub: (() => void) | null = null
-  if (callbacks.onModelActivity) {
-    let lastActivity = uiActions.getState().modelActivity;
-    execUnsub = uiActions.subscribeExecution(() => {
-      const activity = uiActions.getState().modelActivity;
-      if (activity !== lastActivity) {
-        lastActivity = activity;
-        callbacks.onModelActivity!(activity);
-      }
-    });
-  }
-
-  // Output persistence
-  const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  let currentBlocks: AnyBlock[] = []
-  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
-
-  // Wire store → blocks callback
-  const storeUnsub = uiActions.subscribe(() => {
-    const newBlocks = uiActions.getState().outputBlocks ?? []
-    currentBlocks = priorBlocks ? [...priorBlocks, ...newBlocks] : newBlocks
-    callbacks.onBlocks(currentBlocks)
-    outputFlusher.schedule()
-  })
-
-  return { execUnsub, storeUnsub, outputFlusher, getCurrentBlocks: () => currentBlocks }
-}
-
-// ── Event subscription wiring ──
-
-function wireEventSubscriptions(
-  eventBus: import("../infra/event-bus").EventBus,
-  queue: Queue,
-  callbacks: WorkflowCallbacks,
-  traceCollector: TraceCollector | undefined,
-): Unsubscribe[] {
-  const unsubs: Unsubscribe[] = []
-
-  // Step events
-  unsubs.push(
-    eventBus.subscribe((event) => {
-      if (event.type === "queue:step-started") {
-        callbacks.onSteps(queue.steps.map((s) => ({
-          ...toStepState(s),
-          ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
-        })))
-      }
-      if (event.type === "queue:step-completed" || event.type === "queue:step-failed") {
-        callbacks.onSteps(queue.steps.map(toStepState))
-      }
-    }),
-  )
-
-  // Trace collector events
-  if (traceCollector) {
-    unsubs.push(...traceCollector.subscribeToEvents(eventBus))
-  }
-
-  return unsubs
-}
 

@@ -12,7 +12,7 @@ import { buildDispatcherSystemPrompt } from "./system-prompt.js";
 import { renderDispatcherHandoffInstruction } from "../queue/shared/handoff-render.js";
 import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "./schemas.js";
 import { mapHandoffToDecision } from "./map-handoff.js";
-import { buildDispatcherHandoffPath } from "../../infra/paths.js";
+import { buildInvocationHandoffPath } from "../../infra/paths.js";
 
 import {
   type PoolHandle,
@@ -37,7 +37,8 @@ export class PooledSubprocessTransport implements DispatcherTransport {
       this.opts.pool,
       {
         role: "dispatcher",
-        buildHandoffPath: buildDispatcherHandoffPath,
+        buildHandoffPath: (sessionId, invocationId, baseDir) =>
+          buildInvocationHandoffPath("dispatcher", sessionId, invocationId, baseDir),
         buildFullPrompt: (handoffPath) => {
           const handoffInstruction = renderDispatcherHandoffInstruction(handoffPath);
           return `${userContent}\n\n${handoffInstruction}`;

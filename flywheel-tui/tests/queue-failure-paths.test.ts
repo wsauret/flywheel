@@ -204,48 +204,9 @@ describe("queue executor failure paths", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 5. Budget exhaustion before step 3
+  // 5. (Removed) Budget exhaustion — budget enforcement is now event-driven
+  //    via BudgetTracker, not per-step checks in the executor.
   // -------------------------------------------------------------------------
-
-  test("budget exhaustion pauses queue before step 3", async () => {
-    resetStepCounter();
-    const steps = [
-      makeStep({ id: "step-1" }),
-      makeStep({ id: "step-2" }),
-      makeStep({ id: "step-3" }),
-      makeStep({ id: "step-4" }),
-      makeStep({ id: "step-5" }),
-    ];
-
-    harness = createHarness({
-      steps,
-      budgetChecker: { exhaustAfterChecks: 2 },
-    });
-
-    const result = await harness.executor.run();
-
-    // Steps 1-2 complete
-    const step1 = harness.queue.steps.find((s) => s.id === "step-1")!;
-    const step2 = harness.queue.steps.find((s) => s.id === "step-2")!;
-    expect(step1.status).toBe("completed");
-    expect(step2.status).toBe("completed");
-
-    // Step 3 never started
-    const step3 = harness.queue.steps.find((s) => s.id === "step-3")!;
-    expect(step3.status).toBe("pending");
-
-    // Queue status paused
-    expect(harness.queue.status).toBe("paused");
-
-    // queue:failed event with budget reason
-    const queueFailed = harness.events.ofType("queue:failed");
-    expect(queueFailed.length).toBeGreaterThanOrEqual(1);
-    expect(queueFailed.some((e) => e.reason.includes("budget"))).toBe(true);
-
-    // Result
-    expect(result.completed).toBe(false);
-    expect(result.stepsCompleted).toBe(2);
-  });
 
   // -------------------------------------------------------------------------
   // 6. Abort mid-step

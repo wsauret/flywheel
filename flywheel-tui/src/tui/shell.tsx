@@ -14,17 +14,17 @@ import { SplitBorder } from "./shared/ui/border"
 import { SIMPLE_LOGO } from "@tui/shared/components/logo"
 import { SessionModal } from "./session-modal"
 import { createSessionRegistry } from "../orchestration/session-registry"
+import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
 import { formatElapsed, formatCost, formatTokens, relativeTime } from "./format"
 import { useMetrics, SPINNER_FRAMES } from "./hooks/use-metrics.js"
-import { useRegistrySync } from "./hooks/use-registry-sync.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
 import { useSessionModal } from "./hooks/use-session-modal.js"
 import { createShellState } from "./hooks/shell-state.js"
-import { TERMINAL_TITLE_PREFIX } from "./hooks/use-workflow-lifecycle.js"
+import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 
-export function FlywheelShell() {
+export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
   const { theme } = useTheme()
   const toast = useToast()
   const { manager, refreshList, sessions } = useSession()
@@ -32,7 +32,7 @@ export function FlywheelShell() {
   const dimensions = useTerminalDimensions()
 
   // ── Session registry ──
-  const registry = createSessionRegistry()
+  const registry = createSessionRegistry(props.factories)
 
   // ── Metrics (local hook — not part of shell state, but injected as a service) ──
   const metrics = useMetrics()
@@ -90,11 +90,22 @@ export function FlywheelShell() {
     endChat: chat.endChat,
     sendMessage: chat.sendMessage,
     handleResume: workflow.handleResume,
+    steerWorkflow: workflow.steerWorkflow,
     openSessionsModal: sessionModal.openSessionsModal,
   })
 
-  // ── Registry subscription — sync foreground entry to display signals ──
-  const registryUnsub = useRegistrySync({ signals, services })
+  // ── Metrics sync — registry entry drives metrics via slim effect ──
+  createEffect(() => {
+    const entry = signals.registryEntry()
+    if (!entry) return
+    metrics.setActivity(entry.modelActivity)
+    metrics.setTokens(entry.tokens)
+    metrics.setCost(entry.cost)
+    metrics.setContextPercent(entry.contextPercent)
+  })
+
+  // ── Running count — backed by registry's internal createMemo ──
+  const runningCount = createMemo(() => registry.runningCount())
 
   // ── Timer — reactive: runs only when the agent is actively working ──
   createEffect(() => {
@@ -103,19 +114,17 @@ export function FlywheelShell() {
   })
 
   // ── Foreground switching ──
+  // After Phase 3, changing foregroundId triggers all derived memos automatically.
+  // This helper just sets the ID and resets transient UI state.
   function switchForeground(sessionId: string): void {
     const entry = registry.get(sessionId)
     if (!entry) return
     metrics.pauseTimer()  // stop old interval before resetting accumulated value
     signals.setForegroundId(sessionId)
-    // Entry exists in registry = active; sessionState() will derive "active" from registry.has
-    signals.setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
-    // Sync display state from the entry — registry sync only fires on entry
-    // updates, so an idle session would never push its blocks to the UI.
-    signals.setOutputBlocks([...entry.outputBlocks])
-    if (entry.kind === "workflow") signals.setSteps([...entry.steps])
-    else signals.setSteps([])
-    signals.setSessionTitle(entry.description)
+    // Clear overlays so live registry data shows through
+    signals.setViewedBlocks(undefined)
+    signals.setViewedTitle(undefined)
+    // Derived memos (agentState, outputBlocks, steps, sessionTitle) update automatically
     metrics.resetElapsedTo(Date.now() - entry.startedAt)
     // effect above handles start/pause based on new agentState
     signals.setStatusLine("")
@@ -131,7 +140,7 @@ export function FlywheelShell() {
       // Active workflow (not chat): first Esc pauses, second Esc aborts
       if (state === "active" && !inChat()) {
         workflow.pauseForeground()
-        const bg = signals.runningCount()
+        const bg = runningCount()
         if (bg > 0) toast.show({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
         return
       }
@@ -150,12 +159,10 @@ export function FlywheelShell() {
           sessionModal.dismissViewedSession()
           return
         }
-        signals.setAgentState("idle")
-        signals.setOutputBlocks([])
-        signals.setSteps([])
+        // Derived memos (agentState, outputBlocks, steps, sessionTitle) reset automatically
+        // when foregroundId is cleared — they derive from the registry entry.
         signals.setStatusLine("")
         signals.setErrorMessage("")
-        signals.setSessionTitle("")
         signals.setForegroundId(undefined)
         renderer.setTerminalTitle("flywheel")
         return
@@ -170,21 +177,20 @@ export function FlywheelShell() {
     if (evt.ctrl && evt.name === "w") {
       if (inChat()) { chat.endChat(); chat.startChat(); return }
       // For workflows: abort the foreground session
-      const fgId = signals.foregroundId()
-      if (fgId) { registry.abort(fgId); return }
+      workflow.abortForeground()
+      return
     }
     if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }
     if (evt.ctrl && evt.name === "r") { workflow.handleResume() }
     if (evt.ctrl && evt.name === "c") {
       // Exit if no workflows running (chat sessions don't block exit)
-      const hasWorkflows = registry.allIds().some((id) => registry.get(id)?.kind === "workflow")
+      const hasWorkflows = registry.allIds().some((id) => workflow.isWorkflowSession(id))
       if (!hasWorkflows) { exitTUI() }
     }
   })
 
   // ── Cleanup ──
   onCleanup(() => {
-    registryUnsub()
     // Dispose all sessions (abort + flush output for every session, including background)
     registry.disposeAll().catch(() => {})
     metrics.stopTimer()
@@ -194,14 +200,15 @@ export function FlywheelShell() {
   // ── Derived state ──
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
   const currentStep = createMemo(() => {
-    const running = signals.steps().find((s) => s.status === "running")
-    if (!running) return null
-    return { index: signals.steps().indexOf(running), name: running.title, status: "running" as const }
+    const steps = signals.steps()
+    const idx = steps.findIndex((s) => s.status === "running")
+    if (idx === -1) return null
+    return { index: idx, name: steps[idx].title, status: "running" as const }
   })
 
   const headerRight = createMemo(() => {
     const state = signals.sessionState()
-    const bgCount = signals.runningCount()
+    const bgCount = runningCount()
     const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && signals.agentState() !== "active" ? ` (1 running)` : ""
     if (state === null) return bgCount > 0 ? `${bgCount} running` : (signals.errorMessage() ? "error" : "ready")
     if (state === "paused") return (signals.errorMessage() ? "error" : "paused") + bgSuffix
@@ -356,7 +363,7 @@ export function FlywheelShell() {
               : signals.sessionState() === "paused"
                 ? "Esc to stop \u00b7 Ctrl+R to resume"
                 : "Ctrl+N \u00b7 /exit"}
-            {` \u00b7 Ctrl+B`}{signals.runningCount() > 1 || sessions().length > 1 ? ` (${signals.runningCount()} active \u00b7 ${sessions().length} total)` : ""}
+            {` \u00b7 Ctrl+B`}{runningCount() > 1 || sessions().length > 1 ? ` (${runningCount()} active \u00b7 ${sessions().length} total)` : ""}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>
         </box>

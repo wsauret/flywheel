@@ -2,7 +2,7 @@
  * Session Orchestrator
  *
  * Extracts lifecycle orchestration logic out of the shell: resume
- * and delete operations. All dependencies are injected via factory
+ * operations. All dependencies are injected via factory
  * function — NO direct imports of shell/session/TUI.
  *
  * Factory pattern matching `createSessionManager(deps)`, `createWorktreeManager(deps)`.
@@ -10,7 +10,7 @@
  * Usage:
  *   const orchestrator = createSessionOrchestrator({
  *     readSession, createOutputPersistence, fromSnapshot,
- *     manager, refreshList,
+ *     manager, refreshList,  // kept in deps interface for caller compatibility
  *   });
  *   const result = await orchestrator.handleResumeSession(sessionId);
  */
@@ -74,9 +74,6 @@ export interface SessionOrchestratorDeps {
 export interface SessionOrchestrator {
   /** Resume a session: load from disk, restore output blocks. */
   handleResumeSession(sessionId: string): Promise<ResumeResult | null>;
-
-  /** Delete a session: remove files, cleanup, refresh list. */
-  handleDeleteSession(sessionId: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,8 +92,6 @@ export function createSessionOrchestrator(
     readSession,
     createOutputPersistence,
     fromSnapshot,
-    manager,
-    refreshList,
   } = deps;
 
   // -------------------------------------------------------------------------
@@ -144,16 +139,7 @@ export function createSessionOrchestrator(
     };
   }
 
-  async function handleDeleteSession(sessionId: string): Promise<void> {
-    // Delete session (files + cache + worktree cleanup)
-    manager.delete(sessionId);
-
-    // Refresh the session list
-    refreshList();
-  }
-
   return {
     handleResumeSession,
-    handleDeleteSession,
   };
 }

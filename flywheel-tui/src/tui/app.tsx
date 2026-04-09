@@ -21,7 +21,7 @@ import { SessionProvider } from "@tui/shared/context/session"
 import { createSessionManager } from "../orchestration/session/manager"
 import { ErrorComponent } from "./components/error-boundary"
 import { loadConfig } from "../orchestration/config/loader"
-import { provideSessionFactories } from "../orchestration/workflow-session"
+import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
 import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
 import { setExitHandler } from "./exit.js"
@@ -52,17 +52,13 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
       resolve()
     }
 
-    // Wire concrete TUI factories into the orchestration layer (DIP boundary)
+    // Build concrete TUI factories (DIP boundary — no global singleton)
     const { OpenTUIAdapter } = await import("./adapters/opentui")
-    const { createStore } = await import("./routes/work/context/ui-state/store")
     const { TimerService } = await import("./shared/services/timer")
-    provideSessionFactories({
-      createStore: (key) => createStore(key),
-      // Safe: createStore() returns UIActions which satisfies WorkflowStore.
-      // The adapter needs the full UIActions at runtime, which is what it gets.
-      createAdapter: (opts) => new OpenTUIAdapter(opts as unknown as import("./adapters/opentui").OpenTUIAdapterOptions),
+    const factories: WorkflowSessionFactories = {
+      createAdapter: (opts) => new OpenTUIAdapter(opts),
       createTimer: () => new TimerService(),
-    })
+    }
 
     // Lazy import FlywheelShell to ensure OpenTUI preload has registered
     const { FlywheelShell } = await import("./shell")
@@ -83,7 +79,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
                 <SessionProvider manager={manager}>
-                  <FlywheelShell />
+                  <FlywheelShell factories={factories} />
                 </SessionProvider>
               </ThemeProvider>
             </ToastProvider>
