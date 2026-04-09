@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
 
 import { createQueue } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";
-import type { FlywheelEmitter } from "../src/infra/event-bus";
+import type { EmitFn } from "../src/infra/event-bus";
 import type {
   DispatcherFn,
   EvaluatorFn,
@@ -38,17 +38,8 @@ function makeStep(overrides: Partial<Step> = {}): Step {
   };
 }
 
-function createMockEmitter(): FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> } {
-  const events: Array<{ method: string; args: unknown[] }> = [];
-  const handler = {
-    get(_target: unknown, prop: string) {
-      if (prop === "events") return events;
-      return (...args: unknown[]) => {
-        events.push({ method: prop, args });
-      };
-    },
-  };
-  return new Proxy({} as FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> }, handler);
+function createMockEmit(): EmitFn {
+  return ((type: string, payload: unknown) => {}) as EmitFn;
 }
 
 function createSuccessWorker(output = "done"): WorkerFn {
@@ -115,7 +106,7 @@ function createDefaultDeps(overrides: Partial<StepRunnerDeps> = {}): StepRunnerD
   return {
     queue,
     workflowId: randomUUID(),
-    emitter: createMockEmitter(),
+    emit: createMockEmit(),
     dispatcher: createSimpleDispatcher(),
     worker: createSuccessWorker(),
     evaluator: null,

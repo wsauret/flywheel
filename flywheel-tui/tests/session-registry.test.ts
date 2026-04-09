@@ -84,10 +84,10 @@ describe("SessionRegistry — chat entries", () => {
     expect(registry.has("nonexistent")).toBe(false)
   })
 
-  it("activeIds() includes chat session IDs", async () => {
+  it("allIds() includes chat session IDs", async () => {
     await startTestChat()
 
-    const ids = registry.activeIds()
+    const ids = registry.allIds()
     expect(ids).toContain("chat-001")
   })
 
@@ -127,8 +127,8 @@ describe("SessionRegistry — chat entries", () => {
   it("workflow + chat entries coexist", async () => {
     await startTestChat()
 
-    // Both should appear in activeIds
-    const ids = registry.activeIds()
+    // Both should appear in allIds
+    const ids = registry.allIds()
     expect(ids).toContain("chat-001")
 
     // Get returns correct types

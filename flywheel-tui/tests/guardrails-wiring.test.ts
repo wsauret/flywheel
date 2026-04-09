@@ -3,7 +3,7 @@ import { createStepExecutor, type StepExecutorOptions } from "../src/workflows/q
 import { createGuardrails, type Guardrails } from "../src/workflows/queue/guardrails";
 import { createQueue } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";
-import type { FlywheelEmitter } from "../src/infra/event-bus";
+import type { EmitFn } from "../src/infra/event-bus";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -19,17 +19,8 @@ function makeStep(overrides?: Partial<Step>): Step {
   };
 }
 
-function makeEmitter(): FlywheelEmitter {
-  return {
-    queueInitialized: () => {},
-    queueCompleted: () => {},
-    queueFailed: () => {},
-    queueStepStarted: () => {},
-    queueStepCompleted: () => {},
-    queueStepFailed: () => {},
-    queueStepInserted: () => {},
-    subprocessOutput: () => {},
-  } as unknown as FlywheelEmitter;
+function makeEmit(): EmitFn {
+  return ((type: string, payload: unknown) => {}) as EmitFn;
 }
 
 function makeExecutorOptions(
@@ -39,7 +30,7 @@ function makeExecutorOptions(
   return {
     queue,
     workflowId: "test-wf",
-    emitter: makeEmitter(),
+    emit: makeEmit(),
     dispatcher: async (step) => ({
       prompt: `Execute ${step.title}`,
       evaluationCriteria: null,

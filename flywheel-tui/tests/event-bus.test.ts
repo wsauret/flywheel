@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
+import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import { MockAdapter } from "./helpers/mock-adapter";
 import type { FlywheelEvent } from "../src/infra/events";
 
@@ -14,7 +14,7 @@ describe("EventBus", () => {
     type: "queue:initialized",
     workflowId: "test-id",
     stepIds: ["s1"],
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
   });
 
   // -- subscribe --
@@ -83,7 +83,7 @@ describe("EventBus", () => {
       type: "queue:completed",
       workflowId: "test-id",
       stepsCompleted: 1,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
 
     expect(received).toHaveLength(1);
@@ -135,17 +135,34 @@ describe("EventBus", () => {
 });
 
 // ---------------------------------------------------------------------------
-// createFlywheelEmitter
+// createEmit — generic typed emitter
 // ---------------------------------------------------------------------------
 
-describe("createFlywheelEmitter", () => {
-  it("emits queue:initialized with correct fields", () => {
+describe("createEmit", () => {
+  it("emits subprocess:spawned with correct fields via createEmit", () => {
     const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
+    const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.queueInitialized("wf-1", ["s1", "s2"]);
+    emit("subprocess:spawned", { workflowId: "w1", stepIndex: 0 });
+
+    expect(received).toHaveLength(1);
+    expect(received[0].type).toBe("subprocess:spawned");
+    if (received[0].type === "subprocess:spawned") {
+      expect(received[0].workflowId).toBe("w1");
+      expect(received[0].stepIndex).toBe(0);
+      expect(typeof received[0].timestamp).toBe("number");
+    }
+  });
+
+  it("emits queue:initialized with correct fields", () => {
+    const bus = new EventBus();
+    const emit = createEmit(bus);
+    const received: FlywheelEvent[] = [];
+    bus.subscribe((e) => received.push(e));
+
+    emit("queue:initialized", { workflowId: "wf-1", stepIds: ["s1", "s2"] });
 
     expect(received).toHaveLength(1);
     expect(received[0].type).toBe("queue:initialized");
@@ -158,11 +175,11 @@ describe("createFlywheelEmitter", () => {
 
   it("emits budget:warning with correct fields", () => {
     const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
+    const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.budgetWarning("wf-1", "invocations", 8, 10, 2);
+    emit("budget:warning", { workflowId: "wf-1", metric: "invocations", used: 8, limit: 10, remaining: 2 });
 
     expect(received).toHaveLength(1);
     expect(received[0].type).toBe("budget:warning");
@@ -178,11 +195,11 @@ describe("createFlywheelEmitter", () => {
 
   it("emits budget:exhausted with correct fields", () => {
     const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
+    const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.budgetExhausted("wf-1", "Invocation limit reached");
+    emit("budget:exhausted", { workflowId: "wf-1", reason: "Invocation limit reached" });
 
     expect(received).toHaveLength(1);
     expect(received[0].type).toBe("budget:exhausted");
@@ -195,11 +212,11 @@ describe("createFlywheelEmitter", () => {
 
   it("emits subprocess:retrying with correct fields", () => {
     const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
+    const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.subprocessRetrying("wf-1", 2, 5, "transient error");
+    emit("subprocess:retrying", { workflowId: "wf-1", attempt: 2, maxAttempts: 5, reason: "transient error" });
 
     expect(received).toHaveLength(1);
     if (received[0].type === "subprocess:retrying") {
@@ -229,7 +246,7 @@ describe("MockAdapter", () => {
       type: "queue:initialized",
       workflowId: "test",
       stepIds: ["s1"],
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     expect(adapter.events).toHaveLength(1);
     expect(adapter.events[0].type).toBe("queue:initialized");
@@ -241,14 +258,14 @@ describe("MockAdapter", () => {
       type: "queue:initialized",
       workflowId: "test",
       stepIds: ["s1"],
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     adapter.disconnect();
     bus.emit({
       type: "queue:completed",
       workflowId: "test",
       stepsCompleted: 1,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     expect(adapter.events).toHaveLength(1);
   });
@@ -259,7 +276,7 @@ describe("MockAdapter", () => {
       type: "queue:initialized",
       workflowId: "test",
       stepIds: ["s1"],
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     expect(adapter.events).toHaveLength(1);
 
@@ -271,25 +288,9 @@ describe("MockAdapter", () => {
       type: "queue:completed",
       workflowId: "test",
       stepsCompleted: 1,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     expect(adapter.events).toHaveLength(1);
-  });
-
-  it("isConnected returns correct state", () => {
-    expect(adapter.isConnected()).toBe(false);
-    adapter.connect(bus);
-    expect(adapter.isConnected()).toBe(true);
-    adapter.disconnect();
-    expect(adapter.isConnected()).toBe(false);
-  });
-
-  it("isRunning returns correct state", () => {
-    expect(adapter.isRunning()).toBe(false);
-    adapter.start();
-    expect(adapter.isRunning()).toBe(true);
-    adapter.stop();
-    expect(adapter.isRunning()).toBe(false);
   });
 
   it("connect guards against double-connect", () => {
@@ -298,7 +299,7 @@ describe("MockAdapter", () => {
       type: "queue:initialized",
       workflowId: "test",
       stepIds: ["s1"],
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
 
     // Connect again — should disconnect first, not duplicate subscriptions
@@ -310,7 +311,7 @@ describe("MockAdapter", () => {
       type: "queue:completed",
       workflowId: "test",
       stepsCompleted: 1,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     expect(adapter.events).toHaveLength(1); // only the first event before reconnect
 
@@ -319,7 +320,7 @@ describe("MockAdapter", () => {
       type: "queue:initialized",
       workflowId: "test-2",
       stepIds: ["s2"],
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     expect(adapter.events).toHaveLength(2);
   });

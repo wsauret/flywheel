@@ -14,7 +14,7 @@ import { createContextAccumulator } from "../workflows/queue/context-accumulator
 import { createCompositeHook } from "../workflows/queue/shared/hooks"
 import "../workflows/queue/steps/register-all"
 import { resolveTierConfigs } from "./config/loader"
-import { createFlywheelEmitter } from "../infra/event-bus"
+import { type EmitFn } from "../infra/event-bus"
 import { Log } from "../infra/log"
 import { errorMessage } from "../infra/error-message"
 import { ContextIndexer } from "./memory/indexer"
@@ -90,7 +90,7 @@ export function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workfl
 /** Core dependencies for building executor deps. */
 export interface BuildExecutorCoreDeps {
   deps: WorkflowDeps;
-  emitter: ReturnType<typeof createFlywheelEmitter>;
+  emit: EmitFn;
   workflowIdRef: { current: string };
   queue: Queue;
   /** Session ID for session-scoped file paths. */
@@ -143,7 +143,7 @@ export type BuildExecutorDepsOpts = BuildExecutorCoreDeps & BuildExecutorExtensi
  */
 export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
   const {
-    deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
+    deps, emit, workflowIdRef, dispatcherTransport, evaluatorTransport,
     contextIndexer, projectCwd, sessionObjective, queue, stdinHandleRef,
     seedHandoff, sessionId: execSessionId,
     capturedSubprocessSessionId, pendingInjection, activeSessionRef,
@@ -172,14 +172,14 @@ export function buildExecutorDeps(opts: BuildExecutorDepsOpts) {
 
   // Dispatcher callback (real dispatcher with fallback to step metadata)
   const dispatcherFn = createDispatcherCallback({
-    deps, emitter, workflowIdRef, dispatcherTransport, contextIndexer,
+    deps, emit, workflowIdRef, dispatcherTransport, contextIndexer,
     contextAccumulator, projectCwd, sessionObjective, queue,
     dispatcherModel: tiers.dispatcher.model, subprocessModel: tiers.subprocess.model,
   })
 
   // Subprocess callback (spawn engine process — uses pool when available)
   const subprocessFn = createSubprocessCallback({
-    deps, emitter, workflowIdRef, sessionId: execSessionId, projectCwd,
+    deps, emit, workflowIdRef, sessionId: execSessionId, projectCwd,
     subprocessCwd: opts.subprocessCwd,
     stdinHandleRef, capturedSubprocessSessionId, pendingInjection,
     activeSessionRef, budgetTracker,

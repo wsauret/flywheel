@@ -31,7 +31,7 @@ import type {
   DispatcherConfig,
   WorkflowInfo,
 } from "../dispatcher/schemas.js";
-import type { FlywheelEmitter } from "../../infra/event-bus.js";
+import type { EmitFn } from "../../infra/event-bus.js";
 import type {
   SessionBudgetStatus,
   AvailableContext,
@@ -117,7 +117,7 @@ export interface StepDispatcherOptions {
   /** Dispatcher transport (subprocess or SDK). */
   transport: DispatcherTransport;
   /** Event emitter for dispatcher lifecycle events. */
-  emitter: FlywheelEmitter;
+  emit: EmitFn;
   /** Workflow ID for event emission. */
   workflowId: string;
   /** Runtime config context for the dispatcher. */
@@ -171,7 +171,7 @@ export class StepDispatcherError extends Error {
 export function createStepDispatcher(options: StepDispatcherOptions): StepDispatcher {
   const {
     transport,
-    emitter,
+    emit,
     workflowId,
     configContext,
     sessionBudget,
@@ -188,7 +188,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
     const currentIndex = stepIndex >= 0 ? stepIndex : queue.cursor;
 
     // Emit dispatcher:invoked
-    emitter.dispatcherInvoked(workflowId, currentIndex);
+    emit("dispatcher:invoked", { workflowId, stepIndex: currentIndex });
 
     try {
       // --- Assemble DispatcherInput ---
@@ -281,7 +281,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       });
 
       // Emit dispatcher:completed
-      emitter.dispatcherCompleted(workflowId, decision);
+      emit("dispatcher:completed", { workflowId, decision });
 
       // --- Parse and normalize decision ---
       return normalizeDecision(decision, step);
@@ -295,7 +295,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       });
 
       // Emit dispatcher:failed
-      emitter.dispatcherFailed(workflowId, reason);
+      emit("dispatcher:failed", { workflowId, reason });
 
       throw new StepDispatcherError(reason, step.id, error instanceof Error ? error : undefined);
     }

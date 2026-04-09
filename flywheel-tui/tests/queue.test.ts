@@ -854,9 +854,9 @@ describe("mutation provenance", () => {
       expect(entry.actor).toBe("sprint-hook");
       expect(entry.reason).toBe("Retry pair insertion");
       expect(entry.timestamp).toBeTruthy();
-      // Timestamp should be valid ISO string
-      expect(() => new Date(entry.timestamp)).not.toThrow();
-      expect(new Date(entry.timestamp).toISOString()).toBe(entry.timestamp);
+      // Timestamp should be a number (epoch ms)
+      expect(typeof entry.timestamp).toBe("number");
+      expect(entry.timestamp).toBeGreaterThan(0);
     }
   });
 

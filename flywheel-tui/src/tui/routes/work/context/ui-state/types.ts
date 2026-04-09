@@ -5,7 +5,7 @@
  * Re-exports WorkState types for convenience.
  */
 
-import type { WorkState, OutputLine, AnyBlock, WorkflowStatus as WfStatus, QueueStepState } from "@tui/types";
+import type { WorkState, AnyBlock, WorkflowStatus as WfStatus, QueueStepState } from "@tui/types";
 
 export type Listener = () => void;
 
@@ -23,7 +23,6 @@ export interface UIActions {
   stopWorkflow(status: "completed" | "interrupted"): void;
   setError(reason: string): void;
   clearError(): void;
-  appendOutput(line: OutputLine): void;
   setOutputBlocks(blocks: AnyBlock[]): void;
   appendOutputBlocks(blocks: AnyBlock[]): void;
   setApprovalPending(description: string): void;
@@ -37,11 +36,6 @@ export interface UIActions {
   failQueueStep(stepId: string, reason: string): void;
   insertQueueStep(step: QueueStepState, afterStepId: string): void;
   removeQueueStep(stepId: string): void;
-
-  // Navigation actions
-  selectNext(): void;
-  selectPrevious(): void;
-  selectStep(index: number): void;
 
   // Targeted subscriptions (subscriber isolation)
   subscribeExecution(fn: Listener): () => void;

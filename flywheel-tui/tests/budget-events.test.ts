@@ -7,7 +7,7 @@ import type {
   BudgetExhausted,
 } from "../src/infra/events"
 
-const ts = "2026-01-01T00:00:00Z"
+const ts = Date.now()
 const wfId = "wf-budget-1"
 
 // ---------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import { type BudgetTracker } from "./session/budget-tracker"
 import { createOutputPersistence } from "./session/output-persistence"
 import { createSessionInfra } from "./session/create-session-infra"
 import { createWorkflowSession, destroyWorkflowSession, type WorkflowSession, type WorkflowStore } from "./workflow-session"
-import { EventBus, createFlywheelEmitter, type Unsubscribe } from "../infra/event-bus"
+import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
 import { ContextIndexer } from "./memory/indexer"
 import type { TraceWriter } from "./session/trace-writer"
 import type { TranscriptWriter } from "./session/transcript-writer"
@@ -47,6 +47,8 @@ export interface WorkflowCallbacks {
   onSteps: (steps: StepState[]) => void
   onTokens: (n: number) => void
   onCost: (n: number) => void
+  /** Batched metrics update — fires once with both values to avoid double notify(). */
+  onMetrics?: (tokens: number, cost: number) => void
   onSessionName: (name: string) => void
   onModelActivity?: (activity: import("../infra/events").ModelActivity) => void
 }
@@ -124,7 +126,7 @@ export function createWorkflowRunner(opts: {
   const { eventBus, store: uiActions } = session
   const activeSessionRef: { current: WorkflowSession | null } = { current: session }
 
-  const emitter = createFlywheelEmitter(eventBus)
+  const emit = createEmit(eventBus)
   const workflowIdRef = { current: randomUUID() }
 
   // Shared session infrastructure (budget, traces, transcripts)
@@ -197,7 +199,7 @@ export function createWorkflowRunner(opts: {
 
     // Create trace event handler (gated by tracing config)
     const traceEventHandler = deps.config.tracing.enabled
-      ? createTraceEventHandler({ emitter, workflowIdRef })
+      ? createTraceEventHandler({ emit, workflowIdRef })
       : null
 
     // Post-turn verification applies to all workflow types, not just sprint.
@@ -214,7 +216,7 @@ export function createWorkflowRunner(opts: {
     })
 
     const execDeps = buildExecutorDeps({
-      deps: deps, emitter, workflowIdRef, dispatcherTransport, evaluatorTransport,
+      deps: deps, emit, workflowIdRef, dispatcherTransport, evaluatorTransport,
       contextIndexer, projectCwd, subprocessCwd, sessionObjective: description, queue, sessionId,
       stdinHandleRef,
       capturedSubprocessSessionId: { current: undefined },
@@ -239,7 +241,7 @@ export function createWorkflowRunner(opts: {
       queue,
       workflowId: workflowIdRef.current,
       sessionId,
-      emitter,
+      emit,
       dispatcher: execDeps.dispatcherFn,
       worker: execDeps.subprocessFn,
       evaluator: execDeps.evaluator,
@@ -315,7 +317,7 @@ export function createWorkflowRunner(opts: {
   async function dispose(): Promise<void> {
     if (disposed) return
     disposed = true
-    clearInterval(wiring.metricsTimer)
+    budgetTracker.onMetricsChange = undefined
     eventUnsubs.forEach((u) => u())
     wiring.storeUnsub()
     wiring.execUnsub?.()
@@ -355,7 +357,6 @@ function toStepState(s: { id: string; type: string; title: string; status: strin
 // ── Metrics + UI wiring ──
 
 interface MetricsWiring {
-  metricsTimer: ReturnType<typeof setInterval>
   execUnsub: (() => void) | null
   storeUnsub: () => void
   outputFlusher: { schedule(): void; flush(): Promise<void>; dispose(): void }
@@ -370,11 +371,10 @@ function wireMetricsAndUI(
   projectCwd: string,
   priorBlocks: AnyBlock[] | undefined,
 ): MetricsWiring {
-  // Metrics poll
-  const metricsTimer = setInterval(() => {
-    callbacks.onTokens(budgetTracker.getTokensUsed())
-    callbacks.onCost(budgetTracker.getTotalCost())
-  }, 500)
+  // Event-driven metrics: batch both updates into a single callback to avoid double notify()
+  budgetTracker.onMetricsChange = (tokens, cost) => {
+    callbacks.onMetrics?.(tokens, cost)
+  }
 
   // Wire store → model activity
   let execUnsub: (() => void) | null = null
@@ -402,7 +402,7 @@ function wireMetricsAndUI(
     outputFlusher.schedule()
   })
 
-  return { metricsTimer, execUnsub, storeUnsub, outputFlusher, getCurrentBlocks: () => currentBlocks }
+  return { execUnsub, storeUnsub, outputFlusher, getCurrentBlocks: () => currentBlocks }
 }
 
 // ── Event subscription wiring ──

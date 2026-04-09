@@ -246,9 +246,9 @@ describe("guardrails, mutations, and immutability", () => {
 
     // Verify provenance fields
     expect(entry.timestamp).toBeDefined();
-    expect(typeof entry.timestamp).toBe("string");
-    // Should be ISO-8601 format
-    expect(new Date(entry.timestamp).toISOString()).toBe(entry.timestamp);
+    expect(typeof entry.timestamp).toBe("number");
+    // Should be a valid epoch ms timestamp
+    expect(entry.timestamp).toBeGreaterThan(0);
 
     expect(entry.action).toBe("insert");
     expect(entry.actor).toBe("dispatcher");

@@ -11,14 +11,9 @@ import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import type { AdapterType } from "./types";
 import { BaseUIAdapter } from "./base";
 import type { UIActions } from "../routes/work/context/ui-state/types";
-import { NDJSONParser } from "../../orchestration/engines/subprocess/ndjson-parser";
-import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder";
-import { StructuredEventParser } from "../../infra/output/structured-event-parser";
+import { createOutputPipeline, type OutputPipeline } from "../../orchestration/output-pipeline";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
 import { Log } from "../../infra/log.js";
-
-/** Flush interval for batched block updates (ms). */
-const FLUSH_INTERVAL_MS = 16;
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
@@ -40,65 +35,50 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Current engine ID for routing events. Updated per subprocess:output event. */
   private currentEngineId: string | undefined;
 
-  // ── Structured pipeline components ──
+  // ── Structured pipeline (shared factory) ──
 
-  private ndjsonParser: NDJSONParser;
-  private builder: StructuredOutputBuilder;
-  private eventParser: StructuredEventParser;
-
-  /** Interval handle for batched flush. */
-  private flushInterval: ReturnType<typeof setInterval> | null = null;
+  private outputPipeline: OutputPipeline;
 
   /** Synthetic thinking timer for engines that batch thinking blocks. */
   private syntheticThinkingTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly syntheticThinkingMs: number | undefined;
 
   /** Dispatcher/evaluator NDJSON pipeline (block tracking + activity extraction). */
-  private pipeline: NdjsonPipeline;
+  private ndjsonPipeline: NdjsonPipeline;
 
   constructor(options: OpenTUIAdapterOptions) {
     super();
     this.actions = options.actions;
     this.syntheticThinkingMs = options.engineMetadata?.syntheticThinkingMs;
 
-    // Initialize structured pipeline
-    this.builder = new StructuredOutputBuilder();
-    this.eventParser = new StructuredEventParser({ builder: this.builder });
-    this.ndjsonParser = new NDJSONParser();
+    // Initialize structured pipeline via shared factory
+    this.outputPipeline = createOutputPipeline({
+      onModelActivityChange: (activity) => {
+        if (this.syntheticThinkingTimer) {
+          clearTimeout(this.syntheticThinkingTimer);
+          this.syntheticThinkingTimer = null;
+        }
+        this.actions.setModelActivity(activity);
+        if (this.syntheticThinkingMs !== undefined && (activity === "tool_executing" || activity === "generating")) {
+          this.syntheticThinkingTimer = setTimeout(() => {
+            this.syntheticThinkingTimer = null;
+            this.actions.setModelActivity("thinking");
+          }, this.syntheticThinkingMs);
+        }
+      },
+    });
 
     // Initialize dispatcher/evaluator NDJSON pipeline
-    this.pipeline = new NdjsonPipeline(this.builder);
+    this.ndjsonPipeline = new NdjsonPipeline(this.outputPipeline.builder);
 
-    // Wire builder → model activity tracking + synthetic thinking timer
-    this.builder.onModelActivityChange = (activity) => {
-      if (this.syntheticThinkingTimer) {
-        clearTimeout(this.syntheticThinkingTimer);
-        this.syntheticThinkingTimer = null;
-      }
-      this.actions.setModelActivity(activity);
-      if (this.syntheticThinkingMs !== undefined && (activity === "tool_executing" || activity === "generating")) {
-        this.syntheticThinkingTimer = setTimeout(() => {
-          this.syntheticThinkingTimer = null;
-          this.actions.setModelActivity("thinking");
-        }, this.syntheticThinkingMs);
-      }
+    // Wire NDJSONParser events to StructuredEventParser (factory does NOT set this)
+    this.outputPipeline.parser.onEvent = (event) => {
+      this.outputPipeline.eventParser.dispatch(event, this.currentEngineId);
     };
 
-    // Wire NDJSONParser events to StructuredEventParser
-    this.ndjsonParser.onEvent = (event) => {
-      this.eventParser.dispatch(event, this.currentEngineId);
-    };
+    // Keep the factory's default onRawText (pushes text blocks)
 
-    // Raw text lines (non-JSON) → push as text blocks
-    this.ndjsonParser.onRawText = (text) => {
-      if (text.trim().length > 0) {
-        this.builder.pushText(text + "\n", Date.now());
-      }
-    };
-
-    this.flushInterval = setInterval(() => {
-      this.flushBlocks();
-    }, FLUSH_INTERVAL_MS);
+    this.outputPipeline.startFlush(() => this.flushBlocks());
   }
 
   /** Toggle raw output mode. Returns the new state. */
@@ -115,15 +95,11 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   /** Clean up intervals on disconnect. */
   override disconnect(): void {
     super.disconnect();
-    if (this.flushInterval !== null) {
-      clearInterval(this.flushInterval);
-      this.flushInterval = null;
-    }
     if (this.syntheticThinkingTimer !== null) {
       clearTimeout(this.syntheticThinkingTimer);
       this.syntheticThinkingTimer = null;
     }
-    this.builder.dispose();
+    this.outputPipeline.dispose();
   }
 
   protected handleEvent(event: FlywheelEvent): void {
@@ -157,7 +133,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         break;
 
       case "dispatcher:invoked":
-        this.pipeline.startDispatcher();
+        this.ndjsonPipeline.startDispatcher();
         this.flushBlocks();
         break;
 
@@ -166,36 +142,36 @@ export class OpenTUIAdapter extends BaseUIAdapter {
         const warningText = warnings && warnings.length > 0
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
           : "";
-        this.pipeline.completeDispatcher(`Prompt ready${warningText}`);
+        this.ndjsonPipeline.completeDispatcher(`Prompt ready${warningText}`);
         this.flushBlocks();
         break;
       }
 
       case "dispatcher:failed":
-        this.pipeline.failDispatcher(event.reason);
+        this.ndjsonPipeline.failDispatcher(event.reason);
         this.flushBlocks();
         break;
 
       case "evaluator:invoked":
-        this.pipeline.startEvaluator();
+        this.ndjsonPipeline.startEvaluator();
         this.flushBlocks();
         break;
 
       case "evaluator:completed": {
         const verdict = event.result.passed ? "Passed" : "Needs revision";
         const reasoning = event.result.reasoning ? ` — ${event.result.reasoning}` : "";
-        this.pipeline.completeEvaluator(`${verdict}${reasoning}`);
+        this.ndjsonPipeline.completeEvaluator(`${verdict}${reasoning}`);
         this.flushBlocks();
         break;
       }
 
       case "evaluator:failed":
-        this.pipeline.failEvaluator(event.reason);
+        this.ndjsonPipeline.failEvaluator(event.reason);
         this.flushBlocks();
         break;
 
       case "evaluator:revision-requested":
-        this.pipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
+        this.ndjsonPipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
         this.flushBlocks();
         break;
 
@@ -215,20 +191,20 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "subprocess:injected":
         log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
-        this.builder.pushUserMessage(event.message, new Date(event.timestamp).getTime() || Date.now(), false, true);
+        this.outputPipeline.builder.pushUserMessage(event.message, event.timestamp, false, true);
         this.flushBlocks();
         break;
 
       case "dispatcher:output":
         if (event.stream === "stdout") {
-          this.pipeline.dispatcherParser.write(event.data);
+          this.ndjsonPipeline.dispatcherParser.write(event.data);
           this.flushBlocks();
         }
         break;
 
       case "evaluator:output":
         if (event.stream === "stdout") {
-          this.pipeline.evaluatorParser.write(event.data);
+          this.ndjsonPipeline.evaluatorParser.write(event.data);
           this.flushBlocks();
         }
         break;
@@ -253,7 +229,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
       case "queue:step-started":
         log.info("Queue step started", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
-        this.builder.resetTracking();
+        this.outputPipeline.builder.resetTracking();
         this.pushSystemText(
           `${STEP_BOUNDARY_PREFIX} ${this.formatStepBoundaryLabel(event.stepType, event.stepTitle)}\n`,
           event.timestamp,
@@ -297,8 +273,8 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   }
 
   /** Push a system message through the block pipeline and flush. */
-  private pushSystemText(text: string, timestamp: string): void {
-    this.builder.pushSystemMessage(text, new Date(timestamp).getTime() || Date.now());
+  private pushSystemText(text: string, timestamp: number): void {
+    this.outputPipeline.builder.pushSystemMessage(text, timestamp);
     this.flushBlocks();
   }
 
@@ -310,7 +286,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
   private handleSubprocessOutput(
     stream: "stdout" | "stderr",
     data: string,
-    timestamp: string,
+    timestamp: number,
     engineId?: string,
   ): void {
     // stderr goes through the structured pipeline as text blocks
@@ -321,7 +297,7 @@ export class OpenTUIAdapter extends BaseUIAdapter {
 
     // Raw mode: pass through without parsing
     if (this._rawMode) {
-      this.actions.appendOutput({ stream, data, timestamp });
+      this.outputPipeline.builder.pushText(data, Date.now());
       return;
     }
 
@@ -332,19 +308,17 @@ export class OpenTUIAdapter extends BaseUIAdapter {
     }
 
     // Feed chunk to NDJSONParser (handles line buffering, ANSI stripping,
-    // CRLF normalization, garbage-prefix extraction)
-    this.ndjsonParser.write(data);
-
-    // Immediate flush if builder has changes (responsive for small batches)
-    this.flushBlocks();
+    // CRLF normalization, garbage-prefix extraction).
+    // The 16ms flush interval handles pushing blocks to the store.
+    this.outputPipeline.parser.write(data);
   }
 
   /**
    * Flush builder blocks to the store if the builder has pending changes.
    */
   private flushBlocks(): void {
-    if (this.builder.hasChanged()) {
-      this.actions.setOutputBlocks(this.builder.getBlocks());
+    if (this.outputPipeline.builder.hasChanged()) {
+      this.actions.setOutputBlocks(this.outputPipeline.builder.getBlocks());
     }
   }
 

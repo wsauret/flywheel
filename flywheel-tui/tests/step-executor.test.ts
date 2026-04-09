@@ -11,7 +11,7 @@ import { randomUUID } from "crypto";
 
 import { createQueue, transitionStep, advanceCursor } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";
-import type { FlywheelEmitter } from "../src/infra/event-bus";
+import type { EmitFn } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
 import {
   createStepExecutor,
@@ -41,18 +41,14 @@ function makeStep(overrides: Partial<Step> = {}): Step {
   };
 }
 
-/** Minimal no-op emitter that records events */
-function createMockEmitter(): FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> } {
-  const events: Array<{ method: string; args: unknown[] }> = [];
-  const handler = {
-    get(_target: unknown, prop: string) {
-      if (prop === "events") return events;
-      return (...args: unknown[]) => {
-        events.push({ method: prop, args });
-      };
-    },
-  };
-  return new Proxy({} as FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> }, handler);
+/** Minimal no-op emit function that records calls */
+function createMockEmit(): EmitFn & { calls: Array<{ type: string; payload: unknown }> } {
+  const calls: Array<{ type: string; payload: unknown }> = [];
+  const fn = ((type: string, payload: unknown) => {
+    calls.push({ type, payload });
+  }) as EmitFn & { calls: Array<{ type: string; payload: unknown }> };
+  fn.calls = calls;
+  return fn;
 }
 
 /** Default successful worker that returns output */
@@ -191,7 +187,7 @@ function createDefaultOptions(overrides: Partial<StepExecutorOptions> = {}): Ste
     queue: overrides.queue ?? createQueue(steps),
     workflowId: overrides.workflowId ?? randomUUID(),
     sessionId: overrides.sessionId ?? randomUUID(),
-    emitter: overrides.emitter ?? createMockEmitter(),
+    emit: overrides.emit ?? createMockEmit(),
     dispatcher: overrides.dispatcher ?? createSimpleDispatcher(),
     worker: overrides.worker ?? createSuccessWorker(),
     evaluator: overrides.evaluator ?? null,
@@ -947,57 +943,57 @@ describe("evaluationCriteria forwarded to evaluator", () => {
 
 describe("Queue and step events emitted", () => {
   test("emits queue:initialized at start and queue:completed at end", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const queue = createQueue([makeStep()]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const methods = emitter.events.map((e) => e.method);
-    expect(methods).toContain("queueInitialized");
-    expect(methods).toContain("queueCompleted");
+    const methods = emit.calls.map((e) => e.type);
+    expect(methods).toContain("queue:initialized");
+    expect(methods).toContain("queue:completed");
   });
 
   test("emits queue:failed when step fails", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const crashWorker = createCrashingWorker();
     const queue = createQueue([makeStep()]);
 
-    const opts = createDefaultOptions({ queue, emitter, worker: crashWorker });
+    const opts = createDefaultOptions({ queue, emit, worker: crashWorker });
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const methods = emitter.events.map((e) => e.method);
-    expect(methods).toContain("queueFailed");
+    const methods = emit.calls.map((e) => e.type);
+    expect(methods).toContain("queue:failed");
   });
 
   test("emits step:started and step:completed for each step", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const s1 = makeStep({ title: "A" });
     const s2 = makeStep({ title: "B" });
     const queue = createQueue([s1, s2]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const stepStarted = emitter.events.filter((e) => e.method === "queueStepStarted");
-    const stepCompleted = emitter.events.filter((e) => e.method === "queueStepCompleted");
+    const stepStarted = emit.calls.filter((e) => e.type === "queue:step-started");
+    const stepCompleted = emit.calls.filter((e) => e.type === "queue:step-completed");
     expect(stepStarted.length).toBe(2);
     expect(stepCompleted.length).toBe(2);
   });
 
   test("emits step:failed on worker crash", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const crashWorker = createCrashingWorker();
     const queue = createQueue([makeStep()]);
 
-    const opts = createDefaultOptions({ queue, emitter, worker: crashWorker });
+    const opts = createDefaultOptions({ queue, emit, worker: crashWorker });
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const stepFailed = emitter.events.filter((e) => e.method === "queueStepFailed");
+    const stepFailed = emit.calls.filter((e) => e.type === "queue:step-failed");
     expect(stepFailed.length).toBe(1);
   });
 });
@@ -1267,39 +1263,39 @@ describe("VAL-QUEUE-035: Gate step pauses for user approval", () => {
   });
 
   test("gate step emits step events correctly on continue", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const qs = createMockQuestionService("Continue");
 
     const s1 = makeStep({ type: "gate", title: "Gate" });
     const queue = createQueue([s1]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     opts.questionService = qs;
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const methods = emitter.events.map((e) => e.method);
-    expect(methods).toContain("queueStepStarted");
-    expect(methods).toContain("queueStepCompleted");
-    expect(methods).not.toContain("queueStepFailed");
+    const methods = emit.calls.map((e) => e.type);
+    expect(methods).toContain("queue:step-started");
+    expect(methods).toContain("queue:step-completed");
+    expect(methods).not.toContain("queue:step-failed");
   });
 
   test("gate step emits step events correctly on stop", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const qs = createMockQuestionService("Stop");
 
     const s1 = makeStep({ type: "gate", title: "Gate" });
     const queue = createQueue([s1]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     opts.questionService = qs;
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const methods = emitter.events.map((e) => e.method);
-    expect(methods).toContain("queueStepStarted");
-    expect(methods).toContain("queueStepFailed");
-    expect(methods).not.toContain("queueStepCompleted");
+    const methods = emit.calls.map((e) => e.type);
+    expect(methods).toContain("queue:step-started");
+    expect(methods).toContain("queue:step-failed");
+    expect(methods).not.toContain("queue:step-completed");
   });
 });
 
@@ -1525,62 +1521,61 @@ describe("VAL-EXEC-007: Gate steps bypass dispatcher/worker/evaluator", () => {
 
 describe("VAL-EXEC-008: Queue events emitted for step lifecycle", () => {
   test("queue:step-started emitted with stepId, step metadata", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const s1 = makeStep({ type: "plan", title: "Research codebase" });
     const queue = createQueue([s1]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    const startEvents = emitter.events.filter((e) => e.method === "queueStepStarted");
+    const startEvents = emit.calls.filter((e) => e.type === "queue:step-started");
     expect(startEvents.length).toBe(1);
-    // args: workflowId, stepId, stepType, stepTitle
-    expect(startEvents[0].args[1]).toBe(s1.id);
-    expect(startEvents[0].args[2]).toBe("plan");
-    expect(startEvents[0].args[3]).toBe("Research codebase");
+    expect((startEvents[0].payload as any).stepId).toBe(s1.id);
+    expect((startEvents[0].payload as any).stepType).toBe("plan");
+    expect((startEvents[0].payload as any).stepTitle).toBe("Research codebase");
   });
 
   test("queue:step-completed emitted on success", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const s1 = makeStep({ title: "Work" });
     const queue = createQueue([s1]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     await createStepExecutor(opts).run();
 
-    const completedEvents = emitter.events.filter((e) => e.method === "queueStepCompleted");
+    const completedEvents = emit.calls.filter((e) => e.type === "queue:step-completed");
     expect(completedEvents.length).toBe(1);
-    expect(completedEvents[0].args[1]).toBe(s1.id);
+    expect((completedEvents[0].payload as any).stepId).toBe(s1.id);
   });
 
   test("queue:step-failed emitted on failure", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const s1 = makeStep({ title: "Crasher" });
     const queue = createQueue([s1]);
 
-    const opts = createDefaultOptions({ queue, emitter, worker: createCrashingWorker() });
+    const opts = createDefaultOptions({ queue, emit, worker: createCrashingWorker() });
     await createStepExecutor(opts).run();
 
-    const failedEvents = emitter.events.filter((e) => e.method === "queueStepFailed");
+    const failedEvents = emit.calls.filter((e) => e.type === "queue:step-failed");
     expect(failedEvents.length).toBe(1);
-    expect(failedEvents[0].args[1]).toBe(s1.id);
+    expect((failedEvents[0].payload as any).stepId).toBe(s1.id);
   });
 
   test("only queue:step-* events for step lifecycle (no legacy step:*)", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const queue = createQueue([makeStep(), makeStep()]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     await createStepExecutor(opts).run();
 
-    const methods = emitter.events.map((e) => e.method);
+    const methods = emit.calls.map((e) => e.type);
     // No legacy event methods should be called
     expect(methods).not.toContain("stepStarted");
     expect(methods).not.toContain("stepCompleted");
     expect(methods).not.toContain("stepFailed");
     // Only queue-prefixed events
-    expect(methods.filter((m) => m.startsWith("queueStep")).length).toBeGreaterThan(0);
+    expect(methods.filter((m) => m.startsWith("queue:step-")).length).toBeGreaterThan(0);
   });
 });
 
@@ -1841,38 +1836,36 @@ describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", 
 
 describe("VAL-EXEC-016: Queue lifecycle events emitted", () => {
   test("queue:initialized emitted at start with queue metadata and step count", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const s1 = makeStep({ title: "A" });
     const s2 = makeStep({ title: "B" });
     const s3 = makeStep({ title: "C" });
     const queue = createQueue([s1, s2, s3]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     await createStepExecutor(opts).run();
 
-    const initEvents = emitter.events.filter((e) => e.method === "queueInitialized");
+    const initEvents = emit.calls.filter((e) => e.type === "queue:initialized");
     expect(initEvents.length).toBe(1);
-    // args: workflowId, stepIds
-    const stepIds = initEvents[0].args[1] as string[];
+    const stepIds = (initEvents[0].payload as any).stepIds as string[];
     expect(stepIds).toHaveLength(3);
     expect(stepIds).toEqual([s1.id, s2.id, s3.id]);
   });
 
   test("queue:completed emitted when all steps complete successfully", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const queue = createQueue([makeStep(), makeStep()]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     await createStepExecutor(opts).run();
 
-    const completedEvents = emitter.events.filter((e) => e.method === "queueCompleted");
+    const completedEvents = emit.calls.filter((e) => e.type === "queue:completed");
     expect(completedEvents.length).toBe(1);
-    // args: workflowId, stepsCompleted
-    expect(completedEvents[0].args[1]).toBe(2);
+    expect((completedEvents[0].payload as any).stepsCompleted).toBe(2);
   });
 
   test("queue:failed emitted when a step fails", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const queue = createQueue([makeStep(), makeStep()]);
 
     // First step crashes
@@ -1883,32 +1876,31 @@ describe("VAL-EXEC-016: Queue lifecycle events emitted", () => {
       return { output: "done", handoffPath: "/tmp/h.json", durationMs: 50, sessionId: randomUUID() };
     };
 
-    const opts = createDefaultOptions({ queue, emitter, worker });
+    const opts = createDefaultOptions({ queue, emit, worker });
     await createStepExecutor(opts).run();
 
-    const failedEvents = emitter.events.filter((e) => e.method === "queueFailed");
+    const failedEvents = emit.calls.filter((e) => e.type === "queue:failed");
     expect(failedEvents.length).toBe(1);
-    // args: workflowId, reason, stepsCompleted
-    expect(failedEvents[0].args[2]).toBe(1); // 1 step completed before failure
+    expect((failedEvents[0].payload as any).stepsCompleted).toBe(1); // 1 step completed before failure
   });
 
   test("queue lifecycle events are distinct from step-level events", async () => {
-    const emitter = createMockEmitter();
+    const emit = createMockEmit();
     const queue = createQueue([makeStep()]);
 
-    const opts = createDefaultOptions({ queue, emitter });
+    const opts = createDefaultOptions({ queue, emit });
     await createStepExecutor(opts).run();
 
-    const methods = emitter.events.map((e) => e.method);
+    const methods = emit.calls.map((e) => e.type);
     // Queue lifecycle events
-    expect(methods).toContain("queueInitialized");
-    expect(methods).toContain("queueCompleted");
+    expect(methods).toContain("queue:initialized");
+    expect(methods).toContain("queue:completed");
     // Step lifecycle events
-    expect(methods).toContain("queueStepStarted");
-    expect(methods).toContain("queueStepCompleted");
+    expect(methods).toContain("queue:step-started");
+    expect(methods).toContain("queue:step-completed");
     // These are different method names — not the same events
-    expect("queueInitialized").not.toBe("queueStepStarted");
-    expect("queueCompleted").not.toBe("queueStepCompleted");
+    expect("queue:initialized").not.toBe("queue:step-started");
+    expect("queue:completed").not.toBe("queue:step-completed");
   });
 });
 
@@ -2091,7 +2083,8 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     expect(entry!.actor).toBe("hook-actor");
     expect(entry!.reason).toBe("insert reason");
     expect(entry!.timestamp).toBeTruthy();
-    expect(new Date(entry!.timestamp).toISOString()).toBe(entry!.timestamp);
+    expect(typeof entry!.timestamp).toBe("number");
+    expect(entry!.timestamp).toBeGreaterThan(0);
     expect(entry!.stepIds.length).toBeGreaterThan(0);
   });
 

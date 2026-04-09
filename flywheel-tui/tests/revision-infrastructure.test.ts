@@ -4,7 +4,7 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
 } from "../src/orchestration/config/loader";
-import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
+import { EventBus, createEmit } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
 import { SubprocessResultSchema } from "../src/orchestration/engines/subprocess/schemas";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
@@ -125,13 +125,13 @@ describe("evaluator:revision-requested event type", () => {
     }
   });
 
-  it("FlywheelEmitter.evaluatorRevisionRequested() method exists and emits", () => {
+  it("createEmit evaluator:revision-requested emits correctly", () => {
     const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
+    const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emitter.evaluatorRevisionRequested("wf-1", 0, 1, 2, "Needs revision");
+    emit("evaluator:revision-requested", { workflowId: "wf-1", stepIndex: 0, revisionAttempt: 1, maxRevisions: 2, reason: "Needs revision" });
 
     expect(received).toHaveLength(1);
     expect(received[0].type).toBe("evaluator:revision-requested");

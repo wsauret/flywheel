@@ -914,17 +914,16 @@ describe("BudgetTracker — budget event emission", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
 
-    const calls: { method: string; args: unknown[] }[] = [];
-    const mockEmitter = {
-      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
-      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
-    };
+    const calls: { type: string; payload: unknown }[] = [];
+    const mockEmit = ((type: string, payload: unknown) => {
+      calls.push({ type, payload });
+    }) as import("../src/infra/event-bus").EmitFn;
 
     const tracker = createBudgetTracker({
       sessionId,
       baseDir,
       debounceMs: 1000,
-      emitter: mockEmitter as any,
+      emitter: mockEmit,
       workflowId: "wf-test-1",
     });
 
@@ -939,9 +938,9 @@ describe("BudgetTracker — budget event emission", () => {
     tracker.incrementInvocations();
     expect(tracker.isExhausted(limits)).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0].method).toBe("budgetExhausted");
-    expect(calls[0].args[0]).toBe("wf-test-1");
-    expect((calls[0].args[1] as string)).toContain("Invocation limit reached");
+    expect(calls[0].type).toBe("budget:exhausted");
+    expect((calls[0].payload as any).workflowId).toBe("wf-test-1");
+    expect((calls[0].payload as any).reason).toContain("Invocation limit reached");
 
     tracker.dispose();
   });
@@ -950,17 +949,16 @@ describe("BudgetTracker — budget event emission", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
 
-    const calls: { method: string; args: unknown[] }[] = [];
-    const mockEmitter = {
-      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
-      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
-    };
+    const calls: { type: string; payload: unknown }[] = [];
+    const mockEmit = ((type: string, payload: unknown) => {
+      calls.push({ type, payload });
+    }) as import("../src/infra/event-bus").EmitFn;
 
     const tracker = createBudgetTracker({
       sessionId,
       baseDir,
       debounceMs: 1000,
-      emitter: mockEmitter as any,
+      emitter: mockEmit,
       workflowId: "wf-test-2",
     });
 
@@ -1005,17 +1003,16 @@ describe("BudgetTracker — budget event emission", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
 
-    const calls: { method: string; args: unknown[] }[] = [];
-    const mockEmitter = {
-      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
-      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
-    };
+    const calls: { type: string; payload: unknown }[] = [];
+    const mockEmit = ((type: string, payload: unknown) => {
+      calls.push({ type, payload });
+    }) as import("../src/infra/event-bus").EmitFn;
 
     const tracker = createBudgetTracker({
       sessionId,
       baseDir,
       debounceMs: 1000,
-      emitter: mockEmitter as any,
+      emitter: mockEmit,
       // workflowId intentionally omitted
     });
 
@@ -1033,17 +1030,16 @@ describe("BudgetTracker — budget event emission", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
 
-    const calls: { method: string; args: unknown[] }[] = [];
-    const mockEmitter = {
-      budgetExhausted: (...args: unknown[]) => calls.push({ method: "budgetExhausted", args }),
-      budgetWarning: (...args: unknown[]) => calls.push({ method: "budgetWarning", args }),
-    };
+    const calls: { type: string; payload: unknown }[] = [];
+    const mockEmit = ((type: string, payload: unknown) => {
+      calls.push({ type, payload });
+    }) as import("../src/infra/event-bus").EmitFn;
 
     const tracker = createBudgetTracker({
       sessionId,
       baseDir,
       debounceMs: 1000,
-      emitter: mockEmitter as any,
+      emitter: mockEmit,
       workflowId: "wf-token-test",
     });
 
@@ -1053,8 +1049,8 @@ describe("BudgetTracker — budget event emission", () => {
     expect(tracker.isExhausted(limits)).toBe(true);
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].method).toBe("budgetExhausted");
-    expect((calls[0].args[1] as string)).toContain("Token limit reached");
+    expect(calls[0].type).toBe("budget:exhausted");
+    expect(((calls[0].payload as any).reason)).toContain("Token limit reached");
 
     tracker.dispose();
   });

@@ -8,7 +8,7 @@
 
 import type { Step, Queue } from "./types";
 import type { OnStepCompletedHook } from "./shared/hooks";
-import type { FlywheelEmitter } from "../../infra/event-bus";
+import type { EmitFn } from "../../infra/event-bus";
 
 // ---------------------------------------------------------------------------
 // Gate step — QuestionService interface (minimal, for DI)
@@ -115,7 +115,7 @@ export interface StepExecutorCoreOptions {
   /** Session ID for file path construction */
   sessionId: string;
   /** Event emitter for lifecycle events */
-  emitter: FlywheelEmitter;
+  emit: EmitFn;
   /** Dispatcher for prompt assembly */
   dispatcher: DispatcherFn;
   /** Worker for step execution */

@@ -17,7 +17,7 @@ import { createQueue, type Provenance } from "../../src/workflows/queue/queue";
 import { createQueuePersistence } from "../../src/workflows/queue/persistence";
 import { createContextAccumulator } from "../../src/workflows/queue/context-accumulator";
 import { createGuardrails, type GuardrailOptions } from "../../src/workflows/queue/guardrails";
-import { EventBus, createFlywheelEmitter, type FlywheelEmitter } from "../../src/infra/event-bus";
+import { EventBus, createEmit, type EmitFn } from "../../src/infra/event-bus";
 import {
   createStepExecutor,
   type StepExecutorOptions,
@@ -360,7 +360,7 @@ export interface Harness {
   /** Event bus for subscriptions. */
   bus: EventBus;
   /** Typed event emitter. */
-  emitter: FlywheelEmitter;
+  emit: EmitFn;
   /** Captured events. */
   events: EventCollector;
   /** Context accumulator. */
@@ -397,7 +397,7 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
   const steps = opts.queue?.steps ?? opts.steps ?? makeSteps(opts.stepCount ?? 3);
   const queue = opts.queue ?? createQueue(steps);
   const bus = new EventBus();
-  const emitter = createFlywheelEmitter(bus);
+  const emit = createEmit(bus);
   const events = createEventCollector(bus);
   const accumulator = createContextAccumulator();
   const persistence = createQueuePersistence({
@@ -453,7 +453,7 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     queue,
     workflowId: `test-workflow-${Date.now()}`,
     sessionId,
-    emitter,
+    emit,
     dispatcher,
     worker,
     evaluator,
@@ -481,7 +481,7 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     executor,
     queue,
     bus,
-    emitter,
+    emit,
     events,
     accumulator,
     persistence,

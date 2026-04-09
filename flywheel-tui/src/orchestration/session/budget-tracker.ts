@@ -74,7 +74,7 @@ export interface BudgetTrackerDeps {
   /** Debounce interval in ms. Default: 100ms */
   debounceMs?: number;
   /** Optional emitter for budget events. When provided, budget:exhausted is emitted on first exhaustion. */
-  emitter?: Pick<import("../../infra/event-bus").FlywheelEmitter, "budgetExhausted" | "budgetWarning">;
+  emitter?: import("../../infra/event-bus").EmitFn;
   /** Workflow ID used when emitting budget events. */
   workflowId?: string;
 }
@@ -123,6 +123,11 @@ export interface BudgetTracker {
    * process resets to 0, so the baseline must follow.)
    */
   onNewSubprocess(): void;
+  /**
+   * Optional callback fired whenever tokens or cost change.
+   * Enables event-driven metrics updates instead of polling.
+   */
+  onMetricsChange?: (tokens: number, cost: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,6 +157,9 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   // Context utilization — updated by engine-specific adapters via updateContextUtilization().
   let ctxPromptTokens = 0;
   let ctxWindow = 0;
+
+  // Event-driven metrics callback — set by callers to avoid polling.
+  let onMetricsChange: ((tokens: number, cost: number) => void) | undefined;
 
   // -------------------------------------------------------------------------
   // Persistence
@@ -225,6 +233,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       }
 
       scheduleWrite();
+      onMetricsChange?.(tokensUsed, totalCost);
       return;
     }
   }
@@ -303,7 +312,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     // Emit budget:exhausted on first transition from non-exhausted to exhausted
     if (exhausted && !wasExhausted && emitter && workflowId) {
       wasExhausted = true;
-      emitter.budgetExhausted(workflowId, reason);
+      emitter("budget:exhausted", { workflowId, reason });
     } else if (exhausted) {
       wasExhausted = true;
     }
@@ -381,5 +390,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     flush,
     dispose,
     onNewSubprocess,
+    get onMetricsChange() { return onMetricsChange; },
+    set onMetricsChange(cb: ((tokens: number, cost: number) => void) | undefined) { onMetricsChange = cb; },
   };
 }

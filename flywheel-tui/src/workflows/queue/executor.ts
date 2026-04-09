@@ -63,7 +63,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   const {
     queue,
     workflowId,
-    emitter,
+    emit,
     dispatcher,
     worker,
     evaluator,
@@ -122,10 +122,10 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   async function run(): Promise<StepExecutorResult> {
     let stepsCompleted = queue.steps.filter((s) => s.status === "completed").length;
 
-    emitter.queueInitialized(workflowId, queue.steps.map((s) => s.id));
+    emit("queue:initialized", { workflowId, stepIds: queue.steps.map((s) => s.id) });
 
     if (queue.steps.length === 0 || isFinished(queue)) {
-      emitter.queueCompleted(workflowId, stepsCompleted);
+      emit("queue:completed", { workflowId, stepsCompleted });
       return { completed: true, stepsCompleted, stepsTotal: queue.steps.length };
     }
 
@@ -145,7 +145,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         const reason = "Shutdown requested";
         queue.status = "paused";
         await persistQueue();
-        emitter.queueFailed(workflowId, reason, stepsCompleted);
+        emit("queue:failed", { workflowId, reason, stepsCompleted });
         return {
           completed: false,
           stepsCompleted,
@@ -159,7 +159,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         const reason = "budget";
         queue.status = "paused";
         await persistQueue();
-        emitter.queueFailed(workflowId, reason, stepsCompleted);
+        emit("queue:failed", { workflowId, reason, stepsCompleted });
         return {
           completed: false,
           stepsCompleted,
@@ -170,14 +170,14 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
       // Gate steps: present user with continue/stop/pause
       if (step.type === "gate") {
-        emitter.queueStepStarted(workflowId, step.id, step.type, step.title);
+        emit("queue:step-started", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
         await safeTransition(step.id, "running", "gate step awaiting user decision");
 
         const decision = await handleGateStep(step, questionService);
 
         if (decision === "continue") {
           await safeTransition(step.id, "completed", "user approved gate");
-          emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+          emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
           stepsCompleted++;
           advanceCursor(queue);
           continue;
@@ -185,7 +185,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
         if (decision === "pause") {
           await safeTransition(step.id, "completed", "user paused at gate");
-          emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+          emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
           stepsCompleted++;
           advanceCursor(queue);
           shutdownRequested = true;
@@ -194,10 +194,10 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
 
         // decision === "stop"
         await safeTransition(step.id, "failed", "user stopped at gate");
-        emitter.queueStepFailed(workflowId, step.id, step.type, step.title, "User stopped at gate");
+        emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason: "User stopped at gate" });
         queue.status = "failed";
         await persistQueue();
-        emitter.queueFailed(workflowId, "User stopped at gate", stepsCompleted);
+        emit("queue:failed", { workflowId, reason: "User stopped at gate", stepsCompleted });
         return {
           completed: false,
           stepsCompleted,
@@ -210,7 +210,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       const result = await executeStep(step, {
         queue,
         workflowId,
-        emitter,
+        emit,
         dispatcher,
         worker,
         evaluator,
@@ -248,7 +248,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         const failedReason = wasAborted
           ? "Interrupted — will resume from this step"
           : `Step "${step.title}" failed`;
-        emitter.queueFailed(workflowId, failedReason, stepsCompleted);
+        emit("queue:failed", { workflowId, reason: failedReason, stepsCompleted });
         return {
           completed: false,
           stepsCompleted,
@@ -261,7 +261,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     // All steps completed
     queue.status = "completed";
     await persistQueue();
-    emitter.queueCompleted(workflowId, stepsCompleted);
+    emit("queue:completed", { workflowId, stepsCompleted });
     return { completed: true, stepsCompleted, stepsTotal: queue.steps.length };
   }
 

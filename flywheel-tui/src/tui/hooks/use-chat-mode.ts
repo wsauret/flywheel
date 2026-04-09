@@ -14,32 +14,18 @@
 
 import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
-import type { SessionRegistry, ChatRegistryCallbacks } from "../../orchestration/session-registry.js"
+import type { ChatRegistryCallbacks } from "../../orchestration/session-registry.js"
 import { TERMINAL_TITLE_PREFIX } from "./use-workflow-lifecycle.js"
 import { createChatRunner } from "../../orchestration/chat-runner.js"
 import { createOutputPersistence } from "../../orchestration/session/output-persistence.js"
 import { formatElapsed, formatCost, formatTokens } from "../format.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { AnyBlock } from "../../infra/output-blocks.js"
+import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface ChatModeDeps {
-  registry: SessionRegistry
-  foregroundId: Accessor<string | undefined>
-  setForegroundId: (id: string | undefined) => void
-  setAgentState: (state: import("./use-workflow-lifecycle.js").AgentState) => void
-  setErrorMessage: (msg: string) => void
-  manager: {
-    create(planPath: string, name?: string, kind?: string, initialState?: string): string
-    updateState(id: string, state: string): void
-    updateLabel(id: string, label: string): void
-  }
-  refreshList: () => void
-  setSessionTitle: (title: string) => void
-  setStatusLine: (line: string) => void
-  setTerminalTitle: (title: string) => void
-  resetMetrics: () => void
-  /** workStartTime accessor from metrics hook, for elapsed calculation. */
-  workStartTime: () => number
+  signals: ShellSignals
+  services: ShellServices
   /** Project working directory — injected to avoid hardcoding process.cwd(). */
   projectCwd: string
 }
@@ -59,6 +45,8 @@ export interface ChatModeHook {
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
+  const { signals, services } = deps
+
   // Only true during the async startup window of a new chat
   const [chatActive, setChatActive] = createSignal(false)
   // Tracks the chat currently being created (for async startup buffering)
@@ -76,44 +64,44 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     chatReady = false
     pendingMessages = []
     setChatActive(true)
-    deps.setSessionTitle("Chat")
-    deps.setStatusLine("")
-    deps.setTerminalTitle(opts?.priorBlocks ? `${TERMINAL_TITLE_PREFIX}chat (resumed)` : `${TERMINAL_TITLE_PREFIX}chat`)
-    deps.resetMetrics()
+    signals.setSessionTitle("Chat")
+    signals.setStatusLine("")
+    services.setTerminalTitle(opts?.priorBlocks ? `${TERMINAL_TITLE_PREFIX}chat (resumed)` : `${TERMINAL_TITLE_PREFIX}chat`)
+    services.metrics.resetMetrics()
 
     // Set foregroundId early so inChat() returns true during async startup.
-    deps.setForegroundId(sessionId)
+    signals.setForegroundId(sessionId)
 
     try {
-      await deps.registry.startChat({
+      await services.registry.startChat({
         sessionId,
         description: "Chat",
         priorBlocks: opts?.priorBlocks,
         onRunnerDone: (id) => {
-          const totalElapsed = formatElapsed(Date.now() - deps.workStartTime())
-          const entry = deps.registry.get(id)
+          const totalElapsed = formatElapsed(Date.now() - services.metrics.workStartTime())
+          const entry = services.registry.get(id)
           const tokens = entry?.tokens ?? 0
           const cost = entry?.cost ?? 0
-          deps.manager.updateState(id, "completed")
-          deps.setStatusLine(`Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(cost)} \u00b7 ${formatTokens(tokens)} tokens`)
-          deps.setAgentState("idle")
-          deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}done`)
-          deps.refreshList()
-          deps.setForegroundId(undefined)
+          services.manager.updateState(id, "completed")
+          signals.setStatusLine(`Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(cost)} \u00b7 ${formatTokens(tokens)} tokens`)
+          signals.setAgentState("idle")
+          services.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}done`)
+          services.refreshList()
+          signals.setForegroundId(undefined)
         },
         onRunnerError: (id, err) => {
-          deps.manager.updateState(id, "paused")
-          deps.setErrorMessage(extractErrorMessage(err))
-          deps.setAgentState("idle")
-          deps.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}error`)
-          deps.refreshList()
-          deps.setForegroundId(undefined)
+          services.manager.updateState(id, "paused")
+          signals.setErrorMessage(extractErrorMessage(err))
+          signals.setAgentState("idle")
+          services.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}error`)
+          services.refreshList()
+          signals.setForegroundId(undefined)
         },
         createRunner: (registryCallbacks: ChatRegistryCallbacks) =>
           createChatRunner({
             sessionId,
             projectCwd: deps.projectCwd,
-            updateState: (id, state) => deps.manager.updateState(id, state),
+            updateState: (id, state) => services.manager.updateState(id, state),
             callbacks: {
               onBlocks: registryCallbacks.onBlocks,
               onTokens: registryCallbacks.onTokens,
@@ -122,8 +110,8 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
               onModelActivity: registryCallbacks.onModelActivity,
               onSessionName: (name) => {
                 registryCallbacks.onSessionName(name)
-                deps.manager.updateLabel(sessionId, name)
-                deps.refreshList()
+                services.manager.updateLabel(sessionId, name)
+                services.refreshList()
               },
               onError: registryCallbacks.onError,
               onEnded: () => {
@@ -143,7 +131,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
 
       // Replay any messages that arrived during async startup
       for (const msg of pendingMessages) {
-        deps.registry.injectMessage(sessionId, msg)
+        services.registry.injectMessage(sessionId, msg)
       }
       pendingMessages = []
     } catch (err) {
@@ -151,13 +139,13 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
       chatReady = false
       pendingMessages = []
       setChatActive(false)
-      deps.setErrorMessage("Chat failed to start")
+      signals.setErrorMessage("Chat failed to start")
     }
   }
 
   async function startChat(initialMessage?: string): Promise<void> {
-    const sessionId = deps.manager.create("chat", "Chat", "chat", "active")
-    deps.refreshList()
+    const sessionId = services.manager.create("chat", "Chat", "chat", "active")
+    services.refreshList()
     await launchChat(sessionId, { initialMessage })
   }
 
@@ -175,14 +163,14 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     chatReady = false
     pendingMessages = []
     setChatActive(false)
-    deps.setForegroundId(undefined)
+    signals.setForegroundId(undefined)
   }
 
   /** Close the foreground chat — removes from registry and marks completed. */
   function endChat(): void {
-    const fgId = deps.foregroundId()
+    const fgId = signals.foregroundId()
     if (!fgId) return
-    const entry = deps.registry.get(fgId)
+    const entry = services.registry.get(fgId)
     if (!entry || entry.kind !== "chat") return
 
     // If ending the chat we're currently starting, clean up startup state
@@ -193,16 +181,16 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     }
     setChatActive(false)
 
-    deps.registry.remove(fgId)
-    deps.manager.updateState(fgId, "completed")
-    deps.refreshList()
-    deps.setForegroundId(undefined)
+    services.registry.remove(fgId)
+    services.manager.updateState(fgId, "completed")
+    services.refreshList()
+    signals.setForegroundId(undefined)
   }
 
   function interruptChat(): void {
-    const fgId = deps.foregroundId()
+    const fgId = signals.foregroundId()
     if (!fgId) return
-    deps.registry.abort(fgId)
+    services.registry.abort(fgId)
   }
 
   function sendMessage(text: string): void {
@@ -212,9 +200,9 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
       return
     }
     // Send to whatever chat is in the foreground
-    const fgId = deps.foregroundId()
+    const fgId = signals.foregroundId()
     if (!fgId) return
-    deps.registry.injectMessage(fgId, text)
+    services.registry.injectMessage(fgId, text)
   }
 
   return { chatActive, startChat, resumeChat, backgroundChat, interruptChat, endChat, sendMessage }

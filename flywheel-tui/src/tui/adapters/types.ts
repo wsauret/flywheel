@@ -23,12 +23,6 @@ export interface IWorkflowUI {
   /** Stop the UI. */
   stop(): void;
 
-  /** Whether the UI is actively rendering. */
-  isRunning(): boolean;
-
-  /** Whether the adapter is connected to an event bus. */
-  isConnected(): boolean;
-
   /** Optional callback for approval decisions. */
   onApprovalDecision?: (approved: boolean, skip?: boolean) => void;
 }

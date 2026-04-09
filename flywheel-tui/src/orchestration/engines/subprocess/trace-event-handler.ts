@@ -3,7 +3,7 @@
  *
  * Receives NDJSONEvent objects from the NDJSON parser pipeline (same
  * interface as BudgetTracker.handleEvent) and emits trace-specific
- * FlywheelEvents via the FlywheelEmitter.
+ * FlywheelEvents via the EmitFn.
  *
  * Detection heuristics:
  * - tool_use blocks with name "Task" or "dispatch_agent" → subagent events
@@ -15,7 +15,7 @@
 
 import type { NDJSONEvent } from "./ndjson-parser";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events";
-import type { FlywheelEmitter } from "../../../infra/event-bus";
+import type { EmitFn } from "../../../infra/event-bus";
 import { truncateField } from "../../../infra/trace-types";
 
 // ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ const MAX_FIELD_BYTES = 4096;
 // ---------------------------------------------------------------------------
 
 export interface TraceEventHandlerDeps {
-  emitter: FlywheelEmitter;
+  emit: EmitFn;
   workflowIdRef: { current: string };
 }
 
@@ -47,7 +47,7 @@ export interface TraceEventHandler {
 // ---------------------------------------------------------------------------
 
 export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEventHandler {
-  const { emitter, workflowIdRef } = deps;
+  const { emit, workflowIdRef } = deps;
 
   // Track which toolUseIds are subagents for matching tool_result events
   const subagentToolUseIds = new Set<string>();
@@ -63,9 +63,9 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
         const input = record.toolInput as Record<string, unknown> | undefined;
         const description = String(input?.description ?? input?.task ?? record.toolName);
         const prompt = truncateField(input?.prompt ?? input?.task ?? "", MAX_FIELD_BYTES);
-        emitter.traceSubagentStarted(wfId, record.toolUseId, record.toolName, description, prompt);
+        emit("trace:subagent-started", { workflowId: wfId, toolUseId: record.toolUseId, agentType: record.toolName, description, prompt });
       } else {
-        emitter.traceToolStarted(wfId, record.toolUseId, record.toolName, rawInput);
+        emit("trace:tool-started", { workflowId: wfId, toolUseId: record.toolUseId, toolName: record.toolName, toolInput: rawInput });
       }
     }
 
@@ -75,9 +75,9 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
 
       if (subagentToolUseIds.has(result.toolUseId)) {
         subagentToolUseIds.delete(result.toolUseId);
-        emitter.traceSubagentCompleted(wfId, result.toolUseId, rawOutput, result.isError);
+        emit("trace:subagent-completed", { workflowId: wfId, toolUseId: result.toolUseId, result: rawOutput, isError: result.isError });
       } else {
-        emitter.traceToolCompleted(wfId, result.toolUseId, rawOutput, result.isError);
+        emit("trace:tool-completed", { workflowId: wfId, toolUseId: result.toolUseId, toolOutput: rawOutput, isError: result.isError });
       }
     }
   }

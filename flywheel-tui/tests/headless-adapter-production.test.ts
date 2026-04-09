@@ -6,7 +6,7 @@ import { EventBus } from "../src/infra/event-bus"
 import { HeadlessAdapter } from "../src/orchestration/headless/headless-adapter"
 import type { FlywheelEvent } from "../src/infra/events"
 
-const ts = "2026-01-01T00:00:00Z"
+const ts = Date.now()
 const wfId = "wf-headless-1"
 
 // ---------------------------------------------------------------------------
@@ -24,9 +24,7 @@ describe("HeadlessAdapter (production)", () => {
   })
 
   afterEach(() => {
-    if (adapter?.isConnected()) {
-      adapter.disconnect()
-    }
+    adapter?.disconnect()
   })
 
   // ── Lifecycle ──
@@ -40,10 +38,7 @@ describe("HeadlessAdapter (production)", () => {
       })
 
       adapter.connect(bus)
-      expect(adapter.isConnected()).toBe(true)
-
       adapter.start()
-      expect(adapter.isRunning()).toBe(true)
 
       // Emit an event — should be logged
       bus.emit({
@@ -55,10 +50,7 @@ describe("HeadlessAdapter (production)", () => {
       expect(logs.some((l) => l.includes("Queue initialized"))).toBe(true)
 
       adapter.stop()
-      expect(adapter.isRunning()).toBe(false)
-
       adapter.disconnect()
-      expect(adapter.isConnected()).toBe(false)
     })
   })
 
@@ -309,7 +301,6 @@ describe("HeadlessAdapter (production)", () => {
       // Wait for stream to flush, then disconnect (skipping stop())
       await adapter.closeLogStream()
       adapter.disconnect()
-      expect(adapter.isConnected()).toBe(false)
 
       // The log file should have been flushed
       const content = fs.readFileSync(logFile, "utf-8")

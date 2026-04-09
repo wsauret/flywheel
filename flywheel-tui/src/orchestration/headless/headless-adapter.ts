@@ -50,7 +50,6 @@ export class HeadlessAdapter extends BaseEventConsumer {
   }
 
   start(): void {
-    super.start()
     this.closingPromise = null
     if (this.logFile) {
       const dir = path.dirname(this.logFile)
@@ -65,7 +64,6 @@ export class HeadlessAdapter extends BaseEventConsumer {
   stop(): void {
     this.log("Workflow adapter stopped")
     this.closeLogStream()
-    super.stop()
   }
 
   disconnect(): void {

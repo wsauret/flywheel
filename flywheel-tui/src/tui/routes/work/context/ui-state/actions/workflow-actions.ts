@@ -4,7 +4,7 @@
  * Factory that takes store context and returns workflow mutation functions.
  */
 
-import type { ExecutionState, OutputState, OutputLine, AnyBlock } from "@tui/types";
+import type { ExecutionState, OutputState, AnyBlock } from "@tui/types";
 
 export interface StoreContext<S = any> {
   getState(): S;
@@ -13,29 +13,21 @@ export interface StoreContext<S = any> {
   notifyImmediate(): void;
 }
 
-const OUTPUT_LINES_CAP = 5000;
-
 export function createWorkflowActions(
   exec: StoreContext<ExecutionState>,
   output: StoreContext<OutputState>,
 ) {
   return {
     startWorkflow(planName: string): void {
-      const { version, visibleItemCount } = exec.getState();
       exec.setState({
         planName,
-        version,
         startTime: Date.now(),
         workflowStatus: "running",
         queueSteps: [],
         approvalState: { pending: false },
-        selectedStepIndex: 0,
-        scrollOffset: 0,
-        visibleItemCount,
         modelActivity: "idle",
       });
       output.setState({
-        outputLines: [],
         outputBlocks: [],
       });
       exec.notifyImmediate();
@@ -87,19 +79,6 @@ export function createWorkflowActions(
         error: undefined,
       });
       exec.notify();
-    },
-
-    appendOutput(line: OutputLine): void {
-      const state = output.getState();
-      let lines = [...state.outputLines, line];
-      if (lines.length > OUTPUT_LINES_CAP) {
-        lines = lines.slice(lines.length - OUTPUT_LINES_CAP);
-      }
-      output.setState({
-        ...state,
-        outputLines: lines,
-      });
-      output.notify();
     },
 
     setApprovalPending(description: string): void {

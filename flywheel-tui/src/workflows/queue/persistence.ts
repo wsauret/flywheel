@@ -96,7 +96,7 @@ function applyCrashRecovery(queue: Queue): void {
 
   if (runningStepIds.length > 0) {
     queue.mutationLog.push({
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       action: "crash-recovery",
       actor: "persistence",
       reason: "crash recovery: step was running when process exited — reverted to pending for retry",

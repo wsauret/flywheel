@@ -124,7 +124,7 @@ export class QuestionService {
         type: "question:asked",
         requestId: id,
         questions,
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
       });
     });
   }
@@ -142,7 +142,7 @@ export class QuestionService {
       type: "question:replied",
       requestId,
       answers,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     entry.resolve(answers);
   }
@@ -159,7 +159,7 @@ export class QuestionService {
     this.eventBus.emit({
       type: "question:rejected",
       requestId,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
     });
     entry.reject(new QuestionRejectedError());
   }

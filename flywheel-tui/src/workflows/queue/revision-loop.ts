@@ -16,7 +16,7 @@ import type {
   WorkerOutput,
   HandoffReaderFn,
 } from "./executor-types.js";
-import type { FlywheelEmitter } from "../../infra/event-bus";
+import type { EmitFn } from "../../infra/event-bus";
 import { raceAbort } from "./abort-utils.js";
 import { Log } from "../../infra/log";
 
@@ -63,7 +63,7 @@ export interface RevisionLoopDeps {
   evaluator: EvaluatorFn;
   worker: WorkerFn;
   handoffReader: HandoffReaderFn;
-  emitter: FlywheelEmitter;
+  emit: EmitFn;
   workflowId: string;
   maxRevisions: number;
   abortSignal: AbortSignal;
@@ -112,7 +112,7 @@ export async function executeWithRevisions(
     evaluator,
     worker,
     handoffReader,
-    emitter,
+    emit,
     workflowId,
     maxRevisions,
     abortSignal,
@@ -123,7 +123,7 @@ export async function executeWithRevisions(
   let output = workerOutput;
   let handoff = handoffData;
 
-  emitter.evaluatorInvoked(workflowId, stepIndex);
+  emit("evaluator:invoked", { workflowId, stepIndex });
 
   let evalResult = await evaluator(step, output.output, evaluationCriteria, handoff);
 
@@ -132,7 +132,7 @@ export async function executeWithRevisions(
       stepId: step.id,
       reason: evalResult.reason,
     });
-    emitter.evaluatorFailed(workflowId, evalResult.reason ?? "transport error");
+    emit("evaluator:failed", { workflowId, reason: evalResult.reason ?? "transport error" });
     return {
       workerOutput: output,
       handoffData: handoff,
@@ -142,7 +142,7 @@ export async function executeWithRevisions(
     };
   }
 
-  emitter.evaluatorCompleted(workflowId, {
+  emit("evaluator:completed", { workflowId, result: {
     passed: evalResult.passed,
     reasoning: evalResult.reason ?? "",
     suggestions: evalResult.suggestions,
@@ -150,7 +150,7 @@ export async function executeWithRevisions(
     feedback: evalResult.feedback ?? "",
     files_to_review: [],
     issues: [],
-  });
+  } });
 
   let revisionAttempt = 0;
   while (!evalResult.passed && !evalResult.skipped && revisionAttempt < maxRevisions) {
@@ -163,7 +163,7 @@ export async function executeWithRevisions(
       reason: evalResult.reason,
     });
 
-    emitter.evaluatorRevisionRequested(workflowId, stepIndex, revisionAttempt, maxRevisions, evalResult.reason ?? "revision needed");
+    emit("evaluator:revision-requested", { workflowId, stepIndex, revisionAttempt, maxRevisions, reason: evalResult.reason ?? "revision needed" });
 
     prompt = buildRevisionPrompt(prompt, evalResult);
 
@@ -176,7 +176,7 @@ export async function executeWithRevisions(
       handoff = null;
     }
 
-    emitter.evaluatorInvoked(workflowId, stepIndex);
+    emit("evaluator:invoked", { workflowId, stepIndex });
     evalResult = await evaluator(step, output.output, evaluationCriteria, handoff);
 
     if (evalResult.transportError) {
@@ -184,7 +184,7 @@ export async function executeWithRevisions(
         stepId: step.id,
         revisionAttempt,
       });
-      emitter.evaluatorFailed(workflowId, evalResult.reason ?? "transport error during revision");
+      emit("evaluator:failed", { workflowId, reason: evalResult.reason ?? "transport error during revision" });
       return {
         workerOutput: output,
         handoffData: handoff,
@@ -194,7 +194,7 @@ export async function executeWithRevisions(
       };
     }
 
-    emitter.evaluatorCompleted(workflowId, {
+    emit("evaluator:completed", { workflowId, result: {
       passed: evalResult.passed,
       reasoning: evalResult.reason ?? "",
       suggestions: evalResult.suggestions,
@@ -202,7 +202,7 @@ export async function executeWithRevisions(
       feedback: evalResult.feedback ?? "",
       files_to_review: [],
       issues: [],
-    });
+    } });
   }
 
   if (!evalResult.passed && !evalResult.skipped && !evalResult.transportError) {

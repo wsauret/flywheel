@@ -58,7 +58,7 @@ describe("provideHeadlessFactories", () => {
     // Emit a queue:initialized event — logged at all levels
     const event: FlywheelEvent = {
       type: "queue:initialized",
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       workflowId: "wf-test-1",
       stepIds: ["s1", "s2"],
     }
@@ -86,7 +86,7 @@ describe("provideHeadlessFactories", () => {
     // Emit a normal-level event — should be filtered at minimal
     const event: FlywheelEvent = {
       type: "subprocess:completed",
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       workflowId: "wf-test-2",
       exitCode: 0,
     }

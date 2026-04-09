@@ -15,7 +15,6 @@ import type { FlywheelEvent } from "./events.js";
 export abstract class BaseEventConsumer {
   protected eventBus: EventBus | null = null;
   private unsubscribe: Unsubscribe | null = null;
-  private running = false;
 
   connect(eventBus: EventBus): void {
     // Guard against double-connect
@@ -34,21 +33,11 @@ export abstract class BaseEventConsumer {
     this.eventBus = null;
   }
 
-  start(): void {
-    this.running = true;
-  }
+  /** Extension point for subclasses. HeadlessAdapter overrides for log stream I/O. */
+  start(): void {}
 
-  stop(): void {
-    this.running = false;
-  }
-
-  isRunning(): boolean {
-    return this.running;
-  }
-
-  isConnected(): boolean {
-    return this.eventBus !== null;
-  }
+  /** Extension point for subclasses. HeadlessAdapter overrides for log stream cleanup. */
+  stop(): void {}
 
   /**
    * Handle a single FlywheelEvent. Subclasses should implement

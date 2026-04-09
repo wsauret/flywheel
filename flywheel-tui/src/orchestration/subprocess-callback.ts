@@ -18,7 +18,7 @@ import { wireStreamPipeline } from "./engines/subprocess/stream-pipeline.js"
 import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
 import type { WarmPool } from "./engines/pool/warm-pool.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
-import type { FlywheelEmitter } from "../infra/event-bus.js"
+import type { EmitFn } from "../infra/event-bus.js"
 import type { StdinHandle } from "./engines/subprocess/spawner.js"
 import type { WorkflowSession } from "./workflow-session.js"
 import type { Step } from "../workflows/queue/types.js"
@@ -41,7 +41,7 @@ const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
 export interface SubprocessCallbackDeps {
   deps: WorkflowDeps
-  emitter: FlywheelEmitter
+  emit: EmitFn
   workflowIdRef: { current: string }
   sessionId: string
   projectCwd: string
@@ -77,7 +77,7 @@ export function createSubprocessCallback(
   opts: SubprocessCallbackDeps,
 ): (step: Step, prompt: string) => Promise<SubprocessCallbackResult> {
   const {
-    deps, emitter, workflowIdRef, sessionId, projectCwd,
+    deps, emit, workflowIdRef, sessionId, projectCwd,
     stdinHandleRef, capturedSubprocessSessionId, pendingInjection,
     activeSessionRef, budgetTracker, traceEventHandler, transcriptWriter, subprocessPool,
   } = opts
@@ -163,7 +163,7 @@ export function createSubprocessCallback(
               type: "subprocess:injected",
               workflowId: workflowIdRef.current,
               message,
-              timestamp: new Date().toISOString(),
+              timestamp: Date.now(),
             })
           }
         } else {
@@ -192,10 +192,10 @@ export function createSubprocessCallback(
       },
       stdoutTransform: undefined as undefined,
       onStdout: (chunk: string) => {
-        emitter.subprocessOutput(workflowIdRef.current, "stdout", chunk, deps.engine.metadata.id)
+        emit("subprocess:output", { workflowId: workflowIdRef.current, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
       },
       onStderr: (chunk: string) => {
-        emitter.subprocessOutput(workflowIdRef.current, "stderr", chunk, deps.engine.metadata.id)
+        emit("subprocess:output", { workflowId: workflowIdRef.current, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
       },
       onNDJSONEvent: (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
         budgetTracker?.handleEvent(event);

@@ -105,9 +105,6 @@ export interface SessionRegistry {
   /** Check if a session exists in the registry. */
   has(sessionId: string): boolean
 
-  /** Get all active session IDs (every entry is active by definition). */
-  activeIds(): string[]
-
   /** Pause a specific session. Returns false if the entry doesn't support pausing (e.g. chat). */
   pause(sessionId: string): boolean
 
@@ -178,6 +175,7 @@ export function createSessionRegistry(): SessionRegistry {
         onSteps: (steps) => updateEntry(sessionId, { steps }),
         onTokens: (n) => updateEntry(sessionId, { tokens: n }),
         onCost: (n) => updateEntry(sessionId, { cost: n }),
+        onMetrics: (tokens, cost) => updateEntry(sessionId, { tokens, cost }),
         onSessionName: (name) => updateEntry(sessionId, { description: name }),
         onModelActivity: (activity) => updateEntry(sessionId, { modelActivity: activity }),
       },
@@ -278,10 +276,6 @@ export function createSessionRegistry(): SessionRegistry {
     return entries.has(sessionId)
   }
 
-  function activeIds(): string[] {
-    return [...entries.keys()]
-  }
-
   function pause(sessionId: string): boolean {
     const entry = entries.get(sessionId)
     if (!entry) return false
@@ -352,5 +346,5 @@ export function createSessionRegistry(): SessionRegistry {
     notify()
   }
 
-  return { start, startChat, get, has, activeIds, allIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount, disposeAll }
+  return { start, startChat, get, has, allIds, pause, abort, remove, injectMessage, cancelShutdown, subscribe, runningCount, disposeAll }
 }

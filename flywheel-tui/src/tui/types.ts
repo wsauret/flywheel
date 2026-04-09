@@ -37,12 +37,6 @@ export interface ApprovalState {
   description?: string;
 }
 
-export interface OutputLine {
-  stream: "stdout" | "stderr";
-  data: string;
-  timestamp: string;
-}
-
 // ── Structured Output Blocks (canonical definitions in infra/output-blocks.ts) ──
 
 import type { AnyBlock as _AnyBlock } from "../infra/output-blocks";
@@ -66,29 +60,18 @@ export type {
 /** Workflow lifecycle, queue steps, approval, navigation, error. */
 export interface ExecutionState {
   planName: string;
-  version: string;
   startTime: number;
   endTime?: number;
   workflowStatus: WorkflowStatus;
   /** Queue step display states for the workflow panel. */
   queueSteps: QueueStepState[];
   approvalState: ApprovalState;
-  selectedStepIndex: number;
-  scrollOffset: number;
-  visibleItemCount: number;
   error?: string;
   modelActivity: "idle" | "thinking" | "generating" | "tool_executing";
 }
 
-/** Structured output blocks and legacy output lines. */
+/** Structured output blocks. */
 export interface OutputState {
-  /**
-   * @deprecated Prefer `outputBlocks` for display. `outputLines` is retained
-   * for the console adapter and raw-mode passthrough. The OpenTUI adapter now
-   * routes all output (including system messages and stderr) through the
-   * structured block pipeline.
-   */
-  outputLines: OutputLine[];
   outputBlocks: _AnyBlock[];
 }
 

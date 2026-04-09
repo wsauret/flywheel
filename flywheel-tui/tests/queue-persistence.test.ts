@@ -96,7 +96,7 @@ describe("VAL-QUEUE-019: save writes to correct file path", () => {
       status: "running",
       mutationLog: [
         {
-          timestamp: "2026-01-01T00:00:00.000Z",
+          timestamp: 1735689600000,
           action: "status-change",
           actor: "executor",
           reason: "step completed",
@@ -215,7 +215,7 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
       status: "running",
       mutationLog: [
         {
-          timestamp: "2026-01-01T00:00:00.000Z",
+          timestamp: 1735689600000,
           action: "status-change",
           actor: "executor",
           reason: "step completed",
@@ -788,14 +788,14 @@ describe("VAL-CROSS-007: Queue state survives session resume", () => {
       status: "paused",
       mutationLog: [
         {
-          timestamp: "2026-01-01T00:00:00.000Z",
+          timestamp: 1735689600000,
           action: "status-change",
           actor: "executor",
           reason: "step completed",
           stepIds: ["s1"],
         },
         {
-          timestamp: "2026-01-01T00:01:00.000Z",
+          timestamp: 1735689660000,
           action: "insert",
           actor: "plan-hook",
           reason: "work steps from plan",

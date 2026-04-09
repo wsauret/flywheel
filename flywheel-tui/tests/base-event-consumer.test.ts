@@ -16,7 +16,7 @@ const makeEvent = (): FlywheelEvent => ({
   type: "queue:initialized",
   workflowId: "test-id",
   stepIds: ["s1"],
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 describe("BaseEventConsumer", () => {
@@ -41,7 +41,6 @@ describe("BaseEventConsumer", () => {
     consumer.disconnect();
     bus.emit(makeEvent());
     expect(consumer.events).toHaveLength(0);
-    expect(consumer.isConnected()).toBe(false);
   });
 
   it("double-connect disconnects first, then reconnects", () => {
@@ -60,32 +59,6 @@ describe("BaseEventConsumer", () => {
     // New bus should deliver
     bus2.emit(makeEvent());
     expect(consumer.events).toHaveLength(2);
-  });
-
-  // -- start / stop --
-
-  it("start() / stop() toggle running state", () => {
-    expect(consumer.isRunning()).toBe(false);
-    consumer.start();
-    expect(consumer.isRunning()).toBe(true);
-    consumer.stop();
-    expect(consumer.isRunning()).toBe(false);
-  });
-
-  // -- isRunning / isConnected --
-
-  it("isRunning() reflects lifecycle state", () => {
-    expect(consumer.isRunning()).toBe(false);
-    consumer.start();
-    expect(consumer.isRunning()).toBe(true);
-  });
-
-  it("isConnected() reflects lifecycle state", () => {
-    expect(consumer.isConnected()).toBe(false);
-    consumer.connect(bus);
-    expect(consumer.isConnected()).toBe(true);
-    consumer.disconnect();
-    expect(consumer.isConnected()).toBe(false);
   });
 
   // -- events reach handleEvent --

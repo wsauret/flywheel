@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
-import type { FlywheelEmitter } from "../../infra/event-bus";
+import type { EmitFn } from "../../infra/event-bus";
 import type {
   EvalResult,
   DispatcherFn,
@@ -32,7 +32,7 @@ const log = Log.create({ service: "step-executor" });
 export interface StepRunnerDeps {
   queue: Queue;
   workflowId: string;
-  emitter: FlywheelEmitter;
+  emit: EmitFn;
   dispatcher: DispatcherFn;
   worker: WorkerFn;
   evaluator: EvaluatorFn | null;
@@ -85,7 +85,7 @@ export async function executeStep(
   const {
     queue,
     workflowId,
-    emitter,
+    emit,
     dispatcher,
     worker,
     evaluator,
@@ -105,10 +105,10 @@ export async function executeStep(
 
   let { previousHandoff, previousAssessment } = deps;
 
-  emitter.queueStepStarted(workflowId, step.id, step.type, step.title);
+  emit("queue:step-started", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
   const transitioned = await safeTransition(step.id, "running", "starting step execution");
   if (!transitioned) {
-    emitter.queueStepFailed(workflowId, step.id, step.type, step.title, "Failed to transition to running");
+    emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason: "Failed to transition to running" });
     return { outcome: "failed", previousHandoff, previousAssessment };
   }
 
@@ -255,7 +255,7 @@ export async function executeStep(
           evaluator,
           worker,
           handoffReader,
-          emitter,
+          emit,
           workflowId,
           maxRevisions,
           abortSignal,
@@ -269,7 +269,7 @@ export async function executeStep(
 
       if (!revisionResult.passed) {
         await safeTransition(step.id, "failed", revisionResult.failReason!);
-        emitter.queueStepFailed(workflowId, step.id, step.type, step.title, revisionResult.failReason!);
+        emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason: revisionResult.failReason! });
 
         if (onStepCompleted) {
           const hookResult = await onStepCompleted(step, "failed", queue, handoffData);
@@ -299,7 +299,7 @@ export async function executeStep(
 
     // Transition step to completed
     await safeTransition(step.id, "completed", "step execution completed successfully");
-    emitter.queueStepCompleted(workflowId, step.id, step.type, step.title);
+    emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
 
     // Persist accumulator state (ADR-003 Decision 8)
     if (persistAccumulatorState && accumulator.serialize) {
@@ -331,7 +331,7 @@ export async function executeStep(
     log.warn("step execution failed", { stepId: step.id, reason });
 
     await safeTransition(step.id, "failed", reason);
-    emitter.queueStepFailed(workflowId, step.id, step.type, step.title, reason);
+    emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason });
 
     if (onStepCompleted) {
       const hookResult = await onStepCompleted(step, "failed", queue, null);

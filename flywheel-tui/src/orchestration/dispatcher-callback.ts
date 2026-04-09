@@ -9,7 +9,7 @@ import { createStepDispatcher, type StepDispatchContext, type MutationRequest } 
 import { Log } from "../infra/log"
 import { errorMessage } from "../infra/error-message"
 import type { ContextIndexer } from "./memory/indexer"
-import type { FlywheelEmitter } from "../infra/event-bus"
+import type { EmitFn } from "../infra/event-bus"
 import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
 import type { Step, Queue } from "../workflows/queue/types"
@@ -24,7 +24,7 @@ const log = Log.create({ service: "dispatcher-callback" })
 
 export interface DispatcherCallbackDeps {
   deps: WorkflowDeps
-  emitter: FlywheelEmitter
+  emit: EmitFn
   workflowIdRef: { current: string }
   dispatcherTransport: DispatcherTransport | undefined
   contextIndexer: ContextIndexer
@@ -55,7 +55,7 @@ export type DispatcherFn = (
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {
     deps, dispatcherTransport, contextIndexer, contextAccumulator,
-    projectCwd, sessionObjective, queue, emitter, workflowIdRef,
+    projectCwd, sessionObjective, queue, emit, workflowIdRef,
     dispatcherModel, subprocessModel,
   } = opts
 
@@ -63,7 +63,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
   const realDispatcher = dispatcherTransport
     ? createStepDispatcher({
         transport: dispatcherTransport,
-        emitter,
+        emit,
         workflowId: workflowIdRef.current,
         configContext: {
           maxEvalCycles: deps.config.max_revisions ?? 1,

@@ -10,8 +10,7 @@
 
 import { describe, it, expect, beforeEach } from "bun:test";
 
-import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
-import type { FlywheelEmitter } from "../src/infra/event-bus";
+import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
 import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
 import type { Span } from "../src/infra/trace-types";
@@ -56,8 +55,8 @@ function createInMemoryWriter(): InMemoryWriter {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function now(): string {
-  return new Date().toISOString();
+function now(): number {
+  return Date.now();
 }
 
 function makeToolUseNDJSON(toolName: string, toolUseId: string, input: unknown): NDJSONEvent {
@@ -94,18 +93,18 @@ function makeToolResultNDJSON(toolUseId: string, content: string, isError = fals
 
 describe("Trace events — EventBus routing", () => {
   let bus: EventBus;
-  let emitter: FlywheelEmitter;
+  let emit: EmitFn;
 
   beforeEach(() => {
     bus = new EventBus();
-    emitter = createFlywheelEmitter(bus);
+    emit = createEmit(bus);
   });
 
   it("trace:tool-started emits with correct fields", () => {
     const received: FlywheelEvent[] = [];
     bus.subscribeToType("trace:tool-started", (e) => received.push(e));
 
-    emitter.traceToolStarted("wf-1", "toolu_123", "Read", '{"file_path":"/foo"}');
+    emit("trace:tool-started", { workflowId: "wf-1", toolUseId: "toolu_123", toolName: "Read", toolInput: '{"file_path":"/foo"}' });
 
     expect(received).toHaveLength(1);
     const evt = received[0];
@@ -123,7 +122,7 @@ describe("Trace events — EventBus routing", () => {
     const received: FlywheelEvent[] = [];
     bus.subscribeToType("trace:tool-completed", (e) => received.push(e));
 
-    emitter.traceToolCompleted("wf-1", "toolu_123", "file contents", false);
+    emit("trace:tool-completed", { workflowId: "wf-1", toolUseId: "toolu_123", toolOutput: "file contents", isError: false });
 
     expect(received).toHaveLength(1);
     const evt = received[0];
@@ -138,7 +137,7 @@ describe("Trace events — EventBus routing", () => {
     const received: FlywheelEvent[] = [];
     bus.subscribeToType("trace:subagent-started", (e) => received.push(e));
 
-    emitter.traceSubagentStarted("wf-1", "toolu_456", "Task", "implement feature", "do the thing");
+    emit("trace:subagent-started", { workflowId: "wf-1", toolUseId: "toolu_456", agentType: "Task", description: "implement feature", prompt: "do the thing" });
 
     expect(received).toHaveLength(1);
     const evt = received[0];
@@ -153,7 +152,7 @@ describe("Trace events — EventBus routing", () => {
     const received: FlywheelEvent[] = [];
     bus.subscribeToType("trace:subagent-completed", (e) => received.push(e));
 
-    emitter.traceSubagentCompleted("wf-1", "toolu_456", "done", false);
+    emit("trace:subagent-completed", { workflowId: "wf-1", toolUseId: "toolu_456", result: "done", isError: false });
 
     expect(received).toHaveLength(1);
     const evt = received[0];
@@ -170,8 +169,8 @@ describe("Trace events — EventBus routing", () => {
     bus.subscribeToType("trace:tool-started", (e) => toolStarted.push(e));
     bus.subscribeToType("trace:tool-completed", (e) => toolCompleted.push(e));
 
-    emitter.traceToolStarted("wf-1", "toolu_1", "Read", "{}");
-    emitter.traceToolCompleted("wf-1", "toolu_1", "ok", false);
+    emit("trace:tool-started", { workflowId: "wf-1", toolUseId: "toolu_1", toolName: "Read", toolInput: "{}" });
+    emit("trace:tool-completed", { workflowId: "wf-1", toolUseId: "toolu_1", toolOutput: "ok", isError: false });
 
     expect(toolStarted).toHaveLength(1);
     expect(toolCompleted).toHaveLength(1);
@@ -184,15 +183,15 @@ describe("Trace events — EventBus routing", () => {
 
 describe("TraceEventHandler", () => {
   let bus: EventBus;
-  let emitter: FlywheelEmitter;
+  let emit: EmitFn;
   let handler: TraceEventHandler;
   let workflowIdRef: { current: string };
 
   beforeEach(() => {
     bus = new EventBus();
-    emitter = createFlywheelEmitter(bus);
+    emit = createEmit(bus);
     workflowIdRef = { current: "wf-test" };
-    handler = createTraceEventHandler({ emitter, workflowIdRef });
+    handler = createTraceEventHandler({ emit, workflowIdRef });
   });
 
   it("tool_use NDJSONEvent emits trace:tool-started", () => {
@@ -556,14 +555,14 @@ describe("TraceCollector — trace event subscriptions", () => {
 
 describe("End-to-end: NDJSON → trace event → span", () => {
   let bus: EventBus;
-  let emitter: FlywheelEmitter;
+  let emit: EmitFn;
   let handler: TraceEventHandler;
   let writer: InMemoryWriter;
   let collector: TraceCollector;
 
   beforeEach(() => {
     bus = new EventBus();
-    emitter = createFlywheelEmitter(bus);
+    emit = createEmit(bus);
     writer = createInMemoryWriter();
     collector = createTraceCollector({
       writer,
@@ -573,7 +572,7 @@ describe("End-to-end: NDJSON → trace event → span", () => {
     collector.subscribeToEvents(bus);
 
     const workflowIdRef = { current: "wf-e2e" };
-    handler = createTraceEventHandler({ emitter, workflowIdRef });
+    handler = createTraceEventHandler({ emit, workflowIdRef });
 
     // Set up workflow context
     bus.emit({ type: "queue:initialized", workflowId: "wf-e2e", stepIds: ["s1"], timestamp: now() });

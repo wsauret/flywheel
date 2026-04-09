@@ -21,11 +21,8 @@ import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
 import { useSessionModal } from "./hooks/use-session-modal.js"
-import type { AgentState } from "./hooks/use-workflow-lifecycle.js"
+import { createShellState } from "./hooks/shell-state.js"
 import { TERMINAL_TITLE_PREFIX } from "./hooks/use-workflow-lifecycle.js"
-import type { SessionState } from "../orchestration/session/state-machine.js"
-import type { AnyBlock } from "./types"
-import type { StepState } from "../orchestration/workflow-runner"
 
 export function FlywheelShell() {
   const { theme } = useTheme()
@@ -34,86 +31,37 @@ export function FlywheelShell() {
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
 
-  // ── Signals ──
-  const [agentState, setAgentState] = createSignal<AgentState>("idle")
-  const [outputBlocks, setOutputBlocks] = createSignal<AnyBlock[]>([])
-  const [steps, setSteps] = createSignal<StepState[]>([])
-  const [errorMessage, setErrorMessage] = createSignal("")
-  const [sessionTitle, setSessionTitle] = createSignal("")
-  const [statusLine, setStatusLine] = createSignal("")
-  const [promptHeight, setPromptHeight] = createSignal(1)
-
-  // Active workflow tracking
-  const [foregroundId, setForegroundId] = createSignal<string | undefined>()
-  const [runningCount, setRunningCount] = createSignal(0)
-
   // ── Session registry ──
   const registry = createSessionRegistry()
 
-  // ── Derived session state — single source of truth ──
-  // Reads from registry (active runner) and session manager (persisted state).
-  // Re-evaluates when foregroundId changes; registry subscriber triggers UI
-  // updates that cause re-evaluation for runner removal.
-  const sessionState = (): SessionState | null => {
-    const fgId = foregroundId()
-    if (!fgId) return null
-    if (registry.has(fgId)) return "active"
-    return manager.getState(fgId)
-  }
+  // ── Metrics (local hook — not part of shell state, but injected as a service) ──
+  const metrics = useMetrics()
+
+  // ── Shell state: shared signals + services ──
+  const { signals, services } = createShellState({
+    registry,
+    manager,
+    refreshList,
+    setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
+    metrics,
+    showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => toast.show(opts),
+  })
+
+  // ── Prompt-specific signal (local, not shared) ──
+  const [promptHeight, setPromptHeight] = createSignal(1)
 
   // ── Prompt ref ──
   let promptRef: TextareaRenderable | null = null
 
   // ── Hooks ──
-  const metrics = useMetrics()
+  const workflow = useWorkflowLifecycle({ signals, services })
 
-  const workflow = useWorkflowLifecycle({
-    registry,
-    manager,
-    refreshList,
-    foregroundId,
-    setForegroundId,
-    setAgentState,
-    setOutputBlocks,
-    setSteps,
-    setErrorMessage,
-    setStatusLine,
-    setSessionTitle,
-    setTerminalTitle: (t) => renderer.setTerminalTitle(t),
-    resetMetrics: metrics.resetMetrics,
-    workStartTime: metrics.workStartTime,
-    showToast: (opts) => toast.show(opts),
-  })
-
-  const chat = useChatMode({
-    registry,
-    foregroundId,
-    setForegroundId,
-    setAgentState,
-    setErrorMessage,
-    manager,
-    refreshList,
-    setSessionTitle,
-    setStatusLine,
-    setTerminalTitle: (t) => renderer.setTerminalTitle(t),
-    resetMetrics: metrics.resetMetrics,
-    workStartTime: metrics.workStartTime,
-    projectCwd: process.cwd(),
-  })
+  const chat = useChatMode({ signals, services, projectCwd: process.cwd() })
 
   const sessionModal = useSessionModal({
+    signals,
+    services,
     sessions,
-    manager,
-    registry,
-    foregroundId,
-    setForegroundId,
-    outputBlocks,
-    setOutputBlocks,
-    sessionTitle,
-    setSessionTitle,
-    statusLine,
-    setStatusLine,
-    showToast: (opts) => toast.show(opts),
     handleResume: workflow.handleResume,
     switchForeground,
     actionDeps: workflow.actionDeps,
@@ -122,7 +70,7 @@ export function FlywheelShell() {
   const inChat = () => {
     // chatActive covers the async startup window before the registry entry exists
     if (chat.chatActive()) return true
-    const fgId = foregroundId()
+    const fgId = signals.foregroundId()
     if (!fgId) return false
     const entry = registry.get(fgId)
     return entry?.kind === "chat"
@@ -132,12 +80,9 @@ export function FlywheelShell() {
   chat.startChat()
 
   const commands = useCommandDispatch({
-    agentState,
-    sessionState,
-    setAgentState,
-    foregroundId,
+    signals,
+    services,
     inChat,
-    registry,
     startWorkflow: workflow.startWorkflow,
     startTestStep: workflow.startTestStep,
     startChat: chat.startChat,
@@ -146,25 +91,14 @@ export function FlywheelShell() {
     sendMessage: chat.sendMessage,
     handleResume: workflow.handleResume,
     openSessionsModal: sessionModal.openSessionsModal,
-    showToast: (opts) => toast.show(opts),
   })
 
   // ── Registry subscription — sync foreground entry to display signals ──
-  const registryUnsub = useRegistrySync({
-    registry,
-    foregroundId,
-    setAgentState,
-    setOutputBlocks,
-    setSteps,
-    setRunningCount,
-    setSessionTitle,
-    setTerminalTitle: (t) => renderer.setTerminalTitle(t),
-    metrics,
-  })
+  const registryUnsub = useRegistrySync({ signals, services })
 
   // ── Timer — reactive: runs only when the agent is actively working ──
   createEffect(() => {
-    if (agentState() === "active") metrics.startTimer()
+    if (signals.agentState() === "active") metrics.startTimer()
     else metrics.pauseTimer()
   })
 
@@ -173,19 +107,19 @@ export function FlywheelShell() {
     const entry = registry.get(sessionId)
     if (!entry) return
     metrics.pauseTimer()  // stop old interval before resetting accumulated value
-    setForegroundId(sessionId)
+    signals.setForegroundId(sessionId)
     // Entry exists in registry = active; sessionState() will derive "active" from registry.has
-    setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
+    signals.setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
     // Sync display state from the entry — registry sync only fires on entry
     // updates, so an idle session would never push its blocks to the UI.
-    setOutputBlocks([...entry.outputBlocks])
-    if (entry.kind === "workflow") setSteps([...entry.steps])
-    else setSteps([])
-    setSessionTitle(entry.description)
+    signals.setOutputBlocks([...entry.outputBlocks])
+    if (entry.kind === "workflow") signals.setSteps([...entry.steps])
+    else signals.setSteps([])
+    signals.setSessionTitle(entry.description)
     metrics.resetElapsedTo(Date.now() - entry.startedAt)
     // effect above handles start/pause based on new agentState
-    setStatusLine("")
-    setErrorMessage("")
+    signals.setStatusLine("")
+    signals.setErrorMessage("")
     renderer.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
   }
 
@@ -193,16 +127,16 @@ export function FlywheelShell() {
   useKeyboard((evt) => {
     if (sessionModal.sessionsModalOpen()) { sessionModal.handleModalKey(evt); return }
     if (evt.name === "escape") {
-      const state = sessionState()
+      const state = signals.sessionState()
       // Active workflow (not chat): first Esc pauses, second Esc aborts
       if (state === "active" && !inChat()) {
         workflow.pauseForeground()
-        const bg = runningCount()
+        const bg = signals.runningCount()
         if (bg > 0) toast.show({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
         return
       }
       // In chat mode, Esc interrupts the active worker — never ends the session.
-      // Use /new to start a fresh chat, or Ctrl+B → d to delete.
+      // Use /new to start a fresh chat, or Ctrl+B -> d to delete.
       if (inChat()) {
         chat.interruptChat()
         return
@@ -216,19 +150,19 @@ export function FlywheelShell() {
           sessionModal.dismissViewedSession()
           return
         }
-        setAgentState("idle")
-        setOutputBlocks([])
-        setSteps([])
-        setStatusLine("")
-        setErrorMessage("")
-        setSessionTitle("")
-        setForegroundId(undefined)
+        signals.setAgentState("idle")
+        signals.setOutputBlocks([])
+        signals.setSteps([])
+        signals.setStatusLine("")
+        signals.setErrorMessage("")
+        signals.setSessionTitle("")
+        signals.setForegroundId(undefined)
         renderer.setTerminalTitle("flywheel")
         return
       }
       // Error state (errorMessage set, no foreground session): dismiss
-      if (errorMessage()) {
-        setErrorMessage("")
+      if (signals.errorMessage()) {
+        signals.setErrorMessage("")
         return
       }
     }
@@ -236,7 +170,7 @@ export function FlywheelShell() {
     if (evt.ctrl && evt.name === "w") {
       if (inChat()) { chat.endChat(); chat.startChat(); return }
       // For workflows: abort the foreground session
-      const fgId = foregroundId()
+      const fgId = signals.foregroundId()
       if (fgId) { registry.abort(fgId); return }
     }
     if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }
@@ -260,24 +194,24 @@ export function FlywheelShell() {
   // ── Derived state ──
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
   const currentStep = createMemo(() => {
-    const running = steps().find((s) => s.status === "running")
+    const running = signals.steps().find((s) => s.status === "running")
     if (!running) return null
-    return { index: steps().indexOf(running), name: running.title, status: "running" as const }
+    return { index: signals.steps().indexOf(running), name: running.title, status: "running" as const }
   })
 
   const headerRight = createMemo(() => {
-    const state = sessionState()
-    const bgCount = runningCount()
-    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && agentState() !== "active" ? ` (1 running)` : ""
-    if (state === null) return bgCount > 0 ? `${bgCount} running` : (errorMessage() ? "error" : "ready")
-    if (state === "paused") return (errorMessage() ? "error" : "paused") + bgSuffix
-    const hasMetrics = agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0
+    const state = signals.sessionState()
+    const bgCount = signals.runningCount()
+    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && signals.agentState() !== "active" ? ` (1 running)` : ""
+    if (state === null) return bgCount > 0 ? `${bgCount} running` : (signals.errorMessage() ? "error" : "ready")
+    if (state === "paused") return (signals.errorMessage() ? "error" : "paused") + bgSuffix
+    const hasMetrics = signals.agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0
     if (hasMetrics) {
       const parts: string[] = [formatElapsed(metrics.elapsed())]
       parts.push(`${metrics.liveContextPercent()}% used`)
       const c = metrics.liveCost()
       if (c > 0) parts.push(`${formatCost(c)} spent`)
-      return parts.join(" · ") + bgSuffix
+      return parts.join(" \u00b7 ") + bgSuffix
     }
     if (state === "active") return "waiting" + bgSuffix  // in session, agent idle (user's turn)
     return "done" + bgSuffix
@@ -295,7 +229,7 @@ export function FlywheelShell() {
   })
 
   const promptStatusLine = createMemo(() => {
-    if (agentState() !== "active") return null
+    if (signals.agentState() !== "active") return null
     const activity = metrics.liveActivity()
     if (activity === "idle") return null
 
@@ -318,7 +252,7 @@ export function FlywheelShell() {
         backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
         <box flexDirection="row" justifyContent="space-between">
           <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>flywheel</text>
-          <Show when={sessionTitle()}><text fg={theme.text} attributes={createTextAttributes({ bold: true })}>{sessionTitle()}</text></Show>
+          <Show when={signals.sessionTitle()}><text fg={theme.text} attributes={createTextAttributes({ bold: true })}>{signals.sessionTitle()}</text></Show>
           <text fg={theme.textMuted}>{headerRight()}</text>
         </box>
       </box>
@@ -326,13 +260,13 @@ export function FlywheelShell() {
       {/* Content */}
       <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} gap={1}>
 
-        <Show when={steps().length > 0}>
+        <Show when={signals.steps().length > 0}>
           <box flexShrink={0}>
-            <For each={steps()}>
+            <For each={signals.steps()}>
               {(step) => (
                 <text fg={step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted}>
-                  {step.status === "completed" ? "✓" : step.status === "running" ? "▸" : step.status === "failed" ? "✗" : "○"} {step.title}
-                  {step.durationMs ? ` (${(step.durationMs / 1000).toFixed(1)}s)` : step.completedAt ? ` · ${relativeTime(step.completedAt)}` : step.status === "running" && step.startedAt ? ` · ${relativeTime(step.startedAt)}` : ""}
+                  {step.status === "completed" ? "\u2713" : step.status === "running" ? "\u25b8" : step.status === "failed" ? "\u2717" : "\u25cb"} {step.title}
+                  {step.durationMs ? ` (${(step.durationMs / 1000).toFixed(1)}s)` : step.completedAt ? ` \u00b7 ${relativeTime(step.completedAt)}` : step.status === "running" && step.startedAt ? ` \u00b7 ${relativeTime(step.startedAt)}` : ""}
                 </text>
               )}
             </For>
@@ -340,7 +274,7 @@ export function FlywheelShell() {
         </Show>
 
         {/* Welcome logo — shown briefly before first chat output arrives */}
-        <Show when={sessionState() === null && !errorMessage() && !sessionModal.sessionsModalOpen()}>
+        <Show when={signals.sessionState() === null && !signals.errorMessage() && !sessionModal.sessionsModalOpen()}>
           <scrollbox flexGrow={1}>
             <box paddingTop={1} paddingBottom={1}>
               <For each={SIMPLE_LOGO}>{(line) => <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{line}</text>}</For>
@@ -348,25 +282,25 @@ export function FlywheelShell() {
           </scrollbox>
         </Show>
 
-        <Show when={errorMessage()}>
+        <Show when={signals.errorMessage()}>
           <scrollbox flexGrow={1}>
             <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Error</text>
-            <text fg={theme.error}>{errorMessage()}</text>
+            <text fg={theme.error}>{signals.errorMessage()}</text>
           </scrollbox>
         </Show>
 
-        <Show when={sessionState() !== null}>
+        <Show when={signals.sessionState() !== null}>
           <OutputWindow
-            outputBlocks={outputBlocks()}
-            workflowStatus={agentState() === "active" ? "running" : sessionState() === "paused" ? "interrupted" : sessionState() === "active" ? (inChat() ? "idle" : "running") : "completed"}
+            outputBlocks={signals.outputBlocks()}
+            workflowStatus={signals.agentState() === "active" ? "running" : signals.sessionState() === "paused" ? "interrupted" : signals.sessionState() === "active" ? (inChat() ? "idle" : "running") : "completed"}
             approvalPending={false}
             isPromptFocused={true}
             currentStep={inChat() ? null : currentStep()}
           />
         </Show>
 
-        <Show when={statusLine()}>
-          <box flexShrink={0}><text fg={theme.success}>{statusLine()}</text></box>
+        <Show when={signals.statusLine()}>
+          <box flexShrink={0}><text fg={theme.success}>{signals.statusLine()}</text></box>
         </Show>
       </box>
 
@@ -392,10 +326,10 @@ export function FlywheelShell() {
               width={lineWidth()} height={promptHeight()} wrapMode="word"
               placeholder={
                 inChat()
-                  ? (agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
-                  : agentState() === "active"
+                  ? (signals.agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
+                  : signals.agentState() === "active"
                     ? "Send a message to steer the worker (Esc to pause)"
-                    : sessionState() === "paused"
+                    : signals.sessionState() === "paused"
                       ? "Send a message to resume, or Esc to force stop"
                       : "Send a message..."
               }
@@ -417,12 +351,12 @@ export function FlywheelShell() {
         <text fg={theme.textMuted} flexShrink={1} overflow="hidden">{process.cwd()}</text>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.textMuted}>
-            {agentState() === "active"
-              ? `Esc to interrupt · Ctrl+N`
-              : sessionState() === "paused"
-                ? "Esc to stop · Ctrl+R to resume"
-                : "Ctrl+N · /exit"}
-            {` · Ctrl+B`}{runningCount() > 1 || sessions().length > 1 ? ` (${runningCount()} active · ${sessions().length} total)` : ""}
+            {signals.agentState() === "active"
+              ? `Esc to interrupt \u00b7 Ctrl+N`
+              : signals.sessionState() === "paused"
+                ? "Esc to stop \u00b7 Ctrl+R to resume"
+                : "Ctrl+N \u00b7 /exit"}
+            {` \u00b7 Ctrl+B`}{signals.runningCount() > 1 || sessions().length > 1 ? ` (${signals.runningCount()} active \u00b7 ${sessions().length} total)` : ""}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>
         </box>
@@ -431,7 +365,7 @@ export function FlywheelShell() {
       {/* Session modal overlay */}
       <Show when={sessionModal.sessionsModalOpen()}>
         <SessionModal
-          activeSessionId={foregroundId()}
+          activeSessionId={signals.foregroundId()}
           cursor={sessionModal.modalCursor()}
           confirmDeleteId={sessionModal.modalConfirmDelete()}
           refreshTrigger={sessionModal.modalRefreshTrigger()}

@@ -9,7 +9,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { EventBus, createFlywheelEmitter } from "../../src/infra/event-bus";
+import { EventBus, createEmit } from "../../src/infra/event-bus";
 import { createTraceWriter } from "../../src/orchestration/session/trace-writer";
 import { createTraceCollector } from "../../src/orchestration/session/trace-collector";
 import { createTraceEventHandler } from "../../src/orchestration/engines/subprocess/trace-event-handler";
@@ -28,7 +28,7 @@ console.log(`Session ID: ${sessionId}`);
 
 // --- Setup ---
 const bus = new EventBus();
-const emitter = createFlywheelEmitter(bus);
+const emit = createEmit(bus);
 
 const writer = createTraceWriter({ sessionId, baseDir, maxTraces: 10 });
 const collector = createTraceCollector({ writer, sessionId, workflowName });
@@ -36,7 +36,7 @@ const unsubs = collector.subscribeToEvents(bus);
 
 // Wire trace event handler
 const workflowIdRef = { current: randomUUID() };
-const traceHandler = createTraceEventHandler({ emitter, workflowIdRef });
+const traceHandler = createTraceEventHandler({ emit, workflowIdRef });
 
 // --- Simulate a realistic workflow event sequence ---
 // (We can't easily spin up a full workflow runner without the TUI,
@@ -51,7 +51,7 @@ bus.emit({
   type: "queue:initialized",
   workflowId: workflowIdRef.current,
   stepIds: [stepId],
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 // 2. Step started
@@ -61,7 +61,7 @@ bus.emit({
   stepId,
   stepType: "work",
   stepTitle: "Implement feature",
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 // 3. Subprocess spawned
@@ -69,7 +69,7 @@ bus.emit({
   type: "subprocess:spawned",
   workflowId: workflowIdRef.current,
   stepIndex: 0,
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 // Small delay to get realistic timing
@@ -147,7 +147,7 @@ bus.emit({
   type: "subprocess:completed",
   workflowId: workflowIdRef.current,
   result: { output: "Feature implemented", exitCode: 0, handoffPath: "" } as any,
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 // 7. Step completed
@@ -157,7 +157,7 @@ bus.emit({
   stepId,
   stepType: "work",
   stepTitle: "Implement feature",
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 // 8. Queue completed
@@ -165,7 +165,7 @@ bus.emit({
   type: "queue:completed",
   workflowId: workflowIdRef.current,
   stepsCompleted: 1,
-  timestamp: new Date().toISOString(),
+  timestamp: Date.now(),
 });
 
 // --- Finalize ---

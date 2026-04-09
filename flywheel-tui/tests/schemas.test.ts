@@ -23,7 +23,7 @@ import {
   LastWorkerResultSchema,
   WorkflowStepBaseSchema,
 } from "../src/workflows/schemas";
-import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
+import { EventBus, createEmit } from "../src/infra/event-bus";
 
 // ---------------------------------------------------------------------------
 // DispatcherDecisionSchema (.strip() — LLM output)
@@ -1355,17 +1355,17 @@ describe("Integration — full data contract flow", () => {
 
   it("event payloads carry expanded types correctly", () => {
     const bus = new EventBus();
-    const emitter = createFlywheelEmitter(bus);
+    const emit = createEmit(bus);
     const events: import("../src/infra/events").FlywheelEvent[] = [];
     bus.subscribe((e) => events.push(e));
 
     // Emit dispatcher:completed with a decision containing new fields
     const decision = DispatcherDecisionSchema.parse(fullDecision);
-    emitter.dispatcherCompleted("wf-event-test", decision);
+    emit("dispatcher:completed", { workflowId: "wf-event-test", decision });
 
     // Emit evaluator:completed with a result containing new fields
     const evalResult = EvaluatorResultSchema.parse(fullEvaluatorResult);
-    emitter.evaluatorCompleted("wf-event-test", evalResult);
+    emit("evaluator:completed", { workflowId: "wf-event-test", result: evalResult });
 
     // Verify dispatcher event payload
     const dispEvent = events.find((e) => e.type === "dispatcher:completed") as

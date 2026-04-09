@@ -1,7 +1,4 @@
-import type { FlywheelEvent, BudgetWarning } from "./events";
-import type { DispatcherDecision } from "../workflows/dispatcher/schemas";
-import type { EvaluatorResult } from "../workflows/evaluator/schemas";
-import type { SubprocessResult, SubprocessFailureReason } from "../orchestration/engines/subprocess/schemas";
+import type { FlywheelEvent } from "./events";
 
 export type Listener = (event: FlywheelEvent) => void;
 export type TypedListener<T extends FlywheelEvent["type"]> = (
@@ -106,120 +103,26 @@ export class EventBus {
 }
 
 // ---------------------------------------------------------------------------
-// Named emitter facade
+// Generic typed emitter
 // ---------------------------------------------------------------------------
 
-export interface FlywheelEmitter {
-  dispatcherInvoked(workflowId: string, stepIndex: number): void;
-  dispatcherCompleted(workflowId: string, decision: DispatcherDecision): void;
-  dispatcherFailed(workflowId: string, reason: string): void;
-  dispatcherOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
-  evaluatorInvoked(workflowId: string, stepIndex: number): void;
-  evaluatorCompleted(workflowId: string, result: EvaluatorResult): void;
-  evaluatorFailed(workflowId: string, reason: string): void;
-  evaluatorRevisionRequested(workflowId: string, stepIndex: number, revisionAttempt: number, maxRevisions: number, reason: string): void;
-  evaluatorOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineName: string): void;
-  subprocessSpawned(workflowId: string, stepIndex: number): void;
-  subprocessCompleted(workflowId: string, result: SubprocessResult): void;
-  subprocessFailed(workflowId: string, failure: SubprocessFailureReason): void;
-  subprocessRetrying(workflowId: string, attempt: number, maxAttempts: number, reason: string): void;
-  subprocessOutput(workflowId: string, stream: "stdout" | "stderr", data: string, engineId?: string): void;
-  subprocessInjected(workflowId: string, message: string): void;
-  approvalRequested(workflowId: string, stepIndex: number, description: string): void;
-  approvalReceived(workflowId: string, approved: boolean, skipped: boolean): void;
-  // Queue lifecycle events
-  queueInitialized(workflowId: string, stepIds: string[]): void;
-  queueCompleted(workflowId: string, stepsCompleted: number): void;
-  queueFailed(workflowId: string, reason: string, stepsCompleted: number): void;
-  // Queue step lifecycle events
-  queueStepStarted(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
-  queueStepCompleted(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
-  queueStepFailed(workflowId: string, stepId: string, stepType: string, stepTitle: string, reason: string): void;
-  // Queue mutation events
-  queueStepInserted(workflowId: string, stepId: string, stepType: string, stepTitle: string, afterStepId: string): void;
-  queueStepRemoved(workflowId: string, stepId: string, stepType: string, stepTitle: string): void;
-  // Budget events
-  budgetWarning(workflowId: string, metric: string, used: number, limit: number, remaining: number): void;
-  budgetExhausted(workflowId: string, reason: string): void;
-  // Trace events (from NDJSON pipeline)
-  traceToolStarted(workflowId: string, toolUseId: string, toolName: string, toolInput: string): void;
-  traceToolCompleted(workflowId: string, toolUseId: string, toolOutput: string, isError: boolean): void;
-  traceSubagentStarted(workflowId: string, toolUseId: string, agentType: string, description: string, prompt: string): void;
-  traceSubagentCompleted(workflowId: string, toolUseId: string, result: string, isError: boolean): void;
-}
+/**
+ * Type-safe event emitter. Payload shape is inferred from the event type string
+ * via the FlywheelEvent discriminated union.
+ *
+ * If TypeScript says the payload type is `never`, the type string doesn't match
+ * any FlywheelEvent — check for typos.
+ */
+export type EmitFn = <T extends FlywheelEvent["type"]>(
+  type: T,
+  payload: Omit<Extract<FlywheelEvent, { type: T }>, "type" | "timestamp">,
+) => void
 
-function now(): string {
-  return new Date().toISOString();
-}
-
-export function createFlywheelEmitter(bus: EventBus): FlywheelEmitter {
-  return {
-    dispatcherInvoked: (workflowId, stepIndex) =>
-      bus.emit({ type: "dispatcher:invoked", workflowId, stepIndex, timestamp: now() }),
-    dispatcherCompleted: (workflowId, decision) =>
-      bus.emit({ type: "dispatcher:completed", workflowId, decision, timestamp: now() }),
-    dispatcherFailed: (workflowId, reason) =>
-      bus.emit({ type: "dispatcher:failed", workflowId, reason, timestamp: now() }),
-    dispatcherOutput: (workflowId, stream, data, engineName) =>
-      bus.emit({ type: "dispatcher:output", workflowId, stream, data, engineName, timestamp: Date.now() }),
-    evaluatorInvoked: (workflowId, stepIndex) =>
-      bus.emit({ type: "evaluator:invoked", workflowId, stepIndex, timestamp: now() }),
-    evaluatorCompleted: (workflowId, result) =>
-      bus.emit({ type: "evaluator:completed", workflowId, result, timestamp: now() }),
-    evaluatorFailed: (workflowId, reason) =>
-      bus.emit({ type: "evaluator:failed", workflowId, reason, timestamp: now() }),
-    evaluatorRevisionRequested: (workflowId, stepIndex, revisionAttempt, maxRevisions, reason) =>
-      bus.emit({ type: "evaluator:revision-requested", workflowId, stepIndex, revisionAttempt, maxRevisions, reason, timestamp: Date.now() }),
-    evaluatorOutput: (workflowId, stream, data, engineName) =>
-      bus.emit({ type: "evaluator:output", workflowId, stream, data, engineName, timestamp: Date.now() }),
-    subprocessSpawned: (workflowId, stepIndex) =>
-      bus.emit({ type: "subprocess:spawned", workflowId, stepIndex, timestamp: now() }),
-    subprocessCompleted: (workflowId, result) =>
-      bus.emit({ type: "subprocess:completed", workflowId, result, timestamp: now() }),
-    subprocessFailed: (workflowId, failure) =>
-      bus.emit({ type: "subprocess:failed", workflowId, failure, timestamp: now() }),
-    subprocessRetrying: (workflowId, attempt, maxAttempts, reason) =>
-      bus.emit({ type: "subprocess:retrying", workflowId, attempt, maxAttempts, reason, timestamp: now() }),
-    subprocessOutput: (workflowId, stream, data, engineId?) =>
-      bus.emit({ type: "subprocess:output", workflowId, stream, data, timestamp: now(), ...(engineId !== undefined ? { engineId } : {}) }),
-    subprocessInjected: (workflowId, message) =>
-      bus.emit({ type: "subprocess:injected", workflowId, message, timestamp: now() }),
-    approvalRequested: (workflowId, stepIndex, description) =>
-      bus.emit({ type: "approval:requested", workflowId, stepIndex, description, timestamp: now() }),
-    approvalReceived: (workflowId, approved, skipped) =>
-      bus.emit({ type: "approval:received", workflowId, approved, skipped, timestamp: now() }),
-    // Queue lifecycle events
-    queueInitialized: (workflowId, stepIds) =>
-      bus.emit({ type: "queue:initialized", workflowId, stepIds, timestamp: now() }),
-    queueCompleted: (workflowId, stepsCompleted) =>
-      bus.emit({ type: "queue:completed", workflowId, stepsCompleted, timestamp: now() }),
-    queueFailed: (workflowId, reason, stepsCompleted) =>
-      bus.emit({ type: "queue:failed", workflowId, reason, stepsCompleted, timestamp: now() }),
-    // Queue step lifecycle events
-    queueStepStarted: (workflowId, stepId, stepType, stepTitle) =>
-      bus.emit({ type: "queue:step-started", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
-    queueStepCompleted: (workflowId, stepId, stepType, stepTitle) =>
-      bus.emit({ type: "queue:step-completed", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
-    queueStepFailed: (workflowId, stepId, stepType, stepTitle, reason) =>
-      bus.emit({ type: "queue:step-failed", workflowId, stepId, stepType, stepTitle, reason, timestamp: now() }),
-    // Queue mutation events
-    queueStepInserted: (workflowId, stepId, stepType, stepTitle, afterStepId) =>
-      bus.emit({ type: "queue:step-inserted", workflowId, stepId, stepType, stepTitle, afterStepId, timestamp: now() }),
-    queueStepRemoved: (workflowId, stepId, stepType, stepTitle) =>
-      bus.emit({ type: "queue:step-removed", workflowId, stepId, stepType, stepTitle, timestamp: now() }),
-    // Budget events
-    budgetWarning: (workflowId, metric, used, limit, remaining) =>
-      bus.emit({ type: "budget:warning", workflowId, metric: metric as BudgetWarning["metric"], used, limit, remaining, timestamp: now() }),
-    budgetExhausted: (workflowId, reason) =>
-      bus.emit({ type: "budget:exhausted", workflowId, reason, timestamp: now() }),
-    // Trace events
-    traceToolStarted: (workflowId, toolUseId, toolName, toolInput) =>
-      bus.emit({ type: "trace:tool-started", workflowId, toolUseId, toolName, toolInput, timestamp: now() }),
-    traceToolCompleted: (workflowId, toolUseId, toolOutput, isError) =>
-      bus.emit({ type: "trace:tool-completed", workflowId, toolUseId, toolOutput, isError, timestamp: now() }),
-    traceSubagentStarted: (workflowId, toolUseId, agentType, description, prompt) =>
-      bus.emit({ type: "trace:subagent-started", workflowId, toolUseId, agentType, description, prompt, timestamp: now() }),
-    traceSubagentCompleted: (workflowId, toolUseId, result, isError) =>
-      bus.emit({ type: "trace:subagent-completed", workflowId, toolUseId, result, isError, timestamp: now() }),
-  };
+export function createEmit(bus: EventBus): EmitFn {
+  return (type, payload) => {
+    // Cast is safe: EmitFn's conditional type validates payload at call site.
+    // TypeScript cannot structurally prove that { ...Omit<X, "type"|"timestamp">, type: T, timestamp: number }
+    // satisfies the discriminated union FlywheelEvent because the spread erases discriminant narrowing.
+    bus.emit({ ...payload, type, timestamp: Date.now() } as unknown as FlywheelEvent)
+  }
 }

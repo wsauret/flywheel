@@ -18,27 +18,21 @@ import type { WorkState, ExecutionState, OutputState } from "@tui/types";
 import type { UIActions, Listener } from "./types.js";
 import { createSubStore } from "./sub-store.js";
 import { createWorkflowActions } from "./actions/workflow-actions.js";
-import { createNavigationActions } from "./actions/navigation-actions.js";
 import { createQueueStepActions } from "./actions/queue-step-actions.js";
 
 function createInitialExecutionState(planName: string): ExecutionState {
   return {
     planName,
-    version: "0.0.1",
     startTime: Date.now(),
     workflowStatus: "idle",
     queueSteps: [],
     approvalState: { pending: false },
-    selectedStepIndex: 0,
-    scrollOffset: 0,
-    visibleItemCount: 10,
     modelActivity: "idle",
   };
 }
 
 function createInitialOutputState(): OutputState {
   return {
-    outputLines: [],
     outputBlocks: [],
   };
 }
@@ -84,7 +78,6 @@ function createStoreInternal(planName: string) {
   };
 
   const queueStepActions = createQueueStepActions(execCtx);
-  const navigationActions = createNavigationActions(execCtx);
   const workflowActions = createWorkflowActions(execCtx, outputCtx);
 
   const reset = (newPlanName: string) => {
@@ -102,7 +95,6 @@ function createStoreInternal(planName: string) {
     reset,
     ...queueStepActions,
     ...workflowActions,
-    ...navigationActions,
   } satisfies UIActions;
 }
 

@@ -3,8 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { EventBus, createFlywheelEmitter } from "../src/infra/event-bus";
-import type { FlywheelEmitter } from "../src/infra/event-bus";
+import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import type {
   FlywheelEvent,
   QueueInitialized,
@@ -19,12 +18,12 @@ import type {
 
 describe("Queue event types", () => {
   let bus: EventBus;
-  let emitter: FlywheelEmitter;
+  let emit: EmitFn;
   let received: FlywheelEvent[];
 
   beforeEach(() => {
     bus = new EventBus();
-    emitter = createFlywheelEmitter(bus);
+    emit = createEmit(bus);
     received = [];
     bus.subscribe((e) => received.push(e));
   });
@@ -33,20 +32,20 @@ describe("Queue event types", () => {
 
   describe("queue:initialized", () => {
     it("emits QueueInitialized with workflowId and stepIds", () => {
-      emitter.queueInitialized("wf-1", ["s1", "s2", "s3"]);
+      emit("queue:initialized", { workflowId: "wf-1", stepIds: ["s1", "s2", "s3"] });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueInitialized;
       expect(e.type).toBe("queue:initialized");
       expect(e.workflowId).toBe("wf-1");
       expect(e.stepIds).toEqual(["s1", "s2", "s3"]);
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
 
     it("can subscribe to queue:initialized specifically", () => {
       const specific: FlywheelEvent[] = [];
       bus.subscribeToType("queue:initialized", (e) => specific.push(e));
-      emitter.queueInitialized("wf-1", ["s1"]);
-      emitter.subprocessSpawned("wf-1", 0);
+      emit("queue:initialized", { workflowId: "wf-1", stepIds: ["s1"] });
+      emit("subprocess:spawned", { workflowId: "wf-1", stepIndex: 0 });
       expect(specific).toHaveLength(1);
       expect(specific[0].type).toBe("queue:initialized");
     });
@@ -56,13 +55,13 @@ describe("Queue event types", () => {
 
   describe("queue:completed", () => {
     it("emits QueueCompleted with workflowId and stepsCompleted", () => {
-      emitter.queueCompleted("wf-2", 5);
+      emit("queue:completed", { workflowId: "wf-2", stepsCompleted: 5 });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueCompleted;
       expect(e.type).toBe("queue:completed");
       expect(e.workflowId).toBe("wf-2");
       expect(e.stepsCompleted).toBe(5);
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -70,14 +69,14 @@ describe("Queue event types", () => {
 
   describe("queue:failed", () => {
     it("emits QueueFailed with reason and stepsCompleted", () => {
-      emitter.queueFailed("wf-3", "worker crashed", 2);
+      emit("queue:failed", { workflowId: "wf-3", reason: "worker crashed", stepsCompleted: 2 });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueFailed;
       expect(e.type).toBe("queue:failed");
       expect(e.workflowId).toBe("wf-3");
       expect(e.reason).toBe("worker crashed");
       expect(e.stepsCompleted).toBe(2);
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -85,7 +84,7 @@ describe("Queue event types", () => {
 
   describe("queue:step-started", () => {
     it("emits QueueStepStarted with stepId, stepType, and stepTitle", () => {
-      emitter.queueStepStarted("wf-4", "step-uuid-1", "work", "Implement feature X");
+      emit("queue:step-started", { workflowId: "wf-4", stepId: "step-uuid-1", stepType: "work", stepTitle: "Implement feature X" });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueStepStarted;
       expect(e.type).toBe("queue:step-started");
@@ -93,7 +92,7 @@ describe("Queue event types", () => {
       expect(e.stepId).toBe("step-uuid-1");
       expect(e.stepType).toBe("work");
       expect(e.stepTitle).toBe("Implement feature X");
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -101,7 +100,7 @@ describe("Queue event types", () => {
 
   describe("queue:step-completed", () => {
     it("emits QueueStepCompleted with stepId, stepType, and stepTitle", () => {
-      emitter.queueStepCompleted("wf-5", "step-uuid-2", "plan", "Create plan");
+      emit("queue:step-completed", { workflowId: "wf-5", stepId: "step-uuid-2", stepType: "plan", stepTitle: "Create plan" });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueStepCompleted;
       expect(e.type).toBe("queue:step-completed");
@@ -109,7 +108,7 @@ describe("Queue event types", () => {
       expect(e.stepId).toBe("step-uuid-2");
       expect(e.stepType).toBe("plan");
       expect(e.stepTitle).toBe("Create plan");
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -117,7 +116,7 @@ describe("Queue event types", () => {
 
   describe("queue:step-failed", () => {
     it("emits QueueStepFailed with stepId, stepType, stepTitle, and reason", () => {
-      emitter.queueStepFailed("wf-6", "step-uuid-3", "review", "Review changes", "timeout");
+      emit("queue:step-failed", { workflowId: "wf-6", stepId: "step-uuid-3", stepType: "review", stepTitle: "Review changes", reason: "timeout" });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueStepFailed;
       expect(e.type).toBe("queue:step-failed");
@@ -126,7 +125,7 @@ describe("Queue event types", () => {
       expect(e.stepType).toBe("review");
       expect(e.stepTitle).toBe("Review changes");
       expect(e.reason).toBe("timeout");
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -134,7 +133,7 @@ describe("Queue event types", () => {
 
   describe("queue:step-inserted", () => {
     it("emits QueueStepInserted with position info", () => {
-      emitter.queueStepInserted("wf-7", "new-step-1", "verify", "Verify output", "step-uuid-2");
+      emit("queue:step-inserted", { workflowId: "wf-7", stepId: "new-step-1", stepType: "verify", stepTitle: "Verify output", afterStepId: "step-uuid-2" });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueStepInserted;
       expect(e.type).toBe("queue:step-inserted");
@@ -143,7 +142,7 @@ describe("Queue event types", () => {
       expect(e.stepType).toBe("verify");
       expect(e.stepTitle).toBe("Verify output");
       expect(e.afterStepId).toBe("step-uuid-2");
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -151,7 +150,7 @@ describe("Queue event types", () => {
 
   describe("queue:step-removed", () => {
     it("emits QueueStepRemoved with step info", () => {
-      emitter.queueStepRemoved("wf-8", "step-uuid-4", "gate", "Approval gate");
+      emit("queue:step-removed", { workflowId: "wf-8", stepId: "step-uuid-4", stepType: "gate", stepTitle: "Approval gate" });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueStepRemoved;
       expect(e.type).toBe("queue:step-removed");
@@ -159,7 +158,7 @@ describe("Queue event types", () => {
       expect(e.stepId).toBe("step-uuid-4");
       expect(e.stepType).toBe("gate");
       expect(e.stepTitle).toBe("Approval gate");
-      expect(typeof e.timestamp).toBe("string");
+      expect(typeof e.timestamp).toBe("number");
     });
   });
 
@@ -167,7 +166,7 @@ describe("Queue event types", () => {
 
   describe("existing events preserved", () => {
     it("queue step events still emit correctly", () => {
-      emitter.queueStepStarted("wf-1", "step-0", "work", "Old step");
+      emit("queue:step-started", { workflowId: "wf-1", stepId: "step-0", stepType: "work", stepTitle: "Old step" });
       expect(received).toHaveLength(1);
       expect(received[0].type).toBe("queue:step-started");
     });

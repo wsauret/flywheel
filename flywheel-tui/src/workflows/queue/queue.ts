@@ -97,7 +97,7 @@ function logMutation(
   provenance: Provenance,
 ): void {
   const entry: MutationLogEntry = {
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     action,
     actor: provenance.actor,
     reason: provenance.reason,

@@ -20,9 +20,8 @@ import { randomUUID } from "node:crypto"
 import { BunProcessSpawner } from "./engines/subprocess/bun-spawner"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { getEngine } from "./engines/core/registry"
-import { NDJSONParser } from "./engines/subprocess/ndjson-parser"
+import { createOutputPipeline } from "./output-pipeline"
 import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
-import { StructuredEventParser } from "../infra/output/structured-event-parser"
 import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
 import { extractContextUpdate } from "./engines/providers/claude-context"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
@@ -97,18 +96,19 @@ export async function createChatSession(
     : null
 
   // Structured output pipeline — shared across worker respawns
-  const builder = new StructuredOutputBuilder()
   let agentActive = false
   // Gate: only forward model activity when a user-triggered turn is in progress.
   // Prevents subprocess startup noise (stderr, init events) from starting the timer.
   let userTurnInProgress = false
-  builder.onModelActivityChange = (activity) => {
-    if (!userTurnInProgress && activity !== "idle") return
-    callbacks.onModelActivity(activity)
-    if (activity !== "idle") agentActive = true
-  }
-  const eventParser = new StructuredEventParser({ builder })
-  const ndjsonParser = new NDJSONParser()
+
+  const pipeline = createOutputPipeline({
+    onModelActivityChange: (activity) => {
+      if (!userTurnInProgress && activity !== "idle") return
+      callbacks.onModelActivity(activity)
+      if (activity !== "idle") agentActive = true
+    },
+  })
+  const { parser: ndjsonParser, builder, eventParser } = pipeline
 
   ndjsonParser.onEvent = (event) => {
     // Claude Code echoes user messages as {"type":"user"} — this confirms
@@ -150,16 +150,14 @@ export async function createChatSession(
     transcriptWriter?.handleEvent(event)
     if (traceCollector) feedChatEventToTrace(event, traceCollector, toolSpanMap)
   }
-  ndjsonParser.onRawText = (text) => {
-    if (text.trim().length > 0) builder.pushText(text + "\n", Date.now())
-  }
+  // Keep the factory's default onRawText (pushes text blocks)
 
   // Context warning state — only fire the 85% system message once per session
   let contextWarningFired = false
 
   // Flush builder → callbacks at 16ms
-  const flushInterval = setInterval(() => {
-    if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
+  const stopFlush = pipeline.startFlush(() => {
+    callbacks.onBlocks(builder.getBlocks())
     callbacks.onTokens(budgetTracker.getTokensUsed())
     callbacks.onCost(budgetTracker.getTotalCost())
 
@@ -272,13 +270,13 @@ export async function createChatSession(
   function end() {
     if (ended) return
     ended = true
-    clearInterval(flushInterval)
+    stopFlush()
+    pipeline.dispose()
     if (traceCollector) {
       traceCollector.finalize("ok")
       traceCollector.dispose()
     }
     transcriptWriter?.dispose()
-    builder.dispose()
     budgetTracker.flush()
     if (stdinHandle?.isOpen) {
       // Worker is alive — close the pipe and let the process exit naturally.

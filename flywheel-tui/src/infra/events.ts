@@ -49,21 +49,21 @@ export interface DispatcherInvoked {
   type: "dispatcher:invoked";
   workflowId: string;
   stepIndex: number;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface DispatcherCompleted {
   type: "dispatcher:completed";
   workflowId: string;
   decision: DispatcherDecision;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface DispatcherFailed {
   type: "dispatcher:failed";
   workflowId: string;
   reason: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface DispatcherOutput {
@@ -81,21 +81,21 @@ export interface EvaluatorInvoked {
   type: "evaluator:invoked";
   workflowId: string;
   stepIndex: number;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface EvaluatorCompleted {
   type: "evaluator:completed";
   workflowId: string;
   result: EvaluatorResult;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface EvaluatorFailed {
   type: "evaluator:failed";
   workflowId: string;
   reason: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface EvaluatorRevisionRequested {
@@ -123,21 +123,21 @@ export interface SubprocessSpawned {
   type: "subprocess:spawned";
   workflowId: string;
   stepIndex: number;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface SubprocessCompleted {
   type: "subprocess:completed";
   workflowId: string;
   result: SubprocessResult;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface SubprocessFailed {
   type: "subprocess:failed";
   workflowId: string;
   failure: SubprocessFailureReason;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface SubprocessRetrying {
@@ -146,7 +146,7 @@ export interface SubprocessRetrying {
   attempt: number;
   maxAttempts: number;
   reason: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface SubprocessOutput {
@@ -154,7 +154,7 @@ export interface SubprocessOutput {
   workflowId: string;
   stream: "stdout" | "stderr";
   data: string;
-  timestamp: string;
+  timestamp: number;
   /** Engine that produced this output (e.g. "claude", "opencode"). Optional for backward compat. */
   engineId?: string;
 }
@@ -163,7 +163,7 @@ export interface SubprocessInjected {
   type: "subprocess:injected";
   workflowId: string;
   message: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Approval events --
@@ -173,7 +173,7 @@ export interface ApprovalRequested {
   workflowId: string;
   stepIndex: number;
   description: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface ApprovalReceived {
@@ -181,7 +181,7 @@ export interface ApprovalReceived {
   workflowId: string;
   approved: boolean;
   skipped: boolean;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Question events --
@@ -190,20 +190,20 @@ export interface QuestionAsked {
   type: "question:asked";
   requestId: string;
   questions: QuestionInfo[];
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QuestionReplied {
   type: "question:replied";
   requestId: string;
   answers: QuestionAnswer[];
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QuestionRejected {
   type: "question:rejected";
   requestId: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Budget events --
@@ -215,14 +215,14 @@ export interface BudgetWarning {
   used: number;
   limit: number;
   remaining: number;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface BudgetExhausted {
   type: "budget:exhausted";
   workflowId: string;
   reason: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Queue lifecycle events --
@@ -232,7 +232,7 @@ export interface QueueInitialized {
   workflowId: string;
   /** IDs of all steps in the initial queue. */
   stepIds: string[];
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QueueCompleted {
@@ -240,7 +240,7 @@ export interface QueueCompleted {
   workflowId: string;
   /** Number of steps that completed successfully. */
   stepsCompleted: number;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QueueFailed {
@@ -249,7 +249,7 @@ export interface QueueFailed {
   reason: string;
   /** Number of steps that completed before the failure. */
   stepsCompleted: number;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Queue step lifecycle events --
@@ -260,7 +260,7 @@ export interface QueueStepStarted {
   stepId: string;
   stepType: string;
   stepTitle: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QueueStepCompleted {
@@ -269,7 +269,7 @@ export interface QueueStepCompleted {
   stepId: string;
   stepType: string;
   stepTitle: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QueueStepFailed {
@@ -279,7 +279,7 @@ export interface QueueStepFailed {
   stepType: string;
   stepTitle: string;
   reason: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Queue mutation events --
@@ -292,7 +292,7 @@ export interface QueueStepInserted {
   stepTitle: string;
   /** ID of the step after which this step was inserted. */
   afterStepId: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface QueueStepRemoved {
@@ -301,7 +301,7 @@ export interface QueueStepRemoved {
   stepId: string;
   stepType: string;
   stepTitle: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 // -- Trace events (from NDJSON pipeline) --
@@ -312,7 +312,7 @@ export interface TraceToolStarted {
   toolUseId: string;
   toolName: string;
   toolInput: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface TraceToolCompleted {
@@ -321,7 +321,7 @@ export interface TraceToolCompleted {
   toolUseId: string;
   toolOutput: string;
   isError: boolean;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface TraceSubagentStarted {
@@ -331,7 +331,7 @@ export interface TraceSubagentStarted {
   agentType: string;
   description: string;
   prompt: string;
-  timestamp: string;
+  timestamp: number;
 }
 
 export interface TraceSubagentCompleted {
@@ -340,7 +340,7 @@ export interface TraceSubagentCompleted {
   toolUseId: string;
   result: string;
   isError: boolean;
-  timestamp: string;
+  timestamp: number;
 }
 
 // ---------------------------------------------------------------------------

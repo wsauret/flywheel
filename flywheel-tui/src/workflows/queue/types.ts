@@ -140,8 +140,8 @@ export type QueueStatus =
 // ---------------------------------------------------------------------------
 
 export interface MutationLogEntry {
-  /** ISO-8601 timestamp of when the mutation occurred. */
-  readonly timestamp: string;
+  /** Epoch ms timestamp of when the mutation occurred. */
+  readonly timestamp: number;
   /** Kind of mutation (insert, remove, skip, reorder, replace, status-change). */
   readonly action: string;
   /** Who triggered the mutation (executor, user, sprint-hook, etc.). */

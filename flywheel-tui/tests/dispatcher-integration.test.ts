@@ -10,7 +10,7 @@ import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { randomUUID } from "crypto";
 
 import type { Step, Queue } from "../src/workflows/queue/types";
-import type { FlywheelEmitter } from "../src/infra/event-bus";
+import type { EmitFn } from "../src/infra/event-bus";
 import {
   createStepDispatcher,
   type StepDispatcherInput,
@@ -46,18 +46,14 @@ function makeQueue(steps: Step[]): Queue {
   };
 }
 
-/** Minimal mock emitter */
-function createMockEmitter(): FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> } {
-  const events: Array<{ method: string; args: unknown[] }> = [];
-  const handler = {
-    get(_target: unknown, prop: string) {
-      if (prop === "events") return events;
-      return (...args: unknown[]) => {
-        events.push({ method: prop, args });
-      };
-    },
-  };
-  return new Proxy({} as FlywheelEmitter & { events: Array<{ method: string; args: unknown[] }> }, handler);
+/** Minimal mock emit function */
+function createMockEmit(): EmitFn & { calls: Array<{ type: string; payload: unknown }> } {
+  const calls: Array<{ type: string; payload: unknown }> = [];
+  const fn = ((type: string, payload: unknown) => {
+    calls.push({ type, payload });
+  }) as EmitFn & { calls: Array<{ type: string; payload: unknown }> };
+  fn.calls = calls;
+  return fn;
 }
 
 /** Create a mock transport that returns a decision */
@@ -98,7 +94,7 @@ function createFailingTransport(error: string): DispatcherTransport {
 }
 
 const DEFAULT_OPTIONS: Omit<StepDispatcherOptions, "transport"> = {
-  emitter: createMockEmitter(),
+  emit: createMockEmit(),
   workflowId: "test-workflow-1",
   configContext: {
     maxEvalCycles: 3,

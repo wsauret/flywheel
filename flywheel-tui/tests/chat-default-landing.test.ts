@@ -16,13 +16,39 @@ import { useCommandDispatch } from "../src/tui/hooks/use-command-dispatch.js"
 import type { CommandDispatchDeps } from "../src/tui/hooks/use-command-dispatch.js"
 
 function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDispatchDeps {
-  return {
-    agentState: () => "idle",
-    sessionState: () => "active",
+  const defaultSignals = {
+    agentState: () => "idle" as const,
     setAgentState: mock(() => {}),
-    foregroundId: () => "chat-abc",
-    inChat: () => true,
+    outputBlocks: () => [],
+    setOutputBlocks: mock(() => {}),
+    steps: () => [],
+    setSteps: mock(() => {}),
+    errorMessage: () => "",
+    setErrorMessage: mock(() => {}),
+    sessionTitle: () => "",
+    setSessionTitle: mock(() => {}),
+    statusLine: () => "",
+    setStatusLine: mock(() => {}),
+    foregroundId: () => "chat-abc" as string | undefined,
+    setForegroundId: mock(() => {}),
+    runningCount: () => 0,
+    setRunningCount: mock(() => {}),
+    registryVersion: () => 0,
+    setRegistryVersion: mock(() => {}),
+    sessionState: () => "active" as any,
+  }
+  const defaultServices = {
     registry: { runningCount: () => 0 } as any,
+    manager: {} as any,
+    refreshList: mock(() => {}),
+    setTerminalTitle: mock(() => {}),
+    metrics: {} as any,
+    showToast: mock(() => {}),
+  }
+  return {
+    signals: { ...defaultSignals, ...(overrides.signals ?? {}) } as any,
+    services: { ...defaultServices, ...(overrides.services ?? {}) } as any,
+    inChat: () => true,
     startWorkflow: mock(async () => {}),
     startTestStep: mock(async () => {}),
     startChat: mock(async () => {}),
@@ -31,7 +57,6 @@ function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDi
     sendMessage: mock(() => {}),
     handleResume: mock(async () => {}),
     openSessionsModal: mock(() => {}),
-    showToast: mock(() => {}),
     ...overrides,
   }
 }
@@ -49,7 +74,8 @@ describe("Chat as Default Landing — /new command", () => {
   })
 
   it("/end and /stop are not special commands in chat (go through registry)", async () => {
-    const deps = createMockDeps()
+    const showToast = mock(() => {})
+    const deps = createMockDeps({ services: { showToast } as any })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 
     handlePromptSubmit("/end")
@@ -93,7 +119,8 @@ describe("Chat as Default Landing — free text routing", () => {
   })
 
   it("unknown slash commands in chat go to command registry (not sendMessage), show toast", async () => {
-    const deps = createMockDeps()
+    const showToast = mock(() => {})
+    const deps = createMockDeps({ services: { showToast } as any })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 
     handlePromptSubmit("/something random")
@@ -102,7 +129,7 @@ describe("Chat as Default Landing — free text routing", () => {
     expect(deps.sendMessage).not.toHaveBeenCalled()
     // The toast fires async after the registry dispatch resolves
     await new Promise((r) => setTimeout(r, 10))
-    expect(deps.showToast).toHaveBeenCalledTimes(1)
+    expect(showToast).toHaveBeenCalledTimes(1)
   })
 
   it("empty text is ignored", () => {
@@ -118,9 +145,11 @@ describe("Chat as Default Landing — free text routing", () => {
 
 describe("Chat as Default Landing — unknown command toast", () => {
   it("unknown commands outside chat show updated toast text (no /chat reference)", async () => {
+    const showToast = mock(() => {})
     const deps = createMockDeps({
       inChat: () => false,
-      sessionState: () => null,
+      signals: { sessionState: () => null } as any,
+      services: { showToast } as any,
     })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 
@@ -129,8 +158,8 @@ describe("Chat as Default Landing — unknown command toast", () => {
     // Give the async dispatch a tick to resolve
     await new Promise((r) => setTimeout(r, 10))
 
-    expect(deps.showToast).toHaveBeenCalledTimes(1)
-    const call = (deps.showToast as any).mock.calls[0]
+    expect(showToast).toHaveBeenCalledTimes(1)
+    const call = (showToast as any).mock.calls[0]
     const message: string = call[0].message
     expect(message).not.toContain("/chat")
     expect(message).toContain("/new")

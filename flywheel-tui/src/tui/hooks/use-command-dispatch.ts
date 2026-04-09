@@ -1,17 +1,12 @@
 import type { Accessor } from "solid-js"
-import type { SessionRegistry } from "../../orchestration/session-registry.js"
-import type { AgentState } from "./use-workflow-lifecycle.js"
-import type { SessionState } from "../../orchestration/session/state-machine.js"
 import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "./command-registry.js"
+import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface CommandDispatchDeps {
-  agentState: Accessor<AgentState>
-  sessionState: () => SessionState | null
-  setAgentState: (state: AgentState) => void
-  foregroundId: Accessor<string | undefined>
+  signals: ShellSignals
+  services: ShellServices
   inChat: Accessor<boolean>
-  registry: SessionRegistry
   startWorkflow: (command: string, description: string) => Promise<void>
   startTestStep: (stepId?: string) => Promise<void>
   startChat: (initialMessage?: string) => Promise<void>
@@ -20,7 +15,6 @@ export interface CommandDispatchDeps {
   sendMessage: (text: string) => void
   handleResume: (sessionIdArg?: string) => Promise<void>
   openSessionsModal: () => void
-  showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }
 
 export interface CommandDispatchHook {
@@ -32,7 +26,11 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
 
   commandRegistry.register({
     pattern: /^\/(?:exit|quit)$/i,
-    execute() { exitTUI(); return true },
+    execute() {
+      if (deps.inChat()) deps.endChat()
+      exitTUI()
+      return true
+    },
   })
 
   commandRegistry.register({
@@ -81,13 +79,10 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
 
     // Chat session: slash commands go through the registry, free text goes to chat
     if (deps.inChat()) {
-      if (trimmed === "/exit" || trimmed === "/quit") { deps.endChat(); exitTUI(); return }
-      if (trimmed === "/new") { deps.backgroundChat(); deps.startChat(); return }
-      // Try command registry for slash commands (e.g. /work, /sessions, /resume)
       if (trimmed.startsWith("/")) {
         void commandRegistry.dispatch(trimmed).then((handled) => {
           if (!handled) {
-            deps.showToast({ message: `Unknown command: ${trimmed.split(/\s/)[0]}`, variant: "warning" })
+            deps.services.showToast({ message: `Unknown command: ${trimmed.split(/\s/)[0]}`, variant: "warning" })
           }
         })
         return
@@ -97,19 +92,19 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     }
 
     // Workflow session: non-command text steers the worker or resumes from pause
-    const state = deps.sessionState()
+    const state = deps.signals.sessionState()
     if (state === "active" || state === "paused") {
-      const fgId = deps.foregroundId()
+      const fgId = deps.signals.foregroundId()
       if (fgId && !trimmed.startsWith("/")) {
-        if (state === "paused" && deps.registry.has(fgId)) {
-          deps.registry.cancelShutdown(fgId)
-          deps.setAgentState("active")
+        if (state === "paused" && deps.services.registry.has(fgId)) {
+          deps.services.registry.cancelShutdown(fgId)
+          deps.signals.setAgentState("active")
         }
-        const injected = deps.registry.injectMessage(fgId, trimmed)
+        const injected = deps.services.registry.injectMessage(fgId, trimmed)
         if (injected) {
-          deps.showToast({ message: "Message sent to worker", variant: "info" })
+          deps.services.showToast({ message: "Message sent to worker", variant: "info" })
         } else {
-          deps.showToast({ message: "Could not deliver message — worker pipe closed", variant: "warning" })
+          deps.services.showToast({ message: "Could not deliver message \u2014 worker pipe closed", variant: "warning" })
         }
         return
       }
@@ -118,10 +113,10 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     void commandRegistry.dispatch(trimmed).then((handled) => {
       if (handled) return
 
-      if (deps.sessionState() === "paused") {
-        deps.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
+      if (deps.signals.sessionState() === "paused") {
+        deps.services.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
       } else {
-        deps.showToast({ message: `Unknown command. Try /new, /sessions, /sprint "desc", /work "desc", or /exit`, variant: "warning" })
+        deps.services.showToast({ message: `Unknown command. Try /new, /sessions, /sprint "desc", /work "desc", or /exit`, variant: "warning" })
       }
     })
   }

@@ -49,8 +49,8 @@ function createInMemoryWriter(): InMemoryWriter {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function now(): string {
-  return new Date().toISOString();
+function now(): number {
+  return Date.now();
 }
 
 // ---------------------------------------------------------------------------

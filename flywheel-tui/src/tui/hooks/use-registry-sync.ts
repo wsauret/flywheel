@@ -13,24 +13,12 @@
  * - Chat entries never transition to "paused"
  */
 
-import type { Accessor, Setter } from "solid-js"
-import type { SessionRegistry } from "../../orchestration/session-registry.js"
-import type { MetricsHook } from "./use-metrics.js"
-import type { AnyBlock } from "../types.js"
-import type { StepState } from "../../orchestration/workflow-runner.js"
-import type { AgentState } from "./use-workflow-lifecycle.js"
 import { TERMINAL_TITLE_PREFIX } from "./use-workflow-lifecycle.js"
+import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface RegistrySyncDeps {
-  registry: SessionRegistry
-  foregroundId: Accessor<string | undefined>
-  setAgentState: Setter<AgentState>
-  setOutputBlocks: Setter<AnyBlock[]>
-  setSteps: Setter<StepState[]>
-  setRunningCount: Setter<number>
-  setSessionTitle: Setter<string>
-  setTerminalTitle: (title: string) => void
-  metrics: MetricsHook
+  signals: ShellSignals
+  services: ShellServices
 }
 
 /**
@@ -38,17 +26,8 @@ export interface RegistrySyncDeps {
  * display signals. Returns the unsubscribe function for cleanup.
  */
 export function useRegistrySync(deps: RegistrySyncDeps): () => void {
-  const {
-    registry,
-    foregroundId,
-    setAgentState,
-    setOutputBlocks,
-    setSteps,
-    setRunningCount,
-    setSessionTitle,
-    setTerminalTitle,
-    metrics,
-  } = deps
+  const { signals, services } = deps
+  const { registry, metrics } = services
 
   // Track previous outputBlocks reference for identity-check optimization
   let prevOutputBlocks: readonly import("../../infra/output-blocks.js").AnyBlock[] | null = null
@@ -56,9 +35,12 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
   // ── Main subscriber: sync live state ──
 
   return registry.subscribe(() => {
-    setRunningCount(registry.runningCount())
+    // Bump registryVersion so the sessionState memo re-evaluates
+    services.bumpRegistryVersion()
 
-    const fgId = foregroundId()
+    signals.setRunningCount(registry.runningCount())
+
+    const fgId = signals.foregroundId()
     if (!fgId) return
 
     const entry = registry.get(fgId)
@@ -67,23 +49,23 @@ export function useRegistrySync(deps: RegistrySyncDeps): () => void {
     metrics.setActivity(entry.modelActivity)
 
     // Entry exists = active. Derive agent state from model activity.
-    setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
+    signals.setAgentState(entry.modelActivity !== "idle" ? "active" : "idle")
 
     if (entry.outputBlocks !== prevOutputBlocks) {
       prevOutputBlocks = entry.outputBlocks
-      setOutputBlocks([...entry.outputBlocks])
+      signals.setOutputBlocks([...entry.outputBlocks])
     }
 
     if (entry.kind === "workflow") {
-      setSteps([...entry.steps])
+      signals.setSteps([...entry.steps])
     } else {
-      setSteps([])
+      signals.setSteps([])
     }
 
     metrics.setTokens(entry.tokens)
     metrics.setCost(entry.cost)
     metrics.setContextPercent(entry.contextPercent)
-    setSessionTitle(entry.description)
-    setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
+    signals.setSessionTitle(entry.description)
+    services.setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
   })
 }

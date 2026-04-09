@@ -17,10 +17,7 @@ describe("Work Store", () => {
       expect(state.planName).toBe("test-plan");
       expect(state.workflowStatus).toBe("idle");
       expect(state.queueSteps).toEqual([]);
-      expect(state.outputLines).toEqual([]);
       expect(state.approvalState).toEqual({ pending: false });
-      expect(state.selectedStepIndex).toBe(0);
-      expect(state.scrollOffset).toBe(0);
     });
 
     it("each createStore returns isolated instance", () => {
@@ -43,13 +40,11 @@ describe("Work Store", () => {
       // Mutate store A
       storeA.startWorkflow("plan-a");
       storeA.setQueueSteps([{ id: "s1", type: "work", title: "Step 0", status: "pending" }]);
-      storeA.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
       storeA.setApprovalPending("Approve?");
 
       // Store B must be completely unaffected
       expect(storeB.getState().workflowStatus).toBe("idle");
       expect(storeB.getState().queueSteps).toHaveLength(0);
-      expect(storeB.getState().outputLines).toHaveLength(0);
       expect(storeB.getState().approvalState.pending).toBe(false);
       expect(storeB.getState().planName).toBe("b");
     });
@@ -58,28 +53,6 @@ describe("Work Store", () => {
   // ── Throttle / Notification ──
 
   describe("throttle", () => {
-    it("batches notifications within 16ms", async () => {
-      let notified = 0;
-      store.subscribe(() => { notified++; });
-
-      // appendOutput uses throttled notify
-      store.appendOutput({ stream: "stdout", data: "line1\n", timestamp: "t1" });
-      store.appendOutput({ stream: "stdout", data: "line2\n", timestamp: "t2" });
-      store.appendOutput({ stream: "stdout", data: "line3\n", timestamp: "t3" });
-
-      // Immediately: should have at most 1 notification (the first setTimeout)
-      const immediateCount = notified;
-
-      // Wait for throttle to flush
-      await new Promise((r) => setTimeout(r, 30));
-
-      // All 3 outputs should be in state, but notifications should be batched
-      expect(store.getState().outputLines).toHaveLength(3);
-      // Total notifications should be less than 3 (batched)
-      expect(notified).toBeLessThanOrEqual(3);
-      expect(notified).toBeGreaterThanOrEqual(1);
-    });
-
     it("notifyImmediate bypasses throttle for approval", () => {
       let notified = 0;
       store.subscribe(() => { notified++; });
@@ -112,7 +85,6 @@ describe("Work Store", () => {
     it("resets state to initial with new planName", () => {
       store.startWorkflow("old-plan");
       store.setQueueSteps([{ id: "s1", type: "work", title: "Step 0", status: "running" }]);
-      store.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
 
       store.reset("new-plan");
 
@@ -120,7 +92,6 @@ describe("Work Store", () => {
       expect(state.planName).toBe("new-plan");
       expect(state.workflowStatus).toBe("idle");
       expect(state.queueSteps).toEqual([]);
-      expect(state.outputLines).toEqual([]);
     });
 
     it("re-notifies subscribers on reset", () => {
@@ -230,11 +201,10 @@ describe("Work Store", () => {
 
     it("startWorkflow resets queueSteps and output", () => {
       store.setQueueSteps([{ id: "s1", type: "work", title: "Old Step", status: "running" }]);
-      store.appendOutput({ stream: "stdout", data: "old\n", timestamp: "t1" });
       store.startWorkflow("fresh-plan");
       const state = store.getState();
       expect(state.queueSteps).toEqual([]);
-      expect(state.outputLines).toEqual([]);
+      expect(state.outputBlocks).toEqual([]);
     });
 
     it("stopWorkflow sets completed status", () => {
@@ -259,16 +229,6 @@ describe("Work Store", () => {
       expect(state.error).toBe("Something broke");
     });
 
-    it("appendOutput adds lines to outputLines", () => {
-      store.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
-      store.appendOutput({ stream: "stderr", data: "error\n", timestamp: "t2" });
-      const lines = store.getState().outputLines;
-      expect(lines).toHaveLength(2);
-      expect(lines[0].stream).toBe("stdout");
-      expect(lines[0].data).toBe("hello\n");
-      expect(lines[1].stream).toBe("stderr");
-    });
-
     it("setApprovalPending sets approval state", () => {
       store.setApprovalPending("Review this change");
       const approval = store.getState().approvalState;
@@ -286,7 +246,6 @@ describe("Work Store", () => {
 
     it("continueStep updates planName without wiping output", () => {
       store.startWorkflow("stage-1-plan");
-      store.appendOutput({ stream: "stdout", data: "stage 1 output\n", timestamp: "t1" });
       store.setOutputBlocks([{ kind: "text", content: "block1", timestamp: Date.now() }]);
 
       store.continueStep("stage-2-plan");
@@ -297,7 +256,6 @@ describe("Work Store", () => {
       expect(state.approvalState.pending).toBe(false);
       expect(state.error).toBeUndefined();
       // Output must be preserved (not wiped)
-      expect(state.outputLines).toHaveLength(1);
       expect(state.outputBlocks).toHaveLength(1);
       // startTime must be preserved (not reset)
       expect(state.startTime).toBeDefined();
@@ -317,69 +275,6 @@ describe("Work Store", () => {
     });
   });
 
-  // ── Navigation Actions ──
-
-  describe("navigation actions", () => {
-    it("selectNext increments selectedStepIndex", () => {
-      store.setQueueSteps([
-        { id: "s1", type: "work", title: "Step 0", status: "pending" },
-        { id: "s2", type: "work", title: "Step 1", status: "pending" },
-      ]);
-      store.selectStep(0);
-      store.selectNext();
-      expect(store.getState().selectedStepIndex).toBe(1);
-    });
-
-    it("selectNext clamps to last step", () => {
-      store.setQueueSteps([
-        { id: "s1", type: "work", title: "Step 0", status: "pending" },
-        { id: "s2", type: "work", title: "Step 1", status: "pending" },
-      ]);
-      store.selectStep(1);
-      store.selectNext();
-      expect(store.getState().selectedStepIndex).toBe(1);
-    });
-
-    it("selectPrevious decrements selectedStepIndex", () => {
-      store.setQueueSteps([
-        { id: "s1", type: "work", title: "Step 0", status: "pending" },
-        { id: "s2", type: "work", title: "Step 1", status: "pending" },
-      ]);
-      store.selectStep(1);
-      store.selectPrevious();
-      expect(store.getState().selectedStepIndex).toBe(0);
-    });
-
-    it("selectPrevious clamps to 0", () => {
-      store.setQueueSteps([
-        { id: "s1", type: "work", title: "Step 0", status: "pending" },
-      ]);
-      store.selectStep(0);
-      store.selectPrevious();
-      expect(store.getState().selectedStepIndex).toBe(0);
-    });
-
-    it("selectStep sets index directly", () => {
-      store.setQueueSteps([
-        { id: "s1", type: "work", title: "Step 0", status: "pending" },
-        { id: "s2", type: "work", title: "Step 1", status: "pending" },
-        { id: "s3", type: "work", title: "Step 2", status: "pending" },
-      ]);
-      store.selectStep(2);
-      expect(store.getState().selectedStepIndex).toBe(2);
-    });
-
-    it("selectNext is no-op when no steps", () => {
-      store.selectNext();
-      expect(store.getState().selectedStepIndex).toBe(0);
-    });
-
-    it("selectPrevious is no-op when no steps", () => {
-      store.selectPrevious();
-      expect(store.getState().selectedStepIndex).toBe(0);
-    });
-  });
-
   // ── Subscriber Isolation (Phase 2) ──
 
   describe("subscriber isolation", () => {
@@ -387,14 +282,14 @@ describe("Work Store", () => {
       let execNotified = 0;
       store.subscribeExecution(() => { execNotified++; });
 
-      store.appendOutput({ stream: "stdout", data: "line\n", timestamp: "t1" });
+      store.appendOutputBlocks([{ kind: "text", content: "line", timestamp: Date.now() }]);
 
       // Wait for throttle to flush
       await new Promise((r) => setTimeout(r, 30));
 
       expect(execNotified).toBe(0);
       // Output should still be in state
-      expect(store.getState().outputLines).toHaveLength(1);
+      expect(store.getState().outputBlocks).toHaveLength(1);
     });
 
     it("mutating execution does NOT notify output-only subscribers", () => {
@@ -409,15 +304,14 @@ describe("Work Store", () => {
 
     it("facade getState() returns merged state from both sub-stores", () => {
       store.startWorkflow("merged-test");
-      store.appendOutput({ stream: "stdout", data: "hello\n", timestamp: "t1" });
+      store.appendOutputBlocks([{ kind: "text", content: "hello", timestamp: Date.now() }]);
 
       const state = store.getState();
       // Execution fields
       expect(state.planName).toBe("merged-test");
       expect(state.workflowStatus).toBe("running");
       // Output fields
-      expect(state.outputLines).toHaveLength(1);
-      expect(state.outputLines[0].data).toBe("hello\n");
+      expect(state.outputBlocks).toHaveLength(1);
     });
 
     it("facade subscribe() fires on changes to either store", async () => {
@@ -430,7 +324,7 @@ describe("Work Store", () => {
       const afterExec = facadeNotified;
 
       // Output change (throttled)
-      store.appendOutput({ stream: "stdout", data: "line\n", timestamp: "t1" });
+      store.appendOutputBlocks([{ kind: "text", content: "line", timestamp: Date.now() }]);
       await new Promise((r) => setTimeout(r, 30));
 
       expect(facadeNotified).toBeGreaterThan(afterExec);
@@ -442,7 +336,6 @@ describe("Work Store", () => {
       let facadeNotified = 0;
 
       store.startWorkflow("plan");
-      store.appendOutput({ stream: "stdout", data: "data\n", timestamp: "t1" });
 
       store.subscribeExecution(() => { execNotified++; });
       store.subscribeOutput!(() => { outputNotified++; });
@@ -460,7 +353,6 @@ describe("Work Store", () => {
       const state = store.getState();
       expect(state.planName).toBe("fresh-plan");
       expect(state.workflowStatus).toBe("idle");
-      expect(state.outputLines).toEqual([]);
       expect(state.outputBlocks).toEqual([]);
       expect(state.queueSteps).toEqual([]);
     });

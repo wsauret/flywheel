@@ -31,8 +31,8 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-function now(): string {
-  return new Date().toISOString();
+function now(): number {
+  return Date.now();
 }
 
 function readTraceLines(sessionId: string): string[] {

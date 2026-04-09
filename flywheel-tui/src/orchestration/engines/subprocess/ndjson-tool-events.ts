@@ -2,7 +2,7 @@
  * NDJSON Tool Event Parser
  *
  * Extracts tool_use and tool_result records from Claude's NDJSON stream.
- * Shared by chat-tracing (TraceCollector) and trace-event-handler (FlywheelEmitter).
+ * Shared by chat-tracing (TraceCollector) and trace-event-handler (EmitFn).
  */
 
 import type { NDJSONEvent } from "./ndjson-parser";
