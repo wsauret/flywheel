@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import { parseRawHandoff } from "./handoff-parse.js";
-import type { DeclaredCommand } from "../native-verification.js";
+import type { DeclaredCommand } from "../../shared/native-verification.js";
 
 /**
  * Extract declared commands from a raw handoff record.

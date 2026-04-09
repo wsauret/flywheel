@@ -1049,9 +1049,9 @@ describe("BudgetTracker — budget event emission", () => {
     const limits = unlimitedLimits({ max_tokens: 5000 });
     expect(tracker.isExhausted(limits)).toBe(true);
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0].type).toBe("budget:exhausted");
-    expect(((calls[0].payload as any).reason)).toContain("Token limit reached");
+    const exhaustedCalls = calls.filter(c => c.type === "budget:exhausted");
+    expect(exhaustedCalls).toHaveLength(1);
+    expect(((exhaustedCalls[0].payload as any).reason)).toContain("Token limit reached");
 
     tracker.dispose();
   });

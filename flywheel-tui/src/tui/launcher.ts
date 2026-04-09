@@ -37,7 +37,10 @@ log.debug("framework patches applied")
 // Re-export type for callers
 export type { TUIOptions } from "./app"
 
-// Dynamic import ensures app.js is loaded AFTER preload is registered (in dev)
+// These look like forwarding functions but the dynamic import is load-order
+// architecture: this module's top-level await registers the OpenTUI plugin and
+// framework patches BEFORE any JSX in app.tsx is parsed. A static import would
+// break dev mode because the plugin wouldn't be registered in time.
 export async function startTUI(options: import("./app").TUIOptions = {}) {
   log.debug("startTUI called")
   try {

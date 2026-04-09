@@ -5,7 +5,7 @@
  * Extracted from queue-orchestrator.ts for SRP.
  */
 
-import { createStepDispatcher, type StepDispatchContext, type MutationRequest } from "../workflows/queue/step-dispatcher"
+import { createStepDispatcher, type MutationRequest } from "../workflows/queue/step-dispatcher"
 import { Log } from "../infra/log"
 import { errorMessage } from "../infra/error-message"
 import type { ContextIndexer } from "./memory/indexer"
@@ -81,7 +81,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
   return async (step, context) => {
     if (realDispatcher) {
       try {
-        const dispatchContext: StepDispatchContext = {
+        const dispatchContext = {
           accumulatedContext: contextAccumulator.getContext(),
           previousHandoff: context.previousHandoff ?? null,
           previousAssessment: context.previousAssessment ?? null,

@@ -142,9 +142,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
    * Get the current lifecycle state, defaulting to "active" for legacy sessions.
    */
   function getLifecycleState(
-    session: { state?: SessionState },
+    session: { state: SessionState },
   ): SessionState {
-    return session.state ?? "active";
+    return session.state;
   }
 
   // -------------------------------------------------------------------------
@@ -169,8 +169,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       label: name ?? planPath,
       lastUpdated: now,
       state,
-      name,
+      name: name ?? "",
       createdAt: now,
+      totalCost: 0,
       budgetLimits: {
         max_invocations: budget.max_invocations,
         max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
@@ -201,13 +202,13 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
       return {
         id: entry.id,
-        name: entry.data.name ?? "",
+        name: entry.data.name,
         label: entry.data.label,
         planPath: entry.data.kind === "workflow" ? entry.data.planPath : undefined,
         state: state,
         kind: entry.data.kind,
         command: entry.data.command,
-        totalCost: entry.data.totalCost ?? entry.data.budgetUsage?.cost_usd ?? 0,
+        totalCost: entry.data.totalCost || entry.data.budgetUsage?.cost_usd || 0,
         totalTokens: entry.data.budgetUsage?.tokens_used ?? 0,
         lastUpdated: entry.data.lastUpdated,
         createdAt: entry.data.createdAt,

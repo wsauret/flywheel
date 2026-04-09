@@ -115,6 +115,7 @@ const CLAUDE_MODELS: ModelInfo[] = [
   { id: "haiku",   name: "Claude Haiku (200k)",  family: "haiku",  isAlias: true },
 ];
 
+// _provider satisfies the Engine interface (types.ts) — other engines may filter by provider.
 async function listModels(_provider?: string): Promise<ModelInfo[]> {
   return CLAUDE_MODELS;
 }

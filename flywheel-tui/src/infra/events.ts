@@ -27,6 +27,7 @@ export type FlywheelEvent =
   | QuestionAsked
   | QuestionReplied
   | QuestionRejected
+  | BudgetMetricsChanged
   | BudgetExhausted
   | QueueInitialized
   | QueueCompleted
@@ -219,6 +220,14 @@ interface QuestionRejected {
 }
 
 // -- Budget events --
+
+interface BudgetMetricsChanged {
+  type: "budget:metrics-changed";
+  workflowId: string;
+  tokens: number;
+  cost: number;
+  timestamp: number;
+}
 
 interface BudgetExhausted {
   type: "budget:exhausted";

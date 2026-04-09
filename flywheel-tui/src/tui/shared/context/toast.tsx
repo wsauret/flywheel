@@ -16,6 +16,8 @@ export type ToastOptions = ToastMessage & {
 export const { use: useToast, provider: ToastProvider } = createSimpleContext({
   name: "Toast",
   init: () => {
+    // Wrapping in { current } is not a ref-bag — createStore requires an object shape.
+    // A bare createSignal<ToastMessage | null> would work but loses Solid's deep tracking.
     const [store, setStore] = createStore<{
       current: ToastMessage | null
     }>({

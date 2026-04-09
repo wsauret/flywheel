@@ -81,6 +81,9 @@ export class StructuredEventParser {
 
   // ── Claude handler ──
 
+  // The `as` casts below parse Claude Code's NDJSON stream — an external format we
+  // don't control. Full Zod validation would over-engineer a best-effort display layer;
+  // the casts are safe because unrecognized shapes are silently skipped, not acted on.
   private dispatchClaudeEvent(event: NDJSONEvent, now: number): void {
     const data = event.data;
     const type = data.type as string | undefined;

@@ -8,7 +8,7 @@
 import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
-import { loadSessionOutput, deleteSession } from "../../orchestration/session-actions.js"
+import { loadSessionOutput } from "../../orchestration/session-actions.js"
 import { formatCost } from "../../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
@@ -123,7 +123,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   function handleSessionDelete(sessionId: string): void {
     try {
-      deleteSession(sessionId, deps.actionDeps)
+      deps.actionDeps.manager.delete(sessionId)
       services.refreshList()
       setModalRefreshTrigger((n) => n + 1)
       services.showToast({ message: "Session deleted", variant: "info" })

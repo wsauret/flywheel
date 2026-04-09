@@ -1,44 +1,58 @@
 /**
  * Workflow payload types — canonical home for infra-layer consumption.
  *
- * These are pure TypeScript types (no Zod dependency). The Zod schemas
- * that validate these shapes live in their respective workflow modules.
+ * Zod schemas are the single source of truth (ADR-006). Types are derived
+ * via z.infer. Workflow modules re-export these schemas for validation.
  */
+
+import { z } from "zod"
+
+// ---------------------------------------------------------------------------
+// Shared sub-schemas (Zod → type)
+// ---------------------------------------------------------------------------
+
+export const EvaluationCriteriaSchema = z.object({
+  acceptance_criteria: z.array(z.string()),
+  required_tests: z.boolean(),
+  custom_checks: z.array(z.string()),
+  required_outputs: z.array(z.string()),
+}).strip()
+
+export type EvaluationCriteria = z.infer<typeof EvaluationCriteriaSchema>
+
+export const ToolScopingSchema = z.object({
+  read: z.boolean(),
+  bash: z.boolean(),
+  write: z.boolean(),
+  edit: z.boolean(),
+  task: z.boolean().optional(),
+}).strip()
+
+export type ToolScoping = z.infer<typeof ToolScopingSchema>
+
+export const ParallelVariantSchema = z.object({
+  name: z.string(),
+  prompt: z.string(),
+})
+
+export type ParallelVariant = z.infer<typeof ParallelVariantSchema>
+
+export const WorkerConfigSchema = z.object({
+  model_override: z.string().nullish(),
+  timeout_minutes: z.number().optional(),
+  retry_on_failure: z.boolean().optional(),
+  max_retries: z.number().optional(),
+  iteration_budget: z.number().optional(),
+  tool_scoping: ToolScopingSchema.optional(),
+  parallel: z.boolean().optional(),
+  parallel_variants: z.array(ParallelVariantSchema).nullish(),
+}).strip()
+
+export type WorkerConfig = z.infer<typeof WorkerConfigSchema>
 
 // ---------------------------------------------------------------------------
 // DispatcherDecision — output of the dispatcher agent
 // ---------------------------------------------------------------------------
-
-export interface EvaluationCriteria {
-  acceptance_criteria: string[];
-  required_tests: boolean;
-  custom_checks: string[];
-  required_outputs: string[];
-}
-
-export interface ToolScoping {
-  read: boolean;
-  bash: boolean;
-  write: boolean;
-  edit: boolean;
-  task?: boolean;
-}
-
-export interface ParallelVariant {
-  name: string;
-  prompt: string;
-}
-
-export interface WorkerConfig {
-  model_override?: string | null;
-  timeout_minutes?: number;
-  retry_on_failure?: boolean;
-  max_retries?: number;
-  iteration_budget?: number;
-  tool_scoping?: ToolScoping;
-  parallel?: boolean;
-  parallel_variants?: ParallelVariant[] | null;
-}
 
 export interface MutationRequest {
   type: "insert_after" | "skip" | "remove";

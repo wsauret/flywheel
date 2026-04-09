@@ -128,11 +128,6 @@ export interface BudgetTracker {
    * process resets to 0, so the baseline must follow.)
    */
   onNewSubprocess(): void;
-  /**
-   * Optional callback fired whenever tokens or cost change.
-   * Enables event-driven metrics updates instead of polling.
-   */
-  onMetricsChange?: (tokens: number, cost: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,9 +157,6 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   // Context utilization — updated by engine-specific adapters via updateContextUtilization().
   let ctxPromptTokens = 0;
   let ctxWindow = 0;
-
-  // Event-driven metrics callback — set by callers to avoid polling.
-  let onMetricsChange: ((tokens: number, cost: number) => void) | undefined;
 
   // -------------------------------------------------------------------------
   // Persistence
@@ -238,7 +230,9 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       }
 
       scheduleWrite();
-      onMetricsChange?.(tokensUsed, totalCost);
+      if (emitter && workflowId) {
+        emitter("budget:metrics-changed", { workflowId, tokens: tokensUsed, cost: totalCost });
+      }
       return;
     }
   }
@@ -395,7 +389,5 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     flush,
     dispose,
     onNewSubprocess,
-    get onMetricsChange() { return onMetricsChange; },
-    set onMetricsChange(cb: ((tokens: number, cost: number) => void) | undefined) { onMetricsChange = cb; },
   };
 }

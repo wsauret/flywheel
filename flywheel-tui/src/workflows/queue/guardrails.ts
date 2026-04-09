@@ -2,19 +2,17 @@
 // Queue System — ADR-004 Guardrails
 // ---------------------------------------------------------------------------
 //
-// Implements all 7 guardrails for queue mutations:
+// Implements 6 guardrails for queue mutations:
 //
 // 1. Max queue length (default 50) — enforced on all mutation operations
 // 2. Max mutations per step completion (default 3) — limits dispatcher
 //    mutations per invocation
 // 3. Max inserted steps per session (default 20) — tracks total inserts
 //    (excluding initial template steps) and rejects when exceeded
-// 4. Convergence detection — if same issue description appears in N
-//    consecutive step handoffs, escalate to user
-// 5. Budget visibility — every dispatcher call receives remaining budget
-// 6. Objective anchoring — every dispatcher mutation prompt includes
+// 4. Budget visibility — every dispatcher call receives remaining budget
+// 5. Objective anchoring — every dispatcher mutation prompt includes
 //    original session objective
-// 7. Provenance logging — enforced at the queue mutation API level
+// 6. Provenance logging — enforced at the queue mutation API level
 //    (see queue.ts — all mutations require Provenance)
 //
 // Usage:
@@ -25,6 +23,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
+import type { MutationRequest } from "./step-dispatcher";
 import {
   insertAfter,
   removeStep,
@@ -48,8 +47,6 @@ export interface GuardrailOptions {
   maxMutationsPerStepCompletion?: number;
   /** Maximum total steps inserted during a session (excludes template steps). Default: 20. */
   maxInsertedStepsPerSession?: number;
-  /** Number of identical consecutive issue descriptions before escalation. Default: 3. */
-  convergenceThreshold?: number;
   /** Session objective string for anchoring. */
   sessionObjective?: string;
 }
@@ -58,12 +55,6 @@ export interface GuardrailOptions {
 export interface GuardrailCheckResult {
   readonly allowed: boolean;
   readonly reason?: string;
-}
-
-/** Result of a convergence check. */
-export interface ConvergenceCheckResult {
-  readonly converged: boolean;
-  readonly issueDescription?: string;
 }
 
 /** Budget information exposed to the dispatcher. */
@@ -86,14 +77,6 @@ export interface MutationBudget {
   readonly sessionObjective: string;
 }
 
-/** Mutation request from the dispatcher. */
-export interface MutationRequest {
-  type: "insert_after" | "skip" | "remove";
-  targetStepId?: string;
-  steps?: Step[];
-  reason: string;
-}
-
 /** Result of applying a single mutation through guardrails. */
 export interface MutationApplicationResult {
   readonly applied: boolean;
@@ -111,14 +94,10 @@ export interface Guardrails {
   checkMutationBudget(stepId: string): GuardrailCheckResult;
   /** Check if the session insert budget allows `count` more inserts. */
   checkSessionInsertBudget(count: number): GuardrailCheckResult;
-  /** Check if convergence has been detected for an issue description. */
-  checkConvergence(issueDescription: string): ConvergenceCheckResult;
   /** Record a mutation for a step (increments per-step counter). */
   recordMutation(stepId: string): void;
   /** Record a session insert (increments session counter). */
   recordSessionInsert(): void;
-  /** Record an issue description from a step handoff. */
-  recordIssueDescription(stepId: string, description: string): void;
   /** Get the remaining mutation budget for a step. */
   getMutationBudget(stepId: string, currentQueueLength: number): MutationBudget;
   /** Get the session objective. */
@@ -142,8 +121,6 @@ export interface Guardrails {
 const DEFAULT_MAX_QUEUE_LENGTH = 50;
 const DEFAULT_MAX_MUTATIONS_PER_STEP = 3;
 const DEFAULT_MAX_INSERTED_STEPS_PER_SESSION = 20;
-const DEFAULT_CONVERGENCE_THRESHOLD = 3;
-
 // ---------------------------------------------------------------------------
 // createGuardrails — factory function
 // ---------------------------------------------------------------------------
@@ -152,7 +129,6 @@ export function createGuardrails(options: GuardrailOptions = {}): Guardrails {
   const maxQueueLength = options.maxQueueLength ?? DEFAULT_MAX_QUEUE_LENGTH;
   const maxMutationsPerStep = options.maxMutationsPerStepCompletion ?? DEFAULT_MAX_MUTATIONS_PER_STEP;
   const maxInsertedPerSession = options.maxInsertedStepsPerSession ?? DEFAULT_MAX_INSERTED_STEPS_PER_SESSION;
-  const convergenceThreshold = options.convergenceThreshold ?? DEFAULT_CONVERGENCE_THRESHOLD;
   const sessionObjective = options.sessionObjective ?? "";
 
   // --- Internal state ---
@@ -161,8 +137,6 @@ export function createGuardrails(options: GuardrailOptions = {}): Guardrails {
   const stepMutationCounts = new Map<string, number>();
   /** Total session inserts (excluding initial template steps). */
   let sessionInsertCount = 0;
-  /** Ordered list of issue descriptions from consecutive step handoffs. */
-  const issueHistory: string[] = [];
 
   // -----------------------------------------------------------------------
   // Guardrail 1: Max queue length
@@ -217,35 +191,7 @@ export function createGuardrails(options: GuardrailOptions = {}): Guardrails {
   }
 
   // -----------------------------------------------------------------------
-  // Guardrail 4: Convergence detection
-  // -----------------------------------------------------------------------
-
-  function recordIssueDescription(_stepId: string, description: string): void {
-    issueHistory.push(description);
-  }
-
-  function checkConvergence(issueDescription: string): ConvergenceCheckResult {
-    // Count consecutive identical descriptions from the end of history
-    let consecutiveCount = 0;
-    for (let i = issueHistory.length - 1; i >= 0; i--) {
-      if (issueHistory[i] === issueDescription) {
-        consecutiveCount++;
-      } else {
-        break;
-      }
-    }
-
-    if (consecutiveCount >= convergenceThreshold) {
-      return {
-        converged: true,
-        issueDescription,
-      };
-    }
-    return { converged: false };
-  }
-
-  // -----------------------------------------------------------------------
-  // Guardrail 5 & 6: Budget visibility and objective anchoring
+  // Guardrail 4 & 5: Budget visibility and objective anchoring
   // -----------------------------------------------------------------------
 
   function getMutationBudget(stepId: string, currentQueueLength: number): MutationBudget {
@@ -387,10 +333,8 @@ export function createGuardrails(options: GuardrailOptions = {}): Guardrails {
     checkInsert,
     checkMutationBudget,
     checkSessionInsertBudget,
-    checkConvergence,
     recordMutation,
     recordSessionInsert,
-    recordIssueDescription,
     getMutationBudget,
     getSessionObjective,
     applyMutations,

@@ -93,6 +93,7 @@ const EVENT_HANDLERS = {
   "question:rejected":     { minLevel: "normal",  format: () => `  Question rejected` },
 
   // ── Budget ──
+  "budget:metrics-changed": { minLevel: "verbose", format: (e) => `  Budget: ${e.tokens} tokens, $${e.cost.toFixed(4)}` },
   "budget:exhausted":      { minLevel: "minimal", format: (e) => `  Budget EXHAUSTED: ${e.reason}` },
 
   // ── Queue lifecycle ──

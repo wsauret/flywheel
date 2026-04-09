@@ -124,7 +124,7 @@ export function accumulateStepIntoContext(
   ctx: StepContext,
   handoff: StepHandoffSummary,
 ): StepContext {
-  const updated: StepContext = {
+  const updated = {
     cumulative_decisions: [...ctx.cumulative_decisions],
     cumulative_warnings: [...ctx.cumulative_warnings],
     cumulative_artifacts: [...ctx.cumulative_artifacts],

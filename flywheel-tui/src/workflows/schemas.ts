@@ -1,16 +1,15 @@
 import { z } from "zod";
+import {
+  EvaluationCriteriaSchema,
+  type EvaluationCriteria,
+  ToolScopingSchema,
+  type ToolScoping,
+  WorkerConfigSchema,
+  type WorkerConfig,
+} from "../infra/workflow-types";
 
-// ---------------------------------------------------------------------------
-// EvaluationCriteriaSchema
-// ---------------------------------------------------------------------------
-export const EvaluationCriteriaSchema = z.object({
-  acceptance_criteria: z.array(z.string()),
-  required_tests: z.boolean(),
-  custom_checks: z.array(z.string()),
-  required_outputs: z.array(z.string()),
-}).strip();
-
-export type EvaluationCriteria = z.infer<typeof EvaluationCriteriaSchema>;
+// Re-export canonical schemas from infra (single source of truth — ADR-006)
+export { EvaluationCriteriaSchema, type EvaluationCriteria, ToolScopingSchema, type ToolScoping, WorkerConfigSchema, type WorkerConfig };
 
 /** Serialize evaluation criteria to a human-readable string (for evaluator prompts). */
 export function serializeEvaluationCriteria(criteria: EvaluationCriteria): string {
@@ -29,19 +28,6 @@ export function serializeEvaluationCriteria(criteria: EvaluationCriteria): strin
   }
   return parts.join("\n");
 }
-
-// ---------------------------------------------------------------------------
-// ToolScopingSchema
-// ---------------------------------------------------------------------------
-export const ToolScopingSchema = z.object({
-  read: z.boolean(),
-  bash: z.boolean(),
-  write: z.boolean(),
-  edit: z.boolean(),
-  task: z.boolean().optional(),
-}).strip();
-
-export type ToolScoping = z.infer<typeof ToolScopingSchema>;
 
 // ---------------------------------------------------------------------------
 // BudgetLimitsSchema — limits only (WP2)
@@ -77,26 +63,7 @@ export const SessionBudgetStatusSchema = z.object({
 
 export type SessionBudgetStatus = z.infer<typeof SessionBudgetStatusSchema>;
 
-// ---------------------------------------------------------------------------
-// WorkerConfigSchema
-// ---------------------------------------------------------------------------
-const ParallelVariantSchema = z.object({
-  name: z.string(),
-  prompt: z.string(),
-});
-
-export const WorkerConfigSchema = z.object({
-  model_override: z.string().nullable().optional(),
-  timeout_minutes: z.number().optional(),
-  retry_on_failure: z.boolean().optional(),
-  max_retries: z.number().optional(),
-  iteration_budget: z.number().optional(),
-  tool_scoping: ToolScopingSchema.optional(),
-  parallel: z.boolean().optional(),
-  parallel_variants: z.array(ParallelVariantSchema).nullable().optional(),
-}).strip();
-
-export type WorkerConfig = z.infer<typeof WorkerConfigSchema>;
+// WorkerConfigSchema — re-exported from infra/workflow-types (see top of file)
 
 // ---------------------------------------------------------------------------
 // AvailableContextSchema

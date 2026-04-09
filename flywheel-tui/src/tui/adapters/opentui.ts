@@ -96,8 +96,10 @@ export class OpenTUIAdapter extends BaseEventConsumer {
         this.pushSystemText(`\u21bb Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`, event.timestamp);
         break;
 
-      case "approval:requested":
       case "approval:received":
+        break;
+
+      case "approval:requested":
       case "subprocess:spawned":
         log.debug(`Subprocess spawned for step ${event.stepIndex}`, { step: event.stepIndex });
         break;
@@ -158,6 +160,10 @@ export class OpenTUIAdapter extends BaseEventConsumer {
       case "question:rejected":
         break;
 
+      case "budget:metrics-changed":
+        // Metrics updates handled by workflow-runner's typed subscription
+        break;
+
       case "budget:exhausted":
         log.warn("Budget exhausted", { workflowId: event.workflowId, reason: event.reason });
         this.pushSystemText(`\u26a0 Budget exhausted: ${event.reason}\n`, event.timestamp);
@@ -206,27 +212,27 @@ export class OpenTUIAdapter extends BaseEventConsumer {
           `${STEP_BOUNDARY_PREFIX} ${this.formatStepBoundaryLabel(event.stepType, event.stepTitle)}\n`,
           event.timestamp,
         );
-        // Step state is handled by the runner's EventBus catch-all subscription
+        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
       case "queue:step-completed":
         log.info("Queue step completed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
-        // Step state is handled by the runner's EventBus catch-all subscription
+        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
       case "queue:step-failed":
         log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
-        // Step state is handled by the runner's EventBus catch-all subscription
+        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
       case "queue:step-inserted":
         log.info("Queue step inserted", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, afterStepId: event.afterStepId });
-        // Step state is handled by the runner's EventBus catch-all subscription
+        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
       case "queue:step-removed":
         log.info("Queue step removed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType });
-        // Step state is handled by the runner's EventBus catch-all subscription
+        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
       // Subprocess NDJSON events — handled by EventBus subscribers, no TUI rendering needed

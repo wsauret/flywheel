@@ -80,7 +80,3 @@ export function findResumableSession(deps: SessionActionDeps): SessionSummary | 
   return resumable[0] ?? null
 }
 
-/** Delete a session: remove files, cleanup. */
-export function deleteSession(sessionId: string, deps: SessionActionDeps): void {
-  deps.manager.delete(sessionId)
-}

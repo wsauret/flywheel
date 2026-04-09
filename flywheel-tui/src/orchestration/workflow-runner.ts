@@ -103,7 +103,7 @@ export function createWorkflowRunner(opts: {
 
   // Output persistence — set up BEFORE session so the adapter captures the wrapper
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  let currentBlocks: AnyBlock[] = []
+  let currentBlocks: readonly AnyBlock[] = []
   const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
   // Persistence-aware updateEntry: intercepts outputBlocks writes from the adapter
@@ -146,27 +146,26 @@ export function createWorkflowRunner(opts: {
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
 
-  // Wire metrics: budget tracker writes directly to the session store
-  budgetTracker.onMetricsChange = (tokens, cost) => {
-    const contextPercent = budgetTracker.getContextUtilization().percent
-    updateEntry(sessionId, { tokens, cost, contextPercent })
-  }
-
-  // Wire event subscriptions: step events write directly to session store
+  // Wire event subscriptions: metrics + step events write directly to session store
   const eventUnsubs: Unsubscribe[] = []
   eventUnsubs.push(
-    eventBus.subscribe((event) => {
-      if (event.type === "queue:step-started") {
-        updateEntry(sessionId, {
-          steps: queue.steps.map((s) => ({
-            ...toStepState(s),
-            ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
-          })),
-        })
-      }
-      if (event.type === "queue:step-completed" || event.type === "queue:step-failed") {
-        updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
-      }
+    eventBus.subscribeToType("budget:metrics-changed", (event) => {
+      const contextPercent = budgetTracker.getContextUtilization().percent
+      updateEntry(sessionId, { tokens: event.tokens, cost: event.cost, contextPercent })
+    }),
+    eventBus.subscribeToType("queue:step-started", (event) => {
+      updateEntry(sessionId, {
+        steps: queue.steps.map((s) => ({
+          ...toStepState(s),
+          ...(s.id === event.stepId ? { status: "running", startedAt: Date.now() } : {}),
+        })),
+      })
+    }),
+    eventBus.subscribeToType("queue:step-completed", () => {
+      updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
+    }),
+    eventBus.subscribeToType("queue:step-failed", () => {
+      updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
     }),
   )
 
@@ -251,7 +250,6 @@ export function createWorkflowRunner(opts: {
     disposed = true
 
     // 1. Unsubscribe event listeners
-    budgetTracker.onMetricsChange = undefined
     eventUnsubs.forEach((u) => u())
 
     // 2. Shut down warm pools
@@ -268,7 +266,7 @@ export function createWorkflowRunner(opts: {
     //    If traces were already finalized in run(), pass null traceCollector
     //    to skip double-finalize. For the abort path, pass the collector so
     //    open spans get closed with "error" status.
-    const resources: SessionResources = {
+    const resources = {
       budgetTracker,
       traceWriter,
       transcriptWriter,

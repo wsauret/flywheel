@@ -162,7 +162,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     chatSession.end()
 
     // 2. Unified resource disposal (finalize → flush → dispose)
-    const resources: SessionResources = {
+    const resources = {
       budgetTracker: infra.budgetTracker,
       traceWriter: infra.traceWriter,
       transcriptWriter: infra.transcriptWriter,

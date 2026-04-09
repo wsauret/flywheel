@@ -28,6 +28,13 @@ export interface ToolBlock {
   filetype?: string;
 }
 
+/**
+ * Optional fields (duration, errorMessage) are NOT discriminated by status because
+ * StructuredOutputBuilder mutates blocks via spread (`{ ...agent, status, duration }`).
+ * A discriminated union would break that pattern — TypeScript can't spread across
+ * discriminants cleanly. The builder is the sole writer and always pairs status with
+ * the correct fields, so the optionality is safe in practice.
+ */
 export interface AgentBlock {
   kind: "agent";
   id: string;

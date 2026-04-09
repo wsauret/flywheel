@@ -339,13 +339,10 @@ describe("listSessions", () => {
     const completed = result.sessions.filter(
       (s) => s.data.state === "completed",
     );
-    const noState = result.sessions.filter(
-      (s) => s.data.state === undefined,
-    );
 
-    expect(active).toHaveLength(2);
+    // Session created without explicit state gets default "active" from schema
+    expect(active).toHaveLength(3);
     expect(completed).toHaveLength(1);
-    expect(noState).toHaveLength(1);
   });
 
   it("corrupt JSON files don't break list (per-file error isolation)", () => {

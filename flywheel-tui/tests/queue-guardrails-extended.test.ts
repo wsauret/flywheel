@@ -292,12 +292,4 @@ describe("guardrails, mutations, and immutability", () => {
     expect(result.stepsCompleted).toBe(1);
   });
 
-  // -------------------------------------------------------------------------
-  // 7. (TODO) Convergence detection
-  // -------------------------------------------------------------------------
-  // NOTE: The executor does not currently call guardrails.recordIssueDescription()
-  // or guardrails.checkConvergence(), so convergence detection cannot be tested
-  // at the integration level. The guardrails unit tests cover this behavior.
-  // This is a known gap — when the executor integrates convergence detection,
-  // an integration test should be added here.
 });

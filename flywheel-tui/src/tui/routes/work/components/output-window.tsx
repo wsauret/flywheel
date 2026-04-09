@@ -37,7 +37,7 @@ export interface CurrentStepInfo {
 }
 
 export interface OutputWindowProps {
-  outputBlocks: AnyBlock[]
+  outputBlocks: readonly AnyBlock[]
   workflowStatus: WorkflowStatus
   approvalPending: boolean
   isPromptFocused: boolean

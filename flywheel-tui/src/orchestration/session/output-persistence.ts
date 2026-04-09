@@ -70,7 +70,7 @@ export interface OutputPersistence {
   /** Delete the output file. Returns true if deleted, false if not found. */
   delete(): Promise<boolean>;
   /** Create a debounced flusher that calls save() with getBlocks() on each tick. */
-  createFlusher(getBlocks: () => AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
+  createFlusher(getBlocks: () => readonly AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
     return resolveSessionFile(sessionId, "output", baseDir);
   }
 
-  function save(blocks: AnyBlock[]): void {
+  function save(blocks: readonly AnyBlock[]): void {
     const snapshots = toSnapshot(blocks);
     let json = JSON.stringify(snapshots);
 
@@ -133,7 +133,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
   }
 
   function createFlusher(
-    getBlocks: () => AnyBlock[],
+    getBlocks: () => readonly AnyBlock[],
     opts?: OutputFlusherOpts,
   ): OutputFlusher {
     const intervalMs = opts?.intervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;

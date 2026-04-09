@@ -96,7 +96,7 @@ function logMutation(
   stepIds: string[],
   provenance: Provenance,
 ): void {
-  const entry: MutationLogEntry = {
+  const entry = {
     timestamp: Date.now(),
     action,
     actor: provenance.actor,

@@ -2,15 +2,14 @@
 // ADR-004 Guardrails — Unit Tests
 // ---------------------------------------------------------------------------
 //
-// Tests for all 7 guardrails protecting queue mutations:
+// Tests for 6 guardrails protecting queue mutations:
 //   1. Max queue length (VAL-GUARD-001, VAL-MUT-004)
 //   2. Max mutations per step completion (VAL-GUARD-002)
 //   3. Max inserted steps per session (VAL-GUARD-003)
-//   4. Convergence detection (VAL-GUARD-004)
-//   5. Provenance logging completeness (VAL-GUARD-005)
-//   6. Budget visibility in dispatcher calls (VAL-GUARD-006)
-//   7. Objective anchoring in mutation prompts (VAL-GUARD-007)
-//   8. Dispatcher-driven mutation updates queue and TUI (VAL-CROSS-009)
+//   4. Provenance logging completeness (VAL-GUARD-005)
+//   5. Budget visibility in dispatcher calls (VAL-GUARD-006)
+//   6. Objective anchoring in mutation prompts (VAL-GUARD-007)
+//   7. Dispatcher-driven mutation updates queue and TUI (VAL-CROSS-009)
 // ---------------------------------------------------------------------------
 
 import { describe, expect, test } from "bun:test";
@@ -62,7 +61,6 @@ function defaultGuardrailOptions(overrides?: Partial<GuardrailOptions>): Guardra
     maxQueueLength: 50,
     maxMutationsPerStepCompletion: 3,
     maxInsertedStepsPerSession: 20,
-    convergenceThreshold: 3,
     sessionObjective: "Build a hello world endpoint",
     ...overrides,
   };
@@ -253,87 +251,10 @@ describe("Guardrail 3: Max inserted steps per session", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Guardrail 4: Convergence detection (VAL-GUARD-004)
+// Guardrail 4: Provenance logging completeness (VAL-GUARD-005)
 // ---------------------------------------------------------------------------
 
-describe("Guardrail 4: Convergence detection", () => {
-  test("detects 3 identical consecutive issue descriptions", () => {
-    const opts = defaultGuardrailOptions({ convergenceThreshold: 3 });
-    const guardrails = createGuardrails(opts);
-
-    guardrails.recordIssueDescription("step-1", "TypeError: cannot read property 'name' of undefined");
-    guardrails.recordIssueDescription("step-2", "TypeError: cannot read property 'name' of undefined");
-    guardrails.recordIssueDescription("step-3", "TypeError: cannot read property 'name' of undefined");
-
-    const result = guardrails.checkConvergence("TypeError: cannot read property 'name' of undefined");
-    expect(result.converged).toBe(true);
-    expect(result.issueDescription).toContain("TypeError");
-  });
-
-  test("does NOT flag when fewer than 3 consecutive identical issues", () => {
-    const opts = defaultGuardrailOptions({ convergenceThreshold: 3 });
-    const guardrails = createGuardrails(opts);
-
-    guardrails.recordIssueDescription("step-1", "Error A");
-    guardrails.recordIssueDescription("step-2", "Error A");
-
-    const result = guardrails.checkConvergence("Error A");
-    expect(result.converged).toBe(false);
-  });
-
-  test("does NOT flag when issues are different", () => {
-    const opts = defaultGuardrailOptions({ convergenceThreshold: 3 });
-    const guardrails = createGuardrails(opts);
-
-    guardrails.recordIssueDescription("step-1", "Error A");
-    guardrails.recordIssueDescription("step-2", "Error B");
-    guardrails.recordIssueDescription("step-3", "Error A");
-
-    const result = guardrails.checkConvergence("Error A");
-    expect(result.converged).toBe(false);
-  });
-
-  test("resets convergence count when a different issue appears", () => {
-    const opts = defaultGuardrailOptions({ convergenceThreshold: 3 });
-    const guardrails = createGuardrails(opts);
-
-    guardrails.recordIssueDescription("step-1", "Error A");
-    guardrails.recordIssueDescription("step-2", "Error A");
-    guardrails.recordIssueDescription("step-3", "Error B"); // breaks streak
-    guardrails.recordIssueDescription("step-4", "Error A");
-
-    const result = guardrails.checkConvergence("Error A");
-    expect(result.converged).toBe(false);
-  });
-
-  test("uses configurable threshold", () => {
-    const opts = defaultGuardrailOptions({ convergenceThreshold: 2 });
-    const guardrails = createGuardrails(opts);
-
-    guardrails.recordIssueDescription("step-1", "Error X");
-    guardrails.recordIssueDescription("step-2", "Error X");
-
-    const result = guardrails.checkConvergence("Error X");
-    expect(result.converged).toBe(true);
-  });
-
-  test("default threshold is 3", () => {
-    const guardrails = createGuardrails(defaultGuardrailOptions());
-
-    guardrails.recordIssueDescription("step-1", "Error");
-    guardrails.recordIssueDescription("step-2", "Error");
-    guardrails.recordIssueDescription("step-3", "Error");
-
-    const result = guardrails.checkConvergence("Error");
-    expect(result.converged).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Guardrail 5: Provenance logging completeness (VAL-GUARD-005)
-// ---------------------------------------------------------------------------
-
-describe("Guardrail 5: Provenance logging on all mutations", () => {
+describe("Guardrail 4: Provenance logging on all mutations", () => {
   test("insertAfter records full provenance (actor, reason, timestamp, stepIds)", () => {
     const steps = [makeStep(), makeStep()];
     const queue = makeQueue(steps);
@@ -449,10 +370,10 @@ describe("Guardrail 5: Provenance logging on all mutations", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Guardrail 6: Budget visibility in dispatcher calls (VAL-GUARD-006)
+// Guardrail 5: Budget visibility in dispatcher calls (VAL-GUARD-006)
 // ---------------------------------------------------------------------------
 
-describe("Guardrail 6: Budget visibility in dispatcher calls", () => {
+describe("Guardrail 5: Budget visibility in dispatcher calls", () => {
   test("getMutationBudget returns remaining budget info", () => {
     const opts = defaultGuardrailOptions({
       maxQueueLength: 50,
@@ -503,10 +424,10 @@ describe("Guardrail 6: Budget visibility in dispatcher calls", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Guardrail 7: Objective anchoring in mutation prompts (VAL-GUARD-007)
+// Guardrail 6: Objective anchoring in mutation prompts (VAL-GUARD-007)
 // ---------------------------------------------------------------------------
 
-describe("Guardrail 7: Objective anchoring in mutation prompts", () => {
+describe("Guardrail 6: Objective anchoring in mutation prompts", () => {
   test("getSessionObjective returns the configured session objective", () => {
     const opts = defaultGuardrailOptions({
       sessionObjective: "Build a REST API with authentication",
@@ -684,20 +605,6 @@ describe("Dispatcher-driven mutations through guardrails", () => {
     expect(entry!.reason).toBe("dispatcher mutation");
     expect(entry!.timestamp).toBeTruthy();
     expect(entry!.stepIds).toContain(newStep.id);
-  });
-
-  test("convergence detection blocks insert mutations when converged", () => {
-    const opts = defaultGuardrailOptions({ convergenceThreshold: 3 });
-    const guardrails = createGuardrails(opts);
-
-    // Record 3 identical issue descriptions
-    guardrails.recordIssueDescription("step-1", "TypeError: foo");
-    guardrails.recordIssueDescription("step-2", "TypeError: foo");
-    guardrails.recordIssueDescription("step-3", "TypeError: foo");
-
-    const convergence = guardrails.checkConvergence("TypeError: foo");
-    expect(convergence.converged).toBe(true);
-    expect(convergence.issueDescription).toBe("TypeError: foo");
   });
 
   test("session inserts are tracked across multiple applyMutations calls", () => {

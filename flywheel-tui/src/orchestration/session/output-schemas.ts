@@ -93,14 +93,14 @@ export type OutputSnapshot = z.infer<typeof OutputSnapshotSchema>;
  * - AgentBlock with status "active" is normalized to "paused"
  * - Unknown block kinds are silently skipped
  */
-export function toSnapshot(blocks: AnyBlock[]): OutputSnapshot[] {
+export function toSnapshot(blocks: readonly AnyBlock[]): OutputSnapshot[] {
   const snapshots: OutputSnapshot[] = [];
 
   for (const block of blocks) {
     let candidate: unknown = block;
 
     // Normalize active agents to paused
-    if (block.kind === "agent" && (block as any).status === "active") {
+    if (block.kind === "agent" && block.status === "active") {
       candidate = { ...block, status: "paused" };
     }
 

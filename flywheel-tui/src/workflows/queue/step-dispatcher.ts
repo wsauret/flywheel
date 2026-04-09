@@ -197,7 +197,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       const stepDescription = buildStepDescription(step, context);
 
       // Build workflow info
-      const workflowInfo: WorkflowInfo = {
+      const workflowInfo = {
         name: step.type,
         step_number: currentIndex + 1,
         total_steps: queue.steps.length,
@@ -205,7 +205,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       };
 
       // Build dispatcher config
-      const dispatcherConfig: DispatcherConfig = {
+      const dispatcherConfig = {
         max_eval_cycles: configContext.maxEvalCycles,
         worktree_path: configContext.worktreePath,
         project_cwd: configContext.projectCwd,
@@ -247,7 +247,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         : undefined;
 
       // Build the DispatcherInput
-      const input: DispatcherInput = {
+      const input = {
         plan,
         state: queueState,
         workflow_id: workflowId,

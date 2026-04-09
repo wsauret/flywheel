@@ -2,7 +2,9 @@
  * Factory for creating the three warm pools used during workflow execution:
  * dispatcher, evaluator, and worker.
  *
- * Extracted from workflow-runner.ts to keep file sizes manageable.
+ * Single-use factory justified by SRP: tier resolution, env filtering, and
+ * three distinct spawn pipelines form a cohesive concern. Inlining would
+ * force workflow-runner to manage pool construction alongside execution.
  */
 
 import { WarmPool } from "./warm-pool"

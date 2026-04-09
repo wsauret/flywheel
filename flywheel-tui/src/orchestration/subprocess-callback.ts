@@ -1,8 +1,9 @@
 /**
  * Subprocess callback factory — spawns the engine process for a queue step.
  *
- * Extracted from queue-orchestrator.ts to isolate the ~110-line subprocessFn
- * into a focused, testable unit.
+ * Single-use factory justified by SRP: scaffolding setup, warm-pool acquisition,
+ * stream pipeline wiring, stdin injection, and observer coordination form a
+ * cohesive concern distinct from queue orchestration.
  */
 
 import { randomUUID } from "node:crypto"
