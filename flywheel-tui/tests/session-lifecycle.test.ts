@@ -234,15 +234,15 @@ describe("Invalid transitions are rejected", () => {
     );
   });
 
-  it("self-transitions are rejected", () => {
+  it("self-transitions are no-ops (no throw, no disk write)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
 
-    expect(() => mgr.updateState(id, "active")).toThrow(
-      /Invalid state transition/,
-    );
+    // active -> active: should not throw — chat mode relies on idempotent transitions
+    expect(() => mgr.updateState(id, "active")).not.toThrow();
+    expect(mgr.getState(id)).toBe("active");
   });
 
   it("non-existent session throws", () => {

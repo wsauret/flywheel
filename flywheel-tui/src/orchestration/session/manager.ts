@@ -224,6 +224,8 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const persisted = readOrThrow(id);
     const currentState = getLifecycleState(persisted);
 
+    if (currentState === newState) return;
+
     if (!isValidTransition(currentState, newState)) {
       throw new Error(
         `Invalid state transition: ${currentState} -> ${newState}`,

@@ -137,7 +137,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   }
 
   function injectMessage(text: string): boolean {
-    updateState(sessionId, "active")
     chatSession.send(text)
 
     // Auto-name the session from the first user message

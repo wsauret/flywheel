@@ -115,7 +115,8 @@ describe("isValidTransition — invalid transitions", () => {
     ["completed", "active"],
     ["completed", "paused"],
     ["completed", "completed"],
-    // self-transitions are not valid
+    // self-transitions are not valid in the transition table
+    // (manager handles them as no-ops before consulting the table)
     ["active", "active"],
     ["paused", "paused"],
   ];
