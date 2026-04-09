@@ -8,11 +8,10 @@
 import { batch } from "solid-js"
 import {
   createWorkflowController,
-  type RunnerDoneResult,
-  type RunnerErrorResult,
 } from "../../orchestration/workflow-controller.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+import { wireLifecycleCallbacks } from "./lifecycle-callbacks.js"
 
 export interface WorkflowLifecycleDeps {
   signals: ShellSignals
@@ -36,6 +35,8 @@ export interface WorkflowLifecycleHook {
 export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifecycleHook {
   const { signals, services } = deps
 
+  const callbacks = wireLifecycleCallbacks(signals, services)
+
   // Create the controller — all business logic lives there
   const controller = createWorkflowController({
     registry: services.registry,
@@ -43,21 +44,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     refreshList: services.refreshList,
     workStartTime: services.metrics.workStartTime,
     foregroundId: signals.foregroundId,
-  })
-
-  // Register lifecycle callbacks — controller fires these asynchronously
-  controller.onRunnerDone((_id: string, result: RunnerDoneResult) => {
-    signals.setStatusLine(result.statusMessage)
-    services.setTerminalTitle(result.terminalTitle)
-    services.refreshList()
-    signals.setForegroundId(undefined)
-  })
-
-  controller.onRunnerError((_id: string, result: RunnerErrorResult) => {
-    signals.setErrorMessage(result.errorMessage)
-    services.setTerminalTitle(result.terminalTitle)
-    services.refreshList()
-    signals.setForegroundId(undefined)
+    onRunnerDone: callbacks.onRunnerDone,
+    onRunnerError: callbacks.onRunnerError,
   })
 
   /** Reset writable UI signals to a clean "starting" state. */

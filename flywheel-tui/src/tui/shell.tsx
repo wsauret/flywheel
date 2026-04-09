@@ -8,7 +8,7 @@ import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
 import { Clipboard } from "./utils/clipboard"
-import { exitTUI, registerPreExitCleanup } from "./exit"
+import { registerPreExitCleanup } from "./exit"
 import { OutputWindow } from "./routes/work/components/output-window"
 import { SplitBorder } from "./shared/ui/border"
 import { SIMPLE_LOGO } from "@tui/shared/components/logo"
@@ -23,9 +23,10 @@ import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
 import { useSessionModal } from "./hooks/use-session-modal.js"
 import { createShellState } from "./hooks/shell-state.js"
+import { createKeyboardHandler } from "./hooks/use-keyboard-handler.js"
 import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 
-export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
+export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string }) {
   const { theme } = useTheme()
   const toast = useToast()
   const { manager, refreshList, sessions } = useSession()
@@ -62,7 +63,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
   // ── Hooks ──
   const workflow = useWorkflowLifecycle({ signals, services })
 
-  const chat = useChatMode({ signals, services, projectCwd: process.cwd() })
+  const chat = useChatMode({ signals, services, projectCwd: props.projectCwd })
 
   const sessionModal = useSessionModal({
     signals,
@@ -73,14 +74,14 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
     actionDeps: workflow.actionDeps,
   })
 
-  const inChat = () => {
+  const inChat = createMemo(() => {
     // chatActive covers the async startup window before the registry entry exists
     if (chat.chatActive()) return true
     const fgId = signals.foregroundId()
     if (!fgId) return false
     const entry = registry.get(fgId)
     return entry?.kind === "chat"
-  }
+  })
 
   // Auto-start chat on boot
   chat.startChat()
@@ -131,61 +132,18 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
   }
 
   // ── Keyboard ──
-  useKeyboard((evt) => {
-    if (sessionModal.sessionsModalOpen()) { sessionModal.handleModalKey(evt); return }
-    if (evt.name === "escape") {
-      const state = signals.sessionState()
-      // Active workflow (not chat): first Esc pauses, second Esc aborts
-      if (state === "active" && !inChat()) {
-        workflow.pauseForeground()
-        const bg = runningCount()
-        if (bg > 0) toast.show({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
-        return
-      }
-      // In chat mode, Esc interrupts the active worker — never ends the session.
-      // Use /new to start a fresh chat, or Ctrl+B -> d to delete.
-      if (inChat()) {
-        chat.interruptChat()
-        return
-      }
-      // Paused with runner still alive (winding down): abort it
-      if (state === "active") { workflow.abortForeground(); return }
-      // Completed or paused (no runner): dismiss and return to welcome
-      if (state === "completed" || state === "paused") {
-        // If we're viewing a historical session, restore the state from before viewing.
-        if (sessionModal.isViewingSession()) {
-          sessionModal.dismissViewedSession()
-          return
-        }
-        // Derived memos (agentState, outputBlocks, steps, sessionTitle) reset automatically
-        // when foregroundId is cleared — they derive from the registry entry.
-        signals.setStatusLine("")
-        signals.setErrorMessage("")
-        signals.setForegroundId(undefined)
-        renderer.setTerminalTitle("flywheel")
-        return
-      }
-      // Error state (errorMessage set, no foreground session): dismiss
-      if (signals.errorMessage()) {
-        signals.setErrorMessage("")
-        return
-      }
-    }
-    if (evt.ctrl && evt.name === "n") { chat.backgroundChat(); chat.startChat(); return }
-    if (evt.ctrl && evt.name === "w") {
-      if (inChat()) { chat.endChat(); chat.startChat(); return }
-      // For workflows: abort the foreground session
-      workflow.abortForeground()
-      return
-    }
-    if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }
-    if (evt.ctrl && evt.name === "r") { workflow.handleResume() }
-    if (evt.ctrl && evt.name === "c") {
-      // Exit if no workflows running (chat sessions don't block exit)
-      const hasWorkflows = registry.allIds().some((id) => workflow.isWorkflowSession(id))
-      if (!hasWorkflows) { exitTUI() }
-    }
+  const handleKey = createKeyboardHandler({
+    signals,
+    registry,
+    workflow,
+    chat,
+    sessionModal,
+    inChat,
+    runningCount,
+    setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
+    showToast: (opts) => toast.show(opts),
   })
+  useKeyboard(handleKey)
 
   // ── Cleanup ──
   // Async disposal is registered as a pre-exit hook so exitTUI() can await it
@@ -198,6 +156,14 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
 
   // ── Derived state ──
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
+
+  const displayStatus = createMemo((): "running" | "idle" | "interrupted" | "completed" => {
+    if (signals.agentState() === "active") return "running"
+    if (signals.sessionState() === "paused") return "interrupted"
+    if (signals.sessionState() === "active") return inChat() ? "idle" : "running"
+    return "completed"
+  })
+
   const currentStep = createMemo(() => {
     const steps = signals.steps()
     const idx = steps.findIndex((s) => s.status === "running")
@@ -305,7 +271,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
         <Show when={signals.sessionState() !== null}>
           <OutputWindow
             outputBlocks={signals.outputBlocks()}
-            workflowStatus={signals.agentState() === "active" ? "running" : signals.sessionState() === "paused" ? "interrupted" : signals.sessionState() === "active" ? (inChat() ? "idle" : "running") : "completed"}
+            workflowStatus={displayStatus()}
             approvalPending={false}
             isPromptFocused={true}
             currentStep={inChat() ? null : currentStep()}
@@ -361,7 +327,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
 
       {/* Footer */}
       <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} flexShrink={0}>
-        <text fg={theme.textMuted} flexShrink={1} overflow="hidden">{process.cwd()}</text>
+        <text fg={theme.textMuted} flexShrink={1} overflow="hidden">{props.projectCwd}</text>
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.textMuted}>
             {signals.agentState() === "active"

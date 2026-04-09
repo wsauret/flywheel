@@ -79,7 +79,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
                 <SessionProvider manager={manager}>
-                  <FlywheelShell factories={factories} />
+                  <FlywheelShell factories={factories} projectCwd={projectCwd} />
                 </SessionProvider>
               </ThemeProvider>
             </ToastProvider>

@@ -37,6 +37,10 @@ export interface WorkflowControllerDeps {
   workStartTime: () => number
   /** Foreground session ID accessor (needed for pause/abort/actionDeps). */
   foregroundId: () => string | undefined
+  /** Called when a runner completes normally. */
+  onRunnerDone?: (id: string, result: RunnerDoneResult) => void
+  /** Called when a runner encounters an error. */
+  onRunnerError?: (id: string, result: RunnerErrorResult) => void
 }
 
 export interface StartWorkflowResult {
@@ -115,13 +119,6 @@ export interface WorkflowController {
    * Cancels shutdown if the session is paused. Returns true if delivered.
    */
   steerWorkflow(foregroundId: string | undefined, text: string): boolean
-
-  /**
-   * Register lifecycle callbacks invoked when a runner completes or errors.
-   * These fire asynchronously from the registry's background execution.
-   */
-  onRunnerDone(cb: (id: string, result: RunnerDoneResult) => void): void
-  onRunnerError(cb: (id: string, result: RunnerErrorResult) => void): void
 }
 
 // ---------------------------------------------------------------------------
@@ -158,17 +155,13 @@ export function formatWorkflowDoneResult(
 export function createWorkflowController(deps: WorkflowControllerDeps): WorkflowController {
   const { registry, manager, refreshList } = deps
 
-  // Lifecycle callbacks — set by the TUI hook
-  let _onRunnerDone: ((id: string, result: RunnerDoneResult) => void) | undefined
-  let _onRunnerError: ((id: string, result: RunnerErrorResult) => void) | undefined
-
   /** Handle workflow runner completion. */
   function handleRunnerDone(id: string, result: WorkflowResult): void {
     const elapsedMs = Date.now() - deps.workStartTime()
     const doneResult = formatWorkflowDoneResult(result, elapsedMs)
     manager.updateState(id, doneResult.state)
     refreshList()
-    _onRunnerDone?.(id, doneResult)
+    deps.onRunnerDone?.(id, doneResult)
   }
 
   /** Handle workflow runner error. */
@@ -180,7 +173,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
     } satisfies RunnerErrorResult
     refreshList()
-    _onRunnerError?.(id, errorResult)
+    deps.onRunnerError?.(id, errorResult)
   }
 
   function startWorkflow(
@@ -188,8 +181,9 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     description: string,
   ): StartWorkflowResult | { error: string } {
     let queue
+    let wfDeps
     try {
-      const wfDeps = prepareWorkflowDeps()
+      wfDeps = prepareWorkflowDeps()
       queue = buildQueueForSlashCommand(command, wfDeps.config)
     } catch (err) {
       return { error: `Config error: ${extractErrorMessage(err)}` }
@@ -202,6 +196,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       sessionId,
       queue,
       description,
+      workflowDeps: wfDeps,
       onRunnerDone: handleRunnerDone,
       onRunnerError: handleRunnerError,
     })
@@ -223,9 +218,10 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     }
 
     let queue
+    let wfDeps
     let workdir: ReturnType<typeof createTestWorkdir> | null = null
     try {
-      const wfDeps = prepareWorkflowDeps()
+      wfDeps = prepareWorkflowDeps()
       const projectCwd = wfDeps.config.project_cwd ?? process.cwd()
       workdir = createTestWorkdir(projectCwd)
       const fixture = setupTestFixture(stepDef, projectCwd)
@@ -245,6 +241,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       queue,
       description: label,
       subprocessCwd: testWorkdir.path,
+      workflowDeps: wfDeps,
       onComplete: () => testWorkdir.cleanup(),
       onRunnerDone: handleRunnerDone,
       onRunnerError: handleRunnerError,
@@ -311,7 +308,6 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   function getActionDeps(): SessionActionDeps {
     return {
       manager,
-      refreshList,
       activeSessionId: deps.foregroundId,
     }
   }
@@ -329,14 +325,6 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     return registry.injectMessage(foregroundId, text)
   }
 
-  function onRunnerDone(cb: (id: string, result: RunnerDoneResult) => void): void {
-    _onRunnerDone = cb
-  }
-
-  function onRunnerError(cb: (id: string, result: RunnerErrorResult) => void): void {
-    _onRunnerError = cb
-  }
-
   return {
     startWorkflow,
     startTestStep,
@@ -347,7 +335,5 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     getActionDeps,
     isWorkflowSession,
     steerWorkflow,
-    onRunnerDone,
-    onRunnerError,
   }
 }

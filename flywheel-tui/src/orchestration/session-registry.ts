@@ -89,6 +89,8 @@ export interface SessionRegistry {
      * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
      * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
     subprocessCwd?: string
+    /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
+    workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
     /** Called when the run completes or errors (e.g., temp dir cleanup). */
     onComplete?: () => void
     /** Called when the runner finishes successfully. */
@@ -179,11 +181,16 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
     description: string
     priorBlocks?: AnyBlock[]
     subprocessCwd?: string
+    workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
     onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): string {
     const { sessionId, queue, description, priorBlocks } = opts
+
+    const overrides = (opts.subprocessCwd || opts.workflowDeps)
+      ? { subprocessCwd: opts.subprocessCwd, workflowDeps: opts.workflowDeps }
+      : undefined
 
     const runner = createWorkflowRunner({
       sessionId,
@@ -192,7 +199,7 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
       updateEntry: (id, patch) => updateEntry(id, patch),
       factories,
       priorBlocks,
-      overrides: opts.subprocessCwd ? { subprocessCwd: opts.subprocessCwd } : undefined,
+      overrides,
     })
 
     const entry: WorkflowSessionEntry = {

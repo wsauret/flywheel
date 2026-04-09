@@ -55,24 +55,6 @@ describe("EventBus", () => {
     expect(() => bus.emit(makeEvent())).not.toThrow();
   });
 
-  // -- once --
-
-  it("once listener fires only once", () => {
-    const received: FlywheelEvent[] = [];
-    bus.once((e) => received.push(e));
-    bus.emit(makeEvent());
-    bus.emit(makeEvent());
-    expect(received).toHaveLength(1);
-  });
-
-  it("once returns unsubscribe that prevents firing", () => {
-    const received: FlywheelEvent[] = [];
-    const unsub = bus.once((e) => received.push(e));
-    unsub();
-    bus.emit(makeEvent());
-    expect(received).toHaveLength(0);
-  });
-
   // -- subscribeToType (typed listeners) --
 
   it("typed listener receives only matching events", () => {
@@ -97,16 +79,6 @@ describe("EventBus", () => {
     bus.emit(makeEvent());
     expect(received).toHaveLength(1);
     unsub();
-    bus.emit(makeEvent());
-    expect(received).toHaveLength(1);
-  });
-
-  // -- onceType --
-
-  it("onceType fires only once for matching type", () => {
-    const received: FlywheelEvent[] = [];
-    bus.onceType("queue:initialized", (e) => received.push(e));
-    bus.emit(makeEvent());
     bus.emit(makeEvent());
     expect(received).toHaveLength(1);
   });

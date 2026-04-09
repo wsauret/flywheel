@@ -10,7 +10,6 @@ import { createQueuePersistence } from "../workflows/queue/persistence"
 import { readSession } from "./session/persistence"
 import { fromSnapshot } from "./session/output-schemas"
 import { isResumable } from "./session/state-machine"
-import { createSessionOrchestrator } from "./session-orchestrator"
 import type { Session } from "./session/schemas"
 import type { Queue } from "../workflows/queue/types"
 import type { SessionManager, SessionSummary } from "./session/manager"
@@ -22,7 +21,6 @@ import type { AnyBlock } from "../infra/output-blocks"
 
 export interface SessionActionDeps {
   manager: SessionManager
-  refreshList: () => void
   activeSessionId: () => string | undefined
   projectCwd?: string
 }
@@ -50,22 +48,27 @@ export async function loadResumeData(
   deps: SessionActionDeps,
 ): Promise<ResumeData | null> {
   const projectCwd = deps.projectCwd ?? process.cwd()
-  const orchestrator = createSessionOrchestrator({
-    readSession: (id) => readSession(id, projectCwd),
-    createOutputPersistence: (id) => createOutputPersistence({ sessionId: id, baseDir: projectCwd }),
-    createQueuePersistence: (id) => createQueuePersistence({ sessionId: id, baseDir: projectCwd }),
-    fromSnapshot,
-    manager: deps.manager,
-    refreshList: deps.refreshList,
-  })
-  const result = await orchestrator.handleResumeSession(sessionId)
-  if (!result) return null
 
-  return {
-    session: result.session,
-    outputBlocks: result.outputBlocks as AnyBlock[],
-    queue: result.queue,
+  // 1. Read session from disk
+  const session = readSession(sessionId, projectCwd)
+  if (!session) return null
+
+  // 2. Load and validate output snapshots
+  const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+  const rawSnapshots = await outputPersistence.load()
+  const outputBlocks = fromSnapshot(rawSnapshots) as AnyBlock[]
+
+  // 3. Load queue state (required for resume)
+  let queue: Queue | null = null
+  try {
+    const queuePersistence = createQueuePersistence({ sessionId, baseDir: projectCwd })
+    queue = await queuePersistence.load()
+  } catch {
+    // Queue file missing or corrupt
   }
+  if (!queue) return null
+
+  return { session, outputBlocks, queue }
 }
 
 /** Find the most recent resumable session. */
@@ -77,8 +80,7 @@ export function findResumableSession(deps: SessionActionDeps): SessionSummary | 
   return resumable[0] ?? null
 }
 
-/** Delete a session: remove files, cleanup, refresh list. */
+/** Delete a session: remove files, cleanup. */
 export function deleteSession(sessionId: string, deps: SessionActionDeps): void {
   deps.manager.delete(sessionId)
-  deps.refreshList()
 }

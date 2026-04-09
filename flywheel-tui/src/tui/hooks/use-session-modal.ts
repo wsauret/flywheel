@@ -124,6 +124,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   function handleSessionDelete(sessionId: string): void {
     try {
       deleteSession(sessionId, deps.actionDeps)
+      services.refreshList()
       setModalRefreshTrigger((n) => n + 1)
       services.showToast({ message: "Session deleted", variant: "info" })
       // If we were viewing this session's transcript, restore prior state.

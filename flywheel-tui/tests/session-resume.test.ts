@@ -4,7 +4,7 @@
  * Exercises:
  * 1. Create session via manager -> persist -> read back -> assert fields match
  * 2. Create session -> transition to paused -> persist output blocks ->
- *    load via orchestrator.handleResumeSession -> assert restored
+ *    load via loadResumeData -> assert restored
  * 3. Budget continuity — create tracker -> add tokens/cost -> flush ->
  *    create new tracker with same sessionId -> assert values restored via session file
  */
@@ -23,12 +23,8 @@ import { readSession } from "../src/orchestration/session/persistence";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 import { createQueuePersistence } from "../src/workflows/queue/persistence";
 import { createBudgetTracker } from "../src/orchestration/session/budget-tracker";
+import { loadResumeData, type SessionActionDeps } from "../src/orchestration/session-actions";
 import {
-  createSessionOrchestrator,
-  type SessionOrchestratorDeps,
-} from "../src/orchestration/session-orchestrator";
-import {
-  toSnapshot,
   fromSnapshot,
   type OutputSnapshot,
 } from "../src/orchestration/session/output-schemas";
@@ -52,6 +48,14 @@ function makeTmpDir(): string {
 
 function makeDeps(baseDir: string): SessionManagerDeps {
   return { baseDir };
+}
+
+function makeActionDeps(manager: SessionManager, baseDir: string): SessionActionDeps {
+  return {
+    manager,
+    activeSessionId: () => undefined,
+    projectCwd: baseDir,
+  };
 }
 
 /** Minimal queue for testing — one completed step and one pending step. */
@@ -181,10 +185,10 @@ describe("session persistence roundtrip", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 2: Full resume flow — persist output + queue, load via orchestrator
+// Test 2: Full resume flow — persist output + queue, load via loadResumeData
 // ---------------------------------------------------------------------------
 
-describe("session resume via orchestrator", () => {
+describe("session resume via loadResumeData", () => {
   it("persists output blocks and queue, then restores them on resume", async () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
@@ -216,22 +220,9 @@ describe("session resume via orchestrator", () => {
     expect(session).not.toBeNull();
     expect(isResumable(session!.state!)).toBe(true);
 
-    // 5. Resume via orchestrator
-    let refreshCalled = false;
-    const orchestrator = createSessionOrchestrator({
-      readSession: (id) => readSession(id, baseDir),
-      createOutputPersistence: (id) =>
-        createOutputPersistence({ sessionId: id, baseDir }),
-      createQueuePersistence: (id) =>
-        createQueuePersistence({ sessionId: id, baseDir }),
-      fromSnapshot,
-      manager,
-      refreshList: () => {
-        refreshCalled = true;
-      },
-    });
-
-    const result = await orchestrator.handleResumeSession(sessionId);
+    // 5. Resume via loadResumeData
+    const actionDeps = makeActionDeps(manager, baseDir);
+    const result = await loadResumeData(sessionId, actionDeps);
 
     // 6. Assert output blocks restored
     expect(result).not.toBeNull();
@@ -270,18 +261,8 @@ describe("session resume via orchestrator", () => {
 
     manager.updateState(sessionId, "paused");
 
-    const orchestrator = createSessionOrchestrator({
-      readSession: (id) => readSession(id, baseDir),
-      createOutputPersistence: (id) =>
-        createOutputPersistence({ sessionId: id, baseDir }),
-      createQueuePersistence: (id) =>
-        createQueuePersistence({ sessionId: id, baseDir }),
-      fromSnapshot,
-      manager,
-      refreshList: () => {},
-    });
-
-    const result = await orchestrator.handleResumeSession(sessionId);
+    const actionDeps = makeActionDeps(manager, baseDir);
+    const result = await loadResumeData(sessionId, actionDeps);
     // Should return null because queue is required for resume
     expect(result).toBeNull();
   });

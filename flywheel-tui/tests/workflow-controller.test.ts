@@ -319,7 +319,6 @@ describe("WorkflowController", () => {
       const actionDeps = controller.getActionDeps()
 
       expect(actionDeps.manager).toBe(deps.manager)
-      expect(actionDeps.refreshList).toBe(deps.refreshList)
       expect(typeof actionDeps.activeSessionId).toBe("function")
     })
   })
@@ -345,15 +344,15 @@ describe("WorkflowController", () => {
       expect(formatted.statusMessage).toContain("50K tokens")
     })
 
-    it("onRunnerError produces paused state", () => {
+    it("onRunnerError callback is accepted in deps", () => {
+      let capturedResult: any = null
       const deps = createDeps()
+      deps.onRunnerError = (_id, result) => { capturedResult = result }
       const controller = createWorkflowController(deps)
 
-      let capturedResult: any = null
-      controller.onRunnerError((_id, result) => { capturedResult = result })
-
-      // The callback is registered — verify the accessor works
-      expect(typeof controller.onRunnerError).toBe("function")
+      // Verify controller was created with the callback — it fires asynchronously
+      // when a runner errors, so we just verify construction succeeds.
+      expect(controller).toBeTruthy()
     })
   })
 })

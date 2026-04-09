@@ -8,7 +8,6 @@
  */
 
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
-import type { AdapterType, IWorkflowUI } from "./types";
 import { BaseEventConsumer } from "../../infra/base-event-consumer";
 import type { WorkflowSessionEntry } from "../../orchestration/session-registry";
 import { createOutputPipeline, type OutputPipeline } from "../../orchestration/output-pipeline";
@@ -25,13 +24,8 @@ export interface OpenTUIAdapterOptions {
 
 const log = Log.create({ service: "opentui-adapter" });
 
-export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
-  readonly adapterType: AdapterType = "opentui";
-  onApprovalDecision?: (approved: boolean, skip?: boolean) => void;
+export class OpenTUIAdapter extends BaseEventConsumer {
   private updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
-
-  /** When true, pass raw output without NDJSON parsing */
-  private _rawMode = false;
 
   /** Current engine ID for routing events. Updated per subprocess:output event. */
   private currentEngineId: string | undefined;
@@ -82,17 +76,6 @@ export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
     this.outputPipeline.startFlush(() => this.flushBlocks());
   }
 
-  /** Toggle raw output mode. Returns the new state. */
-  toggleRawMode(): boolean {
-    this._rawMode = !this._rawMode;
-    return this._rawMode;
-  }
-
-  /** Check if raw mode is enabled. */
-  get rawMode(): boolean {
-    return this._rawMode;
-  }
-
   /** Clean up intervals on disconnect. */
   override disconnect(): void {
     super.disconnect();
@@ -114,11 +97,7 @@ export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
         break;
 
       case "approval:requested":
-        break;
-
       case "approval:received":
-        break;
-
       case "subprocess:spawned":
         log.debug(`Subprocess spawned for step ${event.stepIndex}`, { step: event.stepIndex });
         break;
@@ -276,27 +255,18 @@ export class OpenTUIAdapter extends BaseEventConsumer implements IWorkflowUI {
     return `${stepType.toUpperCase()} · ${stepTitle}`;
   }
 
-  /** Route subprocess output: stderr → system text, raw → passthrough, formatted → NDJSON pipeline. */
+  /** Route subprocess output: stderr → system text, stdout → NDJSON pipeline. */
   private handleSubprocessOutput(
     stream: "stdout" | "stderr",
     data: string,
     timestamp: number,
     engineId?: string,
   ): void {
-    // stderr goes through the structured pipeline as text blocks
     if (stream === "stderr") {
       this.pushSystemText(data, timestamp);
       return;
     }
 
-    // Raw mode: pass through without parsing
-    if (this._rawMode) {
-      this.outputPipeline.builder.pushText(data, Date.now());
-      return;
-    }
-
-    // Formatted mode: feed to structured pipeline
-    // Update engine ID for event routing
     if (engineId !== undefined) {
       this.currentEngineId = engineId;
     }

@@ -28,6 +28,10 @@ export interface ChatControllerDeps {
   projectCwd: string
   /** Returns a monotonic timestamp for elapsed-time computation. */
   workStartTime: () => number
+  /** Called when a runner completes normally. */
+  onRunnerDone?: (id: string, result: RunnerDoneResult) => void
+  /** Called when a runner encounters an error. */
+  onRunnerError?: (id: string, result: RunnerErrorResult) => void
 }
 
 export interface StartChatResult {
@@ -70,14 +74,16 @@ export interface ChatController {
    * Returns true if the message was sent or queued; false if dropped.
    */
   sendMessage(foregroundId: string | undefined, text: string): boolean
-
-  /**
-   * Register lifecycle callbacks invoked when a runner completes or errors.
-   * These fire asynchronously from the registry's background execution.
-   */
-  onRunnerDone(cb: (id: string, result: RunnerDoneResult) => void): void
-  onRunnerError(cb: (id: string, result: RunnerErrorResult) => void): void
 }
+
+// ---------------------------------------------------------------------------
+// Startup state machine
+// ---------------------------------------------------------------------------
+
+type StartupState =
+  | { phase: "idle" }
+  | { phase: "starting"; id: string; pending: string[] }
+  | { phase: "ready" }
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -86,10 +92,7 @@ export interface ChatController {
 export function createChatController(deps: ChatControllerDeps): ChatController {
   const { registry, manager, refreshList, projectCwd } = deps
 
-  // Internal startup buffering state
-  let startingChatId: string | null = null
-  let chatReady = false
-  let pendingMessages: string[] = []
+  let startup: StartupState = { phase: "idle" }
   let isFirstChat = true
 
   /**
@@ -100,9 +103,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     sessionId: string,
     opts?: { initialMessage?: string; priorBlocks?: AnyBlock[] },
   ): Promise<{ sessionId: string; terminalTitle: string } | null> {
-    startingChatId = sessionId
-    chatReady = false
-    pendingMessages = []
+    startup = { phase: "starting", id: sessionId, pending: [] }
 
     const terminalTitle = opts?.priorBlocks
       ? `${TERMINAL_TITLE_PREFIX}chat (resumed)`
@@ -124,7 +125,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
             terminalTitle: `${TERMINAL_TITLE_PREFIX}done`,
           } satisfies RunnerDoneResult
           refreshList()
-          _onRunnerDone?.(id, doneResult)
+          deps.onRunnerDone?.(id, doneResult)
         },
         onRunnerError: (id, err) => {
           manager.updateState(id, "paused")
@@ -133,7 +134,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
             terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
           } satisfies RunnerErrorResult
           refreshList()
-          _onRunnerError?.(id, errorResult)
+          deps.onRunnerError?.(id, errorResult)
         },
         createRunner: (storeHandle: ChatStoreHandle) =>
           createChatRunner({
@@ -153,36 +154,20 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
           }),
       })
 
-      chatReady = true
-      startingChatId = null
+      // Replay any messages that arrived during async startup
+      const pendingMessages = startup.phase === "starting" ? startup.pending : []
+      startup = { phase: "ready" }
       isFirstChat = false
 
-      // Replay any messages that arrived during async startup
       for (const msg of pendingMessages) {
         registry.injectMessage(sessionId, msg)
       }
-      pendingMessages = []
 
       return { sessionId, terminalTitle }
     } catch (_err) {
-      startingChatId = null
-      chatReady = false
-      pendingMessages = []
+      startup = { phase: "idle" }
       return null
     }
-  }
-
-  // Callback hooks — set by the TUI hook to receive async lifecycle events
-  let _onRunnerDone: ((id: string, result: RunnerDoneResult) => void) | undefined
-  let _onRunnerError: ((id: string, result: RunnerErrorResult) => void) | undefined
-
-  /** Allow the TUI hook to register lifecycle callbacks. */
-  function onRunnerDone(cb: (id: string, result: RunnerDoneResult) => void): void {
-    _onRunnerDone = cb
-  }
-
-  function onRunnerError(cb: (id: string, result: RunnerErrorResult) => void): void {
-    _onRunnerError = cb
   }
 
   async function startChat(initialMessage?: string): Promise<StartChatResult | null> {
@@ -204,9 +189,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   }
 
   function backgroundChat(): void {
-    startingChatId = null
-    chatReady = false
-    pendingMessages = []
+    startup = { phase: "idle" }
   }
 
   function endChat(foregroundId: string | undefined): boolean {
@@ -214,11 +197,9 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     const entry = registry.get(foregroundId)
     if (!entry || entry.kind !== "chat") return false
 
-    // If ending the chat we're currently starting, clean up startup state
-    if (foregroundId === startingChatId) {
-      startingChatId = null
-      chatReady = false
-      pendingMessages = []
+    // If ending the chat we're currently starting, reset startup state
+    if (startup.phase === "starting" && startup.id === foregroundId) {
+      startup = { phase: "idle" }
     }
 
     registry.remove(foregroundId)
@@ -234,8 +215,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
   function sendMessage(foregroundId: string | undefined, text: string): boolean {
     // During async startup, buffer messages
-    if (startingChatId && !chatReady) {
-      pendingMessages.push(text)
+    if (startup.phase === "starting") {
+      startup.pending.push(text)
       return true
     }
     // Send to whatever chat is in the foreground
@@ -250,7 +231,5 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     backgroundChat,
     interruptChat,
     sendMessage,
-    onRunnerDone,
-    onRunnerError,
   }
 }

@@ -50,32 +50,6 @@ export class EventBus {
   }
 
   /**
-   * Subscribe to the next event only (one-time).
-   * Useful for lifecycle events.
-   */
-  once(listener: Listener): Unsubscribe {
-    const unsub = this.subscribe((event) => {
-      unsub();
-      listener(event);
-    });
-    return unsub;
-  }
-
-  /**
-   * Subscribe to the next event of a specific type only (one-time).
-   */
-  onceType<T extends FlywheelEvent["type"]>(
-    type: T,
-    listener: TypedListener<T>,
-  ): Unsubscribe {
-    const unsub = this.subscribeToType(type, ((event: FlywheelEvent) => {
-      unsub();
-      (listener as TypedListener<T>)(event as Extract<FlywheelEvent, { type: T }>);
-    }) as TypedListener<T>);
-    return unsub;
-  }
-
-  /**
    * Emit an event to all subscribers. Catches errors per listener
    * to prevent one bad listener from breaking others.
    */

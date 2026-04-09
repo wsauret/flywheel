@@ -54,6 +54,8 @@ export interface WorkflowRunnerOverrides {
   eventBus?: EventBus
   contextIndexer?: ContextIndexer
   budgetTracker?: BudgetTracker
+  /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
+  workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
 }
 
 export interface WorkflowRunner extends SessionRunner {
@@ -97,8 +99,7 @@ export function createWorkflowRunner(opts: {
   const projectCwd = opts.overrides?.projectCwd ?? process.cwd()
   const subprocessCwd = opts.overrides?.subprocessCwd
 
-  // Prepare workflow deps (config, engine, etc.)
-  const deps = prepareWorkflowDeps()
+  const deps = opts.overrides?.workflowDeps ?? prepareWorkflowDeps()
 
   // Output persistence — set up BEFORE session so the adapter captures the wrapper
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })

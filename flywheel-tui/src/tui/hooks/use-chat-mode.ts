@@ -10,6 +10,7 @@ import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { createChatController } from "../../orchestration/chat-controller.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+import { wireLifecycleCallbacks } from "./lifecycle-callbacks.js"
 
 export interface ChatModeDeps {
   signals: ShellSignals
@@ -38,6 +39,8 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   // Only true during the async startup window of a new chat
   const [chatActive, setChatActive] = createSignal(false)
 
+  const callbacks = wireLifecycleCallbacks(signals, services)
+
   // Create the controller — all business logic lives there
   const controller = createChatController({
     registry: services.registry,
@@ -45,19 +48,8 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     refreshList: services.refreshList,
     projectCwd: deps.projectCwd,
     workStartTime: services.metrics.workStartTime,
-  })
-
-  // Register lifecycle callbacks — controller fires these asynchronously
-  controller.onRunnerDone((_id, result) => {
-    signals.setStatusLine(result.statusMessage)
-    services.setTerminalTitle(result.terminalTitle)
-    signals.setForegroundId(undefined)
-  })
-
-  controller.onRunnerError((_id, result) => {
-    signals.setErrorMessage(result.errorMessage)
-    services.setTerminalTitle(result.terminalTitle)
-    signals.setForegroundId(undefined)
+    onRunnerDone: callbacks.onRunnerDone,
+    onRunnerError: callbacks.onRunnerError,
   })
 
   async function startChat(initialMessage?: string): Promise<void> {
