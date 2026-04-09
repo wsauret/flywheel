@@ -5,7 +5,7 @@
  * Handles: progress computation, status labels, step icons, step type labels.
  */
 
-import type { QueueStepState, QueueStepStatus } from "../types"
+import type { QueueStepState, QueueStepStatus, WorkflowStatus } from "../types"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,5 +81,3 @@ export function getStepTypeLabel(type: string): string {
 export function getStepTitleMaxWidth(hasDuration: boolean): number {
   return hasDuration ? STEP_TITLE_MAX_WITH_DURATION : STEP_TITLE_MAX_WITHOUT_DURATION
 }
-
-import type { WorkflowStatus } from "../types"

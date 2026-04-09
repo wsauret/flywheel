@@ -32,14 +32,7 @@ export interface QueueStepState {
   duration?: number;
 }
 
-export interface ApprovalState {
-  pending: boolean;
-  description?: string;
-}
-
 // ── Structured Output Blocks (canonical definitions in infra/output-blocks.ts) ──
-
-import type { AnyBlock as _AnyBlock } from "../infra/output-blocks";
 
 export type {
   TextBlock,
@@ -51,29 +44,3 @@ export type {
   UserMessageBlock,
   AnyBlock,
 } from "../infra/output-blocks";
-
-// ---------------------------------------------------------------------------
-// Split state types — ExecutionState and OutputState are independent stores
-// composed behind the UIActions facade. WorkState is their union (backward compat).
-// ---------------------------------------------------------------------------
-
-/** Workflow lifecycle, queue steps, approval, navigation, error. */
-export interface ExecutionState {
-  planName: string;
-  startTime: number;
-  endTime?: number;
-  workflowStatus: WorkflowStatus;
-  /** Queue step display states for the workflow panel. */
-  queueSteps: QueueStepState[];
-  approvalState: ApprovalState;
-  error?: string;
-  modelActivity: "idle" | "thinking" | "generating" | "tool_executing";
-}
-
-/** Structured output blocks. */
-export interface OutputState {
-  outputBlocks: _AnyBlock[];
-}
-
-/** Combined state — backward compatible union of ExecutionState + OutputState. */
-export interface WorkState extends ExecutionState, OutputState {}

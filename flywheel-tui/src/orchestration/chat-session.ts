@@ -217,7 +217,7 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
 
     // Only send content if there's a message — an empty pipe lets Claude idle and
     // wait rather than responding to a no-op greeting and potentially exiting.
-    const initialContent = messageToSend ? formatStdinMessage(engineName, messageToSend) : undefined
+    const initialContent = messageToSend ? formatStdinMessage(messageToSend) : undefined
 
     const spawnResult = await spawner.spawn(engineCmd.command, engineCmd.args, {
       cwd: projectCwd,
@@ -351,7 +351,7 @@ function createChatControls(input: ChatControlsInput): ChatControls {
 
     if (state.stdinHandle?.isOpen) {
       // Normal path: worker is alive, write directly to the pipe
-      const ok = state.stdinHandle.write(formatStdinMessage(engineName, text))
+      const ok = state.stdinHandle.write(formatStdinMessage(text))
       log.info("chat message sent", { length: text.length, written: ok })
       return
     }

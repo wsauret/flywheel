@@ -8,7 +8,7 @@ import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
 import { Clipboard } from "./utils/clipboard"
-import { exitTUI } from "./exit"
+import { exitTUI, registerPreExitCleanup } from "./exit"
 import { OutputWindow } from "./routes/work/components/output-window"
 import { SplitBorder } from "./shared/ui/border"
 import { SIMPLE_LOGO } from "@tui/shared/components/logo"
@@ -188,9 +188,10 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories }) {
   })
 
   // ── Cleanup ──
+  // Async disposal is registered as a pre-exit hook so exitTUI() can await it
+  // before destroying the renderer. This prevents data loss (traces, transcripts).
+  registerPreExitCleanup(() => registry.disposeAll())
   onCleanup(() => {
-    // Dispose all sessions (abort + flush output for every session, including background)
-    registry.disposeAll().catch(() => {})
     metrics.pauseTimer()
     renderer.setTerminalTitle("")
   })

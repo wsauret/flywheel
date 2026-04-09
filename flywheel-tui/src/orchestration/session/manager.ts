@@ -24,6 +24,7 @@ import { isValidTransition, type SessionState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema";
 import { Log } from "../../infra/log";
+import { errorMessage } from "../../infra/error-message";
 
 const log = Log.create({ service: "session.manager" });
 
@@ -237,7 +238,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     if (worktreeManager) {
       if (newState === "active" && currentState === "paused") {
         // Resuming from paused — switch to existing worktree
-        worktreeManager.switchToSession(id).catch(() => {});
+        worktreeManager.switchToSession(id).catch((e) => log.warn("worktree switch failed", { id, error: errorMessage(e) }));
       }
     }
   }
@@ -259,7 +260,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
     // Clean up worktree if available (fire-and-forget)
     if (worktreeManager) {
-      worktreeManager.cleanupTrashed(id).catch(() => {});
+      worktreeManager.cleanupTrashed(id).catch((e) => log.warn("worktree cleanup failed", { id, error: errorMessage(e) }));
     }
   }
 

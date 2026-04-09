@@ -45,6 +45,7 @@ export interface StepPromptResult {
  * Pure function — no side effects, no I/O. Computes the handoff path,
  * scaffolding paths, and assembles preamble + prompt + postamble.
  */
+// Exported for test validation (tests/build-step-prompt.test.ts)
 export function buildStepPrompt(
   step: Step,
   prompt: string,
@@ -73,7 +74,7 @@ export function buildStepPrompt(
 // Types
 // ---------------------------------------------------------------------------
 
-export interface SubprocessCallbackDeps {
+interface SubprocessCallbackDeps {
   deps: WorkflowDeps
   emit: EmitFn
   workflowId: string
@@ -94,7 +95,7 @@ export interface SubprocessCallbackDeps {
   subprocessPool?: WarmPool<RawSpawnedProcess> | null
 }
 
-export interface SubprocessCallbackResult {
+interface SubprocessCallbackResult {
   output: string
   handoffPath: string
   durationMs: number
@@ -140,7 +141,7 @@ export function createSubprocessCallback(
     // Compose initial stdin content (engine-specific format)
     let stdinContent: string | undefined
     if (useStdinPipe && rawStdinContent) {
-      stdinContent = formatStdinMessage(deps.engine.metadata.id, rawStdinContent)
+      stdinContent = formatStdinMessage(rawStdinContent)
     } else {
       stdinContent = rawStdinContent
     }

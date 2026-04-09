@@ -5,6 +5,8 @@
  * provides metadata and a command builder. The model is just a string passed through.
  */
 
+import type { ToolScoping } from "../../../infra/workflow-types";
+
 export interface EngineMetadata {
   /** Unique identifier (e.g., "claude", "opencode") */
   id: string;
@@ -60,18 +62,7 @@ export interface EngineCommand {
   promptPrefix?: string;
 }
 
-/**
- * Tool scoping shape — controls which tool categories the worker can use.
- * Defined inline to avoid engine types depending on Zod schemas at runtime.
- */
-export interface ToolScopingConfig {
-  read: boolean;
-  bash: boolean;
-  write: boolean;
-  edit: boolean;
-  /** When true, the worker can dispatch sub-agents via the Task tool. */
-  task?: boolean;
-}
+// ToolScoping is imported from infra/workflow-types.ts — single source of truth.
 
 export interface EngineCommandOptions {
   /** Model override (engine-native format, e.g., "opus" for claude, "anthropic/claude-opus-4-6" for opencode) */
@@ -79,7 +70,7 @@ export interface EngineCommandOptions {
   /** Session ID to resume (worker resume path) */
   resumeSessionId?: string;
   /** Tool scoping restrictions — controls which tool categories the worker can access */
-  toolScoping?: ToolScopingConfig;
+  toolScoping?: ToolScoping;
   /** Explicit tools string for dispatcher/evaluator (e.g., "Write", "Read,Bash,Write,Grep,Glob") */
   tools?: string;
   /** System prompt (separate from user prompt for caching, passed as --system-prompt flag) */

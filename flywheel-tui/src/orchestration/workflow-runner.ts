@@ -183,7 +183,7 @@ export function createWorkflowRunner(opts: {
 
   // InjectionQueue — constructed here (after prepareWorkflowDeps) so injectMessage can access it outside run()
   const injectionQueue = new InjectionQueue(
-    (text: string) => formatStdinMessage(deps.engine.metadata.id, text),
+    formatStdinMessage,
   )
 
   // Pool refs — created inside run(), shut down in dispose()

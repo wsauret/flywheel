@@ -59,7 +59,7 @@ export interface ChatSessionEntry extends SessionEntryBase {
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
 
 /** Handle passed to workflow adapter factory — write data directly to the reactive store. */
-export interface WorkflowStoreHandle {
+interface WorkflowStoreHandle {
   updateEntry: (patch: Partial<WorkflowSessionEntry>) => void
 }
 

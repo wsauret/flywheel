@@ -110,10 +110,7 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
   const evaluatorPool = pools.evaluator
   const subprocessPool = pools.subprocess
 
-  // ── 3. Stdin formatter ──
-  const stdinFormatter = (text: string) => formatStdinMessage(deps.engine.metadata.id, text)
-
-  // ── 4. Sprint evaluator addendum ──
+  // ── 3. Sprint evaluator addendum ──
   const evaluatorAddendum = isSprint
     ? "You are evaluating sprint mode work. Evaluate against the 6-point self-review checklist " +
       "(diff review, task alignment, completeness, test coverage, regression, edge cases). " +
@@ -125,7 +122,7 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
   const { dispatcherTransport, evaluatorTransport } = resolveTransports(
     deps, eventBus, workflowId, sessionId, projectCwd,
     evaluatorAddendum,
-    { dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage: stdinFormatter },
+    { dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage },
   )
 
   // ── 6. Context indexer ──

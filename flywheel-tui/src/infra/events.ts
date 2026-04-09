@@ -43,28 +43,28 @@ export type FlywheelEvent =
 
 // -- Dispatcher events --
 
-export interface DispatcherInvoked {
+interface DispatcherInvoked {
   type: "dispatcher:invoked";
   workflowId: string;
   stepIndex: number;
   timestamp: number;
 }
 
-export interface DispatcherCompleted {
+interface DispatcherCompleted {
   type: "dispatcher:completed";
   workflowId: string;
   decision: DispatcherDecision;
   timestamp: number;
 }
 
-export interface DispatcherFailed {
+interface DispatcherFailed {
   type: "dispatcher:failed";
   workflowId: string;
   reason: string;
   timestamp: number;
 }
 
-export interface DispatcherOutput {
+interface DispatcherOutput {
   type: "dispatcher:output";
   workflowId: string;
   stream: "stdout" | "stderr";
@@ -75,28 +75,28 @@ export interface DispatcherOutput {
 
 // -- Evaluator events --
 
-export interface EvaluatorInvoked {
+interface EvaluatorInvoked {
   type: "evaluator:invoked";
   workflowId: string;
   stepIndex: number;
   timestamp: number;
 }
 
-export interface EvaluatorCompleted {
+interface EvaluatorCompleted {
   type: "evaluator:completed";
   workflowId: string;
   result: EvaluatorResult;
   timestamp: number;
 }
 
-export interface EvaluatorFailed {
+interface EvaluatorFailed {
   type: "evaluator:failed";
   workflowId: string;
   reason: string;
   timestamp: number;
 }
 
-export interface EvaluatorRevisionRequested {
+interface EvaluatorRevisionRequested {
   type: "evaluator:revision-requested";
   workflowId: string;
   stepIndex: number;
@@ -106,7 +106,7 @@ export interface EvaluatorRevisionRequested {
   timestamp: number;
 }
 
-export interface EvaluatorOutput {
+interface EvaluatorOutput {
   type: "evaluator:output";
   workflowId: string;
   stream: "stdout" | "stderr";
@@ -117,28 +117,28 @@ export interface EvaluatorOutput {
 
 // -- Subprocess events --
 
-export interface SubprocessSpawned {
+interface SubprocessSpawned {
   type: "subprocess:spawned";
   workflowId: string;
   stepIndex: number;
   timestamp: number;
 }
 
-export interface SubprocessCompleted {
+interface SubprocessCompleted {
   type: "subprocess:completed";
   workflowId: string;
   result: SubprocessResult;
   timestamp: number;
 }
 
-export interface SubprocessFailed {
+interface SubprocessFailed {
   type: "subprocess:failed";
   workflowId: string;
   failure: SubprocessFailureReason;
   timestamp: number;
 }
 
-export interface SubprocessRetrying {
+interface SubprocessRetrying {
   type: "subprocess:retrying";
   workflowId: string;
   attempt: number;
@@ -147,14 +147,14 @@ export interface SubprocessRetrying {
   timestamp: number;
 }
 
-export interface SubprocessOutput {
+interface SubprocessOutput {
   type: "subprocess:output";
   workflowId: string;
   stream: "stdout" | "stderr";
   data: string;
   timestamp: number;
-  /** Engine that produced this output (e.g. "claude", "opencode"). Optional for backward compat. */
-  engineId?: string;
+  /** Engine that produced this output (e.g. "claude", "opencode"). */
+  engineId: string;
 }
 
 /**
@@ -171,7 +171,7 @@ export interface SubprocessNDJSON {
   timestamp: number;
 }
 
-export interface SubprocessInjected {
+interface SubprocessInjected {
   type: "subprocess:injected";
   workflowId: string;
   message: string;
@@ -180,7 +180,7 @@ export interface SubprocessInjected {
 
 // -- Approval events --
 
-export interface ApprovalRequested {
+interface ApprovalRequested {
   type: "approval:requested";
   workflowId: string;
   stepIndex: number;
@@ -188,7 +188,7 @@ export interface ApprovalRequested {
   timestamp: number;
 }
 
-export interface ApprovalReceived {
+interface ApprovalReceived {
   type: "approval:received";
   workflowId: string;
   approved: boolean;
@@ -198,21 +198,21 @@ export interface ApprovalReceived {
 
 // -- Question events --
 
-export interface QuestionAsked {
+interface QuestionAsked {
   type: "question:asked";
   requestId: string;
   questions: QuestionInfo[];
   timestamp: number;
 }
 
-export interface QuestionReplied {
+interface QuestionReplied {
   type: "question:replied";
   requestId: string;
   answers: QuestionAnswer[];
   timestamp: number;
 }
 
-export interface QuestionRejected {
+interface QuestionRejected {
   type: "question:rejected";
   requestId: string;
   timestamp: number;
@@ -220,7 +220,7 @@ export interface QuestionRejected {
 
 // -- Budget events --
 
-export interface BudgetExhausted {
+interface BudgetExhausted {
   type: "budget:exhausted";
   workflowId: string;
   reason: string;
@@ -308,7 +308,7 @@ export interface QueueStepRemoved {
 
 // -- Trace events (from NDJSON pipeline) --
 
-export interface TraceToolStarted {
+interface TraceToolStarted {
   type: "trace:tool-started";
   workflowId: string;
   toolUseId: string;
@@ -317,7 +317,7 @@ export interface TraceToolStarted {
   timestamp: number;
 }
 
-export interface TraceToolCompleted {
+interface TraceToolCompleted {
   type: "trace:tool-completed";
   workflowId: string;
   toolUseId: string;
@@ -326,7 +326,7 @@ export interface TraceToolCompleted {
   timestamp: number;
 }
 
-export interface TraceSubagentStarted {
+interface TraceSubagentStarted {
   type: "trace:subagent-started";
   workflowId: string;
   toolUseId: string;
@@ -336,7 +336,7 @@ export interface TraceSubagentStarted {
   timestamp: number;
 }
 
-export interface TraceSubagentCompleted {
+interface TraceSubagentCompleted {
   type: "trace:subagent-completed";
   workflowId: string;
   toolUseId: string;

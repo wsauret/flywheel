@@ -7,11 +7,10 @@ function formatClaudeStdinMessage(text: string): string {
 }
 
 /**
- * Engine-aware stdin message formatter.
+ * Format a text message as NDJSON for the subprocess stdin pipe.
  *
- * Routes to the correct format based on engine ID. Currently only Claude
- * is supported — all engines use NDJSON format.
+ * All engines use the same Claude-style NDJSON format.
  */
-export function formatStdinMessage(_engineId: string, text: string): string {
+export function formatStdinMessage(text: string): string {
   return formatClaudeStdinMessage(text);
 }

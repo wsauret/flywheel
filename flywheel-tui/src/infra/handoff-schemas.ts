@@ -12,6 +12,8 @@ export function countSentences(text: string): number {
 
 // ---------------------------------------------------------------------------
 // Sub-schemas (all .strict() — LLM typos should cause retries)
+// Exported for direct test validation (tests/schemas/handoff.test.ts).
+// Inferred types (Artifacts, Verification, etc.) are file-private — no external consumers.
 // ---------------------------------------------------------------------------
 
 const CommandRunEntrySchema = z.union([
@@ -29,14 +31,14 @@ export const ArtifactsSchema = z.object({
   commands_run: z.array(CommandRunEntrySchema).optional(),
 }).strict();
 
-export type Artifacts = z.infer<typeof ArtifactsSchema>;
+type Artifacts = z.infer<typeof ArtifactsSchema>;
 
 export const VerificationSchema = z.object({
   tests_passed: z.boolean().nullable(),
   test_output_summary: z.string().optional(),
 }).strict();
 
-export type Verification = z.infer<typeof VerificationSchema>;
+type Verification = z.infer<typeof VerificationSchema>;
 
 export const OpenQuestionSchema = z.object({
   question: z.string(),
@@ -44,7 +46,7 @@ export const OpenQuestionSchema = z.object({
   header: z.string().optional(),
 }).strict();
 
-export type OpenQuestion = z.infer<typeof OpenQuestionSchema>;
+type OpenQuestion = z.infer<typeof OpenQuestionSchema>;
 
 export const FindingCountsSchema = z.object({
   p1_critical: z.number(),
@@ -52,7 +54,7 @@ export const FindingCountsSchema = z.object({
   p3_suggestion: z.number(),
 }).strict();
 
-export type FindingCounts = z.infer<typeof FindingCountsSchema>;
+type FindingCounts = z.infer<typeof FindingCountsSchema>;
 
 export const P3FindingSchema = z.object({
   description: z.string(),
@@ -60,7 +62,7 @@ export const P3FindingSchema = z.object({
   suggestion: z.string(),
 }).strict();
 
-export type P3Finding = z.infer<typeof P3FindingSchema>;
+type P3Finding = z.infer<typeof P3FindingSchema>;
 
 export const CompoundDocSchema = z.object({
   title: z.string(),
@@ -71,7 +73,7 @@ export const CompoundDocSchema = z.object({
   context: z.string().optional(),
 }).strict();
 
-export type CompoundDoc = z.infer<typeof CompoundDocSchema>;
+type CompoundDoc = z.infer<typeof CompoundDocSchema>;
 
 // ---------------------------------------------------------------------------
 // Skill feedback sub-schemas
@@ -85,7 +87,7 @@ export const SkillDeviationSchema = z.object({
   ),
 }).strict();
 
-export type SkillDeviation = z.infer<typeof SkillDeviationSchema>;
+type SkillDeviation = z.infer<typeof SkillDeviationSchema>;
 
 export const SkillFeedbackSchema = z.object({
   followedProcedure: z.boolean()

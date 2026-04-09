@@ -23,7 +23,7 @@ export const metadata: EngineMetadata = {
 };
 
 /**
- * Map ToolScopingConfig booleans to Claude CLI tool names.
+ * Map ToolScoping booleans to Claude CLI tool names.
  * Only tools with `true` are included in the --tools list.
  */
 const TOOL_NAME_MAP: Record<string, string> = {
@@ -44,7 +44,7 @@ const TOOL_NAME_MAP: Record<string, string> = {
  * Supports:
  * - --system-prompt when provided (for dispatcher/evaluator)
  * - --tools as explicit string when provided (for dispatcher/evaluator)
- * - --tools derived from ToolScopingConfig when toolScoping provided (for workers)
+ * - --tools derived from ToolScoping when toolScoping provided (for workers)
  * - --resume when resumeSessionId provided (for workers)
  * - --effort when provided
  * - --model when provided

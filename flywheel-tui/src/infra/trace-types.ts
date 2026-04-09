@@ -23,55 +23,55 @@ export type SpanKind = "workflow" | "step" | "worker" | "subagent" | "tool_call"
 // Per-kind input/output types
 // ---------------------------------------------------------------------------
 
-export interface WorkflowSpanInput {
+interface WorkflowSpanInput {
   stepIds: string[];
   workflowName: string;
 }
 
-export interface WorkflowSpanOutput {
+interface WorkflowSpanOutput {
   stepsCompleted: number;
   failureReason: string | null;
 }
 
-export interface StepSpanInput {
+interface StepSpanInput {
   stepType: string;
   stepTitle: string;
 }
 
-export interface StepSpanOutput {
+interface StepSpanOutput {
   failureReason: string | null;
 }
 
-export interface WorkerSpanInput {
+interface WorkerSpanInput {
   stepIndex: number;
 }
 
-export interface WorkerSpanOutput {
+interface WorkerSpanOutput {
   resultSummary: string;
   failureReason: string | null;
   /** Number of ndjson transcript events emitted during this worker's lifetime (delta, not total). */
   ndjsonEventCount?: number;
 }
 
-export interface SubagentSpanInput {
+interface SubagentSpanInput {
   agentType: string;
   description: string;
   prompt: string;
   model: string;
 }
 
-export interface SubagentSpanOutput {
+interface SubagentSpanOutput {
   result: string;
   exitStatus: number;
   error: string | null;
 }
 
-export interface ToolCallSpanInput {
+interface ToolCallSpanInput {
   toolName: string;
   toolInput: string; // truncated JSON
 }
 
-export interface ToolCallSpanOutput {
+interface ToolCallSpanOutput {
   toolOutput: string; // truncated
   isError: boolean;
 }
@@ -80,7 +80,7 @@ export interface ToolCallSpanOutput {
 // SpanBase — shared fields
 // ---------------------------------------------------------------------------
 
-export interface SpanBase {
+interface SpanBase {
   spanId: string;
   traceId: string;
   parentSpanId: string | null;
@@ -96,31 +96,31 @@ export interface SpanBase {
 // Discriminated union
 // ---------------------------------------------------------------------------
 
-export interface WorkflowSpan extends SpanBase {
+interface WorkflowSpan extends SpanBase {
   kind: "workflow";
   input: WorkflowSpanInput;
   output: WorkflowSpanOutput;
 }
 
-export interface StepSpan extends SpanBase {
+interface StepSpan extends SpanBase {
   kind: "step";
   input: StepSpanInput;
   output: StepSpanOutput;
 }
 
-export interface WorkerSpan extends SpanBase {
+interface WorkerSpan extends SpanBase {
   kind: "worker";
   input: WorkerSpanInput;
   output: WorkerSpanOutput;
 }
 
-export interface SubagentSpan extends SpanBase {
+interface SubagentSpan extends SpanBase {
   kind: "subagent";
   input: SubagentSpanInput;
   output: SubagentSpanOutput;
 }
 
-export interface ToolCallSpan extends SpanBase {
+interface ToolCallSpan extends SpanBase {
   kind: "tool_call";
   input: ToolCallSpanInput;
   output: ToolCallSpanOutput;
@@ -136,7 +136,7 @@ export type Span = WorkflowSpan | StepSpan | WorkerSpan | SubagentSpan | ToolCal
  * Use in switch default case to ensure all SpanKind values are handled.
  * TypeScript will error at compile time if a case is missing.
  */
-export function assertNeverSpanKind(kind: never): never {
+function assertNeverSpanKind(kind: never): never {
   throw new Error(`Unhandled span kind: ${kind}`);
 }
 
