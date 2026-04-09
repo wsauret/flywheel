@@ -2,8 +2,9 @@
  * Shared Session Infrastructure Factory
  *
  * Extracts the common budget/trace/transcript setup used by both
- * WorkflowRunner and ChatRunner. Config-gated: transcript/trace
- * creation respects `config.tracing.enabled`.
+ * WorkflowRunner and ChatRunner. Both runners call this factory —
+ * that is the shared abstraction, not duplicated initialization.
+ * Config-gated: transcript/trace creation respects `config.tracing.enabled`.
  *
  * Usage:
  *   const infra = createSessionInfra({ sessionId, projectCwd, config });

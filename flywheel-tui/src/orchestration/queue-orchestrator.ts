@@ -132,6 +132,10 @@ export interface ExecutorExtensions {
 /**
  * Build the shared executor dependencies (dispatcher, accumulator, evaluator,
  * hooks, subprocess callback, handoff reader) from 4 composable sub-objects.
+ *
+ * The 4-interface split (Infra, Transports, Context, Extensions) is intentional
+ * Interface Segregation (ADR-006): callers assemble only the slices they own,
+ * and each interface can be satisfied independently in tests.
  */
 export function buildExecutorDeps(
   infra: ExecutorInfra,

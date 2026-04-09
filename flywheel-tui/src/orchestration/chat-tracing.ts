@@ -1,13 +1,9 @@
 /**
  * Chat Tracing — feeds NDJSON events from chat sessions into a TraceCollector.
  *
- * Chat mode doesn't use an EventBus, so we detect tool_use / tool_result
- * events directly from the NDJSON stream and call TraceCollector.startSpan /
- * endSpan. This mirrors the detection logic in TraceEventHandler but skips
- * the EventBus intermediary.
- *
- * Extracted as a standalone function for testability — chat-session.ts calls this
- * from its ndjsonParser.onEvent handler.
+ * Detects tool_use / tool_result events from the NDJSON stream and calls
+ * TraceCollector.startSpan / endSpan. Called from chat-session's EventBus
+ * subscriber for subprocess:ndjson events.
  */
 
 import type { NDJSONEvent } from "./engines/subprocess/ndjson-parser";

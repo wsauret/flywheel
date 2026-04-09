@@ -2,12 +2,13 @@
  * invokePooled — acquire a warm process from a pool, send a prompt via stdin,
  * await process exit, then read the handoff file.
  *
+ * Shared by both PooledSubprocessTransport and PooledSubprocessEvaluatorTransport
+ * (ADR-006 check #7: abstraction used in 2+ places). Encapsulates pool acquire/
+ * release lifecycle, retry logic, handoff file reading, and subprocess logging —
+ * genuine shared complexity, not trivial forwarding.
+ *
  * Lives in workflows/shared/ (not orchestration/pool/) so that transports
  * in workflows/ can import it without violating module boundaries.
- *
- * Acquires a warm process from the pool, sends the prompt via stdin (NDJSON),
- * awaits process exit, then reads the handoff file. On handoff failure,
- * the current process is released and a fresh one acquired for retry.
  */
 
 import type { ZodType } from "zod";
@@ -86,22 +87,14 @@ export interface InvokePooledOptions {
  * Shared options for pooled subprocess transports.
  * Both PooledSubprocessTransport and PooledSubprocessEvaluatorTransport
  * share this shape — only the evaluator adds `systemPromptAddendum`.
+ *
+ * Extends InvokePooledOptions so callers can pass this directly to
+ * invokePooled() — TypeScript's structural typing accepts the extra
+ * `pool` field without an extraction step.
  */
 export interface BasePooledTransportOptions extends InvokePooledOptions {
   /** Warm pool handle — injected by the orchestration layer. */
   pool: PoolHandle;
-}
-
-/** Extract `InvokePooledOptions` from a `BasePooledTransportOptions`. */
-export function extractInvokeOptions(opts: BasePooledTransportOptions): InvokePooledOptions {
-  return {
-    sessionId: opts.sessionId,
-    baseDir: opts.baseDir,
-    formatStdinMessage: opts.formatStdinMessage,
-    logBaseDir: opts.logBaseDir,
-    onStdout: opts.onStdout,
-    onStderr: opts.onStderr,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +150,6 @@ export async function invokePooled<THandoff, TResult>(
       const stdinContent = `${callbacks.systemPrompt}\n\n---\n\n${fullPrompt}${retryNote}`;
       const ndjsonMessage = options.formatStdinMessage(stdinContent);
 
-      // Acquire warm process from pool
       const proc = await pool.acquire();
 
       log.info(`acquired warm process for ${callbacks.role}`, {
@@ -167,7 +159,6 @@ export async function invokePooled<THandoff, TResult>(
       });
 
       try {
-        // Write prompt via stdin then close (triggers process execution)
         if (!proc.stdinHandle) {
           throw new Error(`Pooled process has no stdin handle (pid=${proc.pid})`);
         }
@@ -175,42 +166,26 @@ export async function invokePooled<THandoff, TResult>(
         proc.stdinHandle.write(ndjsonMessage);
         proc.stdinHandle.close();
 
-        // Await process exit — guarantees handoff file is flushed
         const result = await proc.result;
 
-        // Forward any output through callbacks
         if (result.output && effectiveOnStdout) {
           effectiveOnStdout(result.output);
         }
 
-        // Read result from handoff file
-        try {
-          const handoff = await readHandoff(handoffPath, callbacks.handoffSchema);
-          pool.release(proc);
-          return callbacks.mapResult(handoff);
-        } catch (err) {
-          if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
-            lastError = err;
-            log.warn(`${callbacks.role} handoff read failed, releasing and retrying`, {
-              attempt: attempt + 1,
-              error: err.message,
-            });
-            pool.release(proc);
-            continue;
-          }
-          // Unexpected error — release and propagate
-          pool.release(proc);
-          throw err;
-        }
+        const handoff = await readHandoff(handoffPath, callbacks.handoffSchema);
+        return callbacks.mapResult(handoff);
       } catch (err) {
-        // Ensure release on any unexpected error during execution
         if (err instanceof HandoffMissingError || err instanceof HandoffInvalidError) {
-          lastError = err as Error;
-          pool.release(proc);
+          lastError = err;
+          log.warn(`${callbacks.role} handoff read failed, retrying`, {
+            attempt: attempt + 1,
+            error: err.message,
+          });
           continue;
         }
-        pool.release(proc);
         throw err;
+      } finally {
+        pool.release(proc);
       }
     }
 

@@ -147,22 +147,21 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
       budgetTracker.onNewSubprocess()
     }),
   )
-  // Budget tracking: NDJSON events drive cost/token accounting
+  // Budget tracking: cost/token accounting + context utilization from NDJSON events.
+  // Single subscription — both concerns belong to the same consumer (budgetTracker).
   eventUnsubs.push(
     eventBus.subscribeToType("subprocess:ndjson", (e) => {
       budgetTracker.handleEvent(e.ndjsonEvent)
-    }),
-  )
-  // Context utilization: extract prompt size / context window from NDJSON events
-  // and feed into budget tracker so contextPercent updates for workflow sessions.
-  eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:ndjson", (e) => {
       const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
       if (ctxUpdate) {
         budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
       }
     }),
   )
+  // Remaining subprocess:ndjson subscribers are genuinely independent infra
+  // consumers (ADR-006: "independent infra subscribers → Event bus"). Each owns
+  // different state and a different persistence concern — merging would couple them.
+
   // Tracing: NDJSON events are converted to trace spans
   if (traceEventHandler) {
     eventUnsubs.push(

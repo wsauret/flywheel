@@ -28,6 +28,7 @@ import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import type { TraceCollector } from "./session/trace-collector"
 import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
 import { feedChatEventToTrace } from "./chat-tracing"
+import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
 import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { ModelActivity } from "../infra/events"
@@ -90,7 +91,18 @@ export interface ChatSessionOptions {
   budgetTracker?: BudgetTracker
   /** Inject a shared transcript writer (from createSessionInfra). When omitted, created if tracing enabled. */
   transcriptWriter?: TranscriptWriter | null
+  /** Inject an EventBus (e.g. for testing). When omitted, a fresh one is created. */
+  eventBus?: EventBus
 }
+
+// ── Helpers ──
+// The three helpers below (setupChatPipeline, createWorkerLifecycle,
+// createChatControls) are module-private decompositions of createChatSession.
+// Each owns a cohesive concern (output rendering, process lifecycle, user
+// controls). They share mutable state via ChatSessionState rather than
+// being split into separate files, because they form a single logical unit
+// with a shared lifecycle — extracting to files would add import noise
+// without improving cohesion.
 
 // ── Helper 1: setupChatPipeline ──
 
@@ -105,15 +117,15 @@ interface ChatPipelineResult {
 interface SetupChatPipelineInput {
   callbacks: ChatCallbacks
   engineName: string
+  /** Still needed for flush-timer polling (getTokensUsed, getTotalCost, getContextUtilization). */
   budgetTracker: BudgetTracker
-  transcriptWriter: TranscriptWriter | null
-  traceCollector: TraceCollector | null
-  toolSpanMap: Map<string, string>
+  emit: EmitFn
+  chatId: string
   state: ChatSessionState
 }
 
 function setupChatPipeline(input: SetupChatPipelineInput): ChatPipelineResult {
-  const { callbacks, engineName, budgetTracker, transcriptWriter, traceCollector, toolSpanMap, state } = input
+  const { callbacks, engineName, budgetTracker, emit, chatId, state } = input
 
   const pipeline = createOutputPipeline({
     onModelActivityChange: (activity) => {
@@ -153,16 +165,12 @@ function setupChatPipeline(input: SetupChatPipelineInput): ChatPipelineResult {
       }
     }
 
-    // Engine-specific context utilization extraction
-    const ctxUpdate = extractContextUpdate(event)
-    if (ctxUpdate) {
-      budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
-    }
+    // Emit to EventBus — infra subscribers (budget, transcript, tracing)
+    // handle their own processing, matching the workflow-mode pattern.
+    emit("subprocess:ndjson", { workflowId: chatId, ndjsonEvent: event })
 
+    // Output rendering stays in the pipeline — it's the display path, not infra.
     eventParser.dispatch(event, engineName)
-    budgetTracker.handleEvent(event)
-    transcriptWriter?.handleEvent(event)
-    if (traceCollector) feedChatEventToTrace(event, traceCollector, toolSpanMap)
   }
 
   // Flush builder → callbacks at 16ms
@@ -200,7 +208,8 @@ interface WorkerLifecycleInput {
   model: string
   spawner: ProcessSpawner
   projectCwd: string
-  budgetTracker: BudgetTracker
+  emit: EmitFn
+  chatId: string
   parser: NDJSONParser
   builder: StructuredOutputBuilder
   callbacks: ChatCallbacks
@@ -208,10 +217,10 @@ interface WorkerLifecycleInput {
 }
 
 function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
-  const { engine, engineName, model, spawner, projectCwd, budgetTracker, parser, builder, callbacks, state } = input
+  const { engine, engineName, model, spawner, projectCwd, emit, chatId, parser, builder, callbacks, state } = input
 
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
-    budgetTracker.onNewSubprocess()
+    emit("subprocess:spawned", { workflowId: chatId, stepIndex: 0 })
     if (messageToSend) state.userTurnInProgress = true
     const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
@@ -277,15 +286,13 @@ interface ChatControlsInput {
   pipeline: OutputPipeline
   stopFlush: () => void
   callbacks: ChatCallbacks
-  budgetTracker: BudgetTracker
-  traceCollector: TraceCollector | null
-  transcriptWriter: TranscriptWriter | null
+  eventUnsubs: Unsubscribe[]
   state: ChatSessionState
 }
 
 function createChatControls(input: ChatControlsInput): ChatControls {
   const { lifecycle, engineName, parser, builder, pipeline, stopFlush,
-    callbacks, budgetTracker, traceCollector, transcriptWriter, state } = input
+    callbacks, eventUnsubs, state } = input
 
   function interrupt() {
     if (state.ended || !state.stdinHandle?.isOpen) return
@@ -317,14 +324,12 @@ function createChatControls(input: ChatControlsInput): ChatControls {
   function end() {
     if (state.ended) return
     state.ended = true
+    // Unsubscribe EventBus listeners — no more infra event processing.
+    eventUnsubs.forEach((u) => u())
     stopFlush()
     pipeline.dispose()
-    if (traceCollector) {
-      traceCollector.finalize("ok")
-      traceCollector.dispose()
-    }
-    transcriptWriter?.dispose()
-    budgetTracker.flush()
+    // Resource disposal (budget flush, trace finalize, transcript close) is
+    // handled by chat-runner's disposeSessionResources() — not duplicated here.
     if (state.stdinHandle?.isOpen) {
       // Worker is alive — close the pipe and let the process exit naturally.
       // onEnded fires from the spawnResult.result handler once the process exits.
@@ -391,18 +396,22 @@ export async function createChatSession(
 
   const spawner = overrides?.spawner ?? new BunProcessSpawner()
   const traceCollector = overrides?.traceCollector ?? null
-  const toolSpanMap = new Map<string, string>()
-  const sessionId = randomUUID()
+  const chatId = randomUUID()
 
   // Budget tracker — use injected instance (from createSessionInfra) or create a fresh one
-  const budgetTracker = overrides?.budgetTracker ?? createBudgetTracker({ sessionId, baseDir: projectCwd })
+  const budgetTracker = overrides?.budgetTracker ?? createBudgetTracker({ sessionId: chatId, baseDir: projectCwd })
 
   // Transcript writer — use injected instance or create if tracing enabled
   const transcriptWriter: TranscriptWriter | null = overrides?.transcriptWriter !== undefined
     ? overrides.transcriptWriter
     : (deps.config.tracing?.enabled
-        ? createTranscriptWriter({ sessionId, baseDir: projectCwd })
+        ? createTranscriptWriter({ sessionId: chatId, baseDir: projectCwd })
         : null)
+
+  // EventBus — infra subscribers (budget, transcript, tracing) are wired below,
+  // matching the workflow-mode pattern in executor-factory.ts.
+  const eventBus = overrides?.eventBus ?? new EventBus()
+  const emit = createEmit(eventBus)
 
   // Shared mutable state — all helpers read/write through this
   const state: ChatSessionState = {
@@ -415,20 +424,58 @@ export async function createChatSession(
     contextWarningFired: false,
   }
 
-  // 1. Setup output pipeline
+  // ── Wire EventBus subscribers (same pattern as executor-factory.ts) ──
+
+  const eventUnsubs: Unsubscribe[] = []
+
+  // Budget: reset cumulative-cost baselines when a new subprocess spawns
+  eventUnsubs.push(
+    eventBus.subscribeToType("subprocess:spawned", () => {
+      budgetTracker.onNewSubprocess()
+    }),
+  )
+  // Budget: cost/token accounting + context utilization
+  eventUnsubs.push(
+    eventBus.subscribeToType("subprocess:ndjson", (e) => {
+      budgetTracker.handleEvent(e.ndjsonEvent)
+      const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
+      if (ctxUpdate) {
+        budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
+      }
+    }),
+  )
+  // Transcript persistence
+  if (transcriptWriter) {
+    eventUnsubs.push(
+      eventBus.subscribeToType("subprocess:ndjson", (e) => {
+        transcriptWriter.handleEvent(e.ndjsonEvent)
+      }),
+    )
+  }
+  // Tracing: tool-call spans from NDJSON events
+  if (traceCollector) {
+    const toolSpanMap = new Map<string, string>()
+    eventUnsubs.push(
+      eventBus.subscribeToType("subprocess:ndjson", (e) => {
+        feedChatEventToTrace(e.ndjsonEvent, traceCollector, toolSpanMap)
+      }),
+    )
+  }
+
+  // 1. Setup output pipeline (rendering only — infra handled by EventBus above)
   const { pipeline, parser, builder, stopFlush } = setupChatPipeline({
-    callbacks, engineName, budgetTracker, transcriptWriter, traceCollector, toolSpanMap, state,
+    callbacks, engineName, budgetTracker, emit, chatId, state,
   })
 
   // 2. Create worker lifecycle (spawn, reconnection, idle-exit)
   const lifecycle = createWorkerLifecycle({
-    engine, engineName, model, spawner, projectCwd, budgetTracker, parser, builder, callbacks, state,
+    engine, engineName, model, spawner, projectCwd, emit, chatId, parser, builder, callbacks, state,
   })
 
   // 3. Create controls (send, interrupt, end)
   const controls = createChatControls({
     lifecycle, engineName, parser, builder, pipeline, stopFlush,
-    callbacks, budgetTracker, traceCollector, transcriptWriter, state,
+    callbacks, eventUnsubs, state,
   })
 
   // ── Initial spawn ──

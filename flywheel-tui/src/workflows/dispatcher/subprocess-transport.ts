@@ -19,7 +19,6 @@ import {
   type PooledSpawnResult,
   type BasePooledTransportOptions,
   invokePooled,
-  extractInvokeOptions,
 } from "../shared/invoke-pooled.js";
 
 export type { PoolHandle, PooledSpawnResult };
@@ -47,7 +46,7 @@ export class PooledSubprocessTransport implements DispatcherTransport {
         handoffSchema: DispatcherDecisionHandoffSchema,
         mapResult: mapHandoffToDecision,
       },
-      extractInvokeOptions(this.opts),
+      this.opts,
     );
   }
 }
