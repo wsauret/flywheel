@@ -56,6 +56,7 @@ function createMockChatRunner(sessionId: string): ChatRunner {
     dispose: async () => {},
     injectMessage: () => true,
     chatSession: {} as any,
+    initialBlocks: [],
   }
 }
 

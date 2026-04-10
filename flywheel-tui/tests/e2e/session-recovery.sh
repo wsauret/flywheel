@@ -20,8 +20,8 @@ send_keys C-b
 wait_and_capture 1 "BUG1b-modal.log"
 send_keys Escape; sleep 1
 
-# Stale sessions should be Completed (✓), not Active (●)
-assert_contains "BUG1b-modal.log" "✓" "BUG1b-has-completed" || true
+# Stale chat sessions should be Paused (❙), not Active (●)
+assert_contains "BUG1b-modal.log" "Paused" "BUG1b-has-paused" || true
 
 # ── EXIT-01: Ctrl+C Exit ──
 echo "EXIT-01: Ctrl+C"
@@ -31,7 +31,7 @@ assert_not_contains "EXIT-01a-exited.log" "Send a message" "EXIT-01a-no-tui" || 
 
 # ── EXIT-02: /exit Command ──
 echo "EXIT-02: /exit"
-send_keys "bun run dev 2>>$STDERR_LOG" Enter
+send_keys "FLYWHEEL_PROJECT_CWD=$UAT_DIR bun run dev 2>>$STDERR_LOG" Enter
 sleep "$WAIT_MEDIUM"
 send_text "/exit"
 sleep "$WAIT_SHORT"

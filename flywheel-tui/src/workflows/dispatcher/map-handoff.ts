@@ -19,5 +19,6 @@ export function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): Dispat
       ?? { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
     reasoning: handoff.reasoning,
     worker_config: handoff.worker_config,
+    mutation_requests: handoff.mutation_requests,
   };
 }

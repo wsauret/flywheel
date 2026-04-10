@@ -91,41 +91,15 @@ export const DispatcherInputSchema = z.object({
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 
 // ---------------------------------------------------------------------------
-// Shared sub-schemas
+// Re-export canonical schema and type from infra (single source of truth — ADR-006)
 // ---------------------------------------------------------------------------
 
-const MutationRequestSchema = z.array(
-  z.object({
-    type: z.enum(["insert_after", "skip", "remove"]),
-    target_step_id: z.string().optional(),
-    steps: z.array(
-      z.object({
-        type: z.string(),
-        title: z.string(),
-        description: z.string().optional(),
-        acceptance_criteria: z.array(z.string()).optional(),
-      })
-    ).optional(),
-    reason: z.string(),
-  }).strict()
-).optional();
+import {
+  DispatcherDecisionSchema,
+  MutationRequestSchema,
+} from "../../infra/workflow-types";
 
-// REMOVED: adapted_plan — Decision #7
-// REMOVED: top-level parallel — use worker_config.parallel instead
-// REMOVED: top-level timeout_minutes — canonical field is worker_config.timeout_minutes
-export const DispatcherDecisionSchema = z.object({
-  schema_version: z.literal(1),
-  step_index: z.number().optional(),
-  task_content: z.string(),
-  context_files: z.array(z.string()),
-  context_to_inline: z.array(z.string()).optional(),
-  evaluation_criteria: EvaluationCriteriaSchema,
-  reasoning: z.string().optional(),
-  warnings: z.array(z.string()).optional(),
-  worker_config: WorkerConfigSchema.optional(),
-  mutation_requests: MutationRequestSchema,
-}).strip();
-
+export { DispatcherDecisionSchema }
 export type { DispatcherDecision } from "../../infra/workflow-types";
 
 // ---------------------------------------------------------------------------
@@ -141,7 +115,7 @@ export const DispatcherDecisionHandoffSchema = z.object({
   context_to_inline: z.array(z.string()).optional(),
   reasoning: z.string().optional(),
   worker_config: WorkerConfigSchema.optional(),
-  mutation_requests: MutationRequestSchema,
+  mutation_requests: z.array(MutationRequestSchema).optional(),
 }).passthrough();
 
 export type DispatcherDecisionHandoff = z.infer<typeof DispatcherDecisionHandoffSchema>;

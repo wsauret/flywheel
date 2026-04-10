@@ -51,64 +51,67 @@ export const WorkerConfigSchema = z.object({
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>
 
 // ---------------------------------------------------------------------------
-// DispatcherDecision — output of the dispatcher agent
+// DispatcherDecision — output of the dispatcher agent (Zod → type)
 // ---------------------------------------------------------------------------
 
-export interface MutationRequest {
-  type: "insert_after" | "skip" | "remove";
-  target_step_id?: string;
-  steps?: Array<{
-    type: string;
-    title: string;
-    description?: string;
-    acceptance_criteria?: string[];
-  }>;
-  reason: string;
-}
+export const MutationRequestSchema = z.object({
+  type: z.enum(["insert_after", "skip", "remove"]),
+  target_step_id: z.string().optional(),
+  steps: z.array(
+    z.object({
+      type: z.string(),
+      title: z.string(),
+      description: z.string().optional(),
+      acceptance_criteria: z.array(z.string()).optional(),
+    })
+  ).optional(),
+  reason: z.string(),
+}).strict()
 
-export interface DispatcherDecision {
-  schema_version: 1;
-  step_index?: number;
-  task_content: string;
-  context_files: string[];
-  context_to_inline?: string[];
-  evaluation_criteria: EvaluationCriteria;
-  reasoning?: string;
-  warnings?: string[];
-  worker_config?: WorkerConfig;
-  mutation_requests?: MutationRequest[];
-}
+export type MutationRequest = z.infer<typeof MutationRequestSchema>
+
+export const DispatcherDecisionSchema = z.object({
+  schema_version: z.literal(1),
+  step_index: z.number().optional(),
+  task_content: z.string(),
+  context_files: z.array(z.string()),
+  context_to_inline: z.array(z.string()).optional(),
+  evaluation_criteria: EvaluationCriteriaSchema,
+  reasoning: z.string().optional(),
+  warnings: z.array(z.string()).optional(),
+  worker_config: WorkerConfigSchema.optional(),
+  mutation_requests: z.array(MutationRequestSchema).optional(),
+}).strip()
+
+export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>
 
 // ---------------------------------------------------------------------------
-// EvaluatorResult — output of the evaluator agent
+// EvaluatorResult — output of the evaluator agent (Zod → type)
 // ---------------------------------------------------------------------------
 
-export type EvaluatorIssueSeverity = "blocking" | "non_blocking";
-export type EvaluatorIssueCategory =
-  | "test_failure"
-  | "type_error"
-  | "security"
-  | "regression"
-  | "incomplete"
-  | "other";
+export const EvaluatorIssueSchema = z.object({
+  description: z.string(),
+  severity: z.enum(["blocking", "non_blocking"]),
+  category: z.enum(["test_failure", "type_error", "security", "regression", "incomplete", "other"]),
+}).strip()
 
-export interface EvaluatorIssue {
-  description: string;
-  severity: EvaluatorIssueSeverity;
-  category: EvaluatorIssueCategory;
-}
+export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>
+export type EvaluatorIssueSeverity = EvaluatorIssue["severity"]
+export type EvaluatorIssueCategory = EvaluatorIssue["category"]
 
-export interface EvaluatorResult {
-  passed: boolean;
-  reasoning: string;
-  suggestions?: string[];
-  confidence: number;
-  feedback: string;
-  files_to_review: string[];
-  issues: EvaluatorIssue[];
-  implementation_feedback?: string;
-  script_feedback?: string;
-}
+export const EvaluatorResultSchema = z.object({
+  passed: z.boolean(),
+  reasoning: z.string(),
+  suggestions: z.array(z.string()).optional(),
+  confidence: z.number(),
+  feedback: z.string(),
+  files_to_review: z.array(z.string()),
+  issues: z.array(EvaluatorIssueSchema),
+  implementation_feedback: z.string().optional(),
+  script_feedback: z.string().optional(),
+}).strip()
+
+export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>
 
 // ---------------------------------------------------------------------------
 // QuestionInfo / QuestionAnswer — question service payload types

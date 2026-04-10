@@ -106,9 +106,9 @@ export function createSessionOrchestrator(
   async function handleResumeSession(
     sessionId: string,
   ): Promise<ResumeResult | null> {
-    // 1. Read session from disk
+    // 1. Read session from disk — only workflow sessions can be resumed via queue
     const session = readSession(sessionId);
-    if (session === null) {
+    if (session === null || session.kind !== "workflow") {
       return null;
     }
 

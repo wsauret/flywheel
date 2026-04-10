@@ -293,9 +293,13 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
       }),
     );
 
-    // queue:step-completed → close step span (ok)
+    // queue:step-completed → close worker span (ok) + step span (ok)
     unsubs.push(
       bus.subscribeToType("queue:step-completed", (event) => {
+        const workerSpanId = findOpenSpanByKind("worker");
+        if (workerSpanId) {
+          endSpan(workerSpanId, { resultSummary: "", failureReason: null }, "ok");
+        }
         const stepSpanId = stepSpanIds.get(event.stepId);
         if (stepSpanId) {
           endSpan(stepSpanId, { failureReason: null }, "ok");
@@ -304,9 +308,13 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
       }),
     );
 
-    // queue:step-failed → close step span (error)
+    // queue:step-failed → close worker span (error) + step span (error)
     unsubs.push(
       bus.subscribeToType("queue:step-failed", (event) => {
+        const workerSpanId = findOpenSpanByKind("worker");
+        if (workerSpanId) {
+          endSpan(workerSpanId, { resultSummary: "", failureReason: event.reason }, "error", { message: event.reason });
+        }
         const stepSpanId = stepSpanIds.get(event.stepId);
         if (stepSpanId) {
           endSpan(stepSpanId, { failureReason: event.reason }, "error", { message: event.reason });
@@ -321,35 +329,6 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
         startSpan("worker", `worker-${event.stepIndex}`, {
           stepIndex: event.stepIndex,
         });
-      }),
-    );
-
-    // subprocess:completed → close most recent open worker span
-    unsubs.push(
-      bus.subscribeToType("subprocess:completed", (event) => {
-        const workerSpanId = findOpenSpanByKind("worker");
-        if (workerSpanId) {
-          const resultSummary = event.result.output
-            ? truncateField(event.result.output, 200)
-            : "";
-          endSpan(workerSpanId, {
-            resultSummary,
-            failureReason: null,
-          }, "ok");
-        }
-      }),
-    );
-
-    // subprocess:failed → close most recent open worker span (error)
-    unsubs.push(
-      bus.subscribeToType("subprocess:failed", (event) => {
-        const workerSpanId = findOpenSpanByKind("worker");
-        if (workerSpanId) {
-          endSpan(workerSpanId, {
-            resultSummary: "",
-            failureReason: event.failure.message,
-          }, "error", { message: event.failure.message });
-        }
       }),
     );
 

@@ -23,64 +23,6 @@ import { createPatch } from "diff";
  * Returns null for non-displayable lines (system init, etc).
  * Falls back to raw text for non-JSON input.
  */
-export function extractDisplayText(line: string): string | null {
-  // Try to parse as JSON
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(line);
-  } catch {
-    // Not JSON — output raw (plain text mode)
-    return line + "\n";
-  }
-
-  const type = parsed.type as string | undefined;
-
-  // assistant message — extract text content
-  if (type === "assistant") {
-    const message = parsed.message as Record<string, unknown> | undefined;
-    const content = message?.content as
-      | Array<Record<string, unknown>>
-      | undefined;
-    if (Array.isArray(content)) {
-      const texts: string[] = [];
-      for (const block of content) {
-        if (block.type === "text" && typeof block.text === "string") {
-          texts.push(block.text);
-        } else if (block.type === "tool_use") {
-          texts.push(formatToolUse(block));
-        }
-      }
-      return texts.length > 0 ? texts.join("") : null;
-    }
-  }
-
-  // result — extract final result text
-  if (type === "result") {
-    const result = parsed.result as string | undefined;
-    if (typeof result === "string" && result.length > 0) {
-      return result + "\n";
-    }
-  }
-
-  // system, tool_result, etc — skip
-  return null;
-}
-
-/**
- * Format a tool_use content block for display.
- */
-function formatToolUse(block: Record<string, unknown>): string {
-  const name = block.name as string | undefined;
-  if (!name) return "";
-
-  const input = block.input as Record<string, unknown> | undefined;
-  if (!input) return `  ▸ ${name}\n`;
-
-  // Extract the most useful detail per tool type
-  const detail = getToolDetail(name, input);
-  return detail ? `  ▸ ${name}: ${detail}\n` : `  ▸ ${name}\n`;
-}
-
 /**
  * Per-tool detail handlers.
  * Adding a new tool just means adding an entry to this map.
@@ -244,15 +186,6 @@ function createMinimalDiff(filePath: string, oldContent: string, newContent: str
   result += `@@ -1,${oldLines.length} +1,${newLines.length} @@\n`;
   for (const line of oldLines) result += `-${line}\n`;
   for (const line of newLines) result += `+${line}\n`;
-  return result;
-}
-
-/** Generate a unified diff for Write tool (all content as additions). */
-export function createWriteDiff(filePath: string, content: string): string {
-  const lines = content.split("\n");
-  let result = `--- /dev/null\n+++ b/${filePath}\n`;
-  result += `@@ -0,0 +1,${lines.length} @@\n`;
-  for (const line of lines) result += `+${line}\n`;
   return result;
 }
 

@@ -92,24 +92,9 @@ export class OpenTUIAdapter extends BaseEventConsumer {
         this.handleSubprocessOutput(event.stream, event.data, event.timestamp, event.engineId);
         break;
 
-      case "subprocess:retrying":
-        this.pushSystemText(`\u21bb Retrying (${event.attempt}/${event.maxAttempts}): ${event.reason}\n`, event.timestamp);
-        break;
-
-      case "approval:received":
-        break;
-
-      case "approval:requested":
       case "subprocess:spawned":
         log.debug(`Subprocess spawned for step ${event.stepIndex}`, { step: event.stepIndex });
-        break;
-
-      case "subprocess:completed":
-        log.debug("Subprocess finished");
-        break;
-
-      case "subprocess:failed":
-        this.pushSystemText(`\u25c9 Subprocess failed: ${event.failure.message}\n`, event.timestamp);
+        this.outputPipeline.builder.notifyThinkingStarted(event.timestamp);
         break;
 
       case "dispatcher:invoked":
@@ -172,6 +157,7 @@ export class OpenTUIAdapter extends BaseEventConsumer {
       case "subprocess:injected":
         log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
         this.outputPipeline.builder.pushUserMessage(event.message, event.timestamp, false, true);
+        this.outputPipeline.builder.notifyThinkingStarted(event.timestamp);
         // Flush deferred to 16ms interval
         break;
 
@@ -222,16 +208,6 @@ export class OpenTUIAdapter extends BaseEventConsumer {
 
       case "queue:step-failed":
         log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
-        // Step state is handled by the runner's typed EventBus subscriptions
-        break;
-
-      case "queue:step-inserted":
-        log.info("Queue step inserted", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, afterStepId: event.afterStepId });
-        // Step state is handled by the runner's typed EventBus subscriptions
-        break;
-
-      case "queue:step-removed":
-        log.info("Queue step removed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType });
         // Step state is handled by the runner's typed EventBus subscriptions
         break;
 

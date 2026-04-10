@@ -14,13 +14,11 @@ export function wireLifecycleCallbacks(signals: ShellSignals, services: ShellSer
       signals.setStatusLine(result.statusMessage)
       services.setTerminalTitle(result.terminalTitle)
       services.refreshList()
-      signals.setForegroundId(undefined)
     },
     onRunnerError: (_id: string, result: RunnerErrorResult) => {
       signals.setErrorMessage(result.errorMessage)
       services.setTerminalTitle(result.terminalTitle)
       services.refreshList()
-      signals.setForegroundId(undefined)
     },
   }
 }

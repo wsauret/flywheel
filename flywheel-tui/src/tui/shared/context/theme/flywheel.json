@@ -1,18 +1,17 @@
 {
-  "$schema": "https://opencode.ai/theme.json",
   "defs": {
-    "darkStep1": "#0a0a0a",
-    "darkStep2": "#141414",
-    "darkStep3": "#1e1e1e",
-    "darkStep4": "#282828",
-    "darkStep5": "#323232",
-    "darkStep6": "#3c3c3c",
-    "darkStep7": "#484848",
-    "darkStep8": "#606060",
+    "darkStep1": "#121214",
+    "darkStep2": "#1a191e",
+    "darkStep3": "#222226",
+    "darkStep4": "#2c2c32",
+    "darkStep5": "#383840",
+    "darkStep6": "#484850",
+    "darkStep7": "#5c5c66",
+    "darkStep8": "#6c6c74",
     "darkStep9": "#fab283",
     "darkStep10": "#ffc09f",
-    "darkStep11": "#808080",
-    "darkStep12": "#eeeeee",
+    "darkStep11": "#808084",
+    "darkStep12": "#ececf0",
     "darkSecondary": "#5c9cf5",
     "darkAccent": "#9d7cd8",
     "darkRed": "#e06c75",
@@ -78,11 +77,11 @@
       "light": "lightStep11"
     },
     "background": {
-      "dark": "darkStep1",
+      "dark": "darkStep2",
       "light": "lightStep1"
     },
     "backgroundPanel": {
-      "dark": "darkStep2",
+      "dark": "darkStep1",
       "light": "lightStep2"
     },
     "backgroundElement": {

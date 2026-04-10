@@ -46,10 +46,8 @@ init_harness() {
     cp "$PROJECT_DIR/flywheel.toml" "$UAT_DIR/"
   fi
 
-  # Kill any leftover UAT sessions
-  for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^flywheel-uat-' || true); do
-    tmux kill-session -t "$s" 2>/dev/null || true
-  done
+  # Kill only THIS test's tmux session if it exists from a prior run
+  tmux kill-session -t "$SESSION" 2>/dev/null || true
 
   echo "[$module_name] Starting tests… (UAT_DIR=$UAT_DIR)"
 }
@@ -122,6 +120,25 @@ nav_down() {
   sleep 0.3
 }
 
+# Wait until the TUI has an active chat as foreground.
+# Detects "/new for fresh chat" in the prompt — this only appears when
+# a chat session is foreground and the agent is idle (ready for input).
+# The generic "Send a message..." prompt appears when NO session is foreground.
+wait_for_chat() {
+  local max_wait="${1:-25}"
+  local waited=0
+  while [ "$waited" -lt "$max_wait" ]; do
+    local screen
+    screen=$(tmux capture-pane -t "$SESSION" -p 2>/dev/null || echo "")
+    if echo "$screen" | grep -q "/new for fresh chat"; then
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 1
+}
+
 # ─── App Lifecycle ────────────────────────────────────────────────────────────
 
 cleanup() {
@@ -129,10 +146,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Build env prefix string from optional args (e.g. "FLYWHEEL_MODEL=haiku" "FOO=1")
+_build_env_prefix() {
+  local prefix="FLYWHEEL_PROJECT_CWD=$UAT_DIR"
+  for arg in "$@"; do
+    prefix="$prefix $arg"
+  done
+  echo "$prefix"
+}
+
+# Start the TUI in a fresh tmux session.
+# Optional args are passed as env vars: start_app "FLYWHEEL_MODEL=haiku" "FOO=1"
 start_app() {
   tmux new-session -d -s "$SESSION" -x 120 -y 40
-  send_keys "cd $PROJECT_DIR && bun run dev 2>$STDERR_LOG" Enter
-  sleep "$WAIT_MEDIUM"
+  local env_prefix
+  env_prefix=$(_build_env_prefix "$@")
+  send_keys "cd $PROJECT_DIR && $env_prefix bun run dev 2>$STDERR_LOG" Enter
+  wait_for_chat 30
   capture "00-boot.log"
 }
 
@@ -142,9 +172,13 @@ stop_app() {
   capture "99-exit.log"
 }
 
+# Restart the TUI in the same tmux session.
+# Optional args are passed as env vars: restart_app "FLYWHEEL_MODEL=haiku"
 restart_app() {
   send_keys C-c
   sleep "$WAIT_SHORT"
-  send_keys "bun run dev 2>>$STDERR_LOG" Enter
+  local env_prefix
+  env_prefix=$(_build_env_prefix "$@")
+  send_keys "$env_prefix bun run dev 2>>$STDERR_LOG" Enter
   sleep "$WAIT_MEDIUM"
 }

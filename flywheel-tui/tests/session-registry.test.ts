@@ -36,6 +36,7 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
     dispose: async () => { calls.push("dispose") },
     injectMessage: (text: string) => { calls.push(`injectMessage:${text}`); return true },
     chatSession: {} as any,
+    initialBlocks: [],
     calls,
   }
 }

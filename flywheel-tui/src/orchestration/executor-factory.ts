@@ -32,8 +32,8 @@ import type { TranscriptWriter } from "./session/transcript-writer"
 import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue"
 import type { SpawnResult } from "./engines/subprocess/spawner"
-import { extractContextUpdate } from "./engines/providers/claude-context"
 import type { Queue } from "../workflows/queue/types"
+import { wireSessionSubscribers } from "./session/create-session-infra"
 
 
 // ── Types ──
@@ -141,40 +141,14 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
   ])
 
   // ── 9. Wire EventBus subscribers ──
-  // Budget: reset cumulative-cost baselines when a new subprocess spawns
-  eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:spawned", () => {
-      budgetTracker.onNewSubprocess()
-    }),
-  )
-  // Budget tracking: cost/token accounting + context utilization from NDJSON events.
-  // Single subscription — both concerns belong to the same consumer (budgetTracker).
-  eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:ndjson", (e) => {
-      budgetTracker.handleEvent(e.ndjsonEvent)
-      const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
-      if (ctxUpdate) {
-        budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
-      }
-    }),
-  )
-  // Remaining subprocess:ndjson subscribers are genuinely independent infra
-  // consumers (ADR-006: "independent infra subscribers → Event bus"). Each owns
-  // different state and a different persistence concern — merging would couple them.
+  // Budget + transcript: shared wiring (ADR-006: single source of truth)
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, { budgetTracker, transcriptWriter }))
 
   // Tracing: NDJSON events are converted to trace spans
   if (traceEventHandler) {
     eventUnsubs.push(
       eventBus.subscribeToType("subprocess:ndjson", (e) => {
         traceEventHandler.handleEvent(e.ndjsonEvent)
-      }),
-    )
-  }
-  // Transcript: raw NDJSON events persisted for analysis
-  if (transcriptWriter) {
-    eventUnsubs.push(
-      eventBus.subscribeToType("subprocess:ndjson", (e) => {
-        transcriptWriter.handleEvent(e.ndjsonEvent)
       }),
     )
   }

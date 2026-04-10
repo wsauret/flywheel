@@ -62,37 +62,28 @@ async function runHeadless(): Promise<void> {
     process.exit(1)
   }
 
-  const { provideHeadlessFactories } = await import("../headless")
+  const { createHeadlessFactories } = await import("../headless")
   const { createSessionRegistry } = await import("../session-registry")
   const { buildQueueFromTemplate } = await import("../../workflows/queue/templates")
   const { randomUUID } = await import("crypto")
 
-  // Wire headless factories before creating any sessions
-  provideHeadlessFactories({ logLevel: "normal", timestamps: true })
-
-  const registry = createSessionRegistry()
+  const factories = createHeadlessFactories({ logLevel: "normal", timestamps: true })
+  const registry = createSessionRegistry(factories)
   const sessionId = randomUUID()
   const queue = buildQueueFromTemplate("work")
 
-  // Start the workflow — runs in background inside the registry
-  registry.start({ sessionId, queue, description })
-
-  // Wait for the session to reach a terminal state
+  // Wait for the runner to finish via callbacks — entries are removed on completion
   const result = await new Promise<boolean>((resolve) => {
-    const check = () => {
-      const entry = registry.get(sessionId)
-      if (!entry) { resolve(false); return }
-      if (entry.status === "completed") { resolve(true); return }
-      if (entry.status === "error") {
-        if (entry.errorMessage) console.error(`Error: ${entry.errorMessage}`)
+    registry.start({
+      sessionId,
+      queue,
+      description,
+      onRunnerDone: () => resolve(true),
+      onRunnerError: (_id, err) => {
+        console.error(`Error: ${err instanceof Error ? err.message : String(err)}`)
         resolve(false)
-        return
-      }
-      // Still running — keep polling via subscription
-    }
-    registry.subscribe(check)
-    // Also check immediately in case it already finished
-    check()
+      },
+    })
   })
 
   await registry.disposeAll()

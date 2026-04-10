@@ -23,8 +23,9 @@ import { getEngine } from "./engines/core/registry"
 import { createOutputPipeline, type OutputPipeline } from "./output-pipeline"
 import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
 import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
-import { extractContextUpdate } from "./engines/providers/claude-context"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
+import { wireSessionSubscribers } from "./session/create-session-infra"
+import { contextWindowForModel } from "./engines/providers/claude-context"
 import type { TraceCollector } from "./session/trace-collector"
 import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
 import { feedChatEventToTrace } from "./chat-tracing"
@@ -182,9 +183,9 @@ function setupChatPipeline(input: SetupChatPipelineInput): ChatPipelineResult {
     const ctx = budgetTracker.getContextUtilization()
     callbacks.onContextPercent(ctx.percent)
 
-    if (!state.contextWarningFired && ctx.percent >= 85) {
+    if (!state.contextWarningFired && ctx.percent >= 70) {
       state.contextWarningFired = true
-      log.warn("context window 85% full", { percent: ctx.percent, promptTokens: ctx.promptTokens, contextWindow: ctx.contextWindow })
+      log.warn("context window 70% full", { percent: ctx.percent, promptTokens: ctx.promptTokens, contextWindow: ctx.contextWindow })
       builder.pushSystemMessage(
         `Context window is ${ctx.percent}% full. Consider starting a new conversation with /new to avoid losing context.`,
         Date.now(),
@@ -242,6 +243,7 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
         state.agentActive = false
         state.userTurnInProgress = false
         builder.resolvePendingMessages()
+        builder.flushContextRun(Date.now())
         callbacks.onWaiting(false)
         callbacks.onModelActivity("idle")
         if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
@@ -253,17 +255,31 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
 
     // When the worker exits, keep the TUI session alive so the user can resume.
     // Only call end() if the session was explicitly terminated by the user.
-    spawnResult.result.then(() => {
+    const handleWorkerExit = () => {
       if (parser.sessionId) state.claudeSessionId = parser.sessionId
       parser.flush()
       if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
       state.stdinHandle = null
+
+      // If the worker exited while a user turn was in progress (crash, unexpected exit),
+      // reset session state so the UI doesn't get stuck "active" with a dead worker.
+      if (state.userTurnInProgress) {
+        log.warn("worker exited mid-turn — resetting session state")
+        state.agentActive = false
+        state.userTurnInProgress = false
+        callbacks.onWaiting(false)
+        callbacks.onModelActivity("idle")
+        builder.pushSystemMessage("Agent process exited unexpectedly. Send a message to reconnect.", Date.now())
+        if (builder.hasChanged()) callbacks.onBlocks(builder.getBlocks())
+      }
+
       if (state.ended) callbacks.onEnded()
       // else: worker exited idle — session stays open, next send() will reconnect
-    }).catch((err) => {
+    }
+
+    spawnResult.result.then(handleWorkerExit).catch((err) => {
       log.warn("chat process error", { error: errorMessage(err) })
-      state.stdinHandle = null
-      if (state.ended) callbacks.onEnded()
+      handleWorkerExit()
     })
   }
 
@@ -295,16 +311,28 @@ function createChatControls(input: ChatControlsInput): ChatControls {
     callbacks, eventUnsubs, state } = input
 
   function interrupt() {
-    if (state.ended || !state.stdinHandle?.isOpen) return
+    if (state.ended) return
     log.info("chat interrupted by user", { pid: state.workerPid })
-    // Kill the worker process and immediately respawn via --resume so
-    // the next send() doesn't have to wait for the cold-start.
+
+    // Capture session ID before killing the worker
     if (parser.sessionId) state.claudeSessionId = parser.sessionId
-    state.stdinHandle.close()
-    state.stdinHandle = null
-    if (state.workerPid) {
-      try { process.kill(state.workerPid, "SIGTERM") } catch { /* already gone */ }
+
+    // Close stdin pipe if still open
+    if (state.stdinHandle?.isOpen) {
+      state.stdinHandle.close()
     }
+    state.stdinHandle = null
+
+    // Kill the worker process — SIGTERM first, escalate to SIGKILL after 2s
+    if (state.workerPid) {
+      const pid = state.workerPid
+      try { process.kill(pid, "SIGTERM") } catch { /* already gone */ }
+      setTimeout(() => {
+        try { process.kill(pid, "SIGKILL") } catch { /* already gone */ }
+      }, 2_000)
+    }
+
+    // Always reset session state — this is the escape hatch, it must work
     callbacks.onWaiting(false)
     callbacks.onModelActivity("idle")
     state.agentActive = false
@@ -351,7 +379,9 @@ function createChatControls(input: ChatControlsInput): ChatControls {
     const isPending = state.agentActive && state.stdinHandle?.isOpen === true
     state.userTurnInProgress = true
     callbacks.onWaiting(true)
-    builder.pushUserMessage(text, Date.now(), isPending)
+    const now = Date.now()
+    builder.pushUserMessage(text, now, isPending)
+    builder.notifyThinkingStarted(now)
     callbacks.onBlocks(builder.getBlocks())
 
     if (state.stdinHandle?.isOpen) {
@@ -401,6 +431,13 @@ export async function createChatSession(
   // Budget tracker — use injected instance (from createSessionInfra) or create a fresh one
   const budgetTracker = overrides?.budgetTracker ?? createBudgetTracker({ sessionId: chatId, baseDir: projectCwd })
 
+  // Seed the context window from the configured model name so percentage
+  // calculation works from turn 1. The `[1m]` suffix (1M context) is only
+  // present in the config string — Claude Code strips it in NDJSON output.
+  // The authoritative value from "result" events overwrites this if it arrives.
+  const estimatedWindow = contextWindowForModel(model)
+  if (estimatedWindow > 0) budgetTracker.updateContextUtilization(0, estimatedWindow)
+
   // Transcript writer — use injected instance or create if tracing enabled
   const transcriptWriter: TranscriptWriter | null = overrides?.transcriptWriter !== undefined
     ? overrides.transcriptWriter
@@ -424,34 +461,13 @@ export async function createChatSession(
     contextWarningFired: false,
   }
 
-  // ── Wire EventBus subscribers (same pattern as executor-factory.ts) ──
+  // ── Wire EventBus subscribers ──
 
   const eventUnsubs: Unsubscribe[] = []
 
-  // Budget: reset cumulative-cost baselines when a new subprocess spawns
-  eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:spawned", () => {
-      budgetTracker.onNewSubprocess()
-    }),
-  )
-  // Budget: cost/token accounting + context utilization
-  eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:ndjson", (e) => {
-      budgetTracker.handleEvent(e.ndjsonEvent)
-      const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
-      if (ctxUpdate) {
-        budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
-      }
-    }),
-  )
-  // Transcript persistence
-  if (transcriptWriter) {
-    eventUnsubs.push(
-      eventBus.subscribeToType("subprocess:ndjson", (e) => {
-        transcriptWriter.handleEvent(e.ndjsonEvent)
-      }),
-    )
-  }
+  // Budget + transcript: shared wiring (ADR-006: single source of truth)
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, { budgetTracker, transcriptWriter }))
+
   // Tracing: tool-call spans from NDJSON events
   if (traceCollector) {
     const toolSpanMap = new Map<string, string>()

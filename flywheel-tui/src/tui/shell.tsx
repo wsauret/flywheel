@@ -11,13 +11,12 @@ import { Clipboard } from "./utils/clipboard"
 import { registerPreExitCleanup } from "./exit"
 import { OutputWindow } from "./routes/work/components/output-window"
 import { SplitBorder } from "./shared/ui/border"
-import { SIMPLE_LOGO } from "@tui/shared/components/logo"
+import { Spinner } from "@tui/shared/components/spinner"
+import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { SessionModal } from "./session-modal"
 import { createSessionRegistry } from "../orchestration/session-registry"
-import type { SessionEntry } from "../orchestration/session-registry"
 import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
 import { formatElapsed, formatCost, formatTokens, relativeTime } from "../infra/format.js"
-import { useMetrics, SPINNER_FRAMES } from "./hooks/use-metrics.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
@@ -36,23 +35,16 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   // ── Session registry ──
   const registry = createSessionRegistry(props.factories)
 
-  // ── Metrics (local hook — not part of shell state, but injected as a service) ──
-  // Entry accessor is late-bound: signals.registryEntry is available after createShellState.
-  // SolidJS memos/effects evaluate lazily — no reads happen during construction.
-  let registryEntryAccessor: () => SessionEntry | undefined = () => undefined
-  const metrics = useMetrics(() => registryEntryAccessor())
-
   // ── Shell state: shared signals + services ──
   const { signals, services } = createShellState({
     registry,
     manager,
     refreshList,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
-    metrics,
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => toast.show(opts),
   })
-  // Wire up the late-bound accessor now that signals exists
-  registryEntryAccessor = signals.registryEntry
+
+  const metrics = services.metrics
 
   // ── Prompt-specific signal (local, not shared) ──
   const [promptHeight, setPromptHeight] = createSignal(1)
@@ -155,6 +147,11 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   })
 
   // ── Derived state ──
+  // Ticking clock for live elapsed displays (step indicators, etc.)
+  const [now, setNow] = createSignal(Date.now())
+  const nowTimer = setInterval(() => setNow(Date.now()), 1000)
+  onCleanup(() => clearInterval(nowTimer))
+
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
 
   const displayStatus = createMemo((): "running" | "idle" | "interrupted" | "completed" => {
@@ -174,19 +171,33 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const headerRight = createMemo(() => {
     const state = signals.sessionState()
     const bgCount = runningCount()
-    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && signals.agentState() !== "active" ? ` (1 running)` : ""
+    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : ""
     if (state === null) return bgCount > 0 ? `${bgCount} running` : (signals.errorMessage() ? "error" : "ready")
     if (state === "paused") return (signals.errorMessage() ? "error" : "paused") + bgSuffix
-    const hasMetrics = signals.agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0
+    const hasMetrics = signals.agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0 || metrics.liveContextPercent() > 0
     if (hasMetrics) {
+      const width = dimensions().width
       const parts: string[] = [formatElapsed(metrics.elapsed())]
-      parts.push(`${metrics.liveContextPercent()}% used`)
+      // Drop less important metrics on narrow terminals to avoid crowding
+      if (width >= 60) parts.push(`${metrics.liveContextPercent()}%`)
       const c = metrics.liveCost()
-      if (c > 0) parts.push(`${formatCost(c)} spent`)
+      if (c > 0 && width >= 80) parts.push(formatCost(c))
       return parts.join(" \u00b7 ") + bgSuffix
     }
-    if (state === "active") return "waiting" + bgSuffix  // in session, agent idle (user's turn)
-    return "done" + bgSuffix
+    if (state === "active") return bgSuffix.trim() || ""  // in session, agent idle (user's turn)
+    return "\u2713 done" + bgSuffix
+  })
+
+  const headerRightColor = createMemo(() => {
+    const state = signals.sessionState()
+    if (state === null && signals.errorMessage()) return theme.error
+    if (state === "paused" && signals.errorMessage()) return theme.error
+    if (state === "paused") return theme.warning
+    if (state === "completed") return theme.success
+    const ctx = metrics.liveContextPercent()
+    if (ctx >= 85) return theme.error
+    if (ctx >= 70) return theme.warning
+    return theme.textMuted
   })
 
   const showPrompt = createMemo(() => !sessionModal.sessionsModalOpen())
@@ -200,19 +211,15 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     }
   })
 
-  const promptStatusLine = createMemo(() => {
+  const promptStatusLabel = createMemo(() => {
     if (signals.agentState() !== "active") return null
     const activity = metrics.liveActivity()
     if (activity === "idle") return null
 
-    const spinner = SPINNER_FRAMES[metrics.spinnerTick()]
-    const ms = metrics.elapsed()
-    let label = activityLabel()!
-    if (ms >= 1000) {
-      label = `${label} (${formatElapsed(ms)})`
-    }
-
-    return `${spinner} ${label}`
+    // Track `now` to guarantee re-evaluation every second — elapsed() alone
+    // doesn't reliably propagate through ShimmerText's animation timeline.
+    void now()
+    return `${activityLabel()!} (${formatElapsed(metrics.elapsed())})`
   })
 
   // ── JSX ──
@@ -232,7 +239,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         <box flexDirection="row" justifyContent="space-between">
           <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>flywheel</text>
           <Show when={signals.sessionTitle()}><text fg={theme.text} attributes={createTextAttributes({ bold: true })}>{signals.sessionTitle()}</text></Show>
-          <text fg={theme.textMuted}>{headerRight()}</text>
+          <text fg={headerRightColor()}>{headerRight()}</text>
         </box>
       </box>
 
@@ -245,26 +252,25 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
               {(step) => (
                 <text fg={step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted}>
                   {step.status === "completed" ? "\u2713" : step.status === "running" ? "\u25b8" : step.status === "failed" ? "\u2717" : "\u25cb"} {step.title}
-                  {step.durationMs ? ` (${(step.durationMs / 1000).toFixed(1)}s)` : step.completedAt ? ` \u00b7 ${relativeTime(step.completedAt)}` : step.status === "running" && step.startedAt ? ` \u00b7 ${relativeTime(step.startedAt)}` : ""}
+                  {step.durationMs ? ` (${(step.durationMs / 1000).toFixed(1)}s)` : step.status === "running" && step.startedAt ? ` \u00b7 ${formatElapsed(now() - step.startedAt)}` : step.completedAt ? ` \u00b7 ${relativeTime(step.completedAt)}` : ""}
                 </text>
               )}
             </For>
           </box>
         </Show>
 
-        {/* Welcome logo — shown briefly before first chat output arrives */}
-        <Show when={signals.sessionState() === null && !signals.errorMessage() && !sessionModal.sessionsModalOpen()}>
-          <scrollbox flexGrow={1}>
-            <box paddingTop={1} paddingBottom={1}>
-              <For each={SIMPLE_LOGO}>{(line) => <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{line}</text>}</For>
-            </box>
-          </scrollbox>
-        </Show>
 
         <Show when={signals.errorMessage()}>
           <scrollbox flexGrow={1}>
-            <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Error</text>
-            <text fg={theme.error}>{signals.errorMessage()}</text>
+            <box flexDirection="column" gap={1}>
+              <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Error</text>
+              <text fg={theme.error}>{signals.errorMessage()}</text>
+              <text fg={theme.textMuted}>
+                {signals.sessionState() === "paused"
+                  ? "Press Enter to retry, or Esc to stop"
+                  : "Press Ctrl+N to start fresh"}
+              </text>
+            </box>
           </scrollbox>
         </Show>
 
@@ -284,9 +290,10 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       </box>
 
       {/* Activity status */}
-      <Show when={promptStatusLine() && showPrompt()}>
-        <box flexShrink={0} paddingLeft={2} paddingRight={2} paddingBottom={1}>
-          <text fg={theme.primary}>{promptStatusLine()}</text>
+      <Show when={promptStatusLabel() && showPrompt()}>
+        <box flexShrink={0} paddingLeft={2} paddingRight={2} paddingBottom={1} flexDirection="row" gap={1}>
+          <Spinner color={theme.primary} />
+          <ShimmerText text={promptStatusLabel()!} color={theme.textMuted} />
         </box>
       </Show>
 
@@ -307,7 +314,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                 inChat()
                   ? (signals.agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
                   : signals.agentState() === "active"
-                    ? "Send a message to steer the worker (Esc to pause)"
+                    ? "Send a message to guide the agent (Esc to pause)"
                     : signals.sessionState() === "paused"
                       ? "Send a message to resume, or Esc to force stop"
                       : "Send a message..."
@@ -328,16 +335,17 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       {/* Footer */}
       <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} flexShrink={0}>
         <text fg={theme.textMuted} flexShrink={1} overflow="hidden">{props.projectCwd}</text>
-        <box flexDirection="row" gap={2} flexShrink={0}>
+        <box flexDirection="row" gap={1} flexShrink={0}>
           <text fg={theme.textMuted}>
             {signals.agentState() === "active"
-              ? `Esc to interrupt \u00b7 Ctrl+N`
+              ? "Esc interrupt"
               : signals.sessionState() === "paused"
-                ? "Esc to stop \u00b7 Ctrl+R to resume"
-                : "Ctrl+N \u00b7 /exit"}
-            {` \u00b7 Ctrl+B`}{runningCount() > 1 || sessions().length > 1 ? ` (${runningCount()} active \u00b7 ${sessions().length} total)` : ""}
+                ? "Esc stop \u00b7 Ctrl+R resume"
+                : "Ctrl+N new"}
+            {" \u00b7 Ctrl+B sessions"}
+            {runningCount() > 1 ? ` (${runningCount()})` : ""}
           </text>
-          <text fg={theme.textMuted}>v0.0.1</text>
+          <text fg={theme.border}>v0.0.1</text>
         </box>
       </box>
 

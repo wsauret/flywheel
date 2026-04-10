@@ -131,7 +131,7 @@ export function createSubprocessCallback(
 
     const engineCmd = deps.engine.buildCommand({
       model: deps.config.subprocess?.model ?? deps.config.model,
-      effort: deps.config.subprocess?.effort ?? undefined,
+      effort: deps.config.subprocess?.effort ?? deps.config.effort ?? undefined,
       toolScoping: step.toolScoping ?? undefined,
     })
     const startTime = Date.now()

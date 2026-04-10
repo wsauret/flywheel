@@ -267,7 +267,7 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
       kind: "chat",
       runner,
       description,
-      outputBlocks: priorBlocks ? [...priorBlocks] : [],
+      outputBlocks: runner.initialBlocks.length > 0 ? [...runner.initialBlocks] : priorBlocks ? [...priorBlocks] : [],
       tokens: 0,
       cost: 0,
       contextPercent: 0,

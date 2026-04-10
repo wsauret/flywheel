@@ -12,10 +12,31 @@
  */
 
 import type { NDJSONEvent } from "../subprocess/ndjson-parser";
+import { resolveModel } from "./claude";
 
 export interface ContextUpdate {
   promptTokens: number;
   contextWindow: number;
+}
+
+/**
+ * Derive context window size from a model identifier.
+ *
+ * Resolves the model through the alias map first (e.g. "opus" → 1M),
+ * then checks the resolved ID for the `[1m]` suffix or `claude-` prefix.
+ *
+ * The authoritative value still comes from the "result" event's
+ * modelUsage.contextWindow field, but that only fires when the subprocess
+ * exits — too late for mid-session warnings.
+ */
+export function contextWindowForModel(model: string): number {
+  const resolved = resolveModel(model);
+  if (resolved.includes("[1m]")) return 1_000_000;
+  if (resolved.startsWith("claude-")) return 200_000;
+  // Bare aliases that didn't resolve to a full ID (e.g. "haiku") are 200k.
+  const lower = resolved.toLowerCase();
+  if (lower === "opus" || lower === "sonnet" || lower === "haiku") return 200_000;
+  return 0;
 }
 
 /**

@@ -35,7 +35,7 @@ export interface TUIOptions {
 
 export function startTUI(options: TUIOptions = {}): Promise<void> {
   const mode = options.mode ?? "dark"
-  const projectCwd = options.projectCwd ?? process.cwd()
+  const projectCwd = options.projectCwd ?? process.env.FLYWHEEL_PROJECT_CWD ?? process.cwd()
 
   // Load config to get theme name (best-effort)
   let themeName: string | undefined

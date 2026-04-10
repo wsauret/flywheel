@@ -580,7 +580,7 @@ export function MinimalShell() {
   const headerRight = createMemo(() => {
     const state = appState()
     const bgCount = runningCount()
-    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : bgCount === 1 && state !== "working" ? ` (1 running)` : ""
+    const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : ""
     if (state === "idle") return bgCount > 0 ? `${bgCount} running` : "ready"
     if (state === "error") return "error" + bgSuffix
     if (state === "paused") return "paused" + bgSuffix

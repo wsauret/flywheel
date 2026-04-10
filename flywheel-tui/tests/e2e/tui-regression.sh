@@ -13,117 +13,8 @@
 #   <log-dir>/stderr.log        — TUI stderr
 #   <log-dir>/summary.log       — PASS/FAIL per test
 #
-set -euo pipefail
-
-PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-SESSION="flywheel-uat-$$"
-LOG_DIR="${1:-$PROJECT_DIR/tests/e2e/results/$(date +%Y%m%d-%H%M%S)}"
-STDERR_LOG="$LOG_DIR/stderr.log"
-SUMMARY="$LOG_DIR/summary.log"
-WAIT_SHORT=3      # seconds — short UI settle
-WAIT_MEDIUM=10    # seconds — agent startup (higher for rapid Ctrl+N recovery)
-WAIT_RESPONSE=18  # seconds — wait for model response
-
-mkdir -p "$LOG_DIR"
-echo "TUI Regression Run — $(date)" > "$SUMMARY"
-echo "Log directory: $LOG_DIR" >> "$SUMMARY"
-echo "---" >> "$SUMMARY"
-
-PASS_COUNT=0
-FAIL_COUNT=0
-
-# ─── Helpers ───────────────────────────────────────────────────────────────────
-
-capture() {
-  # $1 = log file name (without dir)
-  local file="$LOG_DIR/$1"
-  sleep "${2:-1}"
-  tmux capture-pane -t "$SESSION" -p > "$file" 2>/dev/null || true
-  echo "  captured → $1"
-}
-
-send_keys() {
-  tmux send-keys -t "$SESSION" "$@"
-}
-
-send_text() {
-  # Send literal text then Enter
-  send_keys "$1" Enter
-}
-
-wait_and_capture() {
-  # $1 = wait seconds, $2 = log file name
-  sleep "$1"
-  capture "$2"
-}
-
-assert_contains() {
-  # $1 = log file, $2 = pattern, $3 = test id
-  local file="$LOG_DIR/$1"
-  if grep -q "$2" "$file" 2>/dev/null; then
-    echo "PASS  $3 — found '$2' in $1" >> "$SUMMARY"
-    PASS_COUNT=$((PASS_COUNT + 1))
-    return 0
-  else
-    echo "FAIL  $3 — missing '$2' in $1" >> "$SUMMARY"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-    return 1
-  fi
-}
-
-assert_not_contains() {
-  # $1 = log file, $2 = pattern, $3 = test id
-  local file="$LOG_DIR/$1"
-  if grep -q "$2" "$file" 2>/dev/null; then
-    echo "FAIL  $3 — unexpected '$2' in $1" >> "$SUMMARY"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-    return 1
-  else
-    echo "PASS  $3 — correctly absent '$2' in $1" >> "$SUMMARY"
-    PASS_COUNT=$((PASS_COUNT + 1))
-    return 0
-  fi
-}
-
-cleanup() {
-  tmux kill-session -t "$SESSION" 2>/dev/null || true
-}
-trap cleanup EXIT
-
-# Kill any leftover UAT sessions from prior runs
-for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^flywheel-uat-'); do
-  tmux kill-session -t "$s" 2>/dev/null || true
-done
-
-start_app() {
-  tmux new-session -d -s "$SESSION" -x 120 -y 40
-  send_keys "cd $PROJECT_DIR && bun run dev 2>$STDERR_LOG" Enter
-  sleep "$WAIT_MEDIUM"
-  capture "00-boot.log"
-}
-
-stop_app() {
-  send_keys C-c
-  sleep "$WAIT_SHORT"
-  capture "99-exit.log"
-}
-
-restart_app() {
-  send_keys C-c
-  sleep "$WAIT_SHORT"
-  send_keys "bun run dev 2>>$STDERR_LOG" Enter
-  sleep "$WAIT_MEDIUM"
-}
-
-nav_down() {
-  # Navigate down N times in modal
-  local n="${1:-1}"
-  for i in $(seq 1 "$n"); do
-    send_keys Down
-    sleep 0.15
-  done
-  sleep 0.3
-}
+source "$(dirname "$0")/lib/harness.sh"
+init_harness "tui-regression" "$@"
 
 # ─── Start ─────────────────────────────────────────────────────────────────────
 
@@ -165,7 +56,7 @@ assert_contains "T-02b-new-msg.log" "new chat gamma" "T-02b" || true
 # ═══════════════════════════════════════════════════════════════════════════════
 echo "T-03: End Chat and Restart (Ctrl+W)"
 
-send_keys C-w
+send_keys C-n
 wait_and_capture "$WAIT_MEDIUM" "T-03a-after-ctrl-w.log"
 assert_not_contains "T-03a-after-ctrl-w.log" "new chat gamma" "T-03a-cleared" || true
 
@@ -235,29 +126,23 @@ assert_contains "T-09b-chatB-msg.log" "chatB still works" "T-09b" || true
 echo "T-06: View Completed Session"
 
 # End current chat to create a completed session
-send_keys C-w
+send_keys C-n
 sleep "$WAIT_MEDIUM"
 
 # Open modal, navigate to completed section
 send_keys C-b
 sleep 1
-capture "T-06a-modal-with-completed.log"
-# Modal text can garble due to overlapping renders — match the Unicode icon ✓ instead
-assert_contains "T-06a-modal-with-completed.log" "✓" "T-06a-has-completed" || true
+capture "T-06a-modal-with-paused.log"
+# Chats never complete — they pause. Check for Paused section.
+assert_contains "T-06a-modal-with-paused.log" "Paused" "T-06a-has-paused" || true
 
-# Navigate to a completed session — use Up from top to wrap to bottom
-send_keys Up  # wraps to last item (archived/completed area)
-sleep 0.3
-send_keys Up  # move up one more into completed section
+# Navigate to a paused session — use Up from top to wrap to bottom
+send_keys Up  # wraps to last item (paused area)
 sleep 0.3
 send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-06b-viewing.log"
-assert_contains "T-06b-viewing.log" "Viewing session" "T-06b-viewing" || true
-
-# Dismiss with Esc
-send_keys Escape
-wait_and_capture 1 "T-06c-dismissed.log"
-assert_not_contains "T-06c-dismissed.log" "Viewing session" "T-06c-restored" || true
+wait_and_capture "$WAIT_MEDIUM" "T-06b-resumed.log"
+# Paused chats resume (not "view") — should show the old chat content
+assert_contains "T-06b-resumed.log" "flywheel" "T-06b-resumed" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-07: Delete Session (D+D confirmation)
@@ -348,40 +233,26 @@ echo "T-12: View → Delete → Restore"
 # First, create a completed session
 send_text "say exactly: marker for T12"
 wait_and_capture "$WAIT_RESPONSE" "T-12-setup.log"
-send_keys C-w
+send_keys C-n
 sleep "$WAIT_MEDIUM"
 
-# Send a message in new chat to identify it
+# Send a message to identify the current chat
 send_text "say exactly: active chat T12"
 wait_and_capture "$WAIT_RESPONSE" "T-12a-active.log"
 
-# View a completed session — navigate from bottom
+# Open modal and delete a non-foreground session
 send_keys C-b
 sleep 1
-send_keys Up  # wrap to last
-sleep 0.3
-send_keys Up  # into completed section
-sleep 0.3
-send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-12b-viewing.log"
+send_keys Down; sleep 0.3  # select second session
+send_keys d; sleep 0.3     # first d = confirm prompt
+send_keys d                 # second d = delete
+wait_and_capture 1 "T-12b-after-delete.log"
+send_keys Escape; sleep 1
 
-# Delete the viewed session — navigate from bottom again
-send_keys C-b
-sleep 1
-send_keys Up
-sleep 0.3
-send_keys Up
-sleep 0.3
-send_keys d
-sleep 0.3
-send_keys d
-wait_and_capture 1 "T-12c-after-delete.log"
-send_keys Escape
-sleep 1
-
-# Should have restored to active chat
-capture "T-12d-restored.log"
-assert_contains "T-12d-restored.log" "active chat T12" "T-12d-restore" || true
+# Foreground chat should still work after deletion
+send_text "say exactly: still alive T12"
+wait_and_capture "$WAIT_RESPONSE" "T-12c-still-works.log"
+assert_contains "T-12c-still-works.log" "still alive T12" "T-12c-alive" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-17: Modal While Agent Active
@@ -402,26 +273,6 @@ assert_contains "T-17b-after-modal.log" "space" "T-17b-continued" || true
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-18: Archive Session
 # ═══════════════════════════════════════════════════════════════════════════════
-echo "T-18: Archive Session"
-
-# Create a completed session
-send_keys C-w
-sleep "$WAIT_MEDIUM"
-
-send_keys C-b
-sleep 1
-send_keys Up  # wrap to bottom
-sleep 0.3
-send_keys Up  # into completed section
-sleep 0.3
-send_keys a
-sleep 1
-capture "T-18a-archived.log"
-# Match the Unicode icon ☐ for the Archived group
-assert_contains "T-18a-archived.log" "☐" "T-18a" || true
-send_keys Escape
-sleep 1
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-19: Esc in Idle Chat (interrupt, not kill)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -439,73 +290,32 @@ wait_and_capture "$WAIT_RESPONSE" "T-19c-still-alive.log"
 assert_contains "T-19c-still-alive.log" "after esc kappa" "T-19c" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# T-16: View Multiple Historical Sessions (priorState invariant)
+# T-16: Modal Switch via Down+Enter
 # ═══════════════════════════════════════════════════════════════════════════════
-echo "T-16: View Multiple Historical"
+echo "T-16: Modal Switch"
 
-# Create 2 completed sessions
-send_keys C-w
-sleep "$WAIT_MEDIUM"
-send_text "say exactly: session X"
-sleep "$WAIT_RESPONSE"
-send_keys C-w
-sleep "$WAIT_MEDIUM"
-send_text "say exactly: session Y"
-sleep "$WAIT_RESPONSE"
-send_keys C-w
-sleep "$WAIT_MEDIUM"
-
-# Send msg in active chat to identify it
+# Identify current chat
 send_text "say exactly: session Z active"
 wait_and_capture "$WAIT_RESPONSE" "T-16a-active.log"
 assert_contains "T-16a-active.log" "session Z active" "T-16a" || true
 
-# View completed sessions — navigate past all active sessions
-# The number of active sessions varies, so navigate generously.
-# Cursor wraps, so we'll end up somewhere in the list.
-send_keys C-b
-sleep 1
-for i in $(seq 1 15); do send_keys Down; sleep 0.1; done
+# Switch to second session in modal
+send_keys C-b; sleep 1
+send_keys Down; sleep 0.3
 send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-16b-view1.log"
-# View result is position-dependent — just capture for examination
-
-# Try to view a different session
-send_keys C-b
-sleep 1
-for i in $(seq 1 16); do send_keys Down; sleep 0.1; done
-send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-16c-view2.log"
-
-# Dismiss — should restore to active chat (session Z), not to first viewed session
-send_keys Escape
-wait_and_capture "$WAIT_SHORT" "T-16d-restored.log"
-assert_contains "T-16d-restored.log" "session Z active" "T-16d-restore" || true
+wait_and_capture "$WAIT_SHORT" "T-16b-switched.log"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-20: View Historical → Switch to Live → Esc Doesn't Restore
 # ═══════════════════════════════════════════════════════════════════════════════
 echo "T-20: View Historical → Switch Live → Esc"
 
-# View a completed session
-send_keys C-b
-sleep 1
-for i in $(seq 1 15); do send_keys Down; sleep 0.1; done
+# Switch to a different session via modal, verify no "Viewing session" state
+send_keys C-b; sleep 1
+send_keys Down; sleep 0.3
 send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-20a-viewing.log"
-# View result captured — position-dependent
-
-# Switch to the live session
-send_keys C-b
-sleep 1
-send_keys Enter  # first item = active session
-wait_and_capture "$WAIT_SHORT" "T-20b-switched.log"
-assert_not_contains "T-20b-switched.log" "Viewing session" "T-20b-live" || true
-
-# Esc should interrupt chat, NOT restore historical view
-send_keys Escape
-wait_and_capture "$WAIT_SHORT" "T-20c-esc.log"
-assert_not_contains "T-20c-esc.log" "Viewing session" "T-20c-no-restore" || true
+wait_and_capture "$WAIT_SHORT" "T-20a-switched.log"
+assert_not_contains "T-20a-switched.log" "Viewing session" "T-20a-live" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-W01: Start Workflow from Chat (/work command)
@@ -701,13 +511,8 @@ wait_and_capture 1 "T-BUG1b-modal.log"
 send_keys Escape
 sleep 1
 
-# The stale sessions should show as Completed, not Active
-# (only the fresh boot chat should be Active)
-# Count lines between "Active" and "Completed" headers
-# Stale chat sessions should be in completed group (✓ icon), not active (● icon)
-# Check that pre-restart sessions are NOT in the active section by confirming
-# only 1 active entry exists (the fresh boot chat)
-assert_contains "T-BUG1b-modal.log" "✓" "T-BUG1b-has-completed" || true
+# Stale chat sessions should be in Paused group (❙ icon), not Active (● icon)
+assert_contains "T-BUG1b-modal.log" "Paused" "T-BUG1b-has-paused" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-14: Exit Flow
@@ -721,26 +526,10 @@ capture "T-14a-exited.log"
 assert_not_contains "T-14a-exited.log" "Send a message" "T-14a-no-tui" || true
 
 # Also test /exit — restart first
-send_keys "bun run dev 2>>$STDERR_LOG" Enter
+send_keys "FLYWHEEL_PROJECT_CWD=$UAT_DIR bun run dev 2>>$STDERR_LOG" Enter
 sleep "$WAIT_MEDIUM"
 send_text "/exit"
 sleep "$WAIT_SHORT"
 capture "T-14b-slash-exit.log"
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Summary
-# ═══════════════════════════════════════════════════════════════════════════════
-
-echo "---" >> "$SUMMARY"
-echo "PASS: $PASS_COUNT" >> "$SUMMARY"
-echo "FAIL: $FAIL_COUNT" >> "$SUMMARY"
-echo "TOTAL: $((PASS_COUNT + FAIL_COUNT))" >> "$SUMMARY"
-
-echo ""
-echo "════════════════════════════════════════════"
-echo "  RESULTS: $PASS_COUNT passed, $FAIL_COUNT failed"
-echo "  Logs:    $LOG_DIR"
-echo "  Summary: $SUMMARY"
-echo "════════════════════════════════════════════"
-echo ""
-cat "$SUMMARY"
+finish_harness

@@ -128,6 +128,12 @@ export class StructuredEventParser {
     const parentToolUseId = (message?.parent_tool_use_id ?? data.parent_tool_use_id) as string | null | undefined;
     const parentAgentId = parentToolUseId ? this.toolUseIdToAgent.get(parentToolUseId)?.agentId : undefined;
 
+    // Subagents are blocking: top-level output means all subagents are done.
+    // Auto-complete any still-open agents (handles delayed/lost tool_result).
+    if (!parentAgentId) {
+      this.builder.closeOpenSubagents(now);
+    }
+
     for (const block of content) {
       const blockType = block.type as string | undefined;
 
@@ -158,6 +164,11 @@ export class StructuredEventParser {
           if (toolUseId) {
             this.toolUseIdToAgent.set(toolUseId, { agentId, spawnedAt: now });
           }
+        } else if (name === "Skill" && !parentAgentId) {
+          // Top-level skill loading — render as system message, not a tool row.
+          // Skills change the agent's mode/capabilities and deserve standalone visibility.
+          const skillName = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
+          this.builder.pushSystemMessage(`Loaded skill: ${skillName}`, now);
         } else if (name) {
           // Regular tool use — route to parent agent if this is a child message
           const detail = input ? (getToolDetail(name, input) ?? "") : "";

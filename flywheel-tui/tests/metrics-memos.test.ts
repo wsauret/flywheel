@@ -41,6 +41,7 @@ function createMockChatRunner(sessionId: string): ChatRunner {
     dispose: async () => {},
     injectMessage: () => true,
     chatSession: {} as unknown as ChatSession,
+    initialBlocks: [],
   }
 }
 
@@ -185,6 +186,41 @@ describe("Metrics memos derive from registry entry", () => {
         expect(entryAccessor()?.modelActivity).toBe("idle")
         handle!.updateEntry({ modelActivity: "tool_executing" })
         expect(entryAccessor()?.modelActivity).toBe("tool_executing")
+
+        dispose()
+        resolve()
+      })
+    })
+  })
+
+  it("memos see updates that arrive AFTER hook creation (stale accessor guard)", async () => {
+    // Regression guard for the late-bound accessor bug: useMetrics was created
+    // with a placeholder accessor (() => undefined) that got reassigned after
+    // construction. createMemo captured the placeholder on first eval and never
+    // re-evaluated. This test creates the hook BEFORE updating the store —
+    // matching the real lifecycle — to ensure memos track the live store proxy.
+    await new Promise<void>((resolve) => {
+      createRoot(async (dispose) => {
+        const registry = createSessionRegistry(mockFactories)
+        let handle: ChatStoreHandle | null = null
+
+        await registry.startChat({
+          sessionId: "stale-guard",
+          createRunner: async (h) => { handle = h; return createMockChatRunner("stale-guard") },
+        })
+
+        // Hook created with defaults (contextPercent: 0, tokens: 0, etc.)
+        const metrics = useMetrics(() => registry.get("stale-guard"))
+        expect(metrics.liveContextPercent()).toBe(0)
+
+        // Store updated AFTER hook creation — simulates the real chat flow
+        // where budget tracker pushes context percent after the first API turn
+        handle!.updateEntry({ contextPercent: 42 })
+
+        // The accessor must see the update. If it's stuck on a stale closure
+        // this will return 0 instead of 42.
+        const entry = registry.get("stale-guard")
+        expect(entry?.contextPercent).toBe(42)
 
         dispose()
         resolve()

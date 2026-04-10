@@ -415,7 +415,7 @@ describe("TraceCollector — EventBus integration", () => {
     expect((stepSpan as any).output.failureReason).toBe("agent crashed");
   });
 
-  it("subprocess:spawned / subprocess:completed produces worker span as child of step", () => {
+  it("subprocess:spawned + queue:step-completed produces worker span as child of step", () => {
     bus.emit({
       type: "queue:initialized",
       workflowId: "wf-1",
@@ -436,16 +436,13 @@ describe("TraceCollector — EventBus integration", () => {
       stepIndex: 0,
       timestamp: now(),
     });
+    // Worker span is closed by queue:step-completed
     bus.emit({
-      type: "subprocess:completed",
+      type: "queue:step-completed",
       workflowId: "wf-1",
-      result: {
-        output: "done",
-        exitCode: 0,
-        truncated: false,
-        durationMs: 500,
-        handoffPath: "/tmp/handoff",
-      },
+      stepId: "s1",
+      stepType: "implement",
+      stepTitle: "Build",
       timestamp: now(),
     });
 
@@ -455,14 +452,11 @@ describe("TraceCollector — EventBus integration", () => {
     expect((workerSpan as any).input.stepIndex).toBe(0);
 
     // Worker should be child of step
-    const stepSpans = writer.spans.filter((s) => s.kind === "step");
-    // Step is still open, so check via finalize
-    collector.finalize("ok");
     const stepSpan = writer.spans.find((s) => s.kind === "step");
     expect(workerSpan!.parentSpanId).toBe(stepSpan!.spanId);
   });
 
-  it("subprocess:failed closes worker span with error status", () => {
+  it("queue:step-failed closes worker span with error status", () => {
     bus.emit({
       type: "queue:initialized",
       workflowId: "wf-1",
@@ -483,10 +477,14 @@ describe("TraceCollector — EventBus integration", () => {
       stepIndex: 0,
       timestamp: now(),
     });
+    // Worker span is closed by queue:step-failed
     bus.emit({
-      type: "subprocess:failed",
+      type: "queue:step-failed",
       workflowId: "wf-1",
-      failure: { kind: "transient", message: "timeout" },
+      stepId: "s1",
+      stepType: "implement",
+      stepTitle: "Build",
+      reason: "timeout",
       timestamp: now(),
     });
 

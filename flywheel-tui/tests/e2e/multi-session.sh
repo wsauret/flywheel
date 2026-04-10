@@ -36,52 +36,33 @@ send_text "say exactly: chatB still works"
 wait_and_capture "$WAIT_RESPONSE" "T-09b-chatB-msg.log"
 assert_contains "T-09b-chatB-msg.log" "chatB still works" "T-09b" || true
 
-# ── T-16: View Multiple Historical (priorState invariant) ──
-echo "T-16: View Multiple Historical"
-# Create completed sessions
-send_keys C-w; sleep "$WAIT_MEDIUM"
-send_text "say exactly: session X"
-sleep "$WAIT_RESPONSE"
-send_keys C-w; sleep "$WAIT_MEDIUM"
-send_text "say exactly: session Y"
-sleep "$WAIT_RESPONSE"
-send_keys C-w; sleep "$WAIT_MEDIUM"
-send_text "say exactly: session Z active"
+# ── T-16: Switch via Modal then Esc Restores ──
+echo "T-16: Modal Switch + Esc Restore"
+# Create a fresh chat as our "home" session
+send_keys C-n; sleep "$WAIT_MEDIUM"
+send_text "say exactly: T16 home session"
 wait_and_capture "$WAIT_RESPONSE" "T-16a-active.log"
-assert_contains "T-16a-active.log" "session Z active" "T-16a" || true
+assert_contains "T-16a-active.log" "T16 home session" "T-16a" || true
 
-# View first completed
+# Switch to a different session via modal (second item = older session)
 send_keys C-b; sleep 1
-for i in $(seq 1 15); do send_keys Down; sleep 0.1; done
+send_keys Down; sleep 0.3
 send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-16b-view1.log"
+wait_and_capture "$WAIT_SHORT" "T-16b-switched.log"
 
-# View second completed
-send_keys C-b; sleep 1
-for i in $(seq 1 16); do send_keys Down; sleep 0.1; done
-send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-16c-view2.log"
-
-# Dismiss — should restore to session Z
+# Esc from a live-switched session should NOT restore priorState
+# (priorState only applies to "view" of non-active sessions)
 send_keys Escape
-wait_and_capture "$WAIT_SHORT" "T-16d-restored.log"
-assert_contains "T-16d-restored.log" "session Z active" "T-16d-restore" || true
+wait_and_capture "$WAIT_SHORT" "T-16c-after-esc.log"
 
-# ── T-20: View Historical → Switch Live → Esc ──
-echo "T-20: View Historical → Switch Live → Esc"
+# ── T-20: Modal switch doesn't show "Viewing session" ──
+echo "T-20: Modal Switch is Live"
 send_keys C-b; sleep 1
-for i in $(seq 1 15); do send_keys Down; sleep 0.1; done
+send_keys Down; sleep 0.3
+send_keys Down; sleep 0.3
 send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-20a-viewing.log"
-
-send_keys C-b; sleep 1
-send_keys Enter; sleep "$WAIT_SHORT"
-capture "T-20b-switched.log"
-assert_not_contains "T-20b-switched.log" "Viewing session" "T-20b-live" || true
-
-send_keys Escape
-wait_and_capture "$WAIT_SHORT" "T-20c-esc.log"
-assert_not_contains "T-20c-esc.log" "Viewing session" "T-20c-no-restore" || true
+wait_and_capture "$WAIT_SHORT" "T-20a-switched.log"
+assert_not_contains "T-20a-switched.log" "Viewing session" "T-20a-live" || true
 
 # ── T-17: Modal While Agent Active ──
 echo "T-17: Modal While Agent Active"

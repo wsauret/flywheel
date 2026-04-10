@@ -277,10 +277,8 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       // Only active sessions with no running queue need recovery
       if (state !== "active") continue;
 
-      // Chat sessions → completed (no resume for chat)
-      // Work sessions → paused (can be resumed)
-      const isChat = entry.data.kind === "chat";
-      const target = isChat ? "completed" as const : "paused" as const;
+      // Both chat and work sessions → paused (can be resumed)
+      const target = "paused" as const;
 
       try {
         updateState(entry.id, target);

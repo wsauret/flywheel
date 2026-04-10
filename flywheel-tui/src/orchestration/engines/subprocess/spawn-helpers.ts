@@ -23,7 +23,7 @@ import { errorMessage } from "../../../infra/error-message.js";
 /**
  * Shell metacharacter regex — reject args that could cause shell injection.
  */
-export const SHELL_METACHAR_REGEX = /[;&|`$(){}!<>]/;
+const SHELL_METACHAR_REGEX = /[;&|`$(){}!<>]/;
 
 /**
  * Validate that the spawn command contains no shell metacharacters.

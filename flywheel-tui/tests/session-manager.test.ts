@@ -591,7 +591,7 @@ describe("SessionManager.create() budget initialization from config", () => {
 // ---------------------------------------------------------------------------
 
 describe("SessionManager.recoverStaleSessions()", () => {
-  it("recovers active chat sessions to completed (no live runner)", () => {
+  it("recovers active chat sessions to paused (no live runner)", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
@@ -607,7 +607,7 @@ describe("SessionManager.recoverStaleSessions()", () => {
     expect(recovered).toBeGreaterThanOrEqual(1);
 
     const after = readSession(id, baseDir);
-    expect(after!.state).toBe("completed");
+    expect(after!.state).toBe("paused");
   });
 
   it("recovers active work sessions to paused", () => {
@@ -637,7 +637,7 @@ describe("SessionManager.recoverStaleSessions()", () => {
     const recovered = mgr.recoverStaleSessions();
     expect(recovered).toBe(2);
 
-    expect(readSession(chatId, baseDir)!.state).toBe("completed");
+    expect(readSession(chatId, baseDir)!.state).toBe("paused");
     expect(readSession(workId, baseDir)!.state).toBe("paused");
   });
 

@@ -14,7 +14,7 @@ import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "
 import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSession } from "@tui/shared/context/session"
-import { ModalBase, ModalHeader, ModalFooter } from "@tui/shared/components/modal"
+import { ModalBase } from "@tui/shared/components/modal/modal-base"
 import { isResumable } from "../orchestration/session/state-machine"
 import { truncate } from "./utils/text"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
@@ -142,7 +142,12 @@ export function SessionModal(props: SessionModalProps) {
 
   return (
     <ModalBase maxWidth={72}>
-      <ModalHeader title="Sessions" onClose={props.onClose} />
+      <box flexDirection="row" justifyContent="space-between">
+        <text fg={theme.primary} attributes={1}>Sessions</text>
+        <box onMouseDown={props.onClose}>
+          <text fg={theme.textMuted}>[X]</text>
+        </box>
+      </box>
 
       <box paddingTop={1} paddingBottom={0} flexDirection="column">
         <Show when={flatList().length === 0}>
@@ -180,6 +185,7 @@ export function SessionModal(props: SessionModalProps) {
                     const label = () => truncate(item.session.label || item.session.name || item.session.id.slice(0, 8), 34)
                     const isDeletePending = () => props.confirmDeleteId === item.session.id
                     const typeTag = () => item.session.kind === "chat" ? "chat" : item.session.command
+                    const typeColor = () => item.session.kind === "chat" ? theme.info : theme.accent
 
                     return (
                       <box
@@ -189,9 +195,13 @@ export function SessionModal(props: SessionModalProps) {
                         onMouseDown={() => props.onSelect(item.flatIndex)}
                       >
                         <box flexDirection="row" justifyContent="space-between">
-                          <text fg={isActive() ? theme.primary : theme.text}>
-                            {isActive() ? "\u25B8 " : "  "}[{typeTag()}] {label()}
-                          </text>
+                          <box flexDirection="row" gap={1}>
+                            <text fg={isActive() ? theme.primary : theme.text}>
+                              {isActive() ? "\u25B8" : " "}
+                            </text>
+                            <text fg={typeColor()}>{typeTag()}</text>
+                            <text fg={isActive() ? theme.primary : theme.text}>{label()}</text>
+                          </box>
                           <box flexDirection="row" gap={1} flexShrink={0}>
                             <Show when={item.session.totalTokens > 0}>
                               <text fg={theme.textMuted}>{formatTokens(item.session.totalTokens)}</text>
@@ -218,7 +228,9 @@ export function SessionModal(props: SessionModalProps) {
         </scrollbox>
       </box>
 
-      <ModalFooter shortcuts={footerText()} />
+      <box paddingTop={1} flexDirection="row" justifyContent="center">
+        <text fg={theme.textMuted}>{footerText()}</text>
+      </box>
     </ModalBase>
   )
 }

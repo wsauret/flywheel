@@ -21,7 +21,7 @@ import type { StepState } from "../../orchestration/workflow-runner"
 import type { SessionState } from "../../orchestration/session/state-machine"
 import type { SessionRegistry, SessionEntry } from "../../orchestration/session-registry"
 import type { SessionManager } from "../../orchestration/session/manager"
-import type { MetricsHook } from "./use-metrics"
+import { useMetrics, type MetricsHook } from "./use-metrics.js"
 
 export type AgentState = "idle" | "active"
 
@@ -53,13 +53,13 @@ export interface ShellSignals {
   setViewedTitle: Setter<string | undefined>
 }
 
-/** Injected dependencies — non-reactive objects. */
+/** Injected dependencies — non-reactive objects (metrics accessors are reactive but the object isn't). */
 export interface ShellServices {
   registry: SessionRegistry
   manager: SessionManager
+  metrics: MetricsHook
   refreshList: () => void
   setTerminalTitle: (title: string) => void
-  metrics: MetricsHook
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }
 
@@ -68,7 +68,6 @@ export function createShellState(deps: {
   manager: SessionManager
   refreshList: () => void
   setTerminalTitle: (title: string) => void
-  metrics: MetricsHook
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }): { signals: ShellSignals; services: ShellServices } {
   // ── Writable signals (user-set, not derived) ──
@@ -86,6 +85,9 @@ export function createShellState(deps: {
     const fgId = foregroundId()
     return fgId ? deps.registry.get(fgId) : undefined
   })
+
+  // Metrics created here — registryEntry is already bound, no late-binding possible.
+  const metrics = useMetrics(registryEntry)
 
   const outputBlocks = createMemo((): readonly AnyBlock[] =>
     viewedBlocks() ?? registryEntry()?.outputBlocks ?? []
@@ -132,9 +134,9 @@ export function createShellState(deps: {
   const services: ShellServices = {
     registry: deps.registry,
     manager: deps.manager,
+    metrics,
     refreshList: deps.refreshList,
     setTerminalTitle: deps.setTerminalTitle,
-    metrics: deps.metrics,
     showToast: deps.showToast,
   }
 

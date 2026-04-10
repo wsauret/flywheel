@@ -8,7 +8,7 @@
 
 import { RGBA } from "@opentui/core"
 import { useTimeline } from "@opentui/solid"
-import { createSignal } from "solid-js"
+import { createSignal, type Accessor } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 
 export interface ShimmerTextProps {
@@ -21,47 +21,48 @@ const DURATION = 2_500
 export function ShimmerText(props: ShimmerTextProps) {
   const themeCtx = useTheme()
 
+  // Use provided color or default to theme info color (matches status messages)
+  const color = () => props.color ?? themeCtx.theme.info
+
+  // Pre-allocate shimmer signals for the max length we'll see.
+  // The text may change (e.g., elapsed time ticking) — we reuse signals
+  // and only render up to the current text length.
+  const MAX_CHARS = 64
+  const shimmerSignals: Accessor<number>[] = []
+
   const timeline = useTimeline({
     duration: DURATION,
     loop: true,
   })
 
-  const characters = props.text.split("")
-
-  // Use provided color or default to theme info color (matches status messages)
-  const color = props.color ?? themeCtx.theme.info
-
-  const shimmerSignals = characters.map((_, i) => {
+  for (let i = 0; i < MAX_CHARS; i++) {
     const [shimmer, setShimmer] = createSignal(0.4)
-    const target = {
-      shimmer: shimmer(),
-      setShimmer,
-    }
+    const target = { shimmer: shimmer(), setShimmer }
 
     timeline!.add(
       target,
       {
         shimmer: 1,
-        duration: DURATION / (props.text.length + 1),
+        duration: DURATION / (MAX_CHARS + 1),
         ease: "linear",
         alternate: true,
         loop: 2,
-        onUpdate: () => {
-          target.setShimmer(target.shimmer)
-        },
+        onUpdate: () => { target.setShimmer(target.shimmer) },
       },
-      (i * (DURATION / (props.text.length + 1))) / 2
+      (i * (DURATION / (MAX_CHARS + 1))) / 2,
     )
 
-    return shimmer
-  })
+    shimmerSignals.push(shimmer)
+  }
 
   return (
     <text>
       {(() => {
-        return characters.map((ch, i) => {
-          const shimmer = shimmerSignals[i]
-          const fg = RGBA.fromInts(color.r * 255, color.g * 255, color.b * 255, shimmer() * 255)
+        const chars = props.text.split("")
+        const c = color()
+        return chars.map((ch, i) => {
+          const shimmer = shimmerSignals[i] ?? (() => 0.8)
+          const fg = RGBA.fromInts(c.r * 255, c.g * 255, c.b * 255, shimmer() * 255)
           return <span style={{ fg }}>{ch}</span>
         })
       })()}

@@ -1,113 +1,11 @@
 import { describe, it, expect } from "bun:test";
 import {
-  extractDisplayText,
   formatDisplayPath,
   getToolDetail,
 } from "../src/infra/output/output-formatter";
 import * as path from "node:path";
 
 describe("output-formatter", () => {
-  // ── extractDisplayText ──
-
-  describe("extractDisplayText", () => {
-    it("returns raw text + newline for non-JSON input", () => {
-      expect(extractDisplayText("hello world")).toBe("hello world\n");
-    });
-
-    it("extracts text from assistant message", () => {
-      const line = JSON.stringify({
-        type: "assistant",
-        message: {
-          content: [{ type: "text", text: "Hello from Claude" }],
-        },
-      });
-      expect(extractDisplayText(line)).toBe("Hello from Claude");
-    });
-
-    it("extracts multiple text blocks from assistant message", () => {
-      const line = JSON.stringify({
-        type: "assistant",
-        message: {
-          content: [
-            { type: "text", text: "First " },
-            { type: "text", text: "Second" },
-          ],
-        },
-      });
-      expect(extractDisplayText(line)).toBe("First Second");
-    });
-
-    it("formats tool_use blocks in assistant messages", () => {
-      const line = JSON.stringify({
-        type: "assistant",
-        message: {
-          content: [
-            { type: "tool_use", name: "Read", input: { file_path: "foo.ts" } },
-          ],
-        },
-      });
-      const result = extractDisplayText(line);
-      expect(result).toContain("▸ Read");
-      expect(result).toContain("foo.ts");
-    });
-
-    it("handles mixed text and tool_use blocks", () => {
-      const line = JSON.stringify({
-        type: "assistant",
-        message: {
-          content: [
-            { type: "text", text: "Let me read the file.\n" },
-            { type: "tool_use", name: "Read", input: { file_path: "bar.ts" } },
-          ],
-        },
-      });
-      const result = extractDisplayText(line);
-      expect(result).toContain("Let me read the file.");
-      expect(result).toContain("▸ Read");
-    });
-
-    it("extracts result text", () => {
-      const line = JSON.stringify({
-        type: "result",
-        result: "Task completed successfully",
-      });
-      expect(extractDisplayText(line)).toBe("Task completed successfully\n");
-    });
-
-    it("returns null for empty result", () => {
-      const line = JSON.stringify({ type: "result", result: "" });
-      expect(extractDisplayText(line)).toBeNull();
-    });
-
-    it("returns null for system messages", () => {
-      const line = JSON.stringify({ type: "system", data: "init" });
-      expect(extractDisplayText(line)).toBeNull();
-    });
-
-    it("returns null for tool_result messages", () => {
-      const line = JSON.stringify({ type: "tool_result", content: "..." });
-      expect(extractDisplayText(line)).toBeNull();
-    });
-
-    it("returns null for assistant message with empty content", () => {
-      const line = JSON.stringify({
-        type: "assistant",
-        message: { content: [] },
-      });
-      expect(extractDisplayText(line)).toBeNull();
-    });
-
-    it("returns null for assistant message with no text blocks", () => {
-      const line = JSON.stringify({
-        type: "assistant",
-        message: {
-          content: [{ type: "unknown_block" }],
-        },
-      });
-      expect(extractDisplayText(line)).toBeNull();
-    });
-  });
-
   // ── getToolDetail ──
 
   describe("getToolDetail", () => {

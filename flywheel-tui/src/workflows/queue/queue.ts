@@ -86,10 +86,6 @@ export function createQueue(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function getMaxSteps(queue: Queue): number | undefined {
-  return queue.maxSteps;
-}
-
 function logMutation(
   queue: Queue,
   action: string,
@@ -203,7 +199,7 @@ export function insertAfter(
     return { success: false, error: `Step not found: ${afterStepId}` };
   }
 
-  const maxSteps = getMaxSteps(queue);
+  const maxSteps = queue.maxSteps;
   if (
     maxSteps !== undefined &&
     queue.steps.length + newSteps.length > maxSteps

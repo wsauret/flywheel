@@ -29,8 +29,9 @@ import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
+import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { truncate } from "@tui/utils/text"
-import { formatDuration } from "../../../../../infra/format.js"
+import { formatDuration, formatElapsed } from "../../../../../infra/format.js"
 import { displayToolName } from "./tool-block"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@tui/types"
 
@@ -56,11 +57,15 @@ export function AgentBlock(props: AgentBlockProps) {
   const { theme } = useTheme()
   const [showAll, setShowAll] = createSignal(false)
   const [activeCollapsed, setActiveCollapsed] = createSignal(false)
+  const activeElapsed = useElapsed(() => props.block.status === "active" ? props.block.timestamp : undefined)
 
   const toolCount = () => props.block.children.length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
   const descriptionText = () => {
     const d = props.block.description
+    // Suppress description for context tool groups — it's just the last tool's
+    // "name: detail" which duplicates what's already in the children list.
+    if (props.block.agentLabel === "Tools") return ""
     // Only show description in completed/paused state if it differs from the initial active-state label
     const isInitial = d === "Analyzing step and crafting worker prompt" || d === "Checking output quality"
     return (!isInitial && d) ? d : ""
@@ -98,6 +103,9 @@ export function AgentBlock(props: AgentBlockProps) {
           <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <Show when={toolCount() > 0}>
             <text fg={theme.textMuted}>({toolCount()})</text>
+          </Show>
+          <Show when={activeElapsed() >= 1000}>
+            <text fg={theme.textMuted}>{formatElapsed(activeElapsed())}</text>
           </Show>
           <text fg={theme.textMuted}>{activeCollapsed() ? "▸" : "▾"}</text>
         </box>

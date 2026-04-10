@@ -2,11 +2,15 @@
 /**
  * ContextGroupBlock Component
  *
- * Renders a collapsed context group: `◆ Gathered context (N files)`
- * Auto-collapsed by default — shows summary only, not individual tools.
+ * Renders a context group with progressive disclosure:
+ * Collapsed (default): `◆ Gathered context (N files) ▸`
+ * Expanded: shows individual file names from the tool list.
  */
 
+import { createSignal, Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
+import { truncate } from "@tui/utils/text"
+import { displayToolName } from "./tool-block"
 import type { ContextGroupBlock as ContextGroupBlockType } from "@tui/types"
 
 export interface ContextGroupBlockProps {
@@ -14,13 +18,29 @@ export interface ContextGroupBlockProps {
 }
 
 export function ContextGroupBlock(props: ContextGroupBlockProps) {
-  const themeCtx = useTheme()
+  const { theme } = useTheme()
+  const [expanded, setExpanded] = createSignal(false)
 
   const fileCount = () => props.block.tools.length
 
   return (
-    <box marginTop={1}>
-      <text fg={themeCtx.theme.textMuted}>{`◆ Gathered context (${fileCount()} files)`}</text>
+    <box flexDirection="column" marginTop={1}>
+      <box flexDirection="row" gap={1} onMouseDown={() => setExpanded((v) => !v)}>
+        <text fg={theme.textMuted}>◆ Gathered context ({fileCount()} files)</text>
+        <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
+      </box>
+      <Show when={expanded()}>
+        <box flexDirection="column" paddingLeft={3}>
+          <For each={props.block.tools}>
+            {(tool) => (
+              <box flexDirection="row" gap={1}>
+                <text fg={theme.textMuted}>{displayToolName(tool.name)}</text>
+                <text fg={theme.textMuted}>{truncate(tool.detail, 60)}</text>
+              </box>
+            )}
+          </For>
+        </box>
+      </Show>
     </box>
   )
 }

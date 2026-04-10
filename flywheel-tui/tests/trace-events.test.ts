@@ -511,17 +511,13 @@ describe("TraceCollector — trace event subscriptions", () => {
       timestamp: now(),
     });
 
-    // Close worker to get the span written
+    // Close worker via step completion
     bus.emit({
-      type: "subprocess:completed",
+      type: "queue:step-completed",
       workflowId: "wf-1",
-      result: {
-        output: "done",
-        exitCode: 0,
-        truncated: false,
-        durationMs: 100,
-        handoffPath: "/tmp/h",
-      },
+      stepId: "step-1",
+      stepType: "work",
+      stepTitle: "Test step",
       timestamp: now(),
     });
 

@@ -15,12 +15,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$SCRIPT_DIR/results/$(date +%Y%m%d-%H%M%S)"
 
 ALL_MODULES=(
+  headless
   chat
-  session-modal
-  multi-session
   workflow
-  chat-workflow-interaction
+  multi-session
+  session-modal
   session-recovery
+  chat-workflow-interaction
+  subprocess-reliability
+  tui-regression
 )
 
 # Allow running specific modules via args

@@ -28,6 +28,9 @@ export interface KeyboardHandlerDeps {
 export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
   const { signals, registry, workflow, chat, sessionModal, inChat, runningCount } = deps
 
+  /** Tracks the last ESC timestamp for double-ESC escalation in chat mode. */
+  let lastChatEscAt = 0
+
   function handleEscape(): void {
     const state = signals.sessionState()
 
@@ -39,8 +42,17 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
       return
     }
 
-    // In chat mode, Esc interrupts the active worker — never ends the session.
+    // In chat mode: first Esc interrupts, double-Esc (within 2s) force-ends session
     if (inChat()) {
+      const now = Date.now()
+      if (now - lastChatEscAt < 2_000) {
+        // Double-ESC: force-end the session — the nuclear option
+        lastChatEscAt = 0
+        chat.endChat()
+        deps.showToast({ message: "Chat force-ended", variant: "warning" })
+        return
+      }
+      lastChatEscAt = now
       chat.interruptChat()
       return
     }
@@ -73,11 +85,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     if (evt.name === "escape") { handleEscape(); return }
 
     if (evt.ctrl && evt.name === "n") { chat.backgroundChat(); chat.startChat(); return }
-    if (evt.ctrl && evt.name === "w") {
-      if (inChat()) { chat.endChat(); chat.startChat(); return }
-      workflow.abortForeground()
-      return
-    }
     if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }
     if (evt.ctrl && evt.name === "r") { workflow.handleResume() }
     if (evt.ctrl && evt.name === "c") {

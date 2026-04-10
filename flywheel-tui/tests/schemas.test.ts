@@ -21,7 +21,6 @@ import {
   WorkerConfigSchema,
   AvailableContextSchema,
   LastWorkerResultSchema,
-  WorkflowStepBaseSchema,
 } from "../src/workflows/schemas";
 import { EventBus, createEmit } from "../src/infra/event-bus";
 
@@ -1130,31 +1129,6 @@ describe("LastWorkerResultSchema", () => {
   });
 });
 
-describe("WorkflowStepBaseSchema", () => {
-  it("round-trips with all fields", () => {
-    const valid = {
-      description: "Implement the feature",
-      dispatcherHint: "Use TDD approach",
-      evaluationCriteria: "All tests pass",
-    };
-    const result = WorkflowStepBaseSchema.parse(valid);
-    expect(result).toEqual(valid);
-  });
-
-  it("accepts minimal fields (description only)", () => {
-    const result = WorkflowStepBaseSchema.parse({
-      description: "Do something",
-    });
-    expect(result.description).toBe("Do something");
-    expect(result.dispatcherHint).toBeUndefined();
-    expect(result.evaluationCriteria).toBeUndefined();
-  });
-
-  it("rejects missing description", () => {
-    const result = WorkflowStepBaseSchema.safeParse({});
-    expect(result.success).toBe(false);
-  });
-});
 
 
 

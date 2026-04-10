@@ -790,4 +790,38 @@ describe("resolveTierConfigs with sprint mode", () => {
     // No sprint.evaluator override, so tier effort "medium" wins over sprint default
     expect(tiers.evaluator.effort).toBe("medium");
   });
+
+  it("top-level effort propagates to all tiers as fallback", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "opus",
+      effort: "max",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.dispatcher.effort).toBe("max");
+    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.evaluator.effort).toBe("max");
+  });
+
+  it("tier-specific effort overrides top-level effort", () => {
+    const config = FlywheelConfigSchema.parse({
+      effort: "max",
+      model: "opus",
+      dispatcher: { effort: "low" },
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.dispatcher.effort).toBe("low");
+    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.evaluator.effort).toBe("max");
+  });
+
+  it("top-level effort is clamped for non-opus models", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "sonnet",
+      effort: "max",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.dispatcher.effort).toBe("high");
+    expect(tiers.subprocess.effort).toBe("high");
+    expect(tiers.evaluator.effort).toBe("high");
+  });
 });

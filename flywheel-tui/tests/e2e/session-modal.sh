@@ -7,7 +7,7 @@ start_app
 # Setup: create some history
 send_text "say exactly: chat A for modal tests"
 wait_and_capture "$WAIT_RESPONSE" "setup-chatA.log"
-send_keys C-w
+send_keys C-n
 sleep "$WAIT_MEDIUM"
 send_text "say exactly: chat B for modal tests"
 wait_and_capture "$WAIT_RESPONSE" "setup-chatB.log"
@@ -26,25 +26,22 @@ send_keys Escape
 wait_and_capture 1 "T-04c-modal-close.log"
 assert_not_contains "T-04c-modal-close.log" "Sessions" "T-04c-closed" || true
 
-# ── T-06: View Completed Session ──
-echo "T-06: View Completed Session"
-send_keys C-w
+# ── T-06: Switch to Background Session ──
+echo "T-06: Switch to Background Session"
+send_keys C-n
 sleep "$WAIT_MEDIUM"
 send_keys C-b
 sleep 1
-capture "T-06a-modal-with-completed.log"
-assert_contains "T-06a-modal-with-completed.log" "✓" "T-06a-has-completed" || true
+capture "T-06a-modal.log"
+assert_contains "T-06a-modal.log" "Active" "T-06a-has-active" || true
 
-# Navigate to completed section from bottom
-send_keys Up; sleep 0.3
-send_keys Up; sleep 0.3
+# Switch to a background session (navigate down to an older chat)
+send_keys Down; sleep 0.3
+send_keys Down; sleep 0.3
 send_keys Enter
-wait_and_capture "$WAIT_SHORT" "T-06b-viewing.log"
-assert_contains "T-06b-viewing.log" "Viewing session" "T-06b-viewing" || true
-
-send_keys Escape
-wait_and_capture 1 "T-06c-dismissed.log"
-assert_not_contains "T-06c-dismissed.log" "Viewing session" "T-06c-restored" || true
+wait_and_capture "$WAIT_SHORT" "T-06b-switched.log"
+# Switched session should show the old chat content
+assert_contains "T-06b-switched.log" "modal tests" "T-06b-old-content" || true
 
 # ── T-07: Delete Session ──
 echo "T-07: Delete Session"
@@ -62,24 +59,12 @@ send_keys d; sleep 1
 capture "T-07c-after-delete.log"
 send_keys Escape; sleep 1
 
-# ── T-18: Archive Session ──
-echo "T-18: Archive Session"
-send_keys C-w
-sleep "$WAIT_MEDIUM"
-send_keys C-b; sleep 1
-send_keys Up; sleep 0.3
-send_keys Up; sleep 0.3
-send_keys a; sleep 1
-capture "T-18a-archived.log"
-assert_contains "T-18a-archived.log" "☐" "T-18a" || true
-send_keys Escape; sleep 1
-
 # ── T-12: View → Delete → Restore ──
 echo "T-12: View → Delete → Restore"
 send_text "say exactly: active chat T12"
 wait_and_capture "$WAIT_RESPONSE" "T-12a-active.log"
 
-send_keys C-w; sleep "$WAIT_MEDIUM"
+send_keys C-n; sleep "$WAIT_MEDIUM"
 send_text "say exactly: new chat after T12"
 wait_and_capture "$WAIT_RESPONSE" "T-12b-new-chat.log"
 

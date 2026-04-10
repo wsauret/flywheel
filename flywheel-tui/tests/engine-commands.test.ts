@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { buildCommand } from "../src/orchestration/engines/providers/claude";
+import { buildCommand, resolveModel } from "../src/orchestration/engines/providers/claude";
 
 describe("unified buildCommand", () => {
   it("produces --input-format stream-json and --output-format stream-json (no -p)", () => {
@@ -55,7 +55,21 @@ describe("unified buildCommand", () => {
     expect(toolsArg).not.toContain("Edit");
   });
 
-  it("respects --model override", () => {
+  it("resolves bare 'opus' to 1M variant", () => {
+    const cmd = buildCommand({ model: "opus" });
+    const modelIdx = cmd.args.indexOf("--model");
+    expect(modelIdx).toBeGreaterThanOrEqual(0);
+    expect(cmd.args[modelIdx + 1]).toBe("claude-opus-4-6[1m]");
+  });
+
+  it("resolves bare 'sonnet' to 1M variant", () => {
+    const cmd = buildCommand({ model: "sonnet" });
+    const modelIdx = cmd.args.indexOf("--model");
+    expect(modelIdx).toBeGreaterThanOrEqual(0);
+    expect(cmd.args[modelIdx + 1]).toBe("claude-sonnet-4-6[1m]");
+  });
+
+  it("passes 'haiku' through unchanged", () => {
     const cmd = buildCommand({ model: "haiku" });
     const modelIdx = cmd.args.indexOf("--model");
     expect(modelIdx).toBeGreaterThanOrEqual(0);
@@ -81,7 +95,7 @@ describe("unified buildCommand", () => {
       systemPrompt: "test",
       tools: "Write",
       effort: "low",
-      model: "sonnet",
+      model: "haiku",
     });
     expect(cmd.args).not.toContain("--no-session-persistence");
   });
@@ -146,5 +160,37 @@ describe("unified buildCommand", () => {
     expect(toolsArg).toContain("Write");
     expect(toolsArg).toContain("Read");
     expect(toolsArg).not.toContain("Bash");
+  });
+});
+
+describe("resolveModel", () => {
+  it("maps 'opus' to 1M variant", () => {
+    expect(resolveModel("opus")).toBe("claude-opus-4-6[1m]");
+  });
+
+  it("maps 'sonnet' to 1M variant", () => {
+    expect(resolveModel("sonnet")).toBe("claude-sonnet-4-6[1m]");
+  });
+
+  it("is case-insensitive", () => {
+    expect(resolveModel("Opus")).toBe("claude-opus-4-6[1m]");
+    expect(resolveModel("SONNET")).toBe("claude-sonnet-4-6[1m]");
+  });
+
+  it("maps 'opus[200k]' to bare alias", () => {
+    expect(resolveModel("opus[200k]")).toBe("opus");
+  });
+
+  it("maps 'sonnet[200k]' to bare alias", () => {
+    expect(resolveModel("sonnet[200k]")).toBe("sonnet");
+  });
+
+  it("passes 'haiku' through unchanged", () => {
+    expect(resolveModel("haiku")).toBe("haiku");
+  });
+
+  it("passes full model IDs through unchanged", () => {
+    expect(resolveModel("claude-opus-4-6[1m]")).toBe("claude-opus-4-6[1m]");
+    expect(resolveModel("claude-sonnet-4-6[1m]")).toBe("claude-sonnet-4-6[1m]");
   });
 });

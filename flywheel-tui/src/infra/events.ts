@@ -1,8 +1,8 @@
 import type { DispatcherDecision, EvaluatorResult, QuestionInfo, QuestionAnswer } from "./workflow-types";
-import type { SubprocessResult, SubprocessFailureReason, NDJSONEvent } from "./subprocess-types";
+import type { NDJSONEvent } from "./subprocess-types";
 
 // ---------------------------------------------------------------------------
-// FlywheelEvent discriminated union (~25 event types, namespace:verb naming)
+// FlywheelEvent discriminated union (namespace:verb naming)
 // ---------------------------------------------------------------------------
 
 export type FlywheelEvent =
@@ -16,14 +16,9 @@ export type FlywheelEvent =
   | EvaluatorRevisionRequested
   | EvaluatorOutput
   | SubprocessSpawned
-  | SubprocessCompleted
-  | SubprocessFailed
-  | SubprocessRetrying
   | SubprocessOutput
   | SubprocessNDJSON
   | SubprocessInjected
-  | ApprovalRequested
-  | ApprovalReceived
   | QuestionAsked
   | QuestionReplied
   | QuestionRejected
@@ -35,8 +30,6 @@ export type FlywheelEvent =
   | QueueStepStarted
   | QueueStepCompleted
   | QueueStepFailed
-  | QueueStepInserted
-  | QueueStepRemoved
   | TraceToolStarted
   | TraceToolCompleted
   | TraceSubagentStarted
@@ -125,29 +118,6 @@ interface SubprocessSpawned {
   timestamp: number;
 }
 
-interface SubprocessCompleted {
-  type: "subprocess:completed";
-  workflowId: string;
-  result: SubprocessResult;
-  timestamp: number;
-}
-
-interface SubprocessFailed {
-  type: "subprocess:failed";
-  workflowId: string;
-  failure: SubprocessFailureReason;
-  timestamp: number;
-}
-
-interface SubprocessRetrying {
-  type: "subprocess:retrying";
-  workflowId: string;
-  attempt: number;
-  maxAttempts: number;
-  reason: string;
-  timestamp: number;
-}
-
 interface SubprocessOutput {
   type: "subprocess:output";
   workflowId: string;
@@ -176,24 +146,6 @@ interface SubprocessInjected {
   type: "subprocess:injected";
   workflowId: string;
   message: string;
-  timestamp: number;
-}
-
-// -- Approval events --
-
-interface ApprovalRequested {
-  type: "approval:requested";
-  workflowId: string;
-  stepIndex: number;
-  description: string;
-  timestamp: number;
-}
-
-interface ApprovalReceived {
-  type: "approval:received";
-  workflowId: string;
-  approved: boolean;
-  skipped: boolean;
   timestamp: number;
 }
 
@@ -290,28 +242,6 @@ export interface QueueStepFailed {
   stepType: string;
   stepTitle: string;
   reason: string;
-  timestamp: number;
-}
-
-// -- Queue mutation events --
-
-export interface QueueStepInserted {
-  type: "queue:step-inserted";
-  workflowId: string;
-  stepId: string;
-  stepType: string;
-  stepTitle: string;
-  /** ID of the step after which this step was inserted. */
-  afterStepId: string;
-  timestamp: number;
-}
-
-export interface QueueStepRemoved {
-  type: "queue:step-removed";
-  workflowId: string;
-  stepId: string;
-  stepType: string;
-  stepTitle: string;
   timestamp: number;
 }
 

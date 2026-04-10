@@ -62,7 +62,7 @@ export function createWarmPools(
   if (deps.spawner.spawnRaw) {
     const wCmd = engine.buildCommand({
       model: tiers.subprocess?.model ?? deps.config.model,
-      effort: tiers.subprocess?.effort ?? undefined,
+      effort: tiers.subprocess?.effort ?? deps.config.effort ?? undefined,
     })
     const spawnRaw = deps.spawner.spawnRaw.bind(deps.spawner)
     const rawSpawnOpts = { stdinPipe: true as const, cwd: subprocessCwd ?? cwd, env }

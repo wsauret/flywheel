@@ -10,7 +10,12 @@ let globalExit: (() => void) | null = null
 let preExitCleanup: (() => Promise<void>) | null = null
 
 export function exitTUI(): void {
-  if (!globalExit) return
+  if (!globalExit) {
+    // globalExit already consumed — a prior exitTUI() call is stuck on cleanup.
+    // Force-exit as a last resort so the user is never trapped.
+    process.exit(0)
+    return
+  }
   const exit = globalExit
   globalExit = null
 
@@ -19,8 +24,10 @@ export function exitTUI(): void {
 
   if (cleanup) {
     // Await disposal, then destroy renderer and resolve the startTUI promise.
-    // Errors are best-effort — we still exit even if cleanup fails.
-    cleanup().catch(() => {}).finally(() => exit())
+    // Hard timeout: if cleanup doesn't finish in 3s, force-exit anyway.
+    // The user must never be trapped in a dead TUI.
+    const forceExitTimer = setTimeout(() => { exit() }, 3_000)
+    cleanup().catch(() => {}).finally(() => { clearTimeout(forceExitTimer); exit() })
   } else {
     exit()
   }

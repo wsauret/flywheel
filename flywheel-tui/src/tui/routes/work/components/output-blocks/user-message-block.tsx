@@ -40,6 +40,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
     <Show when={injected()} fallback={
       <box
         marginTop={1}
+        marginBottom={1}
         border={["left"]}
         borderColor={pending() ? theme.textMuted : theme.secondary}
         customBorderChars={{
@@ -51,7 +52,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
           paddingTop={1}
           paddingBottom={1}
           paddingLeft={2}
-          backgroundColor={theme.backgroundPanel}
+          backgroundColor={theme.backgroundElement}
           flexShrink={0}
         >
           <code
@@ -70,7 +71,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
       <box flexDirection="column" marginTop={1}>
         <box flexDirection="row" gap={1} onMouseDown={() => setExpanded((v) => !v)}>
           <text fg={theme.textMuted}>↳</text>
-          <text fg={theme.textMuted} attributes={createTextAttributes({ bold: true })}>Injected</text>
+          <text fg={theme.textMuted} attributes={createTextAttributes({ bold: true })}>System</text>
           <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
           <Show when={!expanded()}>
             <text fg={theme.textMuted}>{previewLine(props.block.content)}</text>
@@ -89,7 +90,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
               paddingTop={1}
               paddingBottom={1}
               paddingLeft={2}
-              backgroundColor={theme.backgroundPanel}
+              backgroundColor={theme.backgroundElement}
               flexShrink={0}
             >
               <code

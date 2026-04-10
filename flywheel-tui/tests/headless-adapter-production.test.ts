@@ -142,9 +142,10 @@ describe("HeadlessAdapter (production)", () => {
 
       // This SHOULD be logged (errors always logged)
       bus.emit({
-        type: "subprocess:failed",
+        type: "queue:failed",
         workflowId: wfId,
-        failure: { type: "timeout", message: "timed out" },
+        reason: "timed out",
+        stepsCompleted: 0,
         timestamp: ts,
       })
 

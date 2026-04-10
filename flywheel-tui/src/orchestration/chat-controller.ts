@@ -119,7 +119,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
           const entry = registry.get(id)
           const tokens = entry?.tokens ?? 0
           const cost = entry?.cost ?? 0
-          manager.updateState(id, "completed")
+          manager.updateState(id, "paused")
           const doneResult = {
             statusMessage: `Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(cost)} \u00b7 ${formatTokens(tokens)} tokens`,
             terminalTitle: `${TERMINAL_TITLE_PREFIX}done`,
@@ -202,8 +202,11 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       startup = { phase: "idle" }
     }
 
+    // Update manager BEFORE removing from registry — avoids a reactive glitch
+    // where sessionState() briefly sees the old manager state ("paused") after
+    // the registry entry disappears but before the manager is updated.
+    manager.updateState(foregroundId, "paused")
     registry.remove(foregroundId)
-    manager.updateState(foregroundId, "completed")
     refreshList()
     return true
   }

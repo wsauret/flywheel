@@ -130,21 +130,7 @@ function emitHappyPath(bus: EventBus, workflowId: string) {
     timestamp: now(),
   });
 
-  // 8. subprocess:completed
-  bus.emit({
-    type: "subprocess:completed",
-    workflowId,
-    result: {
-      output: "done",
-      exitCode: 0,
-      truncated: false,
-      durationMs: 500,
-      handoffPath: "/tmp/handoff",
-    },
-    timestamp: now(),
-  });
-
-  // 9. queue:step-completed
+  // 8. queue:step-completed
   bus.emit({
     type: "queue:step-completed",
     workflowId,
@@ -183,12 +169,6 @@ function emitErrorPath(bus: EventBus, workflowId: string) {
     type: "subprocess:spawned",
     workflowId,
     stepIndex: 0,
-    timestamp: now(),
-  });
-  bus.emit({
-    type: "subprocess:failed",
-    workflowId,
-    failure: { kind: "transient", message: "agent crashed" },
     timestamp: now(),
   });
   bus.emit({

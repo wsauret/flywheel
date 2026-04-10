@@ -6,8 +6,7 @@
 
 import { createSignal, onMount, onCleanup } from "solid-js"
 import type { RGBA } from "@opentui/core"
-
-const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+import { SPINNER_FRAMES, SPINNER_INTERVAL } from "./spinner-frames.js"
 
 interface SpinnerProps {
   color?: RGBA
@@ -19,10 +18,10 @@ export function Spinner(props: SpinnerProps) {
 
   onMount(() => {
     const id = setInterval(() => {
-      setFrame((f) => (f + 1) % FRAMES.length)
-    }, props.interval ?? 80)
+      setFrame((f) => (f + 1) % SPINNER_FRAMES.length)
+    }, props.interval ?? SPINNER_INTERVAL)
     onCleanup(() => clearInterval(id))
   })
 
-  return <text fg={props.color}>{FRAMES[frame()]}</text>
+  return <text fg={props.color}>{SPINNER_FRAMES[frame()]}</text>
 }

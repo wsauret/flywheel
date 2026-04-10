@@ -5,7 +5,7 @@
  * - Message buffering during async startup (queue messages -> replay on ready)
  * - startChat creates session via manager and registry
  * - resumeChat loads persisted output blocks before launching
- * - endChat removes from registry and marks completed
+ * - endChat removes from registry and marks paused
  * - backgroundChat clears startup state
  */
 
@@ -227,7 +227,7 @@ describe("ChatController", () => {
   })
 
   describe("endChat", () => {
-    it("removes chat from registry and marks completed", async () => {
+    it("removes chat from registry and marks paused", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
@@ -238,9 +238,9 @@ describe("ChatController", () => {
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      const completedUpdate = mockManager._stateUpdates.find((u) => u.state === "completed")
-      expect(completedUpdate).toBeDefined()
-      expect(completedUpdate!.id).toBe(result!.sessionId)
+      const pausedUpdate = mockManager._stateUpdates.find((u) => u.state === "paused")
+      expect(pausedUpdate).toBeDefined()
+      expect(pausedUpdate!.id).toBe(result!.sessionId)
     })
 
     it("returns false when no foreground ID", () => {

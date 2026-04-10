@@ -27,7 +27,6 @@ const BLOCKS_CAP = 20_000;
 const AGENT_CHILDREN_CAP = 50;
 
 import type { ModelActivity } from "../events.js";
-export type { ModelActivity };
 
 export class StructuredOutputBuilder {
   private blocks: AnyBlock[] = [];
@@ -35,7 +34,6 @@ export class StructuredOutputBuilder {
   private cachedSnapshot: AnyBlock[] = [];
 
   /** Map of agent ID → index in `blocks` for O(1) agent lookups. */
-  private activeAgentId: string | null = null;
   private agentIndexById = new Map<string, number>();
 
   /** Stale agent detection — auto-completes agents with no activity. */
@@ -62,6 +60,9 @@ export class StructuredOutputBuilder {
    */
   onModelActivityChange?: (activity: ModelActivity) => void;
 
+  /** Timestamp captured when thinking activity starts (before text arrives). */
+  private thinkingStartedAt: number | null = null;
+
   constructor() {
     this.staleDetector = new StaleAgentDetector({
       onStaleAgent: (agentId, durationMs) => this.completeAgent(agentId, durationMs),
@@ -76,14 +77,25 @@ export class StructuredOutputBuilder {
 
   // ── Public API ──
 
+  /** Record that the model entered thinking mode (before text arrives). */
+  notifyThinkingStarted(timestamp: number): void {
+    this.onModelActivityChange?.("thinking");
+    if (this.thinkingStartedAt === null) {
+      this.thinkingStartedAt = timestamp;
+    }
+  }
+
   pushThinking(text: string, timestamp: number): void {
     this.onModelActivityChange?.("thinking");
     if (!text.trim()) return;
+    this.contextTracker.breakContextRun(timestamp);
+    const blockTimestamp = this.thinkingStartedAt ?? timestamp;
+    this.thinkingStartedAt = null;
     const last = this.blocks.length > 0 ? this.blocks[this.blocks.length - 1] : null;
     if (last && last.kind === "thinking") {
       this.blocks[this.blocks.length - 1] = { ...last, content: last.content + text };
     } else {
-      this.blocks.push({ kind: "thinking", content: text, timestamp });
+      this.blocks.push({ kind: "thinking", content: text, timestamp: blockTimestamp });
     }
     this.dirty = true;
   }
@@ -110,6 +122,7 @@ export class StructuredOutputBuilder {
 
   pushText(text: string, timestamp: number): void {
     this.onModelActivityChange?.("generating");
+    this.thinkingStartedAt = null;
     this.contextTracker.breakContextRun(timestamp);
 
     const last = this.blocks[this.blocks.length - 1];
@@ -141,12 +154,6 @@ export class StructuredOutputBuilder {
     this.onModelActivityChange?.("tool_executing");
     const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
 
-    // If inside an active (real) agent, add as child — context tools inside
-    // real agents stay as plain children, not grouped.
-    if (this.activeAgentId !== null && this.activeAgentId !== this.contextTracker.currentAgentId) {
-      if (this.appendToolToAgent(this.activeAgentId, tool)) return;
-    }
-
     // Top-level tool: check context grouping.
     // Tools with diff/content data render standalone (not grouped) so the content is visible.
     if (isContextTool(name) && !diff && !content) {
@@ -176,23 +183,21 @@ export class StructuredOutputBuilder {
     if (agentIdx === undefined) return false;
 
     const agent = this.blocks[agentIdx] as AgentBlock;
-    const children = agent.children;
-    children.push(tool);
+    // Create a new array reference so SolidJS <For> detects the change.
+    // Mutating in place keeps the same reference, which <For> ignores.
+    let children = [...agent.children, tool];
     if (children.length > AGENT_CHILDREN_CAP) {
-      children.splice(0, children.length - AGENT_CHILDREN_CAP);
+      children = children.slice(-AGENT_CHILDREN_CAP);
     }
     const latestChild = `${tool.name}: ${tool.detail}`;
-    const description = `${tool.name}: ${tool.detail}`;
 
     // Re-activate agents that were prematurely completed by the stale detector.
     // The authoritative completion signal is the tool_result event, not the timeout.
-    // Don't set activeAgentId — this agent's tools arrive via explicit pushToolToAgent
-    // routing, and setting it would hijack unrelated top-level tools.
     if (agent.status === "completed") {
-      this.blocks[agentIdx] = { ...agent, status: "active", children, latestChild, description };
+      this.blocks[agentIdx] = { ...agent, status: "active", children, latestChild };
       this.staleDetector.trackSpawn(agentId);
     } else {
-      this.blocks[agentIdx] = { ...agent, children, latestChild, description };
+      this.blocks[agentIdx] = { ...agent, children, latestChild };
       if (agent.status === "active") {
         this.staleDetector.trackActivity(agentId);
       }
@@ -217,7 +222,6 @@ export class StructuredOutputBuilder {
     };
     this.blocks.push(agent);
     this.agentIndexById.set(id, this.blocks.length - 1);
-    this.activeAgentId = id;
     if (!opts?.skipStaleDetection) {
       this.staleDetector.trackSpawn(id);
     }
@@ -249,9 +253,6 @@ export class StructuredOutputBuilder {
       ...(description !== undefined ? { description } : {}),
     };
     this.staleDetector.removeAgent(id);
-    if (this.activeAgentId === id) {
-      this.activeAgentId = null;
-    }
     this.markDirty();
     this.onAgentLifecycle?.("complete", id);
   }
@@ -263,9 +264,6 @@ export class StructuredOutputBuilder {
     const agent = this.blocks[idx] as AgentBlock;
     this.blocks[idx] = { ...agent, status: "error", errorMessage: message };
 
-    if (this.activeAgentId === id) {
-      this.activeAgentId = null;
-    }
     this.staleDetector.removeAgent(id);
     this.markDirty();
     this.onAgentLifecycle?.("error", id);
@@ -289,6 +287,35 @@ export class StructuredOutputBuilder {
     this.onAgentActivity?.(id);
   }
 
+  /**
+   * Auto-complete any active subagent blocks.
+   *
+   * Subagents are blocking — if top-level output arrives from the parent agent,
+   * all subagents must be done. Call this when processing a top-level assistant
+   * message (no parent_tool_use_id) to close agents whose tool_result was
+   * delayed or lost. The stale detector remains as a safety net for cases where
+   * no top-level events follow.
+   */
+  closeOpenSubagents(timestamp: number): void {
+    const ctxId = this.contextTracker.currentAgentId;
+    for (const [id, idx] of this.agentIndexById) {
+      if (id === ctxId) continue;
+      const block = this.blocks[idx];
+      if (block.kind === "agent" && block.status === "active") {
+        this.completeAgent(id, timestamp - block.timestamp);
+      }
+    }
+  }
+
+  /**
+   * Complete any open context tool run. Call at turn boundaries (e.g. chat
+   * turn-complete) so the last group of context tools doesn't stay "active".
+   */
+  flushContextRun(timestamp: number): void {
+    this.contextTracker.breakContextRun(timestamp);
+    this.markDirty();
+  }
+
   getBlocks(): AnyBlock[] {
     if (!this.dirty) return this.cachedSnapshot;
     this.dirty = false;
@@ -308,7 +335,6 @@ export class StructuredOutputBuilder {
     this.blocks = [];
     this.dirty = false;
     this.cachedSnapshot = [];
-    this.activeAgentId = null;
     this.agentIndexById.clear();
     this.contextTracker.reset();
     this.staleDetector.clearTracking();
@@ -325,7 +351,6 @@ export class StructuredOutputBuilder {
    * context runs, but the output log is continuous.
    */
   resetTracking(): void {
-    this.activeAgentId = null;
     this.agentIndexById.clear();
     this.contextTracker.resetTracking();
     this.dirty = true;

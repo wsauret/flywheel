@@ -199,6 +199,65 @@ describe("StructuredEventParser", () => {
     });
   });
 
+  // ── Blocking invariant: top-level events close agents ──
+
+  describe("blocking invariant", () => {
+    it("top-level text auto-completes an active agent", () => {
+      // Spawn agent
+      const spawnEvent = makeAssistantEvent([
+        { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring", subagent_type: "Explore" } },
+      ]);
+      parser.dispatch(spawnEvent, "claude");
+
+      // Top-level text arrives (no parent_tool_use_id) — agent must be done
+      const textEvent = makeAssistantEvent([
+        { type: "text", text: "Based on the exploration..." },
+      ]);
+      parser.dispatch(textEvent, "claude");
+
+      const blocks = builder.getBlocks();
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.status).toBe("completed");
+    });
+
+    it("top-level tool does NOT get captured into active agent", () => {
+      // Spawn agent
+      const spawnEvent = makeAssistantEvent([
+        { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring" } },
+      ]);
+      parser.dispatch(spawnEvent, "claude");
+
+      // Top-level tool arrives — should be its own block, not a child of the agent
+      const toolEvent = makeAssistantEvent([
+        { type: "tool_use", id: "tool_2", name: "task_complete", input: { result: "done" } },
+      ]);
+      parser.dispatch(toolEvent, "claude");
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).status).toBe("completed"); // auto-closed
+      expect((blocks[0] as AgentBlock).children).toHaveLength(0); // no captured tools
+      expect(blocks[1].kind).toBe("tool");
+    });
+
+    it("tool_result still works as the authoritative close signal", () => {
+      // Spawn agent
+      const spawnEvent = makeAssistantEvent([
+        { type: "tool_use", id: "tool_1", name: "Task", input: { description: "work" } },
+      ]);
+      parser.dispatch(spawnEvent, "claude");
+
+      // tool_result arrives before any top-level event
+      const resultEvent = makeToolResultEvent("tool_1");
+      parser.dispatch(resultEvent, "claude");
+
+      const blocks = builder.getBlocks();
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.status).toBe("completed");
+    });
+  });
+
   // ── Reset ──
 
   describe("reset", () => {

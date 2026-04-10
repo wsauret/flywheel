@@ -66,12 +66,12 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|plan|review|debug|research|sprint)\s+"([^"]+)"$/i,
+    pattern: /^\/(work|sprint)\s+"([^"]+)"$/i,
     execute(match) { deps.startWorkflow(match[1], match[2]); return true },
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|plan|review|debug|research|sprint)\s+(.+)$/i,
+    pattern: /^\/(work|sprint)\s+(.+)$/i,
     execute(match) { deps.startWorkflow(match[1], match[2]); return true },
   })
 

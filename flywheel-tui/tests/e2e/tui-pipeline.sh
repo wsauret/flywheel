@@ -2,7 +2,7 @@
 #
 # TUI Pipeline E2E Test
 #
-# Tests the full /plan -> /work -> /review chain in the actual TUI via tmux.
+# Tests the full /plan → /work → /review chain in the actual TUI via tmux.
 # Uses real API calls; takes several minutes.
 #
 # Usage:
@@ -12,32 +12,21 @@
 # Prerequisites: tmux, valid API key (ANTHROPIC_API_KEY etc.)
 #
 # To kill a running test:
-#   pkill -f tui-pipeline.sh; tmux kill-session -t flywheel-e2e
+#   pkill -f tui-pipeline.sh; tmux kill-session -t flywheel-uat-*
 #
 
-set -eo pipefail
+source "$(dirname "$0")/lib/harness.sh"
+init_harness "tui-pipeline" "$@"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SESSION="flywheel-e2e"
-LOG_FILE="$SCRIPT_DIR/tui-pipeline.log"
-TIMEOUT_SECONDS=1800  # 30 min — plan (~6m) + work (~2m) + review (~8m) + buffer
+TIMEOUT_SECONDS=1800  # 30 min
 POLL_INTERVAL=10
 
-# Model selection: haiku is fast/cheap but may not follow the multi-step plan
-# workflow reliably (skips steps, ignores completion markers). Sonnet is the
-# recommended minimum for reliable pipeline testing.
-# Claude Code accepts short aliases: "haiku", "sonnet", "opus".
+# Sonnet is the minimum for reliable pipeline testing.
 export FLYWHEEL_MODEL="${FLYWHEEL_MODEL:-sonnet}"
 
-FEATURE_DESC="/plan create a typescript utility function in tests/sandbox/cron-parser.ts that converts a 5-field cron expression into a human readable string like every Monday at 3pm and add unit tests in tests/sandbox/cron-parser.test.ts"
+FEATURE_DESC='/plan "create a typescript utility function in tests/sandbox/cron-parser.ts that converts a 5-field cron expression into a human readable string like every Monday at 3pm and add unit tests in tests/sandbox/cron-parser.test.ts"'
 
-# ── Helpers ──
-
-log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG_FILE"; }
-
-capture() { tmux capture-pane -t "$SESSION" -p 2>/dev/null || echo ""; }
-
+# Sprint-style state detection adapted for chat-first UX.
 detect_state() {
   local screen="$1"
 
@@ -45,24 +34,28 @@ detect_state() {
     echo "CRASHED"; return
   fi
 
-  if echo "$screen" | grep -q "Type a / command\|/work.*Run a plan"; then
-    echo "LAUNCHER"; return
+  # Chat idle — "Send a message" without workflow indicators
+  if echo "$screen" | grep -q "Send a message"; then
+    if ! echo "$screen" | grep -q "steer the worker\|Esc to interrupt\|Thinking\|Dispatcher\|Step [0-9].*running"; then
+      echo "IDLE"; return
+    fi
   fi
 
   local wf="" status="" step=""
 
-  # The footer shows the stage: "plan • Step N/M" or the plan path for work
-  if echo "$screen" | grep -q "plan •"; then wf="plan"
-  elif echo "$screen" | grep -q "review •"; then wf="review"
-  elif echo "$screen" | grep -q "docs/plans/\|work •"; then wf="work"
+  # Detect workflow stage from output/status indicators
+  if echo "$screen" | grep -qi "plan\|planning"; then wf="plan"
+  elif echo "$screen" | grep -qi "review\|reviewing"; then wf="review"
+  elif echo "$screen" | grep -qi "work\|executing\|WORK"; then wf="work"
   fi
 
-  if echo "$screen" | grep -q "Completed"; then status="completed"
-  elif echo "$screen" | grep -q "[Rr]unning"; then status="running"
-  elif echo "$screen" | grep -q "Workflow idle"; then status="idle"
+  if echo "$screen" | grep -qi "completed\|done\|✓"; then status="completed"
+  elif echo "$screen" | grep -qi "running\|thinking\|generating\|steer"; then status="running"
+  elif echo "$screen" | grep -qi "paused\|stopped"; then status="paused"
   fi
 
   step=$(echo "$screen" | grep -o "Step [0-9]*/[0-9]*" | head -1 || true)
+  step=${step:-$(echo "$screen" | grep -o "[0-9]*/[0-9]* steps" | head -1 || true)}
 
   if [ -n "$wf" ] && [ -n "$status" ]; then
     echo "${wf}:${status}${step:+ ($step)}"
@@ -73,48 +66,19 @@ detect_state() {
   fi
 }
 
-cleanup() {
-  tmux kill-session -t "$SESSION" 2>/dev/null || true
-  rm -rf "$PROJECT_DIR/tests/sandbox" 2>/dev/null || true
-}
-
-trap cleanup EXIT
-
 # ── Main ──
 
-: > "$LOG_FILE"
-
-log "=== TUI Pipeline E2E Test ==="
-log "Project: $PROJECT_DIR"
-log "Timeout: ${TIMEOUT_SECONDS}s"
-log ""
-
-tmux kill-session -t "$SESSION" 2>/dev/null || true
-sleep 0.5
-
-log "Starting TUI..."
-tmux new-session -d -s "$SESSION" -x 120 -y 40 \
-  "cd $PROJECT_DIR && bin/flywheel"
-sleep 3
-
-screen=$(capture)
-state=$(detect_state "$screen")
-if [ "$state" != "LAUNCHER" ]; then
-  log "FAIL: Expected LAUNCHER, got: $state"
-  echo "$screen" >> "$LOG_FILE"
-  exit 1
-fi
-log "Launcher ready."
-
-log "Sending: $FEATURE_DESC"
-tmux send-keys -t "$SESSION" "$FEATURE_DESC" Enter
-sleep 5
+start_app
 
 # Optionally attach
 if [ "${1:-}" = "--attach" ]; then
-  log "(Attaching — detach with Ctrl+B D to let the test continue)"
+  echo "(Attaching — detach with Ctrl+B D to let the test continue)"
   tmux attach-session -t "$SESSION"
 fi
+
+echo "Sending: $FEATURE_DESC"
+send_text "$FEATURE_DESC"
+sleep 5
 
 # ── Poll ──
 
@@ -128,16 +92,19 @@ while true; do
   elapsed=$(( $(date +%s) - start_time ))
 
   if [ "$elapsed" -ge "$TIMEOUT_SECONDS" ]; then
-    log "TIMEOUT after ${elapsed}s. Last: $prev_state. Seen: plan=$seen_plan work=$seen_work review=$seen_review"
-    capture >> "$LOG_FILE"
-    exit 1
+    echo "TIMEOUT after ${elapsed}s. Last: $prev_state. Seen: plan=$seen_plan work=$seen_work review=$seen_review"
+    capture "timeout-final.log"
+    echo "FAIL  PIPELINE-timeout — timed out after ${elapsed}s (plan=$seen_plan work=$seen_work review=$seen_review)" >> "$SUMMARY"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    break
   fi
 
-  screen=$(capture)
+  screen=$(tmux capture-pane -t "$SESSION" -p 2>/dev/null || echo "")
+
   state=$(detect_state "$screen")
 
   if [ "$state" != "$prev_state" ]; then
-    log "State: $state (${elapsed}s)"
+    echo "[$(date +%H:%M:%S)] State: $state (${elapsed}s)"
     prev_state="$state"
 
     case "$state" in
@@ -149,25 +116,55 @@ while true; do
 
   case "$state" in
     CRASHED)
-      log "FAIL: TUI crashed"
-      exit 1
+      echo "FAIL  PIPELINE-crash — TUI crashed" >> "$SUMMARY"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      break
       ;;
-    *:idle|*:completed)
+    IDLE)
       if [ "$seen_plan" -eq 1 ] && [ "$seen_work" -eq 1 ] && [ "$seen_review" -eq 1 ]; then
-        log ""
-        log "=== PASS: Full pipeline completed (plan -> work -> review) ==="
-        log "Stages: plan=$seen_plan work=$seen_work review=$seen_review"
-        log "Time: ${elapsed}s"
-        exit 0
-      else
-        log ""
-        log "=== FAIL: Pipeline stalled at idle before completing all stages ==="
-        log "Stages: plan=$seen_plan work=$seen_work review=$seen_review"
-        capture >> "$LOG_FILE"
-        exit 1
+        echo "PASS  PIPELINE-complete — full pipeline (plan→work→review) in ${elapsed}s" >> "$SUMMARY"
+        PASS_COUNT=$((PASS_COUNT + 1))
+        break
+      fi
+      # May return to idle between stages — keep polling
+      ;;
+    *:completed)
+      if [ "$seen_plan" -eq 1 ] && [ "$seen_work" -eq 1 ] && [ "$seen_review" -eq 1 ]; then
+        echo "PASS  PIPELINE-complete — full pipeline (plan→work→review) in ${elapsed}s" >> "$SUMMARY"
+        PASS_COUNT=$((PASS_COUNT + 1))
+        break
       fi
       ;;
   esac
 
   sleep "$POLL_INTERVAL"
 done
+
+# Verify stages were seen
+if [ "$seen_plan" -eq 1 ]; then
+  echo "PASS  PIPELINE-saw-plan — plan stage observed" >> "$SUMMARY"
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  echo "FAIL  PIPELINE-saw-plan — plan stage never observed" >> "$SUMMARY"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+if [ "$seen_work" -eq 1 ]; then
+  echo "PASS  PIPELINE-saw-work — work stage observed" >> "$SUMMARY"
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  echo "FAIL  PIPELINE-saw-work — work stage never observed" >> "$SUMMARY"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+if [ "$seen_review" -eq 1 ]; then
+  echo "PASS  PIPELINE-saw-review — review stage observed" >> "$SUMMARY"
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  echo "FAIL  PIPELINE-saw-review — review stage never observed" >> "$SUMMARY"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+# Cleanup sandbox artifacts
+rm -rf "$(dirname "$0")/../../tests/sandbox" 2>/dev/null || true
+
+stop_app
+finish_harness

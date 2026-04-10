@@ -1,6 +1,7 @@
 import { createSignal, createMemo, onCleanup, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { SessionEntry } from "../../orchestration/session-registry"
+import { SPINNER_FRAMES, SPINNER_INTERVAL } from "@tui/shared/components/spinner-frames.js"
 
 export interface MetricsHook {
   elapsed: Accessor<number>
@@ -18,14 +19,15 @@ export interface MetricsHook {
   resetElapsedTo(ms: number): void
 }
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠸", "⠴", "⠦", "⠇"]
-
 export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
-  // Store-derived memos — read directly from the registry entry
+  // Store-derived memos — read directly from the registry entry.
+  // Safe to use createMemo here because the entry accessor is wired to a real
+  // reactive store proxy before useMetrics is called (shell.tsx creates shell
+  // state first, then passes signals.registryEntry directly).
   const liveTokens = createMemo(() => entry()?.tokens ?? 0)
   const liveCost = createMemo(() => entry()?.cost ?? 0)
   const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)
-  const liveActivity = createMemo(() => entry()?.modelActivity ?? "idle")
+  const liveActivity = createMemo((): "idle" | "thinking" | "generating" | "tool_executing" => entry()?.modelActivity ?? "idle")
 
   // Leaf signals — local transient state, not duplicated from the store
   const [workStartTime, setWorkStartTime] = createSignal(0)
@@ -51,7 +53,7 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
         setThinkingElapsed(0)
       }
     }
-  }, 150)
+  }, SPINNER_INTERVAL)
   onCleanup(() => clearInterval(spinnerTimer))
 
   function startTimer(): void {
@@ -110,4 +112,4 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   }
 }
 
-export { SPINNER_FRAMES }
+export { SPINNER_FRAMES } from "@tui/shared/components/spinner-frames.js"

@@ -26,20 +26,21 @@ send_text "say exactly: new chat gamma"
 wait_and_capture "$WAIT_RESPONSE" "T-02b-new-msg.log"
 assert_contains "T-02b-new-msg.log" "new chat gamma" "T-02b" || true
 
-# ── T-03: End Chat and Restart (Ctrl+W) ──
-echo "T-03: End Chat and Restart (Ctrl+W)"
-send_keys C-w
-wait_and_capture "$WAIT_MEDIUM" "T-03a-after-ctrl-w.log"
-assert_not_contains "T-03a-after-ctrl-w.log" "new chat gamma" "T-03a-cleared" || true
+# ── T-03: Another New Chat (Ctrl+N again) ──
+echo "T-03: Another New Chat"
+send_keys C-n
+sleep "$WAIT_MEDIUM"
+capture "T-03a-new-chat.log"
+assert_not_contains "T-03a-new-chat.log" "new chat gamma" "T-03a-cleared" || true
 
-send_text "say exactly: after ctrl-w zeta"
+send_text "say exactly: third chat zeta"
 wait_and_capture "$WAIT_RESPONSE" "T-03b-new-msg.log"
-assert_contains "T-03b-new-msg.log" "after ctrl-w zeta" "T-03b" || true
+assert_contains "T-03b-new-msg.log" "third chat zeta" "T-03b" || true
 
 # ── T-08: Interrupt Chat (Esc) ──
 echo "T-08: Interrupt Chat (Esc)"
 send_text "write a 1000 word essay about the history of mathematics"
-sleep 4
+sleep 8
 send_keys Escape
 wait_and_capture "$WAIT_SHORT" "T-08a-interrupted.log"
 assert_contains "T-08a-interrupted.log" "Interrupted" "T-08a-interrupt" || true

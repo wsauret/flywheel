@@ -61,7 +61,7 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   }
 
   if (options.model?.trim()) {
-    args.push("--model", options.model.trim());
+    args.push("--model", resolveModel(options.model));
   }
 
   if (options.systemPrompt?.trim()) {
@@ -100,6 +100,44 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Model resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Short-alias → 1M model ID mapping.
+ *
+ * Bare aliases ("opus", "sonnet") resolve to 1M-context variants by default.
+ * Append `[200k]` to force the smaller context window (e.g. "opus[200k]").
+ * Full model IDs (e.g. "claude-opus-4-6[1m]") pass through unchanged.
+ */
+const ALIAS_TO_1M: Record<string, string> = {
+  opus:   "claude-opus-4-6[1m]",
+  sonnet: "claude-sonnet-4-6[1m]",
+};
+
+const ALIAS_200K: Record<string, string> = {
+  "opus[200k]":   "opus",
+  "sonnet[200k]": "sonnet",
+};
+
+/**
+ * Resolve a user-facing model string into the value passed to `--model`.
+ *
+ * - "opus"           → "claude-opus-4-6[1m]"   (1M default)
+ * - "sonnet"         → "claude-sonnet-4-6[1m]" (1M default)
+ * - "opus[200k]"     → "opus"                  (200k explicit)
+ * - "sonnet[200k]"   → "sonnet"                (200k explicit)
+ * - "haiku"          → "haiku"                  (no 1M variant)
+ * - full IDs         → pass through
+ */
+export function resolveModel(raw: string): string {
+  const key = raw.toLowerCase().trim();
+  if (ALIAS_200K[key]) return ALIAS_200K[key];
+  if (ALIAS_TO_1M[key]) return ALIAS_TO_1M[key];
+  return raw;
+}
+
 /**
  * Hardcoded model list for Claude Code.
  *
@@ -108,11 +146,13 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
  * Update this list when new model families ship.
  */
 const CLAUDE_MODELS: ModelInfo[] = [
+  { id: "opus",    name: "Claude Opus (1M context)",    family: "opus",   isAlias: true },
+  { id: "sonnet",  name: "Claude Sonnet (1M context)",  family: "sonnet", isAlias: true },
+  { id: "opus[200k]",   name: "Claude Opus (200k)",    family: "opus",   isAlias: true },
+  { id: "sonnet[200k]", name: "Claude Sonnet (200k)",  family: "sonnet", isAlias: true },
+  { id: "haiku",   name: "Claude Haiku (200k)",         family: "haiku",  isAlias: true },
   { id: "claude-opus-4-6[1m]",   name: "Claude Opus (1M context)",   family: "opus",   isAlias: false },
   { id: "claude-sonnet-4-6[1m]", name: "Claude Sonnet (1M context)", family: "sonnet", isAlias: false },
-  { id: "opus",    name: "Claude Opus (200k)",   family: "opus",   isAlias: true },
-  { id: "sonnet",  name: "Claude Sonnet (200k)", family: "sonnet", isAlias: true },
-  { id: "haiku",   name: "Claude Haiku (200k)",  family: "haiku",  isAlias: true },
 ];
 
 // _provider satisfies the Engine interface (types.ts) — other engines may filter by provider.

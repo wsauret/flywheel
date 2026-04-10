@@ -365,7 +365,7 @@ describe("Stale session recovery", () => {
     expect(readSession(idC, baseDir)!.state).toBe("paused");
   });
 
-  it("recovers active chat sessions to completed", () => {
+  it("recovers active chat sessions to paused", () => {
     const baseDir = makeTmpDir();
     const mgr1 = createSessionManager(makeDeps(baseDir));
 
@@ -376,7 +376,7 @@ describe("Stale session recovery", () => {
     const recovered = mgr2.recoverStaleSessions();
     expect(recovered).toBe(1);
 
-    expect(readSession(id, baseDir)!.state).toBe("completed");
+    expect(readSession(id, baseDir)!.state).toBe("paused");
   });
 
   it("recovery then resume works end-to-end", () => {

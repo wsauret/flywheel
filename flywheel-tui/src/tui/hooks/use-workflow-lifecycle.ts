@@ -34,6 +34,7 @@ export interface WorkflowLifecycleHook {
 
 export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifecycleHook {
   const { signals, services } = deps
+  const metrics = services.metrics
 
   const callbacks = wireLifecycleCallbacks(signals, services)
 
@@ -42,7 +43,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     registry: services.registry,
     manager: services.manager,
     refreshList: services.refreshList,
-    workStartTime: services.metrics.workStartTime,
+    workStartTime: metrics.workStartTime,
     foregroundId: signals.foregroundId,
     onRunnerDone: callbacks.onRunnerDone,
     onRunnerError: callbacks.onRunnerError,
@@ -55,7 +56,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       signals.setStatusLine("")
       signals.setViewedBlocks(undefined)
       signals.setViewedTitle(undefined)
-      services.metrics.resetMetrics()
+      metrics.resetMetrics()
     })
     services.setTerminalTitle(terminalTitle)
   }

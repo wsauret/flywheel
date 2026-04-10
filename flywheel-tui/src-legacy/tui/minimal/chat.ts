@@ -136,6 +136,7 @@ export async function startChatSession(
       if (chunk.trim()) builder.pushText(chunk, Date.now())
     },
     onTurnComplete: () => {
+      builder.flushContextRun(Date.now())
       callbacks.onWaitingChanged(false)
       if (builder.hasChanged()) callbacks.onBlocksChanged(builder.getBlocks())
     },

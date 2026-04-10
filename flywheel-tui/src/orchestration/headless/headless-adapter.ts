@@ -63,9 +63,6 @@ function sprintLabel(stepType: string, stepTitle: string): string {
 const EVENT_HANDLERS = {
   // ── Subprocess ──
   "subprocess:spawned":    { minLevel: "normal",  format: (e) => `  Subprocess spawned for step ${e.stepIndex}` },
-  "subprocess:completed":  { minLevel: "normal",  format: () => `  Subprocess completed` },
-  "subprocess:failed":     { minLevel: "minimal", format: (e) => `  Subprocess FAILED: ${e.failure.message}` },
-  "subprocess:retrying":   { minLevel: "normal",  format: (e) => `  Subprocess retrying (${e.attempt}/${e.maxAttempts}): ${e.reason}` },
   "subprocess:output":     { minLevel: "normal",  format: (e) => { const d = e.data.replace(/\n$/, ""); return d ? `  ${e.stream === "stderr" ? "[stderr] " : ""}${d}` : null } },
   "subprocess:ndjson":     { minLevel: "verbose", format: null },
   "subprocess:injected":   { minLevel: "normal",  format: (e) => `  Subprocess stdin injected (${e.message.length} chars)` },
@@ -82,10 +79,6 @@ const EVENT_HANDLERS = {
   "evaluator:failed":      { minLevel: "normal",  format: (e) => `  Evaluator failed: ${e.reason}` },
   "evaluator:revision-requested": { minLevel: "normal", format: (e) => `  Revision requested (attempt ${e.revisionAttempt}/${e.maxRevisions}): ${e.reason}` },
   "evaluator:output":      { minLevel: "verbose", format: null },
-
-  // ── Approval ──
-  "approval:requested":    { minLevel: "minimal", format: (e) => `  APPROVAL REQUIRED: ${e.description}` },
-  "approval:received":     { minLevel: "normal",  format: (e) => `  Approval: ${e.approved ? "approved" : "rejected"}${e.skipped ? " (skipped)" : ""}` },
 
   // ── Question ──
   "question:asked":        { minLevel: "normal",  format: (e) => `  Question asked (${e.questions.length} question(s))` },
@@ -105,10 +98,6 @@ const EVENT_HANDLERS = {
   "queue:step-started":    { minLevel: "normal",  format: (e) => `  Queue step started: [${e.stepType}] ${e.stepTitle}${sprintLabel(e.stepType, e.stepTitle)}` },
   "queue:step-completed":  { minLevel: "normal",  format: (e) => `  Queue step completed: [${e.stepType}] ${e.stepTitle}${sprintLabel(e.stepType, e.stepTitle)}` },
   "queue:step-failed":     { minLevel: "minimal", format: (e) => `  Queue step FAILED: [${e.stepType}] ${e.stepTitle} — ${e.reason}` },
-
-  // ── Queue mutations ──
-  "queue:step-inserted":   { minLevel: "normal",  format: (e) => `  Queue step inserted: [${e.stepType}] ${e.stepTitle} (after ${e.afterStepId})` },
-  "queue:step-removed":    { minLevel: "normal",  format: (e) => `  Queue step removed: [${e.stepType}] ${e.stepTitle}` },
 
   // ── Trace ──
   "trace:tool-started":       { minLevel: "verbose", format: (e) => `  Trace: tool started — ${e.toolName} (${e.toolUseId})` },
@@ -146,6 +135,7 @@ export class HeadlessAdapter extends BaseEventConsumer {
   }
 
   start(): void {
+    super.start()
     this.closingPromise = null
     if (this.logFile) {
       const dir = path.dirname(this.logFile)
@@ -160,6 +150,7 @@ export class HeadlessAdapter extends BaseEventConsumer {
   stop(): void {
     this.log("Workflow adapter stopped")
     this.closeLogStream()
+    super.stop()
   }
 
   disconnect(): void {

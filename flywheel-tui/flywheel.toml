@@ -1,6 +1,7 @@
 engine = "claude"
 model = "opus"
-theme = "tokyonight"
+effort = "max"
+theme = "default"
 
 [dispatcher]
 model = "sonnet"

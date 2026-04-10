@@ -132,7 +132,7 @@ export function ToolBlock(props: ToolBlockProps) {
     <Show when={hasExpandable()} fallback={header()}>
       <box flexDirection="column">
         {header()}
-        <CollapsibleBox expanded={expanded()} paddingLeft={4} paddingRight={4}>
+        <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={4} paddingRight={4}>
           <Show when={hasDiff()}>
             <For each={diffStyledLines()}>
               {(line) => (

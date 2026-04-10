@@ -12,8 +12,6 @@ import type {
   QueueStepStarted,
   QueueStepCompleted,
   QueueStepFailed,
-  QueueStepInserted,
-  QueueStepRemoved,
 } from "../src/infra/events";
 
 describe("Queue event types", () => {
@@ -125,39 +123,6 @@ describe("Queue event types", () => {
       expect(e.stepType).toBe("review");
       expect(e.stepTitle).toBe("Review changes");
       expect(e.reason).toBe("timeout");
-      expect(typeof e.timestamp).toBe("number");
-    });
-  });
-
-  // ── QueueStepInserted ──
-
-  describe("queue:step-inserted", () => {
-    it("emits QueueStepInserted with position info", () => {
-      emit("queue:step-inserted", { workflowId: "wf-7", stepId: "new-step-1", stepType: "verify", stepTitle: "Verify output", afterStepId: "step-uuid-2" });
-      expect(received).toHaveLength(1);
-      const e = received[0] as QueueStepInserted;
-      expect(e.type).toBe("queue:step-inserted");
-      expect(e.workflowId).toBe("wf-7");
-      expect(e.stepId).toBe("new-step-1");
-      expect(e.stepType).toBe("verify");
-      expect(e.stepTitle).toBe("Verify output");
-      expect(e.afterStepId).toBe("step-uuid-2");
-      expect(typeof e.timestamp).toBe("number");
-    });
-  });
-
-  // ── QueueStepRemoved ──
-
-  describe("queue:step-removed", () => {
-    it("emits QueueStepRemoved with step info", () => {
-      emit("queue:step-removed", { workflowId: "wf-8", stepId: "step-uuid-4", stepType: "gate", stepTitle: "Approval gate" });
-      expect(received).toHaveLength(1);
-      const e = received[0] as QueueStepRemoved;
-      expect(e.type).toBe("queue:step-removed");
-      expect(e.workflowId).toBe("wf-8");
-      expect(e.stepId).toBe("step-uuid-4");
-      expect(e.stepType).toBe("gate");
-      expect(e.stepTitle).toBe("Approval gate");
       expect(typeof e.timestamp).toBe("number");
     });
   });

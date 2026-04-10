@@ -22,7 +22,7 @@ function noShellMetachars(fieldName: string) {
  * Boundaries sub-schema — constraints subprocesses must never violate.
  * Extracted so the type can be shared with prompt builders (e.g. step-prompt.ts).
  */
-export const BoundariesSchema = z.object({
+const BoundariesSchema = z.object({
   /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
   port_ranges: z.array(z.string()).optional(),
   /** Directories subprocesses must not modify. */
@@ -31,13 +31,13 @@ export const BoundariesSchema = z.object({
   external_services: z.array(z.string()).optional(),
 });
 
-export type BoundariesConfig = z.infer<typeof BoundariesSchema>;
+type BoundariesConfig = z.infer<typeof BoundariesSchema>;
 
 /**
  * Commands sub-schema — project commands for scrutiny validation.
  * Extracted so the type can be shared with prompt builders (e.g. scrutiny.ts).
  */
-export const CommandsSchema = z.object({
+const CommandsSchema = z.object({
   /** Command to run the test suite. */
   test: z.string().optional(),
   /** Command to run typecheck. */
@@ -46,7 +46,7 @@ export const CommandsSchema = z.object({
   lint: z.string().optional(),
 });
 
-export type CommandsConfig = z.infer<typeof CommandsSchema>;
+type CommandsConfig = z.infer<typeof CommandsSchema>;
 
 // ---------------------------------------------------------------------------
 // Main config schema
@@ -78,6 +78,8 @@ export const FlywheelConfigSchema = z.object({
   }).default({}),
   /** Convenience: sets dispatcher.model, subprocess.model, and evaluator.model if not individually overridden */
   model: z.string().optional(),
+  /** Convenience: sets dispatcher.effort, subprocess.effort, and evaluator.effort if not individually overridden */
+  effort: z.enum(["low", "medium", "high", "max"]).optional(),
   max_retries: z.number().int().min(0).max(10).default(3),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
@@ -292,6 +294,7 @@ export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
     const model = sprintTier?.model ?? tier.model ?? config.model;
     const raw = sprintTier?.effort
       ?? tier.effort
+      ?? config.effort
       ?? (sprint ? resolveMaxEffort(model) : tierDefault);
     // Clamp: "max" is only valid for opus. Downgrade to "high" for other models.
     const effort = raw === "max" && !model?.toLowerCase().includes("opus") ? "high" : raw;

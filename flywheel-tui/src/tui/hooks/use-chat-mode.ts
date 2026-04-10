@@ -28,13 +28,14 @@ export interface ChatModeHook {
   /** Put the current chat in the background without ending it. */
   backgroundChat(): void
   interruptChat(): void
-  /** Close the foreground chat — removes from registry and marks completed. */
+  /** Close the foreground chat — removes from registry and marks paused. */
   endChat(): void
   sendMessage(text: string): void
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   const { signals, services } = deps
+  const metrics = services.metrics
 
   // Only true during the async startup window of a new chat
   const [chatActive, setChatActive] = createSignal(false)
@@ -47,7 +48,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     manager: services.manager,
     refreshList: services.refreshList,
     projectCwd: deps.projectCwd,
-    workStartTime: services.metrics.workStartTime,
+    workStartTime: metrics.workStartTime,
     onRunnerDone: callbacks.onRunnerDone,
     onRunnerError: callbacks.onRunnerError,
   })
@@ -55,7 +56,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   async function startChat(initialMessage?: string): Promise<void> {
     setChatActive(true)
     signals.setStatusLine("")
-    services.metrics.resetMetrics()
+    metrics.resetMetrics()
 
     const result = await controller.startChat(initialMessage)
 
@@ -71,7 +72,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   async function resumeChat(sessionId: string): Promise<void> {
     setChatActive(true)
     signals.setStatusLine("")
-    services.metrics.resetMetrics()
+    metrics.resetMetrics()
 
     const result = await controller.resumeChat(sessionId)
 
@@ -98,6 +99,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
       signals.setForegroundId(undefined)
     }
   }
+
 
   function interruptChat(): void {
     controller.interruptChat(signals.foregroundId())
