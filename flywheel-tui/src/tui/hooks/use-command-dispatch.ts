@@ -75,9 +75,32 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     execute(match) { deps.startWorkflow(match[1], match[2]); return true },
   })
 
+  // Bare /work or /sprint — enter pending mode, wait for description
+  commandRegistry.register({
+    pattern: /^\/(work|sprint)$/i,
+    execute(match) {
+      deps.signals.setPendingWorkCommand(match[1])
+      return true
+    },
+  })
+
   function handlePromptSubmit(text: string): void {
     const trimmed = text.trim()
     if (!trimmed) return
+
+    // Pending work mode: next submission is the task description
+    const pending = deps.signals.pendingWorkCommand()
+    if (pending) {
+      // Slash commands cancel pending mode and dispatch normally
+      if (trimmed.startsWith("/")) {
+        deps.signals.setPendingWorkCommand(undefined)
+      } else {
+        deps.signals.setPendingWorkCommand(undefined)
+        if (deps.inChat()) deps.backgroundChat()
+        deps.startWorkflow(pending, trimmed)
+        return
+      }
+    }
 
     // Chat session: slash commands go through the registry, free text goes to chat
     if (deps.inChat()) {

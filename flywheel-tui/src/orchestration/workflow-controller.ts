@@ -15,7 +15,7 @@ import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import { TERMINAL_TITLE_PREFIX, formatElapsed, formatCost, formatTokens } from "../infra/format.js"
 import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from "./test-step.js"
 import type { WorkflowResult } from "./workflow-runner.js"
-import type { SessionRegistry } from "./session-registry.js"
+import type { SessionStore } from "./session-store.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
 import type { SessionActionDeps } from "./session-actions.js"
 import type { SessionState } from "./session/state-machine.js"
@@ -30,7 +30,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 export interface WorkflowControllerDeps {
-  registry: SessionRegistry
+  sessionStore: SessionStore
   manager: SessionManager
   refreshList: () => void
   /** Returns a monotonic timestamp for elapsed-time computation. */
@@ -153,7 +153,7 @@ export function formatWorkflowDoneResult(
 // ---------------------------------------------------------------------------
 
 export function createWorkflowController(deps: WorkflowControllerDeps): WorkflowController {
-  const { registry, manager, refreshList } = deps
+  const { sessionStore, manager, refreshList } = deps
 
   /** Handle workflow runner completion. */
   function handleRunnerDone(id: string, result: WorkflowResult): void {
@@ -192,7 +192,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     const sessionId = manager.create(description, description, "workflow", "active")
     const terminalTitle = `${TERMINAL_TITLE_PREFIX}${description || command}`
 
-    registry.start({
+    sessionStore.start({
       sessionId,
       queue,
       description,
@@ -236,7 +236,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     const sessionId = manager.create(label, label, "workflow", "active")
     const terminalTitle = `${TERMINAL_TITLE_PREFIX}${label}`
 
-    registry.start({
+    sessionStore.start({
       sessionId,
       queue,
       description: label,
@@ -262,7 +262,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
 
     manager.updateState(sessionId, "active")
 
-    registry.start({
+    sessionStore.start({
       sessionId,
       queue: data.queue,
       description,
@@ -280,7 +280,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
 
   function pause(foregroundId: string | undefined): boolean {
     if (!foregroundId) return false
-    const paused = registry.pause(foregroundId)
+    const paused = sessionStore.pause(foregroundId)
     if (paused) {
       manager.updateState(foregroundId, "paused")
     }
@@ -289,7 +289,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
 
   function abort(foregroundId: string | undefined): void {
     if (!foregroundId) return
-    registry.abort(foregroundId)
+    sessionStore.abort(foregroundId)
   }
 
   async function handleResume(
@@ -313,16 +313,16 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   }
 
   function isWorkflowSession(sessionId: string): boolean {
-    const entry = registry.get(sessionId)
+    const entry = sessionStore.get(sessionId)
     return entry?.kind === "workflow"
   }
 
   function steerWorkflow(foregroundId: string | undefined, text: string): boolean {
     if (!foregroundId) return false
-    if (!registry.has(foregroundId)) return false
+    if (!sessionStore.isRunning(foregroundId)) return false
     // Cancel pending shutdown so the session continues
-    registry.cancelShutdown(foregroundId)
-    return registry.injectMessage(foregroundId, text)
+    sessionStore.cancelShutdown(foregroundId)
+    return sessionStore.injectMessage(foregroundId, text)
   }
 
   return {

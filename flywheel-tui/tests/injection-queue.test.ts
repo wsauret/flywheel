@@ -220,6 +220,80 @@ describe("InjectionQueue — bindStdin lifecycle", () => {
 });
 
 // ---------------------------------------------------------------------------
+// drainAtTurnBoundary return value
+// ---------------------------------------------------------------------------
+
+describe("InjectionQueue — drainAtTurnBoundary return value", () => {
+  it("returns the raw message text on successful delivery", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+
+    q.enqueue("hello world");
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toBe("hello world");
+  });
+
+  it("returns null when no handle is bound", () => {
+    const q = new InjectionQueue(identityFormatter);
+    q.enqueue("orphan");
+
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when handle is closed", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle(false);
+    q.bindStdin(handle);
+    q.enqueue("stuck");
+
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when queue is empty (handle gets closed)", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toBeNull();
+    expect(handle.isOpen).toBe(false);
+  });
+
+  it("returns null when write throws", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle();
+    handle.write = () => { throw new Error("pipe broken"); };
+    q.bindStdin(handle);
+    q.enqueue("doomed");
+
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns successive messages in FIFO order", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+
+    q.enqueue("first");
+    q.enqueue("second");
+    q.enqueue("third");
+
+    expect(q.drainAtTurnBoundary()).toBe("first");
+    expect(q.drainAtTurnBoundary()).toBe("second");
+    expect(q.drainAtTurnBoundary()).toBe("third");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Concurrent enqueue + drain
 // ---------------------------------------------------------------------------
 

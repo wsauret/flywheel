@@ -19,6 +19,7 @@ import type { SessionRunner } from "./session-runner"
 import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/schema"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
+import type { SessionEntryBase } from "./session-store"
 import { existsSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
@@ -75,7 +76,7 @@ function getFontTipBlock(projectCwd: string, timestamp: number): AnyBlock | null
 // ── Types ──
 
 /** Function to update fields on the session entry in the reactive store. */
-export type ChatUpdateEntryFn = (patch: Partial<import("./session-registry").ChatSessionEntry>) => void
+export type ChatUpdateEntryFn = (patch: Partial<import("./session-store").ChatSessionEntry>) => void
 
 export interface ChatRunnerDeps {
   sessionId: string
@@ -123,10 +124,13 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     description: "chat",
   })
 
-  // Output persistence
+  // Output persistence — OutputSession writes blocks to the store, but we still
+  // need to persist them to disk. The flusher reads blocks from the OutputSession.
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  let currentBlocks: AnyBlock[] = []
-  const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
+  // We'll set up the flusher's getBlocks after creating the chat session (need the OutputSession).
+  // For now, track a reference we can update.
+  let getBlocksFn: () => readonly AnyBlock[] = () => []
+  const outputFlusher = outputPersistence.createFlusher(() => getBlocksFn())
 
   let disposed = false
   let firstMessageSent = false
@@ -134,11 +138,11 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   // If resuming, emit prior blocks immediately so the UI shows them
   if (priorBlocks && priorBlocks.length > 0) {
-    currentBlocks = [...priorBlocks]
-    updateEntry({ outputBlocks: currentBlocks })
+    updateEntry({ outputBlocks: [...priorBlocks] })
   }
 
   // Emit welcome blocks on first boot (no prior sessions)
+  let initialBlocks: AnyBlock[] = []
   if (deps.showWelcome && !priorBlocks) {
     const now = Date.now()
 
@@ -154,19 +158,25 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       timestamp: now,
     }
 
-    currentBlocks = [welcomeBlock]
+    initialBlocks = [welcomeBlock]
 
     const fontTip = getFontTipBlock(projectCwd, now)
-    if (fontTip) currentBlocks.push(fontTip)
+    if (fontTip) initialBlocks.push(fontTip)
   }
 
-  // Wire ChatCallbacks to write directly to the reactive store
+  // Wrapped updateEntry that prepends priorBlocks when present
+  // SessionEntryBase fields are a subset of ChatSessionEntry — the cast is safe
+  // because OutputSession only writes base fields (outputBlocks, modelActivity, etc.)
+  const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
+    if (patch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
+      updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...(patch.outputBlocks as AnyBlock[])] } as Partial<import("./session-store").ChatSessionEntry>)
+    } else {
+      updateEntry(patch as Partial<import("./session-store").ChatSessionEntry>)
+    }
+  }
+
+  // Wire ChatCallbacks — only lifecycle callbacks remain
   const chatCallbacks: ChatCallbacks = {
-    onBlocks: (newBlocks) => {
-      currentBlocks = priorBlocks ? [...priorBlocks, ...newBlocks] : newBlocks
-      updateEntry({ outputBlocks: currentBlocks })
-      outputFlusher.schedule()
-    },
     onWaiting: (waiting) => {
       // Only transition when state actually changes to avoid noisy self-transition warnings
       if (waiting && lastWaiting !== true) {
@@ -176,10 +186,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       }
       lastWaiting = waiting
     },
-    onTokens: (tokens) => updateEntry({ tokens }),
-    onCost: (cost) => updateEntry({ cost }),
-    onContextPercent: (percent) => updateEntry({ contextPercent: percent }),
-    onModelActivity: (activity) => updateEntry({ modelActivity: activity }),
     onError: (message) => void deps.onError(message),
     onEnded: () => void deps.onEnded(),
   }
@@ -192,7 +198,17 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     traceCollector: infra.traceCollector ?? undefined,
     budgetTracker: infra.budgetTracker,
     transcriptWriter: infra.transcriptWriter,
+    updateEntry: wrappedUpdateEntry,
+    onFlush: () => outputFlusher.schedule(),
   })
+
+  // Wire the flusher's getBlocks to the OutputSession's blocks (+ priorBlocks prefix)
+  getBlocksFn = () => {
+    const sessionBlocks = chatSession.outputSession.getBlocks()
+    return priorBlocks && priorBlocks.length > 0
+      ? [...priorBlocks, ...sessionBlocks]
+      : sessionBlocks
+  }
 
   // ── SessionRunner implementation ──
 
@@ -241,6 +257,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     dispose,
     injectMessage,
     chatSession,
-    initialBlocks: currentBlocks,
+    initialBlocks,
   }
 }

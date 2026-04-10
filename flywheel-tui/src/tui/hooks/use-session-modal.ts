@@ -10,6 +10,7 @@ import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
 import { loadSessionOutput } from "../../orchestration/session-actions.js"
 import { formatCost } from "../../infra/format.js"
+import type { SessionKind } from "../../orchestration/session/types.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
@@ -78,16 +79,16 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   async function handleSessionView(sessionId: string): Promise<void> {
     setSessionsModalOpen(false)
-    const entry = services.registry.get(sessionId)
-    if (entry) {
-      // Switching to a live session — clear any viewed-session state so
-      // isViewingSession() returns false and the UI isn't stuck in read-only mode.
+
+    // Running sessions — switch foreground directly (no save/restore needed)
+    if (services.sessionStore.isRunning(sessionId)) {
       priorState = undefined
       viewedSessionId = undefined
       deps.switchForeground(sessionId)
       return
     }
 
+    // Ended or historical session — enter "viewing" mode with save/restore
     // Snapshot current state on the first view only — preserve the original
     // state across multiple view→delete cycles so we always restore back to
     // where the user was (e.g. mid-chat), not to an intermediate viewed session.
@@ -99,19 +100,28 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     }
     viewedSessionId = sessionId
 
-    const blocks = await loadSessionOutput(sessionId)
-    // Use overlay signals — they take precedence over registry-derived values
-    signals.setViewedBlocks(blocks)
-    const { sessions: list } = services.manager.list()
-    const session = list.find(s => s.id === sessionId)
-    if (session) {
-      signals.setViewedTitle(session.label || session.name || sessionId.slice(0, 8))
-      const cost = formatCost(session.totalCost)
+    // Load into session store if not already present (ended sessions from this
+    // TUI run are already there; historical sessions need loading from disk).
+    if (!services.sessionStore.has(sessionId)) {
+      const blocks = await loadSessionOutput(sessionId)
+      const { sessions: list } = services.manager.list()
+      const session = list.find(s => s.id === sessionId)
+      services.sessionStore.load(sessionId, {
+        kind: (session?.kind ?? "workflow") as SessionKind,
+        description: session?.label || session?.name || sessionId.slice(0, 8),
+        outputBlocks: blocks,
+        tokens: session?.totalTokens,
+        cost: session?.totalCost,
+      })
+    }
+
+    // Set foregroundId so the store entry's outputBlocks drive the UI
+    signals.setForegroundId(sessionId)
+    const entry = services.sessionStore.get(sessionId)
+    if (entry) {
+      const cost = formatCost(entry.cost)
       signals.setStatusLine(cost ? `Viewing session \u00b7 ${cost}` : "Viewing session")
     }
-    // Set foregroundId to the viewed session so sessionState() derives from the manager.
-    // This lets the UI show the session's state (paused/completed) without a separate signal.
-    signals.setForegroundId(sessionId)
   }
 
   function handleSessionResume(sessionId: string): void {
@@ -138,9 +148,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   /** Restore the UI state that existed before handleSessionView was called. */
   function restorePriorState(): void {
-    // Clear overlays — live registry data shows through again
-    signals.setViewedBlocks(undefined)
-    signals.setViewedTitle(undefined)
     if (priorState) {
       signals.setForegroundId(priorState.foregroundId)
       signals.setStatusLine(priorState.statusLine)
@@ -177,16 +184,9 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
     if (evt.name === "return") {
       evt.preventDefault?.()
-      const isActive = selected.state === "active" && services.registry.get(selected.id)
-      if (isActive) {
-        setSessionsModalOpen(false)
-        priorState = undefined
-        viewedSessionId = undefined
-        deps.switchForeground(selected.id)
-      } else {
-        // Enter always views (read-only). Use 'r' to resume paused sessions.
-        handleSessionView(selected.id)
-      }
+      // Enter always views (read-only). Use 'r' to resume paused sessions.
+      // handleSessionView internally distinguishes running vs ended/historical.
+      handleSessionView(selected.id)
       return
     }
     if (evt.name === "r") {

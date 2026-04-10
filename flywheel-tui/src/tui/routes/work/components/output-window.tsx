@@ -3,49 +3,24 @@
  * Output Window Component
  *
  * Displays streaming workflow output with auto-scroll.
- * The prompt now lives outside OutputWindow as UnifiedPrompt.
+ * Step progress is shown in the shell header — this component
+ * focuses purely on output block rendering.
  */
 
-import { Show, Index, createSignal } from "solid-js"
+import { Show, Index, createSignal, createMemo } from "solid-js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useKeyboard } from "@opentui/solid"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer"
-import type { RGBA } from "@opentui/core"
-import type { WorkflowStatus, QueueStepStatus, AnyBlock } from "@tui/types"
-import { getStepStatusIcon } from "../../../components/workflow-panel-logic"
-
-const MIN_WIDTH_FOR_INLINE_STATUS = 75
-
-/** Get color for a queue step status. */
-function getStepStatusColor(status: QueueStepStatus, theme: ReturnType<typeof useTheme>["theme"]): RGBA {
-  switch (status) {
-    case "completed": return theme.success
-    case "running":   return theme.primary
-    case "failed":    return theme.error
-    case "skipped":   return theme.textMuted
-    default:          return theme.text
-  }
-}
-
-export interface CurrentStepInfo {
-  index: number
-  name: string
-  status: QueueStepStatus
-}
+import type { WorkflowStatus, AnyBlock } from "@tui/types"
 
 export interface OutputWindowProps {
   outputBlocks: readonly AnyBlock[]
   workflowStatus: WorkflowStatus
   approvalPending: boolean
   isPromptFocused: boolean
-  availableWidth?: number
-  currentStep?: CurrentStepInfo | null
-  isInterrupted?: boolean
-  /** Seconds since the last output block arrived. Used to show "Thinking... Xs" while the model is silent. */
-  thinkingElapsed?: number
 }
 
 export function OutputWindow(props: OutputWindowProps) {
@@ -80,128 +55,20 @@ export function OutputWindow(props: OutputWindowProps) {
     }
   })
 
+  // Split blocks: pending user messages are pinned at bottom, everything else scrolls
+  const scrollBlocks = createMemo(() =>
+    props.outputBlocks.filter(b => !(b.kind === "userMessage" && b.pending))
+  )
+  const pinnedBlocks = createMemo(() =>
+    props.outputBlocks.filter(b => b.kind === "userMessage" && b.pending)
+  )
+
   const isRunning = () => props.workflowStatus === "running"
   const hasContent = () => props.outputBlocks.length > 0
-  const isWide = () => (props.availableWidth ?? 80) >= MIN_WIDTH_FOR_INLINE_STATUS
-  // Block count removed — not a user-relevant metric
-
-  const statusHeading = () => {
-    if (isRunning()) return "Starting..."
-    switch (props.workflowStatus) {
-      case "completed": return "Completed"
-      case "interrupted": return "Stopped"
-      case "failed": return "Failed"
-      default: return "Output"
-    }
-  }
-
-  const activityPhrase = () => {
-    if (props.approvalPending) return "Waiting for approval..."
-    const elapsed = props.thinkingElapsed ?? 0
-    if (isRunning() && hasContent() && elapsed >= 1) return `Thinking... ${elapsed}s`
-    return null
-  }
-
-  const currentStepStatusLabel = () => (props.isInterrupted ? "interrupted" : props.currentStep?.status ?? "")
-
-  const currentStepStatusColor = () => {
-    if (props.isInterrupted) return themeCtx.theme.warning
-    return props.currentStep ? getStepStatusColor(props.currentStep.status, themeCtx.theme) : themeCtx.theme.text
-  }
+  const hasScrollContent = () => scrollBlocks().length > 0
 
   return (
     <box flexDirection="column" flexGrow={1}>
-      {/* Rich Header (when step is active) */}
-      <Show when={props.currentStep}>
-        {(step) => {
-          const statusColor = () => getStepStatusColor(step().status, themeCtx.theme)
-
-          return (
-            <Show when={isWide()} fallback={
-              /* Narrow layout: 4 lines */
-              <box flexDirection="column" paddingLeft={1} height={4} flexShrink={0}>
-                <text fg={themeCtx.theme.border}>{"\u2500\u2500"}</text>
-                {/* Line 1: Step name */}
-                <box flexDirection="row">
-                  <text fg={themeCtx.theme.border}>{" "}</text>
-                  <text fg={themeCtx.theme.text} attributes={1}>
-                    Step {step().index + 1}: {step().name}
-                  </text>
-                </box>
-                {/* Line 2: Status icon */}
-                <box flexDirection="row">
-                  <text fg={themeCtx.theme.border}>{" "}</text>
-                  <Show when={step().status === "running" && !props.isInterrupted} fallback={
-                    <text fg={currentStepStatusColor()}>{props.isInterrupted ? "⏸" : getStepStatusIcon(step().status)} {currentStepStatusLabel()}</text>
-                  }>
-                    <Spinner color={statusColor()} />
-                    <text fg={statusColor()}> {step().status}</text>
-                  </Show>
-                </box>
-                {/* Line 3: Activity phrase + line count */}
-                <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
-                  <box flexDirection="row">
-                    <text fg={themeCtx.theme.border}>{" "}</text>
-                    <Show when={activityPhrase()} fallback={
-                      <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}{""}</text>
-                    }>
-                      {(phrase) => (
-                        <>
-                          <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}</text>
-                          <ShimmerText text={phrase()} color={themeCtx.theme.textMuted} />
-                        </>
-                      )}
-                    </Show>
-                  </box>
-                  <Show when={activityPhrase()}>
-                    <text fg={themeCtx.theme.textMuted}>{""}</text>
-                  </Show>
-                </box>
-              </box>
-            }>
-              {/* Wide layout: 3 lines */}
-              <box flexDirection="column" paddingLeft={1} height={3} flexShrink={0}>
-                <text fg={themeCtx.theme.border}>{"\u2500\u2500"}</text>
-                {/* Line 1: Step name + status */}
-                <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
-                  <box flexDirection="row">
-                    <text fg={themeCtx.theme.border}>{" "}</text>
-                    <text fg={themeCtx.theme.text} attributes={1}>
-                      Step {step().index + 1}: {step().name}
-                    </text>
-                  </box>
-                  <box flexDirection="row">
-                    <Show when={step().status === "running" && !props.isInterrupted} fallback={
-                      <text fg={currentStepStatusColor()}>{props.isInterrupted ? "⏸" : getStepStatusIcon(step().status)} {currentStepStatusLabel()}</text>
-                    }>
-                      <Spinner color={statusColor()} />
-                      <text fg={statusColor()}> {step().status}</text>
-                    </Show>
-                  </box>
-                </box>
-                {/* Line 2: Activity phrase + line count */}
-                <box flexDirection="row" justifyContent="space-between" paddingRight={2}>
-                  <box flexDirection="row">
-                    <text fg={themeCtx.theme.border}>{" "}</text>
-                    <Show when={activityPhrase()} fallback={
-                      <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}</text>
-                    }>
-                      {(phrase) => (
-                        <>
-                          <text fg={themeCtx.theme.textMuted}>{"\u21B3 "}</text>
-                          <ShimmerText text={phrase()} color={themeCtx.theme.textMuted} />
-                        </>
-                      )}
-                    </Show>
-                  </box>
-                  <text fg={themeCtx.theme.textMuted}>{""}</text>
-                </box>
-              </box>
-            </Show>
-          )
-        }}
-      </Show>
-
       {/* Content */}
       <box paddingLeft={1} paddingRight={1} flexDirection="column" flexGrow={1}>
         <Show when={!hasContent() && isRunning()}>
@@ -224,7 +91,7 @@ export function OutputWindow(props: OutputWindowProps) {
           </text>
         </Show>
 
-        <Show when={hasContent()}>
+        <Show when={hasScrollContent()}>
           <scrollbox
             ref={(r: ScrollBoxRenderable) => setScrollRef(r)}
             flexGrow={1}
@@ -244,10 +111,24 @@ export function OutputWindow(props: OutputWindowProps) {
             viewportCulling={true}
             focused={!props.isPromptFocused}
           >
-            <Index each={props.outputBlocks}>
+            <Index each={scrollBlocks()}>
               {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
             </Index>
           </scrollbox>
+        </Show>
+
+        {/* Spacer pushes pinned messages to bottom when scrollbox is hidden */}
+        <Show when={!hasScrollContent() && pinnedBlocks().length > 0}>
+          <box flexGrow={1} />
+        </Show>
+
+        {/* Pinned: queued (pending) user messages — anchored at bottom of output area */}
+        <Show when={pinnedBlocks().length > 0}>
+          <box flexShrink={0}>
+            <Index each={pinnedBlocks()}>
+              {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
+            </Index>
+          </box>
         </Show>
       </box>
     </box>

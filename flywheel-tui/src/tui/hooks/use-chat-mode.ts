@@ -28,7 +28,7 @@ export interface ChatModeHook {
   /** Put the current chat in the background without ending it. */
   backgroundChat(): void
   interruptChat(): void
-  /** Close the foreground chat — removes from registry and marks paused. */
+  /** Close the foreground chat — removes from store and marks paused. */
   endChat(): void
   sendMessage(text: string): void
 }
@@ -44,7 +44,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
 
   // Create the controller — all business logic lives there
   const controller = createChatController({
-    registry: services.registry,
+    sessionStore: services.sessionStore,
     manager: services.manager,
     refreshList: services.refreshList,
     projectCwd: deps.projectCwd,

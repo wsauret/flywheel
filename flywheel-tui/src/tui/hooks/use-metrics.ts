@@ -1,6 +1,6 @@
 import { createSignal, createMemo, onCleanup, batch } from "solid-js"
 import type { Accessor } from "solid-js"
-import type { SessionEntry } from "../../orchestration/session-registry"
+import type { SessionEntry } from "../../orchestration/session-store"
 import { SPINNER_FRAMES, SPINNER_INTERVAL } from "@tui/shared/components/spinner-frames.js"
 
 export interface MetricsHook {
@@ -20,10 +20,10 @@ export interface MetricsHook {
 }
 
 export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
-  // Store-derived memos — read directly from the registry entry.
+  // Store-derived memos — read directly from the session store entry.
   // Safe to use createMemo here because the entry accessor is wired to a real
   // reactive store proxy before useMetrics is called (shell.tsx creates shell
-  // state first, then passes signals.registryEntry directly).
+  // state first, then passes signals.storeEntry directly).
   const liveTokens = createMemo(() => entry()?.tokens ?? 0)
   const liveCost = createMemo(() => entry()?.cost ?? 0)
   const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)

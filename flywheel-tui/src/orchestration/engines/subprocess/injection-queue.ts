@@ -48,25 +48,27 @@ export class InjectionQueue {
    *
    * Called by the turn-complete callback — one message per turn boundary
    * matches the existing injection semantics.
+   *
+   * Returns the raw message text that was delivered, or null if nothing was sent.
    */
-  drainAtTurnBoundary(): boolean {
-    if (!this.handle?.isOpen) return false;
+  drainAtTurnBoundary(): string | null {
+    if (!this.handle?.isOpen) return null;
 
     if (this.queue.length > 0) {
       const text = this.queue.shift()!;
       try {
         this.handle.write(this.formatter(text));
-        return true;
+        return text;
       } catch {
         // Put it back at front if write fails
         this.queue.unshift(text);
-        return false;
+        return null;
       }
     }
 
     // Queue empty — close stdin to let subprocess advance
     this.handle.close();
-    return false;
+    return null;
   }
 
   /** Bind or unbind the stdin handle. Called when a subprocess starts/exits. */

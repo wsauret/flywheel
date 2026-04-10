@@ -1,7 +1,7 @@
 /**
- * Tests for Reactive Session Registry — createStore-backed implementation.
+ * Tests for Reactive Session Store — createStore-backed implementation.
  *
- * Verifies that the registry uses SolidJS reactive primitives:
+ * Verifies that the sessionStore uses SolidJS reactive primitives:
  * - Store-backed entries (createStore)
  * - Reactive get() returns proxy that tracks in memos
  * - Discriminated union: workflow entries have steps, chat entries do not
@@ -10,11 +10,11 @@
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { createRoot, createMemo, createEffect } from "solid-js"
-import { createSessionRegistry, type SessionEntry, type ChatStoreHandle } from "../src/orchestration/session-registry"
+import { createSessionStore, type SessionEntry, type ChatStoreHandle } from "../src/orchestration/session-store"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
 
-/** Minimal mock factories for registry tests. */
+/** Minimal mock factories for sessionStore tests. */
 const mockFactories: WorkflowSessionFactories = {
   createStore: () => ({
     startWorkflow: () => {},
@@ -46,14 +46,14 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
   }
 }
 
-describe("Reactive SessionRegistry — store-backed", () => {
+describe("Reactive SessionStore — store-backed", () => {
   it("get() returns a reactive proxy — memo tracks changes", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let capturedHandle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "reactive-001",
           createRunner: async (handle) => {
             capturedHandle = handle
@@ -62,13 +62,13 @@ describe("Reactive SessionRegistry — store-backed", () => {
         })
 
         // get() should return a reactive proxy
-        const entry = registry.get("reactive-001")
+        const entry = sessionStore.get("reactive-001")
         expect(entry).toBeDefined()
         expect(entry!.kind).toBe("chat")
 
         // Mutate via store handle and verify change is visible
         capturedHandle!.updateEntry({ description: "Updated Name" })
-        expect(registry.get("reactive-001")!.description).toBe("Updated Name")
+        expect(sessionStore.get("reactive-001")!.description).toBe("Updated Name")
 
         dispose()
         resolve()
@@ -79,14 +79,14 @@ describe("Reactive SessionRegistry — store-backed", () => {
   it("workflow entry has steps, chat entry does not (discriminated union)", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "chat-union-001",
           createRunner: async (handle) => createMockChatRunner("chat-union-001"),
         })
 
-        const chatEntry = registry.get("chat-union-001")
+        const chatEntry = sessionStore.get("chat-union-001")
         expect(chatEntry).toBeDefined()
         expect(chatEntry!.kind).toBe("chat")
         expect("steps" in chatEntry!).toBe(false)
@@ -97,23 +97,49 @@ describe("Reactive SessionRegistry — store-backed", () => {
     })
   })
 
-  it("remove() deletes entry from store", async () => {
+  it("finish() marks entry as ended but keeps data in store", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
 
-        await registry.startChat({
+        await sessionStore.startChat({
+          sessionId: "finish-001",
+          createRunner: async (handle) => createMockChatRunner("finish-001"),
+        })
+
+        expect(sessionStore.get("finish-001")).toBeDefined()
+        expect(sessionStore.runningCount()).toBe(1)
+
+        await sessionStore.finish("finish-001")
+
+        // Entry still exists with ended=true
+        const entry = sessionStore.get("finish-001")
+        expect(entry).toBeDefined()
+        expect(entry!.ended).toBe(true)
+        expect(sessionStore.isRunning("finish-001")).toBe(false)
+        expect(sessionStore.runningCount()).toBe(0)
+
+        dispose()
+        resolve()
+      })
+    })
+  })
+
+  it("remove() deletes entry from store entirely", async () => {
+    await new Promise<void>((resolve) => {
+      createRoot(async (dispose) => {
+        const sessionStore = createSessionStore(mockFactories)
+
+        await sessionStore.startChat({
           sessionId: "remove-001",
           createRunner: async (handle) => createMockChatRunner("remove-001"),
         })
 
-        expect(registry.get("remove-001")).toBeDefined()
-        expect(registry.runningCount()).toBe(1)
+        expect(sessionStore.get("remove-001")).toBeDefined()
 
-        await registry.remove("remove-001")
+        await sessionStore.remove("remove-001")
 
-        expect(registry.get("remove-001")).toBeUndefined()
-        expect(registry.runningCount()).toBe(0)
+        expect(sessionStore.get("remove-001")).toBeUndefined()
 
         dispose()
         resolve()
@@ -124,10 +150,10 @@ describe("Reactive SessionRegistry — store-backed", () => {
   it("mutations via store handle are visible to reactive consumers", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let capturedHandle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "mutate-001",
           createRunner: async (handle) => {
             capturedHandle = handle
@@ -137,19 +163,19 @@ describe("Reactive SessionRegistry — store-backed", () => {
 
         // Mutate tokens
         capturedHandle!.updateEntry({ tokens: 500 })
-        expect(registry.get("mutate-001")!.tokens).toBe(500)
+        expect(sessionStore.get("mutate-001")!.tokens).toBe(500)
 
         // Mutate cost
         capturedHandle!.updateEntry({ cost: 1.23 })
-        expect(registry.get("mutate-001")!.cost).toBe(1.23)
+        expect(sessionStore.get("mutate-001")!.cost).toBe(1.23)
 
         // Mutate model activity
         capturedHandle!.updateEntry({ modelActivity: "thinking" })
-        expect(registry.get("mutate-001")!.modelActivity).toBe("thinking")
+        expect(sessionStore.get("mutate-001")!.modelActivity).toBe("thinking")
 
         // Mutate context percent
         capturedHandle!.updateEntry({ contextPercent: 42 })
-        expect(registry.get("mutate-001")!.contextPercent).toBe(42)
+        expect(sessionStore.get("mutate-001")!.contextPercent).toBe(42)
 
         dispose()
         resolve()
@@ -157,29 +183,31 @@ describe("Reactive SessionRegistry — store-backed", () => {
     })
   })
 
-  it("runningCount() auto-tracks via internal createMemo", async () => {
+  it("runningCount() excludes ended entries", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
 
-        expect(registry.runningCount()).toBe(0)
+        expect(sessionStore.runningCount()).toBe(0)
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "count-001",
           createRunner: async (handle) => createMockChatRunner("count-001"),
         })
 
-        expect(registry.runningCount()).toBe(1)
+        expect(sessionStore.runningCount()).toBe(1)
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "count-002",
           createRunner: async (handle) => createMockChatRunner("count-002"),
         })
 
-        expect(registry.runningCount()).toBe(2)
+        expect(sessionStore.runningCount()).toBe(2)
 
-        await registry.remove("count-001")
-        expect(registry.runningCount()).toBe(1)
+        // finish keeps the entry but excludes from runningCount
+        await sessionStore.finish("count-001")
+        expect(sessionStore.runningCount()).toBe(1)
+        expect(sessionStore.get("count-001")).toBeDefined()
 
         dispose()
         resolve()

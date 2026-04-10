@@ -3,7 +3,7 @@
  *
  * Verifies that the 4 store-derived metric fields (liveTokens, liveCost,
  * liveContextPercent, liveActivity) are reactive memos derived from the
- * registry entry — NOT standalone signals with manual sync effects.
+ * sessionStore entry — NOT standalone signals with manual sync effects.
  *
  * Also verifies that resetMetrics() only resets leaf signals (workStartTime,
  * elapsed, thinkingElapsed), not the 4 store-derived memos.
@@ -18,7 +18,7 @@
 
 import { describe, it, expect } from "bun:test"
 import { createRoot } from "solid-js"
-import { createSessionRegistry, type ChatStoreHandle, type SessionEntry } from "../src/orchestration/session-registry"
+import { createSessionStore, type ChatStoreHandle, type SessionEntry } from "../src/orchestration/session-store"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 import type { ChatSession } from "../src/orchestration/chat-session"
 import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
@@ -45,14 +45,14 @@ function createMockChatRunner(sessionId: string): ChatRunner {
   }
 }
 
-describe("Metrics memos derive from registry entry", () => {
+describe("Metrics memos derive from sessionStore entry", () => {
   it("memos derive values from entry at creation time", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let handle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "chat-a",
           createRunner: async (h) => { handle = h; return createMockChatRunner("chat-a") },
         })
@@ -60,7 +60,7 @@ describe("Metrics memos derive from registry entry", () => {
         // Set up store values BEFORE creating metrics — memos evaluate eagerly once in test mode
         handle!.updateEntry({ tokens: 1500, cost: 0.05, contextPercent: 42, modelActivity: "thinking" })
 
-        const metrics = useMetrics(() => registry.get("chat-a"))
+        const metrics = useMetrics(() => sessionStore.get("chat-a"))
 
         // Memos should derive values from the entry
         expect(metrics.liveTokens()).toBe(1500)
@@ -90,10 +90,10 @@ describe("Metrics memos derive from registry entry", () => {
   it("resetMetrics resets only leaf signals, not store-derived memos", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let handle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "chat-b",
           createRunner: async (h) => { handle = h; return createMockChatRunner("chat-b") },
         })
@@ -101,7 +101,7 @@ describe("Metrics memos derive from registry entry", () => {
         // Set up store values BEFORE creating metrics
         handle!.updateEntry({ tokens: 500, cost: 0.01, contextPercent: 10, modelActivity: "generating" })
 
-        const metrics = useMetrics(() => registry.get("chat-b"))
+        const metrics = useMetrics(() => sessionStore.get("chat-b"))
 
         // Reset metrics — should reset leaf signals only
         metrics.resetMetrics()
@@ -112,7 +112,7 @@ describe("Metrics memos derive from registry entry", () => {
         // workStartTime resets to Date.now() — just verify it's a recent timestamp
         expect(metrics.workStartTime()).toBeGreaterThan(0)
 
-        // Store-derived memos should still reflect registry data (NOT reset to 0)
+        // Store-derived memos should still reflect sessionStore data (NOT reset to 0)
         expect(metrics.liveTokens()).toBe(500)
         expect(metrics.liveCost()).toBe(0.01)
         expect(metrics.liveContextPercent()).toBe(10)
@@ -160,16 +160,16 @@ describe("Metrics memos derive from registry entry", () => {
     // This tests the contract without relying on memo reactivity in test mode
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let handle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "chat-c",
           createRunner: async (h) => { handle = h; return createMockChatRunner("chat-c") },
         })
 
         // Verify the store proxy returns updated values when accessed
-        const entryAccessor = () => registry.get("chat-c")
+        const entryAccessor = () => sessionStore.get("chat-c")
 
         expect(entryAccessor()?.tokens).toBe(0)
         handle!.updateEntry({ tokens: 2000 })
@@ -201,16 +201,16 @@ describe("Metrics memos derive from registry entry", () => {
     // matching the real lifecycle — to ensure memos track the live store proxy.
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let handle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "stale-guard",
           createRunner: async (h) => { handle = h; return createMockChatRunner("stale-guard") },
         })
 
         // Hook created with defaults (contextPercent: 0, tokens: 0, etc.)
-        const metrics = useMetrics(() => registry.get("stale-guard"))
+        const metrics = useMetrics(() => sessionStore.get("stale-guard"))
         expect(metrics.liveContextPercent()).toBe(0)
 
         // Store updated AFTER hook creation — simulates the real chat flow
@@ -219,7 +219,7 @@ describe("Metrics memos derive from registry entry", () => {
 
         // The accessor must see the update. If it's stuck on a stale closure
         // this will return 0 instead of 42.
-        const entry = registry.get("stale-guard")
+        const entry = sessionStore.get("stale-guard")
         expect(entry?.contextPercent).toBe(42)
 
         dispose()

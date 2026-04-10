@@ -92,6 +92,11 @@ export type EmitFn = <T extends FlywheelEvent["type"]>(
   payload: Omit<Extract<FlywheelEvent, { type: T }>, "type" | "timestamp">,
 ) => void
 
+/** A no-op emit function for callers that don't need EventBus integration. */
+export function createNoopEmit(): EmitFn {
+  return (() => {}) as EmitFn
+}
+
 export function createEmit(bus: EventBus): EmitFn {
   return (type, payload) => {
     // Cast is safe: EmitFn's conditional type validates payload at call site.

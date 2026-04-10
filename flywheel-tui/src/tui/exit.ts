@@ -39,7 +39,7 @@ export function setExitHandler(handler: () => void): void {
 
 /**
  * Register an async cleanup function that runs before the renderer is destroyed.
- * Used by FlywheelShell to ensure registry.disposeAll() is awaited on exit.
+ * Used by FlywheelShell to ensure sessionStore.disposeAll() is awaited on exit.
  */
 export function registerPreExitCleanup(fn: () => Promise<void>): void {
   preExitCleanup = fn

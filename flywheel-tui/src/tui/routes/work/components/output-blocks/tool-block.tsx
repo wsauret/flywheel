@@ -25,7 +25,7 @@ import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChun
 import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
-import { truncate } from "@tui/utils/text"
+import { truncate, isHandoffPath } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@tui/types"
 import { renderHunk, parseUnifiedDiff, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
 
@@ -76,7 +76,9 @@ export function ToolBlock(props: ToolBlockProps) {
   const hasDiff = () => !!props.block.diff
   const hasContent = () => !!props.block.content
   const hasExpandable = () => hasDiff() || hasContent()
-  const [expanded, setExpanded] = createSignal(true)
+
+  // Handoff docs are workflow-internal; collapse by default so users aren't flooded with content
+  const [expanded, setExpanded] = createSignal(!isHandoffPath(props.block.filePath))
 
   // Map TUI theme → diff theme colors (RGBA passthrough, no conversion)
   const diffColors = createMemo((): DiffThemeColors => ({
@@ -129,8 +131,8 @@ export function ToolBlock(props: ToolBlockProps) {
   )
 
   return (
-    <Show when={hasExpandable()} fallback={header()}>
-      <box flexDirection="column">
+    <Show when={hasExpandable()} fallback={<box marginTop={1}>{header()}</box>}>
+      <box flexDirection="column" marginTop={1}>
         {header()}
         <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={4} paddingRight={4}>
           <Show when={hasDiff()}>

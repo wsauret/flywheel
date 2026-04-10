@@ -2,7 +2,7 @@
  * Output Block Types
  *
  * Pure data shapes for structured output blocks used by both the
- * orchestration layer (persistence, session registry) and the TUI layer
+ * orchestration layer (persistence, session store) and the TUI layer
  * (rendering). Lives in infra/ so both layers can import without
  * crossing module boundaries.
  */

@@ -28,20 +28,19 @@ function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDi
     foregroundId: () => "chat-abc" as string | undefined,
     setForegroundId: mock(() => {}),
     sessionState: () => "active" as any,
-    registryEntry: () => undefined,
-    viewedBlocks: () => undefined,
-    setViewedBlocks: mock(() => {}),
-    viewedTitle: () => undefined,
-    setViewedTitle: mock(() => {}),
+    storeEntry: () => undefined,
+    pendingWorkCommand: () => undefined,
+    setPendingWorkCommand: mock(() => {}),
   }
   const defaultServices = {
-    registry: { runningCount: () => 0 } as any,
+    sessionStore: { runningCount: () => 0 } as any,
     manager: {} as any,
     refreshList: mock(() => {}),
     setTerminalTitle: mock(() => {}),
     metrics: {} as any,
     showToast: mock(() => {}),
   }
+  const { signals: _s, services: _svc, ...rest } = overrides
   return {
     signals: { ...defaultSignals, ...(overrides.signals ?? {}) } as any,
     services: { ...defaultServices, ...(overrides.services ?? {}) } as any,
@@ -54,7 +53,7 @@ function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDi
     sendMessage: mock(() => {}),
     handleResume: mock(async () => {}),
     openSessionsModal: mock(() => {}),
-    ...overrides,
+    ...rest,
   }
 }
 

@@ -12,7 +12,7 @@ import { createChatRunner } from "./chat-runner.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { TERMINAL_TITLE_PREFIX, formatElapsed, formatCost, formatTokens } from "../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
-import type { ChatStoreHandle, SessionRegistry } from "./session-registry.js"
+import type { ChatStoreHandle, SessionStore } from "./session-store.js"
 import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
@@ -22,7 +22,7 @@ import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
 // ---------------------------------------------------------------------------
 
 export interface ChatControllerDeps {
-  registry: SessionRegistry
+  sessionStore: SessionStore
   manager: SessionManager
   refreshList: () => void
   projectCwd: string
@@ -90,13 +90,13 @@ type StartupState =
 // ---------------------------------------------------------------------------
 
 export function createChatController(deps: ChatControllerDeps): ChatController {
-  const { registry, manager, refreshList, projectCwd } = deps
+  const { sessionStore, manager, refreshList, projectCwd } = deps
 
   let startup: StartupState = { phase: "idle" }
   let isFirstChat = true
 
   /**
-   * Internal helper: wire up a chat session with the registry.
+   * Internal helper: wire up a chat session with the sessionStore.
    * Returns the session ID on success, null on failure.
    */
   async function launchChat(
@@ -110,22 +110,19 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       : `${TERMINAL_TITLE_PREFIX}chat`
 
     try {
-      await registry.startChat({
+      await sessionStore.startChat({
         sessionId,
         description: "Chat",
         priorBlocks: opts?.priorBlocks,
         onRunnerDone: (id) => {
-          const totalElapsed = formatElapsed(Date.now() - deps.workStartTime())
-          const entry = registry.get(id)
-          const tokens = entry?.tokens ?? 0
-          const cost = entry?.cost ?? 0
+          // Chats never "end" — they only pause. The runner disposed but
+          // the session stays available for resume.
           manager.updateState(id, "paused")
-          const doneResult = {
-            statusMessage: `Chat ended \u00b7 ${totalElapsed} \u00b7 ${formatCost(cost)} \u00b7 ${formatTokens(tokens)} tokens`,
-            terminalTitle: `${TERMINAL_TITLE_PREFIX}done`,
-          } satisfies RunnerDoneResult
           refreshList()
-          deps.onRunnerDone?.(id, doneResult)
+          deps.onRunnerDone?.(id, {
+            statusMessage: "",
+            terminalTitle: `${TERMINAL_TITLE_PREFIX}chat`,
+          } satisfies RunnerDoneResult)
         },
         onRunnerError: (id, err) => {
           manager.updateState(id, "paused")
@@ -160,7 +157,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       isFirstChat = false
 
       for (const msg of pendingMessages) {
-        registry.injectMessage(sessionId, msg)
+        sessionStore.injectMessage(sessionId, msg)
       }
 
       return { sessionId, terminalTitle }
@@ -194,7 +191,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
   function endChat(foregroundId: string | undefined): boolean {
     if (!foregroundId) return false
-    const entry = registry.get(foregroundId)
+    const entry = sessionStore.get(foregroundId)
     if (!entry || entry.kind !== "chat") return false
 
     // If ending the chat we're currently starting, reset startup state
@@ -202,18 +199,18 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       startup = { phase: "idle" }
     }
 
-    // Update manager BEFORE removing from registry — avoids a reactive glitch
+    // Update manager BEFORE removing from sessionStore — avoids a reactive glitch
     // where sessionState() briefly sees the old manager state ("paused") after
-    // the registry entry disappears but before the manager is updated.
+    // the sessionStore entry disappears but before the manager is updated.
     manager.updateState(foregroundId, "paused")
-    registry.remove(foregroundId)
+    sessionStore.remove(foregroundId)
     refreshList()
     return true
   }
 
   function interruptChat(foregroundId: string | undefined): void {
     if (!foregroundId) return
-    registry.abort(foregroundId)
+    sessionStore.abort(foregroundId)
   }
 
   function sendMessage(foregroundId: string | undefined, text: string): boolean {
@@ -224,7 +221,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     }
     // Send to whatever chat is in the foreground
     if (!foregroundId) return false
-    return registry.injectMessage(foregroundId, text)
+    return sessionStore.injectMessage(foregroundId, text)
   }
 
   return {

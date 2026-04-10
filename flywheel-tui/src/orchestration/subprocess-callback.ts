@@ -162,13 +162,13 @@ export function createSubprocessCallback(
         selfReviewInjected = true
       }
       // Drain one item (or close handle if empty)
-      const delivered = injectionQueue.drainAtTurnBoundary()
-      if (delivered) {
+      const deliveredMessage = injectionQueue.drainAtTurnBoundary()
+      if (deliveredMessage !== null) {
         log.info("turn-boundary injection sent to subprocess")
         eventBus.emit({
           type: "subprocess:injected",
           workflowId: workflowId,
-          message: "(injected via queue)",
+          message: deliveredMessage,
           timestamp: Date.now(),
         })
       }

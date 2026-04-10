@@ -1,5 +1,5 @@
 /**
- * OpenTUI Adapter — translates FlywheelEvent → registry entry updates.
+ * OpenTUI Adapter — translates FlywheelEvent → session store entry updates.
  *
  * Pipeline: subprocess stdout → NDJSONParser → StructuredEventParser
  *   → StructuredOutputBuilder → updateEntry({ outputBlocks })
@@ -9,9 +9,11 @@
 
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import { BaseEventConsumer } from "../../infra/base-event-consumer";
-import type { WorkflowSessionEntry } from "../../orchestration/session-registry";
-import { createOutputPipeline, type OutputPipeline } from "../../orchestration/output-pipeline";
+import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store";
+import { createOutputSession, type OutputSession } from "../../orchestration/output-session.js";
+import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
+import { createNoopEmit } from "../../infra/event-bus";
 import { Log } from "../../infra/log.js";
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
@@ -27,16 +29,14 @@ const log = Log.create({ service: "opentui-adapter" });
 export class OpenTUIAdapter extends BaseEventConsumer {
   private updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
 
-  /** Current engine ID for routing events. Updated per subprocess:output event. */
-  private currentEngineId: string | undefined;
+  // ── OutputSession (replaces OutputPipeline) ──
 
-  // ── Structured pipeline (shared factory) ──
-
-  private outputPipeline: OutputPipeline;
+  private outputSession: OutputSession;
 
   /** Synthetic thinking timer for engines that batch thinking blocks. */
   private syntheticThinkingTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly syntheticThinkingMs: number | undefined;
+  private disconnected = false;
 
   /** Dispatcher/evaluator NDJSON pipeline (block tracking + activity extraction). */
   private ndjsonPipeline: NdjsonPipeline;
@@ -46,60 +46,78 @@ export class OpenTUIAdapter extends BaseEventConsumer {
     this.updateEntry = options.updateEntry;
     this.syntheticThinkingMs = options.engineMetadata?.syntheticThinkingMs;
 
-    // Initialize structured pipeline via shared factory
-    this.outputPipeline = createOutputPipeline({
-      onModelActivityChange: (activity) => {
+    // Shared builder — used by both OutputSession and NdjsonPipeline so
+    // dispatcher/evaluator writes appear in the same block stream.
+    const builder = new StructuredOutputBuilder();
+
+    // Wrap updateEntry to intercept modelActivity changes for the synthetic
+    // thinking timer (engine-specific: batches tool_executing/generating into
+    // a delayed "thinking" state).
+    const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
+      if (patch.modelActivity !== undefined) {
         if (this.syntheticThinkingTimer) {
           clearTimeout(this.syntheticThinkingTimer);
           this.syntheticThinkingTimer = null;
         }
-        this.updateEntry({ modelActivity: activity });
-        if (this.syntheticThinkingMs !== undefined && (activity === "tool_executing" || activity === "generating")) {
+        if (
+          this.syntheticThinkingMs !== undefined &&
+          (patch.modelActivity === "tool_executing" || patch.modelActivity === "generating")
+        ) {
           this.syntheticThinkingTimer = setTimeout(() => {
             this.syntheticThinkingTimer = null;
+            if (this.disconnected) return;
             this.updateEntry({ modelActivity: "thinking" });
           }, this.syntheticThinkingMs);
         }
-      },
-    });
-
-    // Initialize dispatcher/evaluator NDJSON pipeline
-    this.ndjsonPipeline = new NdjsonPipeline(this.outputPipeline.builder);
-
-    // Wire NDJSONParser events to StructuredEventParser (factory does NOT set this)
-    this.outputPipeline.parser.onEvent = (event) => {
-      this.outputPipeline.eventParser.dispatch(event, this.currentEngineId);
+      }
+      this.updateEntry(patch as Partial<WorkflowSessionEntry>);
     };
 
-    // Keep the factory's default onRawText (pushes text blocks)
+    // Workflow mode: subprocess:ndjson events are already emitted by
+    // subprocess-callback.ts — supply a no-op emit to avoid duplicates.
+    const noopEmit = createNoopEmit();
 
-    this.outputPipeline.startFlush(() => this.flushBlocks());
+    this.outputSession = createOutputSession({
+      updateEntry: wrappedUpdateEntry,
+      emit: noopEmit,
+      builder,
+    });
+
+    // Initialize dispatcher/evaluator NDJSON pipeline with the shared builder
+    this.ndjsonPipeline = new NdjsonPipeline(builder);
   }
 
-  /** Clean up intervals on disconnect. */
+  /**
+   * Clean up intervals on disconnect.
+   * Must be called after subprocess exits.
+   */
   override disconnect(): void {
+    this.disconnected = true;
     super.disconnect();
     if (this.syntheticThinkingTimer !== null) {
       clearTimeout(this.syntheticThinkingTimer);
       this.syntheticThinkingTimer = null;
     }
-    this.outputPipeline.dispose();
+    this.outputSession.dispose();
   }
 
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "subprocess:output":
-        this.handleSubprocessOutput(event.stream, event.data, event.timestamp, event.engineId);
+        if (event.stream === "stderr") {
+          this.outputSession.writeStderr(event.data, event.timestamp);
+        } else {
+          this.outputSession.writeStdout(event.data, event.engineId);
+        }
         break;
 
       case "subprocess:spawned":
         log.debug(`Subprocess spawned for step ${event.stepIndex}`, { step: event.stepIndex });
-        this.outputPipeline.builder.notifyThinkingStarted(event.timestamp);
+        this.outputSession.notifySpawned(event.timestamp);
         break;
 
       case "dispatcher:invoked":
         this.ndjsonPipeline.startDispatcher();
-        // Flush deferred to 16ms interval
         break;
 
       case "dispatcher:completed": {
@@ -108,36 +126,30 @@ export class OpenTUIAdapter extends BaseEventConsumer {
           ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
           : "";
         this.ndjsonPipeline.completeDispatcher(`Prompt ready${warningText}`);
-        // Flush deferred to 16ms interval
         break;
       }
 
       case "dispatcher:failed":
         this.ndjsonPipeline.failDispatcher(event.reason);
-        // Flush deferred to 16ms interval
         break;
 
       case "evaluator:invoked":
         this.ndjsonPipeline.startEvaluator();
-        // Flush deferred to 16ms interval
         break;
 
       case "evaluator:completed": {
         const verdict = event.result.passed ? "Passed" : "Needs revision";
         const reasoning = event.result.reasoning ? ` \u2014 ${event.result.reasoning}` : "";
         this.ndjsonPipeline.completeEvaluator(`${verdict}${reasoning}`);
-        // Flush deferred to 16ms interval
         break;
       }
 
       case "evaluator:failed":
         this.ndjsonPipeline.failEvaluator(event.reason);
-        // Flush deferred to 16ms interval
         break;
 
       case "evaluator:revision-requested":
         this.ndjsonPipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
-        // Flush deferred to 16ms interval
         break;
 
       case "question:asked":
@@ -151,27 +163,24 @@ export class OpenTUIAdapter extends BaseEventConsumer {
 
       case "budget:exhausted":
         log.warn("Budget exhausted", { workflowId: event.workflowId, reason: event.reason });
-        this.pushSystemText(`\u26a0 Budget exhausted: ${event.reason}\n`, event.timestamp);
+        this.outputSession.pushSystemMessage(`\u26a0 Budget exhausted: ${event.reason}\n`, event.timestamp);
+        this.outputSession.flush();
         break;
 
       case "subprocess:injected":
         log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
-        this.outputPipeline.builder.pushUserMessage(event.message, event.timestamp, false, true);
-        this.outputPipeline.builder.notifyThinkingStarted(event.timestamp);
-        // Flush deferred to 16ms interval
+        this.outputSession.notifyInjected(event.message, event.timestamp);
         break;
 
       case "dispatcher:output":
         if (event.stream === "stdout") {
           this.ndjsonPipeline.dispatcherParser.write(event.data);
-          // Flush deferred to 16ms interval
         }
         break;
 
       case "evaluator:output":
         if (event.stream === "stdout") {
           this.ndjsonPipeline.evaluatorParser.write(event.data);
-          // Flush deferred to 16ms interval
         }
         break;
 
@@ -181,23 +190,28 @@ export class OpenTUIAdapter extends BaseEventConsumer {
 
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
-        this.flushBlocks();
+        this.outputSession.flush();
         this.updateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
-        this.flushBlocks();
+        this.outputSession.flush();
         this.updateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:step-started":
         log.info("Queue step started", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
-        this.outputPipeline.builder.resetTracking();
-        this.pushSystemText(
-          `${STEP_BOUNDARY_PREFIX} ${this.formatStepBoundaryLabel(event.stepType, event.stepTitle)}\n`,
-          event.timestamp,
-        );
+        this.outputSession.resetTracking();
+        // Only emit a step boundary separator when there are prior blocks —
+        // the first step has nothing above it to separate from.
+        if (this.outputSession.getBlocks().length > 0) {
+          this.outputSession.pushSystemMessage(
+            `${STEP_BOUNDARY_PREFIX} ${this.formatStepBoundaryLabel(event.stepType, event.stepTitle)}\n`,
+            event.timestamp,
+          );
+          this.outputSession.flush();
+        }
         // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
@@ -227,45 +241,8 @@ export class OpenTUIAdapter extends BaseEventConsumer {
     }
   }
 
-  /** Push a system message through the block pipeline and flush. */
-  private pushSystemText(text: string, timestamp: number): void {
-    this.outputPipeline.builder.pushSystemMessage(text, timestamp);
-    this.flushBlocks();
-  }
-
   private formatStepBoundaryLabel(stepType: string, stepTitle: string): string {
     return `${stepType.toUpperCase()} · ${stepTitle}`;
-  }
-
-  /** Route subprocess output: stderr → system text, stdout → NDJSON pipeline. */
-  private handleSubprocessOutput(
-    stream: "stdout" | "stderr",
-    data: string,
-    timestamp: number,
-    engineId?: string,
-  ): void {
-    if (stream === "stderr") {
-      this.pushSystemText(data, timestamp);
-      return;
-    }
-
-    if (engineId !== undefined) {
-      this.currentEngineId = engineId;
-    }
-
-    // Feed chunk to NDJSONParser (handles line buffering, ANSI stripping,
-    // CRLF normalization, garbage-prefix extraction).
-    // The 16ms flush interval handles pushing blocks to the store.
-    this.outputPipeline.parser.write(data);
-  }
-
-  /**
-   * Flush builder blocks to the registry if the builder has pending changes.
-   */
-  private flushBlocks(): void {
-    if (this.outputPipeline.builder.hasChanged()) {
-      this.updateEntry({ outputBlocks: this.outputPipeline.builder.getBlocks() });
-    }
   }
 
 }

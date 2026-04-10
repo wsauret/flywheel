@@ -11,7 +11,6 @@ import type { ShellSignals, ShellServices } from "./shell-state.js"
 export function wireLifecycleCallbacks(signals: ShellSignals, services: ShellServices) {
   return {
     onRunnerDone: (_id: string, result: RunnerDoneResult) => {
-      signals.setStatusLine(result.statusMessage)
       services.setTerminalTitle(result.terminalTitle)
       services.refreshList()
     },

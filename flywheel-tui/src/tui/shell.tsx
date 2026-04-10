@@ -14,9 +14,9 @@ import { SplitBorder } from "./shared/ui/border"
 import { Spinner } from "@tui/shared/components/spinner"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { SessionModal } from "./session-modal"
-import { createSessionRegistry } from "../orchestration/session-registry"
+import { createSessionStore } from "../orchestration/session-store"
 import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
-import { formatElapsed, formatCost, formatTokens, relativeTime } from "../infra/format.js"
+import { formatElapsed, formatCost } from "../infra/format.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
@@ -32,12 +32,12 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
 
-  // ── Session registry ──
-  const registry = createSessionRegistry(props.factories)
+  // ── Session store ──
+  const sessionStore = createSessionStore(props.factories)
 
   // ── Shell state: shared signals + services ──
   const { signals, services } = createShellState({
-    registry,
+    sessionStore,
     manager,
     refreshList,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
@@ -67,11 +67,11 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   })
 
   const inChat = createMemo(() => {
-    // chatActive covers the async startup window before the registry entry exists
+    // chatActive covers the async startup window before the sessionStore entry exists
     if (chat.chatActive()) return true
     const fgId = signals.foregroundId()
     if (!fgId) return false
-    const entry = registry.get(fgId)
+    const entry = sessionStore.get(fgId)
     return entry?.kind === "chat"
   })
 
@@ -93,8 +93,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     openSessionsModal: sessionModal.openSessionsModal,
   })
 
-  // ── Running count — backed by registry's internal createMemo ──
-  const runningCount = createMemo(() => registry.runningCount())
+  // ── Running count — backed by sessionStore's internal createMemo ──
+  const runningCount = createMemo(() => sessionStore.runningCount())
 
   // ── Timer — reactive: runs only when the agent is actively working ──
   createEffect(() => {
@@ -106,14 +106,11 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   // After Phase 3, changing foregroundId triggers all derived memos automatically.
   // This helper just sets the ID and resets transient UI state.
   function switchForeground(sessionId: string): void {
-    const entry = registry.get(sessionId)
+    const entry = sessionStore.get(sessionId)
     if (!entry) return
     metrics.pauseTimer()  // stop old interval before resetting accumulated value
     batch(() => {
       signals.setForegroundId(sessionId)
-      // Clear overlays so live registry data shows through
-      signals.setViewedBlocks(undefined)
-      signals.setViewedTitle(undefined)
       // Derived memos (agentState, outputBlocks, steps, sessionTitle) update automatically
       metrics.resetElapsedTo(Date.now() - entry.startedAt)
       // effect above handles start/pause based on new agentState
@@ -126,7 +123,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   // ── Keyboard ──
   const handleKey = createKeyboardHandler({
     signals,
-    registry,
+    sessionStore,
     workflow,
     chat,
     sessionModal,
@@ -140,7 +137,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   // ── Cleanup ──
   // Async disposal is registered as a pre-exit hook so exitTUI() can await it
   // before destroying the renderer. This prevents data loss (traces, transcripts).
-  registerPreExitCleanup(() => registry.disposeAll())
+  registerPreExitCleanup(() => sessionStore.disposeAll())
   onCleanup(() => {
     metrics.pauseTimer()
     renderer.setTerminalTitle("")
@@ -161,31 +158,28 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     return "completed"
   })
 
-  const currentStep = createMemo(() => {
-    const steps = signals.steps()
-    const idx = steps.findIndex((s) => s.status === "running")
-    if (idx === -1) return null
-    return { index: idx, name: steps[idx].title, status: "running" as const }
-  })
-
   const headerRight = createMemo(() => {
     const state = signals.sessionState()
     const bgCount = runningCount()
     const bgSuffix = bgCount > 1 ? ` (+${bgCount - 1} bg)` : ""
-    if (state === null) return bgCount > 0 ? `${bgCount} running` : (signals.errorMessage() ? "error" : "ready")
-    if (state === "paused") return (signals.errorMessage() ? "error" : "paused") + bgSuffix
+    if (state === null) return bgCount > 0 ? `${bgCount} running` : (signals.errorMessage() ? "error" : "")
+    if (signals.errorMessage()) return "error" + bgSuffix
+
     const hasMetrics = signals.agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0 || metrics.liveContextPercent() > 0
     if (hasMetrics) {
       const width = dimensions().width
-      const parts: string[] = [formatElapsed(metrics.elapsed())]
-      // Drop less important metrics on narrow terminals to avoid crowding
-      if (width >= 60) parts.push(`${metrics.liveContextPercent()}%`)
+      const parts: string[] = []
+      if (state === "completed") parts.push("done")
+      parts.push(formatElapsed(metrics.elapsed()))
+      if (width >= 60) parts.push(`${metrics.liveContextPercent()}% ctx`)
       const c = metrics.liveCost()
       if (c > 0 && width >= 80) parts.push(formatCost(c))
       return parts.join(" \u00b7 ") + bgSuffix
     }
-    if (state === "active") return bgSuffix.trim() || ""  // in session, agent idle (user's turn)
-    return "\u2713 done" + bgSuffix
+
+    if (state === "completed") return "done" + bgSuffix
+    if (state === "active") return bgSuffix.trim() || ""
+    return bgSuffix.trim() || ""
   })
 
   const headerRightColor = createMemo(() => {
@@ -198,6 +192,40 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     if (ctx >= 85) return theme.error
     if (ctx >= 70) return theme.warning
     return theme.textMuted
+  })
+
+  // Step pipeline: show all steps if they fit, collapse completed steps from the left if they don't
+  const stepDisplay = createMemo(() => {
+    const steps = signals.steps()
+    if (steps.length === 0) return { collapsedCount: 0, visible: steps }
+
+    const available = dimensions().width - 4
+    const estimateWidth = (items: typeof steps, prefixLen: number) => {
+      let w = prefixLen
+      for (let i = 0; i < items.length; i++) {
+        if (i > 0 || prefixLen > 0) w += 3  // " > "
+        if (items[i].status === "completed" || items[i].status === "failed") w += 2
+        w += items[i].title.length
+        if (items[i].status === "running") w += 5  // elapsed estimate
+      }
+      return w
+    }
+
+    if (estimateWidth(steps, 0) <= available) return { collapsedCount: 0, visible: steps }
+
+    let count = 0
+    for (const step of steps) {
+      if (step.status !== "completed") break
+      count++
+      const remaining = steps.slice(count)
+      if (estimateWidth(remaining, `${count} done`.length) <= available) {
+        return { collapsedCount: count, visible: remaining }
+      }
+    }
+
+    const runIdx = steps.findIndex(s => s.status === "running")
+    if (runIdx > 0) return { collapsedCount: runIdx, visible: steps.slice(runIdx) }
+    return { collapsedCount: 0, visible: steps }
   })
 
   const showPrompt = createMemo(() => !sessionModal.sessionsModalOpen())
@@ -234,31 +262,56 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       }}>
 
       {/* Header */}
-      <box flexShrink={0} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}
-        backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
-        <box flexDirection="row" justifyContent="space-between">
-          <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>flywheel</text>
-          <Show when={signals.sessionTitle()}><text fg={theme.text} attributes={createTextAttributes({ bold: true })}>{signals.sessionTitle()}</text></Show>
-          <text fg={headerRightColor()}>{headerRight()}</text>
+      <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
+        <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepDisplay().visible.length > 0 ? 0 : 1} paddingLeft={2} paddingRight={1}>
+          <box flexDirection="row" flexShrink={1} overflow="hidden">
+            <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>flywheel</text>
+            <Show when={signals.sessionTitle()}>
+              <text fg={theme.textMuted}>{" \u00b7 "}</text>
+              <text fg={theme.text}>{signals.sessionTitle()}</text>
+            </Show>
+          </box>
+          <Show when={headerRight()}>
+            <text fg={headerRightColor()} flexShrink={0}>{" "}{headerRight()}</text>
+          </Show>
         </box>
+        <Show when={stepDisplay().visible.length > 0}>
+          <box paddingLeft={2} paddingRight={1} paddingBottom={1} flexDirection="row" overflow="hidden">
+            <Show when={stepDisplay().collapsedCount > 0}>
+              <text fg={theme.success} attributes={createTextAttributes({ dim: true })}>{stepDisplay().collapsedCount} done</text>
+            </Show>
+            <For each={stepDisplay().visible}>
+              {(step, i) => {
+                const showSep = i() > 0 || stepDisplay().collapsedCount > 0
+                const stepColor = step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted
+                const attrs = step.status === "running" ? createTextAttributes({ bold: true }) : (step.status === "completed" || step.status === "failed") ? undefined : createTextAttributes({ dim: true })
+                const prefix = step.status === "completed" ? "\u2713 " : step.status === "failed" ? "\u2717 " : ""
+                return (
+                  <box flexDirection="row">
+                    {showSep ? <text fg={theme.textMuted} attributes={createTextAttributes({ dim: true })}>{" \u203a "}</text> : null}
+                    <text fg={stepColor} attributes={attrs}>
+                      {prefix}{step.title}{step.status === "running" && step.startedAt ? ` ${formatElapsed(now() - step.startedAt)}` : ""}
+                    </text>
+                  </box>
+                )
+              }}
+            </For>
+          </box>
+        </Show>
       </box>
 
       {/* Content */}
       <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} gap={1}>
 
-        <Show when={signals.steps().length > 0}>
-          <box flexShrink={0}>
-            <For each={signals.steps()}>
-              {(step) => (
-                <text fg={step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted}>
-                  {step.status === "completed" ? "\u2713" : step.status === "running" ? "\u25b8" : step.status === "failed" ? "\u2717" : "\u25cb"} {step.title}
-                  {step.durationMs ? ` (${(step.durationMs / 1000).toFixed(1)}s)` : step.status === "running" && step.startedAt ? ` \u00b7 ${formatElapsed(now() - step.startedAt)}` : step.completedAt ? ` \u00b7 ${relativeTime(step.completedAt)}` : ""}
-                </text>
-              )}
-            </For>
+
+        <Show when={signals.pendingWorkCommand()}>
+          <box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="center" gap={1}>
+            <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>
+              {signals.pendingWorkCommand() === "sprint" ? "Sprint Mode" : "Work Mode"}
+            </text>
+            <text fg={theme.textMuted}>Describe what you'd like to work on</text>
           </box>
         </Show>
-
 
         <Show when={signals.errorMessage()}>
           <scrollbox flexGrow={1}>
@@ -274,19 +327,16 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
           </scrollbox>
         </Show>
 
-        <Show when={signals.sessionState() !== null}>
+        <Show when={signals.sessionState() !== null && !signals.pendingWorkCommand()}>
           <OutputWindow
             outputBlocks={signals.outputBlocks()}
             workflowStatus={displayStatus()}
             approvalPending={false}
             isPromptFocused={true}
-            currentStep={inChat() ? null : currentStep()}
           />
         </Show>
 
-        <Show when={signals.statusLine()}>
-          <box flexShrink={0}><text fg={theme.success}>{signals.statusLine()}</text></box>
-        </Show>
+{/* statusLine removed — completion status belongs in the header, not above the prompt */}
       </box>
 
       {/* Activity status */}
@@ -311,13 +361,15 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
               }}
               width={lineWidth()} height={promptHeight()} wrapMode="word"
               placeholder={
-                inChat()
-                  ? (signals.agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
-                  : signals.agentState() === "active"
-                    ? "Send a message to guide the agent (Esc to pause)"
-                    : signals.sessionState() === "paused"
-                      ? "Send a message to resume, or Esc to force stop"
-                      : "Send a message..."
+                signals.pendingWorkCommand()
+                  ? "What would you like to work on?"
+                  : inChat()
+                    ? (signals.agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
+                    : signals.agentState() === "active"
+                      ? "Send a message to guide the agent (Esc to pause)"
+                      : signals.sessionState() === "paused"
+                        ? "Send a message to resume, or Esc to force stop"
+                        : "Send a message..."
               }
               backgroundColor="transparent" focusedBackgroundColor="transparent"
               onSubmit={() => { const v = promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
@@ -342,8 +394,9 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
               : signals.sessionState() === "paused"
                 ? "Esc stop \u00b7 Ctrl+R resume"
                 : "Ctrl+N new"}
-            {" \u00b7 Ctrl+B sessions"}
-            {runningCount() > 1 ? ` (${runningCount()})` : ""}
+            {sessions().length > 0
+              ? ` \u00b7 Ctrl+B ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
+              : " \u00b7 Ctrl+B sessions"}
           </text>
           <text fg={theme.border}>v0.0.1</text>
         </box>

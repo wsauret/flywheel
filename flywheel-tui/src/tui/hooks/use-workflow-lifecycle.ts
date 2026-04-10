@@ -40,7 +40,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
 
   // Create the controller — all business logic lives there
   const controller = createWorkflowController({
-    registry: services.registry,
+    sessionStore: services.sessionStore,
     manager: services.manager,
     refreshList: services.refreshList,
     workStartTime: metrics.workStartTime,
@@ -54,8 +54,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     batch(() => {
       signals.setErrorMessage("")
       signals.setStatusLine("")
-      signals.setViewedBlocks(undefined)
-      signals.setViewedTitle(undefined)
       metrics.resetMetrics()
     })
     services.setTerminalTitle(terminalTitle)

@@ -1,14 +1,14 @@
 /**
- * Session Registry — reactive runner pool backed by SolidJS createStore.
+ * Session Store — reactive session data backed by SolidJS createStore.
  *
- * Manages multiple concurrent session runners (workflow and chat). Each
- * registered session runs independently in the background. The shell picks
- * one as "foreground" for display, while others continue executing.
+ * Single source of truth for all session display data: active runners,
+ * ended sessions, and historical sessions loaded from disk. The shell
+ * picks one as "foreground" for display.
  *
- * If an entry exists, the session is active. Entries are removed synchronously
- * when runners complete or error. Lifecycle state (completed/paused/error)
- * is NOT tracked here — callers receive `onRunnerDone`/`onRunnerError`
- * callbacks and update their own state machines.
+ * Entries persist after runners complete — the `ended` flag marks finished
+ * sessions while retaining display data (outputBlocks, steps, etc.).
+ * Lifecycle state (completed/paused/error) is tracked externally via
+ * `onRunnerDone`/`onRunnerError` callbacks and the SessionManager.
  *
  * Uses a discriminated union on `kind` ("workflow" | "chat") so consumers
  * can type-narrow to access session-specific fields (e.g. `steps` on
@@ -33,7 +33,7 @@ import type { SessionKind } from "./session/types"
 // Types — discriminated union on `kind`
 // ---------------------------------------------------------------------------
 
-interface SessionEntryBase {
+export interface SessionEntryBase {
   readonly kind: SessionKind
   description: string
   outputBlocks: readonly AnyBlock[]
@@ -43,17 +43,21 @@ interface SessionEntryBase {
   readonly startedAt: number
   modelActivity: ModelActivity
   errorMessage?: string
+  /** True after the runner has completed/errored and been disposed. Data is retained for display. */
+  ended: boolean
 }
 
 export interface WorkflowSessionEntry extends SessionEntryBase {
   readonly kind: "workflow"
-  readonly runner: WorkflowRunner
+  /** Null for ended/loaded entries (no live runner). */
+  readonly runner: WorkflowRunner | null
   steps: readonly StepState[]
 }
 
 export interface ChatSessionEntry extends SessionEntryBase {
   readonly kind: "chat"
-  readonly runner: ChatRunner
+  /** Null for ended/loaded entries (no live runner). */
+  readonly runner: ChatRunner | null
 }
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
@@ -78,7 +82,7 @@ export interface ChatStoreHandle {
 }
 
 
-export interface SessionRegistry {
+export interface SessionStore {
   /** Start a new workflow and register it. Returns sessionId. */
   start(opts: {
     sessionId: string
@@ -114,11 +118,25 @@ export interface SessionRegistry {
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): Promise<string>
 
+  /** Load a session snapshot into the store for viewing (no live runner).
+   *  Creates an ended entry with the provided display data. */
+  load(sessionId: string, data: {
+    kind: SessionKind
+    description: string
+    outputBlocks: readonly AnyBlock[]
+    tokens?: number
+    cost?: number
+    startedAt?: number
+  }): void
+
   /** Get a session entry by ID. Returns a reactive proxy — auto-tracks inside createEffect/createMemo. */
   get(sessionId: string): SessionEntry | undefined
 
-  /** Check if a session exists in the registry. */
+  /** Check if a session exists in the store. */
   has(sessionId: string): boolean
+
+  /** Check if a session is actively running (exists and not ended). */
+  isRunning(sessionId: string): boolean
 
   /** Pause a specific session. Returns false if the entry doesn't support pausing (e.g. chat). */
   pause(sessionId: string): boolean
@@ -126,7 +144,10 @@ export interface SessionRegistry {
   /** Abort a specific session. */
   abort(sessionId: string): void
 
-  /** Remove a session from the registry (cleanup). Async — awaits dispose/flush. */
+  /** Mark a session as ended — dispose the runner but keep the entry for display. */
+  finish(sessionId: string): Promise<void>
+
+  /** Remove a session from the store (cleanup). Async — awaits dispose/flush. */
   remove(sessionId: string): Promise<void>
 
   /** Update a specific field on an entry. Used by runners to write directly to the store. */
@@ -141,7 +162,7 @@ export interface SessionRegistry {
   /** Number of active sessions (every entry is active). */
   runningCount(): number
 
-  /** All session IDs currently in the registry. */
+  /** All session IDs currently in the store. */
   allIds(): string[]
 
   /** Abort and dispose all sessions, flushing output. For clean shutdown. */
@@ -153,11 +174,11 @@ export interface SessionRegistry {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates a session registry backed by SolidJS createStore.
+ * Creates a session store backed by SolidJS createStore.
  * Callers MUST call disposeAll() on cleanup to dispose the internal reactive root.
  */
-export function createSessionRegistry(factories: WorkflowSessionFactories): SessionRegistry {
-  // Create a SolidJS reactive root that owns all effects/memos in this registry.
+export function createSessionStore(factories: WorkflowSessionFactories): SessionStore {
+  // Create a SolidJS reactive root that owns all effects/memos in this store.
   // disposeRoot() tears down the reactive graph on shutdown.
   // Definite assignment (!) is safe: createRoot's callback runs synchronously.
   let disposeRoot!: () => void
@@ -213,6 +234,7 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
       contextPercent: 0,
       startedAt: Date.now(),
       modelActivity: "idle",
+      ended: false,
     }
 
     setEntries(sessionId, entry)
@@ -221,12 +243,12 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
     runner.run().then(
       async (result) => {
         opts.onRunnerDone?.(sessionId, result)
-        await remove(sessionId)
+        await finish(sessionId)
         opts.onComplete?.()
       },
       async (err) => {
         opts.onRunnerError?.(sessionId, err)
-        await remove(sessionId)
+        await finish(sessionId)
         opts.onComplete?.()
       },
     )
@@ -251,12 +273,12 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
       onError: async (message) => {
         updateEntry(sessionId, { errorMessage: message })
         opts.onRunnerError?.(sessionId, new Error(message))
-        await remove(sessionId)
+        await finish(sessionId)
         opts.onComplete?.()
       },
       onEnded: async () => {
         opts.onRunnerDone?.(sessionId)
-        await remove(sessionId)
+        await finish(sessionId)
         opts.onComplete?.()
       },
     }
@@ -273,11 +295,40 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
       contextPercent: 0,
       startedAt: Date.now(),
       modelActivity: "idle",
+      ended: false,
     }
 
     setEntries(sessionId, entry)
 
     return sessionId
+  }
+
+  function load(sessionId: string, data: {
+    kind: SessionKind
+    description: string
+    outputBlocks: readonly AnyBlock[]
+    tokens?: number
+    cost?: number
+    startedAt?: number
+  }): void {
+    // Don't overwrite a live or already-loaded entry
+    if (entries[sessionId]) return
+    const base = {
+      description: data.description,
+      outputBlocks: [...data.outputBlocks],
+      tokens: data.tokens ?? 0,
+      cost: data.cost ?? 0,
+      contextPercent: 0,
+      startedAt: data.startedAt ?? Date.now(),
+      modelActivity: "idle" as const,
+      ended: true,
+      runner: null,
+    }
+    if (data.kind === "workflow") {
+      setEntries(sessionId, { ...base, kind: "workflow", steps: [] } as WorkflowSessionEntry)
+    } else {
+      setEntries(sessionId, { ...base, kind: "chat" } as ChatSessionEntry)
+    }
   }
 
   function get(sessionId: string): SessionEntry | undefined {
@@ -288,9 +339,14 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
     return entries[sessionId] !== undefined
   }
 
+  function isRunning(sessionId: string): boolean {
+    const entry = entries[sessionId]
+    return entry !== undefined && !entry.ended
+  }
+
   function pause(sessionId: string): boolean {
     const entry = entries[sessionId]
-    if (!entry) return false
+    if (!entry || entry.ended || !entry.runner) return false
     if (entry.kind !== "workflow") return false
     entry.runner.pause()
     return true
@@ -298,9 +354,17 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
 
   function abort(sessionId: string): void {
     const entry = entries[sessionId]
-    if (!entry) return
+    if (!entry || entry.ended || !entry.runner) return
     entry.runner.abort()
     // Status transitions happen when run() resolves (workflow) or via callbacks (chat)
+  }
+
+  /** Dispose the runner but keep the entry for display. */
+  async function finish(sessionId: string): Promise<void> {
+    const entry = entries[sessionId]
+    if (!entry || entry.ended) return
+    setEntries(sessionId, { ended: true } as any)
+    if (entry.runner) await entry.runner.dispose()
   }
 
   async function remove(sessionId: string): Promise<void> {
@@ -308,13 +372,12 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
     if (!entry) return
     // Delete entry BEFORE awaiting dispose — UI updates aren't blocked by I/O
     setEntries(produce((e) => { delete e[sessionId] }))
-    // Then await dispose (flushes output, cleans up resources)
-    await entry.runner.dispose()
+    if (!entry.ended) await entry.runner.dispose()
   }
 
   function injectMessage(sessionId: string, text: string): boolean {
     const entry = entries[sessionId]
-    if (!entry) return false
+    if (!entry || entry.ended || !entry.runner) return false
     // Optimistically set activity to "thinking" so the UI shows immediate
     // feedback while waiting for the first NDJSON thinking event to arrive.
     updateEntry(sessionId, { modelActivity: "thinking" })
@@ -323,17 +386,18 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
 
   function cancelShutdown(sessionId: string): boolean {
     const entry = entries[sessionId]
-    if (!entry) return false
+    if (!entry || entry.ended || !entry.runner) return false
     if (entry.kind !== "workflow") return false
     entry.runner.cancelShutdown()
     return true
   }
 
-  /** Number of active sessions. Reading Object.keys(entries) on a SolidJS store
-   *  proxy auto-tracks key additions/removals when called inside a reactive context
-   *  (createEffect, createMemo). Outside reactive context, returns a plain snapshot. */
+  /** Number of actively running sessions (not ended).
+   *  Reading Object.keys(entries) on a SolidJS store proxy auto-tracks key
+   *  additions/removals when called inside a reactive context. The `ended`
+   *  field is also tracked since we read each entry. */
   function runningCount(): number {
-    return Object.keys(entries).length
+    return Object.keys(entries).filter((id) => !entries[id]?.ended).length
   }
 
   function allIds(): string[] {
@@ -345,12 +409,12 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
     // Abort all first (signal subprocesses to stop)
     for (const id of ids) {
       const entry = entries[id]
-      if (entry) entry.runner.abort()
+      if (entry?.runner) entry.runner.abort()
     }
     // Then dispose all (flushes output, cleans up resources)
     await Promise.all(ids.map(async (id) => {
       const entry = entries[id]
-      if (!entry) return
+      if (!entry?.runner) return
       try { await entry.runner.dispose() } catch { /* best-effort */ }
     }))
     // Clear all entries
@@ -361,5 +425,5 @@ export function createSessionRegistry(factories: WorkflowSessionFactories): Sess
     disposeRoot()
   }
 
-  return { start, startChat, get, has, allIds, pause, abort, remove, injectMessage, cancelShutdown, updateEntry, runningCount, disposeAll }
+  return { start, startChat, load, get, has, isRunning, allIds, pause, abort, finish, remove, injectMessage, cancelShutdown, updateEntry, runningCount, disposeAll }
 }

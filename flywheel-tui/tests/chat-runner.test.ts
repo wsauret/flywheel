@@ -3,7 +3,7 @@
  * output persistence, and state machine transitions.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test"
+import { describe, it, expect, beforeEach } from "bun:test"
 import type { SessionRunner } from "../src/orchestration/session-runner"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
@@ -12,23 +12,20 @@ import type { AnyBlock } from "../src/infra/output-blocks"
 /** Minimal ChatSession stub that records calls. */
 function createStubChatSession() {
   const calls: string[] = []
-  let onBlocks: ((blocks: any[]) => void) | null = null
   let onWaiting: ((waiting: boolean) => void) | null = null
   return {
     session: {
       send: (text: string) => { calls.push(`send:${text}`) },
       interrupt: () => { calls.push("interrupt") },
       end: () => { calls.push("end") },
-      builder: { getBlocks: () => [] },
+      outputSession: { getBlocks: () => [], flush: () => {}, dispose: () => {} },
       budgetTracker: { getTokensUsed: () => 0, getTotalCost: () => 0 },
     },
     calls,
     /** Simulate wiring callbacks during factory */
-    captureCallbacks(cbs: { onBlocks: any; onWaiting: any }) {
-      onBlocks = cbs.onBlocks
+    captureCallbacks(cbs: { onWaiting: any }) {
       onWaiting = cbs.onWaiting
     },
-    triggerBlocks(blocks: any[]) { onBlocks?.(blocks) },
     triggerWaiting(waiting: boolean) { onWaiting?.(waiting) },
   }
 }
@@ -130,7 +127,7 @@ describe("ChatRunner", () => {
     expect(stateUpdates).toEqual(["active", "paused"])
   })
 
-  it("onBlocks wired to output flusher schedule", () => {
+  it("onFlush wired to output flusher schedule", () => {
     let scheduled = false
     const mockFlusher = {
       schedule: () => { scheduled = true },
@@ -138,12 +135,12 @@ describe("ChatRunner", () => {
       dispose: () => {},
     }
 
-    // Simulate onBlocks callback wiring
-    const onBlocks = (_blocks: any[]) => {
+    // Simulate onFlush callback wiring (from chat-runner → chat-session → OutputSession)
+    const onFlush = () => {
       mockFlusher.schedule()
     }
 
-    onBlocks([{ type: "text", content: "hello" }])
+    onFlush()
     expect(scheduled).toBe(true)
   })
 })
@@ -153,32 +150,27 @@ describe("ChatRunner", () => {
 // ---------------------------------------------------------------------------
 
 describe("ChatRunner — resume with priorBlocks", () => {
-  it("emits prior blocks immediately via onBlocks callback", () => {
-    const emitted: AnyBlock[][] = []
+  it("emits prior blocks immediately via updateEntry", () => {
+    const entryUpdates: any[] = []
     const priorBlocks: AnyBlock[] = [
       { kind: "text", content: "prior message", timestamp: 100 } as AnyBlock,
       { kind: "system", message: "started", timestamp: 200 } as AnyBlock,
     ]
 
-    // Simulate ChatRunner initialization with priorBlocks
-    let currentBlocks: AnyBlock[] = []
-    const callbacks = {
-      onBlocks: (blocks: AnyBlock[]) => { emitted.push([...blocks]) },
-    }
+    const updateEntry = (patch: any) => { entryUpdates.push(patch) }
 
     // This is the logic from createChatRunner when priorBlocks is provided
     if (priorBlocks && priorBlocks.length > 0) {
-      currentBlocks = [...priorBlocks]
-      callbacks.onBlocks(currentBlocks)
+      updateEntry({ outputBlocks: [...priorBlocks] })
     }
 
-    expect(emitted).toHaveLength(1)
-    expect(emitted[0]).toHaveLength(2)
-    expect((emitted[0][0] as any).kind).toBe("text")
-    expect((emitted[0][0] as any).content).toBe("prior message")
+    expect(entryUpdates).toHaveLength(1)
+    expect(entryUpdates[0].outputBlocks).toHaveLength(2)
+    expect((entryUpdates[0].outputBlocks[0] as any).kind).toBe("text")
+    expect((entryUpdates[0].outputBlocks[0] as any).content).toBe("prior message")
   })
 
-  it("prepends prior blocks to new blocks from ChatSession", () => {
+  it("wrappedUpdateEntry prepends prior blocks to OutputSession blocks", () => {
     const priorBlocks: AnyBlock[] = [
       { kind: "text", content: "prior", timestamp: 100 } as AnyBlock,
     ]
@@ -186,54 +178,66 @@ describe("ChatRunner — resume with priorBlocks", () => {
       { kind: "text", content: "new message", timestamp: 300 } as AnyBlock,
     ]
 
-    // Simulate the onBlocks merge logic from ChatRunner
-    let currentBlocks: AnyBlock[] = [...priorBlocks]
-    const onBlocksFromSession = (blocks: AnyBlock[]) => {
-      currentBlocks = priorBlocks ? [...priorBlocks, ...blocks] : blocks
+    // Simulate the wrappedUpdateEntry logic from ChatRunner
+    let lastUpdate: any = null
+    const updateEntry = (patch: any) => { lastUpdate = patch }
+    const wrappedUpdateEntry = (patch: any) => {
+      if (patch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
+        updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...patch.outputBlocks] })
+      } else {
+        updateEntry(patch)
+      }
     }
 
-    onBlocksFromSession(newBlocks)
+    wrappedUpdateEntry({ outputBlocks: newBlocks })
 
-    expect(currentBlocks).toHaveLength(2)
-    expect((currentBlocks[0] as any).content).toBe("prior")
-    expect((currentBlocks[1] as any).content).toBe("new message")
+    expect(lastUpdate.outputBlocks).toHaveLength(2)
+    expect((lastUpdate.outputBlocks[0] as any).content).toBe("prior")
+    expect((lastUpdate.outputBlocks[1] as any).content).toBe("new message")
   })
 
-  it("flusher saves prior + new blocks combined", () => {
+  it("flusher saves prior + OutputSession blocks combined", () => {
     const priorBlocks: AnyBlock[] = [
       { kind: "text", content: "old", timestamp: 100 } as AnyBlock,
     ]
-    const newBlocks: AnyBlock[] = [
+    const sessionBlocks: AnyBlock[] = [
       { kind: "text", content: "fresh", timestamp: 200 } as AnyBlock,
     ]
 
-    let currentBlocks: AnyBlock[] = [...priorBlocks]
-    let savedBlocks: AnyBlock[] = []
+    // Simulate flusher getBlocks callback (from ChatRunner wiring)
+    const getBlocksFn = () => {
+      return priorBlocks && priorBlocks.length > 0
+        ? [...priorBlocks, ...sessionBlocks]
+        : sessionBlocks
+    }
 
-    // Simulate flusher getBlocks callback
-    const getBlocks = () => currentBlocks
-
-    // Simulate onBlocks from ChatSession
-    currentBlocks = [...priorBlocks, ...newBlocks]
-
-    // Simulate flusher saving
-    savedBlocks = getBlocks()
+    const savedBlocks = getBlocksFn()
 
     expect(savedBlocks).toHaveLength(2)
     expect((savedBlocks[0] as any).content).toBe("old")
     expect((savedBlocks[1] as any).content).toBe("fresh")
   })
 
-  it("without priorBlocks, onBlocks passes new blocks directly", () => {
+  it("without priorBlocks, wrappedUpdateEntry passes blocks directly", () => {
     const priorBlocks: AnyBlock[] | undefined = undefined
     const newBlocks: AnyBlock[] = [
       { kind: "text", content: "new", timestamp: 100 } as AnyBlock,
     ]
 
-    // Simulate the onBlocks merge logic when no priorBlocks
-    const currentBlocks = priorBlocks ? [...priorBlocks, ...newBlocks] : newBlocks
+    // Simulate the wrappedUpdateEntry logic when no priorBlocks
+    let lastUpdate: any = null
+    const updateEntry = (patch: any) => { lastUpdate = patch }
+    const wrappedUpdateEntry = (patch: any) => {
+      if (patch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
+        updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...patch.outputBlocks] })
+      } else {
+        updateEntry(patch)
+      }
+    }
 
-    expect(currentBlocks).toHaveLength(1)
-    expect((currentBlocks[0] as any).content).toBe("new")
+    wrappedUpdateEntry({ outputBlocks: newBlocks })
+
+    expect(lastUpdate.outputBlocks).toHaveLength(1)
+    expect((lastUpdate.outputBlocks[0] as any).content).toBe("new")
   })
 })

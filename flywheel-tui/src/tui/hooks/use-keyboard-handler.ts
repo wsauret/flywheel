@@ -8,14 +8,14 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import type { ShellSignals } from "./shell-state.js"
-import type { SessionRegistry } from "../../orchestration/session-registry.js"
+import type { SessionStore } from "../../orchestration/session-store.js"
 import type { WorkflowLifecycleHook } from "./use-workflow-lifecycle.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionModalHook } from "./use-session-modal.js"
 
 export interface KeyboardHandlerDeps {
   signals: ShellSignals
-  registry: SessionRegistry
+  sessionStore: SessionStore
   workflow: WorkflowLifecycleHook
   chat: ChatModeHook
   sessionModal: SessionModalHook
@@ -26,12 +26,18 @@ export interface KeyboardHandlerDeps {
 }
 
 export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
-  const { signals, registry, workflow, chat, sessionModal, inChat, runningCount } = deps
+  const { signals, sessionStore, workflow, chat, sessionModal, inChat, runningCount } = deps
 
   /** Tracks the last ESC timestamp for double-ESC escalation in chat mode. */
   let lastChatEscAt = 0
 
   function handleEscape(): void {
+    // Pending work mode: cancel and return to whatever was underneath
+    if (signals.pendingWorkCommand()) {
+      signals.setPendingWorkCommand(undefined)
+      return
+    }
+
     const state = signals.sessionState()
 
     // Active workflow (not chat): first Esc pauses, second Esc aborts
@@ -88,7 +94,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }
     if (evt.ctrl && evt.name === "r") { workflow.handleResume() }
     if (evt.ctrl && evt.name === "c") {
-      const hasWorkflows = registry.allIds().some((id) => workflow.isWorkflowSession(id))
+      const hasWorkflows = sessionStore.allIds().some((id) => workflow.isWorkflowSession(id))
       if (!hasWorkflows) { exitTUI() }
     }
   }

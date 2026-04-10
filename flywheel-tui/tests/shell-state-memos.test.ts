@@ -1,9 +1,9 @@
 /**
  * Tests for shell-state derived memos (Phase 3).
  *
- * Verifies that display signals are derived from the registry store
- * via createMemo, and that overlay signals (viewedBlocks, viewedTitle)
- * take precedence when set.
+ * Verifies that display signals are derived from the sessionStore store
+ * via createMemo. The sessionStore is the single source of truth — no
+ * overlay signals needed.
  *
  * Note: SolidJS in server/test mode evaluates createMemo eagerly once.
  * We test compositional correctness by setting up state before creating
@@ -15,12 +15,12 @@
 import { describe, it, expect, beforeEach } from "bun:test"
 import { createRoot } from "solid-js"
 import { createShellState, type ShellSignals } from "../src/tui/hooks/shell-state"
-import { createSessionRegistry, type ChatStoreHandle } from "../src/orchestration/session-registry"
+import { createSessionStore, type ChatStoreHandle } from "../src/orchestration/session-store"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
-/** Minimal mock factories for registry tests. */
+/** Minimal mock factories for sessionStore tests. */
 const mockFactories: WorkflowSessionFactories = {
   createAdapter: () => ({
     connect: () => {},
@@ -60,9 +60,9 @@ function createMockChatRunner(sessionId: string): ChatRunner {
   }
 }
 
-function buildShellState(registry: ReturnType<typeof createSessionRegistry>) {
+function buildShellState(sessionStore: ReturnType<typeof createSessionStore>) {
   return createShellState({
-    registry,
+    sessionStore,
     manager: { getState: () => null } as any,
     refreshList: () => {},
     setTerminalTitle: () => {},
@@ -73,126 +73,80 @@ function buildShellState(registry: ReturnType<typeof createSessionRegistry>) {
 
 describe("Shell state derived memos", () => {
   it("outputBlocks returns empty array when no foreground session", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
     expect(signals.outputBlocks()).toEqual([])
   })
 
-  it("registryEntry is undefined when no foreground set", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
-    expect(signals.registryEntry()).toBeUndefined()
+  it("storeEntry is undefined when no foreground set", () => {
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
+    expect(signals.storeEntry()).toBeUndefined()
   })
 
   it("agentState defaults to idle when no foreground session", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
     expect(signals.agentState()).toBe("idle")
   })
 
   it("steps returns empty array when no foreground session", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
     expect(signals.steps()).toEqual([])
   })
 
   it("sessionTitle returns empty string when no foreground session", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
     expect(signals.sessionTitle()).toBe("")
   })
 
-  it("viewedBlocks overlay takes precedence over registry data", async () => {
-    const registry = createSessionRegistry(mockFactories)
-    let handle: ChatStoreHandle | null = null
-
-    await registry.startChat({
-      sessionId: "chat-a",
-      createRunner: async (h) => { handle = h; return createMockChatRunner("chat-a") },
-    })
-    handle!.updateEntry({ outputBlocks: [{ type: "text", content: "live" }] as AnyBlock[] })
-
-    // Create shell state with foreground already set would need reactive tracking.
-    // Instead, test the overlay: set viewedBlocks and verify it takes precedence.
-    const { signals } = buildShellState(registry)
-
-    // Overlay takes precedence immediately
-    const historicalBlocks = [
-      { type: "text", content: "h1" },
-      { type: "text", content: "h2" },
-      { type: "text", content: "h3" },
-    ] as AnyBlock[]
-    signals.setViewedBlocks(historicalBlocks)
-
-    // In server mode, memos don't re-eval on signal change. But the overlay
-    // signal was set before memo evaluation would matter for the final read.
-    // We verify the interface shape instead: setViewedBlocks is a setter.
-    expect(signals.viewedBlocks()).toEqual(historicalBlocks)
-
-    // Clear overlay
-    signals.setViewedBlocks(undefined)
-    expect(signals.viewedBlocks()).toBeUndefined()
-  })
-
-  it("viewedTitle overlay signal works", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
-
-    expect(signals.viewedTitle()).toBeUndefined()
-
-    signals.setViewedTitle("Historical Session")
-    expect(signals.viewedTitle()).toBe("Historical Session")
-
-    signals.setViewedTitle(undefined)
-    expect(signals.viewedTitle()).toBeUndefined()
-  })
-
   it("ShellSignals interface has removed setters absent", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
 
     // These setters should NOT exist on the new interface
     expect("setAgentState" in signals).toBe(false)
     expect("setOutputBlocks" in signals).toBe(false)
     expect("setSteps" in signals).toBe(false)
     expect("setSessionTitle" in signals).toBe(false)
+    // Overlay signals removed — sessionStore is the single source of truth
+    expect("setViewedBlocks" in signals).toBe(false)
+    expect("setViewedTitle" in signals).toBe(false)
 
     // These should still exist
     expect("setErrorMessage" in signals).toBe(true)
     expect("setStatusLine" in signals).toBe(true)
     expect("setForegroundId" in signals).toBe(true)
-    expect("setViewedBlocks" in signals).toBe(true)
-    expect("setViewedTitle" in signals).toBe(true)
   })
 
   it("ShellSignals interface has new accessors", () => {
-    const registry = createSessionRegistry(mockFactories)
-    const { signals } = buildShellState(registry)
+    const sessionStore = createSessionStore(mockFactories)
+    const { signals } = buildShellState(sessionStore)
 
-    // New memo accessors
-    expect(typeof signals.registryEntry).toBe("function")
-    expect(typeof signals.viewedBlocks).toBe("function")
-    expect(typeof signals.viewedTitle).toBe("function")
+    // Memo accessors
+    expect(typeof signals.storeEntry).toBe("function")
 
-    // Existing read-only accessors (now backed by memos)
+    // Existing read-only accessors (backed by memos)
     expect(typeof signals.agentState).toBe("function")
     expect(typeof signals.outputBlocks).toBe("function")
     expect(typeof signals.steps).toBe("function")
     expect(typeof signals.sessionTitle).toBe("function")
   })
 
-  it("registryEntry returns entry when foreground matches a registry session", async () => {
+  it("storeEntry returns entry when foreground matches a sessionStore session", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
-        await registry.startChat({
+        const sessionStore = createSessionStore(mockFactories)
+        await sessionStore.startChat({
           sessionId: "chat-a",
           description: "My Chat",
           createRunner: async (h) => createMockChatRunner("chat-a"),
         })
 
-        // In createRoot, we verify registry.get works correctly (our memo delegates to it)
-        const entry = registry.get("chat-a")
+        // In createRoot, we verify sessionStore.get works correctly (our memo delegates to it)
+        const entry = sessionStore.get("chat-a")
         expect(entry).toBeDefined()
         expect(entry!.description).toBe("My Chat")
         expect(entry!.kind).toBe("chat")
@@ -203,20 +157,20 @@ describe("Shell state derived memos", () => {
     })
   })
 
-  it("outputBlocks derives from registry entry when foreground is set", async () => {
+  it("outputBlocks derives from sessionStore entry when foreground is set", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let handle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "chat-a",
           createRunner: async (h) => { handle = h; return createMockChatRunner("chat-a") },
         })
         handle!.updateEntry({ outputBlocks: [{ type: "text", content: "hello" }] as AnyBlock[] })
 
-        // Verify registry has the blocks
-        const entry = registry.get("chat-a")
+        // Verify sessionStore has the blocks
+        const entry = sessionStore.get("chat-a")
         expect(entry!.outputBlocks.length).toBe(1)
         expect(entry!.outputBlocks[0]).toEqual({ type: "text", content: "hello" })
 
@@ -229,13 +183,13 @@ describe("Shell state derived memos", () => {
   it("steps returns empty array for chat entries (discriminated union)", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
-        await registry.startChat({
+        const sessionStore = createSessionStore(mockFactories)
+        await sessionStore.startChat({
           sessionId: "chat-a",
           createRunner: async (h) => createMockChatRunner("chat-a"),
         })
 
-        const entry = registry.get("chat-a")
+        const entry = sessionStore.get("chat-a")
         expect(entry!.kind).toBe("chat")
         // Chat entries don't have steps
         expect("steps" in entry!).toBe(false)
@@ -249,19 +203,19 @@ describe("Shell state derived memos", () => {
   it("steps returns workflow steps for workflow entries", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
 
-        registry.start({
+        sessionStore.start({
           sessionId: "wf-a",
           queue: { steps: [] } as any,
           description: "test workflow",
         })
 
-        registry.updateEntry("wf-a", {
+        sessionStore.updateEntry("wf-a", {
           steps: [{ title: "Step 1", status: "running" }] as any,
         })
 
-        const entry = registry.get("wf-a")
+        const entry = sessionStore.get("wf-a")
         expect(entry!.kind).toBe("workflow")
         if (entry!.kind === "workflow") {
           expect(entry!.steps.length).toBe(1)
@@ -276,24 +230,24 @@ describe("Shell state derived memos", () => {
   it("agentState derives active from non-idle modelActivity", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const registry = createSessionRegistry(mockFactories)
+        const sessionStore = createSessionStore(mockFactories)
         let handle: ChatStoreHandle | null = null
 
-        await registry.startChat({
+        await sessionStore.startChat({
           sessionId: "chat-a",
           createRunner: async (h) => { handle = h; return createMockChatRunner("chat-a") },
         })
 
         // Default is idle
-        expect(registry.get("chat-a")!.modelActivity).toBe("idle")
+        expect(sessionStore.get("chat-a")!.modelActivity).toBe("idle")
 
         // Set to thinking
         handle!.updateEntry({ modelActivity: "thinking" })
-        expect(registry.get("chat-a")!.modelActivity).toBe("thinking")
+        expect(sessionStore.get("chat-a")!.modelActivity).toBe("thinking")
 
         // Set back to idle
         handle!.updateEntry({ modelActivity: "idle" })
-        expect(registry.get("chat-a")!.modelActivity).toBe("idle")
+        expect(sessionStore.get("chat-a")!.modelActivity).toBe("idle")
 
         dispose()
         resolve()

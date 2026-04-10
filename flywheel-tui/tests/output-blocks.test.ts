@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { truncate, MAX_BLOCK_LINE_LENGTH } from "../src/tui/utils/text";
+import { truncate, MAX_BLOCK_LINE_LENGTH, isHandoffPath } from "../src/tui/utils/text";
 import { formatDuration } from "../src/infra/format";
 import type {
   AnyBlock,
@@ -8,6 +8,7 @@ import type {
   AgentBlock,
   ContextGroupBlock,
   SystemBlock,
+  UserMessageBlock,
 } from "../src/tui/types";
 import type { Theme } from "../src/tui/shared/context/theme";
 
@@ -472,6 +473,85 @@ describe("Block color contracts", () => {
   });
 });
 
+// ── Pending block splitting logic (output-window.tsx) ──
+
+describe("OutputWindow pending block splitting", () => {
+  /**
+   * Replicated from output-window.tsx: split blocks into scrollable
+   * (everything except pending user messages) and pinned (pending user messages).
+   */
+  function splitBlocks(blocks: AnyBlock[]): { scroll: AnyBlock[]; pinned: AnyBlock[] } {
+    return {
+      scroll: blocks.filter(b => !(b.kind === "userMessage" && (b as UserMessageBlock).pending)),
+      pinned: blocks.filter(b => b.kind === "userMessage" && (b as UserMessageBlock).pending),
+    };
+  }
+
+  it("separates pending user messages into pinned group", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "text", content: "hello", timestamp: 1 },
+      { kind: "userMessage", content: "queued msg", timestamp: 2, pending: true },
+    ];
+    const { scroll, pinned } = splitBlocks(blocks);
+    expect(scroll).toHaveLength(1);
+    expect(scroll[0].kind).toBe("text");
+    expect(pinned).toHaveLength(1);
+    expect(pinned[0].kind).toBe("userMessage");
+  });
+
+  it("keeps non-pending user messages in scroll group", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "userMessage", content: "sent msg", timestamp: 1, pending: false },
+      { kind: "userMessage", content: "queued msg", timestamp: 2, pending: true },
+    ];
+    const { scroll, pinned } = splitBlocks(blocks);
+    expect(scroll).toHaveLength(1);
+    expect((scroll[0] as UserMessageBlock).content).toBe("sent msg");
+    expect(pinned).toHaveLength(1);
+    expect((pinned[0] as UserMessageBlock).content).toBe("queued msg");
+  });
+
+  it("returns empty pinned when no pending messages", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "text", content: "hello", timestamp: 1 },
+      { kind: "userMessage", content: "sent msg", timestamp: 2 },
+    ];
+    const { scroll, pinned } = splitBlocks(blocks);
+    expect(scroll).toHaveLength(2);
+    expect(pinned).toHaveLength(0);
+  });
+
+  it("treats user messages without pending field as non-pending", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "userMessage", content: "normal msg", timestamp: 1 },
+    ];
+    const { scroll, pinned } = splitBlocks(blocks);
+    expect(scroll).toHaveLength(1);
+    expect(pinned).toHaveLength(0);
+  });
+
+  it("handles empty blocks array", () => {
+    const { scroll, pinned } = splitBlocks([]);
+    expect(scroll).toHaveLength(0);
+    expect(pinned).toHaveLength(0);
+  });
+
+  it("preserves order of non-pending blocks", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "text", content: "first", timestamp: 1 },
+      { kind: "userMessage", content: "queued", timestamp: 2, pending: true },
+      { kind: "text", content: "second", timestamp: 3 },
+      { kind: "system", message: "info", timestamp: 4 },
+    ];
+    const { scroll, pinned } = splitBlocks(blocks);
+    expect(scroll).toHaveLength(3);
+    expect((scroll[0] as TextBlock).content).toBe("first");
+    expect((scroll[1] as TextBlock).content).toBe("second");
+    expect(scroll[2].kind).toBe("system");
+    expect(pinned).toHaveLength(1);
+  });
+});
+
 // ── Truncation logic for output blocks ──
 
 describe("AgentBlock latestChild truncation", () => {
@@ -533,5 +613,29 @@ describe("ToolBlock detail truncation", () => {
     expect(toolDetailWidth(shortName)).toBe(74);
     // Long name: 80 - 16 - 4 = 60 chars for detail
     expect(toolDetailWidth(longName)).toBe(60);
+  });
+});
+
+// ── Handoff path detection ──
+
+describe("isHandoffPath", () => {
+  it("matches a standard handoff doc path", () => {
+    expect(isHandoffPath("/project/.flywheel/sessions/abc-123/handoffs/work_step1.json")).toBe(true);
+  });
+
+  it("matches nested inside any session id", () => {
+    expect(isHandoffPath("/x/.flywheel/sessions/f6648678-361d-4b22-a9b9-61622531cbf5/handoffs/work_abc.json")).toBe(true);
+  });
+
+  it("rejects a normal source file path", () => {
+    expect(isHandoffPath("src/app.ts")).toBe(false);
+  });
+
+  it("rejects a .flywheel path that is not a handoff", () => {
+    expect(isHandoffPath("/project/.flywheel/sessions/abc-123/context.md")).toBe(false);
+  });
+
+  it("returns false for undefined", () => {
+    expect(isHandoffPath(undefined)).toBe(false);
   });
 });

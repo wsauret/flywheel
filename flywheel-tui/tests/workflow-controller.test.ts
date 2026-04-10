@@ -5,7 +5,7 @@
  * - startWorkflow builds queue from slash command
  * - startTestStep creates test fixtures and workdir
  * - Lifecycle callbacks (handleRunnerDone, handleRunnerError) map results to correct states
- * - pause/abort delegate to registry
+ * - pause/abort delegate to sessionStore
  * - handleResume finds resumable sessions
  * - isWorkflowSession accessor
  */
@@ -16,13 +16,13 @@ import {
   formatWorkflowDoneResult,
   type WorkflowControllerDeps,
 } from "../src/orchestration/workflow-controller"
-import type { SessionRegistry, SessionEntry } from "../src/orchestration/session-registry"
+import type { SessionStore, SessionEntry } from "../src/orchestration/session-store"
 import type { SessionManager } from "../src/orchestration/session/manager"
 import type { WorkflowResult } from "../src/orchestration/workflow-runner"
 
 // ── Helpers ──
 
-function createMockRegistry(): SessionRegistry & {
+function createMockSessionStore(): SessionStore & {
   _entries: Map<string, SessionEntry>
   _startCalls: Array<{ sessionId: string; description: string }>
   _pauseCalls: string[]
@@ -57,9 +57,12 @@ function createMockRegistry(): SessionRegistry & {
     }),
     startChat: mock(async () => ""),
     get: (id: string) => entries.get(id),
+    load: mock(() => {}),
     has: (id: string) => entries.has(id),
+    isRunning: (id: string) => entries.has(id),
     pause: mock((id: string) => { pauseCalls.push(id); return true }),
     abort: mock((id: string) => { abortCalls.push(id) }),
+    finish: mock(async () => {}),
     remove: mock(async () => {}),
     updateEntry: mock(() => {}),
     injectMessage: mock(() => true),
@@ -98,7 +101,7 @@ function createMockManager(): SessionManager & {
 
 function createDeps(overrides?: Partial<WorkflowControllerDeps>): WorkflowControllerDeps {
   return {
-    registry: createMockRegistry(),
+    sessionStore: createMockSessionStore(),
     manager: createMockManager(),
     refreshList: mock(() => {}),
     workStartTime: () => Date.now() - 10000,
@@ -227,15 +230,15 @@ describe("WorkflowController", () => {
   })
 
   describe("pause", () => {
-    it("delegates to registry.pause and updates manager state", () => {
+    it("delegates to sessionStore.pause and updates manager state", () => {
       const deps = createDeps()
       const controller = createWorkflowController(deps)
 
       const paused = controller.pause("some-session")
 
       expect(paused).toBe(true)
-      const mockRegistry = deps.registry as ReturnType<typeof createMockRegistry>
-      expect(mockRegistry._pauseCalls).toContain("some-session")
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      expect(mockStore._pauseCalls).toContain("some-session")
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
       expect(mockManager._stateUpdates).toContainEqual({ id: "some-session", state: "paused" })
     })
@@ -250,14 +253,14 @@ describe("WorkflowController", () => {
   })
 
   describe("abort", () => {
-    it("delegates to registry.abort", () => {
+    it("delegates to sessionStore.abort", () => {
       const deps = createDeps()
       const controller = createWorkflowController(deps)
 
       controller.abort("session-123")
 
-      const mockRegistry = deps.registry as ReturnType<typeof createMockRegistry>
-      expect(mockRegistry._abortCalls).toContain("session-123")
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      expect(mockStore._abortCalls).toContain("session-123")
     })
 
     it("does nothing when no foreground ID", () => {
@@ -288,10 +291,10 @@ describe("WorkflowController", () => {
       expect(controller.isWorkflowSession("nonexistent")).toBe(false)
     })
 
-    it("returns true for workflow entries in registry", () => {
-      const registry = createMockRegistry()
+    it("returns true for workflow entries in sessionStore", () => {
+      const sessionStore = createMockSessionStore()
       // Manually add a workflow entry
-      registry._entries.set("wf-1", {
+      sessionStore._entries.set("wf-1", {
         kind: "workflow",
         runner: {} as any,
         description: "Test",
@@ -304,7 +307,7 @@ describe("WorkflowController", () => {
         modelActivity: "idle",
       } as any)
 
-      const deps = createDeps({ registry })
+      const deps = createDeps({ sessionStore })
       const controller = createWorkflowController(deps)
 
       expect(controller.isWorkflowSession("wf-1")).toBe(true)
@@ -325,7 +328,7 @@ describe("WorkflowController", () => {
 
   describe("lifecycle callbacks", () => {
     it("onRunnerDone callback receives formatted result", () => {
-      // We can't easily trigger the registry's onRunnerDone callback in unit tests
+      // We can't easily trigger the sessionStore's onRunnerDone callback in unit tests
       // because it requires a real workflow runner. Instead we test the formatter.
       const result: WorkflowResult = {
         completed: true,

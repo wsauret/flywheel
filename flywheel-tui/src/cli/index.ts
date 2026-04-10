@@ -63,19 +63,19 @@ async function runHeadless(): Promise<void> {
   }
 
   const { createHeadlessFactories } = await import("../orchestration/headless/factories")
-  const { createSessionRegistry } = await import("../orchestration/session-registry")
+  const { createSessionStore } = await import("../orchestration/session-store")
   const { buildQueueFromTemplate } = await import("../workflows/queue/templates")
   const { randomUUID } = await import("crypto")
 
-  // Create headless factories and pass to registry
+  // Create headless factories and pass to sessionStore
   const factories = createHeadlessFactories({ logLevel: "normal", timestamps: true })
-  const registry = createSessionRegistry(factories)
+  const sessionStore = createSessionStore(factories)
   const sessionId = randomUUID()
   const queue = buildQueueFromTemplate("work")
 
   // Wait for the session to reach a terminal state via callbacks
   const result = await new Promise<boolean>((resolve) => {
-    registry.start({
+    sessionStore.start({
       sessionId, queue, description,
       onRunnerDone: (_id, wfResult) => {
         resolve(wfResult.completed)
@@ -87,7 +87,7 @@ async function runHeadless(): Promise<void> {
     })
   })
 
-  await registry.disposeAll()
+  await sessionStore.disposeAll()
   process.exit(result ? 0 : 1)
 }
 

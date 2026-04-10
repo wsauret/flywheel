@@ -3,21 +3,21 @@
  *
  * Verifies:
  * - Message buffering during async startup (queue messages -> replay on ready)
- * - startChat creates session via manager and registry
+ * - startChat creates session via manager and sessionStore
  * - resumeChat loads persisted output blocks before launching
- * - endChat removes from registry and marks paused
+ * - endChat removes from sessionStore and marks paused
  * - backgroundChat clears startup state
  */
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { createChatController, type ChatControllerDeps } from "../src/orchestration/chat-controller"
-import type { SessionRegistry, ChatStoreHandle, SessionEntry } from "../src/orchestration/session-registry"
+import type { SessionStore, ChatStoreHandle, SessionEntry } from "../src/orchestration/session-store"
 import type { SessionManager } from "../src/orchestration/session/manager"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 
 // ── Helpers ──
 
-function createMockRegistry(): SessionRegistry & {
+function createMockSessionStore(): SessionStore & {
   _entries: Map<string, SessionEntry>
   _injectedMessages: string[]
   _startChatCalls: Array<{ sessionId: string }>
@@ -50,7 +50,7 @@ function createMockRegistry(): SessionRegistry & {
         chatSession: {} as any,
       }
 
-      // Call createRunner to simulate the real registry
+      // Call createRunner to simulate the real sessionStore
       const handle: ChatStoreHandle = {
         updateEntry: () => {},
         onError: () => {},
@@ -74,9 +74,12 @@ function createMockRegistry(): SessionRegistry & {
       return opts.sessionId
     }),
     get: (id: string) => entries.get(id),
+    load: mock(() => {}),
     has: (id: string) => entries.has(id),
+    isRunning: (id: string) => entries.has(id),
     pause: mock(() => false),
     abort: mock((id: string) => { abortCalls.push(id) }),
+    finish: mock(async (id: string) => { entries.get(id) && Object.assign(entries.get(id)!, { ended: true }) }),
     remove: mock(async (id: string) => { removeCalls.push(id); entries.delete(id) }),
     updateEntry: mock(() => {}),
     injectMessage: mock((id: string, text: string) => { injectedMessages.push(text); return true }),
@@ -118,7 +121,7 @@ function createMockManager(): SessionManager & {
 
 function createDeps(overrides?: Partial<ChatControllerDeps>): ChatControllerDeps {
   return {
-    registry: createMockRegistry(),
+    sessionStore: createMockSessionStore(),
     manager: createMockManager(),
     refreshList: mock(() => {}),
     projectCwd: "/tmp/test-project",
@@ -145,14 +148,14 @@ describe("ChatController", () => {
       expect(mockManager._created[0].name).toBe("Chat")
     })
 
-    it("registers session with registry.startChat", async () => {
+    it("registers session with sessionStore.startChat", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
       await controller.startChat()
 
-      const mockRegistry = deps.registry as ReturnType<typeof createMockRegistry>
-      expect(mockRegistry._startChatCalls).toHaveLength(1)
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      expect(mockStore._startChatCalls).toHaveLength(1)
     })
 
     it("calls refreshList after creating session", async () => {
@@ -171,19 +174,19 @@ describe("ChatController", () => {
       await controller.startChat("hello world")
 
       // The initial message is passed via the createRunner factory
-      const mockRegistry = deps.registry as ReturnType<typeof createMockRegistry>
-      expect(mockRegistry._startChatCalls).toHaveLength(1)
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      expect(mockStore._startChatCalls).toHaveLength(1)
     })
   })
 
   describe("message buffering during async startup", () => {
     it("buffers messages during startup and replays on ready", async () => {
-      const registry = createMockRegistry()
+      const sessionStore = createMockSessionStore()
       let startChatResolve: (() => void) | null = null
 
       // Override startChat to delay resolution
-      const originalStartChat = registry.startChat
-      registry.startChat = mock(async (opts: any) => {
+      const originalStartChat = sessionStore.startChat
+      sessionStore.startChat = mock(async (opts: any) => {
         // Start the chat but delay completion
         const promise = new Promise<void>((resolve) => {
           startChatResolve = resolve
@@ -197,7 +200,7 @@ describe("ChatController", () => {
         return result
       }) as any
 
-      const deps = createDeps({ registry })
+      const deps = createDeps({ sessionStore })
       const controller = createChatController(deps)
 
       // Start chat (will be pending)
@@ -212,8 +215,8 @@ describe("ChatController", () => {
       await startPromise
 
       // Messages should have been replayed via injectMessage
-      expect(registry._injectedMessages).toContain("message 1")
-      expect(registry._injectedMessages).toContain("message 2")
+      expect(sessionStore._injectedMessages).toContain("message 1")
+      expect(sessionStore._injectedMessages).toContain("message 2")
     })
 
     it("sendMessage returns true when buffering", async () => {
@@ -227,7 +230,7 @@ describe("ChatController", () => {
   })
 
   describe("endChat", () => {
-    it("removes chat from registry and marks paused", async () => {
+    it("removes chat from sessionStore and marks paused", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
@@ -255,7 +258,7 @@ describe("ChatController", () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      // The registry won't have an entry for a random ID
+      // The sessionStore won't have an entry for a random ID
       const ended = controller.endChat("nonexistent-id")
       expect(ended).toBe(false)
     })
@@ -275,15 +278,15 @@ describe("ChatController", () => {
   })
 
   describe("interruptChat", () => {
-    it("calls registry.abort on the foreground session", async () => {
+    it("calls sessionStore.abort on the foreground session", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
       const result = await controller.startChat()
       controller.interruptChat(result!.sessionId)
 
-      const mockRegistry = deps.registry as ReturnType<typeof createMockRegistry>
-      expect(mockRegistry._abortCalls).toContain(result!.sessionId)
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      expect(mockStore._abortCalls).toContain(result!.sessionId)
     })
 
     it("does nothing when no foreground ID", () => {
@@ -296,15 +299,15 @@ describe("ChatController", () => {
   })
 
   describe("sendMessage", () => {
-    it("sends message to foreground session via registry", async () => {
+    it("sends message to foreground session via sessionStore", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
       const result = await controller.startChat()
       controller.sendMessage(result!.sessionId, "hello")
 
-      const mockRegistry = deps.registry as ReturnType<typeof createMockRegistry>
-      expect(mockRegistry._injectedMessages).toContain("hello")
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      expect(mockStore._injectedMessages).toContain("hello")
     })
 
     it("returns false with no foreground ID and no buffering", () => {
