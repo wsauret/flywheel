@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock } from "../src/tui/types";
+import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock, TodoListBlock } from "../src/tui/types";
 
 describe("StructuredOutputBuilder", () => {
   let builder: StructuredOutputBuilder;
@@ -704,157 +704,128 @@ describe("StructuredOutputBuilder", () => {
     });
   });
 
-  // ── Stale agent detection ──
+  // ── TodoWrite ──
 
-  describe("stale agent detection", () => {
-    /** Access the internal StaleAgentDetector via the builder's private field. */
-    function getDetector(b: StructuredOutputBuilder) {
-      return (b as any).staleDetector;
-    }
-
-    it("checkStaleAgents completes agents inactive for >30s", () => {
-      builder.startAgent("stale-1", "Explore", "Searching", Date.now());
-
-      // Simulate staleness by backdating the activity timestamp
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-      activityMap.set("stale-1", Date.now() - 31_000);
-
-      // Trigger the check
-      (detector as any).checkStaleAgents();
+  describe("pushTodoWrite", () => {
+    it("creates a TodoListBlock on first call", () => {
+      const now = Date.now();
+      builder.pushTodoWrite([
+        { content: "Run tests", status: "in_progress" },
+        { content: "Fix bug", status: "pending" },
+      ], now);
 
       const blocks = builder.getBlocks();
-      const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "stale-1") as AgentBlock;
-      expect(agent).toBeDefined();
-      expect(agent.status).toBe("completed");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("todoList");
+      const todo = blocks[0] as TodoListBlock;
+      expect(todo.todos).toHaveLength(2);
+      expect(todo.todos[0].content).toBe("Run tests");
+      expect(todo.todos[0].status).toBe("in_progress");
+      expect(todo.todos[1].content).toBe("Fix bug");
+      expect(todo.todos[1].status).toBe("pending");
     });
 
-    it("does not complete recently active agents", () => {
-      builder.startAgent("fresh-1", "Explore", "Searching", Date.now());
+    it("updates the existing TodoListBlock in place on subsequent calls", () => {
+      const now = Date.now();
+      builder.pushTodoWrite([
+        { content: "Run tests", status: "in_progress" },
+        { content: "Fix bug", status: "pending" },
+      ], now);
 
-      // Activity is recent — should not be completed
-      const detector = getDetector(builder);
-      (detector as any).checkStaleAgents();
+      builder.pushTodoWrite([
+        { content: "Run tests", status: "completed" },
+        { content: "Fix bug", status: "in_progress" },
+      ], now + 100);
 
       const blocks = builder.getBlocks();
-      const agent = blocks.find((b: any) => b.kind === "agent" && b.id === "fresh-1") as AgentBlock;
-      expect(agent.status).toBe("active");
+      expect(blocks).toHaveLength(1);
+      const todo = blocks[0] as TodoListBlock;
+      expect(todo.todos[0].status).toBe("completed");
+      expect(todo.todos[1].status).toBe("in_progress");
     });
 
-    it("tool activity resets the stale timer via onAgentActivity", () => {
-      let activityCallCount = 0;
-      builder.onAgentActivity = () => { activityCallCount++; };
-
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.pushToolToAgent("a1", "Read", "file.ts", Date.now());
-
-      // The builder internally updates agentLastActivity on appendToolToAgent
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-      expect(activityMap.has("a1")).toBe(true);
-      // Activity timestamp should be very recent
-      expect(Date.now() - activityMap.get("a1")!).toBeLessThan(1000);
-    });
-
-    it("completed agent is removed from activity tracking", () => {
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-      expect(activityMap.has("a1")).toBe(true);
-
-      builder.completeAgent("a1", 500);
-      expect(activityMap.has("a1")).toBe(false);
-    });
-
-    it("errored agent is removed from activity tracking", () => {
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-      expect(activityMap.has("a1")).toBe(true);
-
-      builder.errorAgent("a1", "timeout");
-      expect(activityMap.has("a1")).toBe(false);
-    });
-
-    it("tool_result overrides stale completion with accurate duration", () => {
+    it("removes the TodoListBlock when given an empty array", () => {
       const now = Date.now();
-      builder.startAgent("a1", "Explore", "Searching", now);
+      builder.pushTodoWrite([
+        { content: "Run tests", status: "in_progress" },
+      ], now);
+      expect(builder.getBlocks()).toHaveLength(1);
 
-      // Stale detector fires early with short duration
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-      activityMap.set("a1", Date.now() - 31_000);
-      (detector as any).checkStaleAgents();
-
-      let agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
-      expect(agent.status).toBe("completed");
-
-      // Children arrive after stale completion — should re-activate the agent
-      builder.pushToolToAgent("a1", "Read", "file1.ts", now);
-
-      agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
-      expect(agent.status).toBe("active");
-
-      builder.pushToolToAgent("a1", "Grep", "pattern", now);
-
-      // tool_result arrives with accurate (longer) duration
-      builder.completeAgent("a1", 60_000);
-
-      agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
-      expect(agent.status).toBe("completed");
-      expect(agent.duration).toBe(60_000);
-      expect(agent.children).toHaveLength(2);
+      builder.pushTodoWrite([], now + 100);
+      expect(builder.getBlocks()).toHaveLength(0);
     });
 
-    it("new tool arriving re-activates a stale-completed agent", () => {
+    it("stays at its original position among other blocks", () => {
       const now = Date.now();
-      builder.startAgent("a1", "Explore", "Searching", now);
+      builder.pushText("some output", now);
+      builder.pushTodoWrite([
+        { content: "Task A", status: "pending" },
+      ], now + 100);
+      builder.pushText("more output", now + 200);
 
-      // Stale detector fires
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-      activityMap.set("a1", Date.now() - 31_000);
-      (detector as any).checkStaleAgents();
+      // Update the todo — should stay at index 1, not append to end
+      builder.pushTodoWrite([
+        { content: "Task A", status: "completed" },
+      ], now + 300);
 
-      let agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
-      expect(agent.status).toBe("completed");
-
-      // New tool arrives — agent should re-activate
-      builder.pushToolToAgent("a1", "Read", "file.ts", now);
-      agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
-      expect(agent.status).toBe("active");
-      expect(agent.children).toHaveLength(1);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("todoList");
+      expect(blocks[2].kind).toBe("text");
+      expect((blocks[1] as TodoListBlock).todos[0].status).toBe("completed");
     });
 
-    it("updateAgentLatestChild resets stale timer", () => {
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
+    it("breaks context tool grouping", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file1.ts", now);
+      builder.pushTool("Glob", "**/*.ts", now + 100);
+      builder.pushTodoWrite([
+        { content: "Process files", status: "in_progress" },
+      ], now + 200);
 
-      const detector = getDetector(builder);
-      const activityMap = detector.agentLastActivity as Map<string, number>;
-
-      // Backdate activity
-      activityMap.set("a1", Date.now() - 20_000);
-
-      // updateAgentLatestChild should reset the timer
-      builder.updateAgentLatestChild("a1", "Thinking: analyzing code");
-
-      // Activity timestamp should now be recent
-      expect(Date.now() - activityMap.get("a1")!).toBeLessThan(1000);
-
-      // Agent should still be active (not stale-completed)
-      (detector as any).checkStaleAgents();
-      const agent = builder.getBlocks().find((b: any) => b.kind === "agent" && b.id === "a1") as AgentBlock;
-      expect(agent.status).toBe("active");
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent"); // completed Tools group
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("todoList");
     });
 
-    it("dispose clears stale check interval and maps", () => {
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      const detector = getDetector(builder);
-      expect(detector.staleCheckInterval).not.toBeNull();
+    it("reset clears todo tracking", () => {
+      const now = Date.now();
+      builder.pushTodoWrite([
+        { content: "Task", status: "pending" },
+      ], now);
+      builder.reset();
 
-      builder.dispose();
-      expect(detector.staleCheckInterval).toBeNull();
-      expect(detector.agentLastActivity.size).toBe(0);
+      // After reset, a new pushTodoWrite should create a fresh block
+      builder.pushTodoWrite([
+        { content: "New task", status: "in_progress" },
+      ], now + 100);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect((blocks[0] as TodoListBlock).todos[0].content).toBe("New task");
+    });
+
+    it("resetTracking clears todo index", () => {
+      const now = Date.now();
+      builder.pushTodoWrite([
+        { content: "Task", status: "pending" },
+      ], now);
+      builder.resetTracking();
+
+      // After resetTracking, a new pushTodoWrite creates a second block
+      // (old block is preserved but no longer tracked)
+      builder.pushTodoWrite([
+        { content: "New task", status: "in_progress" },
+      ], now + 100);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("todoList");
+      expect(blocks[1].kind).toBe("todoList");
     });
   });
+
 });

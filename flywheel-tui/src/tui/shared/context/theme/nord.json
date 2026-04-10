@@ -54,6 +54,10 @@
       "dark": "#8B95A7",
       "light": "nord1"
     },
+    "textSubtle": {
+      "dark": "#B0B8C8",
+      "light": "nord2"
+    },
     "background": {
       "dark": "nord0",
       "light": "nord6"

@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // Sprint Evaluator Criteria — self-review-aligned evaluation for sprint mode.
 //
-// Evaluates work against the same 6-point checklist used by the self-review
-// injection (post-turn-verification.ts SELF_REVIEW_CHECKLIST). The evaluator
+// Evaluates work against the same 7-point checklist used by the self-review
+// injection (shared/self-review-checklist.ts). The evaluator
 // should PASS work that meets these criteria and only FAIL for hard evidence
 // of broken functionality — not for style, minor omissions, or gold-plating.
 //
@@ -19,7 +19,7 @@ import type { SprintIterationRecord } from "./types.js";
 const STATIC_CRITERIA_PREFIX = [
   "## Sprint Mode: Evaluation Criteria",
   "",
-  "Evaluate the worker's output against these 6 checks — the same checklist",
+  "Evaluate the worker's output against these 7 checks — the same checklist",
   "the worker used for self-review before submitting. Your job is to verify",
   "the worker did what was asked, not to find reasons to fail passing work.",
   "",
@@ -33,13 +33,14 @@ const STATIC_CRITERIA_PREFIX = [
   "4. **Test coverage** — did the worker add/update tests for new behavior? Do tests pass?",
   "5. **Regression check** — could the changes break existing functionality?",
   "6. **Edge cases** — obvious error handling gaps? Inputs that would break?",
+  "7. **Elegance** — is this the simplest, most symmetric design? No unnecessary abstractions, no callback chains, no duplicated state? Would a reader say \"of course\" rather than \"why\"?",
   "",
 
   // ── Verdict output fields ───────────────────────────────────────
   "### Required Feedback Fields",
   "",
   "Your verdict MUST include:",
-  "- `implementation_feedback`: Specific feedback on checklist items 1-3, 5-6.",
+  "- `implementation_feedback`: Specific feedback on checklist items 1-3, 5-7.",
   "- `script_feedback`: Specific feedback on checklist item 4 (tests).",
   "- `feedback`: Combined summary for the worker if a retry is needed.",
   "",

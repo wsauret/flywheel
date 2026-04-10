@@ -258,6 +258,95 @@ describe("StructuredEventParser", () => {
     });
   });
 
+  // ── Parallel subagent spawns ──
+
+  describe("parallel subagent spawns", () => {
+    it("three separate agent spawn events do NOT auto-complete siblings", () => {
+      // Simulate three parallel agent spawns arriving as separate top-level events
+      const spawn1 = makeAssistantEvent([
+        { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "explore A", subagent_type: "Explore" } },
+      ]);
+      const spawn2 = makeAssistantEvent([
+        { type: "tool_use", id: "tool_b", name: "Agent", input: { description: "explore B", subagent_type: "Explore" } },
+      ]);
+      const spawn3 = makeAssistantEvent([
+        { type: "tool_use", id: "tool_c", name: "Agent", input: { description: "explore C", subagent_type: "Explore" } },
+      ]);
+
+      parser.dispatch(spawn1, "claude");
+      parser.dispatch(spawn2, "claude");
+      parser.dispatch(spawn3, "claude");
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      // ALL three agents should still be active
+      expect((blocks[0] as AgentBlock).status).toBe("active");
+      expect((blocks[1] as AgentBlock).status).toBe("active");
+      expect((blocks[2] as AgentBlock).status).toBe("active");
+    });
+
+    it("parallel agents each close only on their own tool_result", () => {
+      // Spawn three agents
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "A" } },
+      ]), "claude");
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_b", name: "Agent", input: { description: "B" } },
+      ]), "claude");
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_c", name: "Agent", input: { description: "C" } },
+      ]), "claude");
+
+      // Complete only Agent B
+      parser.dispatch(makeToolResultEvent("tool_b"), "claude");
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect((blocks[0] as AgentBlock).status).toBe("active");
+      expect((blocks[1] as AgentBlock).status).toBe("completed");
+      expect((blocks[2] as AgentBlock).status).toBe("active");
+    });
+
+    it("top-level text AFTER all tool_results still closes stragglers", () => {
+      // Spawn two agents
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "A" } },
+      ]), "claude");
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_b", name: "Agent", input: { description: "B" } },
+      ]), "claude");
+
+      // Complete only Agent A via tool_result
+      parser.dispatch(makeToolResultEvent("tool_a"), "claude");
+
+      // Top-level text arrives — Agent B's tool_result was lost, should be auto-completed
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "Here are the results..." },
+      ]), "claude");
+
+      const blocks = builder.getBlocks();
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect((blocks[1] as AgentBlock).status).toBe("completed");
+    });
+
+    it("all three agents in one event stays correct", () => {
+      // All three spawns in a single assistant event (single content array)
+      const event = makeAssistantEvent([
+        { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "A" } },
+        { type: "tool_use", id: "tool_b", name: "Agent", input: { description: "B" } },
+        { type: "tool_use", id: "tool_c", name: "Agent", input: { description: "C" } },
+      ]);
+
+      parser.dispatch(event, "claude");
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect((blocks[0] as AgentBlock).status).toBe("active");
+      expect((blocks[1] as AgentBlock).status).toBe("active");
+      expect((blocks[2] as AgentBlock).status).toBe("active");
+    });
+  });
+
   // ── Reset ──
 
   describe("reset", () => {

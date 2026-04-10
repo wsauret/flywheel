@@ -9,6 +9,7 @@ export type Theme = {
   info: RGBA
   text: RGBA
   textMuted: RGBA
+  textSubtle: RGBA
   background: RGBA
   backgroundPanel: RGBA
   backgroundElement: RGBA

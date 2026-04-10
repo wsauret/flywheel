@@ -224,7 +224,7 @@ describe("InjectionQueue — bindStdin lifecycle", () => {
 // ---------------------------------------------------------------------------
 
 describe("InjectionQueue — drainAtTurnBoundary return value", () => {
-  it("returns the raw message text on successful delivery", () => {
+  it("returns DrainResult with message text on successful delivery", () => {
     const q = new InjectionQueue(identityFormatter);
     const handle = createMockStdinHandle();
     q.bindStdin(handle);
@@ -232,7 +232,7 @@ describe("InjectionQueue — drainAtTurnBoundary return value", () => {
     q.enqueue("hello world");
     const result = q.drainAtTurnBoundary();
 
-    expect(result).toBe("hello world");
+    expect(result).toEqual({ message: "hello world", userSteering: false });
   });
 
   it("returns null when no handle is bound", () => {
@@ -287,9 +287,9 @@ describe("InjectionQueue — drainAtTurnBoundary return value", () => {
     q.enqueue("second");
     q.enqueue("third");
 
-    expect(q.drainAtTurnBoundary()).toBe("first");
-    expect(q.drainAtTurnBoundary()).toBe("second");
-    expect(q.drainAtTurnBoundary()).toBe("third");
+    expect(q.drainAtTurnBoundary()).toEqual({ message: "first", userSteering: false });
+    expect(q.drainAtTurnBoundary()).toEqual({ message: "second", userSteering: false });
+    expect(q.drainAtTurnBoundary()).toEqual({ message: "third", userSteering: false });
   });
 });
 
@@ -350,5 +350,73 @@ describe("InjectionQueue — concurrent enqueue + drain", () => {
     expect(handle.written).toHaveLength(5);
     expect(handle.written[0]).toBe("[formatted:msg-0]");
     expect(handle.written[4]).toBe("[formatted:msg-4]");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// userSteering tracking
+// ---------------------------------------------------------------------------
+
+describe("InjectionQueue — userSteering tracking", () => {
+  it("enqueue marks items as userSteering=false", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+
+    q.enqueue("observer message");
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toEqual({ message: "observer message", userSteering: false });
+  });
+
+  it("deliverOrEnqueue with userSteering=true marks queued items", () => {
+    const q = new InjectionQueue(identityFormatter);
+    // No handle — forces queuing
+    q.deliverOrEnqueue("user message", true);
+
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toEqual({ message: "user message", userSteering: true });
+  });
+
+  it("deliverOrEnqueue without userSteering defaults to false", () => {
+    const q = new InjectionQueue(identityFormatter);
+    // No handle — forces queuing
+    q.deliverOrEnqueue("system message");
+
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+    const result = q.drainAtTurnBoundary();
+
+    expect(result).toEqual({ message: "system message", userSteering: false });
+  });
+
+  it("mixed queue preserves userSteering flags in FIFO order", () => {
+    const q = new InjectionQueue(identityFormatter);
+    q.enqueue("observer-1");
+    q.deliverOrEnqueue("user-1", true); // handle not bound, queued
+    q.enqueue("self-review");
+
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+
+    expect(q.drainAtTurnBoundary()).toEqual({ message: "observer-1", userSteering: false });
+    expect(q.drainAtTurnBoundary()).toEqual({ message: "user-1", userSteering: true });
+    expect(q.drainAtTurnBoundary()).toEqual({ message: "self-review", userSteering: false });
+  });
+
+  it("deliverOrEnqueue with userSteering=true delivers directly when handle is open", () => {
+    const q = new InjectionQueue(identityFormatter);
+    const handle = createMockStdinHandle();
+    q.bindStdin(handle);
+
+    const result = q.deliverOrEnqueue("direct user msg", true);
+
+    expect(result).toBe(true);
+    expect(handle.written).toEqual(["[formatted:direct user msg]"]);
+    // Queue should be empty — direct delivery doesn't queue
+    expect(q.drainAtTurnBoundary()).toBeNull();
   });
 });

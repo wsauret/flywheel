@@ -130,7 +130,12 @@ export class StructuredEventParser {
 
     // Subagents are blocking: top-level output means all subagents are done.
     // Auto-complete any still-open agents (handles delayed/lost tool_result).
-    if (!parentAgentId) {
+    // BUT skip when this message is spawning new agents — parallel agent spawns
+    // may arrive as separate top-level events, and closing siblings would be wrong.
+    const spawnsAgents = !parentAgentId && content.some(
+      (block) => block.type === "tool_use" && typeof block.name === "string" && isSubagentToolName(block.name as string),
+    );
+    if (!parentAgentId && !spawnsAgents) {
       this.builder.closeOpenSubagents(now);
     }
 
@@ -169,6 +174,12 @@ export class StructuredEventParser {
           // Skills change the agent's mode/capabilities and deserve standalone visibility.
           const skillName = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
           this.builder.pushSystemMessage(`Loaded skill: ${skillName}`, now);
+        } else if (name === "TodoWrite" && !parentAgentId) {
+          // TodoWrite: render as a living todo list, not a generic tool block.
+          const todos = input?.todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
+          if (Array.isArray(todos)) {
+            this.builder.pushTodoWrite(todos, now);
+          }
         } else if (name) {
           // Regular tool use — route to parent agent if this is a child message
           const detail = input ? (getToolDetail(name, input) ?? "") : "";

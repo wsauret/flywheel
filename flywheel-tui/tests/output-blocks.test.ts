@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { truncate, MAX_BLOCK_LINE_LENGTH, isHandoffPath } from "../src/tui/utils/text";
+import { isHandoffPath } from "../src/tui/utils/text";
 import { formatDuration } from "../src/infra/format";
 import type {
   AnyBlock,
@@ -549,70 +549,6 @@ describe("OutputWindow pending block splitting", () => {
     expect((scroll[1] as TextBlock).content).toBe("second");
     expect(scroll[2].kind).toBe("system");
     expect(pinned).toHaveLength(1);
-  });
-});
-
-// ── Truncation logic for output blocks ──
-
-describe("AgentBlock latestChild truncation", () => {
-  // The agent-block renders "  ↳ <latestChild>" — prefix is 4 chars.
-  // Usable width for latestChild = MAX_BLOCK_LINE_LENGTH - 4.
-  const usableWidth = MAX_BLOCK_LINE_LENGTH - 4;
-
-  it("truncates long latestChild with ellipsis", () => {
-    const longChild = "Reading " + "x".repeat(100);
-    const result = truncate(longChild, usableWidth);
-    expect(result.length).toBe(usableWidth);
-    expect(result.endsWith("\u2026")).toBe(true);
-    // Full rendered line fits within MAX_BLOCK_LINE_LENGTH
-    const fullLine = `  ↳ ${result}`;
-    expect(fullLine.length).toBe(MAX_BLOCK_LINE_LENGTH);
-  });
-
-  it("does not truncate short latestChild", () => {
-    const shortChild = "Glob src/**/*.ts";
-    const result = truncate(shortChild, usableWidth);
-    expect(result).toBe(shortChild);
-  });
-
-  it("does not truncate latestChild at exactly usable width", () => {
-    const exactChild = "a".repeat(usableWidth);
-    const result = truncate(exactChild, usableWidth);
-    expect(result).toBe(exactChild);
-  });
-});
-
-describe("ToolBlock detail truncation", () => {
-  // The tool-block renders "▸ <name>: <detail>" — overhead = 2 + name.length + 2.
-  function toolDetailWidth(name: string): number {
-    return MAX_BLOCK_LINE_LENGTH - name.length - 4;
-  }
-
-  it("truncates long detail to keep full line on one row", () => {
-    const name = "Bash";
-    const longDetail = "cd /very/long/path/to/somewhere && npm run build:production --verbose --force " + "x".repeat(50);
-    const availableWidth = toolDetailWidth(name);
-    const result = truncate(longDetail, availableWidth);
-    const fullLine = `▸ ${name}: ${result}`;
-    expect(fullLine.length).toBe(MAX_BLOCK_LINE_LENGTH);
-    expect(result.endsWith("\u2026")).toBe(true);
-  });
-
-  it("does not truncate short detail", () => {
-    const name = "Read";
-    const shortDetail = "src/index.ts";
-    const result = truncate(shortDetail, toolDetailWidth(name));
-    expect(result).toBe(shortDetail);
-  });
-
-  it("adjusts available width based on tool name length", () => {
-    const shortName = "ls";
-    const longName = "SearchAndReplace";
-    expect(toolDetailWidth(shortName)).toBeGreaterThan(toolDetailWidth(longName));
-    // Short name: 80 - 2 - 4 = 74 chars for detail
-    expect(toolDetailWidth(shortName)).toBe(74);
-    // Long name: 80 - 16 - 4 = 60 chars for detail
-    expect(toolDetailWidth(longName)).toBe(60);
   });
 });
 

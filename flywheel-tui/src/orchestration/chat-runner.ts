@@ -12,6 +12,7 @@
 import { createChatSession, type ChatSession, type ChatCallbacks } from "./chat-session"
 import { createSessionInfra } from "./session/create-session-infra"
 import { createOutputPersistence } from "./session/output-persistence"
+import { updateSession } from "./session/persistence"
 import { disposeSessionResources, type SessionResources } from "./session/resources"
 import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
@@ -98,6 +99,8 @@ export interface ChatRunnerDeps {
   /** Optional overrides for testing. */
   spawner?: ProcessSpawner
   config?: FlywheelConfig
+  /** Pre-known Claude Code session ID — for --resume on auto-resume path. */
+  claudeSessionId?: string
 }
 
 export interface ChatRunner extends SessionRunner {
@@ -133,8 +136,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   const outputFlusher = outputPersistence.createFlusher(() => getBlocksFn())
 
   let disposed = false
-  let firstMessageSent = false
+  let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
   let lastWaiting: boolean | null = null
+  /** Track last persisted value to avoid redundant disk writes. */
+  let persistedClaudeSessionId: string | null = deps.claudeSessionId ?? null
 
   // If resuming, emit prior blocks immediately so the UI shows them
   if (priorBlocks && priorBlocks.length > 0) {
@@ -199,7 +204,21 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     budgetTracker: infra.budgetTracker,
     transcriptWriter: infra.transcriptWriter,
     updateEntry: wrappedUpdateEntry,
-    onFlush: () => outputFlusher.schedule(),
+    claudeSessionId: deps.claudeSessionId,
+    onFlush: () => {
+      // Propagate captured Claude session ID to the store entry for resume persistence
+      const csId = chatSession.outputSession.sessionId
+      if (csId) {
+        updateEntry({ claudeSessionId: csId })
+        // Write-through to disk on first capture — survives terminal close / crash
+        // without waiting for the runner's onRunnerDone callback.
+        if (csId !== persistedClaudeSessionId) {
+          persistedClaudeSessionId = csId
+          try { updateSession(sessionId, { claudeSessionId: csId }, projectCwd) } catch { /* best-effort */ }
+        }
+      }
+      outputFlusher.schedule()
+    },
   })
 
   // Wire the flusher's getBlocks to the OutputSession's blocks (+ priorBlocks prefix)

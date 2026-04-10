@@ -9,6 +9,7 @@ import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import type { ShellSignals } from "./shell-state.js"
 import type { SessionStore } from "../../orchestration/session-store.js"
+import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { WorkflowLifecycleHook } from "./use-workflow-lifecycle.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionModalHook } from "./use-session-modal.js"
@@ -16,11 +17,13 @@ import type { SessionModalHook } from "./use-session-modal.js"
 export interface KeyboardHandlerDeps {
   signals: ShellSignals
   sessionStore: SessionStore
+  sessions: Accessor<SessionSummary[]>
   workflow: WorkflowLifecycleHook
   chat: ChatModeHook
   sessionModal: SessionModalHook
   inChat: Accessor<boolean>
   runningCount: Accessor<number>
+  switchForeground: (sessionId: string) => void
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
 }
@@ -30,6 +33,18 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
 
   /** Tracks the last ESC timestamp for double-ESC escalation in chat mode. */
   let lastChatEscAt = 0
+
+  /** Cycle foreground through active + paused sessions (from the canonical session list). */
+  function cycleSession(direction: 1 | -1): void {
+    const cycleable = deps.sessions().filter(s => s.state === "active" || s.state === "paused")
+    if (cycleable.length < 2) return
+    const current = signals.foregroundId()
+    const idx = current ? cycleable.findIndex(s => s.id === current) : -1
+    const next = idx === -1
+      ? cycleable[0]!
+      : cycleable[(idx + direction + cycleable.length) % cycleable.length]!
+    if (next.id !== current) deps.switchForeground(next.id)
+  }
 
   function handleEscape(): void {
     // Pending work mode: cancel and return to whatever was underneath
@@ -85,10 +100,15 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     }
   }
 
-  return function handleKey(evt: { name: string; ctrl?: boolean; meta?: boolean }): void {
+  return function handleKey(evt: { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
     if (sessionModal.sessionsModalOpen()) { sessionModal.handleModalKey(evt); return }
 
     if (evt.name === "escape") { handleEscape(); return }
+
+    if (evt.name === "tab" || evt.name === "shift-tab") {
+      cycleSession(evt.name === "shift-tab" || evt.shift ? -1 : 1)
+      return
+    }
 
     if (evt.ctrl && evt.name === "n") { chat.backgroundChat(); chat.startChat(); return }
     if (evt.ctrl && evt.name === "b") { sessionModal.openSessionsModal() }

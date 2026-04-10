@@ -238,7 +238,11 @@ export function createWorkflowRunner(opts: {
   }
 
   function injectMessage(text: string): boolean {
-    return injectionQueue.deliverOrEnqueue(text)
+    const ok = injectionQueue.deliverOrEnqueue(text, true)
+    if (ok) {
+      emit("subprocess:injected", { workflowId, message: text, origin: "user", pending: true })
+    }
+    return ok
   }
 
   function cancelShutdown(): void {

@@ -77,7 +77,6 @@ function createPassingVerification(): PostTurnVerificationResult {
   return {
     passed: true,
     nativeChecksPassed: true,
-    selfReviewCompleted: true,
     fixAttemptsUsed: 0,
     checks: [],
   };
@@ -87,7 +86,6 @@ function createFailingVerification(fixAttempts = 2): PostTurnVerificationResult 
   return {
     passed: false,
     nativeChecksPassed: false,
-    selfReviewCompleted: false,
     fixAttemptsUsed: fixAttempts,
     checks: [{
       command: "bun run test",
@@ -154,7 +152,6 @@ describe("Post-Turn Verification Hook", () => {
     const hookFn = mock(async () => ({
       passed: true,
       nativeChecksPassed: true,
-      selfReviewCompleted: true,
       fixAttemptsUsed: 1,
       checks: [{
         command: "bun run test",
@@ -274,11 +271,10 @@ describe("Post-Turn Verification Hook", () => {
     expect(hookFn).toHaveBeenCalledTimes(1);
   });
 
-  test("ship step: only native git checks (hook returns passed with no self-review)", async () => {
+  test("ship step: only native git checks", async () => {
     const hookFn = mock(async () => ({
       passed: true,
       nativeChecksPassed: true,
-      selfReviewCompleted: false, // no self-review for ship
       fixAttemptsUsed: 0,
       checks: [{
         command: "git diff --stat HEAD~1",
@@ -301,8 +297,6 @@ describe("Post-Turn Verification Hook", () => {
     const result = await executeStep(step, deps);
 
     expect(result.outcome).toBe("completed");
-    const hookResult = await hookFn.mock.results[0].value;
-    expect(hookResult.selfReviewCompleted).toBe(false);
   });
 
   test("max fix attempts (default 2) prevents infinite loops — result is informational", async () => {
@@ -324,7 +318,7 @@ describe("Post-Turn Verification Hook", () => {
     expect(hookResult.passed).toBe(false);
   });
 
-  test("self-review runs AFTER native checks pass, BEFORE evaluator", async () => {
+  test("native checks run BEFORE evaluator", async () => {
     const callOrder: string[] = [];
 
     const hookFn = mock(async () => {
@@ -392,13 +386,10 @@ describe("Post-Turn Verification Hook", () => {
   });
 
   test("total attempts counter: fixAttemptsUsed shared across the hook result", async () => {
-    // Hook internally tracks attempts across native-fix + self-review + evaluator
-    // From the step-runner's perspective, it sees the total in the result.
     const hookFn = mock(async () => ({
       passed: true,
       nativeChecksPassed: true,
-      selfReviewCompleted: true,
-      fixAttemptsUsed: 3, // 2 native fixes + 1 self-review fix
+      fixAttemptsUsed: 3,
       checks: [],
     }));
 

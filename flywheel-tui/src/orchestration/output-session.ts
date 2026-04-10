@@ -53,7 +53,7 @@ export interface OutputSession {
   /** Signal that a subprocess was spawned (starts thinking indicator). */
   notifySpawned(timestamp: number): void
   /** Signal that a message was injected into the subprocess. */
-  notifyInjected(message: string, timestamp: number, pending?: boolean): void
+  notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void
 
   /** Resolve all pending user messages. Returns true if any were resolved. */
   resolvePendingMessages(): boolean
@@ -148,8 +148,8 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     builder.notifyThinkingStarted(timestamp)
   }
 
-  function notifyInjected(message: string, timestamp: number, pending?: boolean): void {
-    builder.pushUserMessage(message, timestamp, pending ?? false, true)
+  function notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void {
+    builder.pushUserMessage(message, timestamp, pending ?? false, injected ?? false)
     builder.notifyThinkingStarted(timestamp)
   }
 

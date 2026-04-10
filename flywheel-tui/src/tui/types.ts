@@ -42,5 +42,7 @@ export type {
   SystemBlock,
   ThinkingBlock,
   UserMessageBlock,
+  TodoItem,
+  TodoListBlock,
   AnyBlock,
 } from "../infra/output-blocks";

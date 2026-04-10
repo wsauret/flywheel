@@ -162,7 +162,7 @@ describe("createOutputSession", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    session.notifyInjected("injected message", 3000)
+    session.notifyInjected("injected message", 3000, false, true)
     vi.advanceTimersByTime(20)
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
@@ -175,16 +175,16 @@ describe("createOutputSession", () => {
     const userMsg = blocks.find((b) => b.kind === "userMessage")
     expect(userMsg).toBeDefined()
     expect((userMsg as { content: string }).content).toBe("injected message")
-    // injected=true, pending=false (default)
+    // System-injected: injected=true, pending=false
     expect((userMsg as { injected?: boolean }).injected).toBe(true)
     expect((userMsg as { pending?: boolean }).pending).toBe(false)
   })
 
-  it("notifyInjected with pending=true marks message as pending", () => {
+  it("notifyInjected with pending=true marks message as pending user message (not system-injected)", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    session.notifyInjected("pending message", 3000, true)
+    session.notifyInjected("pending message", 3000, true, false)
     vi.advanceTimersByTime(20)
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
@@ -194,7 +194,8 @@ describe("createOutputSession", () => {
     const userMsg = blocks.find((b) => b.kind === "userMessage")
     expect(userMsg).toBeDefined()
     expect((userMsg as { pending?: boolean }).pending).toBe(true)
-    expect((userMsg as { injected?: boolean }).injected).toBe(true)
+    // User-steering messages are not system-injected
+    expect((userMsg as { injected?: boolean }).injected).toBe(false)
   })
 
   // ── Model activity transitions ──

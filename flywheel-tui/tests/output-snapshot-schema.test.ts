@@ -57,6 +57,32 @@ function systemBlock(message = "subprocess:spawned") {
   return { kind: "system" as const, message, timestamp: Date.now() };
 }
 
+function thinkingBlock(content = "reasoning about the problem") {
+  return { kind: "thinking" as const, content, timestamp: Date.now() };
+}
+
+function userMessageBlock(
+  content = "hello",
+  overrides?: { pending?: boolean; injected?: boolean },
+) {
+  return {
+    kind: "userMessage" as const,
+    content,
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
+
+function todoListBlock(
+  todos = [
+    { content: "First task", status: "completed" as const },
+    { content: "Second task", status: "in_progress" as const },
+    { content: "Third task", status: "pending" as const },
+  ],
+) {
+  return { kind: "todoList" as const, todos, timestamp: Date.now() };
+}
+
 // ---------------------------------------------------------------------------
 // Zod schema validation
 // ---------------------------------------------------------------------------
@@ -88,6 +114,36 @@ describe("OutputSnapshotSchema — validation", () => {
 
   it("validates a SystemBlock snapshot", () => {
     const block = systemBlock();
+    const result = OutputSnapshotSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a ThinkingBlock snapshot", () => {
+    const block = thinkingBlock();
+    const result = OutputSnapshotSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a UserMessageBlock snapshot", () => {
+    const block = userMessageBlock("hi", { pending: false, injected: true });
+    const result = OutputSnapshotSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a UserMessageBlock snapshot without optional fields", () => {
+    const block = userMessageBlock("hi");
+    const result = OutputSnapshotSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a TodoListBlock snapshot", () => {
+    const block = todoListBlock();
+    const result = OutputSnapshotSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a TodoListBlock snapshot with empty todos", () => {
+    const block = todoListBlock([]);
     const result = OutputSnapshotSchema.safeParse(block);
     expect(result.success).toBe(true);
   });
@@ -168,6 +224,44 @@ describe("toSnapshot — serialization", () => {
     expect(agentSnap.latestChild).toBe("read_file");
     expect(agentSnap.duration).toBe(5000);
     expect(agentSnap.errorMessage).toBe("something failed");
+  });
+
+  it("strips runtime-only fields from ToolBlock on serialize", () => {
+    const block = {
+      ...toolBlock("Edit", "src/main.ts"),
+      filePath: "/abs/src/main.ts",
+      diff: "--- a\n+++ b",
+      content: "file content",
+      filetype: "ts",
+    };
+    const snapshots = toSnapshot([block] as any);
+
+    expect(snapshots).toHaveLength(1);
+    const snap = snapshots[0] as any;
+    expect(snap.name).toBe("Edit");
+    expect(snap.filePath).toBeUndefined();
+    expect(snap.diff).toBeUndefined();
+    expect(snap.content).toBeUndefined();
+    expect(snap.filetype).toBeUndefined();
+  });
+
+  it("strips expanded from AgentBlock on serialize", () => {
+    const block = { ...agentBlock({ status: "completed" }), expanded: true };
+    const snapshots = toSnapshot([block] as any);
+
+    expect(snapshots).toHaveLength(1);
+    expect((snapshots[0] as any).expanded).toBeUndefined();
+  });
+
+  it("strips runtime-only fields from nested ToolBlocks in AgentBlock children", () => {
+    const children = [{ ...toolBlock("Edit", "a.ts"), filePath: "/a.ts", diff: "diff" }];
+    const block = agentBlock({ status: "completed", children: children as any });
+    const snapshots = toSnapshot([block] as any);
+
+    const agentSnap = snapshots[0] as any;
+    expect(agentSnap.children[0].name).toBe("Edit");
+    expect(agentSnap.children[0].filePath).toBeUndefined();
+    expect(agentSnap.children[0].diff).toBeUndefined();
   });
 
   it("handles empty block array", () => {
@@ -262,17 +356,26 @@ describe("round-trip serialization", () => {
       }),
       contextGroupBlock([toolBlock("grep", "pattern")]),
       systemBlock("workflow:started"),
+      thinkingBlock("let me think"),
+      userMessageBlock("user said this", { pending: false, injected: false }),
+      todoListBlock([
+        { content: "done", status: "completed" },
+        { content: "doing", status: "in_progress" },
+      ]),
     ];
 
     const json = JSON.stringify(toSnapshot(original));
     const restored = fromSnapshot(JSON.parse(json));
 
-    expect(restored).toHaveLength(5);
+    expect(restored).toHaveLength(8);
     expect(restored[0].kind).toBe("text");
     expect(restored[1].kind).toBe("tool");
     expect(restored[2].kind).toBe("agent");
     expect(restored[3].kind).toBe("contextGroup");
     expect(restored[4].kind).toBe("system");
+    expect(restored[5].kind).toBe("thinking");
+    expect(restored[6].kind).toBe("userMessage");
+    expect(restored[7].kind).toBe("todoList");
   });
 
   it("active AgentBlock becomes paused after round-trip", () => {

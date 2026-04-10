@@ -8,9 +8,7 @@
 import { createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
-import { loadSessionOutput } from "../../orchestration/session-actions.js"
 import { formatCost } from "../../infra/format.js"
-import type { SessionKind } from "../../orchestration/session/types.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
@@ -48,6 +46,8 @@ export interface SessionModalHook {
   handleSessionDelete(sessionId: string): void
   /** Dismiss the viewed session and restore the UI state that existed before viewing. */
   dismissViewedSession(): void
+  /** Commit to the viewed session (e.g. user sent a message) — clears snapshot without restoring. */
+  commitViewedSession(): void
 }
 
 export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
@@ -84,14 +84,13 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     if (services.sessionStore.isRunning(sessionId)) {
       priorState = undefined
       viewedSessionId = undefined
-      deps.switchForeground(sessionId)
+      await deps.switchForeground(sessionId)
       return
     }
 
-    // Ended or historical session — enter "viewing" mode with save/restore
-    // Snapshot current state on the first view only — preserve the original
-    // state across multiple view→delete cycles so we always restore back to
-    // where the user was (e.g. mid-chat), not to an intermediate viewed session.
+    // Ended or historical session — enter "viewing" mode with save/restore.
+    // Snapshot on the first view only so we always restore back to where the
+    // user was (e.g. mid-chat), not to an intermediate viewed session.
     if (!priorState) {
       priorState = {
         foregroundId: signals.foregroundId(),
@@ -100,23 +99,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     }
     viewedSessionId = sessionId
 
-    // Load into session store if not already present (ended sessions from this
-    // TUI run are already there; historical sessions need loading from disk).
-    if (!services.sessionStore.has(sessionId)) {
-      const blocks = await loadSessionOutput(sessionId)
-      const { sessions: list } = services.manager.list()
-      const session = list.find(s => s.id === sessionId)
-      services.sessionStore.load(sessionId, {
-        kind: (session?.kind ?? "workflow") as SessionKind,
-        description: session?.label || session?.name || sessionId.slice(0, 8),
-        outputBlocks: blocks,
-        tokens: session?.totalTokens,
-        cost: session?.totalCost,
-      })
-    }
-
-    // Set foregroundId so the store entry's outputBlocks drive the UI
-    signals.setForegroundId(sessionId)
+    // switchForeground loads from disk if not already in the store
+    await deps.switchForeground(sessionId)
     const entry = services.sessionStore.get(sessionId)
     if (entry) {
       const cost = formatCost(entry.cost)
@@ -204,6 +188,14 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     restorePriorState()
   }
 
+  /** Clear the viewing snapshot WITHOUT restoring prior state.
+   *  Used when the user commits to the viewed session (e.g. sends a message),
+   *  so the auto-resumed chat stays in the foreground. */
+  function commitViewedSession(): void {
+    priorState = undefined
+    viewedSessionId = undefined
+  }
+
   const isViewingSession: Accessor<boolean> = () => viewedSessionId !== undefined
 
   return {
@@ -220,5 +212,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     handleSessionResume,
     handleSessionDelete,
     dismissViewedSession,
+    commitViewedSession,
   }
 }

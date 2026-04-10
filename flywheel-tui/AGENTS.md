@@ -133,6 +133,7 @@ Not: this.modelActivity = "thinking"; this.onModelActivityChange?.("thinking")
 - Fix linter errors and warnings before moving on.
 - No comments unless explaining new logic. No emojis.
 - Never mock in production code. Always wire new code into the system.
+- **Never use the Write tool on existing files.** Use Edit for modifications; Write is only for creating new files.
 
 ---
 

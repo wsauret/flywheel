@@ -94,16 +94,19 @@ function createMockManager(): SessionManager & {
   _created: Array<{ kind: string; name: string }>
   _stateUpdates: Array<{ id: string; state: string }>
   _labelUpdates: Array<{ id: string; label: string }>
+  _deletes: string[]
 } {
   const created: Array<{ kind: string; name: string }> = []
   const stateUpdates: Array<{ id: string; state: string }> = []
   const labelUpdates: Array<{ id: string; label: string }> = []
+  const deletes: string[] = []
   let nextId = 0
 
   return {
     _created: created,
     _stateUpdates: stateUpdates,
     _labelUpdates: labelUpdates,
+    _deletes: deletes,
 
     create: mock((planPath: string, name?: string, kind?: string, _initialState?: string) => {
       const id = `chat-${++nextId}`
@@ -113,7 +116,7 @@ function createMockManager(): SessionManager & {
     list: mock(() => ({ sessions: [], errors: [] })),
     updateState: mock((id: string, state: string) => { stateUpdates.push({ id, state }) }),
     updateLabel: mock((id: string, label: string) => { labelUpdates.push({ id, label }) }),
-    delete: mock(() => {}),
+    delete: mock((id: string) => { deletes.push(id) }),
     recoverStaleSessions: mock(() => 0),
     getState: mock(() => null),
   } as any
@@ -230,7 +233,7 @@ describe("ChatController", () => {
   })
 
   describe("endChat", () => {
-    it("removes chat from sessionStore and marks paused", async () => {
+    it("deletes empty chat (no user messages) instead of pausing", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
@@ -241,9 +244,28 @@ describe("ChatController", () => {
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
+      expect(mockManager._deletes).toContain(result!.sessionId)
+      expect(mockManager._stateUpdates.find((u) => u.state === "paused")).toBeUndefined()
+    })
+
+    it("marks paused when chat has user messages", async () => {
+      const deps = createDeps()
+      const controller = createChatController(deps)
+
+      const result = await controller.startChat()
+      expect(result).not.toBeNull()
+
+      // Send a message so the chat is no longer empty
+      controller.sendMessage(result!.sessionId, "hello")
+
+      const ended = controller.endChat(result!.sessionId)
+      expect(ended).toBe(true)
+
+      const mockManager = deps.manager as ReturnType<typeof createMockManager>
       const pausedUpdate = mockManager._stateUpdates.find((u) => u.state === "paused")
       expect(pausedUpdate).toBeDefined()
       expect(pausedUpdate!.id).toBe(result!.sessionId)
+      expect(mockManager._deletes).not.toContain(result!.sessionId)
     })
 
     it("returns false when no foreground ID", () => {

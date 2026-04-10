@@ -54,10 +54,32 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
   ["Bash", shellDetail],
   ["PowerShell", shellDetail],
   ["REPL", shellDetail],
-  ["Glob", (input) => truncateLine(input.pattern as string, 80)],
-  ["Grep", (input) => truncateLine(input.pattern as string, 80)],
-  ["Agent", (input) => truncateLine((input.description as string | undefined) ?? (input.prompt as string | undefined), 100)],
-  ["Task", (input) => truncateLine((input.description as string | undefined) ?? (input.prompt as string | undefined), 100)],
+  ["Glob", (input, cwd) => {
+    const pat = input.pattern as string | undefined;
+    const dir = input.path as string | undefined;
+    const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
+    const quoted = pat ? `"${pat}"` : null;
+    return truncateLine(displayDir ? `${quoted} in ${displayDir}` : quoted, 80);
+  }],
+  ["Grep", (input, cwd) => {
+    const pat = input.pattern as string | undefined;
+    const dir = input.path as string | undefined;
+    const fileFilter = (input.glob as string | undefined) ?? (input.type as string | undefined);
+    const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
+    const quoted = pat ? `"${pat}"` : null;
+    const parts = [quoted, displayDir && `in ${displayDir}`, fileFilter && `[${fileFilter}]`].filter(Boolean).join(" ");
+    return truncateLine(parts || null, 80);
+  }],
+  ["Agent", (input) => {
+    const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
+    const agentType = input.subagent_type as string | undefined;
+    return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
+  }],
+  ["Task", (input) => {
+    const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
+    const agentType = input.subagent_type as string | undefined;
+    return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
+  }],
   ["WebFetch", (input) => truncateLine(input.url as string, 100)],
   ["WebSearch", (input) => truncateLine((input.query as string | undefined) ?? (input.search_query as string | undefined), 100)],
   ["LSP", (input, cwd) => {

@@ -685,7 +685,7 @@ export function MinimalShell() {
               width={lineWidth()} height={promptHeight()} wrapMode="word"
               placeholder={
                 appState() === "working"
-                  ? "Send a message to steer the worker (Esc to pause)"
+                  ? "Send a message to steer the worker (Esc to interrupt)"
                   : appState() === "chatting"
                     ? (chatWaiting() ? "Waiting for response..." : "Send a message (/end to exit chat)")
                     : appState() === "paused"
@@ -709,7 +709,7 @@ export function MinimalShell() {
           <text fg={theme.textMuted}>
             {appState() === "chatting" ? "Esc · /end"
               : appState() === "paused" ? "Esc (stop) · Ctrl+R (resume)"
-              : appState() === "working" ? `Esc (pause)${runningCount() > 1 ? ` · ${runningCount()} sessions` : ""}`
+              : appState() === "working" ? `Esc (interrupt)${runningCount() > 1 ? ` · ${runningCount()} sessions` : ""}`
               : `Esc · Ctrl+B · /chat · /exit${runningCount() > 0 ? ` · ${runningCount()} running` : ""}`}
           </text>
           <text fg={theme.textMuted}>v0.0.1</text>

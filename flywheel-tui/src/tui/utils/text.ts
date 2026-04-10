@@ -2,9 +2,6 @@
  * Shared text utilities for TUI rendering.
  */
 
-/** Maximum width (in characters) for a single output block line. */
-export const MAX_BLOCK_LINE_LENGTH = 80
-
 /**
  * Truncate text to `maxLen` characters, appending an ellipsis (\u2026) when
  * the text exceeds the limit.

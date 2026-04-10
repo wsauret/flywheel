@@ -10,8 +10,18 @@
 
 import type { StdinHandle } from "./spawner";
 
+interface QueueItem {
+  text: string;
+  userSteering: boolean;
+}
+
+export interface DrainResult {
+  message: string;
+  userSteering: boolean;
+}
+
 export class InjectionQueue {
-  private readonly queue: string[] = [];
+  private readonly queue: QueueItem[] = [];
   private readonly formatter: (raw: string) => string;
   private handle: StdinHandle | null = null;
 
@@ -21,15 +31,19 @@ export class InjectionQueue {
 
   /** Add a raw message to the back of the queue. */
   enqueue(text: string): void {
-    this.queue.push(text);
+    this.queue.push({ text, userSteering: false });
   }
 
   /**
    * Try to deliver a message directly to stdin. If the handle is unavailable
    * or the write fails, enqueue for later delivery at a turn boundary.
    * Always returns true (message is either delivered or queued).
+   *
+   * @param userSteering — true for user-initiated mid-turn messages. Queued
+   *   user-steering items are skipped by `subprocess:injected` at the turn
+   *   boundary because they already have a pending block in the UI.
    */
-  deliverOrEnqueue(text: string): boolean {
+  deliverOrEnqueue(text: string, userSteering = false): boolean {
     if (this.handle?.isOpen) {
       try {
         const written = this.handle.write(this.formatter(text));
@@ -38,7 +52,7 @@ export class InjectionQueue {
         // Fall through to queuing
       }
     }
-    this.queue.push(text);
+    this.queue.push({ text, userSteering });
     return true;
   }
 
@@ -49,19 +63,19 @@ export class InjectionQueue {
    * Called by the turn-complete callback — one message per turn boundary
    * matches the existing injection semantics.
    *
-   * Returns the raw message text that was delivered, or null if nothing was sent.
+   * Returns the message text and its origin, or null if nothing was sent.
    */
-  drainAtTurnBoundary(): string | null {
+  drainAtTurnBoundary(): DrainResult | null {
     if (!this.handle?.isOpen) return null;
 
     if (this.queue.length > 0) {
-      const text = this.queue.shift()!;
+      const item = this.queue.shift()!;
       try {
-        this.handle.write(this.formatter(text));
-        return text;
+        this.handle.write(this.formatter(item.text));
+        return { message: item.text, userSteering: item.userSteering };
       } catch {
         // Put it back at front if write fails
-        this.queue.unshift(text);
+        this.queue.unshift(item);
         return null;
       }
     }

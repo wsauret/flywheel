@@ -25,7 +25,7 @@ import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChun
 import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
-import { truncate, isHandoffPath } from "@tui/utils/text"
+import { isHandoffPath } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@tui/types"
 import { renderHunk, parseUnifiedDiff, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
 
@@ -45,6 +45,8 @@ export function displayToolName(name: string): string {
   if (lower === "notebookedit") return "Notebook Edit"
   if (lower === "powershell") return "PowerShell"
   if (lower === "repl") return "REPL"
+  if (lower === "todowrite") return "Task Update"
+  if (lower === "agent" || lower === "task") return "Subagent"
   if (lower === "toolsearch") return "Tool Search"
   if (lower === "sendmessage") return "Send Message"
   if (lower === "askuserquestion") return "Ask User"
@@ -52,6 +54,12 @@ export function displayToolName(name: string): string {
   if (lower === "exitplanmode") return "Exit Plan Mode"
   if (lower === "enterworktree") return "Enter Worktree"
   if (lower === "exitworktree") return "Exit Worktree"
+  if (lower === "bash") return "Bash"
+  if (lower === "read") return "Read"
+  if (lower === "write") return "Write"
+  if (lower === "edit") return "Edit"
+  if (lower === "lsp") return "LSP"
+  if (lower === "skill") return "Skill"
   if (lower === "remotetrigger") return "Remote Trigger"
   if (lower.startsWith("schedulecron") || lower.startsWith("cron")) return "Cron"
   // MCP tools: strip prefix, show server + tool name
@@ -117,15 +125,15 @@ export function ToolBlock(props: ToolBlockProps) {
 
   // Header line (shared between compact and expanded modes)
   const header = () => (
-    <box flexDirection="row" gap={1} onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
-      <text fg={theme.text} attributes={BOLD}>{name()}</text>
+    <box flexDirection="row" gap={1} overflow="hidden" onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
+      <text fg={theme.text} flexShrink={0} attributes={BOLD}>{name()}</text>
       <Show when={props.block.filePath} fallback={
-        <text fg={theme.textMuted}>{truncate(props.block.detail, 80)}</text>
+        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden">{props.block.detail}</text>
       }>
-        <text fg={theme.textMuted}><a href={toFileUri(props.block.filePath!)}>{truncate(props.block.detail, 80)}</a></text>
+        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden"><a href={toFileUri(props.block.filePath!)}>{props.block.detail}</a></text>
       </Show>
       <Show when={hasExpandable()}>
-        <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
+        <text fg={theme.textMuted} flexShrink={0}>{expanded() ? "▾" : "▸"}</text>
       </Show>
     </box>
   )

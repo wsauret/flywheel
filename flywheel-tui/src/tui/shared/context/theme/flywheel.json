@@ -11,14 +11,15 @@
     "darkStep9": "#fab283",
     "darkStep10": "#ffc09f",
     "darkStep11": "#808084",
+    "darkSubtle": "#a0a0a6",
     "darkStep12": "#ececf0",
-    "darkSecondary": "#5c9cf5",
+    "darkSecondary": "#90a573",
     "darkAccent": "#9d7cd8",
-    "darkRed": "#e06c75",
-    "darkOrange": "#f5a742",
-    "darkGreen": "#7fd88f",
-    "darkCyan": "#56b6c2",
-    "darkYellow": "#e5c07b",
+    "darkRed": "#bf7b7b",
+    "darkOrange": "#d4a070",
+    "darkGreen": "#9bb880",
+    "darkCyan": "#7da89e",
+    "darkYellow": "#ccb486",
     "lightStep1": "#ffffff",
     "lightStep2": "#fafafa",
     "lightStep3": "#f5f5f5",
@@ -30,14 +31,15 @@
     "lightStep9": "#3b7dd8",
     "lightStep10": "#2968c3",
     "lightStep11": "#8a8a8a",
+    "lightSubtle": "#6a6a6a",
     "lightStep12": "#1a1a1a",
-    "lightSecondary": "#7b5bb6",
+    "lightSecondary": "#5a6b3e",
     "lightAccent": "#d68c27",
-    "lightRed": "#d1383d",
-    "lightOrange": "#d68c27",
-    "lightGreen": "#3d9a57",
-    "lightCyan": "#318795",
-    "lightYellow": "#b0851f"
+    "lightRed": "#904a4a",
+    "lightOrange": "#8a6038",
+    "lightGreen": "#5a7044",
+    "lightCyan": "#486e64",
+    "lightYellow": "#806428"
   },
   "theme": {
     "primary": {
@@ -75,6 +77,10 @@
     "textMuted": {
       "dark": "darkStep11",
       "light": "lightStep11"
+    },
+    "textSubtle": {
+      "dark": "darkSubtle",
+      "light": "lightSubtle"
     },
     "background": {
       "dark": "darkStep2",

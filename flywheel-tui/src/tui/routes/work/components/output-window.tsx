@@ -55,13 +55,17 @@ export function OutputWindow(props: OutputWindowProps) {
     }
   })
 
-  // Split blocks: pending user messages are pinned at bottom, everything else scrolls
+  // Split blocks: pending user messages and todo list are pinned at bottom, everything else scrolls
   const scrollBlocks = createMemo(() =>
-    props.outputBlocks.filter(b => !(b.kind === "userMessage" && b.pending))
+    props.outputBlocks.filter(b => !(b.kind === "userMessage" && b.pending) && b.kind !== "todoList")
   )
-  const pinnedBlocks = createMemo(() =>
+  const pinnedPendingBlocks = createMemo(() =>
     props.outputBlocks.filter(b => b.kind === "userMessage" && b.pending)
   )
+  const pinnedTodoBlocks = createMemo(() =>
+    props.outputBlocks.filter(b => b.kind === "todoList" && b.todos.some(t => t.status !== "completed"))
+  )
+  const hasPinnedBlocks = () => pinnedPendingBlocks().length > 0 || pinnedTodoBlocks().length > 0
 
   const isRunning = () => props.workflowStatus === "running"
   const hasContent = () => props.outputBlocks.length > 0
@@ -70,7 +74,7 @@ export function OutputWindow(props: OutputWindowProps) {
   return (
     <box flexDirection="column" flexGrow={1}>
       {/* Content */}
-      <box paddingLeft={1} paddingRight={1} flexDirection="column" flexGrow={1}>
+      <box paddingLeft={1} paddingRight={0} flexDirection="column" flexGrow={1}>
         <Show when={!hasContent() && isRunning()}>
           <box flexDirection="row">
             <Spinner color={themeCtx.theme.primary} />
@@ -117,15 +121,24 @@ export function OutputWindow(props: OutputWindowProps) {
           </scrollbox>
         </Show>
 
-        {/* Spacer pushes pinned messages to bottom when scrollbox is hidden */}
-        <Show when={!hasScrollContent() && pinnedBlocks().length > 0}>
+        {/* Spacer pushes pinned blocks to bottom when scrollbox is hidden */}
+        <Show when={!hasScrollContent() && hasPinnedBlocks()}>
           <box flexGrow={1} />
         </Show>
 
-        {/* Pinned: queued (pending) user messages — anchored at bottom of output area */}
-        <Show when={pinnedBlocks().length > 0}>
+        {/* Pinned: queued (pending) user messages — above todo list */}
+        <Show when={pinnedPendingBlocks().length > 0}>
           <box flexShrink={0}>
-            <Index each={pinnedBlocks()}>
+            <Index each={pinnedPendingBlocks()}>
+              {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
+            </Index>
+          </box>
+        </Show>
+
+        {/* Pinned: todo list — anchored at very bottom of output area */}
+        <Show when={pinnedTodoBlocks().length > 0}>
+          <box flexShrink={0}>
+            <Index each={pinnedTodoBlocks()}>
               {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
             </Index>
           </box>

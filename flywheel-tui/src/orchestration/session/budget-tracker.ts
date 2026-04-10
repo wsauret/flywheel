@@ -31,7 +31,7 @@
 import { z } from "zod";
 import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser";
 import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../../workflows/schemas";
-import { updateSession } from "./persistence";
+import { readSession, updateSession } from "./persistence";
 import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 
 // ---------------------------------------------------------------------------
@@ -94,6 +94,13 @@ export interface ContextUtilization {
   percent: number;
 }
 
+/** Compute context utilization percent from raw token counts. */
+export function computeContextPercent(promptTokens: number, contextWindow: number): number {
+  return contextWindow > 0
+    ? Math.min(100, Math.round((promptTokens / contextWindow) * 100))
+    : 0;
+}
+
 export interface BudgetTracker {
   /** Handle an NDJSON event. Attach this to parser.onEvent. */
   handleEvent(event: NDJSONEvent): void;
@@ -137,9 +144,13 @@ export interface BudgetTracker {
 export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId } = deps;
 
-  let totalCost = 0;
-  let tokensUsed = 0;
-  let invocationsUsed = 0;
+  // Self-seed from persisted budget usage (resume scenario).
+  // Symmetric with writes: we already persist via updateSession, so reading
+  // on init closes the loop without callers threading values through.
+  const persisted = readSession(sessionId, baseDir);
+  let totalCost = persisted?.totalCost ?? persisted?.budgetUsage?.cost_usd ?? 0;
+  let tokensUsed = persisted?.budgetUsage?.tokens_used ?? 0;
+  let invocationsUsed = persisted?.budgetUsage?.invocations_used ?? 0;
   let pendingWrite = false;
   let timerId: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
@@ -154,9 +165,9 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   // so they are added directly without delta logic.
   let lastSeenCost = 0;
 
-  // Context utilization — updated by engine-specific adapters via updateContextUtilization().
-  let ctxPromptTokens = 0;
-  let ctxWindow = 0;
+  // Context utilization — self-seeds from persisted budgetUsage on resume.
+  let ctxPromptTokens = persisted?.budgetUsage?.context_prompt_tokens ?? 0;
+  let ctxWindow = persisted?.budgetUsage?.context_window ?? 0;
 
   // -------------------------------------------------------------------------
   // Persistence
@@ -171,6 +182,8 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       invocations_used: invocationsUsed,
       tokens_used: tokensUsed,
       cost_usd: totalCost,
+      context_prompt_tokens: ctxPromptTokens,
+      context_window: ctxWindow,
     } satisfies BudgetUsage;
 
     try {
@@ -272,10 +285,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   }
 
   function getContextUtilization(): ContextUtilization {
-    const percent = ctxWindow > 0
-      ? Math.min(100, Math.round((ctxPromptTokens / ctxWindow) * 100))
-      : 0;
-    return { promptTokens: ctxPromptTokens, contextWindow: ctxWindow, percent };
+    return { promptTokens: ctxPromptTokens, contextWindow: ctxWindow, percent: computeContextPercent(ctxPromptTokens, ctxWindow) };
   }
 
   // -------------------------------------------------------------------------

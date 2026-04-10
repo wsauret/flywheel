@@ -205,7 +205,7 @@ describe("Workflow → OutputSession integration", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
 
-      session.notifyInjected("injected prompt", 3000)
+      session.notifyInjected("injected prompt", 3000, false, true)
       session.flush()
 
       const blockPatch = patches.filter((p) => p.outputBlocks !== undefined).pop()

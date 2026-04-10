@@ -29,11 +29,11 @@ describe("output-formatter", () => {
     });
 
     it("Glob shows pattern", () => {
-      expect(getToolDetail("Glob", { pattern: "**/*.ts" })).toBe("**/*.ts");
+      expect(getToolDetail("Glob", { pattern: "**/*.ts" })).toBe('"**/*.ts"');
     });
 
     it("Grep shows pattern", () => {
-      expect(getToolDetail("Grep", { pattern: "TODO" })).toBe("TODO");
+      expect(getToolDetail("Grep", { pattern: "TODO" })).toBe('"TODO"');
     });
 
     it("Task shows description over prompt", () => {

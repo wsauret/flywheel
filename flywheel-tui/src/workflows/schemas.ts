@@ -47,6 +47,8 @@ export const BudgetUsageSchema = z.object({
   invocations_used: z.number().min(0),
   tokens_used: z.number().min(0),
   cost_usd: z.number().min(0),
+  context_prompt_tokens: z.number().min(0).default(0),
+  context_window: z.number().min(0).default(0),
 }).strip();
 
 export type BudgetUsage = z.infer<typeof BudgetUsageSchema>;

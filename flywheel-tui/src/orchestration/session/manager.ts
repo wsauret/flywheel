@@ -20,6 +20,7 @@ import {
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
 import type { Session } from "./schemas";
+import { computeContextPercent } from "./budget-tracker";
 import { isValidTransition, type SessionState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema";
@@ -47,10 +48,13 @@ export interface SessionSummary {
   command: string;
   totalCost: number;
   totalTokens: number;
+  contextPercent: number;
   lastUpdated: string;
   createdAt?: string;
   repo?: string;
   branch?: string;
+  /** Claude Code session ID — for chat --resume. */
+  claudeSessionId?: string;
 }
 
 /** Result of listing sessions — mirrors persistence shape but with summaries. */
@@ -177,7 +181,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
         max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
         wall_clock_deadline: wallClockDeadline,
       },
-      budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
+      budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0, context_prompt_tokens: 0, context_window: 0 },
     };
 
     const sessionData: Session = kind === "chat"
@@ -210,10 +214,15 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
         command: entry.data.command,
         totalCost: entry.data.totalCost || entry.data.budgetUsage?.cost_usd || 0,
         totalTokens: entry.data.budgetUsage?.tokens_used ?? 0,
+        contextPercent: computeContextPercent(
+          entry.data.budgetUsage?.context_prompt_tokens ?? 0,
+          entry.data.budgetUsage?.context_window ?? 0,
+        ),
         lastUpdated: entry.data.lastUpdated,
         createdAt: entry.data.createdAt,
         repo: entry.data.repo,
         branch: entry.data.branch,
+        claudeSessionId: entry.data.kind === "chat" ? entry.data.claudeSessionId : undefined,
       };
     });
 

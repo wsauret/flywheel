@@ -86,7 +86,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   }
 
   function backgroundChat(): void {
-    controller.backgroundChat()
+    controller.backgroundChat(signals.foregroundId())
     setChatActive(false)
     signals.setForegroundId(undefined)
   }

@@ -15,6 +15,7 @@ import { ContextGroupBlock } from "./context-group-block"
 import { SystemBlock } from "./system-block"
 import { ThinkingBlock } from "./thinking-block"
 import { UserMessageBlock } from "./user-message-block"
+import { TodoListBlock } from "./todo-list-block"
 
 export interface BlockRendererProps {
   block: AnyBlock
@@ -51,6 +52,9 @@ export function BlockRenderer(props: BlockRendererProps) {
       </Match>
       <Match when={props.block.kind === "userMessage" ? props.block : undefined}>
         {(block) => <UserMessageBlock block={block()} />}
+      </Match>
+      <Match when={props.block.kind === "todoList" ? props.block : undefined}>
+        {(block) => <TodoListBlock block={block()} />}
       </Match>
     </Switch>
   )

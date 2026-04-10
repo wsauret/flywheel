@@ -74,6 +74,11 @@ export namespace Log {
     process.stderr.write(msg)
   }
 
+  /** Silence all log output. Used by test preload. */
+  export function suppress() {
+    write = () => {}
+  }
+
   export async function init(options: Options) {
     if (options.level) level = options.level
     const logDir = path.join(options.dir, LOG_DIR)

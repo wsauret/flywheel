@@ -58,6 +58,8 @@ export interface ChatSessionEntry extends SessionEntryBase {
   readonly kind: "chat"
   /** Null for ended/loaded entries (no live runner). */
   readonly runner: ChatRunner | null
+  /** Claude Code session ID — used for --resume to reconnect with full context. */
+  claudeSessionId?: string
 }
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
@@ -110,6 +112,10 @@ export interface SessionStore {
     sessionId: string
     description?: string
     priorBlocks?: AnyBlock[]
+    initialCost?: number
+    initialTokens?: number
+    startedAt?: number
+    contextPercent?: number
     createRunner: (handle: ChatStoreHandle) => Promise<ChatRunner>
     onComplete?: () => void
     /** Called when the chat session ends normally. */
@@ -126,7 +132,9 @@ export interface SessionStore {
     outputBlocks: readonly AnyBlock[]
     tokens?: number
     cost?: number
+    contextPercent?: number
     startedAt?: number
+    claudeSessionId?: string
   }): void
 
   /** Get a session entry by ID. Returns a reactive proxy — auto-tracks inside createEffect/createMemo. */
@@ -260,6 +268,10 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     sessionId: string
     description?: string
     priorBlocks?: AnyBlock[]
+    initialCost?: number
+    initialTokens?: number
+    startedAt?: number
+    contextPercent?: number
     createRunner: (handle: ChatStoreHandle) => Promise<ChatRunner>
     onComplete?: () => void
     onRunnerDone?: (sessionId: string) => void
@@ -290,10 +302,10 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
       runner,
       description,
       outputBlocks: runner.initialBlocks.length > 0 ? [...runner.initialBlocks] : priorBlocks ? [...priorBlocks] : [],
-      tokens: 0,
-      cost: 0,
-      contextPercent: 0,
-      startedAt: Date.now(),
+      tokens: opts.initialTokens ?? 0,
+      cost: opts.initialCost ?? 0,
+      contextPercent: opts.contextPercent ?? 0,
+      startedAt: opts.startedAt ?? Date.now(),
       modelActivity: "idle",
       ended: false,
     }
@@ -309,7 +321,9 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     outputBlocks: readonly AnyBlock[]
     tokens?: number
     cost?: number
+    contextPercent?: number
     startedAt?: number
+    claudeSessionId?: string
   }): void {
     // Don't overwrite a live or already-loaded entry
     if (entries[sessionId]) return
@@ -318,7 +332,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
       outputBlocks: [...data.outputBlocks],
       tokens: data.tokens ?? 0,
       cost: data.cost ?? 0,
-      contextPercent: 0,
+      contextPercent: data.contextPercent ?? 0,
       startedAt: data.startedAt ?? Date.now(),
       modelActivity: "idle" as const,
       ended: true,
@@ -327,7 +341,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     if (data.kind === "workflow") {
       setEntries(sessionId, { ...base, kind: "workflow", steps: [] } as WorkflowSessionEntry)
     } else {
-      setEntries(sessionId, { ...base, kind: "chat" } as ChatSessionEntry)
+      setEntries(sessionId, { ...base, kind: "chat", claudeSessionId: data.claudeSessionId } as ChatSessionEntry)
     }
   }
 
@@ -370,9 +384,11 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   async function remove(sessionId: string): Promise<void> {
     const entry = entries[sessionId]
     if (!entry) return
-    // Delete entry BEFORE awaiting dispose — UI updates aren't blocked by I/O
+    // Dispose BEFORE deleting — onRunnerDone/onRunnerError callbacks read the
+    // store entry during disposal (e.g. to persist claudeSessionId). Deleting
+    // first silently breaks any callback that calls sessionStore.get().
+    if (!entry.ended && entry.runner) await entry.runner.dispose()
     setEntries(produce((e) => { delete e[sessionId] }))
-    if (!entry.ended) await entry.runner.dispose()
   }
 
   function injectMessage(sessionId: string, text: string): boolean {

@@ -30,7 +30,6 @@ import { useTheme } from "@tui/shared/context/theme"
 import { Spinner } from "@tui/shared/components/spinner"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
-import { truncate } from "@tui/utils/text"
 import { formatDuration, formatElapsed } from "../../../../../infra/format.js"
 import { displayToolName } from "./tool-block"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@tui/types"
@@ -46,9 +45,9 @@ export interface AgentBlockProps {
 function ToolRow(props: { tool: ToolBlockType }) {
   const { theme } = useTheme()
   return (
-    <box flexDirection="row" gap={1} paddingLeft={1}>
-      <text fg={theme.text}>{displayToolName(props.tool.name)}</text>
-      <text fg={theme.textMuted}>{truncate(props.tool.detail, 70)}</text>
+    <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
+      <text fg={theme.text} flexShrink={0}>{displayToolName(props.tool.name)}</text>
+      <text fg={theme.textSubtle} flexShrink={1} overflow="hidden">{props.tool.detail}</text>
     </box>
   )
 }
@@ -99,13 +98,13 @@ export function AgentBlock(props: AgentBlockProps) {
       {/* ── Active: header above bordered tool list ── */}
       <Show when={props.block.status === "active"}>
         <box flexDirection="row" gap={1} onMouseDown={() => setActiveCollapsed((v) => !v)}>
-          <Spinner color={theme.primary} />
-          <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
+          <Spinner color={theme.secondary} />
+          <text fg={theme.secondary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <Show when={toolCount() > 0}>
-            <text fg={theme.textMuted}>({toolCount()})</text>
+            <text fg={theme.textSubtle}>({toolCount()})</text>
           </Show>
           <Show when={activeElapsed() >= 1000}>
-            <text fg={theme.textMuted}>{formatElapsed(activeElapsed())}</text>
+            <text fg={theme.textSubtle}>{formatElapsed(activeElapsed())}</text>
           </Show>
           <text fg={theme.textMuted}>{activeCollapsed() ? "▸" : "▾"}</text>
         </box>
@@ -131,10 +130,10 @@ export function AgentBlock(props: AgentBlockProps) {
       {/* ── Completed/Paused: collapsible header + bordered tool list ── */}
       <Show when={canToggle()}>
         <box flexDirection="row" gap={1} onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
-          <text fg={theme.secondary}>✓</text>
-          <text fg={theme.secondary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
+          <text fg={theme.primary}>✓</text>
+          <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <text fg={theme.textMuted}>{props.expanded ? "▾" : "▸"}</text>
-          <text fg={theme.textMuted}>· {summary()}</text>
+          <text fg={theme.textSubtle}>· {summary()}</text>
         </box>
         <CollapsibleBox
           expanded={props.expanded ?? false}

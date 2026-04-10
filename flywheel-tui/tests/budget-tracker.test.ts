@@ -485,6 +485,8 @@ describe("BudgetTracker — flush", () => {
       invocations_used: 1,
       tokens_used: 3000,
       cost_usd: expect.closeTo(0.05, 10),
+      context_prompt_tokens: 0,
+      context_window: 0,
     });
     tracker.dispose();
   });
@@ -513,6 +515,8 @@ describe("BudgetTracker — flush", () => {
       invocations_used: 2,
       tokens_used: 11000, // 7000 + 4000
       cost_usd: expect.closeTo(0.25, 10),
+      context_prompt_tokens: 0,
+      context_window: 0,
     });
 
     tracker.dispose();
@@ -547,6 +551,8 @@ describe("BudgetTracker — flush", () => {
       invocations_used: 0,
       tokens_used: 0,
       cost_usd: 0,
+      context_prompt_tokens: 0,
+      context_window: 0,
     });
     tracker.dispose();
   });

@@ -13,6 +13,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { BaseEventConsumer } from "../../infra/base-event-consumer"
 import type { FlywheelEvent } from "../../infra/events"
+import { Log } from "../../infra/log.js"
 
 export interface HeadlessAdapterOptions {
   /** Path to log file (if not set, logs to console) */
@@ -200,7 +201,7 @@ export class HeadlessAdapter extends BaseEventConsumer {
     } else if (this.logStream) {
       this.logStream.write(fullMessage + "\n")
     } else {
-      console.log(fullMessage)
+      Log.create({ service: "headless-adapter" }).info(fullMessage)
     }
   }
 }

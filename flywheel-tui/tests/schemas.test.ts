@@ -1157,6 +1157,8 @@ describe("SessionSchema — budget fields", () => {
     invocations_used: 25,
     tokens_used: 120000,
     cost_usd: 1.50,
+    context_prompt_tokens: 0,
+    context_window: 0,
   };
 
   it("accepts budgetLimits with valid data", () => {

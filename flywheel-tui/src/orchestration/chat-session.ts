@@ -89,6 +89,8 @@ export interface ChatSessionOptions {
   updateEntry?: (patch: Partial<SessionEntryBase>) => void
   /** Called on every 16ms tick regardless of block changes. Use for display-refresh work (budget metrics, persistence). */
   onFlush?: () => void
+  /** Pre-known Claude Code session ID — used for --resume on the initial spawn (auto-resume path). */
+  claudeSessionId?: string
 }
 
 // ── Helpers ──
@@ -340,7 +342,7 @@ function createChatControls(input: ChatControlsInput): ChatControls {
     state.userTurnInProgress = true
     callbacks.onWaiting(true)
     const now = Date.now()
-    session.notifyInjected(text, now, isPending)
+    session.notifyInjected(text, now, isPending, false)
     // No explicit flush needed — OutputSession's 16ms interval handles it
 
     if (state.stdinHandle?.isOpen) {
@@ -417,7 +419,7 @@ export async function createChatSession(
     stdinHandle: null,
     workerPid: undefined,
     ended: false,
-    claudeSessionId: null,
+    claudeSessionId: overrides?.claudeSessionId ?? null,
     agentActive: false,
     userTurnInProgress: false,
     contextWarningFired: false,
@@ -495,7 +497,7 @@ export async function createChatSession(
   const hasInitialMessage = initialMessage != null && initialMessage.trim().length > 0
   if (hasInitialMessage) callbacks.onWaiting(true)
 
-  await lifecycle.spawnWorker(undefined, hasInitialMessage ? initialMessage : undefined)
+  await lifecycle.spawnWorker(state.claudeSessionId ?? undefined, hasInitialMessage ? initialMessage : undefined)
 
   return { send: controls.send, interrupt: controls.interrupt, end: controls.end, budgetTracker, outputSession: session }
 }

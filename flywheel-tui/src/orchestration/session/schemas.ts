@@ -36,6 +36,8 @@ export const ChatSessionSchema = z.object({
   ...baseFields,
   kind: z.literal("chat"),
   command: z.literal("chat"),
+  /** Claude Code session ID — used for --resume to reconnect with full context. */
+  claudeSessionId: z.string().optional(),
 }).strict();
 
 export const SessionSchema = z.discriminatedUnion("kind", [

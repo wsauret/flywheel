@@ -1,83 +1,71 @@
 /**
  * Output Snapshot Schema
  *
- * Zod schemas for serializing structured output blocks to disk.
- * Uses AnyBlock from infra/output-blocks.ts for the canonical block shapes.
+ * Persistence layer for structured output blocks. Derives snapshot schemas
+ * from the canonical Zod schemas in infra/output-blocks.ts — there is no
+ * second definition of block shapes here.
  *
- * Key behavior:
- * - `toSnapshot()` normalizes runtime state (e.g., active → paused)
- * - `fromSnapshot()` validates with Zod and filters out corrupt items
+ * Persistence-specific constraints:
+ * - ToolBlock: strips runtime-only fields (filePath, diff, content, filetype)
+ * - AgentBlock: normalizes "active" → "paused", strips UI state (expanded)
+ * - ContextGroupBlock: children use the narrowed ToolBlock persistence shape
+ * - All others: persisted as-is
  */
 
 import { z } from "zod";
-import type { AnyBlock } from "../../infra/output-blocks";
+import {
+  TextBlockSchema,
+  ToolBlockSchema,
+  AgentBlockSchema,
+  ContextGroupBlockSchema,
+  SystemBlockSchema,
+  ThinkingBlockSchema,
+  UserMessageBlockSchema,
+  TodoListBlockSchema,
+  type AnyBlock,
+} from "../../infra/output-blocks";
 
 // ---------------------------------------------------------------------------
-// Zod schemas for each block variant
+// Persistence variants — derived from canonical schemas
 // ---------------------------------------------------------------------------
 
-const TextSnapshotSchema = z
-  .object({
-    kind: z.literal("text"),
-    content: z.string(),
-    timestamp: z.number(),
-  })
-  .strict();
-
-const ToolSnapshotSchema = z
-  .object({
-    kind: z.literal("tool"),
-    name: z.string(),
-    detail: z.string(),
-    timestamp: z.number(),
-  })
-  .strict();
+/** ToolBlock on disk: core fields only, runtime rendering state stripped. */
+const ToolSnapshotSchema = ToolBlockSchema.pick({
+  kind: true,
+  name: true,
+  detail: true,
+  timestamp: true,
+});
 
 /**
- * Agent status on disk. "active" is normalized to "paused" on serialize,
- * so the persisted schema accepts "paused" | "completed" | "error".
+ * AgentBlock on disk: "active" status normalized to "paused" before writing,
+ * UI-only fields (expanded) stripped, children use persistence ToolBlock shape.
  */
-const AgentSnapshotSchema = z
-  .object({
-    kind: z.literal("agent"),
-    id: z.string(),
-    agentLabel: z.string(),
-    description: z.string(),
+const AgentSnapshotSchema = AgentBlockSchema
+  .omit({ status: true, children: true, expanded: true })
+  .extend({
     status: z.enum(["paused", "completed", "error"]),
     children: z.array(ToolSnapshotSchema),
-    latestChild: z.string().optional(),
-    duration: z.number().optional(),
-    errorMessage: z.string().optional(),
-    timestamp: z.number(),
-  })
-  .strict();
+  });
 
-const ContextGroupSnapshotSchema = z
-  .object({
-    kind: z.literal("contextGroup"),
-    tools: z.array(ToolSnapshotSchema),
-    timestamp: z.number(),
-  })
-  .strict();
-
-const SystemSnapshotSchema = z
-  .object({
-    kind: z.literal("system"),
-    message: z.string(),
-    timestamp: z.number(),
-  })
-  .strict();
+/** ContextGroupBlock on disk: children use persistence ToolBlock shape. */
+const ContextGroupSnapshotSchema = ContextGroupBlockSchema
+  .omit({ tools: true })
+  .extend({ tools: z.array(ToolSnapshotSchema) });
 
 // ---------------------------------------------------------------------------
 // Discriminated union
 // ---------------------------------------------------------------------------
 
 export const OutputSnapshotSchema = z.discriminatedUnion("kind", [
-  TextSnapshotSchema,
+  TextBlockSchema,
   ToolSnapshotSchema,
   AgentSnapshotSchema,
   ContextGroupSnapshotSchema,
-  SystemSnapshotSchema,
+  SystemBlockSchema,
+  ThinkingBlockSchema,
+  UserMessageBlockSchema,
+  TodoListBlockSchema,
 ]);
 
 export type OutputSnapshot = z.infer<typeof OutputSnapshotSchema>;
@@ -86,11 +74,11 @@ export type OutputSnapshot = z.infer<typeof OutputSnapshotSchema>;
 // Converters
 // ---------------------------------------------------------------------------
 
-
 /**
  * Convert runtime blocks to serializable snapshots.
  *
  * - AgentBlock with status "active" is normalized to "paused"
+ * - Runtime-only fields are stripped by Zod's default parse behavior
  * - Unknown block kinds are silently skipped
  */
 export function toSnapshot(blocks: readonly AnyBlock[]): OutputSnapshot[] {
@@ -131,9 +119,3 @@ export function fromSnapshot(snapshots: unknown[]): OutputSnapshot[] {
 
   return blocks;
 }
-
-// ---------------------------------------------------------------------------
-// Type-safe conversion to AnyBlock
-// ---------------------------------------------------------------------------
-
-

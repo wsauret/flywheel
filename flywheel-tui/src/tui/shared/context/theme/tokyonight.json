@@ -74,6 +74,10 @@
       "dark": "darkStep11",
       "light": "lightStep11"
     },
+    "textSubtle": {
+      "dark": "#a0a8d0",
+      "light": "#6878b0"
+    },
     "background": {
       "dark": "darkStep1",
       "light": "lightStep1"

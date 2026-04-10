@@ -73,6 +73,10 @@
       "dark": "darkGray",
       "light": "lightGray"
     },
+    "textSubtle": {
+      "dark": "#b0a490",
+      "light": "#5c5448"
+    },
     "background": {
       "dark": "darkBg0",
       "light": "lightBg0"

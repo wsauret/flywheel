@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { truncate, MAX_BLOCK_LINE_LENGTH } from "../../src/tui/utils/text"
+import { truncate } from "../../src/tui/utils/text"
 
 describe("truncate", () => {
   it("returns text unchanged when shorter than maxLen", () => {
@@ -37,11 +37,5 @@ describe("truncate", () => {
 
   it("handles maxLen of exactly 4 (boundary for ellipsis behavior)", () => {
     expect(truncate("abcde", 4)).toBe("abc\u2026")
-  })
-})
-
-describe("MAX_BLOCK_LINE_LENGTH", () => {
-  it("is 80", () => {
-    expect(MAX_BLOCK_LINE_LENGTH).toBe(80)
   })
 })

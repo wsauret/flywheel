@@ -144,6 +144,8 @@ describe("session persistence roundtrip", () => {
       invocations_used: 0,
       tokens_used: 0,
       cost_usd: 0,
+      context_prompt_tokens: 0,
+      context_window: 0,
     });
 
     // List should include this session
@@ -367,8 +369,8 @@ describe("budget continuity across session resume", () => {
     // Verify the session file has accumulated all usage
     const sessionAfter = readSession(sessionId, baseDir);
     expect(sessionAfter).not.toBeNull();
-    expect(sessionAfter!.budgetUsage.cost_usd).toBeCloseTo(0.02, 4);
-    expect(sessionAfter!.budgetUsage.tokens_used).toBe(600);
-    expect(sessionAfter!.budgetUsage.invocations_used).toBe(1);
+    expect(sessionAfter!.budgetUsage.cost_usd).toBeCloseTo(0.10, 4); // 0.08 + 0.02
+    expect(sessionAfter!.budgetUsage.tokens_used).toBe(3200); // 2600 + 600
+    expect(sessionAfter!.budgetUsage.invocations_used).toBe(3); // 2 + 1
   });
 });

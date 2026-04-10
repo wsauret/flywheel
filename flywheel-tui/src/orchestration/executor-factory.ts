@@ -112,8 +112,8 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
 
   // ── 3. Sprint evaluator addendum ──
   const evaluatorAddendum = isSprint
-    ? "You are evaluating sprint mode work. Evaluate against the 6-point self-review checklist " +
-      "(diff review, task alignment, completeness, test coverage, regression, edge cases). " +
+    ? "You are evaluating sprint mode work. Evaluate against the 7-point self-review checklist " +
+      "(diff review, task alignment, completeness, test coverage, regression, edge cases, elegance). " +
       "PASS work that meets the task requirements. " +
       "Only FAIL for hard evidence: tests failing, critical deliverables missing, or fundamentally broken output."
     : undefined
@@ -163,9 +163,7 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
 
   // ── 10. Post-turn verification hook ──
   const postTurnVerification = createPostTurnVerificationHook({
-    nativeChecks: true,
     nativeCheckTypes: ["build", "test", "has-changes"],
-    selfReview: false,
     maxFixAttempts: 2,
     projectCwd,
   })

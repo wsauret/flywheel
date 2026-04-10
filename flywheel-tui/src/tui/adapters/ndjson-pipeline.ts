@@ -211,15 +211,16 @@ function extractActivityInfo(data: Record<string, unknown>): ActivityInfo | null
 }
 
 /**
- * Extract the last non-empty, meaningful line from text, truncated to 80 chars.
+ * Extract the last non-empty, meaningful line from text.
  * Skips lines that are only whitespace or punctuation.
+ * Caps at 500 chars to bound memory; display truncation is handled by flexbox.
  */
 function extractLastMeaningfulLine(text: string): string | null {
   const lines = text.split("\n");
   for (let i = lines.length - 1; i >= 0; i--) {
     const trimmed = lines[i].trim();
     if (trimmed.length === 0 || /^[\s\p{P}]+$/u.test(trimmed)) continue;
-    return trimmed.length > 80 ? trimmed.slice(0, 77) + "..." : trimmed;
+    return trimmed.length > 500 ? trimmed.slice(0, 497) + "..." : trimmed;
   }
   return null;
 }

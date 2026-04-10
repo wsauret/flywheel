@@ -104,11 +104,15 @@ export class OpenTUIAdapter extends BaseEventConsumer {
   protected handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "subprocess:output":
+        // Write output BEFORE resolving pending messages — resolvePendingMessages
+        // moves resolved messages to the end of the block array, so the triggering
+        // output must already be appended for the user message to appear after it.
         if (event.stream === "stderr") {
           this.outputSession.writeStderr(event.data, event.timestamp);
         } else {
           this.outputSession.writeStdout(event.data, event.engineId);
         }
+        this.outputSession.resolvePendingMessages();
         break;
 
       case "subprocess:spawned":
@@ -168,8 +172,8 @@ export class OpenTUIAdapter extends BaseEventConsumer {
         break;
 
       case "subprocess:injected":
-        log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length });
-        this.outputSession.notifyInjected(event.message, event.timestamp);
+        log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length, pending: event.pending });
+        this.outputSession.notifyInjected(event.message, event.timestamp, event.pending, event.origin === "system");
         break;
 
       case "dispatcher:output":
@@ -190,12 +194,14 @@ export class OpenTUIAdapter extends BaseEventConsumer {
 
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
+        this.outputSession.resolvePendingMessages();
         this.outputSession.flush();
         this.updateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
+        this.outputSession.resolvePendingMessages();
         this.outputSession.flush();
         this.updateEntry({ modelActivity: "idle" });
         break;

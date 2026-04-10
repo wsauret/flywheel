@@ -1,4 +1,5 @@
 import type { FlywheelEvent } from "./events";
+import { Log } from "./log.js";
 
 export type Listener = (event: FlywheelEvent) => void;
 export type TypedListener<T extends FlywheelEvent["type"]> = (
@@ -16,6 +17,8 @@ export type Unsubscribe = () => void;
  * Adapters must be O(1). Async emit may be needed for TUI adapter in Plan 2;
  * design interface to be swappable.
  */
+const log = Log.create({ service: "event-bus" });
+
 export class EventBus {
   private catchAll = new Set<Listener>();
   private typed = new Map<FlywheelEvent["type"], Set<Listener>>();
@@ -59,7 +62,7 @@ export class EventBus {
       try {
         listener(event);
       } catch (err) {
-        console.error("[event-bus] catch-all listener error", event.type, err);
+        log.warn("catch-all listener error", { eventType: event.type, error: err instanceof Error ? err : new Error(String(err)) });
       }
     }
     // Type-specific listeners
@@ -69,7 +72,7 @@ export class EventBus {
         try {
           listener(event);
         } catch (err) {
-          console.error("[event-bus] typed listener error", event.type, err);
+          log.warn("typed listener error", { eventType: event.type, error: err instanceof Error ? err : new Error(String(err)) });
         }
       }
     }

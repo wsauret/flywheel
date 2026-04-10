@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-type ModuleName = "workflows" | "orchestration" | "tui" | "infra";
+type ModuleName = "cli" | "workflows" | "orchestration" | "tui" | "infra";
 
 interface ImportRef {
   sourcePath: string;
@@ -24,6 +24,14 @@ const temporaryAllowlist = new Set<string>([
 ]);
 
 const rules: BoundaryRule[] = [
+  {
+    id: "cli-is-top",
+    description: "No module may import from cli/ — it is the composition root.",
+    matches(importRef): boolean {
+      if (isUnder(importRef.sourcePath, "src/cli/")) return false;
+      return isModulePath(importRef.targetPath, "cli");
+    },
+  },
   {
     id: "infra-purity",
     description: "infra/ imports nothing from other modules (type-only imports are allowed).",
@@ -78,6 +86,8 @@ const rules: BoundaryRule[] = [
 
 function isModulePath(relPath: string, moduleName: ModuleName): boolean {
   switch (moduleName) {
+    case "cli":
+      return isUnder(relPath, "src/cli/");
     case "workflows":
       return isUnder(relPath, "src/workflows/");
     case "orchestration":

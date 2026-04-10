@@ -23,7 +23,7 @@ import type { EmitFn } from "../infra/event-bus.js"
 import type { EventBus } from "../infra/event-bus.js"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { Step } from "../workflows/queue/types.js"
-import { SELF_REVIEW_CHECKLIST } from "../workflows/queue/post-turn-verification.js"
+import { SELF_REVIEW_CHECKLIST } from "../workflows/queue/shared/self-review-checklist.js"
 
 const log = Log.create({ service: "subprocess-callback" })
 
@@ -162,15 +162,21 @@ export function createSubprocessCallback(
         selfReviewInjected = true
       }
       // Drain one item (or close handle if empty)
-      const deliveredMessage = injectionQueue.drainAtTurnBoundary()
-      if (deliveredMessage !== null) {
-        log.info("turn-boundary injection sent to subprocess")
-        eventBus.emit({
-          type: "subprocess:injected",
-          workflowId: workflowId,
-          message: deliveredMessage,
-          timestamp: Date.now(),
-        })
+      const delivered = injectionQueue.drainAtTurnBoundary()
+      if (delivered !== null) {
+        log.info("turn-boundary injection sent to subprocess", { userSteering: delivered.userSteering })
+        if (!delivered.userSteering) {
+          // Observer/self-review messages need a new block in the UI
+          eventBus.emit({
+            type: "subprocess:injected",
+            workflowId: workflowId,
+            message: delivered.message,
+            origin: "system",
+            timestamp: Date.now(),
+          })
+        }
+        // User-steering messages already have a pending block — no event needed.
+        // Pending state is resolved when the agent starts outputting.
       }
     } : undefined
 

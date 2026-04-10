@@ -147,6 +147,10 @@ interface SubprocessInjected {
   workflowId: string;
   message: string;
   timestamp: number;
+  /** Who originated this message. "user" = typed by the user (steering/chat). "system" = observer, self-review, etc. */
+  origin: "user" | "system";
+  /** True when this is a user-steering message shown immediately as pending. */
+  pending?: boolean;
 }
 
 // -- Question events --

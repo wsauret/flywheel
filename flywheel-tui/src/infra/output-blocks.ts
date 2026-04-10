@@ -1,32 +1,39 @@
 /**
- * Output Block Types
+ * Output Block Schemas & Types
  *
- * Pure data shapes for structured output blocks used by both the
+ * Single source of truth for structured output blocks. Zod schemas define
+ * the shapes; TypeScript types are derived via z.infer<>. Used by both the
  * orchestration layer (persistence, session store) and the TUI layer
  * (rendering). Lives in infra/ so both layers can import without
  * crossing module boundaries.
  */
 
-export interface TextBlock {
-  kind: "text";
-  content: string;
-  timestamp: number;
-}
+import { z } from "zod"
 
-export interface ToolBlock {
-  kind: "tool";
-  name: string;
-  detail: string;
-  timestamp: number;
+// ---------------------------------------------------------------------------
+// Block schemas
+// ---------------------------------------------------------------------------
+
+export const TextBlockSchema = z.object({
+  kind: z.literal("text"),
+  content: z.string(),
+  timestamp: z.number(),
+})
+
+export const ToolBlockSchema = z.object({
+  kind: z.literal("tool"),
+  name: z.string(),
+  detail: z.string(),
+  timestamp: z.number(),
   /** Absolute file path — when present, detail is clickable and opens in editor */
-  filePath?: string;
+  filePath: z.string().optional(),
   /** Unified diff string for Edit/ApplyPatch tools */
-  diff?: string;
+  diff: z.string().optional(),
   /** Raw file content for Write tool (rendered as plain text, not diff) */
-  content?: string;
+  content: z.string().optional(),
   /** File type for syntax highlighting in diff rendering */
-  filetype?: string;
-}
+  filetype: z.string().optional(),
+})
 
 /**
  * Optional fields (duration, errorMessage) are NOT discriminated by status because
@@ -35,47 +42,87 @@ export interface ToolBlock {
  * discriminants cleanly. The builder is the sole writer and always pairs status with
  * the correct fields, so the optionality is safe in practice.
  */
-export interface AgentBlock {
-  kind: "agent";
-  id: string;
-  agentLabel: string;
-  description: string;
-  status: "active" | "completed" | "error" | "paused";
-  children: ToolBlock[];
-  latestChild?: string;
-  duration?: number;
-  errorMessage?: string;
-  timestamp: number;
+export const AgentBlockSchema = z.object({
+  kind: z.literal("agent"),
+  id: z.string(),
+  agentLabel: z.string(),
+  description: z.string(),
+  status: z.enum(["active", "completed", "error", "paused"]),
+  children: z.array(ToolBlockSchema),
+  latestChild: z.string().optional(),
+  duration: z.number().optional(),
+  errorMessage: z.string().optional(),
+  timestamp: z.number(),
   /** Whether the block's children are expanded (visible). Default: false (collapsed). */
-  expanded?: boolean;
-}
+  expanded: z.boolean().optional(),
+})
 
-export interface ContextGroupBlock {
-  kind: "contextGroup";
-  tools: ToolBlock[];
-  timestamp: number;
-}
+export const ContextGroupBlockSchema = z.object({
+  kind: z.literal("contextGroup"),
+  tools: z.array(ToolBlockSchema),
+  timestamp: z.number(),
+})
 
-export interface SystemBlock {
-  kind: "system";
-  message: string;
-  timestamp: number;
-}
+export const SystemBlockSchema = z.object({
+  kind: z.literal("system"),
+  message: z.string(),
+  timestamp: z.number(),
+})
 
-export interface ThinkingBlock {
-  kind: "thinking";
-  content: string;
-  timestamp: number;
-}
+export const ThinkingBlockSchema = z.object({
+  kind: z.literal("thinking"),
+  content: z.string(),
+  timestamp: z.number(),
+})
 
-export interface UserMessageBlock {
-  kind: "userMessage";
-  content: string;
-  timestamp: number;
+export const UserMessageBlockSchema = z.object({
+  kind: z.literal("userMessage"),
+  content: z.string(),
+  timestamp: z.number(),
   /** True while the message has been written to stdin but the agent hasn't picked it up yet. */
-  pending?: boolean;
-  /** True for injected messages (observer, self-review, user steering). Rendered collapsed by default. */
-  injected?: boolean;
-}
+  pending: z.boolean().optional(),
+  /** True for system-injected messages (observer, self-review). Rendered collapsed as "↳ System". */
+  injected: z.boolean().optional(),
+})
 
-export type AnyBlock = TextBlock | ToolBlock | AgentBlock | ContextGroupBlock | SystemBlock | ThinkingBlock | UserMessageBlock;
+export const TodoItemSchema = z.object({
+  content: z.string(),
+  status: z.enum(["pending", "in_progress", "completed"]),
+})
+
+export const TodoListBlockSchema = z.object({
+  kind: z.literal("todoList"),
+  todos: z.array(TodoItemSchema),
+  timestamp: z.number(),
+})
+
+// ---------------------------------------------------------------------------
+// Derived types
+// ---------------------------------------------------------------------------
+
+export type TextBlock = z.infer<typeof TextBlockSchema>
+export type ToolBlock = z.infer<typeof ToolBlockSchema>
+export type AgentBlock = z.infer<typeof AgentBlockSchema>
+export type ContextGroupBlock = z.infer<typeof ContextGroupBlockSchema>
+export type SystemBlock = z.infer<typeof SystemBlockSchema>
+export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>
+export type UserMessageBlock = z.infer<typeof UserMessageBlockSchema>
+export type TodoItem = z.infer<typeof TodoItemSchema>
+export type TodoListBlock = z.infer<typeof TodoListBlockSchema>
+
+// ---------------------------------------------------------------------------
+// Discriminated union (all block kinds)
+// ---------------------------------------------------------------------------
+
+export const AnyBlockSchema = z.discriminatedUnion("kind", [
+  TextBlockSchema,
+  ToolBlockSchema,
+  AgentBlockSchema,
+  ContextGroupBlockSchema,
+  SystemBlockSchema,
+  ThinkingBlockSchema,
+  UserMessageBlockSchema,
+  TodoListBlockSchema,
+])
+
+export type AnyBlock = z.infer<typeof AnyBlockSchema>

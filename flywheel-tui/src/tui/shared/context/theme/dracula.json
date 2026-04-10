@@ -50,6 +50,10 @@
       "dark": "comment",
       "light": "#6272a4"
     },
+    "textSubtle": {
+      "dark": "#8a98c0",
+      "light": "#4e5e8a"
+    },
     "background": {
       "dark": "#282a36",
       "light": "#f8f8f2"

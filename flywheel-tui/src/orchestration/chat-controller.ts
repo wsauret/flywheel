@@ -10,6 +10,8 @@
 
 import { createChatRunner } from "./chat-runner.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
+import { readSession, updateSession } from "./session/persistence.js"
+import { computeContextPercent } from "./session/budget-tracker.js"
 import { TERMINAL_TITLE_PREFIX, formatElapsed, formatCost, formatTokens } from "../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import type { ChatStoreHandle, SessionStore } from "./session-store.js"
@@ -63,8 +65,8 @@ export interface ChatController {
   /** End the foreground chat. Returns true if a chat was ended. */
   endChat(foregroundId: string | undefined): boolean
 
-  /** Put the current chat in the background. */
-  backgroundChat(): void
+  /** Put the current chat in the background. Empty chats (no user messages) are auto-deleted. */
+  backgroundChat(foregroundId?: string): void
 
   /** Interrupt the foreground chat. */
   interruptChat(foregroundId: string | undefined): void
@@ -95,15 +97,48 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   let startup: StartupState = { phase: "idle" }
   let isFirstChat = true
 
+  // Chat sessions created in this instance that haven't received any user messages.
+  // These are auto-deleted (not persisted) when ended, backgrounded, or runner-completed.
+  const emptyChats = new Set<string>()
+
+  /**
+   * Bring a chat session to its final disk state.
+   * Empty chats (no user messages) are deleted. Chats with messages get
+   * their claudeSessionId persisted and state set to paused for resume.
+   */
+  function finalizeChat(id: string): void {
+    if (emptyChats.delete(id)) {
+      try { manager.delete(id) } catch { /* already cleaned up */ }
+    } else {
+      const entry = sessionStore.get(id)
+      if (entry?.kind === "chat" && entry.claudeSessionId) {
+        try { updateSession(id, { claudeSessionId: entry.claudeSessionId }, projectCwd) } catch { /* best-effort */ }
+      }
+      manager.updateState(id, "paused")
+    }
+    refreshList()
+  }
+
   /**
    * Internal helper: wire up a chat session with the sessionStore.
    * Returns the session ID on success, null on failure.
    */
   async function launchChat(
     sessionId: string,
-    opts?: { initialMessage?: string; priorBlocks?: AnyBlock[] },
+    opts?: {
+      initialMessage?: string
+      priorBlocks?: AnyBlock[]
+      claudeSessionId?: string
+      description?: string
+      initialCost?: number
+      initialTokens?: number
+      startedAt?: number
+      contextPercent?: number
+    },
   ): Promise<{ sessionId: string; terminalTitle: string } | null> {
-    startup = { phase: "starting", id: sessionId, pending: [] }
+    // Preserve any messages already buffered by sendMessage's auto-resume path
+    const priorPending = (startup.phase === "starting" && startup.id === sessionId) ? startup.pending : []
+    startup = { phase: "starting", id: sessionId, pending: priorPending }
 
     const terminalTitle = opts?.priorBlocks
       ? `${TERMINAL_TITLE_PREFIX}chat (resumed)`
@@ -112,26 +147,25 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     try {
       await sessionStore.startChat({
         sessionId,
-        description: "Chat",
+        description: opts?.description ?? "Chat",
         priorBlocks: opts?.priorBlocks,
+        initialCost: opts?.initialCost,
+        initialTokens: opts?.initialTokens,
+        startedAt: opts?.startedAt,
+        contextPercent: opts?.contextPercent,
         onRunnerDone: (id) => {
-          // Chats never "end" — they only pause. The runner disposed but
-          // the session stays available for resume.
-          manager.updateState(id, "paused")
-          refreshList()
+          finalizeChat(id)
           deps.onRunnerDone?.(id, {
             statusMessage: "",
             terminalTitle: `${TERMINAL_TITLE_PREFIX}chat`,
           } satisfies RunnerDoneResult)
         },
         onRunnerError: (id, err) => {
-          manager.updateState(id, "paused")
-          const errorResult = {
+          finalizeChat(id)
+          deps.onRunnerError?.(id, {
             errorMessage: extractErrorMessage(err),
             terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
-          } satisfies RunnerErrorResult
-          refreshList()
-          deps.onRunnerError?.(id, errorResult)
+          } satisfies RunnerErrorResult)
         },
         createRunner: (storeHandle: ChatStoreHandle) =>
           createChatRunner({
@@ -148,6 +182,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
             initialMessage: opts?.initialMessage?.trim() || undefined,
             priorBlocks: opts?.priorBlocks,
             showWelcome: isFirstChat && !opts?.priorBlocks,
+            claudeSessionId: opts?.claudeSessionId,
           }),
       })
 
@@ -171,22 +206,46 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     const sessionId = manager.create("chat", "Chat", "chat", "active")
     refreshList()
     const result = await launchChat(sessionId, { initialMessage })
-    if (!result) return null
+    if (!result) {
+      try { manager.delete(sessionId) } catch { /* best-effort */ }
+      refreshList()
+      return null
+    }
+    if (!initialMessage?.trim()) emptyChats.add(sessionId)
     return { sessionId: result.sessionId, terminalTitle: result.terminalTitle }
   }
 
   async function resumeChat(sessionId: string): Promise<ResumeChatResult | null> {
     const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
     const priorBlocks: AnyBlock[] = await persistence.load()
+    // Read persisted Claude session ID for --resume
+    const persisted = readSession(sessionId, projectCwd)
+    const claudeSessionId = persisted?.kind === "chat" ? persisted.claudeSessionId : undefined
+    const description = persisted?.label || persisted?.name || undefined
+    const initialCost = persisted?.totalCost || persisted?.budgetUsage?.cost_usd || undefined
+    const initialTokens = persisted?.budgetUsage?.tokens_used || undefined
+    const startedAt = persisted?.createdAt ? new Date(persisted.createdAt).getTime() : undefined
+    const bu = persisted?.budgetUsage
+    const contextPercent = computeContextPercent(bu?.context_prompt_tokens ?? 0, bu?.context_window ?? 0) || undefined
     const result = await launchChat(sessionId, {
       priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined,
+      claudeSessionId,
+      description,
+      initialCost,
+      initialTokens,
+      startedAt,
+      contextPercent,
     })
     if (!result) return null
     return { sessionId: result.sessionId, priorBlocks, terminalTitle: result.terminalTitle }
   }
 
-  function backgroundChat(): void {
+  function backgroundChat(foregroundId?: string): void {
     startup = { phase: "idle" }
+    if (foregroundId && emptyChats.has(foregroundId)) {
+      finalizeChat(foregroundId)
+      sessionStore.remove(foregroundId)
+    }
   }
 
   function endChat(foregroundId: string | undefined): boolean {
@@ -194,17 +253,12 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     const entry = sessionStore.get(foregroundId)
     if (!entry || entry.kind !== "chat") return false
 
-    // If ending the chat we're currently starting, reset startup state
     if (startup.phase === "starting" && startup.id === foregroundId) {
       startup = { phase: "idle" }
     }
 
-    // Update manager BEFORE removing from sessionStore — avoids a reactive glitch
-    // where sessionState() briefly sees the old manager state ("paused") after
-    // the sessionStore entry disappears but before the manager is updated.
-    manager.updateState(foregroundId, "paused")
+    finalizeChat(foregroundId)
     sessionStore.remove(foregroundId)
-    refreshList()
     return true
   }
 
@@ -217,11 +271,46 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     // During async startup, buffer messages
     if (startup.phase === "starting") {
       startup.pending.push(text)
+      emptyChats.delete(startup.id)
       return true
     }
-    // Send to whatever chat is in the foreground
     if (!foregroundId) return false
-    return sessionStore.injectMessage(foregroundId, text)
+
+    // Fast path: session has an active runner — inject directly
+    if (sessionStore.injectMessage(foregroundId, text)) {
+      emptyChats.delete(foregroundId)
+      return true
+    }
+
+    // Ended chat session — auto-resume with this message.
+    // This happens when the user views a historical/ended chat (Ctrl+B → Enter)
+    // and then sends a message. The loaded entry has no runner, so we recreate
+    // one via launchChat with --resume <claudeSessionId> for full context.
+    // The text is buffered in startup.pending so it flows through send() →
+    // notifyInjected() (user message bubble appears immediately).
+    const entry = sessionStore.get(foregroundId)
+    if (entry?.kind === "chat" && entry.ended) {
+      emptyChats.delete(foregroundId)
+      const priorBlocks = entry.outputBlocks.length > 0
+        ? [...entry.outputBlocks] as AnyBlock[]
+        : undefined
+      // Buffer the message BEFORE launchChat — launchChat preserves existing pending.
+      startup = { phase: "starting", id: foregroundId, pending: [text] }
+      launchChat(foregroundId, {
+        priorBlocks,
+        claudeSessionId: entry.claudeSessionId,
+        description: entry.description,
+        initialCost: entry.cost || undefined,
+        initialTokens: entry.tokens || undefined,
+        startedAt: entry.startedAt || undefined,
+        contextPercent: entry.contextPercent || undefined,
+      }).catch(() => {
+        startup = { phase: "idle" }
+      })
+      return true
+    }
+
+    return false
   }
 
   return {

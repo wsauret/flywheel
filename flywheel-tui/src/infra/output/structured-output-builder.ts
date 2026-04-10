@@ -8,9 +8,9 @@
  * a new array reference when dirty, enabling efficient SolidJS reactivity via
  * `setOutputBlocks(builder.getBlocks())`.
  *
- * Context grouping and stale agent detection are delegated to dedicated helpers
- * (ContextGroupTracker and StaleAgentDetector) to keep this module focused on
- * block accumulation.
+ * Context grouping is delegated to ContextGroupTracker to keep this module
+ * focused on block accumulation. Agent completion relies on authoritative
+ * signals (tool_result events and closeOpenSubagents) rather than timeouts.
  */
 
 import type {
@@ -19,8 +19,10 @@ import type {
   ToolBlock,
   AgentBlock,
   SystemBlock,
+  TodoItem,
+  TodoListBlock,
+  UserMessageBlock,
 } from "../output-blocks.js";
-import { StaleAgentDetector } from "./stale-agent-detector.js";
 import { ContextGroupTracker, isContextTool } from "./context-group-tracker.js";
 
 const BLOCKS_CAP = 20_000;
@@ -36,8 +38,8 @@ export class StructuredOutputBuilder {
   /** Map of agent ID → index in `blocks` for O(1) agent lookups. */
   private agentIndexById = new Map<string, number>();
 
-  /** Stale agent detection — auto-completes agents with no activity. */
-  private readonly staleDetector: StaleAgentDetector;
+  /** Index of the current TodoListBlock for in-place updates, or -1 if none. */
+  private todoBlockIndex = -1;
 
   /** Context tool grouping — groups consecutive context tools into synthetic AgentBlocks. */
   private readonly contextTracker: ContextGroupTracker;
@@ -64,10 +66,6 @@ export class StructuredOutputBuilder {
   private thinkingStartedAt: number | null = null;
 
   constructor() {
-    this.staleDetector = new StaleAgentDetector({
-      onStaleAgent: (agentId, durationMs) => this.completeAgent(agentId, durationMs),
-    });
-
     this.contextTracker = new ContextGroupTracker({
       startContextAgent: (id, timestamp) => this.startAgent(id, "Tools", "Using tools...", timestamp),
       appendToolToContextAgent: (agentId, tool) => this.appendToolToAgent(agentId, tool),
@@ -106,18 +104,38 @@ export class StructuredOutputBuilder {
     this.dirty = true;
   }
 
-  /** Transition all pending user messages to sent (pending = false). */
+  /**
+   * Transition all pending user messages to sent (pending = false) and move
+   * them to the end of the blocks array.
+   *
+   * Moving to end ensures the resolved message appears AFTER whatever output
+   * the agent produced while the message was queued — keeping the agent's
+   * contiguous response intact and the user message adjacent to the reply
+   * it will trigger.
+   */
   resolvePendingMessages(): boolean {
-    let resolved = false;
+    const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
       const b = this.blocks[i];
       if (b.kind === "userMessage" && b.pending) {
-        this.blocks[i] = { ...b, pending: false };
-        resolved = true;
+        pendingIndices.push(i);
       }
     }
-    if (resolved) this.dirty = true;
-    return resolved;
+    if (pendingIndices.length === 0) return false;
+
+    // Extract pending messages in reverse order (preserves earlier indices during splice)
+    const resolved: AnyBlock[] = [];
+    for (let i = pendingIndices.length - 1; i >= 0; i--) {
+      const [msg] = this.blocks.splice(pendingIndices[i]!, 1) as [UserMessageBlock];
+      resolved.unshift({ ...msg, pending: false });
+    }
+    this.blocks.push(...resolved);
+
+    // Indices shifted — rebuild lookups
+    this.rebuildAgentIndex();
+    this.rebuildTodoIndex();
+    this.dirty = true;
+    return true;
   }
 
   pushText(text: string, timestamp: number): void {
@@ -168,6 +186,41 @@ export class StructuredOutputBuilder {
   }
 
   /**
+   * Push a TodoWrite update. First call creates a new TodoListBlock; subsequent
+   * calls replace it in-place so the todo list is a living, updating element.
+   * An empty array clears the todo block entirely (all items completed).
+   */
+  pushTodoWrite(todos: TodoItem[], timestamp: number): void {
+    this.onModelActivityChange?.("tool_executing");
+    this.contextTracker.breakContextRun(timestamp);
+
+    if (todos.length === 0) {
+      // All done — remove the block if it exists
+      if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
+        this.blocks.splice(this.todoBlockIndex, 1);
+        this.rebuildAgentIndex();
+        this.todoBlockIndex = -1;
+      }
+      this.markDirty();
+      return;
+    }
+
+    const block: TodoListBlock = { kind: "todoList", todos, timestamp };
+
+    if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length && this.blocks[this.todoBlockIndex].kind === "todoList") {
+      // Update in place
+      this.blocks[this.todoBlockIndex] = block;
+    } else {
+      // First call — append
+      this.blocks.push(block);
+      this.todoBlockIndex = this.blocks.length - 1;
+    }
+
+    this.enforceBlocksCap();
+    this.markDirty();
+  }
+
+  /**
    * Push a tool as a child of a specific agent (by builder agent ID).
    * Used when Claude's `parent_tool_use_id` identifies the owning agent.
    * Returns false if the agent was not found (caller should fall through to top-level).
@@ -191,24 +244,14 @@ export class StructuredOutputBuilder {
     }
     const latestChild = `${tool.name}: ${tool.detail}`;
 
-    // Re-activate agents that were prematurely completed by the stale detector.
-    // The authoritative completion signal is the tool_result event, not the timeout.
-    if (agent.status === "completed") {
-      this.blocks[agentIdx] = { ...agent, status: "active", children, latestChild };
-      this.staleDetector.trackSpawn(agentId);
-    } else {
-      this.blocks[agentIdx] = { ...agent, children, latestChild };
-      if (agent.status === "active") {
-        this.staleDetector.trackActivity(agentId);
-      }
-    }
+    this.blocks[agentIdx] = { ...agent, children, latestChild };
 
     this.markDirty();
     this.onAgentActivity?.(agentId);
     return true;
   }
 
-  startAgent(id: string, agentLabel: string, description: string, timestamp: number, opts?: { skipStaleDetection?: boolean }): void {
+  startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
 
     const agent: AgentBlock = {
@@ -222,9 +265,6 @@ export class StructuredOutputBuilder {
     };
     this.blocks.push(agent);
     this.agentIndexById.set(id, this.blocks.length - 1);
-    if (!opts?.skipStaleDetection) {
-      this.staleDetector.trackSpawn(id);
-    }
     this.enforceBlocksCap();
     this.markDirty();
     this.onAgentLifecycle?.("start", id);
@@ -235,15 +275,7 @@ export class StructuredOutputBuilder {
     if (idx === undefined) return;
 
     const agent = this.blocks[idx] as AgentBlock;
-    if (agent.status === "completed") {
-      // Already completed (e.g. by stale detector) — update duration if the
-      // authoritative signal (tool_result) arrives later with a better value.
-      if (duration > (agent.duration ?? 0)) {
-        this.blocks[idx] = { ...agent, duration };
-        this.markDirty();
-      }
-      return;
-    }
+    if (agent.status === "completed") return;
     if (agent.status !== "active") return;
 
     this.blocks[idx] = {
@@ -252,7 +284,6 @@ export class StructuredOutputBuilder {
       duration,
       ...(description !== undefined ? { description } : {}),
     };
-    this.staleDetector.removeAgent(id);
     this.markDirty();
     this.onAgentLifecycle?.("complete", id);
   }
@@ -264,7 +295,6 @@ export class StructuredOutputBuilder {
     const agent = this.blocks[idx] as AgentBlock;
     this.blocks[idx] = { ...agent, status: "error", errorMessage: message };
 
-    this.staleDetector.removeAgent(id);
     this.markDirty();
     this.onAgentLifecycle?.("error", id);
   }
@@ -283,7 +313,6 @@ export class StructuredOutputBuilder {
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
     this.markDirty();
-    this.staleDetector.trackActivity(id);
     this.onAgentActivity?.(id);
   }
 
@@ -336,13 +365,12 @@ export class StructuredOutputBuilder {
     this.dirty = false;
     this.cachedSnapshot = [];
     this.agentIndexById.clear();
+    this.todoBlockIndex = -1;
     this.contextTracker.reset();
-    this.staleDetector.clearTracking();
   }
 
-  /** Stop the stale check interval and clean up. Call when the builder is no longer needed. */
   dispose(): void {
-    this.staleDetector.dispose();
+    // no-op — retained for interface compatibility
   }
 
   /**
@@ -352,6 +380,7 @@ export class StructuredOutputBuilder {
    */
   resetTracking(): void {
     this.agentIndexById.clear();
+    this.todoBlockIndex = -1;
     this.contextTracker.resetTracking();
     this.dirty = true;
     this.cachedSnapshot = [];
@@ -368,6 +397,10 @@ export class StructuredOutputBuilder {
       const overflow = this.blocks.length - BLOCKS_CAP;
       this.blocks.splice(0, overflow);
       this.rebuildAgentIndex();
+      // Adjust todoBlockIndex: evicted if it was in the spliced range, shifted otherwise.
+      if (this.todoBlockIndex >= 0) {
+        this.todoBlockIndex = this.todoBlockIndex < overflow ? -1 : this.todoBlockIndex - overflow;
+      }
       const ctxId = this.contextTracker.currentAgentId;
       if (ctxId !== null) {
         this.contextTracker.handleEviction(this.agentIndexById.has(ctxId));
@@ -381,6 +414,16 @@ export class StructuredOutputBuilder {
       const block = this.blocks[i];
       if (block.kind === "agent") {
         this.agentIndexById.set(block.id, i);
+      }
+    }
+  }
+
+  private rebuildTodoIndex(): void {
+    this.todoBlockIndex = -1;
+    for (let i = 0; i < this.blocks.length; i++) {
+      if (this.blocks[i]!.kind === "todoList") {
+        this.todoBlockIndex = i;
+        break;
       }
     }
   }

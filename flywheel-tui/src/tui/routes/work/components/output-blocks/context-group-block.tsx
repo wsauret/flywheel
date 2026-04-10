@@ -9,7 +9,6 @@
 
 import { createSignal, Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { truncate } from "@tui/utils/text"
 import { displayToolName } from "./tool-block"
 import type { ContextGroupBlock as ContextGroupBlockType } from "@tui/types"
 
@@ -33,9 +32,9 @@ export function ContextGroupBlock(props: ContextGroupBlockProps) {
         <box flexDirection="column" paddingLeft={3}>
           <For each={props.block.tools}>
             {(tool) => (
-              <box flexDirection="row" gap={1}>
-                <text fg={theme.textMuted}>{displayToolName(tool.name)}</text>
-                <text fg={theme.textMuted}>{truncate(tool.detail, 60)}</text>
+              <box flexDirection="row" gap={1} overflow="hidden">
+                <text fg={theme.textMuted} flexShrink={0}>{displayToolName(tool.name)}</text>
+                <text fg={theme.textSubtle} flexShrink={1} overflow="hidden">{tool.detail}</text>
               </box>
             )}
           </For>

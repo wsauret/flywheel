@@ -16,6 +16,8 @@ import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { SessionModal } from "./session-modal"
 import { createSessionStore } from "../orchestration/session-store"
 import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
+import { loadSessionOutput } from "../orchestration/session-actions.js"
+import type { SessionKind } from "../orchestration/session/types.js"
 import { formatElapsed, formatCost } from "../infra/format.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
@@ -87,7 +89,12 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     startChat: chat.startChat,
     backgroundChat: chat.backgroundChat,
     endChat: chat.endChat,
-    sendMessage: chat.sendMessage,
+    sendMessage: (text: string) => {
+      // If viewing a historical session, commit to it (clear restore snapshot)
+      // so the auto-resumed chat stays in the foreground.
+      if (sessionModal.isViewingSession()) sessionModal.commitViewedSession()
+      chat.sendMessage(text)
+    },
     handleResume: workflow.handleResume,
     steerWorkflow: workflow.steerWorkflow,
     openSessionsModal: sessionModal.openSessionsModal,
@@ -103,17 +110,34 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   })
 
   // ── Foreground switching ──
-  // After Phase 3, changing foregroundId triggers all derived memos automatically.
-  // This helper just sets the ID and resets transient UI state.
-  function switchForeground(sessionId: string): void {
+  // Changing foregroundId triggers all derived memos automatically.
+  // Loads the session from disk into the store if not already present.
+  let switchGen = 0
+  async function switchForeground(sessionId: string): Promise<void> {
+    const gen = ++switchGen
+    if (!sessionStore.has(sessionId)) {
+      const blocks = await loadSessionOutput(sessionId, props.projectCwd)
+      if (gen !== switchGen) return
+      const s = sessions().find(s => s.id === sessionId)
+      if (!s) return
+      sessionStore.load(sessionId, {
+        kind: s.kind as SessionKind,
+        description: s.label || s.name || sessionId.slice(0, 8),
+        outputBlocks: blocks,
+        tokens: s.totalTokens,
+        cost: s.totalCost,
+        contextPercent: s.contextPercent,
+        startedAt: s.createdAt ? new Date(s.createdAt).getTime() : undefined,
+        claudeSessionId: s.claudeSessionId,
+      })
+    }
+    if (gen !== switchGen) return
     const entry = sessionStore.get(sessionId)
     if (!entry) return
-    metrics.pauseTimer()  // stop old interval before resetting accumulated value
+    metrics.pauseTimer()
     batch(() => {
       signals.setForegroundId(sessionId)
-      // Derived memos (agentState, outputBlocks, steps, sessionTitle) update automatically
       metrics.resetElapsedTo(Date.now() - entry.startedAt)
-      // effect above handles start/pause based on new agentState
       signals.setStatusLine("")
       signals.setErrorMessage("")
     })
@@ -124,11 +148,13 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const handleKey = createKeyboardHandler({
     signals,
     sessionStore,
+    sessions,
     workflow,
     chat,
     sessionModal,
     inChat,
     runningCount,
+    switchForeground,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
     showToast: (opts) => toast.show(opts),
   })
@@ -301,7 +327,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       </box>
 
       {/* Content */}
-      <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} gap={1}>
+      <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={1} paddingTop={1} paddingBottom={1} gap={1}>
 
 
         <Show when={signals.pendingWorkCommand()}>
@@ -343,7 +369,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       <Show when={promptStatusLabel() && showPrompt()}>
         <box flexShrink={0} paddingLeft={2} paddingRight={2} paddingBottom={1} flexDirection="row" gap={1}>
           <Spinner color={theme.primary} />
-          <ShimmerText text={promptStatusLabel()!} color={theme.textMuted} />
+          <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
         </box>
       </Show>
 
@@ -366,7 +392,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                   : inChat()
                     ? (signals.agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
                     : signals.agentState() === "active"
-                      ? "Send a message to guide the agent (Esc to pause)"
+                      ? "Send a message to guide the agent (Esc to interrupt)"
                       : signals.sessionState() === "paused"
                         ? "Send a message to resume, or Esc to force stop"
                         : "Send a message..."
@@ -386,20 +412,18 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
       {/* Footer */}
       <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} flexShrink={0}>
-        <text fg={theme.textMuted} flexShrink={1} overflow="hidden">{props.projectCwd}</text>
-        <box flexDirection="row" gap={1} flexShrink={0}>
-          <text fg={theme.textMuted}>
-            {signals.agentState() === "active"
-              ? "Esc interrupt"
-              : signals.sessionState() === "paused"
-                ? "Esc stop \u00b7 Ctrl+R resume"
-                : "Ctrl+N new"}
-            {sessions().length > 0
-              ? ` \u00b7 Ctrl+B ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
-              : " \u00b7 Ctrl+B sessions"}
-          </text>
-          <text fg={theme.border}>v0.0.1</text>
-        </box>
+        <text fg={theme.textMuted}>
+          {signals.agentState() === "active"
+            ? "Esc interrupt"
+            : signals.sessionState() === "paused"
+              ? "Esc stop \u00b7 Ctrl+R resume"
+              : "Ctrl+N new"}
+          {sessions().filter(s => s.state === "active" || s.state === "paused").length >= 2 ? " \u00b7 Tab switch" : ""}
+          {sessions().length > 0
+            ? ` \u00b7 Ctrl+B ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
+            : " \u00b7 Ctrl+B sessions"}
+        </text>
+        <text fg={theme.border} flexShrink={0}>v0.0.1</text>
       </box>
 
       {/* Session modal overlay */}

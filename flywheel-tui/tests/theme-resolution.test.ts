@@ -14,6 +14,7 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "info",
   "text",
   "textMuted",
+  "textSubtle",
   "background",
   "backgroundPanel",
   "backgroundElement",

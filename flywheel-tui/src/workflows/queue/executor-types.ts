@@ -230,7 +230,6 @@ export interface VerificationCheckResult {
 export interface PostTurnVerificationResult {
   passed: boolean;
   nativeChecksPassed: boolean;
-  selfReviewCompleted: boolean;
   fixAttemptsUsed: number;
   checks: VerificationCheckResult[];
 }
