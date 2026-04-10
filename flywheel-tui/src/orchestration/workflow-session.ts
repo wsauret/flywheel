@@ -10,7 +10,7 @@
 
 import { EventBus } from "../infra/event-bus";
 import type { EngineMetadata } from "./engines/core/types";
-import type { WorkflowSessionEntry } from "./session-store";
+import type { WorkflowSessionEntry } from "./session-store-types";
 
 // ---------------------------------------------------------------------------
 // Narrow interfaces — what orchestration needs from TUI primitives

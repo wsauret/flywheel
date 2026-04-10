@@ -13,7 +13,7 @@ import { EventBus, createEmit } from "../../src/infra/event-bus";
 import { createTraceWriter } from "../../src/orchestration/session/trace-writer";
 import { createTraceCollector } from "../../src/orchestration/session/trace-collector";
 import { createTraceEventHandler } from "../../src/orchestration/engines/subprocess/trace-event-handler";
-import { parseSpanLine, type Span } from "../../src/infra/trace-types";
+import type { Span } from "../../src/infra/trace-types";
 import { TRACES_DIR, resolveTraceFile } from "../../src/infra/paths";
 import { randomUUID } from "node:crypto";
 
@@ -201,10 +201,10 @@ const spans: Span[] = [];
 const parseErrors: string[] = [];
 
 for (let i = 0; i < lines.length; i++) {
-  const span = parseSpanLine(lines[i]);
-  if (span) {
+  try {
+    const span = JSON.parse(lines[i]) as Span;
     spans.push(span);
-  } else {
+  } catch {
     parseErrors.push(`Line ${i + 1}: failed to parse`);
   }
 }

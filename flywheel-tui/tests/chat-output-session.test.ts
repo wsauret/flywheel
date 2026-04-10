@@ -15,7 +15,7 @@
 import { describe, it, expect, beforeEach } from "bun:test"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
 import { EventBus, createEmit } from "../src/infra/event-bus"
-import type { SessionEntryBase } from "../src/orchestration/session-store"
+import type { SessionEntryBase } from "../src/orchestration/session-store-types"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
 // ---------------------------------------------------------------------------

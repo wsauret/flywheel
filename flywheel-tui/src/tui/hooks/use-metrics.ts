@@ -1,6 +1,6 @@
 import { createSignal, createMemo, onCleanup, batch } from "solid-js"
 import type { Accessor } from "solid-js"
-import type { SessionEntry } from "../../orchestration/session-store"
+import type { SessionEntry } from "../../orchestration/session-store-types"
 import { SPINNER_FRAMES, SPINNER_INTERVAL } from "@tui/shared/components/spinner-frames.js"
 
 export interface MetricsHook {

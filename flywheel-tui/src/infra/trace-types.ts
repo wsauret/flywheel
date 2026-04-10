@@ -11,8 +11,6 @@
  * - Input/output fields are 4KB byte-capped via truncateField()
  */
 
-import { z } from "zod";
-
 // ---------------------------------------------------------------------------
 // SpanKind — string union
 // ---------------------------------------------------------------------------
@@ -129,106 +127,6 @@ interface ToolCallSpan extends SpanBase {
 export type Span = WorkflowSpan | StepSpan | WorkerSpan | SubagentSpan | ToolCallSpan;
 
 // ---------------------------------------------------------------------------
-// Exhaustiveness check helper
-// ---------------------------------------------------------------------------
-
-/**
- * Use in switch default case to ensure all SpanKind values are handled.
- * TypeScript will error at compile time if a case is missing.
- */
-function assertNeverSpanKind(kind: never): never {
-  throw new Error(`Unhandled span kind: ${kind}`);
-}
-
-// ---------------------------------------------------------------------------
-// Zod schemas
-// ---------------------------------------------------------------------------
-
-const SpanBaseSchema = z.object({
-  spanId: z.string(),
-  traceId: z.string(),
-  parentSpanId: z.string().nullable(),
-  sessionId: z.string(),
-  startTimeMs: z.number(),
-  endTimeMs: z.number().optional(),
-  durationMs: z.number().optional(),
-  status: z.enum(["ok", "error"]),
-  error: z
-    .object({ message: z.string(), code: z.string().optional() })
-    .nullable(),
-});
-
-const WorkflowSpanSchema = SpanBaseSchema.extend({
-  kind: z.literal("workflow"),
-  input: z.object({
-    stepIds: z.array(z.string()),
-    workflowName: z.string(),
-  }),
-  output: z.object({
-    stepsCompleted: z.number(),
-    failureReason: z.string().nullable(),
-  }),
-});
-
-const StepSpanSchema = SpanBaseSchema.extend({
-  kind: z.literal("step"),
-  input: z.object({
-    stepType: z.string(),
-    stepTitle: z.string(),
-  }),
-  output: z.object({
-    failureReason: z.string().nullable(),
-  }),
-});
-
-const WorkerSpanSchema = SpanBaseSchema.extend({
-  kind: z.literal("worker"),
-  input: z.object({
-    stepIndex: z.number(),
-  }),
-  output: z.object({
-    resultSummary: z.string(),
-    failureReason: z.string().nullable(),
-    ndjsonEventCount: z.number().optional(),
-  }),
-});
-
-const SubagentSpanSchema = SpanBaseSchema.extend({
-  kind: z.literal("subagent"),
-  input: z.object({
-    agentType: z.string(),
-    description: z.string(),
-    prompt: z.string(),
-    model: z.string(),
-  }),
-  output: z.object({
-    result: z.string(),
-    exitStatus: z.number(),
-    error: z.string().nullable(),
-  }),
-});
-
-const ToolCallSpanSchema = SpanBaseSchema.extend({
-  kind: z.literal("tool_call"),
-  input: z.object({
-    toolName: z.string(),
-    toolInput: z.string(),
-  }),
-  output: z.object({
-    toolOutput: z.string(),
-    isError: z.boolean(),
-  }),
-});
-
-export const SpanSchema = z.discriminatedUnion("kind", [
-  WorkflowSpanSchema,
-  StepSpanSchema,
-  WorkerSpanSchema,
-  SubagentSpanSchema,
-  ToolCallSpanSchema,
-]);
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -263,17 +161,3 @@ export function truncateField(value: unknown, maxBytes: number = 4096): string {
   return "";
 }
 
-/**
- * Safely parse a single JSONL line into a Span.
- * Returns `null` for any malformed, truncated, or invalid line — never throws.
- */
-export function parseSpanLine(line: string): Span | null {
-  try {
-    if (!line || !line.trim()) return null;
-    const parsed = JSON.parse(line);
-    const result = SpanSchema.safeParse(parsed);
-    return result.success ? (result.data as Span) : null;
-  } catch {
-    return null;
-  }
-}

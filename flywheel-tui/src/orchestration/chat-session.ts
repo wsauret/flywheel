@@ -28,9 +28,10 @@ import { contextWindowForModel } from "./engines/providers/claude-context"
 import type { TraceCollector } from "./session/trace-collector"
 import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
 import { feedChatEventToTrace } from "./chat-tracing"
+import { createChatControls } from "./chat-controls"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
 import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
-import type { SessionEntryBase } from "./session-store"
+import type { SessionEntryBase } from "./session-store-types"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -60,7 +61,7 @@ export interface ChatSession {
 // ── Shared mutable state ──
 
 /** Mutable state shared across pipeline, worker lifecycle, and controls. */
-interface ChatSessionState {
+export interface ChatSessionState {
   stdinHandle: StdinHandle | null
   workerPid: number | undefined
   ended: boolean
@@ -94,13 +95,9 @@ export interface ChatSessionOptions {
 }
 
 // ── Helpers ──
-// The three helpers below (setupOutputSession, createWorkerLifecycle,
-// createChatControls) are module-private decompositions of createChatSession.
-// Each owns a cohesive concern (output rendering, process lifecycle, user
-// controls). They share mutable state via ChatSessionState rather than
-// being split into separate files, because they form a single logical unit
-// with a shared lifecycle — extracting to files would add import noise
-// without improving cohesion.
+// setupOutputSession and createWorkerLifecycle are module-private
+// decompositions that share mutable ChatSessionState with the main factory.
+// createChatControls is extracted to chat-controls.ts.
 
 // ── Helper 1: setupOutputSession ──
 
@@ -161,7 +158,7 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
 
 // ── Helper 2: createWorkerLifecycle ──
 
-interface WorkerLifecycle {
+export interface WorkerLifecycle {
   spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void>
 }
 
@@ -247,129 +244,6 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
   }
 
   return { spawnWorker }
-}
-
-// ── Helper 3: createChatControls ──
-
-interface ChatControls {
-  send(text: string): void
-  interrupt(): void
-  end(): void
-}
-
-interface ChatControlsInput {
-  lifecycle: WorkerLifecycle
-  session: OutputSession
-  callbacks: ChatCallbacks
-  eventUnsubs: Unsubscribe[]
-  state: ChatSessionState
-  /** Raw (ungated) updateEntry — for setting idle which always passes through. */
-  rawUpdateEntry: (patch: Partial<SessionEntryBase>) => void
-}
-
-function createChatControls(input: ChatControlsInput): ChatControls {
-  const { lifecycle, session, callbacks, eventUnsubs, state, rawUpdateEntry } = input
-
-  function interrupt() {
-    if (state.ended) return
-    log.info("chat interrupted by user", { pid: state.workerPid })
-
-    // Capture session ID before killing the worker
-    if (session.sessionId) state.claudeSessionId = session.sessionId
-
-    // Close stdin pipe if still open
-    if (state.stdinHandle?.isOpen) {
-      state.stdinHandle.close()
-    }
-    state.stdinHandle = null
-
-    // Kill the worker process — SIGTERM first, escalate to SIGKILL after 2s
-    if (state.workerPid) {
-      const pid = state.workerPid
-      try { process.kill(pid, "SIGTERM") } catch { /* already gone */ }
-      setTimeout(() => {
-        try { process.kill(pid, "SIGKILL") } catch { /* already gone */ }
-      }, 2_000)
-    }
-
-    // Always reset session state — this is the escape hatch, it must work
-    callbacks.onWaiting(false)
-    rawUpdateEntry({ modelActivity: "idle" })
-    state.agentActive = false
-    state.userTurnInProgress = false
-    session.resolvePendingMessages()
-    session.pushSystemMessage("Interrupted", Date.now())
-    session.flush()
-
-    // Eagerly reconnect so the worker is warm when the user sends the next message
-    if (state.claudeSessionId) {
-      lifecycle.spawnWorker(state.claudeSessionId).catch((err) => {
-        log.warn("eager reconnect after interrupt failed", { error: errorMessage(err) })
-      })
-    }
-  }
-
-  function end() {
-    if (state.ended) return
-    state.ended = true
-    // Unsubscribe EventBus listeners — no more infra event processing.
-    eventUnsubs.forEach((u) => u())
-    // Flush any remaining data before disposing (mirrors handleWorkerExit)
-    session.flushParser()
-    session.flush()
-    session.dispose()
-    // Resource disposal (budget flush, trace finalize, transcript close) is
-    // handled by chat-runner's disposeSessionResources() — not duplicated here.
-    if (state.stdinHandle?.isOpen) {
-      // Worker is alive — close the pipe and let the process exit naturally.
-      // onEnded fires from the spawnResult.result handler once the process exits.
-      state.stdinHandle.close()
-      state.stdinHandle = null
-    } else {
-      // Worker already idle-exited — fire immediately.
-      state.stdinHandle = null
-      callbacks.onEnded()
-    }
-  }
-
-  function send(text: string) {
-    if (state.ended) { log.warn("chat send after ended"); return }
-
-    // Message is "pending" only when there's an active agent turn in progress
-    // (i.e. we're injecting into a running conversation). After interrupt or
-    // idle-exit, the agent isn't working so the message is the start of a new turn.
-    const isPending = state.agentActive && state.stdinHandle?.isOpen === true
-    state.userTurnInProgress = true
-    callbacks.onWaiting(true)
-    const now = Date.now()
-    session.notifyInjected(text, now, isPending, false)
-    // No explicit flush needed — OutputSession's 16ms interval handles it
-
-    if (state.stdinHandle?.isOpen) {
-      // Normal path: worker is alive, write directly to the pipe
-      const ok = state.stdinHandle.write(formatStdinMessage(text))
-      log.info("chat message sent", { length: text.length, written: ok })
-      return
-    }
-
-    // Worker exited idle — reconnect via --resume and send the message as initial content
-    if (state.claudeSessionId) {
-      log.info("chat worker idle-exited, reconnecting via --resume", { sessionId: state.claudeSessionId })
-      lifecycle.spawnWorker(state.claudeSessionId, text).catch((err) => {
-        log.warn("chat reconnect failed", { error: errorMessage(err) })
-        callbacks.onWaiting(false)
-        callbacks.onError(`Reconnect failed: ${errorMessage(err)}`)
-      })
-      return
-    }
-
-    // No worker and no session ID to resume — this should only happen before the
-    // first turn completes (session ID not yet emitted by Claude Code).
-    log.warn("chat send: no active worker and no session ID to resume")
-    callbacks.onWaiting(false)
-  }
-
-  return { send, interrupt, end }
 }
 
 // ── Main Factory ──

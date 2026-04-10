@@ -9,7 +9,7 @@
 
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import { BaseEventConsumer } from "../../infra/base-event-consumer";
-import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store";
+import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store-types";
 import { createOutputSession, type OutputSession } from "../../orchestration/output-session.js";
 import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";

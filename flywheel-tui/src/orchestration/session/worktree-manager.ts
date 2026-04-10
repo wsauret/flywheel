@@ -16,7 +16,6 @@
  */
 
 
-import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // IWorktreeClient interface — dependency inversion for testability
@@ -35,31 +34,6 @@ export interface WorktreeInfo {
   is_main?: boolean;
 }
 
-/** Zod schema for parsing worktree info from wt CLI output.
- * Accepts both the legacy shape (path, branch, isActive) and
- * worktrunk's richer --format=json output. */
-export const WorktreeInfoSchema = z.object({
-  path: z.string(),
-  branch: z.string(),
-  isActive: z.boolean().optional().default(false),
-  is_current: z.boolean().optional(),
-  is_main: z.boolean().optional(),
-  commit: z.object({
-    sha: z.string().optional(),
-    short_sha: z.string().optional(),
-    message: z.string().optional(),
-    timestamp: z.string().optional(),
-  }).optional(),
-  working_tree: z.object({
-    staged: z.number().optional(),
-    modified: z.number().optional(),
-    untracked: z.number().optional(),
-  }).optional(),
-}).transform((data) => ({
-  ...data,
-  // Derive isActive from is_current if present (worktrunk format)
-  isActive: data.is_current ?? data.isActive ?? false,
-}));
 
 /**
  * Abstract interface for worktree operations.

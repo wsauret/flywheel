@@ -16,9 +16,6 @@ import type { EmitFn } from "../../infra/event-bus";
 
 /**
  * Minimal QuestionService interface for gate steps.
- * Mirrors the `ask` method from `src/queue/question-service.ts`.
- * The full QuestionService type is not imported to avoid coupling the
- * queue engine to the controller layer.
  */
 export interface GateQuestionService {
   ask(questions: Array<{

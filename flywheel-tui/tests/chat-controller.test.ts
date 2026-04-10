@@ -11,7 +11,7 @@
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { createChatController, type ChatControllerDeps } from "../src/orchestration/chat-controller"
-import type { SessionStore, ChatStoreHandle, SessionEntry } from "../src/orchestration/session-store"
+import type { SessionStore, ChatStoreHandle, SessionEntry } from "../src/orchestration/session-store-types"
 import type { SessionManager } from "../src/orchestration/session/manager"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 

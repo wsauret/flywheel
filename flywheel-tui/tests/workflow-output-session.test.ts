@@ -16,7 +16,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder"
 import { NdjsonPipeline } from "../src/tui/adapters/ndjson-pipeline"
-import type { SessionEntryBase } from "../src/orchestration/session-store"
+import type { SessionEntryBase } from "../src/orchestration/session-store-types"
 import { createNoopEmit } from "../src/infra/event-bus"
 import type { AnyBlock } from "../src/infra/output-blocks"
 

@@ -16,7 +16,7 @@ import {
   formatWorkflowDoneResult,
   type WorkflowControllerDeps,
 } from "../src/orchestration/workflow-controller"
-import type { SessionStore, SessionEntry } from "../src/orchestration/session-store"
+import type { SessionStore, SessionEntry } from "../src/orchestration/session-store-types"
 import type { SessionManager } from "../src/orchestration/session/manager"
 import type { WorkflowResult } from "../src/orchestration/workflow-runner"
 

@@ -8,7 +8,7 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import type { ShellSignals } from "./shell-state.js"
-import type { SessionStore } from "../../orchestration/session-store.js"
+import type { SessionStore } from "../../orchestration/session-store-types.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { WorkflowLifecycleHook } from "./use-workflow-lifecycle.js"
 import type { ChatModeHook } from "./use-chat-mode.js"

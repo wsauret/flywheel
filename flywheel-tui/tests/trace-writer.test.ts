@@ -10,7 +10,6 @@ import * as crypto from "node:crypto";
 
 import { createTraceWriter, type TraceWriter, type TraceIndexEntry } from "../src/orchestration/session/trace-writer";
 import type { Span, ToolCallSpan, WorkflowSpan } from "../src/infra/trace-types";
-import { parseSpanLine } from "../src/infra/trace-types";
 import { TRACES_DIR } from "../src/infra/paths";
 
 // ---------------------------------------------------------------------------
@@ -152,9 +151,9 @@ describe("TraceWriter — JSONL append", () => {
     const lines = readLines(traceFilePath("s1", tmpDir));
     expect(lines.length).toBe(1);
 
-    const parsed = parseSpanLine(lines[0]);
+    const parsed = JSON.parse(lines[0]) as Span;
     expect(parsed).not.toBeNull();
-    expect(parsed!.kind).toBe("tool_call");
+    expect(parsed.kind).toBe("tool_call");
   });
 
   it("creates traces directory if it does not exist", () => {
@@ -457,15 +456,14 @@ describe("TraceWriter — crash safety", () => {
     expect(allLines.length).toBe(3); // 2 good + 1 partial
 
     // First two lines parse correctly
-    const parsed1 = parseSpanLine(allLines[0]);
-    const parsed2 = parseSpanLine(allLines[1]);
+    const parsed1 = JSON.parse(allLines[0]) as Span;
+    const parsed2 = JSON.parse(allLines[1]) as Span;
     expect(parsed1).not.toBeNull();
     expect(parsed2).not.toBeNull();
-    expect(parsed1!.spanId).toBe("good-1");
-    expect(parsed2!.spanId).toBe("good-2");
+    expect(parsed1.spanId).toBe("good-1");
+    expect(parsed2.spanId).toBe("good-2");
 
-    // Partial line returns null (not a crash)
-    const parsed3 = parseSpanLine(allLines[2]);
-    expect(parsed3).toBeNull();
+    // Partial line fails JSON.parse (not a crash)
+    expect(() => JSON.parse(allLines[2])).toThrow();
   });
 });

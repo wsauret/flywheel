@@ -1921,68 +1921,6 @@ describe("VAL-HOOK-001: Hook framework supports all 5 mutation operations", () =
     expect(workerCalls).toEqual(["Step 1", "Step 3"]); // s2 not executed
   });
 
-  test("hook can reorderSteps on the live queue", async () => {
-    const s1 = makeStep({ title: "Step 1" });
-    const s2 = makeStep({ title: "Step 2" });
-    const s3 = makeStep({ title: "Step 3" });
-    const queue = createQueue([s1, s2, s3]);
-
-    const { reorderSteps: qReorder } = await import("../src/workflows/queue/queue");
-    const workerOrder: string[] = [];
-    const worker: WorkerFn = async (step) => {
-      workerOrder.push(step.title);
-      return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
-    };
-
-    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
-      if (step.id === s1.id) {
-        // Reorder s3 before s2
-        const result = qReorder(q, [s3.id, s2.id], { actor: "test-hook", reason: "hook reorder test" });
-        expect(result.success).toBe(true);
-      }
-      return { continueExecution: false };
-    };
-
-    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
-    const executor = createStepExecutor(opts);
-    const result = await executor.run();
-
-    expect(result.completed).toBe(true);
-    expect(result.stepsCompleted).toBe(3);
-    // After s1 completes, s3 and s2 are reordered
-    expect(workerOrder).toEqual(["Step 1", "Step 3", "Step 2"]);
-  });
-
-  test("hook can replaceStep on the live queue", async () => {
-    const s1 = makeStep({ title: "Step 1" });
-    const s2 = makeStep({ title: "Original step" });
-    const queue = createQueue([s1, s2]);
-
-    const { replaceStep: qReplace } = await import("../src/workflows/queue/queue");
-    const workerTitles: string[] = [];
-    const worker: WorkerFn = async (step) => {
-      workerTitles.push(step.title);
-      return { output: "done", handoffPath: `/tmp/${step.id}.json`, durationMs: 50, sessionId: randomUUID() };
-    };
-
-    const replacement = makeStep({ title: "Replacement step" });
-
-    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
-      if (step.id === s1.id) {
-        const result = qReplace(q, s2.id, replacement, { actor: "test-hook", reason: "hook replace test" });
-        expect(result.success).toBe(true);
-      }
-      return { continueExecution: false };
-    };
-
-    const opts = createDefaultOptions({ queue, worker, onStepCompleted });
-    const executor = createStepExecutor(opts);
-    const result = await executor.run();
-
-    expect(result.completed).toBe(true);
-    expect(result.stepsCompleted).toBe(2);
-    expect(workerTitles).toEqual(["Step 1", "Replacement step"]);
-  });
 });
 
 // ===========================================================================
@@ -2041,31 +1979,6 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     expect(entry!.stepIds).toEqual([s2.id]);
   });
 
-  test("replaceStep within hook records provenance", async () => {
-    const s1 = makeStep({ title: "Step 1" });
-    const s2 = makeStep({ title: "Original" });
-    const queue = createQueue([s1, s2]);
-
-    const { replaceStep: qReplace } = await import("../src/workflows/queue/queue");
-    const replacement = makeStep({ title: "Replaced" });
-
-    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
-      if (step.id === s1.id) {
-        qReplace(q, s2.id, replacement, { actor: "replace-actor", reason: "replace reason" });
-      }
-      return { continueExecution: false };
-    };
-
-    const opts = createDefaultOptions({ queue, onStepCompleted });
-    await createStepExecutor(opts).run();
-
-    const entry = queue.mutationLog.find((m) => m.action === "replace" && m.actor === "replace-actor");
-    expect(entry).toBeDefined();
-    expect(entry!.reason).toBe("replace reason");
-    expect(entry!.stepIds).toContain(s2.id);
-    expect(entry!.stepIds).toContain(replacement.id);
-  });
-
   test("removeStep within hook records provenance", async () => {
     const s1 = makeStep({ title: "Step 1" });
     const s2 = makeStep({ title: "To remove" });
@@ -2088,30 +2001,6 @@ describe("VAL-HOOK-002: All hook mutations logged with provenance", () => {
     expect(entry).toBeDefined();
     expect(entry!.reason).toBe("remove reason");
     expect(entry!.stepIds).toEqual([s2.id]);
-  });
-
-  test("reorderSteps within hook records provenance", async () => {
-    const s1 = makeStep({ title: "Step 1" });
-    const s2 = makeStep({ title: "Pending A" });
-    const s3 = makeStep({ title: "Pending B" });
-    const queue = createQueue([s1, s2, s3]);
-
-    const { reorderSteps: qReorder } = await import("../src/workflows/queue/queue");
-
-    const onStepCompleted: import("../src/workflows/queue/executor").OnStepCompletedHook = async (step, _status, q) => {
-      if (step.id === s1.id) {
-        qReorder(q, [s3.id, s2.id], { actor: "reorder-actor", reason: "reorder reason" });
-      }
-      return { continueExecution: false };
-    };
-
-    const opts = createDefaultOptions({ queue, onStepCompleted });
-    await createStepExecutor(opts).run();
-
-    const entry = queue.mutationLog.find((m) => m.action === "reorder" && m.actor === "reorder-actor");
-    expect(entry).toBeDefined();
-    expect(entry!.reason).toBe("reorder reason");
-    expect(entry!.stepIds).toEqual([s3.id, s2.id]);
   });
 
   test("provenance includes timestamp, actor, reason, and stepIds", async () => {

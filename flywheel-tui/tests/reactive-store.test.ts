@@ -10,7 +10,8 @@
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { createRoot, createMemo, createEffect } from "solid-js"
-import { createSessionStore, type SessionEntry, type ChatStoreHandle } from "../src/orchestration/session-store"
+import { createSessionStore } from "../src/orchestration/session-store"
+import type { SessionEntry, ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
 

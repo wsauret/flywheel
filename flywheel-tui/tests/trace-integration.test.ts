@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { EventBus } from "../src/infra/event-bus";
 import { createTraceWriter } from "../src/orchestration/session/trace-writer";
 import { createTraceCollector } from "../src/orchestration/session/trace-collector";
-import { parseSpanLine, type Span } from "../src/infra/trace-types";
+import type { Span } from "../src/infra/trace-types";
 import { TRACES_DIR, resolveTraceFile } from "../src/infra/paths";
 
 // ---------------------------------------------------------------------------
@@ -215,16 +215,16 @@ describe("Trace integration — happy path", () => {
     unsubs.forEach((u) => u());
 
     // -----------------------------------------------------------------------
-    // 1. Read JSONL lines and parse each with parseSpanLine
+    // 1. Read JSONL lines and parse each as Span
     // -----------------------------------------------------------------------
     const lines = readTraceLines(sessionId);
     expect(lines.length).toBeGreaterThanOrEqual(5); // workflow + step + worker + 2 tool_call
 
     const spans: Span[] = [];
     for (const line of lines) {
-      const span = parseSpanLine(line);
+      const span = JSON.parse(line) as Span;
       expect(span).not.toBeNull();
-      spans.push(span!);
+      spans.push(span);
     }
 
     // -----------------------------------------------------------------------
@@ -341,9 +341,9 @@ describe("Trace integration — error path", () => {
     const lines = readTraceLines(sessionId);
     const spans: Span[] = [];
     for (const line of lines) {
-      const span = parseSpanLine(line);
+      const span = JSON.parse(line) as Span;
       expect(span).not.toBeNull();
-      spans.push(span!);
+      spans.push(span);
     }
 
     // Worker and step and workflow should all be error

@@ -5,15 +5,6 @@
  * ended sessions, and historical sessions loaded from disk. The shell
  * picks one as "foreground" for display.
  *
- * Entries persist after runners complete — the `ended` flag marks finished
- * sessions while retaining display data (outputBlocks, steps, etc.).
- * Lifecycle state (completed/paused/error) is tracked externally via
- * `onRunnerDone`/`onRunnerError` callbacks and the SessionManager.
- *
- * Uses a discriminated union on `kind` ("workflow" | "chat") so consumers
- * can type-narrow to access session-specific fields (e.g. `steps` on
- * workflow entries, but not on chat entries).
- *
  * Backed by SolidJS createStore — get() returns reactive proxies that
  * auto-track inside createEffect/createMemo. Outside reactive context,
  * reads work as plain property access (no tracking, just a snapshot).
@@ -21,161 +12,19 @@
 
 import { createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { createWorkflowRunner, type WorkflowRunner, type WorkflowResult, type StepState } from "./workflow-runner"
+import { createWorkflowRunner, type WorkflowResult } from "./workflow-runner"
 import type { WorkflowSessionFactories } from "./workflow-session"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { Queue } from "../workflows/queue/types"
-import type { ModelActivity } from "../infra/events"
-import type { ChatRunner } from "./chat-runner"
 import type { SessionKind } from "./session/types"
-
-// ---------------------------------------------------------------------------
-// Types — discriminated union on `kind`
-// ---------------------------------------------------------------------------
-
-export interface SessionEntryBase {
-  readonly kind: SessionKind
-  description: string
-  outputBlocks: readonly AnyBlock[]
-  tokens: number
-  cost: number
-  contextPercent: number
-  readonly startedAt: number
-  modelActivity: ModelActivity
-  errorMessage?: string
-  /** True after the runner has completed/errored and been disposed. Data is retained for display. */
-  ended: boolean
-}
-
-export interface WorkflowSessionEntry extends SessionEntryBase {
-  readonly kind: "workflow"
-  /** Null for ended/loaded entries (no live runner). */
-  readonly runner: WorkflowRunner | null
-  steps: readonly StepState[]
-}
-
-export interface ChatSessionEntry extends SessionEntryBase {
-  readonly kind: "chat"
-  /** Null for ended/loaded entries (no live runner). */
-  readonly runner: ChatRunner | null
-  /** Claude Code session ID — used for --resume to reconnect with full context. */
-  claudeSessionId?: string
-}
-
-export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
-
-/** Handle passed to workflow adapter factory — write data directly to the reactive store. */
-interface WorkflowStoreHandle {
-  updateEntry: (patch: Partial<WorkflowSessionEntry>) => void
-}
-
-/** Handle passed to chat runner factory — write data directly to the reactive store. */
-export interface ChatStoreHandle {
-  /** Write data fields directly to the session entry in the reactive store. */
-  updateEntry: (patch: Partial<ChatSessionEntry>) => void
-  /** Signal a fatal error — removes entry and fires onRunnerError.
-   *  Returns void (fire-and-forget). Implementations are async but callers
-   *  intentionally drop the promise — cleanup is best-effort. */
-  onError: (message: string) => void
-  /** Signal normal completion — removes entry and fires onRunnerDone.
-   *  Returns void (fire-and-forget). Implementations are async but callers
-   *  intentionally drop the promise — cleanup is best-effort. */
-  onEnded: () => void
-}
-
-
-export interface SessionStore {
-  /** Start a new workflow and register it. Returns sessionId. */
-  start(opts: {
-    sessionId: string
-    queue: Queue
-    description: string
-    priorBlocks?: AnyBlock[]
-    /** Override the subprocess cwd. Defaults to projectCwd.
-     * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
-     * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
-    subprocessCwd?: string
-    /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
-    workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
-    /** Called when the run completes or errors (e.g., temp dir cleanup). */
-    onComplete?: () => void
-    /** Called when the runner finishes successfully. */
-    onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
-    /** Called when the runner errors. */
-    onRunnerError?: (sessionId: string, err: unknown) => void
-  }): string
-
-  /** Start a new chat session and register it. Returns sessionId.
-   *  Async because ChatRunner creation is async.
-   *  The createRunner factory receives a store handle for direct writes. */
-  startChat(opts: {
-    sessionId: string
-    description?: string
-    priorBlocks?: AnyBlock[]
-    initialCost?: number
-    initialTokens?: number
-    startedAt?: number
-    contextPercent?: number
-    createRunner: (handle: ChatStoreHandle) => Promise<ChatRunner>
-    onComplete?: () => void
-    /** Called when the chat session ends normally. */
-    onRunnerDone?: (sessionId: string) => void
-    /** Called when the chat session errors. */
-    onRunnerError?: (sessionId: string, err: unknown) => void
-  }): Promise<string>
-
-  /** Load a session snapshot into the store for viewing (no live runner).
-   *  Creates an ended entry with the provided display data. */
-  load(sessionId: string, data: {
-    kind: SessionKind
-    description: string
-    outputBlocks: readonly AnyBlock[]
-    tokens?: number
-    cost?: number
-    contextPercent?: number
-    startedAt?: number
-    claudeSessionId?: string
-  }): void
-
-  /** Get a session entry by ID. Returns a reactive proxy — auto-tracks inside createEffect/createMemo. */
-  get(sessionId: string): SessionEntry | undefined
-
-  /** Check if a session exists in the store. */
-  has(sessionId: string): boolean
-
-  /** Check if a session is actively running (exists and not ended). */
-  isRunning(sessionId: string): boolean
-
-  /** Pause a specific session. Returns false if the entry doesn't support pausing (e.g. chat). */
-  pause(sessionId: string): boolean
-
-  /** Abort a specific session. */
-  abort(sessionId: string): void
-
-  /** Mark a session as ended — dispose the runner but keep the entry for display. */
-  finish(sessionId: string): Promise<void>
-
-  /** Remove a session from the store (cleanup). Async — awaits dispose/flush. */
-  remove(sessionId: string): Promise<void>
-
-  /** Update a specific field on an entry. Used by runners to write directly to the store. */
-  updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>): void
-
-  /** Inject a user message into a running session's worker. */
-  injectMessage(sessionId: string, text: string): boolean
-
-  /** Cancel shutdown for a session so it continues after current step. Returns false for non-workflow entries. */
-  cancelShutdown(sessionId: string): boolean
-
-  /** Number of active sessions (every entry is active). */
-  runningCount(): number
-
-  /** All session IDs currently in the store. */
-  allIds(): string[]
-
-  /** Abort and dispose all sessions, flushing output. For clean shutdown. */
-  disposeAll(): Promise<void>
-}
+import type { ChatRunner } from "./chat-runner"
+import type {
+  SessionStore,
+  SessionEntry,
+  WorkflowSessionEntry,
+  ChatSessionEntry,
+  ChatStoreHandle,
+} from "./session-store-types"
 
 // ---------------------------------------------------------------------------
 // Factory

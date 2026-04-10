@@ -55,17 +55,14 @@ export function OutputWindow(props: OutputWindowProps) {
     }
   })
 
-  // Split blocks: pending user messages and todo list are pinned at bottom, everything else scrolls
+  // Split blocks: pending user messages are pinned at bottom, everything else (including todo) scrolls
   const scrollBlocks = createMemo(() =>
-    props.outputBlocks.filter(b => !(b.kind === "userMessage" && b.pending) && b.kind !== "todoList")
+    props.outputBlocks.filter(b => !(b.kind === "userMessage" && b.pending))
   )
   const pinnedPendingBlocks = createMemo(() =>
     props.outputBlocks.filter(b => b.kind === "userMessage" && b.pending)
   )
-  const pinnedTodoBlocks = createMemo(() =>
-    props.outputBlocks.filter(b => b.kind === "todoList" && b.todos.some(t => t.status !== "completed"))
-  )
-  const hasPinnedBlocks = () => pinnedPendingBlocks().length > 0 || pinnedTodoBlocks().length > 0
+  const hasPinnedBlocks = () => pinnedPendingBlocks().length > 0
 
   const isRunning = () => props.workflowStatus === "running"
   const hasContent = () => props.outputBlocks.length > 0
@@ -135,14 +132,6 @@ export function OutputWindow(props: OutputWindowProps) {
           </box>
         </Show>
 
-        {/* Pinned: todo list — anchored at very bottom of output area */}
-        <Show when={pinnedTodoBlocks().length > 0}>
-          <box flexShrink={0}>
-            <Index each={pinnedTodoBlocks()}>
-              {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
-            </Index>
-          </box>
-        </Show>
       </box>
     </box>
   )

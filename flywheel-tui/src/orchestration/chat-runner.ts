@@ -20,7 +20,7 @@ import type { SessionRunner } from "./session-runner"
 import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/schema"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
-import type { SessionEntryBase } from "./session-store"
+import type { SessionEntryBase } from "./session-store-types"
 import { existsSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
@@ -77,7 +77,7 @@ function getFontTipBlock(projectCwd: string, timestamp: number): AnyBlock | null
 // ── Types ──
 
 /** Function to update fields on the session entry in the reactive store. */
-export type ChatUpdateEntryFn = (patch: Partial<import("./session-store").ChatSessionEntry>) => void
+export type ChatUpdateEntryFn = (patch: Partial<import("./session-store-types").ChatSessionEntry>) => void
 
 export interface ChatRunnerDeps {
   sessionId: string
@@ -174,9 +174,9 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   // because OutputSession only writes base fields (outputBlocks, modelActivity, etc.)
   const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
     if (patch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
-      updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...(patch.outputBlocks as AnyBlock[])] } as Partial<import("./session-store").ChatSessionEntry>)
+      updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...(patch.outputBlocks as AnyBlock[])] } as Partial<import("./session-store-types").ChatSessionEntry>)
     } else {
-      updateEntry(patch as Partial<import("./session-store").ChatSessionEntry>)
+      updateEntry(patch as Partial<import("./session-store-types").ChatSessionEntry>)
     }
   }
 

@@ -12,31 +12,6 @@
 //   Workflow — named template that generates an initial queue
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// EndOfSessionGateResult — inlined from session/validation-state
-// (workflows must not depend on session module)
-// ---------------------------------------------------------------------------
-
-export interface FailedAssertion {
-  /** Assertion ID (e.g., "VAL-AUTH-001") */
-  id: string;
-  /** Human-readable title (falls back to ID if no title map provided) */
-  title: string;
-  /** Current status: "pending", "failed", or "blocked" */
-  status: string;
-}
-
-export interface EndOfSessionGateResult {
-  /** Whether all relevant assertions passed */
-  passed: boolean;
-  /** Assertions that did not pass (empty when passed is true) */
-  failedAssertions: FailedAssertion[];
-  /** Total number of assertions in the state file */
-  totalAssertions: number;
-  /** Number of assertions with status "passed" */
-  passedCount: number;
-}
-
 import type { StepType } from "../../infra/step-types.js";
 
 // ---------------------------------------------------------------------------
@@ -179,23 +154,3 @@ export interface WorkflowTemplate {
   readonly initialStepTypes: StepType[];
 }
 
-// ---------------------------------------------------------------------------
-// Queue Execution Result Types
-// ---------------------------------------------------------------------------
-
-/**
- * Lightweight result for a completed step — used in QueueResult.stepResults
- * to communicate which step types completed.
- */
-export interface CompletedStepResult {
-  workflow: string;
-  completed: boolean;
-}
-
-
-/**
- * End-of-session gate check function.
- * Called after all steps complete successfully, before declaring queue completion.
- * Returns the gate result indicating whether all validation assertions passed.
- */
-export type EndOfSessionGateCheck = () => Promise<EndOfSessionGateResult>;

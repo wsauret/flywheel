@@ -20,7 +20,7 @@ import { StructuredOutputBuilder } from "../infra/output/structured-output-build
 import { StructuredEventParser } from "../infra/output/structured-event-parser"
 import type { ModelActivity } from "../infra/events"
 import type { EmitFn } from "../infra/event-bus"
-import type { SessionEntryBase } from "./session-store"
+import type { SessionEntryBase } from "./session-store-types"
 import type { AnyBlock } from "../infra/output-blocks"
 
 // ---------------------------------------------------------------------------

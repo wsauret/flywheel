@@ -17,7 +17,7 @@ import type { Accessor, Setter } from "solid-js"
 import type { AnyBlock } from "../types"
 import type { StepState } from "../../orchestration/workflow-runner"
 import type { SessionState } from "../../orchestration/session/state-machine"
-import type { SessionStore, SessionEntry } from "../../orchestration/session-store"
+import type { SessionStore, SessionEntry } from "../../orchestration/session-store-types"
 import type { SessionManager } from "../../orchestration/session/manager"
 import { useMetrics, type MetricsHook } from "./use-metrics.js"
 

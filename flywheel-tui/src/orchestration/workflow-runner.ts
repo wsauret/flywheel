@@ -34,7 +34,7 @@ export type StepState = {
 }
 
 /** Function to update a session entry in the reactive store. */
-export type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-store").WorkflowSessionEntry>) => void
+export type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => void
 
 export interface WorkflowResult {
   completed: boolean
@@ -111,7 +111,7 @@ export function createWorkflowRunner(opts: {
   // registry's updateEntry for all patches.
   // priorBlocks is immutable — use concat to avoid spreading both arrays on every write.
   const priorBlocksPrefix = priorBlocks ?? []
-  const wrappedUpdateEntry = (patch: Partial<import("./session-store").WorkflowSessionEntry>) => {
+  const wrappedUpdateEntry = (patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => {
     if (patch.outputBlocks) {
       currentBlocks = priorBlocksPrefix.length > 0
         ? priorBlocksPrefix.concat(patch.outputBlocks)

@@ -13,7 +13,7 @@ import { createTraceWriter } from "../../src/orchestration/session/trace-writer"
 import { createTraceCollector } from "../../src/orchestration/session/trace-collector";
 import { createTraceEventHandler } from "../../src/orchestration/engines/subprocess/trace-event-handler";
 import { NDJSONParser } from "../../src/orchestration/engines/subprocess/ndjson-parser";
-import { parseSpanLine, type Span } from "../../src/infra/trace-types";
+import type { Span } from "../../src/infra/trace-types";
 import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../src/infra/paths";
 import { createTranscriptWriter } from "../../src/orchestration/session/transcript-writer";
 import { randomUUID } from "node:crypto";
@@ -182,9 +182,12 @@ const lines = fs.readFileSync(traceFile, "utf-8").split("\n").filter(l => l.trim
 const spans: Span[] = [];
 
 for (const line of lines) {
-  const span = parseSpanLine(line);
-  if (span) spans.push(span);
-  else console.warn("WARNING: Unparseable line");
+  try {
+    const span = JSON.parse(line) as Span;
+    spans.push(span);
+  } catch {
+    console.warn("WARNING: Unparseable line");
+  }
 }
 
 console.log(`✓ ${spans.length} spans parsed`);

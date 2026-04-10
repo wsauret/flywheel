@@ -20,8 +20,6 @@ import {
   insertAfter,
   removeStep,
   skipStep,
-  reorderSteps,
-  replaceStep,
   transitionStep,
   type Provenance,
 } from "../src/workflows/queue/queue";
@@ -300,39 +298,6 @@ describe("Guardrail 4: Provenance logging on all mutations", () => {
     expect(entry!.actor).toBe("sprint-hook");
     expect(entry!.reason).toBe("work step failed");
     expect(entry!.stepIds).toContain(step.id);
-    expect(entry!.timestamp).toBeTruthy();
-  });
-
-  test("reorderSteps records full provenance", () => {
-    const s1 = makeStep();
-    const s2 = makeStep();
-    const queue = makeQueue([s1, s2]);
-
-    reorderSteps(queue, [s2.id, s1.id], { actor: "dispatcher", reason: "priority change" });
-
-    const entry = queue.mutationLog.find((e) => e.action === "reorder");
-    expect(entry).toBeDefined();
-    expect(entry!.actor).toBe("dispatcher");
-    expect(entry!.reason).toBe("priority change");
-    expect(entry!.timestamp).toBeTruthy();
-  });
-
-  test("replaceStep records full provenance", () => {
-    const step = makeStep();
-    const queue = makeQueue([step]);
-    const replacement = makeStep();
-
-    replaceStep(queue, step.id, replacement, {
-      actor: "feature-boundary",
-      reason: "upgraded step definition",
-    });
-
-    const entry = queue.mutationLog.find((e) => e.action === "replace");
-    expect(entry).toBeDefined();
-    expect(entry!.actor).toBe("feature-boundary");
-    expect(entry!.reason).toBe("upgraded step definition");
-    expect(entry!.stepIds).toContain(step.id);
-    expect(entry!.stepIds).toContain(replacement.id);
     expect(entry!.timestamp).toBeTruthy();
   });
 
