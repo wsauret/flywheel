@@ -7,7 +7,7 @@
  * focuses purely on output block rendering.
  */
 
-import { Show, Index, createSignal, createMemo } from "solid-js"
+import { Show, Index, createSignal } from "solid-js"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useKeyboard } from "@opentui/solid"
@@ -55,18 +55,8 @@ export function OutputWindow(props: OutputWindowProps) {
     }
   })
 
-  // Split blocks: pending user messages are pinned at bottom, everything else (including todo) scrolls
-  const scrollBlocks = createMemo(() =>
-    props.outputBlocks.filter(b => !(b.kind === "userMessage" && b.pending))
-  )
-  const pinnedPendingBlocks = createMemo(() =>
-    props.outputBlocks.filter(b => b.kind === "userMessage" && b.pending)
-  )
-  const hasPinnedBlocks = () => pinnedPendingBlocks().length > 0
-
   const isRunning = () => props.workflowStatus === "running"
   const hasContent = () => props.outputBlocks.length > 0
-  const hasScrollContent = () => scrollBlocks().length > 0
 
   return (
     <box flexDirection="column" flexGrow={1}>
@@ -92,7 +82,7 @@ export function OutputWindow(props: OutputWindowProps) {
           </text>
         </Show>
 
-        <Show when={hasScrollContent()}>
+        <Show when={hasContent()}>
           <scrollbox
             ref={(r: ScrollBoxRenderable) => setScrollRef(r)}
             flexGrow={1}
@@ -112,24 +102,10 @@ export function OutputWindow(props: OutputWindowProps) {
             viewportCulling={true}
             focused={!props.isPromptFocused}
           >
-            <Index each={scrollBlocks()}>
+            <Index each={props.outputBlocks}>
               {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
             </Index>
           </scrollbox>
-        </Show>
-
-        {/* Spacer pushes pinned blocks to bottom when scrollbox is hidden */}
-        <Show when={!hasScrollContent() && hasPinnedBlocks()}>
-          <box flexGrow={1} />
-        </Show>
-
-        {/* Pinned: queued (pending) user messages — above todo list */}
-        <Show when={pinnedPendingBlocks().length > 0}>
-          <box flexShrink={0}>
-            <Index each={pinnedPendingBlocks()}>
-              {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
-            </Index>
-          </box>
         </Show>
 
       </box>

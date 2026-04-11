@@ -1,5 +1,5 @@
 /** @jsxImportSource solid-js */
-import { createStore } from "solid-js/store"
+import { createSignal } from "solid-js"
 import { createSimpleContext } from "./helper"
 
 export type ToastVariant = "success" | "error" | "info" | "warning"
@@ -16,35 +16,25 @@ export type ToastOptions = ToastMessage & {
 export const { use: useToast, provider: ToastProvider } = createSimpleContext({
   name: "Toast",
   init: () => {
-    // Wrapping in { current } is not a ref-bag — createStore requires an object shape.
-    // A bare createSignal<ToastMessage | null> would work but loses Solid's deep tracking.
-    const [store, setStore] = createStore<{
-      current: ToastMessage | null
-    }>({
-      current: null,
-    })
-
+    const [current, setCurrent] = createSignal<ToastMessage | null>(null)
     let timeoutHandle: NodeJS.Timeout | null = null
 
     return {
       get current() {
-        return store.current
+        return current()
       },
       show(options: ToastOptions) {
         const { duration = 3000, ...rest } = options
-        setStore("current", rest)
+        setCurrent(rest)
 
         if (timeoutHandle) clearTimeout(timeoutHandle)
-        // Only set timeout if duration > 0 (duration 0 means permanent toast)
         if (duration > 0) {
-          timeoutHandle = setTimeout(() => {
-            setStore("current", null)
-          }, duration)
+          timeoutHandle = setTimeout(() => setCurrent(null), duration)
         }
       },
       dismiss() {
         if (timeoutHandle) clearTimeout(timeoutHandle)
-        setStore("current", null)
+        setCurrent(null)
       },
     }
   },

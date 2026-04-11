@@ -100,7 +100,14 @@ export class StructuredOutputBuilder {
 
   pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.blocks.push({ kind: "userMessage", content: text, timestamp, pending, injected });
+    const block = { kind: "userMessage" as const, content: text, timestamp, pending, injected };
+    // Insert before the todo list so pending messages always appear above it.
+    if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
+      this.blocks.splice(this.todoBlockIndex, 0, block);
+      this.todoBlockIndex++;
+    } else {
+      this.blocks.push(block);
+    }
     this.dirty = true;
   }
 

@@ -104,10 +104,10 @@ export function createShellState(deps: {
   const sessionState = createMemo((): SessionState | null => {
     const fgId = foregroundId()
     if (!fgId) return null
-    // sessionStore.runningCount() reads Object.keys() on the store proxy —
-    // SolidJS auto-tracks key changes when called inside a reactive context.
-    deps.sessionStore.runningCount()
-    if (deps.sessionStore.isRunning(fgId)) return "active"
+    // storeEntry() returns a reactive proxy — reading `ended` here tracks
+    // the field directly, so this memo re-evaluates when the session finishes.
+    const entry = storeEntry()
+    if (entry && !entry.ended) return "active"
     return deps.manager.getState(fgId)
   })
 

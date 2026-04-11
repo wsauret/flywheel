@@ -31,31 +31,31 @@ const log = Log.create({ service: "queue-orchestrator" })
 
 // ── resolveTransports ──
 
-/** Warm pools required by the pooled transport layer. */
-export interface ResolveTransportPools {
+export interface ResolveTransportsInput {
+  deps: WorkflowDeps
+  eventBus: EventBus
+  workflowId: string
+  sessionId: string
+  baseDir: string
+  evaluatorSystemPromptAddendum?: string
   dispatcherPool: WarmPool
   evaluatorPool?: WarmPool
-  /** Engine-aware stdin formatter: (text) => NDJSON string */
   formatStdinMessage: (text: string) => string
 }
 
 /**
  * Resolve dispatcher and evaluator transports for queue execution.
- * Shared between startQueueExecution and resumeSession queue paths.
  *
  * Creates PooledSubprocessTransport / PooledSubprocessEvaluatorTransport
  * from the provided warm pools.
  */
-export function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workflowId: string, sessionId: string, baseDir: string, evaluatorSystemPromptAddendum?: string, pools?: ResolveTransportPools) {
+export function resolveTransports(input: ResolveTransportsInput) {
+  const { deps, eventBus, workflowId, sessionId, baseDir, evaluatorSystemPromptAddendum, dispatcherPool, evaluatorPool, formatStdinMessage: fmtStdin } = input
   const engineName = deps.config.engine
 
-  if (!pools) {
-    throw new Error("Warm pools are required — one-shot subprocess fallback has been removed")
-  }
-
   const dispatcherTransport: import("../workflows/dispatcher/transport").DispatcherTransport = new PooledSubprocessTransport({
-    pool: pools.dispatcherPool,
-    formatStdinMessage: pools.formatStdinMessage,
+    pool: dispatcherPool,
+    formatStdinMessage: fmtStdin,
     sessionId,
     baseDir,
     onStdout: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
@@ -66,10 +66,10 @@ export function resolveTransports(deps: WorkflowDeps, eventBus: EventBus, workfl
   // Always create evaluator transport when pool is available — the step-runner
   // decides whether to invoke it based on skipEvaluation + post-turn results.
   let evaluatorTransport: import("../workflows/evaluator/transport").EvaluatorTransport | undefined
-  if (pools.evaluatorPool) {
+  if (evaluatorPool) {
     evaluatorTransport = new PooledSubprocessEvaluatorTransport({
-      pool: pools.evaluatorPool,
-      formatStdinMessage: pools.formatStdinMessage,
+      pool: evaluatorPool,
+      formatStdinMessage: fmtStdin,
       sessionId,
       baseDir,
       systemPromptAddendum: evaluatorSystemPromptAddendum,
@@ -143,36 +143,32 @@ export function buildExecutorDeps(
   context: ExecutorContext,
   extensions: ExecutorExtensions,
 ) {
-  const opts = { ...infra, ...transports, ...context, ...extensions }
-  const {
-    deps, emit, workflowId, dispatcherTransport, evaluatorTransport,
-    contextIndexer, projectCwd, sessionObjective, queue,
-    seedHandoff, sessionId: execSessionId,
-    injectionQueue, eventBus,
-  } = opts
-  const tiers = resolveTierConfigs(deps.config)
+  const tiers = resolveTierConfigs(infra.deps.config)
 
   // Context accumulator (windowed detail strategy)
   const contextAccumulator = createContextAccumulator({
-    windowSize: deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
+    windowSize: infra.deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
   })
-  if (seedHandoff) {
-    contextAccumulator.accumulate(seedHandoff)
+  if (extensions.seedHandoff) {
+    contextAccumulator.accumulate(extensions.seedHandoff)
   }
 
   // Agent-based evaluator — always created when transport is available.
   // The step-runner decides whether to invoke it based on skipEvaluation + post-turn results.
-  const evaluator = evaluatorTransport
-    ? createAgentEvaluatorFn({ transport: evaluatorTransport })
+  const evaluator = transports.evaluatorTransport
+    ? createAgentEvaluatorFn({ transport: transports.evaluatorTransport })
     : null
 
   // Composite hook (extensible — includes caller-provided hooks like sprint hook)
-  const compositeHook = createCompositeHook([...(opts.externalHooks ?? [])])
+  const compositeHook = createCompositeHook([...(extensions.externalHooks ?? [])])
 
   // Dispatcher callback (real dispatcher with fallback to step metadata)
   const dispatcherFn = createDispatcherCallback({
-    deps, emit, workflowId, dispatcherTransport, contextIndexer,
-    contextAccumulator, projectCwd, sessionObjective, queue,
+    deps: infra.deps, emit: infra.emit, workflowId: infra.workflowId,
+    dispatcherTransport: transports.dispatcherTransport,
+    contextIndexer: context.contextIndexer,
+    contextAccumulator, projectCwd: context.projectCwd,
+    sessionObjective: context.sessionObjective, queue: context.queue,
     dispatcherModel: tiers.dispatcher.model, subprocessModel: tiers.subprocess.model,
   })
 
@@ -180,12 +176,13 @@ export function buildExecutorDeps(
   // Budget, tracing, and transcript are handled by EventBus subscribers wired
   // in workflow-runner.ts — subprocess-callback only emits subprocess:ndjson.
   const subprocessFn = createSubprocessCallback({
-    deps, emit, workflowId, sessionId: execSessionId, projectCwd,
-    subprocessCwd: opts.subprocessCwd,
-    injectionQueue,
-    eventBus,
-    observerChain: opts.observerChain,
-    subprocessPool: opts.subprocessPool,
+    deps: infra.deps, emit: infra.emit, workflowId: infra.workflowId,
+    sessionId: infra.sessionId, projectCwd: context.projectCwd,
+    subprocessCwd: context.subprocessCwd,
+    injectionQueue: extensions.injectionQueue,
+    eventBus: infra.eventBus,
+    observerChain: transports.observerChain,
+    subprocessPool: transports.subprocessPool,
   })
 
   // Handoff reader callback

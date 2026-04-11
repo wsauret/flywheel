@@ -288,7 +288,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                 signals.pendingWorkCommand()
                   ? "What would you like to work on?"
                   : inChat()
-                    ? (signals.agentState() === "active" ? "Waiting for response..." : "Send a message (/new for fresh chat)")
+                    ? (signals.agentState() === "active" ? "Type to steer the conversation..." : "Send a message (/new for fresh chat)")
                     : signals.agentState() === "active"
                       ? "Send a message to guide the agent (Esc to interrupt)"
                       : signals.sessionState() === "paused"
@@ -309,7 +309,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       </box>
 
       {/* Footer */}
-      <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} flexShrink={0}>
+      <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} flexShrink={0}>
         {/* Left: activity status (shimmer) when agent is active */}
         <box flexDirection="row" gap={1} flexShrink={1} overflow="hidden">
           <Show when={promptStatusLabel() && showPrompt()}>

@@ -119,11 +119,11 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
     : undefined
 
   // ── 5. Transport resolution ──
-  const { dispatcherTransport, evaluatorTransport } = resolveTransports(
-    deps, eventBus, workflowId, sessionId, projectCwd,
-    evaluatorAddendum,
-    { dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage },
-  )
+  const { dispatcherTransport, evaluatorTransport } = resolveTransports({
+    deps, eventBus, workflowId, sessionId, baseDir: projectCwd,
+    evaluatorSystemPromptAddendum: evaluatorAddendum,
+    dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage,
+  })
 
   // ── 6. Context indexer ──
   const contextIndexer = contextIndexerOverride ?? new ContextIndexer(projectCwd)

@@ -113,16 +113,18 @@ interface SetupOutputSessionInput {
 function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
   const { budgetTracker, emit, chatId, state, updateEntry, onFlush } = input
 
-  // Gate updateEntry: only forward model activity when a user-triggered turn
-  // is in progress. "idle" always passes through.
-  const gatedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
+  // Suppress model activity that arrives outside a user-initiated turn.
+  // Prevents "ghost thinking" during idle reconnections or process startup.
+  // Also tracks when the agent starts responding (agentActive) so send()
+  // can detect mid-turn injections vs. new turns.
+  const activityGatedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
     if (patch.modelActivity && patch.modelActivity !== "idle" && !state.userTurnInProgress) return
     if (patch.modelActivity && patch.modelActivity !== "idle") state.agentActive = true
     updateEntry(patch)
   }
 
   const session = createOutputSession({
-    updateEntry: gatedUpdateEntry,
+    updateEntry: activityGatedUpdateEntry,
     emit,
     workflowId: chatId,
     onFlush: () => {

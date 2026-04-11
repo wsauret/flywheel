@@ -167,12 +167,10 @@ export function createSubprocessCallback(
         log.info("turn-boundary injection sent to subprocess", { userSteering: delivered.userSteering })
         if (!delivered.userSteering) {
           // Observer/self-review messages need a new block in the UI
-          eventBus.emit({
-            type: "subprocess:injected",
+          emit("subprocess:injected", {
             workflowId: workflowId,
             message: delivered.message,
             origin: "system",
-            timestamp: Date.now(),
           })
         }
         // User-steering messages already have a pending block — no event needed.

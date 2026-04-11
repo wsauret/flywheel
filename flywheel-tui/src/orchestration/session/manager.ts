@@ -142,15 +142,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     return session;
   }
 
-  /**
-   * Get the current lifecycle state, defaulting to "active" for legacy sessions.
-   */
-  function getLifecycleState(
-    session: { state: SessionState },
-  ): SessionState {
-    return session.state;
-  }
-
   // -------------------------------------------------------------------------
   // SessionManager methods
   // -------------------------------------------------------------------------
@@ -200,7 +191,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const raw = listSessions(baseDir);
 
     const sessions: SessionSummary[] = raw.sessions.map((entry) => {
-      const state = getLifecycleState(entry.data);
+      const state = entry.data.state;
       // Populate cache on list
       stateCache.set(entry.id, state);
 
@@ -231,7 +222,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
   function updateState(id: string, newState: SessionState): void {
     const persisted = readOrThrow(id);
-    const currentState = getLifecycleState(persisted);
+    const currentState = persisted.state;
 
     if (currentState === newState) return;
 
@@ -281,7 +272,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     let recovered = 0;
 
     for (const entry of sessions) {
-      const state = getLifecycleState(entry.data);
+      const state = entry.data.state;
 
       // Only active sessions with no running queue need recovery
       if (state !== "active") continue;
