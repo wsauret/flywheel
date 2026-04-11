@@ -21,7 +21,8 @@ import { BunProcessSpawner } from "./engines/subprocess/bun-spawner"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { getEngine } from "./engines/core/registry"
 import { createOutputSession, type OutputSession } from "./output-session"
-import { createBudgetTracker, type BudgetTracker } from "./session/budget-tracker"
+import { createBudgetTracker } from "./session/budget-tracker.js"
+import type { BudgetTracker } from "./session/budget-tracker-types.js"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { wireSessionSubscribers } from "./session/create-session-infra"
 import { contextWindowForModel } from "./engines/providers/claude-context"
@@ -291,7 +292,7 @@ export async function createChatSession(
   const rawUpdateEntry: (patch: Partial<SessionEntryBase>) => void = overrides?.updateEntry ?? (() => {})
 
   // Shared mutable state — all helpers read/write through this
-  const state: ChatSessionState = {
+  const state = {
     stdinHandle: null,
     workerPid: undefined,
     ended: false,

@@ -22,10 +22,12 @@ import {
   createStdoutProcessor,
   resolveHandoffPath,
   createStdinHandle,
+} from "./spawn-helpers.js";
+import {
   writeInitialStdin,
   watchHandoff,
   wireCompletionDetection,
-} from "./spawn-helpers.js";
+} from "./pipe-helpers.js";
 
 // ---------------------------------------------------------------------------
 // RawSpawnedProcess — output of process creation, input to pipeline wiring

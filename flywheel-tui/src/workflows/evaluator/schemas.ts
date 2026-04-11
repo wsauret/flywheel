@@ -75,7 +75,7 @@ export const EvaluatorInputSchema = z.object({
   tests_passed: z.boolean().nullable(),
   task_context: z.string().optional(),
   handoff: EvaluatorHandoffDataSchema.optional(),
-  step_context: StepContextSchema.optional(),
+  step_context: StepContextSchema,
 }).strip();
 
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;

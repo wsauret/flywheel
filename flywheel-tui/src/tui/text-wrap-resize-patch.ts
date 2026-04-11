@@ -16,6 +16,7 @@
 
 import { TextBufferRenderable } from "@opentui/core"
 
+// onResize is a private method — `as any` required to monkey-patch it (see module doc for upstream issue)
 const originalOnResize = (TextBufferRenderable.prototype as any).onResize
 
 ;(TextBufferRenderable.prototype as any).onResize = function (

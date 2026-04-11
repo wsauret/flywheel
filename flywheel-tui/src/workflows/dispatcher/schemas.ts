@@ -73,8 +73,7 @@ export const DispatcherInputSchema = z.object({
   config: DispatcherConfigSchema,
   session_budget: SessionBudgetStatusSchema,
   available_context: AvailableContextSchema,
-  /** Cumulative context from completed steps. Optional for backward compat. */
-  step_context: StepContextSchema.optional(),
+  step_context: StepContextSchema,
   /** Mutation budget — remaining capacity for queue mutations. */
   mutation_budget: z.object({
     max_queue_length: z.number(),

@@ -15,7 +15,7 @@
  *   - context warning: owned by chat-session
  */
 
-import type { BudgetTracker } from "./budget-tracker"
+import type { BudgetTracker } from "./budget-tracker-types.js"
 import type { TraceWriter } from "./trace-writer"
 import type { TranscriptWriter } from "./transcript-writer"
 import type { TraceCollector } from "./trace-collector"

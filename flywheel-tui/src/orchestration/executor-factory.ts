@@ -27,7 +27,7 @@ import { createObserverChain, createToolFailureObserver, createNoActionObserver 
 import { createDoomLoopObserver } from "./engines/doom-loop"
 import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper"
 import type { EmitFn, EventBus, Unsubscribe } from "../infra/event-bus"
-import type { BudgetTracker } from "./session/budget-tracker"
+import type { BudgetTracker } from "./session/budget-tracker-types.js"
 import type { TranscriptWriter } from "./session/transcript-writer"
 import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue"

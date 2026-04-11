@@ -191,7 +191,6 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
       clearInterval(flushIntervalId)
       flushIntervalId = null
     }
-    builder.dispose()
   }
 
   return {

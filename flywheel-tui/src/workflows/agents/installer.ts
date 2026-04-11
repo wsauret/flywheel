@@ -1,25 +1,18 @@
 // ---------------------------------------------------------------------------
-// Agent Installer — syncs persona files to engine-specific discovery paths
+// Agent Installer — syncs persona + skill files to Claude Code discovery paths
 // ---------------------------------------------------------------------------
 //
-// Both supported engines discover agents from filesystem directories:
+// Claude Code discovers agents and skills from:
 //
-//   Claude Code:  ~/.claude/agents/fly/*.md     (global)
-//   OpenCode:     ~/.config/opencode/agents/fly/*.md  (global)
+//   ~/.claude/agents/fly/*.md             (agents)
+//   ~/.claude/skills/<name>/SKILL.md      (skills)
+//   ~/.claude/skills/<name>/references/   (skill references, optional)
 //
-// This module copies the bundled persona .md files from the repo into both
-// locations so that when a flywheel worker is spawned (regardless of engine),
-// its Task tool can resolve agents natively (prefix varies by engine).
+// This module copies bundled persona and skill files from the repo into those
+// locations so that flywheel workers can resolve agents via the Task tool, and
+// agents can load the skills they reference.
 //
-// The installer is idempotent: it overwrites existing files (to pick up
-// updates) and skips gracefully on permission errors.
-//
-// IMPORTANT: The source persona files use Claude Code frontmatter format
-// (tools as array, name/skills keys, short model names). OpenCode uses a
-// different format, so we apply the same transformations as install_opencode.py:
-//   - Strip `name`, `tools`, `skills` keys
-//   - Add `mode: subagent`
-//   - Map short model names to full Anthropic model IDs
+// Idempotent: overwrites files that changed, skips identical ones.
 // ---------------------------------------------------------------------------
 
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
@@ -31,107 +24,17 @@ import { errorMessage } from "../../infra/error-message.js";
 const log = Log.create({ service: "agent-installer" });
 
 // ---------------------------------------------------------------------------
-// OpenCode frontmatter transforms (mirrors install_opencode.py logic)
+// Source directories — bundled personas and skills in the repo
 // ---------------------------------------------------------------------------
 
-/** Map short model names to full OpenCode model IDs. */
-const OPENCODE_MODEL_MAP: Record<string, string> = {
-  haiku: "anthropic/claude-haiku-4-5",
-  sonnet: "anthropic/claude-sonnet-4-5",
-  opus: "anthropic/claude-opus-4-6",
-};
-
-/** Frontmatter keys to strip for OpenCode agents. */
-const OPENCODE_STRIP_KEYS = ["name", "tools", "skills"];
-
-/**
- * Transform Claude Code agent frontmatter to OpenCode format.
- *
- * - Strips `name`, `tools`, `skills` keys (including multiline blocks)
- * - Maps short model names (haiku/sonnet/opus) to full Anthropic IDs
- * - Adds `mode: subagent`
- */
-function transformForOpenCode(content: string): string {
-  // Only transform files with frontmatter
-  if (!content.startsWith("---\n")) return content;
-
-  const parts = content.split("---\n", 3);
-  if (parts.length < 3) return content;
-
-  // parts[0] is empty (before first ---), parts[1] is frontmatter, parts[2] is body
-  const fmLines = parts[1].split("\n");
-  const resultLines: string[] = [];
-  let inBlock = false;
-
-  for (const line of fmLines) {
-    // Check if this line starts a key we want to strip
-    if (OPENCODE_STRIP_KEYS.some((key) => line.startsWith(`${key}:`))) {
-      // Inline array (ends with ]) is a single line; otherwise it's a multiline block
-      inBlock = !line.trimEnd().endsWith("]");
-      continue;
-    }
-
-    // Skip indented continuation lines of a multiline block
-    if (inBlock) {
-      if (line.startsWith("  ") || line.startsWith("\t")) {
-        continue;
-      }
-      inBlock = false;
-    }
-
-    // Map short model names to full OpenCode model IDs
-    if (line.startsWith("model:")) {
-      const shortName = line.split(":", 2)[1].trim();
-      if (shortName in OPENCODE_MODEL_MAP) {
-        resultLines.push(`model: ${OPENCODE_MODEL_MAP[shortName]}`);
-        continue;
-      }
-    }
-
-    resultLines.push(line);
-  }
-
-  // Remove trailing empty lines before adding mode: subagent
-  while (resultLines.length > 0 && resultLines[resultLines.length - 1].trim() === "") {
-    resultLines.pop();
-  }
-
-  // Add mode: subagent
-  resultLines.push("mode: subagent");
-
-  return `---\n${resultLines.join("\n")}\n---\n${parts[2]}`;
-}
-
-// ---------------------------------------------------------------------------
-// Install targets — where each engine discovers custom agents
-// ---------------------------------------------------------------------------
-
-interface InstallTarget {
-  engine: string;
-  dir: string;
-  /** Optional content transform applied before writing. */
-  transform?: (content: string) => string;
-}
-
-function getInstallTargets(): InstallTarget[] {
-  const home = homedir();
-  return [
-    { engine: "claude", dir: join(home, ".claude", "agents", "fly") },
-    {
-      engine: "opencode",
-      dir: join(home, ".config", "opencode", "agents", "fly"),
-      transform: transformForOpenCode,
-    },
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// Source directory — bundled personas in the repo
-// ---------------------------------------------------------------------------
-
-function getSourceDir(): string {
+function getAgentSourceDir(): string {
   const thisDir = new URL(".", import.meta.url).pathname;
   return join(thisDir, "personas", "fly");
+}
+
+function getSkillSourceDir(): string {
+  const thisDir = new URL(".", import.meta.url).pathname;
+  return join(thisDir, "skills");
 }
 
 // ---------------------------------------------------------------------------
@@ -144,93 +47,159 @@ export interface InstallResult {
   errors: string[];
 }
 
-/**
- * Install agent persona files to all engine discovery paths.
- *
- * - Creates target directories if they don't exist
- * - Overwrites existing files (to pick up updates)
- * - Skips files that are already identical (content hash match)
- * - Continues on individual file errors
- *
- * Returns a summary of what happened.
- */
-export async function installAgents(): Promise<InstallResult> {
-  const sourceDir = getSourceDir();
-  const targets = getInstallTargets();
-  let installed = 0;
-  let skipped = 0;
-  const errors: string[] = [];
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
 
-  // Read all source persona files
+/** Write a file if its content differs from what's already on disk. */
+async function writeIfChanged(
+  destPath: string,
+  content: string,
+): Promise<"installed" | "skipped"> {
+  try {
+    const existing = await readFile(destPath, "utf-8");
+    if (existing === content) return "skipped";
+  } catch {
+    // File doesn't exist — will write
+  }
+  await writeFile(destPath, content, "utf-8");
+  return "installed";
+}
+
+// ---------------------------------------------------------------------------
+// Agent installation
+// ---------------------------------------------------------------------------
+
+async function installAgentFiles(result: InstallResult): Promise<void> {
+  const sourceDir = getAgentSourceDir();
+  const targetDir = join(homedir(), ".claude", "agents", "fly");
+
   let sourceFiles: string[];
   try {
     sourceFiles = (await readdir(sourceDir)).filter((f) => f.endsWith(".md"));
   } catch (err) {
-    const msg = `failed to read source personas: ${errorMessage(err)}`;
-    log.error(msg);
-    return { installed: 0, skipped: 0, errors: [msg] };
+    result.errors.push(`failed to read source personas: ${errorMessage(err)}`);
+    return;
   }
 
   if (sourceFiles.length === 0) {
     log.warn("no persona files found in source directory", { dir: sourceDir });
-    return { installed: 0, skipped: 0, errors: [] };
+    return;
   }
 
-  // Read all source content upfront
-  const sourceContents = new Map<string, string>();
+  try {
+    await mkdir(targetDir, { recursive: true });
+  } catch (err) {
+    result.errors.push(`failed to create agents dir ${targetDir}: ${errorMessage(err)}`);
+    return;
+  }
+
   for (const file of sourceFiles) {
     try {
-      sourceContents.set(file, await readFile(join(sourceDir, file), "utf-8"));
+      const content = await readFile(join(sourceDir, file), "utf-8");
+      const outcome = await writeIfChanged(join(targetDir, file), content);
+      if (outcome === "installed") result.installed++;
+      else result.skipped++;
     } catch (err) {
-      errors.push(`failed to read ${file}: ${errorMessage(err)}`);
+      result.errors.push(`failed to install agent ${file}: ${errorMessage(err)}`);
     }
   }
+}
 
-  // Install to each target
-  for (const target of targets) {
+// ---------------------------------------------------------------------------
+// Skill installation
+// ---------------------------------------------------------------------------
+
+async function installSkillFiles(result: InstallResult): Promise<void> {
+  const sourceDir = getSkillSourceDir();
+  const home = homedir();
+  const targetBase = join(home, ".claude", "skills");
+
+  let skillDirs: string[];
+  try {
+    const entries = await readdir(sourceDir, { withFileTypes: true });
+    skillDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch (err) {
+    result.errors.push(`failed to read source skills: ${errorMessage(err)}`);
+    return;
+  }
+
+  for (const skillName of skillDirs) {
+    const skillSrc = join(sourceDir, skillName);
+    const skillDest = join(targetBase, skillName);
+
     try {
-      await mkdir(target.dir, { recursive: true });
+      await mkdir(skillDest, { recursive: true });
     } catch (err) {
-      const msg = `failed to create ${target.engine} agents dir ${target.dir}: ${errorMessage(err)}`;
-      log.warn(msg);
-      errors.push(msg);
+      result.errors.push(`failed to create skill dir ${skillDest}: ${errorMessage(err)}`);
       continue;
     }
 
-    for (const [file, sourceContent] of sourceContents) {
-      const destPath = join(target.dir, file);
-      // Apply engine-specific transform if defined (e.g. OpenCode frontmatter)
-      const content = target.transform ? target.transform(sourceContent) : sourceContent;
-      try {
-        // Check if file already exists with same content
-        try {
-          const existing = await readFile(destPath, "utf-8");
-          if (existing === content) {
-            skipped++;
-            continue;
-          }
-        } catch {
-          // File doesn't exist — will write
-        }
+    // Install SKILL.md
+    try {
+      const content = await readFile(join(skillSrc, "SKILL.md"), "utf-8");
+      const outcome = await writeIfChanged(join(skillDest, "SKILL.md"), content);
+      if (outcome === "installed") result.installed++;
+      else result.skipped++;
+    } catch (err) {
+      result.errors.push(`failed to install skill ${skillName}/SKILL.md: ${errorMessage(err)}`);
+    }
 
-        await writeFile(destPath, content, "utf-8");
-        installed++;
+    // Install references/ if present
+    const refsSrc = join(skillSrc, "references");
+    let refFiles: string[];
+    try {
+      refFiles = (await readdir(refsSrc)).filter((f) => f.endsWith(".md"));
+    } catch {
+      continue; // No references dir — that's fine
+    }
+
+    const refsDest = join(skillDest, "references");
+    try {
+      await mkdir(refsDest, { recursive: true });
+    } catch (err) {
+      result.errors.push(`failed to create ${refsDest}: ${errorMessage(err)}`);
+      continue;
+    }
+
+    for (const file of refFiles) {
+      try {
+        const content = await readFile(join(refsSrc, file), "utf-8");
+        const outcome = await writeIfChanged(join(refsDest, file), content);
+        if (outcome === "installed") result.installed++;
+        else result.skipped++;
       } catch (err) {
-        const msg = `failed to write ${target.engine}:${file}: ${errorMessage(err)}`;
-        log.warn(msg);
-        errors.push(msg);
+        result.errors.push(`failed to install skill ${skillName}/references/${file}: ${errorMessage(err)}`);
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Install agent persona and skill files to Claude Code discovery paths.
+ *
+ * - Creates target directories if they don't exist
+ * - Overwrites files that have changed (content comparison)
+ * - Skips files that are already identical
+ * - Continues on individual file errors
+ */
+export async function installAgents(): Promise<InstallResult> {
+  const result: InstallResult = { installed: 0, skipped: 0, errors: [] };
+
+  await installAgentFiles(result);
+  await installSkillFiles(result);
 
   log.info("agent installation complete", {
-    installed,
-    skipped,
-    errors: errors.length,
-    targets: targets.map((t) => t.engine),
+    installed: result.installed,
+    skipped: result.skipped,
+    errors: result.errors.length,
   });
 
-  return { installed, skipped, errors };
+  return result;
 }
 
 

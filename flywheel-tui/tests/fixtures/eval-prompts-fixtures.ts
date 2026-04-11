@@ -8,6 +8,7 @@
 
 import type { DispatcherInput } from "../../src/workflows/dispatcher/schemas";
 import type { EvaluatorInput } from "../../src/workflows/evaluator/schemas";
+import { createEmptyStepContext } from "../../src/workflows/queue/step-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,6 +108,7 @@ export function buildSimpleScenario(): TestScenario {
       standards: [],
       learnings: [],
     },
+    step_context: createEmptyStepContext(),
   };
 
   const evaluatorInput: EvaluatorInput = {
@@ -133,6 +135,7 @@ All 2 tests pass:
     ],
     artifacts_produced: ["src/routes/hello.ts", "tests/hello.test.ts", "src/routes/index.ts"],
     tests_passed: true,
+    step_context: createEmptyStepContext(),
   };
 
   return {
@@ -200,6 +203,7 @@ export function buildComplexScenario(): TestScenario {
         { name: "Zod validation patterns", path: "docs/solutions/zod-patterns.md", summary: "Effective Zod schema patterns discovered" },
       ],
     },
+    step_context: createEmptyStepContext(),
   };
 
   const evaluatorInput: EvaluatorInput = {
@@ -255,6 +259,7 @@ export function buildComplexScenario(): TestScenario {
     ],
     artifacts_produced: ["src/routes/users.ts", "src/routes/posts.ts", "tests/api.test.ts"],
     tests_passed: true,
+    step_context: createEmptyStepContext(),
   };
 
   return {
@@ -312,6 +317,7 @@ export function buildEdgeScenario(): TestScenario {
       standards: [],
       learnings: [],
     },
+    step_context: createEmptyStepContext(),
   };
 
   const evaluatorInput: EvaluatorInput = {
@@ -348,6 +354,7 @@ I ran out of time before fixing the remaining test.
     ],
     artifacts_produced: ["src/middleware/auth.ts"],
     tests_passed: false,
+    step_context: createEmptyStepContext(),
   };
 
   return {

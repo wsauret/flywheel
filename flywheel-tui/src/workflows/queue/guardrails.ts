@@ -305,8 +305,10 @@ export function createGuardrails(options: GuardrailOptions = {}): Guardrails {
           break;
         }
 
-        default:
-          mutationResult = { applied: false, reason: `Unknown mutation type: ${(mutation as any).type}` };
+        default: {
+          const _exhaustive: never = mutation.type;
+          mutationResult = { applied: false, reason: `Unknown mutation type: ${_exhaustive}` };
+        }
       }
 
       results.push(mutationResult);

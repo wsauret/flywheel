@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+import { createEmptyStepContext } from "../src/workflows/queue/step-context";
 import {
   DispatcherInputSchema,
   DispatcherDecisionSchema,
@@ -231,6 +232,7 @@ describe("DispatcherInputSchema", () => {
     config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
     session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
     available_context: { conventions: [], standards: [], learnings: [] },
+    step_context: createEmptyStepContext(),
   };
 
   it("parses valid input", () => {
@@ -549,6 +551,7 @@ describe("EvaluatorInputSchema", () => {
     acceptance_criteria: ["Tests pass"],
     artifacts_produced: ["src/feature.ts"],
     tests_passed: true,
+    step_context: createEmptyStepContext(),
   };
 
   it("parses valid evaluator input", () => {

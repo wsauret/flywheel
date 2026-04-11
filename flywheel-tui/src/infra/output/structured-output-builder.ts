@@ -44,25 +44,9 @@ export class StructuredOutputBuilder {
   /** Context tool grouping — groups consecutive context tools into synthetic AgentBlocks. */
   private readonly contextTracker: ContextGroupTracker;
 
-  /**
-   * Optional callback fired when an agent has activity (tool added).
-   * Notification-only — does not alter accumulator behavior.
-   */
   onAgentActivity?: (agentId: string) => void;
-
-  /**
-   * Optional callback fired on agent lifecycle transitions.
-   * Notification-only — does not alter accumulator behavior.
-   */
   onAgentLifecycle?: (type: "start" | "complete" | "error", agentId: string) => void;
-
-  /**
-   * Optional callback fired when model activity changes.
-   * Used by the TUI to show context-aware thinking/generating indicators.
-   */
   onModelActivityChange?: (activity: ModelActivity) => void;
-
-  /** Timestamp captured when thinking activity starts (before text arrives). */
   private thinkingStartedAt: number | null = null;
 
   constructor() {
@@ -89,11 +73,12 @@ export class StructuredOutputBuilder {
     this.contextTracker.breakContextRun(timestamp);
     const blockTimestamp = this.thinkingStartedAt ?? timestamp;
     this.thinkingStartedAt = null;
-    const last = this.blocks.length > 0 ? this.blocks[this.blocks.length - 1] : null;
+    const lastIdx = this.lastContentIndex();
+    const last = lastIdx >= 0 ? this.blocks[lastIdx] : null;
     if (last && last.kind === "thinking") {
-      this.blocks[this.blocks.length - 1] = { ...last, content: last.content + text };
+      this.blocks[lastIdx] = { ...last, content: last.content + text };
     } else {
-      this.blocks.push({ kind: "thinking", content: text, timestamp: blockTimestamp });
+      this.insertBlock({ kind: "thinking", content: text, timestamp: blockTimestamp });
     }
     this.dirty = true;
   }
@@ -101,25 +86,25 @@ export class StructuredOutputBuilder {
   pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
     this.contextTracker.breakContextRun(timestamp);
     const block = { kind: "userMessage" as const, content: text, timestamp, pending, injected };
-    // Insert before the todo list so pending messages always appear above it.
-    if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
-      this.blocks.splice(this.todoBlockIndex, 0, block);
-      this.todoBlockIndex++;
+    if (pending) {
+      // Pending messages pin above the todo but below content
+      if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
+        const idx = this.todoBlockIndex;
+        this.blocks.splice(idx, 0, block);
+        for (const [id, agentIdx] of this.agentIndexById) {
+          if (agentIdx >= idx) this.agentIndexById.set(id, agentIdx + 1);
+        }
+        this.todoBlockIndex++;
+      } else {
+        this.blocks.push(block);
+      }
     } else {
-      this.blocks.push(block);
+      this.insertBlock(block);
     }
     this.dirty = true;
   }
 
-  /**
-   * Transition all pending user messages to sent (pending = false) and move
-   * them to the end of the blocks array.
-   *
-   * Moving to end ensures the resolved message appears AFTER whatever output
-   * the agent produced while the message was queued — keeping the agent's
-   * contiguous response intact and the user message adjacent to the reply
-   * it will trigger.
-   */
+  /** Transition pending user messages to sent and move to end of blocks array. */
   resolvePendingMessages(): boolean {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
@@ -136,7 +121,13 @@ export class StructuredOutputBuilder {
       const [msg] = this.blocks.splice(pendingIndices[i]!, 1) as [UserMessageBlock];
       resolved.unshift({ ...msg, pending: false });
     }
-    this.blocks.push(...resolved);
+    // Re-insert before the todo block (indices shifted from extractions, so find it fresh)
+    const todoIdx = this.blocks.findIndex(b => b.kind === "todoList");
+    if (todoIdx >= 0) {
+      this.blocks.splice(todoIdx, 0, ...resolved);
+    } else {
+      this.blocks.push(...resolved);
+    }
 
     // Indices shifted — rebuild lookups
     this.rebuildAgentIndex();
@@ -150,34 +141,28 @@ export class StructuredOutputBuilder {
     this.thinkingStartedAt = null;
     this.contextTracker.breakContextRun(timestamp);
 
-    const last = this.blocks[this.blocks.length - 1];
+    const lastIdx = this.lastContentIndex();
+    const last = lastIdx >= 0 ? this.blocks[lastIdx] : undefined;
     if (last && last.kind === "text") {
-      this.blocks[this.blocks.length - 1] = {
-        ...last,
-        content: last.content + text,
-      };
+      this.blocks[lastIdx] = { ...last, content: last.content + text };
     } else {
-      this.blocks.push({ kind: "text", content: text, timestamp });
+      this.insertBlock({ kind: "text", content: text, timestamp });
     }
 
     this.markDirty();
   }
 
-  /**
-   * Push a system message as a SystemBlock.
-   * Used for lifecycle events (queue:step-started, dispatcher:invoked, etc.)
-   * that are user-relevant but not worker output.
-   */
+  /** Push a system message block for lifecycle events. */
   pushSystemMessage(message: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.blocks.push({ kind: "system", message, timestamp } as SystemBlock);
+    this.insertBlock({ kind: "system", message, timestamp } as SystemBlock);
     this.enforceBlocksCap();
     this.markDirty();
   }
 
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): void {
     this.onModelActivityChange?.("tool_executing");
-    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
+    const tool = { kind: "tool" as const, name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
 
     // Top-level tool: check context grouping.
     // Tools with diff/content data render standalone (not grouped) so the content is visible.
@@ -185,18 +170,14 @@ export class StructuredOutputBuilder {
       this.contextTracker.pushContextTool(tool, timestamp);
     } else {
       this.contextTracker.breakContextRun(timestamp);
-      this.blocks.push(tool);
+      this.insertBlock(tool);
     }
 
     this.enforceBlocksCap();
     this.markDirty();
   }
 
-  /**
-   * Push a TodoWrite update. First call creates a new TodoListBlock; subsequent
-   * calls replace it in-place so the todo list is a living, updating element.
-   * An empty array clears the todo block entirely (all items completed).
-   */
+  /** Push or update a TodoListBlock. Empty array removes it. */
   pushTodoWrite(todos: TodoItem[], timestamp: number): void {
     this.onModelActivityChange?.("tool_executing");
     this.contextTracker.breakContextRun(timestamp);
@@ -212,7 +193,7 @@ export class StructuredOutputBuilder {
       return;
     }
 
-    const block: TodoListBlock = { kind: "todoList", todos, timestamp };
+    const block = { kind: "todoList" as const, todos, timestamp };
 
     if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length && this.blocks[this.todoBlockIndex].kind === "todoList") {
       // Update in place
@@ -227,13 +208,9 @@ export class StructuredOutputBuilder {
     this.markDirty();
   }
 
-  /**
-   * Push a tool as a child of a specific agent (by builder agent ID).
-   * Used when Claude's `parent_tool_use_id` identifies the owning agent.
-   * Returns false if the agent was not found (caller should fall through to top-level).
-   */
+  /** Push a tool as a child of an agent. Returns false if agent not found. */
   pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): boolean {
-    const tool: ToolBlock = { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
+    const tool = { kind: "tool" as const, name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
     return this.appendToolToAgent(agentId, tool);
   }
 
@@ -261,7 +238,7 @@ export class StructuredOutputBuilder {
   startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
 
-    const agent: AgentBlock = {
+    const agent = {
       kind: "agent",
       id,
       agentLabel,
@@ -270,8 +247,8 @@ export class StructuredOutputBuilder {
       children: [],
       timestamp,
     };
-    this.blocks.push(agent);
-    this.agentIndexById.set(id, this.blocks.length - 1);
+    const idx = this.insertBlock(agent);
+    this.agentIndexById.set(id, idx);
     this.enforceBlocksCap();
     this.markDirty();
     this.onAgentLifecycle?.("start", id);
@@ -306,11 +283,7 @@ export class StructuredOutputBuilder {
     this.onAgentLifecycle?.("error", id);
   }
 
-  /**
-   * Update the latestChild display text on an agent block without adding a child.
-   * Used for status updates like thinking text that shouldn't accumulate as tool entries.
-   * Also triggers onAgentActivity to keep the stale-agent tracker alive.
-   */
+  /** Update agent's latestChild display without adding a child block. */
   updateAgentLatestChild(id: string, childDisplay: string): void {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
@@ -323,15 +296,7 @@ export class StructuredOutputBuilder {
     this.onAgentActivity?.(id);
   }
 
-  /**
-   * Auto-complete any active subagent blocks.
-   *
-   * Subagents are blocking — if top-level output arrives from the parent agent,
-   * all subagents must be done. Call this when processing a top-level assistant
-   * message (no parent_tool_use_id) to close agents whose tool_result was
-   * delayed or lost. The stale detector remains as a safety net for cases where
-   * no top-level events follow.
-   */
+  /** Auto-complete active subagent blocks (top-level output means all subagents are done). */
   closeOpenSubagents(timestamp: number): void {
     const ctxId = this.contextTracker.currentAgentId;
     for (const [id, idx] of this.agentIndexById) {
@@ -343,10 +308,7 @@ export class StructuredOutputBuilder {
     }
   }
 
-  /**
-   * Complete any open context tool run. Call at turn boundaries (e.g. chat
-   * turn-complete) so the last group of context tools doesn't stay "active".
-   */
+  /** Complete any open context tool run at turn boundaries. */
   flushContextRun(timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
     this.markDirty();
@@ -363,10 +325,7 @@ export class StructuredOutputBuilder {
     return this.dirty;
   }
 
-  /**
-   * Full reset — wipes blocks AND tracking state.
-   * Used when starting a fresh standalone workflow (standalone).
-   */
+  /** Full reset — wipes blocks and tracking state. */
   reset(): void {
     this.blocks = [];
     this.dirty = false;
@@ -376,15 +335,7 @@ export class StructuredOutputBuilder {
     this.contextTracker.reset();
   }
 
-  dispose(): void {
-    // no-op — retained for interface compatibility
-  }
-
-  /**
-   * Reset only worker-level tracking state, preserving accumulated blocks.
-   * Used at queue step boundaries: a new worker means new agent IDs and
-   * context runs, but the output log is continuous.
-   */
+  /** Reset worker-level tracking state, preserving accumulated blocks. */
   resetTracking(): void {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
@@ -394,6 +345,45 @@ export class StructuredOutputBuilder {
   }
 
   // ── Private helpers ──
+
+  /**
+   * Index where new content should be inserted — before the pinned zone.
+   * Pinned zone (tail of the array): [...pending user messages, todo list].
+   */
+  private contentInsertionIndex(): number {
+    let idx = this.blocks.length;
+    while (idx > 0) {
+      const block = this.blocks[idx - 1]!;
+      if (block.kind === "todoList" || (block.kind === "userMessage" && block.pending)) {
+        idx--;
+      } else {
+        break;
+      }
+    }
+    return idx;
+  }
+
+  /** Insert a content block before the pinned zone, or append if nothing is pinned. Returns the insertion index. */
+  private insertBlock(block: AnyBlock): number {
+    const idx = this.contentInsertionIndex();
+    if (idx < this.blocks.length) {
+      this.blocks.splice(idx, 0, block);
+      for (const [id, agentIdx] of this.agentIndexById) {
+        if (agentIdx >= idx) {
+          this.agentIndexById.set(id, agentIdx + 1);
+        }
+      }
+      if (this.todoBlockIndex >= idx) this.todoBlockIndex++;
+      return idx;
+    }
+    this.blocks.push(block);
+    return this.blocks.length - 1;
+  }
+
+  /** Index of the last content block (before pinned zone), or -1 if empty. */
+  private lastContentIndex(): number {
+    return this.contentInsertionIndex() - 1;
+  }
 
   private markDirty(): void {
     this.dirty = true;

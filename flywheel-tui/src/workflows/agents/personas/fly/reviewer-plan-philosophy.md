@@ -35,7 +35,7 @@ These three philosophies are ordered by review priority. When approaching the ou
 
 ### 1. TDD Ordering
 
-**Principle**: Tests are specifications that define done. Each phase must include test steps **before** or **alongside** implementation steps, following the Red-Green-Refactor cycle. See `flywheel/skills/flywheel-conventions/references/tdd-cycle.md`.
+**Principle**: Tests are specifications that define done. Each phase must include test steps **before** or **alongside** implementation steps, following the Red-Green-Refactor cycle. See `references/tdd-cycle.md` in the flywheel-conventions skill.
 
 **Why this is a structural risk**: A plan without test-first ordering has no verification checkpoints. Requirement misunderstandings in Phase 2 propagate silently into Phase 3, and by the time they surface, rework spans multiple phases. Additionally, test-after ordering hides a subtle failure mode: if a test is written after the implementation it covers, the plan never specifies a RED (failing) state — so there is no way to confirm the test actually validates anything.
 
@@ -185,7 +185,7 @@ Use the Flywheel severity definitions (P1/P2/P3):
 3. **SOLID pass**: For each code design decision in the plan, check against all five SOLID principles. Focus on: classes/services with mixed responsibilities (SRP), extension by modification (OCP), contract violations in subtypes (LSP), bloated interfaces (ISP), and high-level logic depending on infrastructure (DIP).
 4. **DRY pass**: First, extract the key entities the plan describes building (classes, services, utilities, validation rules). Then use Grep/Glob/Read to search the existing codebase for those entities. Flag cases where the plan reinvents existing code or duplicates logic across its own phases. Recommend consolidation when warranted (3+ repetitions or identical knowledge). Apply AHA counterbalance.
 5. **Name each finding** using the Anti-Pattern Catalog. If a finding doesn't match a cataloged pattern, describe it clearly and suggest a name.
-6. Keep output under **1,000 words** (reviewer limit). If near the limit, include only the highest-impact findings, prioritizing TDD > SOLID > DRY.
+6. Keep output under **1,500 words** (reviewer limit). If near the limit, include only the highest-impact findings, prioritizing TDD > SOLID > DRY.
 
 When referencing locations, cite plan structure using the plan's own identifiers (e.g., "Phase 2", "Step 3.1", section headings). If the plan is provided as a file, include the file path in Files Identified.
 

@@ -11,7 +11,8 @@
  *   // infra.budgetTracker, infra.traceWriter, infra.transcriptWriter, infra.traceCollector
  */
 
-import { createBudgetTracker, type BudgetTracker } from "./budget-tracker"
+import { createBudgetTracker } from "./budget-tracker.js"
+import type { BudgetTracker } from "./budget-tracker-types.js"
 import { createTraceWriter, type TraceWriter } from "./trace-writer"
 import { createTranscriptWriter, type TranscriptWriter } from "./transcript-writer"
 import { createTraceCollector, type TraceCollector } from "./trace-collector"

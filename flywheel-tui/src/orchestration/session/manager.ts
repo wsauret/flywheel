@@ -20,7 +20,7 @@ import {
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
 import type { Session } from "./schemas";
-import { computeContextPercent } from "./budget-tracker";
+import { computeContextPercent } from "./budget-tracker-types.js";
 import { isValidTransition, type SessionState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema";

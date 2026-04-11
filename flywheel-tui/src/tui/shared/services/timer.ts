@@ -30,7 +30,7 @@ interface AgentTimer {
 /**
  * Format seconds into HH:MM:SS or MM:SS string
  */
-function formatDuration(seconds: number): string {
+function formatTimerDisplay(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(s / 3600)
   const minutes = Math.floor((s % 3600) / 60)
@@ -259,7 +259,7 @@ export class TimerService {
     }
 
     const elapsed = (endTime - this.workflowStartTime - pausedTime) / 1000
-    return formatDuration(elapsed)
+    return formatTimerDisplay(elapsed)
   }
 
   /**
@@ -272,7 +272,7 @@ export class TimerService {
     // Completed agent - use fixed duration
     if (agent.endTime) {
       const elapsed = (agent.endTime - agent.startTime - agent.totalPausedTime) / 1000
-      return formatDuration(elapsed)
+      return formatTimerDisplay(elapsed)
     }
 
     // Not started yet
@@ -289,7 +289,7 @@ export class TimerService {
     }
 
     const elapsed = (this.getEffectiveNow() - agent.startTime - pausedTime) / 1000
-    return formatDuration(Math.max(0, elapsed))
+    return formatTimerDisplay(Math.max(0, elapsed))
   }
 
   // ============================================================================
@@ -385,4 +385,4 @@ export class TimerService {
 // Exports
 // ============================================================================
 
-export { formatDuration }
+export { formatTimerDisplay }

@@ -34,11 +34,6 @@ export function parseRawHandoff(raw: Record<string, unknown>): ParsedHandoff {
     ? raw.summary
     : JSON.stringify(raw).slice(0, 500);
 
-  // Top-level artifacts_produced (flat list)
-  const flatArtifacts = Array.isArray(raw.artifacts_produced)
-    ? raw.artifacts_produced.filter(isString)
-    : [];
-
   // Nested artifacts object
   let filesCreated: string[] = [];
   let filesModified: string[] = [];
@@ -50,8 +45,6 @@ export function parseRawHandoff(raw: Record<string, unknown>): ParsedHandoff {
     filesModified = Array.isArray(a.files_modified) ? a.files_modified.filter(isString) : [];
     commandsRun = Array.isArray(a.commands_run) ? a.commands_run : [];
   }
-  // Merge flat artifacts into filesCreated for backward compat
-  filesCreated = [...flatArtifacts, ...filesCreated];
 
   // Verification
   const verification = raw.verification as Record<string, unknown> | undefined;

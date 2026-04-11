@@ -27,7 +27,8 @@ import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { isHandoffPath } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@tui/types"
-import { renderHunk, parseUnifiedDiff, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
+import { renderHunk, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
+import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 
 /** Convert a file path to a file:// URI for OSC 8 hyperlinks. */
 function toFileUri(filePath: string): string {
@@ -108,7 +109,7 @@ export function ToolBlock(props: ToolBlockProps) {
     const lines = hunks.flatMap((hunk) => renderHunk(hunk, diffColors()))
     return lines.map((line) => {
       const chunks: TextChunk[] = line.segments.map((seg) => {
-        let c: any = seg.text
+        let c: string | TextChunk = seg.text
         if (seg.fg) c = stFg(seg.fg)(c)
         if (seg.bg) c = stBg(seg.bg)(c)
         return c as TextChunk
@@ -128,9 +129,9 @@ export function ToolBlock(props: ToolBlockProps) {
     <box flexDirection="row" gap={1} overflow="hidden" onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
       <text fg={theme.text} flexShrink={0} attributes={BOLD}>{name()}</text>
       <Show when={props.block.filePath} fallback={
-        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden">{props.block.detail}</text>
+        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.block.detail}</text>
       }>
-        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden"><a href={toFileUri(props.block.filePath!)}>{props.block.detail}</a></text>
+        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none"><a href={toFileUri(props.block.filePath!)}>{props.block.detail}</a></text>
       </Show>
       <Show when={hasExpandable()}>
         <text fg={theme.textMuted} flexShrink={0}>{expanded() ? "▾" : "▸"}</text>

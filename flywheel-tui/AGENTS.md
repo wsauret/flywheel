@@ -11,10 +11,10 @@
 ```
 src/
   cli/             --> composition root, imports from everything
-  infra/           --> imports NOTHING from src/
+  infra/           --> shared foundation, imports NOTHING from src/
   workflows/       --> imports only from infra/
   orchestration/   --> imports from workflows/ + infra/
-  tui/             --> imports from orchestration/
+  tui/             --> imports from orchestration/ + infra/
 ```
 
 Run `bun run scripts/check-boundaries.ts` after any file addition or move.

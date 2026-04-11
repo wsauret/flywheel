@@ -47,7 +47,7 @@ function ToolRow(props: { tool: ToolBlockType }) {
   return (
     <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
       <text fg={theme.text} flexShrink={0}>{displayToolName(props.tool.name)}</text>
-      <text fg={theme.textSubtle} flexShrink={1} overflow="hidden">{props.tool.detail}</text>
+      <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
     </box>
   )
 }

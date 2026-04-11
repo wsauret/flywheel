@@ -33,6 +33,7 @@ export function TextBlock(props: TextBlockProps) {
     <box marginTop={1}>
       <markdown
         ref={(el: MarkdownRenderable) => {
+          // _linkifyMarkdownChunks is a private property on MarkdownRenderable — `as any` required to override it
           (el as any)._linkifyMarkdownChunks = linkifyChunks
         }}
         syntaxStyle={themeCtx.syntax}

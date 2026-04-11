@@ -34,7 +34,7 @@ export function ContextGroupBlock(props: ContextGroupBlockProps) {
             {(tool) => (
               <box flexDirection="row" gap={1} overflow="hidden">
                 <text fg={theme.textMuted} flexShrink={0}>{displayToolName(tool.name)}</text>
-                <text fg={theme.textSubtle} flexShrink={1} overflow="hidden">{tool.detail}</text>
+                <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{tool.detail}</text>
               </box>
             )}
           </For>

@@ -1,95 +1,29 @@
-/**
- * Color Diff — unified diff renderer with word-level highlighting.
- *
- * Adapted from Claude Code's native-ts/color-diff. Outputs OpenTUI StyledText
- * instead of ANSI escape sequences.
- *
- * Features:
- * - Unified diff rendering with line numbers and +/- markers
- * - Word-level diff highlighting (changed words get brighter background)
- * - Line wrapping to terminal width
- * - Dark/light theme support
- *
- * Syntax highlighting (highlight.js) is stubbed — can be added later with
- * zero structural changes.
- */
+/** Unified diff renderer with word-level highlighting. Adapted from Claude Code's native-ts/color-diff. */
 
 import { diffArrays } from "diff"
 import type { RGBA } from "@opentui/core"
+import type { Hunk } from "./diff-parser.js"
 
-// ---------------------------------------------------------------------------
-// Diff Parser (inlined from diff-parser.ts)
-// ---------------------------------------------------------------------------
-
-export type Hunk = {
-  oldStart: number
-  oldLines: number
-  newStart: number
-  newLines: number
-  lines: string[]
-}
-
-/**
- * Parse a unified diff string into structured hunks.
- */
-export function parseUnifiedDiff(diffStr: string): Hunk[] {
-  const lines = diffStr.split("\n")
-  const hunks: Hunk[] = []
-  let current: Hunk | null = null
-
-  for (const line of lines) {
-    const hunkMatch = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/)
-    if (hunkMatch) {
-      if (current) hunks.push(current)
-      current = {
-        oldStart: parseInt(hunkMatch[1]!, 10),
-        oldLines: parseInt(hunkMatch[2] ?? "1", 10),
-        newStart: parseInt(hunkMatch[3]!, 10),
-        newLines: parseInt(hunkMatch[4] ?? "1", 10),
-        lines: [],
-      }
-      continue
-    }
-    if (current && (line.startsWith("+") || line.startsWith("-") || line.startsWith(" "))) {
-      current.lines.push(line)
-    }
-  }
-  if (current) hunks.push(current)
-  return hunks
-}
-
-/** Theme colors for diff rendering — pass RGBA values from the TUI theme. */
 export interface DiffThemeColors {
-  /** Text foreground */
   text: RGBA
-  /** Muted text (line numbers, context) */
   textMuted: RGBA
-  /** Added line background */
   addedBg: RGBA
-  /** Removed line background */
   removedBg: RGBA
-  /** Added word highlight (brighter than addedBg) */
   highlightAdded: RGBA
-  /** Removed word highlight (brighter than removedBg) */
   highlightRemoved: RGBA
-  /** Foreground for + marker and added line numbers */
   addedFg: RGBA
-  /** Foreground for - marker and removed line numbers */
   removedFg: RGBA
-  /** Line number foreground */
   lineNumber: RGBA
 }
 
-/** A styled text segment carrying RGBA directly. */
 export type DiffSegment = {
   text: string
   fg?: RGBA
   bg?: RGBA
 }
-/** A single rendered diff line with a line-level background. */
+
 export type DiffLine = {
   segments: DiffSegment[]
-  /** Line-level background color (fills full container width). */
   lineBg?: RGBA
 }
 
@@ -109,10 +43,6 @@ function blocksToDiffLine(blocks: Block[], lineBg: Color): DiffLine {
   })
   return { segments, lineBg: lineBg ?? undefined }
 }
-
-// ---------------------------------------------------------------------------
-// Theme mapping
-// ---------------------------------------------------------------------------
 
 type Theme = {
   addLine: Color
@@ -161,10 +91,6 @@ function decorationColor(marker: Marker, theme: Theme): Color {
   if (marker === "-") return theme.deleteDecoration
   return theme.foreground
 }
-
-// ---------------------------------------------------------------------------
-// Word diff
-// ---------------------------------------------------------------------------
 
 type Range = { start: number; end: number }
 
@@ -256,10 +182,6 @@ function wordDiffStrings(oldStr: string, newStr: string): [Range[], Range[]] {
   }
   return [oldRanges, newRanges]
 }
-
-// ---------------------------------------------------------------------------
-// Highlight pipeline (per-line transforms)
-// ---------------------------------------------------------------------------
 
 type Highlight = {
   marker: Marker | null
@@ -393,10 +315,6 @@ function applyBackground(h: Highlight, theme: Theme, ranges: Range[]): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 function maxLineNumber(hunk: Hunk): number {
   const oldEnd = Math.max(0, hunk.oldStart + hunk.oldLines - 1)
   const newEnd = Math.max(0, hunk.newStart + hunk.newLines - 1)
@@ -407,12 +325,6 @@ function parseMarker(s: string): Marker {
   return s === "+" || s === "-" ? s : " "
 }
 
-/**
- * Render a single diff hunk as an array of DiffLines.
- *
- * @param hunk - Structured patch hunk (from the `diff` library)
- * @param colors - Theme colors (RGBA values from the TUI theme)
- */
 export function renderHunk(hunk: Hunk, colors: DiffThemeColors): DiffLine[] {
   const theme = buildTheme(colors)
   const maxDigits = String(maxLineNumber(hunk)).length

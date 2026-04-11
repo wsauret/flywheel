@@ -226,7 +226,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   async function finish(sessionId: string): Promise<void> {
     const entry = entries[sessionId]
     if (!entry || entry.ended) return
-    setEntries(sessionId, { ended: true } as any)
+    setEntries(sessionId, produce((entry) => { entry.ended = true }))
     if (entry.runner) await entry.runner.dispose()
   }
 

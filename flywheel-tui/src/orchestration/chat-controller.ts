@@ -11,9 +11,10 @@
 import { createChatRunner } from "./chat-runner.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { readSession, updateSession } from "./session/persistence.js"
-import { computeContextPercent } from "./session/budget-tracker.js"
+import { computeContextPercent } from "./session/budget-tracker-types.js"
 import { TERMINAL_TITLE_PREFIX, formatElapsed, formatCost, formatTokens } from "../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
+import { Log } from "../infra/log.js"
 import type { ChatStoreHandle, SessionStore } from "./session-store-types.js"
 import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
@@ -90,6 +91,8 @@ type StartupState =
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
+
+const log = Log.create({ service: "chat-controller" })
 
 export function createChatController(deps: ChatControllerDeps): ChatController {
   const { sessionStore, manager, refreshList, projectCwd } = deps
@@ -310,6 +313,17 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       return true
     }
 
+    // If we reach here, the message was silently dropped — no inject, no auto-resume.
+    // Log diagnostics so we can trace the root cause.
+    const diagEntry = sessionStore.get(foregroundId)
+    log.error("chat message dropped — no delivery path", {
+      foregroundId,
+      hasEntry: !!diagEntry,
+      entryKind: diagEntry?.kind,
+      entryEnded: diagEntry?.ended,
+      hasRunner: !!diagEntry?.runner,
+      startupPhase: startup.phase,
+    })
     return false
   }
 

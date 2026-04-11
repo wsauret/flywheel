@@ -1,4 +1,4 @@
-import type { ZodSchema, ZodError } from "zod";
+import type { ZodSchema, ZodError, ZodIssue } from "zod";
 import { errorMessage } from "../../../infra/error-message";
 
 // ---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ function formatZodError(error: ZodError): string {
     .map((issue) => {
       const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
       if (issue.code === "unrecognized_keys") {
-        return `Unrecognized key(s) at ${path}: ${(issue as any).keys.join(", ")}`;
+        return `Unrecognized key(s) at ${path}: ${(issue as ZodIssue & { keys: string[] }).keys.join(", ")}`;
       }
       return `${path}: ${issue.message}`;
     })

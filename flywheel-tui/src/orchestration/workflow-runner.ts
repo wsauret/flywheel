@@ -6,7 +6,7 @@
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { createExecutor } from "./executor-factory"
 import type { StepExecutor } from "../workflows/queue/executor-types"
-import { type BudgetTracker } from "./session/budget-tracker"
+import type { BudgetTracker } from "./session/budget-tracker-types.js"
 import { createOutputPersistence } from "./session/output-persistence"
 import { createSessionInfra } from "./session/create-session-infra"
 import { disposeSessionResources, type SessionResources } from "./session/resources"

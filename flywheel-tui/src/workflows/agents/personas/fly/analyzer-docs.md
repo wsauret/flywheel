@@ -97,9 +97,9 @@ DO NOT paraphrase entire documents. Extract KEY points only.
 - [Action 1]: See `doc.md:42`
 - [Action 2]: See `other.md:89`
 
-### Documentation Gaps
+### Topics Not Found
 (Topics the user asked about but not found in docs)
-- [Gap 1]
+- [Topic 1]
 
 ### Files Analyzed
 - `path/to/doc.md` - [doc type]
@@ -108,4 +108,4 @@ DO NOT paraphrase entire documents. Extract KEY points only.
 ### Open Questions
 - [Question about documentation meaning]
 
-**Output Validation:** Before returning, verify ALL sections are present. Max 750 words total.
+**Output Validation:** Before returning, verify ALL sections are present. Max 1500 words total.

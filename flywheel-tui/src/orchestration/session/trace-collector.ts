@@ -27,6 +27,7 @@ import type { EventBus, Unsubscribe } from "../../infra/event-bus";
 import type { SpanKind, Span } from "../../infra/trace-types";
 import { truncateField } from "../../infra/trace-types";
 import type { TraceWriter, TraceIndexEntry } from "./trace-writer";
+import { subscribeTraceEvents } from "./trace-subscriptions.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -227,176 +228,16 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   // -------------------------------------------------------------------------
 
   function subscribeToEvents(bus: EventBus): Unsubscribe[] {
-    const unsubs: Unsubscribe[] = [];
-
-    // queue:initialized → open root workflow span
-    unsubs.push(
-      bus.subscribeToType("queue:initialized", (event) => {
-        workflowSpanId = startSpan("workflow", workflowName, {
-          stepIds: event.stepIds,
-          workflowName,
-        });
-      }),
-    );
-
-    // queue:completed → close workflow span (ok)
-    unsubs.push(
-      bus.subscribeToType("queue:completed", (event) => {
-        if (workflowSpanId) {
-          endSpan(workflowSpanId, {
-            stepsCompleted: event.stepsCompleted,
-            failureReason: null,
-          }, "ok");
-        }
-      }),
-    );
-
-    // queue:failed → close workflow span (error)
-    unsubs.push(
-      bus.subscribeToType("queue:failed", (event) => {
-        if (workflowSpanId) {
-          endSpan(workflowSpanId, {
-            stepsCompleted: event.stepsCompleted,
-            failureReason: event.reason,
-          }, "error", { message: event.reason });
-        }
-      }),
-    );
-
-    // queue:step-started → open step span (child of workflow)
-    unsubs.push(
-      bus.subscribeToType("queue:step-started", (event) => {
-        // Ensure step is a child of workflow, not of another step.
-        // Temporarily set the stack so workflow is the current parent.
-        const savedStack = [...spanStack];
-
-        // Reset stack to only contain the workflow span
-        spanStack.length = 0;
-        if (workflowSpanId && openSpans.has(workflowSpanId)) {
-          spanStack.push(workflowSpanId);
-        }
-
-        const stepSpanId = startSpan("step", event.stepTitle, {
-          stepType: event.stepType,
-          stepTitle: event.stepTitle,
-        });
-        stepSpanIds.set(event.stepId, stepSpanId);
-
-        // Restore stack but add the new step span
-        spanStack.length = 0;
-        for (const id of savedStack) {
-          if (openSpans.has(id)) {
-            spanStack.push(id);
-          }
-        }
-        spanStack.push(stepSpanId);
-      }),
-    );
-
-    // queue:step-completed → close worker span (ok) + step span (ok)
-    unsubs.push(
-      bus.subscribeToType("queue:step-completed", (event) => {
-        const workerSpanId = findOpenSpanByKind("worker");
-        if (workerSpanId) {
-          endSpan(workerSpanId, { resultSummary: "", failureReason: null }, "ok");
-        }
-        const stepSpanId = stepSpanIds.get(event.stepId);
-        if (stepSpanId) {
-          endSpan(stepSpanId, { failureReason: null }, "ok");
-          stepSpanIds.delete(event.stepId);
-        }
-      }),
-    );
-
-    // queue:step-failed → close worker span (error) + step span (error)
-    unsubs.push(
-      bus.subscribeToType("queue:step-failed", (event) => {
-        const workerSpanId = findOpenSpanByKind("worker");
-        if (workerSpanId) {
-          endSpan(workerSpanId, { resultSummary: "", failureReason: event.reason }, "error", { message: event.reason });
-        }
-        const stepSpanId = stepSpanIds.get(event.stepId);
-        if (stepSpanId) {
-          endSpan(stepSpanId, { failureReason: event.reason }, "error", { message: event.reason });
-          stepSpanIds.delete(event.stepId);
-        }
-      }),
-    );
-
-    // subprocess:spawned → open worker span (child of current step)
-    unsubs.push(
-      bus.subscribeToType("subprocess:spawned", (event) => {
-        startSpan("worker", `worker-${event.stepIndex}`, {
-          stepIndex: event.stepIndex,
-        });
-      }),
-    );
-
-    // trace:tool-started → open tool_call span (child of current worker)
-    unsubs.push(
-      bus.subscribeToType("trace:tool-started", (event) => {
-        const spanId = startSpan("tool_call", event.toolName, {
-          toolName: event.toolName,
-          toolInput: event.toolInput,
-        });
-        toolSpanIds.set(event.toolUseId, spanId);
-      }),
-    );
-
-    // trace:tool-completed → close tool_call span
-    unsubs.push(
-      bus.subscribeToType("trace:tool-completed", (event) => {
-        const spanId = toolSpanIds.get(event.toolUseId);
-        if (spanId) {
-          endSpan(spanId, {
-            toolOutput: event.toolOutput,
-            isError: event.isError,
-          }, event.isError ? "error" : "ok", event.isError ? { message: "tool returned error" } : undefined);
-          toolSpanIds.delete(event.toolUseId);
-        }
-      }),
-    );
-
-    // trace:subagent-started → open subagent span (child of current worker)
-    unsubs.push(
-      bus.subscribeToType("trace:subagent-started", (event) => {
-        const spanId = startSpan("subagent", event.agentType, {
-          agentType: event.agentType,
-          description: event.description,
-          prompt: event.prompt,
-          model: "",
-        });
-        toolSpanIds.set(event.toolUseId, spanId);
-      }),
-    );
-
-    // trace:subagent-completed → close subagent span
-    unsubs.push(
-      bus.subscribeToType("trace:subagent-completed", (event) => {
-        const spanId = toolSpanIds.get(event.toolUseId);
-        if (spanId) {
-          endSpan(spanId, {
-            result: event.result,
-            exitStatus: event.isError ? 1 : 0,
-            error: event.isError ? "subagent returned error" : null,
-          }, event.isError ? "error" : "ok", event.isError ? { message: "subagent returned error" } : undefined);
-          toolSpanIds.delete(event.toolUseId);
-        }
-      }),
-    );
-
-    return unsubs;
-  }
-
-  function findOpenSpanByKind(kind: SpanKind): string | null {
-    // Find the most recently opened span of this kind (last in stack order)
-    for (let i = spanStack.length - 1; i >= 0; i--) {
-      const open = openSpans.get(spanStack[i]);
-      if (open && open.kind === kind) {
-        return open.spanId;
-      }
-    }
-    return null;
+    return subscribeTraceEvents(bus, {
+      startSpan,
+      endSpan,
+      get workflowSpanId() { return workflowSpanId; },
+      setWorkflowSpanId(id: string) { workflowSpanId = id; },
+      stepSpanIds,
+      toolSpanIds,
+      spanStack,
+      openSpans,
+    }, workflowName);
   }
 
   // -------------------------------------------------------------------------

@@ -9,13 +9,14 @@
 import { describe, it, expect } from "bun:test";
 import type { EvaluatorInput } from "../../src/workflows/evaluator/schemas";
 import { EvaluatorInputSchema, EvaluatorHandoffDataSchema } from "../../src/workflows/evaluator/schemas";
+import { createEmptyStepContext } from "../../src/workflows/queue/step-context";
 
 // ---------------------------------------------------------------------------
 // Schema tests
 // ---------------------------------------------------------------------------
 
 describe("EvaluatorInput schema with handoff field", () => {
-  it("accepts input without handoff (backward compat)", () => {
+  it("accepts input without handoff", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
       evaluation_criteria: "criteria",
@@ -23,6 +24,7 @@ describe("EvaluatorInput schema with handoff field", () => {
       acceptance_criteria: [],
       artifacts_produced: [],
       tests_passed: null,
+      step_context: createEmptyStepContext(),
     });
     expect(result.success).toBe(true);
   });
@@ -35,6 +37,7 @@ describe("EvaluatorInput schema with handoff field", () => {
       acceptance_criteria: [],
       artifacts_produced: [],
       tests_passed: null,
+      step_context: createEmptyStepContext(),
       handoff: {
         summary: "A".repeat(100),
         verification: { tests_passed: true, test_output_summary: "12/12 pass" },
@@ -53,6 +56,7 @@ describe("EvaluatorInput schema with handoff field", () => {
       acceptance_criteria: [],
       artifacts_produced: [],
       tests_passed: null,
+      step_context: createEmptyStepContext(),
       handoff: {
         summary: "A".repeat(100),
       },

@@ -70,7 +70,7 @@ export function createQueue(
   steps: Step[],
   opts?: QueueOptions,
 ): Queue {
-  const queue: Queue = {
+  const queue = {
     steps: steps.map((s) => ({ ...s, status: "pending" as const })),
     cursor: 0,
     status: "idle",

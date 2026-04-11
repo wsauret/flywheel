@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock, TodoListBlock } from "../src/tui/types";
+import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock, TodoListBlock, UserMessageBlock } from "../src/tui/types";
 
 describe("StructuredOutputBuilder", () => {
   let builder: StructuredOutputBuilder;
@@ -704,6 +704,99 @@ describe("StructuredOutputBuilder", () => {
     });
   });
 
+  // ── Pinned zone (pending messages + todo) ──
+
+  describe("pinned zone ordering", () => {
+    it("pending messages stay pinned below new content", () => {
+      const now = Date.now();
+      builder.pushText("initial output", now);
+      builder.pushUserMessage("follow-up", now + 100, true);
+      // Agent keeps working — new content goes before the pending message
+      builder.pushSystemMessage("step completed", now + 200);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("system");
+      expect(blocks[2].kind).toBe("userMessage");
+      expect((blocks[2] as UserMessageBlock).pending).toBe(true);
+    });
+
+    it("pending messages pin above todo, both below content", () => {
+      const now = Date.now();
+      builder.pushText("output", now);
+      builder.pushTodoWrite([{ content: "Task", status: "in_progress" }], now + 100);
+      builder.pushUserMessage("follow-up", now + 200, true);
+      builder.pushSystemMessage("step done", now + 300);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(4);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("system");
+      expect(blocks[2].kind).toBe("userMessage");
+      expect(blocks[3].kind).toBe("todoList");
+    });
+
+    it("multiple pending messages maintain order within pinned zone", () => {
+      const now = Date.now();
+      builder.pushText("output", now);
+      builder.pushTodoWrite([{ content: "Task", status: "in_progress" }], now + 100);
+      builder.pushUserMessage("first follow-up", now + 200, true);
+      builder.pushUserMessage("second follow-up", now + 300, true);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(4);
+      expect(blocks[0].kind).toBe("text");
+      expect((blocks[1] as UserMessageBlock).content).toBe("first follow-up");
+      expect((blocks[2] as UserMessageBlock).content).toBe("second follow-up");
+      expect(blocks[3].kind).toBe("todoList");
+    });
+
+    it("resolvePendingMessages moves messages out of pinned zone into content", () => {
+      const now = Date.now();
+      builder.pushText("output", now);
+      builder.pushTodoWrite([{ content: "Task", status: "in_progress" }], now + 100);
+      builder.pushUserMessage("follow-up", now + 200, true);
+
+      // Before resolve: [text, pending, todo]
+      expect(builder.getBlocks()[1].kind).toBe("userMessage");
+      expect((builder.getBlocks()[1] as UserMessageBlock).pending).toBe(true);
+
+      builder.resolvePendingMessages();
+
+      // After resolve: [text, resolved, todo] — resolved is content now
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("userMessage");
+      expect((blocks[1] as UserMessageBlock).pending).toBe(false);
+      expect(blocks[2].kind).toBe("todoList");
+
+      // New content goes after the resolved message, before todo
+      builder.pushSystemMessage("agent responds", now + 400);
+      const after = builder.getBlocks();
+      expect(after).toHaveLength(4);
+      expect(after[2].kind).toBe("system");
+      expect(after[3].kind).toBe("todoList");
+    });
+
+    it("agent blocks insert before pinned zone with correct index tracking", () => {
+      const now = Date.now();
+      builder.pushTodoWrite([{ content: "Task", status: "in_progress" }], now);
+      builder.pushUserMessage("queued msg", now + 100, true);
+
+      builder.startAgent("a1", "Worker", "Doing work", now + 200);
+      builder.pushToolToAgent("a1", "Read", "file.ts", now + 300);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).children).toHaveLength(1);
+      expect(blocks[1].kind).toBe("userMessage");
+      expect(blocks[2].kind).toBe("todoList");
+    });
+  });
+
   // ── TodoWrite ──
 
   describe("pushTodoWrite", () => {
@@ -755,25 +848,30 @@ describe("StructuredOutputBuilder", () => {
       expect(builder.getBlocks()).toHaveLength(0);
     });
 
-    it("stays at its original position among other blocks", () => {
+    it("stays pinned at the end as new blocks are added", () => {
       const now = Date.now();
       builder.pushText("some output", now);
       builder.pushTodoWrite([
         { content: "Task A", status: "pending" },
       ], now + 100);
-      builder.pushText("more output", now + 200);
+      builder.pushSystemMessage("step completed", now + 200);
 
-      // Update the todo — should stay at index 1, not append to end
+      // New blocks insert before the todo — todo stays pinned last
+      let blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].kind).toBe("text");
+      expect(blocks[1].kind).toBe("system");
+      expect(blocks[2].kind).toBe("todoList");
+
+      // Update the todo in place — still pinned last
       builder.pushTodoWrite([
         { content: "Task A", status: "completed" },
       ], now + 300);
 
-      const blocks = builder.getBlocks();
+      blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
-      expect(blocks[0].kind).toBe("text");
-      expect(blocks[1].kind).toBe("todoList");
-      expect(blocks[2].kind).toBe("text");
-      expect((blocks[1] as TodoListBlock).todos[0].status).toBe("completed");
+      expect(blocks[2].kind).toBe("todoList");
+      expect((blocks[2] as TodoListBlock).todos[0].status).toBe("completed");
     });
 
     it("breaks context tool grouping", () => {
