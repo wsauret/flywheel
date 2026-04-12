@@ -10,7 +10,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@tui/*": ["./src/tui/*"]
+      "@tui/*": ["./src/tui/*"],
+      "@infra/*": ["./src/infra/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

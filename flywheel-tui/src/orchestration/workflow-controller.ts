@@ -73,7 +73,7 @@ export interface WorkflowController {
    * Start a workflow from a slash command.
    * Returns session data on success, or an error message.
    */
-  startWorkflow(command: string, description: string): StartWorkflowResult | { error: string }
+  startWorkflow(command: string, description: string, chatContext?: string): StartWorkflowResult | { error: string }
 
   /**
    * Start a single test step in isolation.
@@ -179,6 +179,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   function startWorkflow(
     command: string,
     description: string,
+    chatContext?: string,
   ): StartWorkflowResult | { error: string } {
     let queue
     let wfDeps
@@ -197,6 +198,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       queue,
       description,
       workflowDeps: wfDeps,
+      chatContext,
       onRunnerDone: handleRunnerDone,
       onRunnerError: handleRunnerError,
     })

@@ -20,6 +20,7 @@ import {
   type SessionListResult as PersistenceListResult,
 } from "./persistence";
 import type { Session } from "./schemas";
+import { toBudgetLimits } from "../../workflows/schemas";
 import { computeContextPercent } from "./budget-tracker-types.js";
 import { isValidTransition, type SessionState } from "./state-machine";
 import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
@@ -150,14 +151,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const now = new Date().toISOString();
     const budget = config.budget;
 
-    // Map config budget to session budget limits:
-    // - max_invocations: 0 stays 0 (BudgetTracker treats 0 as unlimited)
-    // - max_tokens: 0 → null (unlimited)
-    // - max_wall_clock_minutes: 0 → null (unlimited), >0 → ISO deadline
-    const wallClockDeadline = budget.max_wall_clock_minutes > 0
-      ? new Date(Date.now() + budget.max_wall_clock_minutes * 60_000).toISOString()
-      : null;
-
     const state = (initialState ?? "active") as SessionState;
 
     const sharedFields = {
@@ -167,11 +160,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       name: name ?? "",
       createdAt: now,
       totalCost: 0,
-      budgetLimits: {
-        max_invocations: budget.max_invocations,
-        max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
-        wall_clock_deadline: wallClockDeadline,
-      },
+      budgetLimits: toBudgetLimits(budget),
       budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0, context_prompt_tokens: 0, context_window: 0 },
     };
 

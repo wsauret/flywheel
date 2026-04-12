@@ -6,10 +6,10 @@
  * dispatcher and evaluator event handling here.
  */
 
-import { NDJSONParser } from "../../orchestration/engines/subprocess/ndjson-parser.js";
-import type { NDJSONEvent } from "../../orchestration/engines/subprocess/ndjson-parser.js";
+import { NDJSONParser } from "../../infra/ndjson-parser.js";
+import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 import type { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
-import { formatDisplayPath } from "../../infra/output/output-formatter.js";
+import { getToolDetail } from "../../infra/output/output-formatter.js";
 
 /** Parsed activity from a Claude NDJSON event. */
 export interface ActivityInfo {
@@ -168,8 +168,7 @@ function extractActivityInfo(data: Record<string, unknown>): ActivityInfo | null
     for (const block of content as Record<string, unknown>[]) {
       if (block.type === "tool_use" && typeof block.name === "string") {
         const input = block.input as Record<string, unknown> | undefined;
-        const detail = extractToolDetail(block.name, input);
-        return { name: block.name, detail };
+        return { name: block.name, detail: getToolDetail(block.name, input ?? {}) ?? "" };
       }
     }
     // Fall back to thinking blocks, then text blocks
@@ -188,8 +187,7 @@ function extractActivityInfo(data: Record<string, unknown>): ActivityInfo | null
   // Claude tool_use event (direct)
   if (data.type === "tool_use" && typeof data.name === "string") {
     const input = data.input as Record<string, unknown> | undefined;
-    const detail = extractToolDetail(data.name, input);
-    return { name: data.name, detail };
+    return { name: data.name, detail: getToolDetail(data.name, input ?? {}) ?? "" };
   }
 
   // Claude streaming content_block_delta with text_delta or thinking_delta
@@ -225,31 +223,3 @@ function extractLastMeaningfulLine(text: string): string | null {
   return null;
 }
 
-/**
- * Extract a short detail string from tool input for display.
- */
-function extractToolDetail(toolName: string, input?: Record<string, unknown>): string {
-  if (!input) return "";
-  if (input.file_path && typeof input.file_path === "string") {
-    const path = formatDisplayPath(input.file_path) ?? "";
-    if (toolName === "Read") {
-      const offset = input.offset as number | undefined;
-      const limit = input.limit as number | undefined;
-      if (offset != null || limit != null) {
-        const start = (offset ?? 0) + 1;
-        const end = limit != null ? start + limit - 1 : undefined;
-        const range = end != null ? `:${start}-${end}` : `:${start}+`;
-        return `${path}${range}`;
-      }
-    }
-    return path;
-  }
-  if (input.path && typeof input.path === "string") {
-    return formatDisplayPath(input.path) ?? "";
-  }
-  if (input.command && typeof input.command === "string") {
-    const cmd = input.command as string;
-    return cmd.length > 60 ? cmd.slice(0, 57) + "..." : cmd;
-  }
-  return "";
-}

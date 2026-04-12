@@ -2,10 +2,10 @@
  * NDJSON Tool Event Parser
  *
  * Extracts tool_use and tool_result records from Claude's NDJSON stream.
- * Shared by chat-tracing (TraceCollector) and trace-event-handler (EmitFn).
+ * Shared by trace-event-handler (EmitFn) for both workflow and chat modes.
  */
 
-import type { NDJSONEvent } from "./ndjson-parser";
+import type { NDJSONEvent } from "../../../infra/subprocess-types";
 
 // ---------------------------------------------------------------------------
 // Types

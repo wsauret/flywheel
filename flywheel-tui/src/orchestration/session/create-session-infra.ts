@@ -16,8 +16,10 @@ import type { BudgetTracker } from "./budget-tracker-types.js"
 import { createTraceWriter, type TraceWriter } from "./trace-writer"
 import { createTranscriptWriter, type TranscriptWriter } from "./transcript-writer"
 import { createTraceCollector, type TraceCollector } from "./trace-collector"
+import { createTraceEventHandler } from "../engines/subprocess/trace-event-handler"
 import type { FlywheelConfig } from "../config/schema"
-import type { EventBus } from "../../infra/event-bus"
+import type { EventBus, EmitFn, Unsubscribe } from "../../infra/event-bus"
+import type { BudgetLimits } from "../../workflows/schemas"
 import { extractContextUpdate, contextWindowForModel } from "../engines/providers/claude-context"
 
 // ---------------------------------------------------------------------------
@@ -32,6 +34,12 @@ export interface SessionInfraDeps {
   description: string
   /** Override the budget tracker (e.g. for testing or resume). */
   budgetTracker?: BudgetTracker
+  /** EventBus emitter — enables budget:metrics-changed and budget:exhausted emission. */
+  emitter?: EmitFn
+  /** Workflow/chat ID for budget event correlation. */
+  workflowId?: string
+  /** Budget limits — when provided, the tracker auto-checks exhaustion on cost updates. */
+  budgetLimits?: BudgetLimits
 }
 
 export interface SessionInfra {
@@ -48,7 +56,13 @@ export interface SessionInfra {
 export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
   const { sessionId, projectCwd, config, description } = deps
 
-  const budgetTracker = deps.budgetTracker ?? createBudgetTracker({ sessionId, baseDir: projectCwd })
+  const budgetTracker = deps.budgetTracker ?? createBudgetTracker({
+    sessionId,
+    baseDir: projectCwd,
+    emitter: deps.emitter,
+    workflowId: deps.workflowId,
+    budgetLimits: deps.budgetLimits,
+  })
 
   // Seed context window from config model so % calculation works before the
   // first "result" NDJSON event. The [1m] suffix (1M context) is only in the
@@ -84,20 +98,21 @@ export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
 // ---------------------------------------------------------------------------
 
 /**
- * Wire the shared budget + transcript EventBus subscriptions.
+ * Wire all infrastructure EventBus subscriptions: budget, transcript, tracing.
  *
- * Both WorkflowRunner (executor-factory) and ChatRunner (chat-session)
- * need identical budget/transcript wiring. Tracing is caller-specific
- * (workflow uses TraceEventHandler, chat uses feedChatEventToTrace).
- *
+ * Single call site for both workflow and chat modes. Callers pass their
+ * EventBus, emitter, workflowId, and the infra bundle from createSessionInfra.
  * Returns unsubscribe functions — caller appends to their own unsub list.
  */
 export function wireSessionSubscribers(
   bus: EventBus,
-  infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter">,
-): Array<() => void> {
-  const unsubs: Array<() => void> = []
+  emit: EmitFn,
+  workflowId: string,
+  infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">,
+): Unsubscribe[] {
+  const unsubs: Unsubscribe[] = []
 
+  // Budget: subprocess lifecycle + NDJSON cost/token/context tracking
   unsubs.push(
     bus.subscribeToType("subprocess:spawned", () => {
       infra.budgetTracker.onNewSubprocess()
@@ -112,6 +127,8 @@ export function wireSessionSubscribers(
       }
     }),
   )
+
+  // Transcript: NDJSON events → conversation log
   if (infra.transcriptWriter) {
     const tw = infra.transcriptWriter
     unsubs.push(
@@ -119,6 +136,19 @@ export function wireSessionSubscribers(
         tw.handleEvent(e.ndjsonEvent)
       }),
     )
+  }
+
+  // Tracing: NDJSON → trace events → spans
+  // TraceEventHandler converts subprocess NDJSON into trace:* FlywheelEvents.
+  // TraceCollector subscribes to those events and builds span trees.
+  if (infra.traceCollector) {
+    const traceHandler = createTraceEventHandler({ emit, workflowId })
+    unsubs.push(
+      bus.subscribeToType("subprocess:ndjson", (e) => {
+        traceHandler.handleEvent(e.ndjsonEvent)
+      }),
+    )
+    unsubs.push(...infra.traceCollector.subscribeToEvents(bus))
   }
 
   return unsubs

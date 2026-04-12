@@ -6,7 +6,7 @@
  * return data; the hook writes that data to signals.
  */
 
-import { createSignal } from "solid-js"
+import { createSignal, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { createChatController } from "../../orchestration/chat-controller.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
@@ -54,49 +54,61 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   })
 
   async function startChat(initialMessage?: string): Promise<void> {
-    setChatActive(true)
-    signals.setStatusLine("")
+    batch(() => {
+      setChatActive(true)
+      signals.setStatusLine("")
+    })
     metrics.resetMetrics()
 
     const result = await controller.startChat(initialMessage)
 
-    setChatActive(false)
-    if (result) {
-      signals.setForegroundId(result.sessionId)
-      services.setTerminalTitle(result.terminalTitle)
-    } else {
-      signals.setErrorMessage("Chat failed to start")
-    }
+    batch(() => {
+      setChatActive(false)
+      if (result) {
+        signals.setForegroundId(result.sessionId)
+        services.setTerminalTitle(result.terminalTitle)
+      } else {
+        signals.setErrorMessage("Chat failed to start")
+      }
+    })
   }
 
   async function resumeChat(sessionId: string): Promise<void> {
-    setChatActive(true)
-    signals.setStatusLine("")
+    batch(() => {
+      setChatActive(true)
+      signals.setStatusLine("")
+    })
     metrics.resetMetrics()
 
     const result = await controller.resumeChat(sessionId)
 
-    setChatActive(false)
-    if (result) {
-      signals.setForegroundId(result.sessionId)
-      services.setTerminalTitle(result.terminalTitle)
-    } else {
-      signals.setErrorMessage("Chat failed to resume")
-    }
+    batch(() => {
+      setChatActive(false)
+      if (result) {
+        signals.setForegroundId(result.sessionId)
+        services.setTerminalTitle(result.terminalTitle)
+      } else {
+        signals.setErrorMessage("Chat failed to resume")
+      }
+    })
   }
 
   function backgroundChat(): void {
     controller.backgroundChat(signals.foregroundId())
-    setChatActive(false)
-    signals.setForegroundId(undefined)
+    batch(() => {
+      setChatActive(false)
+      signals.setForegroundId(undefined)
+    })
   }
 
   function endChat(): void {
     const fgId = signals.foregroundId()
     const ended = controller.endChat(fgId)
     if (ended) {
-      setChatActive(false)
-      signals.setForegroundId(undefined)
+      batch(() => {
+        setChatActive(false)
+        signals.setForegroundId(undefined)
+      })
     }
   }
 

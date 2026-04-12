@@ -7,7 +7,6 @@ import { StepContextSchema } from "../queue/step-context";
 // ---------------------------------------------------------------------------
 
 export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"]);
-export type EvaluatorIssueSeverity = z.infer<typeof EvaluatorIssueSeverityEnum>;
 
 export const EvaluatorIssueCategoryEnum = z.enum([
   "test_failure",
@@ -17,7 +16,6 @@ export const EvaluatorIssueCategoryEnum = z.enum([
   "incomplete",
   "other",
 ]);
-export type EvaluatorIssueCategory = z.infer<typeof EvaluatorIssueCategoryEnum>;
 
 export const EvaluatorIssueSchema = z.object({
   description: z.string().min(1, {
@@ -26,8 +24,6 @@ export const EvaluatorIssueSchema = z.object({
   severity: EvaluatorIssueSeverityEnum,
   category: EvaluatorIssueCategoryEnum,
 }).strict();
-
-export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>;
 
 // ---------------------------------------------------------------------------
 // EvaluatorVerdictSchema (handoff written by evaluator subprocess)
@@ -60,8 +56,6 @@ export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
   decisions: true,
 });
 
-export type EvaluatorHandoffData = z.infer<typeof EvaluatorHandoffDataSchema>;
-
 // ---------------------------------------------------------------------------
 // EvaluatorInputSchema
 // ---------------------------------------------------------------------------
@@ -89,4 +83,3 @@ export const EvaluatorResultSchema = EvaluatorVerdictSchema
   .extend({ suggestions: z.array(z.string()).optional() })
   .strip();
 
-export type { EvaluatorResult } from "../../infra/workflow-types";

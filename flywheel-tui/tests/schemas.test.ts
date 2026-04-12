@@ -2,10 +2,10 @@ import { describe, it, expect } from "bun:test";
 import { createEmptyStepContext } from "../src/workflows/queue/step-context";
 import {
   DispatcherInputSchema,
-  DispatcherDecisionSchema,
   WorkflowInfoSchema,
   DispatcherConfigSchema,
 } from "../src/workflows/dispatcher/schemas";
+import { DispatcherDecisionSchema } from "../src/infra/workflow-types";
 import {
   EvaluatorInputSchema,
   EvaluatorResultSchema,
@@ -133,16 +133,9 @@ describe("DispatcherDecisionSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("requires worker_config", () => {
+  it("accepts worker_config with tool_scoping", () => {
     const workerConfig = {
-      model_override: null,
-      timeout_minutes: 30,
-      retry_on_failure: true,
-      max_retries: 3,
-      iteration_budget: 10,
       tool_scoping: { read: true, bash: true, write: true, edit: true },
-      parallel: false,
-      parallel_variants: null,
     };
     const result = DispatcherDecisionSchema.parse({
       ...validDecision,
@@ -988,39 +981,12 @@ describe("SessionBudgetStatusSchema", () => {
 
 describe("WorkerConfigSchema", () => {
   const valid = {
-    model_override: null,
-    timeout_minutes: 30,
-    retry_on_failure: true,
-    max_retries: 3,
-    iteration_budget: 10,
     tool_scoping: { read: true, bash: true, write: true, edit: true },
-    parallel: false,
-    parallel_variants: null,
   };
 
   it("round-trips valid data", () => {
     const result = WorkerConfigSchema.parse(valid);
     expect(result).toEqual(valid);
-  });
-
-  it("accepts model_override as string", () => {
-    const result = WorkerConfigSchema.parse({
-      ...valid,
-      model_override: "claude-opus-4-20250514",
-    });
-    expect(result.model_override).toBe("claude-opus-4-20250514");
-  });
-
-  it("accepts parallel_variants array", () => {
-    const result = WorkerConfigSchema.parse({
-      ...valid,
-      parallel_variants: [
-        { name: "variant-a", prompt: "approach A" },
-        { name: "variant-b", prompt: "approach B" },
-      ],
-    });
-    expect(result.parallel_variants).toHaveLength(2);
-    expect(result.parallel_variants![0].name).toBe("variant-a");
   });
 
   it("strips unknown fields", () => {

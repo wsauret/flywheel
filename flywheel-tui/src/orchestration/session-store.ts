@@ -60,14 +60,15 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     priorBlocks?: AnyBlock[]
     subprocessCwd?: string
     workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
+    chatContext?: string
     onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): string {
     const { sessionId, queue, description, priorBlocks } = opts
 
-    const overrides = (opts.subprocessCwd || opts.workflowDeps)
-      ? { subprocessCwd: opts.subprocessCwd, workflowDeps: opts.workflowDeps }
+    const overrides = (opts.subprocessCwd || opts.workflowDeps || opts.chatContext)
+      ? { subprocessCwd: opts.subprocessCwd, workflowDeps: opts.workflowDeps, chatContext: opts.chatContext }
       : undefined
 
     const runner = createWorkflowRunner({

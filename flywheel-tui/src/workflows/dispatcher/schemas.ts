@@ -25,16 +25,10 @@ const PlanStepInputSchema = z.object({
   feature: z.string().optional(),
 }).strip();
 
-export type PlanStepInput = z.infer<typeof PlanStepInputSchema>;
-
 const PlanInputSchema = z.object({
   /** Plan steps (replaces steps). */
   steps: z.array(PlanStepInputSchema),
 }).strip();
-
-export type PlanInput = z.infer<typeof PlanInputSchema>;
-
-// Legacy step-based schemas have been deleted — only step-based PlanInputSchema remains.
 
 // ---------------------------------------------------------------------------
 // WorkflowInfoSchema — current workflow step context for the dispatcher
@@ -89,17 +83,7 @@ export const DispatcherInputSchema = z.object({
 
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 
-// ---------------------------------------------------------------------------
-// Re-export canonical schema and type from infra (single source of truth — ADR-006)
-// ---------------------------------------------------------------------------
-
-import {
-  DispatcherDecisionSchema,
-  MutationRequestSchema,
-} from "../../infra/workflow-types";
-
-export { DispatcherDecisionSchema }
-export type { DispatcherDecision } from "../../infra/workflow-types";
+import { MutationRequestSchema } from "../../infra/workflow-types";
 
 // ---------------------------------------------------------------------------
 // DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess

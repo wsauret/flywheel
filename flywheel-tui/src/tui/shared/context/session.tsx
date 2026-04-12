@@ -11,7 +11,10 @@
 
 import { createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper"
+import { Log } from "../../../infra/log.js"
 import type { SessionManager, SessionSummary, SessionListResult } from "../../../orchestration/session/manager"
+
+const log = Log.create({ service: "session-context" })
 import type { WorktreeManager } from "../../../orchestration/session/worktree-manager.js"
 
 
@@ -70,8 +73,8 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
     const pollInterval = setInterval(() => {
       try {
         refreshList()
-      } catch {
-        // Non-fatal — don't crash on transient disk errors
+      } catch (err) {
+        log.warn("session list poll failed", { error: String(err) })
       }
     }, 5_000)
     onCleanup(() => clearInterval(pollInterval))

@@ -67,8 +67,14 @@ export async function handleGateStep(
     if (answer === GATE_STOP) return "stop";
     if (answer === GATE_PAUSE) return "pause";
     return "continue";
-  } catch {
-    log.info("gate step dismissed by user", { stepId: step.id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const isDismissal = message.includes("dismiss") || message.includes("cancel") || message.includes("abort")
+    if (isDismissal) {
+      log.info("gate step dismissed by user", { stepId: step.id })
+    } else {
+      log.error("gate step failed due to internal error", { stepId: step.id, error: message })
+    }
     return "stop";
   }
 }

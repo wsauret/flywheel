@@ -146,7 +146,7 @@ export function renderDispatcherHandoffInstruction(handoffPath: string): string 
 - **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance; 8 KB cap.
 - **evaluation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: \`acceptance_criteria\` (string[]), \`required_tests\` (boolean), \`custom_checks\` (string[]), \`required_outputs\` (string[]).
 - **reasoning** (optional): Why this dispatch decision was made.
-- **worker_config** (optional): Override worker configuration.
+- **worker_config** (optional): Tool restrictions. Object with: \`tool_scoping\` (\`{ read, bash, write, edit }\`).
 
 ### Rules
 

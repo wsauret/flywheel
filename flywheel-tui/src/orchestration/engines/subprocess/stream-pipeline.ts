@@ -7,10 +7,10 @@
  */
 
 import type { SpawnOptions, SpawnResult } from "./spawner.js";
-import type { SubprocessResult } from "./schemas.js";
-import { TieredBuffer } from "./buffer.js";
+import type { SubprocessResult } from "../../../infra/subprocess-types.js";
+import { TieredBuffer } from "../../../infra/tiered-buffer.js";
 import { CompletionDetector } from "./completion.js";
-import { NDJSONParser } from "./ndjson-parser.js";
+import { NDJSONParser } from "../../../infra/ndjson-parser.js";
 import { createSubprocessTimeout, minutesToMs, clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES } from "./timeout.js";
 import {
   createStreamReaderSet,

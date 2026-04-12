@@ -14,6 +14,7 @@ import { SplitBorder } from "./shared/ui/border"
 import { Spinner } from "@tui/shared/components/spinner"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { SessionModal } from "./session-modal"
+import { ToastDisplay } from "@tui/shared/components/toast-display"
 import { createSessionStore } from "../orchestration/session-store"
 import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
 import { formatElapsed } from "../infra/format.js"
@@ -330,6 +331,9 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             : " \u00b7 Ctrl+B sessions"}
         </text>
       </box>
+
+      {/* Toast overlay */}
+      <ToastDisplay headerHeight={stepDisplay().visible.length > 0 ? 4 : 3} />
 
       {/* Session modal overlay */}
       <Show when={sessionModal.sessionsModalOpen()}>

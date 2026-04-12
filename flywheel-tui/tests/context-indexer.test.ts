@@ -53,7 +53,6 @@ describe("ContextIndexer", () => {
     const indexer = new ContextIndexer(projectCwd, {
       standardsDir: "custom/standards/",
       conventionFiles: ["CUSTOM.md"],
-      refreshCadenceMs: 120_000,
     });
     expect(indexer).toBeDefined();
     indexer.dispose();

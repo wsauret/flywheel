@@ -40,6 +40,21 @@ export const BudgetLimitsSchema = z.object({
 
 export type BudgetLimits = z.infer<typeof BudgetLimitsSchema>;
 
+/** Convert config budget (0 = unlimited) to BudgetLimits (null = unlimited). */
+export function toBudgetLimits(budget: {
+  max_invocations: number;
+  max_tokens: number;
+  max_wall_clock_minutes: number;
+}): BudgetLimits {
+  return {
+    max_invocations: budget.max_invocations,
+    max_tokens: budget.max_tokens > 0 ? budget.max_tokens : null,
+    wall_clock_deadline: budget.max_wall_clock_minutes > 0
+      ? new Date(Date.now() + budget.max_wall_clock_minutes * 60_000).toISOString()
+      : null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // BudgetUsageSchema — usage only (WP2)
 // ---------------------------------------------------------------------------
@@ -82,6 +97,8 @@ export const AvailableContextSchema = z.object({
   conventions: z.array(ContextEntrySchema).max(20),
   standards: z.array(ContextEntrySchema).max(20),
   learnings: z.array(ContextEntrySchema).max(20),
+  /** Recent chat conversation that preceded this workflow launch. */
+  chatHistory: z.string().optional(),
 }).strip();
 
 export type AvailableContext = z.infer<typeof AvailableContextSchema>;

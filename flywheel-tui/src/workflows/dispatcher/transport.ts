@@ -1,4 +1,5 @@
-import type { DispatcherInput, DispatcherDecision } from "./schemas";
+import type { DispatcherInput } from "./schemas";
+import type { DispatcherDecision } from "../../infra/workflow-types";
 
 // TODO(feat-flywheel-cli-intelligence): Implementation in Plan 3
 

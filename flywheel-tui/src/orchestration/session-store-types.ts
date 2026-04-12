@@ -78,6 +78,7 @@ export interface SessionStore {
     priorBlocks?: AnyBlock[]
     subprocessCwd?: string
     workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
+    chatContext?: string
     onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void

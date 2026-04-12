@@ -18,7 +18,7 @@ import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { EmptyBorder } from "@tui/shared/ui/border"
 import { createTextAttributes } from "@opentui/core"
-import { formatElapsed } from "../../../../../infra/format.js"
+import { formatElapsed } from "@infra/format.js"
 import type { ThinkingBlock as ThinkingBlockType } from "@tui/types"
 
 const COLLAPSED_LINES = 3

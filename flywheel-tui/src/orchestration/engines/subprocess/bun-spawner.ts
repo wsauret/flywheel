@@ -113,9 +113,9 @@ export class BunProcessSpawner implements ProcessSpawner {
       // Match the original error-handling: validation / spawn failures
       // are wrapped in a resolved SpawnResult with an error SubprocessResult.
       const { buildErrorResult } = await import("./spawn-helpers.js");
-      const { TieredBuffer } = await import("./buffer.js");
+      const { TieredBuffer } = await import("../../../infra/tiered-buffer.js");
       const { CompletionDetector } = await import("./completion.js");
-      const { NDJSONParser } = await import("./ndjson-parser.js");
+      const { NDJSONParser } = await import("../../../infra/ndjson-parser.js");
       const { createSubprocessTimeout } = await import("./timeout.js");
       const { resolveHandoffPath } = await import("./spawn-helpers.js");
 

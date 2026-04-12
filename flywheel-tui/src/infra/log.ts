@@ -40,13 +40,13 @@ export namespace Log {
   }
 
   export type Logger = {
-    debug(message?: any, extra?: Record<string, any>): void
-    info(message?: any, extra?: Record<string, any>): void
-    warn(message?: any, extra?: Record<string, any>): void
-    error(message?: any, extra?: Record<string, any>): void
+    debug(message?: unknown, extra?: Record<string, unknown>): void
+    info(message?: unknown, extra?: Record<string, unknown>): void
+    warn(message?: unknown, extra?: Record<string, unknown>): void
+    error(message?: unknown, extra?: Record<string, unknown>): void
     tag(key: string, value: string): Logger
     clone(): Logger
-    time(message: string, extra?: Record<string, any>): {
+    time(message: string, extra?: Record<string, unknown>): {
       stop(): void
       [Symbol.dispose](): void
     }
@@ -134,7 +134,7 @@ export namespace Log {
 
   let last = Date.now()
 
-  export function create(tags?: Record<string, any>): Logger {
+  export function create(tags?: Record<string, unknown>): Logger {
     tags = tags || {}
 
     const service = tags["service"]
@@ -143,7 +143,7 @@ export namespace Log {
       if (cached) return cached
     }
 
-    function build(message: any, extra?: Record<string, any>) {
+    function build(message: any, extra?: Record<string, unknown>) {
       const prefix = Object.entries({ ...tags, ...extra })
         .filter(([_, value]) => value !== undefined && value !== null)
         .map(([key, value]) => {
@@ -162,16 +162,16 @@ export namespace Log {
     }
 
     const result: Logger = {
-      debug(message?: any, extra?: Record<string, any>) {
+      debug(message?: unknown, extra?: Record<string, unknown>) {
         if (shouldLog("DEBUG")) write("DEBUG " + build(message, extra))
       },
-      info(message?: any, extra?: Record<string, any>) {
+      info(message?: unknown, extra?: Record<string, unknown>) {
         if (shouldLog("INFO")) write("INFO  " + build(message, extra))
       },
-      warn(message?: any, extra?: Record<string, any>) {
+      warn(message?: unknown, extra?: Record<string, unknown>) {
         if (shouldLog("WARN")) write("WARN  " + build(message, extra))
       },
-      error(message?: any, extra?: Record<string, any>) {
+      error(message?: unknown, extra?: Record<string, unknown>) {
         if (shouldLog("ERROR")) write("ERROR " + build(message, extra))
       },
       tag(key: string, value: string) {
@@ -181,7 +181,7 @@ export namespace Log {
       clone() {
         return Log.create({ ...tags })
       },
-      time(message: string, extra?: Record<string, any>) {
+      time(message: string, extra?: Record<string, unknown>) {
         const now = Date.now()
         result.info(message, { status: "started", ...extra })
         function stop() {

@@ -55,7 +55,7 @@ Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 | `errorMessage(err)` | `workflows/shared/error-message.ts` |
 | `formatDuration()`, `formatCost()` | `tui/format.ts` |
 | `SubprocessTransportBase` | `workflows/shared/subprocess-transport-base.ts` |
-| `log` | `workflows/shared/log.ts` |
+| `log` | `infra/log.ts` |
 | `atomicWriteFile()` | `workflows/shared/atomic-write.ts` |
 | `DebouncedWriter` | `workflows/shared/debounced-writer.ts` |
 | `raceAbort()` | `workflows/queue/abort-utils.ts` |
@@ -69,9 +69,9 @@ Colocate single-use code. Move to `shared/` only when a second consumer appears.
 
 New behavior via registration, not switch edits:
 - Step types → `registerScaffolding()` in `steps/register-all.ts`
-- Commands → `CommandRegistry` in `tui/hooks/command-registry.ts`
+- Commands → `CommandRegistry` in `orchestration/command-registry.ts`
 - Output formatting → Map dispatch in `adapters/output-formatter.ts`
-- Engines → `registerEngine()` in `orchestration/engines/core/registry.ts`
+- Engines → module-private `register()` at import time in `orchestration/engines/core/registry.ts`
 
 Hooks are step-scoped (live in the step folder, composed via `createCompositeHook`).
 

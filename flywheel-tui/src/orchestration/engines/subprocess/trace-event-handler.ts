@@ -13,7 +13,7 @@
  * Single-threaded assumption: same as BudgetTracker.
  */
 
-import type { NDJSONEvent } from "./ndjson-parser";
+import type { NDJSONEvent } from "../../../infra/subprocess-types";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events";
 import type { EmitFn } from "../../../infra/event-bus";
 import { truncateField } from "../../../infra/trace-types";

@@ -69,6 +69,8 @@ export type EvaluatorFn = (
   workerOutput: string,
   evaluationCriteria?: unknown | null,
   handoffData?: Record<string, unknown> | null,
+  /** The full dispatcher-crafted task prompt, for richer evaluator context. */
+  taskContent?: string,
 ) => Promise<EvalResult>;
 
 /** Worker: executes a step with a prompt */

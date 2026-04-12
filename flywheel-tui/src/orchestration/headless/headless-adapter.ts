@@ -81,11 +81,6 @@ const EVENT_HANDLERS = {
   "evaluator:revision-requested": { minLevel: "normal", format: (e) => `  Revision requested (attempt ${e.revisionAttempt}/${e.maxRevisions}): ${e.reason}` },
   "evaluator:output":      { minLevel: "verbose", format: null },
 
-  // ── Question ──
-  "question:asked":        { minLevel: "normal",  format: (e) => `  Question asked (${e.questions.length} question(s))` },
-  "question:replied":      { minLevel: "normal",  format: () => `  Question replied` },
-  "question:rejected":     { minLevel: "normal",  format: () => `  Question rejected` },
-
   // ── Budget ──
   "budget:metrics-changed": { minLevel: "verbose", format: (e) => `  Budget: ${e.tokens} tokens, $${e.cost.toFixed(4)}` },
   "budget:exhausted":      { minLevel: "minimal", format: (e) => `  Budget EXHAUSTED: ${e.reason}` },

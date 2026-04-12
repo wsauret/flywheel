@@ -7,7 +7,7 @@ import { createBudgetTracker } from "../src/orchestration/session/budget-tracker
 import { createSession, readSession } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
 import type { BudgetLimits } from "../src/workflows/schemas";
-import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
+import type { NDJSONEvent } from "../src/infra/subprocess-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

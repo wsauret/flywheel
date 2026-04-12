@@ -156,11 +156,6 @@ export class OpenTUIAdapter extends BaseEventConsumer {
         this.ndjsonPipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
         break;
 
-      case "question:asked":
-      case "question:replied":
-      case "question:rejected":
-        break;
-
       case "budget:metrics-changed":
         // Metrics updates handled by workflow-runner's typed subscription
         break;

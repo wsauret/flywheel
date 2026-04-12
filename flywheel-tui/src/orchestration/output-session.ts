@@ -15,7 +15,7 @@
  * - `onFlush` is called on every 16ms flush tick. Use for display-refresh work (budget metrics, persistence).
  */
 
-import { NDJSONParser } from "./engines/subprocess/ndjson-parser"
+import { NDJSONParser } from "../infra/ndjson-parser"
 import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
 import { StructuredEventParser } from "../infra/output/structured-event-parser"
 import type { ModelActivity } from "../infra/events"

@@ -10,13 +10,11 @@
  * - Feeds through 3-tier buffer system
  */
 
-import { TieredBuffer } from "./buffer";
-import type { NDJSONEventType, NDJSONEvent } from "../../../infra/subprocess-types";
+import { TieredBuffer } from "./tiered-buffer";
+import type { NDJSONEventType, NDJSONEvent } from "./subprocess-types";
 
 /** Maximum line length before flushing as raw text (1MB). */
 export const MAX_LINE_LENGTH = 1_000_000;
-
-export type { NDJSONEventType, NDJSONEvent } from "../../../infra/subprocess-types";
 
 /** Callback for parsed NDJSON events. */
 export type NDJSONEventHandler = (event: NDJSONEvent) => void;

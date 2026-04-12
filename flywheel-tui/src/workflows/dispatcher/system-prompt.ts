@@ -14,19 +14,22 @@ export function buildDispatcherSystemPrompt(): string {
 ## Input
 
 JSON object with:
-- \`plan.steps[]\`: Steps with name and steps
+- \`plan.steps[]\`: Steps with title, description, acceptanceCriteria, fileReferences, and feature
 - \`state.completed_steps[]\`, \`state.current_step_index\`: Execution progress (0-based)
 - \`workflow_id\`: Execution ID for traceability
 - \`workflow\`: Step context (\`workflow.name\`, \`workflow.step_number\`, \`workflow.total_steps\`, \`workflow.step_description\`)
-- \`last_worker_result\`: Previous step results (step, status, output_summary, artifacts_produced, tests_passed)
+- \`last_worker_result\`: Previous step results (step, status, output_summary, artifacts_produced, tests_passed, decisions, warnings)
 - \`config\`: Runtime config (\`config.max_eval_cycles\`, \`config.worktree_path\`, \`config.project_cwd\`, \`config.subprocess_model\`, \`config.dispatcher_model\`)
 - \`session_budget\`: Remaining budget (\`session_budget.invocations_remaining\`, token_budget_remaining, wall_clock_deadline)
-- \`available_context\`: Metadata for conventions, standards, and learnings (name, path, summary each)
+- \`available_context\`: Metadata for conventions, standards, and learnings (name, path, summary each). May include \`chatHistory\` — a recent conversation between the user and assistant that preceded this workflow. Use it to understand intent, constraints, and decisions already made.
 - \`step_context\`: Accumulated decisions, issues, and artifacts from previous steps (cumulative_decisions, cumulative_issues, cumulative_artifacts, cumulative_warnings, step_count)
 
 ### Context Injection
 
-\`available_context\` provides metadata (Level 1). Use \`context_to_inline\` for critical constraints to inject into the worker prompt — order by importance, most critical first; 8 KB cap (Level 2, controller-injected before spawn). Use \`context_files\` for reference material the worker reads on demand (Level 3, worker reads on demand). Do not confuse them.
+\`available_context\` provides metadata (Level 1). Use \`context_to_inline\` and \`context_files\` to give the worker what it needs:
+
+- **\`context_to_inline\`** (Level 2): Constraints the worker MUST follow — project conventions, API contracts, schema definitions. Inline when violating the constraint would fail evaluation. Order by importance, most critical first; 8 KB cap.
+- **\`context_files\`** (Level 3): Code the worker needs for implementation details. Reference when the worker can succeed by reading the file at the start of its task.
 
 ## Output
 
@@ -47,15 +50,8 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
   },
   "reasoning": <string>,           // (optional) Your prompt strategy rationale
   "warnings": [<string>],          // (optional) risks or concerns for this step
-  "worker_config": {               // (optional) Override defaults when needed
-    "model_override": <string|null>,
-    "timeout_minutes": <number>,
-    "retry_on_failure": <boolean>,
-    "max_retries": <number>,
-    "iteration_budget": <number>,     // When set, mention the iteration budget in task_content
-    "tool_scoping": { "read": <boolean>, "bash": <boolean>, "write": <boolean>, "edit": <boolean> },
-    "parallel": <boolean>,
-    "parallel_variants": [{ "name": <string>, "prompt": <string> }]
+  "worker_config": {               // (optional) Restrict worker tools when the step doesn't need full access
+    "tool_scoping": { "read": <boolean>, "bash": <boolean>, "write": <boolean>, "edit": <boolean> }
   },
   "mutation_requests": [             // (optional) Queue mutations to adapt the workflow
     {
@@ -81,6 +77,16 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
 2. Include all relevant file paths in \`context_files\`.
 3. Output valid JSON only.
 4. \`evaluation_criteria\` must be ACHIEVABLE and VERIFIABLE from the worker's output alone. Do NOT include criteria about specific file paths (the worker decides where to write), specific number of steps (the worker decides how to structure work), or anything that requires filesystem inspection. Focus on WHAT the output should contain, not WHERE it should be or HOW it should be structured.
+
+## Prompt Crafting
+
+When writing \`task_content\`:
+- Lead with the success state — what "done" looks like for this step.
+- State the key constraint the worker must not violate.
+- Reference what the previous step produced (from \`last_worker_result\`) so the worker builds on it.
+- Restate acceptance criteria in the worker's terms — the worker does not see \`evaluation_criteria\`.
+- For early steps (1-2), emphasize codebase discovery and convention reading. For late steps, emphasize focus and regression avoidance.
+- Be specific about output shape when it matters (e.g., "return \`{ data, total, page, limit }\`").
 
 ## Queue Mutations (optional)
 
@@ -117,13 +123,10 @@ Rules:
     ],
     "required_tests": true,
     "custom_checks": ["Run full test suite — zero failures"],
-    "required_outputs": ["src/routes/users.ts", "tests/routes/users.test.ts"]
+    "required_outputs": ["Paginated GET /users endpoint", "Pagination test coverage"]
   },
   "reasoning": "Step 1 completed models successfully. Inlining API standards since they govern endpoint design. Budget is healthy (8 invocations left) so no constraints needed.",
-  "warnings": ["Previous step modified src/db/queries.ts — verify no conflicts before editing."],
-  "worker_config": {
-    "timeout_minutes": 30
-  }
+  "warnings": ["Previous step modified src/db/queries.ts — verify no conflicts before editing."]
 }
 \`\`\`
 `;

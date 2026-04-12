@@ -1,4 +1,5 @@
-import type { EvaluatorInput, EvaluatorResult } from "./schemas";
+import type { EvaluatorInput } from "./schemas";
+import type { EvaluatorResult } from "../../infra/workflow-types";
 
 // TODO(feat-flywheel-cli-intelligence): Implementation in Plan 3
 

@@ -8,7 +8,7 @@
  * `ExecutionStatus.interrupted` = cancellation, NOT a SubprocessFailureReason kind.
  */
 
-import type { SubprocessFailureReason } from "./schemas";
+import type { SubprocessFailureReason } from "../../../infra/subprocess-types";
 import { RateLimitDetector } from "./rate-limit";
 
 // ---------------------------------------------------------------------------

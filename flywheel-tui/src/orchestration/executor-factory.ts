@@ -14,7 +14,6 @@ import type { StepExecutor } from "../workflows/queue/executor-types"
 import { createQueuePersistence } from "../workflows/queue/persistence"
 import { createGuardrails } from "../workflows/queue/guardrails"
 import { ContextIndexer } from "./memory/indexer"
-import { createTraceEventHandler } from "./engines/subprocess/trace-event-handler"
 import { createWarmPools } from "./engines/pool/create-warm-pools"
 import type { WarmPool } from "./engines/pool/warm-pool"
 import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
@@ -27,8 +26,6 @@ import { createObserverChain, createToolFailureObserver, createNoActionObserver 
 import { createDoomLoopObserver } from "./engines/doom-loop"
 import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper"
 import type { EmitFn, EventBus, Unsubscribe } from "../infra/event-bus"
-import type { BudgetTracker } from "./session/budget-tracker-types.js"
-import type { TranscriptWriter } from "./session/transcript-writer"
 import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue"
 import type { SpawnResult } from "./engines/subprocess/spawner"
@@ -57,14 +54,14 @@ export interface CreateExecutorInput {
   projectCwd: string
   /** Override subprocess cwd (for /test, worktrees) */
   subprocessCwd?: string
-  /** Budget tracker (already created in the runner) */
-  budgetTracker: BudgetTracker
-  /** Transcript writer (optional, gated by tracing config) */
-  transcriptWriter: TranscriptWriter | null
+  /** Session infrastructure (budget, transcript, tracing) — created by the runner. */
+  infra: Pick<import("./session/create-session-infra").SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
   /** Injection queue for turn-boundary message delivery */
   injectionQueue: InjectionQueue
   /** Optional context indexer override */
   contextIndexer?: ContextIndexer
+  /** Recent chat conversation preceding this workflow. */
+  chatContext?: string
 }
 
 export interface CreateExecutorResult {
@@ -87,12 +84,13 @@ export interface CreateExecutorResult {
  * Extracted from workflow-runner.ts run() to keep that function focused on
  * execution lifecycle (title generation, running, finalization, cleanup).
  */
-export function createExecutor(input: CreateExecutorInput): CreateExecutorResult {
+export async function createExecutor(input: CreateExecutorInput): Promise<CreateExecutorResult> {
   const {
     deps, emit, eventBus, workflowId, sessionId, queue, description,
-    projectCwd, subprocessCwd, budgetTracker, transcriptWriter,
-    injectionQueue, contextIndexer: contextIndexerOverride,
+    projectCwd, subprocessCwd, infra,
+    injectionQueue, contextIndexer: contextIndexerOverride, chatContext,
   } = input
+  const { budgetTracker } = infra
 
   const eventUnsubs: Unsubscribe[] = []
 
@@ -127,31 +125,19 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
 
   // ── 6. Context indexer ──
   const contextIndexer = contextIndexerOverride ?? new ContextIndexer(projectCwd)
+  await contextIndexer.startIndexing()
 
-  // ── 7. Trace event handler ──
-  const traceEventHandler = deps.config.tracing.enabled
-    ? createTraceEventHandler({ emit, workflowId })
-    : null
-
-  // ── 8. Observer chain ──
+  // ── 7. Observer chain ──
   const observerChain = createObserverChain([
     createDoomLoopObserver(),
     createToolFailureObserver(),
     createNoActionObserver(),
   ])
 
-  // ── 9. Wire EventBus subscribers ──
-  // Budget + transcript: shared wiring (ADR-006: single source of truth)
-  eventUnsubs.push(...wireSessionSubscribers(eventBus, { budgetTracker, transcriptWriter }))
+  // ── 8. Wire EventBus subscribers ──
+  // Budget, transcript, tracing — unified wiring (ADR-006: single source of truth)
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, workflowId, infra))
 
-  // Tracing: NDJSON events are converted to trace spans
-  if (traceEventHandler) {
-    eventUnsubs.push(
-      eventBus.subscribeToType("subprocess:ndjson", (e) => {
-        traceEventHandler.handleEvent(e.ndjsonEvent)
-      }),
-    )
-  }
   // Observers: NDJSON events mapped to engine events, fed to observer chain
   eventUnsubs.push(
     eventBus.subscribeToType("subprocess:ndjson", (e) => {
@@ -173,7 +159,7 @@ export function createExecutor(input: CreateExecutorInput): CreateExecutorResult
     { deps, emit, eventBus, workflowId, sessionId },
     { dispatcherTransport, evaluatorTransport, subprocessPool, observerChain },
     { queue, projectCwd, subprocessCwd, contextIndexer, sessionObjective: description },
-    { injectionQueue, externalHooks },
+    { injectionQueue, externalHooks, chatContext },
   )
 
   // ── 12. Guardrails ──

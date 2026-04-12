@@ -195,7 +195,7 @@ export function createSubprocessCallback(
       onStderr: (chunk: string) => {
         emit("subprocess:output", { workflowId: workflowId, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
       },
-      onNDJSONEvent: (event: import("./engines/subprocess/ndjson-parser").NDJSONEvent) => {
+      onNDJSONEvent: (event: import("../infra/subprocess-types").NDJSONEvent) => {
         // Emit to EventBus — subscribers in workflow-runner handle budget, tracing, transcript, observers
         emit("subprocess:ndjson", { workflowId: workflowId, ndjsonEvent: event });
       },

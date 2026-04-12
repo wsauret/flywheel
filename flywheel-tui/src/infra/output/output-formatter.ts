@@ -173,6 +173,10 @@ const CONTEXT_LINES = 3;
  * Generate a unified diff from Edit tool's old_string → new_string.
  * Reads the file to produce context lines around the change.
  * Falls back to a minimal no-context diff if the file can't be read.
+ *
+ * Note: uses fs.readFileSync — a pragmatic boundary deviation. The diff
+ * needs file content for context lines; threading a readFile callback
+ * through 3 layers would be worse than the I/O here.
  */
 function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: string = process.cwd()): string {
   try {

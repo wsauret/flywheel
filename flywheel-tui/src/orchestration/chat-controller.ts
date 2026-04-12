@@ -307,7 +307,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
         initialTokens: entry.tokens || undefined,
         startedAt: entry.startedAt || undefined,
         contextPercent: entry.contextPercent || undefined,
-      }).catch(() => {
+      }).catch((err) => {
+        log.error("chat auto-resume failed — message dropped", { error: extractErrorMessage(err) })
         startup = { phase: "idle" }
       })
       return true

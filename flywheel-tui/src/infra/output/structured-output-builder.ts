@@ -24,6 +24,13 @@ import type {
   UserMessageBlock,
 } from "../output-blocks.js";
 import { ContextGroupTracker, isContextTool } from "./context-group-tracker.js";
+import {
+  contentInsertionIndex,
+  insertBlockBeforePinned,
+  rebuildAgentIndex,
+  findTodoIndex,
+  appendToolToAgentChildren,
+} from "./structured-output-helpers.js";
 
 const BLOCKS_CAP = 20_000;
 const AGENT_CHILDREN_CAP = 50;
@@ -130,8 +137,8 @@ export class StructuredOutputBuilder {
     }
 
     // Indices shifted — rebuild lookups
-    this.rebuildAgentIndex();
-    this.rebuildTodoIndex();
+    rebuildAgentIndex(this.blocks, this.agentIndexById);
+    this.todoBlockIndex = findTodoIndex(this.blocks);
     this.dirty = true;
     return true;
   }
@@ -186,7 +193,7 @@ export class StructuredOutputBuilder {
       // All done — remove the block if it exists
       if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
         this.blocks.splice(this.todoBlockIndex, 1);
-        this.rebuildAgentIndex();
+        rebuildAgentIndex(this.blocks, this.agentIndexById);
         this.todoBlockIndex = -1;
       }
       this.markDirty();
@@ -214,31 +221,19 @@ export class StructuredOutputBuilder {
     return this.appendToolToAgent(agentId, tool);
   }
 
-  /** Internal: append a tool to a specific agent's children. Returns true if successful. */
   private appendToolToAgent(agentId: string, tool: ToolBlock): boolean {
-    const agentIdx = this.agentIndexById.get(agentId);
-    if (agentIdx === undefined) return false;
-
-    const agent = this.blocks[agentIdx] as AgentBlock;
-    // Create a new array reference so SolidJS <For> detects the change.
-    // Mutating in place keeps the same reference, which <For> ignores.
-    let children = [...agent.children, tool];
-    if (children.length > AGENT_CHILDREN_CAP) {
-      children = children.slice(-AGENT_CHILDREN_CAP);
+    const ok = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
+    if (ok) {
+      this.markDirty();
+      this.onAgentActivity?.(agentId);
     }
-    const latestChild = `${tool.name}: ${tool.detail}`;
-
-    this.blocks[agentIdx] = { ...agent, children, latestChild };
-
-    this.markDirty();
-    this.onAgentActivity?.(agentId);
-    return true;
+    return ok;
   }
 
   startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
 
-    const agent = {
+    const agent: AgentBlock = {
       kind: "agent",
       id,
       agentLabel,
@@ -346,43 +341,14 @@ export class StructuredOutputBuilder {
 
   // ── Private helpers ──
 
-  /**
-   * Index where new content should be inserted — before the pinned zone.
-   * Pinned zone (tail of the array): [...pending user messages, todo list].
-   */
-  private contentInsertionIndex(): number {
-    let idx = this.blocks.length;
-    while (idx > 0) {
-      const block = this.blocks[idx - 1]!;
-      if (block.kind === "todoList" || (block.kind === "userMessage" && block.pending)) {
-        idx--;
-      } else {
-        break;
-      }
-    }
-    return idx;
-  }
-
-  /** Insert a content block before the pinned zone, or append if nothing is pinned. Returns the insertion index. */
   private insertBlock(block: AnyBlock): number {
-    const idx = this.contentInsertionIndex();
-    if (idx < this.blocks.length) {
-      this.blocks.splice(idx, 0, block);
-      for (const [id, agentIdx] of this.agentIndexById) {
-        if (agentIdx >= idx) {
-          this.agentIndexById.set(id, agentIdx + 1);
-        }
-      }
-      if (this.todoBlockIndex >= idx) this.todoBlockIndex++;
-      return idx;
-    }
-    this.blocks.push(block);
-    return this.blocks.length - 1;
+    const result = insertBlockBeforePinned(this.blocks, block, this.agentIndexById, this.todoBlockIndex);
+    this.todoBlockIndex = result.todoBlockIndex;
+    return result.index;
   }
 
-  /** Index of the last content block (before pinned zone), or -1 if empty. */
   private lastContentIndex(): number {
-    return this.contentInsertionIndex() - 1;
+    return contentInsertionIndex(this.blocks) - 1;
   }
 
   private markDirty(): void {
@@ -393,34 +359,13 @@ export class StructuredOutputBuilder {
     if (this.blocks.length > BLOCKS_CAP) {
       const overflow = this.blocks.length - BLOCKS_CAP;
       this.blocks.splice(0, overflow);
-      this.rebuildAgentIndex();
-      // Adjust todoBlockIndex: evicted if it was in the spliced range, shifted otherwise.
+      rebuildAgentIndex(this.blocks, this.agentIndexById);
       if (this.todoBlockIndex >= 0) {
         this.todoBlockIndex = this.todoBlockIndex < overflow ? -1 : this.todoBlockIndex - overflow;
       }
       const ctxId = this.contextTracker.currentAgentId;
       if (ctxId !== null) {
         this.contextTracker.handleEviction(this.agentIndexById.has(ctxId));
-      }
-    }
-  }
-
-  private rebuildAgentIndex(): void {
-    this.agentIndexById.clear();
-    for (let i = 0; i < this.blocks.length; i++) {
-      const block = this.blocks[i];
-      if (block.kind === "agent") {
-        this.agentIndexById.set(block.id, i);
-      }
-    }
-  }
-
-  private rebuildTodoIndex(): void {
-    this.todoBlockIndex = -1;
-    for (let i = 0; i < this.blocks.length; i++) {
-      if (this.blocks[i]!.kind === "todoList") {
-        this.todoBlockIndex = i;
-        break;
       }
     }
   }

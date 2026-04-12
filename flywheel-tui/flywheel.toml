@@ -5,7 +5,7 @@ theme = "default"
 
 [dispatcher]
 model = "sonnet"
-effort = "low"
+effort = "medium"
 
 [evaluator]
 model = "sonnet"

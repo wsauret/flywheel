@@ -28,7 +28,6 @@ import { wireSessionSubscribers } from "./session/create-session-infra"
 import { contextWindowForModel } from "./engines/providers/claude-context"
 import type { TraceCollector } from "./session/trace-collector"
 import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
-import { feedChatEventToTrace } from "./chat-tracing"
 import { createChatControls } from "./chat-controls"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
 import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
@@ -306,18 +305,8 @@ export async function createChatSession(
 
   const eventUnsubs: Unsubscribe[] = []
 
-  // Budget + transcript: shared wiring (ADR-006: single source of truth)
-  eventUnsubs.push(...wireSessionSubscribers(eventBus, { budgetTracker, transcriptWriter }))
-
-  // Tracing: tool-call spans from NDJSON events
-  if (traceCollector) {
-    const toolSpanMap = new Map<string, string>()
-    eventUnsubs.push(
-      eventBus.subscribeToType("subprocess:ndjson", (e) => {
-        feedChatEventToTrace(e.ndjsonEvent, traceCollector, toolSpanMap)
-      }),
-    )
-  }
+  // Budget, transcript, tracing — unified wiring (same path as workflow mode)
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }))
 
   // 1. Setup OutputSession (rendering + flush + budget metrics)
   const session = setupOutputSession({

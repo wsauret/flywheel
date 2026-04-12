@@ -6,13 +6,11 @@
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { createExecutor } from "./executor-factory"
 import type { StepExecutor } from "../workflows/queue/executor-types"
-import type { BudgetTracker } from "./session/budget-tracker-types.js"
 import { createOutputPersistence } from "./session/output-persistence"
 import { createSessionInfra } from "./session/create-session-infra"
 import { disposeSessionResources, type SessionResources } from "./session/resources"
 import { createWorkflowSession, destroyWorkflowSession, type WorkflowSessionFactories } from "./workflow-session"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
-import { ContextIndexer } from "./memory/indexer"
 import type { WarmPool } from "./engines/pool/warm-pool"
 import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
 import { randomUUID } from "node:crypto"
@@ -20,6 +18,7 @@ import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { InjectionQueue } from "./engines/subprocess/injection-queue"
 import type { SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
+import { toBudgetLimits } from "../workflows/schemas"
 import type { AnyBlock } from "../infra/output-blocks"
 import type { SessionRunner } from "./session-runner"
 import { generateSessionTitle } from "./session-title"
@@ -51,11 +50,10 @@ export interface WorkflowRunnerOverrides {
    * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
   subprocessCwd?: string
-  eventBus?: EventBus
-  contextIndexer?: ContextIndexer
-  budgetTracker?: BudgetTracker
   /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
   workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
+  /** Recent chat conversation preceding this workflow. */
+  chatContext?: string
 }
 
 export interface WorkflowRunner extends SessionRunner {
@@ -106,10 +104,7 @@ export function createWorkflowRunner(opts: {
   let currentBlocks: readonly AnyBlock[] = []
   const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
-  // Persistence-aware updateEntry: intercepts outputBlocks writes from the adapter
-  // to prepend priorBlocks and schedule disk persistence, then delegates to the
-  // registry's updateEntry for all patches.
-  // priorBlocks is immutable — use concat to avoid spreading both arrays on every write.
+  // Persistence-aware updateEntry: prepends priorBlocks and schedules disk persistence.
   const priorBlocksPrefix = priorBlocks ?? []
   const wrappedUpdateEntry = (patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => {
     if (patch.outputBlocks) {
@@ -127,7 +122,6 @@ export function createWorkflowRunner(opts: {
   const session = createWorkflowSession({
     description,
     engineMetadata: deps.engine.metadata,
-    eventBus: opts.overrides?.eventBus,
     factories: opts.factories,
     updateEntry: wrappedUpdateEntry,
   })
@@ -141,7 +135,9 @@ export function createWorkflowRunner(opts: {
     projectCwd,
     config: deps.config,
     description,
-    budgetTracker: opts.overrides?.budgetTracker,
+    emitter: emit,
+    workflowId,
+    budgetLimits: toBudgetLimits(deps.config.budget),
   })
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
@@ -169,11 +165,6 @@ export function createWorkflowRunner(opts: {
     }),
   )
 
-  // Trace collector events
-  if (traceCollector) {
-    eventUnsubs.push(...traceCollector.subscribeToEvents(eventBus))
-  }
-
   // Initialize step display
   updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
@@ -193,10 +184,10 @@ export function createWorkflowRunner(opts: {
 
   async function run(): Promise<WorkflowResult> {
     // Build the full executor (sprint hooks, pools, transports, observers, wiring, guardrails, persistence)
-    const created = createExecutor({
+    const created = await createExecutor({
       deps, emit, eventBus, workflowId, sessionId, queue, description,
-      projectCwd, subprocessCwd, budgetTracker, transcriptWriter,
-      injectionQueue, contextIndexer: opts.overrides?.contextIndexer,
+      projectCwd, subprocessCwd, infra, injectionQueue,
+      chatContext: opts.overrides?.chatContext,
     })
     executor = created.executor
     dispatcherPool = created.pools.dispatcher

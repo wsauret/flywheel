@@ -7,10 +7,10 @@
 
 import * as path from "node:path";
 import type { SpawnOptions, StdinHandle } from "./spawner.js";
-import type { SubprocessResult } from "./schemas.js";
-import type { TieredBuffer } from "./buffer.js";
+import type { SubprocessResult } from "../../../infra/subprocess-types.js";
+import type { TieredBuffer } from "../../../infra/tiered-buffer.js";
 import type { CompletionDetector } from "./completion.js";
-import type { NDJSONParser } from "./ndjson-parser.js";
+import type { NDJSONParser } from "../../../infra/ndjson-parser.js";
 import { categorizeFailure } from "./errors.js";
 import { createSubprocessTimeout } from "./timeout.js";
 import { resolveSessionHandoffsDir } from "../../../infra/paths.js";

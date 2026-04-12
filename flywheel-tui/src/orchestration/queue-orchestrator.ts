@@ -122,7 +122,7 @@ export interface ExecutorExtensions {
   injectionQueue: InjectionQueue;
   /** Pre-seed context accumulator with fixture handoff (for /test command). */
   seedHandoff?: Record<string, unknown> | null;
-  /** Chat conversation context captured before workflow transition (not prepended to description). */
+  /** Recent chat conversation preceding this workflow (forwarded to dispatcher input). */
   chatContext?: string;
   /** External hooks to include in the composite step-completed hook.
    *  Caller-provided (e.g. sprint hook from workflow-runner). */
@@ -170,6 +170,7 @@ export function buildExecutorDeps(
     contextAccumulator, projectCwd: context.projectCwd,
     sessionObjective: context.sessionObjective, queue: context.queue,
     dispatcherModel: tiers.dispatcher.model, subprocessModel: tiers.subprocess.model,
+    chatContext: extensions.chatContext,
   })
 
   // Subprocess callback (spawn engine process — uses pool when available)

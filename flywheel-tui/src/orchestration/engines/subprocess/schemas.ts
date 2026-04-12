@@ -44,8 +44,6 @@ export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export type { SubprocessFailureReason } from "../../../infra/subprocess-types";
-
 /**
  * SubprocessResultSchema — includes `truncated: boolean` field.
  */
@@ -60,5 +58,3 @@ export const SubprocessResultSchema = z.object({
   sessionId: z.string().optional(),
   handoffPath: z.string(),
 });
-
-export type { SubprocessResult } from "../../../infra/subprocess-types";

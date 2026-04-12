@@ -5,7 +5,7 @@
  * and actions (view, resume, delete).
  */
 
-import { createSignal } from "solid-js"
+import { createSignal, createMemo, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
 import { formatCost } from "../../infra/format.js"
@@ -59,13 +59,15 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   const [modalRefreshTrigger, setModalRefreshTrigger] = createSignal(0)
 
   // State saved before viewing a completed session, so we can restore on dismiss.
-  let priorState: ViewSnapshot | undefined
-  let viewedSessionId: string | undefined
+  const [priorState, setPriorState] = createSignal<ViewSnapshot | undefined>()
+  const [viewedSessionId, setViewedSessionId] = createSignal<string | undefined>()
 
   function openSessionsModal(): void {
-    setSessionsModalOpen(true)
-    setModalCursor(0)
-    setModalConfirmDelete(undefined)
+    batch(() => {
+      setSessionsModalOpen(true)
+      setModalCursor(0)
+      setModalConfirmDelete(undefined)
+    })
   }
 
   function closeSessionsModal(): void {
@@ -73,8 +75,10 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   }
 
   function selectModalItem(index: number): void {
-    setModalCursor(index)
-    setModalConfirmDelete(undefined)
+    batch(() => {
+      setModalCursor(index)
+      setModalConfirmDelete(undefined)
+    })
   }
 
   async function handleSessionView(sessionId: string): Promise<void> {
@@ -82,8 +86,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
     // Running sessions — switch foreground directly (no save/restore needed)
     if (services.sessionStore.isRunning(sessionId)) {
-      priorState = undefined
-      viewedSessionId = undefined
+      setPriorState(undefined)
+      setViewedSessionId(undefined)
       await deps.switchForeground(sessionId)
       return
     }
@@ -91,13 +95,13 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     // Ended or historical session — enter "viewing" mode with save/restore.
     // Snapshot on the first view only so we always restore back to where the
     // user was (e.g. mid-chat), not to an intermediate viewed session.
-    if (!priorState) {
-      priorState = {
+    if (!priorState()) {
+      setPriorState({
         foregroundId: signals.foregroundId(),
         statusLine: signals.statusLine(),
-      }
+      })
     }
-    viewedSessionId = sessionId
+    setViewedSessionId(sessionId)
 
     // switchForeground loads from disk if not already in the store
     await deps.switchForeground(sessionId)
@@ -110,8 +114,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   function handleSessionResume(sessionId: string): void {
     setSessionsModalOpen(false)
-    priorState = undefined
-    viewedSessionId = undefined
+    setPriorState(undefined)
+    setViewedSessionId(undefined)
     deps.handleResume(sessionId)
   }
 
@@ -122,7 +126,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       setModalRefreshTrigger((n) => n + 1)
       services.showToast({ message: "Session deleted", variant: "info" })
       // If we were viewing this session's transcript, restore prior state.
-      if (viewedSessionId === sessionId) {
+      if (viewedSessionId() === sessionId) {
         restorePriorState()
       }
     } catch (err) {
@@ -132,12 +136,13 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   /** Restore the UI state that existed before handleSessionView was called. */
   function restorePriorState(): void {
-    if (priorState) {
-      signals.setForegroundId(priorState.foregroundId)
-      signals.setStatusLine(priorState.statusLine)
+    const snapshot = priorState()
+    if (snapshot) {
+      signals.setForegroundId(snapshot.foregroundId)
+      signals.setStatusLine(snapshot.statusLine)
     }
-    priorState = undefined
-    viewedSessionId = undefined
+    setPriorState(undefined)
+    setViewedSessionId(undefined)
   }
 
   function handleModalKey(evt: { name: string; ctrl?: boolean; meta?: boolean; preventDefault?: () => void }): void {
@@ -192,11 +197,11 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
    *  Used when the user commits to the viewed session (e.g. sends a message),
    *  so the auto-resumed chat stays in the foreground. */
   function commitViewedSession(): void {
-    priorState = undefined
-    viewedSessionId = undefined
+    setPriorState(undefined)
+    setViewedSessionId(undefined)
   }
 
-  const isViewingSession: Accessor<boolean> = () => viewedSessionId !== undefined
+  const isViewingSession = createMemo(() => viewedSessionId() !== undefined)
 
   return {
     sessionsModalOpen,

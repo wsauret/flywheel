@@ -6,7 +6,7 @@
  * to produce `AvailableContext` metadata for prompt assembly.
  *
  * Lifecycle: `startIndexing()` builds index, `getRelevantContext()` queries,
- * `dispose()` cleans up timers and inner retriever.
+ * `dispose()` resets the ready state.
  */
 
 import { existsSync } from "node:fs";
@@ -34,14 +34,11 @@ export interface ContextQuery {
 export interface ContextIndexerOptions {
   standardsDir?: string;
   conventionFiles?: string[];
-  refreshCadenceMs?: number;
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const DEFAULT_REFRESH_CADENCE_MS = 60_000;
 
 const HARDCODED_SUMMARIES: Record<string, string> = {
   "AGENTS.md": "Project architecture, commands, TUI states, and developer conventions",
@@ -55,7 +52,6 @@ export class ContextIndexer {
   private readonly projectCwd: string;
   private readonly standardsDir: string;
   private readonly conventionFiles: string[];
-  private readonly refreshCadenceMs: number;
 
   private conventions: ContextEntry[] = [];
   private standards: ContextEntry[] = [];
@@ -67,7 +63,6 @@ export class ContextIndexer {
     this.projectCwd = projectCwd;
     this.standardsDir = options?.standardsDir ?? DEFAULT_STANDARDS_DIR;
     this.conventionFiles = options?.conventionFiles ?? DEFAULT_CONVENTION_FILES;
-    this.refreshCadenceMs = options?.refreshCadenceMs ?? DEFAULT_REFRESH_CADENCE_MS;
   }
 
   // -------------------------------------------------------------------------

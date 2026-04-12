@@ -21,58 +21,8 @@ import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/schema"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
 import type { SessionEntryBase } from "./session-store-types"
-import { existsSync, writeFileSync, mkdirSync } from "node:fs"
-import { join } from "node:path"
-import { homedir } from "node:os"
 import type { AnyBlock } from "../infra/output-blocks"
-
-// ── Font tip ──
-
-function isMonaspaceInstalled(): boolean {
-  if (process.platform === "darwin") {
-    const userFonts = join(homedir(), "Library", "Fonts")
-    const systemFonts = "/Library/Fonts"
-    return existsSync(join(userFonts, "MonaspaceArgon-Regular.otf"))
-      || existsSync(join(systemFonts, "MonaspaceArgon-Regular.otf"))
-  }
-  if (process.platform === "linux") {
-    const localFonts = join(homedir(), ".local", "share", "fonts")
-    return existsSync(join(localFonts, "MonaspaceArgon-Regular.otf"))
-  }
-  const winFonts = join(process.env.WINDIR ?? "C:\\Windows", "Fonts")
-  return existsSync(join(winFonts, "MonaspaceArgon-Regular.otf"))
-}
-
-function getFontTipBlock(projectCwd: string, timestamp: number): AnyBlock | null {
-  const flagPath = join(projectCwd, ".flywheel", "font-tip-seen")
-  if (existsSync(flagPath)) return null
-
-  // Mark as seen so it only shows once
-  try {
-    mkdirSync(join(projectCwd, ".flywheel"), { recursive: true })
-    writeFileSync(flagPath, "")
-  } catch { /* best-effort */ }
-
-  if (isMonaspaceInstalled()) {
-    return {
-      kind: "system",
-      message: "Tip: Set Monaspace Argon as your terminal font for the best Flywheel experience.",
-      timestamp,
-    }
-  }
-
-  const installCmd = process.platform === "darwin"
-    ? "`brew install --cask font-monaspace`"
-    : process.platform === "linux"
-      ? "https://github.com/githubnext/monaspace"
-      : "`winget install GitHub.Monaspace`"
-
-  return {
-    kind: "system",
-    message: `Tip: Install Monaspace Argon and set it as your terminal font — ${installCmd}`,
-    timestamp,
-  }
-}
+import { buildChatWelcomeBlocks } from "./chat-welcome.js"
 
 // ── Types ──
 
@@ -149,29 +99,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   // Emit welcome blocks on first boot (no prior sessions)
   let initialBlocks: AnyBlock[] = []
   if (deps.showWelcome && !priorBlocks) {
-    const now = Date.now()
-
-    const welcomeBlock: AnyBlock = {
-      kind: "text",
-      content: [
-        "**Hey.** Start typing to chat, or try a command:",
-        "",
-        "  `/work` · `/sprint`",
-        "",
-        "`Ctrl+B` sessions · `Ctrl+N` new chat",
-      ].join("\n"),
-      timestamp: now,
-    }
-
-    initialBlocks = [welcomeBlock]
-
-    const fontTip = getFontTipBlock(projectCwd, now)
-    if (fontTip) initialBlocks.push(fontTip)
+    initialBlocks = buildChatWelcomeBlocks(projectCwd)
   }
 
   // Wrapped updateEntry that prepends priorBlocks when present
-  // SessionEntryBase fields are a subset of ChatSessionEntry — the cast is safe
-  // because OutputSession only writes base fields (outputBlocks, modelActivity, etc.)
   const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
     if (patch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
       updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...(patch.outputBlocks as AnyBlock[])] } as Partial<import("./session-store-types").ChatSessionEntry>)

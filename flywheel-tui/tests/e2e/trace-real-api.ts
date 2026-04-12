@@ -12,7 +12,7 @@ import { EventBus, createEmit } from "../../src/infra/event-bus";
 import { createTraceWriter } from "../../src/orchestration/session/trace-writer";
 import { createTraceCollector } from "../../src/orchestration/session/trace-collector";
 import { createTraceEventHandler } from "../../src/orchestration/engines/subprocess/trace-event-handler";
-import { NDJSONParser } from "../../src/orchestration/engines/subprocess/ndjson-parser";
+import { NDJSONParser } from "../../src/infra/ndjson-parser";
 import type { Span } from "../../src/infra/trace-types";
 import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../src/infra/paths";
 import { createTranscriptWriter } from "../../src/orchestration/session/transcript-writer";

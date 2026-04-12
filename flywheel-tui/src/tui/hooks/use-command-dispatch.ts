@@ -1,13 +1,14 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "../../orchestration/command-registry.js"
+import { extractChatContext } from "../../orchestration/chat-context-extractor.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface CommandDispatchDeps {
   signals: ShellSignals
   services: ShellServices
   inChat: Accessor<boolean>
-  startWorkflow: (command: string, description: string) => void
+  startWorkflow: (command: string, description: string, chatContext?: string) => void
   startTestStep: (stepId?: string) => void
   startChat: (initialMessage?: string) => Promise<void>
   backgroundChat: () => void
@@ -25,6 +26,15 @@ export interface CommandDispatchHook {
 
 export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHook {
   const commandRegistry = createCommandRegistry()
+
+  /** Grab recent chat turns from the foreground chat session (if any). */
+  function getChatContext(): string | undefined {
+    const fgId = deps.signals.foregroundId()
+    if (!fgId || !deps.inChat()) return undefined
+    const entry = deps.services.sessionStore.get(fgId)
+    if (!entry) return undefined
+    return extractChatContext(entry.outputBlocks)
+  }
 
   commandRegistry.register({
     pattern: /^\/(?:exit|quit)$/i,
@@ -67,12 +77,12 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
 
   commandRegistry.register({
     pattern: /^\/(work|sprint)\s+"([^"]+)"$/i,
-    execute(match) { deps.startWorkflow(match[1], match[2]); return true },
+    execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
   commandRegistry.register({
     pattern: /^\/(work|sprint)\s+(.+)$/i,
-    execute(match) { deps.startWorkflow(match[1], match[2]); return true },
+    execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
   // Bare /work or /sprint — enter pending mode, wait for description
@@ -96,8 +106,9 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
         deps.signals.setPendingWorkCommand(undefined)
       } else {
         deps.signals.setPendingWorkCommand(undefined)
+        const ctx = getChatContext()
         if (deps.inChat()) deps.backgroundChat()
-        deps.startWorkflow(pending, trimmed)
+        deps.startWorkflow(pending, trimmed, ctx)
         return
       }
     }

@@ -20,7 +20,7 @@
 
 import { ensureTracesDir, resolveTranscriptFile } from "../../infra/paths";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
-import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser";
+import type { NDJSONEvent } from "../../infra/subprocess-types";
 
 // ---------------------------------------------------------------------------
 // Types

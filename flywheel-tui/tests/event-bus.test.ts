@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import { MockAdapter } from "./helpers/mock-adapter";
 import type { FlywheelEvent, SubprocessNDJSON } from "../src/infra/events";
-import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
+import type { NDJSONEvent } from "../src/infra/subprocess-types";
 
 describe("EventBus", () => {
   let bus: EventBus;

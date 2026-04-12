@@ -28,7 +28,7 @@
  *   tracker.dispose(); // flushes pending data + cancels timers
  */
 
-import type { NDJSONEvent } from "../engines/subprocess/ndjson-parser.js";
+import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../../workflows/schemas.js";
 import { readSession, updateSession } from "./persistence.js";
 import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
@@ -40,7 +40,7 @@ import type { BudgetTrackerDeps, BudgetTracker, ContextUtilization } from "./bud
 // ---------------------------------------------------------------------------
 
 export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
-  const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId } = deps;
+  const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId, budgetLimits } = deps;
 
   // Self-seed from persisted budget usage (resume scenario).
   // Symmetric with writes: we already persist via updateSession, so reading
@@ -143,6 +143,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
       scheduleWrite();
       if (emitter && workflowId) {
         emitter("budget:metrics-changed", { workflowId, tokens: tokensUsed, cost: totalCost });
+        if (budgetLimits) isExhausted(budgetLimits);
       }
       return;
     }
@@ -194,29 +195,25 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     let exhausted = false;
     let reason = "";
 
-    // Check invocation limit (0 = unlimited)
     if (budgetLimits.max_invocations > 0 && invocationsUsed >= budgetLimits.max_invocations) {
       exhausted = true;
       reason = `Invocation limit reached (${invocationsUsed}/${budgetLimits.max_invocations})`;
     }
 
-    // Check token limit (null = unlimited)
     if (!exhausted && budgetLimits.max_tokens !== null && tokensUsed >= budgetLimits.max_tokens) {
       exhausted = true;
       reason = `Token limit reached (${tokensUsed}/${budgetLimits.max_tokens})`;
     }
 
-    // Check wall clock deadline (null = no deadline)
     if (!exhausted && budgetLimits.wall_clock_deadline !== null) {
       const deadlineMs = new Date(budgetLimits.wall_clock_deadline).getTime();
-      // Guard against invalid date strings (NaN)
       if (!Number.isNaN(deadlineMs) && Date.now() >= deadlineMs) {
         exhausted = true;
         reason = "Wall clock deadline exceeded";
       }
     }
 
-    // Emit budget:exhausted on first transition from non-exhausted to exhausted
+    // Emit budget:exhausted on first transition
     if (exhausted && !wasExhausted && emitter && workflowId) {
       wasExhausted = true;
       emitter("budget:exhausted", { workflowId, reason });

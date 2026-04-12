@@ -1,4 +1,4 @@
-import type { SubprocessResult } from "./schemas";
+import type { SubprocessResult } from "../../../infra/subprocess-types";
 
 // ---------------------------------------------------------------------------
 // StdinHandle — mid-execution stdin injection
@@ -107,5 +107,5 @@ export interface SpawnOptions {
    * Called for each parsed NDJSON event (step_finish, tool_use, text, etc.).
    * Wire to BudgetTracker.handleEvent to capture cost/token data from subprocess output.
    */
-  onNDJSONEvent?: (event: import("./ndjson-parser").NDJSONEvent) => void;
+  onNDJSONEvent?: (event: import("../../../infra/subprocess-types").NDJSONEvent) => void;
 }

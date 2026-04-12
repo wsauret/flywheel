@@ -125,7 +125,7 @@ export async function executeWithRevisions(
 
   emit("evaluator:invoked", { workflowId, stepIndex });
 
-  let evalResult = await evaluator(step, output.output, evaluationCriteria, handoff);
+  let evalResult = await evaluator(step, output.output, evaluationCriteria, handoff, currentPrompt);
 
   if (evalResult.transportError) {
     log.warn("evaluator transport failed, continuing with graceful degradation", {
@@ -177,7 +177,7 @@ export async function executeWithRevisions(
     }
 
     emit("evaluator:invoked", { workflowId, stepIndex });
-    evalResult = await evaluator(step, output.output, evaluationCriteria, handoff);
+    evalResult = await evaluator(step, output.output, evaluationCriteria, handoff, currentPrompt);
 
     if (evalResult.transportError) {
       log.warn("evaluator transport failed during revision, skipping further evaluation", {

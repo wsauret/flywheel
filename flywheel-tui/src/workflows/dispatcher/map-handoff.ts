@@ -5,7 +5,7 @@
  * identical DispatcherDecision shapes from the handoff file.
  */
 
-import type { DispatcherDecision } from "./schemas";
+import type { DispatcherDecision } from "../../infra/workflow-types";
 import type { DispatcherDecisionHandoff } from "./schemas";
 
 export function mapHandoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {

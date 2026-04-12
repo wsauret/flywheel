@@ -11,7 +11,7 @@
  * Context window is extracted from "result" events' modelUsage field.
  */
 
-import type { NDJSONEvent } from "../subprocess/ndjson-parser";
+import type { NDJSONEvent } from "../../../infra/subprocess-types";
 import { resolveModel } from "./claude";
 
 export interface ContextUpdate {
@@ -55,9 +55,9 @@ export function extractContextUpdate(event: NDJSONEvent): ContextUpdate | null {
     const usage = message?.usage as Record<string, unknown> | undefined;
     if (!usage) return null;
 
-    const input = (usage.input_tokens as number | undefined) ?? 0;
-    const cacheRead = (usage.cache_read_input_tokens as number | undefined) ?? 0;
-    const cacheCreate = (usage.cache_creation_input_tokens as number | undefined) ?? 0;
+    const input = Number(usage.input_tokens) || 0;
+    const cacheRead = Number(usage.cache_read_input_tokens) || 0;
+    const cacheCreate = Number(usage.cache_creation_input_tokens) || 0;
     const promptTokens = input + cacheRead + cacheCreate;
 
     if (promptTokens === 0) return null;
@@ -71,8 +71,8 @@ export function extractContextUpdate(event: NDJSONEvent): ContextUpdate | null {
     // Take the max contextWindow across all models in this result.
     let maxWindow = 0;
     for (const info of Object.values(modelUsage)) {
-      const w = info.contextWindow as number | undefined;
-      if (w && w > maxWindow) maxWindow = w;
+      const w = Number(info.contextWindow) || 0;
+      if (w > maxWindow) maxWindow = w;
     }
 
     if (maxWindow === 0) return null;

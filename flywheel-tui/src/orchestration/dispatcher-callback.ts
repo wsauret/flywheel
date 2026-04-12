@@ -15,6 +15,7 @@ import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
 import type { Step, Queue } from "../workflows/queue/types"
 import type { DispatcherTransport } from "../workflows/dispatcher/transport"
 import type { EvalResult } from "../workflows/queue/executor-types"
+import type { AvailableContext } from "../workflows/schemas"
 
 const log = Log.create({ service: "dispatcher-callback" })
 
@@ -34,6 +35,13 @@ export interface DispatcherCallbackDeps {
   queue: Queue
   dispatcherModel: string | undefined
   subprocessModel: string | undefined
+  chatContext: string | undefined
+}
+
+/** Merge chat history into available context when present. */
+function mergeAvailableContext(base: AvailableContext, chatContext: string | undefined): AvailableContext {
+  if (!chatContext) return base
+  return { ...base, chatHistory: chatContext }
 }
 
 export interface DispatcherResult {
@@ -56,7 +64,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
   const {
     deps, dispatcherTransport, contextIndexer, contextAccumulator,
     projectCwd, sessionObjective, queue, emit, workflowId,
-    dispatcherModel, subprocessModel,
+    dispatcherModel, subprocessModel, chatContext,
   } = opts
 
   // Build real StepDispatcher if transport is available
@@ -73,7 +81,10 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
           dispatcherModel: dispatcherModel ?? "sonnet",
         },
         sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
-        availableContext: contextIndexer.getRelevantContext({ stepType: "plan", stepDescription: sessionObjective ?? "" }),
+        availableContext: mergeAvailableContext(
+          contextIndexer.getRelevantContext({ stepType: "plan", stepDescription: sessionObjective ?? "" }),
+          chatContext,
+        ),
         sessionObjective,
       })
     : null

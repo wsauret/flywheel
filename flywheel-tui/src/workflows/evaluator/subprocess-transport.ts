@@ -6,7 +6,8 @@
  * (Read, Bash, Write, Grep, Glob) so it can verify worker output.
  */
 
-import type { EvaluatorInput, EvaluatorResult } from "./schemas.js";
+import type { EvaluatorInput } from "./schemas.js";
+import type { EvaluatorResult } from "../../infra/workflow-types.js";
 import type { EvaluatorTransport } from "./transport.js";
 import { renderEvaluatorHandoffInstruction } from "../queue/shared/handoff-render.js";
 import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "./schemas.js";
@@ -18,9 +19,10 @@ import { buildInvocationHandoffPath } from "../../infra/paths.js";
 
 /** Evaluator system prompt — used as --system-prompt for Claude (separate for caching). */
 const EVALUATOR_SYSTEM_PROMPT =
-  "You are a 60-second verification agent. Read the input, form a verdict, write the JSON file. " +
-  "You have tools but should almost never need them. Only use a tool if you see a specific red flag " +
-  "that requires one quick check to confirm. Write the verdict file IMMEDIATELY — every second counts.";
+  "You are a verification agent. Read the worker's output, check each acceptance criterion, " +
+  "and write a JSON verdict. You have tools — use them when a claim is worth verifying " +
+  "(e.g., run the test command the worker reported, read a file the worker claims to have created). " +
+  "Write the verdict file once you have enough evidence to decide.";
 
 // ---------------------------------------------------------------------------
 // Shared prompt builder
@@ -69,19 +71,26 @@ function buildEvaluatorPrompt(input: EvaluatorInput): string {
     sections.push(`## Acceptance\n${input.acceptance_criteria.map(c => `- ${c}`).join("\n")}`, "");
   }
 
-  // Verdict instructions — kept minimal for speed
+  // Verdict instructions
   sections.push(
     `## Verdict`,
     "",
-    "You have 60 seconds. Read the above, decide pass/fail, write the JSON verdict file.",
-    "Only use tools if you see a specific red flag that needs one quick check to confirm.",
+    "Before writing your verdict:",
+    "1. Check each acceptance criterion — is it met by the worker's output?",
+    "2. If the worker claims tests pass, verify: check the test output summary, or run the command if in doubt.",
+    "3. Check for regressions: did the worker break anything that was working before?",
     "",
     "Fail ONLY for hard evidence: tests actually failing, secrets in code, critical deliverables missing, or fundamentally wrong output.",
     "When in doubt, pass with suggestions. Revision loops are expensive.",
     "",
-    "Write this JSON to the handoff file:",
+    "Passing verdict:",
     "```json",
-    `{ "passed": true, "reasoning": "...", "suggestions": [], "confidence": 0.9, "feedback": "", "files_to_review": [], "issues": [] }`,
+    `{ "passed": true, "reasoning": "All acceptance criteria met.", "suggestions": [], "confidence": 0.9, "feedback": "", "files_to_review": [], "issues": [] }`,
+    "```",
+    "",
+    "Failing verdict:",
+    "```json",
+    `{ "passed": false, "reasoning": "Tests fail: 3 of 12 assertions error.", "suggestions": ["Fix the null check in auth.ts:42"], "confidence": 0.95, "feedback": "The auth middleware throws on missing token instead of returning 401.", "files_to_review": ["src/auth.ts"], "issues": [{"description": "Auth middleware crashes on missing token", "severity": "blocking", "category": "test_failure"}] }`,
     "```",
     "",
     "issues schema: `{description: string, severity: \"blocking\"|\"non_blocking\", category: \"test_failure\"|\"type_error\"|\"security\"|\"regression\"|\"incomplete\"|\"other\"}`",

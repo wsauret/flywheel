@@ -59,8 +59,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     services.setTerminalTitle(terminalTitle)
   }
 
-  function startWorkflow(command: string, description: string): void {
-    const result = controller.startWorkflow(command, description)
+  function startWorkflow(command: string, description: string, chatContext?: string): void {
+    const result = controller.startWorkflow(command, description, chatContext)
 
     if ("error" in result) {
       signals.setErrorMessage(result.error)

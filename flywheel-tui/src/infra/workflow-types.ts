@@ -30,22 +30,8 @@ export const ToolScopingSchema = z.object({
 
 export type ToolScoping = z.infer<typeof ToolScopingSchema>
 
-export const ParallelVariantSchema = z.object({
-  name: z.string(),
-  prompt: z.string(),
-})
-
-export type ParallelVariant = z.infer<typeof ParallelVariantSchema>
-
 export const WorkerConfigSchema = z.object({
-  model_override: z.string().nullish(),
-  timeout_minutes: z.number().optional(),
-  retry_on_failure: z.boolean().optional(),
-  max_retries: z.number().optional(),
-  iteration_budget: z.number().optional(),
   tool_scoping: ToolScopingSchema.optional(),
-  parallel: z.boolean().optional(),
-  parallel_variants: z.array(ParallelVariantSchema).nullish(),
 }).strip()
 
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>
@@ -95,9 +81,7 @@ export const EvaluatorIssueSchema = z.object({
   category: z.enum(["test_failure", "type_error", "security", "regression", "incomplete", "other"]),
 }).strip()
 
-export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>
-export type EvaluatorIssueSeverity = EvaluatorIssue["severity"]
-export type EvaluatorIssueCategory = EvaluatorIssue["category"]
+type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>
 
 export const EvaluatorResultSchema = z.object({
   passed: z.boolean(),
@@ -113,34 +97,3 @@ export const EvaluatorResultSchema = z.object({
 
 export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>
 
-// ---------------------------------------------------------------------------
-// QuestionInfo / QuestionAnswer — question service payload types
-// ---------------------------------------------------------------------------
-
-export interface QuestionOption {
-  label: string;
-  description: string;
-}
-
-export interface OpenQuestion {
-  question: string;
-  header: string;
-  options: QuestionOption[];
-  multiple?: boolean;
-  source?: string;
-  default?: string;
-}
-
-export type QuestionInfo = OpenQuestion & {
-  custom?: boolean;
-  /**
-   * When true, the question renders as a bare text input — no options list,
-   * no "Type your own answer" indirection. The user types directly and
-   * presses Enter to submit. Used for free-form prompts like "What do
-   * you want to build?".
-   */
-  textOnly?: boolean;
-};
-
-/** Per-question answer: array of selected option labels or custom text */
-export type QuestionAnswer = string[];

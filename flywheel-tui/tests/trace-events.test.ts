@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 
 import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser";
+import type { NDJSONEvent } from "../src/infra/subprocess-types";
 import type { Span } from "../src/infra/trace-types";
 import type { TraceWriter, TraceIndexEntry } from "../src/orchestration/session/trace-writer";
 import { createTraceCollector, type TraceCollector } from "../src/orchestration/session/trace-collector";

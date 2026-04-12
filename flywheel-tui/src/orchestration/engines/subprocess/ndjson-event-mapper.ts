@@ -5,7 +5,7 @@
  * for consumption by stream observers.
  */
 
-import type { NDJSONEvent } from "./ndjson-parser.js";
+import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
 import type { EngineEvent } from "../stream-observers.js";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";
 

@@ -11,11 +11,13 @@
 import type { Step } from "../queue/types";
 import type { EvaluatorFn, EvalResult } from "../queue/executor-types";
 import type { EvaluatorTransport } from "./transport";
-import type { EvaluatorInput, EvaluatorResult } from "./schemas";
+import type { EvaluatorInput } from "./schemas";
+import type { EvaluatorResult } from "../../infra/workflow-types";
 import { type EvaluationCriteria, serializeEvaluationCriteria } from "../schemas";
 import { Log } from "../../infra/log";
 import { errorMessage } from "../../infra/error-message";
 import { parseRawHandoff } from "../queue/shared/handoff-parse.js";
+import { createEmptyStepContext } from "../queue/step-context.js";
 
 const log = Log.create({ service: "evaluator-agent-factory" });
 
@@ -62,6 +64,7 @@ export function createAgentEvaluatorFn(
     workerOutput: string,
     evaluationCriteria?: unknown | null,
     handoffData?: Record<string, unknown> | null,
+    taskContent?: string,
   ): Promise<EvalResult> => {
     log.info("agent evaluation starting", {
       stepId: step.id,
@@ -95,7 +98,8 @@ export function createAgentEvaluatorFn(
       acceptance_criteria: criteria.acceptance_criteria,
       artifacts_produced: [],
       tests_passed: handoff?.verification?.tests_passed ?? null,
-      task_context: step.description ?? step.title,
+      task_context: taskContent ?? step.description ?? step.title,
+      step_context: createEmptyStepContext(),
       handoff,
     };
 

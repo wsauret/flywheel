@@ -1,4 +1,4 @@
-import type { DispatcherDecision, EvaluatorResult, QuestionInfo, QuestionAnswer } from "./workflow-types";
+import type { DispatcherDecision, EvaluatorResult } from "./workflow-types";
 import type { NDJSONEvent } from "./subprocess-types";
 
 // ---------------------------------------------------------------------------
@@ -19,9 +19,6 @@ export type FlywheelEvent =
   | SubprocessOutput
   | SubprocessNDJSON
   | SubprocessInjected
-  | QuestionAsked
-  | QuestionReplied
-  | QuestionRejected
   | BudgetMetricsChanged
   | BudgetExhausted
   | QueueInitialized
@@ -151,28 +148,6 @@ interface SubprocessInjected {
   origin: "user" | "system";
   /** True when this is a user-steering message shown immediately as pending. */
   pending?: boolean;
-}
-
-// -- Question events --
-
-interface QuestionAsked {
-  type: "question:asked";
-  requestId: string;
-  questions: QuestionInfo[];
-  timestamp: number;
-}
-
-interface QuestionReplied {
-  type: "question:replied";
-  requestId: string;
-  answers: QuestionAnswer[];
-  timestamp: number;
-}
-
-interface QuestionRejected {
-  type: "question:rejected";
-  requestId: string;
-  timestamp: number;
 }
 
 // -- Budget events --

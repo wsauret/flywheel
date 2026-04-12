@@ -1,6 +1,6 @@
 import type { StdinHandle, SpawnOptions } from "./spawner.js";
 import type { CompletionDetector } from "./completion.js";
-import type { NDJSONParser } from "./ndjson-parser.js";
+import type { NDJSONParser } from "../../../infra/ndjson-parser.js";
 import type { createSubprocessTimeout } from "./timeout.js";
 import type { StdoutProcessorState } from "./spawn-helpers.js";
 

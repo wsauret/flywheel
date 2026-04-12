@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import type { DispatcherInput } from "../src/workflows/dispatcher/schemas";
-import { DispatcherDecisionSchema, DispatcherDecisionHandoffSchema } from "../src/workflows/dispatcher/schemas";
+import { DispatcherDecisionSchema } from "../src/infra/workflow-types";
+import { DispatcherDecisionHandoffSchema } from "../src/workflows/dispatcher/schemas";
 import type { DispatcherDecisionHandoff } from "../src/workflows/dispatcher/schemas";
 
 /**

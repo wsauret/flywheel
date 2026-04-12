@@ -5,7 +5,7 @@
 import { describe, it, expect } from "bun:test";
 
 import { mapNDJSONToEngineEvents } from "../src/orchestration/engines/subprocess/ndjson-event-mapper.js";
-import type { NDJSONEvent } from "../src/orchestration/engines/subprocess/ndjson-parser.js";
+import type { NDJSONEvent } from "../src/infra/subprocess-types.js";
 import type { EngineEvent } from "../src/orchestration/engines/stream-observers.js";
 
 // ---------------------------------------------------------------------------

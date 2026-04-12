@@ -6,7 +6,8 @@
  * interface) to avoid importing from orchestration/.
  */
 
-import type { DispatcherInput, DispatcherDecision } from "./schemas.js";
+import type { DispatcherInput } from "./schemas.js";
+import type { DispatcherDecision } from "../../infra/workflow-types.js";
 import type { DispatcherTransport } from "./transport.js";
 import { buildDispatcherSystemPrompt } from "./system-prompt.js";
 import { renderDispatcherHandoffInstruction } from "../queue/shared/handoff-render.js";
