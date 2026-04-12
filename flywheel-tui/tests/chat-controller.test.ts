@@ -118,7 +118,6 @@ function createMockManager(): SessionManager & {
     updateLabel: mock((id: string, label: string) => { labelUpdates.push({ id, label }) }),
     delete: mock((id: string) => { deletes.push(id) }),
     recoverStaleSessions: mock(() => 0),
-    getState: mock(() => null),
   } as any
 }
 

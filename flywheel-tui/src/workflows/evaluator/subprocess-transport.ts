@@ -110,8 +110,6 @@ import {
   invokePooled,
 } from "../shared/invoke-pooled.js";
 
-export type { PoolHandle, PooledSpawnResult };
-
 export interface PooledSubprocessEvaluatorTransportOptions extends BasePooledTransportOptions {
   /** Optional addendum appended to the evaluator system prompt. */
   systemPromptAddendum?: string;

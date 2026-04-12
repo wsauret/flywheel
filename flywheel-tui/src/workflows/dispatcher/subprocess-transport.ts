@@ -22,8 +22,6 @@ import {
   invokePooled,
 } from "../shared/invoke-pooled.js";
 
-export type { PoolHandle, PooledSpawnResult };
-
 export type PooledSubprocessTransportOptions = BasePooledTransportOptions;
 
 export class PooledSubprocessTransport implements DispatcherTransport {

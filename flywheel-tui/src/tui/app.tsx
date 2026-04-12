@@ -54,10 +54,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
 
     // Build concrete TUI factories (DIP boundary — no global singleton)
     const { OpenTUIAdapter } = await import("./adapters/opentui")
-    const { TimerService } = await import("./shared/services/timer")
     const factories: WorkflowSessionFactories = {
       createAdapter: (opts) => new OpenTUIAdapter(opts),
-      createTimer: () => new TimerService(),
     }
 
     // Lazy import FlywheelShell to ensure OpenTUI preload has registered

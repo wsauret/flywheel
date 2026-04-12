@@ -155,15 +155,15 @@ describe("session deletion", () => {
     expect(readSession(id3, baseDir)).toBeNull();
   });
 
-  it("clears state cache on delete", () => {
+  it("removes session from list on delete", () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
 
     const id = manager.create("plan", "Cache Test", "work");
-    expect(manager.getState(id)).toBe("active");
+    expect(manager.list().sessions.find(s => s.id === id)?.state).toBe("active");
 
     manager.delete(id);
-    expect(manager.getState(id)).toBeNull();
+    expect(manager.list().sessions.find(s => s.id === id)).toBeUndefined();
   });
 });
 

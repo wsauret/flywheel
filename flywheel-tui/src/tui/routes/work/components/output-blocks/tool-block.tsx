@@ -26,7 +26,7 @@ import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { isHandoffPath } from "@tui/utils/text"
-import type { ToolBlock as ToolBlockType } from "@tui/types"
+import type { ToolBlock as ToolBlockType } from "@infra/output-blocks"
 import { renderHunk, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 

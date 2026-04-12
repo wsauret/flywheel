@@ -16,6 +16,8 @@ import { updateSession } from "./session/persistence"
 import { disposeSessionResources, type SessionResources } from "./session/resources"
 import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
+import { EventBus, createEmit } from "../infra/event-bus"
+import { randomUUID } from "node:crypto"
 import type { SessionRunner } from "./session-runner"
 import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/schema"
@@ -69,12 +71,21 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   const workflowDeps = prepareWorkflowDeps()
   const config = deps.config ?? workflowDeps.config
 
-  // Shared session infrastructure (budget, traces, transcripts)
+  // Runner owns the EventBus — same pattern as workflow-runner.
+  const eventBus = new EventBus()
+  const emit = createEmit(eventBus)
+  const chatId = randomUUID()
+
+  // Shared session infrastructure (budget, traces, transcripts).
+  // Passing emitter + workflowId enables budget:metrics-changed emission,
+  // which wireSessionSubscribers routes to the store via metricsWriter.
   const infra = createSessionInfra({
     sessionId,
     projectCwd,
     config,
     description: "chat",
+    emitter: emit,
+    workflowId: chatId,
   })
 
   // Output persistence — OutputSession writes blocks to the store, but we still
@@ -126,7 +137,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     onEnded: () => void deps.onEnded(),
   }
 
-  // Create the underlying ChatSession — pass shared infra to avoid duplicate creation
+  // Create the underlying ChatSession — pass shared infra and EventBus to avoid duplicate creation
   const chatSession = await createChatSession(chatCallbacks, initialMessage, {
     projectCwd,
     deps: workflowDeps,
@@ -134,6 +145,9 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     traceCollector: infra.traceCollector ?? undefined,
     budgetTracker: infra.budgetTracker,
     transcriptWriter: infra.transcriptWriter,
+    eventBus,
+    chatId,
+    metricsWriter: (patch) => updateEntry(patch as Partial<import("./session-store-types").ChatSessionEntry>),
     updateEntry: wrappedUpdateEntry,
     claudeSessionId: deps.claudeSessionId,
     onFlush: () => {

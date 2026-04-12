@@ -41,6 +41,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const { signals, services } = createShellState({
     sessionStore,
     manager,
+    sessions,
     refreshList,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => toast.show(opts),

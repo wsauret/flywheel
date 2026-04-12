@@ -10,7 +10,7 @@
 import { createSignal, Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { displayToolName } from "./tool-block"
-import type { ContextGroupBlock as ContextGroupBlockType } from "@tui/types"
+import type { ContextGroupBlock as ContextGroupBlockType } from "@infra/output-blocks"
 
 export interface ContextGroupBlockProps {
   block: ContextGroupBlockType

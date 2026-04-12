@@ -12,7 +12,6 @@ import {
   type DeleteResult,
 } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
-import type { SessionState } from "../src/orchestration/session/state-machine";
 import {
   createSessionManager,
   type SessionManagerDeps,
@@ -259,15 +258,15 @@ describe("SessionManager.delete()", () => {
     expect(readSession(id, baseDir)).toBeNull();
   });
 
-  it("removes session from cache", () => {
+  it("removes session from list after delete", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    expect(mgr.getState(id)).toBe("active");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("active");
 
     mgr.delete(id);
-    expect(mgr.getState(id)).toBeNull();
+    expect(mgr.list().sessions.find(s => s.id === id)).toBeUndefined();
   });
 
   it("does not affect other sessions", () => {

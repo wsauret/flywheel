@@ -19,7 +19,7 @@ import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { EmptyBorder } from "@tui/shared/ui/border"
 import { createTextAttributes } from "@opentui/core"
 import { formatElapsed } from "@infra/format.js"
-import type { ThinkingBlock as ThinkingBlockType } from "@tui/types"
+import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
 
 const COLLAPSED_LINES = 3
 

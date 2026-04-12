@@ -48,8 +48,6 @@ export interface ResumeChatResult {
   terminalTitle: string
 }
 
-export type { RunnerDoneResult, RunnerErrorResult }
-
 export interface ChatController {
   /**
    * Create and launch a new chat session.

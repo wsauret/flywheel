@@ -188,7 +188,7 @@ export function createSubprocessCallback(
       signal,
       onTurnComplete,
       onSessionId: undefined,
-      stdoutTransform: undefined as undefined,
+      stdoutTransform: undefined,
       onStdout: (chunk: string) => {
         emit("subprocess:output", { workflowId: workflowId, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
       },

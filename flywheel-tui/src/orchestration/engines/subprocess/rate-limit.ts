@@ -322,15 +322,3 @@ export class RateLimitDetector {
 }
 
 // ---------------------------------------------------------------------------
-// Retry options constant
-// ---------------------------------------------------------------------------
-
-/**
- * Recommended retry options for rate-limited operations.
- */
-export const RATE_LIMIT_RETRY_OPTIONS = {
-  baseDelayMs: 5_000,
-  backoff: "exponential" as const,
-  maxDelayMs: 120_000,
-  multiplier: 2,
-};

@@ -1,7 +1,7 @@
 /**
  * Workflow Session
  *
- * Manages the lifecycle of a single workflow run: adapter, timer, event bus.
+ * Manages the lifecycle of a single workflow run: adapter and event bus.
  * WorkflowRunner calls createWorkflowSession() to start and destroyWorkflowSession() to stop.
  *
  * Dependencies are injected via WorkflowSessionFactories — callers pass factories
@@ -24,11 +24,6 @@ export interface WorkflowAdapter {
   disconnect(): void;
 }
 
-/** Minimal timer interface used by the orchestration layer. */
-export interface WorkflowTimer {
-  stop(): void;
-}
-
 // ---------------------------------------------------------------------------
 // Session type
 // ---------------------------------------------------------------------------
@@ -36,7 +31,6 @@ export interface WorkflowTimer {
 export interface WorkflowSession {
   adapter: WorkflowAdapter;
   eventBus: EventBus;
-  timer: WorkflowTimer;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,7 +39,6 @@ export interface WorkflowSession {
 
 export interface WorkflowSessionFactories {
   createAdapter: (opts: { updateEntry: (patch: Partial<WorkflowSessionEntry>) => void; engineMetadata?: EngineMetadata }) => WorkflowAdapter;
-  createTimer: () => WorkflowTimer;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +50,7 @@ export interface CreateWorkflowSessionOpts {
   engineMetadata?: EngineMetadata;
   /** Provide an existing EventBus (e.g. for test DI). Defaults to a fresh instance. */
   eventBus?: EventBus;
-  /** Required — concrete factories for adapter, timer. */
+  /** Required — concrete factories for adapter. */
   factories: WorkflowSessionFactories;
   /** Write data directly to the session entry in the reactive store. */
   updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
@@ -66,34 +59,22 @@ export interface CreateWorkflowSessionOpts {
 /**
  * Create a fresh workflow session.
  *
- * Creates per-session timer → adapter → event bus in strict init order.
+ * Creates adapter → event bus in strict init order.
  */
 export function createWorkflowSession(opts: CreateWorkflowSessionOpts): WorkflowSession {
-  const factories = opts.factories;
-
-  // 1. Per-session timer
-  const timer = factories.createTimer();
-
-  // 2. Adapter wired to updateEntry
-  const adapter = factories.createAdapter({ updateEntry: opts.updateEntry, engineMetadata: opts.engineMetadata });
-
-  // 3. Event bus (injected or fresh)
+  const adapter = opts.factories.createAdapter({ updateEntry: opts.updateEntry, engineMetadata: opts.engineMetadata });
   const eventBus = opts.eventBus ?? new EventBus();
 
-  // 4. Connect and start
   adapter.connect(eventBus);
   adapter.start();
 
-  return { adapter, eventBus, timer };
+  return { adapter, eventBus };
 }
 
 /**
- * Destroy a workflow session.
- *
- * Stops timer, stops and disconnects adapter.
+ * Destroy a workflow session — stops and disconnects adapter.
  */
 export function destroyWorkflowSession(session: WorkflowSession): void {
-  session.timer.stop();
   session.adapter.stop();
   session.adapter.disconnect();
 }

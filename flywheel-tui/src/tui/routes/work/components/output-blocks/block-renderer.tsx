@@ -7,7 +7,7 @@
  */
 
 import { Switch, Match } from "solid-js"
-import type { AnyBlock } from "@tui/types"
+import type { AnyBlock } from "@infra/output-blocks"
 import { TextBlock } from "./text-block"
 import { ToolBlock } from "./tool-block"
 import { AgentBlock } from "./agent-block"

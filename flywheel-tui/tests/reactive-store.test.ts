@@ -19,7 +19,6 @@ import type { WorkflowSessionFactories } from "../src/orchestration/workflow-ses
 const mockFactories: WorkflowSessionFactories = {
   createStore: () => ({
     startWorkflow: () => {},
-    getState: () => ({ modelActivity: "idle" as const }),
     subscribe: () => () => {},
     subscribeExecution: () => () => {},
   }),
@@ -29,7 +28,6 @@ const mockFactories: WorkflowSessionFactories = {
     stop: () => {},
     disconnect: () => {},
   }),
-  createTimer: () => ({ stop: () => {} }),
 }
 
 // ── Helpers ──

@@ -32,7 +32,6 @@ const mockFactories: WorkflowSessionFactories = {
     stop: () => {},
     disconnect: () => {},
   }),
-  createTimer: () => ({ stop: () => {} }),
 }
 
 function createMockChatRunner(sessionId: string): ChatRunner {

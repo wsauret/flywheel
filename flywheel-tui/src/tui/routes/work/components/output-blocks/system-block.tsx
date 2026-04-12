@@ -8,7 +8,7 @@
  */
 
 import { useTheme } from "@tui/shared/context/theme"
-import type { SystemBlock as SystemBlockType } from "@tui/types"
+import type { SystemBlock as SystemBlockType } from "@infra/output-blocks"
 
 export interface SystemBlockProps {
   block: SystemBlockType

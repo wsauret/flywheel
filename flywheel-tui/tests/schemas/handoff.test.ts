@@ -9,7 +9,6 @@ import {
   CompoundDocSchema,
   SkillDeviationSchema,
   SkillFeedbackSchema,
-  countSentences,
 } from "../../src/infra/handoff-schemas";
 import { EvaluatorVerdictSchema } from "../../src/workflows/evaluator/schemas";
 import { DispatcherDecisionHandoffSchema } from "../../src/workflows/dispatcher/schemas";
@@ -631,53 +630,6 @@ describe("SubprocessHandoffSchema", () => {
       const result = SubprocessHandoffSchema.safeParse(validFull);
       expect(result.success).toBe(true);
     });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// countSentences helper
-// ---------------------------------------------------------------------------
-
-describe("countSentences", () => {
-  it("counts simple sentences ending with period", () => {
-    expect(countSentences("One sentence. Two sentences.")).toBe(2);
-  });
-
-  it("counts sentences ending with exclamation mark", () => {
-    expect(countSentences("Hello! World!")).toBe(2);
-  });
-
-  it("counts sentences ending with question mark", () => {
-    expect(countSentences("What? How? Why?")).toBe(3);
-  });
-
-  it("handles mixed punctuation", () => {
-    expect(countSentences("First. Second! Third?")).toBe(3);
-  });
-
-  it("returns 0 for empty string", () => {
-    expect(countSentences("")).toBe(0);
-  });
-
-  it("returns 0 for whitespace only", () => {
-    expect(countSentences("   ")).toBe(0);
-  });
-
-  it("returns 1 for single sentence without trailing punctuation", () => {
-    expect(countSentences("Just one sentence")).toBe(1);
-  });
-
-  it("normalizes multiple spaces", () => {
-    expect(countSentences("One.   Two.   Three.")).toBe(3);
-  });
-
-  it("handles trailing punctuation without trailing space", () => {
-    expect(countSentences("One. Two.")).toBe(2);
-  });
-
-  it("handles multiple punctuation marks (e.g., '...')", () => {
-    // "One... Two." — the '...' split should count as one separator
-    expect(countSentences("One... Two.")).toBe(2);
   });
 });
 

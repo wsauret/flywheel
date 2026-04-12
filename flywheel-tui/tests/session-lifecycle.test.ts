@@ -242,7 +242,7 @@ describe("Invalid transitions are rejected", () => {
 
     // active -> active: should not throw — chat mode relies on idempotent transitions
     expect(() => mgr.updateState(id, "active")).not.toThrow();
-    expect(mgr.getState(id)).toBe("active");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("active");
   });
 
   it("non-existent session throws", () => {

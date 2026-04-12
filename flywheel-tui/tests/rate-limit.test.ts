@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import {
   RateLimitDetector,
-  RATE_LIMIT_RETRY_OPTIONS,
   type RateLimitDetectionInput,
 } from "../src/orchestration/engines/subprocess/rate-limit";
 
@@ -413,24 +412,3 @@ describe("RateLimitDetector", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Integration with retry<T>()
-// ---------------------------------------------------------------------------
-
-describe("RATE_LIMIT_RETRY_OPTIONS", () => {
-  it("uses baseDelayMs: 5000", () => {
-    expect(RATE_LIMIT_RETRY_OPTIONS.baseDelayMs).toBe(5_000);
-  });
-
-  it("uses exponential backoff", () => {
-    expect(RATE_LIMIT_RETRY_OPTIONS.backoff).toBe("exponential");
-  });
-
-  it("uses maxDelayMs: 120000 (2 min cap)", () => {
-    expect(RATE_LIMIT_RETRY_OPTIONS.maxDelayMs).toBe(120_000);
-  });
-
-  it("uses multiplier: 2", () => {
-    expect(RATE_LIMIT_RETRY_OPTIONS.multiplier).toBe(2);
-  });
-});

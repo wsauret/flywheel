@@ -30,7 +30,7 @@ import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue"
 import type { SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
-import { wireSessionSubscribers } from "./session/create-session-infra"
+import { wireSessionSubscribers, type MetricsWriter } from "./session/create-session-infra"
 
 
 // ── Types ──
@@ -62,6 +62,8 @@ export interface CreateExecutorInput {
   contextIndexer?: ContextIndexer
   /** Recent chat conversation preceding this workflow. */
   chatContext?: string
+  /** Callback to write budget metrics to the session store. */
+  metricsWriter?: MetricsWriter
 }
 
 export interface CreateExecutorResult {
@@ -118,7 +120,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
 
   // ── 5. Transport resolution ──
   const { dispatcherTransport, evaluatorTransport } = resolveTransports({
-    deps, eventBus, workflowId, sessionId, baseDir: projectCwd,
+    deps, emit, workflowId, sessionId, baseDir: projectCwd,
     evaluatorSystemPromptAddendum: evaluatorAddendum,
     dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage,
   })
@@ -135,8 +137,8 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   ])
 
   // ── 8. Wire EventBus subscribers ──
-  // Budget, transcript, tracing — unified wiring (ADR-006: single source of truth)
-  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, workflowId, infra))
+  // Budget, transcript, tracing, metrics → store — unified wiring (ADR-006: single source of truth)
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, workflowId, infra, input.metricsWriter))
 
   // Observers: NDJSON events mapped to engine events, fed to observer chain
   eventUnsubs.push(

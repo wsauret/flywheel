@@ -34,9 +34,6 @@ if (isDev) {
 await import("./text-wrap-resize-patch")
 log.debug("framework patches applied")
 
-// Re-export type for callers
-export type { TUIOptions } from "./app"
-
 // These look like forwarding functions but the dynamic import is load-order
 // architecture: this module's top-level await registers the OpenTUI plugin and
 // framework patches BEFORE any JSX in app.tsx is parsed. A static import would

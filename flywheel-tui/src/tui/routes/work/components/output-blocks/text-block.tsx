@@ -12,7 +12,7 @@
 import { detectLinks, type MarkdownRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { linkifyFilePaths } from "@tui/adapters/linkify-paths"
-import type { TextBlock as TextBlockType } from "@tui/types"
+import type { TextBlock as TextBlockType } from "@infra/output-blocks"
 
 /**
  * Wrap the default linkify pipeline to also detect file paths.

@@ -14,11 +14,11 @@
 
 import { createSignal, createMemo } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
-import type { AnyBlock } from "../types"
+import type { AnyBlock } from "../../infra/output-blocks"
 import type { StepState } from "../../orchestration/workflow-runner"
 import type { SessionState } from "../../orchestration/session/state-machine"
 import type { SessionStore, SessionEntry } from "../../orchestration/session-store-types"
-import type { SessionManager } from "../../orchestration/session/manager"
+import type { SessionManager, SessionSummary } from "../../orchestration/session/manager"
 import { useMetrics, type MetricsHook } from "./use-metrics.js"
 
 export type AgentState = "idle" | "active"
@@ -61,6 +61,7 @@ export interface ShellServices {
 export function createShellState(deps: {
   sessionStore: SessionStore
   manager: SessionManager
+  sessions: Accessor<SessionSummary[]>
   refreshList: () => void
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
@@ -108,7 +109,10 @@ export function createShellState(deps: {
     // the field directly, so this memo re-evaluates when the session finishes.
     const entry = storeEntry()
     if (entry && !entry.ended) return "active"
-    return deps.manager.getState(fgId)
+    // Derive from sessions() signal — the single in-memory representation
+    // of historical session state. Refreshed after every state transition
+    // (via refreshList in controllers) and polled every 5s for multi-instance sync.
+    return deps.sessions().find((s) => s.id === fgId)?.state ?? null
   })
 
   const signals: ShellSignals = {

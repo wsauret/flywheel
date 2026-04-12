@@ -1,9 +1,8 @@
 /**
  * Headless Factory Wiring
  *
- * Creates headless implementations (timer, adapter) as a
- * WorkflowSessionFactories object. Callers pass this to
- * createSessionStore() or createWorkflowRunner().
+ * Creates a headless adapter as a WorkflowSessionFactories object.
+ * Callers pass this to createSessionStore() or createWorkflowRunner().
  */
 
 import type { WorkflowSessionFactories } from "../workflow-session"
@@ -19,8 +18,5 @@ import type { HeadlessAdapterOptions } from "./headless-adapter"
 export function createHeadlessFactories(opts?: HeadlessAdapterOptions): WorkflowSessionFactories {
   return {
     createAdapter: (_adapterOpts) => createHeadlessAdapter(opts),
-    // TUI's TimerService drives display refresh ticks. Headless has no display,
-    // so this is intentionally a no-op.
-    createTimer: () => ({ stop() {} }),
   }
 }

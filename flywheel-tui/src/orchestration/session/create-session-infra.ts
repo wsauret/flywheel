@@ -97,18 +97,23 @@ export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
 // Shared EventBus subscriber wiring
 // ---------------------------------------------------------------------------
 
+/** Callback to write budget metrics directly to the session store. */
+export type MetricsWriter = (patch: { tokens: number; cost: number; contextPercent: number }) => void
+
 /**
- * Wire all infrastructure EventBus subscriptions: budget, transcript, tracing.
+ * Wire all infrastructure EventBus subscriptions: budget, transcript, tracing,
+ * and optionally metrics-to-store propagation.
  *
- * Single call site for both workflow and chat modes. Callers pass their
- * EventBus, emitter, workflowId, and the infra bundle from createSessionInfra.
- * Returns unsubscribe functions — caller appends to their own unsub list.
+ * Called by both workflow and chat modes. When metricsWriter is provided,
+ * budget:metrics-changed events are forwarded to the store — this is the
+ * single path for metrics propagation in both modes.
  */
 export function wireSessionSubscribers(
   bus: EventBus,
   emit: EmitFn,
   workflowId: string,
   infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">,
+  metricsWriter?: MetricsWriter,
 ): Unsubscribe[] {
   const unsubs: Unsubscribe[] = []
 
@@ -127,6 +132,20 @@ export function wireSessionSubscribers(
       }
     }),
   )
+
+  // Metrics → store: budget:metrics-changed is emitted by the budget tracker
+  // whenever cost/tokens change. Single subscription for both workflow and chat.
+  if (metricsWriter) {
+    unsubs.push(
+      bus.subscribeToType("budget:metrics-changed", () => {
+        metricsWriter({
+          tokens: infra.budgetTracker.getTokensUsed(),
+          cost: infra.budgetTracker.getTotalCost(),
+          contextPercent: infra.budgetTracker.getContextUtilization().percent,
+        })
+      }),
+    )
+  }
 
   // Transcript: NDJSON events → conversation log
   if (infra.transcriptWriter) {

@@ -119,6 +119,20 @@ export function wireStreamPipeline(
   const readStdoutPromise = readStream(readers.stdout, rawStdoutChunks, processStdout);
   const readStderrPromise = readStream(readers.stderr, rawStderrChunks, (text) => options?.onStderr?.(text));
 
+  // Shared result builder — awaits provided work promises, then collects exit code.
+  async function awaitResult(work: Promise<void>[]): Promise<SubprocessResult> {
+    try {
+      await Promise.all(work);
+      const exitCode = await raw.proc.exited;
+      subprocessTimeout.cancel();
+      raw.unregister();
+      return buildSubprocessResult(resultCtx, exitCode);
+    } catch (error) {
+      subprocessTimeout.cancel();
+      return buildErrorResult(resultCtx, error);
+    }
+  }
+
   // --- Pipe mode: return early with StdinHandle, result resolves later ---
   if (usePipe) {
     const stdinSink = raw.stdinSink!;
@@ -131,35 +145,13 @@ export function wireStreamPipeline(
       : async () => {};
     const watchHandoffFn = watchHandoff(handoffPath, stdinHandle, subprocessTimeout, completionDetector, stdoutState, options);
 
-    const resultPromise = (async (): Promise<SubprocessResult> => {
-      try {
-        await Promise.all([readStdoutPromise, readStderrPromise, writeInitial(), watchHandoffFn()]);
-        const exitCode = await raw.proc.exited;
-        subprocessTimeout.cancel();
-        raw.unregister();
-        return buildSubprocessResult(resultCtx, exitCode);
-      } catch (error) {
-        subprocessTimeout.cancel();
-        return buildErrorResult(resultCtx, error);
-      }
-    })();
-
-    return { result: resultPromise, stdinHandle, pid: raw.proc.pid };
+    return {
+      result: awaitResult([readStdoutPromise, readStderrPromise, writeInitial(), watchHandoffFn()]),
+      stdinHandle,
+      pid: raw.proc.pid,
+    };
   }
 
   // --- Non-pipe mode: wait for completion, wrap in SpawnResult ---
-  const resultPromise = (async (): Promise<SubprocessResult> => {
-    try {
-      await Promise.all([readStdoutPromise, readStderrPromise]);
-      const exitCode = await raw.proc.exited;
-      subprocessTimeout.cancel();
-      raw.unregister();
-      return buildSubprocessResult(resultCtx, exitCode);
-    } catch (error) {
-      subprocessTimeout.cancel();
-      return buildErrorResult(resultCtx, error);
-    }
-  })();
-
-  return { result: resultPromise, pid: raw.proc.pid };
+  return { result: awaitResult([readStdoutPromise, readStderrPromise]), pid: raw.proc.pid };
 }

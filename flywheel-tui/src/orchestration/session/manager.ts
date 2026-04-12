@@ -105,11 +105,6 @@ export interface SessionManager {
    */
   recoverStaleSessions(): number;
 
-  /**
-   * Get the cached state for a session.
-   * Returns null if the session is not in the cache.
-   */
-  getState(id: string): SessionState | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,9 +119,6 @@ export interface SessionManager {
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const { baseDir, worktreeManager } = deps;
   const config = deps.config ?? CONFIG_DEFAULTS;
-
-  // In-memory state cache for O(1) reads
-  const stateCache = new Map<string, SessionState>();
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -170,9 +162,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
     const id = persistCreateSession(sessionData, baseDir);
 
-    // Populate cache
-    stateCache.set(id, state);
-
     return id;
   }
 
@@ -181,8 +170,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
     const sessions: SessionSummary[] = raw.sessions.map((entry) => {
       const state = entry.data.state;
-      // Populate cache on list
-      stateCache.set(entry.id, state);
 
       return {
         id: entry.id,
@@ -223,9 +210,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
     updateSession(id, { state: newState }, baseDir);
 
-    // Update cache
-    stateCache.set(id, newState);
-
     // --- Worktree lifecycle side-effects (fire-and-forget) ---
     if (worktreeManager) {
       if (newState === "active" && currentState === "paused") {
@@ -246,9 +230,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   function deleteSession(id: string): void {
     // Delete session files + companions from disk
     deleteSessionWithCompanions(id, baseDir);
-
-    // Remove from cache
-    stateCache.delete(id);
 
     // Clean up worktree if available (fire-and-forget)
     if (worktreeManager) {
@@ -281,10 +262,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     return recovered;
   }
 
-  function getState(id: string): SessionState | null {
-    return stateCache.get(id) ?? null;
-  }
-
   return {
     create,
     list,
@@ -292,6 +269,5 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     updateLabel,
     delete: deleteSession,
     recoverStaleSessions,
-    getState,
   };
 }

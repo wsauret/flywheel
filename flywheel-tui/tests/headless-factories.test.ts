@@ -22,7 +22,6 @@ describe("createHeadlessFactories", () => {
     expect(session).toBeDefined()
     expect(session.adapter).toBeDefined()
     expect(session.eventBus).toBeDefined()
-    expect(session.timer).toBeDefined()
 
     destroyWorkflowSession(session)
   })

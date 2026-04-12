@@ -39,7 +39,7 @@ export interface WorkflowDepsOverrides {
 /**
  * Default spawner factory: always uses BunProcessSpawner (subprocess-based).
  */
-function defaultCreateSpawner(timeout: number, _engine: Engine): ProcessSpawner {
+function defaultCreateSpawner(timeout: number): ProcessSpawner {
   return new BunProcessSpawner({ timeoutMinutes: timeout })
 }
 
@@ -56,7 +56,7 @@ export function prepareWorkflowDeps(overrides?: WorkflowDepsOverrides): Workflow
 
   const spawner = overrides?.createSpawner
     ? overrides.createSpawner(config.timeout_minutes)
-    : defaultCreateSpawner(config.timeout_minutes, engine)
+    : defaultCreateSpawner(config.timeout_minutes)
 
   return { config, engine, spawner }
 }

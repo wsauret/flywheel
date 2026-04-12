@@ -152,12 +152,12 @@ describe("SessionManager.create()", () => {
     expect(persisted!.label).toBe("plans/test.md");
   });
 
-  it("populates state cache on create", () => {
+  it("creates session in active state", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    expect(mgr.getState(id)).toBe("active");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("active");
   });
 });
 
@@ -261,18 +261,15 @@ describe("SessionManager.list()", () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it("populates state cache on list", () => {
+  it("second manager instance sees sessions from disk", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
 
-    // Create a second manager to test cache population from disk
+    // Create a second manager to read from disk
     const mgr2 = createSessionManager(makeDeps(baseDir));
-    expect(mgr2.getState(id)).toBeNull(); // not in cache yet
-
-    mgr2.list(); // populates cache
-    expect(mgr2.getState(id)).toBe("active");
+    expect(mgr2.list().sessions.find(s => s.id === id)?.state).toBe("active");
   });
 });
 
@@ -337,18 +334,18 @@ describe("SessionManager.updateState()", () => {
     expect(afterUpdate >= beforeUpdate).toBe(true);
   });
 
-  it("updates state cache on updateState", () => {
+  it("updateState persists state changes", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    expect(mgr.getState(id)).toBe("active");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("active");
 
     mgr.updateState(id, "paused");
-    expect(mgr.getState(id)).toBe("paused");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("paused");
 
     mgr.updateState(id, "active");
-    expect(mgr.getState(id)).toBe("active");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("active");
   });
 });
 
@@ -369,15 +366,15 @@ describe("SessionManager.delete()", () => {
     expect(readSession(id, baseDir)).toBeNull();
   });
 
-  it("removes session from cache", () => {
+  it("removes session from list", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
-    expect(mgr.getState(id)).toBe("active");
+    expect(mgr.list().sessions.find(s => s.id === id)?.state).toBe("active");
 
     mgr.delete(id);
-    expect(mgr.getState(id)).toBeNull();
+    expect(mgr.list().sessions.find(s => s.id === id)).toBeUndefined();
   });
 
   it("removes session from list", () => {
@@ -694,32 +691,3 @@ describe("SessionManager.create() SessionKind parameter", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getState() — state cache
-// ---------------------------------------------------------------------------
-
-describe("SessionManager.getState()", () => {
-  it("returns null for unknown session", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    expect(mgr.getState("non-existent")).toBeNull();
-  });
-
-  it("returns cached state after create", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    expect(mgr.getState(id)).toBe("active");
-  });
-
-  it("reflects state changes after updateState", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const id = mgr.create("plans/test.md");
-    mgr.updateState(id, "paused");
-    expect(mgr.getState(id)).toBe("paused");
-  });
-});

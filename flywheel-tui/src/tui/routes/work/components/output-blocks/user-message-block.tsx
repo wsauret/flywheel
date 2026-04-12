@@ -13,7 +13,7 @@ import { createSignal, Show } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { EmptyBorder } from "@tui/shared/ui/border"
-import type { UserMessageBlock as UserMessageBlockType } from "@tui/types"
+import type { UserMessageBlock as UserMessageBlockType } from "@infra/output-blocks"
 
 export interface UserMessageBlockProps {
   block: UserMessageBlockType

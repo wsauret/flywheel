@@ -29,7 +29,6 @@ const mockFactories: WorkflowSessionFactories = {
     stop: () => {},
     disconnect: () => {},
   }),
-  createTimer: () => ({ stop: () => {} }),
 }
 
 /** Minimal mock metrics that records calls. */
@@ -64,7 +63,8 @@ function createMockChatRunner(sessionId: string): ChatRunner {
 function buildShellState(sessionStore: ReturnType<typeof createSessionStore>) {
   return createShellState({
     sessionStore,
-    manager: { getState: () => null } as any,
+    manager: {} as any,
+    sessions: () => [],
     refreshList: () => {},
     setTerminalTitle: () => {},
     metrics: createMockMetrics() as any,

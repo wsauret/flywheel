@@ -17,7 +17,7 @@ import { For, Show, createMemo } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import type { Theme } from "@tui/shared/context/theme/resolve"
-import type { TodoListBlock as TodoListBlockType, TodoItem } from "@tui/types"
+import type { TodoListBlock as TodoListBlockType, TodoItem } from "@infra/output-blocks"
 
 const BOLD = createTextAttributes({ bold: true })
 const MAX_VISIBLE = 4

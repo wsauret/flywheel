@@ -19,8 +19,8 @@ import type {
   OnStepCompletedHook,
   OnStepCompletedResult,
 } from "../../shared/hooks.js";
+import type { SprintConfig } from "./config-schema.js";
 import type {
-  SprintConfig,
   SprintIterationRecord,
   SprintLoopState,
 } from "./types.js";

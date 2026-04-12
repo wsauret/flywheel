@@ -23,7 +23,6 @@ const mockFactories: WorkflowSessionFactories = {
     stop: () => {},
     disconnect: () => {},
   }),
-  createTimer: () => ({ stop: () => {} }),
 }
 
 // ── Helpers ──

@@ -86,9 +86,13 @@ export interface ChatSessionOptions {
   transcriptWriter?: TranscriptWriter | null
   /** Inject an EventBus (e.g. for testing). When omitted, a fresh one is created. */
   eventBus?: EventBus
+  /** Correlation ID for events. When omitted, a random UUID is generated. */
+  chatId?: string
   /** Store mutator — OutputSession writes outputBlocks and modelActivity here. */
   updateEntry?: (patch: Partial<SessionEntryBase>) => void
-  /** Called on every 16ms tick regardless of block changes. Use for display-refresh work (budget metrics, persistence). */
+  /** Callback to write budget metrics to the session store (wired via wireSessionSubscribers). */
+  metricsWriter?: import("./session/create-session-infra").MetricsWriter
+  /** Called on every 16ms tick regardless of block changes. Use for persistence scheduling. */
   onFlush?: () => void
   /** Pre-known Claude Code session ID — used for --resume on the initial spawn (auto-resume path). */
   claudeSessionId?: string
@@ -98,6 +102,37 @@ export interface ChatSessionOptions {
 // setupOutputSession and createWorkerLifecycle are module-private
 // decompositions that share mutable ChatSessionState with the main factory.
 // createChatControls is extracted to chat-controls.ts.
+
+// ── Helper: prompt-too-long recovery ──
+
+/**
+ * Detect unrecoverable "Prompt is too long" from Claude Code. When the
+ * accumulated conversation exceeds the context window, every --resume
+ * reloads the same oversized session and fails instantly. Clear the
+ * session ID so the next send() spawns a fresh worker.
+ */
+function handlePromptTooLong(
+  event: import("../infra/subprocess-types").NDJSONEvent,
+  state: ChatSessionState,
+  session: OutputSession,
+  callbacks: ChatCallbacks,
+): void {
+  const data = event.data as Record<string, unknown>
+  if (data.type !== "result") return
+
+  const isError = data.is_error === true || (typeof data.subtype === "string" && data.subtype !== "success")
+  const resultText = typeof data.result === "string" ? data.result : ""
+  if (isError && /prompt is too long/i.test(resultText)) {
+    log.warn("prompt too long — resetting session", { claudeSessionId: state.claudeSessionId })
+    state.claudeSessionId = null
+    session.pushSystemMessage(
+      "Conversation too long for context window. Next message will start a fresh conversation.",
+      Date.now(),
+    )
+    session.flush()
+    callbacks.onWaiting(false)
+  }
+}
 
 // ── Helper 1: setupOutputSession ──
 
@@ -128,13 +163,6 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
     emit,
     workflowId: chatId,
     onFlush: () => {
-      // Budget metrics → store
-      updateEntry({
-        tokens: budgetTracker.getTokensUsed(),
-        cost: budgetTracker.getTotalCost(),
-        contextPercent: budgetTracker.getContextUtilization().percent,
-      })
-
       // Context warning at 70%
       const ctx = budgetTracker.getContextUtilization()
       if (!state.contextWarningFired && ctx.percent >= 70) {
@@ -263,7 +291,7 @@ export async function createChatSession(
 
   const spawner = overrides?.spawner ?? new BunProcessSpawner()
   const traceCollector = overrides?.traceCollector ?? null
-  const chatId = randomUUID()
+  const chatId = overrides?.chatId ?? randomUUID()
 
   // Budget tracker — use injected instance (from createSessionInfra) or create a fresh one
   const budgetTracker = overrides?.budgetTracker ?? createBudgetTracker({ sessionId: chatId, baseDir: projectCwd })
@@ -287,8 +315,7 @@ export async function createChatSession(
   const eventBus = overrides?.eventBus ?? new EventBus()
   const emit = createEmit(eventBus)
 
-  // Raw updateEntry — passed by caller (chat-runner), defaults to no-op.
-  const rawUpdateEntry: (patch: Partial<SessionEntryBase>) => void = overrides?.updateEntry ?? (() => {})
+  const rawUpdateEntry = overrides?.updateEntry ?? ((_patch: Partial<SessionEntryBase>) => {})
 
   // Shared mutable state — all helpers read/write through this
   const state = {
@@ -305,8 +332,8 @@ export async function createChatSession(
 
   const eventUnsubs: Unsubscribe[] = []
 
-  // Budget, transcript, tracing — unified wiring (same path as workflow mode)
-  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }))
+  // Budget, transcript, tracing, metrics → store — unified wiring (same path as workflow mode)
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }, overrides?.metricsWriter))
 
   // 1. Setup OutputSession (rendering + flush + budget metrics)
   const session = setupOutputSession({
@@ -320,31 +347,12 @@ export async function createChatSession(
     eventBus.subscribeToType("subprocess:ndjson", (e) => {
       const event = e.ndjsonEvent
 
-      // Claude Code echoes user messages as {"type":"user"} — this confirms
-      // the CLI received our stdin injection. Resolve any queued messages.
       if (event.type === "user") {
         session.resolvePendingMessages()
+        return
       }
 
-      // Detect unrecoverable "Prompt is too long" from Claude Code. When the
-      // accumulated conversation exceeds the context window, every --resume
-      // reloads the same oversized session and fails instantly. Clear the
-      // session ID so the next send() spawns a fresh worker.
-      const data = event.data as Record<string, unknown>
-      if (data.type === "result") {
-        const isError = data.is_error === true || (typeof data.subtype === "string" && data.subtype !== "success")
-        const resultText = typeof data.result === "string" ? data.result : ""
-        if (isError && /prompt is too long/i.test(resultText)) {
-          log.warn("prompt too long — resetting session", { claudeSessionId: state.claudeSessionId })
-          state.claudeSessionId = null
-          session.pushSystemMessage(
-            "Conversation too long for context window. Next message will start a fresh conversation.",
-            Date.now(),
-          )
-          session.flush()
-          callbacks.onWaiting(false)
-        }
-      }
+      handlePromptTooLong(event, state, session, callbacks)
     }),
   )
 

@@ -14,7 +14,7 @@ import { createContextAccumulator } from "../workflows/queue/context-accumulator
 import { createCompositeHook } from "../workflows/queue/shared/hooks"
 import "../workflows/queue/steps/register-all"
 import { resolveTierConfigs } from "./config/schema"
-import { type EmitFn } from "../infra/event-bus"
+import type { EmitFn } from "../infra/event-bus"
 import { Log } from "../infra/log"
 import { errorMessage } from "../infra/error-message"
 import { ContextIndexer } from "./memory/indexer"
@@ -33,7 +33,7 @@ const log = Log.create({ service: "queue-orchestrator" })
 
 export interface ResolveTransportsInput {
   deps: WorkflowDeps
-  eventBus: EventBus
+  emit: EmitFn
   workflowId: string
   sessionId: string
   baseDir: string
@@ -50,7 +50,7 @@ export interface ResolveTransportsInput {
  * from the provided warm pools.
  */
 export function resolveTransports(input: ResolveTransportsInput) {
-  const { deps, eventBus, workflowId, sessionId, baseDir, evaluatorSystemPromptAddendum, dispatcherPool, evaluatorPool, formatStdinMessage: fmtStdin } = input
+  const { deps, emit, workflowId, sessionId, baseDir, evaluatorSystemPromptAddendum, dispatcherPool, evaluatorPool, formatStdinMessage: fmtStdin } = input
   const engineName = deps.config.engine
 
   const dispatcherTransport: import("../workflows/dispatcher/transport").DispatcherTransport = new PooledSubprocessTransport({
@@ -58,8 +58,8 @@ export function resolveTransports(input: ResolveTransportsInput) {
     formatStdinMessage: fmtStdin,
     sessionId,
     baseDir,
-    onStdout: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
-    onStderr: (chunk) => eventBus.emit({ type: "dispatcher:output", workflowId, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
+    onStdout: (chunk) => emit("dispatcher:output", { workflowId, stream: "stdout" as const, data: chunk, engineName }),
+    onStderr: (chunk) => emit("dispatcher:output", { workflowId, stream: "stderr" as const, data: chunk, engineName }),
   })
   log.info("queue dispatcher transport resolved", { label: "pooled", engine: engineName })
 
@@ -73,8 +73,8 @@ export function resolveTransports(input: ResolveTransportsInput) {
       sessionId,
       baseDir,
       systemPromptAddendum: evaluatorSystemPromptAddendum,
-      onStdout: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId, stream: "stdout", data: chunk, engineName, timestamp: Date.now() }),
-      onStderr: (chunk) => eventBus.emit({ type: "evaluator:output", workflowId, stream: "stderr", data: chunk, engineName, timestamp: Date.now() }),
+      onStdout: (chunk) => emit("evaluator:output", { workflowId, stream: "stdout" as const, data: chunk, engineName }),
+      onStderr: (chunk) => emit("evaluator:output", { workflowId, stream: "stderr" as const, data: chunk, engineName }),
     })
     log.info("queue evaluator transport created", { label: "pooled", engine: engineName })
   }

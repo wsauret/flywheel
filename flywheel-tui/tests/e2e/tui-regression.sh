@@ -520,7 +520,7 @@ assert_contains "T-BUG1b-modal.log" "Paused" "T-BUG1b-has-paused" || true
 echo "T-14: Exit Flow (Ctrl+C)"
 
 send_keys C-c
-sleep "$WAIT_SHORT"
+sleep "$WAIT_MEDIUM"
 capture "T-14a-exited.log"
 # After exit, the TUI chrome should be gone — check that prompt area is absent
 assert_not_contains "T-14a-exited.log" "Send a message" "T-14a-no-tui" || true

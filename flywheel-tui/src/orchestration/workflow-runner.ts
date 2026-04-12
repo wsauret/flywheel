@@ -142,13 +142,11 @@ export function createWorkflowRunner(opts: {
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
 
-  // Wire event subscriptions: metrics + step events write directly to session store
+  // Wire event subscriptions: step events write directly to session store.
+  // Metrics propagation (budget:metrics-changed → store) is handled by
+  // wireSessionSubscribers in executor-factory via metricsWriter.
   const eventUnsubs: Unsubscribe[] = []
   eventUnsubs.push(
-    eventBus.subscribeToType("budget:metrics-changed", (event) => {
-      const contextPercent = budgetTracker.getContextUtilization().percent
-      updateEntry(sessionId, { tokens: event.tokens, cost: event.cost, contextPercent })
-    }),
     eventBus.subscribeToType("queue:step-started", (event) => {
       updateEntry(sessionId, {
         steps: queue.steps.map((s) => ({
@@ -188,6 +186,7 @@ export function createWorkflowRunner(opts: {
       deps, emit, eventBus, workflowId, sessionId, queue, description,
       projectCwd, subprocessCwd, infra, injectionQueue,
       chatContext: opts.overrides?.chatContext,
+      metricsWriter: (patch) => updateEntry(sessionId, patch),
     })
     executor = created.executor
     dispatcherPool = created.pools.dispatcher

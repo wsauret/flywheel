@@ -4,7 +4,7 @@ import { z } from "zod";
 // Content quality helpers
 // ---------------------------------------------------------------------------
 
-export function countSentences(text: string): number {
+function countSentences(text: string): number {
   const normalized = text.replace(/\s+/g, " ").trim().replace(/[.!?]+\s*$/, "");
   if (!normalized) return 0;
   return normalized.split(/[.!?]+\s+/).filter(Boolean).length;

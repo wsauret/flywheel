@@ -14,7 +14,9 @@ import { useKeyboard } from "@opentui/solid"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer"
-import type { WorkflowStatus, AnyBlock } from "@tui/types"
+import type { AnyBlock, AgentBlock } from "@infra/output-blocks"
+
+type WorkflowStatus = "idle" | "running" | "completed" | "failed" | "interrupted" | "stopping"
 
 export interface OutputWindowProps {
   outputBlocks: readonly AnyBlock[]
@@ -38,7 +40,7 @@ export function OutputWindow(props: OutputWindowProps) {
   }
 
   const toggleAll = () => {
-    const agentBlocks = props.outputBlocks.filter((b): b is import("@tui/types").AgentBlock => b.kind === "agent")
+    const agentBlocks = props.outputBlocks.filter((b): b is AgentBlock => b.kind === "agent")
     const currentExpanded = expandedIds()
     const allExpanded = agentBlocks.every((b) => currentExpanded.has(b.id))
     if (allExpanded) {
