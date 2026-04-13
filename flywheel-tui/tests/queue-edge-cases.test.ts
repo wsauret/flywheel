@@ -5,7 +5,6 @@
 // Validates untested code paths in src/queue/executor.ts:
 //   1. Empty queue returns immediately
 //   2. Abort before run starts (raceAbort with pre-aborted signal)
-//   3. Gate dismissed by user (questionService throws)
 //   4. HITL dismissed by user (proceeds autonomously)
 //   5. Handoff reader failure (graceful degradation)
 //   6. Transport error during revision loop
@@ -83,35 +82,6 @@ describe("queue executor edge cases", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. Gate dismissed by user (questionService throws)
-  // -------------------------------------------------------------------------
-
-  test("gate dismissed by user treats as stop", async () => {
-    resetStepCounter();
-    const steps = [
-      makeStep({ type: "work", title: "Work 1" }),
-      makeStep({ type: "gate", title: "Approval Gate" }),
-      makeStep({ type: "work", title: "Work 2" }),
-    ];
-
-    harness = createHarness({
-      steps,
-      questionService: { throwOnHeaders: new Set(["Gate"]) },
-    });
-
-    const result = await harness.executor.run();
-
-    // Gate dismissal triggers "stop" → gate step is failed
-    expect(harness.queue.steps[1].status).toBe("failed");
-    expect(result.completed).toBe(false);
-    expect(harness.queue.status).toBe("failed");
-    // First work step completed before the gate
-    expect(harness.queue.steps[0].status).toBe("completed");
-    // Step after gate remains pending
-    expect(harness.queue.steps[2].status).toBe("pending");
-  });
-
-  // -------------------------------------------------------------------------
   // 4. HITL dismissed by user — proceeds autonomously
   // -------------------------------------------------------------------------
 
@@ -127,7 +97,6 @@ describe("queue executor edge cases", () => {
 
     harness = createHarness({
       steps,
-      questionService: { throwOnHeaders: new Set(["HITL Step"]) },
     });
 
     const result = await harness.executor.run();
@@ -371,7 +340,6 @@ describe("queue executor edge cases", () => {
 
     harness = createHarness({
       steps,
-      questionService: null,
     });
 
     const result = await harness.executor.run();

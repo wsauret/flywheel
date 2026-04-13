@@ -3,28 +3,12 @@
 // ---------------------------------------------------------------------------
 //
 // All DI interfaces, option types, and result types used by the step
-// executor and its sub-modules (gate-handler, revision-loop).
+// executor and its sub-modules (step-runner, revision-loop).
 // ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
 import type { OnStepCompletedHook } from "./shared/hooks";
 import type { EmitFn } from "../../infra/event-bus";
-
-// ---------------------------------------------------------------------------
-// Gate step — QuestionService interface (minimal, for DI)
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal QuestionService interface for gate steps.
- */
-export interface GateQuestionService {
-  ask(questions: Array<{
-    question: string;
-    header: string;
-    options: Array<{ label: string; description: string }>;
-    custom?: boolean;
-  }>): Promise<Array<string[]>>;
-}
 
 // ---------------------------------------------------------------------------
 // Types — Dependency Injection interfaces
@@ -138,15 +122,6 @@ export interface StepExecutorCoreOptions {
 
 /** Optional hooks and extensions for step execution. */
 export interface StepExecutorHooks {
-  /**
-   * QuestionService for gate steps. When a step of type `gate` is encountered,
-   * the executor uses this service to present continue/stop/pause options
-   * instead of invoking dispatcher→worker.
-   *
-   * When null/undefined, gate steps are auto-resolved as "Continue".
-   */
-  questionService?: GateQuestionService | null;
-
   /**
    * Hook called after a step completes or fails. Allows external logic
    * (e.g., sprint handler) to inspect results and mutate the queue

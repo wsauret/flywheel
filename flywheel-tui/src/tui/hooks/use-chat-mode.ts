@@ -48,16 +48,12 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     manager: services.manager,
     refreshList: services.refreshList,
     projectCwd: deps.projectCwd,
-    workStartTime: metrics.workStartTime,
     onRunnerDone: callbacks.onRunnerDone,
     onRunnerError: callbacks.onRunnerError,
   })
 
   async function startChat(initialMessage?: string): Promise<void> {
-    batch(() => {
-      setChatActive(true)
-      signals.setStatusLine("")
-    })
+    setChatActive(true)
     metrics.resetMetrics()
 
     const result = await controller.startChat(initialMessage)
@@ -74,10 +70,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   }
 
   async function resumeChat(sessionId: string): Promise<void> {
-    batch(() => {
-      setChatActive(true)
-      signals.setStatusLine("")
-    })
+    setChatActive(true)
     metrics.resetMetrics()
 
     const result = await controller.resumeChat(sessionId)

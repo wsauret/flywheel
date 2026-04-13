@@ -4,7 +4,7 @@
 
 import { randomUUID } from "crypto";
 import { createQueue, type QueueOptions } from "./queue";
-import type { Step, Queue, WorkflowTemplate } from "./types";
+import type { Step, Queue } from "./types";
 import type { StepType } from "../../infra/step-types";
 import { SPRINT_HINT } from "./steps/sprint/types.js";
 import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria.js";
@@ -14,17 +14,6 @@ import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria
 // ---------------------------------------------------------------------------
 
 export type WorkflowName = "work" | "sprint";
-
-// ---------------------------------------------------------------------------
-// BuildQueueOptions — configuration for queue building
-// ---------------------------------------------------------------------------
-
-interface BuildQueueOptions {
-  /** When false, gate steps are inserted between major transitions. Default: true (no gates). */
-  skipApprovalGates?: boolean;
-  /** Maximum number of steps in the queue. */
-  maxSteps?: number;
-}
 
 // ---------------------------------------------------------------------------
 // Step factory helper
@@ -44,19 +33,13 @@ export function makeStep(type: StepType, title: string, extra?: Partial<Step>): 
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Build a Queue from a workflow template name.
- *
- * @param name The workflow template name
- * @param options Optional configuration (gates, max steps)
- * @returns A new Queue with the initial steps for the template
- */
+/** Build a Queue from a workflow template name. */
 export function buildQueueFromTemplate(
   name: WorkflowName,
-  options?: BuildQueueOptions,
+  maxSteps?: number,
 ): Queue {
-  const queueOpts: QueueOptions | undefined = options?.maxSteps
-    ? { maxSteps: options.maxSteps }
+  const queueOpts: QueueOptions | undefined = maxSteps
+    ? { maxSteps }
     : undefined;
 
   switch (name) {

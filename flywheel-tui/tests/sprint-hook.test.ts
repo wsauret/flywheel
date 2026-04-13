@@ -37,8 +37,7 @@ import type { Step, Queue } from "../src/workflows/queue/types";
 function makeSprintConfig(overrides: Partial<SprintConfig> = {}): SprintConfig {
   return {
     max_iterations: 5,
-    escalate_to_full: true,
-    escalate_on_stuck: false,
+    detect_stuck: false,
     dispatcher: {},
     evaluator: {},
     worker: {},
@@ -283,42 +282,24 @@ describe("buildRetryStep", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Escalation steps (tested through the hook — buildEscalationSteps is internal)
+// Exhaustion (tested through the hook — when max iterations reached)
 // ---------------------------------------------------------------------------
 
-describe("escalation steps via hook", () => {
-  test("escalation inserts [plan, work, review] all pending", async () => {
-    const config = makeSprintConfig({ max_iterations: 1, escalate_to_full: true });
-    const { hook } = createSprintHook(config);
+describe("exhaustion via hook", () => {
+  test("max iterations reached stops execution with exhausted status", async () => {
+    const config = makeSprintConfig({ max_iterations: 1 });
+    const { hook, getState } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
 
-    await hook(step, "failed", queue, { summary: "fail" });
+    const result = await hook(step, "failed", queue, { summary: "fail" });
 
-    // original + 3 escalation steps
-    expect(queue.steps).toHaveLength(4);
-    expect(queue.steps[1].type).toBe("plan");
-    expect(queue.steps[2].type).toBe("work");
-    expect(queue.steps[3].type).toBe("review");
-    for (const s of queue.steps.slice(1)) {
-      expect(s.status).toBe("pending");
-    }
-  });
-
-  test("escalation steps include feedback in descriptions", async () => {
-    const config = makeSprintConfig({ max_iterations: 1, escalate_to_full: true });
-    const { hook } = createSprintHook(config);
-    const step = makeSprintStep();
-    const queue = makeQueueWithStep(step);
-    queue.steps[0].status = "failed";
-
-    await hook(step, "failed", queue, {
-      summary: "a",
-      eval_feedback: "type errors remain",
-    });
-
-    expect(queue.steps[1].description).toContain("type errors remain");
+    expect(result.continueExecution).toBe(false);
+    expect(getState().status).toBe("exhausted");
+    expect(getState().reason).toBe("Max iterations reached");
+    // No additional steps inserted — just stops
+    expect(queue.steps).toHaveLength(1);
   });
 });
 
@@ -447,8 +428,8 @@ describe("createSprintHook — failed, under max", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — failed, at max iterations", () => {
-  test("inserts escalation steps [plan, work, review] and pauses", async () => {
-    const config = makeSprintConfig({ max_iterations: 1, escalate_to_full: true });
+  test("stops with exhausted status at max iterations", async () => {
+    const config = makeSprintConfig({ max_iterations: 1 });
     const { hook, getState } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
@@ -459,42 +440,17 @@ describe("createSprintHook — failed, at max iterations", () => {
       eval_feedback: "tests broken",
     });
 
-    // Sprint pauses — escalation steps are pending for resume via Ctrl-R
     expect(result.continueExecution).toBe(false);
     const state = getState();
-    expect(state.status).toBe("escalated");
+    expect(state.status).toBe("exhausted");
     expect(state.reason).toBe("Max iterations reached");
 
-    // Escalation steps: plan, work, review (all pending, will execute on resume)
-    expect(queue.steps).toHaveLength(4); // original + 3 escalation
-    expect(queue.steps[1].type).toBe("plan");
-    expect(queue.steps[2].type).toBe("work");
-    expect(queue.steps[3].type).toBe("review");
-    for (const s of queue.steps.slice(1)) {
-      expect(s.status).toBe("pending");
-    }
-  });
-
-  test("returns stop when escalate_to_full is false", async () => {
-    const config = makeSprintConfig({
-      max_iterations: 1,
-      escalate_to_full: false,
-    });
-    const { hook, getState } = createSprintHook(config);
-    const step = makeSprintStep();
-    const queue = makeQueueWithStep(step);
-    queue.steps[0].status = "failed";
-
-    const result = await hook(step, "failed", queue, { summary: "fail" });
-
-    expect(result.continueExecution).toBe(false);
-    expect(getState().status).toBe("escalated");
-    // No escalation steps inserted
+    // No extra steps inserted — just stops
     expect(queue.steps).toHaveLength(1);
   });
 
   test("reaches max after multiple iterations", async () => {
-    const config = makeSprintConfig({ max_iterations: 3, escalate_to_full: true });
+    const config = makeSprintConfig({ max_iterations: 3 });
     const { hook, getState } = createSprintHook(config);
 
     // Build queue with 3 sprint steps
@@ -531,20 +487,14 @@ describe("createSprintHook — failed, at max iterations", () => {
     expect(retry2).toBeDefined();
     retry2.status = "failed";
 
-    // Iteration 3 = max_iterations → escalation (paused, pending resume)
+    // Iteration 3 = max_iterations → exhausted
     const r3 = await hook(retry2, "failed", queue, {
       summary: "fail 3",
       eval_feedback: "error C",
     });
     expect(r3.continueExecution).toBe(false);
-    expect(getState().status).toBe("escalated");
+    expect(getState().status).toBe("exhausted");
     expect(getState().iterationCount).toBe(3);
-
-    // Should have escalation steps
-    const escalationPlan = queue.steps.find(
-      (s) => s.type === "plan" && s.title.includes("Escalation"),
-    );
-    expect(escalationPlan).toBeDefined();
   });
 });
 
@@ -553,11 +503,10 @@ describe("createSprintHook — failed, at max iterations", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — stuck detection", () => {
-  test("two identical feedbacks trigger early escalation", async () => {
+  test("two identical feedbacks trigger early exhaustion", async () => {
     const config = makeSprintConfig({
       max_iterations: 5,
-      escalate_on_stuck: true,
-      escalate_to_full: true,
+      detect_stuck: true,
     });
     const { hook, getState } = createSprintHook(config);
 
@@ -579,22 +528,21 @@ describe("createSprintHook — stuck detection", () => {
     expect(retry).toBeDefined();
     retry.status = "failed";
 
-    // Second failure with same feedback → stuck → pauses with escalation pending
+    // Second failure with same feedback → stuck → exhausted
     const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "TypeError in handler",
     });
 
     expect(result.continueExecution).toBe(false);
-    expect(getState().status).toBe("escalated");
+    expect(getState().status).toBe("exhausted");
     expect(getState().reason).toContain("Stuck");
   });
 
   test("stuck detection respects normalization", async () => {
     const config = makeSprintConfig({
       max_iterations: 5,
-      escalate_on_stuck: true,
-      escalate_to_full: true,
+      detect_stuck: true,
     });
     const { hook, getState } = createSprintHook(config);
 
@@ -613,20 +561,20 @@ describe("createSprintHook — stuck detection", () => {
     )!;
     retry.status = "failed";
 
-    // Same error but different timestamps/lines → stuck → pauses
+    // Same error but different timestamps/lines → stuck → exhausted
     const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "Error at 2026-02-15T12:30:00 in foo.ts:20:3 (500ms)",
     });
 
-    expect(getState().status).toBe("escalated");
+    expect(getState().status).toBe("exhausted");
     expect(result.continueExecution).toBe(false);
   });
 
-  test("no escalation when escalate_on_stuck is false", async () => {
+  test("no stuck detection when detect_stuck is false", async () => {
     const config = makeSprintConfig({
       max_iterations: 5,
-      escalate_on_stuck: false,
+      detect_stuck: false,
     });
     const { hook, getState } = createSprintHook(config);
 
@@ -702,20 +650,19 @@ describe("createSprintHook — insertAfter timing", () => {
     expect(pendingSteps[0].dispatcherHint).toBe(SPRINT_HINT);
   });
 
-  test("escalation steps exist in queue when hook returns", async () => {
-    const config = makeSprintConfig({ max_iterations: 1, escalate_to_full: true });
-    const { hook } = createSprintHook(config);
+  test("exhaustion stops without inserting additional steps", async () => {
+    const config = makeSprintConfig({ max_iterations: 1 });
+    const { hook, getState } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
 
     const result = await hook(step, "failed", queue, { summary: "fail" });
 
-    // Sprint pauses — but escalation steps are already in the queue for resume
     expect(result.continueExecution).toBe(false);
-    const types = queue.steps.map((s) => s.type);
-    expect(types).toContain("plan");
-    expect(types).toContain("review");
+    expect(getState().status).toBe("exhausted");
+    // No additional steps inserted
+    expect(queue.steps).toHaveLength(1);
   });
 });
 

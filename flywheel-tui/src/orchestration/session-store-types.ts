@@ -26,7 +26,6 @@ export interface SessionEntryBase {
   contextPercent: number
   readonly startedAt: number
   modelActivity: ModelActivity
-  errorMessage?: string
   /** True after the runner has completed/errored and been disposed. Data is retained for display. */
   ended: boolean
 }

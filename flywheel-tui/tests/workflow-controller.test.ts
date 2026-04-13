@@ -13,12 +13,10 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import {
   createWorkflowController,
-  formatWorkflowDoneResult,
   type WorkflowControllerDeps,
 } from "../src/orchestration/workflow-controller"
 import type { SessionStore, SessionEntry } from "../src/orchestration/session-store-types"
 import type { SessionManager } from "../src/orchestration/session/manager"
-import type { WorkflowResult } from "../src/orchestration/workflow-runner"
 
 // ── Helpers ──
 
@@ -103,7 +101,6 @@ function createDeps(overrides?: Partial<WorkflowControllerDeps>): WorkflowContro
     sessionStore: createMockSessionStore(),
     manager: createMockManager(),
     refreshList: mock(() => {}),
-    workStartTime: () => Date.now() - 10000,
     foregroundId: () => undefined,
     ...overrides,
   }
@@ -112,59 +109,6 @@ function createDeps(overrides?: Partial<WorkflowControllerDeps>): WorkflowContro
 // ── Tests ──
 
 describe("WorkflowController", () => {
-  describe("formatWorkflowDoneResult (shared helper)", () => {
-    it("formats completed workflow result", () => {
-      const result: WorkflowResult = {
-        completed: true,
-        stepsCompleted: 3,
-        stepsTotal: 3,
-        cost: 0.42,
-        tokens: 12000,
-      }
-
-      const formatted = formatWorkflowDoneResult(result, 63000)
-
-      expect(formatted.state).toBe("completed")
-      expect(formatted.statusMessage).toContain("3/3 steps")
-      expect(formatted.statusMessage).toContain("1m 3s")
-      expect(formatted.statusMessage).toContain("$0.42")
-      expect(formatted.statusMessage).toContain("12K tokens")
-      expect(formatted.terminalTitle).toContain("done")
-    })
-
-    it("formats paused workflow result with reason", () => {
-      const result: WorkflowResult = {
-        completed: false,
-        stepsCompleted: 1,
-        stepsTotal: 5,
-        cost: 0.10,
-        tokens: 5000,
-        reason: "budget exhausted",
-      }
-
-      const formatted = formatWorkflowDoneResult(result, 30000)
-
-      expect(formatted.state).toBe("paused")
-      expect(formatted.statusMessage).toContain("budget exhausted")
-      expect(formatted.statusMessage).toContain("1/5")
-      expect(formatted.terminalTitle).toContain("paused")
-    })
-
-    it("formats paused result without reason", () => {
-      const result: WorkflowResult = {
-        completed: false,
-        stepsCompleted: 2,
-        stepsTotal: 4,
-        cost: 0,
-        tokens: 0,
-      }
-
-      const formatted = formatWorkflowDoneResult(result, 5000)
-
-      expect(formatted.statusMessage).toContain("stopped")
-    })
-  })
-
   describe("startWorkflow", () => {
     it("creates session via manager with workflow kind", () => {
       const deps = createDeps()
@@ -326,26 +270,6 @@ describe("WorkflowController", () => {
   })
 
   describe("lifecycle callbacks", () => {
-    it("onRunnerDone callback receives formatted result", () => {
-      // We can't easily trigger the sessionStore's onRunnerDone callback in unit tests
-      // because it requires a real workflow runner. Instead we test the formatter.
-      const result: WorkflowResult = {
-        completed: true,
-        stepsCompleted: 5,
-        stepsTotal: 5,
-        cost: 1.23,
-        tokens: 50000,
-      }
-
-      const formatted = formatWorkflowDoneResult(result, 120000)
-
-      expect(formatted.state).toBe("completed")
-      expect(formatted.statusMessage).toContain("5/5 steps")
-      expect(formatted.statusMessage).toContain("2m 0s")
-      expect(formatted.statusMessage).toContain("$1.23")
-      expect(formatted.statusMessage).toContain("50K tokens")
-    })
-
     it("onRunnerError callback is accepted in deps", () => {
       let capturedResult: any = null
       const deps = createDeps()

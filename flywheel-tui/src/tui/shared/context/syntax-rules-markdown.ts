@@ -1,5 +1,5 @@
 // Markdown-specific syntax highlighting rules — split from syntax-rules.ts for file size
-import type { Theme } from "./theme"
+import type { Theme } from "./theme/resolve"
 
 export function getMarkdownSyntaxRules(theme: Theme) {
   return [

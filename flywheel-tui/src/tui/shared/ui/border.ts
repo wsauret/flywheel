@@ -1,6 +1,5 @@
 /**
  * Border definitions for UI components.
- * Border definitions for UI components.
  */
 
 export const EmptyBorder = {

@@ -52,15 +52,4 @@ export async function startTUI(options: import("./app").TUIOptions = {}) {
   }
 }
 
-export async function exitTUI() {
-  log.debug("exitTUI called")
-  try {
-    const app = await import("./app.js");
-    app.exitTUI();
-    log.debug("TUI exited")
-  } catch (err) {
-    log.error("exitTUI failed", { error: err instanceof Error ? err : String(err) })
-  }
-}
-
 

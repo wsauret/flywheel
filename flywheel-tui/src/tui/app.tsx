@@ -26,8 +26,6 @@ import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
 import { setExitHandler } from "./exit.js"
 
-export { exitTUI } from "./exit.js"
-
 export interface TUIOptions {
   mode?: "dark" | "light"
   projectCwd?: string
@@ -47,6 +45,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     // Config load failure is non-fatal
   }
 
+  // Promise with async executor: ExitProvider must live inside the Solid render
+  // tree (needs useRenderer()), so we can't use top-level async/await here.
   return new Promise<void>(async (resolve) => {
     const onExit = () => {
       resolve()

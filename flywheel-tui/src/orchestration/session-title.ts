@@ -8,8 +8,8 @@
  * If the LLM call fails or times out, the quick title stands.
  */
 
-import { BunProcessSpawner } from "./engines/subprocess/bun-spawner"
-import { getEngine } from "./engines/core/registry"
+import type { Engine } from "./engines/core/types"
+import type { ProcessSpawner } from "./engines/subprocess/spawner"
 import { Log } from "../infra/log"
 
 const log = Log.create({ service: "session-title" })
@@ -20,6 +20,12 @@ Message: `
 
 const TITLE_TIMEOUT_MS = 10_000
 
+export interface TitleGeneratorDeps {
+  engine: Engine
+  spawner: ProcessSpawner
+  projectCwd: string
+}
+
 /**
  * Generate a session title from a user message or description.
  *
@@ -27,26 +33,26 @@ const TITLE_TIMEOUT_MS = 10_000
  * then fires a haiku subprocess in parallel and calls `onTitle` again
  * with the LLM-generated title when ready.
  */
-export function generateSessionTitle(message: string, onTitle: (title: string) => void): void {
-  // Immediate: first 5 words
+export function generateSessionTitle(
+  message: string,
+  onTitle: (title: string) => void,
+  deps: TitleGeneratorDeps,
+): void {
   const words = message.trim().split(/\s+/)
   let quick = words.slice(0, 5).join(" ")
   if (quick.length > 40) quick = quick.slice(0, 37) + "..."
   else if (words.length > 5) quick += "..."
   onTitle(quick)
 
-  // Async: haiku-generated title (fire-and-forget)
-  generateViaLLM(message).then((title) => {
+  generateViaLLM(message, deps).then((title) => {
     if (title) onTitle(title)
   })
 }
 
-async function generateViaLLM(message: string): Promise<string | null> {
-  // Skip real LLM call during unit tests — the sync fallback is sufficient
+async function generateViaLLM(message: string, deps: TitleGeneratorDeps): Promise<string | null> {
   if (process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test") return null
   try {
-    const engine = getEngine("claude")
-    const cmd = engine.buildCommand({ model: "haiku" })
+    const cmd = deps.engine.buildCommand({ model: "haiku" })
 
     const args = [
       "-p", TITLE_PROMPT + message.slice(0, 200),
@@ -55,11 +61,9 @@ async function generateViaLLM(message: string): Promise<string | null> {
       "--dangerously-skip-permissions",
     ]
 
-    const spawner = new BunProcessSpawner()
     let output = ""
-
-    const result = await spawner.spawn(cmd.command, args, {
-      cwd: process.cwd(),
+    const result = await deps.spawner.spawn(cmd.command, args, {
+      cwd: deps.projectCwd,
       onStdout: (chunk) => { output += chunk },
       onStderr: () => {},
     })

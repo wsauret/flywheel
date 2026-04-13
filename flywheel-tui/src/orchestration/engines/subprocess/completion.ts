@@ -22,7 +22,7 @@ import { SubprocessHandoffSchema } from "../../../infra/handoff-schemas";
 const NDJSON_RESULT_REGEX = /"type"\s*:\s*"result"[^}]*"subtype"\s*:\s*"success"|"type"\s*:\s*"completion"/;
 
 /** Size of the fallback check window (last 32KB of stdout). */
-export const FALLBACK_CHECK_SIZE = 32_768;
+const FALLBACK_CHECK_SIZE = 32_768;
 
 /**
  * Tracks completion detection incrementally during streaming.

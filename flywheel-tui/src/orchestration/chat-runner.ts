@@ -9,11 +9,11 @@
  * 4. Shared session infra lifecycle (budget, traces, transcripts)
  */
 
-import { createChatSession, type ChatSession, type ChatCallbacks } from "./chat-session"
+import { createChatSession, type ChatSession, type ChatCallbacks, type ChatSessionDeps } from "./chat-session"
 import { createSessionInfra } from "./session/create-session-infra"
 import { createOutputPersistence } from "./session/output-persistence"
 import { updateSession } from "./session/persistence"
-import { disposeSessionResources, type SessionResources } from "./session/resources"
+import { disposeSessionResources } from "./session/resources"
 import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { EventBus, createEmit } from "../infra/event-bus"
@@ -29,7 +29,7 @@ import { buildChatWelcomeBlocks } from "./chat-welcome.js"
 // ── Types ──
 
 /** Function to update fields on the session entry in the reactive store. */
-export type ChatUpdateEntryFn = (patch: Partial<import("./session-store-types").ChatSessionEntry>) => void
+type ChatUpdateEntryFn = (patch: Partial<import("./session-store-types").ChatSessionEntry>) => void
 
 export interface ChatRunnerDeps {
   sessionId: string
@@ -67,7 +67,6 @@ export interface ChatRunner extends SessionRunner {
 export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner> {
   const { sessionId, projectCwd, updateState, updateEntry, initialMessage, priorBlocks } = deps
 
-  // Prepare workflow deps (config, engine, spawner)
   const workflowDeps = prepareWorkflowDeps()
   const config = deps.config ?? workflowDeps.config
 
@@ -137,12 +136,17 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     onEnded: () => void deps.onEnded(),
   }
 
-  // Create the underlying ChatSession — pass shared infra and EventBus to avoid duplicate creation
-  const chatSession = await createChatSession(chatCallbacks, initialMessage, {
+  const engine = workflowDeps.engine
+  const engineName = config.engine
+  const model = config.subprocess?.model ?? config.model ?? engine.metadata.defaultModel
+
+  const chatSessionDeps: ChatSessionDeps = {
     projectCwd,
-    deps: workflowDeps,
-    spawner: deps.spawner,
-    traceCollector: infra.traceCollector ?? undefined,
+    engine,
+    engineName,
+    model,
+    spawner: deps.spawner ?? workflowDeps.spawner,
+    traceCollector: infra.traceCollector,
     budgetTracker: infra.budgetTracker,
     transcriptWriter: infra.transcriptWriter,
     eventBus,
@@ -151,12 +155,9 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     updateEntry: wrappedUpdateEntry,
     claudeSessionId: deps.claudeSessionId,
     onFlush: () => {
-      // Propagate captured Claude session ID to the store entry for resume persistence
       const csId = chatSession.outputSession.sessionId
       if (csId) {
         updateEntry({ claudeSessionId: csId })
-        // Write-through to disk on first capture — survives terminal close / crash
-        // without waiting for the runner's onRunnerDone callback.
         if (csId !== persistedClaudeSessionId) {
           persistedClaudeSessionId = csId
           try { updateSession(sessionId, { claudeSessionId: csId }, projectCwd) } catch { /* best-effort */ }
@@ -164,7 +165,9 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       }
       outputFlusher.schedule()
     },
-  })
+  }
+
+  const chatSession = await createChatSession(chatCallbacks, chatSessionDeps, initialMessage)
 
   // Wire the flusher's getBlocks to the OutputSession's blocks (+ priorBlocks prefix)
   getBlocksFn = () => {
@@ -186,10 +189,14 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     // Auto-name the session from the first user message
     if (!firstMessageSent) {
       firstMessageSent = true
-      generateSessionTitle(text, (title) => {
-        updateEntry({ description: title })
-        deps.onSessionName?.(title)
-      })
+      generateSessionTitle(
+        text,
+        (title) => {
+          updateEntry({ description: title })
+          deps.onSessionName?.(title)
+        },
+        { engine: workflowDeps.engine, spawner: workflowDeps.spawner, projectCwd },
+      )
     }
 
     return true

@@ -1,5 +1,31 @@
 import { describe, it, expect } from "bun:test";
-import { extractChatContext } from "../src/orchestration/chat-context-extractor";
+// extractChatContext was inlined into use-command-dispatch.ts — test the extracted function here.
+import type { AnyBlock } from "../src/infra/output-blocks";
+
+const CHAT_CONTEXT_MAX_CHARS = 2000;
+
+function extractChatContext(blocks: readonly AnyBlock[]): string | undefined {
+  const lines: string[] = [];
+  let chars = 0;
+  for (let i = blocks.length - 1; i >= 0 && chars < CHAT_CONTEXT_MAX_CHARS; i--) {
+    const block = blocks[i]!;
+    if (block.kind === "userMessage" && !block.injected) {
+      lines.unshift(`User: ${block.content}`);
+      chars += block.content.length + 6;
+    } else if (block.kind === "text") {
+      lines.unshift(`Assistant: ${block.content}`);
+      chars += block.content.length + 11;
+    }
+  }
+  if (lines.length === 0) return undefined;
+  let result = lines.join("\n");
+  if (result.length > CHAT_CONTEXT_MAX_CHARS) {
+    result = result.slice(result.length - CHAT_CONTEXT_MAX_CHARS);
+    const firstNewline = result.indexOf("\n");
+    if (firstNewline > 0) result = result.slice(firstNewline + 1);
+  }
+  return result;
+}
 import type { AnyBlock } from "../src/infra/output-blocks";
 
 function textBlock(content: string): AnyBlock {

@@ -20,7 +20,6 @@ import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
 import type { WarmPool } from "./engines/pool/warm-pool.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type { EmitFn } from "../infra/event-bus.js"
-import type { EventBus } from "../infra/event-bus.js"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { Step } from "../workflows/queue/types.js"
 import { SELF_REVIEW_CHECKLIST } from "../workflows/queue/shared/self-review-checklist.js"
@@ -86,7 +85,6 @@ interface SubprocessCallbackDeps {
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
   subprocessCwd?: string
   injectionQueue: InjectionQueue
-  eventBus: EventBus
   /** Observer chain for stream observers — created by workflow-runner, fed via EventBus.
    *  Subprocess-callback owns reset (per-step) and turn-complete (injection). */
   observerChain?: { onTurnComplete(): string[]; reset(): void }
@@ -112,8 +110,7 @@ export function createSubprocessCallback(
 ): (step: Step, prompt: string) => Promise<SubprocessCallbackResult> {
   const {
     deps, emit, workflowId, sessionId, projectCwd,
-    injectionQueue,
-    eventBus, observerChain, subprocessPool,
+    injectionQueue, observerChain, subprocessPool,
   } = opts
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
 

@@ -42,7 +42,6 @@ function sessionFilePath(id: string, baseDir: string): string {
 export function createSession(data: Session, baseDir: string): string {
   const id = crypto.randomUUID();
 
-  // Create session directory structure
   ensureSessionDir(id, baseDir);
 
   const filePath = sessionFilePath(id, baseDir);

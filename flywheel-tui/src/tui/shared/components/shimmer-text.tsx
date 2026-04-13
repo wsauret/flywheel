@@ -75,8 +75,6 @@ export function ShimmerText(props: ShimmerTextProps) {
           const g = Math.min(255, baseG * scale)
           const b = Math.min(255, baseB * scale)
           const fg = RGBA.fromInts(r, g, b, 255)
-          // Old alpha-based approach:
-          // const fg = RGBA.fromInts(baseR, baseG, baseB, (0.7 + t * 0.3) * 255)
           return <span style={{ fg }}>{ch}</span>
         })
       })()}

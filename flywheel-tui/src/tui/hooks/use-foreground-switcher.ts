@@ -47,11 +47,9 @@ export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (session
     if (gen !== switchGen) return
     const entry = sessionStore.get(sessionId)
     if (!entry) return
-    metrics.pauseTimer()
     batch(() => {
       signals.setForegroundId(sessionId)
       metrics.resetElapsedTo(Date.now() - entry.startedAt)
-      signals.setStatusLine("")
       signals.setErrorMessage("")
     })
     setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)

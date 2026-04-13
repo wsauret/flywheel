@@ -5,21 +5,23 @@ import {
   WorkflowInfoSchema,
   DispatcherConfigSchema,
 } from "../src/workflows/dispatcher/schemas";
-import { DispatcherDecisionSchema } from "../src/infra/workflow-types";
+import {
+  DispatcherDecisionSchema,
+  EvaluatorResultSchema,
+  ToolScopingSchema,
+  EvaluationCriteriaSchema,
+  WorkerConfigSchema,
+} from "../src/infra/workflow-types";
 import {
   EvaluatorInputSchema,
-  EvaluatorResultSchema,
 } from "../src/workflows/evaluator/schemas";
 import {
   SubprocessResultSchema,
   SubprocessFailureReasonSchema,
-} from "../src/orchestration/engines/subprocess/schemas";
+} from "../src/infra/subprocess-types";
 import { SessionSchema } from "../src/orchestration/session/schemas";
 import {
-  EvaluationCriteriaSchema,
-  ToolScopingSchema,
   SessionBudgetStatusSchema,
-  WorkerConfigSchema,
   AvailableContextSchema,
   LastWorkerResultSchema,
 } from "../src/workflows/schemas";
@@ -777,7 +779,6 @@ describe("SessionSchema", () => {
   const validWorkflowSession = {
     label: "docs/plans/my-plan.md",
     planPath: "docs/plans/my-plan.md",
-    worktreePath: "/tmp/worktrees/test",
     lastUpdated: "2026-03-15T00:00:00Z",
     budgetLimits: {
       max_invocations: 0,
@@ -866,21 +867,7 @@ describe("SessionSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("allows workflow sessions without worktreePath (optional)", () => {
-    const { worktreePath, ...noWorktreePath } = validWorkflowSession;
-    const result = SessionSchema.safeParse(noWorktreePath);
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects workflow sessions with empty-string worktreePath", () => {
-    const result = SessionSchema.safeParse({
-      ...validWorkflowSession,
-      worktreePath: "",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("chat sessions have no planPath or worktreePath", () => {
+  it("chat sessions have no planPath", () => {
     const result = SessionSchema.safeParse({
       ...validChatSession,
       planPath: "should-fail.md",
@@ -1108,7 +1095,6 @@ describe("SessionSchema — budget fields", () => {
   const validSession = {
     label: "docs/plans/my-plan.md",
     planPath: "docs/plans/my-plan.md",
-    worktreePath: "/tmp/worktrees/test",
     lastUpdated: "2026-03-15T00:00:00Z",
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
@@ -1178,7 +1164,7 @@ describe("SessionSchema — budget fields", () => {
   });
 
   it("accepts command for each valid command value", () => {
-    const commands = ["work", "plan", "review", "ship", "debug", "research", "verify", "gate", "chat"] as const;
+    const commands = ["work", "chat"] as const;
     for (const cmd of commands) {
       const isChat = cmd === "chat";
       const data = isChat
@@ -1246,7 +1232,6 @@ describe("SessionSchema — budget fields", () => {
       branch: "main",
       totalCost: 1.5,
       outputPath: "output.json",
-      worktreePath: "/tmp/wt",
       budgetLimits: validLimits,
       budgetUsage: validUsage,
       kind: "workflow",
@@ -1345,7 +1330,6 @@ describe("Integration — full data contract flow", () => {
     const session = {
       label: "integration test",
       planPath: "plans/integration.md",
-      worktreePath: "/tmp/worktrees/integration",
       lastUpdated: "2026-03-20T10:00:00Z",
       budgetLimits: {
         max_invocations: 100,

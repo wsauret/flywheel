@@ -87,7 +87,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
         sessionModal.dismissViewedSession()
         return
       }
-      signals.setStatusLine("")
       signals.setErrorMessage("")
       signals.setForegroundId(undefined)
       deps.setTerminalTitle("flywheel")

@@ -38,7 +38,6 @@ function createMockMetrics() {
     liveTokens: () => 0,
     liveCost: () => 0,
     liveContextPercent: () => 0,
-    workStartTime: () => 0,
     spinnerTick: () => 0,
     thinkingElapsed: () => 0,
     liveActivity: () => "idle" as const,
@@ -118,7 +117,6 @@ describe("Shell state derived memos", () => {
 
     // These should still exist
     expect("setErrorMessage" in signals).toBe(true)
-    expect("setStatusLine" in signals).toBe(true)
     expect("setForegroundId" in signals).toBe(true)
   })
 

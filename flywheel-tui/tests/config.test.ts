@@ -25,7 +25,6 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.subprocess).toEqual({});
       expect(result.data.max_retries).toBe(3);
       expect(result.data.timeout_minutes).toBe(60);
-      expect(result.data.skip_approval_gates).toBe(false);
     }
   });
 
@@ -104,7 +103,6 @@ describe("loadConfig: file loading", () => {
     expect(config.model).toBe("claude-sonnet-4-20250514");
     expect(config.max_retries).toBe(5);
     expect(config.timeout_minutes).toBe(90);
-    expect(config.skip_approval_gates).toBe(false);
   });
 
   it("uses defaults when no config file provided", () => {
@@ -169,20 +167,6 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
     // From config file (overriding defaults)
     expect(config.max_retries).toBe(5);
     expect(config.timeout_minutes).toBe(90);
-  });
-
-  it("handles FLYWHEEL_SKIP_APPROVAL_GATES=true", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_SKIP_APPROVAL_GATES: "true",
-    });
-    expect(config.skip_approval_gates).toBe(true);
-  });
-
-  it("handles FLYWHEEL_SKIP_APPROVAL_GATES=1", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_SKIP_APPROVAL_GATES: "1",
-    });
-    expect(config.skip_approval_gates).toBe(true);
   });
 
   it("handles FLYWHEEL_PROJECT_CWD", () => {

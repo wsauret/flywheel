@@ -20,7 +20,7 @@ import { parseRawHandoff } from "./shared/handoff-parse.js";
 import { randomUUID } from "crypto";
 
 /** Known step types — used to validate dispatcher-provided types at the boundary. */
-const VALID_STEP_TYPES = new Set<string>(["plan", "work", "review", "ship", "debug", "research", "verify", "gate"]);
+const VALID_STEP_TYPES = new Set<string>(["work"]);
 
 function toStepType(raw: string): StepType {
   return VALID_STEP_TYPES.has(raw) ? (raw as StepType) : "work";
@@ -210,11 +210,6 @@ export function buildStepDescription(step: Step, context: StepDispatchContext): 
   // File references
   if (step.fileReferences && step.fileReferences.length > 0) {
     parts.push(`Relevant files: ${step.fileReferences.join(", ")}`);
-  }
-
-  // HITL response (if user provided input before this step)
-  if (context.hitlResponse) {
-    parts.push(`User input: ${context.hitlResponse}`);
   }
 
   return parts.join("\n");

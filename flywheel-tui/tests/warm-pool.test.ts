@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
 import { WarmPool } from "../src/orchestration/engines/pool/warm-pool";
 import type { SpawnResult } from "../src/orchestration/engines/subprocess/spawner";
 import type { RawSpawnedProcess } from "../src/orchestration/engines/subprocess/stream-pipeline";
-import { activeProcesses } from "../src/orchestration/engines/subprocess/process-lifecycle";
+import { registeredProcesses } from "../src/orchestration/engines/subprocess/process-lifecycle";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -221,7 +221,7 @@ describe("WarmPool", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     // Process should be registered
-    const pids = [...activeProcesses].map((p) => p.pid);
+    const pids = [...registeredProcesses].map((p) => p.pid);
     expect(pids).toContain(1000);
 
     // Acquire and release (kills old, spawns new)
@@ -231,7 +231,7 @@ describe("WarmPool", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     // Old process should be unregistered, new one registered
-    const pidsAfter = [...activeProcesses].map((p) => p.pid);
+    const pidsAfter = [...registeredProcesses].map((p) => p.pid);
     expect(pidsAfter).not.toContain(1000);
     expect(pidsAfter).toContain(1001);
   });

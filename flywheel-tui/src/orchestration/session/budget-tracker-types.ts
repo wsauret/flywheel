@@ -83,8 +83,6 @@ export interface BudgetTracker {
   getContextUtilization(): ContextUtilization;
   /** Check whether any budget limit has been exceeded. */
   isExhausted(budgetLimits: BudgetLimits): boolean;
-  /** Get current budget status for dispatcher reporting. */
-  getBudgetStatus(budgetLimits: BudgetLimits): SessionBudgetStatus;
   /** Force-write pending budget usage to session file. */
   flush(): void;
   /** Cancel timers and flush. */

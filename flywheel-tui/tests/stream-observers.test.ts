@@ -18,7 +18,6 @@ import {
 
 import {
   createDoomLoopObserver,
-  extractToolSignature,
 } from "../src/orchestration/engines/doom-loop.js";
 
 // ---------------------------------------------------------------------------
@@ -94,26 +93,6 @@ describe("DoomLoopObserver", () => {
     }
     const msg = obs.onTurnComplete();
     expect(msg).toBeNull(); // varied calls, no pattern
-  });
-});
-
-// ---------------------------------------------------------------------------
-// extractToolSignature
-// ---------------------------------------------------------------------------
-
-describe("extractToolSignature", () => {
-  it("uses shallow value hash (sliced to 100 chars)", () => {
-    const longVal = "x".repeat(200);
-    const sig1 = extractToolSignature("Read", { file_path: longVal });
-    const sig2 = extractToolSignature("Read", { file_path: longVal + "extra" });
-    // Both should produce the same signature because we only look at first 100 chars
-    expect(sig1).toBe(sig2);
-  });
-
-  it("sorts keys deterministically", () => {
-    const sig1 = extractToolSignature("Write", { content: "a", file_path: "/b" });
-    const sig2 = extractToolSignature("Write", { file_path: "/b", content: "a" });
-    expect(sig1).toBe(sig2);
   });
 });
 

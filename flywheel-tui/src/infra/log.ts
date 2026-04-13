@@ -143,7 +143,7 @@ export namespace Log {
       if (cached) return cached
     }
 
-    function build(message: any, extra?: Record<string, unknown>) {
+    function build(message: unknown, extra?: Record<string, unknown>) {
       const prefix = Object.entries({ ...tags, ...extra })
         .filter(([_, value]) => value !== undefined && value !== null)
         .map(([key, value]) => {

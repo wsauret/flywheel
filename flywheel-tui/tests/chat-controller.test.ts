@@ -127,7 +127,6 @@ function createDeps(overrides?: Partial<ChatControllerDeps>): ChatControllerDeps
     manager: createMockManager(),
     refreshList: mock(() => {}),
     projectCwd: "/tmp/test-project",
-    workStartTime: () => Date.now() - 5000,
     ...overrides,
   }
 }

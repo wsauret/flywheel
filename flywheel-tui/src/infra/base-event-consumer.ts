@@ -41,10 +41,6 @@ export abstract class BaseEventConsumer {
   /** Extension point for subclasses. HeadlessAdapter overrides for log stream cleanup. */
   stop(): void { this.running = false; }
 
-  isRunning(): boolean { return this.running; }
-
-  isConnected(): boolean { return this.eventBus !== null; }
-
   /**
    * Handle a single FlywheelEvent. Subclasses should implement
    * event routing (e.g. exhaustive switch).

@@ -43,7 +43,7 @@ describe("buildQueueFromTemplate — sprint", () => {
   });
 
   test("respects maxSteps option", () => {
-    const q = buildQueueFromTemplate("sprint", { maxSteps: 5 });
+    const q = buildQueueFromTemplate("sprint", 5);
     expect(q.maxSteps).toBe(5);
   });
 });

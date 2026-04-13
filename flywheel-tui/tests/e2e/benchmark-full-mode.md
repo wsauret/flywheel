@@ -3,7 +3,7 @@
 **Date:** 2026-03-27
 **Mode:** Plan + Work + Review (option 3)
 **HITL:** All automatic (no manual consolidation, no manual review triage)
-**Approval gates:** Skipped (FLYWHEEL_SKIP_APPROVAL_GATES=true)
+**Approval gates:** N/A (gate step type removed)
 **Engine:** Claude (default)
 **Branch:** feat/flywheel-cli-engine
 

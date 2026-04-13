@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import type { EvaluatorInput, EvaluatorResult } from "../src/workflows/evaluator/schemas";
-import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
+import type { EvaluatorInput } from "../src/workflows/evaluator/schemas";
+import { EvaluatorResultSchema, type EvaluatorResult } from "../src/infra/workflow-types";
 
 // ---------------------------------------------------------------------------
 // Helpers

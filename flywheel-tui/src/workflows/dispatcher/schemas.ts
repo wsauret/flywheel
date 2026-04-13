@@ -3,9 +3,8 @@ import {
   LastWorkerResultSchema,
   SessionBudgetStatusSchema,
   AvailableContextSchema,
-  EvaluationCriteriaSchema,
-  WorkerConfigSchema,
 } from "../schemas";
+import { EvaluationCriteriaSchema, WorkerConfigSchema } from "../../infra/workflow-types";
 import { StepContextSchema } from "../queue/step-context";
 
 // ---------------------------------------------------------------------------

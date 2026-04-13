@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { EvaluatorResultSchema } from "../src/workflows/evaluator/schemas";
+import { EvaluatorResultSchema } from "../src/infra/workflow-types";
 import { getEngine } from "../src/orchestration/engines/core/registry";
 import { createEnvFilter } from "../src/orchestration/engines/subprocess/env-filter";
 

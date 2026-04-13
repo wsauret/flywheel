@@ -8,7 +8,6 @@ export interface MetricsHook {
   liveTokens: Accessor<number>
   liveCost: Accessor<number>
   liveContextPercent: Accessor<number>
-  workStartTime: Accessor<number>
   spinnerTick: Accessor<number>
   thinkingElapsed: Accessor<number>
   liveActivity: Accessor<"idle" | "thinking" | "generating" | "tool_executing">
@@ -30,7 +29,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   const liveActivity = createMemo((): "idle" | "thinking" | "generating" | "tool_executing" => entry()?.modelActivity ?? "idle")
 
   // Leaf signals — local transient state, not duplicated from the store
-  const [workStartTime, setWorkStartTime] = createSignal(0)
   const [elapsed, setElapsed] = createSignal(0)
   const [spinnerTick, setSpinnerTick] = createSignal(0)
   const [thinkingElapsed, setThinkingElapsed] = createSignal(0)
@@ -83,7 +81,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     // Only reset leaf signals — the 4 store-derived memos (liveTokens, liveCost,
     // liveContextPercent, liveActivity) reset implicitly when the store entry is cleared.
     batch(() => {
-      setWorkStartTime(Date.now())
       setElapsed(0)
       setThinkingElapsed(0)
     })
@@ -101,7 +98,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     liveTokens,
     liveCost,
     liveContextPercent,
-    workStartTime,
     spinnerTick,
     thinkingElapsed,
     liveActivity,
@@ -111,5 +107,3 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     resetElapsedTo,
   }
 }
-
-export { SPINNER_FRAMES } from "@tui/shared/components/spinner-frames.js"

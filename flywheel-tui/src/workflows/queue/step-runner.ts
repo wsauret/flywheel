@@ -17,38 +17,7 @@ const log = Log.create({ service: "step-executor" });
 // Pipeline stages — file-local, each receives and returns the context
 // ---------------------------------------------------------------------------
 
-/** Stage 1: Resolve HITL prompt if configured. */
-async function resolveHITL(
-  step: Step,
-  deps: StepRunnerDeps,
-  ctx: StepPipelineContext,
-): Promise<StepPipelineContext> {
-  if (!step.hitl) return ctx;
-
-  if (step.hitl.enabled && deps.questionService) {
-    try {
-      const answers = await deps.questionService.ask([{
-        question: step.hitl.prompt,
-        header: step.title,
-        options: [
-          { label: "Continue", description: "Proceed with this step" },
-        ],
-        custom: true,
-      }]);
-      ctx.hitlResponse = answers?.[0]?.[0] ?? null;
-      log.info("HITL response received", { stepId: step.id, hasResponse: ctx.hitlResponse !== null });
-    } catch {
-      log.info("HITL dismissed by user, proceeding autonomously", { stepId: step.id });
-    }
-  } else {
-    const reason = step.hitl.enabled ? "no question service available" : "hitl disabled on step";
-    log.info("HITL skipped, proceeding autonomously", { stepId: step.id, reason });
-  }
-
-  return ctx;
-}
-
-/** Stage 2: Build prompt via dispatcher or step metadata. */
+/** Stage 1: Build prompt via dispatcher or step metadata. */
 async function dispatchStep(
   step: Step,
   deps: StepRunnerDeps,
@@ -83,7 +52,6 @@ async function dispatchStep(
       ...(deps.sessionObjective !== undefined ? { session_objective: deps.sessionObjective } : {}),
       ...(ctx.previousHandoff ? { previousHandoff: ctx.previousHandoff } : {}),
       ...(ctx.previousAssessment ? { previousAssessment: ctx.previousAssessment } : {}),
-      ...(ctx.hitlResponse !== null ? { hitlResponse: ctx.hitlResponse } : {}),
       ...(deps.guardrails ? {
         mutation_budget: deps.guardrails.getMutationBudget(step.id, deps.queue.steps.length),
       } : {}),
@@ -289,7 +257,6 @@ export async function executeStep(
     previousAssessment: deps.previousAssessment,
     workerOutput: null,
     handoffData: null,
-    hitlResponse: null,
     dispatcherResult: null,
     postTurnPassed: true,
   };
@@ -303,7 +270,6 @@ export async function executeStep(
 
   try {
     // Pipeline: each stage receives and returns the context
-    ctx = await resolveHITL(step, deps, ctx);
     ctx = await dispatchStep(step, deps, ctx);
     ctx = await applyMutations(step, deps, ctx);
     ctx = await spawnWorker(step, deps, ctx);

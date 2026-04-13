@@ -27,7 +27,7 @@ import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { isHandoffPath } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@infra/output-blocks"
-import { renderHunk, type DiffLine, type DiffThemeColors } from "@tui/adapters/color-diff"
+import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 
 /** Convert a file path to a file:// URI for OSC 8 hyperlinks. */
@@ -36,38 +36,23 @@ function toFileUri(filePath: string): string {
   return `file://${resolved}`
 }
 
-/** Normalize tool name for display. */
+const TOOL_DISPLAY_NAMES = new Map<string, string>([
+  ["grep", "Text Search"], ["glob", "File Search"], ["websearch", "Web Search"],
+  ["webfetch", "Web Fetch"], ["notebookedit", "Notebook Edit"], ["powershell", "PowerShell"],
+  ["repl", "REPL"], ["todowrite", "Task Update"], ["agent", "Subagent"], ["task", "Subagent"],
+  ["toolsearch", "Tool Search"], ["sendmessage", "Send Message"], ["askuserquestion", "Ask User"],
+  ["enterplanmode", "Enter Plan Mode"], ["exitplanmode", "Exit Plan Mode"],
+  ["enterworktree", "Enter Worktree"], ["exitworktree", "Exit Worktree"],
+  ["bash", "Bash"], ["read", "Read"], ["write", "Write"], ["edit", "Edit"],
+  ["lsp", "LSP"], ["skill", "Skill"], ["remotetrigger", "Remote Trigger"],
+])
+
 export function displayToolName(name: string): string {
   const lower = name.toLowerCase()
-  if (lower === "grep") return "Text Search"
-  if (lower === "glob") return "File Search"
-  if (lower === "websearch") return "Web Search"
-  if (lower === "webfetch") return "Web Fetch"
-  if (lower === "notebookedit") return "Notebook Edit"
-  if (lower === "powershell") return "PowerShell"
-  if (lower === "repl") return "REPL"
-  if (lower === "todowrite") return "Task Update"
-  if (lower === "agent" || lower === "task") return "Subagent"
-  if (lower === "toolsearch") return "Tool Search"
-  if (lower === "sendmessage") return "Send Message"
-  if (lower === "askuserquestion") return "Ask User"
-  if (lower === "enterplanmode") return "Enter Plan Mode"
-  if (lower === "exitplanmode") return "Exit Plan Mode"
-  if (lower === "enterworktree") return "Enter Worktree"
-  if (lower === "exitworktree") return "Exit Worktree"
-  if (lower === "bash") return "Bash"
-  if (lower === "read") return "Read"
-  if (lower === "write") return "Write"
-  if (lower === "edit") return "Edit"
-  if (lower === "lsp") return "LSP"
-  if (lower === "skill") return "Skill"
-  if (lower === "remotetrigger") return "Remote Trigger"
+  const mapped = TOOL_DISPLAY_NAMES.get(lower)
+  if (mapped) return mapped
   if (lower.startsWith("schedulecron") || lower.startsWith("cron")) return "Cron"
-  // MCP tools: strip prefix, show server + tool name
-  if (name.startsWith("mcp__")) {
-    const parts = name.slice(5).split("__")
-    return parts.length >= 2 ? `MCP ${parts[0]}` : `MCP ${parts[0]}`
-  }
+  if (name.startsWith("mcp__")) return `MCP ${name.slice(5).split("__")[0]}`
   return name
 }
 
@@ -90,7 +75,7 @@ export function ToolBlock(props: ToolBlockProps) {
   const [expanded, setExpanded] = createSignal(!isHandoffPath(props.block.filePath))
 
   // Map TUI theme → diff theme colors (RGBA passthrough, no conversion)
-  const diffColors = createMemo((): DiffThemeColors => ({
+  const diffColors = createMemo(() => ({
     text: theme.text,
     textMuted: theme.textMuted,
     addedBg: theme.diffAddedBg,

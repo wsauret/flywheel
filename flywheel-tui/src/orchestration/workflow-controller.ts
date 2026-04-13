@@ -12,7 +12,7 @@ import { buildQueueForSlashCommand } from "./queue-builder.js"
 import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
 import { loadResumeData, findResumableSession } from "./session-actions.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
-import { TERMINAL_TITLE_PREFIX, formatElapsed, formatCost, formatTokens } from "../infra/format.js"
+import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from "./test-step.js"
 import type { WorkflowResult } from "./workflow-runner.js"
 import type { SessionStore } from "./session-store-types.js"
@@ -22,7 +22,7 @@ import type { SessionState } from "./session/state-machine.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type {
   RunnerDoneResult as BaseRunnerDoneResult,
-  RunnerErrorResult as BaseRunnerErrorResult,
+  RunnerErrorResult,
 } from "./session/types.js"
 
 // ---------------------------------------------------------------------------
@@ -33,8 +33,6 @@ export interface WorkflowControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   refreshList: () => void
-  /** Returns a monotonic timestamp for elapsed-time computation. */
-  workStartTime: () => number
   /** Foreground session ID accessor (needed for pause/abort/actionDeps). */
   foregroundId: () => string | undefined
   /** Called when a runner completes normally. */
@@ -64,9 +62,7 @@ export interface RunnerDoneResult extends BaseRunnerDoneResult {
   state: SessionState
 }
 
-export interface RunnerErrorResult extends BaseRunnerErrorResult {
-  statusMessage: string
-}
+export { type RunnerErrorResult }
 
 export interface WorkflowController {
   /**
@@ -129,20 +125,16 @@ export interface WorkflowController {
  * Format runner-done result. Shared between chat and workflow controllers
  * to consolidate the handleRunnerDone pattern.
  */
-export function formatWorkflowDoneResult(
+function formatWorkflowDoneResult(
   result: WorkflowResult,
-  elapsedMs: number,
 ): RunnerDoneResult {
-  const totalElapsed = formatElapsed(elapsedMs)
   if (result.completed) {
     return {
-      statusMessage: `\u2713 ${result.stepsCompleted}/${result.stepsTotal} steps \u00b7 ${totalElapsed} \u00b7 ${formatCost(result.cost)} \u00b7 ${formatTokens(result.tokens)} tokens`,
       terminalTitle: `${TERMINAL_TITLE_PREFIX}done`,
       state: "completed",
     }
   }
   return {
-    statusMessage: `\u2717 ${result.reason ?? "stopped"} (${result.stepsCompleted}/${result.stepsTotal}) \u00b7 ${totalElapsed} \u00b7 ${formatCost(result.cost)}`,
     terminalTitle: `${TERMINAL_TITLE_PREFIX}paused`,
     state: "paused",
   }
@@ -157,8 +149,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
 
   /** Handle workflow runner completion. */
   function handleRunnerDone(id: string, result: WorkflowResult): void {
-    const elapsedMs = Date.now() - deps.workStartTime()
-    const doneResult = formatWorkflowDoneResult(result, elapsedMs)
+    const doneResult = formatWorkflowDoneResult(result)
     manager.updateState(id, doneResult.state)
     refreshList()
     deps.onRunnerDone?.(id, doneResult)
@@ -167,11 +158,10 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   /** Handle workflow runner error. */
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
-    const errorResult = {
+    const errorResult: RunnerErrorResult = {
       errorMessage: extractErrorMessage(err),
-      statusMessage: "",
       terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
-    } satisfies RunnerErrorResult
+    }
     refreshList()
     deps.onRunnerError?.(id, errorResult)
   }

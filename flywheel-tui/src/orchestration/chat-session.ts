@@ -16,18 +16,13 @@
  * The shell provides callbacks for state updates — chat doesn't know about UI.
  */
 
-import { randomUUID } from "node:crypto"
-import { BunProcessSpawner } from "./engines/subprocess/bun-spawner"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { getEngine } from "./engines/core/registry"
 import { createOutputSession, type OutputSession } from "./output-session"
-import { createBudgetTracker } from "./session/budget-tracker.js"
 import type { BudgetTracker } from "./session/budget-tracker-types.js"
-import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { wireSessionSubscribers } from "./session/create-session-infra"
-import { contextWindowForModel } from "./engines/providers/claude-context"
 import type { TraceCollector } from "./session/trace-collector"
-import { createTranscriptWriter, type TranscriptWriter } from "./session/transcript-writer"
+import type { TranscriptWriter } from "./session/transcript-writer"
 import { createChatControls } from "./chat-controls"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
 import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
@@ -58,7 +53,19 @@ export interface ChatSession {
   readonly outputSession: OutputSession
 }
 
-// ── Shared mutable state ──
+// ── Chat turn state machine ──
+
+/**
+ * Discriminated phase for the chat subprocess turn lifecycle.
+ *
+ * Replaces the previous three separate booleans (agentActive,
+ * userTurnInProgress, modelActivity gating) with a single authoritative value.
+ *
+ * - "idle": No user turn in progress. Non-idle modelActivity is suppressed.
+ * - "awaiting-response": User sent a message, agent hasn't started yet.
+ * - "agent-active": Agent is producing output (thinking/generating).
+ */
+export type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 
 /** Mutable state shared across pipeline, worker lifecycle, and controls. */
 export interface ChatSessionState {
@@ -67,34 +74,27 @@ export interface ChatSessionState {
   ended: boolean
   /** Claude Code session ID — captured after first turn, used for --resume. */
   claudeSessionId: string | null
-  agentActive: boolean
-  /** Gate: only forward model activity when a user-triggered turn is in progress. */
-  userTurnInProgress: boolean
+  /** Current turn phase — single source of truth for activity gating. */
+  turnPhase: ChatTurnPhase
   contextWarningFired: boolean
 }
 
 // ── Factory ──
 
-export interface ChatSessionOptions {
-  projectCwd?: string
-  deps?: ReturnType<typeof prepareWorkflowDeps>
-  spawner?: ProcessSpawner
-  traceCollector?: TraceCollector
-  /** Inject a shared budget tracker (from createSessionInfra). When omitted, a fresh one is created. */
-  budgetTracker?: BudgetTracker
-  /** Inject a shared transcript writer (from createSessionInfra). When omitted, created if tracing enabled. */
-  transcriptWriter?: TranscriptWriter | null
-  /** Inject an EventBus (e.g. for testing). When omitted, a fresh one is created. */
-  eventBus?: EventBus
-  /** Correlation ID for events. When omitted, a random UUID is generated. */
-  chatId?: string
-  /** Store mutator — OutputSession writes outputBlocks and modelActivity here. */
-  updateEntry?: (patch: Partial<SessionEntryBase>) => void
-  /** Callback to write budget metrics to the session store (wired via wireSessionSubscribers). */
+export interface ChatSessionDeps {
+  projectCwd: string
+  engine: ReturnType<typeof getEngine>
+  engineName: string
+  model: string
+  spawner: ProcessSpawner
+  traceCollector: TraceCollector | null
+  budgetTracker: BudgetTracker
+  transcriptWriter: TranscriptWriter | null
+  eventBus: EventBus
+  chatId: string
+  updateEntry: (patch: Partial<SessionEntryBase>) => void
   metricsWriter?: import("./session/create-session-infra").MetricsWriter
-  /** Called on every 16ms tick regardless of block changes. Use for persistence scheduling. */
   onFlush?: () => void
-  /** Pre-known Claude Code session ID — used for --resume on the initial spawn (auto-resume path). */
   claudeSessionId?: string
 }
 
@@ -150,11 +150,12 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
 
   // Suppress model activity that arrives outside a user-initiated turn.
   // Prevents "ghost thinking" during idle reconnections or process startup.
-  // Also tracks when the agent starts responding (agentActive) so send()
-  // can detect mid-turn injections vs. new turns.
+  // Transitions from "awaiting-response" to "agent-active" on first non-idle activity.
   const activityGatedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
-    if (patch.modelActivity && patch.modelActivity !== "idle" && !state.userTurnInProgress) return
-    if (patch.modelActivity && patch.modelActivity !== "idle") state.agentActive = true
+    if (patch.modelActivity && patch.modelActivity !== "idle") {
+      if (state.turnPhase === "idle") return
+      if (state.turnPhase === "awaiting-response") state.turnPhase = "agent-active"
+    }
     updateEntry(patch)
   }
 
@@ -212,7 +213,7 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
 
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
     emit("subprocess:spawned", { workflowId: chatId, stepIndex: 0 })
-    if (messageToSend) state.userTurnInProgress = true
+    if (messageToSend) state.turnPhase = "awaiting-response"
     const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
     // Only send content if there's a message — an empty pipe lets Claude idle and
@@ -228,10 +229,8 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
         if (chunk.trim()) session.writeStderr(chunk, Date.now())
       },
       onTurnComplete: () => {
-        // Capture Claude's session ID on every turn so reconnect is always possible
         if (session.sessionId) state.claudeSessionId = session.sessionId
-        state.agentActive = false
-        state.userTurnInProgress = false
+        state.turnPhase = "idle"
         session.resolvePendingMessages()
         session.flushContextRun(Date.now())
         callbacks.onWaiting(false)
@@ -253,10 +252,9 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
 
       // If the worker exited while a user turn was in progress (crash, unexpected exit),
       // reset session state so the UI doesn't get stuck "active" with a dead worker.
-      if (state.userTurnInProgress) {
+      if (state.turnPhase !== "idle") {
         log.warn("worker exited mid-turn — resetting session state")
-        state.agentActive = false
-        state.userTurnInProgress = false
+        state.turnPhase = "idle"
         callbacks.onWaiting(false)
         rawUpdateEntry({ modelActivity: "idle" })
         session.pushSystemMessage("Agent process exited unexpectedly. Send a message to reconnect.", Date.now())
@@ -280,51 +278,21 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
 
 export async function createChatSession(
   callbacks: ChatCallbacks,
+  deps: ChatSessionDeps,
   initialMessage?: string,
-  overrides?: ChatSessionOptions,
 ): Promise<ChatSession> {
-  const projectCwd = overrides?.projectCwd ?? process.cwd()
-  const deps = overrides?.deps ?? prepareWorkflowDeps()
-  const engineName = deps.config.engine
-  const engine = getEngine(engineName)
-  const model = deps.config.subprocess?.model ?? deps.config.model ?? engine.metadata.defaultModel
-
-  const spawner = overrides?.spawner ?? new BunProcessSpawner()
-  const traceCollector = overrides?.traceCollector ?? null
-  const chatId = overrides?.chatId ?? randomUUID()
-
-  // Budget tracker — use injected instance (from createSessionInfra) or create a fresh one
-  const budgetTracker = overrides?.budgetTracker ?? createBudgetTracker({ sessionId: chatId, baseDir: projectCwd })
-
-  // Seed the context window from the configured model name so percentage
-  // calculation works from turn 1. The `[1m]` suffix (1M context) is only
-  // present in the config string — Claude Code strips it in NDJSON output.
-  // The authoritative value from "result" events overwrites this if it arrives.
-  const estimatedWindow = contextWindowForModel(model)
-  if (estimatedWindow > 0) budgetTracker.updateContextUtilization(0, estimatedWindow)
-
-  // Transcript writer — use injected instance or create if tracing enabled
-  const transcriptWriter: TranscriptWriter | null = overrides?.transcriptWriter !== undefined
-    ? overrides.transcriptWriter
-    : (deps.config.tracing?.enabled
-        ? createTranscriptWriter({ sessionId: chatId, baseDir: projectCwd })
-        : null)
-
-  // EventBus — infra subscribers (budget, transcript, tracing) are wired below,
-  // matching the workflow-mode pattern in executor-factory.ts.
-  const eventBus = overrides?.eventBus ?? new EventBus()
+  const {
+    projectCwd, engine, engineName, model, spawner, traceCollector,
+    budgetTracker, transcriptWriter, eventBus, chatId, updateEntry: rawUpdateEntry,
+  } = deps
   const emit = createEmit(eventBus)
 
-  const rawUpdateEntry = overrides?.updateEntry ?? ((_patch: Partial<SessionEntryBase>) => {})
-
-  // Shared mutable state — all helpers read/write through this
-  const state = {
+  const state: ChatSessionState = {
     stdinHandle: null,
     workerPid: undefined,
     ended: false,
-    claudeSessionId: overrides?.claudeSessionId ?? null,
-    agentActive: false,
-    userTurnInProgress: false,
+    claudeSessionId: deps.claudeSessionId ?? null,
+    turnPhase: "idle",
     contextWarningFired: false,
   }
 
@@ -333,13 +301,13 @@ export async function createChatSession(
   const eventUnsubs: Unsubscribe[] = []
 
   // Budget, transcript, tracing, metrics → store — unified wiring (same path as workflow mode)
-  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }, overrides?.metricsWriter))
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }, deps.metricsWriter))
 
   // 1. Setup OutputSession (rendering + flush + budget metrics)
   const session = setupOutputSession({
     budgetTracker, emit, chatId, state,
     updateEntry: rawUpdateEntry,
-    onFlush: overrides?.onFlush,
+    onFlush: deps.onFlush,
   })
 
   // Chat-specific NDJSON event handlers — user echo detection + context-too-long

@@ -4,12 +4,4 @@
  * Defined in infra/ because it's a foundational type used across all layers
  * (workflows, orchestration, tui).
  */
-export type StepType =
-  | "plan"
-  | "work"
-  | "review"
-  | "ship"
-  | "debug"
-  | "research"
-  | "verify"
-  | "gate";
+export type StepType = "work";

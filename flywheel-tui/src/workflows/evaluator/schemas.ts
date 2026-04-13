@@ -74,12 +74,4 @@ export const EvaluatorInputSchema = z.object({
 
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;
 
-// ---------------------------------------------------------------------------
-// EvaluatorResultSchema — derived from EvaluatorVerdictSchema
-// ---------------------------------------------------------------------------
-// Identical fields, but `suggestions` is optional and passthrough is stripped.
-
-export const EvaluatorResultSchema = EvaluatorVerdictSchema
-  .extend({ suggestions: z.array(z.string()).optional() })
-  .strip();
 

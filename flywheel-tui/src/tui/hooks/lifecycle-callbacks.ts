@@ -5,6 +5,7 @@
  * This helper writes the result data to the shared shell signals.
  */
 
+import { batch } from "solid-js"
 import type { RunnerDoneResult, RunnerErrorResult } from "../../orchestration/session/types.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
@@ -15,9 +16,11 @@ export function wireLifecycleCallbacks(signals: ShellSignals, services: ShellSer
       services.refreshList()
     },
     onRunnerError: (_id: string, result: RunnerErrorResult) => {
-      signals.setErrorMessage(result.errorMessage)
+      batch(() => {
+        signals.setErrorMessage(result.errorMessage)
+        services.refreshList()
+      })
       services.setTerminalTitle(result.terminalTitle)
-      services.refreshList()
     },
   }
 }

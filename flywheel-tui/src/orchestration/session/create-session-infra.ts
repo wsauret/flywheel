@@ -135,12 +135,13 @@ export function wireSessionSubscribers(
 
   // Metrics → store: budget:metrics-changed is emitted by the budget tracker
   // whenever cost/tokens change. Single subscription for both workflow and chat.
+  // Uses event payload for tokens/cost; context % still from tracker (not in event).
   if (metricsWriter) {
     unsubs.push(
-      bus.subscribeToType("budget:metrics-changed", () => {
+      bus.subscribeToType("budget:metrics-changed", (e) => {
         metricsWriter({
-          tokens: infra.budgetTracker.getTokensUsed(),
-          cost: infra.budgetTracker.getTotalCost(),
+          tokens: e.tokens,
+          cost: e.cost,
           contextPercent: infra.budgetTracker.getContextUtilization().percent,
         })
       }),

@@ -33,7 +33,7 @@ export type StepState = {
 }
 
 /** Function to update a session entry in the reactive store. */
-export type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => void
+type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => void
 
 export interface WorkflowResult {
   completed: boolean
@@ -166,7 +166,6 @@ export function createWorkflowRunner(opts: {
   // Initialize step display
   updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
-  // Build executor
   let executor: StepExecutor | null = null
   let disposed = false
 
@@ -195,7 +194,11 @@ export function createWorkflowRunner(opts: {
     eventUnsubs.push(...created.eventUnsubs)
 
     // Generate session title via haiku in parallel — doesn't block execution
-    generateSessionTitle(description, (title) => updateEntry(sessionId, { description: title }))
+    generateSessionTitle(
+      description,
+      (title) => updateEntry(sessionId, { description: title }),
+      { engine: deps.engine, spawner: deps.spawner, projectCwd },
+    )
 
     const result = await executor.run()
 

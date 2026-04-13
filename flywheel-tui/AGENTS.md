@@ -52,8 +52,8 @@ Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 
 | Utility | Location |
 |---------|----------|
-| `errorMessage(err)` | `workflows/shared/error-message.ts` |
-| `formatDuration()`, `formatCost()` | `tui/format.ts` |
+| `errorMessage(err)` | `infra/error-message.ts` |
+| `formatDuration()`, `formatCost()` | `infra/format.ts` |
 | `SubprocessTransportBase` | `workflows/shared/subprocess-transport-base.ts` |
 | `log` | `infra/log.ts` |
 | `atomicWriteFile()` | `workflows/shared/atomic-write.ts` |
@@ -144,6 +144,8 @@ bun run test                   # unit (<10s) — ALWAYS this, never bare `bun te
 bun run test:integration       # real subprocesses, real I/O
 bun run test:e2e               # full TUI via tmux
 ```
+
+**Always run `bun run test` with no pipes, greps, or filters.** The script pre-filters to `--only-failures` — read the full output directly. Do not `| tail`, `| grep "(fail)"`, or otherwise post-process. The raw output is designed to be scannable.
 
 | Tier | Location | Speed |
 |------|----------|-------|

@@ -24,15 +24,6 @@ export interface EnvFilterOptions {
   readonly envPassthrough?: readonly string[];
 }
 
-export interface EnvFilterReport {
-  /** Keys that were passed through. */
-  passed: string[];
-  /** Keys that were excluded. */
-  excluded: string[];
-  /** Keys that were explicitly overridden via passthrough. */
-  overridden: string[];
-}
-
 /**
  * Pre-compiled environment filter.
  * Create once at startup via `createEnvFilter()`, reuse for every spawn.
@@ -40,8 +31,6 @@ export interface EnvFilterReport {
 export interface EnvFilter {
   /** Filter an environment record, returning only allowed entries. */
   filter(env: Record<string, string | undefined>): Record<string, string>;
-  /** Generate a debug report of what was filtered. */
-  getReport(env: Record<string, string | undefined>): EnvFilterReport;
 }
 
 /**
@@ -65,48 +54,18 @@ export function createEnvFilter(options: EnvFilterOptions = {}): EnvFilter {
   // Build passthrough set for O(1) lookup
   const passthroughSet = new Set(envPassthrough);
 
-  function shouldInclude(key: string): { include: boolean; overridden: boolean } {
-    if (passthroughSet.has(key)) {
-      return { include: true, overridden: isExcluded(key) };
-    }
-    if (isExcluded(key)) {
-      return { include: false, overridden: false };
-    }
-    return { include: true, overridden: false };
-  }
+  const shouldInclude = (key: string): boolean =>
+    passthroughSet.has(key) || !isExcluded(key);
 
   return {
     filter(env: Record<string, string | undefined>): Record<string, string> {
       const result: Record<string, string> = {};
       for (const [key, value] of Object.entries(env)) {
-        if (value === undefined) continue;
-        const { include } = shouldInclude(key);
-        if (include) {
+        if (value !== undefined && shouldInclude(key)) {
           result[key] = value;
         }
       }
       return result;
-    },
-
-    getReport(env: Record<string, string | undefined>): EnvFilterReport {
-      const passed: string[] = [];
-      const excluded: string[] = [];
-      const overridden: string[] = [];
-
-      for (const key of Object.keys(env)) {
-        if (env[key] === undefined) continue;
-        const result = shouldInclude(key);
-        if (result.include) {
-          passed.push(key);
-          if (result.overridden) {
-            overridden.push(key);
-          }
-        } else {
-          excluded.push(key);
-        }
-      }
-
-      return { passed, excluded, overridden };
     },
   };
 }

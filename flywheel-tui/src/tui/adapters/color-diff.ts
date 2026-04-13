@@ -336,7 +336,7 @@ export function renderHunk(hunk: Hunk, colors: DiffThemeColors): DiffLine[] {
   const entries: Entry[] = hunk.lines.map((rawLine) => {
     const marker = parseMarker(rawLine.slice(0, 1))
     const code = rawLine.slice(1)
-    let lineNumber: number = newLine
+    let lineNumber = newLine
     switch (marker) {
       case "+":
         lineNumber = newLine++

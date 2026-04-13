@@ -1,19 +1,10 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import {
-  RateLimitDetector,
+  detectRateLimit,
   type RateLimitDetectionInput,
 } from "../src/orchestration/engines/subprocess/rate-limit";
 
-// ---------------------------------------------------------------------------
-// RateLimitDetector — class-based detection
-// ---------------------------------------------------------------------------
-
-describe("RateLimitDetector", () => {
-  let detector: RateLimitDetector;
-
-  beforeEach(() => {
-    detector = new RateLimitDetector();
-  });
+describe("detectRateLimit", () => {
 
   // -----------------------------------------------------------------------
   // Common patterns (agent-agnostic)
@@ -21,53 +12,53 @@ describe("RateLimitDetector", () => {
 
   describe("common patterns", () => {
     it('detects "rate limit" in stderr', () => {
-      const result = detector.detect({ stderr: "Error: rate limit exceeded" });
+      const result = detectRateLimit({ stderr: "Error: rate limit exceeded" });
       expect(result.isRateLimit).toBe(true);
       expect(result.message).toBeDefined();
     });
 
     it('detects "rate-limit" (hyphenated) in stderr', () => {
-      const result = detector.detect({ stderr: "rate-limit error from API" });
+      const result = detectRateLimit({ stderr: "rate-limit error from API" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it('detects "too many requests" in stderr', () => {
-      const result = detector.detect({ stderr: "Error: Too Many Requests" });
+      const result = detectRateLimit({ stderr: "Error: Too Many Requests" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it("detects HTTP 429 status code in stderr", () => {
-      const result = detector.detect({ stderr: "HTTP 429 Too Many Requests" });
+      const result = detectRateLimit({ stderr: "HTTP 429 Too Many Requests" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it("detects error 429 in stderr", () => {
-      const result = detector.detect({ stderr: "error 429: rate limited" });
+      const result = detectRateLimit({ stderr: "error 429: rate limited" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it("detects status 429 in stderr", () => {
-      const result = detector.detect({ stderr: "status: 429" });
+      const result = detectRateLimit({ stderr: "status: 429" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it('detects "quota exceeded" in stderr', () => {
-      const result = detector.detect({ stderr: "API quota exceeded for this project" });
+      const result = detectRateLimit({ stderr: "API quota exceeded for this project" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it('detects "quota-exceeded" (hyphenated) in stderr', () => {
-      const result = detector.detect({ stderr: "quota-exceeded" });
+      const result = detectRateLimit({ stderr: "quota-exceeded" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it('detects "overloaded" in stderr', () => {
-      const result = detector.detect({ stderr: "The service is overloaded" });
+      const result = detectRateLimit({ stderr: "The service is overloaded" });
       expect(result.isRateLimit).toBe(true);
     });
 
     it("returns false for non-rate-limit errors", () => {
-      const result = detector.detect({ stderr: "TypeError: undefined is not a function" });
+      const result = detectRateLimit({ stderr: "TypeError: undefined is not a function" });
       expect(result.isRateLimit).toBe(false);
       expect(result.message).toBeUndefined();
       expect(result.retryAfter).toBeUndefined();
@@ -79,30 +70,14 @@ describe("RateLimitDetector", () => {
   // -----------------------------------------------------------------------
 
   describe("stderr-only principle", () => {
-    it("does NOT detect rate limit patterns in stdout (avoids false positives)", () => {
-      const result = detector.detect({
-        stderr: "",
-        stdout: 'console.log("rate limit reached")',
-        exitCode: 0,
-      });
+    it("does NOT detect rate limit patterns when stderr is empty", () => {
+      const result = detectRateLimit({ stderr: "", exitCode: 0 });
       expect(result.isRateLimit).toBe(false);
     });
 
-    it("detects rate limit in stderr even when stdout is clean", () => {
-      const result = detector.detect({
-        stderr: "Error: rate limit exceeded",
-        stdout: "normal output",
-      });
+    it("detects rate limit in stderr", () => {
+      const result = detectRateLimit({ stderr: "Error: rate limit exceeded" });
       expect(result.isRateLimit).toBe(true);
-    });
-
-    it("ignores stdout containing 429 code references", () => {
-      const result = detector.detect({
-        stderr: "",
-        stdout: "// Handle HTTP 429 errors\nif (status === 429) { retry(); }",
-        exitCode: 0,
-      });
-      expect(result.isRateLimit).toBe(false);
     });
   });
 
@@ -112,7 +87,7 @@ describe("RateLimitDetector", () => {
 
   describe("exit code context", () => {
     it("exit code 429 + loose match = rate limited", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "request was throttled by the server",
         exitCode: 429,
       });
@@ -120,7 +95,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("exit code 0 + empty stderr = NOT rate limited", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "",
         exitCode: 0,
       });
@@ -128,7 +103,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("exit code 1 + loose pattern = rate limited", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "capacity limit reached, please backoff",
         exitCode: 1,
       });
@@ -136,7 +111,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("exit code 2 + loose pattern = rate limited", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "limit exceeded for current billing period",
         exitCode: 2,
       });
@@ -144,7 +119,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("non-rate-limit exit code without patterns = not rate limited", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "segfault in module",
         exitCode: 139,
       });
@@ -158,7 +133,7 @@ describe("RateLimitDetector", () => {
 
   describe("claude-specific patterns", () => {
     it('detects "anthropic rate limit"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "anthropic rate limit error",
         agentId: "claude",
       });
@@ -166,7 +141,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "claude is currently overloaded"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "claude is currently overloaded, please try again later",
         agentId: "claude",
       });
@@ -174,7 +149,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "api error 429"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "api error 429: too many requests",
         agentId: "claude",
       });
@@ -182,7 +157,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "API rate limit exceeded"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "API rate limit exceeded for your organization",
         agentId: "claude",
       });
@@ -193,7 +168,7 @@ describe("RateLimitDetector", () => {
       // "claude is currently overloaded" matches both the claude-specific pattern
       // and the common "overloaded" pattern — but agent-specific patterns give
       // more precise matching. The key: agent patterns are added on top of common.
-      const withAgent = detector.detect({
+      const withAgent = detectRateLimit({
         stderr: "claude is currently overloaded",
         agentId: "claude",
       });
@@ -201,19 +176,19 @@ describe("RateLimitDetector", () => {
 
       // Without agentId, "claude is currently overloaded" still matches
       // the common "overloaded" pattern
-      const withoutAgent = detector.detect({
+      const withoutAgent = detectRateLimit({
         stderr: "claude is currently overloaded",
       });
       expect(withoutAgent.isRateLimit).toBe(true);
 
       // But "tokens per minute" is opencode-specific and won't match without agentId
-      const opencodeOnly = detector.detect({
+      const opencodeOnly = detectRateLimit({
         stderr: "tokens per minute limit reached",
         agentId: "opencode",
       });
       expect(opencodeOnly.isRateLimit).toBe(true);
 
-      const noAgent = detector.detect({
+      const noAgent = detectRateLimit({
         stderr: "tokens per minute limit reached",
       });
       // Without opencode agentId, "tokens per minute" doesn't match any common pattern
@@ -227,7 +202,7 @@ describe("RateLimitDetector", () => {
 
   describe("opencode-specific patterns", () => {
     it('detects "openai rate limit"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "openai rate limit: too many requests",
         agentId: "opencode",
       });
@@ -235,7 +210,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "tokens per minute"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "Error: tokens per minute limit reached",
         agentId: "opencode",
       });
@@ -243,7 +218,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "requests per minute"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "requests per minute exceeded",
         agentId: "opencode",
       });
@@ -251,7 +226,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "azure throttle"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "azure openai throttled your request",
         agentId: "opencode",
       });
@@ -265,7 +240,7 @@ describe("RateLimitDetector", () => {
 
   describe("retry-after extraction", () => {
     it('extracts from "retry-after: 30s"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "rate limit exceeded\nretry-after: 30s",
       });
       expect(result.isRateLimit).toBe(true);
@@ -273,7 +248,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('extracts from "retry after: 60s"', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "rate limit\nretry after: 60s",
       });
       expect(result.isRateLimit).toBe(true);
@@ -281,7 +256,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('extracts seconds from "too many requests" pattern', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "Too many requests. Please wait 45 seconds.",
       });
       expect(result.isRateLimit).toBe(true);
@@ -289,7 +264,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("extracts retry-after via loose fallback with exit code", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "throttled. retry-after: 20s",
         exitCode: 1,
       });
@@ -298,7 +273,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("returns undefined retryAfter when no duration found", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "Error: rate limit exceeded, please slow down",
       });
       expect(result.isRateLimit).toBe(true);
@@ -306,7 +281,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("rejects unreasonably large retry-after values (>= 3600s)", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "rate limit exceeded. retry-after: 7200s",
       });
       expect(result.isRateLimit).toBe(true);
@@ -323,7 +298,7 @@ describe("RateLimitDetector", () => {
       const prefix = "A".repeat(60);
       const suffix = "B".repeat(120);
       const stderr = `${prefix}rate limit exceeded${suffix}`;
-      const result = detector.detect({ stderr });
+      const result = detectRateLimit({ stderr });
       expect(result.isRateLimit).toBe(true);
       // Message should include up to 50 chars before and 100 after
       expect(result.message).toBeDefined();
@@ -333,13 +308,13 @@ describe("RateLimitDetector", () => {
 
     it("truncates messages longer than 200 characters", () => {
       const long = "X".repeat(100) + "rate limit" + "Y".repeat(200);
-      const result = detector.detect({ stderr: long });
+      const result = detectRateLimit({ stderr: long });
       expect(result.isRateLimit).toBe(true);
       expect(result.message!.length).toBeLessThanOrEqual(203); // 200 + "..."
     });
 
     it("collapses whitespace in extracted message", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "Error:   rate limit   exceeded\n\nplease wait",
       });
       expect(result.isRateLimit).toBe(true);
@@ -353,7 +328,7 @@ describe("RateLimitDetector", () => {
 
   describe("loose fallback patterns", () => {
     it('detects "throttled" with matching exit code', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "your request was throttled",
         exitCode: 1,
       });
@@ -361,7 +336,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "limit exceeded" with matching exit code', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "limit exceeded for account",
         exitCode: 2,
       });
@@ -369,7 +344,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "exceeded limit" with matching exit code', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "you have exceeded limit for this period",
         exitCode: 1,
       });
@@ -377,7 +352,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "capacity" with matching exit code', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "server at capacity, try again later",
         exitCode: 1,
       });
@@ -385,7 +360,7 @@ describe("RateLimitDetector", () => {
     });
 
     it('detects "backoff" with matching exit code', () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "exponential backoff required",
         exitCode: 2,
       });
@@ -393,7 +368,7 @@ describe("RateLimitDetector", () => {
     });
 
     it("loose patterns alone (without matching exit code) do NOT trigger", () => {
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "throttled request",
         exitCode: 139, // not in RATE_LIMIT_EXIT_CODES
       });
@@ -403,7 +378,7 @@ describe("RateLimitDetector", () => {
     it("loose patterns with exit code 0 do NOT trigger", () => {
       // exitCode 0 + non-empty stderr doesn't enter the loose check path
       // (loose check only runs when exitCode !== 0)
-      const result = detector.detect({
+      const result = detectRateLimit({
         stderr: "throttled",
         exitCode: 0,
       });

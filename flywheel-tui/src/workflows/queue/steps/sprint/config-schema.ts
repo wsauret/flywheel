@@ -4,8 +4,7 @@ const EffortSchema = z.enum(["low", "medium", "high", "max"]);
 
 export const SprintConfigSchema = z.object({
   max_iterations: z.number().int().min(1).max(10).default(5),
-  escalate_to_full: z.boolean().default(true),
-  escalate_on_stuck: z.boolean().default(false),
+  detect_stuck: z.boolean().default(false),
   worker: z.object({
     model: z.string().optional(),
     effort: EffortSchema.optional(),

@@ -11,7 +11,7 @@ import { createAgentEvaluatorFn } from "../workflows/evaluator/create-agent-eval
 import { readHandoff } from "../workflows/queue/shared/handoff-reader"
 import { SubprocessHandoffSchema } from "../infra/handoff-schemas"
 import { createContextAccumulator } from "../workflows/queue/context-accumulator"
-import { createCompositeHook } from "../workflows/queue/shared/hooks"
+import { createCompositeHook, type OnStepCompletedHook } from "../workflows/queue/shared/hooks"
 import "../workflows/queue/steps/register-all"
 import { resolveTierConfigs } from "./config/schema"
 import type { EmitFn } from "../infra/event-bus"
@@ -31,7 +31,7 @@ const log = Log.create({ service: "queue-orchestrator" })
 
 // ── resolveTransports ──
 
-export interface ResolveTransportsInput {
+interface ResolveTransportsInput {
   deps: WorkflowDeps
   emit: EmitFn
   workflowId: string
@@ -49,11 +49,11 @@ export interface ResolveTransportsInput {
  * Creates PooledSubprocessTransport / PooledSubprocessEvaluatorTransport
  * from the provided warm pools.
  */
-export function resolveTransports(input: ResolveTransportsInput) {
+export function resolveTransports(input: ResolveTransportsInput): { dispatcherTransport: PooledSubprocessTransport; evaluatorTransport: PooledSubprocessEvaluatorTransport | undefined } {
   const { deps, emit, workflowId, sessionId, baseDir, evaluatorSystemPromptAddendum, dispatcherPool, evaluatorPool, formatStdinMessage: fmtStdin } = input
   const engineName = deps.config.engine
 
-  const dispatcherTransport: import("../workflows/dispatcher/transport").DispatcherTransport = new PooledSubprocessTransport({
+  const dispatcherTransport = new PooledSubprocessTransport({
     pool: dispatcherPool,
     formatStdinMessage: fmtStdin,
     sessionId,
@@ -65,7 +65,7 @@ export function resolveTransports(input: ResolveTransportsInput) {
 
   // Always create evaluator transport when pool is available — the step-runner
   // decides whether to invoke it based on skipEvaluation + post-turn results.
-  let evaluatorTransport: import("../workflows/evaluator/transport").EvaluatorTransport | undefined
+  let evaluatorTransport: PooledSubprocessEvaluatorTransport | undefined
   if (evaluatorPool) {
     evaluatorTransport = new PooledSubprocessEvaluatorTransport({
       pool: evaluatorPool,
@@ -85,7 +85,7 @@ export function resolveTransports(input: ResolveTransportsInput) {
 // ── buildExecutorDeps ──
 
 /** Infrastructure plumbing: workflow deps, event system, identity. */
-export interface ExecutorInfra {
+interface ExecutorInfra {
   deps: WorkflowDeps;
   emit: EmitFn;
   eventBus: EventBus;
@@ -94,9 +94,9 @@ export interface ExecutorInfra {
 }
 
 /** Transport layer: dispatcher, evaluator, subprocess pool, observers. */
-export interface ExecutorTransports {
-  dispatcherTransport?: import("../workflows/dispatcher/transport").DispatcherTransport;
-  evaluatorTransport?: import("../workflows/evaluator/transport").EvaluatorTransport;
+interface ExecutorTransports {
+  dispatcherTransport?: PooledSubprocessTransport;
+  evaluatorTransport?: PooledSubprocessEvaluatorTransport;
   /** Pre-warmed subprocess pool for raw process spawning. */
   subprocessPool?: WarmPool<RawSpawnedProcess> | null;
   /** Observer chain for stream observers — created by workflow-runner, fed via EventBus.
@@ -105,7 +105,7 @@ export interface ExecutorTransports {
 }
 
 /** Execution context: queue, paths, indexer, objective. */
-export interface ExecutorContext {
+interface ExecutorContext {
   queue: Queue;
   projectCwd: string;
   /** Override the subprocess cwd. Defaults to projectCwd.
@@ -117,7 +117,7 @@ export interface ExecutorContext {
 }
 
 /** Optional extensions: injection, seeding, hooks. */
-export interface ExecutorExtensions {
+interface ExecutorExtensions {
   /** Injection queue for turn-boundary message delivery. */
   injectionQueue: InjectionQueue;
   /** Pre-seed context accumulator with fixture handoff (for /test command). */
@@ -126,7 +126,7 @@ export interface ExecutorExtensions {
   chatContext?: string;
   /** External hooks to include in the composite step-completed hook.
    *  Caller-provided (e.g. sprint hook from workflow-runner). */
-  externalHooks?: Array<import("../workflows/queue/shared/hooks").OnStepCompletedHook>;
+  externalHooks?: OnStepCompletedHook[];
 }
 
 /**
@@ -164,7 +164,7 @@ export function buildExecutorDeps(
 
   // Dispatcher callback (real dispatcher with fallback to step metadata)
   const dispatcherFn = createDispatcherCallback({
-    deps: infra.deps, emit: infra.emit, workflowId: infra.workflowId,
+    maxRevisions: infra.deps.config.max_revisions, emit: infra.emit, workflowId: infra.workflowId,
     dispatcherTransport: transports.dispatcherTransport,
     contextIndexer: context.contextIndexer,
     contextAccumulator, projectCwd: context.projectCwd,
@@ -181,7 +181,6 @@ export function buildExecutorDeps(
     sessionId: infra.sessionId, projectCwd: context.projectCwd,
     subprocessCwd: context.subprocessCwd,
     injectionQueue: extensions.injectionQueue,
-    eventBus: infra.eventBus,
     observerChain: transports.observerChain,
     subprocessPool: transports.subprocessPool,
   })

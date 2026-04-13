@@ -1,15 +1,5 @@
 import { z } from "zod";
-import {
-  EvaluationCriteriaSchema,
-  type EvaluationCriteria,
-  ToolScopingSchema,
-  type ToolScoping,
-  WorkerConfigSchema,
-  type WorkerConfig,
-} from "../infra/workflow-types";
-
-// Re-export canonical schemas from infra (single source of truth — ADR-006)
-export { EvaluationCriteriaSchema, type EvaluationCriteria, ToolScopingSchema, type ToolScoping, WorkerConfigSchema, type WorkerConfig };
+import type { EvaluationCriteria } from "../infra/workflow-types";
 
 /** Serialize evaluation criteria to a human-readable string (for evaluator prompts). */
 export function serializeEvaluationCriteria(criteria: EvaluationCriteria): string {
@@ -80,11 +70,6 @@ export const SessionBudgetStatusSchema = z.object({
 
 export type SessionBudgetStatus = z.infer<typeof SessionBudgetStatusSchema>;
 
-// WorkerConfigSchema — re-exported from infra/workflow-types (see top of file)
-
-// ---------------------------------------------------------------------------
-// AvailableContextSchema
-// ---------------------------------------------------------------------------
 export const ContextEntrySchema = z.object({
   name: z.string(),
   path: z.string(),

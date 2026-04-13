@@ -15,7 +15,6 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
     worker: {},
     max_retries: 3,
     timeout_minutes: 60,
-    skip_approval_gates: false,
     skip_evaluation: false,
     worktree: { enabled: false, auto_remove: false, grace_period_ms: 300_000 },
     ...overrides,

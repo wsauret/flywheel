@@ -15,8 +15,6 @@ import { Log } from "../../../infra/log.js"
 import type { SessionManager, SessionSummary, SessionListResult } from "../../../orchestration/session/manager"
 
 const log = Log.create({ service: "session-context" })
-import type { WorktreeManager } from "../../../orchestration/session/worktree-manager.js"
-
 
 // ---------------------------------------------------------------------------
 // Context value type
@@ -25,9 +23,6 @@ import type { WorktreeManager } from "../../../orchestration/session/worktree-ma
 export interface SessionContextValue {
   /** The underlying SessionManager instance. */
   manager: SessionManager
-
-  /** Optional worktree manager for git worktree lifecycle. */
-  worktreeManager: WorktreeManager | null
 
   /** Refresh the session list from disk. Returns the current list. */
   refreshList: () => SessionListResult
@@ -42,7 +37,7 @@ export interface SessionContextValue {
 
 export const { use: useSession, provider: SessionProvider } = createSimpleContext<
   SessionContextValue,
-  { manager: SessionManager; worktreeManager?: WorktreeManager }
+  { manager: SessionManager }
 >({
   name: "Session",
   init: (props) => {
@@ -81,7 +76,6 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
 
     return {
       manager: props.manager,
-      worktreeManager: props.worktreeManager ?? null,
       refreshList,
       sessions,
     }

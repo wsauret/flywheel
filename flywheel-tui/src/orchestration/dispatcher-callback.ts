@@ -10,7 +10,6 @@ import { Log } from "../infra/log"
 import { errorMessage } from "../infra/error-message"
 import type { ContextIndexer } from "./memory/indexer"
 import type { EmitFn } from "../infra/event-bus"
-import type { WorkflowDeps } from "./engines/workflow-deps"
 import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
 import type { Step, Queue } from "../workflows/queue/types"
 import type { DispatcherTransport } from "../workflows/dispatcher/transport"
@@ -24,7 +23,7 @@ const log = Log.create({ service: "dispatcher-callback" })
 // ---------------------------------------------------------------------------
 
 export interface DispatcherCallbackDeps {
-  deps: WorkflowDeps
+  maxRevisions: number | undefined
   emit: EmitFn
   workflowId: string
   dispatcherTransport: DispatcherTransport | undefined
@@ -53,7 +52,7 @@ export interface DispatcherResult {
 
 export type DispatcherFn = (
   step: Step,
-  context: { previousHandoff?: Record<string, unknown>; previousAssessment?: EvalResult | null; hitlResponse?: string | null },
+  context: { previousHandoff?: Record<string, unknown>; previousAssessment?: EvalResult | null },
 ) => Promise<DispatcherResult>
 
 // ---------------------------------------------------------------------------
@@ -62,7 +61,7 @@ export type DispatcherFn = (
 
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {
-    deps, dispatcherTransport, contextIndexer, contextAccumulator,
+    maxRevisions, dispatcherTransport, contextIndexer, contextAccumulator,
     projectCwd, sessionObjective, queue, emit, workflowId,
     dispatcherModel, subprocessModel, chatContext,
   } = opts
@@ -74,7 +73,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
         emit,
         workflowId,
         configContext: {
-          maxEvalCycles: deps.config.max_revisions ?? 1,
+          maxEvalCycles: maxRevisions ?? 1,
           worktreePath: projectCwd,
           projectCwd,
           subprocessModel: subprocessModel ?? "sonnet",
@@ -82,7 +81,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
         },
         sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
         availableContext: mergeAvailableContext(
-          contextIndexer.getRelevantContext({ stepType: "plan", stepDescription: sessionObjective ?? "" }),
+          contextIndexer.getRelevantContext({ stepType: "work", stepDescription: sessionObjective ?? "" }),
           chatContext,
         ),
         sessionObjective,
@@ -96,7 +95,6 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
           accumulatedContext: contextAccumulator.getContext(),
           previousHandoff: context.previousHandoff ?? null,
           previousAssessment: context.previousAssessment ?? null,
-          hitlResponse: context.hitlResponse ?? null,
         }
         const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
         return {

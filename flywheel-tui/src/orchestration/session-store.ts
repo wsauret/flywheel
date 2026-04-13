@@ -133,7 +133,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     const storeHandle: ChatStoreHandle = {
       updateEntry: (patch) => updateEntry(sessionId, patch),
       onError: async (message) => {
-        updateEntry(sessionId, { errorMessage: message })
         opts.onRunnerError?.(sessionId, new Error(message))
         await finish(sessionId)
         opts.onComplete?.()

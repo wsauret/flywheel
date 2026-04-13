@@ -8,7 +8,6 @@
 import { createSignal, createMemo, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { buildSessionList } from "../session-modal.js"
-import { formatCost } from "../../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
@@ -17,7 +16,6 @@ import type { ShellSignals, ShellServices } from "./shell-state.js"
 /** Snapshot of UI state captured before viewing a completed session. */
 interface ViewSnapshot {
   foregroundId: string | undefined
-  statusLine: string
 }
 
 export interface SessionModalDeps {
@@ -98,18 +96,12 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     if (!priorState()) {
       setPriorState({
         foregroundId: signals.foregroundId(),
-        statusLine: signals.statusLine(),
       })
     }
     setViewedSessionId(sessionId)
 
     // switchForeground loads from disk if not already in the store
     await deps.switchForeground(sessionId)
-    const entry = services.sessionStore.get(sessionId)
-    if (entry) {
-      const cost = formatCost(entry.cost)
-      signals.setStatusLine(cost ? `Viewing session \u00b7 ${cost}` : "Viewing session")
-    }
   }
 
   function handleSessionResume(sessionId: string): void {
@@ -139,7 +131,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     const snapshot = priorState()
     if (snapshot) {
       signals.setForegroundId(snapshot.foregroundId)
-      signals.setStatusLine(snapshot.statusLine)
     }
     setPriorState(undefined)
     setViewedSessionId(undefined)

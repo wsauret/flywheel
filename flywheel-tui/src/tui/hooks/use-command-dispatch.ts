@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "../../orchestration/command-registry.js"
-import { extractChatContext } from "../../orchestration/chat-context-extractor.js"
+import type { AnyBlock } from "../../infra/output-blocks.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface CommandDispatchDeps {
@@ -24,10 +24,34 @@ export interface CommandDispatchHook {
   handlePromptSubmit(text: string): void
 }
 
+const CHAT_CONTEXT_MAX_CHARS = 2000
+
+function extractChatContext(blocks: readonly AnyBlock[]): string | undefined {
+  const lines: string[] = []
+  let chars = 0
+  for (let i = blocks.length - 1; i >= 0 && chars < CHAT_CONTEXT_MAX_CHARS; i--) {
+    const block = blocks[i]!
+    if (block.kind === "userMessage" && !block.injected) {
+      lines.unshift(`User: ${block.content}`)
+      chars += block.content.length + 6
+    } else if (block.kind === "text") {
+      lines.unshift(`Assistant: ${block.content}`)
+      chars += block.content.length + 11
+    }
+  }
+  if (lines.length === 0) return undefined
+  let result = lines.join("\n")
+  if (result.length > CHAT_CONTEXT_MAX_CHARS) {
+    result = result.slice(result.length - CHAT_CONTEXT_MAX_CHARS)
+    const firstNewline = result.indexOf("\n")
+    if (firstNewline > 0) result = result.slice(firstNewline + 1)
+  }
+  return result
+}
+
 export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHook {
   const commandRegistry = createCommandRegistry()
 
-  /** Grab recent chat turns from the foreground chat session (if any). */
   function getChatContext(): string | undefined {
     const fgId = deps.signals.foregroundId()
     if (!fgId || !deps.inChat()) return undefined

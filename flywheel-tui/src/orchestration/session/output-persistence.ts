@@ -138,7 +138,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
   ): OutputFlusher {
     const intervalMs = opts?.intervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
 
-    const writer = createDebouncedWriter<void>(
+    const writer = createDebouncedWriter<undefined>(
       async () => {
         const blocks = getBlocks();
         save(blocks);
@@ -148,7 +148,7 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
 
     return {
       schedule(): void {
-        writer.schedule(undefined as unknown as void);
+        writer.schedule(undefined);
       },
       flush(): Promise<void> {
         return writer.flush();

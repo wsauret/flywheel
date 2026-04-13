@@ -83,7 +83,6 @@ export const FlywheelConfigSchema = z.object({
   max_retries: z.number().int().min(0).max(10).default(3),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
-  skip_approval_gates: z.boolean().default(false),
   skip_evaluation: z.boolean().default(false),
 
   /** Present open questions to user during plan consolidation. Default: false (auto-resolve). */
@@ -193,7 +192,6 @@ export const CONFIG_DEFAULTS = {
   evaluator: {},
   max_retries: 3,
   timeout_minutes: 60,
-  skip_approval_gates: false,
   skip_evaluation: false,
   interactive_consolidation: false,
   auto_ship: false,
@@ -232,8 +230,7 @@ export const CONFIG_DEFAULTS = {
   },
   sprint: {
     max_iterations: 5,
-    escalate_to_full: true,
-    escalate_on_stuck: false,
+    detect_stuck: false,
     dispatcher: {},
     evaluator: {},
     worker: {},

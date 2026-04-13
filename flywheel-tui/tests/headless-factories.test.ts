@@ -4,8 +4,13 @@ import {
   createWorkflowSession,
   destroyWorkflowSession,
 } from "../src/orchestration/workflow-session"
-import { createHeadlessFactories } from "../src/orchestration/headless/factories"
+import { createHeadlessAdapter } from "../src/orchestration/headless/headless-adapter"
+import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
 import type { FlywheelEvent } from "../src/infra/events"
+
+function headlessFactories(opts?: Parameters<typeof createHeadlessAdapter>[0]): WorkflowSessionFactories {
+  return { createAdapter: () => createHeadlessAdapter(opts) }
+}
 
 // ---------------------------------------------------------------------------
 // Headless factory wiring tests
@@ -16,7 +21,7 @@ const noopUpdateEntry = () => {}
 
 describe("createHeadlessFactories", () => {
   it("creates factories so createWorkflowSession succeeds", () => {
-    const factories = createHeadlessFactories()
+    const factories = headlessFactories()
 
     const session = createWorkflowSession({ description: "test workflow", factories, updateEntry: noopUpdateEntry })
     expect(session).toBeDefined()
@@ -28,7 +33,7 @@ describe("createHeadlessFactories", () => {
 
   it("events emitted on bus arrive at adapter", () => {
     const logs: string[] = []
-    const factories = createHeadlessFactories({
+    const factories = headlessFactories({
       logger: (msg) => logs.push(msg),
       timestamps: false,
     })
@@ -57,7 +62,7 @@ describe("createHeadlessFactories", () => {
 
   it("passes adapter options through", () => {
     const logs: string[] = []
-    const factories = createHeadlessFactories({
+    const factories = headlessFactories({
       logLevel: "minimal",
       logger: (msg) => logs.push(msg),
       timestamps: false,

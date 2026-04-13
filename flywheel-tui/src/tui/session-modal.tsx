@@ -93,10 +93,11 @@ export function SessionModal(props: SessionModalProps) {
   const { theme } = useTheme()
   const { sessions } = useSession()
 
-  // Snapshot the session list at mount time. Reactive updates from the
-  // background 5s poll would cause re-renders that corrupt the terminal
-  // (old and new list items overlap on screen). Use a signal+untrack
-  // pattern: read sessions() only when refreshTrigger bumps.
+  // ADR-006 deviation: signal-inside-effect. A createMemo won't work here
+  // because we need to *snapshot* sessions() only when refreshTrigger bumps,
+  // not re-derive on every sessions() change. Reactive updates from the
+  // background 5s poll cause terminal corruption (overlapping list items).
+  // The on()+defer pattern is the correct Solid idiom for event-triggered snapshots.
   const initialSessions = untrack(() => sessions())
   const [snapshotSessions, setSnapshotSessions] = createSignal(initialSessions)
   createEffect(on(() => props.refreshTrigger, () => {

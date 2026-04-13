@@ -37,6 +37,8 @@ export class OpenTUIAdapter extends BaseEventConsumer {
   private syntheticThinkingTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly syntheticThinkingMs: number | undefined;
   private disconnected = false;
+  /** Unified modelActivity writer — clears synthetic timer and forwards to store. */
+  private wrappedUpdateEntry!: (patch: Partial<SessionEntryBase>) => void;
 
   /** Dispatcher/evaluator NDJSON pipeline (block tracking + activity extraction). */
   private ndjsonPipeline: NdjsonPipeline;
@@ -52,8 +54,9 @@ export class OpenTUIAdapter extends BaseEventConsumer {
 
     // Wrap updateEntry to intercept modelActivity changes for the synthetic
     // thinking timer (engine-specific: batches tool_executing/generating into
-    // a delayed "thinking" state).
-    const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
+    // a delayed "thinking" state). All modelActivity writes go through this
+    // wrapper — including queue:completed/failed — so the timer is always cleared.
+    this.wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
       if (patch.modelActivity !== undefined) {
         if (this.syntheticThinkingTimer) {
           clearTimeout(this.syntheticThinkingTimer);
@@ -78,7 +81,7 @@ export class OpenTUIAdapter extends BaseEventConsumer {
     const noopEmit = createNoopEmit();
 
     this.outputSession = createOutputSession({
-      updateEntry: wrappedUpdateEntry,
+      updateEntry: this.wrappedUpdateEntry,
       emit: noopEmit,
       builder,
     });
@@ -157,7 +160,8 @@ export class OpenTUIAdapter extends BaseEventConsumer {
         break;
 
       case "budget:metrics-changed":
-        // Metrics updates handled by workflow-runner's typed subscription
+        // No TUI rendering — metrics flow to the store via wireSessionSubscribers,
+        // and the TUI reads them reactively from the store entry.
         break;
 
       case "budget:exhausted":
@@ -191,14 +195,14 @@ export class OpenTUIAdapter extends BaseEventConsumer {
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
         this.outputSession.resolvePendingMessages();
         this.outputSession.flush();
-        this.updateEntry({ modelActivity: "idle" });
+        this.wrappedUpdateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         this.outputSession.resolvePendingMessages();
         this.outputSession.flush();
-        this.updateEntry({ modelActivity: "idle" });
+        this.wrappedUpdateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:step-started":

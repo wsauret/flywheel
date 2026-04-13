@@ -86,14 +86,14 @@ describe("SprintLoopState", () => {
     expect(state.history).toHaveLength(3);
   });
 
-  test("escalated state", () => {
+  test("exhausted state", () => {
     const state: SprintLoopState = {
-      status: "escalated",
+      status: "exhausted",
       iterationCount: 5,
       history: [],
       reason: "Max iterations reached",
     };
-    expect(state.status).toBe("escalated");
+    expect(state.status).toBe("exhausted");
     expect(state.reason).toBe("Max iterations reached");
   });
 
@@ -101,7 +101,7 @@ describe("SprintLoopState", () => {
     const statuses: SprintLoopState["status"][] = [
       "running",
       "completed",
-      "escalated",
+      "exhausted",
     ];
     expect(statuses).toHaveLength(3);
   });
@@ -131,20 +131,19 @@ describe("SprintConfig", () => {
     const config = FlywheelConfigSchema.parse({});
     const sprint: SprintConfig = config.sprint;
     expect(sprint.max_iterations).toBe(5);
-    expect(sprint.escalate_to_full).toBe(true);
-    expect(sprint.escalate_on_stuck).toBe(false);
+    expect(sprint.detect_stuck).toBe(false);
   });
 
   test("FlywheelConfig sprint block accepts overrides", () => {
     const config = FlywheelConfigSchema.parse({
       sprint: {
         max_iterations: 3,
-        escalate_to_full: false,
+        detect_stuck: true,
       },
     });
     const sprint: SprintConfig = config.sprint;
     expect(sprint.max_iterations).toBe(3);
-    expect(sprint.escalate_to_full).toBe(false);
+    expect(sprint.detect_stuck).toBe(true);
   });
 });
 

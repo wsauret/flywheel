@@ -184,6 +184,11 @@ function resolveImport(sourceFileAbs: string, specifier: string): string | null 
     return resolveFromBase(path.join(srcRoot, "tui", subPath));
   }
 
+  if (specifier.startsWith("@infra/")) {
+    const subPath = specifier.slice("@infra/".length);
+    return resolveFromBase(path.join(srcRoot, "infra", subPath));
+  }
+
   if (!specifier.startsWith(".")) return null;
 
   const sourceDir = path.dirname(sourceFileAbs);

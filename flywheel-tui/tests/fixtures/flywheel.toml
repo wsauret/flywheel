@@ -1,5 +1,4 @@
 max_retries = 5
 timeout_minutes = 90
-skip_approval_gates = false
 engine = "claude"
 model = "claude-sonnet-4-20250514"

@@ -32,12 +32,8 @@ import type {
   WorkflowInfo,
 } from "../dispatcher/schemas.js";
 import type { EmitFn } from "../../infra/event-bus.js";
-import type {
-  SessionBudgetStatus,
-  AvailableContext,
-  EvaluationCriteria,
-  WorkerConfig,
-} from "../schemas.js";
+import type { SessionBudgetStatus, AvailableContext } from "../schemas.js";
+import type { EvaluationCriteria, WorkerConfig } from "../../infra/workflow-types.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
 import type { EvalResult } from "./executor-types.js";
 import { applyBudgetTruncation } from "../dispatcher/truncation.js";
@@ -67,8 +63,6 @@ export interface StepDispatchContext {
   previousHandoff: Record<string, unknown> | null;
   /** Evaluator assessment from the previous step (null if first or no evaluator). */
   previousAssessment: EvalResult | null;
-  /** HITL response from user (if step had HITL). */
-  hitlResponse?: string | null;
   /** Mutation budget from guardrails (for budget visibility — VAL-GUARD-006). */
   mutationBudget?: import("./guardrails").MutationBudget | null;
 }

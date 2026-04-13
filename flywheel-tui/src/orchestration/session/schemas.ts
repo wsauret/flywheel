@@ -27,9 +27,8 @@ const baseFields = {
 export const WorkflowSessionSchema = z.object({
   ...baseFields,
   kind: z.literal("workflow"),
-  command: z.enum(["work", "plan", "review", "ship", "debug", "research", "verify", "gate"]),
+  command: z.enum(["work"]),
   planPath: z.string(),
-  worktreePath: z.string().min(1).optional(),
 }).strict();
 
 export const ChatSessionSchema = z.object({

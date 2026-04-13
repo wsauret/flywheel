@@ -43,7 +43,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     sessionStore: services.sessionStore,
     manager: services.manager,
     refreshList: services.refreshList,
-    workStartTime: metrics.workStartTime,
     foregroundId: signals.foregroundId,
     onRunnerDone: callbacks.onRunnerDone,
     onRunnerError: callbacks.onRunnerError,
@@ -53,7 +52,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
   function resetUIState(terminalTitle: string): void {
     batch(() => {
       signals.setErrorMessage("")
-      signals.setStatusLine("")
       metrics.resetMetrics()
     })
     services.setTerminalTitle(terminalTitle)

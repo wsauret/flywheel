@@ -98,8 +98,6 @@ export const SkillFeedbackSchema = z.object({
     .describe("Suggestions for improving the skill (optional)"),
 }).strict();
 
-export type SkillFeedback = z.infer<typeof SkillFeedbackSchema>;
-
 // ---------------------------------------------------------------------------
 // SubprocessHandoffSchema
 // ---------------------------------------------------------------------------

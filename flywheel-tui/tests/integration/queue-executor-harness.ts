@@ -30,7 +30,6 @@ import type {
   HandoffReaderFn,
   PersistFn,
   StepContextAccumulator,
-  GateQuestionService,
 } from "../../src/workflows/queue/executor-types";
 import type { OnStepCompletedHook } from "../../src/workflows/queue/shared/hooks";
 import type { Step, Queue } from "../../src/workflows/queue/types";
@@ -237,39 +236,6 @@ export function createMockHandoffReader(tmpDir: string): HandoffReaderFn {
   };
 }
 
-export interface MockQuestionServiceOptions {
-  /** Answers to return for gate questions by step ID. */
-  answersByStepId?: Record<string, string>;
-  /** Default answer for gates. */
-  defaultAnswer?: string;
-  /** Step titles (headers) where ask() should throw (simulates user dismissal). */
-  throwOnHeaders?: Set<string>;
-  /** Track all calls. */
-  calls?: Array<{ questions: Parameters<GateQuestionService["ask"]>[0] }>;
-}
-
-export function createMockQuestionService(opts: MockQuestionServiceOptions = {}): GateQuestionService {
-  const calls = opts.calls ?? [];
-  opts.calls = calls;
-
-  return {
-    async ask(questions) {
-      calls.push({ questions });
-      // We use step title in the question header to find the right answer
-      const header = questions[0]?.header ?? "";
-      // Simulate user dismissal when configured
-      if (opts.throwOnHeaders?.has(header)) {
-        throw new Error("Question dismissed by user");
-      }
-      // Look up by step title (header), fall back to default
-      const answer = opts.answersByStepId?.[header]
-        ?? opts.defaultAnswer
-        ?? "Continue";
-      return [[answer]];
-    },
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Event collector — captures all events for assertions
 // ---------------------------------------------------------------------------
@@ -314,8 +280,6 @@ export interface HarnessOptions {
   evaluator?: MockEvaluatorOptions | null;
   /** Raw evaluator function override (bypasses mock evaluator). */
   evaluatorFn?: EvaluatorFn;
-  /** Mock question service options. Null = no question service. */
-  questionService?: MockQuestionServiceOptions | null;
   /** onStepCompleted hook. */
   onStepCompleted?: OnStepCompletedHook | null;
   /** Max revisions per step. Default: 0 (no revisions). */
@@ -357,8 +321,6 @@ export interface Harness {
   workerOpts: MockWorkerOptions;
   /** Mock evaluator (with tracked calls). Null if no evaluator. */
   evaluatorOpts: MockEvaluatorOptions | null;
-  /** Mock question service (with tracked calls). */
-  questionServiceOpts: MockQuestionServiceOptions | null;
   /** Snapshots of queue state captured on every persist call. */
   persistCalls: Queue[];
   /** Cleanup function — call in afterEach. */
@@ -404,14 +366,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
   }
   const evaluator = opts.evaluatorFn ?? (evaluatorOpts ? createMockEvaluator(evaluatorOpts) : null);
 
-  const questionServiceOpts = opts.questionService ?? null;
-  if (questionServiceOpts) {
-    questionServiceOpts.calls = questionServiceOpts.calls ?? [];
-  }
-  const questionService = questionServiceOpts
-    ? createMockQuestionService(questionServiceOpts)
-    : null;
-
   // Persist function — track every call with a deep-cloned snapshot
   const persistCalls: Queue[] = [];
   const persist: PersistFn = opts.persistFn ?? (async (q: Queue) => {
@@ -439,7 +393,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     persist,
     accumulator,
     maxRevisions: opts.maxRevisions ?? 0,
-    questionService,
     onStepCompleted: opts.onStepCompleted ?? null,
     guardrails,
     sessionObjective: opts.sessionObjective ?? "Test session objective",
@@ -467,7 +420,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     dispatcherOpts,
     workerOpts,
     evaluatorOpts,
-    questionServiceOpts,
     persistCalls,
     cleanup,
   };

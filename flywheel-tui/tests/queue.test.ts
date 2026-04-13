@@ -60,11 +60,11 @@ describe("createQueue", () => {
   });
 
   test("preserves step IDs, types, and titles", () => {
-    const step = makeStep({ type: "gate", title: "Approval gate" });
+    const step = makeStep({ type: "work", title: "Do the work" });
     const q = createQueue([step]);
     expect(q.steps[0].id).toBe(step.id);
-    expect(q.steps[0].type).toBe("gate");
-    expect(q.steps[0].title).toBe("Approval gate");
+    expect(q.steps[0].type).toBe("work");
+    expect(q.steps[0].title).toBe("Do the work");
   });
 });
 

@@ -4,7 +4,7 @@
 //
 // Validates end-to-end sprint hook wiring through the executor:
 //   1. Sprint queue: work fails -> hook inserts retry -> passes on retry -> done
-//   2. Sprint queue: all iterations fail -> escalation steps inserted
+//   2. Sprint queue: all iterations fail -> sprint exhausted, execution stops
 //   3. Non-sprint queue: sprint hook is NOT attached (no side effects)
 //   4. externalHooks wired through buildExecutorDeps composite hook
 // ---------------------------------------------------------------------------
@@ -46,8 +46,7 @@ describe("sprint hook wiring", () => {
     // Create sprint hook with config
     const { hook, getState } = createSprintHook({
       max_iterations: 3,
-      escalate_to_full: true,
-      escalate_on_stuck: false,
+      detect_stuck: false,
     });
 
     // Worker fails on first sprint step, succeeds on all others (including retry)
@@ -78,10 +77,10 @@ describe("sprint hook wiring", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 2. All iterations fail -> escalation steps inserted
+  // 2. All iterations fail -> sprint exhausted, execution stops
   // -------------------------------------------------------------------------
 
-  test("sprint hook escalates after max iterations exhausted", async () => {
+  test("sprint hook stops after max iterations exhausted", async () => {
     resetStepCounter();
 
     const sprintStep = makeStep({
@@ -93,12 +92,10 @@ describe("sprint hook wiring", () => {
 
     const { hook, getState } = createSprintHook({
       max_iterations: 2,
-      escalate_to_full: true,
-      escalate_on_stuck: false,
+      detect_stuck: false,
     });
 
-    // Evaluator fails ONLY sprint-hinted steps. Escalation steps (plan, work, review)
-    // have no dispatcherHint, so the evaluator passes them.
+    // Evaluator fails ONLY sprint-hinted steps
     harness = createHarness({
       steps: [sprintStep],
       onStepCompleted: hook,
@@ -129,22 +126,14 @@ describe("sprint hook wiring", () => {
 
     const result = await harness.executor.run();
 
-    // Sprint state: escalated after 2 iterations
+    // Sprint state: exhausted after 2 iterations
     const state = getState();
     expect(state.iterationCount).toBe(2);
-    expect(state.status).toBe("escalated");
+    expect(state.status).toBe("exhausted");
     expect(state.reason).toBe("Max iterations reached");
 
-    // Escalation steps should have been inserted (plan, work, review)
-    const escalationSteps = harness.queue.steps.filter(
-      (s) => s.title.startsWith("Escalation:"),
-    );
-    expect(escalationSteps.length).toBe(3);
-    expect(escalationSteps.map((s) => s.type)).toEqual(["plan", "work", "review"]);
-
-    // Sprint pauses after exhausting iterations — escalation steps are pending for resume
+    // Sprint stops after exhausting iterations — no escalation steps inserted
     expect(result.completed).toBe(false);
-    expect(escalationSteps.every((s) => s.status === "pending")).toBe(true);
   });
 
   // -------------------------------------------------------------------------
@@ -163,8 +152,7 @@ describe("sprint hook wiring", () => {
 
     const { hook, getState } = createSprintHook({
       max_iterations: 3,
-      escalate_to_full: true,
-      escalate_on_stuck: false,
+      detect_stuck: false,
     });
 
     harness = createHarness({
@@ -200,8 +188,7 @@ describe("sprint hook wiring", () => {
 
     const { hook: sprintHook, getState } = createSprintHook({
       max_iterations: 3,
-      escalate_to_full: true,
-      escalate_on_stuck: false,
+      detect_stuck: false,
     });
 
     // Simulate what buildExecutorDeps does: create composite with external hooks
@@ -231,10 +218,10 @@ describe("sprint hook wiring", () => {
   test("mixed queue with sprint and non-sprint steps", async () => {
     resetStepCounter();
 
-    const planStep = makeStep({
-      id: "plan-1",
-      type: "plan",
-      title: "Plan step",
+    const setupStep = makeStep({
+      id: "setup-1",
+      type: "work",
+      title: "Setup step",
     });
     const sprintStep = makeStep({
       id: "sprint-work-1",
@@ -242,21 +229,20 @@ describe("sprint hook wiring", () => {
       title: "Sprint work (iteration 1)",
       dispatcherHint: SPRINT_HINT,
     });
-    const reviewStep = makeStep({
-      id: "review-1",
-      type: "review",
-      title: "Review step",
+    const finishStep = makeStep({
+      id: "finish-1",
+      type: "work",
+      title: "Finish step",
     });
 
     const { hook, getState } = createSprintHook({
       max_iterations: 3,
-      escalate_to_full: true,
-      escalate_on_stuck: false,
+      detect_stuck: false,
     });
 
     // Worker fails only on the original sprint step
     harness = createHarness({
-      steps: [planStep, sprintStep, reviewStep],
+      steps: [setupStep, sprintStep, finishStep],
       worker: { failOnStepIds: new Set(["sprint-work-1"]) },
       onStepCompleted: hook,
     });
@@ -268,10 +254,10 @@ describe("sprint hook wiring", () => {
     expect(state.iterationCount).toBe(2);
     expect(state.status).toBe("completed");
 
-    // Queue should have grown: plan, sprint-work-1(failed), retry(completed), review
+    // Queue should have grown: setup, sprint-work-1(failed), retry(completed), finish
     expect(harness.queue.steps.length).toBe(4);
 
-    // Plan and review should be completed
+    // Setup and finish should be completed
     expect(harness.queue.steps[0].status).toBe("completed");
     expect(harness.queue.steps[harness.queue.steps.length - 1].status).toBe("completed");
 

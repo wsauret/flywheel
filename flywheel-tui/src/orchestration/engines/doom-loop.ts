@@ -23,8 +23,7 @@ function extractToolSignature(name: string, input: Record<string, unknown>): str
   return `${name}(${parts.join(",")})`;
 }
 
-// Re-export for tests that import it directly
-export { extractToolSignature };
+
 
 /**
  * Detects repetitive patterns in tool call sequences.

@@ -57,10 +57,9 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     }
 
     // Always reset session state — this is the escape hatch, it must work
+    state.turnPhase = "idle"
     callbacks.onWaiting(false)
     rawUpdateEntry({ modelActivity: "idle" })
-    state.agentActive = false
-    state.userTurnInProgress = false
     session.resolvePendingMessages()
     session.pushSystemMessage("Interrupted", Date.now())
     session.flush()
@@ -99,11 +98,10 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
   function send(text: string) {
     if (state.ended) { log.warn("chat send after ended"); return }
 
-    // Message is "pending" only when there's an active agent turn in progress
-    // (i.e. we're injecting into a running conversation). After interrupt or
-    // idle-exit, the agent isn't working so the message is the start of a new turn.
-    const isPending = state.agentActive && state.stdinHandle?.isOpen === true
-    state.userTurnInProgress = true
+    // Message is "pending" only when the agent is actively producing output
+    // (mid-turn injection). After interrupt or idle-exit, the message starts a new turn.
+    const isPending = state.turnPhase === "agent-active" && state.stdinHandle?.isOpen === true
+    state.turnPhase = "awaiting-response"
     callbacks.onWaiting(true)
     const now = Date.now()
     session.notifyInjected(text, now, isPending, false)

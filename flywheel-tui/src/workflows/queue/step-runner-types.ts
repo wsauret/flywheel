@@ -7,7 +7,6 @@ import type {
   WorkerFn,
   WorkerOutput,
   HandoffReaderFn,
-  GateQuestionService,
   StepContextAccumulator,
   PostTurnVerificationHook,
 } from "./executor-types.js";
@@ -31,7 +30,6 @@ export interface StepRunnerDeps {
   abortSignal: AbortSignal;
 
   // Optional hooks / services
-  questionService?: GateQuestionService | null;
   onStepCompleted?: OnStepCompletedHook | null;
   guardrails?: Guardrails | null;
   sessionObjective?: string;
@@ -65,7 +63,6 @@ export interface StepPipelineContext {
   previousAssessment: EvalResult | null;
   workerOutput: WorkerOutput | null;
   handoffData: Record<string, unknown> | null;
-  hitlResponse: string | null;
   dispatcherResult: {
     prompt: string;
     evaluationCriteria: unknown | null;

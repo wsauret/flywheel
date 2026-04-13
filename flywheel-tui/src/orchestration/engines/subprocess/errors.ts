@@ -1,15 +1,15 @@
 /**
- * Subprocess error categorization and retryability classification.
+ * Subprocess error categorization.
  *
- * Maps `SubprocessFailureReason` kinds to retryable/non-retryable, and provides
- * `isTransientError()` to detect transient network/connection errors from
- * error messages and stderr output.
+ * Provides `categorizeFailure()` to map exit codes, stderr, and signals into
+ * `SubprocessFailureReason` variants, and `isTransientError()` to detect
+ * transient network/connection errors from error messages.
  *
  * `ExecutionStatus.interrupted` = cancellation, NOT a SubprocessFailureReason kind.
  */
 
 import type { SubprocessFailureReason } from "../../../infra/subprocess-types";
-import { RateLimitDetector } from "./rate-limit";
+import { detectRateLimit } from "./rate-limit";
 
 // ---------------------------------------------------------------------------
 // Transient error detection
@@ -58,36 +58,6 @@ function isTransientError(message: string): boolean {
   return TRANSIENT_REGEX.test(message);
 }
 
-// ---------------------------------------------------------------------------
-// Retryability classification
-// ---------------------------------------------------------------------------
-
-/** Failure kinds that are retryable. */
-const RETRYABLE_KINDS = new Set<SubprocessFailureReason["kind"]>([
-  "timeout",
-  "api_error",
-  "rate_limited",
-  "transient",
-  "handoff_missing",
-]);
-
-/** Failure kinds that are NOT retryable. */
-const NON_RETRYABLE_KINDS = new Set<SubprocessFailureReason["kind"]>([
-  "exit_code",
-  "schema_error",
-  "interrupted",
-  "handoff_invalid",
-]);
-
-/**
- * Determine if a `SubprocessFailureReason` is retryable.
- *
- * Pass this as the `isRetryable` predicate to `retry<T>()`.
- */
-function isRetryable(reason: SubprocessFailureReason): boolean {
-  return RETRYABLE_KINDS.has(reason.kind);
-}
-
 /**
  * Categorize an error into a `SubprocessFailureReason` based on exit code,
  * output content, and other signals.
@@ -124,11 +94,11 @@ export function categorizeFailure(opts: {
 
   // Rate limited (check before transient since rate-limit is more specific)
   // Uses RateLimitDetector which only checks stderr to avoid false positives.
-  const rateLimitResult = rateLimitDetector.detect({ stderr, stdout, exitCode });
+  const rateLimitResult = detectRateLimit({ stderr, exitCode });
   if (rateLimitResult.isRateLimit) {
     return {
       kind: "rate_limited",
-      message: rateLimitResult.message ?? "Rate limited by API",
+      message: rateLimitResult.message,
     };
   }
 
@@ -175,9 +145,6 @@ export function categorizeFailure(opts: {
 // ---------------------------------------------------------------------------
 // Helper detectors
 // ---------------------------------------------------------------------------
-
-/** Module-level detector instance (stateless, safe to reuse). */
-const rateLimitDetector = new RateLimitDetector();
 
 function isApiError(text: string): boolean {
   return /api.?error|internal.?server|5\d{2}/i.test(text);

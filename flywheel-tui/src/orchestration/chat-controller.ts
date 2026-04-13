@@ -12,7 +12,7 @@ import { createChatRunner } from "./chat-runner.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { readSession, updateSession } from "./session/persistence.js"
 import { computeContextPercent } from "./session/budget-tracker-types.js"
-import { TERMINAL_TITLE_PREFIX, formatElapsed, formatCost, formatTokens } from "../infra/format.js"
+import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
 import type { ChatStoreHandle, SessionStore } from "./session-store-types.js"
@@ -29,8 +29,6 @@ export interface ChatControllerDeps {
   manager: SessionManager
   refreshList: () => void
   projectCwd: string
-  /** Returns a monotonic timestamp for elapsed-time computation. */
-  workStartTime: () => number
   /** Called when a runner completes normally. */
   onRunnerDone?: (id: string, result: RunnerDoneResult) => void
   /** Called when a runner encounters an error. */
@@ -157,7 +155,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
         onRunnerDone: (id) => {
           finalizeChat(id)
           deps.onRunnerDone?.(id, {
-            statusMessage: "",
             terminalTitle: `${TERMINAL_TITLE_PREFIX}chat`,
           } satisfies RunnerDoneResult)
         },

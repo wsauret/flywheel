@@ -3,7 +3,7 @@
 **Date:** 2026-03-27
 **Mode:** Sprint (option 5)
 **HITL:** All automatic (no manual consolidation)
-**Approval gates:** Skipped (FLYWHEEL_SKIP_APPROVAL_GATES=true)
+**Approval gates:** N/A (gate step type removed)
 **Engine:** Claude (default)
 **Branch:** feat/flywheel-cli-engine
 

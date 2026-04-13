@@ -64,14 +64,6 @@ export interface Step {
   /** Files relevant to this step's work. */
   fileReferences?: string[];
 
-  // --- Human-in-the-loop component ---
-
-  /**
-   * Optional HITL component. When enabled, worker pauses mid-step
-   * to present information and wait for user input.
-   */
-  hitl?: { prompt: string; enabled: boolean };
-
   // --- Grouping ---
 
   /** Groups related steps for feature boundary detection. */

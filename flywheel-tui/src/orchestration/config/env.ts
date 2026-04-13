@@ -33,10 +33,6 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
   FLYWHEEL_PROJECT_CWD: (val, config) => {
     config.project_cwd = val;
   },
-  FLYWHEEL_SKIP_APPROVAL_GATES: (val, config) => {
-    config.skip_approval_gates = val === "true" || val === "1";
-  },
-
   FLYWHEEL_SKIP_EVALUATION: (val, config) => {
     config.skip_evaluation = val === "true" || val === "1";
   },
@@ -113,13 +109,9 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
       (config.sprint as Record<string, unknown>).max_iterations = n;
     }
   },
-  FLYWHEEL_SPRINT_ESCALATE_TO_FULL: (val, config) => {
+  FLYWHEEL_SPRINT_DETECT_STUCK: (val, config) => {
     if (!config.sprint) config.sprint = {};
-    (config.sprint as Record<string, unknown>).escalate_to_full = val === "true" || val === "1";
-  },
-  FLYWHEEL_SPRINT_ESCALATE_ON_STUCK: (val, config) => {
-    if (!config.sprint) config.sprint = {};
-    (config.sprint as Record<string, unknown>).escalate_on_stuck = val === "true" || val === "1";
+    (config.sprint as Record<string, unknown>).detect_stuck = val === "true" || val === "1";
   },
 };
 

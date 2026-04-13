@@ -81,10 +81,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const inChat = createMemo(() => {
     // chatActive covers the async startup window before the sessionStore entry exists
     if (chat.chatActive()) return true
-    const fgId = signals.foregroundId()
-    if (!fgId) return false
-    const entry = sessionStore.get(fgId)
-    return entry?.kind === "chat"
+    return signals.storeEntry()?.kind === "chat"
   })
 
   // Auto-start chat on boot
@@ -110,8 +107,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     openSessionsModal: sessionModal.openSessionsModal,
   })
 
-  // ── Running count — backed by sessionStore's internal createMemo ──
-  const runningCount = createMemo(() => sessionStore.runningCount())
+  const runningCount = sessionStore.runningCount
 
   // ── Timer — reactive: runs only when the agent is actively working ──
   createEffect(() => {
@@ -269,8 +265,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             isPromptFocused={true}
           />
         </Show>
-
-{/* statusLine removed — completion status belongs in the header, not above the prompt */}
       </box>
 
       {/* Prompt */}

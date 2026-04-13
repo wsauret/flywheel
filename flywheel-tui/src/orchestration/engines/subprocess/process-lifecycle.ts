@@ -1,10 +1,8 @@
 /**
- * Process lifecycle management: process-group kill and graceful shutdown.
+ * Process lifecycle management: process-group kill.
  *
  * - Unix: `process.kill(-pid, signal)` sends signal to entire process group
  * - Windows: falls back to `child.kill(signal)` (no process groups)
- * - Grace period: 5 seconds SIGTERM -> wait -> SIGKILL
- * - Global registry: module-level Set<ChildHandle> for shutdown hook
  */
 
 /**
@@ -16,11 +14,10 @@ export interface ChildHandle {
   kill(signal?: number): void;
 }
 
-/**
- * Global registry of active processes.
- * Module-level so `killAllActiveProcesses()` can be called from shutdown hooks.
- */
-export const activeProcesses = new Set<ChildHandle>();
+const activeProcesses = new Set<ChildHandle>();
+
+/** Read-only view for test assertions. */
+export const registeredProcesses: ReadonlySet<ChildHandle> = activeProcesses;
 
 /**
  * Register a child process in the global registry.
@@ -32,9 +29,6 @@ export function registerProcess(child: ChildHandle): () => void {
     activeProcesses.delete(child);
   };
 }
-
-/** Grace period between SIGTERM and SIGKILL (5 seconds). */
-export const GRACE_PERIOD_MS = 5_000;
 
 /**
  * Send a signal to a process group (Unix) or the process directly (Windows).
@@ -77,57 +71,7 @@ export function killProcessGroup(child: ChildHandle, signal: NodeJS.Signals): vo
   }
 }
 
-/**
- * Gracefully kill a process: SIGTERM, wait grace period, then SIGKILL.
- */
-async function gracefulKill(child: ChildHandle): Promise<void> {
-  killProcessGroup(child, "SIGTERM");
-
-  // Wait for grace period
-  await new Promise<void>((resolve) => setTimeout(resolve, GRACE_PERIOD_MS));
-
-  // Force kill if still alive
-  try {
-    killProcessGroup(child, "SIGKILL");
-  } catch {
-    // Process may already be dead
-  }
-}
-
-/**
- * Kill all active processes (for shutdown hooks).
- * Sends SIGTERM to all, waits grace period, then SIGKILL to survivors.
- */
-async function killAllActiveProcesses(): Promise<void> {
-  if (activeProcesses.size === 0) return;
-
-  // SIGTERM all
-  for (const child of activeProcesses) {
-    try {
-      killProcessGroup(child, "SIGTERM");
-    } catch {
-      // ignore
-    }
-  }
-
-  // Wait grace period
-  await new Promise<void>((resolve) => setTimeout(resolve, GRACE_PERIOD_MS));
-
-  // SIGKILL survivors
-  for (const child of activeProcesses) {
-    try {
-      killProcessGroup(child, "SIGKILL");
-    } catch {
-      // ignore
-    }
-  }
-
-  activeProcesses.clear();
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function isEsrch(err: unknown): boolean {
   return (

@@ -36,13 +36,6 @@ export interface WorkflowDepsOverrides {
  * @param overrides  Optional DI hooks (used in tests)
  * @throws if config is invalid or the engine ID is unknown
  */
-/**
- * Default spawner factory: always uses BunProcessSpawner (subprocess-based).
- */
-function defaultCreateSpawner(timeout: number): ProcessSpawner {
-  return new BunProcessSpawner({ timeoutMinutes: timeout })
-}
-
 export function prepareWorkflowDeps(overrides?: WorkflowDepsOverrides): WorkflowDeps {
   const load = overrides?.loadConfig ?? (() => {
     const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
@@ -56,7 +49,7 @@ export function prepareWorkflowDeps(overrides?: WorkflowDepsOverrides): Workflow
 
   const spawner = overrides?.createSpawner
     ? overrides.createSpawner(config.timeout_minutes)
-    : defaultCreateSpawner(config.timeout_minutes)
+    : new BunProcessSpawner({ timeoutMinutes: config.timeout_minutes })
 
   return { config, engine, spawner }
 }

@@ -6,7 +6,7 @@ import {
 } from "../src/orchestration/config/schema";
 import { EventBus, createEmit } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import { SubprocessResultSchema } from "../src/orchestration/engines/subprocess/schemas";
+import { SubprocessResultSchema } from "../src/infra/subprocess-types";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
 
 // ---------------------------------------------------------------------------

@@ -225,28 +225,6 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   }
 
   // -------------------------------------------------------------------------
-  // Budget status reporting
-  // -------------------------------------------------------------------------
-
-  function getBudgetStatus(budgetLimits: BudgetLimits): SessionBudgetStatus {
-    // invocations_remaining: null when unlimited (0 means unlimited)
-    const invocationsRemaining = budgetLimits.max_invocations > 0
-      ? Math.max(0, budgetLimits.max_invocations - invocationsUsed)
-      : null;
-
-    // token_budget_remaining: null when unlimited (null means unlimited)
-    const tokenBudgetRemaining = budgetLimits.max_tokens !== null
-      ? Math.max(0, budgetLimits.max_tokens - tokensUsed)
-      : null;
-
-    return {
-      invocations_remaining: invocationsRemaining,
-      token_budget_remaining: tokenBudgetRemaining,
-      wall_clock_deadline: budgetLimits.wall_clock_deadline,
-    };
-  }
-
-  // -------------------------------------------------------------------------
   // Subprocess process boundary
   // -------------------------------------------------------------------------
 
@@ -290,7 +268,6 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     updateContextUtilization,
     getContextUtilization,
     isExhausted,
-    getBudgetStatus,
     flush,
     dispose,
     onNewSubprocess,

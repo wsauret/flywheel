@@ -7,7 +7,7 @@
  *
  * Persistence-specific constraints:
  * - ToolBlock: strips runtime-only fields (filePath, diff, content, filetype)
- * - AgentBlock: normalizes "active" → "paused", strips UI state (expanded)
+ * - AgentBlock: normalizes "active" → "paused"
  * - ContextGroupBlock: children use the narrowed ToolBlock persistence shape
  * - All others: persisted as-is
  */
@@ -39,10 +39,10 @@ const ToolSnapshotSchema = ToolBlockSchema.pick({
 
 /**
  * AgentBlock on disk: "active" status normalized to "paused" before writing,
- * UI-only fields (expanded) stripped, children use persistence ToolBlock shape.
+ * Children use persistence ToolBlock shape.
  */
 const AgentSnapshotSchema = AgentBlockSchema
-  .omit({ status: true, children: true, expanded: true })
+  .omit({ status: true, children: true })
   .extend({
     status: z.enum(["paused", "completed", "error"]),
     children: z.array(ToolSnapshotSchema),

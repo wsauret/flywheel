@@ -30,12 +30,12 @@ export interface WarmPoolOptions<T = SpawnResult> {
   label: string;
   /**
    * Extract the PID from the resource. Required for process registry and kill.
-   * Defaults to `(proc) => (proc as any).pid` which works for SpawnResult.
+   * Defaults to reading `.pid` from the resource (works for SpawnResult).
    */
   getPid?: (proc: T) => number | undefined;
   /**
    * Extract the exit promise from the resource. Used to watch for unexpected
-   * exits. Defaults to `(proc) => (proc as any).result` which works for SpawnResult.
+   * exits. Defaults to reading `.result` from the resource (works for SpawnResult).
    */
   getExitPromise?: (proc: T) => Promise<unknown>;
   /**

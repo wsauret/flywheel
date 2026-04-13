@@ -156,20 +156,6 @@ describe("Tiered Evaluation", () => {
     expect(result).toBeNull();
   });
 
-  test("gate step: hook returns null (no verification)", async () => {
-    const config = makeConfig();
-    const hook = createPostTurnVerificationHook(config);
-
-    const step = makeStep({ type: "gate" });
-    const result = await hook({
-      step,
-      workerOutput: makeWorkerOutput(),
-      handoffData: null,
-    });
-
-    expect(result).toBeNull();
-  });
-
   test("no stdinWrite/awaitNextTurn: still returns result without crashing", async () => {
     const config = makeConfig();
     const hook = createPostTurnVerificationHook(config);

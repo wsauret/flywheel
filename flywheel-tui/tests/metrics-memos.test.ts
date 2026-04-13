@@ -109,8 +109,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
         // Leaf signals should be reset
         expect(metrics.elapsed()).toBe(0)
         expect(metrics.thinkingElapsed()).toBe(0)
-        // workStartTime resets to Date.now() — just verify it's a recent timestamp
-        expect(metrics.workStartTime()).toBeGreaterThan(0)
 
         // Store-derived memos should still reflect sessionStore data (NOT reset to 0)
         expect(metrics.liveTokens()).toBe(500)
@@ -142,7 +140,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
 
       // Leaf signals + control methods should exist
       expect(typeof metrics.elapsed).toBe("function")
-      expect(typeof metrics.workStartTime).toBe("function")
       expect(typeof metrics.spinnerTick).toBe("function")
       expect(typeof metrics.thinkingElapsed).toBe("function")
       expect(typeof metrics.startTimer).toBe("function")

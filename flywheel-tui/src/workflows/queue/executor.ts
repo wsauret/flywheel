@@ -4,7 +4,6 @@
 //
 // Thin orchestrator that processes queue steps sequentially. Delegates to:
 //   - executor-types.ts  — all DI interfaces and result types
-//   - gate-handler.ts    — gate step user prompts
 //   - step-runner.ts     — single-step execution pipeline
 //   - revision-loop.ts   — evaluator + worker revision cycles
 // ---------------------------------------------------------------------------
@@ -22,7 +21,6 @@ import {
   isFinished,
   type Provenance,
 } from "./queue";
-import { handleGateStep } from "./gate-handler.js";
 import { executeStep } from "./step-runner.js";
 import { Log } from "../../infra/log";
 import { errorMessage } from "../../infra/error-message";
@@ -55,7 +53,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     persist,
     accumulator,
     maxRevisions,
-    questionService,
     onStepCompleted,
     guardrails,
     sessionObjective,
@@ -136,45 +133,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         };
       }
 
-      // Gate steps: present user with continue/stop/pause
-      if (step.type === "gate") {
-        emit("queue:step-started", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
-        await safeTransition(step.id, "running", "gate step awaiting user decision");
-
-        const decision = await handleGateStep(step, questionService);
-
-        if (decision === "continue") {
-          await safeTransition(step.id, "completed", "user approved gate");
-          emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
-          stepsCompleted++;
-          advanceCursor(queue);
-          continue;
-        }
-
-        if (decision === "pause") {
-          await safeTransition(step.id, "completed", "user paused at gate");
-          emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
-          stepsCompleted++;
-          advanceCursor(queue);
-          shutdownRequested = true;
-          continue;
-        }
-
-        // decision === "stop"
-        await safeTransition(step.id, "failed", "user stopped at gate");
-        emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason: "User stopped at gate" });
-        queue.status = "failed";
-        await persistQueue();
-        emit("queue:failed", { workflowId, reason: "User stopped at gate", stepsCompleted });
-        return {
-          completed: false,
-          stepsCompleted,
-          stepsTotal: queue.steps.length,
-          reason: "User stopped at gate",
-        };
-      }
-
-      // Execute the step (non-gate) — delegated to step-runner
+      // Execute the step — delegated to step-runner
       const result = await executeStep(step, {
         queue,
         workflowId,
@@ -187,7 +146,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         accumulator,
         maxRevisions,
         abortSignal: abortController.signal,
-        questionService,
         onStepCompleted,
         guardrails,
         sessionObjective,

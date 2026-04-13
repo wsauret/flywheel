@@ -28,7 +28,6 @@ function minimalSession(overrides?: Partial<Session>): Session {
   return {
     label: "plans/test.md",
     planPath: "plans/test.md",
-    worktreePath: "/tmp/worktrees/test",
     lastUpdated: new Date().toISOString(),
     budgetLimits: { max_invocations: 0, max_tokens: null, wall_clock_deadline: null },
     budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0 },
@@ -795,119 +794,6 @@ describe("BudgetTracker — isExhausted", () => {
     tracker.handleEvent(resultEvent(0.50, 10000, 5000));
 
     expect(tracker.isExhausted(unlimitedLimits())).toBe(false);
-    tracker.dispose();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// getBudgetStatus()
-// ---------------------------------------------------------------------------
-
-describe("BudgetTracker — getBudgetStatus", () => {
-  it("returns invocations_remaining: null when unlimited (not 999)", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    tracker.incrementInvocations();
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_invocations: 0 }));
-    expect(status.invocations_remaining).toBeNull();
-
-    tracker.dispose();
-  });
-
-  it("returns correct invocations_remaining when limited", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    tracker.incrementInvocations();
-    tracker.incrementInvocations();
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_invocations: 5 }));
-    expect(status.invocations_remaining).toBe(3);
-
-    tracker.dispose();
-  });
-
-  it("invocations_remaining floors at 0 (never negative)", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    tracker.incrementInvocations();
-    tracker.incrementInvocations();
-    tracker.incrementInvocations();
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_invocations: 2 }));
-    expect(status.invocations_remaining).toBe(0);
-
-    tracker.dispose();
-  });
-
-  it("returns token_budget_remaining: null when unlimited", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: null }));
-    expect(status.token_budget_remaining).toBeNull();
-
-    tracker.dispose();
-  });
-
-  it("returns correct token_budget_remaining when limited", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    tracker.handleEvent(resultEvent(0.01, 1000, 500)); // 1500 tokens
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: 10000 }));
-    expect(status.token_budget_remaining).toBe(8500);
-
-    tracker.dispose();
-  });
-
-  it("token_budget_remaining is not reduced by cache tokens", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    // 1000 input + 500 output + 50000 cache reads (excluded)
-    tracker.handleEvent(resultEvent(0.05, 1000, 500, 50_000, 0));
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: 10000 }));
-    expect(status.token_budget_remaining).toBe(8500); // only 1500 consumed
-    tracker.dispose();
-  });
-
-  it("token_budget_remaining floors at 0 (never negative)", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    tracker.handleEvent(resultEvent(0.01, 5000, 3000)); // 8000 tokens
-
-    const status = tracker.getBudgetStatus(unlimitedLimits({ max_tokens: 5000 }));
-    expect(status.token_budget_remaining).toBe(0);
-
-    tracker.dispose();
-  });
-
-  it("passes through wall_clock_deadline from limits", () => {
-    const baseDir = makeTmpDir();
-    const sessionId = createSession(minimalSession(), baseDir);
-    const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
-
-    const deadline = new Date(Date.now() + 60_000).toISOString();
-    const status = tracker.getBudgetStatus(unlimitedLimits({ wall_clock_deadline: deadline }));
-    expect(status.wall_clock_deadline).toBe(deadline);
-
-    const statusNull = tracker.getBudgetStatus(unlimitedLimits({ wall_clock_deadline: null }));
-    expect(statusNull.wall_clock_deadline).toBeNull();
-
     tracker.dispose();
   });
 });

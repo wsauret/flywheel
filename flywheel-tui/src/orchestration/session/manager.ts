@@ -23,10 +23,8 @@ import type { Session } from "./schemas";
 import { toBudgetLimits } from "../../workflows/schemas";
 import { computeContextPercent } from "./budget-tracker-types.js";
 import { isValidTransition, type SessionState } from "./state-machine";
-import type { WorktreeManager as IWorktreeManager } from "./worktree-manager";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema";
 import { Log } from "../../infra/log";
-import { errorMessage } from "../../infra/error-message";
 
 const log = Log.create({ service: "session.manager" });
 
@@ -67,8 +65,6 @@ export interface SessionListResult {
 /** Dependencies injected into the session manager. */
 export interface SessionManagerDeps {
   baseDir: string;
-  /** Optional worktree manager for git worktree lifecycle integration. */
-  worktreeManager?: IWorktreeManager;
   /** Optional config — defaults to CONFIG_DEFAULTS when omitted. */
   config?: FlywheelConfig;
 }
@@ -117,7 +113,7 @@ export interface SessionManager {
  * @param deps - Injected dependencies (baseDir, workflow session functions).
  */
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
-  const { baseDir, worktreeManager } = deps;
+  const { baseDir } = deps;
   const config = deps.config ?? CONFIG_DEFAULTS;
 
   // -------------------------------------------------------------------------
@@ -143,7 +139,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const now = new Date().toISOString();
     const budget = config.budget;
 
-    const state = (initialState ?? "active") as SessionState;
+    const state = initialState ?? "active";
 
     const sharedFields = {
       label: name ?? planPath,
@@ -157,8 +153,8 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     };
 
     const sessionData: Session = kind === "chat"
-      ? { ...sharedFields, kind: "chat" as const, command: "chat" as const }
-      : { ...sharedFields, kind: "workflow" as const, command: "work" as const, planPath };
+      ? { ...sharedFields, kind: "chat", command: "chat" } satisfies Session
+      : { ...sharedFields, kind: "workflow", command: "work", planPath } satisfies Session;
 
     const id = persistCreateSession(sessionData, baseDir);
 
@@ -209,14 +205,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     }
 
     updateSession(id, { state: newState }, baseDir);
-
-    // --- Worktree lifecycle side-effects (fire-and-forget) ---
-    if (worktreeManager) {
-      if (newState === "active" && currentState === "paused") {
-        // Resuming from paused — switch to existing worktree
-        worktreeManager.switchToSession(id).catch((e) => log.warn("worktree switch failed", { id, error: errorMessage(e) }));
-      }
-    }
   }
 
   function updateLabel(id: string, label: string): void {
@@ -228,13 +216,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   }
 
   function deleteSession(id: string): void {
-    // Delete session files + companions from disk
     deleteSessionWithCompanions(id, baseDir);
-
-    // Clean up worktree if available (fire-and-forget)
-    if (worktreeManager) {
-      worktreeManager.cleanupTrashed(id).catch((e) => log.warn("worktree cleanup failed", { id, error: errorMessage(e) }));
-    }
   }
 
   function recoverStaleSessions(): number {
@@ -247,12 +229,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       // Only active sessions with no running queue need recovery
       if (state !== "active") continue;
 
-      // Both chat and work sessions → paused (can be resumed)
-      const target = "paused" as const;
-
       try {
-        updateState(entry.id, target);
-        log.info("recovered stale session", { session: entry.data.name || entry.id, to: target });
+        updateState(entry.id, "paused");
+        log.info("recovered stale session", { session: entry.data.name || entry.id, to: "paused" });
         recovered++;
       } catch {
         // Non-fatal — skip sessions that fail to update

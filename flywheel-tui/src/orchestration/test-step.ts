@@ -115,7 +115,7 @@ export function buildTestQueue(
   if (fixture.handoffData) {
     steps.push({
       id: randomUUID(),
-      type: "plan",
+      type: "work",
       title: "(fixture) Previous step",
       status: "completed",
     });

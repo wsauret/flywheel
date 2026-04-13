@@ -35,8 +35,6 @@ export interface ShellSignals {
   setErrorMessage: Setter<string>
   /** Derived from store entry description. Read-only. */
   sessionTitle: Accessor<string>
-  statusLine: Accessor<string>
-  setStatusLine: Setter<string>
   foregroundId: Accessor<string | undefined>
   setForegroundId: Setter<string | undefined>
   /** Derived session state — re-evaluates when foregroundId or store changes. */
@@ -68,7 +66,6 @@ export function createShellState(deps: {
 }): { signals: ShellSignals; services: ShellServices } {
   // ── Writable signals (user-set, not derived) ──
   const [errorMessage, setErrorMessage] = createSignal("")
-  const [statusLine, setStatusLine] = createSignal("")
   const [foregroundId, setForegroundId] = createSignal<string | undefined>()
 
   // ── Pending work mode (bare /work with no description) ──
@@ -121,7 +118,6 @@ export function createShellState(deps: {
     steps,
     errorMessage, setErrorMessage,
     sessionTitle,
-    statusLine, setStatusLine,
     foregroundId, setForegroundId,
     sessionState,
     storeEntry,

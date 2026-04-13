@@ -1,40 +1,47 @@
 /**
- * Subprocess payload types — canonical home for infra-layer consumption.
+ * Subprocess payload types and schemas — canonical, single source of truth.
  *
- * These are pure TypeScript types (no Zod dependency). The Zod schemas
- * that validate these shapes live in orchestration/engines/subprocess/.
+ * Zod schemas define the shapes; static types are derived via z.infer.
+ * All layers import from here.
  */
+
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // SubprocessFailureReason — discriminated union of failure kinds
 // ---------------------------------------------------------------------------
 
-export type SubprocessFailureReason =
-  | { kind: "timeout"; timeoutMs: number; message: string }
-  | { kind: "exit_code"; exitCode: number; message: string }
-  | { kind: "schema_error"; message: string }
-  | { kind: "api_error"; message: string }
-  | { kind: "rate_limited"; message: string }
-  | { kind: "transient"; message: string }
-  | { kind: "interrupted"; message: string }
-  | { kind: "handoff_missing"; message: string }
-  | { kind: "handoff_invalid"; message: string };
+export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("timeout"), timeoutMs: z.number(), message: z.string() }),
+  z.object({ kind: z.literal("exit_code"), exitCode: z.number(), message: z.string() }),
+  z.object({ kind: z.literal("schema_error"), message: z.string() }),
+  z.object({ kind: z.literal("api_error"), message: z.string() }),
+  z.object({ kind: z.literal("rate_limited"), message: z.string() }),
+  z.object({ kind: z.literal("transient"), message: z.string() }),
+  z.object({ kind: z.literal("interrupted"), message: z.string() }),
+  z.object({ kind: z.literal("handoff_missing"), message: z.string() }),
+  z.object({ kind: z.literal("handoff_invalid"), message: z.string() }),
+]);
+
+export type SubprocessFailureReason = z.infer<typeof SubprocessFailureReasonSchema>;
 
 // ---------------------------------------------------------------------------
 // SubprocessResult — output of a subprocess execution
 // ---------------------------------------------------------------------------
 
-export type SubprocessResult = {
-  output: string;
-  rawOutput?: string;
-  rawStderr?: string;
-  exitCode: number;
-  truncated: boolean;
-  durationMs: number;
-  failure?: SubprocessFailureReason;
-  sessionId?: string;
-  handoffPath: string;
-};
+export const SubprocessResultSchema = z.object({
+  output: z.string(),
+  rawOutput: z.string().optional(),
+  rawStderr: z.string().optional(),
+  exitCode: z.number(),
+  truncated: z.boolean(),
+  durationMs: z.number(),
+  failure: SubprocessFailureReasonSchema.optional(),
+  sessionId: z.string().optional(),
+  handoffPath: z.string(),
+});
+
+export type SubprocessResult = z.infer<typeof SubprocessResultSchema>;
 
 // ---------------------------------------------------------------------------
 // NDJSONEvent — a parsed NDJSON event from subprocess output

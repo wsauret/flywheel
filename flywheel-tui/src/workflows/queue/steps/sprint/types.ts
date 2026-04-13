@@ -35,19 +35,13 @@ export interface SprintIterationRecord {
 }
 
 // ---------------------------------------------------------------------------
-// SprintLoopState — discriminated union for sprint lifecycle
-//
-// Uses `status` discriminant instead of two booleans (completed + escalated)
-// for safer exhaustiveness checking and cleaner pattern matching.
+// SprintLoopState — sprint lifecycle tracking
 // ---------------------------------------------------------------------------
 
 export interface SprintLoopState {
-  /** Current sprint lifecycle status. */
-  status: "running" | "completed" | "escalated";
-  /** Number of iterations consumed so far. */
+  status: "running" | "completed" | "exhausted";
   iterationCount: number;
-  /** Full iteration history for escalation carry-forward. */
   history: SprintIterationRecord[];
-  /** Stop reason when escalated. */
+  /** Set when status is "exhausted" (max iterations or stuck). */
   reason?: string;
 }

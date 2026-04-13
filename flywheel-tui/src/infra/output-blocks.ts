@@ -53,8 +53,6 @@ export const AgentBlockSchema = z.object({
   duration: z.number().optional(),
   errorMessage: z.string().optional(),
   timestamp: z.number(),
-  /** Whether the block's children are expanded (visible). Default: false (collapsed). */
-  expanded: z.boolean().optional(),
 })
 
 export const ContextGroupBlockSchema = z.object({

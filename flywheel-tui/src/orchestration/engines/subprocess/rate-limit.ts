@@ -2,47 +2,23 @@
  * Rate-limit detection for worker output.
  *
  * Detects rate-limiting conditions from agent stderr and exit codes.
- * Ported from ralph-tui's RateLimitDetector class for comprehensive,
- * agent-aware detection with retry-after extraction.
+ * Comprehensive, agent-aware detection with retry-after extraction.
  *
  * IMPORTANT: Only checks stderr to avoid false positives from code
  * in stdout containing "rate limit", "429", etc.
- *
- * Integrates with `retry<T>()` via `RATE_LIMIT_RETRY_OPTIONS`.
  */
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/**
- * Result of rate limit detection.
- */
-export interface RateLimitDetectionResult {
-  /** Whether a rate limit condition was detected */
-  isRateLimit: boolean;
+export type RateLimitDetectionResult =
+  | { isRateLimit: false }
+  | { isRateLimit: true; message: string; retryAfter?: number };
 
-  /** Extracted message describing the rate limit (if detected) */
-  message?: string;
-
-  /** Suggested retry delay in seconds (if parseable from the message) */
-  retryAfter?: number;
-}
-
-/**
- * Input for rate limit detection.
- */
 export interface RateLimitDetectionInput {
-  /** Standard error output from the agent */
   stderr: string;
-
-  /** Standard output from the agent (currently unused — kept for interface compat) */
-  stdout?: string;
-
-  /** Exit code from the agent process */
   exitCode?: number;
-
-  /** Agent plugin identifier (e.g., 'claude', 'opencode') */
   agentId?: string;
 }
 
@@ -150,175 +126,98 @@ const AGENT_SPECIFIC_PATTERNS: Record<string, RateLimitPattern[]> = {
 const RATE_LIMIT_EXIT_CODES = new Set([1, 2, 429]);
 
 // ---------------------------------------------------------------------------
-// RateLimitDetector
+// Detection
 // ---------------------------------------------------------------------------
 
-/**
- * Detects rate limit conditions from agent output.
- * Examines stderr and exit codes to determine if an agent
- * encountered rate limiting from its backing API.
- */
-export class RateLimitDetector {
-  /**
-   * Detect if the agent output indicates a rate limit condition.
-   *
-   * @param input - The detection input containing stderr, stdout, exitCode, and agentId
-   * @returns Detection result with isRateLimit flag and optional message/retryAfter
-   */
-  detect(input: RateLimitDetectionInput): RateLimitDetectionResult {
-    const { stderr, exitCode, agentId } = input;
+// IMPORTANT: Only checks stderr to avoid false positives from code in stdout
+// containing "rate limit", "429", etc.
 
-    // IMPORTANT: Only check stderr for rate limit detection.
-    // Checking stdout causes false positives when agents output code containing
-    // words like "rate limit", "429", etc. Real rate limit errors from CLI tools
-    // are written to stderr.
-    const outputToCheck = stderr;
+export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetectionResult {
+  const { stderr, exitCode, agentId } = input;
 
-    // If stderr is empty and exit code is 0, definitely not a rate limit
-    if (!outputToCheck.trim() && exitCode === 0) {
-      return { isRateLimit: false };
-    }
-
-    // Get patterns to check: common + agent-specific
-    const patterns = this.getPatternsForAgent(agentId);
-
-    // Check each pattern against stderr only
-    for (const { pattern, retryAfterPattern } of patterns) {
-      if (pattern.test(outputToCheck)) {
-        // Found a match - extract message and retryAfter
-        const message = this.extractMessage(outputToCheck, pattern);
-        const retryAfter = retryAfterPattern
-          ? this.extractRetryAfter(outputToCheck, retryAfterPattern)
-          : undefined;
-
-        return {
-          isRateLimit: true,
-          message,
-          retryAfter,
-        };
-      }
-    }
-
-    // Check exit code as secondary indicator
-    // A non-zero exit code alone isn't enough, but it can confirm suspicion
-    if (exitCode !== undefined && exitCode !== 0) {
-      // Look for any rate-limit-like keywords that might have been missed
-      const looseMatch = this.looseRateLimitCheck(outputToCheck);
-      if (looseMatch && RATE_LIMIT_EXIT_CODES.has(exitCode)) {
-        return {
-          isRateLimit: true,
-          message: looseMatch,
-          retryAfter: this.extractAnyRetryAfter(outputToCheck),
-        };
-      }
-    }
-
+  if (!stderr.trim() && exitCode === 0) {
     return { isRateLimit: false };
   }
 
-  /**
-   * Get all applicable patterns for a given agent.
-   */
-  private getPatternsForAgent(agentId?: string): RateLimitPattern[] {
-    const patterns = [...COMMON_PATTERNS];
+  const patterns = getPatternsForAgent(agentId);
 
-    if (agentId && AGENT_SPECIFIC_PATTERNS[agentId]) {
-      patterns.push(...AGENT_SPECIFIC_PATTERNS[agentId]);
+  for (const { pattern, retryAfterPattern } of patterns) {
+    if (pattern.test(stderr)) {
+      return {
+        isRateLimit: true,
+        message: extractMessage(stderr, pattern),
+        retryAfter: retryAfterPattern ? extractRetryAfter(stderr, retryAfterPattern) : undefined,
+      };
     }
-
-    return patterns;
   }
 
-  /**
-   * Extract a relevant message snippet around the matched pattern.
-   */
-  private extractMessage(output: string, pattern: RegExp): string {
-    const match = output.match(pattern);
-    if (!match) {
-      return "Rate limit detected";
+  // Non-zero exit + loose keyword match as secondary indicator
+  if (exitCode !== undefined && exitCode !== 0) {
+    const looseMatch = looseRateLimitCheck(stderr);
+    if (looseMatch && RATE_LIMIT_EXIT_CODES.has(exitCode)) {
+      return { isRateLimit: true, message: looseMatch, retryAfter: extractAnyRetryAfter(stderr) };
     }
-
-    // Get context around the match (50 chars before, 100 after)
-    const matchIndex = match.index ?? 0;
-    const start = Math.max(0, matchIndex - 50);
-    const end = Math.min(output.length, matchIndex + match[0].length + 100);
-
-    let message = output.slice(start, end).trim();
-
-    // Clean up the message
-    message = message.replace(/\s+/g, " ");
-
-    // Truncate if too long
-    if (message.length > 200) {
-      message = message.slice(0, 200) + "...";
-    }
-
-    return message;
   }
 
-  /**
-   * Extract retry-after duration in seconds from output.
-   */
-  private extractRetryAfter(output: string, pattern: RegExp): number | undefined {
-    const match = output.match(pattern);
-    if (match && match[1]) {
+  return { isRateLimit: false };
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function getPatternsForAgent(agentId?: string): RateLimitPattern[] {
+  const patterns = [...COMMON_PATTERNS];
+  if (agentId && AGENT_SPECIFIC_PATTERNS[agentId]) {
+    patterns.push(...AGENT_SPECIFIC_PATTERNS[agentId]);
+  }
+  return patterns;
+}
+
+function extractMessage(output: string, pattern: RegExp): string {
+  const match = output.match(pattern);
+  if (!match) return "Rate limit detected";
+
+  const matchIndex = match.index ?? 0;
+  const start = Math.max(0, matchIndex - 50);
+  const end = Math.min(output.length, matchIndex + match[0].length + 100);
+  let message = output.slice(start, end).trim().replace(/\s+/g, " ");
+  if (message.length > 200) message = message.slice(0, 200) + "...";
+  return message;
+}
+
+function extractRetryAfter(output: string, pattern: RegExp): number | undefined {
+  const match = output.match(pattern);
+  if (match?.[1]) {
+    const seconds = parseInt(match[1], 10);
+    if (!isNaN(seconds) && seconds > 0 && seconds < 3600) return seconds;
+  }
+  return undefined;
+}
+
+function extractAnyRetryAfter(output: string): number | undefined {
+  const patterns = [
+    /retry[- ]?after[:\s]+(\d+)\s*s/i,
+    /wait[:\s]+(\d+)\s*s/i,
+    /try again in[:\s]+(\d+)\s*s/i,
+    /(\d+)\s*seconds?(?:\s*(?:before|until|wait))/i,
+  ];
+  for (const p of patterns) {
+    const match = output.match(p);
+    if (match?.[1]) {
       const seconds = parseInt(match[1], 10);
-      if (!isNaN(seconds) && seconds > 0 && seconds < 3600) {
-        return seconds;
-      }
+      if (!isNaN(seconds) && seconds > 0 && seconds < 3600) return seconds;
     }
-    return undefined;
   }
+  return undefined;
+}
 
-  /**
-   * Try to extract any retry-after value from the output.
-   */
-  private extractAnyRetryAfter(output: string): number | undefined {
-    // Try various patterns
-    const patterns = [
-      /retry[- ]?after[:\s]+(\d+)\s*s/i,
-      /wait[:\s]+(\d+)\s*s/i,
-      /try again in[:\s]+(\d+)\s*s/i,
-      /(\d+)\s*seconds?(?:\s*(?:before|until|wait))/i,
-    ];
-
-    for (const p of patterns) {
-      const match = output.match(p);
-      if (match && match[1]) {
-        const seconds = parseInt(match[1], 10);
-        if (!isNaN(seconds) && seconds > 0 && seconds < 3600) {
-          return seconds;
-        }
-      }
-    }
-
-    return undefined;
+function looseRateLimitCheck(output: string): string | null {
+  const loosePatterns = [/throttl/i, /limit.*exceeded/i, /exceeded.*limit/i, /capacity/i, /backoff/i];
+  for (const p of loosePatterns) {
+    if (p.test(output)) return extractMessage(output, p);
   }
-
-  /**
-   * Loose check for rate-limit-like content.
-   * Used as a fallback when strict patterns don't match.
-   */
-  private looseRateLimitCheck(output: string): string | null {
-    const loosePatterns = [
-      /throttl/i,
-      /limit.*exceeded/i,
-      /exceeded.*limit/i,
-      /capacity/i,
-      /backoff/i,
-    ];
-
-    for (const p of loosePatterns) {
-      if (p.test(output)) {
-        const match = output.match(p);
-        if (match) {
-          return this.extractMessage(output, p);
-        }
-      }
-    }
-
-    return null;
-  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------

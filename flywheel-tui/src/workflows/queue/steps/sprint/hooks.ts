@@ -2,12 +2,8 @@
 // Sprint Hook — Core Loop
 // ---------------------------------------------------------------------------
 //
-// Ported from src-legacy/queue/steps/sprint-work/hooks.ts
-// (createSprintQueueHandler). Adapted to the new architecture:
-//   - No verify step handling (native verification replaces scripts)
-//   - Hook tracks eval feedback internally in closure state
-//   - SprintLoopState discriminated union (not two booleans)
-//   - insertAfter() called BEFORE returning { continueExecution: true }
+// Retry loop for sprint mode. On failure: retry up to max_iterations,
+// detect stuck (identical consecutive failures), then stop.
 //
 // Factory: createSprintHook(config) → OnStepCompletedHook
 // ---------------------------------------------------------------------------
@@ -143,44 +139,6 @@ export function buildRetryStep(
 }
 
 // ---------------------------------------------------------------------------
-// buildEscalationSteps — [plan, work, review] for escalation
-// ---------------------------------------------------------------------------
-
-function buildEscalationSteps(
-  history: SprintIterationRecord[],
-): Step[] {
-  const lastFeedback = history[history.length - 1]?.evalFeedback ?? "Sprint exhausted iterations";
-  const context = `Escalation after ${history.length} sprint iterations. Last feedback: ${lastFeedback}`;
-
-  return [
-    makeStep("plan", "Escalation: create new plan", { description: context }),
-    makeStep("work", "Escalation: implement plan", { description: context }),
-    makeStep("review", "Escalation: review changes", { description: context }),
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// insertEscalationSteps — insert [plan, work, review] after a step
-// ---------------------------------------------------------------------------
-
-function insertEscalation(
-  queue: Queue,
-  afterStepId: string,
-  history: SprintIterationRecord[],
-): boolean {
-  const steps = buildEscalationSteps(history);
-  const result = insertAfter(
-    queue,
-    afterStepId,
-    steps,
-    makeProvenance(
-      `Sprint escalation: max iterations (${history.length}) reached`,
-    ),
-  );
-  return result.success;
-}
-
-// ---------------------------------------------------------------------------
 // createSprintHook — factory returning OnStepCompletedHook
 // ---------------------------------------------------------------------------
 
@@ -223,7 +181,7 @@ export function createSprintHook(config: SprintConfig): {
       return { continueExecution: false };
     }
 
-    // Guard: if already completed or escalated, no-op
+    // Guard: if already completed or exhausted, no-op
     if (state.status !== "running") {
       return { continueExecution: false };
     }
@@ -242,15 +200,11 @@ export function createSprintHook(config: SprintConfig): {
     }
 
     // -----------------------------------------------------------------------
-    // Failed — check stuck detection (before max iterations)
+    // Failed — check stuck detection (identical consecutive failures)
     // -----------------------------------------------------------------------
-    if (config.escalate_on_stuck && isStuck(state.history)) {
-      state.status = "escalated";
+    if (config.detect_stuck && isStuck(state.history)) {
+      state.status = "exhausted";
       state.reason = "Stuck: identical consecutive failures";
-      if (config.escalate_to_full) {
-        insertEscalation(queue, step.id, state.history);
-      }
-      // Always pause — escalation steps (if inserted) will execute on resume
       return { continueExecution: false };
     }
 
@@ -258,12 +212,8 @@ export function createSprintHook(config: SprintConfig): {
     // Failed — check max iterations
     // -----------------------------------------------------------------------
     if (state.iterationCount >= config.max_iterations) {
-      state.status = "escalated";
+      state.status = "exhausted";
       state.reason = "Max iterations reached";
-      if (config.escalate_to_full) {
-        insertEscalation(queue, step.id, state.history);
-      }
-      // Always pause — escalation steps (if inserted) will execute on resume
       return { continueExecution: false };
     }
 

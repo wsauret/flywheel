@@ -22,9 +22,6 @@ const THEMES: Record<string, ThemeJson> = {
   gruvbox: gruvboxTheme as unknown as ThemeJson,
 }
 
-export type { Theme } from "./theme/resolve"
-export { resolveTheme } from "./theme/resolve"
-
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { mode: "dark" | "light"; themeName?: string }) => {

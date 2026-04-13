@@ -7,10 +7,6 @@
 
 import { z } from "zod"
 
-// ---------------------------------------------------------------------------
-// Shared sub-schemas (Zod → type)
-// ---------------------------------------------------------------------------
-
 export const EvaluationCriteriaSchema = z.object({
   acceptance_criteria: z.array(z.string()),
   required_tests: z.boolean(),
@@ -35,10 +31,6 @@ export const WorkerConfigSchema = z.object({
 }).strip()
 
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>
-
-// ---------------------------------------------------------------------------
-// DispatcherDecision — output of the dispatcher agent (Zod → type)
-// ---------------------------------------------------------------------------
 
 export const MutationRequestSchema = z.object({
   type: z.enum(["insert_after", "skip", "remove"]),
@@ -71,26 +63,20 @@ export const DispatcherDecisionSchema = z.object({
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>
 
-// ---------------------------------------------------------------------------
-// EvaluatorResult — output of the evaluator agent (Zod → type)
-// ---------------------------------------------------------------------------
-
-export const EvaluatorIssueSchema = z.object({
+const EvaluatorIssueSchema = z.object({
   description: z.string(),
   severity: z.enum(["blocking", "non_blocking"]),
   category: z.enum(["test_failure", "type_error", "security", "regression", "incomplete", "other"]),
 }).strip()
 
-type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>
-
 export const EvaluatorResultSchema = z.object({
   passed: z.boolean(),
   reasoning: z.string(),
   suggestions: z.array(z.string()).optional(),
-  confidence: z.number(),
+  confidence: z.number().min(0).max(1),
   feedback: z.string(),
   files_to_review: z.array(z.string()),
-  issues: z.array(EvaluatorIssueSchema),
+  issues: z.array(EvaluatorIssueSchema).default([]),
   implementation_feedback: z.string().optional(),
   script_feedback: z.string().optional(),
 }).strip()

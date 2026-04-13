@@ -13,7 +13,6 @@ export type SessionKind = "workflow" | "chat"
 
 /** Base result when a runner completes normally. */
 export interface RunnerDoneResult {
-  statusMessage: string
   terminalTitle: string
 }
 
