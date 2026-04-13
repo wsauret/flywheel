@@ -23,114 +23,76 @@ interface ActivityInfo {
  * StructuredOutputBuilder as tool children or status updates, and
  * exposes lifecycle methods for the adapter to call from its event switch.
  */
+class AgentTracker {
+  private blockId: string | null = null;
+  private startedAt = 0;
+  readonly parser: NDJSONParser;
+
+  constructor(
+    private readonly builder: StructuredOutputBuilder,
+    private readonly prefix: string,
+  ) {
+    this.parser = new NDJSONParser();
+    this.parser.onEvent = (event) => this.handleEvent(event);
+    this.parser.onRawText = () => {};
+  }
+
+  start(label: string, description: string): string {
+    const blockId = `${this.prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    this.blockId = blockId;
+    this.startedAt = Date.now();
+    this.parser.flush();
+    this.builder.startAgent(blockId, label, description, Date.now());
+    return blockId;
+  }
+
+  complete(description?: string): void {
+    if (!this.blockId) return;
+    const elapsed = Date.now() - this.startedAt;
+    this.parser.flush();
+    this.builder.completeAgent(this.blockId, elapsed, description);
+    this.blockId = null;
+  }
+
+  fail(message: string): void {
+    if (!this.blockId) return;
+    this.parser.flush();
+    this.builder.errorAgent(this.blockId, message);
+    this.blockId = null;
+  }
+
+  private handleEvent(event: NDJSONEvent): void {
+    if (!this.blockId) return;
+    const activity = extractActivityInfo(event);
+    if (!activity) return;
+
+    if (activity.name === "Thinking") {
+      this.builder.updateAgentLatestChild(this.blockId, `Thinking: ${activity.detail}`);
+    } else {
+      this.builder.pushToolToAgent(this.blockId, activity.name, activity.detail, Date.now());
+    }
+  }
+}
+
 export class NdjsonPipeline {
-  private _dispatcherBlockId: string | null = null;
-  private _dispatcherStartedAt: number = 0;
-  private _evaluatorBlockId: string | null = null;
-  private _evaluatorStartedAt: number = 0;
+  private readonly dispatcher: AgentTracker;
+  private readonly evaluator: AgentTracker;
 
-  readonly dispatcherParser: NDJSONParser;
-  readonly evaluatorParser: NDJSONParser;
+  get dispatcherParser() { return this.dispatcher.parser; }
+  get evaluatorParser() { return this.evaluator.parser; }
 
-  constructor(private readonly builder: StructuredOutputBuilder) {
-    this.dispatcherParser = new NDJSONParser();
-    this.dispatcherParser.onEvent = (event) => {
-      this.handleDispatcherNdjsonEvent(event);
-    };
-    this.dispatcherParser.onRawText = () => {}; // Discard raw text from dispatcher
-
-    this.evaluatorParser = new NDJSONParser();
-    this.evaluatorParser.onEvent = (event) => {
-      this.handleEvaluatorNdjsonEvent(event);
-    };
-    this.evaluatorParser.onRawText = () => {}; // Discard raw text from evaluator
+  constructor(builder: StructuredOutputBuilder) {
+    this.dispatcher = new AgentTracker(builder, "dispatcher");
+    this.evaluator = new AgentTracker(builder, "evaluator");
   }
 
-  // ── Dispatcher lifecycle ──
+  startDispatcher(): string { return this.dispatcher.start("Dispatcher", "Analyzing step and crafting worker prompt"); }
+  completeDispatcher(description?: string): void { this.dispatcher.complete(description); }
+  failDispatcher(reason: string): void { this.dispatcher.fail(`Unavailable: ${reason}. Using static prompt.`); }
 
-  startDispatcher(): string {
-    const blockId = `dispatcher_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    this._dispatcherBlockId = blockId;
-    this._dispatcherStartedAt = Date.now();
-    this.dispatcherParser.flush();
-    this.builder.startAgent(blockId, "Dispatcher", "Analyzing step and crafting worker prompt", Date.now());
-    return blockId;
-  }
-
-  completeDispatcher(description?: string): void {
-    if (this._dispatcherBlockId) {
-      const elapsed = Date.now() - this._dispatcherStartedAt;
-      this.dispatcherParser.flush();
-      this.builder.completeAgent(this._dispatcherBlockId, elapsed, description);
-      this._dispatcherBlockId = null;
-    }
-  }
-
-  failDispatcher(reason: string): void {
-    if (this._dispatcherBlockId) {
-      this.dispatcherParser.flush();
-      this.builder.errorAgent(this._dispatcherBlockId, `Unavailable: ${reason}. Using static prompt.`);
-      this._dispatcherBlockId = null;
-    }
-  }
-
-  // ── Evaluator lifecycle ──
-
-  startEvaluator(): string {
-    const blockId = `evaluator_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    this._evaluatorBlockId = blockId;
-    this._evaluatorStartedAt = Date.now();
-    this.evaluatorParser.flush();
-    this.builder.startAgent(blockId, "Evaluator", "Checking output quality", Date.now());
-    return blockId;
-  }
-
-  completeEvaluator(description?: string): void {
-    if (this._evaluatorBlockId) {
-      const elapsed = Date.now() - this._evaluatorStartedAt;
-      this.evaluatorParser.flush();
-      this.builder.completeAgent(this._evaluatorBlockId, elapsed, description);
-      this._evaluatorBlockId = null;
-    }
-  }
-
-  failEvaluator(reason: string): void {
-    if (this._evaluatorBlockId) {
-      this.evaluatorParser.flush();
-      this.builder.errorAgent(this._evaluatorBlockId, `Failed: ${reason}. Skipping.`);
-      this._evaluatorBlockId = null;
-    }
-  }
-
-  // ── NDJSON event handlers ──
-
-  /**
-   * Handle NDJSON event from dispatcher subprocess.
-   * Routes tool-use events as agent children; thinking text as status-only updates.
-   */
-  private handleDispatcherNdjsonEvent(event: NDJSONEvent): void {
-    if (!this._dispatcherBlockId) return;
-    const activity = extractActivityInfo(event);
-    if (!activity) return;
-
-    if (activity.name === "Thinking") {
-      this.builder.updateAgentLatestChild(this._dispatcherBlockId, `Thinking: ${activity.detail}`);
-    } else {
-      this.builder.pushToolToAgent(this._dispatcherBlockId, activity.name, activity.detail, Date.now());
-    }
-  }
-
-  private handleEvaluatorNdjsonEvent(event: NDJSONEvent): void {
-    if (!this._evaluatorBlockId) return;
-    const activity = extractActivityInfo(event);
-    if (!activity) return;
-
-    if (activity.name === "Thinking") {
-      this.builder.updateAgentLatestChild(this._evaluatorBlockId, `Thinking: ${activity.detail}`);
-    } else {
-      this.builder.pushToolToAgent(this._evaluatorBlockId, activity.name, activity.detail, Date.now());
-    }
-  }
+  startEvaluator(): string { return this.evaluator.start("Evaluator", "Checking output quality"); }
+  completeEvaluator(description?: string): void { this.evaluator.complete(description); }
+  failEvaluator(reason: string): void { this.evaluator.fail(`Failed: ${reason}. Skipping.`); }
 }
 
 // ── Activity extraction ──

@@ -47,8 +47,8 @@ class DoomLoopDetector implements StreamObserver {
   }
 
   onEvent(event: EngineEvent): void {
-    if (event.type === "tool_use" && event.toolName) {
-      const sig = extractToolSignature(event.toolName, event.toolInput ?? {});
+    if (event.type === "tool_use") {
+      const sig = extractToolSignature(event.toolName, event.toolInput);
       this.recordToolCall(event.toolName, sig);
     }
   }

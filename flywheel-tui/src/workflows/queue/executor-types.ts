@@ -1,14 +1,7 @@
-// Step Executor — Type Definitions
-//
-// All DI interfaces, option types, and result types used by the step
-// executor and its sub-modules (step-runner, revision-loop).
-
-import type { Step, Queue } from "./types";
-import type { OnStepCompletedHook } from "./shared/hooks";
-import type { EmitFn } from "../../infra/event-bus";
-import type { NativeCheckResult } from "../shared/native-verification";
-
-// Types — Dependency Injection interfaces
+import type { Step, Queue } from "./types.js";
+import type { OnStepCompletedHook } from "./shared/hooks.js";
+import type { EmitFn } from "../../infra/event-bus.js";
+import type { NativeCheckResult } from "../shared/native-verification.js";
 
 /** Result from worker execution */
 export interface WorkerOutput {
@@ -66,7 +59,7 @@ export type HandoffReaderFn = (
 ) => Promise<Record<string, unknown> | null>;
 
 /** Persist function: saves queue state to disk */
-export type PersistFn = (queue: Queue) => Promise<void>;
+type PersistFn = (queue: Queue) => Promise<void>;
 
 /** Step context accumulator: accumulates handoff data across steps */
 export interface StepContextAccumulator {
@@ -76,10 +69,8 @@ export interface StepContextAccumulator {
   serialize?(): unknown;
 }
 
-// StepExecutorOptions — all dependencies injected (core + hooks)
-
 /** Required core options for step execution. */
-export interface StepExecutorCoreOptions {
+interface StepExecutorCoreOptions {
   /** The queue to execute */
   queue: Queue;
   /** Unique workflow identifier */
@@ -115,7 +106,7 @@ export interface StepExecutorCoreOptions {
 }
 
 /** Optional hooks and extensions for step execution. */
-export interface StepExecutorHooks {
+interface StepExecutorHooks {
   /**
    * Hook called after a step completes or fails. Allows external logic
    * (e.g., sprint handler) to inspect results and mutate the queue
@@ -170,24 +161,16 @@ export interface StepExecutorHooks {
 /** Full options = core + hooks. */
 export type StepExecutorOptions = StepExecutorCoreOptions & StepExecutorHooks;
 
-// PostTurnVerificationHook — named type alias for the hook function
-
 export type PostTurnVerificationHook = (ctx: {
   step: Step;
   workerOutput: WorkerOutput;
   handoffData: Record<string, unknown> | null;
 }) => Promise<PostTurnVerificationResult | null>;
 
-// PostTurnVerificationResult — returned by the post-turn verification hook
-
 export interface PostTurnVerificationResult {
   passed: boolean;
-  nativeChecksPassed: boolean;
-  fixAttemptsUsed: number;
   checks: NativeCheckResult[];
 }
-
-// StepExecutorResult — what run() returns
 
 export interface StepExecutorResult {
   /** Whether all steps completed successfully */
@@ -199,8 +182,6 @@ export interface StepExecutorResult {
   /** Reason for stopping if not all steps completed */
   reason?: string;
 }
-
-// StepExecutor interface — returned by factory
 
 export interface StepExecutor {
   /** Run the queue to completion (or until stopped) */

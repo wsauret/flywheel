@@ -25,7 +25,7 @@ export interface Step {
   /** Unique identifier (UUID). */
   readonly id: string;
   /** What kind of step this is. */
-  readonly type: "work";
+  readonly type: "work" | "plan";
   /** Human-readable title for display. */
   readonly title: string;
   /** Current lifecycle status. */
@@ -64,7 +64,7 @@ export interface Step {
 
 // QueueStatus — overall queue lifecycle
 
-export type QueueStatus =
+type QueueStatus =
   | "idle"
   | "running"
   | "completed"

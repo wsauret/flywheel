@@ -5,7 +5,7 @@
 //   - step-runner.ts     — single-step execution pipeline
 //   - revision-loop.ts   — evaluator + worker revision cycles
 
-import type { Step } from "./types";
+import type { Step } from "./types.js";
 import type {
   StepExecutorOptions,
   StepExecutorResult,
@@ -17,42 +17,20 @@ import {
   advanceCursor,
   isFinished,
   type Provenance,
-} from "./queue";
+} from "./queue.js";
 import { executeStep } from "./step-runner.js";
-import { Log } from "../../infra/log";
-import { errorMessage } from "../../infra/error-message";
+import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 
 const log = Log.create({ service: "step-executor" });
-
-// Provenance helper
 
 function makeProvenance(reason: string): Provenance {
   return { actor: "executor", reason };
 }
 
-// createStepExecutor — factory function
-
 export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
-  const {
-    queue,
-    workflowId,
-    emit,
-    dispatcher,
-    worker,
-    evaluator,
-    skipEvaluation,
-    handoffReader,
-    persist,
-    accumulator,
-    maxRevisions,
-    onStepCompleted,
-    guardrails,
-    sessionObjective,
-    persistAccumulatorState,
-    onSubprocessDispatched,
-    postTurnVerification,
-  } = options;
+  const { queue, workflowId, emit, persist } = options;
 
   let shutdownRequested = false;
   const abortController = new AbortController();
@@ -86,8 +64,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     await persistQueue();
     return true;
   }
-
-  // run() — main execution loop
 
   async function run(): Promise<StepExecutorResult> {
     let stepsCompleted = queue.steps.filter((s) => s.status === "completed").length;
@@ -124,25 +100,9 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         };
       }
 
-      // Execute the step — delegated to step-runner
       const result = await executeStep(step, {
-        queue,
-        workflowId,
-        emit,
-        dispatcher,
-        worker,
-        evaluator,
-        skipEvaluation,
-        handoffReader,
-        accumulator,
-        maxRevisions,
+        ...options,
         abortSignal: abortController.signal,
-        onStepCompleted,
-        guardrails,
-        sessionObjective,
-        persistAccumulatorState,
-        onSubprocessDispatched,
-        postTurnVerification,
         previousHandoff,
         previousAssessment,
         safeTransition,
@@ -181,8 +141,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     emit("queue:completed", { workflowId, stepsCompleted });
     return { completed: true, stepsCompleted, stepsTotal: queue.steps.length };
   }
-
-  // Shutdown / Abort
 
   function requestShutdown(): void {
     shutdownRequested = true;

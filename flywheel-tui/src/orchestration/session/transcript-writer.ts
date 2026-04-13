@@ -18,11 +18,9 @@
  *   writer.getEventCount();       // number of events written
  */
 
-import { ensureTracesDir, resolveTranscriptFile } from "../../infra/paths";
-import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
-import type { NDJSONEvent } from "../../infra/subprocess-types";
-
-// Types
+import { ensureTracesDir, resolveTranscriptFile } from "../../infra/paths.js";
+import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
+import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 
 export interface TranscriptWriter {
   /** Append a raw NDJSON event to the transcript file (buffered). */
@@ -33,14 +31,12 @@ export interface TranscriptWriter {
   getEventCount(): number;
 }
 
-export interface TranscriptWriterDeps {
+interface TranscriptWriterDeps {
   sessionId: string;
   baseDir: string;
   /** Debounce interval in ms for buffered writes. Default: 100ms */
   debounceMs?: number;
 }
-
-// Factory
 
 export function createTranscriptWriter(deps: TranscriptWriterDeps): TranscriptWriter {
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS } = deps;

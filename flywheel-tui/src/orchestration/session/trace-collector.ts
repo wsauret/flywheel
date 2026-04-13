@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { EventBus, Unsubscribe } from "../../infra/event-bus";
-import type { SpanKind, Span } from "../../infra/trace-types";
-import { truncateField } from "../../infra/trace-types";
-import type { TraceWriter, TraceIndexEntry } from "./trace-writer";
+import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
+import type { SpanKind, Span } from "../../infra/trace-types.js";
+import { truncateField } from "../../infra/trace-types.js";
+import type { TraceWriter } from "./trace-writer.js";
 import { subscribeTraceEvents } from "./trace-subscriptions.js";
 
-export interface TraceCollectorDeps {
+interface TraceCollectorDeps {
   writer: TraceWriter;
   sessionId: string;
   workflowName: string;
@@ -41,6 +41,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   let traceStartTimeMs = 0;
 
   let workflowSpanId: string | null = null;
+  let finalized = false;
   const stepSpanIds = new Map<string, string>();
   const toolSpanIds = new Map<string, string>();
 
@@ -104,7 +105,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
       traceStartTimeMs = startTimeMs;
     }
 
-    const open: OpenSpan = {
+    const open = {
       spanId,
       kind,
       name,
@@ -140,20 +141,44 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     closedSpanCount++;
   }
 
+  function findOpenSpanByKind(kind: SpanKind): string | null {
+    for (let i = spanStack.length - 1; i >= 0; i--) {
+      const spanId = spanStack[i]!;
+      const open = openSpans.get(spanId);
+      if (open && open.kind === kind) return spanId;
+    }
+    return null;
+  }
+
+  function resetStackForStep(wfSpanId: string | null): void {
+    const liveIds = spanStack.filter((id) => openSpans.has(id));
+    spanStack.length = 0;
+    if (wfSpanId && openSpans.has(wfSpanId)) spanStack.push(wfSpanId);
+    for (const id of liveIds) {
+      if (id !== wfSpanId && !spanStack.includes(id)) spanStack.push(id);
+    }
+  }
+
   function subscribeToEvents(bus: EventBus): Unsubscribe[] {
     return subscribeTraceEvents(bus, {
       startSpan,
       endSpan,
+      findOpenSpanByKind,
+      resetStackForStep,
       get workflowSpanId() { return workflowSpanId; },
       setWorkflowSpanId(id: string) { workflowSpanId = id; },
-      stepSpanIds,
-      toolSpanIds,
-      spanStack,
-      openSpans,
+      getStepSpanId: (stepId) => stepSpanIds.get(stepId),
+      setStepSpanId: (stepId, spanId) => { stepSpanIds.set(stepId, spanId); },
+      deleteStepSpanId: (stepId) => { stepSpanIds.delete(stepId); },
+      getToolSpanId: (toolUseId) => toolSpanIds.get(toolUseId),
+      setToolSpanId: (toolUseId, spanId) => { toolSpanIds.set(toolUseId, spanId); },
+      deleteToolSpanId: (toolUseId) => { toolSpanIds.delete(toolUseId); },
     }, workflowName);
   }
 
   function finalize(status: "ok" | "error" = "ok"): void {
+    if (finalized) return;
+    finalized = true;
     const endTimeMs = Date.now();
 
     const openSpanIds = [...spanStack].reverse();
@@ -165,7 +190,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
       endSpan(spanId, defaultOutput, status, status === "error" ? { message: "trace finalized with open spans" } : undefined);
     }
 
-    const summary: TraceIndexEntry = {
+    const summary = {
       traceId,
       sessionId,
       workflowName,
@@ -197,6 +222,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   }
 
   function dispose(): void {
+    if (!finalized) finalize();
     writer.dispose();
   }
 

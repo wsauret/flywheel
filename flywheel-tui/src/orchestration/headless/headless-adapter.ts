@@ -1,7 +1,8 @@
 import { mkdirSync, existsSync } from "node:fs"
 import * as path from "node:path"
+import type { FileSink } from "bun"
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js"
-import type { FlywheelEvent } from "../../infra/events"
+import type { FlywheelEvent } from "../../infra/events.js"
 import { Log } from "../../infra/log.js"
 import { formatCost } from "../../infra/format.js"
 
@@ -67,7 +68,7 @@ export class HeadlessAdapter {
   private eventBus: EventBus | null = null
   private unsubscribe: Unsubscribe | null = null
   private logFile: string | null = null
-  private logWriter: import("bun").FileSink | null = null
+  private logWriter: FileSink | null = null
   private logLevel: LogLevel
   private customLogger: ((message: string) => void) | null = null
   private showTimestamps: boolean

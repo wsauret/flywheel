@@ -1,4 +1,4 @@
-import type { HandoffFieldSpec } from "../../shared/handoff-render";
+import type { HandoffFieldSpec } from "../../shared/handoff-render.js";
 
 export const WORK_STEP_FIELDS: HandoffFieldSpec[] = [
   {

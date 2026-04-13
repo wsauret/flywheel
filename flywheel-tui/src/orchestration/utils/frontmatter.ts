@@ -7,19 +7,15 @@
 
 import * as yaml from "js-yaml";
 
-// Types
-
-export interface ParsedDoc {
+interface ParsedDoc {
   frontmatter: Record<string, unknown>;
   body: string;
 }
 
-export interface ParseFrontmatterOptions {
+interface ParseFrontmatterOptions {
   /** YAML schema to use (e.g. yaml.JSON_SCHEMA). Defaults to yaml.DEFAULT_SCHEMA. */
   schema?: yaml.Schema;
 }
-
-// Public API
 
 /**
  * Parse YAML frontmatter delimited by `---` at the start of a string.
@@ -36,31 +32,24 @@ export function parseFrontmatter(
   content: string,
   options?: ParseFrontmatterOptions,
 ): ParsedDoc | null {
-  // Must start with "---" followed by a newline (LF or CRLF)
   if (!content.startsWith("---")) return null;
 
-  // Find the newline after the opening "---"
   const firstNewline = content.indexOf("\n", 3);
   if (firstNewline === -1) return null;
 
-  // Find the closing "---" delimiter.
-  // Search for "\n---\n" or "\n---\r\n" or "\n---" at EOF.
   const searchStart = firstNewline + 1;
   const closingMarker = "\n---";
   const closingIdx = content.indexOf(closingMarker, searchStart);
   if (closingIdx === -1) return null;
 
-  // Extract the raw YAML between the delimiters
   const yamlStr = content.slice(firstNewline + 1, closingIdx);
 
-  // Determine where the body starts (after "---" + optional newline)
   let bodyStart = closingIdx + closingMarker.length;
   if (bodyStart < content.length && content[bodyStart] === "\r") bodyStart++;
   if (bodyStart < content.length && content[bodyStart] === "\n") bodyStart++;
 
   const body = content.slice(bodyStart);
 
-  // Parse the YAML
   try {
     const loadOptions: yaml.LoadOptions = {};
     if (options?.schema) {

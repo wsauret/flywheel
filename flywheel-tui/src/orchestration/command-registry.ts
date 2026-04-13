@@ -1,11 +1,11 @@
-export interface CommandHandler {
+interface CommandHandler {
   /** Pattern to match against the trimmed input. */
   pattern: RegExp
   /** Handler to execute. Returns true if handled. */
   execute(match: RegExpMatchArray, text: string): boolean | Promise<boolean>
 }
 
-export interface CommandRegistry {
+interface CommandRegistry {
   register(handler: CommandHandler): void
   dispatch(text: string): Promise<boolean>
 }

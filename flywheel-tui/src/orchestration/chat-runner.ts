@@ -1,22 +1,22 @@
-import { createChatSession, type ChatSession, type ChatCallbacks, type ChatSessionDeps } from "./chat-session"
-import { createSessionInfra } from "./session/create-session-infra"
-import { createOutputPersistence } from "./session/output-persistence"
-import { updateSession } from "./session/persistence"
-import { disposeSessionResources } from "./session/resources"
-import { generateSessionTitle } from "./session-title"
-import { prepareWorkflowDeps } from "./engines/workflow-deps"
-import { EventBus, createEmit } from "../infra/event-bus"
+import { createChatSession, type ChatSession, type ChatCallbacks, type ChatSessionDeps } from "./chat-session.js"
+import { createSessionInfra } from "./session/create-session-infra.js"
+import { createOutputPersistence } from "./session/output-persistence.js"
+import { updateSession } from "./session/persistence.js"
+import { disposeSessionResources } from "./session/resources.js"
+import { generateSessionTitle } from "./session-title.js"
+import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
+import { EventBus, createEmit } from "../infra/event-bus.js"
 import { randomUUID } from "node:crypto"
-import type { SessionState } from "./session/state-machine"
-import type { FlywheelConfig } from "./config/schema"
-import type { ProcessSpawner } from "./engines/subprocess/spawner"
-import type { SessionEntryBase } from "./session-store-types"
-import type { AnyBlock } from "../infra/output-blocks"
+import type { SessionState } from "./session/state-machine.js"
+import type { FlywheelConfig } from "./config/schema.js"
+import type { ProcessSpawner } from "./engines/subprocess/spawner.js"
+import type { SessionEntryBase, ChatSessionEntry } from "./session-store-types.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
 import { buildChatWelcomeBlocks } from "./chat-welcome.js"
 
-type ChatUpdateEntryFn = (patch: Partial<import("./session-store-types").ChatSessionEntry>) => void
+type ChatUpdateEntryFn = (patch: Partial<ChatSessionEntry>) => void
 
-export interface ChatRunnerDeps {
+interface ChatRunnerDeps {
   sessionId: string
   projectCwd: string
   updateState: (id: string, state: SessionState) => void
@@ -80,7 +80,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   // Cast: OutputSession writes Partial<SessionEntryBase> (generic), but
   // the store entry is ChatSessionEntry. Safe because we're always in chat mode.
   const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
-    const chatPatch = patch as Partial<import("./session-store-types").ChatSessionEntry>
+    const chatPatch = patch as Partial<ChatSessionEntry>
     if (chatPatch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
       updateEntry({ ...chatPatch, outputBlocks: [...priorBlocks, ...chatPatch.outputBlocks] })
     } else {
@@ -102,13 +102,11 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   }
 
   const engine = workflowDeps.engine
-  const engineName = config.engine
   const model = config.subprocess?.model ?? config.model ?? engine.metadata.defaultModel
 
   const chatSessionDeps: ChatSessionDeps = {
     projectCwd,
     engine,
-    engineName,
     model,
     spawner: deps.spawner ?? workflowDeps.spawner,
     traceCollector: infra.traceCollector,
@@ -116,7 +114,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     transcriptWriter: infra.transcriptWriter,
     eventBus,
     chatId,
-    metricsWriter: (patch) => updateEntry(patch as Partial<import("./session-store-types").ChatSessionEntry>),
+    metricsWriter: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),
     updateEntry: wrappedUpdateEntry,
     claudeSessionId: deps.claudeSessionId,
     onFlush: () => {
@@ -134,15 +132,12 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   const chatSession = await createChatSession(chatCallbacks, chatSessionDeps, initialMessage)
 
-  // Wire flusher now that OutputSession exists
   outputFlusher = outputPersistence.createFlusher(() => {
     const sessionBlocks = chatSession.outputSession.getBlocks()
     return priorBlocks && priorBlocks.length > 0
       ? [...priorBlocks, ...sessionBlocks]
       : sessionBlocks
   })
-
-  // ── SessionRunner implementation ──
 
   function abort(): void {
     chatSession.interrupt()

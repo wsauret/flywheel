@@ -1,13 +1,12 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { errorMessage } from "../../infra/error-message";
-import { FlywheelConfigSchema, type FlywheelConfig } from "./schema";
-import { applyEnvOverrides } from "./env";
+import { resolve } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { errorMessage } from "../../infra/error-message.js";
+import { FlywheelConfigSchema, type FlywheelConfig } from "./schema.js";
+import { applyEnvOverrides } from "./env.js";
 
-// Error types
+type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
 
-export type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
-
+// Exported for instanceof checks in tests — verifies error classification in config loading.
 export class ConfigLoadError extends Error {
   readonly code: ConfigErrorCode;
 
@@ -18,14 +17,10 @@ export class ConfigLoadError extends Error {
   }
 }
 
-// Warnings
-
-export interface LoadResult {
+interface LoadResult {
   config: FlywheelConfig;
   warnings: string[];
 }
-
-// Public API
 
 /**
  * Load configuration with precedence: env > config file > defaults.
@@ -51,7 +46,7 @@ export function loadConfig(
 
   // Layer 2: Environment variables (highest precedence)
   const envOverrides = applyEnvOverrides(env);
-  raw = deepMerge(raw, envOverrides);
+  raw = deepMerge(raw, envOverrides as Record<string, unknown>);
 
   // Warn about unrecognized top-level keys before Zod strips them
   const knownKeys = new Set(Object.keys(FlywheelConfigSchema.shape));
@@ -76,13 +71,6 @@ export function loadConfig(
   const config = result.data;
 
   // Emit warnings
-  if (config.max_retries === 0) {
-    warnings.push(
-      "WARNING: max_retries is 0. The worker will not retry on failure. " +
-        "This is unusual and may lead to premature failure.",
-    );
-  }
-
   if (config.max_eval_cycles === 1) {
     warnings.push(
       "WARNING: max_eval_cycles is 1. The evaluator will not retry on failure. " +
@@ -93,17 +81,15 @@ export function loadConfig(
   return { config, warnings };
 }
 
-// Internal helpers
-
 function loadTomlFile(filePath: string): Record<string, unknown> {
-  const absPath = path.resolve(filePath);
-  if (!fs.existsSync(absPath)) {
+  const absPath = resolve(filePath);
+  if (!existsSync(absPath)) {
     throw new ConfigLoadError(`Config file not found: ${absPath}`, "FILE_NOT_FOUND");
   }
 
   let content: string;
   try {
-    content = fs.readFileSync(absPath, "utf-8");
+    content = readFileSync(absPath, "utf-8");
   } catch (err) {
     throw new ConfigLoadError(
       `Cannot read config file: ${absPath} (${errorMessage(err)})`,
@@ -112,14 +98,7 @@ function loadTomlFile(filePath: string): Record<string, unknown> {
   }
 
   try {
-    // Use Bun's built-in TOML parser
-    const BunGlobal = globalThis as unknown as { Bun?: { TOML?: { parse(s: string): unknown } } };
-    if (BunGlobal.Bun?.TOML) {
-      return BunGlobal.Bun.TOML.parse(content) as Record<string, unknown>;
-    }
-
-    // Fallback: minimal TOML parser for simple key=value and [section] syntax
-    return parseSimpleToml(content);
+    return Bun.TOML.parse(content) as Record<string, unknown>;
   } catch (err) {
     if (err instanceof ConfigLoadError) throw err;
     throw new ConfigLoadError(
@@ -127,56 +106,6 @@ function loadTomlFile(filePath: string): Record<string, unknown> {
       "PARSE_ERROR",
     );
   }
-}
-
-/**
- * Minimal TOML parser for flat configs with [section] tables.
- * Only used as fallback when Bun.TOML is unavailable (e.g., testing edge cases).
- */
-function parseSimpleToml(content: string): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  let currentSection: Record<string, unknown> = result;
-  let currentSectionName: string | null = null;
-
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-
-    // Section header
-    const sectionMatch = trimmed.match(/^\[(\w+)\]$/);
-    if (sectionMatch) {
-      currentSectionName = sectionMatch[1];
-      if (!result[currentSectionName]) {
-        result[currentSectionName] = {};
-      }
-      currentSection = result[currentSectionName] as Record<string, unknown>;
-      continue;
-    }
-
-    // Key = value
-    const kvMatch = trimmed.match(/^(\w+)\s*=\s*(.+)$/);
-    if (kvMatch) {
-      const [, key, rawVal] = kvMatch;
-      currentSection[key] = parseTomlValue(rawVal.trim());
-    }
-  }
-
-  return result;
-}
-
-function parseTomlValue(raw: string): unknown {
-  // String (quoted)
-  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
-    return raw.slice(1, -1);
-  }
-  // Boolean
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  // Integer
-  const num = Number(raw);
-  if (!isNaN(num) && raw === String(num)) return num;
-  // Bare string (shouldn't happen in valid TOML, but handle gracefully)
-  return raw;
 }
 
 /**

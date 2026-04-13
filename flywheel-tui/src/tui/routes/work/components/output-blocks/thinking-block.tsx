@@ -15,6 +15,7 @@
 
 import { createSignal, createMemo, onCleanup } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
+import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { EmptyBorder } from "@tui/shared/ui/border"
 import { createTextAttributes } from "@opentui/core"
@@ -31,25 +32,23 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
   const { theme, subtleSyntax } = useTheme()
   const [expanded, setExpanded] = createSignal(false)
 
-  // Live elapsed that ticks every second while content is streaming,
-  // then freezes once content stops growing for 2+ seconds.
-  const [elapsed, setElapsed] = createSignal(0)
+  // Freeze the timer once content stops growing for 2+ ticks.
+  const [streaming, setStreaming] = createSignal(true)
   let lastContentLen = props.block.content.length
   let staleTicks = 0
-  const id = setInterval(() => {
+  const staleId = setInterval(() => {
     const currentLen = props.block.content.length
     if (currentLen !== lastContentLen) {
       lastContentLen = currentLen
       staleTicks = 0
-    } else {
-      staleTicks++
-    }
-    // Tick smoothly while content is actively streaming
-    if (staleTicks < 2) {
-      setElapsed(Date.now() - props.block.timestamp)
+      setStreaming(true)
+    } else if (++staleTicks >= 2) {
+      setStreaming(false)
     }
   }, 1000)
-  onCleanup(() => clearInterval(id))
+  onCleanup(() => clearInterval(staleId))
+
+  const elapsed = useElapsed(() => streaming() ? props.block.timestamp : undefined)
 
   const trimmed = () => props.block.content.trim()
 

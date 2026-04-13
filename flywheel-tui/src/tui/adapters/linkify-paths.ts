@@ -56,7 +56,7 @@ function isFilePath(text: string): boolean {
 /**
  * Convert a potentially relative file path to a file:// URI.
  */
-function toFileUri(filePath: string): string {
+export function toFileUri(filePath: string): string {
   const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
   return `file://${resolved}`
 }

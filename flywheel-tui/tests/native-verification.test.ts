@@ -186,19 +186,18 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(true);
     expect(result.checks).toEqual([]);
     expect(result.discrepancies).toEqual([]);
-    expect(result.hasChanges).toBe(false);
   });
 
   it("runs a simple command and captures output", async () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [{ command: "true" }],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(true);
     expect(result.checks).toHaveLength(1);
@@ -212,7 +211,7 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [{ command: "false" }],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(false);
     expect(result.checks).toHaveLength(1);
@@ -228,7 +227,7 @@ describe("runNativeVerification", () => {
         { command: "curl https://example.com" },
         { command: "git push origin main" },
       ],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(true);
     expect(result.checks).toHaveLength(3);
@@ -242,7 +241,7 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [{ command: "false", reportedExitCode: 0 }],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(false);
     expect(result.checks[0].kind).toBe("discrepancy");
@@ -254,7 +253,7 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [{ command: "true", reportedExitCode: 0 }],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(true);
     expect(result.checks[0].kind).toBe("ran");
@@ -265,7 +264,7 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [{ command: "nonexistent_binary_xyzzy_12345" }],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     // Should not crash; either skipped or failed
     expect(result.checks).toHaveLength(1);
@@ -282,7 +281,7 @@ describe("runNativeVerification", () => {
         { command: "true" },
         { command: "true" },
       ],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     const elapsed = Date.now() - start;
     expect(result.allPassed).toBe(true);
@@ -295,7 +294,7 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [{ command: "sleep 30" }],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
       timeoutMs: 100,
       deadlineMs: 500,
     });
@@ -305,14 +304,13 @@ describe("runNativeVerification", () => {
     if (result.checks[0].kind === "ran") expect(result.checks[0].passed).toBe(false);
   }, 10_000);
 
-  it("git diff --stat only runs when has-changes is in nativeCheckTypes", async () => {
-    // Without has-changes: no git diff check
+  it("git diff --stat only runs when checkGitDiff is true", async () => {
+    // Without checkGitDiff: no git diff check
     const result1 = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [],
-      nativeCheckTypes: ["build", "test"],
+      checkGitDiff: false,
     });
-    expect(result1.hasChanges).toBe(false);
     const gitChecks1 = result1.checks.filter((c) => c.command.includes("git diff"));
     expect(gitChecks1).toHaveLength(0);
 
@@ -320,7 +318,7 @@ describe("runNativeVerification", () => {
     const result2 = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [],
-      nativeCheckTypes: ["has-changes"],
+      checkGitDiff: true,
     });
     const gitChecks2 = result2.checks.filter((c) => c.command.includes("git diff"));
     expect(gitChecks2).toHaveLength(1);
@@ -332,7 +330,7 @@ describe("runNativeVerification", () => {
     const result = await runNativeVerification({
       projectCwd: process.cwd(),
       declaredCommands: [],
-      nativeCheckTypes: ["has-changes"],
+      checkGitDiff: true,
     });
     // Should not throw, checks should contain the git diff result
     const gitCheck = result.checks.find((c) => c.command.includes("git diff"));
@@ -348,7 +346,7 @@ describe("runNativeVerification", () => {
         { command: "rm -rf /tmp/foo" },  // denied -> skipped
         { command: "true" },              // passes
       ],
-      nativeCheckTypes: [],
+      checkGitDiff: false,
     });
     expect(result.allPassed).toBe(true);
     expect(result.checks).toHaveLength(2);

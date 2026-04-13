@@ -13,6 +13,8 @@ import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type { EmitFn } from "../infra/event-bus.js"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { Step } from "../workflows/queue/types.js"
+import type { NDJSONEvent } from "../infra/subprocess-types.js"
+import type { SpawnResult } from "./engines/subprocess/spawner.js"
 import { SELF_REVIEW_CHECKLIST } from "../workflows/queue/shared/self-review-checklist.js"
 
 const log = Log.create({ service: "subprocess-callback" })
@@ -20,20 +22,20 @@ const log = Log.create({ service: "subprocess-callback" })
 /** Step types that get self-review injection at the first turn boundary. */
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
-export interface StepPromptResult {
+interface StepPromptResult {
   fullPrompt: string
   handoffPath: string
   scaffoldingPaths: ScaffoldingPaths
 }
 
-export function buildStepPrompt(
+function buildStepPrompt(
   step: Step,
   prompt: string,
   sessionId: string,
   projectCwd: string,
 ): StepPromptResult {
   const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, projectCwd)
-  const scaffoldingPaths: ScaffoldingPaths = {
+  const scaffoldingPaths = {
     handoffPath,
   }
   const scaffolding = buildScaffolding(step, scaffoldingPaths)
@@ -137,20 +139,18 @@ export function createSubprocessCallback(
       stdinPipe: useStdinPipe && stdinContent !== undefined,
       signal,
       onTurnComplete,
-      onSessionId: undefined,
-      stdoutTransform: undefined,
       onStdout: (chunk: string) => {
         emit("subprocess:output", { workflowId, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
       },
       onStderr: (chunk: string) => {
         emit("subprocess:output", { workflowId, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
       },
-      onNDJSONEvent: (event: import("../infra/subprocess-types").NDJSONEvent) => {
+      onNDJSONEvent: (event: NDJSONEvent) => {
         emit("subprocess:ndjson", { workflowId, ndjsonEvent: event });
       },
     }
 
-    let spawnResult: import("./engines/subprocess/spawner").SpawnResult
+    let spawnResult: SpawnResult
     let rawProc: RawSpawnedProcess | null = null
 
     if (subprocessPool) {

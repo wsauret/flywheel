@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type { NDJSONEvent, AssistantEventData, ContentBlock } from "../subprocess-types.js";
-import type { StructuredOutputBuilder } from "./structured-output-builder";
-import { getToolDetail, extractToolDiff } from "./output-formatter";
+import type { StructuredOutputBuilder } from "./structured-output-builder.js";
+import { getToolDetail, extractToolDiff } from "./output-formatter.js";
 
 const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
 
-export function isSubagentToolName(name: string): boolean {
+function isSubagentToolName(name: string): boolean {
   return SUBAGENT_TOOL_NAMES.has(name.toLowerCase());
 }
 
-export interface StructuredEventParserOptions {
+interface StructuredEventParserOptions {
   builder: StructuredOutputBuilder;
 }
 
@@ -31,21 +31,15 @@ export class StructuredEventParser {
     this.toolUseIdToAgent.clear();
   }
 
-  dispatch(event: NDJSONEvent, engineId?: string): void {
-    const now = Date.now();
-
-    if (engineId === "claude" || engineId === "harness") {
-      this.dispatchClaudeEvent(event, now);
-    } else {
-      // Unknown engine: fall back to Claude format (most common)
-      this.dispatchFallbackEvent(event, now);
-    }
+  dispatch(event: NDJSONEvent): void {
+    this.dispatchClaudeEvent(event, Date.now());
   }
 
   private dispatchClaudeEvent(event: NDJSONEvent, now: number) {
     if (event.type === "assistant") {
       this.handleClaudeAssistant(event.data, now);
     } else if (event.type === "result") {
+      // Result events carry cost/budget data — consumed by budget tracking, not display.
     } else if (event.type === "tool_result") {
       const toolUseId = event.data.tool_use_id;
       if (toolUseId) {
@@ -128,9 +122,4 @@ export class StructuredEventParser {
     }
   }
 
-  private dispatchFallbackEvent(event: NDJSONEvent, now: number) {
-    if (event.type === "assistant") {
-      this.handleClaudeAssistant(event.data, now);
-    }
-  }
 }

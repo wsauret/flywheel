@@ -11,8 +11,8 @@
  * Context window is extracted from "result" events' modelUsage field.
  */
 
-import type { NDJSONEvent } from "../../../infra/subprocess-types";
-import { resolveModel } from "./claude";
+import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
+import { resolveModel } from "./claude.js";
 
 export interface ContextUpdate {
   promptTokens: number;

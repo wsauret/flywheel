@@ -1,30 +1,15 @@
 /**
- * Engine registry.
+ * Engine lookup.
  *
- * All engines are registered at import time. Use `getEngine(id)` to look up
- * by config value.
+ * Single engine (Claude). Validates the engine ID from config and returns it.
  */
 
-import type { Engine } from "./types";
+import type { Engine } from "./types.js";
 import { claudeEngine } from "../providers/claude.js";
 
-const engines = new Map<string, Engine>();
-
-function register(engine: Engine): void {
-  engines.set(engine.metadata.id, engine);
-}
-
-// Register built-in engines (Claude only)
-register(claudeEngine);
-
-/**
- * Get an engine by ID. Throws if not found.
- */
 export function getEngine(id: string): Engine {
-  const engine = engines.get(id);
-  if (!engine) {
-    const available = Array.from(engines.keys()).join(", ");
-    throw new Error(`Unknown engine "${id}". Available engines: ${available}`);
+  if (id !== claudeEngine.metadata.id) {
+    throw new Error(`Unknown engine "${id}". Available engines: ${claudeEngine.metadata.id}`);
   }
-  return engine;
+  return claudeEngine;
 }

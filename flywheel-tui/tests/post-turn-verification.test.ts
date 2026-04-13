@@ -76,17 +76,13 @@ function createNoopAccumulator(): StepContextAccumulator {
 function createPassingVerification(): PostTurnVerificationResult {
   return {
     passed: true,
-    nativeChecksPassed: true,
-    fixAttemptsUsed: 0,
     checks: [],
   };
 }
 
-function createFailingVerification(fixAttempts = 2): PostTurnVerificationResult {
+function createFailingVerification(): PostTurnVerificationResult {
   return {
     passed: false,
-    nativeChecksPassed: false,
-    fixAttemptsUsed: fixAttempts,
     checks: [{
       command: "bun run test",
       passed: false,
@@ -147,12 +143,8 @@ describe("Post-Turn Verification Hook", () => {
   });
 
   test("work step: native checks fail -> fix prompt injected -> re-verify -> passes (mocked as single hook call)", async () => {
-    // The hook encapsulates the fix loop internally — from the step-runner's perspective,
-    // it just calls the hook once and gets back a result that shows fixAttemptsUsed > 0.
     const hookFn = mock(async () => ({
       passed: true,
-      nativeChecksPassed: true,
-      fixAttemptsUsed: 1,
       checks: [{
         command: "bun run test",
         passed: true,
@@ -176,11 +168,11 @@ describe("Post-Turn Verification Hook", () => {
     expect(result.outcome).toBe("completed");
     expect(hookFn).toHaveBeenCalledTimes(1);
     const hookResult = await hookFn.mock.results[0].value;
-    expect(hookResult.fixAttemptsUsed).toBe(1);
+    expect(hookResult.passed).toBe(true);
   });
 
   test("work step: verification fails -> results enriched into handoff, step continues to evaluator", async () => {
-    const hookFn = mock(async () => createFailingVerification(2));
+    const hookFn = mock(async () => createFailingVerification());
     const step = makeStep({ type: "work", title: "Broken step" });
     const queue = createQueue([step]);
 
@@ -274,8 +266,6 @@ describe("Post-Turn Verification Hook", () => {
   test("ship step: only native git checks", async () => {
     const hookFn = mock(async () => ({
       passed: true,
-      nativeChecksPassed: true,
-      fixAttemptsUsed: 0,
       checks: [{
         command: "git diff --stat HEAD~1",
         passed: true,
@@ -300,7 +290,7 @@ describe("Post-Turn Verification Hook", () => {
   });
 
   test("max fix attempts (default 2) prevents infinite loops — result is informational", async () => {
-    const hookFn = mock(async () => createFailingVerification(2));
+    const hookFn = mock(async () => createFailingVerification());
     const step = makeStep({ type: "work", title: "Infinite loop avoided" });
     const queue = createQueue([step]);
 
@@ -314,7 +304,6 @@ describe("Post-Turn Verification Hook", () => {
     // Verification failure is informational — step still completes (evaluator decides)
     expect(result.outcome).toBe("completed");
     const hookResult = await hookFn.mock.results[0].value;
-    expect(hookResult.fixAttemptsUsed).toBe(2);
     expect(hookResult.passed).toBe(false);
   });
 
@@ -385,26 +374,4 @@ describe("Post-Turn Verification Hook", () => {
     expect(evaluatorFn).toHaveBeenCalledTimes(1);
   });
 
-  test("total attempts counter: fixAttemptsUsed shared across the hook result", async () => {
-    const hookFn = mock(async () => ({
-      passed: true,
-      nativeChecksPassed: true,
-      fixAttemptsUsed: 3,
-      checks: [],
-    }));
-
-    const step = makeStep({ type: "work", title: "Multiple attempts" });
-    const queue = createQueue([step]);
-
-    const deps = createDefaultDeps({
-      queue,
-      postTurnVerification: hookFn,
-    });
-
-    const result = await executeStep(step, deps);
-
-    expect(result.outcome).toBe("completed");
-    const hookResult = await hookFn.mock.results[0].value;
-    expect(hookResult.fixAttemptsUsed).toBe(3);
-  });
 });

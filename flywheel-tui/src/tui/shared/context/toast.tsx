@@ -1,6 +1,6 @@
 /** @jsxImportSource solid-js */
 import { createSignal } from "solid-js"
-import { createSimpleContext } from "./helper"
+import { createSimpleContext } from "./helper.js"
 
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
@@ -31,10 +31,6 @@ export const { use: useToast, provider: ToastProvider } = createSimpleContext({
         if (duration > 0) {
           timeoutHandle = setTimeout(() => setCurrent(null), duration)
         }
-      },
-      dismiss() {
-        if (timeoutHandle) clearTimeout(timeoutHandle)
-        setCurrent(null)
       },
     }
   },

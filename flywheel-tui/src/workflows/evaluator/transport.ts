@@ -1,5 +1,5 @@
-import type { EvaluatorInput } from "./schemas";
-import type { EvaluatorResult } from "../../infra/workflow-types";
+import type { EvaluatorInput } from "./schemas.js";
+import type { EvaluatorResult } from "../../infra/workflow-types.js";
 
 /**
  * DI interface for evaluator.

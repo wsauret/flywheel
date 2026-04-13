@@ -8,10 +8,10 @@
  * If the LLM call fails or times out, the quick title stands.
  */
 
-import type { Engine } from "./engines/core/types"
-import type { ProcessSpawner } from "./engines/subprocess/spawner"
-import { Log } from "../infra/log"
-import { errorMessage } from "../infra/error-message"
+import type { Engine } from "./engines/core/types.js"
+import type { ProcessSpawner } from "./engines/subprocess/spawner.js"
+import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
 
 const log = Log.create({ service: "session-title" })
 

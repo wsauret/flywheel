@@ -16,24 +16,24 @@ const CommandRunEntrySchema = z.union([
   }).passthrough(),
 ]);
 
-export const ArtifactsSchema = z.object({
+const ArtifactsSchema = z.object({
   files_created: z.array(z.string()).optional(),
   files_modified: z.array(z.string()).optional(),
   commands_run: z.array(CommandRunEntrySchema).optional(),
 }).strict();
 
-export const VerificationSchema = z.object({
+const VerificationSchema = z.object({
   tests_passed: z.boolean().nullable(),
   test_output_summary: z.string().optional(),
 }).strict();
 
-export const FindingCountsSchema = z.object({
+const FindingCountsSchema = z.object({
   p1_critical: z.number(),
   p2_important: z.number(),
   p3_suggestion: z.number(),
 }).strict();
 
-export const P3FindingSchema = z.object({
+const P3FindingSchema = z.object({
   description: z.string(),
   location: z.string().optional(),
   suggestion: z.string(),
@@ -41,7 +41,7 @@ export const P3FindingSchema = z.object({
 
 // Skill feedback sub-schemas
 
-export const SkillDeviationSchema = z.object({
+const SkillDeviationSchema = z.object({
   step: z.string().describe("Which skill step you deviated from"),
   whatIDidInstead: z.string().describe("What you actually did"),
   why: z.string().describe(
@@ -49,7 +49,7 @@ export const SkillDeviationSchema = z.object({
   ),
 }).strict();
 
-export const SkillFeedbackSchema = z.object({
+const SkillFeedbackSchema = z.object({
   followedProcedure: z.boolean()
     .describe("Did you follow the skill procedure as written?"),
   deviations: z.array(SkillDeviationSchema)

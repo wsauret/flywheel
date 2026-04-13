@@ -1,7 +1,3 @@
-// Command Extraction — handoff → DeclaredCommand[]
-//
-// Thin adapter over `parseRawHandoff().commandsRun`.
-
 import { parseRawHandoff } from "./handoff-parse.js";
 import type { DeclaredCommand } from "../../shared/native-verification.js";
 

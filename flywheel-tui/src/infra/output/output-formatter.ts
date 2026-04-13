@@ -30,6 +30,12 @@ function shellDetail(input: Record<string, unknown>, cwd: string): string | null
   return truncateLine(shortened, 100);
 }
 
+function agentDetail(input: Record<string, unknown>): string | null {
+  const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
+  const agentType = input.subagent_type as string | undefined;
+  return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
+}
+
 const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
   ["Read", (input, cwd) => {
     const path = formatDisplayPath(input.file_path as string, cwd);
@@ -64,16 +70,8 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
     const parts = [quoted, displayDir && `in ${displayDir}`, fileFilter && `[${fileFilter}]`].filter(Boolean).join(" ");
     return truncateLine(parts || null, 80);
   }],
-  ["Agent", (input) => {
-    const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
-    const agentType = input.subagent_type as string | undefined;
-    return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
-  }],
-  ["Task", (input) => {
-    const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
-    const agentType = input.subagent_type as string | undefined;
-    return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
-  }],
+  ["Agent", agentDetail],
+  ["Task", agentDetail],
   ["WebFetch", (input) => truncateLine(input.url as string, 100)],
   ["WebSearch", (input) => truncateLine((input.query as string | undefined) ?? (input.search_query as string | undefined), 100)],
   ["LSP", (input, cwd) => {
@@ -176,14 +174,17 @@ function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: s
 
     let oldContent: string;
     let newContent: string;
-    if (fileContent.includes(oldStr)) {
+    if (fileContent.includes(newStr)) {
+      // File already modified — reverse to reconstruct old.
+      // Checked first: oldStr is often a substring of newStr (e.g. adding a
+      // comment above a line), so includes(oldStr) would match even after
+      // the edit has been applied, producing a double-insertion in the diff.
+      newContent = fileContent;
+      oldContent = fileContent.replace(newStr, oldStr);
+    } else if (fileContent.includes(oldStr)) {
       // File not yet modified — apply replacement
       oldContent = fileContent;
       newContent = fileContent.replace(oldStr, newStr);
-    } else if (fileContent.includes(newStr)) {
-      // File already modified — reverse to reconstruct old
-      newContent = fileContent;
-      oldContent = fileContent.replace(newStr, oldStr);
     } else {
       // Neither found — fall back to minimal diff
       return createMinimalDiff(filePath, oldStr, newStr);
@@ -210,7 +211,7 @@ function createMinimalDiff(filePath: string, oldContent: string, newContent: str
 const MAX_WRITE_DIFF_LINES = 200;
 
 /** Result of extracting display info from a tool_use input block. */
-export type ToolDiffInfo = {
+type ToolDiffInfo = {
   diff?: string;
   content?: string;
   filetype: string | undefined;

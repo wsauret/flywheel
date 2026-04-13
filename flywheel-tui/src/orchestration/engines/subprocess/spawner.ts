@@ -1,6 +1,5 @@
-import type { SubprocessResult } from "../../../infra/subprocess-types";
-
-// StdinHandle — mid-execution stdin injection
+import type { SubprocessResult, NDJSONEvent } from "../../../infra/subprocess-types.js";
+import type { RawSpawnedProcess } from "./stream-pipeline.js";
 
 /**
  * Handle to a running process's stdin pipe.
@@ -31,8 +30,6 @@ export interface SpawnResult {
   pid?: number;
 }
 
-// ProcessSpawner — DI seam
-
 /**
  * DI seam for subprocess spawning.
  * Allows tests to substitute a mock spawner.
@@ -41,7 +38,7 @@ export interface ProcessSpawner {
   spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult>;
   /** Spawn a raw process without consuming streams (for subprocess pooling).
    *  Optional — only implemented by spawners that support pre-warming. */
-  spawnRaw?(command: string, args: string[], options?: SpawnOptions): import("./stream-pipeline").RawSpawnedProcess;
+  spawnRaw?(command: string, args: string[], options?: SpawnOptions): RawSpawnedProcess;
 }
 
 export interface SpawnOptions {
@@ -103,5 +100,5 @@ export interface SpawnOptions {
    * Called for each parsed NDJSON event (step_finish, tool_use, text, etc.).
    * Wire to BudgetTracker.handleEvent to capture cost/token data from subprocess output.
    */
-  onNDJSONEvent?: (event: import("../../../infra/subprocess-types").NDJSONEvent) => void;
+  onNDJSONEvent?: (event: NDJSONEvent) => void;
 }

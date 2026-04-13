@@ -14,11 +14,11 @@
 
 import { createSignal, createMemo } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
-import type { AnyBlock } from "../../infra/output-blocks"
-import type { StepState } from "../../orchestration/workflow-runner"
-import type { SessionState } from "../../orchestration/session/state-machine"
-import type { SessionStore, SessionEntry } from "../../orchestration/session-store-types"
-import type { SessionManager, SessionSummary } from "../../orchestration/session/manager"
+import type { AnyBlock } from "../../infra/output-blocks.js"
+import type { StepState } from "../../orchestration/workflow-runner.js"
+import type { SessionState } from "../../orchestration/session/state-machine.js"
+import type { SessionStore, SessionEntry } from "../../orchestration/session-store-types.js"
+import type { SessionManager, SessionSummary } from "../../orchestration/session/manager.js"
 import { useMetrics, type MetricsHook } from "./use-metrics.js"
 
 export type AgentState = "idle" | "active"
@@ -63,6 +63,7 @@ export function createShellState(deps: {
   refreshList: () => void
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
+  showThinking?: boolean
 }): { signals: ShellSignals; services: ShellServices } {
   // ── Writable signals (user-set, not derived) ──
   const [errorMessage, setErrorMessage] = createSignal("")
@@ -81,9 +82,11 @@ export function createShellState(deps: {
   // Metrics created here — storeEntry is already bound, no late-binding possible.
   const metrics = useMetrics(storeEntry)
 
-  const outputBlocks = createMemo((): readonly AnyBlock[] =>
-    storeEntry()?.outputBlocks ?? []
-  )
+  const showThinking = deps.showThinking ?? true
+  const outputBlocks = createMemo((): readonly AnyBlock[] => {
+    const blocks = storeEntry()?.outputBlocks ?? []
+    return showThinking ? blocks : blocks.filter((b) => b.kind !== "thinking")
+  })
 
   const steps = createMemo((): readonly StepState[] => {
     const e = storeEntry()
@@ -112,7 +115,7 @@ export function createShellState(deps: {
     return deps.sessions().find((s) => s.id === fgId)?.state ?? null
   })
 
-  const signals: ShellSignals = {
+  const signals = {
     agentState,
     outputBlocks,
     steps,
@@ -124,7 +127,7 @@ export function createShellState(deps: {
     pendingWorkCommand, setPendingWorkCommand,
   }
 
-  const services: ShellServices = {
+  const services = {
     sessionStore: deps.sessionStore,
     manager: deps.manager,
     metrics,

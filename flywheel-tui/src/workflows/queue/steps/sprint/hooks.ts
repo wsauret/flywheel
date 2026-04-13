@@ -1,10 +1,3 @@
-// Sprint Hook — Core Loop
-//
-// Retry loop for sprint mode. On failure: retry up to max_iterations,
-// detect stuck (identical consecutive failures), then stop.
-//
-// Factory: createSprintHook(config) → OnStepCompletedHook
-
 import type { Step, Queue } from "../../types.js";
 import { insertAfter, type Provenance } from "../../queue.js";
 import { makeStep } from "../../templates.js";
@@ -19,14 +12,12 @@ import type {
 } from "./types.js";
 import { SPRINT_HINT } from "./types.js";
 
-// Provenance helper
-
 function makeProvenance(reason: string): Provenance {
   return { actor: "sprint-hook", reason };
 }
 
-// Feedback normalization — strip noise that makes identical failures look
-// different (timestamps, line numbers, test durations).
+// Sprint internals — normalizeFeedback, isStuck, recordIteration, buildRetryStep.
+// Exported for unit tests: stuck detection is safety-critical and warrants direct testing.
 
 const TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*/g;
 const LINE_NUMBER_RE = /:\d+:\d+/g;
@@ -43,26 +34,26 @@ export function normalizeFeedback(raw: string): string {
     .trim();
 }
 
-// isStuck — detect identical consecutive failures
-
-export function isStuck(history: SprintIterationRecord[]): boolean {
+export function isStuck(
+  history: SprintIterationRecord[],
+  feedbackCache?: Map<number, string>,
+): boolean {
   if (history.length < 2) return false;
 
-  const prev = history[history.length - 2];
-  const curr = history[history.length - 1];
+  const prev = history[history.length - 2]!;
+  const curr = history[history.length - 1]!;
 
-  // Both must be non-completed iterations (failed or crashed)
   if (prev.nativeCheckPassed || curr.nativeCheckPassed) return false;
 
-  // Use cached normalized feedback when available, fall back to normalizing on the fly
-  const prevNorm = prev._normalizedFeedback ?? (prev.evalFeedback ? normalizeFeedback(prev.evalFeedback) : null);
-  const currNorm = curr._normalizedFeedback ?? (curr.evalFeedback ? normalizeFeedback(curr.evalFeedback) : null);
+  const getNorm = (rec: SprintIterationRecord) =>
+    feedbackCache?.get(rec.iteration) ?? (rec.evalFeedback ? normalizeFeedback(rec.evalFeedback) : null);
+
+  const prevNorm = getNorm(prev);
+  const currNorm = getNorm(curr);
   if (!prevNorm || !currNorm) return false;
 
   return prevNorm === currNorm;
 }
-
-// recordIteration — extract summary + eval feedback from handoffData
 
 export function recordIteration(
   handoffData: Record<string, unknown> | null,
@@ -96,11 +87,8 @@ export function recordIteration(
     evalFeedback,
     nativeCheckPassed: status === "completed",
     workerCrashed: status === "failed" && handoffData === null,
-    _normalizedFeedback: evalFeedback ? normalizeFeedback(evalFeedback) : undefined,
   };
 }
-
-// buildRetryStep — create a new work step for the next sprint iteration
 
 export function buildRetryStep(
   originalStep: Step,
@@ -125,28 +113,24 @@ export function buildRetryStep(
   });
 }
 
-// createSprintHook — factory returning OnStepCompletedHook
-
 export function createSprintHook(config: SprintConfig): {
   hook: OnStepCompletedHook;
   getState: () => Readonly<SprintLoopState>;
 } {
   // Internal closure state
-  const state: SprintLoopState = {
+  let state: SprintLoopState = {
     status: "running",
     iterationCount: 0,
     history: [],
   };
+  const feedbackCache = new Map<number, string>();
 
   // getState — snapshot of current sprint state
 
   function getState(): Readonly<SprintLoopState> {
-    return {
-      status: state.status,
-      iterationCount: state.iterationCount,
-      history: [...state.history],
-      reason: state.reason,
-    };
+    const base = { iterationCount: state.iterationCount, history: [...state.history] };
+    if (state.status === "exhausted") return { ...base, status: "exhausted", reason: state.reason };
+    return { ...base, status: state.status };
   }
 
   // onStepCompleted — the hook
@@ -171,24 +155,23 @@ export function createSprintHook(config: SprintConfig): {
     state.iterationCount++;
     const record = recordIteration(handoffData, status, state.iterationCount);
     state.history.push(record);
+    if (record.evalFeedback) feedbackCache.set(record.iteration, normalizeFeedback(record.evalFeedback));
 
     // Completed — sprint succeeded
     if (status === "completed") {
-      state.status = "completed";
+      state = { ...state, status: "completed" };
       return { continueExecution: false };
     }
 
     // Failed — check stuck detection (identical consecutive failures)
-    if (config.detect_stuck && isStuck(state.history)) {
-      state.status = "exhausted";
-      state.reason = "Stuck: identical consecutive failures";
+    if (config.detect_stuck && isStuck(state.history, feedbackCache)) {
+      state = { ...state, status: "exhausted", reason: "Stuck: identical consecutive failures" };
       return { continueExecution: false };
     }
 
     // Failed — check max iterations
     if (state.iterationCount >= config.max_iterations) {
-      state.status = "exhausted";
-      state.reason = "Max iterations reached";
+      state = { ...state, status: "exhausted", reason: "Max iterations reached" };
       return { continueExecution: false };
     }
 

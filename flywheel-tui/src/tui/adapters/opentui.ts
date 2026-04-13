@@ -9,11 +9,11 @@
 
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
-import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store-types";
+import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store-types.js";
 import { createOutputSession, type OutputSession } from "../../orchestration/output-session.js";
 import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
-import { createNoopEmit } from "../../infra/event-bus";
+import { createNoopEmit } from "../../infra/event-bus.js";
 import { Log } from "../../infra/log.js";
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
@@ -112,7 +112,7 @@ export class OpenTUIAdapter {
         if (event.stream === "stderr") {
           this.outputSession.writeStderr(event.data, event.timestamp);
         } else {
-          this.outputSession.writeStdout(event.data, event.engineId);
+          this.outputSession.writeStdout(event.data);
         }
         this.outputSession.resolvePendingMessages();
         break;
@@ -124,6 +124,7 @@ export class OpenTUIAdapter {
 
       case "dispatcher:invoked":
         this.ndjsonPipeline.startDispatcher();
+        this.outputSession.notifySpawned(event.timestamp);
         break;
 
       case "dispatcher:completed": {
@@ -141,6 +142,7 @@ export class OpenTUIAdapter {
 
       case "evaluator:invoked":
         this.ndjsonPipeline.startEvaluator();
+        this.outputSession.notifySpawned(event.timestamp);
         break;
 
       case "evaluator:completed": {
@@ -195,15 +197,15 @@ export class OpenTUIAdapter {
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
         this.outputSession.resolvePendingMessages();
+        this.outputSession.resetActivity();
         this.outputSession.flush();
-        this.wrappedUpdateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         this.outputSession.resolvePendingMessages();
+        this.outputSession.resetActivity();
         this.outputSession.flush();
-        this.wrappedUpdateEntry({ modelActivity: "idle" });
         break;
 
       case "queue:step-started":

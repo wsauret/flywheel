@@ -15,7 +15,7 @@
 
 // Types
 
-export interface DebouncedWriterOpts {
+interface DebouncedWriterOpts {
   /** Debounce interval in ms. Default: 5000. */
   intervalMs?: number;
 }

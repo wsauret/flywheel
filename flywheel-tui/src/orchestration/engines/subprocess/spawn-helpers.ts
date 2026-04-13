@@ -1,11 +1,10 @@
 /**
- * Helper functions and types extracted from bun-spawner.ts for SRP.
- *
- * Contains: argument validation, stream readers, result builders,
- * stdout processing, handoff resolution, and stdin handle creation.
+ * Subprocess pipeline helpers: result building, stdout processing,
+ * handoff resolution, and stdin handle creation.
  */
 
 import * as path from "node:path";
+import type { FileSink } from "bun";
 import type { SpawnOptions, StdinHandle } from "./spawner.js";
 import type { SubprocessResult } from "../../../infra/subprocess-types.js";
 import type { OutputBuffer } from "../../../infra/output-buffer.js";
@@ -16,117 +15,13 @@ import { createSubprocessTimeout } from "./timeout.js";
 import { resolveSessionHandoffsDir } from "../../../infra/paths.js";
 import { errorMessage } from "../../../infra/error-message.js";
 
-// Argument validation
-
-/**
- * Shell metacharacter regex — reject args that could cause shell injection.
- */
-const SHELL_METACHAR_REGEX = /[;&|`$(){}!<>]/;
-
-/**
- * Validate that the spawn command contains no shell metacharacters.
- *
- * Only the command name is validated — argument content (e.g., prompts)
- * can legitimately contain characters like `<`, `>`, `()`, etc.
- * Since `Bun.spawn()` uses `execve` directly (no shell), arguments are
- * passed safely regardless of content. The command validation prevents
- * binary name injection only.
- *
- * @throws Error if the command contains shell metacharacters.
- */
-export function validateSpawnArgs(command: string, _args: readonly string[]): void {
-  if (SHELL_METACHAR_REGEX.test(command)) {
-    throw new Error(`Shell metacharacter detected in command: ${command}`);
-  }
-}
-
-// Signal detection
-
-/**
- * Check if an exit code indicates the process was killed by a signal.
- *
- * On Unix, signal kills produce exit code 128 + signal number:
- * - SIGINT (2)  → 130
- * - SIGTERM (15) → 143
- * - SIGKILL (9)  → 137
- *
- * Following ralph-tui's pattern of detecting interruptions from exit codes.
- */
 function isSignalExit(exitCode: number): boolean {
-  return exitCode === 130   // SIGINT (Ctrl+C)
-      || exitCode === 143   // SIGTERM
-      || exitCode === 137;  // SIGKILL
-}
-
-// Command resolution
-
-/**
- * Resolve a command name to its full executable path using Bun.which().
- *
- * - If the command contains a path separator (/ or \), return as-is
- * - Try Bun.which() for PATH resolution (wrapped in try/catch since it can throw)
- * - Fallback: for 'bun' command, use process.execPath
- * - Otherwise return the command unchanged (let Bun.spawn handle it)
- */
-export function resolveCommandExecutable(command: string): string {
-  if (command.includes("/") || command.includes("\\")) {
-    return command;
-  }
-
-  try {
-    const resolved = Bun.which(command);
-    if (resolved) return resolved;
-  } catch {
-    // Bun.which() can throw — fall through to fallbacks
-  }
-
-  if (command === "bun" && typeof process.execPath === "string" && process.execPath.length > 0) {
-    return process.execPath;
-  }
-
-  return command;
-}
-
-// Stream reader types and helpers
-
-/** Minimal reader interface that avoids Bun's non-standard ReadableStreamDefaultReader extensions. */
-export type MinimalReader = {
-  read(): Promise<{ done: boolean; value?: Uint8Array }>;
-  cancel(): Promise<void>;
-};
-
-/** Manages paired stdout/stderr readers with abort-safe cancellation. */
-export interface StreamReaderSet {
-  stdout: MinimalReader | null;
-  stderr: MinimalReader | null;
-  cancelAll(): void;
-}
-
-export function createStreamReaderSet(signal: AbortSignal): StreamReaderSet {
-  const set: StreamReaderSet = {
-    stdout: null,
-    stderr: null,
-    cancelAll() {
-      for (const key of ["stdout", "stderr"] as const) {
-        const reader = set[key];
-        if (reader) {
-          try { reader.cancel().catch(() => {}); } catch { /* reader may already be released */ }
-          set[key] = null;
-        }
-      }
-    },
-  };
-
-  if (!signal.aborted) {
-    signal.addEventListener("abort", () => set.cancelAll(), { once: true });
-  }
-
-  return set;
+  return exitCode === 130 || exitCode === 143 || exitCode === 137;
 }
 
 // Result builders
 
-export interface ResultContext {
+interface ResultContext {
   ndjsonParser: NDJSONParser;
   buffer: OutputBuffer;
   completionDetector: CompletionDetector;
@@ -161,8 +56,6 @@ export function buildSubprocessResult(ctx: ResultContext, exitCode: number): Sub
 
   return {
     output: tier1.content,
-    rawOutput: ctx.rawStdoutChunks.join(""),
-    rawStderr: stderrContent,
     exitCode,
     truncated: ctx.buffer.getState().truncated,
     durationMs,
@@ -176,8 +69,6 @@ export function buildErrorResult(ctx: ResultContext, error: unknown): Subprocess
   const durationMs = Date.now() - ctx.startTime;
   return {
     output: ctx.buffer.getState().content,
-    rawOutput: ctx.rawStdoutChunks.join(""),
-    rawStderr: ctx.rawStderrChunks.join(""),
     exitCode: -1,
     truncated: ctx.buffer.getState().truncated,
     durationMs,
@@ -187,36 +78,6 @@ export function buildErrorResult(ctx: ResultContext, error: unknown): Subprocess
     },
     handoffPath: ctx.handoffPath,
   };
-}
-
-// Stream reading
-
-/**
- * Read a stream to completion, collecting raw chunks and invoking callbacks.
- * Generic for both stdout and stderr; stdout passes extra processing via `onChunk`.
- */
-export async function readStream(
-  reader: MinimalReader,
-  chunks: string[],
-  onChunk?: (text: string) => void,
-): Promise<void> {
-  const decoder = new TextDecoder("utf-8", { fatal: false });
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const text = decoder.decode(value, { stream: true });
-      chunks.push(text);
-      onChunk?.(text);
-    }
-    const remaining = decoder.decode(undefined, { stream: false });
-    if (remaining) {
-      chunks.push(remaining);
-      onChunk?.(remaining);
-    }
-  } catch {
-    // Stream may be closed due to process kill or reader cancellation
-  }
 }
 
 // Stdout processing
@@ -277,7 +138,7 @@ export function resolveHandoffPath(options: SpawnOptions | undefined): string {
 // Stdin handle (pipe mode)
 
 export function createStdinHandle(
-  stdinSink: import("bun").FileSink,
+  stdinSink: FileSink,
   proc: { exited: Promise<number> },
 ): StdinHandle {
   const encoder = new TextEncoder();

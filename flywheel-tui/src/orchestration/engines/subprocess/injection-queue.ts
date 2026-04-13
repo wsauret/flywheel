@@ -8,14 +8,14 @@
  * Plain Array with shift() is sub-microsecond at this scale — no ring buffer needed.
  */
 
-import type { StdinHandle } from "./spawner";
+import type { StdinHandle } from "./spawner.js";
 
 interface QueueItem {
   text: string;
   userSteering: boolean;
 }
 
-export interface DrainResult {
+interface DrainResult {
   message: string;
   userSteering: boolean;
 }

@@ -1,8 +1,8 @@
 /** @jsxImportSource solid-js */
 import { createMemo, createSignal, onCleanup } from "solid-js"
-import { createSimpleContext } from "./helper"
-import { resolveTheme, type ThemeJson } from "./theme/resolve"
-import { generateSyntax, generateSubtleSyntax } from "./syntax-rules"
+import { createSimpleContext } from "./helper.js"
+import { resolveTheme, type ThemeJson } from "./theme/resolve.js"
+import { generateSyntax, generateSubtleSyntax } from "./syntax-rules.js"
 
 // ── Built-in themes ──
 import defaultTheme from "./theme/flywheel.json" with { type: "json" }
@@ -29,8 +29,8 @@ const THEMES: Record<string, ThemeJson> = {
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { mode: "dark" | "light"; themeName?: string }) => {
-    const [mode, setMode] = createSignal(props.mode)
-    const [themeName, setThemeName] = createSignal(props.themeName ?? "flywheel")
+    const [mode] = createSignal(props.mode)
+    const [themeName] = createSignal(props.themeName ?? "flywheel")
 
     const themeJson = createMemo(() => THEMES[themeName()] ?? asTheme(defaultTheme))
     const theme = createMemo(() => resolveTheme(themeJson(), mode()))

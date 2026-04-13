@@ -13,12 +13,12 @@
 //   HandoffEntry — full-detail record of a step's handoff
 //   HandoffSummary — compressed record of an older step's handoff
 
-import type { Step } from "./types";
+import type { Step } from "./types.js";
 
 // Types
 
 /** Full-detail handoff entry for recent steps. */
-export interface HandoffEntry {
+interface HandoffEntry {
   /** ID of the step that produced this handoff. */
   stepId: string;
   /** Type of the step. */
@@ -30,7 +30,7 @@ export interface HandoffEntry {
 }
 
 /** Summarized handoff for older steps (outside the detail window). */
-export interface HandoffSummary {
+interface HandoffSummary {
   /** ID of the step that produced this handoff. */
   stepId: string;
   /** Type of the step. */
@@ -132,7 +132,7 @@ export interface ContextAccumulator {
 
 // Options
 
-export interface ContextAccumulatorOptions {
+interface ContextAccumulatorOptions {
   /** Number of recent handoffs to keep in full detail. Default: 3. */
   windowSize?: number;
   /** Pre-existing state to restore from persistence. */

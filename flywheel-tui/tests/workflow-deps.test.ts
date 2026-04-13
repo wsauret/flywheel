@@ -13,7 +13,6 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
     engine: "claude",
     dispatcher: {},
     worker: {},
-    max_retries: 3,
     timeout_minutes: 60,
     skip_evaluation: false,
     ...overrides,
@@ -121,10 +120,9 @@ describe("prepareWorkflowDeps", () => {
   });
 
   it("returns config from loadConfig result", () => {
-    const config = makeConfig({ max_retries: 7, timeout_minutes: 90 });
+    const config = makeConfig({ timeout_minutes: 90 });
     const deps = prepareWorkflowDeps(makeOverrides({ config }));
 
-    expect(deps.config.max_retries).toBe(7);
     expect(deps.config.timeout_minutes).toBe(90);
   });
 });

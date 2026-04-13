@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { SubprocessHandoffBaseSchema } from "../../infra/handoff-schemas";
-import { StepContextSchema } from "../queue/step-context";
-import { EvaluatorResultSchema } from "../../infra/workflow-types";
+import { SubprocessHandoffBaseSchema } from "../../infra/handoff-schemas.js";
+import { EvaluatorResultSchema } from "../../infra/workflow-types.js";
 
 export const EvaluatorVerdictSchema = EvaluatorResultSchema
   .omit({ implementation_feedback: true, script_feedback: true })
@@ -22,13 +21,10 @@ export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
 export const EvaluatorInputSchema = z.object({
   worker_output: z.string(),
   evaluation_criteria: z.string(),
-  context_files: z.array(z.string()),
   acceptance_criteria: z.array(z.string()),
-  artifacts_produced: z.array(z.string()),
   tests_passed: z.boolean().nullable(),
   task_context: z.string().optional(),
   handoff: EvaluatorHandoffDataSchema.optional(),
-  step_context: StepContextSchema,
 }).strip();
 
 export type EvaluatorInput = z.infer<typeof EvaluatorInputSchema>;

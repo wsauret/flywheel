@@ -16,7 +16,6 @@ export interface ModalBaseProps {
   width?: number
   maxWidth?: number
   zIndex?: number
-  onClose?: () => void
 }
 
 /** Semi-transparent backdrop overlay */

@@ -12,21 +12,20 @@
 
 import { createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { createWorkflowRunner, type WorkflowResult } from "./workflow-runner"
-import type { WorkflowSessionFactories } from "./workflow-session"
-import type { AnyBlock } from "../infra/output-blocks"
-import type { Queue } from "../workflows/queue/types"
-import type { SessionKind } from "./session/types"
-import type { ChatRunner } from "./chat-runner"
+import { createWorkflowRunner, type WorkflowResult } from "./workflow-runner.js"
+import type { WorkflowSessionFactories } from "./workflow-session.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
+import type { Queue } from "../workflows/queue/types.js"
+import type { SessionKind } from "./session/types.js"
+import type { ChatRunner } from "./chat-runner.js"
+import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type {
   SessionStore,
   SessionEntry,
   WorkflowSessionEntry,
   ChatSessionEntry,
   ChatStoreHandle,
-} from "./session-store-types"
-
-// Factory
+} from "./session-store-types.js"
 
 /**
  * Creates a session store backed by SolidJS createStore.
@@ -57,7 +56,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     description: string
     priorBlocks?: AnyBlock[]
     subprocessCwd?: string
-    workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
+    workflowDeps?: WorkflowDeps
     chatContext?: string
     onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
@@ -270,22 +269,18 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
 
   async function disposeAll(): Promise<void> {
     const ids = Object.keys(entries)
-    // Abort all first (signal subprocesses to stop)
     for (const id of ids) {
       const entry = entries[id]
       if (entry?.runner) entry.runner.abort()
     }
-    // Then dispose all (flushes output, cleans up resources)
     await Promise.all(ids.map(async (id) => {
       const entry = entries[id]
       if (!entry?.runner) return
       try { await entry.runner.dispose() } catch { /* best-effort */ }
     }))
-    // Clear all entries
     setEntries(produce((e) => {
       for (const id of ids) delete e[id]
     }))
-    // Tear down the reactive root
     disposeRoot()
   }
 

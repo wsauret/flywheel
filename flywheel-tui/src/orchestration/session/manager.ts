@@ -5,13 +5,13 @@ import {
   listSessions,
   deleteSessionWithCompanions,
   type SessionListResult as PersistenceListResult,
-} from "./persistence";
-import type { Session } from "./schemas";
-import { toBudgetLimits } from "../../workflows/schemas";
+} from "./persistence.js";
+import type { Session } from "./schemas.js";
+import { toBudgetLimits } from "../../workflows/schemas.js";
 import { computeContextPercent } from "./budget-tracker-types.js";
-import { isValidTransition, type SessionState } from "./state-machine";
-import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema";
-import { Log } from "../../infra/log";
+import { isValidTransition, type SessionState } from "./state-machine.js";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema.js";
+import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "session.manager" });
 
@@ -38,12 +38,12 @@ export interface SessionListResult {
   errors: PersistenceListResult["errors"];
 }
 
-export interface SessionManagerDeps {
+interface SessionManagerDeps {
   baseDir: string;
   config?: FlywheelConfig;
 }
 
-import type { SessionKind } from "./types";
+import type { SessionKind } from "./types.js";
 
 export interface SessionManager {
   create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string;

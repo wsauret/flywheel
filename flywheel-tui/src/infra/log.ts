@@ -7,7 +7,7 @@
  * Format: `LEVEL TIMESTAMP +DELTAms key=value ... message\n`
  *
  * Usage:
- *   import { Log } from "../utils/log"
+ *   import { Log } from "../utils/log.js"
  *   const log = Log.create({ service: "session" })
  *   log.info("started")
  *   log.error("transition failed", { from: "paused", to: "completed" })
@@ -21,7 +21,7 @@
 
 import path from "path"
 import { mkdirSync, readdirSync, unlinkSync, statSync, createWriteStream } from "node:fs"
-import { LOG_DIR } from "./paths"
+import { LOG_DIR } from "./paths.js"
 
 export namespace Log {
   export type Level = "DEBUG" | "INFO" | "WARN" | "ERROR"
@@ -129,6 +129,8 @@ export namespace Log {
 
   let last = Date.now()
 
+  // Cached by `service` tag only — all callers pass a single { service } tag.
+  // If a caller ever needs extra tags, use .tag() on the returned logger.
   export function create(tags?: Record<string, unknown>): Logger {
     tags = tags || {}
 

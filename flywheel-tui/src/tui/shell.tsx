@@ -7,16 +7,16 @@ import type { TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
-import { Clipboard } from "./utils/clipboard"
-import { registerPreExitCleanup } from "./exit"
-import { OutputWindow } from "./routes/work/components/output-window"
-import { SplitBorder } from "./shared/ui/border"
+import { Clipboard } from "./utils/clipboard.js"
+import { registerPreExitCleanup } from "./exit.js"
+import { OutputWindow } from "./routes/work/components/output-window.js"
+import { SplitBorder } from "./shared/ui/border.js"
 import { Spinner } from "@tui/shared/components/spinner"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
-import { SessionModal } from "./session-modal"
+import { SessionModal } from "./session-modal.js"
 import { ToastDisplay } from "@tui/shared/components/toast-display"
-import { createSessionStore } from "../orchestration/session-store"
-import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
+import { createSessionStore } from "../orchestration/session-store.js"
+import type { WorkflowSessionFactories } from "../orchestration/workflow-session.js"
 import { formatElapsed } from "../infra/format.js"
 import { errorMessage } from "../infra/error-message.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
@@ -28,7 +28,7 @@ import { createKeyboardHandler } from "./hooks/use-keyboard-handler.js"
 import { createForegroundSwitcher } from "./hooks/use-foreground-switcher.js"
 import { createHeaderDisplay } from "./hooks/use-header-display.js"
 
-export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string }) {
+export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
   const { theme } = useTheme()
   const toast = useToast()
   const { manager, refreshList, sessions } = useSession()
@@ -46,6 +46,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     refreshList,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => toast.show(opts),
+    showThinking: props.showThinking ?? true,
   })
 
   const metrics = services.metrics

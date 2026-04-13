@@ -19,12 +19,12 @@ export interface ChatControllerDeps {
   onRunnerError?: (id: string, result: RunnerErrorResult) => void
 }
 
-export interface StartChatResult {
+interface StartChatResult {
   sessionId: string
   terminalTitle: string
 }
 
-export interface ResumeChatResult {
+interface ResumeChatResult {
   sessionId: string
   priorBlocks: AnyBlock[]
   terminalTitle: string

@@ -1,11 +1,11 @@
-import type { Step } from "../types";
+import type { Step } from "../types.js";
 
-export interface ScaffoldingResult {
+interface ScaffoldingResult {
   preamble: string;
   postamble: string;
 }
 
-export type ScaffoldingStrategy = (step: Step, paths: ScaffoldingPaths) => ScaffoldingResult;
+type ScaffoldingStrategy = (step: Step, paths: ScaffoldingPaths) => ScaffoldingResult;
 
 export interface ScaffoldingPaths {
   handoffPath: string;

@@ -22,7 +22,7 @@ const log = Log.create({ service: "subprocess-logger" });
 
 export type SubprocessRole = "worker" | "dispatcher" | "evaluator";
 
-export interface SubprocessLoggerOptions {
+interface SubprocessLoggerOptions {
   /** Base directory (project cwd) — logs go under <baseDir>/.flywheel/subprocess-logs/ */
   baseDir: string;
   /** Role of the subprocess being logged. */

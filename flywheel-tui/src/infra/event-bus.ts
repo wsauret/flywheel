@@ -1,4 +1,4 @@
-import type { FlywheelEvent } from "./events";
+import type { FlywheelEvent } from "./events.js";
 import { Log } from "./log.js";
 
 type Listener = (event: FlywheelEvent) => void;

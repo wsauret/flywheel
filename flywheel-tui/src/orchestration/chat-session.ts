@@ -1,14 +1,16 @@
-import { formatStdinMessage } from "./engines/subprocess/stdin-format"
-import { getEngine } from "./engines/core/registry"
-import { createOutputSession, type OutputSession } from "./output-session"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
+import { getEngine } from "./engines/core/registry.js"
+import { createOutputSession, type OutputSession } from "./output-session.js"
 import type { BudgetTracker } from "./session/budget-tracker-types.js"
-import { wireSessionSubscribers } from "./session/create-session-infra"
-import type { TraceCollector } from "./session/trace-collector"
-import type { TranscriptWriter } from "./session/transcript-writer"
-import { createChatControls } from "./chat-controls"
-import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
-import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner"
-import type { SessionEntryBase } from "./session-store-types"
+import { wireSessionSubscribers } from "./session/create-session-infra.js"
+import type { TraceCollector } from "./session/trace-collector.js"
+import type { TranscriptWriter } from "./session/transcript-writer.js"
+import { createChatControls } from "./chat-controls.js"
+import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
+import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner.js"
+import type { SessionEntryBase } from "./session-store-types.js"
+import type { NDJSONEvent } from "../infra/subprocess-types.js"
+import type { MetricsWriter } from "./session/create-session-infra.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -28,21 +30,44 @@ export interface ChatSession {
   readonly outputSession: OutputSession
 }
 
-export type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
+type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 
-export interface ChatSessionState {
-  stdinHandle: StdinHandle | null
-  workerPid: number | undefined
-  ended: boolean
-  claudeSessionId: string | null
-  turnPhase: ChatTurnPhase
-  contextWarningFired: boolean
+export class ChatSessionState {
+  private _stdinHandle: StdinHandle | null = null
+  private _workerPid: number | undefined
+  private _ended = false
+  private _claudeSessionId: string | null
+  private _turnPhase: ChatTurnPhase = "idle"
+  private _contextWarningFired = false
+
+  constructor(claudeSessionId?: string) {
+    this._claudeSessionId = claudeSessionId ?? null
+  }
+
+  get stdinHandle() { return this._stdinHandle }
+  get workerPid() { return this._workerPid }
+  get ended() { return this._ended }
+  get claudeSessionId() { return this._claudeSessionId }
+  get turnPhase() { return this._turnPhase }
+  get contextWarningFired() { return this._contextWarningFired }
+
+  beginTurn() { this._turnPhase = "awaiting-response" }
+  activateTurn() { this._turnPhase = "agent-active" }
+  completeTurn() { this._turnPhase = "idle" }
+  markEnded() { this._ended = true }
+  markContextWarningFired() { this._contextWarningFired = true }
+  captureSessionId(id: string) { this._claudeSessionId = id }
+  clearSessionId() { this._claudeSessionId = null }
+  attachWorker(pid: number | undefined, handle: StdinHandle | null) {
+    this._workerPid = pid
+    this._stdinHandle = handle
+  }
+  detachWorker() { this._stdinHandle = null }
 }
 
 export interface ChatSessionDeps {
   projectCwd: string
   engine: ReturnType<typeof getEngine>
-  engineName: string
   model: string
   spawner: ProcessSpawner
   traceCollector: TraceCollector | null
@@ -51,7 +76,7 @@ export interface ChatSessionDeps {
   eventBus: EventBus
   chatId: string
   updateEntry: (patch: Partial<SessionEntryBase>) => void
-  metricsWriter?: import("./session/create-session-infra").MetricsWriter
+  metricsWriter?: MetricsWriter
   onFlush?: () => void
   claudeSessionId?: string
 }
@@ -63,7 +88,7 @@ export interface ChatSessionDeps {
  * session ID so the next send() spawns a fresh worker.
  */
 function handlePromptTooLong(
-  event: import("../infra/subprocess-types").NDJSONEvent,
+  event: NDJSONEvent,
   state: ChatSessionState,
   session: OutputSession,
   callbacks: ChatCallbacks,
@@ -74,7 +99,7 @@ function handlePromptTooLong(
   const resultText = typeof event.data.result === "string" ? event.data.result : ""
   if (isError && /prompt is too long/i.test(resultText)) {
     log.warn("prompt too long — resetting session", { claudeSessionId: state.claudeSessionId })
-    state.claudeSessionId = null
+    state.clearSessionId()
     session.pushSystemMessage(
       "Conversation too long for context window. Next message will start a fresh conversation.",
       Date.now(),
@@ -102,7 +127,7 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
   const activityGatedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
     if (patch.modelActivity && patch.modelActivity !== "idle") {
       if (state.turnPhase === "idle") return
-      if (state.turnPhase === "awaiting-response") state.turnPhase = "agent-active"
+      if (state.turnPhase === "awaiting-response") state.activateTurn()
     }
     updateEntry(patch)
   }
@@ -114,7 +139,7 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
     onFlush: () => {
       const ctx = budgetTracker.getContextUtilization()
       if (!state.contextWarningFired && ctx.percent >= 70) {
-        state.contextWarningFired = true
+        state.markContextWarningFired()
         log.warn("context window 70% full", { percent: ctx.percent, promptTokens: ctx.promptTokens, contextWindow: ctx.contextWindow })
         session.pushSystemMessage(
           `Context window is ${ctx.percent}% full. Consider starting a new conversation with /new to avoid losing context.`,
@@ -133,26 +158,19 @@ export interface WorkerLifecycle {
   spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void>
 }
 
-interface WorkerLifecycleInput {
-  engine: ReturnType<typeof getEngine>
-  engineName: string
-  model: string
-  spawner: ProcessSpawner
-  projectCwd: string
-  emit: EmitFn
-  chatId: string
-  session: OutputSession
-  callbacks: ChatCallbacks
-  state: ChatSessionState
-  rawUpdateEntry: (patch: Partial<SessionEntryBase>) => void
-}
-
-function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
-  const { engine, engineName, model, spawner, projectCwd, emit, chatId, session, callbacks, state, rawUpdateEntry } = input
+function createWorkerLifecycle(
+  deps: Pick<ChatSessionDeps, "engine" | "model" | "spawner" | "projectCwd" | "chatId">,
+  emit: EmitFn,
+  session: OutputSession,
+  callbacks: ChatCallbacks,
+  state: ChatSessionState,
+): WorkerLifecycle {
+  const { engine, model, spawner, projectCwd, chatId } = deps
+  const engineId = engine.metadata.id
 
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
     emit("subprocess:spawned", { workflowId: chatId, stepIndex: 0 })
-    if (messageToSend) state.turnPhase = "awaiting-response"
+    if (messageToSend) state.beginTurn()
     const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
     // Only send content if there's a message — an empty pipe lets Claude idle and
@@ -163,38 +181,34 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
       cwd: projectCwd,
       stdin: initialContent,
       stdinPipe: true,
-      onStdout: (chunk) => session.writeStdout(chunk, engineName),
+      onStdout: (chunk) => session.writeStdout(chunk),
       onStderr: (chunk) => {
         if (chunk.trim()) session.writeStderr(chunk, Date.now())
       },
       onTurnComplete: () => {
-        if (session.sessionId) state.claudeSessionId = session.sessionId
-        state.turnPhase = "idle"
+        if (session.sessionId) state.captureSessionId(session.sessionId)
+        state.completeTurn()
         session.resolvePendingMessages()
         session.flushContextRun(Date.now())
         callbacks.onWaiting(false)
-        // Why explicit idle here: turn-complete is a lifecycle event, not a builder
-        // activity change. The builder stops receiving events but doesn't know the
-        // turn ended — it retains its last activity ("generating" / "tool_executing").
-        rawUpdateEntry({ modelActivity: "idle" })
+        session.resetActivity()
         session.flush()
       },
     })
 
-    state.stdinHandle = spawnResult.stdinHandle ?? null
-    state.workerPid = spawnResult.pid
+    state.attachWorker(spawnResult.pid, spawnResult.stdinHandle ?? null)
 
     const handleWorkerExit = () => {
-      if (session.sessionId) state.claudeSessionId = session.sessionId
+      if (session.sessionId) state.captureSessionId(session.sessionId)
       session.flushParser()
       session.flush()
-      state.stdinHandle = null
+      state.detachWorker()
 
       if (state.turnPhase !== "idle") {
         log.warn("worker exited mid-turn — resetting session state")
-        state.turnPhase = "idle"
+        state.completeTurn()
         callbacks.onWaiting(false)
-        rawUpdateEntry({ modelActivity: "idle" }) // worker-exit: same lifecycle rationale as turn-complete above
+        session.resetActivity()
         session.pushSystemMessage("Agent process exited unexpectedly. Send a message to reconnect.", Date.now())
         session.flush()
       }
@@ -217,19 +231,12 @@ export async function createChatSession(
   initialMessage?: string,
 ): Promise<ChatSession> {
   const {
-    projectCwd, engine, engineName, model, spawner, traceCollector,
+    projectCwd, engine, model, spawner, traceCollector,
     budgetTracker, transcriptWriter, eventBus, chatId, updateEntry: rawUpdateEntry,
   } = deps
   const emit = createEmit(eventBus)
 
-  const state: ChatSessionState = {
-    stdinHandle: null,
-    workerPid: undefined,
-    ended: false,
-    claudeSessionId: deps.claudeSessionId ?? null,
-    turnPhase: "idle",
-    contextWarningFired: false,
-  }
+  const state = new ChatSessionState(deps.claudeSessionId)
 
   const eventUnsubs: Unsubscribe[] = []
   eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }, deps.metricsWriter))
@@ -253,13 +260,13 @@ export async function createChatSession(
     }),
   )
 
-  const lifecycle = createWorkerLifecycle({
-    engine, engineName, model, spawner, projectCwd, emit, chatId,
-    session, callbacks, state, rawUpdateEntry,
-  })
+  const lifecycle = createWorkerLifecycle(
+    { engine, model, spawner, projectCwd, chatId },
+    emit, session, callbacks, state,
+  )
 
   const controls = createChatControls({
-    lifecycle, session, callbacks, eventUnsubs, state, rawUpdateEntry,
+    lifecycle, session, callbacks, eventUnsubs, state,
   })
 
   const hasInitialMessage = initialMessage != null && initialMessage.trim().length > 0

@@ -9,7 +9,7 @@ import { createSignal } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
-import { Clipboard } from "../utils/clipboard"
+import { Clipboard } from "../utils/clipboard.js"
 
 export interface ErrorComponentProps {
   error: Error

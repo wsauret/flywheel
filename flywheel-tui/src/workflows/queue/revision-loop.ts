@@ -5,7 +5,7 @@
 // (if configured) retries the worker up to maxRevisions times with
 // evaluator feedback appended to the prompt.
 
-import type { Step } from "./types";
+import type { Step } from "./types.js";
 import type {
   EvalResult,
   EvaluatorFn,
@@ -13,9 +13,9 @@ import type {
   WorkerOutput,
   HandoffReaderFn,
 } from "./executor-types.js";
-import type { EmitFn } from "../../infra/event-bus";
+import type { EmitFn } from "../../infra/event-bus.js";
 import { raceAbort } from "./abort-utils.js";
-import { Log } from "../../infra/log";
+import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "step-executor" });
 
@@ -52,7 +52,7 @@ function buildRevisionPrompt(
 
 // Revision loop dependencies
 
-export interface RevisionLoopDeps {
+interface RevisionLoopDeps {
   evaluator: EvaluatorFn;
   worker: WorkerFn;
   handoffReader: HandoffReaderFn;
@@ -65,7 +65,7 @@ export interface RevisionLoopDeps {
 
 // Revision loop result
 
-export interface RevisionLoopResult {
+interface RevisionLoopResult {
   /** Final worker output after all revisions */
   workerOutput: WorkerOutput;
   /** Final handoff data */

@@ -8,14 +8,14 @@
  * explicitly. No global singleton.
  */
 
-import { EventBus } from "../infra/event-bus";
-import type { EngineMetadata } from "./engines/core/types";
-import type { WorkflowSessionEntry } from "./session-store-types";
+import { EventBus } from "../infra/event-bus.js";
+import type { EngineMetadata } from "./engines/core/types.js";
+import type { WorkflowSessionEntry } from "./session-store-types.js";
 
 // Narrow interfaces — what orchestration needs from TUI primitives
 
 /** Minimal adapter interface used by the orchestration layer. */
-export interface WorkflowAdapter {
+interface WorkflowAdapter {
   connect(bus: EventBus): void;
   start(): void;
   stop(): void;
@@ -24,7 +24,7 @@ export interface WorkflowAdapter {
 
 // Session type
 
-export interface WorkflowSession {
+interface WorkflowSession {
   adapter: WorkflowAdapter;
   eventBus: EventBus;
 }
@@ -37,7 +37,7 @@ export interface WorkflowSessionFactories {
 
 // Create / Destroy
 
-export interface CreateWorkflowSessionOpts {
+interface CreateWorkflowSessionOpts {
   description: string;
   engineMetadata?: EngineMetadata;
   /** Provide an existing EventBus (e.g. for test DI). Defaults to a fresh instance. */

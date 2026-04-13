@@ -9,16 +9,12 @@
  */
 
 import * as fs from "node:fs";
-import { createDebouncedWriter } from "../../workflows/shared/debounced-writer";
-
-// Shared constant
+import { createDebouncedWriter } from "../../workflows/shared/debounced-writer.js";
 
 /** Default debounce interval for session writers (trace, transcript, budget). */
 export const DEFAULT_DEBOUNCE_MS = 100;
 
-// Types
-
-export interface BufferedFileWriterOpts<T> {
+interface BufferedFileWriterOpts<T> {
   /** Absolute path to the file to append to (opened with "a" flag). */
   filePath: string;
   /** Serialize buffered items into a string for writing. */
@@ -27,7 +23,7 @@ export interface BufferedFileWriterOpts<T> {
   debounceMs?: number;
 }
 
-export interface BufferedFileWriter<T> {
+interface BufferedFileWriter<T> {
   /** Append an item to the buffer (debounced write). */
   push(item: T): void;
   /** Force-write all buffered items to disk and cancel pending timer. */
@@ -35,8 +31,6 @@ export interface BufferedFileWriter<T> {
   /** Flush + close fd. Safe to call multiple times. */
   dispose(): void;
 }
-
-// Factory
 
 export function createBufferedFileWriter<T>(opts: BufferedFileWriterOpts<T>): BufferedFileWriter<T> {
   const { filePath, serialize, debounceMs = DEFAULT_DEBOUNCE_MS } = opts;

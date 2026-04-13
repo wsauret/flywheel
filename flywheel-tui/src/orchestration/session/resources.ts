@@ -1,8 +1,8 @@
 import type { BudgetTracker } from "./budget-tracker-types.js"
-import type { TraceWriter } from "./trace-writer"
-import type { TranscriptWriter } from "./transcript-writer"
-import type { TraceCollector } from "./trace-collector"
-import type { OutputFlusher } from "./output-persistence"
+import type { TraceWriter } from "./trace-writer.js"
+import type { TranscriptWriter } from "./transcript-writer.js"
+import type { TraceCollector } from "./trace-collector.js"
+import type { OutputFlusher } from "./output-persistence.js"
 
 export interface SessionResources {
   budgetTracker: BudgetTracker

@@ -1,13 +1,10 @@
 import { describe, it, expect } from "bun:test";
-import {
-  detectRateLimit,
-  type RateLimitDetectionInput,
-} from "../src/orchestration/engines/subprocess/rate-limit";
+import { detectRateLimit } from "../src/orchestration/engines/subprocess/rate-limit";
 
 describe("detectRateLimit", () => {
 
   // -----------------------------------------------------------------------
-  // Common patterns (agent-agnostic)
+  // Common patterns
   // -----------------------------------------------------------------------
 
   describe("common patterns", () => {
@@ -124,113 +121,6 @@ describe("detectRateLimit", () => {
         exitCode: 139,
       });
       expect(result.isRateLimit).toBe(false);
-    });
-  });
-
-  // -----------------------------------------------------------------------
-  // Claude-specific patterns
-  // -----------------------------------------------------------------------
-
-  describe("claude-specific patterns", () => {
-    it('detects "anthropic rate limit"', () => {
-      const result = detectRateLimit({
-        stderr: "anthropic rate limit error",
-        agentId: "claude",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it('detects "claude is currently overloaded"', () => {
-      const result = detectRateLimit({
-        stderr: "claude is currently overloaded, please try again later",
-        agentId: "claude",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it('detects "api error 429"', () => {
-      const result = detectRateLimit({
-        stderr: "api error 429: too many requests",
-        agentId: "claude",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it('detects "API rate limit exceeded"', () => {
-      const result = detectRateLimit({
-        stderr: "API rate limit exceeded for your organization",
-        agentId: "claude",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it("agent-specific patterns extend common patterns for that agent", () => {
-      // "claude is currently overloaded" matches both the claude-specific pattern
-      // and the common "overloaded" pattern — but agent-specific patterns give
-      // more precise matching. The key: agent patterns are added on top of common.
-      const withAgent = detectRateLimit({
-        stderr: "claude is currently overloaded",
-        agentId: "claude",
-      });
-      expect(withAgent.isRateLimit).toBe(true);
-
-      // Without agentId, "claude is currently overloaded" still matches
-      // the common "overloaded" pattern
-      const withoutAgent = detectRateLimit({
-        stderr: "claude is currently overloaded",
-      });
-      expect(withoutAgent.isRateLimit).toBe(true);
-
-      // But "tokens per minute" is opencode-specific and won't match without agentId
-      const opencodeOnly = detectRateLimit({
-        stderr: "tokens per minute limit reached",
-        agentId: "opencode",
-      });
-      expect(opencodeOnly.isRateLimit).toBe(true);
-
-      const noAgent = detectRateLimit({
-        stderr: "tokens per minute limit reached",
-      });
-      // Without opencode agentId, "tokens per minute" doesn't match any common pattern
-      expect(noAgent.isRateLimit).toBe(false);
-    });
-  });
-
-  // -----------------------------------------------------------------------
-  // OpenCode-specific patterns
-  // -----------------------------------------------------------------------
-
-  describe("opencode-specific patterns", () => {
-    it('detects "openai rate limit"', () => {
-      const result = detectRateLimit({
-        stderr: "openai rate limit: too many requests",
-        agentId: "opencode",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it('detects "tokens per minute"', () => {
-      const result = detectRateLimit({
-        stderr: "Error: tokens per minute limit reached",
-        agentId: "opencode",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it('detects "requests per minute"', () => {
-      const result = detectRateLimit({
-        stderr: "requests per minute exceeded",
-        agentId: "opencode",
-      });
-      expect(result.isRateLimit).toBe(true);
-    });
-
-    it('detects "azure throttle"', () => {
-      const result = detectRateLimit({
-        stderr: "azure openai throttled your request",
-        agentId: "opencode",
-      });
-      expect(result.isRateLimit).toBe(true);
     });
   });
 

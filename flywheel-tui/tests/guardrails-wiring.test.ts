@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { createStepExecutor } from "../src/workflows/queue/executor";
 import type { StepExecutorOptions } from "../src/workflows/queue/executor-types";
-import { createGuardrails, type Guardrails } from "../src/workflows/queue/guardrails";
+import { createGuardrails, type GuardrailOptions } from "../src/workflows/queue/guardrails";
 import { createQueue } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";
 import type { EmitFn } from "../src/infra/event-bus";

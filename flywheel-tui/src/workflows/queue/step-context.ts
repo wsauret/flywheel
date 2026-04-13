@@ -35,24 +35,11 @@ const StepIssuesSchema = z.object({
   issues: z.array(z.string()),
 });
 
-const SkillFeedbackEntrySchema = z.object({
-  step_index: z.number(),
-  step_title: z.string(),
-  followedProcedure: z.boolean(),
-  deviations: z.array(z.object({
-    step: z.string(),
-    whatIDidInstead: z.string(),
-    why: z.string(),
-  })),
-  suggestedChanges: z.array(z.string()).optional(),
-});
-
 export const StepContextSchema = z.object({
   cumulative_decisions: z.array(StepDecisionsSchema),
   cumulative_warnings: z.array(StepWarningsSchema),
   cumulative_artifacts: z.array(StepArtifactsSchema),
   cumulative_issues: z.array(StepIssuesSchema),
-  skill_feedback: z.array(SkillFeedbackEntrySchema),
   step_count: z.number().min(0),
 });
 
@@ -69,7 +56,6 @@ export function createEmptyStepContext(): StepContext {
     cumulative_warnings: [],
     cumulative_artifacts: [],
     cumulative_issues: [],
-    skill_feedback: [],
     step_count: 0,
   };
 }

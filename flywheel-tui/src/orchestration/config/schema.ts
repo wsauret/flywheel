@@ -27,12 +27,6 @@ const BoundariesSchema = z.object({
   external_services: z.array(z.string()).optional(),
 });
 
-type BoundariesConfig = z.infer<typeof BoundariesSchema>;
-
-/**
- * Commands sub-schema — project commands for scrutiny validation.
- * Extracted so the type can be shared with prompt builders (e.g. scrutiny.ts).
- */
 const CommandsSchema = z.object({
   /** Command to run the test suite. */
   test: z.string().optional(),
@@ -41,8 +35,6 @@ const CommandsSchema = z.object({
   /** Command to run the linter. */
   lint: z.string().optional(),
 });
-
-type CommandsConfig = z.infer<typeof CommandsSchema>;
 
 // Main config schema
 
@@ -55,6 +47,8 @@ export const FlywheelConfigSchema = z.object({
   engine: z.string().default("claude"),
   /** TUI theme name: "opencode", "tokyonight", "dracula", "catppuccin", "nord", "gruvbox". */
   theme: z.string().optional(),
+  /** Show thinking/reasoning blocks in the output window. Default: true. */
+  show_thinking: z.boolean().default(true),
   /** Per-tier config for the dispatcher */
   dispatcher: z.object({
     model: z.string().optional(),
@@ -74,27 +68,15 @@ export const FlywheelConfigSchema = z.object({
   model: z.string().optional(),
   /** Convenience: sets dispatcher.effort, subprocess.effort, and evaluator.effort if not individually overridden */
   effort: z.enum(["low", "medium", "high", "max"]).optional(),
-  max_retries: z.number().int().min(0).max(10).default(3),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
   skip_evaluation: z.boolean().default(false),
-
-  /** Present open questions to user during plan consolidation. Default: false (auto-resolve). */
-  interactive_consolidation: z.boolean().default(false),
-  /** Automatically run ship after review completes. Default: false. */
-  auto_ship: z.boolean().default(false),
-  /** Chain workflows automatically (plan -> work -> review). Default: true.
-   * Decision #1: intentional behavior change — /work now chains to review. */
-  auto_chain: z.boolean().default(true),
 
   /** Max evaluator retry cycles per step. 1 = single attempt (no retries). Default: 3. */
   max_eval_cycles: z.number().int().min(1).max(10).default(3),
 
   /** Max revision attempts after evaluator failure. 0 = no revisions. Default: 1. */
   max_revisions: z.number().int().min(0).max(5).default(1),
-
-  /** Fallback engine IDs to try when the primary engine fails. Validated at runtime. */
-  fallback_agents: z.array(z.string()).default([]),
 
   /** Budget limits for workflow execution. 0 = unlimited for all fields. */
   budget: z.object({
@@ -120,12 +102,6 @@ export const FlywheelConfigSchema = z.object({
 
   /** Project commands for scrutiny validation (test, typecheck, lint). */
   commands: CommandsSchema.optional(),
-
-  /** Skip scrutiny validation step injection at milestone boundaries. Default: false. */
-  skip_scrutiny: z.boolean().default(false),
-
-  /** Skip behavioral validation step injection at milestone boundaries. Default: false. */
-  skip_validation: z.boolean().default(false),
 
   /** Queue execution engine configuration. */
   queue: z.object({
@@ -174,7 +150,7 @@ export const CONFIG_DEFAULTS: FlywheelConfig = FlywheelConfigSchema.parse({});
  * Maximum effort level a model supports.
  * Opus supports "max"; all other models cap at "high".
  */
-export function resolveMaxEffort(model: string | undefined): "max" | "high" {
+function resolveMaxEffort(model: string | undefined): "max" | "high" {
   if (model && model.toLowerCase().includes("opus")) return "max";
   return "high";
 }
@@ -183,7 +159,7 @@ export function resolveMaxEffort(model: string | undefined): "max" | "high" {
  * Resolved per-tier config blob. Passed as a single object through the
  * transport/command pipeline so new fields don't require plumbing changes.
  */
-export interface ResolvedTierConfig {
+interface ResolvedTierConfig {
   model?: string;
   effort?: string;
 }

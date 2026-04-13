@@ -17,7 +17,6 @@ export type RateLimitDetectionResult =
 export interface RateLimitDetectionInput {
   stderr: string;
   exitCode?: number;
-  agentId?: string;
 }
 
 // Pattern definitions
@@ -68,54 +67,6 @@ const COMMON_PATTERNS: RateLimitPattern[] = [
 ];
 
 /**
- * Agent-specific pattern sets.
- * These are checked in addition to common patterns for specific agents.
- */
-const AGENT_SPECIFIC_PATTERNS: Record<string, RateLimitPattern[]> = {
-  claude: [
-    // Anthropic-specific error messages
-    {
-      pattern: /anthropic.*rate[- ]?limit/i,
-      retryAfterPattern: /retry[- ]?after[:\s]+(\d+)\s*s/i,
-    },
-    {
-      pattern: /API rate limit exceeded/i,
-      retryAfterPattern: /wait[:\s]+(\d+)\s*s/i,
-    },
-    // Claude-specific overload message
-    {
-      pattern: /claude.*is currently overloaded/i,
-      retryAfterPattern: /(\d+)\s*seconds?/i,
-    },
-    // API error with rate limiting
-    {
-      pattern: /api[- ]?error.*429/i,
-      retryAfterPattern: /retry[- ]?after[:\s]+(\d+)/i,
-    },
-  ],
-  opencode: [
-    // OpenAI-specific error messages
-    {
-      pattern: /openai.*rate[- ]?limit/i,
-      retryAfterPattern: /retry[- ]?after[:\s]+(\d+)\s*s/i,
-    },
-    {
-      pattern: /tokens per minute/i,
-      retryAfterPattern: /(\d+)\s*seconds?/i,
-    },
-    {
-      pattern: /requests per minute/i,
-      retryAfterPattern: /(\d+)\s*seconds?/i,
-    },
-    // Azure OpenAI specific
-    {
-      pattern: /azure.*throttl/i,
-      retryAfterPattern: /(\d+)\s*seconds?/i,
-    },
-  ],
-};
-
-/**
  * Exit codes that may indicate rate limiting when combined with pattern matches.
  * Non-zero exit codes make pattern matches more likely to be actual rate limits.
  */
@@ -127,13 +78,13 @@ const RATE_LIMIT_EXIT_CODES = new Set([1, 2, 429]);
 // containing "rate limit", "429", etc.
 
 export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetectionResult {
-  const { stderr, exitCode, agentId } = input;
+  const { stderr, exitCode } = input;
 
   if (!stderr.trim() && exitCode === 0) {
     return { isRateLimit: false };
   }
 
-  const patterns = getPatternsForAgent(agentId);
+  const patterns = COMMON_PATTERNS;
 
   for (const { pattern, retryAfterPattern } of patterns) {
     if (pattern.test(stderr)) {
@@ -157,14 +108,6 @@ export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetect
 }
 
 // Internal helpers
-
-function getPatternsForAgent(agentId?: string): RateLimitPattern[] {
-  const patterns = [...COMMON_PATTERNS];
-  if (agentId && AGENT_SPECIFIC_PATTERNS[agentId]) {
-    patterns.push(...AGENT_SPECIFIC_PATTERNS[agentId]);
-  }
-  return patterns;
-}
 
 function extractMessage(output: string, pattern: RegExp): string {
   const match = output.match(pattern);

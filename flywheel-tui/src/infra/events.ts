@@ -1,5 +1,5 @@
-import type { DispatcherDecision, EvaluatorResult } from "./workflow-types";
-import type { NDJSONEvent } from "./subprocess-types";
+import type { DispatcherDecision, EvaluatorResult } from "./workflow-types.js";
+import type { NDJSONEvent } from "./subprocess-types.js";
 
 export type FlywheelEvent =
   | DispatcherInvoked
@@ -152,21 +152,21 @@ interface BudgetExhausted {
   timestamp: number;
 }
 
-export interface QueueInitialized {
+interface QueueInitialized {
   type: "queue:initialized";
   workflowId: string;
   stepIds: string[];
   timestamp: number;
 }
 
-export interface QueueCompleted {
+interface QueueCompleted {
   type: "queue:completed";
   workflowId: string;
   stepsCompleted: number;
   timestamp: number;
 }
 
-export interface QueueFailed {
+interface QueueFailed {
   type: "queue:failed";
   workflowId: string;
   reason: string;
@@ -174,7 +174,7 @@ export interface QueueFailed {
   timestamp: number;
 }
 
-export interface QueueStepStarted {
+interface QueueStepStarted {
   type: "queue:step-started";
   workflowId: string;
   stepId: string;
@@ -183,7 +183,7 @@ export interface QueueStepStarted {
   timestamp: number;
 }
 
-export interface QueueStepCompleted {
+interface QueueStepCompleted {
   type: "queue:step-completed";
   workflowId: string;
   stepId: string;
@@ -192,7 +192,7 @@ export interface QueueStepCompleted {
   timestamp: number;
 }
 
-export interface QueueStepFailed {
+interface QueueStepFailed {
   type: "queue:step-failed";
   workflowId: string;
   stepId: string;
@@ -239,6 +239,8 @@ interface TraceSubagentCompleted {
   timestamp: number;
 }
 
+// Placed here (not in a generic utils file) because its error message references FlywheelEvent
+// and its only consumer (tui/adapters/opentui.ts) already imports from this module.
 export function assertNever(event: never): never {
   throw new Error(`Unhandled event type: ${(event as FlywheelEvent).type}`);
 }

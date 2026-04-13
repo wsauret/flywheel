@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { TRACES_DIR, ensureTracesDir, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths";
-import { writeFileAtomic } from "../../workflows/shared/atomic-write";
-import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
-import type { Span } from "../../infra/trace-types";
+import { TRACES_DIR, ensureTracesDir, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths.js";
+import { writeFileAtomic } from "../../workflows/shared/atomic-write.js";
+import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
+import type { Span } from "../../infra/trace-types.js";
 
-export interface TraceIndexEntry {
+interface TraceIndexEntry {
   traceId: string;
   sessionId: string;
   workflowName: string;
@@ -17,7 +17,7 @@ export interface TraceIndexEntry {
   closedSpanCount: number;
 }
 
-export interface TraceWriterDeps {
+interface TraceWriterDeps {
   sessionId: string;
   baseDir: string;
   /** Maximum number of traces to keep in the index. Default: 100 */

@@ -7,17 +7,17 @@
  * force workflow-runner to manage pool construction alongside execution.
  */
 
-import { WarmPool } from "./warm-pool"
-import { resolveTierConfigs } from "../../config/schema"
-import { getEngine } from "../core/registry"
-import { createEnvFilter } from "../subprocess/env-filter"
-import { buildDispatcherSystemPrompt } from "../../../workflows/dispatcher/system-prompt"
-import type { FlywheelConfig } from "../../config/schema"
-import type { ProcessSpawner } from "../subprocess/spawner"
-import type { SpawnResult } from "../subprocess/spawner"
-import type { RawSpawnedProcess } from "../subprocess/stream-pipeline"
+import { WarmPool } from "./warm-pool.js"
+import { resolveTierConfigs } from "../../config/schema.js"
+import { getEngine } from "../core/registry.js"
+import { createEnvFilter } from "../subprocess/env-filter.js"
+import { buildDispatcherSystemPrompt } from "../../../workflows/dispatcher/system-prompt.js"
+import type { FlywheelConfig } from "../../config/schema.js"
+import type { ProcessSpawner } from "../subprocess/spawner.js"
+import type { SpawnResult } from "../subprocess/spawner.js"
+import type { RawSpawnedProcess } from "../subprocess/stream-pipeline.js"
 
-export interface WarmPools {
+interface WarmPools {
   dispatcher: WarmPool<SpawnResult>
   evaluator: WarmPool<SpawnResult>
   subprocess: WarmPool<RawSpawnedProcess> | null
@@ -74,7 +74,6 @@ export function createWarmPools(
       getPid: (raw) => raw.proc.pid,
       getExitPromise: (raw) => raw.proc.exited,
       killProc: (raw) => {
-        raw.unregister()
         try { raw.proc.kill() } catch { /* already dead */ }
       },
     })

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { NDJSONEvent } from "../../infra/subprocess-types.js";
-import type { BudgetLimits, SessionBudgetStatus } from "../../workflows/schemas.js";
+import type { EmitFn } from "../../infra/event-bus.js";
+import type { BudgetLimits } from "../../workflows/schemas.js";
 
 /**
  * Schema for Claude Code "result" events.
@@ -39,7 +40,7 @@ export interface BudgetTrackerDeps {
   /** Debounce interval in ms. Default: 100ms */
   debounceMs?: number;
   /** Optional emitter for budget events. When provided, budget:metrics-changed and budget:exhausted are emitted. */
-  emitter?: import("../../infra/event-bus").EmitFn;
+  emitter?: EmitFn;
   /** Workflow ID used when emitting budget events. */
   workflowId?: string;
   /** When provided, the tracker auto-checks exhaustion on each cost update and emits budget:exhausted. */

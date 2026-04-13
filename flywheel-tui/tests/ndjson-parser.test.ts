@@ -1,63 +1,10 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import {
   NDJSONParser,
-  stripAnsi,
-  extractJSON,
   MAX_LINE_LENGTH,
 } from "../src/infra/ndjson-parser";
 import type { NDJSONEvent } from "../src/infra/subprocess-types";
 import { OutputBuffer } from "../src/infra/output-buffer";
-
-// ---------------------------------------------------------------------------
-// stripAnsi
-// ---------------------------------------------------------------------------
-
-describe("stripAnsi", () => {
-  it("removes CSI color codes", () => {
-    expect(stripAnsi("\x1b[31mred text\x1b[0m")).toBe("red text");
-  });
-
-  it("removes bold/underline sequences", () => {
-    expect(stripAnsi("\x1b[1mbold\x1b[22m")).toBe("bold");
-  });
-
-  it("passes through plain text unchanged", () => {
-    expect(stripAnsi("plain text")).toBe("plain text");
-  });
-
-  it("removes multiple ANSI sequences", () => {
-    expect(stripAnsi("\x1b[32m\x1b[1mgreen bold\x1b[0m")).toBe("green bold");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// extractJSON
-// ---------------------------------------------------------------------------
-
-describe("extractJSON", () => {
-  it("extracts JSON from clean line", () => {
-    const result = extractJSON('{"type":"text","content":"hello"}');
-    expect(result).toEqual({ type: "text", content: "hello" });
-  });
-
-  it("extracts JSON from garbage prefix", () => {
-    const result = extractJSON('2024-01-01T00:00:00Z INFO {"type":"text","content":"hello"}');
-    expect(result).toEqual({ type: "text", content: "hello" });
-  });
-
-  it("returns null for non-JSON lines", () => {
-    expect(extractJSON("just plain text")).toBeNull();
-    expect(extractJSON("no json here at all")).toBeNull();
-  });
-
-  it("returns null for arrays", () => {
-    expect(extractJSON("[1,2,3]")).toBeNull();
-  });
-
-  it("returns null for invalid JSON after brace", () => {
-    expect(extractJSON("prefix {invalid json}")).toBeNull();
-  });
-});
 
 // ---------------------------------------------------------------------------
 // NDJSONParser

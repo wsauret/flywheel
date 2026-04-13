@@ -21,23 +21,24 @@
  * - Integrates: env-filter, process-lifecycle
  */
 
+import type { FileSink } from "bun";
 import type { ProcessSpawner, SpawnOptions, SpawnResult } from "./spawner.js";
 import { createEnvFilter, type EnvFilterOptions } from "./env-filter.js";
-import { registerProcess, type ChildHandle } from "./process-lifecycle.js";
-import { clampTimeoutMinutes, minutesToMs, DEFAULT_TIMEOUT_MINUTES } from "./timeout.js";
-import { validateSpawnArgs, resolveCommandExecutable } from "./spawn-helpers.js";
+import type { ChildHandle } from "./process-lifecycle.js";
+import { clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES, createSubprocessTimeout } from "./timeout.js";
+import { validateSpawnArgs, resolveCommandExecutable } from "./spawn-validation.js";
+import { buildErrorResult, resolveHandoffPath } from "./spawn-helpers.js";
 import { wireStreamPipeline, type RawSpawnedProcess } from "./stream-pipeline.js";
+import { OutputBuffer } from "../../../infra/output-buffer.js";
+import { CompletionDetector } from "./completion.js";
+import { NDJSONParser } from "../../../infra/ndjson-parser.js";
 
-// BunSpawnerOptions
-
-export interface BunSpawnerOptions {
+interface BunSpawnerOptions {
   /** Environment filter configuration. */
   envFilter?: EnvFilterOptions;
   /** Timeout in minutes (1-120, default 60). */
   timeoutMinutes?: number;
 }
-
-// BunProcessSpawner
 
 /**
  * BunProcessSpawner — production implementation using Bun.spawn().
@@ -49,7 +50,7 @@ export class BunProcessSpawner implements ProcessSpawner {
   constructor(options: BunSpawnerOptions = {}) {
     this.envFilter = createEnvFilter(options.envFilter);
     const minutes = clampTimeoutMinutes(options.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES);
-    this.timeoutMs = minutesToMs(minutes);
+    this.timeoutMs = minutes * 60_000;
   }
 
   /**
@@ -81,14 +82,11 @@ export class BunProcessSpawner implements ProcessSpawner {
       stderr: "pipe",
     });
 
-    const unregister = registerProcess(proc as unknown as ChildHandle);
-
     return {
       proc: proc as unknown as RawSpawnedProcess["proc"],
       stdout: proc.stdout as unknown as ReadableStream<Uint8Array>,
       stderr: proc.stderr as unknown as ReadableStream<Uint8Array>,
-      stdinSink: usePipe ? proc.stdin as import("bun").FileSink : undefined,
-      unregister,
+      stdinSink: usePipe ? proc.stdin as FileSink : undefined,
     };
   }
 
@@ -108,13 +106,6 @@ export class BunProcessSpawner implements ProcessSpawner {
     } catch (error) {
       // Match the original error-handling: validation / spawn failures
       // are wrapped in a resolved SpawnResult with an error SubprocessResult.
-      const { buildErrorResult } = await import("./spawn-helpers.js");
-      const { OutputBuffer } = await import("../../../infra/output-buffer.js");
-      const { CompletionDetector } = await import("./completion.js");
-      const { NDJSONParser } = await import("../../../infra/ndjson-parser.js");
-      const { createSubprocessTimeout } = await import("./timeout.js");
-      const { resolveHandoffPath } = await import("./spawn-helpers.js");
-
       const buffer = new OutputBuffer();
       const subprocessTimeout = createSubprocessTimeout(timeoutMs);
       const resultCtx = {

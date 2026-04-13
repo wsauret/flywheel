@@ -4,23 +4,17 @@ import type { SpanKind } from "../../infra/trace-types.js";
 export interface TraceSpanOps {
   startSpan(kind: SpanKind, name: string, input?: unknown): string;
   endSpan(spanId: string, output?: unknown, status?: "ok" | "error", error?: { message: string; code?: string }): void;
+  findOpenSpanByKind(kind: SpanKind): string | null;
+  /** Reset the span stack to only contain the workflow span, then push a new step span. */
+  resetStackForStep(workflowSpanId: string | null): void;
   workflowSpanId: string | null;
   setWorkflowSpanId(id: string): void;
-  stepSpanIds: Map<string, string>;
-  toolSpanIds: Map<string, string>;
-  spanStack: string[];
-  openSpans: Map<string, { kind: string }>;
-}
-
-function findOpenSpanByKind(ops: TraceSpanOps, kind: SpanKind): string | null {
-  for (let i = ops.spanStack.length - 1; i >= 0; i--) {
-    const spanId = ops.spanStack[i]!;
-    const open = ops.openSpans.get(spanId);
-    if (open && open.kind === kind) {
-      return spanId;
-    }
-  }
-  return null;
+  getStepSpanId(stepId: string): string | undefined;
+  setStepSpanId(stepId: string, spanId: string): void;
+  deleteStepSpanId(stepId: string): void;
+  getToolSpanId(toolUseId: string): string | undefined;
+  setToolSpanId(toolUseId: string, spanId: string): void;
+  deleteToolSpanId(toolUseId: string): void;
 }
 
 export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowName: string): Unsubscribe[] {
@@ -60,53 +54,40 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
 
   unsubs.push(
     bus.subscribeToType("queue:step-started", (event) => {
-      const savedStack = [...ops.spanStack];
-
-      ops.spanStack.length = 0;
-      if (ops.workflowSpanId && ops.openSpans.has(ops.workflowSpanId)) {
-        ops.spanStack.push(ops.workflowSpanId);
-      }
+      ops.resetStackForStep(ops.workflowSpanId);
 
       const stepSpanId = ops.startSpan("step", event.stepTitle, {
         stepType: event.stepType,
         stepTitle: event.stepTitle,
       });
-      ops.stepSpanIds.set(event.stepId, stepSpanId);
-
-      ops.spanStack.length = 0;
-      for (const id of savedStack) {
-        if (ops.openSpans.has(id)) {
-          ops.spanStack.push(id);
-        }
-      }
-      ops.spanStack.push(stepSpanId);
+      ops.setStepSpanId(event.stepId, stepSpanId);
     }),
   );
 
   unsubs.push(
     bus.subscribeToType("queue:step-completed", (event) => {
-      const workerSpanId = findOpenSpanByKind(ops, "worker");
+      const workerSpanId = ops.findOpenSpanByKind("worker");
       if (workerSpanId) {
         ops.endSpan(workerSpanId, { resultSummary: "", failureReason: null }, "ok");
       }
-      const stepSpanId = ops.stepSpanIds.get(event.stepId);
+      const stepSpanId = ops.getStepSpanId(event.stepId);
       if (stepSpanId) {
         ops.endSpan(stepSpanId, { failureReason: null }, "ok");
-        ops.stepSpanIds.delete(event.stepId);
+        ops.deleteStepSpanId(event.stepId);
       }
     }),
   );
 
   unsubs.push(
     bus.subscribeToType("queue:step-failed", (event) => {
-      const workerSpanId = findOpenSpanByKind(ops, "worker");
+      const workerSpanId = ops.findOpenSpanByKind("worker");
       if (workerSpanId) {
         ops.endSpan(workerSpanId, { resultSummary: "", failureReason: event.reason }, "error", { message: event.reason });
       }
-      const stepSpanId = ops.stepSpanIds.get(event.stepId);
+      const stepSpanId = ops.getStepSpanId(event.stepId);
       if (stepSpanId) {
         ops.endSpan(stepSpanId, { failureReason: event.reason }, "error", { message: event.reason });
-        ops.stepSpanIds.delete(event.stepId);
+        ops.deleteStepSpanId(event.stepId);
       }
     }),
   );
@@ -125,19 +106,19 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         toolName: event.toolName,
         toolInput: event.toolInput,
       });
-      ops.toolSpanIds.set(event.toolUseId, spanId);
+      ops.setToolSpanId(event.toolUseId, spanId);
     }),
   );
 
   unsubs.push(
     bus.subscribeToType("trace:tool-completed", (event) => {
-      const spanId = ops.toolSpanIds.get(event.toolUseId);
+      const spanId = ops.getToolSpanId(event.toolUseId);
       if (spanId) {
         ops.endSpan(spanId, {
           toolOutput: event.toolOutput,
           isError: event.isError,
         }, event.isError ? "error" : "ok", event.isError ? { message: "tool returned error" } : undefined);
-        ops.toolSpanIds.delete(event.toolUseId);
+        ops.deleteToolSpanId(event.toolUseId);
       }
     }),
   );
@@ -150,20 +131,20 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         prompt: event.prompt,
         model: "",
       });
-      ops.toolSpanIds.set(event.toolUseId, spanId);
+      ops.setToolSpanId(event.toolUseId, spanId);
     }),
   );
 
   unsubs.push(
     bus.subscribeToType("trace:subagent-completed", (event) => {
-      const spanId = ops.toolSpanIds.get(event.toolUseId);
+      const spanId = ops.getToolSpanId(event.toolUseId);
       if (spanId) {
         ops.endSpan(spanId, {
           result: event.result,
           exitStatus: event.isError ? 1 : 0,
           error: event.isError ? "subagent returned error" : null,
         }, event.isError ? "error" : "ok", event.isError ? { message: "subagent returned error" } : undefined);
-        ops.toolSpanIds.delete(event.toolUseId);
+        ops.deleteToolSpanId(event.toolUseId);
       }
     }),
   );

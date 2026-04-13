@@ -5,7 +5,7 @@
  * Model can be a short name (opus, sonnet, haiku) or a full claude model ID.
  */
 
-import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata } from "../core/types";
+import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata } from "../core/types.js";
 
 export const metadata: EngineMetadata = {
   id: "claude",

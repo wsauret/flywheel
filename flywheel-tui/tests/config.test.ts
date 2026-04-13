@@ -5,7 +5,6 @@ import {
   FlywheelConfigSchema,
   CONFIG_DEFAULTS,
   resolveTierConfigs,
-  resolveMaxEffort,
 } from "../src/orchestration/config/schema";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
@@ -23,7 +22,6 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.model).toBeUndefined();
       expect(result.data.dispatcher).toEqual({});
       expect(result.data.subprocess).toEqual({});
-      expect(result.data.max_retries).toBe(3);
       expect(result.data.timeout_minutes).toBe(60);
     }
   });
@@ -43,27 +41,6 @@ describe("FlywheelConfigSchema", () => {
       subprocess: { effort: "turbo" },
     });
     expect(result.success).toBe(false);
-  });
-
-  it("rejects max_retries > 10", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      max_retries: 11,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects max_retries < 0", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      max_retries: -1,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts max_retries: 0", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      max_retries: 0,
-    });
-    expect(result.success).toBe(true);
   });
 
   it("rejects timeout_minutes > 120", () => {
@@ -101,7 +78,6 @@ describe("loadConfig: file loading", () => {
 
     expect(config.engine).toBe("claude");
     expect(config.model).toBe("claude-sonnet-4-20250514");
-    expect(config.max_retries).toBe(5);
     expect(config.timeout_minutes).toBe(90);
   });
 
@@ -110,7 +86,6 @@ describe("loadConfig: file loading", () => {
 
     expect(config.engine).toBe(CONFIG_DEFAULTS.engine);
     expect(config.model).toBeUndefined();
-    expect(config.max_retries).toBe(CONFIG_DEFAULTS.max_retries);
     expect(config.timeout_minutes).toBe(CONFIG_DEFAULTS.timeout_minutes);
   });
 
@@ -131,13 +106,11 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
       path.join(FIXTURES_DIR, "flywheel.toml"),
       {
         FLYWHEEL_ENGINE: "opencode",
-        FLYWHEEL_MAX_RETRIES: "7",
       },
     );
 
     // Env overrides
     expect(config.engine).toBe("opencode");
-    expect(config.max_retries).toBe(7);
 
     // Config file values preserved where not overridden
     expect(config.model).toBe("claude-sonnet-4-20250514");
@@ -155,7 +128,6 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
 
     // Defaults where not overridden
     expect(config.engine).toBe("claude");
-    expect(config.max_retries).toBe(3);
   });
 
   it("config file overrides defaults", () => {
@@ -165,7 +137,6 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
     );
 
     // From config file (overriding defaults)
-    expect(config.max_retries).toBe(5);
     expect(config.timeout_minutes).toBe(90);
   });
 
@@ -178,52 +149,10 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Config loader: warnings
-// ---------------------------------------------------------------------------
-
-describe("loadConfig: warnings", () => {
-  it("emits warning when max_retries is 0", () => {
-    const { warnings } = loadConfig(
-      path.join(FIXTURES_DIR, "zero-retries.toml"),
-      {},
-    );
-
-    expect(warnings.length).toBeGreaterThan(0);
-    expect(warnings[0]).toContain("max_retries is 0");
-  });
-
-  it("no warning when max_retries > 0", () => {
-    const { warnings } = loadConfig(
-      path.join(FIXTURES_DIR, "flywheel.toml"),
-      {},
-    );
-
-    expect(warnings).toHaveLength(0);
-  });
-
-  it("emits warning when max_retries is 0 via env", () => {
-    const { warnings } = loadConfig(undefined, {
-      FLYWHEEL_MAX_RETRIES: "0",
-    });
-
-    expect(warnings.length).toBeGreaterThan(0);
-    expect(warnings[0]).toContain("max_retries is 0");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Config loader: validation errors
 // ---------------------------------------------------------------------------
 
 describe("loadConfig: validation errors", () => {
-  it("throws on out-of-range max_retries via env", () => {
-    expect(() => {
-      loadConfig(undefined, {
-        FLYWHEEL_MAX_RETRIES: "11",
-      });
-    }).toThrow(/Invalid configuration/);
-  });
-
   it("throws on out-of-range timeout_minutes via env", () => {
     expect(() => {
       loadConfig(undefined, {
@@ -319,77 +248,6 @@ describe("Per-tier model config", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pipeline config fields (Step 4)
-// ---------------------------------------------------------------------------
-
-describe("Pipeline config fields", () => {
-  it("interactive_consolidation defaults to false", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.interactive_consolidation).toBe(false);
-    }
-  });
-
-  it("auto_ship defaults to false", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.auto_ship).toBe(false);
-    }
-  });
-
-  it("auto_chain defaults to true", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.auto_chain).toBe(true);
-    }
-  });
-
-  it("CONFIG_DEFAULTS includes pipeline fields", () => {
-    expect(CONFIG_DEFAULTS.interactive_consolidation).toBe(false);
-    expect(CONFIG_DEFAULTS.auto_ship).toBe(false);
-    expect(CONFIG_DEFAULTS.auto_chain).toBe(true);
-  });
-
-  it("env var FLYWHEEL_INTERACTIVE_CONSOLIDATION overrides config", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_INTERACTIVE_CONSOLIDATION: "true",
-    });
-    expect(config.interactive_consolidation).toBe(true);
-  });
-
-  it("env var FLYWHEEL_AUTO_SHIP overrides config", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_AUTO_SHIP: "1",
-    });
-    expect(config.auto_ship).toBe(true);
-  });
-
-  it("env var FLYWHEEL_AUTO_CHAIN can disable chaining", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_AUTO_CHAIN: "false",
-    });
-    expect(config.auto_chain).toBe(false);
-  });
-
-  it("env var FLYWHEEL_AUTO_CHAIN=0 disables chaining", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_AUTO_CHAIN: "0",
-    });
-    expect(config.auto_chain).toBe(false);
-  });
-
-  it("env var FLYWHEEL_AUTO_CHAIN=true enables chaining", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_AUTO_CHAIN: "true",
-    });
-    expect(config.auto_chain).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Budget and Eval Config Fields (Step 1)
 // ---------------------------------------------------------------------------
 
@@ -451,66 +309,6 @@ describe("max_eval_cycles config field", () => {
 
   it("CONFIG_DEFAULTS includes max_eval_cycles", () => {
     expect(CONFIG_DEFAULTS.max_eval_cycles).toBe(3);
-  });
-});
-
-describe("fallback_agents config field", () => {
-  it("defaults to empty array", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.fallback_agents).toEqual([]);
-    }
-  });
-
-  it("accepts array of strings", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      fallback_agents: ["claude", "opencode"],
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.fallback_agents).toEqual(["claude", "opencode"]);
-    }
-  });
-
-  it("env var FLYWHEEL_FALLBACK_AGENTS sets comma-separated values", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_FALLBACK_AGENTS: "claude,opencode",
-    });
-    expect(config.fallback_agents).toEqual(["claude", "opencode"]);
-  });
-
-  it("env var FLYWHEEL_FALLBACK_AGENTS handles whitespace around commas", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_FALLBACK_AGENTS: "claude , opencode , gemini",
-    });
-    expect(config.fallback_agents).toEqual(["claude", "opencode", "gemini"]);
-  });
-
-  it("env var FLYWHEEL_FALLBACK_AGENTS handles trailing comma", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_FALLBACK_AGENTS: "claude,opencode,",
-    });
-    expect(config.fallback_agents).toEqual(["claude", "opencode"]);
-  });
-
-  it("env var FLYWHEEL_FALLBACK_AGENTS handles empty string", () => {
-    // Empty string should not trigger the env override (it's filtered out)
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_FALLBACK_AGENTS: "",
-    });
-    expect(config.fallback_agents).toEqual([]);
-  });
-
-  it("env var FLYWHEEL_FALLBACK_AGENTS handles single value", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_FALLBACK_AGENTS: "claude",
-    });
-    expect(config.fallback_agents).toEqual(["claude"]);
-  });
-
-  it("CONFIG_DEFAULTS includes fallback_agents", () => {
-    expect(CONFIG_DEFAULTS.fallback_agents).toEqual([]);
   });
 });
 
@@ -600,105 +398,26 @@ describe("budget config section", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Skip validation config flags
-// ---------------------------------------------------------------------------
-
-describe("skip_scrutiny and skip_validation config flags", () => {
-  it("defaults skip_scrutiny to false", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.skip_scrutiny).toBe(false);
-    }
-  });
-
-  it("defaults skip_validation to false", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.skip_validation).toBe(false);
-    }
-  });
-
-  it("accepts skip_scrutiny: true", () => {
-    const result = FlywheelConfigSchema.safeParse({ skip_scrutiny: true });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.skip_scrutiny).toBe(true);
-    }
-  });
-
-  it("accepts skip_validation: true", () => {
-    const result = FlywheelConfigSchema.safeParse({ skip_validation: true });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.skip_validation).toBe(true);
-    }
-  });
-
-  it("both flags are independent", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      skip_scrutiny: true,
-      skip_validation: false,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.skip_scrutiny).toBe(true);
-      expect(result.data.skip_validation).toBe(false);
-    }
-  });
-
-  it("env var FLYWHEEL_SKIP_SCRUTINY overrides default", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_SKIP_SCRUTINY: "true",
-    });
-    expect(config.skip_scrutiny).toBe(true);
-  });
-
-  it("env var FLYWHEEL_SKIP_VALIDATION overrides default", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_SKIP_VALIDATION: "true",
-    });
-    expect(config.skip_validation).toBe(true);
-  });
-
-  it("CONFIG_DEFAULTS includes skip flags", () => {
-    expect(CONFIG_DEFAULTS.skip_scrutiny).toBe(false);
-    expect(CONFIG_DEFAULTS.skip_validation).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Sprint max-effort enforcement
 // ---------------------------------------------------------------------------
 
-describe("resolveMaxEffort", () => {
-  it("returns 'max' for opus model (short alias)", () => {
-    expect(resolveMaxEffort("opus")).toBe("max");
+describe("resolveMaxEffort (via resolveTierConfigs in sprint mode)", () => {
+  it("returns 'max' for opus model", () => {
+    const config = FlywheelConfigSchema.parse({ model: "opus" });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.subprocess.effort).toBe("max");
   });
 
-  it("returns 'max' for full opus model ID", () => {
-    expect(resolveMaxEffort("claude-opus-4-6[1m]")).toBe("max");
-  });
-
-  it("returns 'high' for sonnet model (short alias)", () => {
-    expect(resolveMaxEffort("sonnet")).toBe("high");
-  });
-
-  it("returns 'high' for full sonnet model ID", () => {
-    expect(resolveMaxEffort("claude-sonnet-4-6[1m]")).toBe("high");
-  });
-
-  it("returns 'high' for haiku model", () => {
-    expect(resolveMaxEffort("haiku")).toBe("high");
-  });
-
-  it("returns 'high' for undefined model", () => {
-    expect(resolveMaxEffort(undefined)).toBe("high");
+  it("returns 'high' for sonnet model", () => {
+    const config = FlywheelConfigSchema.parse({ model: "sonnet" });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.subprocess.effort).toBe("high");
   });
 
   it("is case-insensitive (OPUS)", () => {
-    expect(resolveMaxEffort("OPUS")).toBe("max");
+    const config = FlywheelConfigSchema.parse({ model: "OPUS" });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.subprocess.effort).toBe("max");
   });
 });
 

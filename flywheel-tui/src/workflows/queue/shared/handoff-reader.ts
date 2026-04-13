@@ -1,5 +1,5 @@
 import type { ZodSchema, ZodError, ZodIssue } from "zod";
-import { errorMessage } from "../../../infra/error-message";
+import { errorMessage } from "../../../infra/error-message.js";
 
 // Error classes
 
@@ -20,6 +20,7 @@ export class HandoffInvalidError extends Error {
   }
 }
 
+// Exported for instanceof checks in tests.
 export class HandoffReadTimeoutError extends Error {
   readonly name = "HandoffReadTimeoutError";
   constructor(
@@ -32,7 +33,7 @@ export class HandoffReadTimeoutError extends Error {
 
 // Options
 
-export interface ReadHandoffOptions {
+interface ReadHandoffOptions {
   /** Timeout in milliseconds (default: 5000) */
   timeoutMs?: number;
 }

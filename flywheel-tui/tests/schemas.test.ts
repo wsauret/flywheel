@@ -45,14 +45,7 @@ describe("DispatcherDecisionSchema", () => {
     reasoning: "Standard execution",
     warnings: [],
     worker_config: {
-      model_override: null,
-      timeout_minutes: 30,
-      retry_on_failure: true,
-      max_retries: 3,
-      iteration_budget: 5,
       tool_scoping: { read: true, bash: true, write: true, edit: true },
-      parallel: false,
-      parallel_variants: null,
     },
   };
 
@@ -542,11 +535,8 @@ describe("EvaluatorInputSchema", () => {
   const validInput = {
     worker_output: "some output text",
     evaluation_criteria: "Tests pass",
-    context_files: ["src/foo.ts"],
     acceptance_criteria: ["Tests pass"],
-    artifacts_produced: ["src/feature.ts"],
     tests_passed: true,
-    step_context: createEmptyStepContext(),
   };
 
   it("parses valid evaluator input", () => {
@@ -566,14 +556,6 @@ describe("EvaluatorInputSchema", () => {
     const { acceptance_criteria, ...noAC } = validInput;
     const result = EvaluatorInputSchema.safeParse(noAC);
     expect(result.success).toBe(false);
-  });
-
-  it("requires artifacts_produced array", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
-      artifacts_produced: ["src/feature.ts", "tests/feature.test.ts"],
-    });
-    expect(result.artifacts_produced).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
   });
 
   it("accepts tests_passed as true", () => {
@@ -604,7 +586,6 @@ describe("EvaluatorInputSchema", () => {
     const result = EvaluatorInputSchema.safeParse({
       worker_output: "output",
       evaluation_criteria: "criteria",
-      context_files: [],
     });
     expect(result.success).toBe(false);
   });
@@ -613,11 +594,9 @@ describe("EvaluatorInputSchema", () => {
     const result = EvaluatorInputSchema.parse({
       ...validInput,
       acceptance_criteria: ["feature works"],
-      artifacts_produced: ["src/new.ts"],
       tests_passed: true,
     });
     expect(result.acceptance_criteria).toEqual(["feature works"]);
-    expect(result.artifacts_produced).toEqual(["src/new.ts"]);
     expect(result.tests_passed).toBe(true);
   });
 
@@ -1268,14 +1247,7 @@ describe("Integration — full data contract flow", () => {
     reasoning: "Step 2 requires both implementation and test coverage.",
     warnings: ["Large module — consider splitting if over 300 lines"],
     worker_config: {
-      model_override: null,
-      timeout_minutes: 15,
-      retry_on_failure: true,
-      max_retries: 2,
-      iteration_budget: 8,
       tool_scoping: { read: true, bash: true, write: true, edit: true },
-      parallel: false,
-      parallel_variants: null,
     },
   };
 

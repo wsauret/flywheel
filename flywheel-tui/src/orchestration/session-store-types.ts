@@ -6,12 +6,13 @@
  * workflow entries, but not on chat entries).
  */
 
-import type { WorkflowRunner, WorkflowResult, StepState } from "./workflow-runner"
-import type { AnyBlock } from "../infra/output-blocks"
-import type { ModelActivity } from "../infra/events"
-import type { ChatRunner } from "./chat-runner"
-import type { SessionKind } from "./session/types"
-import type { Queue } from "../workflows/queue/types"
+import type { WorkflowRunner, WorkflowResult, StepState } from "./workflow-runner.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
+import type { ModelActivity } from "../infra/events.js"
+import type { ChatRunner } from "./chat-runner.js"
+import type { SessionKind } from "./session/types.js"
+import type { Queue } from "../workflows/queue/types.js"
+import type { WorkflowDeps } from "./engines/workflow-deps.js"
 
 // Entry types — discriminated union on `kind`
 
@@ -70,7 +71,7 @@ export interface SessionStore {
     description: string
     priorBlocks?: AnyBlock[]
     subprocessCwd?: string
-    workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
+    workflowDeps?: WorkflowDeps
     chatContext?: string
     onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void

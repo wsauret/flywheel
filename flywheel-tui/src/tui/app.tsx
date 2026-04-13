@@ -14,14 +14,14 @@ import { useRenderer } from "@opentui/solid"
 import { ErrorBoundary } from "solid-js"
 import { Log } from "../infra/log.js"
 import type { ParentProps } from "solid-js"
-import { Clipboard } from "./utils/clipboard"
+import { Clipboard } from "./utils/clipboard.js"
 import { ToastProvider } from "@tui/shared/context/toast"
 import { ThemeProvider } from "@tui/shared/context/theme"
 import { SessionProvider } from "@tui/shared/context/session"
-import { createSessionManager } from "../orchestration/session/manager"
-import { ErrorComponent } from "./components/error-boundary"
-import { loadConfig } from "../orchestration/config/loader"
-import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
+import { createSessionManager } from "../orchestration/session/manager.js"
+import { ErrorComponent } from "./components/error-boundary.js"
+import { loadConfig } from "../orchestration/config/loader.js"
+import type { WorkflowSessionFactories } from "../orchestration/workflow-session.js"
 import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
 import { setExitHandler } from "./exit.js"
@@ -35,12 +35,14 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
   const mode = options.mode ?? "dark"
   const projectCwd = options.projectCwd ?? process.env.FLYWHEEL_PROJECT_CWD ?? process.cwd()
 
-  // Load config to get theme name (best-effort)
+  // Load config (best-effort) for display settings
   let themeName: string | undefined
+  let showThinking = true
   try {
     const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
     const { config } = loadConfig(configPath)
     themeName = config.theme
+    showThinking = config.show_thinking
   } catch {
     // Config load failure is non-fatal
   }
@@ -62,6 +64,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     const { FlywheelShell } = await import("./shell")
 
     const manager = createSessionManager({ baseDir: projectCwd })
+    manager.recoverStaleSessions()
 
     render(
       () => (
@@ -77,7 +80,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
                 <SessionProvider manager={manager}>
-                  <FlywheelShell factories={factories} projectCwd={projectCwd} />
+                  <FlywheelShell factories={factories} projectCwd={projectCwd} showThinking={showThinking} />
                 </SessionProvider>
               </ThemeProvider>
             </ToastProvider>

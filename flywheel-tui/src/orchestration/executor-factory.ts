@@ -1,28 +1,28 @@
-import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
-import { createStepExecutor } from "../workflows/queue/executor"
-import type { StepExecutor } from "../workflows/queue/executor-types"
-import { createQueuePersistence } from "../workflows/queue/persistence"
-import { createGuardrails } from "../workflows/queue/guardrails"
-import { ContextIndexer } from "./memory/indexer"
-import { createWarmPools } from "./engines/pool/create-warm-pools"
-import type { WarmPool } from "./engines/pool/warm-pool"
-import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
-import { formatStdinMessage } from "./engines/subprocess/stdin-format"
-import { createPostTurnVerificationHook } from "../workflows/queue/post-turn-verification"
-import { createSprintHook } from "../workflows/queue/steps/sprint/hooks"
-import { SPRINT_HINT } from "../workflows/queue/steps/sprint/types"
-import type { OnStepCompletedHook } from "../workflows/queue/shared/hooks"
-import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers"
-import { createDoomLoopObserver } from "./engines/doom-loop"
-import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper"
-import type { EmitFn, EventBus, Unsubscribe } from "../infra/event-bus"
-import type { WorkflowDeps } from "./engines/workflow-deps"
-import type { InjectionQueue } from "./engines/subprocess/injection-queue"
-import type { SpawnResult } from "./engines/subprocess/spawner"
-import type { Queue } from "../workflows/queue/types"
-import { wireSessionSubscribers, type MetricsWriter } from "./session/create-session-infra"
+import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator.js"
+import { createStepExecutor } from "../workflows/queue/executor.js"
+import type { StepExecutor } from "../workflows/queue/executor-types.js"
+import { createQueuePersistence } from "../workflows/queue/persistence.js"
+import { createGuardrails } from "../workflows/queue/guardrails.js"
+import { ContextIndexer } from "./memory/indexer.js"
+import { createWarmPools } from "./engines/pool/create-warm-pools.js"
+import type { WarmPool } from "./engines/pool/warm-pool.js"
+import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
+import { createPostTurnVerificationHook } from "../workflows/queue/post-turn-verification.js"
+import { createSprintHook } from "../workflows/queue/steps/sprint/hooks.js"
+import { SPRINT_HINT } from "../workflows/queue/steps/sprint/types.js"
+import type { OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
+import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers.js"
+import { createDoomLoopObserver } from "./engines/doom-loop.js"
+import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper.js"
+import type { EmitFn, EventBus, Unsubscribe } from "../infra/event-bus.js"
+import type { WorkflowDeps } from "./engines/workflow-deps.js"
+import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
+import type { SpawnResult } from "./engines/subprocess/spawner.js"
+import type { Queue } from "../workflows/queue/types.js"
+import { wireSessionSubscribers, type MetricsWriter, type SessionInfra } from "./session/create-session-infra.js"
 
-export interface CreateExecutorInput {
+interface CreateExecutorInput {
   /** Prepared workflow deps (config, engine, etc.) */
   deps: WorkflowDeps
   /** Typed event emitter */
@@ -42,7 +42,7 @@ export interface CreateExecutorInput {
   /** Override subprocess cwd (for /test, worktrees) */
   subprocessCwd?: string
   /** Session infrastructure (budget, transcript, tracing) — created by the runner. */
-  infra: Pick<import("./session/create-session-infra").SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
+  infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
   /** Injection queue for turn-boundary message delivery */
   injectionQueue: InjectionQueue
   /** Optional context indexer override */
@@ -53,7 +53,7 @@ export interface CreateExecutorInput {
   metricsWriter?: MetricsWriter
 }
 
-export interface CreateExecutorResult {
+interface CreateExecutorResult {
   /** The step executor, ready to run */
   executor: StepExecutor
   /** Warm pools — caller must shut these down on dispose */
@@ -121,7 +121,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   )
 
   const postTurnVerification = createPostTurnVerificationHook({
-    nativeCheckTypes: ["build", "test", "has-changes"],
+    checkGitDiff: true,
     maxFixAttempts: 2,
     projectCwd,
   })

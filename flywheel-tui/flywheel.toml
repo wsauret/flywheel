@@ -2,6 +2,7 @@ engine = "claude"
 model = "opus"
 effort = "max"
 theme = "default"
+show_thinking = false
 
 [dispatcher]
 model = "sonnet"

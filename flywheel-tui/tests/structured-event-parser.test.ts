@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test";
-import { StructuredEventParser, isSubagentToolName } from "../src/infra/output/structured-event-parser";
+import { StructuredEventParser } from "../src/infra/output/structured-event-parser";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
 import type { NDJSONEvent } from "../src/infra/subprocess-types";
 import type { AgentBlock, ToolBlock } from "../src/tui/types";
@@ -29,22 +29,6 @@ function makeToolResultEvent(toolUseId: string, opts?: { is_error?: boolean; con
 }
 
 // ── Tests ──
-
-describe("isSubagentToolName", () => {
-  it("recognizes Task and Agent (case-insensitive)", () => {
-    expect(isSubagentToolName("Task")).toBe(true);
-    expect(isSubagentToolName("task")).toBe(true);
-    expect(isSubagentToolName("Agent")).toBe(true);
-    expect(isSubagentToolName("agent")).toBe(true);
-    expect(isSubagentToolName("AGENT")).toBe(true);
-  });
-
-  it("rejects other tool names", () => {
-    expect(isSubagentToolName("Bash")).toBe(false);
-    expect(isSubagentToolName("Read")).toBe(false);
-    expect(isSubagentToolName("")).toBe(false);
-  });
-});
 
 describe("StructuredEventParser", () => {
   let builder: StructuredOutputBuilder;

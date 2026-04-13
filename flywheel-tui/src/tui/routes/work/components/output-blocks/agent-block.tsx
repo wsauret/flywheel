@@ -31,7 +31,7 @@ import { Spinner } from "@tui/shared/components/spinner"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { formatDuration, formatElapsed } from "@infra/format.js"
-import { displayToolName } from "./tool-block"
+import { displayToolName } from "./tool-block.js"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@infra/output-blocks"
 
 const MAX_VISIBLE_TOOLS = 6

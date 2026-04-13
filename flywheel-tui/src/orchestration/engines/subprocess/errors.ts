@@ -8,8 +8,8 @@
  * `ExecutionStatus.interrupted` = cancellation, NOT a SubprocessFailureReason kind.
  */
 
-import type { SubprocessFailureReason } from "../../../infra/subprocess-types";
-import { detectRateLimit } from "./rate-limit";
+import type { SubprocessFailureReason } from "../../../infra/subprocess-types.js";
+import { detectRateLimit } from "./rate-limit.js";
 
 // Transient error detection
 

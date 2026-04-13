@@ -6,18 +6,18 @@
  * (e.g., in a subprocess pool) before step-specific callbacks are known.
  */
 
+import type { FileSink } from "bun";
 import type { SpawnOptions, SpawnResult } from "./spawner.js";
 import type { SubprocessResult } from "../../../infra/subprocess-types.js";
+import type { ChildHandle } from "./process-lifecycle.js";
 import { OutputBuffer } from "../../../infra/output-buffer.js";
 import { CompletionDetector } from "./completion.js";
 import { NDJSONParser } from "../../../infra/ndjson-parser.js";
-import { createSubprocessTimeout, minutesToMs, clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES } from "./timeout.js";
+import { createSubprocessTimeout } from "./timeout.js";
+import { createStreamReaderSet, readStream } from "./stream-readers.js";
 import {
-  createStreamReaderSet,
-  type ResultContext,
   buildSubprocessResult,
   buildErrorResult,
-  readStream,
   type StdoutProcessorState,
   createStdoutProcessor,
   resolveHandoffPath,
@@ -29,28 +29,20 @@ import {
   wireCompletionDetection,
 } from "./pipe-helpers.js";
 
-// RawSpawnedProcess — output of process creation, input to pipeline wiring
-
 export interface RawSpawnedProcess {
   proc: { pid: number; exited: Promise<number>; kill(signal?: number): void };
   stdout: ReadableStream<Uint8Array>;
   stderr: ReadableStream<Uint8Array>;
   /** The raw Bun stdin sink, present when stdinPipe was requested. */
-  stdinSink?: import("bun").FileSink;
-  /** Remove process from the global process registry. */
-  unregister: () => void;
+  stdinSink?: FileSink;
 }
 
-// StreamPipelineOptions
-
-export interface StreamPipelineOptions {
+interface StreamPipelineOptions {
   /** Timeout in milliseconds for the subprocess. */
   timeoutMs: number;
   /** Spawn options forwarded from the caller. */
   spawnOptions?: SpawnOptions;
 }
-
-// wireStreamPipeline
 
 /**
  * Consume the raw streams of a spawned process and wire up the full
@@ -81,7 +73,7 @@ export function wireStreamPipeline(
   const rawStderrChunks: string[] = [];
   const handoffPath = resolveHandoffPath(options);
 
-  const resultCtx: ResultContext = {
+  const resultCtx = {
     ndjsonParser, buffer, completionDetector,
     rawStdoutChunks, rawStderrChunks, subprocessTimeout,
     timeoutMs, startTime, handoffPath,
@@ -104,7 +96,7 @@ export function wireStreamPipeline(
   const usePipe = raw.stdinSink !== undefined;
 
   // Attach timeout to process
-  subprocessTimeout.attachProcess(raw.proc as unknown as import("./process-lifecycle.js").ChildHandle);
+  subprocessTimeout.attachProcess(raw.proc as unknown as ChildHandle);
 
   // Consume streams
   readers.stdout = raw.stdout.getReader();
@@ -119,7 +111,6 @@ export function wireStreamPipeline(
       await Promise.all(work);
       const exitCode = await raw.proc.exited;
       subprocessTimeout.cancel();
-      raw.unregister();
       return buildSubprocessResult(resultCtx, exitCode);
     } catch (error) {
       subprocessTimeout.cancel();

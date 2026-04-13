@@ -1,8 +1,8 @@
 // Post-Turn Verification — Factory for the native check hook
 //
-// Runs native shell checks (build, test, lint, has-changes) after the worker
-// declares done. If checks fail, injects fix feedback and retries. Self-review
-// is handled separately by subprocess-callback at the turn boundary.
+// Runs native shell checks after the worker declares done. If checks fail,
+// injects fix feedback and retries. Self-review is handled separately by
+// subprocess-callback at the turn boundary.
 
 import type { Step } from "./types.js";
 import type { WorkerOutput, PostTurnVerificationResult } from "./executor-types.js";
@@ -16,9 +16,9 @@ import { extractDeclaredCommands } from "./shared/command-extraction.js";
 
 // Config
 
-export interface PostTurnVerificationConfig {
-  /** Which native checks to run. */
-  nativeCheckTypes: Array<"build" | "test" | "lint" | "has-changes">;
+interface PostTurnVerificationConfig {
+  /** Run git diff --stat to verify the worker made changes. */
+  checkGitDiff: boolean;
   /** Max fix attempts if native checks fail. Default: 2. */
   maxFixAttempts: number;
   /** Project working directory for native checks. */
@@ -56,34 +56,30 @@ export function createPostTurnVerificationHook(
       return null;
     }
 
-    let fixAttemptsUsed = 0;
-    let nativeChecksPassed = true;
+    let passed = true;
     let checks: NativeCheckResult[] = [];
 
     const declaredCommands = extractDeclaredCommands(handoffData);
-
-    const checkTypes = config.nativeCheckTypes;
 
     for (let attempt = 0; attempt <= config.maxFixAttempts; attempt++) {
       const result = await runNativeVerification({
         projectCwd: config.projectCwd,
         declaredCommands,
-        nativeCheckTypes: [...checkTypes],
+        checkGitDiff: config.checkGitDiff,
         timeoutMs: DEFAULT_TIMEOUT_MS,
         deadlineMs: DEFAULT_DEADLINE_MS,
       });
 
       checks = result.checks;
 
-      if (result.allPassed && result.discrepancies.length === 0) {
-        nativeChecksPassed = true;
+      if (result.allPassed) {
+        passed = true;
         break;
       }
 
-      nativeChecksPassed = false;
+      passed = false;
 
       if (stdinWrite && awaitNextTurn && attempt < config.maxFixAttempts) {
-        fixAttemptsUsed++;
         const feedback = result.checks
           .filter((c): c is Exclude<NativeCheckResult, { kind: "skipped" }> => c.kind !== "skipped" && !c.passed)
           .map(c => c.kind === "discrepancy"
@@ -96,11 +92,6 @@ export function createPostTurnVerificationHook(
       }
     }
 
-    return {
-      passed: nativeChecksPassed,
-      nativeChecksPassed,
-      fixAttemptsUsed,
-      checks,
-    };
+    return { passed, checks };
   };
 }

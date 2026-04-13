@@ -127,15 +127,12 @@ All 2 tests pass:
 - Response body is { message: "hello world" }
 `,
     evaluation_criteria: "Acceptance criteria:\n- GET /hello endpoint returns 200\n- Response body is { message: \"hello world\" }\n- Tests pass",
-    context_files: [],
     acceptance_criteria: [
       "GET /hello endpoint returns 200",
       "Response body is { message: \"hello world\" }",
       "Tests pass",
     ],
-    artifacts_produced: ["src/routes/hello.ts", "tests/hello.test.ts", "src/routes/index.ts"],
     tests_passed: true,
-    step_context: createEmptyStepContext(),
   };
 
   return {
@@ -249,7 +246,6 @@ export function buildComplexScenario(): TestScenario {
       "- POST /posts with validation\n" +
       "- Integration tests for all endpoints\n" +
       "Required: tests must pass",
-    context_files: ["src/models/user.ts", "src/models/post.ts"],
     acceptance_criteria: [
       "GET /users endpoint with pagination",
       "POST /users with validation",
@@ -257,9 +253,7 @@ export function buildComplexScenario(): TestScenario {
       "POST /posts with validation",
       "Integration tests for all endpoints",
     ],
-    artifacts_produced: ["src/routes/users.ts", "src/routes/posts.ts", "tests/api.test.ts"],
     tests_passed: true,
-    step_context: createEmptyStepContext(),
   };
 
   return {
@@ -347,14 +341,11 @@ I ran out of time before fixing the remaining test.
       "- Auth middleware test failure is fixed\n" +
       "- All 3 auth tests pass\n" +
       "Required: tests must pass",
-    context_files: ["src/middleware/auth.ts", "tests/auth.test.ts"],
     acceptance_criteria: [
       "Auth middleware test failure is fixed",
       "All 3 auth tests pass",
     ],
-    artifacts_produced: ["src/middleware/auth.ts"],
     tests_passed: false,
-    step_context: createEmptyStepContext(),
   };
 
   return {

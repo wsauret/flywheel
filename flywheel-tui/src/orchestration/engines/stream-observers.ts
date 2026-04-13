@@ -5,22 +5,18 @@
  * Wired into workflow mode only (chat mode deferred).
  */
 
-// Types
-
-export interface EngineEvent {
-  type: "tool_use" | "tool_result" | "text" | "result" | "other";
-  toolName?: string;
-  toolInput?: Record<string, unknown>;
-  isError?: boolean;
-}
+export type EngineEvent =
+  | { type: "tool_use"; toolName: string; toolInput: Record<string, unknown> }
+  | { type: "tool_result"; isError: boolean }
+  | { type: "text" }
+  | { type: "result" }
+  | { type: "other" };
 
 export interface StreamObserver {
   onEvent(event: EngineEvent): void;
   onTurnComplete(): string | null;
   reset(): void;
 }
-
-// ObserverChain
 
 export function createObserverChain(observers: StreamObserver[]): {
   onEvent(event: EngineEvent): void;
@@ -51,8 +47,6 @@ export function createObserverChain(observers: StreamObserver[]): {
   };
 }
 
-// ToolFailureObserver
-
 export function createToolFailureObserver(
   opts?: { maxConsecutive?: number },
 ): StreamObserver {
@@ -79,8 +73,6 @@ export function createToolFailureObserver(
     },
   };
 }
-
-// NoActionObserver
 
 export function createNoActionObserver(): StreamObserver {
   let sawToolUse = false;

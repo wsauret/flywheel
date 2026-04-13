@@ -279,12 +279,22 @@ describe("VAL-DISP-001: Dispatcher receives full per-step context", () => {
       accumulatedContext: { summaries: [], recentHandoffs: [], totalSteps: 0 },
       previousHandoff: null,
       previousAssessment: null,
+      mutationBudget: {
+        maxQueueLength: 20,
+        currentQueueLength: 1,
+        remainingQueueCapacity: 19,
+        mutationsUsedThisStep: 0,
+        mutationsRemainingThisStep: 3,
+        totalSessionInserts: 0,
+        sessionInsertsRemaining: 10,
+        sessionObjective: "Build a REST API with pagination",
+      },
     });
 
     const input = transport.lastInput!;
-    // Session objective should be included somewhere in the input
-    const serialized = JSON.stringify(input);
-    expect(serialized).toContain("Build a REST API with pagination");
+    // Session objective appears in mutation_budget.session_objective
+    expect(input.mutation_budget).toBeDefined();
+    expect(input.mutation_budget!.session_objective).toBe("Build a REST API with pagination");
   });
 });
 

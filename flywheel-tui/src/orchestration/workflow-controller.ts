@@ -1,4 +1,4 @@
-import { buildQueueForSlashCommand } from "./queue-builder.js"
+import { buildQueueFromTemplate, type WorkflowName } from "../workflows/queue/templates.js"
 import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
 import { loadResumeData, findResumableSession } from "./session-actions.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
@@ -15,7 +15,7 @@ import type {
   RunnerErrorResult,
 } from "./session/types.js"
 
-export interface WorkflowControllerDeps {
+interface WorkflowControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   refreshList: () => void
@@ -24,18 +24,18 @@ export interface WorkflowControllerDeps {
   onRunnerError?: (id: string, result: RunnerErrorResult) => void
 }
 
-export interface StartWorkflowResult {
+interface StartWorkflowResult {
   sessionId: string
   terminalTitle: string
 }
 
-export interface StartTestStepResult {
+interface StartTestStepResult {
   sessionId: string
   workdir: string
   terminalTitle: string
 }
 
-export interface ResumeWorkflowResult {
+interface ResumeWorkflowResult {
   sessionId: string
   priorBlocks: AnyBlock[]
   terminalTitle: string
@@ -84,7 +84,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
 
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
-    const errorResult: RunnerErrorResult = {
+    const errorResult = {
       errorMessage: extractErrorMessage(err),
       terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
     }
@@ -101,7 +101,8 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     let wfDeps
     try {
       wfDeps = prepareWorkflowDeps()
-      queue = buildQueueForSlashCommand(command, wfDeps.config)
+      const workflowName: WorkflowName = command === "sprint" ? "sprint" : command === "plan" ? "plan" : "work"
+      queue = buildQueueFromTemplate(workflowName, wfDeps.config.queue?.max_steps)
     } catch (err) {
       return { error: `Config error: ${extractErrorMessage(err)}` }
     }

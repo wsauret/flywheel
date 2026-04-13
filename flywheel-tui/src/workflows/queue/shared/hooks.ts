@@ -1,4 +1,4 @@
-import type { Step, Queue } from "../types";
+import type { Step, Queue } from "../types.js";
 
 export interface OnStepCompletedResult {
   continueExecution: boolean;

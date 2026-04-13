@@ -5,17 +5,15 @@
  * view, resume, delete. Pure functions with injected dependencies.
  */
 
-import { createOutputPersistence } from "./session/output-persistence"
-import { createQueuePersistence } from "../workflows/queue/persistence"
-import { readSession } from "./session/persistence"
-import { fromSnapshot } from "./session/output-schemas"
-import { isResumable } from "./session/state-machine"
-import type { Session } from "./session/schemas"
-import type { Queue } from "../workflows/queue/types"
-import type { SessionManager, SessionSummary } from "./session/manager"
-import type { AnyBlock } from "../infra/output-blocks"
-
-// Types
+import { createOutputPersistence } from "./session/output-persistence.js"
+import { createQueuePersistence } from "../workflows/queue/persistence.js"
+import { readSession } from "./session/persistence.js"
+import { fromSnapshot } from "./session/output-schemas.js"
+import { isResumable } from "./session/state-machine.js"
+import type { Session } from "./session/schemas.js"
+import type { Queue } from "../workflows/queue/types.js"
+import type { SessionManager, SessionSummary } from "./session/manager.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
 
 export interface SessionActionDeps {
   manager: SessionManager
@@ -23,13 +21,11 @@ export interface SessionActionDeps {
   projectCwd?: string
 }
 
-export interface ResumeData {
+interface ResumeData {
   session: Session
   outputBlocks: AnyBlock[]
   queue: Queue
 }
-
-// Actions
 
 /** Load a session's persisted output blocks for viewing. */
 export async function loadSessionOutput(sessionId: string, projectCwd?: string): Promise<AnyBlock[]> {

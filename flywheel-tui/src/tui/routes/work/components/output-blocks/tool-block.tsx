@@ -19,7 +19,6 @@
  * Uses CollapsibleBox to keep the container stable in the layout tree.
  */
 
-import * as path from "node:path"
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
@@ -29,12 +28,7 @@ import { isHandoffPath } from "@tui/utils/text"
 import type { ToolBlock as ToolBlockType } from "@infra/output-blocks"
 import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
-
-/** Convert a file path to a file:// URI for OSC 8 hyperlinks. */
-function toFileUri(filePath: string): string {
-  const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
-  return `file://${resolved}`
-}
+import { toFileUri } from "@tui/adapters/linkify-paths"
 
 const TOOL_DISPLAY_NAMES = new Map<string, string>([
   ["grep", "Text Search"], ["glob", "File Search"], ["websearch", "Web Search"],

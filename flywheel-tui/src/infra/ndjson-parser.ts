@@ -1,5 +1,5 @@
-import { OutputBuffer } from "./output-buffer";
-import type { NDJSONEvent } from "./subprocess-types";
+import { OutputBuffer } from "./output-buffer.js";
+import type { NDJSONEvent } from "./subprocess-types.js";
 
 export const MAX_LINE_LENGTH = 1_000_000;
 
@@ -8,11 +8,11 @@ type RawTextHandler = (text: string) => void;
 
 const ANSI_REGEX = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[()][AB012]|\x1b[>=<]|\x1b\[\?[0-9;]*[hl]/g;
 
-export function stripAnsi(text: string): string {
+function stripAnsi(text: string): string {
   return text.replace(ANSI_REGEX, "");
 }
 
-export function extractJSON(line: string): Record<string, unknown> | null {
+function extractJSON(line: string): Record<string, unknown> | null {
   const idx = line.indexOf("{");
   if (idx === -1) return null;
 

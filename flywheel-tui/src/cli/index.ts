@@ -8,14 +8,12 @@
  * Run via `bin/flywheel` or `bun --conditions=browser run src/cli/index.ts`.
  */
 
-import { Log } from "../infra/log"
-import { errorMessage } from "../infra/error-message"
-import { installAgents } from "../workflows/agents/installer"
+import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
+import { installAgents } from "../workflows/agents/installer.js"
 
 
-// Main
-
-export async function main(): Promise<void> {
+async function main(): Promise<void> {
   // Initialize file-based logger before anything else.
   // --print-logs flag sends output to stderr instead of file (for debugging).
   const dir = process.env.FLYWHEEL_PROJECT_CWD || process.cwd()
@@ -42,8 +40,6 @@ export async function main(): Promise<void> {
 
   await runTUI();
 }
-
-// Headless mode — run workflow without TUI
 
 async function runHeadless(): Promise<void> {
   const descIdx = process.argv.indexOf("--description")
@@ -86,8 +82,6 @@ async function runHeadless(): Promise<void> {
   process.exit(result ? 0 : 1)
 }
 
-// TUI mode — persistent shell
-
 async function runTUI(): Promise<void> {
   const { startTUI } = await import("../tui/launcher");
   const tuiPromise = startTUI({ mode: "dark" });
@@ -99,7 +93,6 @@ async function runTUI(): Promise<void> {
   process.exit(process.exitCode ?? 0);
 }
 
-// Auto-run when executed directly
 if (import.meta.main) {
   main().catch((err) => {
     Log.Default.error("fatal", { error: err instanceof Error ? err : String(err) })

@@ -2,6 +2,7 @@
  * Subprocess payload types and schemas — canonical, single source of truth.
  *
  * Zod schemas define the shapes; static types are derived via z.infer.
+ * Schema values are exported for type derivation and test validation.
  * All layers import from here.
  */
 
@@ -27,8 +28,6 @@ export type SubprocessFailureReason = z.infer<typeof SubprocessFailureReasonSche
 
 export const SubprocessResultSchema = z.object({
   output: z.string(),
-  rawOutput: z.string().optional(),
-  rawStderr: z.string().optional(),
   exitCode: z.number(),
   truncated: z.boolean(),
   durationMs: z.number(),
@@ -41,17 +40,17 @@ export type SubprocessResult = z.infer<typeof SubprocessResultSchema>;
 
 // ── Content blocks within Claude assistant messages ──
 
-export interface ThinkingContentBlock {
+interface ThinkingContentBlock {
   type: "thinking";
   thinking: string;
 }
 
-export interface TextContentBlock {
+interface TextContentBlock {
   type: "text";
   text: string;
 }
 
-export interface ToolUseContentBlock {
+interface ToolUseContentBlock {
   type: "tool_use";
   id?: string;
   name: string;
@@ -78,14 +77,14 @@ export interface AssistantEventData {
   parent_tool_use_id?: string | null;
 }
 
-export interface ToolResultEventData {
+interface ToolResultEventData {
   type: "tool_result";
   tool_use_id?: string;
   is_error?: boolean;
   content?: string;
 }
 
-export interface ResultEventData {
+interface ResultEventData {
   type: "result";
   is_error?: boolean;
   subtype?: string;
@@ -93,7 +92,7 @@ export interface ResultEventData {
   modelUsage?: Record<string, { contextWindow?: number }>;
 }
 
-export interface ContentBlockDeltaData {
+interface ContentBlockDeltaData {
   type: "content_block_delta";
   delta?: {
     type: string;
@@ -102,7 +101,7 @@ export interface ContentBlockDeltaData {
   };
 }
 
-export interface DirectToolUseData {
+interface DirectToolUseData {
   type: "tool_use";
   name: string;
   input?: Record<string, unknown>;

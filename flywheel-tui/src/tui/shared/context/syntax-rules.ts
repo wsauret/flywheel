@@ -1,6 +1,6 @@
 // Syntax highlighting rules for theme-aware code rendering
 import { RGBA, SyntaxStyle } from "@opentui/core"
-import type { Theme } from "./theme/resolve"
+import type { Theme } from "./theme/resolve.js"
 import { getMarkdownSyntaxRules } from "./syntax-rules-markdown.js"
 
 const THINKING_OPACITY = 0.5
@@ -33,6 +33,7 @@ export function generateSubtleSyntax(theme: Theme) {
   )
 }
 
+// Exported for unit tests — syntax highlighting rules are tested directly.
 export function getSyntaxRules(theme: Theme) {
   return [
     {

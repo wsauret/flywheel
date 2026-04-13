@@ -18,9 +18,8 @@ export type NativeCheckResult =
   | { kind: "skipped"; command: string; skipReason: string }
   | { kind: "discrepancy"; command: string; passed: false; stdout: string; stderr: string; exitCode: number; durationMs: number; reportedExitCode: number }
 
-export interface NativeVerificationResult {
+interface NativeVerificationResult {
   allPassed: boolean;
-  hasChanges: boolean;
   checks: NativeCheckResult[];
   discrepancies: NativeCheckResult[];
 }
@@ -63,6 +62,7 @@ const DENIED_GIT_SUBCOMMANDS = new Set([
  * Check whether a command is on the deny-list.
  * Returns `true` if the command should be skipped.
  */
+// Exported for unit tests — the deny-list logic is security-critical and warrants direct testing.
 export function isDeniedCommand(command: string): boolean {
   const tokens = command.trim().split(/\s+/);
   if (tokens.length === 0 || tokens[0] === "") return true;
@@ -238,17 +238,14 @@ async function runSingleCommand(
 export async function runNativeVerification(opts: {
   projectCwd: string;
   declaredCommands: DeclaredCommand[];
-  // Currently only "has-changes" gates specific logic (git diff check).
-  // "build", "test", and "lint" are reserved for future use — declared
-  // commands are always re-run regardless of these values.
-  nativeCheckTypes: Array<"build" | "test" | "lint" | "has-changes">;
+  checkGitDiff: boolean;
   timeoutMs?: number;
   deadlineMs?: number;
 }): Promise<NativeVerificationResult> {
   const {
     projectCwd,
     declaredCommands,
-    nativeCheckTypes,
+    checkGitDiff,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     deadlineMs = DEFAULT_DEADLINE_MS,
   } = opts;
@@ -274,8 +271,7 @@ export async function runNativeVerification(opts: {
       );
     }
 
-    // git diff --stat only when has-changes is requested
-    if (nativeCheckTypes.includes("has-changes")) {
+    if (checkGitDiff) {
       checkFns.push(() => runGitDiffCheck(projectCwd, timeoutMs, abortController.signal));
     }
 
@@ -286,16 +282,13 @@ export async function runNativeVerification(opts: {
       checks.push(...await Promise.all(batch));
     }
 
-    const gitDiffCheck = checks.find((c) => c.command.includes("git diff"));
-    const hasChanges = gitDiffCheck?.kind === "ran" ? gitDiffCheck.stdout.trim().length > 0 : false;
-
     const discrepancies = checks.filter((c) => c.kind === "discrepancy");
 
     const allPassed =
       checks.every((c) => c.kind === "skipped" || c.passed) &&
       discrepancies.length === 0;
 
-    return { allPassed, hasChanges, checks, discrepancies };
+    return { allPassed, checks, discrepancies };
   } finally {
     clearTimeout(deadlineTimer);
   }

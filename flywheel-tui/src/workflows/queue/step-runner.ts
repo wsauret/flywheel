@@ -1,14 +1,14 @@
 // Step Runner — single-step execution: dispatch → worker → eval → accumulate
 
-import type { Step } from "./types";
+import type { Step } from "./types.js";
 import type { EvalResult } from "./executor-types.js";
 import type { StepRunnerDeps, StepRunnerResult, StepPipelineContext } from "./step-runner-types.js";
 import { type Provenance } from "./queue.js";
 import { executeWithRevisions } from "./revision-loop.js";
 import { raceAbort } from "./abort-utils.js";
-import { buildStepMetadataPrompt } from "./shared/step-prompt";
-import { Log } from "../../infra/log";
-import { errorMessage } from "../../infra/error-message";
+import { buildStepMetadataPrompt } from "./shared/step-prompt.js";
+import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "step-executor" });
 
@@ -24,7 +24,7 @@ async function dispatchStep(
     // Direct prompt from step metadata + accumulated context (no dispatcher LLM call)
     let prompt = buildStepMetadataPrompt(step);
     if (ctx.previousHandoff) {
-      const summary = (ctx.previousHandoff as Record<string, unknown>).summary;
+      const summary = ctx.previousHandoff.summary;
       if (typeof summary === "string") {
         prompt += `\n\n## Previous iteration output\n${summary}`;
       }
@@ -130,12 +130,6 @@ async function verifyPostTurn(
   });
   if (verifyResult) {
     ctx.postTurnPassed = verifyResult.passed;
-    if (ctx.handoffData) {
-      (ctx.handoffData as Record<string, unknown>).__nativeChecksPassed = verifyResult.passed;
-      if (verifyResult.checks) {
-        (ctx.handoffData as Record<string, unknown>).__nativeChecks = verifyResult.checks;
-      }
-    }
   }
 
   return ctx;

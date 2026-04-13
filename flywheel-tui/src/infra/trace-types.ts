@@ -120,10 +120,8 @@ export type Span = WorkflowSpan | StepSpan | WorkerSpan | SubagentSpan | ToolCal
 
 // Helpers
 
-/**
- * Serialize a value to JSON and truncate to `maxBytes` bytes.
- * Handles multi-byte characters safely by encoding to a Buffer.
- */
+// Co-located with trace types because it's only used by trace serialization
+// (trace-collector.ts, trace-writer.ts). Not worth a separate file.
 export function truncateField(value: unknown, maxBytes: number = 4096): string {
   let json: string;
   try {

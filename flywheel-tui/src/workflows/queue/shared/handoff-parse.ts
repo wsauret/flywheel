@@ -5,7 +5,7 @@
 // (EvaluatorInput handoff) to avoid duplicating extraction logic.
 
 /** Parsed handoff — the shared superset of fields both consumers need. */
-export interface ParsedHandoff {
+interface ParsedHandoff {
   summary: string;
   filesCreated: string[];
   filesModified: string[];

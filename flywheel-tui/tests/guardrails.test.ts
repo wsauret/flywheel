@@ -26,7 +26,6 @@ import {
 import type { Step, Queue, MutationLogEntry } from "../src/workflows/queue/types";
 import {
   createGuardrails,
-  type Guardrails,
   type GuardrailOptions,
   type MutationBudget,
 } from "../src/workflows/queue/guardrails";

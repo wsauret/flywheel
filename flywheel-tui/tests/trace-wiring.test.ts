@@ -67,7 +67,6 @@ describe("FlywheelConfigSchema — tracing section", () => {
     // Simulate an existing config with no tracing section
     const existingConfig = {
       engine: "claude",
-      max_retries: 5,
       budget: { max_invocations: 10 },
     };
     const result = FlywheelConfigSchema.safeParse(existingConfig);

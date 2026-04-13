@@ -44,6 +44,10 @@ export class StructuredOutputBuilder {
 
   get modelActivity(): ModelActivity { return this._modelActivity; }
 
+  resetActivity(): void {
+    this._modelActivity = "idle";
+  }
+
   notifyThinkingStarted(timestamp: number): void {
     this._modelActivity = "thinking";
     if (this.thinkingStartedAt === null) {

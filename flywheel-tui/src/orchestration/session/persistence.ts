@@ -1,20 +1,20 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { SessionSchema, type Session } from "./schemas";
-import { writeFileAtomic } from "../../workflows/shared/atomic-write";
+import { SessionSchema, type Session } from "./schemas.js";
+import { writeFileAtomic } from "../../workflows/shared/atomic-write.js";
 import {
   SESSIONS_DIR,
   resolveSessionDir,
   resolveSessionFile,
   ensureSessionDir,
-} from "../../infra/paths";
-import { errorMessage } from "../../infra/error-message";
+} from "../../infra/paths.js";
+import { errorMessage } from "../../infra/error-message.js";
 
-function sessionsBaseDir(baseDir: string): string {
+function sessionsBaseDir(baseDir: string) {
   return path.join(baseDir, SESSIONS_DIR);
 }
 
-function sessionFilePath(id: string, baseDir: string): string {
+function sessionFilePath(id: string, baseDir: string) {
   return resolveSessionFile(id, "session", baseDir);
 }
 
@@ -124,7 +124,7 @@ export function listSessions(baseDir: string): SessionListResult {
   return { sessions, errors };
 }
 
-export interface DeleteResult {
+interface DeleteResult {
   deleted: string[];
   errors: string[];
 }

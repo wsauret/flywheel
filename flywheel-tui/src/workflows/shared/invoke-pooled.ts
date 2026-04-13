@@ -42,7 +42,7 @@ export interface PoolHandle {
 
 // Callbacks — role-specific behavior injected by callers
 
-export interface InvokePooledCallbacks<THandoff, TResult> {
+interface InvokePooledCallbacks<THandoff, TResult> {
   /** Role label for logging (e.g. "dispatcher", "evaluator"). */
   role: SubprocessRole;
   /** Build the handoff file path for this invocation. */
@@ -61,7 +61,7 @@ export interface InvokePooledCallbacks<THandoff, TResult> {
 
 // Options
 
-export interface InvokePooledOptions {
+interface InvokePooledOptions {
   /** Flywheel session ID for session-scoped handoff paths. */
   sessionId: string;
   /** Project base directory for path resolution. */

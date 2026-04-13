@@ -16,7 +16,7 @@ import { parseRawHandoff } from "./shared/handoff-parse.js";
 import { randomUUID } from "crypto";
 
 /** Known step types — used to validate dispatcher-provided types at the boundary. */
-const VALID_STEP_TYPES = new Set<string>(["work"]);
+const VALID_STEP_TYPES = new Set<string>(["work", "plan"]);
 
 function toStepType(raw: string): Step["type"] {
   return VALID_STEP_TYPES.has(raw) ? (raw as Step["type"]) : "work";
@@ -126,8 +126,6 @@ interface PlanStepCompact {
  */
 export function buildPlanFromQueue(
   queue: Queue,
-  step: Step,
-  sessionObjective?: string,
 ): { steps: PlanStepCompact[] } {
   const steps: PlanStepCompact[] = queue.steps.map((s) => ({
     title: s.title,
@@ -136,14 +134,6 @@ export function buildPlanFromQueue(
     fileReferences: s.fileReferences,
     feature: s.feature,
   }));
-
-  // If session objective is provided, prepend it as context
-  if (sessionObjective) {
-    steps.unshift({
-      title: "Session Objective",
-      description: sessionObjective,
-    });
-  }
 
   return { steps };
 }

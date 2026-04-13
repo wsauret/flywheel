@@ -1,9 +1,9 @@
 /**
  * ContextIndexer — discovers and indexes project context metadata.
  *
- * Scans conventions (AGENTS.md, CONTRIBUTING.md, etc.), standards
- * (docs/standards/*.md with frontmatter), and learnings (SES-Memory)
- * to produce `AvailableContext` metadata for prompt assembly.
+ * Scans conventions (AGENTS.md, CONTRIBUTING.md, etc.) and standards
+ * (docs/standards/*.md with frontmatter) to produce `AvailableContext`
+ * metadata for prompt assembly.
  *
  * Lifecycle: `startIndexing()` builds index, `getRelevantContext()` queries,
  * `dispose()` resets the ready state.
@@ -12,35 +12,19 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { parseFrontmatter } from "../utils/frontmatter";
-import type { AvailableContext, ContextEntry } from "../../workflows/schemas";
-import type { Step } from "../../workflows/queue/types";
+import { parseFrontmatter } from "../utils/frontmatter.js";
+import type { AvailableContext, ContextEntry } from "../../workflows/schemas.js";
 import {
   DEFAULT_STANDARDS_DIR,
   DEFAULT_CONVENTION_FILES,
   CONFIG_DIRS,
-} from "../../infra/paths";
+} from "../../infra/paths.js";
 
-// Types
-
-export interface ContextQuery {
-  stepType: Step["type"];
-  stepDescription: string;
-  tags?: string[];
-}
-
-export interface ContextIndexerOptions {
-  standardsDir?: string;
-  conventionFiles?: string[];
-}
-
-// Constants
+const MAX_ENTRIES_PER_CATEGORY = 20;
 
 const HARDCODED_SUMMARIES: Record<string, string> = {
   "AGENTS.md": "Project architecture, commands, TUI states, and developer conventions",
 };
-
-// ContextIndexer
 
 export class ContextIndexer {
   private readonly projectCwd: string;
@@ -49,21 +33,15 @@ export class ContextIndexer {
 
   private conventions: ContextEntry[] = [];
   private standards: ContextEntry[] = [];
-  private learnings: ContextEntry[] = [];
 
   private ready = false;
 
-  constructor(projectCwd: string, options?: ContextIndexerOptions) {
+  constructor(projectCwd: string, options?: { standardsDir?: string; conventionFiles?: string[] }) {
     this.projectCwd = projectCwd;
     this.standardsDir = options?.standardsDir ?? DEFAULT_STANDARDS_DIR;
     this.conventionFiles = options?.conventionFiles ?? DEFAULT_CONVENTION_FILES;
   }
 
-  // Public API
-
-  /**
-   * Build all indices. Resolves when the first scan is complete.
-   */
   async startIndexing(): Promise<void> {
     const [conventions, standards] = await Promise.all([
       this.scanConventions(),
@@ -75,34 +53,25 @@ export class ContextIndexer {
     this.ready = true;
   }
 
-  /**
-   * Return context metadata. Returns empty arrays if not ready.
-   */
-  getRelevantContext(query: ContextQuery): AvailableContext {
+  getRelevantContext(): AvailableContext {
     if (!this.ready) {
       return { conventions: [], standards: [], learnings: [] };
     }
 
     return {
-      conventions: this.conventions.slice(0, 20),
-      standards: this.standards.slice(0, 20),
-      learnings: this.learnings.slice(0, 20),
+      conventions: this.conventions.slice(0, MAX_ENTRIES_PER_CATEGORY),
+      standards: this.standards.slice(0, MAX_ENTRIES_PER_CATEGORY),
+      learnings: [],
     };
   }
 
-  /**
-   * Clean up.
-   */
   dispose(): void {
     this.ready = false;
   }
 
-  // Convention scanner
-
   private async scanConventions(): Promise<ContextEntry[]> {
     const entries: ContextEntry[] = [];
 
-    // Scan configurable file list at project root
     for (const file of this.conventionFiles) {
       const absPath = join(this.projectCwd, file);
       if (existsSync(absPath)) {
@@ -114,7 +83,6 @@ export class ContextIndexer {
       }
     }
 
-    // Scan config directories
     for (const configDir of CONFIG_DIRS) {
       const absDir = join(this.projectCwd, configDir);
       if (!existsSync(absDir)) continue;
@@ -123,12 +91,10 @@ export class ContextIndexer {
         const files = await readdir(absDir);
         for (const file of files) {
           if (!file.endsWith(".md")) continue;
-          const absPath = join(absDir, file);
-          const relPath = configDir + file;
           entries.push({
             name: file,
-            path: relPath,
-            summary: await this.firstContentLine(absPath),
+            path: configDir + file,
+            summary: await this.firstContentLine(join(absDir, file)),
           });
         }
       } catch {
@@ -138,8 +104,6 @@ export class ContextIndexer {
 
     return entries;
   }
-
-  // Standards scanner
 
   private async scanStandards(): Promise<ContextEntry[]> {
     const entries: ContextEntry[] = [];
@@ -159,19 +123,16 @@ export class ContextIndexer {
       try {
         const raw = await readFile(absPath, "utf-8");
         const parsed = parseFrontmatter(raw);
-        if (!parsed) continue; // Skip files without valid frontmatter
+        if (!parsed) continue;
 
         const { frontmatter, body } = parsed;
         const name = typeof frontmatter.title === "string" && frontmatter.title
           ? frontmatter.title
           : file.replace(/\.md$/, "");
 
-        let summary: string;
-        if (typeof frontmatter.summary === "string" && frontmatter.summary) {
-          summary = frontmatter.summary.slice(0, 100);
-        } else {
-          summary = this.firstContentLineFromBody(body).slice(0, 100);
-        }
+        const summary = typeof frontmatter.summary === "string" && frontmatter.summary
+          ? frontmatter.summary.slice(0, 100)
+          : firstContentLine(body).slice(0, 100);
 
         entries.push({
           name,
@@ -186,28 +147,20 @@ export class ContextIndexer {
     return entries;
   }
 
-  // Helpers
-
-  /** Read file and return the first non-empty, non-heading line. */
   private async firstContentLine(absPath: string): Promise<string> {
     try {
       const raw = await readFile(absPath, "utf-8");
-      return this.firstContentLineFromBody(raw).slice(0, 100);
+      return firstContentLine(raw).slice(0, 100);
     } catch {
       return "";
     }
   }
+}
 
-  /** Return the first non-empty, non-heading line from a body string. */
-  private firstContentLineFromBody(body: string): string {
-    const lines = body.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith("#")) {
-        return trimmed;
-      }
-    }
-    return "";
+function firstContentLine(body: string): string {
+  for (const line of body.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#")) return trimmed;
   }
-
+  return "";
 }

@@ -1,18 +1,44 @@
-import { createStepDispatcher, type MutationRequest } from "../workflows/queue/step-dispatcher"
-import { buildStepMetadataPrompt } from "../workflows/queue/shared/step-prompt"
-import { Log } from "../infra/log"
-import { errorMessage } from "../infra/error-message"
-import type { ContextIndexer } from "./memory/indexer"
-import type { EmitFn } from "../infra/event-bus"
-import type { ContextAccumulator } from "../workflows/queue/context-accumulator"
-import type { Step, Queue } from "../workflows/queue/types"
-import type { DispatcherTransport } from "../workflows/dispatcher/transport"
-import type { EvalResult } from "../workflows/queue/executor-types"
-import type { AvailableContext } from "../workflows/schemas"
+import { createStepDispatcher, type MutationRequest } from "../workflows/queue/step-dispatcher.js"
+import { buildStepMetadataPrompt } from "../workflows/queue/shared/step-prompt.js"
+import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
+import type { ContextIndexer } from "./memory/indexer.js"
+import type { EmitFn } from "../infra/event-bus.js"
+import type { ContextAccumulator } from "../workflows/queue/context-accumulator.js"
+import type { Step, Queue } from "../workflows/queue/types.js"
+import type { DispatcherTransport } from "../workflows/dispatcher/transport.js"
+import type { EvalResult } from "../workflows/queue/executor-types.js"
+import type { AvailableContext } from "../workflows/schemas.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
 
 const log = Log.create({ service: "dispatcher-callback" })
 
-export interface DispatcherCallbackDeps {
+const CHAT_CONTEXT_MAX_CHARS = 2000
+
+export function extractChatContext(blocks: readonly AnyBlock[]): string | undefined {
+  const lines: string[] = []
+  let chars = 0
+  for (let i = blocks.length - 1; i >= 0 && chars < CHAT_CONTEXT_MAX_CHARS; i--) {
+    const block = blocks[i]!
+    if (block.kind === "userMessage" && !block.injected) {
+      lines.unshift(`User: ${block.content}`)
+      chars += block.content.length + 6
+    } else if (block.kind === "text") {
+      lines.unshift(`Assistant: ${block.content}`)
+      chars += block.content.length + 11
+    }
+  }
+  if (lines.length === 0) return undefined
+  let result = lines.join("\n")
+  if (result.length > CHAT_CONTEXT_MAX_CHARS) {
+    result = result.slice(result.length - CHAT_CONTEXT_MAX_CHARS)
+    const firstNewline = result.indexOf("\n")
+    if (firstNewline > 0) result = result.slice(firstNewline + 1)
+  }
+  return result
+}
+
+interface DispatcherCallbackDeps {
   maxRevisions: number | undefined
   emit: EmitFn
   workflowId: string
@@ -32,14 +58,14 @@ function mergeAvailableContext(base: AvailableContext, chatContext: string | und
   return { ...base, chatHistory: chatContext }
 }
 
-export interface DispatcherResult {
+interface DispatcherResult {
   prompt: string
   evaluationCriteria: unknown | null
   mutationRequests?: MutationRequest[]
   sessionName?: string
 }
 
-export type DispatcherFn = (
+type DispatcherFn = (
   step: Step,
   context: { previousHandoff?: Record<string, unknown>; previousAssessment?: EvalResult | null },
 ) => Promise<DispatcherResult>
@@ -65,7 +91,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
         },
         sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
         availableContext: mergeAvailableContext(
-          contextIndexer.getRelevantContext({ stepType: "work", stepDescription: sessionObjective ?? "" }),
+          contextIndexer.getRelevantContext(),
           chatContext,
         ),
         sessionObjective,

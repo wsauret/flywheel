@@ -43,7 +43,7 @@ function makeWorkerOutput(overrides: Partial<WorkerOutput> = {}): WorkerOutput {
 
 function makeConfig(overrides: Partial<PostTurnVerificationConfig> = {}): PostTurnVerificationConfig {
   return {
-    nativeCheckTypes: ["build", "test", "lint"],
+    checkGitDiff: true,
     maxFixAttempts: 2,
     projectCwd: "/tmp/test-project",
     ...overrides,

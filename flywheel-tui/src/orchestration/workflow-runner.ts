@@ -1,21 +1,23 @@
-import { prepareWorkflowDeps } from "./engines/workflow-deps"
-import { createExecutor } from "./executor-factory"
-import type { StepExecutor } from "../workflows/queue/executor-types"
-import { createOutputPersistence } from "./session/output-persistence"
-import { createSessionInfra } from "./session/create-session-infra"
-import { disposeSessionResources, type SessionResources } from "./session/resources"
-import { createWorkflowSession, destroyWorkflowSession, type WorkflowSessionFactories } from "./workflow-session"
-import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus"
-import type { WarmPool } from "./engines/pool/warm-pool"
-import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline"
+import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
+import { createExecutor } from "./executor-factory.js"
+import type { StepExecutor } from "../workflows/queue/executor-types.js"
+import { createOutputPersistence } from "./session/output-persistence.js"
+import { createSessionInfra } from "./session/create-session-infra.js"
+import { disposeSessionResources } from "./session/resources.js"
+import { createWorkflowSession, destroyWorkflowSession, type WorkflowSessionFactories } from "./workflow-session.js"
+import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
+import type { WarmPool } from "./engines/pool/warm-pool.js"
+import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
 import { randomUUID } from "node:crypto"
-import { formatStdinMessage } from "./engines/subprocess/stdin-format"
-import { InjectionQueue } from "./engines/subprocess/injection-queue"
-import type { SpawnResult } from "./engines/subprocess/spawner"
-import type { Queue } from "../workflows/queue/types"
-import { toBudgetLimits } from "../workflows/schemas"
-import type { AnyBlock } from "../infra/output-blocks"
-import { generateSessionTitle } from "./session-title"
+import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
+import { InjectionQueue } from "./engines/subprocess/injection-queue.js"
+import type { SpawnResult } from "./engines/subprocess/spawner.js"
+import type { Queue } from "../workflows/queue/types.js"
+import { toBudgetLimits } from "../workflows/schemas.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
+import type { WorkflowSessionEntry } from "./session-store-types.js"
+import type { WorkflowDeps } from "./engines/workflow-deps.js"
+import { generateSessionTitle } from "./session-title.js"
 import "../workflows/queue/steps/register-all"
 
 
@@ -24,7 +26,7 @@ export type StepState = {
   durationMs?: number; startedAt?: number; completedAt?: number
 }
 
-type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => void
+type UpdateEntryFn = (sessionId: string, patch: Partial<WorkflowSessionEntry>) => void
 
 export interface WorkflowResult {
   completed: boolean
@@ -35,14 +37,14 @@ export interface WorkflowResult {
   reason?: string
 }
 
-export interface WorkflowRunnerOverrides {
+interface WorkflowRunnerOverrides {
   projectCwd?: string
   /** Override the subprocess cwd. Defaults to projectCwd.
    * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
    * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
   subprocessCwd?: string
   /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
-  workflowDeps?: import("./engines/workflow-deps").WorkflowDeps
+  workflowDeps?: WorkflowDeps
   /** Recent chat conversation preceding this workflow. */
   chatContext?: string
 }
@@ -80,7 +82,7 @@ export function createWorkflowRunner(opts: {
   // currentBlocks tracking; chat does neither. The 3 shared lines of priorBlocks
   // prepending don't justify an abstraction over the runner-specific extensions.
   const priorBlocksPrefix = priorBlocks ?? []
-  const wrappedUpdateEntry = (patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => {
+  const wrappedUpdateEntry = (patch: Partial<WorkflowSessionEntry>) => {
     if (patch.outputBlocks) {
       currentBlocks = priorBlocksPrefix.length > 0
         ? priorBlocksPrefix.concat(patch.outputBlocks)
@@ -237,7 +239,7 @@ export function createWorkflowRunner(opts: {
   return { run, pause, abort, injectMessage, cancelShutdown, sessionId, dispose }
 }
 
-function toStepState(s: { id: string; type: string; title: string; status: string }): StepState {
+function toStepState(s: { id: string; type: string; title: string; status: string }) {
   return { id: s.id, type: s.type, title: s.title, status: s.status }
 }
 

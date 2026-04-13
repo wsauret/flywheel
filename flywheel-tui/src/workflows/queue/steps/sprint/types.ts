@@ -1,11 +1,3 @@
-// Sprint Types — shared type definitions for sprint mode.
-//
-// Ported from src-legacy/queue/steps/sprint-work/sprint-types.ts
-// and adapted to the new architecture:
-//   - SprintLoopState uses a discriminated union (not two booleans)
-//   - SprintConfig derived from FlywheelConfig['sprint'] via z.infer
-//   - SPRINT_HINT is a typed const literal
-
 // SPRINT_HINT — typed constant for dispatcher hint, scaffolding key,
 // and template registration. Never use a raw "sprint" string.
 
@@ -24,16 +16,16 @@ export interface SprintIterationRecord {
   nativeCheckPassed?: boolean;
   /** Whether the worker subprocess crashed. */
   workerCrashed?: boolean;
-  /** Cached normalized feedback for stuck detection (avoids re-normalizing). */
-  _normalizedFeedback?: string;
 }
 
-// SprintLoopState — sprint lifecycle tracking
+// SprintLoopState — sprint lifecycle tracking (discriminated on status)
 
-export interface SprintLoopState {
-  status: "running" | "completed" | "exhausted";
+interface SprintLoopBase {
   iterationCount: number;
   history: SprintIterationRecord[];
-  /** Set when status is "exhausted" (max iterations or stuck). */
-  reason?: string;
 }
+
+export type SprintLoopState =
+  | (SprintLoopBase & { status: "running" })
+  | (SprintLoopBase & { status: "completed" })
+  | (SprintLoopBase & { status: "exhausted"; reason: string });

@@ -6,7 +6,7 @@
 import { createMemo } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { RGBA } from "@opentui/core"
-import type { StepState } from "../../orchestration/workflow-runner"
+import type { StepState } from "../../orchestration/workflow-runner.js"
 import { formatElapsed, formatCost } from "../../infra/format.js"
 import type { ShellSignals } from "./shell-state.js"
 import type { MetricsHook } from "./use-metrics.js"

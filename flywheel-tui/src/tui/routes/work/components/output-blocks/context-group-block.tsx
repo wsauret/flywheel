@@ -9,7 +9,7 @@
 
 import { createSignal, Show, For } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { displayToolName } from "./tool-block"
+import { displayToolName } from "./tool-block.js"
 import type { ContextGroupBlock as ContextGroupBlockType } from "@infra/output-blocks"
 
 export interface ContextGroupBlockProps {

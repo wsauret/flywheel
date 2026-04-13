@@ -1,3 +1,4 @@
+import type { FileSink } from "bun";
 import type { StdinHandle, SpawnOptions } from "./spawner.js";
 import type { CompletionDetector } from "./completion.js";
 import type { NDJSONParser } from "../../../infra/ndjson-parser.js";
@@ -5,7 +6,7 @@ import type { createSubprocessTimeout } from "./timeout.js";
 import type { StdoutProcessorState } from "./spawn-helpers.js";
 
 export function writeInitialStdin(
-  stdinSink: import("bun").FileSink,
+  stdinSink: FileSink,
   content: string,
   stdinHandle: StdinHandle,
 ): () => Promise<void> {

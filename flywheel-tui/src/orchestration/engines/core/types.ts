@@ -5,7 +5,7 @@
  * provides metadata and a command builder. The model is just a string passed through.
  */
 
-import type { ToolScoping } from "../../../infra/workflow-types";
+import type { ToolScoping } from "../../../infra/workflow-types.js";
 
 export interface EngineMetadata {
   /** Unique identifier (e.g., "claude", "opencode") */

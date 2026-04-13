@@ -1,6 +1,5 @@
 import type { SpawnResult } from "../subprocess/spawner.js";
 import {
-  registerProcess,
   killProcessGroup,
   type ChildHandle,
 } from "../subprocess/process-lifecycle.js";
@@ -25,7 +24,6 @@ export class WarmPool<T = SpawnResult> {
   private warmPromise: Promise<T> | null = null;
   private acquired = false;
   private shuttingDown = false;
-  private unregister: (() => void) | null = null;
   private warmProcessExited = false;
 
   constructor(options: WarmPoolOptions<T>) {
@@ -76,11 +74,6 @@ export class WarmPool<T = SpawnResult> {
       }
       this.warmPromise = null;
     }
-
-    if (this.unregister) {
-      this.unregister();
-      this.unregister = null;
-    }
   }
 
   private spawnWarm() {
@@ -94,25 +87,9 @@ export class WarmPool<T = SpawnResult> {
         throw new Error("Pool shut down during spawn");
       }
 
-      const pid = this.getPidFn(resource);
-      if (pid != null) {
-        if (this.unregister) {
-          this.unregister();
-        }
-
-        const handle: ChildHandle = {
-          pid,
-          kill: (signal?: number) => {
-            const sigName =
-              signal === 9 ? "SIGKILL" : "SIGTERM";
-            killProcessGroup(handle, sigName);
-          },
-        };
-        this.unregister = registerProcess(handle);
-      }
-
       this.watchForUnexpectedExit(resource);
 
+      const pid = this.getPidFn(resource);
       this.log.debug(`[${this.label}] warm process ready (pid=${pid})`);
       return resource;
     });
@@ -122,11 +99,6 @@ export class WarmPool<T = SpawnResult> {
     const pid = this.getPidFn(resource);
     const onExit = () => {
       this.warmProcessExited = true;
-
-      if (this.unregister) {
-        this.unregister();
-        this.unregister = null;
-      }
 
       if (!this.acquired && !this.shuttingDown) {
         this.log.debug(
@@ -140,11 +112,6 @@ export class WarmPool<T = SpawnResult> {
   }
 
   private killProcess(proc: T) {
-    if (this.unregister) {
-      this.unregister();
-      this.unregister = null;
-    }
-
     const pid = this.getPidFn(proc);
     if (pid == null) return;
 

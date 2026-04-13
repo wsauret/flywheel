@@ -1,7 +1,7 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "../../orchestration/command-registry.js"
-import type { AnyBlock } from "../../infra/output-blocks.js"
+import { extractChatContext } from "../../orchestration/dispatcher-callback.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 export interface CommandDispatchDeps {
@@ -22,31 +22,6 @@ export interface CommandDispatchDeps {
 
 export interface CommandDispatchHook {
   handlePromptSubmit(text: string): void
-}
-
-const CHAT_CONTEXT_MAX_CHARS = 2000
-
-function extractChatContext(blocks: readonly AnyBlock[]): string | undefined {
-  const lines: string[] = []
-  let chars = 0
-  for (let i = blocks.length - 1; i >= 0 && chars < CHAT_CONTEXT_MAX_CHARS; i--) {
-    const block = blocks[i]!
-    if (block.kind === "userMessage" && !block.injected) {
-      lines.unshift(`User: ${block.content}`)
-      chars += block.content.length + 6
-    } else if (block.kind === "text") {
-      lines.unshift(`Assistant: ${block.content}`)
-      chars += block.content.length + 11
-    }
-  }
-  if (lines.length === 0) return undefined
-  let result = lines.join("\n")
-  if (result.length > CHAT_CONTEXT_MAX_CHARS) {
-    result = result.slice(result.length - CHAT_CONTEXT_MAX_CHARS)
-    const firstNewline = result.indexOf("\n")
-    if (firstNewline > 0) result = result.slice(firstNewline + 1)
-  }
-  return result
 }
 
 export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHook {
@@ -100,18 +75,18 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|sprint)\s+"([^"]+)"$/i,
+    pattern: /^\/(work|sprint|plan)\s+"([^"]+)"$/i,
     execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|sprint)\s+(.+)$/i,
+    pattern: /^\/(work|sprint|plan)\s+(.+)$/i,
     execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
-  // Bare /work or /sprint — enter pending mode, wait for description
+  // Bare /work, /sprint, or /plan — enter pending mode, wait for description
   commandRegistry.register({
-    pattern: /^\/(work|sprint)$/i,
+    pattern: /^\/(work|sprint|plan)$/i,
     execute(match) {
       deps.signals.setPendingWorkCommand(match[1])
       return true

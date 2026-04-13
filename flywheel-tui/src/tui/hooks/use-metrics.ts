@@ -1,6 +1,6 @@
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import type { Accessor } from "solid-js"
-import type { SessionEntry } from "../../orchestration/session-store-types"
+import type { SessionEntry } from "../../orchestration/session-store-types.js"
 
 export interface MetricsHook {
   elapsed: Accessor<number>

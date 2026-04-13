@@ -1,16 +1,16 @@
 import * as fs from "node:fs";
-import { writeFileAtomic } from "../../workflows/shared/atomic-write";
-import type { AnyBlock } from "../../infra/output-blocks";
+import { writeFileAtomic } from "../../workflows/shared/atomic-write.js";
+import type { AnyBlock } from "../../infra/output-blocks.js";
 import {
   toSnapshot,
   fromSnapshot,
   type OutputSnapshot,
-} from "./output-schemas";
+} from "./output-schemas.js";
 import {
   createDebouncedWriter,
   type DebouncedWriter,
-} from "../../workflows/shared/debounced-writer";
-import { resolveSessionFile, ensureSessionDir } from "../../infra/paths";
+} from "../../workflows/shared/debounced-writer.js";
+import { resolveSessionFile, ensureSessionDir } from "../../infra/paths.js";
 
 const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
@@ -21,7 +21,7 @@ export interface OutputPersistenceDeps {
   maxSizeBytes?: number;
 }
 
-export interface OutputFlusherOpts {
+interface OutputFlusherOpts {
   intervalMs?: number;
 }
 

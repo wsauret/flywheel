@@ -1,4 +1,4 @@
-import type { Step } from "../types";
+import type { Step } from "../types.js";
 
 /** Build a prompt from step metadata (title, description, acceptance criteria). */
 export function buildStepMetadataPrompt(step: Step): string {

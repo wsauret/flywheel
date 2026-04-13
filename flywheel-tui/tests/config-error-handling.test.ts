@@ -89,7 +89,7 @@ describe("loadConfig: file read errors", () => {
 describe("loadConfig: validation errors use ConfigLoadError", () => {
   it("throws ConfigLoadError with VALIDATION code for invalid values", () => {
     try {
-      loadConfig(undefined, { FLYWHEEL_MAX_RETRIES: "11" });
+      loadConfig(undefined, { FLYWHEEL_TIMEOUT_MINUTES: "200" });
       expect(true).toBe(false);
     } catch (err) {
       expect(err).toBeInstanceOf(ConfigLoadError);
@@ -109,7 +109,7 @@ describe("loadConfig: unknown key warnings", () => {
       path.join(FIXTURES_DIR, "unknown-keys.toml"),
       {},
     );
-    expect(warnings.some((w) => w.includes("max_retires"))).toBe(true);
+    expect(warnings.some((w) => w.includes("skip_evalution"))).toBe(true);
     expect(warnings.some((w) => w.includes("tiemout_minutes"))).toBe(true);
   });
 

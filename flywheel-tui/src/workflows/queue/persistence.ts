@@ -23,14 +23,14 @@
  */
 
 import * as fs from "node:fs";
-import { writeFileAtomic } from "../shared/atomic-write";
+import { writeFileAtomic } from "../shared/atomic-write.js";
 import {
   createDebouncedWriter,
   type DebouncedWriter,
-} from "../shared/debounced-writer";
-import { resolveSessionFile } from "../../infra/paths";
-import type { Queue } from "./types";
-import type { AccumulatorState } from "./context-accumulator";
+} from "../shared/debounced-writer.js";
+import { resolveSessionFile } from "../../infra/paths.js";
+import type { Queue } from "./types.js";
+import type { AccumulatorState } from "./context-accumulator.js";
 
 // Constants
 
@@ -38,7 +38,7 @@ const DEFAULT_FLUSH_INTERVAL_MS = 500;
 
 // Types
 
-export interface QueuePersistenceDeps {
+interface QueuePersistenceDeps {
   /** Session ID — used to derive the file path. */
   sessionId: string;
   /** Base directory (project cwd). Defaults to ".". */
@@ -47,12 +47,12 @@ export interface QueuePersistenceDeps {
   persistQueue?: boolean;
 }
 
-export interface QueueFlusherOpts {
+interface QueueFlusherOpts {
   /** Debounce interval in ms. Default: 500. */
   intervalMs?: number;
 }
 
-export interface QueueFlusher {
+interface QueueFlusher {
   /** Schedule a debounced write of the given queue state. */
   schedule(queue: Queue): void;
   /** Force-flush immediately. */
@@ -61,7 +61,7 @@ export interface QueueFlusher {
   dispose(): void;
 }
 
-export interface QueuePersistence {
+interface QueuePersistence {
   /** Save queue state to disk (synchronous atomic write). */
   save(queue: Queue): void;
   /** Load queue from disk. Returns null on missing/corrupt/disabled. */

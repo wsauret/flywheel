@@ -15,11 +15,11 @@ import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSession } from "@tui/shared/context/session"
 import { ModalBase } from "@tui/shared/components/modal/modal-base"
-import { isResumable } from "../orchestration/session/state-machine"
-import { truncate } from "./utils/text"
+import { isResumable } from "../orchestration/session/state-machine.js"
+import { truncate } from "./utils/text.js"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
-import type { SessionSummary } from "../orchestration/session/manager"
-import type { SessionState } from "../orchestration/session/state-machine"
+import type { SessionSummary } from "../orchestration/session/manager.js"
+import type { SessionState } from "../orchestration/session/state-machine.js"
 
 // Props
 

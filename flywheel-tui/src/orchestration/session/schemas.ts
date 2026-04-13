@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { SessionStateSchema } from "./state-machine";
-import { BudgetLimitsSchema, BudgetUsageSchema } from "../../workflows/schemas";
+import { SessionStateSchema } from "./state-machine.js";
+import { BudgetLimitsSchema, BudgetUsageSchema } from "../../workflows/schemas.js";
 
 const baseFields = {
   label: z.string(),

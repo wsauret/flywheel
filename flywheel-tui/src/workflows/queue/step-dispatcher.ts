@@ -96,7 +96,7 @@ export interface StepDispatcherDecision {
 
 // Types — Options for createStepDispatcher
 
-export interface StepDispatcherOptions {
+interface StepDispatcherOptions {
   /** Dispatcher transport (subprocess or SDK). */
   transport: DispatcherTransport;
   /** Event emitter for dispatcher lifecycle events. */
@@ -121,7 +121,7 @@ export interface StepDispatcherOptions {
 
 // StepDispatcher interface
 
-export interface StepDispatcher {
+interface StepDispatcher {
   /** Dispatch a step: assemble input, invoke transport, parse decision. */
   dispatch(
     step: Step,
@@ -132,6 +132,7 @@ export interface StepDispatcher {
 
 // Error class
 
+// Exported for instanceof checks in tests.
 export class StepDispatcherError extends Error {
   constructor(
     message: string,
@@ -194,7 +195,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
       const queueState = buildCompactQueueState(queue, currentIndex);
 
       // Build plan representation from queue
-      const plan = buildPlanFromQueue(queue, step, sessionObjective);
+      const plan = buildPlanFromQueue(queue);
 
       // Convert previous handoff to LastWorkerResult
       const lastWorkerResult = context.previousHandoff

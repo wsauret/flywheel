@@ -1,14 +1,14 @@
 // Queue System — Workflow Templates
 
 import { randomUUID } from "crypto";
-import { createQueue, type QueueOptions } from "./queue";
-import type { Step, Queue } from "./types";
+import { createQueue, type QueueOptions } from "./queue.js";
+import type { Step, Queue } from "./types.js";
 import { SPRINT_HINT } from "./steps/sprint/types.js";
 import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria.js";
 
 // WorkflowName — supported workflow template names
 
-export type WorkflowName = "work" | "sprint";
+export type WorkflowName = "work" | "sprint" | "plan";
 
 // Step factory helper
 
@@ -49,6 +49,15 @@ export function buildQueueFromTemplate(
           dispatcherHint: SPRINT_HINT,
           toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
           evaluationCriteria: buildSprintEvaluationCriteria(),
+        }),
+      ];
+      return createQueue(steps, queueOpts);
+    }
+
+    case "plan": {
+      const steps: Step[] = [
+        makeStep("plan", "Create implementation plan", {
+          toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
         }),
       ];
       return createQueue(steps, queueOpts);

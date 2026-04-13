@@ -13,10 +13,10 @@
  * Single-threaded assumption: same as BudgetTracker.
  */
 
-import type { NDJSONEvent } from "../../../infra/subprocess-types";
-import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events";
-import type { EmitFn } from "../../../infra/event-bus";
-import { truncateField } from "../../../infra/trace-types";
+import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
+import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";
+import type { EmitFn } from "../../../infra/event-bus.js";
+import { truncateField } from "../../../infra/trace-types.js";
 
 // Constants
 

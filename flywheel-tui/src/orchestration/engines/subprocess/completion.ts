@@ -11,7 +11,7 @@
  */
 
 import * as fs from "node:fs";
-import { SubprocessHandoffSchema } from "../../../infra/handoff-schemas";
+import { SubprocessHandoffSchema } from "../../../infra/handoff-schemas.js";
 
 /**
  * Regex for NDJSON result event indicating successful completion.

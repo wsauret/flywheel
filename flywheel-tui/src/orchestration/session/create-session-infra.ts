@@ -1,13 +1,13 @@
 import { createBudgetTracker } from "./budget-tracker.js"
 import type { BudgetTracker } from "./budget-tracker-types.js"
-import { createTraceWriter, type TraceWriter } from "./trace-writer"
-import { createTranscriptWriter, type TranscriptWriter } from "./transcript-writer"
-import { createTraceCollector, type TraceCollector } from "./trace-collector"
-import { createTraceEventHandler } from "../engines/subprocess/trace-event-handler"
-import type { FlywheelConfig } from "../config/schema"
-import type { EventBus, EmitFn, Unsubscribe } from "../../infra/event-bus"
-import type { BudgetLimits } from "../../workflows/schemas"
-import { extractContextUpdate, contextWindowForModel } from "../engines/providers/claude-context"
+import { createTraceWriter, type TraceWriter } from "./trace-writer.js"
+import { createTranscriptWriter, type TranscriptWriter } from "./transcript-writer.js"
+import { createTraceCollector, type TraceCollector } from "./trace-collector.js"
+import { createTraceEventHandler } from "../engines/subprocess/trace-event-handler.js"
+import type { FlywheelConfig } from "../config/schema.js"
+import type { EventBus, EmitFn, Unsubscribe } from "../../infra/event-bus.js"
+import type { BudgetLimits } from "../../workflows/schemas.js"
+import { extractContextUpdate, contextWindowForModel } from "../engines/providers/claude-context.js"
 
 export interface SessionInfraDeps {
   sessionId: string
@@ -43,23 +43,15 @@ export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
   const estimatedWindow = contextWindowForModel(configModel)
   if (estimatedWindow > 0) budgetTracker.updateContextUtilization(0, estimatedWindow)
 
-  let traceWriter: TraceWriter | null = null
-  let transcriptWriter: TranscriptWriter | null = null
-  let traceCollector: TraceCollector | null = null
-
-  if (config.tracing.enabled) {
-    traceWriter = createTraceWriter({
-      sessionId,
-      baseDir: projectCwd,
-      maxTraces: config.tracing.max_traces,
-    })
-    transcriptWriter = createTranscriptWriter({ sessionId, baseDir: projectCwd })
-    traceCollector = createTraceCollector({
-      writer: traceWriter,
-      sessionId,
-      workflowName: description,
-    })
-  }
+  const traceWriter = config.tracing.enabled
+    ? createTraceWriter({ sessionId, baseDir: projectCwd, maxTraces: config.tracing.max_traces })
+    : null
+  const transcriptWriter = config.tracing.enabled
+    ? createTranscriptWriter({ sessionId, baseDir: projectCwd })
+    : null
+  const traceCollector = config.tracing.enabled && traceWriter
+    ? createTraceCollector({ writer: traceWriter, sessionId, workflowName: description })
+    : null
 
   return { budgetTracker, traceWriter, transcriptWriter, traceCollector }
 }

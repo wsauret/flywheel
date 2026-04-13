@@ -14,19 +14,6 @@ export interface ChildHandle {
   kill(signal?: number): void;
 }
 
-const activeProcesses = new Set<ChildHandle>();
-
-/**
- * Register a child process in the global registry.
- * Returns a cleanup function that removes it.
- */
-export function registerProcess(child: ChildHandle): () => void {
-  activeProcesses.add(child);
-  return () => {
-    activeProcesses.delete(child);
-  };
-}
-
 /**
  * Send a signal to a process group (Unix) or the process directly (Windows).
  *
@@ -67,8 +54,6 @@ export function killProcessGroup(child: ChildHandle, signal: NodeJS.Signals): vo
     }
   }
 }
-
-// Helpers
 
 function isEsrch(err: unknown): boolean {
   return (

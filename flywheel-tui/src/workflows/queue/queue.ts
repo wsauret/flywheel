@@ -13,7 +13,7 @@ import type {
   StepStatus,
   Queue,
   MutationLogEntry,
-} from "./types";
+} from "./types.js";
 
 // Provenance — who triggered the mutation and why
 
@@ -26,7 +26,7 @@ export interface Provenance {
 
 // MutationResult — discriminated union for mutation outcomes
 
-export type MutationResult =
+type MutationResult =
   | { success: true; queue: Queue }
   | { success: false; error: string };
 

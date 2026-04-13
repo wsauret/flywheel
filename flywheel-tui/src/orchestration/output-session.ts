@@ -1,9 +1,9 @@
-import { NDJSONParser } from "../infra/ndjson-parser"
-import { StructuredOutputBuilder } from "../infra/output/structured-output-builder"
-import { StructuredEventParser } from "../infra/output/structured-event-parser"
-import type { EmitFn } from "../infra/event-bus"
-import type { SessionEntryBase } from "./session-store-types"
-import type { AnyBlock } from "../infra/output-blocks"
+import { NDJSONParser } from "../infra/ndjson-parser.js"
+import { StructuredOutputBuilder } from "../infra/output/structured-output-builder.js"
+import { StructuredEventParser } from "../infra/output/structured-event-parser.js"
+import type { EmitFn } from "../infra/event-bus.js"
+import type { SessionEntryBase } from "./session-store-types.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
 
 export interface OutputSessionOptions {
   updateEntry: (patch: Partial<SessionEntryBase>) => void
@@ -14,7 +14,7 @@ export interface OutputSessionOptions {
 }
 
 export interface OutputSession {
-  writeStdout(data: string, engineId?: string): void
+  writeStdout(data: string): void
   writeStderr(data: string, timestamp: number): void
   notifySpawned(timestamp: number): void
   notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void
@@ -24,6 +24,7 @@ export interface OutputSession {
   flushContextRun(timestamp: number): void
   flushParser(): void
   getBlocks(): AnyBlock[]
+  resetActivity(): void
   readonly sessionId: string | null
   flush(): void
   dispose(): void
@@ -39,13 +40,12 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
   let disposed = false
   let flushIntervalId: ReturnType<typeof setInterval> | null = null
 
-  let currentEngineId: string | undefined
   let prevBlocks = builder.getBlocks()
   let prevActivity = builder.modelActivity
 
   parser.onEvent = (event) => {
     emit("subprocess:ndjson", { workflowId, ndjsonEvent: event })
-    eventParser.dispatch(event, currentEngineId)
+    eventParser.dispatch(event)
   }
 
   parser.onRawText = (text) => {
@@ -62,9 +62,8 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     onFlush?.()
   }, 16)
 
-  function writeStdout(data: string, engineId?: string) {
+  function writeStdout(data: string) {
     if (disposed) return
-    if (engineId !== undefined) currentEngineId = engineId
     parser.write(data)
   }
 
@@ -94,6 +93,14 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     flushContextRun: (timestamp: number) => builder.flushContextRun(timestamp),
     flushParser: () => parser.flush(),
     getBlocks: () => builder.getBlocks(),
+    resetActivity() {
+      const now = Date.now();
+      builder.flushContextRun(now);
+      builder.closeOpenSubagents(now);
+      builder.resetActivity();
+      prevActivity = "idle";
+      updateEntry({ modelActivity: "idle" });
+    },
     get sessionId() { return parser.sessionId },
     flush(): void {
       prevActivity = builder.modelActivity
@@ -103,7 +110,6 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     dispose(): void {
       if (disposed) return
       disposed = true
-      currentEngineId = undefined
       if (flushIntervalId !== null) {
         clearInterval(flushIntervalId)
         flushIntervalId = null

@@ -16,7 +16,6 @@ describe("StepContext schema", () => {
       cumulative_warnings: [{ step_index: 1, step_title: "Impl", warnings: ["Slow tests"] }],
       cumulative_artifacts: [{ step_index: 0, step_title: "Setup", artifacts: ["src/index.ts"] }],
       cumulative_issues: [],
-      skill_feedback: [],
       step_count: 2,
     };
     const parsed = StepContextSchema.parse(ctx);
@@ -34,7 +33,6 @@ describe("StepContext schema", () => {
     expect(parsed.cumulative_warnings).toHaveLength(0);
     expect(parsed.cumulative_artifacts).toHaveLength(0);
     expect(parsed.cumulative_issues).toHaveLength(0);
-    expect(parsed.skill_feedback).toHaveLength(0);
   });
 
   it("rejects invalid schema (missing step_count)", () => {
@@ -54,7 +52,6 @@ describe("createEmptyStepContext", () => {
     expect(ctx.cumulative_warnings).toEqual([]);
     expect(ctx.cumulative_artifacts).toEqual([]);
     expect(ctx.cumulative_issues).toEqual([]);
-    expect(ctx.skill_feedback).toEqual([]);
   });
 });
 

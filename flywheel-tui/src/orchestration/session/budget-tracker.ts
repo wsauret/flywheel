@@ -1,5 +1,5 @@
 import type { NDJSONEvent } from "../../infra/subprocess-types.js";
-import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../../workflows/schemas.js";
+import type { BudgetLimits, BudgetUsage } from "../../workflows/schemas.js";
 import { readSession, updateSession } from "./persistence.js";
 import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
 import { ResultCostSchema, computeContextPercent } from "./budget-tracker-types.js";

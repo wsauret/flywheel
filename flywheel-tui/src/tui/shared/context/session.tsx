@@ -10,10 +10,10 @@
  */
 
 import { createSignal, onCleanup } from "solid-js"
-import { createSimpleContext } from "./helper"
+import { createSimpleContext } from "./helper.js"
 import { Log } from "../../../infra/log.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { SessionManager, SessionSummary, SessionListResult } from "../../../orchestration/session/manager"
+import type { SessionManager, SessionSummary, SessionListResult } from "../../../orchestration/session/manager.js"
 
 const log = Log.create({ service: "session-context" })
 
@@ -40,20 +40,9 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
   init: (props) => {
     const [sessions, setSessions] = createSignal<SessionSummary[]>([])
 
-    // Load initial session list
+    // Load initial session list (crash recovery already ran in app.tsx before mount)
     const initialResult = props.manager.list()
     setSessions(initialResult.sessions)
-
-    // Startup crash recovery: transition stale active → paused (work) or completed (chat)
-    try {
-      const recovered = props.manager.recoverStaleSessions()
-      if (recovered > 0) {
-        const updated = props.manager.list()
-        setSessions(updated.sessions)
-      }
-    } catch {
-      // Non-fatal — don't block startup
-    }
 
     const refreshList = (): SessionListResult => {
       const result = props.manager.list()

@@ -8,14 +8,14 @@
 
 import { Switch, Match } from "solid-js"
 import type { AnyBlock } from "@infra/output-blocks"
-import { TextBlock } from "./text-block"
-import { ToolBlock } from "./tool-block"
-import { AgentBlock } from "./agent-block"
-import { ContextGroupBlock } from "./context-group-block"
-import { SystemBlock } from "./system-block"
-import { ThinkingBlock } from "./thinking-block"
-import { UserMessageBlock } from "./user-message-block"
-import { TodoListBlock } from "./todo-list-block"
+import { TextBlock } from "./text-block.js"
+import { ToolBlock } from "./tool-block.js"
+import { AgentBlock } from "./agent-block.js"
+import { ContextGroupBlock } from "./context-group-block.js"
+import { SystemBlock } from "./system-block.js"
+import { ThinkingBlock } from "./thinking-block.js"
+import { UserMessageBlock } from "./user-message-block.js"
+import { TodoListBlock } from "./todo-list-block.js"
 
 export interface BlockRendererProps {
   block: AnyBlock

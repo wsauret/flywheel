@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { EvaluationCriteria } from "../infra/workflow-types";
+import type { EvaluationCriteria } from "../infra/workflow-types.js";
 
 /** Serialize evaluation criteria to a human-readable string (for evaluator prompts). */
 export function serializeEvaluationCriteria(criteria: EvaluationCriteria): string {

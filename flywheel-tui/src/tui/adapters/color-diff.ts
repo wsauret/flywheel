@@ -200,39 +200,6 @@ function removeNewlines(h: Highlight): void {
   )
 }
 
-function wrapText(h: Highlight, width: number, theme: Theme): void {
-  const newLines: Block[][] = []
-  for (const line of h.lines) {
-    const queue: Block[] = line.slice()
-    let cur: Block[] = []
-    let curW = 0
-    while (queue.length > 0) {
-      const [style, text] = queue.shift()!
-      const tw = text.length // simplified: assume 1 char = 1 width
-      if (curW + tw <= width) {
-        cur.push([style, text])
-        curW += tw
-      } else {
-        const remaining = width - curW
-        if (remaining <= 0) {
-          newLines.push(cur)
-          queue.unshift([style, text])
-          cur = []
-          curW = 0
-          continue
-        }
-        cur.push([style, text.slice(0, remaining)])
-        newLines.push(cur)
-        queue.unshift([style, text.slice(remaining)])
-        cur = []
-        curW = 0
-      }
-    }
-    newLines.push(cur)
-  }
-  h.lines = newLines
-}
-
 function lineNumberColor(marker: Marker | null, theme: Theme): Color {
   if (marker === "+") return theme.addDecoration
   if (marker === "-") return theme.deleteDecoration

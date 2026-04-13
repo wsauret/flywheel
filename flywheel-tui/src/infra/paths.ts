@@ -23,14 +23,12 @@ export const SUBPROCESS_LOG_DIR = `${FLYWHEEL_DIR}/subprocess-logs`;
 export const TRACES_DIR = `${FLYWHEEL_DIR}/traces`;
 
 // Global directories (cross-session)
+// These domain defaults live here (not in orchestration/memory/) because paths.ts
+// is the single source of truth for all path constants. Sole consumer: memory/indexer.ts.
 
 export const DEFAULT_STANDARDS_DIR = "docs/standards";
 
-// Convention files
-
 export const DEFAULT_CONVENTION_FILES = ["AGENTS.md", "CONTRIBUTING.md", "DEVELOPMENT.md"];
-
-// Config directories
 
 export const CONFIG_DIRS = [".claude/", ".opencode/"];
 

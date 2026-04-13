@@ -7,7 +7,7 @@
  * On abort: triggers process-group-kill flow via process-lifecycle.ts.
  */
 
-import { killProcessGroup, type ChildHandle } from "./process-lifecycle";
+import { killProcessGroup, type ChildHandle } from "./process-lifecycle.js";
 
 /** Default timeout in minutes. */
 export const DEFAULT_TIMEOUT_MINUTES = 60;
@@ -22,11 +22,7 @@ export function clampTimeoutMinutes(minutes: number): number {
   return Math.max(MIN_TIMEOUT_MINUTES, Math.min(MAX_TIMEOUT_MINUTES, minutes));
 }
 
-export function minutesToMs(minutes: number): number {
-  return minutes * 60 * 1000;
-}
-
-export interface SubprocessTimeout {
+interface SubprocessTimeout {
   /** The AbortController — pass `signal` to observe cancellation. */
   controller: AbortController;
   /** The AbortSignal for external consumers. */

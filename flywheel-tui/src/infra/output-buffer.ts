@@ -4,11 +4,11 @@
  * marker so downstream consumers know data was lost.
  */
 
-export const TRUNCATION_MARKER = "[...truncated in memory...]\n";
+const TRUNCATION_MARKER = "[...truncated in memory...]\n";
 
-export const BUFFER_LIMIT = 2_000_000;
+const BUFFER_LIMIT = 2_000_000;
 
-export interface BufferState {
+interface BufferState {
   content: string;
   truncated: boolean;
 }
@@ -20,7 +20,7 @@ export interface BufferState {
  * When truncation occurs, the truncation marker is prepended to the
  * remaining content.
  */
-export function appendWithCharLimit(
+function appendWithCharLimit(
   existing: string,
   newContent: string,
   charLimit: number,
