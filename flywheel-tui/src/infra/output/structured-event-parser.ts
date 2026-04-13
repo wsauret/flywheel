@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { NDJSONEvent } from "../subprocess-types";
+import type { NDJSONEvent, AssistantEventData, ContentBlock } from "../subprocess-types.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder";
 import { getToolDetail, extractToolDiff } from "./output-formatter";
 
@@ -81,30 +81,20 @@ export class StructuredEventParser {
 
   // ── Claude handler ──
 
-  // The `as` casts below parse Claude Code's NDJSON stream — an external format we
-  // don't control. Full Zod validation would over-engineer a best-effort display layer;
-  // the casts are safe because unrecognized shapes are silently skipped, not acted on.
   private dispatchClaudeEvent(event: NDJSONEvent, now: number): void {
-    const data = event.data;
-    const type = data.type as string | undefined;
-
-    if (type === "assistant") {
-      this.handleClaudeAssistant(data, now);
-    } else if (type === "result") {
-      // The result event contains the full accumulated text from the session.
-      // This text was already streamed via individual assistant events, so
-      // pushing it again would cause double printing. Skip display — the
-      // result event is handled by CompletionDetector for completion signaling.
-    } else if (type === "tool_result") {
-      // Tool results correlate with subagent completions
-      const toolUseId = data.tool_use_id as string | undefined;
+    if (event.type === "assistant") {
+      this.handleClaudeAssistant(event.data, now);
+    } else if (event.type === "result") {
+      // Result contains accumulated text already streamed via assistant events.
+      // Skip display — CompletionDetector handles completion signaling.
+    } else if (event.type === "tool_result") {
+      const toolUseId = event.data.tool_use_id;
       if (toolUseId) {
         const tracked = this.toolUseIdToAgent.get(toolUseId);
         if (tracked) {
           const durationMs = now - tracked.spawnedAt;
-          const isError = data.is_error === true;
-          if (isError) {
-            const content = typeof data.content === "string" ? data.content : "Unknown error";
+          if (event.data.is_error === true) {
+            const content = typeof event.data.content === "string" ? event.data.content : "Unknown error";
             this.builder.errorAgent(tracked.agentId, content);
           } else {
             this.builder.completeAgent(tracked.agentId, durationMs);
@@ -113,89 +103,72 @@ export class StructuredEventParser {
         }
       }
     }
-    // system, init, etc. — skip
   }
 
-  private handleClaudeAssistant(data: Record<string, unknown>, now: number): void {
-    const message = data.message as Record<string, unknown> | undefined;
-    const content = message?.content as Array<Record<string, unknown>> | undefined;
+  private handleClaudeAssistant(data: AssistantEventData, now: number): void {
+    const message = data.message;
+    const content = message?.content;
 
     if (!Array.isArray(content)) return;
 
-    // Check if this message is a child of a subagent via parent_tool_use_id.
-    // Claude Code stream-json: each assistant message has parent_tool_use_id
-    // (null for top-level, tool_use ID for child messages inside a subagent).
-    const parentToolUseId = (message?.parent_tool_use_id ?? data.parent_tool_use_id) as string | null | undefined;
+    // parent_tool_use_id routes child messages to their spawning subagent.
+    // Claude puts it on message and sometimes at the top level.
+    const parentToolUseId = message?.parent_tool_use_id ?? data.parent_tool_use_id;
     const parentAgentId = parentToolUseId ? this.toolUseIdToAgent.get(parentToolUseId)?.agentId : undefined;
 
-    // Subagents are blocking: top-level output means all subagents are done.
-    // Auto-complete any still-open agents (handles delayed/lost tool_result).
-    // BUT skip when this message is spawning new agents — parallel agent spawns
-    // may arrive as separate top-level events, and closing siblings would be wrong.
+    // Top-level output means all subagents are done — auto-complete open ones.
+    // Skip when this message spawns new agents (parallel spawns arrive separately).
     const spawnsAgents = !parentAgentId && content.some(
-      (block) => block.type === "tool_use" && typeof block.name === "string" && isSubagentToolName(block.name as string),
+      (block) => block.type === "tool_use" && isSubagentToolName(block.name),
     );
     if (!parentAgentId && !spawnsAgents) {
       this.builder.closeOpenSubagents(now);
     }
 
     for (const block of content) {
-      const blockType = block.type as string | undefined;
-
-      if (blockType === "thinking" && typeof block.thinking === "string") {
+      if (block.type === "thinking" && typeof block.thinking === "string") {
         if (!parentAgentId) {
           this.builder.pushThinking(block.thinking, now);
         }
-      } else if (blockType === "text" && typeof block.text === "string") {
-        // Text inside a child message: skip (agent text is not useful for display)
-        if (!parentAgentId) {
-          if (block.text.length > 0) {
-            this.builder.pushText(block.text as string, now);
-          }
+      } else if (block.type === "text" && typeof block.text === "string") {
+        if (!parentAgentId && block.text.length > 0) {
+          this.builder.pushText(block.text, now);
         }
-      } else if (blockType === "tool_use") {
-        const name = block.name as string;
-        const input = block.input as Record<string, unknown> | undefined;
-        const toolUseId = block.id as string | undefined;
+      } else if (block.type === "tool_use") {
+        this.handleToolUse(block, parentAgentId, now);
+      }
+    }
+  }
 
-        if (name && isSubagentToolName(name)) {
-          // Subagent spawn: generate ID, create AgentBlock, track for completion
-          const agentId = randomUUID();
-          const desc = (input?.description as string) || name;
-          const label = (input?.subagent_type as string) || name;
-          this.builder.startAgent(agentId, label, desc, now);
-          // Map the tool_use ID to the agent so child messages with
-          // parent_tool_use_id can route tools, and tool_result can complete it.
-          if (toolUseId) {
-            this.toolUseIdToAgent.set(toolUseId, { agentId, spawnedAt: now });
-          }
-        } else if (name === "Skill" && !parentAgentId) {
-          // Top-level skill loading — render as system message, not a tool row.
-          // Skills change the agent's mode/capabilities and deserve standalone visibility.
-          const skillName = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
-          this.builder.pushSystemMessage(`Loaded skill: ${skillName}`, now);
-        } else if (name === "TodoWrite" && !parentAgentId) {
-          // TodoWrite: render as a living todo list, not a generic tool block.
-          const todos = input?.todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
-          if (Array.isArray(todos)) {
-            this.builder.pushTodoWrite(todos, now);
-          }
-        } else if (name) {
-          // Regular tool use — route to parent agent if this is a child message
-          const detail = input ? (getToolDetail(name, input) ?? "") : "";
-          const diffInfo = input ? extractToolDiff(name, input) : undefined;
-          // Extract raw file_path for clickable path support
-          const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
-          if (parentAgentId) {
-            // This tool belongs to a subagent — add as child of that agent
-            if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath)) {
-              // Agent not found (already evicted?) — fall through to top-level
-              this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
-            }
-          } else {
-            this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
-          }
+  private handleToolUse(block: ContentBlock & { type: "tool_use" }, parentAgentId: string | undefined, now: number): void {
+    const { name, input, id: toolUseId } = block;
+
+    if (name && isSubagentToolName(name)) {
+      const agentId = randomUUID();
+      const desc = (input?.description as string) || name;
+      const label = (input?.subagent_type as string) || name;
+      this.builder.startAgent(agentId, label, desc, now);
+      if (toolUseId) {
+        this.toolUseIdToAgent.set(toolUseId, { agentId, spawnedAt: now });
+      }
+    } else if (name === "Skill" && !parentAgentId) {
+      const skillName = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
+      this.builder.pushSystemMessage(`Loaded skill: ${skillName}`, now);
+    } else if (name === "TodoWrite" && !parentAgentId) {
+      const todos = input?.todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
+      if (Array.isArray(todos)) {
+        this.builder.pushTodoWrite(todos, now);
+      }
+    } else if (name) {
+      const detail = input ? (getToolDetail(name, input) ?? "") : "";
+      const diffInfo = input ? extractToolDiff(name, input) : undefined;
+      const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
+      if (parentAgentId) {
+        if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath)) {
+          this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
         }
+      } else {
+        this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
       }
     }
   }
@@ -203,16 +176,9 @@ export class StructuredEventParser {
   // ── Fallback handler (unknown engine) ──
 
   private dispatchFallbackEvent(event: NDJSONEvent, now: number): void {
-    // Best-effort: try Claude format (most common)
-    const data = event.data;
-    const type = data.type as string | undefined;
-
-    if (type === "assistant") {
-      this.handleClaudeAssistant(data, now);
-    } else if (type === "result") {
-      // Skip — same rationale as dispatchClaudeEvent: result text duplicates
-      // content already streamed via assistant events.
+    if (event.type === "assistant") {
+      this.handleClaudeAssistant(event.data, now);
     }
-    // Unknown format — silently skip
+    // Result text duplicates assistant events — skip. Unknown formats silently ignored.
   }
 }

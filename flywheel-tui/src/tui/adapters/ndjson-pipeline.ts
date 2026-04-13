@@ -11,8 +11,7 @@ import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 import type { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
 import { getToolDetail } from "../../infra/output/output-formatter.js";
 
-/** Parsed activity from a Claude NDJSON event. */
-export interface ActivityInfo {
+interface ActivityInfo {
   name: string;
   detail: string;
 }
@@ -119,7 +118,7 @@ export class NdjsonPipeline {
    */
   private handleDispatcherNdjsonEvent(event: NDJSONEvent): void {
     if (!this._dispatcherBlockId) return;
-    const activity = extractActivityInfo(event.data);
+    const activity = extractActivityInfo(event);
     if (!activity) return;
 
     if (activity.name === "Thinking") {
@@ -129,13 +128,9 @@ export class NdjsonPipeline {
     }
   }
 
-  /**
-   * Handle NDJSON event from evaluator subprocess.
-   * Routes tool-use events as agent children; thinking text as status-only updates.
-   */
   private handleEvaluatorNdjsonEvent(event: NDJSONEvent): void {
     if (!this._evaluatorBlockId) return;
-    const activity = extractActivityInfo(event.data);
+    const activity = extractActivityInfo(event);
     if (!activity) return;
 
     if (activity.name === "Thinking") {
@@ -146,33 +141,21 @@ export class NdjsonPipeline {
   }
 }
 
-// ── Activity extraction (pure functions) ──
+// ── Activity extraction ──
 
-/**
- * Extract activity info from a Claude NDJSON event data payload.
- * Returns tool-use info OR thinking text from assistant messages.
- * Returns null if the event contains no actionable activity.
- */
-function extractActivityInfo(data: Record<string, unknown>): ActivityInfo | null {
-  // Claude assistant message — content may be at data.content or data.message.content
-  const content =
-    (Array.isArray(data.content) ? data.content : null) ??
-    (data.message && typeof data.message === "object"
-      ? (Array.isArray((data.message as Record<string, unknown>).content)
-          ? (data.message as Record<string, unknown>).content as unknown[]
-          : null)
-      : null);
+function extractActivityInfo(event: NDJSONEvent): ActivityInfo | null {
+  if (event.type === "assistant") {
+    const content = event.data.message?.content;
+    if (!Array.isArray(content)) return null;
 
-  if (data.type === "assistant" && content) {
-    // Prefer tool_use blocks over text/thinking blocks
-    for (const block of content as Record<string, unknown>[]) {
-      if (block.type === "tool_use" && typeof block.name === "string") {
-        const input = block.input as Record<string, unknown> | undefined;
-        return { name: block.name, detail: getToolDetail(block.name, input ?? {}) ?? "" };
+    // Prefer tool_use blocks
+    for (const block of content) {
+      if (block.type === "tool_use") {
+        return { name: block.name, detail: getToolDetail(block.name, block.input ?? {}) ?? "" };
       }
     }
-    // Fall back to thinking blocks, then text blocks
-    for (const block of content as Record<string, unknown>[]) {
+    // Fall back to thinking/text blocks
+    for (const block of content) {
       if (block.type === "thinking" && typeof block.thinking === "string") {
         const line = extractLastMeaningfulLine(block.thinking);
         if (line) return { name: "Thinking", detail: line };
@@ -182,26 +165,22 @@ function extractActivityInfo(data: Record<string, unknown>): ActivityInfo | null
         if (line) return { name: "Thinking", detail: line };
       }
     }
+    return null;
   }
 
-  // Claude tool_use event (direct)
-  if (data.type === "tool_use" && typeof data.name === "string") {
-    const input = data.input as Record<string, unknown> | undefined;
-    return { name: data.name, detail: getToolDetail(data.name, input ?? {}) ?? "" };
+  if (event.type === "tool_use") {
+    return { name: event.data.name, detail: getToolDetail(event.data.name, event.data.input ?? {}) ?? "" };
   }
 
-  // Claude streaming content_block_delta with text_delta or thinking_delta
-  if (data.type === "content_block_delta") {
-    const delta = data.delta as Record<string, unknown> | undefined;
-    if (delta) {
-      if (delta.type === "thinking_delta" && typeof delta.thinking === "string") {
-        const line = extractLastMeaningfulLine(delta.thinking);
-        if (line) return { name: "Thinking", detail: line };
-      }
-      if (delta.type === "text_delta" && typeof delta.text === "string") {
-        const line = extractLastMeaningfulLine(delta.text);
-        if (line) return { name: "Thinking", detail: line };
-      }
+  if (event.type === "content_block_delta") {
+    const delta = event.data.delta;
+    if (delta?.type === "thinking_delta" && typeof delta.thinking === "string") {
+      const line = extractLastMeaningfulLine(delta.thinking);
+      if (line) return { name: "Thinking", detail: line };
+    }
+    if (delta?.type === "text_delta" && typeof delta.text === "string") {
+      const line = extractLastMeaningfulLine(delta.text);
+      if (line) return { name: "Thinking", detail: line };
     }
   }
 

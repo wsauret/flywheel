@@ -77,9 +77,6 @@ export class TieredBuffer {
   private tier2Truncated = false;
   private tier3Truncated = false;
 
-  /**
-   * Append content to all three tiers simultaneously.
-   */
   append(content: string): void {
     const r1 = appendWithCharLimit(this.tier1, content, TIER_1_LIMIT);
     this.tier1 = r1.content;
@@ -94,22 +91,18 @@ export class TieredBuffer {
     if (r3.truncated) this.tier3Truncated = true;
   }
 
-  /** Full history (Tier 1, 2M chars). */
   getTier1(): BufferState {
     return { content: this.tier1, truncated: this.tier1Truncated };
   }
 
-  /** Evaluation/flush tier (Tier 2, 250K chars). */
   getTier2(): BufferState {
     return { content: this.tier2, truncated: this.tier2Truncated };
   }
 
-  /** Display tier (Tier 3, 100K chars). */
   getTier3(): BufferState {
     return { content: this.tier3, truncated: this.tier3Truncated };
   }
 
-  /** Whether any tier has been truncated. */
   get truncated(): boolean {
     return this.tier1Truncated || this.tier2Truncated || this.tier3Truncated;
   }

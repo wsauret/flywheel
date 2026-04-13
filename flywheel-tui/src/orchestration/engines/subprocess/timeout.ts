@@ -13,21 +13,15 @@ import { killProcessGroup, type ChildHandle } from "./process-lifecycle";
 export const DEFAULT_TIMEOUT_MINUTES = 60;
 
 /** Minimum allowed timeout in minutes. */
-export const MIN_TIMEOUT_MINUTES = 1;
+const MIN_TIMEOUT_MINUTES = 1;
 
 /** Maximum allowed timeout in minutes. */
-export const MAX_TIMEOUT_MINUTES = 120;
+const MAX_TIMEOUT_MINUTES = 120;
 
-/**
- * Clamp a timeout value to valid bounds.
- */
 export function clampTimeoutMinutes(minutes: number): number {
   return Math.max(MIN_TIMEOUT_MINUTES, Math.min(MAX_TIMEOUT_MINUTES, minutes));
 }
 
-/**
- * Convert minutes to milliseconds.
- */
 export function minutesToMs(minutes: number): number {
   return minutes * 60 * 1000;
 }

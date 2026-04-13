@@ -17,10 +17,10 @@ import type { NDJSONEventType, NDJSONEvent } from "./subprocess-types";
 export const MAX_LINE_LENGTH = 1_000_000;
 
 /** Callback for parsed NDJSON events. */
-export type NDJSONEventHandler = (event: NDJSONEvent) => void;
+type NDJSONEventHandler = (event: NDJSONEvent) => void;
 
 /** Callback for raw text lines (non-JSON or oversized). */
-export type RawTextHandler = (text: string) => void;
+type RawTextHandler = (text: string) => void;
 
 /**
  * ANSI escape code regex (covers CSI sequences, OSC, etc.).
@@ -60,14 +60,13 @@ export function extractJSON(line: string): Record<string, unknown> | null {
 function classifyEvent(data: Record<string, unknown>): NDJSONEventType {
   const type = data.type;
   if (typeof type === "string") {
-    // Claude Code stream-json event types
     if (type === "assistant") return "assistant";
     if (type === "system") return "system";
     if (type === "user") return "user";
     if (type === "tool_result") return "tool_result";
     if (type === "result") return "result";
-    // Legacy / alternate-engine event types
     if (type === "tool_use") return "tool_use";
+    if (type === "content_block_delta") return "content_block_delta";
     if (type === "text") return "text";
     if (type === "step_finish") return "step_finish";
     if (type === "error") return "error";
@@ -185,6 +184,9 @@ export class NDJSONParser {
     }
 
     const type = classifyEvent(data);
-    this.onEvent({ type, data, raw });
+    // Single boundary cast: raw JSON → typed discriminated union.
+    // The typed data interfaces describe Claude's expected NDJSON format;
+    // consumers get typed access without per-site casts.
+    this.onEvent({ type, data, raw } as NDJSONEvent);
   }
 }

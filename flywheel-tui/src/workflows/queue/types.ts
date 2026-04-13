@@ -118,16 +118,4 @@ export interface Queue {
   maxSteps?: number;
 }
 
-// WorkflowTemplate — named preset that generates an initial queue
-
-export interface WorkflowTemplate {
-  /** Machine-readable name (e.g., "plan-work-review"). */
-  readonly name: string;
-  /** Human-readable label for display (e.g., "Plan + Work + Review"). */
-  readonly label: string;
-  /** Short description of what this workflow does. */
-  readonly description: string;
-  /** Step types to create in the initial queue. */
-  readonly initialStepTypes: StepType[];
-}
 

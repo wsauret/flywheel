@@ -19,7 +19,7 @@ export function isContextTool(name: string): boolean {
   return !NON_CONTEXT_TOOL_NAMES.has(name.toLowerCase())
 }
 
-export interface ContextGroupCallbacks {
+interface ContextGroupCallbacks {
   /** Start a new synthetic agent block for context tools. Returns the generated agent ID. */
   startContextAgent: (id: string, timestamp: number) => void
   /** Append a tool as a child of the current context agent. */

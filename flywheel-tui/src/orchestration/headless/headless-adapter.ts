@@ -11,7 +11,7 @@
 
 import { mkdirSync, existsSync } from "node:fs"
 import * as path from "node:path"
-import { BaseEventConsumer } from "../../infra/base-event-consumer"
+import type { EventBus, Unsubscribe } from "../../infra/event-bus.js"
 import type { FlywheelEvent } from "../../infra/events"
 import { Log } from "../../infra/log.js"
 
@@ -33,13 +33,9 @@ export interface HeadlessAdapterOptions {
 
 type LogLevel = "minimal" | "normal" | "verbose"
 
-/** min level to log at, plus a format function. null format = no-op.
- *
- *  `event: any` is a deliberate tradeoff: the `satisfies` constraint on
- *  EVENT_HANDLERS enforces exhaustive key coverage (adding a new FlywheelEvent
- *  type without a handler is a compile error), while formatter functions use
- *  loose typing to avoid verbose per-event generics. The handleEvent() entry
- *  point guarantees the correct event type is routed to each handler. */
+// `any` on the format callback is intentional: `satisfies` enforces exhaustive
+// coverage per event type; handlers access variant-specific properties that
+// TypeScript can't narrow through a record lookup.
 type EventSpec = {
   minLevel: LogLevel
   format: ((event: any) => string | null) | null
@@ -110,7 +106,9 @@ const EVENT_HANDLERS = {
  * - normal: + step/step + output
  * - verbose: + dispatcher/evaluator events + trace events
  */
-export class HeadlessAdapter extends BaseEventConsumer {
+export class HeadlessAdapter {
+  private eventBus: EventBus | null = null
+  private unsubscribe: Unsubscribe | null = null
   private logFile: string | null = null
   private logWriter: import("bun").FileSink | null = null
   private logLevel: LogLevel
@@ -118,15 +116,19 @@ export class HeadlessAdapter extends BaseEventConsumer {
   private showTimestamps: boolean
 
   constructor(options: HeadlessAdapterOptions = {}) {
-    super()
     this.logFile = options.logFile ?? null
     this.logLevel = options.logLevel ?? "normal"
     this.customLogger = options.logger ?? null
     this.showTimestamps = options.timestamps ?? true
   }
 
+  connect(eventBus: EventBus): void {
+    if (this.eventBus) this.disconnect()
+    this.eventBus = eventBus
+    this.unsubscribe = eventBus.subscribe((event) => this.handleEvent(event))
+  }
+
   start(): void {
-    super.start()
     if (this.logFile) {
       const dir = path.dirname(this.logFile)
       if (!existsSync(dir)) {
@@ -140,16 +142,15 @@ export class HeadlessAdapter extends BaseEventConsumer {
   stop(): void {
     this.log("Workflow adapter stopped")
     this.closeLogStream()
-    super.stop()
   }
 
   disconnect(): void {
     this.closeLogStream()
-    super.disconnect()
+    if (this.unsubscribe) { this.unsubscribe(); this.unsubscribe = null }
+    this.eventBus = null
   }
 
-  /** Flush and close the log writer. Safe to call multiple times. */
-  closeLogStream(): void {
+  private closeLogStream(): void {
     if (this.logWriter) {
       this.logWriter.flush()
       this.logWriter.end()
@@ -157,7 +158,7 @@ export class HeadlessAdapter extends BaseEventConsumer {
     }
   }
 
-  protected handleEvent(event: FlywheelEvent): void {
+  private handleEvent(event: FlywheelEvent): void {
     const spec = EVENT_HANDLERS[event.type]
     if (!spec.format) return
     if (LEVEL_ORDER[this.logLevel] < LEVEL_ORDER[spec.minLevel]) return

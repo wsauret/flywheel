@@ -39,28 +39,101 @@ export const SubprocessResultSchema = z.object({
 
 export type SubprocessResult = z.infer<typeof SubprocessResultSchema>;
 
-// NDJSONEvent — a parsed NDJSON event from subprocess output
+// ── Content blocks within Claude assistant messages ──
 
-/** Known NDJSON event types from worker output. */
+export interface ThinkingContentBlock {
+  type: "thinking";
+  thinking: string;
+}
+
+export interface TextContentBlock {
+  type: "text";
+  text: string;
+}
+
+export interface ToolUseContentBlock {
+  type: "tool_use";
+  id?: string;
+  name: string;
+  input?: Record<string, unknown>;
+}
+
+export type ContentBlock = ThinkingContentBlock | TextContentBlock | ToolUseContentBlock;
+
+// ── Typed data shapes per NDJSON event type ──
+// Claude Code's NDJSON stream is an external format. These interfaces encode
+// the expected shape; consumers guard against missing fields defensively.
+
+export interface AssistantEventData {
+  type: "assistant";
+  message?: {
+    content?: ContentBlock[];
+    usage?: {
+      input_tokens?: number;
+      cache_read_input_tokens?: number;
+      cache_creation_input_tokens?: number;
+    };
+    parent_tool_use_id?: string | null;
+  };
+  parent_tool_use_id?: string | null;
+}
+
+export interface ToolResultEventData {
+  type: "tool_result";
+  tool_use_id?: string;
+  is_error?: boolean;
+  content?: string;
+}
+
+export interface ResultEventData {
+  type: "result";
+  is_error?: boolean;
+  subtype?: string;
+  result?: string;
+  modelUsage?: Record<string, { contextWindow?: number }>;
+}
+
+export interface ContentBlockDeltaData {
+  type: "content_block_delta";
+  delta?: {
+    type: string;
+    thinking?: string;
+    text?: string;
+  };
+}
+
+export interface DirectToolUseData {
+  type: "tool_use";
+  name: string;
+  input?: Record<string, unknown>;
+}
+
+// ── NDJSONEvent — discriminated union on `type` with typed `data` per variant ──
+
 export type NDJSONEventType =
-  // Claude Code stream-json types
   | "assistant"
   | "system"
   | "user"
   | "tool_result"
   | "result"
-  // Legacy / alternate-engine types
   | "tool_use"
+  | "content_block_delta"
   | "text"
   | "step_finish"
   | "error"
-  // Internal markers
   | "flywheel:subprocess_boundary"
   | "unknown";
 
-/** A parsed NDJSON event. */
-export interface NDJSONEvent {
-  type: NDJSONEventType;
-  data: Record<string, unknown>;
-  raw: string;
-}
+export type NDJSONEvent =
+  | { type: "assistant"; data: AssistantEventData; raw: string }
+  | { type: "tool_result"; data: ToolResultEventData; raw: string }
+  | { type: "result"; data: ResultEventData; raw: string }
+  | { type: "content_block_delta"; data: ContentBlockDeltaData; raw: string }
+  | { type: "tool_use"; data: DirectToolUseData; raw: string }
+  | { type: "user"; data: Record<string, unknown>; raw: string }
+  | { type: "system"; data: Record<string, unknown>; raw: string }
+  | { type: "text"; data: Record<string, unknown>; raw: string }
+  | { type: "step_finish"; data: Record<string, unknown>; raw: string }
+  | { type: "error"; data: Record<string, unknown>; raw: string }
+  | { type: "flywheel:subprocess_boundary"; data: Record<string, unknown>; raw: string }
+  | { type: "unknown"; data: Record<string, unknown>; raw: string };

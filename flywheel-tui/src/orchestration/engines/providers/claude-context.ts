@@ -39,20 +39,11 @@ export function contextWindowForModel(model: string): number {
   return 0;
 }
 
-/**
- * Try to extract a context utilization update from a Claude NDJSON event.
- * Returns null if the event doesn't carry relevant context info.
- */
 export function extractContextUpdate(event: NDJSONEvent): ContextUpdate | null {
-  const data = event.data as Record<string, unknown>;
-  const type = data.type as string | undefined;
+  if (event.type === "assistant") {
+    if (event.data.parent_tool_use_id != null) return null;
 
-  if (type === "assistant") {
-    // Skip subagent events — they have their own smaller context window.
-    if (data.parent_tool_use_id != null) return null;
-
-    const message = data.message as Record<string, unknown> | undefined;
-    const usage = message?.usage as Record<string, unknown> | undefined;
+    const usage = event.data.message?.usage;
     if (!usage) return null;
 
     const input = Number(usage.input_tokens) || 0;
@@ -64,11 +55,10 @@ export function extractContextUpdate(event: NDJSONEvent): ContextUpdate | null {
     return { promptTokens, contextWindow: 0 };
   }
 
-  if (type === "result") {
-    const modelUsage = data.modelUsage as Record<string, Record<string, unknown>> | undefined;
+  if (event.type === "result") {
+    const modelUsage = event.data.modelUsage;
     if (!modelUsage) return null;
 
-    // Take the max contextWindow across all models in this result.
     let maxWindow = 0;
     for (const info of Object.values(modelUsage)) {
       const w = Number(info.contextWindow) || 0;

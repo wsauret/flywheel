@@ -8,7 +8,7 @@
  */
 
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
-import { BaseEventConsumer } from "../../infra/base-event-consumer";
+import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
 import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store-types";
 import { createOutputSession, type OutputSession } from "../../orchestration/output-session.js";
 import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
@@ -26,25 +26,18 @@ export interface OpenTUIAdapterOptions {
 
 const log = Log.create({ service: "opentui-adapter" });
 
-export class OpenTUIAdapter extends BaseEventConsumer {
+export class OpenTUIAdapter {
+  private eventBus: EventBus | null = null;
+  private unsubscribe: Unsubscribe | null = null;
   private updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
-
-  // ── OutputSession (replaces OutputPipeline) ──
-
   private outputSession: OutputSession;
-
-  /** Synthetic thinking timer for engines that batch thinking blocks. */
   private syntheticThinkingTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly syntheticThinkingMs: number | undefined;
   private disconnected = false;
-  /** Unified modelActivity writer — clears synthetic timer and forwards to store. */
   private wrappedUpdateEntry!: (patch: Partial<SessionEntryBase>) => void;
-
-  /** Dispatcher/evaluator NDJSON pipeline (block tracking + activity extraction). */
   private ndjsonPipeline: NdjsonPipeline;
 
   constructor(options: OpenTUIAdapterOptions) {
-    super();
     this.updateEntry = options.updateEntry;
     this.syntheticThinkingMs = options.engineMetadata?.syntheticThinkingMs;
 
@@ -90,13 +83,19 @@ export class OpenTUIAdapter extends BaseEventConsumer {
     this.ndjsonPipeline = new NdjsonPipeline(builder);
   }
 
-  /**
-   * Clean up intervals on disconnect.
-   * Must be called after subprocess exits.
-   */
-  override disconnect(): void {
+  connect(eventBus: EventBus): void {
+    if (this.eventBus) this.disconnect();
+    this.eventBus = eventBus;
+    this.unsubscribe = eventBus.subscribe((event) => this.handleEvent(event));
+  }
+
+  start(): void { /* no-op — OpenTUI lifecycle is managed by the shell */ }
+  stop(): void { /* no-op */ }
+
+  disconnect(): void {
     this.disconnected = true;
-    super.disconnect();
+    if (this.unsubscribe) { this.unsubscribe(); this.unsubscribe = null; }
+    this.eventBus = null;
     if (this.syntheticThinkingTimer !== null) {
       clearTimeout(this.syntheticThinkingTimer);
       this.syntheticThinkingTimer = null;
@@ -104,7 +103,7 @@ export class OpenTUIAdapter extends BaseEventConsumer {
     this.outputSession.dispose();
   }
 
-  protected handleEvent(event: FlywheelEvent): void {
+  private handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "subprocess:output":
         // Write output BEFORE resolving pending messages — resolvePendingMessages

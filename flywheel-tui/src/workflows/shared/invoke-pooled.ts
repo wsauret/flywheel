@@ -51,7 +51,9 @@ export interface InvokePooledCallbacks<THandoff, TResult> {
   buildFullPrompt: (handoffPath: string) => string;
   /** The system prompt — prepended to the stdin message. */
   systemPrompt: string;
-  /** Zod schema for handoff file validation. */
+  /** Zod schema for handoff file validation.
+   * `any` on Def/Input generics: schemas with `.default()` fields have Input !== Output,
+   * so `ZodType<T>` (which defaults Input = Output) rejects them. */
   handoffSchema: ZodType<THandoff, any, any>;
   /** Map the parsed handoff to the final result type. */
   mapResult: (handoff: THandoff) => TResult;

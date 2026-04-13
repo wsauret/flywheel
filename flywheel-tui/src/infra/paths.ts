@@ -40,22 +40,18 @@ export const CONFIG_FILES = ["flywheel.toml", ".flywheel.toml"];
 
 // Session directory helpers
 
-/** Returns the directory for a session: `.flywheel/sessions/<id>` */
 export function sessionDir(sessionId: string): string {
   return `${SESSIONS_DIR}/${sessionId}`;
 }
 
-/** Returns the handoffs subdirectory for a session: `.flywheel/sessions/<id>/handoffs` */
 function sessionHandoffsDir(sessionId: string): string {
   return `${sessionDir(sessionId)}/handoffs`;
 }
 
-/** Resolves an absolute session directory path. */
 export function resolveSessionDir(sessionId: string, baseDir: string): string {
   return path.resolve(baseDir, sessionDir(sessionId));
 }
 
-/** Resolves an absolute session handoffs directory path. */
 export function resolveSessionHandoffsDir(sessionId: string, baseDir: string): string {
   return path.resolve(baseDir, sessionHandoffsDir(sessionId));
 }
@@ -83,7 +79,6 @@ const SESSION_FILES = {
   context: "context.json",
 } as const;
 
-/** Returns absolute path to a well-known session file. */
 export function resolveSessionFile(
   sessionId: string,
   file: keyof typeof SESSION_FILES,
@@ -129,7 +124,6 @@ export function ensureTracesDir(baseDir: string): void {
   fs.mkdirSync(path.resolve(baseDir, TRACES_DIR), { recursive: true });
 }
 
-/** Returns absolute path to a session's trace file: `.flywheel/traces/<session-id>.jsonl` */
 export function resolveTraceFile(sessionId: string, baseDir: string): string {
   return path.resolve(baseDir, TRACES_DIR, `${sessionId}.jsonl`);
 }

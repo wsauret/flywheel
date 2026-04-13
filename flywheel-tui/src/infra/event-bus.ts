@@ -1,8 +1,8 @@
 import type { FlywheelEvent } from "./events";
 import { Log } from "./log.js";
 
-export type Listener = (event: FlywheelEvent) => void;
-export type TypedListener<T extends FlywheelEvent["type"]> = (
+type Listener = (event: FlywheelEvent) => void;
+type TypedListener<T extends FlywheelEvent["type"]> = (
   event: Extract<FlywheelEvent, { type: T }>
 ) => void;
 export type Unsubscribe = () => void;
@@ -23,9 +23,6 @@ export class EventBus {
   private catchAll = new Set<Listener>();
   private typed = new Map<FlywheelEvent["type"], Set<Listener>>();
 
-  /**
-   * Subscribe to all events. Returns an unsubscribe closure.
-   */
   subscribe(listener: Listener): Unsubscribe {
     this.catchAll.add(listener);
     return () => {
@@ -33,9 +30,6 @@ export class EventBus {
     };
   }
 
-  /**
-   * Subscribe to a specific event type. Returns an unsubscribe closure.
-   */
   subscribeToType<T extends FlywheelEvent["type"]>(
     type: T,
     listener: TypedListener<T>,

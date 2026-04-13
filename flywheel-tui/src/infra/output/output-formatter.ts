@@ -18,12 +18,6 @@ import * as path from "node:path";
 import { createPatch } from "diff";
 
 /**
- * Extract displayable text from a stream-json NDJSON line.
- *
- * Returns null for non-displayable lines (system init, etc).
- * Falls back to raw text for non-JSON input.
- */
-/**
  * Per-tool detail handlers.
  * Adding a new tool just means adding an entry to this map.
  */
@@ -105,9 +99,6 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
   ["ExitWorktree", () => null],
 ]);
 
-/**
- * Extract a short, useful detail string from tool input.
- */
 export function getToolDetail(
   name: string,
   input: Record<string, unknown>,
@@ -267,8 +258,7 @@ export function extractToolDiff(
   return undefined;
 }
 
-/** Derive filetype from file extension for syntax highlighting. */
-export function getFiletype(filePath: string): string | undefined {
+function getFiletype(filePath: string): string | undefined {
   if (!filePath) return undefined;
   const ext = filePath.split(".").pop()?.toLowerCase();
   if (!ext) return undefined;

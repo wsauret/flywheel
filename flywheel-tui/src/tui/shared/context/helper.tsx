@@ -3,8 +3,7 @@ import { createContext, Show, useContext, type ParentProps } from "solid-js"
 
 type WithOptionalReady = { ready?: boolean }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createSimpleContext<T, Props extends Record<string, any>>(input: {
+export function createSimpleContext<T, Props extends Record<string, unknown>>(input: {
   name: string
   init: ((input: Props) => T) | (() => T)
 }) {

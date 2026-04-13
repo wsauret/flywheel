@@ -20,14 +20,14 @@ const baseFields = {
 
 // Discriminated variants
 
-export const WorkflowSessionSchema = z.object({
+const WorkflowSessionSchema = z.object({
   ...baseFields,
   kind: z.literal("workflow"),
   command: z.enum(["work"]),
   planPath: z.string(),
 }).strict();
 
-export const ChatSessionSchema = z.object({
+const ChatSessionSchema = z.object({
   ...baseFields,
   kind: z.literal("chat"),
   command: z.literal("chat"),

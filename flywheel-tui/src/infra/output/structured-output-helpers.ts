@@ -24,7 +24,6 @@ export function contentInsertionIndex(blocks: AnyBlock[]): number {
   return idx;
 }
 
-/** Insert a content block before the pinned zone. Returns the insertion index. */
 export function insertBlockBeforePinned(
   blocks: AnyBlock[],
   block: AnyBlock,
@@ -43,7 +42,6 @@ export function insertBlockBeforePinned(
   return { index: blocks.length - 1, todoBlockIndex };
 }
 
-/** Rebuild the agent ID → index map from scratch. */
 export function rebuildAgentIndex(blocks: AnyBlock[], agentIndexById: Map<string, number>): void {
   agentIndexById.clear();
   for (let i = 0; i < blocks.length; i++) {
@@ -52,7 +50,6 @@ export function rebuildAgentIndex(blocks: AnyBlock[], agentIndexById: Map<string
   }
 }
 
-/** Find the index of the TodoListBlock, or -1 if absent. */
 export function findTodoIndex(blocks: AnyBlock[]): number {
   for (let i = 0; i < blocks.length; i++) {
     if (blocks[i]!.kind === "todoList") return i;
@@ -60,7 +57,6 @@ export function findTodoIndex(blocks: AnyBlock[]): number {
   return -1;
 }
 
-/** Append a tool to a specific agent's children, capping at maxChildren. Returns true if successful. */
 export function appendToolToAgentChildren(
   blocks: AnyBlock[],
   agentIndexById: Map<string, number>,

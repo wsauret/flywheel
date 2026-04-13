@@ -1,24 +1,23 @@
 // Environment variable overrides for FlywheelConfig
 
-/**
- * Map of environment variable names to setter functions that apply the
- * override onto a mutable config record. Each setter handles its own
- * type coercion (string → number, boolean, array, etc.).
- */
-const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => void> = {
-  FLYWHEEL_ENGINE: (val, config) => {
-    config.engine = val;
-  },
-  FLYWHEEL_MODEL: (val, config) => {
-    config.model = val;
-  },
+import type { FlywheelConfig } from "./schema.js";
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends Record<string, unknown> ? DeepPartial<T[K]> : T[K] };
+
+type ConfigOverrides = DeepPartial<FlywheelConfig>;
+
+type EnvSetter = (val: string, config: ConfigOverrides) => void;
+
+const ENV_MAP: Record<string, EnvSetter> = {
+  FLYWHEEL_ENGINE: (val, config) => { config.engine = val },
+  FLYWHEEL_MODEL: (val, config) => { config.model = val },
   FLYWHEEL_SUBPROCESS_MODEL: (val, config) => {
     if (!config.subprocess) config.subprocess = {};
-    (config.subprocess as Record<string, unknown>).model = val;
+    config.subprocess.model = val;
   },
   FLYWHEEL_DISPATCHER_MODEL: (val, config) => {
     if (!config.dispatcher) config.dispatcher = {};
-    (config.dispatcher as Record<string, unknown>).model = val;
+    config.dispatcher.model = val;
   },
   FLYWHEEL_MAX_RETRIES: (val, config) => {
     const n = parseInt(val, 10);
@@ -28,21 +27,11 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
     const n = parseInt(val, 10);
     if (!isNaN(n)) config.timeout_minutes = n;
   },
-  FLYWHEEL_PROJECT_CWD: (val, config) => {
-    config.project_cwd = val;
-  },
-  FLYWHEEL_SKIP_EVALUATION: (val, config) => {
-    config.skip_evaluation = val === "true" || val === "1";
-  },
-  FLYWHEEL_INTERACTIVE_CONSOLIDATION: (val, config) => {
-    config.interactive_consolidation = val === "true" || val === "1";
-  },
-  FLYWHEEL_AUTO_SHIP: (val, config) => {
-    config.auto_ship = val === "true" || val === "1";
-  },
-  FLYWHEEL_AUTO_CHAIN: (val, config) => {
-    config.auto_chain = val !== "false" && val !== "0";
-  },
+  FLYWHEEL_PROJECT_CWD: (val, config) => { config.project_cwd = val },
+  FLYWHEEL_SKIP_EVALUATION: (val, config) => { config.skip_evaluation = val === "true" || val === "1" },
+  FLYWHEEL_INTERACTIVE_CONSOLIDATION: (val, config) => { config.interactive_consolidation = val === "true" || val === "1" },
+  FLYWHEEL_AUTO_SHIP: (val, config) => { config.auto_ship = val === "true" || val === "1" },
+  FLYWHEEL_AUTO_CHAIN: (val, config) => { config.auto_chain = val !== "false" && val !== "0" },
   FLYWHEEL_MAX_EVAL_CYCLES: (val, config) => {
     const n = parseInt(val, 10);
     if (!isNaN(n)) config.max_eval_cycles = n;
@@ -58,66 +47,56 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
     const n = parseInt(val, 10);
     if (!isNaN(n)) {
       if (!config.budget) config.budget = {};
-      (config.budget as Record<string, unknown>).max_invocations = n;
+      config.budget.max_invocations = n;
     }
   },
   FLYWHEEL_BUDGET_MAX_TOKENS: (val, config) => {
     const n = parseInt(val, 10);
     if (!isNaN(n)) {
       if (!config.budget) config.budget = {};
-      (config.budget as Record<string, unknown>).max_tokens = n;
+      config.budget.max_tokens = n;
     }
   },
   FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES: (val, config) => {
     const n = parseInt(val, 10);
     if (!isNaN(n)) {
       if (!config.budget) config.budget = {};
-      (config.budget as Record<string, unknown>).max_wall_clock_minutes = n;
+      config.budget.max_wall_clock_minutes = n;
     }
   },
-  FLYWHEEL_SKIP_SCRUTINY: (val, config) => {
-    config.skip_scrutiny = val === "true" || val === "1";
-  },
-  FLYWHEEL_SKIP_VALIDATION: (val, config) => {
-    config.skip_validation = val === "true" || val === "1";
-  },
+  FLYWHEEL_SKIP_SCRUTINY: (val, config) => { config.skip_scrutiny = val === "true" || val === "1" },
+  FLYWHEEL_SKIP_VALIDATION: (val, config) => { config.skip_validation = val === "true" || val === "1" },
   FLYWHEEL_QUEUE_MAX_STEPS: (val, config) => {
     const n = parseInt(val, 10);
     if (!isNaN(n)) {
       if (!config.queue) config.queue = {};
-      (config.queue as Record<string, unknown>).max_steps = n;
+      config.queue.max_steps = n;
     }
   },
   FLYWHEEL_QUEUE_PERSIST_QUEUE: (val, config) => {
     if (!config.queue) config.queue = {};
-    (config.queue as Record<string, unknown>).persist_queue = val === "true" || val === "1";
+    config.queue.persist_queue = val === "true" || val === "1";
   },
   FLYWHEEL_SPRINT_MAX_ITERATIONS: (val, config) => {
     const n = parseInt(val, 10);
     if (!isNaN(n)) {
       if (!config.sprint) config.sprint = {};
-      (config.sprint as Record<string, unknown>).max_iterations = n;
+      config.sprint.max_iterations = n;
     }
   },
   FLYWHEEL_SPRINT_DETECT_STUCK: (val, config) => {
     if (!config.sprint) config.sprint = {};
-    (config.sprint as Record<string, unknown>).detect_stuck = val === "true" || val === "1";
+    config.sprint.detect_stuck = val === "true" || val === "1";
   },
 };
 
-/**
- * Build an env-override object from the current environment.
- * Returns a partial config record with only the keys that were set via env vars.
- */
-export function applyEnvOverrides(
-  env: Record<string, string | undefined>,
-): Record<string, unknown> {
-  const overrides: Record<string, unknown> = {};
+export function applyEnvOverrides(env: Record<string, string | undefined>): Record<string, unknown> {
+  const overrides: ConfigOverrides = {};
   for (const [envKey, setter] of Object.entries(ENV_MAP)) {
     const val = env[envKey];
     if (val !== undefined && val !== "") {
       setter(val, overrides);
     }
   }
-  return overrides;
+  return overrides as Record<string, unknown>;
 }

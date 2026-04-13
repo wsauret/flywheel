@@ -12,14 +12,18 @@ import catppuccinTheme from "./theme/catppuccin.json" with { type: "json" }
 import nordTheme from "./theme/nord.json" with { type: "json" }
 import gruvboxTheme from "./theme/gruvbox.json" with { type: "json" }
 
+// JSON imports have inferred types (string instead of HexColor template literals).
+// Single boundary cast — theme validation happens in resolveTheme().
+const asTheme = (json: unknown): ThemeJson => json as ThemeJson
+
 const THEMES: Record<string, ThemeJson> = {
-  default: defaultTheme as unknown as ThemeJson,
-  flywheel: defaultTheme as unknown as ThemeJson,
-  tokyonight: tokyonightTheme as unknown as ThemeJson,
-  dracula: draculaTheme as unknown as ThemeJson,
-  catppuccin: catppuccinTheme as unknown as ThemeJson,
-  nord: nordTheme as unknown as ThemeJson,
-  gruvbox: gruvboxTheme as unknown as ThemeJson,
+  default: asTheme(defaultTheme),
+  flywheel: asTheme(defaultTheme),
+  tokyonight: asTheme(tokyonightTheme),
+  dracula: asTheme(draculaTheme),
+  catppuccin: asTheme(catppuccinTheme),
+  nord: asTheme(nordTheme),
+  gruvbox: asTheme(gruvboxTheme),
 }
 
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
@@ -28,7 +32,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const [mode, setMode] = createSignal(props.mode)
     const [themeName, setThemeName] = createSignal(props.themeName ?? "flywheel")
 
-    const themeJson = createMemo(() => THEMES[themeName()] ?? defaultTheme as unknown as ThemeJson)
+    const themeJson = createMemo(() => THEMES[themeName()] ?? asTheme(defaultTheme))
     const theme = createMemo(() => resolveTheme(themeJson(), mode()))
     const syntax = createMemo(() => {
       const s = generateSyntax(theme())

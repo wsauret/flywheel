@@ -64,7 +64,7 @@ export const SessionBudgetStatusSchema = z.object({
 
 export type SessionBudgetStatus = z.infer<typeof SessionBudgetStatusSchema>;
 
-export const ContextEntrySchema = z.object({
+const ContextEntrySchema = z.object({
   name: z.string(),
   path: z.string(),
   summary: z.string(),

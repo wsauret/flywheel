@@ -1,81 +1,32 @@
 import type { FlywheelEvent } from "../../src/infra/events";
-import { assertNever } from "../../src/infra/events";
-import { BaseEventConsumer } from "../../src/infra/base-event-consumer";
+import type { EventBus, Unsubscribe } from "../../src/infra/event-bus";
 
 /**
  * MockAdapter — connects to event bus, records events.
- *
- * Public `events` field (no getter — matches CodeMachine pattern).
- * `reset()`: clears events AND re-subscribes (prevents test isolation bug).
- *
- * Uses exhaustive switch for compile-time safety — adding a new event type
- * without a case here causes a compile-time error (matches OpenTUI/Headless pattern).
+ * Implements WorkflowAdapter interface for test use.
  */
-export class MockAdapter extends BaseEventConsumer {
-  /** All events received since last reset. */
+export class MockAdapter {
   events: FlywheelEvent[] = [];
+  private eventBus: EventBus | null = null;
+  private unsubscribe: Unsubscribe | null = null;
 
-  protected handleEvent(event: FlywheelEvent): void {
-    switch (event.type) {
-      // Dispatcher events
-      case "dispatcher:invoked":
-      case "dispatcher:completed":
-      case "dispatcher:failed":
-      case "dispatcher:output":
-      // Evaluator events
-      case "evaluator:invoked":
-      case "evaluator:completed":
-      case "evaluator:failed":
-      case "evaluator:revision-requested":
-      case "evaluator:output":
-      // Subprocess events
-      case "subprocess:spawned":
-      case "subprocess:completed":
-      case "subprocess:failed":
-      case "subprocess:retrying":
-      case "subprocess:output":
-      case "subprocess:ndjson":
-      case "subprocess:injected":
-      // Approval events
-      case "approval:requested":
-      case "approval:received":
-      // Question events
-      case "question:asked":
-      case "question:replied":
-      case "question:rejected":
-      // Budget events
-      case "budget:exhausted":
-      // Queue lifecycle events
-      case "queue:initialized":
-      case "queue:completed":
-      case "queue:failed":
-      // Queue step events
-      case "queue:step-started":
-      case "queue:step-completed":
-      case "queue:step-failed":
-      // Queue mutation events
-      case "queue:step-inserted":
-      case "queue:step-removed":
-      // Trace events
-      case "trace:tool-started":
-      case "trace:tool-completed":
-      case "trace:subagent-started":
-      case "trace:subagent-completed":
-        this.events.push(event);
-        break;
-      default:
-        assertNever(event);
-    }
+  connect(eventBus: EventBus): void {
+    if (this.eventBus) this.disconnect();
+    this.eventBus = eventBus;
+    this.unsubscribe = eventBus.subscribe((event) => { this.events.push(event); });
   }
 
-  /**
-   * Clear events AND re-subscribe to prevent test isolation bugs.
-   * Must be connected to an event bus.
-   */
+  start(): void {}
+  stop(): void {}
+
+  disconnect(): void {
+    if (this.unsubscribe) { this.unsubscribe(); this.unsubscribe = null; }
+    this.eventBus = null;
+  }
+
   reset(): void {
     this.events = [];
     if (this.eventBus) {
-      // Disconnect and reconnect to get a fresh subscription
       const bus = this.eventBus;
       this.disconnect();
       this.connect(bus);

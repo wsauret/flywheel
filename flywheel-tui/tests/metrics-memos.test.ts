@@ -140,7 +140,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
 
       // Leaf signals + control methods should exist
       expect(typeof metrics.elapsed).toBe("function")
-      expect(typeof metrics.spinnerTick).toBe("function")
       expect(typeof metrics.thinkingElapsed).toBe("function")
       expect(typeof metrics.pauseTimer).toBe("function")
       // startTimer is internal — timer runs reactively based on liveActivity

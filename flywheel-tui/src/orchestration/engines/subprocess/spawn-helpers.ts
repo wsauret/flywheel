@@ -52,7 +52,7 @@ export function validateSpawnArgs(command: string, _args: readonly string[]): vo
  *
  * Following ralph-tui's pattern of detecting interruptions from exit codes.
  */
-export function isSignalExit(exitCode: number): boolean {
+function isSignalExit(exitCode: number): boolean {
   return exitCode === 130   // SIGINT (Ctrl+C)
       || exitCode === 143   // SIGTERM
       || exitCode === 137;  // SIGKILL

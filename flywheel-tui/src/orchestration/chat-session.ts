@@ -117,11 +117,10 @@ function handlePromptTooLong(
   session: OutputSession,
   callbacks: ChatCallbacks,
 ): void {
-  const data = event.data as Record<string, unknown>
-  if (data.type !== "result") return
+  if (event.type !== "result") return
 
-  const isError = data.is_error === true || (typeof data.subtype === "string" && data.subtype !== "success")
-  const resultText = typeof data.result === "string" ? data.result : ""
+  const isError = event.data.is_error === true || (typeof event.data.subtype === "string" && event.data.subtype !== "success")
+  const resultText = typeof event.data.result === "string" ? event.data.result : ""
   if (isError && /prompt is too long/i.test(resultText)) {
     log.warn("prompt too long — resetting session", { claudeSessionId: state.claudeSessionId })
     state.claudeSessionId = null

@@ -1,60 +1,59 @@
 import { createSignal, createMemo, createEffect, onCleanup, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { SessionEntry } from "../../orchestration/session-store-types"
-import { SPINNER_FRAMES, SPINNER_INTERVAL } from "@tui/shared/components/spinner-frames.js"
 
 export interface MetricsHook {
   elapsed: Accessor<number>
   liveTokens: Accessor<number>
   liveCost: Accessor<number>
   liveContextPercent: Accessor<number>
-  spinnerTick: Accessor<number>
   thinkingElapsed: Accessor<number>
   liveActivity: Accessor<"idle" | "thinking" | "generating" | "tool_executing">
   pauseTimer(): void
-
   resetMetrics(): void
   resetElapsedTo(ms: number): void
 }
 
 export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
-  // Store-derived memos — read directly from the session store entry.
-  // Safe to use createMemo here because the entry accessor is wired to a real
-  // reactive store proxy before useMetrics is called (shell.tsx creates shell
-  // state first, then passes signals.storeEntry directly).
   const liveTokens = createMemo(() => entry()?.tokens ?? 0)
   const liveCost = createMemo(() => entry()?.cost ?? 0)
   const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)
   const liveActivity = createMemo((): "idle" | "thinking" | "generating" | "tool_executing" => entry()?.modelActivity ?? "idle")
 
-  // Leaf signals — local transient state, not duplicated from the store
   const [elapsed, setElapsed] = createSignal(0)
-  const [spinnerTick, setSpinnerTick] = createSignal(0)
   const [thinkingElapsed, setThinkingElapsed] = createSignal(0)
 
   let elapsedTimer: ReturnType<typeof setInterval> | null = null
   let elapsedAccum = 0
   let elapsedRunStart = 0
-  let thinkingStart = 0
 
-  const spinnerTimer = setInterval(() => {
-    setSpinnerTick((t) => (t + 1) % SPINNER_FRAMES.length)
-    // Derive thinking elapsed from liveActivity — no external ref needed
+  // Thinking elapsed — tracks seconds spent in "thinking" activity.
+  // Reacts to liveActivity transitions, updates once per second while active.
+  let thinkingStart = 0
+  let thinkingTimer: ReturnType<typeof setInterval> | null = null
+
+  createEffect(() => {
     const activity = liveActivity()
     if (activity === "thinking") {
-      if (thinkingStart === 0) thinkingStart = Date.now()
-      setThinkingElapsed(Math.floor((Date.now() - thinkingStart) / 1000))
+      if (!thinkingTimer) {
+        thinkingStart = Date.now()
+        setThinkingElapsed(0)
+        thinkingTimer = setInterval(() => {
+          setThinkingElapsed(Math.floor((Date.now() - thinkingStart) / 1000))
+        }, 1000)
+      }
     } else {
-      if (thinkingStart !== 0) {
+      if (thinkingTimer) {
+        clearInterval(thinkingTimer)
+        thinkingTimer = null
         thinkingStart = 0
         setThinkingElapsed(0)
       }
     }
-  }, SPINNER_INTERVAL)
-  onCleanup(() => clearInterval(spinnerTimer))
+  })
+  onCleanup(() => { if (thinkingTimer) clearInterval(thinkingTimer) })
 
-  // Timer runs reactively when the agent is actively working.
-  // Internalized here so callers don't need to orchestrate start/pause.
+  // Elapsed timer — runs while agent is active, pauses on idle.
   createEffect(() => {
     if (liveActivity() !== "idle") startTimer()
     else pauseTimer()
@@ -73,19 +72,18 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     elapsedTimer = null
   }
 
-
   function resetMetrics(): void {
-    // Stop any running timer first — prevents pauseTimer() from re-accumulating
-    // stale time after we reset elapsedAccum to 0.
     if (elapsedTimer) {
       clearInterval(elapsedTimer)
       elapsedTimer = null
     }
+    if (thinkingTimer) {
+      clearInterval(thinkingTimer)
+      thinkingTimer = null
+    }
     elapsedRunStart = 0
     elapsedAccum = 0
     thinkingStart = 0
-    // Only reset leaf signals — the 4 store-derived memos (liveTokens, liveCost,
-    // liveContextPercent, liveActivity) reset implicitly when the store entry is cleared.
     batch(() => {
       setElapsed(0)
       setThinkingElapsed(0)
@@ -104,7 +102,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     liveTokens,
     liveCost,
     liveContextPercent,
-    spinnerTick,
     thinkingElapsed,
     liveActivity,
     pauseTimer,

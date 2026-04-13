@@ -13,7 +13,7 @@ import * as path from "node:path";
  *
  * Format: `${filePath}.__flywheel__.${pid}.${timestamp}.${randomHex}.tmp`
  */
-export function makeTmpPath(filePath: string): string {
+function makeTmpPath(filePath: string): string {
   const pid = process.pid;
   const timestamp = Date.now();
   const rand = crypto.randomBytes(4).toString("hex");

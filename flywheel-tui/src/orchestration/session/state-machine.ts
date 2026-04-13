@@ -39,10 +39,6 @@ export const VALID_TRANSITIONS: Readonly<
 
 // Transition guard
 
-/**
- * Pure function — returns `true` if transitioning from `from` to `to` is
- * allowed by the state machine.
- */
 export function isValidTransition(
   from: SessionState,
   to: SessionState,
