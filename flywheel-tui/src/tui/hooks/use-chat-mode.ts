@@ -23,8 +23,6 @@ export interface ChatModeHook {
   /** True while a chat session is being created (async startup window). */
   chatActive: Accessor<boolean>
   startChat(initialMessage?: string): Promise<void>
-  /** Resume a previous chat session, loading its persisted output blocks. */
-  resumeChat(sessionId: string): Promise<void>
   /** Put the current chat in the background without ending it. */
   backgroundChat(): Promise<void>
   interruptChat(): void
@@ -69,23 +67,6 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     })
   }
 
-  async function resumeChat(sessionId: string): Promise<void> {
-    setChatActive(true)
-    metrics.resetMetrics()
-
-    const result = await controller.resumeChat(sessionId)
-
-    batch(() => {
-      setChatActive(false)
-      if (result) {
-        signals.setForegroundId(result.sessionId)
-        services.setTerminalTitle(result.terminalTitle)
-      } else {
-        signals.setErrorMessage("Chat failed to resume")
-      }
-    })
-  }
-
   async function backgroundChat(): Promise<void> {
     await controller.backgroundChat(signals.foregroundId())
     batch(() => {
@@ -114,5 +95,5 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     controller.sendMessage(signals.foregroundId(), text)
   }
 
-  return { chatActive, startChat, resumeChat, backgroundChat, interruptChat, endChat, sendMessage }
+  return { chatActive, startChat, backgroundChat, interruptChat, endChat, sendMessage }
 }

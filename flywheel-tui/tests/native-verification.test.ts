@@ -233,8 +233,8 @@ describe("runNativeVerification", () => {
     expect(result.allPassed).toBe(true);
     expect(result.checks).toHaveLength(3);
     for (const check of result.checks) {
-      expect(check.skipped).toBe(true);
-      expect(check.skipReason).toMatch(/^denied:/);
+      expect(check.kind).toBe("skipped");
+      if (check.kind === "skipped") expect(check.skipReason).toMatch(/^denied:/);
     }
   });
 
@@ -245,7 +245,7 @@ describe("runNativeVerification", () => {
       nativeCheckTypes: [],
     });
     expect(result.allPassed).toBe(false);
-    expect(result.checks[0].discrepancy).toBe(true);
+    expect(result.checks[0].kind).toBe("discrepancy");
     expect(result.discrepancies).toHaveLength(1);
     expect(result.discrepancies[0].command).toBe("false");
   });
@@ -257,7 +257,7 @@ describe("runNativeVerification", () => {
       nativeCheckTypes: [],
     });
     expect(result.allPassed).toBe(true);
-    expect(result.checks[0].discrepancy).toBeUndefined();
+    expect(result.checks[0].kind).toBe("ran");
     expect(result.discrepancies).toHaveLength(0);
   });
 
@@ -270,7 +270,7 @@ describe("runNativeVerification", () => {
     // Should not crash; either skipped or failed
     expect(result.checks).toHaveLength(1);
     const check = result.checks[0];
-    expect(check.skipped === true || check.passed === false).toBe(true);
+    expect(check.kind === "skipped" || (check.kind !== "skipped" && check.passed === false)).toBe(true);
   });
 
   it("runs multiple checks concurrently", async () => {
@@ -301,7 +301,8 @@ describe("runNativeVerification", () => {
     });
     expect(result.allPassed).toBe(false);
     expect(result.checks).toHaveLength(1);
-    expect(result.checks[0].passed).toBe(false);
+    expect(result.checks[0].kind).toBe("ran");
+    if (result.checks[0].kind === "ran") expect(result.checks[0].passed).toBe(false);
   }, 10_000);
 
   it("git diff --stat only runs when has-changes is in nativeCheckTypes", async () => {
@@ -337,7 +338,7 @@ describe("runNativeVerification", () => {
     const gitCheck = result.checks.find((c) => c.command.includes("git diff"));
     expect(gitCheck).toBeDefined();
     // Either it passed or was skipped (for single-commit repos), but did not throw
-    expect(gitCheck!.skipped === true || typeof gitCheck!.passed === "boolean").toBe(true);
+    expect(gitCheck!.kind === "skipped" || gitCheck!.kind === "ran").toBe(true);
   });
 
   it("skipped commands do not affect allPassed", async () => {
@@ -351,7 +352,8 @@ describe("runNativeVerification", () => {
     });
     expect(result.allPassed).toBe(true);
     expect(result.checks).toHaveLength(2);
-    expect(result.checks[0].skipped).toBe(true);
-    expect(result.checks[1].passed).toBe(true);
+    expect(result.checks[0].kind).toBe("skipped");
+    expect(result.checks[1].kind).toBe("ran");
+    if (result.checks[1].kind === "ran") expect(result.checks[1].passed).toBe(true);
   });
 });

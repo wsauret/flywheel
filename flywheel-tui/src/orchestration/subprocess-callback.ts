@@ -1,15 +1,6 @@
-/**
- * Subprocess callback factory — spawns the engine process for a queue step.
- *
- * Single-use factory justified by SRP: scaffolding setup, warm-pool acquisition,
- * stream pipeline wiring, stdin injection, and observer coordination form a
- * cohesive concern distinct from queue orchestration.
- */
-
 import { randomUUID } from "node:crypto"
 import { buildScaffolding, type ScaffoldingPaths } from "../workflows/queue/shared/scaffolding.js"
 import {
-  sessionDir,
   buildSubprocessHandoffPath,
   ensureSessionDir,
 } from "../infra/paths.js"
@@ -29,21 +20,12 @@ const log = Log.create({ service: "subprocess-callback" })
 /** Step types that get self-review injection at the first turn boundary. */
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
-// Pure prompt builder
-
 export interface StepPromptResult {
   fullPrompt: string
   handoffPath: string
   scaffoldingPaths: ScaffoldingPaths
 }
 
-/**
- * Build the full prompt for a subprocess step.
- *
- * Pure function — no side effects, no I/O. Computes the handoff path,
- * scaffolding paths, and assembles preamble + prompt + postamble.
- */
-// Exported for test validation (tests/build-step-prompt.test.ts)
 export function buildStepPrompt(
   step: Step,
   prompt: string,
@@ -53,10 +35,6 @@ export function buildStepPrompt(
   const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, projectCwd)
   const scaffoldingPaths: ScaffoldingPaths = {
     handoffPath,
-    planPath: `${sessionDir(sessionId)}/plan.json`,
-    researchPath: `${sessionDir(sessionId)}/research.md`,
-    reviewPath: `${sessionDir(sessionId)}/review.md`,
-    contextPath: `${sessionDir(sessionId)}/context.md`,
   }
   const scaffolding = buildScaffolding(step, scaffoldingPaths)
   const parts: string[] = []
@@ -67,8 +45,6 @@ export function buildStepPrompt(
 
   return { fullPrompt, handoffPath, scaffoldingPaths }
 }
-
-// Types
 
 interface SubprocessCallbackDeps {
   deps: WorkflowDeps
@@ -97,8 +73,6 @@ interface SubprocessCallbackResult {
   sessionId: string | undefined
 }
 
-// Factory
-
 export function createSubprocessCallback(
   opts: SubprocessCallbackDeps,
 ): (step: Step, prompt: string) => Promise<SubprocessCallbackResult> {
@@ -109,14 +83,11 @@ export function createSubprocessCallback(
   const useStdinPipe = deps.engine.metadata.supportsStreamingInput
 
   return async (step: Step, prompt: string, signal?: AbortSignal): Promise<SubprocessCallbackResult> => {
-    // Reset observer state between steps so doom-loop history, consecutive
-    // error counts, and no-action flags don't bleed across step boundaries.
     observerChain?.reset()
     let selfReviewInjected = false
 
     const invocationId = randomUUID()
 
-    // Build prompt + compute paths (pure, no I/O)
     const { fullPrompt, handoffPath } = buildStepPrompt(step, prompt, sessionId, projectCwd)
     ensureSessionDir(sessionId, projectCwd)
 
@@ -130,7 +101,6 @@ export function createSubprocessCallback(
       ? (engineCmd.promptPrefix ? engineCmd.promptPrefix + fullPrompt : fullPrompt)
       : undefined
 
-    // Compose initial stdin content (engine-specific format)
     let stdinContent: string | undefined
     if (useStdinPipe && rawStdinContent) {
       stdinContent = formatStdinMessage(rawStdinContent)
@@ -138,34 +108,23 @@ export function createSubprocessCallback(
       stdinContent = rawStdinContent
     }
 
-    // Turn-complete callback: when the subprocess finishes a turn (result event)
-    // and the stdin pipe is still open, either inject a pending message or
-    // close the pipe to let the step advance.
     const onTurnComplete = useStdinPipe ? (_subprocessSessionId: string | undefined) => {
-      // Collect observer injection messages and enqueue
       const observerMessages = observerChain?.onTurnComplete() ?? []
-      for (const msg of observerMessages) {
-        injectionQueue.enqueue(msg)
-      }
-      // Self-review: inject checklist on first turn-complete for code steps.
+      for (const msg of observerMessages) injectionQueue.enqueue(msg)
+
       if (!selfReviewInjected && SELF_REVIEW_STEP_TYPES.has(step.type)) {
         injectionQueue.enqueue(SELF_REVIEW_CHECKLIST)
         selfReviewInjected = true
       }
-      // Drain one item (or close handle if empty)
+
       const delivered = injectionQueue.drainAtTurnBoundary()
       if (delivered !== null) {
         log.info("turn-boundary injection sent to subprocess", { userSteering: delivered.userSteering })
+        // Observer/self-review messages need a new block; user-steering messages
+        // already have a pending block that resolves when the agent outputs.
         if (!delivered.userSteering) {
-          // Observer/self-review messages need a new block in the UI
-          emit("subprocess:injected", {
-            workflowId: workflowId,
-            message: delivered.message,
-            origin: "system",
-          })
+          emit("subprocess:injected", { workflowId, message: delivered.message, origin: "system" })
         }
-        // User-steering messages already have a pending block — no event needed.
-        // Pending state is resolved when the agent starts outputting.
       }
     } : undefined
 
@@ -181,18 +140,16 @@ export function createSubprocessCallback(
       onSessionId: undefined,
       stdoutTransform: undefined,
       onStdout: (chunk: string) => {
-        emit("subprocess:output", { workflowId: workflowId, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
+        emit("subprocess:output", { workflowId, stream: "stdout", data: chunk, engineId: deps.engine.metadata.id })
       },
       onStderr: (chunk: string) => {
-        emit("subprocess:output", { workflowId: workflowId, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
+        emit("subprocess:output", { workflowId, stream: "stderr", data: chunk, engineId: deps.engine.metadata.id })
       },
       onNDJSONEvent: (event: import("../infra/subprocess-types").NDJSONEvent) => {
-        // Emit to EventBus — subscribers in workflow-runner handle budget, tracing, transcript, observers
-        emit("subprocess:ndjson", { workflowId: workflowId, ndjsonEvent: event });
+        emit("subprocess:ndjson", { workflowId, ndjsonEvent: event });
       },
     }
 
-    // Acquire from pool or fall back to deps.spawner.spawn()
     let spawnResult: import("./engines/subprocess/spawner").SpawnResult
     let rawProc: RawSpawnedProcess | null = null
 
@@ -206,17 +163,16 @@ export function createSubprocessCallback(
       spawnResult = await deps.spawner.spawn(engineCmd.command, engineCmd.args, spawnOptions)
     }
 
-    // Write a boundary marker so transcript analysis can segment per-subprocess.
-    // Emitted as subprocess:ndjson — the transcript subscriber persists it alongside real events.
+    // Boundary marker for transcript segmentation per-subprocess
     {
       const boundaryPayload = {
         type: "flywheel:subprocess_boundary",
         timestamp: new Date().toISOString(),
-        workflowId: workflowId,
+        workflowId,
         stepId: step.id,
       }
       emit("subprocess:ndjson", {
-        workflowId: workflowId,
+        workflowId,
         ndjsonEvent: {
           type: "flywheel:subprocess_boundary",
           data: boundaryPayload,
@@ -225,7 +181,6 @@ export function createSubprocessCallback(
       })
     }
 
-    // Bind stdinHandle to injection queue for mid-execution injection (user steering)
     if (spawnResult.stdinHandle) {
       injectionQueue.bindStdin(spawnResult.stdinHandle)
     }
@@ -239,9 +194,7 @@ export function createSubprocessCallback(
         sessionId: subprocessResult.sessionId,
       }
     } finally {
-      // Unbind handle when subprocess finishes (pipe is closed)
       injectionQueue.bindStdin(null)
-      // Return raw process to pool for cleanup and replacement
       if (subprocessPool && rawProc) {
         subprocessPool.release(rawProc)
       }

@@ -6,7 +6,7 @@ import {
   MAX_LINE_LENGTH,
 } from "../src/infra/ndjson-parser";
 import type { NDJSONEvent } from "../src/infra/subprocess-types";
-import { TieredBuffer } from "../src/infra/tiered-buffer";
+import { OutputBuffer } from "../src/infra/output-buffer";
 
 // ---------------------------------------------------------------------------
 // stripAnsi
@@ -226,17 +226,14 @@ describe("NDJSONParser", () => {
     expect(parser.sessionId).toBe("camel-1");
   });
 
-  it("feeds through tiered buffer system", () => {
-    const tieredBuffer = new TieredBuffer();
-    const p = new NDJSONParser(tieredBuffer);
+  it("feeds through output buffer", () => {
+    const outputBuffer = new OutputBuffer();
+    const p = new NDJSONParser(outputBuffer);
     p.onEvent = (e) => events.push(e);
 
     p.write('{"type":"text","content":"hello"}\n');
 
-    // Content should be in tiered buffer
-    expect(tieredBuffer.getTier1().content).toContain('"type":"text"');
-    expect(tieredBuffer.getTier2().content).toContain('"type":"text"');
-    expect(tieredBuffer.getTier3().content).toContain('"type":"text"');
+    expect(outputBuffer.getState().content).toContain('"type":"text"');
   });
 
   it("MAX_LINE_LENGTH is 1MB (1,000,000)", () => {

@@ -61,11 +61,6 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       get themeName() {
         return themeName()
       },
-      get availableThemes() {
-        return Object.keys(THEMES)
-      },
-      setMode,
-      setTheme: setThemeName,
     }
   },
 })

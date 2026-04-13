@@ -1,13 +1,3 @@
-/**
- * Executor Factory — extracts the ~100 lines of executor setup from
- * workflow-runner.ts run() into a focused factory function.
- *
- * Creates: sprint hooks, warm pools, transports, context indexer,
- * trace event handler, observer chain, EventBus subscriber wiring,
- * post-turn verification, executor deps, guardrails, persistence,
- * and finally the StepExecutor.
- */
-
 import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator"
 import { createStepExecutor } from "../workflows/queue/executor"
 import type { StepExecutor } from "../workflows/queue/executor-types"
@@ -31,9 +21,6 @@ import type { InjectionQueue } from "./engines/subprocess/injection-queue"
 import type { SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
 import { wireSessionSubscribers, type MetricsWriter } from "./session/create-session-infra"
-
-
-// ── Types ──
 
 export interface CreateExecutorInput {
   /** Prepared workflow deps (config, engine, etc.) */
@@ -79,13 +66,6 @@ export interface CreateExecutorResult {
   eventUnsubs: Unsubscribe[]
 }
 
-/**
- * Build the full executor: sprint hooks, warm pools, transports, observers,
- * EventBus wiring, verification, guardrails, persistence, and StepExecutor.
- *
- * Extracted from workflow-runner.ts run() to keep that function focused on
- * execution lifecycle (title generation, running, finalization, cleanup).
- */
 export async function createExecutor(input: CreateExecutorInput): Promise<CreateExecutorResult> {
   const {
     deps, emit, eventBus, workflowId, sessionId, queue, description,
@@ -96,7 +76,6 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
 
   const eventUnsubs: Unsubscribe[] = []
 
-  // ── 1. Sprint detection and hook creation ──
   const isSprint = queue.steps.some((s) => s.dispatcherHint === SPRINT_HINT)
   const externalHooks: OnStepCompletedHook[] = []
   if (isSprint) {
@@ -104,13 +83,11 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     externalHooks.push(hook)
   }
 
-  // ── 2. Warm pool creation ──
   const pools = createWarmPools(deps, projectCwd, subprocessCwd, isSprint ? "sprint" : undefined)
   const dispatcherPool = pools.dispatcher
   const evaluatorPool = pools.evaluator
   const subprocessPool = pools.subprocess
 
-  // ── 3. Sprint evaluator addendum ──
   const evaluatorAddendum = isSprint
     ? "You are evaluating sprint mode work. Evaluate against the 7-point self-review checklist " +
       "(diff review, task alignment, completeness, test coverage, regression, edge cases, elegance). " +
@@ -118,29 +95,23 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
       "Only FAIL for hard evidence: tests failing, critical deliverables missing, or fundamentally broken output."
     : undefined
 
-  // ── 5. Transport resolution ──
   const { dispatcherTransport, evaluatorTransport } = resolveTransports({
     deps, emit, workflowId, sessionId, baseDir: projectCwd,
     evaluatorSystemPromptAddendum: evaluatorAddendum,
     dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage,
   })
 
-  // ── 6. Context indexer ──
   const contextIndexer = contextIndexerOverride ?? new ContextIndexer(projectCwd)
   await contextIndexer.startIndexing()
 
-  // ── 7. Observer chain ──
   const observerChain = createObserverChain([
     createDoomLoopObserver(),
     createToolFailureObserver(),
     createNoActionObserver(),
   ])
 
-  // ── 8. Wire EventBus subscribers ──
-  // Budget, transcript, tracing, metrics → store — unified wiring (ADR-006: single source of truth)
   eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, workflowId, infra, input.metricsWriter))
 
-  // Observers: NDJSON events mapped to engine events, fed to observer chain
   eventUnsubs.push(
     eventBus.subscribeToType("subprocess:ndjson", (e) => {
       for (const engineEvent of mapNDJSONToEngineEvents(e.ndjsonEvent)) {
@@ -149,14 +120,12 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     }),
   )
 
-  // ── 10. Post-turn verification hook ──
   const postTurnVerification = createPostTurnVerificationHook({
     nativeCheckTypes: ["build", "test", "has-changes"],
     maxFixAttempts: 2,
     projectCwd,
   })
 
-  // ── 11. Build executor deps ──
   const execDeps = buildExecutorDeps(
     { deps, emit, eventBus, workflowId, sessionId },
     { dispatcherTransport, evaluatorTransport, subprocessPool, observerChain },
@@ -164,17 +133,14 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     { injectionQueue, externalHooks, chatContext },
   )
 
-  // ── 12. Guardrails ──
   const guardrails = createGuardrails({
     maxQueueLength: deps.config.queue?.max_steps ?? 50,
     maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
     maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
   })
 
-  // ── 13. Persistence ──
   const persistence = createQueuePersistence({ sessionId, baseDir: projectCwd })
 
-  // ── 14. Create step executor ──
   const executor = createStepExecutor({
     queue,
     workflowId,

@@ -75,10 +75,6 @@ async function spawnWorker(
   const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, baseDir);
   const scaffoldingPaths: ScaffoldingPaths = {
     handoffPath,
-    planPath: "",
-    researchPath: "",
-    reviewPath: "",
-    contextPath: "",
   };
 
   const scaffolding = buildScaffolding(step, scaffoldingPaths);

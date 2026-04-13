@@ -21,7 +21,6 @@ export interface WorkflowLifecycleDeps {
 export interface WorkflowLifecycleHook {
   startWorkflow(command: string, description: string): void
   startTestStep(stepId?: string): void
-  resumeWorkflow(sessionId: string): Promise<void>
   pauseForeground(): void
   abortForeground(): void
   handleResume(sessionIdArg?: string): Promise<void>
@@ -92,18 +91,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     signals.setForegroundId(result.sessionId)
   }
 
-  async function resumeWorkflow(sessionId: string): Promise<void> {
-    const result = await controller.resumeWorkflow(sessionId)
-
-    if (!result) {
-      services.showToast({ message: "Failed to resume \u2014 missing data", variant: "error" })
-      return
-    }
-
-    resetUIState(result.terminalTitle)
-    signals.setForegroundId(result.sessionId)
-  }
-
   function pauseForeground(): void {
     const fgId = signals.foregroundId()
     const paused = controller.pause(fgId)
@@ -137,7 +124,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
   return {
     startWorkflow,
     startTestStep,
-    resumeWorkflow,
     pauseForeground,
     abortForeground,
     handleResume,

@@ -1,8 +1,6 @@
 import type { DispatcherDecision, EvaluatorResult } from "./workflow-types";
 import type { NDJSONEvent } from "./subprocess-types";
 
-// FlywheelEvent discriminated union (namespace:verb naming)
-
 export type FlywheelEvent =
   | DispatcherInvoked
   | DispatcherCompleted
@@ -29,8 +27,6 @@ export type FlywheelEvent =
   | TraceToolCompleted
   | TraceSubagentStarted
   | TraceSubagentCompleted;
-
-// -- Dispatcher events --
 
 interface DispatcherInvoked {
   type: "dispatcher:invoked";
@@ -61,8 +57,6 @@ interface DispatcherOutput {
   engineName: string;
   timestamp: number;
 }
-
-// -- Evaluator events --
 
 interface EvaluatorInvoked {
   type: "evaluator:invoked";
@@ -104,8 +98,6 @@ interface EvaluatorOutput {
   timestamp: number;
 }
 
-// -- Subprocess events --
-
 interface SubprocessSpawned {
   type: "subprocess:spawned";
   workflowId: string;
@@ -119,7 +111,6 @@ interface SubprocessOutput {
   stream: "stdout" | "stderr";
   data: string;
   timestamp: number;
-  /** Engine that produced this output (e.g. "claude", "opencode"). */
   engineId: string;
 }
 
@@ -142,13 +133,9 @@ interface SubprocessInjected {
   workflowId: string;
   message: string;
   timestamp: number;
-  /** Who originated this message. "user" = typed by the user (steering/chat). "system" = observer, self-review, etc. */
   origin: "user" | "system";
-  /** True when this is a user-steering message shown immediately as pending. */
   pending?: boolean;
 }
-
-// -- Budget events --
 
 interface BudgetMetricsChanged {
   type: "budget:metrics-changed";
@@ -165,12 +152,9 @@ interface BudgetExhausted {
   timestamp: number;
 }
 
-// -- Queue lifecycle events --
-
 export interface QueueInitialized {
   type: "queue:initialized";
   workflowId: string;
-  /** IDs of all steps in the initial queue. */
   stepIds: string[];
   timestamp: number;
 }
@@ -178,7 +162,6 @@ export interface QueueInitialized {
 export interface QueueCompleted {
   type: "queue:completed";
   workflowId: string;
-  /** Number of steps that completed successfully. */
   stepsCompleted: number;
   timestamp: number;
 }
@@ -187,12 +170,9 @@ export interface QueueFailed {
   type: "queue:failed";
   workflowId: string;
   reason: string;
-  /** Number of steps that completed before the failure. */
   stepsCompleted: number;
   timestamp: number;
 }
-
-// -- Queue step lifecycle events --
 
 export interface QueueStepStarted {
   type: "queue:step-started";
@@ -221,8 +201,6 @@ export interface QueueStepFailed {
   reason: string;
   timestamp: number;
 }
-
-// -- Trace events (from NDJSON pipeline) --
 
 interface TraceToolStarted {
   type: "trace:tool-started";
@@ -261,12 +239,6 @@ interface TraceSubagentCompleted {
   timestamp: number;
 }
 
-// Exhaustiveness check helper
-
-/**
- * Use in switch default case to ensure all FlywheelEvent types are handled.
- * TypeScript will error at compile time if a case is missing.
- */
 export function assertNever(event: never): never {
   throw new Error(`Unhandled event type: ${(event as FlywheelEvent).type}`);
 }

@@ -8,7 +8,7 @@
 import * as path from "node:path";
 import type { SpawnOptions, StdinHandle } from "./spawner.js";
 import type { SubprocessResult } from "../../../infra/subprocess-types.js";
-import type { TieredBuffer } from "../../../infra/tiered-buffer.js";
+import type { OutputBuffer } from "../../../infra/output-buffer.js";
 import type { CompletionDetector } from "./completion.js";
 import type { NDJSONParser } from "../../../infra/ndjson-parser.js";
 import { categorizeFailure } from "./errors.js";
@@ -128,7 +128,7 @@ export function createStreamReaderSet(signal: AbortSignal): StreamReaderSet {
 
 export interface ResultContext {
   ndjsonParser: NDJSONParser;
-  buffer: TieredBuffer;
+  buffer: OutputBuffer;
   completionDetector: CompletionDetector;
   rawStdoutChunks: string[];
   rawStderrChunks: string[];
@@ -143,7 +143,7 @@ export function buildSubprocessResult(ctx: ResultContext, exitCode: number): Sub
 
   const interrupted = ctx.subprocessTimeout.interrupted || isSignalExit(exitCode);
 
-  const tier1 = ctx.buffer.getTier1();
+  const tier1 = ctx.buffer.getState();
   ctx.completionDetector.checkFallback(tier1.content);
 
   const durationMs = Date.now() - ctx.startTime;
@@ -164,7 +164,7 @@ export function buildSubprocessResult(ctx: ResultContext, exitCode: number): Sub
     rawOutput: ctx.rawStdoutChunks.join(""),
     rawStderr: stderrContent,
     exitCode,
-    truncated: ctx.buffer.truncated,
+    truncated: ctx.buffer.getState().truncated,
     durationMs,
     failure,
     sessionId: ctx.ndjsonParser.sessionId ?? undefined,
@@ -175,11 +175,11 @@ export function buildSubprocessResult(ctx: ResultContext, exitCode: number): Sub
 export function buildErrorResult(ctx: ResultContext, error: unknown): SubprocessResult {
   const durationMs = Date.now() - ctx.startTime;
   return {
-    output: ctx.buffer.getTier1().content,
+    output: ctx.buffer.getState().content,
     rawOutput: ctx.rawStdoutChunks.join(""),
     rawStderr: ctx.rawStderrChunks.join(""),
     exitCode: -1,
-    truncated: ctx.buffer.truncated,
+    truncated: ctx.buffer.getState().truncated,
     durationMs,
     failure: {
       kind: "transient",

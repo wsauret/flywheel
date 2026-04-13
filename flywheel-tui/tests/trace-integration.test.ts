@@ -304,7 +304,8 @@ describe("Trace integration — happy path", () => {
     expect(entry.durationMs).toBe(entry.endTimeMs - entry.startTimeMs);
 
     // All spans share the same traceId, which matches the index entry
-    const traceId = collector.getTraceId();
+    const traceId = spans[0].traceId;
+    expect(traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     for (const span of spans) {
       expect(span.traceId).toBe(traceId);
       expect(span.sessionId).toBe(sessionId);

@@ -141,6 +141,7 @@ describe("Workflow → OutputSession integration", () => {
       session = s
 
       session.notifySpawned(1000)
+      session.flush()
 
       const activityPatches = patches.filter((p) => p.modelActivity !== undefined)
       expect(activityPatches.length).toBeGreaterThan(0)
@@ -332,6 +333,7 @@ describe("Workflow → OutputSession integration", () => {
 
       // Feed a text event which triggers "generating" activity
       s.writeStdout(makeAssistantTextNdjson("some text"))
+      s.flush()
 
       // Should have "generating" in patches
       const generatingPatch = patches.find((p) => p.modelActivity === "generating")

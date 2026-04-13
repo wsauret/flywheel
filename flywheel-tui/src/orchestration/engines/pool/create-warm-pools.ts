@@ -12,7 +12,8 @@ import { resolveTierConfigs } from "../../config/schema"
 import { getEngine } from "../core/registry"
 import { createEnvFilter } from "../subprocess/env-filter"
 import { buildDispatcherSystemPrompt } from "../../../workflows/dispatcher/system-prompt"
-import type { WorkflowDeps } from "../workflow-deps"
+import type { FlywheelConfig } from "../../config/schema"
+import type { ProcessSpawner } from "../subprocess/spawner"
 import type { SpawnResult } from "../subprocess/spawner"
 import type { RawSpawnedProcess } from "../subprocess/stream-pipeline"
 
@@ -29,7 +30,7 @@ export interface WarmPools {
  * from [sprint.worker], [sprint.evaluator], [sprint.dispatcher] in the TOML.
  */
 export function createWarmPools(
-  deps: WorkflowDeps,
+  deps: { config: FlywheelConfig; spawner: ProcessSpawner },
   cwd: string,
   subprocessCwd?: string,
   mode?: "sprint",

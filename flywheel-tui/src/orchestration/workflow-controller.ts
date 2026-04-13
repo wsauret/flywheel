@@ -1,13 +1,3 @@
-/**
- * Workflow Controller — pure business logic for workflow session lifecycle.
- *
- * Extracted from `src/tui/hooks/use-workflow-lifecycle.ts`. Controllers return
- * DATA, not signal writes. The TUI hook calls controller methods and writes
- * the returned data to SolidJS signals.
- *
- * Must NOT import from `src/tui/`.
- */
-
 import { buildQueueForSlashCommand } from "./queue-builder.js"
 import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
 import { loadResumeData, findResumableSession } from "./session-actions.js"
@@ -25,17 +15,12 @@ import type {
   RunnerErrorResult,
 } from "./session/types.js"
 
-// Types
-
 export interface WorkflowControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   refreshList: () => void
-  /** Foreground session ID accessor (needed for pause/abort/actionDeps). */
   foregroundId: () => string | undefined
-  /** Called when a runner completes normally. */
   onRunnerDone?: (id: string, result: RunnerDoneResult) => void
-  /** Called when a runner encounters an error. */
   onRunnerError?: (id: string, result: RunnerErrorResult) => void
 }
 
@@ -60,67 +45,18 @@ export interface RunnerDoneResult extends BaseRunnerDoneResult {
   state: SessionState
 }
 
-export { type RunnerErrorResult }
-
 export interface WorkflowController {
-  /**
-   * Start a workflow from a slash command.
-   * Returns session data on success, or an error message.
-   */
   startWorkflow(command: string, description: string, chatContext?: string): StartWorkflowResult | { error: string }
-
-  /**
-   * Start a single test step in isolation.
-   * Returns session data, or an info/error message, or null if stepId not provided.
-   */
   startTestStep(stepId?: string): StartTestStepResult | { error: string } | { info: string } | null
-
-  /**
-   * Resume a persisted workflow session.
-   * Returns session data, or null if resume data is missing.
-   */
   resumeWorkflow(sessionId: string): Promise<ResumeWorkflowResult | null>
-
-  /**
-   * Pause the foreground workflow.
-   * Returns true if paused, false if no foreground or not a workflow.
-   */
   pause(foregroundId: string | undefined): boolean
-
-  /**
-   * Abort the foreground workflow.
-   */
   abort(foregroundId: string | undefined): void
-
-  /**
-   * Find and resume the most recent resumable session.
-   * Returns the result of resumeWorkflow, or null.
-   */
   handleResume(sessionIdArg?: string): Promise<ResumeWorkflowResult | null>
-
-  /**
-   * Build actionDeps for useSessionModal.
-   */
   getActionDeps(): SessionActionDeps
-
-  /**
-   * Check whether a session ID belongs to a workflow (for keyboard handler).
-   */
   isWorkflowSession(sessionId: string): boolean
-
-  /**
-   * Steer a running workflow by injecting a user message.
-   * Cancels shutdown if the session is paused. Returns true if delivered.
-   */
   steerWorkflow(foregroundId: string | undefined, text: string): boolean
 }
 
-// Shared lifecycle helper
-
-/**
- * Format runner-done result. Shared between chat and workflow controllers
- * to consolidate the handleRunnerDone pattern.
- */
 function formatWorkflowDoneResult(
   result: WorkflowResult,
 ): RunnerDoneResult {
@@ -136,12 +72,9 @@ function formatWorkflowDoneResult(
   }
 }
 
-// Factory
-
 export function createWorkflowController(deps: WorkflowControllerDeps): WorkflowController {
   const { sessionStore, manager, refreshList } = deps
 
-  /** Handle workflow runner completion. */
   function handleRunnerDone(id: string, result: WorkflowResult): void {
     const doneResult = formatWorkflowDoneResult(result)
     manager.updateState(id, doneResult.state)
@@ -149,7 +82,6 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     deps.onRunnerDone?.(id, doneResult)
   }
 
-  /** Handle workflow runner error. */
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
     const errorResult: RunnerErrorResult = {

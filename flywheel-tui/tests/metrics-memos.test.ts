@@ -6,7 +6,7 @@
  * sessionStore entry — NOT standalone signals with manual sync effects.
  *
  * Also verifies that resetMetrics() only resets leaf signals (workStartTime,
- * elapsed, thinkingElapsed), not the 4 store-derived memos.
+ * elapsed), not the 4 store-derived memos.
  *
  * Note: SolidJS memos are lazy — they run on first read, not on creation.
  * In server/test mode the reactive graph is limited, so we set up store
@@ -108,7 +108,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
 
         // Leaf signals should be reset
         expect(metrics.elapsed()).toBe(0)
-        expect(metrics.thinkingElapsed()).toBe(0)
 
         // Store-derived memos should still reflect sessionStore data (NOT reset to 0)
         expect(metrics.liveTokens()).toBe(500)
@@ -140,7 +139,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
 
       // Leaf signals + control methods should exist
       expect(typeof metrics.elapsed).toBe("function")
-      expect(typeof metrics.thinkingElapsed).toBe("function")
       expect(typeof metrics.pauseTimer).toBe("function")
       // startTimer is internal — timer runs reactively based on liveActivity
       expect("startTimer" in metrics).toBe(false)

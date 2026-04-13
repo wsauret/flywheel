@@ -3,6 +3,8 @@
 // Re-runs commands the worker reported running, with deny-list filtering,
 // concurrent execution, discrepancy detection, and git diff --stat support.
 
+import { errorMessage } from "../../infra/error-message.js";
+
 // Types
 
 export interface DeclaredCommand {
@@ -11,18 +13,10 @@ export interface DeclaredCommand {
   observation?: string;
 }
 
-export interface NativeCheckResult {
-  command: string;
-  passed: boolean;
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  durationMs: number;
-  skipped?: boolean;
-  skipReason?: string;
-  discrepancy?: boolean;
-  reportedExitCode?: number;
-}
+export type NativeCheckResult =
+  | { kind: "ran"; command: string; passed: boolean; stdout: string; stderr: string; exitCode: number; durationMs: number }
+  | { kind: "skipped"; command: string; skipReason: string }
+  | { kind: "discrepancy"; command: string; passed: false; stdout: string; stderr: string; exitCode: number; durationMs: number; reportedExitCode: number }
 
 export interface NativeVerificationResult {
   allPassed: boolean;
@@ -172,13 +166,8 @@ async function runSingleCommand(
   // Deny-list check
   if (isDeniedCommand(command)) {
     return {
+      kind: "skipped",
       command,
-      passed: true,
-      stdout: "",
-      stderr: "",
-      exitCode: 0,
-      durationMs: 0,
-      skipped: true,
       skipReason: `denied: ${command.trim().split(/\s+/).slice(0, 2).join(" ")}`,
     };
   }
@@ -193,23 +182,30 @@ async function runSingleCommand(
     const passed = exitCode === 0;
 
     // Discrepancy detection
-    const discrepancy =
-      reportedExitCode !== undefined && reportedExitCode !== exitCode
-        ? true
-        : undefined;
+    if (reportedExitCode !== undefined && reportedExitCode !== exitCode) {
+      return {
+        kind: "discrepancy",
+        command,
+        passed: false as const,
+        stdout: truncate(stdout, MAX_OUTPUT_BYTES),
+        stderr: truncate(stderr, MAX_OUTPUT_BYTES),
+        exitCode,
+        durationMs,
+        reportedExitCode,
+      };
+    }
 
     return {
+      kind: "ran",
       command,
-      passed: discrepancy ? false : passed,
+      passed,
       stdout: truncate(stdout, MAX_OUTPUT_BYTES),
       stderr: truncate(stderr, MAX_OUTPUT_BYTES),
       exitCode,
       durationMs,
-      discrepancy,
-      reportedExitCode: discrepancy ? reportedExitCode : undefined,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
 
     // Missing binary detection
     if (
@@ -219,18 +215,14 @@ async function runSingleCommand(
       message.includes("spawn")
     ) {
       return {
+        kind: "skipped",
         command,
-        passed: true,
-        stdout: "",
-        stderr: message,
-        exitCode: -1,
-        durationMs: 0,
-        skipped: true,
         skipReason: `missing binary: ${tokens[0]}`,
       };
     }
 
     return {
+      kind: "ran",
       command,
       passed: false,
       stdout: "",
@@ -294,16 +286,13 @@ export async function runNativeVerification(opts: {
       checks.push(...await Promise.all(batch));
     }
 
-    // Derive hasChanges from git diff check
     const gitDiffCheck = checks.find((c) => c.command.includes("git diff"));
-    const hasChanges = gitDiffCheck ? gitDiffCheck.stdout.trim().length > 0 : false;
+    const hasChanges = gitDiffCheck?.kind === "ran" ? gitDiffCheck.stdout.trim().length > 0 : false;
 
-    // Collect discrepancies
-    const discrepancies = checks.filter((c) => c.discrepancy === true);
+    const discrepancies = checks.filter((c) => c.kind === "discrepancy");
 
-    // allPassed: all non-skipped checks passed AND no discrepancies
     const allPassed =
-      checks.every((c) => c.skipped === true || c.passed) &&
+      checks.every((c) => c.kind === "skipped" || c.passed) &&
       discrepancies.length === 0;
 
     return { allPassed, hasChanges, checks, discrepancies };
@@ -331,18 +320,14 @@ async function runGitDiffCheck(
     // Single-commit repo: git diff HEAD~1 fails — skip gracefully
     if (exitCode !== 0) {
       return {
+        kind: "skipped",
         command,
-        passed: true,
-        stdout: "",
-        stderr: truncate(stderr, MAX_OUTPUT_BYTES),
-        exitCode,
-        durationMs,
-        skipped: true,
         skipReason: "git diff HEAD~1 failed (possibly single-commit repo)",
       };
     }
 
     return {
+      kind: "ran",
       command,
       passed: true,
       stdout: truncate(stdout, MAX_OUTPUT_BYTES),
@@ -352,13 +337,8 @@ async function runGitDiffCheck(
     };
   } catch (err) {
     return {
+      kind: "skipped",
       command,
-      passed: true,
-      stdout: "",
-      stderr: err instanceof Error ? err.message : String(err),
-      exitCode: -1,
-      durationMs: 0,
-      skipped: true,
       skipReason: "git diff HEAD~1 threw (possibly single-commit repo)",
     };
   }

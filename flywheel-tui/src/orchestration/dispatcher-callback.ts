@@ -1,11 +1,5 @@
-/**
- * Dispatcher callback factory — creates the step dispatcher function
- * with fallback to step metadata when the real dispatcher is unavailable.
- *
- * Extracted from queue-orchestrator.ts for SRP.
- */
-
 import { createStepDispatcher, type MutationRequest } from "../workflows/queue/step-dispatcher"
+import { buildStepMetadataPrompt } from "../workflows/queue/shared/step-prompt"
 import { Log } from "../infra/log"
 import { errorMessage } from "../infra/error-message"
 import type { ContextIndexer } from "./memory/indexer"
@@ -17,8 +11,6 @@ import type { EvalResult } from "../workflows/queue/executor-types"
 import type { AvailableContext } from "../workflows/schemas"
 
 const log = Log.create({ service: "dispatcher-callback" })
-
-// Types
 
 export interface DispatcherCallbackDeps {
   maxRevisions: number | undefined
@@ -35,7 +27,6 @@ export interface DispatcherCallbackDeps {
   chatContext: string | undefined
 }
 
-/** Merge chat history into available context when present. */
 function mergeAvailableContext(base: AvailableContext, chatContext: string | undefined): AvailableContext {
   if (!chatContext) return base
   return { ...base, chatHistory: chatContext }
@@ -53,8 +44,6 @@ export type DispatcherFn = (
   context: { previousHandoff?: Record<string, unknown>; previousAssessment?: EvalResult | null },
 ) => Promise<DispatcherResult>
 
-// Factory
-
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {
     maxRevisions, dispatcherTransport, contextIndexer, contextAccumulator,
@@ -62,7 +51,6 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
     dispatcherModel, subprocessModel, chatContext,
   } = opts
 
-  // Build real StepDispatcher if transport is available
   const realDispatcher = dispatcherTransport
     ? createStepDispatcher({
         transport: dispatcherTransport,
@@ -106,13 +94,8 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
       }
     }
 
-    // Fallback: build prompt from step metadata
-    const parts = [step.title]
-    if (step.description) parts.push(step.description)
-    if (step.acceptanceCriteria?.length) {
-      parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`))
-    }
-    if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`)
-    return { prompt: parts.join("\n"), evaluationCriteria: null }
+    let prompt = buildStepMetadataPrompt(step)
+    if (step.evaluationCriteria) prompt += `\nEvaluation: ${step.evaluationCriteria}`
+    return { prompt, evaluationCriteria: null }
   }
 }

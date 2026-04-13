@@ -84,51 +84,7 @@ describe("Tiered Evaluation", () => {
     expect(result).toBeNull();
   });
 
-  test("debug step returns a result (code step)", async () => {
-    const config = makeConfig();
-    const hook = createPostTurnVerificationHook(config);
-
-    const step = makeStep({ type: "debug" });
-    const result = await hook({
-      step,
-      workerOutput: makeWorkerOutput(),
-      handoffData: { summary: "fixed bug" },
-    });
-
-    expect(result).not.toBeNull();
-    expect(result!.passed).toBe(true);
-  });
-
-  test("verify step: hook returns null (no verification)", async () => {
-    const config = makeConfig();
-    const hook = createPostTurnVerificationHook(config);
-
-    const step = makeStep({ type: "verify" });
-    const result = await hook({
-      step,
-      workerOutput: makeWorkerOutput(),
-      handoffData: null,
-    });
-
-    expect(result).toBeNull();
-  });
-
-  test("ship step returns a result", async () => {
-    const config = makeConfig();
-    const hook = createPostTurnVerificationHook(config);
-
-    const step = makeStep({ type: "ship" });
-    const result = await hook({
-      step,
-      workerOutput: makeWorkerOutput(),
-      handoffData: null,
-    });
-
-    expect(result).not.toBeNull();
-    expect(result!.passed).toBe(true);
-  });
-
-  test("review step: hook returns null (no verification)", async () => {
+  test("non-work step types return null (no verification)", async () => {
     const config = makeConfig();
     const hook = createPostTurnVerificationHook(config);
 

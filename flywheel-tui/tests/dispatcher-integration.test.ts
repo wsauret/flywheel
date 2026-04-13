@@ -879,8 +879,6 @@ describe("Step dispatcher edge cases", () => {
       acceptanceCriteria: ["Criterion A", "Criterion B"],
       fileReferences: ["src/foo.ts", "src/bar.ts"],
       feature: "feature-x",
-      fulfills: ["VAL-001"],
-      milestone: "m1",
     });
     const queue = makeQueue([step]);
 

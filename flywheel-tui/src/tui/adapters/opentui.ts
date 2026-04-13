@@ -190,6 +190,8 @@ export class OpenTUIAdapter {
         log.info("Queue initialized", { workflowId: event.workflowId, steps: event.stepIds.length });
         break;
 
+      // Why explicit idle on queue:completed/failed: these are lifecycle events.
+      // The builder retains its last activity; only the queue knows execution ended.
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
         this.outputSession.resolvePendingMessages();

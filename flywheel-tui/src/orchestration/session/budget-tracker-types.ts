@@ -70,8 +70,6 @@ export interface BudgetTracker {
   getTotalCost(): number;
   /** Increment the step-level invocation counter. Called by the step executor after each dispatch. */
   incrementInvocations(): void;
-  /** Get total invocations dispatched so far. */
-  getInvocationsUsed(): number;
   /** Get total tokens consumed so far (input + output). */
   getTokensUsed(): number;
   /**

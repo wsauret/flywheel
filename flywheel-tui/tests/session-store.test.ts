@@ -137,24 +137,9 @@ describe("SessionStore — chat entries", () => {
     expect(sessionStore.get("chat-001")).toBeUndefined()
   })
 
-  it("finish() disposes runner but keeps entry with ended=true", async () => {
-    await startTestChat()
-
-    await sessionStore.finish("chat-001")
-    expect(mockRunner.calls).toContain("dispose")
-    // Entry still exists but is ended
-    const entry = sessionStore.get("chat-001")
-    expect(entry).toBeDefined()
-    expect(entry!.ended).toBe(true)
-  })
-
-  it("isRunning() returns true for active entries, false for ended", async () => {
+  it("isRunning() returns true for active entries", async () => {
     await startTestChat()
     expect(sessionStore.isRunning("chat-001")).toBe(true)
-
-    await sessionStore.finish("chat-001")
-    expect(sessionStore.isRunning("chat-001")).toBe(false)
-    // has() still returns true
     expect(sessionStore.has("chat-001")).toBe(true)
   })
 
@@ -170,20 +155,16 @@ describe("SessionStore — chat entries", () => {
     expect(chatEntry.kind).toBe("chat")
   })
 
-  it("runningCount() tracks active (non-ended) entries", async () => {
+  it("runningCount() tracks active entries", async () => {
     expect(sessionStore.runningCount()).toBe(0)
 
     await startTestChat()
     expect(sessionStore.runningCount()).toBe(1)
 
-    // finish() keeps the entry but runningCount excludes ended entries
-    await sessionStore.finish("chat-001")
-    expect(sessionStore.runningCount()).toBe(0)
-    expect(sessionStore.has("chat-001")).toBe(true)
-
-    // remove() actually deletes the entry
+    // remove() deletes the entry
     await sessionStore.remove("chat-001")
     expect(sessionStore.has("chat-001")).toBe(false)
+    expect(sessionStore.runningCount()).toBe(0)
   })
 
   it("injectMessage delegates to chat runner", async () => {
@@ -279,14 +260,13 @@ describe("SessionStore — chat entries", () => {
     expect(sessionStore.isRunning("chat-end")).toBe(false)
   })
 
-  it("runningCount() excludes ended entries", async () => {
+  it("runningCount() decrements on remove", async () => {
     expect(sessionStore.runningCount()).toBe(0)
     await startTestChat()
     expect(sessionStore.runningCount()).toBe(1)
-    await sessionStore.finish("chat-001")
+    await sessionStore.remove("chat-001")
     expect(sessionStore.runningCount()).toBe(0)
-    // Entry still exists
-    expect(sessionStore.get("chat-001")).toBeDefined()
+    expect(sessionStore.get("chat-001")).toBeUndefined()
   })
 })
 

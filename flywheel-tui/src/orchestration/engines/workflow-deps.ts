@@ -23,7 +23,8 @@ export interface WorkflowDeps {
   spawner: ProcessSpawner
 }
 
-/** Dependency injection hooks for testing. */
+/** Dependency injection hooks for testing. Lives here (not in tests/) because
+ *  prepareWorkflowDeps uses it as a parameter type. */
 export interface WorkflowDepsOverrides {
   loadConfig?: () => { config: FlywheelConfig; warnings: string[] }
   getEngine?: (id: string) => Engine

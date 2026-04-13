@@ -110,20 +110,6 @@ export interface DirectToolUseData {
 
 // ── NDJSONEvent — discriminated union on `type` with typed `data` per variant ──
 
-export type NDJSONEventType =
-  | "assistant"
-  | "system"
-  | "user"
-  | "tool_result"
-  | "result"
-  | "tool_use"
-  | "content_block_delta"
-  | "text"
-  | "step_finish"
-  | "error"
-  | "flywheel:subprocess_boundary"
-  | "unknown";
-
 export type NDJSONEvent =
   | { type: "assistant"; data: AssistantEventData; raw: string }
   | { type: "tool_result"; data: ToolResultEventData; raw: string }

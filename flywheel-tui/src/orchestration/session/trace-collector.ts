@@ -1,35 +1,9 @@
-/**
- * Trace Collector
- *
- * Builds span trees from EventBus events and writes completed spans via
- * TraceWriter. Each collector instance represents a single trace (one
- * workflow run), identified by a `traceId` generated via `randomUUID`.
- *
- * Span stack for automatic `parentSpanId` linkage: when a new span is
- * started, its parent is the top of the stack. The span is then pushed
- * onto the stack. When ended, it is removed from the stack (not necessarily
- * LIFO — spans may be ended out of order due to event interleaving).
- *
- * Single-threaded assumption: Bun's event loop serializes event handling
- * and span lifecycle updates — no locking needed. Do NOT use Worker
- * threads for this component. (Matches BudgetTracker pattern.)
- *
- * Usage:
- *   const collector = createTraceCollector({ writer, sessionId, workflowName });
- *   const unsubs = collector.subscribeToEvents(bus);
- *   // ... workflow runs, events flow ...
- *   collector.finalize("ok"); // close open spans, write index entry
- *   collector.dispose();      // dispose writer
- */
-
 import { randomUUID } from "node:crypto";
 import type { EventBus, Unsubscribe } from "../../infra/event-bus";
 import type { SpanKind, Span } from "../../infra/trace-types";
 import { truncateField } from "../../infra/trace-types";
 import type { TraceWriter, TraceIndexEntry } from "./trace-writer";
 import { subscribeTraceEvents } from "./trace-subscriptions.js";
-
-// Types
 
 export interface TraceCollectorDeps {
   writer: TraceWriter;
@@ -38,23 +12,12 @@ export interface TraceCollectorDeps {
 }
 
 export interface TraceCollector {
-  /** Get the traceId for this collector. */
-  getTraceId(): string;
-  /** Start a span, returns spanId. */
   startSpan(kind: SpanKind, name: string, input?: unknown): string;
-  /** End a span with output and status. */
   endSpan(spanId: string, output?: unknown, status?: "ok" | "error", error?: { message: string; code?: string }): void;
-  /** Auto-timed span wrapper. */
-  recordSpan<T>(kind: SpanKind, name: string, input: unknown, fn: () => T): T;
-  /** Subscribe to EventBus for automatic span creation. Returns unsub functions. */
   subscribeToEvents(bus: EventBus): Unsubscribe[];
-  /** Close all open spans as error, finalize trace, flush writer. */
   finalize(status?: "ok" | "error"): void;
-  /** Dispose writer. */
   dispose(): void;
 }
-
-// Internal span record (mutable, pre-completion)
 
 interface OpenSpan {
   spanId: string;
@@ -65,34 +28,21 @@ interface OpenSpan {
   input: unknown;
 }
 
-// Constants
-
 const MAX_FIELD_BYTES = 4096;
-
-// Factory
 
 export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   const { writer, sessionId, workflowName } = deps;
   const traceId = randomUUID();
 
-  // Open spans indexed by spanId for O(1) lookup on endSpan
   const openSpans = new Map<string, OpenSpan>();
-
-  // Span stack for automatic parentSpanId linkage.
-  // The top of the stack is the current parent for new spans.
   const spanStack: string[] = [];
-
-  // Bookkeeping for finalize
   let spanCount = 0;
   let closedSpanCount = 0;
   let traceStartTimeMs = 0;
 
-  // Track event-created span IDs for structural mapping
   let workflowSpanId: string | null = null;
-  const stepSpanIds = new Map<string, string>(); // stepId → spanId
-  const toolSpanIds = new Map<string, string>(); // toolUseId → spanId
-
-  // Helpers
+  const stepSpanIds = new Map<string, string>();
+  const toolSpanIds = new Map<string, string>();
 
   function truncateInput(value: unknown): unknown {
     const serialized = truncateField(value, MAX_FIELD_BYTES);
@@ -136,21 +86,13 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
       error,
     };
 
-    // Build the discriminated union member based on kind.
-    // Input/output are typed per kind, but we trust the caller to provide
-    // the correct shape (or truncated version of it).
+    // Discriminated union constructed from runtime `kind` — TS can't narrow this statically
     return {
       ...base,
       kind: open.kind,
       input: truncatedInput,
       output: truncatedOutput,
     } as Span;
-  }
-
-  // Public API
-
-  function getTraceId(): string {
-    return traceId;
   }
 
   function startSpan(kind: SpanKind, name: string, input?: unknown): string {
@@ -198,21 +140,6 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     closedSpanCount++;
   }
 
-  function recordSpan<T>(kind: SpanKind, name: string, input: unknown, fn: () => T): T {
-    const spanId = startSpan(kind, name, input);
-    try {
-      const result = fn();
-      endSpan(spanId, undefined, "ok");
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      endSpan(spanId, undefined, "error", { message });
-      throw err;
-    }
-  }
-
-  // EventBus subscriptions
-
   function subscribeToEvents(bus: EventBus): Unsubscribe[] {
     return subscribeTraceEvents(bus, {
       startSpan,
@@ -226,23 +153,18 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     }, workflowName);
   }
 
-  // Lifecycle
-
   function finalize(status: "ok" | "error" = "ok"): void {
     const endTimeMs = Date.now();
 
-    // Close all open spans in reverse stack order with the given status
     const openSpanIds = [...spanStack].reverse();
     for (const spanId of openSpanIds) {
       const open = openSpans.get(spanId);
       if (!open) continue;
 
-      // Build default output based on kind
       const defaultOutput = buildDefaultOutput(open.kind, status);
       endSpan(spanId, defaultOutput, status, status === "error" ? { message: "trace finalized with open spans" } : undefined);
     }
 
-    // Write index entry
     const summary: TraceIndexEntry = {
       traceId,
       sessionId,
@@ -279,10 +201,8 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   }
 
   return {
-    getTraceId,
     startSpan,
     endSpan,
-    recordSpan,
     subscribeToEvents,
     finalize,
     dispose,

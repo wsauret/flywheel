@@ -3,10 +3,8 @@ import {
   SubprocessHandoffSchema,
   ArtifactsSchema,
   VerificationSchema,
-  OpenQuestionSchema,
   FindingCountsSchema,
   P3FindingSchema,
-  CompoundDocSchema,
   SkillDeviationSchema,
   SkillFeedbackSchema,
 } from "../../src/infra/handoff-schemas";
@@ -117,34 +115,6 @@ describe("VerificationSchema", () => {
   });
 });
 
-describe("OpenQuestionSchema", () => {
-  it("parses valid question", () => {
-    const result = OpenQuestionSchema.parse({
-      question: "Which approach?",
-      options: ["A", "B"],
-      header: "Architecture",
-    });
-    expect(result.question).toBe("Which approach?");
-  });
-
-  it("accepts without optional header", () => {
-    const result = OpenQuestionSchema.parse({
-      question: "Which approach?",
-      options: ["A", "B"],
-    });
-    expect(result.header).toBeUndefined();
-  });
-
-  it("rejects unknown fields (.strict())", () => {
-    const result = OpenQuestionSchema.safeParse({
-      question: "x",
-      options: [],
-      extra: "fail",
-    });
-    expect(result.success).toBe(false);
-  });
-});
-
 describe("FindingCountsSchema", () => {
   it("parses valid counts", () => {
     const result = FindingCountsSchema.parse({
@@ -194,43 +164,6 @@ describe("P3FindingSchema", () => {
   });
 });
 
-describe("CompoundDocSchema", () => {
-  it("parses valid doc with all fields", () => {
-    const result = CompoundDocSchema.parse({
-      title: "Fix flaky test",
-      type: "bug-fix",
-      tags: ["testing", "ci"],
-      problem: "Test was flaky due to timing",
-      solution: "Added retry logic",
-      context: "Only affects CI environment",
-    });
-    expect(result.title).toBe("Fix flaky test");
-  });
-
-  it("accepts without optional context", () => {
-    const result = CompoundDocSchema.parse({
-      title: "Fix flaky test",
-      type: "bug-fix",
-      tags: ["testing"],
-      problem: "Flaky",
-      solution: "Fixed",
-    });
-    expect(result.context).toBeUndefined();
-  });
-
-  it("rejects unknown fields (.strict())", () => {
-    const result = CompoundDocSchema.safeParse({
-      title: "x",
-      type: "y",
-      tags: [],
-      problem: "p",
-      solution: "s",
-      extra: "fail",
-    });
-    expect(result.success).toBe(false);
-  });
-});
-
 // ---------------------------------------------------------------------------
 // SubprocessHandoffSchema
 // ---------------------------------------------------------------------------
@@ -254,23 +187,10 @@ describe("SubprocessHandoffSchema", () => {
     },
     files_to_review: ["src/new.ts"],
     plan_file_path: "docs/plans/plan.md",
-    open_questions: [
-      { question: "Which DB?", options: ["Postgres", "SQLite"], header: "Storage" },
-    ],
     review_file_path: "docs/reviews/review.md",
     finding_counts: { p1_critical: 0, p2_important: 1, p3_suggestion: 3 },
     p3_findings: [
       { description: "Consider caching", location: "src/api.ts:10", suggestion: "Add LRU cache" },
-    ],
-    compound_docs: [
-      {
-        title: "Fix flaky test",
-        type: "bug-fix",
-        tags: ["testing"],
-        problem: "Timing issue",
-        solution: "Added retry",
-        context: "CI only",
-      },
     ],
   };
 
@@ -381,16 +301,6 @@ describe("SubprocessHandoffSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("validates open_questions sub-schema strictly", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-      open_questions: [
-        { question: "Q?", options: ["A"], extra: "fail" },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
-
   it("validates verification sub-schema strictly", () => {
     const result = SubprocessHandoffSchema.safeParse({
       summary: validSummary,
@@ -421,16 +331,6 @@ describe("SubprocessHandoffSchema", () => {
       summary: validSummary,
       p3_findings: [
         { description: "d", suggestion: "s", extra: "fail" },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("validates compound_docs sub-schema strictly", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-      compound_docs: [
-        { title: "t", type: "ty", tags: [], problem: "p", solution: "s", extra: "fail" },
       ],
     });
     expect(result.success).toBe(false);
@@ -1008,76 +908,3 @@ describe("SubprocessHandoffSchema — skillFeedback", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// SubprocessHandoffSchema — hypothesis field
-// ---------------------------------------------------------------------------
-
-describe("SubprocessHandoffSchema — hypothesis field", () => {
-  const validSummary = "Investigated the failing test and identified a race condition in the event handler setup.";
-
-  it("accepts handoff with hypothesis field", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-      hypothesis: "The race condition occurs because the event listener is registered after the initial emit",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.hypothesis).toBe("The race condition occurs because the event listener is registered after the initial emit");
-    }
-  });
-
-  it("accepts handoff without hypothesis (backward compat)", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.hypothesis).toBeUndefined();
-    }
-  });
-
-  it("rejects non-string hypothesis", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-      hypothesis: 42,
-    });
-    expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// SubprocessHandoffSchema — document_path field
-// ---------------------------------------------------------------------------
-
-describe("SubprocessHandoffSchema — document_path field", () => {
-  const validSummary = "Researched authentication patterns in the codebase and persisted findings to a research document.";
-
-  it("accepts handoff with document_path field", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-      document_path: "docs/research/2026-03-29-auth-patterns.md",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.document_path).toBe("docs/research/2026-03-29-auth-patterns.md");
-    }
-  });
-
-  it("accepts handoff without document_path (backward compat)", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.document_path).toBeUndefined();
-    }
-  });
-
-  it("rejects non-string document_path", () => {
-    const result = SubprocessHandoffSchema.safeParse({
-      summary: validSummary,
-      document_path: 123,
-    });
-    expect(result.success).toBe(false);
-  });
-});

@@ -1,12 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import {
   appendWithCharLimit,
-  TieredBuffer,
+  OutputBuffer,
   TRUNCATION_MARKER,
-  TIER_1_LIMIT,
-  TIER_2_LIMIT,
-  TIER_3_LIMIT,
-} from "../src/infra/tiered-buffer";
+  BUFFER_LIMIT,
+} from "../src/infra/output-buffer";
 
 // ---------------------------------------------------------------------------
 // appendWithCharLimit
@@ -166,103 +164,44 @@ describe("appendWithCharLimit", () => {
 });
 
 // ---------------------------------------------------------------------------
-// TieredBuffer
+// OutputBuffer
 // ---------------------------------------------------------------------------
 
-describe("TieredBuffer", () => {
-  it("stores content in all three tiers", () => {
-    const buf = new TieredBuffer();
+describe("OutputBuffer", () => {
+  it("stores content", () => {
+    const buf = new OutputBuffer();
     buf.append("hello world");
-
-    expect(buf.getTier1().content).toBe("hello world");
-    expect(buf.getTier2().content).toBe("hello world");
-    expect(buf.getTier3().content).toBe("hello world");
+    expect(buf.getState().content).toBe("hello world");
   });
 
-  it("reports truncated: false when all tiers fit", () => {
-    const buf = new TieredBuffer();
+  it("reports truncated: false when content fits", () => {
+    const buf = new OutputBuffer();
     buf.append("small content");
-    expect(buf.truncated).toBe(false);
-    expect(buf.getTier1().truncated).toBe(false);
-    expect(buf.getTier2().truncated).toBe(false);
-    expect(buf.getTier3().truncated).toBe(false);
+    expect(buf.getState().truncated).toBe(false);
   });
 
-  it("Tier 3 truncates first (100K limit)", () => {
-    const buf = new TieredBuffer();
-    // Write 120K of content — exceeds Tier 3 (100K) but fits Tier 2 (250K)
-    const chunk = "X".repeat(120_000);
-    buf.append(chunk);
-
-    expect(buf.getTier3().truncated).toBe(true);
-    expect(buf.getTier2().truncated).toBe(false);
-    expect(buf.getTier1().truncated).toBe(false);
-    expect(buf.truncated).toBe(true);
+  it("truncates at buffer limit", () => {
+    const buf = new OutputBuffer();
+    buf.append("Z".repeat(2_100_000));
+    expect(buf.getState().truncated).toBe(true);
   });
 
-  it("Tier 2 truncates at 250K", () => {
-    const buf = new TieredBuffer();
-    const chunk = "Y".repeat(300_000);
-    buf.append(chunk);
-
-    expect(buf.getTier3().truncated).toBe(true);
-    expect(buf.getTier2().truncated).toBe(true);
-    expect(buf.getTier1().truncated).toBe(false);
-  });
-
-  it("Tier 1 truncates at 2M", () => {
-    const buf = new TieredBuffer();
-    const chunk = "Z".repeat(2_100_000);
-    buf.append(chunk);
-
-    expect(buf.getTier1().truncated).toBe(true);
-    expect(buf.getTier2().truncated).toBe(true);
-    expect(buf.getTier3().truncated).toBe(true);
-  });
-
-  it("1MB NDJSON raw-text flush fits within Tier 2 but overflows Tier 3", () => {
-    const buf = new TieredBuffer();
-    // 1MB = 1,000,000 chars — fits Tier 2 (250K? no, 1MB > 250K)
-    // Actually: 1MB NDJSON flush. Plan says "fits within Tier 2 (250K) but overflows Tier 3 (100K)"
-    // This means a chunk of ~200K should fit Tier 2 but overflow Tier 3
-    const ndjsonChunk = '{"type":"text","content":"' + "a".repeat(200_000) + '"}\n';
-    buf.append(ndjsonChunk);
-
-    // Fits in Tier 2 (250K)
-    expect(buf.getTier2().truncated).toBe(false);
-    // Overflows Tier 3 (100K)
-    expect(buf.getTier3().truncated).toBe(true);
-    // Fits in Tier 1 (2M)
-    expect(buf.getTier1().truncated).toBe(false);
-  });
-
-  it("tier limits match expected values", () => {
-    expect(TIER_1_LIMIT).toBe(2_000_000);
-    expect(TIER_2_LIMIT).toBe(250_000);
-    expect(TIER_3_LIMIT).toBe(100_000);
+  it("buffer limit is 2M", () => {
+    expect(BUFFER_LIMIT).toBe(2_000_000);
   });
 
   it("accumulates content across multiple appends", () => {
-    const buf = new TieredBuffer();
+    const buf = new OutputBuffer();
     buf.append("hello ");
     buf.append("world");
-
-    expect(buf.getTier1().content).toBe("hello world");
-    expect(buf.getTier2().content).toBe("hello world");
-    expect(buf.getTier3().content).toBe("hello world");
+    expect(buf.getState().content).toBe("hello world");
   });
 
-  it("truncation marker is prepended to truncated tiers", () => {
-    const buf = new TieredBuffer();
-    buf.append("X".repeat(120_000));
-
-    const tier3 = buf.getTier3();
-    expect(tier3.truncated).toBe(true);
-    expect(tier3.content).toStartWith(TRUNCATION_MARKER);
-
-    // Tier 2 should not have marker
-    const tier2 = buf.getTier2();
-    expect(tier2.truncated).toBe(false);
-    expect(tier2.content).not.toStartWith(TRUNCATION_MARKER);
+  it("truncation marker is prepended when truncated", () => {
+    const buf = new OutputBuffer();
+    buf.append("Z".repeat(2_100_000));
+    const state = buf.getState();
+    expect(state.truncated).toBe(true);
+    expect(state.content).toStartWith(TRUNCATION_MARKER);
   });
 });

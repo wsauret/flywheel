@@ -29,14 +29,9 @@ describe("buildStepPrompt", () => {
     expect(result.handoffPath).toContain("work_step-1")
   })
 
-  it("returns scaffolding paths relative to session dir", () => {
+  it("returns scaffolding paths with handoff path", () => {
     const result = buildStepPrompt(makeStep(), "prompt", sessionId, projectCwd)
     expect(result.scaffoldingPaths.handoffPath).toBe(result.handoffPath)
-    expect(result.scaffoldingPaths.planPath).toContain(sessionId)
-    expect(result.scaffoldingPaths.planPath).toEndWith("plan.json")
-    expect(result.scaffoldingPaths.researchPath).toEndWith("research.md")
-    expect(result.scaffoldingPaths.reviewPath).toEndWith("review.md")
-    expect(result.scaffoldingPaths.contextPath).toEndWith("context.md")
   })
 
   it("is deterministic — same inputs produce same outputs", () => {

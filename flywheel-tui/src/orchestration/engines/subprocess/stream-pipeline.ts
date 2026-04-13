@@ -8,7 +8,7 @@
 
 import type { SpawnOptions, SpawnResult } from "./spawner.js";
 import type { SubprocessResult } from "../../../infra/subprocess-types.js";
-import { TieredBuffer } from "../../../infra/tiered-buffer.js";
+import { OutputBuffer } from "../../../infra/output-buffer.js";
 import { CompletionDetector } from "./completion.js";
 import { NDJSONParser } from "../../../infra/ndjson-parser.js";
 import { createSubprocessTimeout, minutesToMs, clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES } from "./timeout.js";
@@ -54,7 +54,7 @@ export interface StreamPipelineOptions {
 
 /**
  * Consume the raw streams of a spawned process and wire up the full
- * NDJSON parsing / completion detection / tiered buffer pipeline.
+ * NDJSON parsing / completion detection / output buffer pipeline.
  *
  * Returns the same `SpawnResult` shape that `BunProcessSpawner.spawn()`
  * has always returned, so callers see no behaviour change.
@@ -69,7 +69,7 @@ export function wireStreamPipeline(
 
   // Shared infrastructure
   const subprocessTimeout = createSubprocessTimeout(timeoutMs);
-  const buffer = new TieredBuffer();
+  const buffer = new OutputBuffer();
   const completionDetector = new CompletionDetector();
   const ndjsonParser = new NDJSONParser(buffer);
 

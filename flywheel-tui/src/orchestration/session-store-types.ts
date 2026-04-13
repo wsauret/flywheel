@@ -107,7 +107,6 @@ export interface SessionStore {
   isRunning(sessionId: string): boolean
   pause(sessionId: string): boolean
   abort(sessionId: string): void
-  finish(sessionId: string): Promise<void>
   remove(sessionId: string): Promise<void>
   updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>): void
   injectMessage(sessionId: string, text: string): boolean

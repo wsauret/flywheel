@@ -13,7 +13,7 @@
 //   HandoffEntry — full-detail record of a step's handoff
 //   HandoffSummary — compressed record of an older step's handoff
 
-import type { StepType } from "../../infra/step-types";
+import type { Step } from "./types";
 
 // Types
 
@@ -22,7 +22,7 @@ export interface HandoffEntry {
   /** ID of the step that produced this handoff. */
   stepId: string;
   /** Type of the step. */
-  stepType: StepType;
+  stepType: Step["type"];
   /** Title of the step. */
   stepTitle: string;
   /** The complete handoff data from the worker. */
@@ -34,7 +34,7 @@ export interface HandoffSummary {
   /** ID of the step that produced this handoff. */
   stepId: string;
   /** Type of the step. */
-  stepType: StepType;
+  stepType: Step["type"];
   /** Title of the step. */
   stepTitle: string;
   /** Key decisions extracted from the handoff. */
@@ -164,7 +164,7 @@ export function createContextAccumulator(
 
     const d = data as {
       stepId: string;
-      stepType: StepType;
+      stepType: Step["type"];
       stepTitle: string;
       handoff: Record<string, unknown>;
     };

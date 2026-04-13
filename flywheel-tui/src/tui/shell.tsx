@@ -18,6 +18,7 @@ import { ToastDisplay } from "@tui/shared/components/toast-display"
 import { createSessionStore } from "../orchestration/session-store"
 import type { WorkflowSessionFactories } from "../orchestration/workflow-session"
 import { formatElapsed } from "../infra/format.js"
+import { errorMessage } from "../infra/error-message.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
 import { useCommandDispatch } from "./hooks/use-command-dispatch.js"
@@ -181,7 +182,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         if (!text) return
         Clipboard.copy(text)
           .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
-          .catch((err) => toast.show({ message: String(err), variant: "error" }))
+          .catch((err) => toast.show({ message: errorMessage(err), variant: "error" }))
         renderer.clearSelection()
       }}>
 
@@ -255,7 +256,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
           <OutputWindow
             outputBlocks={signals.outputBlocks()}
             workflowStatus={displayStatus()}
-            approvalPending={false}
             isPromptFocused={true}
           />
         </Show>

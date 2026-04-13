@@ -54,12 +54,12 @@ Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 |---------|----------|
 | `errorMessage(err)` | `infra/error-message.ts` |
 | `formatDuration()`, `formatCost()` | `infra/format.ts` |
-| `SubprocessTransportBase` | `workflows/shared/subprocess-transport-base.ts` |
+| `invokePooled()` | `workflows/shared/invoke-pooled.ts` |
 | `log` | `infra/log.ts` |
 | `atomicWriteFile()` | `workflows/shared/atomic-write.ts` |
 | `DebouncedWriter` | `workflows/shared/debounced-writer.ts` |
 | `raceAbort()` | `workflows/queue/abort-utils.ts` |
-| `truncateText()` | `workflows/dispatcher/truncation.ts` |
+| `applyBudgetTruncation()` | `workflows/dispatcher/truncation.ts` |
 
 Colocate single-use code. Move to `shared/` only when a second consumer appears.
 

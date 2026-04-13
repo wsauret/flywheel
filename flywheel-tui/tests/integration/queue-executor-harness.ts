@@ -33,7 +33,6 @@ import type {
 } from "../../src/workflows/queue/executor-types";
 import type { OnStepCompletedHook } from "../../src/workflows/queue/shared/hooks";
 import type { Step, Queue } from "../../src/workflows/queue/types";
-import type { StepType } from "../../src/infra/step-types";
 import type { FlywheelEvent } from "../../src/infra/events";
 import { ensureSessionDir } from "../../src/infra/paths";
 
@@ -43,7 +42,7 @@ import { ensureSessionDir } from "../../src/infra/paths";
 
 let stepCounter = 0;
 
-export function makeStep(overrides: Partial<Step> & { type?: StepType } = {}): Step {
+export function makeStep(overrides: Partial<Step> & { type?: Step["type"] } = {}): Step {
   stepCounter++;
   return {
     id: overrides.id ?? `step-${stepCounter}`,

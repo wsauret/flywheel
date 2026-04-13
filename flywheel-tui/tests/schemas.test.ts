@@ -1231,7 +1231,6 @@ describe("SessionSchema — budget fields", () => {
       repo: "flywheel",
       branch: "main",
       totalCost: 1.5,
-      outputPath: "output.json",
       budgetLimits: validLimits,
       budgetUsage: validUsage,
       kind: "workflow",

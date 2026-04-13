@@ -370,19 +370,21 @@ describe("BudgetTracker — token tracking", () => {
 // ---------------------------------------------------------------------------
 
 describe("BudgetTracker — invocation tracking", () => {
-  it("incrementInvocations() tracks step-level invocation count", () => {
+  it("incrementInvocations() tracks step-level invocation count via isExhausted", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
-    expect(tracker.getInvocationsUsed()).toBe(0);
+    // Not exhausted with limit of 3
+    const limits = { max_invocations: 3, max_tokens: null, wall_clock_deadline: null };
+    expect(tracker.isExhausted(limits)).toBe(false);
 
     tracker.incrementInvocations();
-    expect(tracker.getInvocationsUsed()).toBe(1);
+    tracker.incrementInvocations();
+    expect(tracker.isExhausted(limits)).toBe(false);
 
     tracker.incrementInvocations();
-    tracker.incrementInvocations();
-    expect(tracker.getInvocationsUsed()).toBe(3);
+    expect(tracker.isExhausted(limits)).toBe(true);
 
     tracker.dispose();
   });

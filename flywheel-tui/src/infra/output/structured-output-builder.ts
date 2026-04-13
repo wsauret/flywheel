@@ -1,18 +1,3 @@
-/**
- * Structured Output Builder
- *
- * Accumulates parsed engine output into structured blocks (TextBlock, ToolBlock,
- * AgentBlock) for display in the TUI output window.
- *
- * Manages all mutations internally — exposes only `getBlocks()` which returns
- * a new array reference when dirty, enabling efficient SolidJS reactivity via
- * `setOutputBlocks(builder.getBlocks())`.
- *
- * Context grouping is delegated to ContextGroupTracker to keep this module
- * focused on block accumulation. Agent completion relies on authoritative
- * signals (tool_result events and closeOpenSubagents) rather than timeouts.
- */
-
 import type {
   AnyBlock,
   TextBlock,
@@ -42,16 +27,11 @@ export class StructuredOutputBuilder {
   private dirty = false;
   private cachedSnapshot: AnyBlock[] = [];
 
-  /** Map of agent ID → index in `blocks` for O(1) agent lookups. */
   private agentIndexById = new Map<string, number>();
-
-  /** Index of the current TodoListBlock for in-place updates, or -1 if none. */
   private todoBlockIndex = -1;
-
-  /** Context tool grouping — groups consecutive context tools into synthetic AgentBlocks. */
   private readonly contextTracker: ContextGroupTracker;
 
-  onModelActivityChange?: (activity: ModelActivity) => void;
+  private _modelActivity: ModelActivity = "idle";
   private thinkingStartedAt: number | null = null;
 
   constructor() {
@@ -62,18 +42,17 @@ export class StructuredOutputBuilder {
     });
   }
 
-  // ── Public API ──
+  get modelActivity(): ModelActivity { return this._modelActivity; }
 
-  /** Record that the model entered thinking mode (before text arrives). */
   notifyThinkingStarted(timestamp: number): void {
-    this.onModelActivityChange?.("thinking");
+    this._modelActivity = "thinking";
     if (this.thinkingStartedAt === null) {
       this.thinkingStartedAt = timestamp;
     }
   }
 
   pushThinking(text: string, timestamp: number): void {
-    this.onModelActivityChange?.("thinking");
+    this._modelActivity = "thinking";
     if (!text.trim()) return;
     this.contextTracker.breakContextRun(timestamp);
     const blockTimestamp = this.thinkingStartedAt ?? timestamp;
@@ -109,7 +88,6 @@ export class StructuredOutputBuilder {
     this.dirty = true;
   }
 
-  /** Transition pending user messages to sent and move to end of blocks array. */
   resolvePendingMessages(): boolean {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
@@ -120,13 +98,11 @@ export class StructuredOutputBuilder {
     }
     if (pendingIndices.length === 0) return false;
 
-    // Extract pending messages in reverse order (preserves earlier indices during splice)
     const resolved: AnyBlock[] = [];
     for (let i = pendingIndices.length - 1; i >= 0; i--) {
       const [msg] = this.blocks.splice(pendingIndices[i]!, 1) as [UserMessageBlock];
       resolved.unshift({ ...msg, pending: false });
     }
-    // Re-insert before the todo block (indices shifted from extractions, so find it fresh)
     const todoIdx = this.blocks.findIndex(b => b.kind === "todoList");
     if (todoIdx >= 0) {
       this.blocks.splice(todoIdx, 0, ...resolved);
@@ -134,7 +110,6 @@ export class StructuredOutputBuilder {
       this.blocks.push(...resolved);
     }
 
-    // Indices shifted — rebuild lookups
     rebuildAgentIndex(this.blocks, this.agentIndexById);
     this.todoBlockIndex = findTodoIndex(this.blocks);
     this.dirty = true;
@@ -142,7 +117,7 @@ export class StructuredOutputBuilder {
   }
 
   pushText(text: string, timestamp: number): void {
-    this.onModelActivityChange?.("generating");
+    this._modelActivity = "generating";
     this.thinkingStartedAt = null;
     this.contextTracker.breakContextRun(timestamp);
 
@@ -154,22 +129,20 @@ export class StructuredOutputBuilder {
       this.insertBlock({ kind: "text", content: text, timestamp });
     }
 
-    this.markDirty();
+    this.dirty = true;
   }
 
-  /** Push a system message block for lifecycle events. */
   pushSystemMessage(message: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
     this.insertBlock({ kind: "system", message, timestamp } as SystemBlock);
     this.enforceBlocksCap();
-    this.markDirty();
+    this.dirty = true;
   }
 
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): void {
-    this.onModelActivityChange?.("tool_executing");
+    this._modelActivity = "tool_executing";
     const tool = { kind: "tool" as const, name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
 
-    // Top-level tool: check context grouping.
     // Tools with diff/content data render standalone (not grouped) so the content is visible.
     if (isContextTool(name) && !diff && !content) {
       this.contextTracker.pushContextTool(tool, timestamp);
@@ -179,41 +152,36 @@ export class StructuredOutputBuilder {
     }
 
     this.enforceBlocksCap();
-    this.markDirty();
+    this.dirty = true;
   }
 
-  /** Push or update a TodoListBlock. Empty array removes it. */
   pushTodoWrite(todos: TodoItem[], timestamp: number): void {
-    this.onModelActivityChange?.("tool_executing");
+    this._modelActivity = "tool_executing";
     this.contextTracker.breakContextRun(timestamp);
 
     if (todos.length === 0) {
-      // All done — remove the block if it exists
       if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
         this.blocks.splice(this.todoBlockIndex, 1);
         rebuildAgentIndex(this.blocks, this.agentIndexById);
         this.todoBlockIndex = -1;
       }
-      this.markDirty();
+      this.dirty = true;
       return;
     }
 
     const block = { kind: "todoList" as const, todos, timestamp };
 
     if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length && this.blocks[this.todoBlockIndex].kind === "todoList") {
-      // Update in place
       this.blocks[this.todoBlockIndex] = block;
     } else {
-      // First call — append
       this.blocks.push(block);
       this.todoBlockIndex = this.blocks.length - 1;
     }
 
     this.enforceBlocksCap();
-    this.markDirty();
+    this.dirty = true;
   }
 
-  /** Push a tool as a child of an agent. Returns false if agent not found. */
   pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): boolean {
     const tool = { kind: "tool" as const, name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
     return this.appendToolToAgent(agentId, tool);
@@ -221,7 +189,7 @@ export class StructuredOutputBuilder {
 
   private appendToolToAgent(agentId: string, tool: ToolBlock): boolean {
     const ok = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
-    if (ok) this.markDirty();
+    if (ok) this.dirty = true;
     return ok;
   }
 
@@ -240,7 +208,7 @@ export class StructuredOutputBuilder {
     const idx = this.insertBlock(agent);
     this.agentIndexById.set(id, idx);
     this.enforceBlocksCap();
-    this.markDirty();
+    this.dirty = true;
   }
 
   completeAgent(id: string, duration: number, description?: string): void {
@@ -257,7 +225,7 @@ export class StructuredOutputBuilder {
       duration,
       ...(description !== undefined ? { description } : {}),
     };
-    this.markDirty();
+    this.dirty = true;
   }
 
   errorAgent(id: string, message: string): void {
@@ -266,10 +234,9 @@ export class StructuredOutputBuilder {
 
     const agent = this.blocks[idx] as AgentBlock;
     this.blocks[idx] = { ...agent, status: "error", errorMessage: message };
-    this.markDirty();
+    this.dirty = true;
   }
 
-  /** Update agent's latestChild display without adding a child block. */
   updateAgentLatestChild(id: string, childDisplay: string): void {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
@@ -278,10 +245,9 @@ export class StructuredOutputBuilder {
     if (agent.kind !== "agent" || agent.status !== "active") return;
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
-    this.markDirty();
+    this.dirty = true;
   }
 
-  /** Auto-complete active subagent blocks (top-level output means all subagents are done). */
   closeOpenSubagents(timestamp: number): void {
     const ctxId = this.contextTracker.currentAgentId;
     for (const [id, idx] of this.agentIndexById) {
@@ -293,10 +259,9 @@ export class StructuredOutputBuilder {
     }
   }
 
-  /** Complete any open context tool run at turn boundaries. */
   flushContextRun(timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.markDirty();
+    this.dirty = true;
   }
 
   getBlocks(): AnyBlock[] {
@@ -306,11 +271,6 @@ export class StructuredOutputBuilder {
     return this.cachedSnapshot;
   }
 
-  hasChanged(): boolean {
-    return this.dirty;
-  }
-
-  /** Full reset — wipes blocks and tracking state. */
   reset(): void {
     this.blocks = [];
     this.dirty = false;
@@ -320,7 +280,6 @@ export class StructuredOutputBuilder {
     this.contextTracker.reset();
   }
 
-  /** Reset worker-level tracking state, preserving accumulated blocks. */
   resetTracking(): void {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
@@ -329,23 +288,17 @@ export class StructuredOutputBuilder {
     this.cachedSnapshot = [];
   }
 
-  // ── Private helpers ──
-
   private insertBlock(block: AnyBlock): number {
     const result = insertBlockBeforePinned(this.blocks, block, this.agentIndexById, this.todoBlockIndex);
     this.todoBlockIndex = result.todoBlockIndex;
     return result.index;
   }
 
-  private lastContentIndex(): number {
+  private lastContentIndex() {
     return contentInsertionIndex(this.blocks) - 1;
   }
 
-  private markDirty(): void {
-    this.dirty = true;
-  }
-
-  private enforceBlocksCap(): void {
+  private enforceBlocksCap() {
     if (this.blocks.length > BLOCKS_CAP) {
       const overflow = this.blocks.length - BLOCKS_CAP;
       this.blocks.splice(0, overflow);

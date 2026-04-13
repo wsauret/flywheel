@@ -220,7 +220,8 @@ describe("Chat → OutputSession integration", () => {
       }) + "\n"
       session.writeStdout(ndjsonLine, "claude")
 
-      // Check that we got modelActivity patches
+      session.flush()
+
       const activityPatches = patches.filter((p) => p.modelActivity !== undefined)
       expect(activityPatches.length).toBeGreaterThan(0)
 

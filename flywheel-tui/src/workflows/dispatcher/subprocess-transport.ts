@@ -1,18 +1,9 @@
-/**
- * PooledSubprocessTransport — pool-based dispatcher invocation via warm processes.
- *
- * Acquires a warm process from the pool, sends the dispatcher prompt via stdin,
- * and reads the decision from a handoff file. Uses structural typing (PoolHandle
- * interface) to avoid importing from orchestration/.
- */
-
 import type { DispatcherInput } from "./schemas.js";
 import type { DispatcherDecision } from "../../infra/workflow-types.js";
 import type { DispatcherTransport } from "./transport.js";
 import { buildDispatcherSystemPrompt } from "./system-prompt.js";
 import { renderDispatcherHandoffInstruction } from "../queue/shared/handoff-render.js";
 import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "./schemas.js";
-import { mapHandoffToDecision } from "./map-handoff.js";
 import { buildInvocationHandoffPath } from "../../infra/paths.js";
 
 import {
@@ -22,10 +13,8 @@ import {
   invokePooled,
 } from "../shared/invoke-pooled.js";
 
-export type PooledSubprocessTransportOptions = BasePooledTransportOptions;
-
 export class PooledSubprocessTransport implements DispatcherTransport {
-  constructor(private readonly opts: PooledSubprocessTransportOptions) {}
+  constructor(private readonly opts: BasePooledTransportOptions) {}
 
   async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
     const systemPrompt = buildDispatcherSystemPrompt();
@@ -43,7 +32,11 @@ export class PooledSubprocessTransport implements DispatcherTransport {
         },
         systemPrompt,
         handoffSchema: DispatcherDecisionHandoffSchema,
-        mapResult: mapHandoffToDecision,
+        mapResult: (handoff): DispatcherDecision => ({
+          ...handoff,
+          evaluation_criteria: handoff.evaluation_criteria
+            ?? { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+        }),
       },
       this.opts,
     );

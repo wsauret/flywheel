@@ -20,13 +20,6 @@ export interface EngineMetadata {
   installCommand: string;
   /** Display description */
   description: string;
-  /** Display order in UI (lower = first) */
-  order?: number;
-  /**
-   * Whether this engine enforces tool scoping via CLI flags (true)
-   * or only via prompt-based instructions (false).
-   */
-  supportsToolScoping: boolean;
   /**
    * Whether this engine supports streaming input via stdin pipe
    * (e.g., Claude's `--input-format stream-json`).
@@ -79,17 +72,6 @@ export interface EngineCommandOptions {
   effort?: string;
 }
 
-export interface ModelInfo {
-  /** Model ID in the engine's native format (e.g., "opus", "anthropic/claude-opus-4-6") */
-  id: string;
-  /** Human-readable display name (e.g., "Claude Opus 4.6") */
-  name: string;
-  /** Model family for grouping (e.g., "opus", "sonnet", "haiku") */
-  family: string;
-  /** Whether this is an alias (e.g., "opus") vs a dated version */
-  isAlias: boolean;
-}
-
 export interface Engine {
   metadata: EngineMetadata;
   /**
@@ -99,9 +81,4 @@ export interface Engine {
    * All roles use --input-format stream-json with stdin pipes.
    */
   buildCommand(options: EngineCommandOptions): EngineCommand;
-  /**
-   * List available models.
-   * @param provider - Optional provider filter (e.g., "anthropic"). If omitted, returns all.
-   */
-  listModels(provider?: string): Promise<ModelInfo[]>;
 }

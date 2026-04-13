@@ -56,7 +56,9 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
       }, 2_000)
     }
 
-    // Always reset session state — this is the escape hatch, it must work
+    // Always reset session state — this is the escape hatch, it must work.
+    // Why rawUpdateEntry here (bypassing gating): idle must always pass through,
+    // and the builder's activity is stale since the process was just killed.
     state.turnPhase = "idle"
     callbacks.onWaiting(false)
     rawUpdateEntry({ modelActivity: "idle" })

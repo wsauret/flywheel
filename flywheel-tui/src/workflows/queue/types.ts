@@ -9,7 +9,6 @@
 //   Queue  — mutable, ordered list of steps for a session
 //   Workflow — named template that generates an initial queue
 
-import type { StepType } from "../../infra/step-types.js";
 
 // StepStatus — lifecycle state of a single step
 
@@ -26,7 +25,7 @@ export interface Step {
   /** Unique identifier (UUID). */
   readonly id: string;
   /** What kind of step this is. */
-  readonly type: StepType;
+  readonly type: "work";
   /** Human-readable title for display. */
   readonly title: string;
   /** Current lifecycle status. */
@@ -61,22 +60,6 @@ export interface Step {
 
   /** Groups related steps for feature boundary detection. */
   feature?: string;
-  /** Validation contract assertion IDs this step fulfills. */
-  fulfills?: string[];
-  /** IDs of steps this step depends on (future DAG support). */
-  dependsOn?: string[];
-  /** Milestone this step belongs to. */
-  milestone?: string;
-
-  // --- P3 triage result (review steps only) ---
-
-  /** P3 triage result from review step. Contains either explicit user selections or an auto-directive. */
-  p3Triage?: {
-    included?: Array<{ description: string; location?: string; suggestion: string }>;
-    excluded?: Array<{ description: string; location?: string; suggestion: string }>;
-    source?: string;
-    directive?: string;
-  };
 }
 
 // QueueStatus — overall queue lifecycle

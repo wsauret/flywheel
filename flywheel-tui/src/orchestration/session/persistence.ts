@@ -1,10 +1,3 @@
-/**
- * Session Persistence
- *
- * CRUD operations for session files stored in `.flywheel/sessions/<id>/session.json`.
- * Each session gets its own directory containing all related files.
- * Uses atomic writes (write → fsync → rename) and Zod validation on read.
- */
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { SessionSchema, type Session } from "./schemas";
@@ -17,8 +10,6 @@ import {
 } from "../../infra/paths";
 import { errorMessage } from "../../infra/error-message";
 
-// Helpers
-
 function sessionsBaseDir(baseDir: string): string {
   return path.join(baseDir, SESSIONS_DIR);
 }
@@ -27,34 +18,17 @@ function sessionFilePath(id: string, baseDir: string): string {
   return resolveSessionFile(id, "session", baseDir);
 }
 
-// Public API
-
-/**
- * Create a new session. Writes session data to `.flywheel/sessions/<id>/session.json`.
- * Creates the session directory and handoffs/ subdirectory.
- *
- * @returns The generated UUID for the session.
- */
 export function createSession(data: Session, baseDir: string): string {
   const id = crypto.randomUUID();
 
   ensureSessionDir(id, baseDir);
-
   const filePath = sessionFilePath(id, baseDir);
-
-  // Validate before writing — fail fast on bad data
   const parsed = SessionSchema.parse(data);
 
   writeFileAtomic(filePath, JSON.stringify(parsed, null, 2));
   return id;
 }
 
-/**
- * Read a session by ID.
- *
- * @returns The validated Session data, or `null` if the file doesn't exist,
- *          is corrupt, or fails Zod validation.
- */
 export function readSession(id: string, baseDir: string): Session | null {
   const filePath = sessionFilePath(id, baseDir);
 
@@ -71,12 +45,6 @@ export function readSession(id: string, baseDir: string): Session | null {
   }
 }
 
-/**
- * Update a session with a partial set of fields. Performs an atomic
- * read-modify-write cycle. Automatically updates `lastUpdated`.
- *
- * @throws If the session does not exist or the file is corrupt.
- */
 export function updateSession(
   id: string,
   updates: Partial<Session>,
@@ -87,7 +55,6 @@ export function updateSession(
     throw new Error(`Session not found: ${id}`);
   }
 
-  // Guard: kind is immutable — reject attempts to change it at runtime
   if (updates.kind && updates.kind !== existing.kind) {
     throw new Error(`Cannot change session kind from "${existing.kind}" to "${updates.kind}"`);
   }
@@ -102,31 +69,21 @@ export function updateSession(
   writeFileAtomic(filePath, JSON.stringify(parsed, null, 2));
 }
 
-/** Entry in the list result: session ID + validated data. */
 interface SessionEntry {
   id: string;
   data: Session;
 }
 
-/** Per-file parse error for error isolation. */
 interface SessionListError {
   file: string;
   error: string;
 }
 
-/** Result of listing sessions. */
 export interface SessionListResult {
   sessions: SessionEntry[];
   errors: SessionListError[];
 }
 
-/**
- * List all sessions in `.flywheel/sessions/`.
- *
- * Reads each subdirectory's `session.json`, validates with Zod, and returns
- * the results. Corrupt or invalid entries are reported in `errors` but do
- * not prevent other sessions from being returned (per-entry error isolation).
- */
 export function listSessions(baseDir: string): SessionListResult {
   const dir = sessionsBaseDir(baseDir);
   const sessions: SessionEntry[] = [];
@@ -167,25 +124,11 @@ export function listSessions(baseDir: string): SessionListResult {
   return { sessions, errors };
 }
 
-// Delete with companion file cleanup
-
-/** Result of a deleteSessionWithCompanions call. */
 export interface DeleteResult {
   deleted: string[];
   errors: string[];
 }
 
-/**
- * Delete a session and all its files.
- *
- * With directory-per-session layout, this simply removes the entire
- * session directory recursively.
- *
- * @param id - The session UUID.
- * @param baseDir - The project root directory.
- * @param activeSessionId - If provided, deletion is refused when `id` matches.
- * @returns `{ deleted, errors }` for partial failure reporting.
- */
 export function deleteSessionWithCompanions(
   id: string,
   baseDir: string,
@@ -193,7 +136,6 @@ export function deleteSessionWithCompanions(
 ): DeleteResult {
   const result: DeleteResult = { deleted: [], errors: [] };
 
-  // Guard: don't delete the currently active session
   if (activeSessionId && id === activeSessionId) {
     result.errors.push("Cannot delete the currently active session");
     return result;

@@ -14,7 +14,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { parseFrontmatter } from "../utils/frontmatter";
 import type { AvailableContext, ContextEntry } from "../../workflows/schemas";
-import type { StepType } from "../../infra/step-types";
+import type { Step } from "../../workflows/queue/types";
 import {
   DEFAULT_STANDARDS_DIR,
   DEFAULT_CONVENTION_FILES,
@@ -24,7 +24,7 @@ import {
 // Types
 
 export interface ContextQuery {
-  stepType: StepType;
+  stepType: Step["type"];
   stepDescription: string;
   tags?: string[];
 }

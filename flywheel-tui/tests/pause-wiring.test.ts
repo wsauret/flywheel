@@ -16,7 +16,7 @@ import {
   createSessionManager,
   type SessionManagerDeps,
 } from "../src/orchestration/session/manager";
-import { readSession, updateSession } from "../src/orchestration/session/persistence";
+import { readSession } from "../src/orchestration/session/persistence";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 // ---------------------------------------------------------------------------
 // Helpers
@@ -90,19 +90,6 @@ describe("Pause wiring -- session creation in startPipeline", () => {
 
     const persisted = readSession(sessionId, baseDir);
     expect(persisted!.state).toBe("paused");
-  });
-
-  it("outputPath can be set on a created session", () => {
-    const baseDir = makeTmpDir();
-    const mgr = createSessionManager(makeDeps(baseDir));
-
-    const sessionId = mgr.create("plans/test.md");
-
-    // Set outputPath (what startPipeline will do after creating session)
-    updateSession(sessionId, { outputPath: `${sessionId}.output.json` }, baseDir);
-
-    const persisted = readSession(sessionId, baseDir);
-    expect(persisted!.outputPath).toBe(`${sessionId}.output.json`);
   });
 
   it("updateState to paused fails when session does not exist", () => {
@@ -208,10 +195,7 @@ describe("Pause wiring -- full pause sequence", () => {
     // 1. Create session (starts as active)
     const sessionId = mgr.create("plan -> work -> review");
 
-    // 2. Set outputPath
-    updateSession(sessionId, { outputPath: `${sessionId}.output.json` }, baseDir);
-
-    // 3. Start output flusher
+    // 2. Start output flusher
     const persistence = createOutputPersistence({ sessionId, baseDir });
     const blocks = [
       { kind: "text" as const, content: "work output", timestamp: Date.now() },
@@ -231,7 +215,6 @@ describe("Pause wiring -- full pause sequence", () => {
     // === Verify everything persisted ===
     const session = readSession(sessionId, baseDir);
     expect(session!.state).toBe("paused");
-    expect(session!.outputPath).toBe(`${sessionId}.output.json`);
 
     const output = await persistence.load();
     expect(output).toHaveLength(2);

@@ -21,7 +21,6 @@ type WorkflowStatus = "idle" | "running" | "completed" | "failed" | "interrupted
 export interface OutputWindowProps {
   outputBlocks: readonly AnyBlock[]
   workflowStatus: WorkflowStatus
-  approvalPending: boolean
   isPromptFocused: boolean
 }
 

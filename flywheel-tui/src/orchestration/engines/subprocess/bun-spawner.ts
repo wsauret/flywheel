@@ -96,7 +96,7 @@ export class BunProcessSpawner implements ProcessSpawner {
    * Spawn a process and wire the full stream pipeline.
    *
    * Equivalent to the pre-refactor `spawn()` — creates the process,
-   * then immediately wires NDJSON parsing, completion detection, tiered
+   * then immediately wires NDJSON parsing, completion detection, output
    * buffering, and all caller callbacks.
    */
   async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
@@ -109,13 +109,13 @@ export class BunProcessSpawner implements ProcessSpawner {
       // Match the original error-handling: validation / spawn failures
       // are wrapped in a resolved SpawnResult with an error SubprocessResult.
       const { buildErrorResult } = await import("./spawn-helpers.js");
-      const { TieredBuffer } = await import("../../../infra/tiered-buffer.js");
+      const { OutputBuffer } = await import("../../../infra/output-buffer.js");
       const { CompletionDetector } = await import("./completion.js");
       const { NDJSONParser } = await import("../../../infra/ndjson-parser.js");
       const { createSubprocessTimeout } = await import("./timeout.js");
       const { resolveHandoffPath } = await import("./spawn-helpers.js");
 
-      const buffer = new TieredBuffer();
+      const buffer = new OutputBuffer();
       const subprocessTimeout = createSubprocessTimeout(timeoutMs);
       const resultCtx = {
         ndjsonParser: new NDJSONParser(buffer),

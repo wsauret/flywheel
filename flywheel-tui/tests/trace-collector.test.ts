@@ -85,7 +85,7 @@ describe("TraceCollector — span tree construction", () => {
     expect(span.status).toBe("ok");
     expect(span.error).toBeNull();
     expect(span.sessionId).toBe("test-session");
-    expect(span.traceId).toBe(collector.getTraceId());
+    expect(span.traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
   });
 
   it("parentSpanId is automatically linked via span stack", () => {
@@ -143,88 +143,7 @@ describe("TraceCollector — timing", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// traceId
-// ---------------------------------------------------------------------------
-
-describe("TraceCollector — traceId", () => {
-  it("traceId is a valid UUID", () => {
-    const traceId = collector.getTraceId();
-    // UUID v4 pattern
-    expect(traceId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
-  });
-
-  it("traceId is consistent across all spans in a trace", () => {
-    const id1 = collector.startSpan("workflow", "root", { stepIds: [], workflowName: "wf" });
-    const id2 = collector.startSpan("step", "child", { stepType: "a", stepTitle: "A" });
-    collector.endSpan(id2, { failureReason: null }, "ok");
-    collector.endSpan(id1, { stepsCompleted: 1, failureReason: null }, "ok");
-
-    const traceId = collector.getTraceId();
-    for (const span of writer.spans) {
-      expect(span.traceId).toBe(traceId);
-    }
-  });
-
-  it("different collectors have different traceIds", () => {
-    const writer2 = createInMemoryWriter();
-    const collector2 = createTraceCollector({
-      writer: writer2,
-      sessionId: "test-session-2",
-      workflowName: "test-workflow",
-    });
-
-    expect(collector.getTraceId()).not.toBe(collector2.getTraceId());
-  });
-});
-
-// ---------------------------------------------------------------------------
-// recordSpan — auto-timed wrapper
-// ---------------------------------------------------------------------------
-
-describe("TraceCollector — recordSpan", () => {
-  it("executes the function and returns its result", () => {
-    const result = collector.recordSpan("tool_call", "my-tool", { toolName: "read", toolInput: "{}" }, () => {
-      return 42;
-    });
-    expect(result).toBe(42);
-  });
-
-  it("writes a completed span with ok status on success", () => {
-    collector.recordSpan("tool_call", "my-tool", { toolName: "read", toolInput: "{}" }, () => "done");
-
-    expect(writer.spans.length).toBe(1);
-    const span = writer.spans[0];
-    expect(span.status).toBe("ok");
-    expect(span.kind).toBe("tool_call");
-  });
-
-  it("writes a completed span with error status on throw", () => {
-    expect(() => {
-      collector.recordSpan("tool_call", "bad-tool", { toolName: "write", toolInput: "{}" }, () => {
-        throw new Error("boom");
-      });
-    }).toThrow("boom");
-
-    expect(writer.spans.length).toBe(1);
-    const span = writer.spans[0];
-    expect(span.status).toBe("error");
-    expect(span.error).toEqual({ message: "boom" });
-  });
-
-  it("respects parent span stack", () => {
-    const parentId = collector.startSpan("step", "parent", { stepType: "a", stepTitle: "A" });
-
-    collector.recordSpan("tool_call", "child-tool", { toolName: "x", toolInput: "{}" }, () => "ok");
-
-    collector.endSpan(parentId, { failureReason: null }, "ok");
-
-    const childSpan = writer.spans.find((s) => s.kind === "tool_call")!;
-    expect(childSpan.parentSpanId).toBe(parentId);
-  });
-});
+// traceId and recordSpan were removed from the public interface — see trace-collector.ts.
 
 // ---------------------------------------------------------------------------
 // Input/output truncation
@@ -567,7 +486,7 @@ describe("TraceCollector — finalize", () => {
 
     expect(writer.indexEntries.length).toBe(1);
     const entry = writer.indexEntries[0];
-    expect(entry.traceId).toBe(collector.getTraceId());
+    expect(entry.traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(entry.sessionId).toBe("test-session");
     expect(entry.workflowName).toBe("test-workflow");
     expect(entry.status).toBe("ok");
@@ -707,7 +626,8 @@ describe("TraceCollector — integration", () => {
     expect(worker2.parentSpanId).toBe(step2.spanId);
 
     // All share the same traceId
-    const traceId = collector.getTraceId();
+    const traceId = writer.spans[0].traceId;
+    expect(traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     for (const span of writer.spans) {
       expect(span.traceId).toBe(traceId);
       expect(span.sessionId).toBe("test-session");

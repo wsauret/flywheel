@@ -6,6 +6,7 @@
 import type { Step, Queue } from "./types";
 import type { OnStepCompletedHook } from "./shared/hooks";
 import type { EmitFn } from "../../infra/event-bus";
+import type { NativeCheckResult } from "../shared/native-verification";
 
 // Types — Dependency Injection interfaces
 
@@ -179,22 +180,11 @@ export type PostTurnVerificationHook = (ctx: {
 
 // PostTurnVerificationResult — returned by the post-turn verification hook
 
-/** Minimal check result — avoids importing NativeCheckResult from orchestration layer. */
-export interface VerificationCheckResult {
-  command: string;
-  passed: boolean;
-  exitCode: number;
-  stderr: string;
-  durationMs: number;
-  skipped?: boolean;
-  discrepancy?: boolean;
-}
-
 export interface PostTurnVerificationResult {
   passed: boolean;
   nativeChecksPassed: boolean;
   fixAttemptsUsed: number;
-  checks: VerificationCheckResult[];
+  checks: NativeCheckResult[];
 }
 
 // StepExecutorResult — what run() returns

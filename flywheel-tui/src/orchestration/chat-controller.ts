@@ -1,13 +1,3 @@
-/**
- * Chat Controller — pure business logic for chat session lifecycle.
- *
- * Extracted from `src/tui/hooks/use-chat-mode.ts`. Controllers return DATA,
- * not signal writes. The TUI hook calls controller methods and writes
- * the returned data to SolidJS signals.
- *
- * Must NOT import from `src/tui/`.
- */
-
 import { createChatRunner } from "./chat-runner.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { readSession, updateSession } from "./session/persistence.js"
@@ -20,16 +10,12 @@ import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
 
-// Types
-
 export interface ChatControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   refreshList: () => void
   projectCwd: string
-  /** Called when a runner completes normally. */
   onRunnerDone?: (id: string, result: RunnerDoneResult) => void
-  /** Called when a runner encounters an error. */
   onRunnerError?: (id: string, result: RunnerErrorResult) => void
 }
 
@@ -45,42 +31,18 @@ export interface ResumeChatResult {
 }
 
 export interface ChatController {
-  /**
-   * Create and launch a new chat session.
-   * Returns the session ID on success, or null on failure.
-   */
   startChat(initialMessage?: string): Promise<StartChatResult | null>
-
-  /**
-   * Resume a persisted chat session, loading its output blocks.
-   * Returns the session ID and prior blocks, or null on failure.
-   */
   resumeChat(sessionId: string): Promise<ResumeChatResult | null>
-
-  /** End the foreground chat. Returns true if a chat was ended. */
   endChat(foregroundId: string | undefined): Promise<boolean>
-
-  /** Put the current chat in the background. Empty chats (no user messages) are auto-deleted. */
   backgroundChat(foregroundId?: string): Promise<void>
-
-  /** Interrupt the foreground chat. */
   interruptChat(foregroundId: string | undefined): void
-
-  /**
-   * Send a message to the foreground chat.
-   * Returns true if the message was sent or queued; false if dropped.
-   */
   sendMessage(foregroundId: string | undefined, text: string): boolean
 }
-
-// Startup state machine
 
 type StartupState =
   | { phase: "idle" }
   | { phase: "starting"; id: string; pending: string[] }
   | { phase: "ready" }
-
-// Factory
 
 const log = Log.create({ service: "chat-controller" })
 
@@ -90,15 +52,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   let startup: StartupState = { phase: "idle" }
   let isFirstChat = true
 
-  // Chat sessions created in this instance that haven't received any user messages.
-  // These are auto-deleted (not persisted) when ended, backgrounded, or runner-completed.
   const emptyChats = new Set<string>()
 
-  /**
-   * Bring a chat session to its final disk state.
-   * Empty chats (no user messages) are deleted. Chats with messages get
-   * their claudeSessionId persisted and state set to paused for resume.
-   */
   function finalizeChat(id: string): void {
     if (emptyChats.delete(id)) {
       try { manager.delete(id) } catch { /* already cleaned up */ }
@@ -112,10 +67,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     refreshList()
   }
 
-  /**
-   * Internal helper: wire up a chat session with the sessionStore.
-   * Returns the session ID on success, null on failure.
-   */
   async function launchChat(
     sessionId: string,
     opts?: {
@@ -129,7 +80,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       contextPercent?: number
     },
   ): Promise<{ sessionId: string; terminalTitle: string } | null> {
-    // Preserve any messages already buffered by sendMessage's auto-resume path
     const priorPending = (startup.phase === "starting" && startup.id === sessionId) ? startup.pending : []
     startup = { phase: "starting", id: sessionId, pending: priorPending }
 
@@ -178,7 +128,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
           }),
       })
 
-      // Replay any messages that arrived during async startup
       const pendingMessages = startup.phase === "starting" ? startup.pending : []
       startup = { phase: "ready" }
       isFirstChat = false
@@ -210,7 +159,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   async function resumeChat(sessionId: string): Promise<ResumeChatResult | null> {
     const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
     const priorBlocks: AnyBlock[] = await persistence.load()
-    // Read persisted Claude session ID for --resume
     const persisted = readSession(sessionId, projectCwd)
     const claudeSessionId = persisted?.kind === "chat" ? persisted.claudeSessionId : undefined
     const description = persisted?.label || persisted?.name || undefined
@@ -260,7 +208,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   }
 
   function sendMessage(foregroundId: string | undefined, text: string): boolean {
-    // During async startup, buffer messages
     if (startup.phase === "starting") {
       startup.pending.push(text)
       emptyChats.delete(startup.id)
@@ -268,25 +215,19 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     }
     if (!foregroundId) return false
 
-    // Fast path: session has an active runner — inject directly
     if (sessionStore.injectMessage(foregroundId, text)) {
       emptyChats.delete(foregroundId)
       return true
     }
 
-    // Ended chat session — auto-resume with this message.
-    // This happens when the user views a historical/ended chat (Ctrl+B → Enter)
-    // and then sends a message. The loaded entry has no runner, so we recreate
-    // one via launchChat with --resume <claudeSessionId> for full context.
-    // The text is buffered in startup.pending so it flows through send() →
-    // notifyInjected() (user message bubble appears immediately).
+    // Auto-resume: user sends a message into a viewed historical chat that has
+    // no runner. Buffer the text in startup.pending so it appears immediately.
     const entry = sessionStore.get(foregroundId)
     if (entry?.kind === "chat" && entry.ended) {
       emptyChats.delete(foregroundId)
       const priorBlocks = entry.outputBlocks.length > 0
         ? [...entry.outputBlocks] as AnyBlock[]
         : undefined
-      // Buffer the message BEFORE launchChat — launchChat preserves existing pending.
       startup = { phase: "starting", id: foregroundId, pending: [text] }
       launchChat(foregroundId, {
         priorBlocks,
@@ -303,8 +244,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       return true
     }
 
-    // If we reach here, the message was silently dropped — no inject, no auto-resume.
-    // Log diagnostics so we can trace the root cause.
     const diagEntry = sessionStore.get(foregroundId)
     log.error("chat message dropped — no delivery path", {
       foregroundId,

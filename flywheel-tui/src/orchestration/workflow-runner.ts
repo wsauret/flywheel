@@ -1,8 +1,3 @@
-/**
- * Workflow Runner — full executor lifecycle: setup, execution, pause, abort, cleanup.
- * Pure orchestration logic with callback-based notifications.
- */
-
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { createExecutor } from "./executor-factory"
 import type { StepExecutor } from "../workflows/queue/executor-types"
@@ -20,19 +15,15 @@ import type { SpawnResult } from "./engines/subprocess/spawner"
 import type { Queue } from "../workflows/queue/types"
 import { toBudgetLimits } from "../workflows/schemas"
 import type { AnyBlock } from "../infra/output-blocks"
-import type { SessionRunner } from "./session-runner"
 import { generateSessionTitle } from "./session-title"
 import "../workflows/queue/steps/register-all"
 
-
-// ── Types ──
 
 export type StepState = {
   id: string; type: string; title: string; status: string
   durationMs?: number; startedAt?: number; completedAt?: number
 }
 
-/** Function to update a session entry in the reactive store. */
 type UpdateEntryFn = (sessionId: string, patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => void
 
 export interface WorkflowResult {
@@ -56,34 +47,16 @@ export interface WorkflowRunnerOverrides {
   chatContext?: string
 }
 
-export interface WorkflowRunner extends SessionRunner {
-  /** Run the executor to completion. Resolves with result. */
+export interface WorkflowRunner {
   run(): Promise<WorkflowResult>
-  /** Graceful pause — finish current step then stop. */
   pause(): void
-  /** Force abort — kill subprocess immediately. */
   abort(): void
-  /** Inject a user message into the running subprocess. Returns true if delivered or queued. */
   injectMessage(text: string): boolean
-  /** Cancel a pending shutdown so execution continues after current step. */
   cancelShutdown(): void
-  /** The session ID for this workflow. */
   readonly sessionId: string
-  /** Clean up all resources. Called automatically after run() resolves. */
   dispose(): Promise<void>
 }
 
-// ── Factory ──
-
-/**
- * Create a workflow runner for a new or resumed session.
- *
- * @param opts.sessionId - Session ID (already created via manager.create or loaded for resume)
- * @param opts.queue - Queue to execute (fresh from buildQueueForSlashCommand or loaded from persistence)
- * @param opts.description - Human-readable session description
- * @param opts.updateEntry - Function to write updates directly to the reactive session store
- * @param opts.priorBlocks - Output blocks from a previous run (for resume — prepended to new output)
- */
 export function createWorkflowRunner(opts: {
   sessionId: string
   queue: Queue
@@ -99,12 +72,13 @@ export function createWorkflowRunner(opts: {
 
   const deps = opts.overrides?.workflowDeps ?? prepareWorkflowDeps()
 
-  // Output persistence — set up BEFORE session so the adapter captures the wrapper
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
   let currentBlocks: readonly AnyBlock[] = []
   const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
-  // Persistence-aware updateEntry: prepends priorBlocks and schedules disk persistence.
+  // Why not shared with chat-runner: workflow adds persistence scheduling and
+  // currentBlocks tracking; chat does neither. The 3 shared lines of priorBlocks
+  // prepending don't justify an abstraction over the runner-specific extensions.
   const priorBlocksPrefix = priorBlocks ?? []
   const wrappedUpdateEntry = (patch: Partial<import("./session-store-types").WorkflowSessionEntry>) => {
     if (patch.outputBlocks) {
@@ -118,7 +92,6 @@ export function createWorkflowRunner(opts: {
     updateEntry(sessionId, patch)
   }
 
-  // Session resources (timer, adapter, event bus)
   const session = createWorkflowSession({
     description,
     engineMetadata: deps.engine.metadata,
@@ -129,7 +102,6 @@ export function createWorkflowRunner(opts: {
   const emit = createEmit(eventBus)
   const workflowId = randomUUID()
 
-  // Shared session infrastructure (budget, traces, transcripts)
   const infra = createSessionInfra({
     sessionId,
     projectCwd,
@@ -142,9 +114,6 @@ export function createWorkflowRunner(opts: {
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
 
-  // Wire event subscriptions: step events write directly to session store.
-  // Metrics propagation (budget:metrics-changed → store) is handled by
-  // wireSessionSubscribers in executor-factory via metricsWriter.
   const eventUnsubs: Unsubscribe[] = []
   eventUnsubs.push(
     eventBus.subscribeToType("queue:step-started", (event) => {
@@ -163,24 +132,20 @@ export function createWorkflowRunner(opts: {
     }),
   )
 
-  // Initialize step display
   updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
   let executor: StepExecutor | null = null
   let disposed = false
 
-  // InjectionQueue — constructed here (after prepareWorkflowDeps) so injectMessage can access it outside run()
   const injectionQueue = new InjectionQueue(
     formatStdinMessage,
   )
 
-  // Pool refs — created inside run(), shut down in dispose()
   let dispatcherPool: WarmPool<SpawnResult> | null = null
   let evaluatorPool: WarmPool<SpawnResult> | null = null
   let subprocessPool: WarmPool<RawSpawnedProcess> | null = null
 
   async function run(): Promise<WorkflowResult> {
-    // Build the full executor (sprint hooks, pools, transports, observers, wiring, guardrails, persistence)
     const created = await createExecutor({
       deps, emit, eventBus, workflowId, sessionId, queue, description,
       projectCwd, subprocessCwd, infra, injectionQueue,
@@ -193,7 +158,6 @@ export function createWorkflowRunner(opts: {
     subprocessPool = created.pools.subprocess
     eventUnsubs.push(...created.eventUnsubs)
 
-    // Generate session title via haiku in parallel — doesn't block execution
     generateSessionTitle(
       description,
       (title) => updateEntry(sessionId, { description: title }),
@@ -202,13 +166,11 @@ export function createWorkflowRunner(opts: {
 
     const result = await executor.run()
 
-    // Finalize trace with result status
     if (traceCollector && !traceFinalized) {
       traceFinalized = true
       traceCollector.finalize(result.completed ? "ok" : "error")
     }
 
-    // Final step states
     updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
     budgetTracker.flush()
@@ -246,10 +208,8 @@ export function createWorkflowRunner(opts: {
     if (disposed) return
     disposed = true
 
-    // 1. Unsubscribe event listeners
     eventUnsubs.forEach((u) => u())
 
-    // 2. Shut down warm pools
     await Promise.all([
       dispatcherPool?.shutdown(),
       evaluatorPool?.shutdown(),
@@ -259,10 +219,8 @@ export function createWorkflowRunner(opts: {
     evaluatorPool = null
     subprocessPool = null
 
-    // 3. Unified resource disposal (finalize → flush → dispose)
-    //    If traces were already finalized in run(), pass null traceCollector
-    //    to skip double-finalize. For the abort path, pass the collector so
-    //    open spans get closed with "error" status.
+    // Pass null traceCollector if already finalized in run() to skip double-finalize.
+    // For the abort path, pass the collector so open spans close with "error" status.
     const resources = {
       budgetTracker,
       traceWriter,
@@ -272,15 +230,12 @@ export function createWorkflowRunner(opts: {
     }
     await disposeSessionResources(resources, traceFinalized ? "ok" : "error")
 
-    // 4. Destroy reactive root LAST (per P1 Finding 1)
     destroyWorkflowSession(session)
     executor = null
   }
 
   return { run, pause, abort, injectMessage, cancelShutdown, sessionId, dispose }
 }
-
-// ── Helpers ──
 
 function toStepState(s: { id: string; type: string; title: string; status: string }): StepState {
   return { id: s.id, type: s.type, title: s.title, status: s.status }

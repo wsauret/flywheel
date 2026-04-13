@@ -1,33 +1,3 @@
-/**
- * Budget Tracker
- *
- * Budget enforcement flows through this module: BudgetTracker accumulates
- * cost/token/invocation data from NDJSON events and emits budget:exhausted
- * events when limits are hit. The step executor does NOT do its own per-step
- * budget check — all enforcement is event-driven through this tracker.
- *
- * Accumulates cost and token usage from Claude Code's NDJSON "result" events,
- * plus invocation counts from the step executor. Persists structured budget
- * usage to the session file with debounced writes. Provides budget exhaustion
- * checking and status reporting.
- *
- * Only "result" events are handled here — they are the sole cost-bearing event
- * type in Claude Code's stream-json format. For step_finish event handling
- * (used by internal harness engines), see src-legacy/session/budget-tracker.ts.
- *
- * Single-threaded assumption: Bun's event loop serializes debounced
- * writes and lifecycle updates — no locking needed. Do NOT use Worker
- * threads for this component.
- *
- * Usage:
- *   const tracker = createBudgetTracker({ sessionId, baseDir });
- *   parser.onEvent = tracker.handleEvent;
- *   tracker.incrementInvocations(); // called by step executor per dispatch
- *   tracker.isExhausted(budgetLimits); // check before next dispatch
- *   // ... when session ends:
- *   tracker.dispose(); // flushes pending data + cancels timers
- */
-
 import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 import type { BudgetLimits, BudgetUsage, SessionBudgetStatus } from "../../workflows/schemas.js";
 import { readSession, updateSession } from "./persistence.js";
@@ -35,14 +5,10 @@ import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
 import { ResultCostSchema, computeContextPercent } from "./budget-tracker-types.js";
 import type { BudgetTrackerDeps, BudgetTracker, ContextUtilization } from "./budget-tracker-types.js";
 
-// Factory
-
 export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId, budgetLimits } = deps;
 
-  // Self-seed from persisted budget usage (resume scenario).
-  // Symmetric with writes: we already persist via updateSession, so reading
-  // on init closes the loop without callers threading values through.
+  // Self-seed from persisted budget usage so callers don't thread values through on resume.
   const persisted = readSession(sessionId, baseDir);
   let totalCost = persisted?.totalCost ?? persisted?.budgetUsage?.cost_usd ?? 0;
   let tokensUsed = persisted?.budgetUsage?.tokens_used ?? 0;
@@ -52,22 +18,15 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   let disposed = false;
   let wasExhausted = false;
 
-  // Baseline for delta accounting on cost.
-  // Claude Code's total_cost_usd IS cumulative within a single process, so we
-  // compute deltas to avoid double-counting. onNewSubprocess() resets the
-  // baseline when a new process is spawned.
-  //
-  // Note: usage.input_tokens / output_tokens are PER-TURN (not cumulative),
-  // so they are added directly without delta logic.
+  // total_cost_usd is cumulative within a process — compute deltas to avoid
+  // double-counting. onNewSubprocess() resets the baseline per spawn.
+  // usage.input_tokens / output_tokens are PER-TURN, added directly.
   let lastSeenCost = 0;
 
-  // Context utilization — self-seeds from persisted budgetUsage on resume.
   let ctxPromptTokens = persisted?.budgetUsage?.context_prompt_tokens ?? 0;
   let ctxWindow = persisted?.budgetUsage?.context_window ?? 0;
 
-  // Persistence
-
-  function writeBudgetUsage(): void {
+  function writeBudgetUsage() {
     if (!pendingWrite) return;
     pendingWrite = false;
     timerId = null;
@@ -83,90 +42,49 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     try {
       updateSession(sessionId, { totalCost, budgetUsage }, baseDir);
     } catch {
-      // Session may have been deleted or become corrupt.
-      // Swallow — budget is still tracked in-memory.
+      // Session may have been deleted — budget is still tracked in-memory
     }
   }
 
-  function scheduleWrite(): void {
+  function scheduleWrite() {
     if (disposed) return;
     pendingWrite = true;
-
-    // Reset the debounce timer
-    if (timerId !== null) {
-      clearTimeout(timerId);
-    }
+    if (timerId !== null) clearTimeout(timerId);
     timerId = setTimeout(writeBudgetUsage, debounceMs);
   }
 
-  // Event handling
+  function handleEvent(event: NDJSONEvent) {
+    if (event.type !== "result") return;
 
-  function handleEvent(event: NDJSONEvent): void {
-    // Handle result events (Claude Code stream-json format).
-    // This is the only cost-bearing event type in Claude Code's stream-json output.
-    // For step_finish event handling (internal harness engines), see:
-    //   src-legacy/session/budget-tracker.ts
-    if (event.type === "result") {
-      const parsed = ResultCostSchema.safeParse(event.data);
-      if (!parsed.success) return;
+    const parsed = ResultCostSchema.safeParse(event.data);
+    if (!parsed.success) return;
 
-      // Compute deltas against last-seen values. total_cost_usd and token counts
-      // are cumulative within a process, so we only add what's new since the last
-      // result event. onNewSubprocess() resets baselines to 0 before each new spawn.
-      const rawCost = parsed.data.total_cost_usd;
+    const rawCost = parsed.data.total_cost_usd;
+    totalCost += rawCost - lastSeenCost;
+    lastSeenCost = rawCost;
 
-      totalCost += rawCost - lastSeenCost;
-      lastSeenCost = rawCost;
+    // input_tokens/output_tokens are per-turn (not cumulative like total_cost_usd).
+    // Cache tokens excluded — priced differently, already reflected in total_cost_usd.
+    if (parsed.data.usage) {
+      tokensUsed += (parsed.data.usage.input_tokens ?? 0) + (parsed.data.usage.output_tokens ?? 0);
+    }
 
-      // Only update tokens when usage is present. A cost-only result
-      // (no usage field) should not zero out or subtract from the token count.
-      //
-      // Note: usage.input_tokens / output_tokens are PER-TURN values (they do
-      // NOT accumulate across turns within the same process), unlike total_cost_usd
-      // which IS cumulative. We add them directly — no delta logic needed.
-      //
-      // Cache tokens (cache_read_input_tokens, cache_creation_input_tokens) are
-      // intentionally excluded. They are priced at a fraction of regular input
-      // token cost, and total_cost_usd already reflects their actual price.
-      if (parsed.data.usage) {
-        const inputTokens = parsed.data.usage.input_tokens ?? 0;
-        const outputTokens = parsed.data.usage.output_tokens ?? 0;
-        tokensUsed += inputTokens + outputTokens;
-      }
-
-      scheduleWrite();
-      if (emitter && workflowId) {
-        emitter("budget:metrics-changed", { workflowId, tokens: tokensUsed, cost: totalCost });
-        if (budgetLimits) isExhausted(budgetLimits);
-      }
-      return;
+    scheduleWrite();
+    if (emitter && workflowId) {
+      emitter("budget:metrics-changed", { workflowId, tokens: tokensUsed, cost: totalCost });
+      if (budgetLimits) isExhausted(budgetLimits);
     }
   }
 
-  // Invocation tracking
-
-  function incrementInvocations(): void {
+  function incrementInvocations() {
     invocationsUsed += 1;
     scheduleWrite();
   }
 
-  function getInvocationsUsed(): number {
-    return invocationsUsed;
-  }
+  function getTotalCost() { return totalCost; }
+  function getTokensUsed() { return tokensUsed; }
 
-  // Accessors
-
-  function getTotalCost(): number {
-    return totalCost;
-  }
-
-  function getTokensUsed(): number {
-    return tokensUsed;
-  }
-
-  // Context utilization
-
-  function updateContextUtilization(promptTokens: number, contextWindow: number): void {
+  function updateContextUtilization(promptTokens: number, contextWindow: number) {
     if (promptTokens > 0) ctxPromptTokens = promptTokens;
     if (contextWindow > 0) ctxWindow = contextWindow;
   }
@@ -175,50 +93,31 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     return { promptTokens: ctxPromptTokens, contextWindow: ctxWindow, percent: computeContextPercent(ctxPromptTokens, ctxWindow) };
   }
 
-  // Budget exhaustion
-
   function isExhausted(budgetLimits: BudgetLimits): boolean {
-    let exhausted = false;
-    let reason = "";
+    const reason =
+      (budgetLimits.max_invocations > 0 && invocationsUsed >= budgetLimits.max_invocations)
+        ? `Invocation limit reached (${invocationsUsed}/${budgetLimits.max_invocations})`
+      : (budgetLimits.max_tokens !== null && tokensUsed >= budgetLimits.max_tokens)
+        ? `Token limit reached (${tokensUsed}/${budgetLimits.max_tokens})`
+      : (budgetLimits.wall_clock_deadline !== null && (() => {
+          const deadlineMs = new Date(budgetLimits.wall_clock_deadline!).getTime();
+          return !Number.isNaN(deadlineMs) && Date.now() >= deadlineMs;
+        })())
+        ? "Wall clock deadline exceeded"
+      : null;
 
-    if (budgetLimits.max_invocations > 0 && invocationsUsed >= budgetLimits.max_invocations) {
-      exhausted = true;
-      reason = `Invocation limit reached (${invocationsUsed}/${budgetLimits.max_invocations})`;
-    }
-
-    if (!exhausted && budgetLimits.max_tokens !== null && tokensUsed >= budgetLimits.max_tokens) {
-      exhausted = true;
-      reason = `Token limit reached (${tokensUsed}/${budgetLimits.max_tokens})`;
-    }
-
-    if (!exhausted && budgetLimits.wall_clock_deadline !== null) {
-      const deadlineMs = new Date(budgetLimits.wall_clock_deadline).getTime();
-      if (!Number.isNaN(deadlineMs) && Date.now() >= deadlineMs) {
-        exhausted = true;
-        reason = "Wall clock deadline exceeded";
-      }
-    }
-
-    // Emit budget:exhausted on first transition
-    if (exhausted && !wasExhausted && emitter && workflowId) {
-      wasExhausted = true;
+    if (reason && !wasExhausted && emitter && workflowId) {
       emitter("budget:exhausted", { workflowId, reason });
-    } else if (exhausted) {
-      wasExhausted = true;
     }
-
-    return exhausted;
+    if (reason) wasExhausted = true;
+    return reason !== null;
   }
 
-  // Subprocess process boundary
-
-  function onNewSubprocess(): void {
+  function onNewSubprocess() {
     lastSeenCost = 0;
   }
 
-  // Lifecycle
-
-  function flush(): void {
+  function flush() {
     if (timerId !== null) {
       clearTimeout(timerId);
       timerId = null;
@@ -226,26 +125,16 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     writeBudgetUsage();
   }
 
-  function dispose(): void {
+  function dispose() {
     if (disposed) return;
     disposed = true;
-
-    // Force-flush any pending data before teardown
-    if (timerId !== null) {
-      clearTimeout(timerId);
-      timerId = null;
-    }
-    // Write if there's a pending update
-    if (pendingWrite) {
-      writeBudgetUsage();
-    }
+    flush();
   }
 
   return {
     handleEvent,
     getTotalCost,
     incrementInvocations,
-    getInvocationsUsed,
     getTokensUsed,
     updateContextUtilization,
     getContextUtilization,

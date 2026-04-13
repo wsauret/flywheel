@@ -1,10 +1,10 @@
 import { describe, it, expect } from "bun:test";
+import { EvaluatorVerdictSchema } from "../src/workflows/evaluator/schemas";
 import {
-  EvaluatorVerdictSchema,
   EvaluatorIssueSeverityEnum,
   EvaluatorIssueCategoryEnum,
   EvaluatorIssueSchema,
-} from "../src/workflows/evaluator/schemas";
+} from "../src/infra/workflow-types";
 import { renderEvaluatorHandoffInstruction } from "../src/workflows/queue/shared/handoff-render";
 
 // ---------------------------------------------------------------------------

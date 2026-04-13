@@ -39,7 +39,6 @@ function createMockMetrics() {
     liveCost: () => 0,
     liveContextPercent: () => 0,
     spinnerTick: () => 0,
-    thinkingElapsed: () => 0,
     liveActivity: () => "idle" as const,
     startTimer: () => {},
     pauseTimer: () => {},

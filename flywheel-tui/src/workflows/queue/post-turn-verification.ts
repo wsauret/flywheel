@@ -28,10 +28,7 @@ export interface PostTurnVerificationConfig {
 // Step type sets
 
 /** Step types that get native checks. */
-const CODE_STEP_TYPES = new Set(["work", "debug"]);
-
-/** Step types that get native git checks only. */
-const SHIP_STEP_TYPES = new Set(["ship"]);
+const CODE_STEP_TYPES = new Set(["work"]);
 
 // Factory
 
@@ -55,7 +52,7 @@ export function createPostTurnVerificationHook(
   return async (ctx) => {
     const { step, handoffData } = ctx;
 
-    if (!CODE_STEP_TYPES.has(step.type) && !SHIP_STEP_TYPES.has(step.type)) {
+    if (!CODE_STEP_TYPES.has(step.type)) {
       return null;
     }
 
@@ -65,10 +62,7 @@ export function createPostTurnVerificationHook(
 
     const declaredCommands = extractDeclaredCommands(handoffData);
 
-    // For ship steps: only run has-changes
-    const checkTypes = SHIP_STEP_TYPES.has(step.type)
-      ? (["has-changes"] as const)
-      : config.nativeCheckTypes;
+    const checkTypes = config.nativeCheckTypes;
 
     for (let attempt = 0; attempt <= config.maxFixAttempts; attempt++) {
       const result = await runNativeVerification({
@@ -91,8 +85,8 @@ export function createPostTurnVerificationHook(
       if (stdinWrite && awaitNextTurn && attempt < config.maxFixAttempts) {
         fixAttemptsUsed++;
         const feedback = result.checks
-          .filter(c => !c.passed || c.discrepancy)
-          .map(c => c.discrepancy
+          .filter((c): c is Exclude<NativeCheckResult, { kind: "skipped" }> => c.kind !== "skipped" && !c.passed)
+          .map(c => c.kind === "discrepancy"
             ? `DISCREPANCY: \`${c.command}\` — you reported exit code ${c.reportedExitCode} but re-run got ${c.exitCode}\n${c.stderr.slice(0, 500)}`
             : `FAILED: \`${c.command}\` exited ${c.exitCode}\n${c.stderr.slice(0, 500)}`)
           .join("\n\n");

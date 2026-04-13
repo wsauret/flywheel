@@ -63,11 +63,22 @@ export const DispatcherDecisionSchema = z.object({
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>
 
-const EvaluatorIssueSchema = z.object({
-  description: z.string(),
-  severity: z.enum(["blocking", "non_blocking"]),
-  category: z.enum(["test_failure", "type_error", "security", "regression", "incomplete", "other"]),
-}).strip()
+export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"])
+
+export const EvaluatorIssueCategoryEnum = z.enum([
+  "test_failure",
+  "type_error",
+  "security",
+  "regression",
+  "incomplete",
+  "other",
+])
+
+export const EvaluatorIssueSchema = z.object({
+  description: z.string().min(1, { message: "Issue description must not be empty." }),
+  severity: EvaluatorIssueSeverityEnum,
+  category: EvaluatorIssueCategoryEnum,
+}).strict()
 
 export const EvaluatorResultSchema = z.object({
   passed: z.boolean(),

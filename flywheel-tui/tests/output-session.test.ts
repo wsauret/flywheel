@@ -204,8 +204,8 @@ describe("createOutputSession", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    // Feed a text event which triggers "generating" activity
     session.writeStdout(makeAssistantTextNdjson("some text"))
+    session.flush()
 
     const activityCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].modelActivity !== undefined,
@@ -220,6 +220,7 @@ describe("createOutputSession", () => {
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout(makeAssistantThinkingNdjson("pondering"))
+    session.flush()
 
     const activityCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].modelActivity !== undefined,
@@ -456,6 +457,7 @@ describe("createOutputSession", () => {
     session = createOutputSession({ updateEntry, emit })
 
     session.notifySpawned(1000)
+    session.flush()
 
     const activityCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].modelActivity !== undefined,

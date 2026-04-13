@@ -1,21 +1,3 @@
-/**
- * Chat Mode — Interactive back-and-forth with an engine process.
- *
- * Spawns an engine process with stdin pipe open. User sends messages, the
- * engine responds, pipe stays open for multi-turn conversation. Engine
- * selection is driven by flywheel.toml config via prepareWorkflowDeps().
- *
- * Uses OutputSession for rendering (same blocks as workflow mode).
- *
- * Worker lifecycle vs. chat session lifecycle are intentionally decoupled:
- * Claude Code's process may exit on its own (idle timeout) without ending the
- * TUI chat session. The session stays open and lazily reconnects via
- * --resume <sessionId> when the user sends the next message.
- *
- * Single responsibility: manage the chat process lifecycle and output pipeline.
- * The shell provides callbacks for state updates — chat doesn't know about UI.
- */
-
 import { formatStdinMessage } from "./engines/subprocess/stdin-format"
 import { getEngine } from "./engines/core/registry"
 import { createOutputSession, type OutputSession } from "./output-session"
@@ -32,8 +14,6 @@ import { errorMessage } from "../infra/error-message.js"
 
 const log = Log.create({ service: "chat" })
 
-// ── Public interface ──
-
 export interface ChatCallbacks {
   onWaiting: (waiting: boolean) => void
   onError: (message: string) => void
@@ -41,45 +21,23 @@ export interface ChatCallbacks {
 }
 
 export interface ChatSession {
-  /** Send a user message to Claude. */
   send(text: string): void
-  /** Interrupt the active worker without ending the session. Next send() reconnects via --resume. */
   interrupt(): void
-  /** End the chat session (close stdin pipe, stop process). */
   end(): void
-  /** Get the budget tracker. */
   readonly budgetTracker: BudgetTracker
-  /** Get the output session (for reading blocks). */
   readonly outputSession: OutputSession
 }
 
-// ── Chat turn state machine ──
-
-/**
- * Discriminated phase for the chat subprocess turn lifecycle.
- *
- * Replaces the previous three separate booleans (agentActive,
- * userTurnInProgress, modelActivity gating) with a single authoritative value.
- *
- * - "idle": No user turn in progress. Non-idle modelActivity is suppressed.
- * - "awaiting-response": User sent a message, agent hasn't started yet.
- * - "agent-active": Agent is producing output (thinking/generating).
- */
 export type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 
-/** Mutable state shared across pipeline, worker lifecycle, and controls. */
 export interface ChatSessionState {
   stdinHandle: StdinHandle | null
   workerPid: number | undefined
   ended: boolean
-  /** Claude Code session ID — captured after first turn, used for --resume. */
   claudeSessionId: string | null
-  /** Current turn phase — single source of truth for activity gating. */
   turnPhase: ChatTurnPhase
   contextWarningFired: boolean
 }
-
-// ── Factory ──
 
 export interface ChatSessionDeps {
   projectCwd: string
@@ -97,13 +55,6 @@ export interface ChatSessionDeps {
   onFlush?: () => void
   claudeSessionId?: string
 }
-
-// ── Helpers ──
-// setupOutputSession and createWorkerLifecycle are module-private
-// decompositions that share mutable ChatSessionState with the main factory.
-// createChatControls is extracted to chat-controls.ts.
-
-// ── Helper: prompt-too-long recovery ──
 
 /**
  * Detect unrecoverable "Prompt is too long" from Claude Code. When the
@@ -133,8 +84,6 @@ function handlePromptTooLong(
   }
 }
 
-// ── Helper 1: setupOutputSession ──
-
 interface SetupOutputSessionInput {
   budgetTracker: BudgetTracker
   emit: EmitFn
@@ -163,7 +112,6 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
     emit,
     workflowId: chatId,
     onFlush: () => {
-      // Context warning at 70%
       const ctx = budgetTracker.getContextUtilization()
       if (!state.contextWarningFired && ctx.percent >= 70) {
         state.contextWarningFired = true
@@ -174,19 +122,12 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
         )
       }
 
-      // Caller's onFlush (e.g. output persistence scheduling)
       onFlush?.()
     },
   })
 
-  // Chat-specific NDJSON event handlers (user echo detection, context-too-long)
-  // are wired to the EventBus in the main factory — not here, because they need
-  // access to the outer eventBus instance.
-
   return session
 }
-
-// ── Helper 2: createWorkerLifecycle ──
 
 export interface WorkerLifecycle {
   spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void>
@@ -203,7 +144,6 @@ interface WorkerLifecycleInput {
   session: OutputSession
   callbacks: ChatCallbacks
   state: ChatSessionState
-  /** Raw (ungated) updateEntry — for setting idle which always passes through. */
   rawUpdateEntry: (patch: Partial<SessionEntryBase>) => void
 }
 
@@ -233,6 +173,9 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
         session.resolvePendingMessages()
         session.flushContextRun(Date.now())
         callbacks.onWaiting(false)
+        // Why explicit idle here: turn-complete is a lifecycle event, not a builder
+        // activity change. The builder stops receiving events but doesn't know the
+        // turn ended — it retains its last activity ("generating" / "tool_executing").
         rawUpdateEntry({ modelActivity: "idle" })
         session.flush()
       },
@@ -241,27 +184,22 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
     state.stdinHandle = spawnResult.stdinHandle ?? null
     state.workerPid = spawnResult.pid
 
-    // When the worker exits, keep the TUI session alive so the user can resume.
-    // Only call end() if the session was explicitly terminated by the user.
     const handleWorkerExit = () => {
       if (session.sessionId) state.claudeSessionId = session.sessionId
       session.flushParser()
       session.flush()
       state.stdinHandle = null
 
-      // If the worker exited while a user turn was in progress (crash, unexpected exit),
-      // reset session state so the UI doesn't get stuck "active" with a dead worker.
       if (state.turnPhase !== "idle") {
         log.warn("worker exited mid-turn — resetting session state")
         state.turnPhase = "idle"
         callbacks.onWaiting(false)
-        rawUpdateEntry({ modelActivity: "idle" })
+        rawUpdateEntry({ modelActivity: "idle" }) // worker-exit: same lifecycle rationale as turn-complete above
         session.pushSystemMessage("Agent process exited unexpectedly. Send a message to reconnect.", Date.now())
         session.flush()
       }
 
       if (state.ended) callbacks.onEnded()
-      // else: worker exited idle — session stays open, next send() will reconnect
     }
 
     spawnResult.result.then(handleWorkerExit).catch((err) => {
@@ -272,8 +210,6 @@ function createWorkerLifecycle(input: WorkerLifecycleInput): WorkerLifecycle {
 
   return { spawnWorker }
 }
-
-// ── Main Factory ──
 
 export async function createChatSession(
   callbacks: ChatCallbacks,
@@ -295,21 +231,15 @@ export async function createChatSession(
     contextWarningFired: false,
   }
 
-  // ── Wire EventBus subscribers ──
-
   const eventUnsubs: Unsubscribe[] = []
-
-  // Budget, transcript, tracing, metrics → store — unified wiring (same path as workflow mode)
   eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }, deps.metricsWriter))
 
-  // 1. Setup OutputSession (rendering + flush + budget metrics)
   const session = setupOutputSession({
     budgetTracker, emit, chatId, state,
     updateEntry: rawUpdateEntry,
     onFlush: deps.onFlush,
   })
 
-  // Chat-specific NDJSON event handlers — user echo detection + context-too-long
   eventUnsubs.push(
     eventBus.subscribeToType("subprocess:ndjson", (e) => {
       const event = e.ndjsonEvent
@@ -323,18 +253,15 @@ export async function createChatSession(
     }),
   )
 
-  // 2. Create worker lifecycle (spawn, reconnection, idle-exit)
   const lifecycle = createWorkerLifecycle({
     engine, engineName, model, spawner, projectCwd, emit, chatId,
     session, callbacks, state, rawUpdateEntry,
   })
 
-  // 3. Create controls (send, interrupt, end)
   const controls = createChatControls({
     lifecycle, session, callbacks, eventUnsubs, state, rawUpdateEntry,
   })
 
-  // ── Initial spawn ──
   const hasInitialMessage = initialMessage != null && initialMessage.trim().length > 0
   if (hasInitialMessage) callbacks.onWaiting(true)
 

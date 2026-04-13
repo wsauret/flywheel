@@ -353,7 +353,6 @@ describe("StructuredOutputBuilder", () => {
       builder.reset();
 
       expect(builder.getBlocks()).toEqual([]);
-      expect(builder.hasChanged()).toBe(false);
     });
 
     it("reset allows fresh accumulation", () => {
@@ -387,12 +386,12 @@ describe("StructuredOutputBuilder", () => {
     it("marks builder as dirty after resetTracking", () => {
       const now = Date.now();
       builder.pushText("hello", now);
-      builder.getBlocks(); // clear dirty flag
-      expect(builder.hasChanged()).toBe(false);
+      const blocks1 = builder.getBlocks(); // clear dirty flag
 
       builder.resetTracking();
 
-      expect(builder.hasChanged()).toBe(true);
+      const blocks2 = builder.getBlocks();
+      expect(blocks2).not.toBe(blocks1);
     });
 
     it("clears agent tracking so new agents get fresh indices", () => {
@@ -429,25 +428,9 @@ describe("StructuredOutputBuilder", () => {
     });
   });
 
-  // ── Dirty flag / hasChanged ──
+  // ── Dirty flag / getBlocks snapshot ──
 
-  describe("hasChanged / getBlocks", () => {
-    it("hasChanged returns false initially", () => {
-      expect(builder.hasChanged()).toBe(false);
-    });
-
-    it("hasChanged returns true after a push", () => {
-      builder.pushText("hello", Date.now());
-      expect(builder.hasChanged()).toBe(true);
-    });
-
-    it("getBlocks clears the dirty flag", () => {
-      builder.pushText("hello", Date.now());
-      expect(builder.hasChanged()).toBe(true);
-      builder.getBlocks();
-      expect(builder.hasChanged()).toBe(false);
-    });
-
+  describe("getBlocks snapshot stability", () => {
     it("getBlocks returns new array reference when dirty", () => {
       builder.pushText("hello", Date.now());
       const blocks1 = builder.getBlocks();
@@ -545,16 +528,18 @@ describe("StructuredOutputBuilder", () => {
 
   // ── Lifecycle callbacks ──
 
-  describe("lifecycle callbacks", () => {
-    it("onModelActivityChange fires on text/tool/thinking", () => {
-      const activities: string[] = [];
-      builder.onModelActivityChange = (a) => activities.push(a);
+  describe("modelActivity getter", () => {
+    it("reflects latest activity from text/tool/thinking", () => {
+      expect(builder.modelActivity).toBe("idle");
 
       builder.pushThinking("hmm", Date.now());
-      builder.pushText("hello", Date.now());
-      builder.pushTool("Read", "file.ts", Date.now());
+      expect(builder.modelActivity).toBe("thinking");
 
-      expect(activities).toEqual(["thinking", "generating", "tool_executing"]);
+      builder.pushText("hello", Date.now());
+      expect(builder.modelActivity).toBe("generating");
+
+      builder.pushTool("Read", "file.ts", Date.now());
+      expect(builder.modelActivity).toBe("tool_executing");
     });
   });
 

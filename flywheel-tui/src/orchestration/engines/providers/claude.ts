@@ -5,7 +5,7 @@
  * Model can be a short name (opus, sonnet, haiku) or a full claude model ID.
  */
 
-import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata, ModelInfo } from "../core/types";
+import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata } from "../core/types";
 
 export const metadata: EngineMetadata = {
   id: "claude",
@@ -14,8 +14,6 @@ export const metadata: EngineMetadata = {
   defaultModel: "claude-opus-4-6[1m]",
   installCommand: "npm install -g @anthropic-ai/claude-code",
   description: "Anthropic's Claude Code CLI",
-  order: 2,
-  supportsToolScoping: true,
   supportsStreamingInput: true,
   // Claude Code delivers thinking as complete blocks, not streaming tokens.
   // The adapter uses this to emit a synthetic "thinking" activity event during silence.
@@ -136,26 +134,4 @@ export function resolveModel(raw: string): string {
   return raw;
 }
 
-/**
- * Hardcoded model list for Claude Code.
- *
- * Claude Code accepts short aliases (opus, sonnet, haiku) and full model IDs
- * (claude-opus-4-6). No CLI command exists to discover models at runtime.
- * Update this list when new model families ship.
- */
-const CLAUDE_MODELS: ModelInfo[] = [
-  { id: "opus",    name: "Claude Opus (1M context)",    family: "opus",   isAlias: true },
-  { id: "sonnet",  name: "Claude Sonnet (1M context)",  family: "sonnet", isAlias: true },
-  { id: "opus[200k]",   name: "Claude Opus (200k)",    family: "opus",   isAlias: true },
-  { id: "sonnet[200k]", name: "Claude Sonnet (200k)",  family: "sonnet", isAlias: true },
-  { id: "haiku",   name: "Claude Haiku (200k)",         family: "haiku",  isAlias: true },
-  { id: "claude-opus-4-6[1m]",   name: "Claude Opus (1M context)",   family: "opus",   isAlias: false },
-  { id: "claude-sonnet-4-6[1m]", name: "Claude Sonnet (1M context)", family: "sonnet", isAlias: false },
-];
-
-// _provider satisfies the Engine interface (types.ts) — other engines may filter by provider.
-async function listModels(_provider?: string): Promise<ModelInfo[]> {
-  return CLAUDE_MODELS;
-}
-
-export const claudeEngine: Engine = { metadata, buildCommand, listModels };
+export const claudeEngine: Engine = { metadata, buildCommand };

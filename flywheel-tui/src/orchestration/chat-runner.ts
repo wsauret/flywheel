@@ -1,14 +1,3 @@
-/**
- * Chat Runner — wraps ChatSession with SessionRunner interface compliance,
- * output persistence, and state machine transitions.
- *
- * Delegates all chat subprocess logic to createChatSession(). Adds:
- * 1. SessionRunner interface (sessionId, abort, dispose, injectMessage)
- * 2. Output persistence via OutputFlusher
- * 3. State transitions (active / paused via updateState)
- * 4. Shared session infra lifecycle (budget, traces, transcripts)
- */
-
 import { createChatSession, type ChatSession, type ChatCallbacks, type ChatSessionDeps } from "./chat-session"
 import { createSessionInfra } from "./session/create-session-infra"
 import { createOutputPersistence } from "./session/output-persistence"
@@ -18,7 +7,6 @@ import { generateSessionTitle } from "./session-title"
 import { prepareWorkflowDeps } from "./engines/workflow-deps"
 import { EventBus, createEmit } from "../infra/event-bus"
 import { randomUUID } from "node:crypto"
-import type { SessionRunner } from "./session-runner"
 import type { SessionState } from "./session/state-machine"
 import type { FlywheelConfig } from "./config/schema"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
@@ -26,43 +14,32 @@ import type { SessionEntryBase } from "./session-store-types"
 import type { AnyBlock } from "../infra/output-blocks"
 import { buildChatWelcomeBlocks } from "./chat-welcome.js"
 
-// ── Types ──
-
-/** Function to update fields on the session entry in the reactive store. */
 type ChatUpdateEntryFn = (patch: Partial<import("./session-store-types").ChatSessionEntry>) => void
 
 export interface ChatRunnerDeps {
   sessionId: string
   projectCwd: string
   updateState: (id: string, state: SessionState) => void
-  /** Write data directly to the reactive session store. */
   updateEntry: ChatUpdateEntryFn
-  /** Called on session name change (for manager label persistence). */
   onSessionName?: (name: string) => void
-  /** Signal a fatal error — propagated to registry's onError. */
   onError: (message: string) => void
-  /** Signal normal completion — propagated to registry's onEnded. */
   onEnded: () => void
   initialMessage?: string
-  /** Output blocks from a previous session (for resume — prepended to new output). */
   priorBlocks?: AnyBlock[]
-  /** When true, emit a welcome system block before the first chat output. */
   showWelcome?: boolean
-  /** Optional overrides for testing. */
   spawner?: ProcessSpawner
   config?: FlywheelConfig
-  /** Pre-known Claude Code session ID — for --resume on auto-resume path. */
   claudeSessionId?: string
 }
 
-export interface ChatRunner extends SessionRunner {
-  /** The underlying ChatSession (for direct access when needed). */
+export interface ChatRunner {
+  readonly sessionId: string
+  abort(): void
+  dispose(): Promise<void>
+  injectMessage(text: string): boolean
   readonly chatSession: ChatSession
-  /** Blocks created during init (e.g., welcome message) — before the registry entry exists. */
   readonly initialBlocks: readonly AnyBlock[]
 }
-
-// ── Factory ──
 
 export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner> {
   const { sessionId, projectCwd, updateState, updateEntry, initialMessage, priorBlocks } = deps
@@ -70,14 +47,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   const workflowDeps = prepareWorkflowDeps()
   const config = deps.config ?? workflowDeps.config
 
-  // Runner owns the EventBus — same pattern as workflow-runner.
   const eventBus = new EventBus()
   const emit = createEmit(eventBus)
   const chatId = randomUUID()
 
-  // Shared session infrastructure (budget, traces, transcripts).
-  // Passing emitter + workflowId enables budget:metrics-changed emission,
-  // which wireSessionSubscribers routes to the store via metricsWriter.
   const infra = createSessionInfra({
     sessionId,
     projectCwd,
@@ -88,40 +61,35 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   })
 
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  // Flusher is created after chatSession (needs OutputSession for getBlocks).
-  // The onFlush closure captures this reference; safe because onFlush never fires during construction.
   let outputFlusher: ReturnType<typeof outputPersistence.createFlusher>
 
   let disposed = false
   let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
   let lastWaiting: boolean | null = null
-  /** Track last persisted value to avoid redundant disk writes. */
   let persistedClaudeSessionId: string | null = deps.claudeSessionId ?? null
 
-  // If resuming, emit prior blocks immediately so the UI shows them
   if (priorBlocks && priorBlocks.length > 0) {
     updateEntry({ outputBlocks: [...priorBlocks] })
   }
 
-  // Emit welcome blocks on first boot (no prior sessions)
   let initialBlocks: AnyBlock[] = []
   if (deps.showWelcome && !priorBlocks) {
     initialBlocks = buildChatWelcomeBlocks(projectCwd)
   }
 
-  // Wrapped updateEntry that prepends priorBlocks when present
+  // Cast: OutputSession writes Partial<SessionEntryBase> (generic), but
+  // the store entry is ChatSessionEntry. Safe because we're always in chat mode.
   const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
-    if (patch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
-      updateEntry({ ...patch, outputBlocks: [...priorBlocks, ...(patch.outputBlocks as AnyBlock[])] } as Partial<import("./session-store-types").ChatSessionEntry>)
+    const chatPatch = patch as Partial<import("./session-store-types").ChatSessionEntry>
+    if (chatPatch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
+      updateEntry({ ...chatPatch, outputBlocks: [...priorBlocks, ...chatPatch.outputBlocks] })
     } else {
-      updateEntry(patch as Partial<import("./session-store-types").ChatSessionEntry>)
+      updateEntry(chatPatch)
     }
   }
 
-  // Wire ChatCallbacks — only lifecycle callbacks remain
   const chatCallbacks: ChatCallbacks = {
     onWaiting: (waiting) => {
-      // Only transition when state actually changes to avoid noisy self-transition warnings
       if (waiting && lastWaiting !== true) {
         updateState(sessionId, "active")
       } else if (!waiting && lastWaiting !== false) {

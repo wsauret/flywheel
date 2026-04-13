@@ -76,20 +76,18 @@ export const DispatcherInputSchema = z.object({
 
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 
-import { MutationRequestSchema } from "../../infra/workflow-types";
+import { MutationRequestSchema, DispatcherDecisionSchema } from "../../infra/workflow-types";
 
-// DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess
+// DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess.
+// Derived from DispatcherDecisionSchema: required step_index, optional evaluation_criteria,
+// no warnings field, passthrough tolerance for extra LLM output.
 
-export const DispatcherDecisionHandoffSchema = z.object({
-  schema_version: z.literal(1),
-  step_index: z.number(),
-  task_content: z.string(),
-  evaluation_criteria: EvaluationCriteriaSchema.optional(),
-  context_files: z.array(z.string()),
-  context_to_inline: z.array(z.string()).optional(),
-  reasoning: z.string().optional(),
-  worker_config: WorkerConfigSchema.optional(),
-  mutation_requests: z.array(MutationRequestSchema).optional(),
-}).passthrough();
+export const DispatcherDecisionHandoffSchema = DispatcherDecisionSchema
+  .omit({ warnings: true })
+  .extend({
+    step_index: z.number(),
+    evaluation_criteria: EvaluationCriteriaSchema.optional(),
+  })
+  .passthrough();
 
 export type DispatcherDecisionHandoff = z.infer<typeof DispatcherDecisionHandoffSchema>;

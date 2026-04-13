@@ -48,10 +48,6 @@ export class NdjsonPipeline {
 
   // ── Dispatcher lifecycle ──
 
-  get dispatcherBlockId(): string | null {
-    return this._dispatcherBlockId;
-  }
-
   startDispatcher(): string {
     const blockId = `dispatcher_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     this._dispatcherBlockId = blockId;
@@ -79,10 +75,6 @@ export class NdjsonPipeline {
   }
 
   // ── Evaluator lifecycle ──
-
-  get evaluatorBlockId(): string | null {
-    return this._evaluatorBlockId;
-  }
 
   startEvaluator(): string {
     const blockId = `evaluator_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

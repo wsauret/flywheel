@@ -135,15 +135,7 @@ export class PooledSubprocessEvaluatorTransport implements EvaluatorTransport {
         },
         systemPrompt: this.systemPrompt,
         handoffSchema: EvaluatorVerdictSchema,
-        mapResult: (verdict) => ({
-          passed: verdict.passed,
-          reasoning: verdict.reasoning,
-          suggestions: verdict.suggestions,
-          confidence: verdict.confidence,
-          feedback: verdict.feedback,
-          files_to_review: verdict.files_to_review,
-          issues: verdict.issues,
-        }),
+        mapResult: (verdict): EvaluatorResult => verdict,
       },
       this.opts,
     );

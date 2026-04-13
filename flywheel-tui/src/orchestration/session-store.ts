@@ -241,8 +241,9 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   function injectMessage(sessionId: string, text: string): boolean {
     const entry = entries[sessionId]
     if (!entry || entry.ended || !entry.runner) return false
-    // Optimistically set activity to "thinking" so the UI shows immediate
-    // feedback while waiting for the first NDJSON thinking event to arrive.
+    // Why here (not in the builder): this is a user-action-triggered optimistic
+    // update for immediate UI feedback. The builder won't see a thinking event
+    // until the subprocess processes the injected message (~100ms+ later).
     updateEntry(sessionId, { modelActivity: "thinking" })
     return entry.runner.injectMessage(text)
   }
@@ -288,5 +289,5 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     disposeRoot()
   }
 
-  return { start, startChat, load, get, has, isRunning, allIds, pause, abort, finish, remove, injectMessage, cancelShutdown, updateEntry, runningCount, disposeAll }
+  return { start, startChat, load, get, has, isRunning, allIds, pause, abort, remove, injectMessage, cancelShutdown, updateEntry, runningCount, disposeAll }
 }

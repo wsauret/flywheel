@@ -96,34 +96,6 @@ describe("Reactive SessionStore — store-backed", () => {
     })
   })
 
-  it("finish() marks entry as ended but keeps data in store", async () => {
-    await new Promise<void>((resolve) => {
-      createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
-
-        await sessionStore.startChat({
-          sessionId: "finish-001",
-          createRunner: async (handle) => createMockChatRunner("finish-001"),
-        })
-
-        expect(sessionStore.get("finish-001")).toBeDefined()
-        expect(sessionStore.runningCount()).toBe(1)
-
-        await sessionStore.finish("finish-001")
-
-        // Entry still exists with ended=true
-        const entry = sessionStore.get("finish-001")
-        expect(entry).toBeDefined()
-        expect(entry!.ended).toBe(true)
-        expect(sessionStore.isRunning("finish-001")).toBe(false)
-        expect(sessionStore.runningCount()).toBe(0)
-
-        dispose()
-        resolve()
-      })
-    })
-  })
-
   it("remove() deletes entry from store entirely", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
@@ -182,35 +154,4 @@ describe("Reactive SessionStore — store-backed", () => {
     })
   })
 
-  it("runningCount() excludes ended entries", async () => {
-    await new Promise<void>((resolve) => {
-      createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
-
-        expect(sessionStore.runningCount()).toBe(0)
-
-        await sessionStore.startChat({
-          sessionId: "count-001",
-          createRunner: async (handle) => createMockChatRunner("count-001"),
-        })
-
-        expect(sessionStore.runningCount()).toBe(1)
-
-        await sessionStore.startChat({
-          sessionId: "count-002",
-          createRunner: async (handle) => createMockChatRunner("count-002"),
-        })
-
-        expect(sessionStore.runningCount()).toBe(2)
-
-        // finish keeps the entry but excludes from runningCount
-        await sessionStore.finish("count-001")
-        expect(sessionStore.runningCount()).toBe(1)
-        expect(sessionStore.get("count-001")).toBeDefined()
-
-        dispose()
-        resolve()
-      })
-    })
-  })
 })

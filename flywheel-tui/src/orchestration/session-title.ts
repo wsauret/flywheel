@@ -11,6 +11,7 @@
 import type { Engine } from "./engines/core/types"
 import type { ProcessSpawner } from "./engines/subprocess/spawner"
 import { Log } from "../infra/log"
+import { errorMessage } from "../infra/error-message"
 
 const log = Log.create({ service: "session-title" })
 
@@ -88,7 +89,7 @@ async function generateViaLLM(message: string, deps: TitleGeneratorDeps): Promis
     log.info("generated session title", { title })
     return title
   } catch (err) {
-    log.warn("title generation failed", { error: String(err) })
+    log.warn("title generation failed", { error: errorMessage(err) })
     return null
   }
 }

@@ -1,16 +1,3 @@
-/**
- * Session Manager
- *
- * Coordinates session lifecycle: persistence, state machine validation,
- * and session metadata management.
- *
- * Uses factory function pattern (`createSessionManager(deps)`) with
- * dependency injection for testability.
- *
- * Historical sessions are returned as plain `SessionSummary` objects,
- * NOT live UIActions stores.
- */
-
 import {
   createSession as persistCreateSession,
   readSession,
@@ -28,20 +15,13 @@ import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "session.manager" });
 
-// Types
-
-/** Plain data summary of a session (no live store/adapter). */
 export interface SessionSummary {
   id: string;
   name: string;
-  /** Display name for the session (user-facing). */
   label: string;
-  /** Actual file path to the plan, if one exists on disk. */
   planPath?: string;
   state: SessionState;
-  /** Session kind: workflow or chat. */
   kind: "workflow" | "chat";
-  /** The slash command that launched this session. */
   command: string;
   totalCost: number;
   totalTokens: number;
@@ -50,73 +30,34 @@ export interface SessionSummary {
   createdAt?: string;
   repo?: string;
   branch?: string;
-  /** Claude Code session ID — for chat --resume. */
   claudeSessionId?: string;
 }
 
-/** Result of listing sessions — mirrors persistence shape but with summaries. */
 export interface SessionListResult {
   sessions: SessionSummary[];
   errors: PersistenceListResult["errors"];
 }
 
-/** Dependencies injected into the session manager. */
 export interface SessionManagerDeps {
   baseDir: string;
-  /** Optional config — defaults to CONFIG_DEFAULTS when omitted. */
   config?: FlywheelConfig;
 }
 
 import type { SessionKind } from "./types";
 
-/** The SessionManager interface. */
 export interface SessionManager {
-  /** Create a new session and persist it. Returns session ID. */
   create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string;
-
-  /** List all sessions as summaries. */
   list(): SessionListResult;
-
-  /** Update session lifecycle state with validation. */
   updateState(id: string, newState: SessionState): void;
-
-  /** Update session label (display name). */
   updateLabel(id: string, label: string): void;
-
-  /**
-   * Delete a session: remove files from disk, clear cache, clean up worktree.
-   * Immediate and permanent — no trash/archive intermediate state.
-   */
   delete(id: string): void;
-
-  /**
-   * Recover stale `active` sessions that have no running queue execution.
-   * Transitions work sessions to `paused` and chat sessions to `completed`.
-   *
-   * Intended for startup crash recovery.
-   *
-   * @returns The number of sessions recovered.
-   */
   recoverStaleSessions(): number;
-
 }
 
-// Factory
-
-/**
- * Create a new SessionManager instance.
- *
- * @param deps - Injected dependencies (baseDir, workflow session functions).
- */
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const { baseDir } = deps;
   const config = deps.config ?? CONFIG_DEFAULTS;
 
-  // Helpers
-
-  /**
-   * Read a session from disk, throwing if it doesn't exist.
-   */
   function readOrThrow(id: string) {
     const session = readSession(id, baseDir);
     if (session === null) {
@@ -124,8 +65,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     }
     return session;
   }
-
-  // SessionManager methods
 
   function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string {
     const now = new Date().toISOString();

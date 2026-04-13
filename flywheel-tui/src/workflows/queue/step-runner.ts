@@ -6,6 +6,7 @@ import type { StepRunnerDeps, StepRunnerResult, StepPipelineContext } from "./st
 import { type Provenance } from "./queue.js";
 import { executeWithRevisions } from "./revision-loop.js";
 import { raceAbort } from "./abort-utils.js";
+import { buildStepMetadataPrompt } from "./shared/step-prompt";
 import { Log } from "../../infra/log";
 import { errorMessage } from "../../infra/error-message";
 
@@ -21,18 +22,14 @@ async function dispatchStep(
 ): Promise<StepPipelineContext> {
   if (step.skipDispatcher) {
     // Direct prompt from step metadata + accumulated context (no dispatcher LLM call)
-    const parts = [step.title];
-    if (step.description) parts.push(step.description);
-    if (step.acceptanceCriteria?.length) {
-      parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(c => `- ${c}`));
-    }
+    let prompt = buildStepMetadataPrompt(step);
     if (ctx.previousHandoff) {
       const summary = (ctx.previousHandoff as Record<string, unknown>).summary;
       if (typeof summary === "string") {
-        parts.push("", "## Previous iteration output", summary);
+        prompt += `\n\n## Previous iteration output\n${summary}`;
       }
     }
-    ctx.dispatcherResult = { prompt: parts.join("\n"), evaluationCriteria: step.evaluationCriteria ?? null };
+    ctx.dispatcherResult = { prompt, evaluationCriteria: step.evaluationCriteria ?? null };
     log.info("dispatcher skipped (step.skipDispatcher)", { stepId: step.id });
   } else {
     // Full dispatcher invocation

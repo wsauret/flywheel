@@ -1,19 +1,12 @@
 /**
- * 3-tier output buffer system (from ralph-tui pattern).
- *
- * Tiers preserve tail content — when a tier overflows, the oldest content
- * is dropped and a truncation marker is prepended.
- *
- * Tier 1: 2,000,000 chars — full history for archival
- * Tier 2: 250,000 chars  — NDJSON flushing / evaluation
- * Tier 3: 100,000 chars  — TUI display
+ * Capped output buffer — preserves the tail (most recent content) when
+ * the character limit is exceeded. Truncated content is replaced with a
+ * marker so downstream consumers know data was lost.
  */
 
 export const TRUNCATION_MARKER = "[...truncated in memory...]\n";
 
-export const TIER_1_LIMIT = 2_000_000;
-export const TIER_2_LIMIT = 250_000;
-export const TIER_3_LIMIT = 100_000;
+export const BUFFER_LIMIT = 2_000_000;
 
 export interface BufferState {
   content: string;
@@ -66,44 +59,17 @@ export function appendWithCharLimit(
   };
 }
 
-/**
- * Three-tier buffer: each tier independently tracks content and truncation state.
- */
-export class TieredBuffer {
-  private tier1 = "";
-  private tier2 = "";
-  private tier3 = "";
-  private tier1Truncated = false;
-  private tier2Truncated = false;
-  private tier3Truncated = false;
+export class OutputBuffer {
+  private data = "";
+  private _truncated = false;
 
   append(content: string): void {
-    const r1 = appendWithCharLimit(this.tier1, content, TIER_1_LIMIT);
-    this.tier1 = r1.content;
-    if (r1.truncated) this.tier1Truncated = true;
-
-    const r2 = appendWithCharLimit(this.tier2, content, TIER_2_LIMIT);
-    this.tier2 = r2.content;
-    if (r2.truncated) this.tier2Truncated = true;
-
-    const r3 = appendWithCharLimit(this.tier3, content, TIER_3_LIMIT);
-    this.tier3 = r3.content;
-    if (r3.truncated) this.tier3Truncated = true;
+    const r = appendWithCharLimit(this.data, content, BUFFER_LIMIT);
+    this.data = r.content;
+    if (r.truncated) this._truncated = true;
   }
 
-  getTier1(): BufferState {
-    return { content: this.tier1, truncated: this.tier1Truncated };
-  }
-
-  getTier2(): BufferState {
-    return { content: this.tier2, truncated: this.tier2Truncated };
-  }
-
-  getTier3(): BufferState {
-    return { content: this.tier3, truncated: this.tier3Truncated };
-  }
-
-  get truncated(): boolean {
-    return this.tier1Truncated || this.tier2Truncated || this.tier3Truncated;
+  getState(): BufferState {
+    return { content: this.data, truncated: this._truncated };
   }
 }

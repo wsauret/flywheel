@@ -4,12 +4,13 @@ import {
   createWorkflowSession,
   destroyWorkflowSession,
 } from "../src/orchestration/workflow-session"
-import { createHeadlessAdapter } from "../src/orchestration/headless/headless-adapter"
+import { HeadlessAdapter } from "../src/orchestration/headless/headless-adapter"
+import type { HeadlessAdapterOptions } from "../src/orchestration/headless/headless-adapter"
 import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
 import type { FlywheelEvent } from "../src/infra/events"
 
-function headlessFactories(opts?: Parameters<typeof createHeadlessAdapter>[0]): WorkflowSessionFactories {
-  return { createAdapter: () => createHeadlessAdapter(opts) }
+function headlessFactories(opts?: HeadlessAdapterOptions): WorkflowSessionFactories {
+  return { createAdapter: () => new HeadlessAdapter(opts) }
 }
 
 // ---------------------------------------------------------------------------

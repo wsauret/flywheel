@@ -5,7 +5,6 @@
 // depending on the dispatcher's closure state.
 
 import type { Step, Queue } from "./types.js";
-import type { StepType } from "../../infra/step-types.js";
 import type { LastWorkerResult } from "../schemas.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
 import type { DispatcherDecision } from "../../infra/workflow-types.js";
@@ -19,8 +18,8 @@ import { randomUUID } from "crypto";
 /** Known step types — used to validate dispatcher-provided types at the boundary. */
 const VALID_STEP_TYPES = new Set<string>(["work"]);
 
-function toStepType(raw: string): StepType {
-  return VALID_STEP_TYPES.has(raw) ? (raw as StepType) : "work";
+function toStepType(raw: string): Step["type"] {
+  return VALID_STEP_TYPES.has(raw) ? (raw as Step["type"]) : "work";
 }
 
 // buildCompactQueueState

@@ -1,17 +1,12 @@
 import { z } from "zod";
 
-// Content quality helpers
-
 function countSentences(text: string): number {
   const normalized = text.replace(/\s+/g, " ").trim().replace(/[.!?]+\s*$/, "");
   if (!normalized) return 0;
   return normalized.split(/[.!?]+\s+/).filter(Boolean).length;
 }
 
-// Sub-schemas (all .strict() — LLM typos should cause retries)
-// Exported for direct test validation (tests/schemas/handoff.test.ts).
-// Inferred types (Artifacts, Verification, etc.) are file-private — no external consumers.
-
+// All .strict() — LLM typos should cause retries, not silent data loss
 const CommandRunEntrySchema = z.union([
   z.string(),
   z.object({
@@ -27,22 +22,10 @@ export const ArtifactsSchema = z.object({
   commands_run: z.array(CommandRunEntrySchema).optional(),
 }).strict();
 
-type Artifacts = z.infer<typeof ArtifactsSchema>;
-
 export const VerificationSchema = z.object({
   tests_passed: z.boolean().nullable(),
   test_output_summary: z.string().optional(),
 }).strict();
-
-type Verification = z.infer<typeof VerificationSchema>;
-
-export const OpenQuestionSchema = z.object({
-  question: z.string(),
-  options: z.array(z.string()),
-  header: z.string().optional(),
-}).strict();
-
-type OpenQuestion = z.infer<typeof OpenQuestionSchema>;
 
 export const FindingCountsSchema = z.object({
   p1_critical: z.number(),
@@ -50,26 +33,11 @@ export const FindingCountsSchema = z.object({
   p3_suggestion: z.number(),
 }).strict();
 
-type FindingCounts = z.infer<typeof FindingCountsSchema>;
-
 export const P3FindingSchema = z.object({
   description: z.string(),
   location: z.string().optional(),
   suggestion: z.string(),
 }).strict();
-
-type P3Finding = z.infer<typeof P3FindingSchema>;
-
-export const CompoundDocSchema = z.object({
-  title: z.string(),
-  type: z.string(),
-  tags: z.array(z.string()),
-  problem: z.string(),
-  solution: z.string(),
-  context: z.string().optional(),
-}).strict();
-
-type CompoundDoc = z.infer<typeof CompoundDocSchema>;
 
 // Skill feedback sub-schemas
 
@@ -81,8 +49,6 @@ export const SkillDeviationSchema = z.object({
   ),
 }).strict();
 
-type SkillDeviation = z.infer<typeof SkillDeviationSchema>;
-
 export const SkillFeedbackSchema = z.object({
   followedProcedure: z.boolean()
     .describe("Did you follow the skill procedure as written?"),
@@ -91,8 +57,6 @@ export const SkillFeedbackSchema = z.object({
   suggestedChanges: z.array(z.string()).optional()
     .describe("Suggestions for improving the skill (optional)"),
 }).strict();
-
-// SubprocessHandoffSchema
 
 const SUMMARY_MIN_LENGTH = 20;
 const SUMMARY_MAX_LENGTH = 5000;
@@ -131,18 +95,11 @@ export const SubprocessHandoffBaseSchema = z.object({
   verification: VerificationSchema.optional(),
   files_to_review: z.array(z.string()).optional(),
   plan_file_path: z.string().optional(),
-  open_questions: z.array(OpenQuestionSchema).optional(),
   review_file_path: z.string().optional(),
   finding_counts: FindingCountsSchema.optional(),
   p3_findings: z.array(P3FindingSchema).optional(),
-  compound_docs: z.array(CompoundDocSchema).optional(),
   skillFeedback: SkillFeedbackSchema.optional()
     .describe("Feedback on the skill procedure. Fill this out to help improve future subprocesses."),
-  verification_script_path: z.string().optional(),
-  iteration_number: z.number().optional(),
-  needs_plan: z.boolean().optional(),
-  hypothesis: z.string().optional(),
-  document_path: z.string().optional(),
 }).passthrough();
 
 export const SubprocessHandoffSchema = SubprocessHandoffBaseSchema.superRefine((data, ctx) => {

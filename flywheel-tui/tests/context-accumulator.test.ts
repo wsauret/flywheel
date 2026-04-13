@@ -7,7 +7,7 @@ import {
   type HandoffSummary,
   type AccumulatedContext,
 } from "../src/workflows/queue/context-accumulator";
-import type { StepType } from "../src/infra/step-types";
+import type { Step } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,7 +31,7 @@ function accumulateN(
   for (let i = 1; i <= n; i++) {
     acc.accumulate({
       stepId: `${prefix}-${i}`,
-      stepType: "work" as StepType,
+      stepType: "work" as Step["type"],
       stepTitle: `Step ${i}`,
       handoff: makeHandoffData({
         decisions: [`decision-${i}`],

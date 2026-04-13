@@ -205,10 +205,9 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     const sessionId = "test-roundtrip";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan", status: "completed" });
+    const step1 = makeStep({ id: "s1", type: "work", title: "Plan", status: "completed" });
     const step2 = makeStep({ id: "s2", type: "work", title: "Work", status: "pending" });
-    const step3 = makeStep({ id: "s3", type: "review", title: "Review", status: "pending",
-      dependsOn: ["s2"], fulfills: ["VAL-001"], milestone: "m1" });
+    const step3 = makeStep({ id: "s3", type: "work", title: "Review", status: "pending" });
     const queue = makeQueue({
       steps: [step1, step2, step3],
       cursor: 1,
@@ -234,9 +233,6 @@ describe("VAL-QUEUE-021: load round-trips persist → load", () => {
     expect(loaded!.steps[1].id).toBe("s2");
     expect(loaded!.steps[1].status).toBe("pending");
     expect(loaded!.steps[2].id).toBe("s3");
-    expect(loaded!.steps[2].dependsOn).toEqual(["s2"]);
-    expect(loaded!.steps[2].fulfills).toEqual(["VAL-001"]);
-    expect(loaded!.steps[2].milestone).toBe("m1");
     expect(loaded!.cursor).toBe(1);
     expect(loaded!.status).toBe("running");
     expect(loaded!.mutationLog).toHaveLength(1);

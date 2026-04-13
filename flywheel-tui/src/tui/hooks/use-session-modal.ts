@@ -39,9 +39,6 @@ export interface SessionModalHook {
   closeSessionsModal(): void
   selectModalItem(index: number): void
   handleModalKey(evt: { name: string; ctrl?: boolean; meta?: boolean }): void
-  handleSessionView(sessionId: string): Promise<void>
-  handleSessionResume(sessionId: string): void
-  handleSessionDelete(sessionId: string): void
   /** Dismiss the viewed session and restore the UI state that existed before viewing. */
   dismissViewedSession(): void
   /** Commit to the viewed session (e.g. user sent a message) — clears snapshot without restoring. */
@@ -204,9 +201,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     closeSessionsModal,
     selectModalItem,
     handleModalKey,
-    handleSessionView,
-    handleSessionResume,
-    handleSessionDelete,
     dismissViewedSession,
     commitViewedSession,
   }
