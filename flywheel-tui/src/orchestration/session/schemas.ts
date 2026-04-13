@@ -2,9 +2,7 @@ import { z } from "zod";
 import { SessionStateSchema } from "./state-machine";
 import { BudgetLimitsSchema, BudgetUsageSchema } from "../../workflows/schemas";
 
-// ---------------------------------------------------------------------------
 // Shared base fields (spread into each variant)
-// ---------------------------------------------------------------------------
 
 const baseFields = {
   label: z.string(),
@@ -20,9 +18,7 @@ const baseFields = {
   branch: z.string().optional(),
 };
 
-// ---------------------------------------------------------------------------
 // Discriminated variants
-// ---------------------------------------------------------------------------
 
 export const WorkflowSessionSchema = z.object({
   ...baseFields,

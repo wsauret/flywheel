@@ -1,4 +1,4 @@
-import { createSignal, createMemo, onCleanup, batch } from "solid-js"
+import { createSignal, createMemo, createEffect, onCleanup, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { SessionEntry } from "../../orchestration/session-store-types"
 import { SPINNER_FRAMES, SPINNER_INTERVAL } from "@tui/shared/components/spinner-frames.js"
@@ -11,7 +11,6 @@ export interface MetricsHook {
   spinnerTick: Accessor<number>
   thinkingElapsed: Accessor<number>
   liveActivity: Accessor<"idle" | "thinking" | "generating" | "tool_executing">
-  startTimer(): void
   pauseTimer(): void
 
   resetMetrics(): void
@@ -53,6 +52,13 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     }
   }, SPINNER_INTERVAL)
   onCleanup(() => clearInterval(spinnerTimer))
+
+  // Timer runs reactively when the agent is actively working.
+  // Internalized here so callers don't need to orchestrate start/pause.
+  createEffect(() => {
+    if (liveActivity() !== "idle") startTimer()
+    else pauseTimer()
+  })
 
   function startTimer(): void {
     if (elapsedTimer) return
@@ -101,7 +107,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     spinnerTick,
     thinkingElapsed,
     liveActivity,
-    startTimer,
     pauseTimer,
     resetMetrics,
     resetElapsedTo,

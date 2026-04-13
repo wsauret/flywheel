@@ -27,9 +27,7 @@ import { writeFileAtomic } from "../../workflows/shared/atomic-write";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer";
 import type { Span } from "../../infra/trace-types";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface TraceIndexEntry {
   traceId: string;
@@ -63,9 +61,7 @@ export interface TraceWriter {
   dispose(): void;
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function resolveIndexFile(baseDir: string): string {
   return path.resolve(baseDir, TRACES_DIR, "index.jsonl");
@@ -91,9 +87,7 @@ function writeIndex(baseDir: string, entries: TraceIndexEntry[]): void {
   writeFileAtomic(indexPath, content);
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 const DEFAULT_MAX_TRACES = 100;
 
@@ -140,9 +134,7 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
     writer.dispose();
   }
 
-  // -------------------------------------------------------------------------
   // Rotation
-  // -------------------------------------------------------------------------
 
   /**
    * Evict oldest non-error traces until entries.length <= maxTraces.

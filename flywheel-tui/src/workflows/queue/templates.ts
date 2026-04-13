@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Queue System — Workflow Templates
-// ---------------------------------------------------------------------------
 
 import { randomUUID } from "crypto";
 import { createQueue, type QueueOptions } from "./queue";
@@ -9,15 +7,11 @@ import type { StepType } from "../../infra/step-types";
 import { SPRINT_HINT } from "./steps/sprint/types.js";
 import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria.js";
 
-// ---------------------------------------------------------------------------
 // WorkflowName — supported workflow template names
-// ---------------------------------------------------------------------------
 
 export type WorkflowName = "work" | "sprint";
 
-// ---------------------------------------------------------------------------
 // Step factory helper
-// ---------------------------------------------------------------------------
 
 export function makeStep(type: StepType, title: string, extra?: Partial<Step>): Step {
   return {
@@ -29,9 +23,7 @@ export function makeStep(type: StepType, title: string, extra?: Partial<Step>): 
   };
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 /** Build a Queue from a workflow template name. */
 export function buildQueueFromTemplate(

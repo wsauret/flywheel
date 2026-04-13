@@ -4,9 +4,7 @@ import { errorMessage } from "../../infra/error-message";
 import { FlywheelConfigSchema, type FlywheelConfig } from "./schema";
 import { applyEnvOverrides } from "./env";
 
-// ---------------------------------------------------------------------------
 // Error types
-// ---------------------------------------------------------------------------
 
 export type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
 
@@ -20,18 +18,14 @@ export class ConfigLoadError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Warnings
-// ---------------------------------------------------------------------------
 
 export interface LoadResult {
   config: FlywheelConfig;
   warnings: string[];
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Load configuration with precedence: env > config file > defaults.
@@ -99,9 +93,7 @@ export function loadConfig(
   return { config, warnings };
 }
 
-// ---------------------------------------------------------------------------
 // Internal helpers
-// ---------------------------------------------------------------------------
 
 function loadTomlFile(filePath: string): Record<string, unknown> {
   const absPath = path.resolve(filePath);

@@ -286,5 +286,3 @@ function toStepState(s: { id: string; type: string; title: string; status: strin
   return { id: s.id, type: s.type, title: s.title, status: s.status }
 }
 
-
-

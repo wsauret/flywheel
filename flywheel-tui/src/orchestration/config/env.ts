@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Environment variable overrides for FlywheelConfig
-// ---------------------------------------------------------------------------
 
 /**
  * Map of environment variable names to setter functions that apply the
@@ -76,14 +74,6 @@ const ENV_MAP: Record<string, (val: string, config: Record<string, unknown>) => 
       if (!config.budget) config.budget = {};
       (config.budget as Record<string, unknown>).max_wall_clock_minutes = n;
     }
-  },
-  FLYWHEEL_WORKTREE_ENABLED: (val, config) => {
-    if (!config.worktree) config.worktree = {};
-    (config.worktree as Record<string, unknown>).enabled = val === "true" || val === "1";
-  },
-  FLYWHEEL_WORKTREE_AUTO_REMOVE: (val, config) => {
-    if (!config.worktree) config.worktree = {};
-    (config.worktree as Record<string, unknown>).auto_remove = val === "true" || val === "1";
   },
   FLYWHEEL_SKIP_SCRUTINY: (val, config) => {
     config.skip_scrutiny = val === "true" || val === "1";

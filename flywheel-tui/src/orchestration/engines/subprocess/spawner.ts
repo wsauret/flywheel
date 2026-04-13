@@ -1,8 +1,6 @@
 import type { SubprocessResult } from "../../../infra/subprocess-types";
 
-// ---------------------------------------------------------------------------
 // StdinHandle — mid-execution stdin injection
-// ---------------------------------------------------------------------------
 
 /**
  * Handle to a running process's stdin pipe.
@@ -33,9 +31,7 @@ export interface SpawnResult {
   pid?: number;
 }
 
-// ---------------------------------------------------------------------------
 // ProcessSpawner — DI seam
-// ---------------------------------------------------------------------------
 
 /**
  * DI seam for subprocess spawning.

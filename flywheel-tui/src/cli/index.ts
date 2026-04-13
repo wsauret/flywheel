@@ -13,9 +13,7 @@ import { errorMessage } from "../infra/error-message"
 import { installAgents } from "../workflows/agents/installer"
 
 
-// ---------------------------------------------------------------------------
 // Main
-// ---------------------------------------------------------------------------
 
 export async function main(): Promise<void> {
   // Initialize file-based logger before anything else.
@@ -45,9 +43,7 @@ export async function main(): Promise<void> {
   await runTUI();
 }
 
-// ---------------------------------------------------------------------------
 // Headless mode — run workflow without TUI
-// ---------------------------------------------------------------------------
 
 async function runHeadless(): Promise<void> {
   const descIdx = process.argv.indexOf("--description")
@@ -90,9 +86,7 @@ async function runHeadless(): Promise<void> {
   process.exit(result ? 0 : 1)
 }
 
-// ---------------------------------------------------------------------------
 // TUI mode — persistent shell
-// ---------------------------------------------------------------------------
 
 async function runTUI(): Promise<void> {
   const { startTUI } = await import("../tui/launcher");

@@ -14,45 +14,31 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ---------------------------------------------------------------------------
 // Internal .flywheel/ state directories
-// ---------------------------------------------------------------------------
 
 const FLYWHEEL_DIR = ".flywheel";
 export const SESSIONS_DIR = `${FLYWHEEL_DIR}/sessions`;
-const LIBRARY_DIR = `${FLYWHEEL_DIR}/library`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
-const CACHE_DIR = `${FLYWHEEL_DIR}/cache`;
 export const SUBPROCESS_LOG_DIR = `${FLYWHEEL_DIR}/subprocess-logs`;
 export const TRACES_DIR = `${FLYWHEEL_DIR}/traces`;
 
-// ---------------------------------------------------------------------------
 // Global directories (cross-session)
-// ---------------------------------------------------------------------------
 
 export const DEFAULT_STANDARDS_DIR = "docs/standards";
 
-// ---------------------------------------------------------------------------
 // Convention files
-// ---------------------------------------------------------------------------
 
 export const DEFAULT_CONVENTION_FILES = ["AGENTS.md", "CONTRIBUTING.md", "DEVELOPMENT.md"];
 
-// ---------------------------------------------------------------------------
 // Config directories
-// ---------------------------------------------------------------------------
 
 export const CONFIG_DIRS = [".claude/", ".opencode/"];
 
-// ---------------------------------------------------------------------------
 // Config file search order
-// ---------------------------------------------------------------------------
 
 export const CONFIG_FILES = ["flywheel.toml", ".flywheel.toml"];
 
-// ---------------------------------------------------------------------------
 // Session directory helpers
-// ---------------------------------------------------------------------------
 
 /** Returns the directory for a session: `.flywheel/sessions/<id>` */
 export function sessionDir(sessionId: string): string {
@@ -83,9 +69,7 @@ export function ensureSessionDir(sessionId: string, baseDir: string): void {
   fs.mkdirSync(handoffsPath, { recursive: true });
 }
 
-// ---------------------------------------------------------------------------
 // Session file path helpers
-// ---------------------------------------------------------------------------
 
 /** Well-known file names within a session directory. */
 const SESSION_FILES = {
@@ -108,9 +92,7 @@ export function resolveSessionFile(
   return path.resolve(baseDir, sessionDir(sessionId), SESSION_FILES[file]);
 }
 
-// ---------------------------------------------------------------------------
 // Handoff path helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Build a handoff file path for a subprocess step.
@@ -138,9 +120,7 @@ export function buildInvocationHandoffPath(
   return path.resolve(baseDir, sessionHandoffsDir(sessionId), `${role}_${invocationId}.json`);
 }
 
-// ---------------------------------------------------------------------------
 // Trace file path helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Ensure the global traces directory exists. Idempotent.

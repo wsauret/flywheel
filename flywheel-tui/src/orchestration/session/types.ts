@@ -7,9 +7,7 @@
 /** Discriminant for what kind of session this is (workflow vs. interactive chat). */
 export type SessionKind = "workflow" | "chat"
 
-// ---------------------------------------------------------------------------
 // Shared runner lifecycle result types
-// ---------------------------------------------------------------------------
 
 /** Base result when a runner completes normally. */
 export interface RunnerDoneResult {

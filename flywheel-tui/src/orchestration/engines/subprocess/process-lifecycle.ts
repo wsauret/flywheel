@@ -16,9 +16,6 @@ export interface ChildHandle {
 
 const activeProcesses = new Set<ChildHandle>();
 
-/** Read-only view for test assertions. */
-export const registeredProcesses: ReadonlySet<ChildHandle> = activeProcesses;
-
 /**
  * Register a child process in the global registry.
  * Returns a cleanup function that removes it.

@@ -25,9 +25,7 @@ import type {
   RunnerErrorResult,
 } from "./session/types.js"
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface WorkflowControllerDeps {
   sessionStore: SessionStore
@@ -117,9 +115,7 @@ export interface WorkflowController {
   steerWorkflow(foregroundId: string | undefined, text: string): boolean
 }
 
-// ---------------------------------------------------------------------------
 // Shared lifecycle helper
-// ---------------------------------------------------------------------------
 
 /**
  * Format runner-done result. Shared between chat and workflow controllers
@@ -140,9 +136,7 @@ function formatWorkflowDoneResult(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createWorkflowController(deps: WorkflowControllerDeps): WorkflowController {
   const { sessionStore, manager, refreshList } = deps

@@ -9,9 +9,7 @@
 
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
 // Schemas
-// ---------------------------------------------------------------------------
 
 const StepDecisionsSchema = z.object({
   step_index: z.number(),
@@ -60,9 +58,7 @@ export const StepContextSchema = z.object({
 
 export type StepContext = z.infer<typeof StepContextSchema>;
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 /**
  * Create a fresh empty StepContext.

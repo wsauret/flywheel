@@ -546,65 +546,15 @@ describe("StructuredOutputBuilder", () => {
   // ── Lifecycle callbacks ──
 
   describe("lifecycle callbacks", () => {
-    it("onAgentLifecycle fires 'start' when agent is started", () => {
-      const events: Array<{ type: string; id: string }> = [];
-      builder.onAgentLifecycle = (type, id) => events.push({ type, id });
-
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      expect(events).toHaveLength(1);
-      expect(events[0]).toEqual({ type: "start", id: "a1" });
-    });
-
-    it("onAgentLifecycle fires 'complete' when agent is completed", () => {
-      const events: Array<{ type: string; id: string }> = [];
-      builder.onAgentLifecycle = (type, id) => events.push({ type, id });
-
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.completeAgent("a1", 500);
-
-      expect(events).toHaveLength(2);
-      expect(events[1]).toEqual({ type: "complete", id: "a1" });
-    });
-
-    it("onAgentLifecycle fires 'error' when agent errors", () => {
-      const events: Array<{ type: string; id: string }> = [];
-      builder.onAgentLifecycle = (type, id) => events.push({ type, id });
-
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.errorAgent("a1", "timeout");
-
-      expect(events).toHaveLength(2);
-      expect(events[1]).toEqual({ type: "error", id: "a1" });
-    });
-
-    it("onAgentActivity fires when tool is added to agent", () => {
+    it("onModelActivityChange fires on text/tool/thinking", () => {
       const activities: string[] = [];
-      builder.onAgentActivity = (id) => activities.push(id);
+      builder.onModelActivityChange = (a) => activities.push(a);
 
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.pushToolToAgent("a1", "Read", "file.ts", Date.now());
-      builder.pushToolToAgent("a1", "Grep", "pattern", Date.now());
+      builder.pushThinking("hmm", Date.now());
+      builder.pushText("hello", Date.now());
+      builder.pushTool("Read", "file.ts", Date.now());
 
-      expect(activities).toEqual(["a1", "a1"]);
-    });
-
-    it("onAgentActivity fires for pushToolToAgent", () => {
-      const activities: string[] = [];
-      builder.onAgentActivity = (id) => activities.push(id);
-
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.completeAgent("a1", 100);
-      builder.pushToolToAgent("a1", "Read", "file.ts", Date.now());
-
-      expect(activities).toEqual(["a1"]);
-    });
-
-    it("callbacks are optional — no error when not set", () => {
-      // No callbacks set — should not throw
-      builder.startAgent("a1", "Explore", "Searching", Date.now());
-      builder.pushToolToAgent("a1", "Read", "file.ts", Date.now());
-      builder.completeAgent("a1", 100);
-      expect(builder.getBlocks()).toHaveLength(1);
+      expect(activities).toEqual(["thinking", "generating", "tool_executing"]);
     });
   });
 

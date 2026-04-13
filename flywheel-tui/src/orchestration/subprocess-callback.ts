@@ -29,9 +29,7 @@ const log = Log.create({ service: "subprocess-callback" })
 /** Step types that get self-review injection at the first turn boundary. */
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
-// ---------------------------------------------------------------------------
 // Pure prompt builder
-// ---------------------------------------------------------------------------
 
 export interface StepPromptResult {
   fullPrompt: string
@@ -70,9 +68,7 @@ export function buildStepPrompt(
   return { fullPrompt, handoffPath, scaffoldingPaths }
 }
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 interface SubprocessCallbackDeps {
   deps: WorkflowDeps
@@ -101,9 +97,7 @@ interface SubprocessCallbackResult {
   sessionId: string | undefined
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createSubprocessCallback(
   opts: SubprocessCallbackDeps,

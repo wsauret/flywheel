@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Queue System — Core Types
-// ---------------------------------------------------------------------------
 //
 // Foundational types for the queue-based step execution engine.
 // All data structures are validated at runtime via companion Zod schemas
@@ -10,13 +8,10 @@
 //   Step   — single unit of work (replaces "step")
 //   Queue  — mutable, ordered list of steps for a session
 //   Workflow — named template that generates an initial queue
-// ---------------------------------------------------------------------------
 
 import type { StepType } from "../../infra/step-types.js";
 
-// ---------------------------------------------------------------------------
 // StepStatus — lifecycle state of a single step
-// ---------------------------------------------------------------------------
 
 export type StepStatus =
   | "pending"
@@ -25,9 +20,7 @@ export type StepStatus =
   | "failed"
   | "skipped";
 
-// ---------------------------------------------------------------------------
 // Step — a single unit of work in the queue
-// ---------------------------------------------------------------------------
 
 export interface Step {
   /** Unique identifier (UUID). */
@@ -86,9 +79,7 @@ export interface Step {
   };
 }
 
-// ---------------------------------------------------------------------------
 // QueueStatus — overall queue lifecycle
-// ---------------------------------------------------------------------------
 
 export type QueueStatus =
   | "idle"
@@ -97,9 +88,7 @@ export type QueueStatus =
   | "failed"
   | "paused";
 
-// ---------------------------------------------------------------------------
 // MutationLogEntry — provenance record for queue mutations
-// ---------------------------------------------------------------------------
 
 export interface MutationLogEntry {
   /** Epoch ms timestamp of when the mutation occurred. */
@@ -114,9 +103,7 @@ export interface MutationLogEntry {
   readonly stepIds: string[];
 }
 
-// ---------------------------------------------------------------------------
 // Queue — the mutable, ordered list of steps for a session
-// ---------------------------------------------------------------------------
 
 export interface Queue {
   /** Ordered list of steps. */
@@ -131,9 +118,7 @@ export interface Queue {
   maxSteps?: number;
 }
 
-// ---------------------------------------------------------------------------
 // WorkflowTemplate — named preset that generates an initial queue
-// ---------------------------------------------------------------------------
 
 export interface WorkflowTemplate {
   /** Machine-readable name (e.g., "plan-work-review"). */

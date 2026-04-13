@@ -8,9 +8,7 @@
  * in stdout containing "rate limit", "429", etc.
  */
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export type RateLimitDetectionResult =
   | { isRateLimit: false }
@@ -22,9 +20,7 @@ export interface RateLimitDetectionInput {
   agentId?: string;
 }
 
-// ---------------------------------------------------------------------------
 // Pattern definitions
-// ---------------------------------------------------------------------------
 
 /**
  * Pattern definition for matching rate limit indicators.
@@ -125,9 +121,7 @@ const AGENT_SPECIFIC_PATTERNS: Record<string, RateLimitPattern[]> = {
  */
 const RATE_LIMIT_EXIT_CODES = new Set([1, 2, 429]);
 
-// ---------------------------------------------------------------------------
 // Detection
-// ---------------------------------------------------------------------------
 
 // IMPORTANT: Only checks stderr to avoid false positives from code in stdout
 // containing "rate limit", "429", etc.
@@ -162,9 +156,7 @@ export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetect
   return { isRateLimit: false };
 }
 
-// ---------------------------------------------------------------------------
 // Internal helpers
-// ---------------------------------------------------------------------------
 
 function getPatternsForAgent(agentId?: string): RateLimitPattern[] {
   const patterns = [...COMMON_PATTERNS];
@@ -220,4 +212,3 @@ function looseRateLimitCheck(output: string): string | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------

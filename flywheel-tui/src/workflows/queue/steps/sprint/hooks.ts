@@ -1,12 +1,9 @@
-// ---------------------------------------------------------------------------
 // Sprint Hook — Core Loop
-// ---------------------------------------------------------------------------
 //
 // Retry loop for sprint mode. On failure: retry up to max_iterations,
 // detect stuck (identical consecutive failures), then stop.
 //
 // Factory: createSprintHook(config) → OnStepCompletedHook
-// ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "../../types.js";
 import { insertAfter, type Provenance } from "../../queue.js";
@@ -22,18 +19,14 @@ import type {
 } from "./types.js";
 import { SPRINT_HINT } from "./types.js";
 
-// ---------------------------------------------------------------------------
 // Provenance helper
-// ---------------------------------------------------------------------------
 
 function makeProvenance(reason: string): Provenance {
   return { actor: "sprint-hook", reason };
 }
 
-// ---------------------------------------------------------------------------
 // Feedback normalization — strip noise that makes identical failures look
 // different (timestamps, line numbers, test durations).
-// ---------------------------------------------------------------------------
 
 const TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*/g;
 const LINE_NUMBER_RE = /:\d+:\d+/g;
@@ -50,9 +43,7 @@ export function normalizeFeedback(raw: string): string {
     .trim();
 }
 
-// ---------------------------------------------------------------------------
 // isStuck — detect identical consecutive failures
-// ---------------------------------------------------------------------------
 
 export function isStuck(history: SprintIterationRecord[]): boolean {
   if (history.length < 2) return false;
@@ -71,9 +62,7 @@ export function isStuck(history: SprintIterationRecord[]): boolean {
   return prevNorm === currNorm;
 }
 
-// ---------------------------------------------------------------------------
 // recordIteration — extract summary + eval feedback from handoffData
-// ---------------------------------------------------------------------------
 
 export function recordIteration(
   handoffData: Record<string, unknown> | null,
@@ -111,9 +100,7 @@ export function recordIteration(
   };
 }
 
-// ---------------------------------------------------------------------------
 // buildRetryStep — create a new work step for the next sprint iteration
-// ---------------------------------------------------------------------------
 
 export function buildRetryStep(
   originalStep: Step,
@@ -138,9 +125,7 @@ export function buildRetryStep(
   });
 }
 
-// ---------------------------------------------------------------------------
 // createSprintHook — factory returning OnStepCompletedHook
-// ---------------------------------------------------------------------------
 
 export function createSprintHook(config: SprintConfig): {
   hook: OnStepCompletedHook;
@@ -153,9 +138,7 @@ export function createSprintHook(config: SprintConfig): {
     history: [],
   };
 
-  // -------------------------------------------------------------------------
   // getState — snapshot of current sprint state
-  // -------------------------------------------------------------------------
 
   function getState(): Readonly<SprintLoopState> {
     return {
@@ -166,9 +149,7 @@ export function createSprintHook(config: SprintConfig): {
     };
   }
 
-  // -------------------------------------------------------------------------
   // onStepCompleted — the hook
-  // -------------------------------------------------------------------------
 
   const hook: OnStepCompletedHook = async (
     step: Step,
@@ -191,36 +172,28 @@ export function createSprintHook(config: SprintConfig): {
     const record = recordIteration(handoffData, status, state.iterationCount);
     state.history.push(record);
 
-    // -----------------------------------------------------------------------
     // Completed — sprint succeeded
-    // -----------------------------------------------------------------------
     if (status === "completed") {
       state.status = "completed";
       return { continueExecution: false };
     }
 
-    // -----------------------------------------------------------------------
     // Failed — check stuck detection (identical consecutive failures)
-    // -----------------------------------------------------------------------
     if (config.detect_stuck && isStuck(state.history)) {
       state.status = "exhausted";
       state.reason = "Stuck: identical consecutive failures";
       return { continueExecution: false };
     }
 
-    // -----------------------------------------------------------------------
     // Failed — check max iterations
-    // -----------------------------------------------------------------------
     if (state.iterationCount >= config.max_iterations) {
       state.status = "exhausted";
       state.reason = "Max iterations reached";
       return { continueExecution: false };
     }
 
-    // -----------------------------------------------------------------------
     // Failed — insert retry step, then return continue
     // (insertAfter MUST happen before return)
-    // -----------------------------------------------------------------------
     const retryStep = buildRetryStep(
       step,
       state.history,

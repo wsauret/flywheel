@@ -65,11 +65,6 @@ export namespace Log {
     level?: Level
   }
 
-  let logpath = ""
-  export function file() {
-    return logpath
-  }
-
   let write = (msg: string) => {
     process.stderr.write(msg)
   }
@@ -85,11 +80,11 @@ export namespace Log {
     mkdirSync(logDir, { recursive: true })
     cleanup(logDir)
     if (options.print) return
-    logpath = path.join(
+    const filepath = path.join(
       logDir,
       new Date().toISOString().split(".")[0].replace(/:/g, "") + ".log",
     )
-    const stream = createWriteStream(logpath, { flags: "w" })
+    const stream = createWriteStream(filepath, { flags: "w" })
     write = (msg: string) => {
       stream.write(msg)
     }

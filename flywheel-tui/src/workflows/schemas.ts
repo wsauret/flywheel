@@ -19,9 +19,7 @@ export function serializeEvaluationCriteria(criteria: EvaluationCriteria): strin
   return parts.join("\n");
 }
 
-// ---------------------------------------------------------------------------
 // BudgetLimitsSchema — limits only (WP2)
-// ---------------------------------------------------------------------------
 export const BudgetLimitsSchema = z.object({
   max_invocations: z.number().min(0),
   max_tokens: z.number().nullable(),
@@ -45,9 +43,7 @@ export function toBudgetLimits(budget: {
   };
 }
 
-// ---------------------------------------------------------------------------
 // BudgetUsageSchema — usage only (WP2)
-// ---------------------------------------------------------------------------
 export const BudgetUsageSchema = z.object({
   invocations_used: z.number().min(0),
   tokens_used: z.number().min(0),
@@ -58,10 +54,8 @@ export const BudgetUsageSchema = z.object({
 
 export type BudgetUsage = z.infer<typeof BudgetUsageSchema>;
 
-// ---------------------------------------------------------------------------
 // SessionBudgetStatusSchema
 // Budget status sent to dispatcher — tracks remaining budget.
-// ---------------------------------------------------------------------------
 export const SessionBudgetStatusSchema = z.object({
   invocations_remaining: z.number().nullable(),
   token_budget_remaining: z.number().nullable(),
@@ -88,9 +82,7 @@ export const AvailableContextSchema = z.object({
 
 export type AvailableContext = z.infer<typeof AvailableContextSchema>;
 
-// ---------------------------------------------------------------------------
 // LastWorkerResultSchema
-// ---------------------------------------------------------------------------
 export const LastWorkerResultSchema = z.object({
   step: z.number(),
   status: z.string(),

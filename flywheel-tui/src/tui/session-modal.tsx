@@ -21,9 +21,7 @@ import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
 import type { SessionSummary } from "../orchestration/session/manager"
 import type { SessionState } from "../orchestration/session/state-machine"
 
-// ---------------------------------------------------------------------------
 // Props
-// ---------------------------------------------------------------------------
 
 export interface SessionModalProps {
   activeSessionId?: string
@@ -35,9 +33,7 @@ export interface SessionModalProps {
   onSelect: (flatIndex: number) => void
 }
 
-// ---------------------------------------------------------------------------
 // Helpers (exported for shell keyboard handler)
-// ---------------------------------------------------------------------------
 
 type GroupKey = "active" | "paused" | "completed"
 
@@ -85,9 +81,7 @@ export function buildSessionList(sessions: SessionSummary[]): { session: Session
   return items
 }
 
-// ---------------------------------------------------------------------------
 // Component
-// ---------------------------------------------------------------------------
 
 export function SessionModal(props: SessionModalProps) {
   const { theme } = useTheme()

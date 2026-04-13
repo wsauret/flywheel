@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Queue System — Factory & Mutation API
-// ---------------------------------------------------------------------------
 //
 // Core queue data model: creation, step lifecycle transitions, and mutation
 // operations (insert, remove, skip, reorder, replace). All mutations record
@@ -9,7 +7,6 @@
 // Terminology:
 //   Step   — single unit of work (replaces "step")
 //   Queue  — mutable, ordered list of steps for a session
-// ---------------------------------------------------------------------------
 
 import type {
   Step,
@@ -18,9 +15,7 @@ import type {
   MutationLogEntry,
 } from "./types";
 
-// ---------------------------------------------------------------------------
 // Provenance — who triggered the mutation and why
-// ---------------------------------------------------------------------------
 
 export interface Provenance {
   /** Who triggered the mutation (executor, user, sprint-hook, etc.). */
@@ -29,26 +24,20 @@ export interface Provenance {
   readonly reason: string;
 }
 
-// ---------------------------------------------------------------------------
 // MutationResult — discriminated union for mutation outcomes
-// ---------------------------------------------------------------------------
 
 export type MutationResult =
   | { success: true; queue: Queue }
   | { success: false; error: string };
 
-// ---------------------------------------------------------------------------
 // Queue options
-// ---------------------------------------------------------------------------
 
 export interface QueueOptions {
   /** Maximum number of steps allowed. Inserts exceeding this are rejected. */
   maxSteps?: number;
 }
 
-// ---------------------------------------------------------------------------
 // Valid step transitions
-// ---------------------------------------------------------------------------
 
 const VALID_TRANSITIONS: Record<StepStatus, StepStatus[]> = {
   pending: ["running", "skipped"],
@@ -58,9 +47,7 @@ const VALID_TRANSITIONS: Record<StepStatus, StepStatus[]> = {
   skipped: [],
 };
 
-// ---------------------------------------------------------------------------
 // createQueue — factory function
-// ---------------------------------------------------------------------------
 
 /**
  * Creates a new Queue from an array of steps.
@@ -82,9 +69,7 @@ export function createQueue(
   return queue;
 }
 
-// ---------------------------------------------------------------------------
 // Internal helpers
-// ---------------------------------------------------------------------------
 
 function logMutation(
   queue: Queue,
@@ -110,9 +95,7 @@ function findStepIndex(queue: Queue, stepId: string): number {
   return queue.steps.findIndex((s) => s.id === stepId);
 }
 
-// ---------------------------------------------------------------------------
 // transitionStep — enforce valid lifecycle transitions
-// ---------------------------------------------------------------------------
 
 /**
  * Transition a step to a new status. Enforces valid transitions:
@@ -145,9 +128,7 @@ export function transitionStep(
   return { success: true, queue };
 }
 
-// ---------------------------------------------------------------------------
 // advanceCursor — move cursor to next pending step
-// ---------------------------------------------------------------------------
 
 /**
  * Advances the queue cursor to the next pending step, skipping
@@ -167,9 +148,7 @@ export function advanceCursor(queue: Queue): void {
   queue.cursor = queue.steps.length;
 }
 
-// ---------------------------------------------------------------------------
 // isFinished — check if queue has no pending/running steps
-// ---------------------------------------------------------------------------
 
 /**
  * Returns true when no steps have status "pending" or "running".
@@ -180,9 +159,7 @@ export function isFinished(queue: Queue): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
 // insertAfter — insert step(s) after a specific step ID
-// ---------------------------------------------------------------------------
 
 /**
  * Inserts one or more steps after the step with the given ID.
@@ -229,9 +206,7 @@ export function insertAfter(
   return { success: true, queue };
 }
 
-// ---------------------------------------------------------------------------
 // removeStep — remove a pending step by ID
-// ---------------------------------------------------------------------------
 
 /**
  * Removes a step from the queue. Only pending and skipped steps can be removed.
@@ -266,9 +241,7 @@ export function removeStep(
   return { success: true, queue };
 }
 
-// ---------------------------------------------------------------------------
 // skipStep — mark a pending step as skipped
-// ---------------------------------------------------------------------------
 
 /**
  * Marks a pending step as skipped. Completed and running steps cannot

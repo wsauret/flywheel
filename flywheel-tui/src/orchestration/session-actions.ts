@@ -15,9 +15,7 @@ import type { Queue } from "../workflows/queue/types"
 import type { SessionManager, SessionSummary } from "./session/manager"
 import type { AnyBlock } from "../infra/output-blocks"
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface SessionActionDeps {
   manager: SessionManager
@@ -31,9 +29,7 @@ export interface ResumeData {
   queue: Queue
 }
 
-// ---------------------------------------------------------------------------
 // Actions
-// ---------------------------------------------------------------------------
 
 /** Load a session's persisted output blocks for viewing. */
 export async function loadSessionOutput(sessionId: string, projectCwd?: string): Promise<AnyBlock[]> {

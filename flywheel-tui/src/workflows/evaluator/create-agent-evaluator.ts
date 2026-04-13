@@ -1,12 +1,9 @@
-// ---------------------------------------------------------------------------
 // Factory: Create agent-based EvaluatorFn for the step executor
-// ---------------------------------------------------------------------------
 //
 // Bridges the SubprocessEvaluatorTransport (agent with tools) with the
 // EvaluatorFn interface used by the queue executor. The agent can read
 // files, run commands, grep the codebase, and make a holistic judgment
 // about whether the worker's output meets acceptance criteria.
-// ---------------------------------------------------------------------------
 
 import type { Step } from "../queue/types";
 import type { EvaluatorFn, EvalResult } from "../queue/executor-types";
@@ -22,17 +19,13 @@ import { createEmptyStepContext } from "../queue/step-context.js";
 
 const log = Log.create({ service: "evaluator-agent-factory" });
 
-// ---------------------------------------------------------------------------
 // Options
-// ---------------------------------------------------------------------------
 
 export interface CreateAgentEvaluatorFnOptions {
   transport: EvaluatorTransport;
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function resultToEvalResult(result: EvaluatorResult): EvalResult {
   return {
@@ -46,9 +39,7 @@ function resultToEvalResult(result: EvaluatorResult): EvalResult {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 /**
  * Creates an EvaluatorFn backed by the agent-based subprocess evaluator.
@@ -135,9 +126,7 @@ export function createAgentEvaluatorFn(
   };
 }
 
-// ---------------------------------------------------------------------------
 // Handoff data extraction — delegates to shared parser
-// ---------------------------------------------------------------------------
 
 function extractHandoffData(
   handoffData: Record<string, unknown>,

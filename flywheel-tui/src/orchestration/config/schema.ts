@@ -1,9 +1,7 @@
 import { z } from "zod";
-import { SprintConfigSchema, type SprintConfig } from "../../workflows/queue/steps/sprint/config-schema.js";
+import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 const SHELL_METACHAR_RE = /[;|&`$(){}<>]/;
 
@@ -14,9 +12,7 @@ function noShellMetachars(fieldName: string) {
   );
 }
 
-// ---------------------------------------------------------------------------
 // Sub-schemas
-// ---------------------------------------------------------------------------
 
 /**
  * Boundaries sub-schema — constraints subprocesses must never violate.
@@ -48,9 +44,7 @@ const CommandsSchema = z.object({
 
 type CommandsConfig = z.infer<typeof CommandsSchema>;
 
-// ---------------------------------------------------------------------------
 // Main config schema
-// ---------------------------------------------------------------------------
 
 /**
  * Full config schema for the TOML loader.
@@ -112,16 +106,6 @@ export const FlywheelConfigSchema = z.object({
     max_wall_clock_minutes: z.number().int().min(0).default(0),
   }).default({}),
 
-  /** Worktree (Worktrunk) integration configuration. */
-  worktree: z.object({
-    /** Enable worktree integration. Default: true (requires wt CLI available). */
-    enabled: z.boolean().default(true),
-    /** Automatically remove worktree when session is archived. */
-    auto_remove: z.boolean().default(false),
-    /** Grace period (ms) before trashed session worktrees are cleaned up. Default: 300000 (5 min). */
-    grace_period_ms: z.number().int().min(0).default(300_000),
-  }).default({}),
-
   /** User-facing output directory overrides. */
   paths: z.object({
     plans: z.string().optional(),
@@ -181,65 +165,10 @@ export const FlywheelConfigSchema = z.object({
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
 
-// ---------------------------------------------------------------------------
-// Defaults
-// ---------------------------------------------------------------------------
+/** Single source of truth for defaults — derived from Zod schema `.default()` values. */
+export const CONFIG_DEFAULTS: FlywheelConfig = FlywheelConfigSchema.parse({});
 
-export const CONFIG_DEFAULTS = {
-  engine: "claude",
-  dispatcher: {},
-  subprocess: {},
-  evaluator: {},
-  max_retries: 3,
-  timeout_minutes: 60,
-  skip_evaluation: false,
-  interactive_consolidation: false,
-  auto_ship: false,
-  auto_chain: true,
-  max_eval_cycles: 3,
-  max_revisions: 1,
-  fallback_agents: [],
-  budget: {
-    max_invocations: 0,
-    max_tokens: 0,
-    max_wall_clock_minutes: 0,
-  },
-  worktree: {
-    enabled: true,
-    auto_remove: false,
-    grace_period_ms: 300_000,
-  },
-  paths: {},
-  skip_scrutiny: false,
-  skip_validation: false,
-  queue: {
-    max_steps: 50,
-    persist_queue: true,
-  },
-  dispatcher_intelligence: {
-    enabled: true,
-    max_mutations_per_step: 3,
-    max_inserted_steps: 20,
-    auto_fix_insertion: true,
-    replan_cost_budget_usd: 0,
-    handoff_detail_window: 3,
-  },
-  tracing: {
-    enabled: true,
-    max_traces: 100,
-  },
-  sprint: {
-    max_iterations: 5,
-    detect_stuck: false,
-    dispatcher: {},
-    evaluator: {},
-    worker: {},
-  } satisfies SprintConfig,
-} satisfies FlywheelConfig;
-
-// ---------------------------------------------------------------------------
 // Model / effort resolution
-// ---------------------------------------------------------------------------
 
 /**
  * Maximum effort level a model supports.

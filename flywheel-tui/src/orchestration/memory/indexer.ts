@@ -21,9 +21,7 @@ import {
   CONFIG_DIRS,
 } from "../../infra/paths";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface ContextQuery {
   stepType: StepType;
@@ -36,17 +34,13 @@ export interface ContextIndexerOptions {
   conventionFiles?: string[];
 }
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 const HARDCODED_SUMMARIES: Record<string, string> = {
   "AGENTS.md": "Project architecture, commands, TUI states, and developer conventions",
 };
 
-// ---------------------------------------------------------------------------
 // ContextIndexer
-// ---------------------------------------------------------------------------
 
 export class ContextIndexer {
   private readonly projectCwd: string;
@@ -65,9 +59,7 @@ export class ContextIndexer {
     this.conventionFiles = options?.conventionFiles ?? DEFAULT_CONVENTION_FILES;
   }
 
-  // -------------------------------------------------------------------------
   // Public API
-  // -------------------------------------------------------------------------
 
   /**
    * Build all indices. Resolves when the first scan is complete.
@@ -105,9 +97,7 @@ export class ContextIndexer {
     this.ready = false;
   }
 
-  // -------------------------------------------------------------------------
   // Convention scanner
-  // -------------------------------------------------------------------------
 
   private async scanConventions(): Promise<ContextEntry[]> {
     const entries: ContextEntry[] = [];
@@ -149,9 +139,7 @@ export class ContextIndexer {
     return entries;
   }
 
-  // -------------------------------------------------------------------------
   // Standards scanner
-  // -------------------------------------------------------------------------
 
   private async scanStandards(): Promise<ContextEntry[]> {
     const entries: ContextEntry[] = [];
@@ -198,9 +186,7 @@ export class ContextIndexer {
     return entries;
   }
 
-  // -------------------------------------------------------------------------
   // Helpers
-  // -------------------------------------------------------------------------
 
   /** Read file and return the first non-empty, non-heading line. */
   private async firstContentLine(absPath: string): Promise<string> {

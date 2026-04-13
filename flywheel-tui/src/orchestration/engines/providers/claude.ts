@@ -100,9 +100,7 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   };
 }
 
-// ---------------------------------------------------------------------------
 // Model resolution
-// ---------------------------------------------------------------------------
 
 /**
  * Short-alias → 1M model ID mapping.

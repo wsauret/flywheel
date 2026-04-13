@@ -19,9 +19,7 @@ import {
 } from "../subprocess/process-lifecycle.js";
 import { Log } from "../../../infra/log.js";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface WarmPoolOptions<T = SpawnResult> {
   /** Factory that produces a new resource. Injected for DI / testability. */
@@ -45,9 +43,7 @@ export interface WarmPoolOptions<T = SpawnResult> {
   killProc?: (proc: T) => void;
 }
 
-// ---------------------------------------------------------------------------
 // WarmPool
-// ---------------------------------------------------------------------------
 
 export class WarmPool<T = SpawnResult> {
   private readonly spawnFactory: () => Promise<T>;

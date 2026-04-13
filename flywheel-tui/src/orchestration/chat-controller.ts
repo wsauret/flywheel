@@ -20,9 +20,7 @@ import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface ChatControllerDeps {
   sessionStore: SessionStore
@@ -60,10 +58,10 @@ export interface ChatController {
   resumeChat(sessionId: string): Promise<ResumeChatResult | null>
 
   /** End the foreground chat. Returns true if a chat was ended. */
-  endChat(foregroundId: string | undefined): boolean
+  endChat(foregroundId: string | undefined): Promise<boolean>
 
   /** Put the current chat in the background. Empty chats (no user messages) are auto-deleted. */
-  backgroundChat(foregroundId?: string): void
+  backgroundChat(foregroundId?: string): Promise<void>
 
   /** Interrupt the foreground chat. */
   interruptChat(foregroundId: string | undefined): void
@@ -75,18 +73,14 @@ export interface ChatController {
   sendMessage(foregroundId: string | undefined, text: string): boolean
 }
 
-// ---------------------------------------------------------------------------
 // Startup state machine
-// ---------------------------------------------------------------------------
 
 type StartupState =
   | { phase: "idle" }
   | { phase: "starting"; id: string; pending: string[] }
   | { phase: "ready" }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 const log = Log.create({ service: "chat-controller" })
 
@@ -238,15 +232,15 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     return { sessionId: result.sessionId, priorBlocks, terminalTitle: result.terminalTitle }
   }
 
-  function backgroundChat(foregroundId?: string): void {
+  async function backgroundChat(foregroundId?: string): Promise<void> {
     startup = { phase: "idle" }
     if (foregroundId && emptyChats.has(foregroundId)) {
       finalizeChat(foregroundId)
-      sessionStore.remove(foregroundId)
+      await sessionStore.remove(foregroundId)
     }
   }
 
-  function endChat(foregroundId: string | undefined): boolean {
+  async function endChat(foregroundId: string | undefined): Promise<boolean> {
     if (!foregroundId) return false
     const entry = sessionStore.get(foregroundId)
     if (!entry || entry.kind !== "chat") return false
@@ -256,7 +250,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     }
 
     finalizeChat(foregroundId)
-    sessionStore.remove(foregroundId)
+    await sessionStore.remove(foregroundId)
     return true
   }
 

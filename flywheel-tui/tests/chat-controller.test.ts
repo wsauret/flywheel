@@ -238,7 +238,7 @@ describe("ChatController", () => {
       const result = await controller.startChat()
       expect(result).not.toBeNull()
 
-      const ended = controller.endChat(result!.sessionId)
+      const ended = await controller.endChat(result!.sessionId)
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
@@ -256,7 +256,7 @@ describe("ChatController", () => {
       // Send a message so the chat is no longer empty
       controller.sendMessage(result!.sessionId, "hello")
 
-      const ended = controller.endChat(result!.sessionId)
+      const ended = await controller.endChat(result!.sessionId)
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
@@ -266,11 +266,11 @@ describe("ChatController", () => {
       expect(mockManager._deletes).not.toContain(result!.sessionId)
     })
 
-    it("returns false when no foreground ID", () => {
+    it("returns false when no foreground ID", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      const ended = controller.endChat(undefined)
+      const ended = await controller.endChat(undefined)
       expect(ended).toBe(false)
     })
 
@@ -279,7 +279,7 @@ describe("ChatController", () => {
       const controller = createChatController(deps)
 
       // The sessionStore won't have an entry for a random ID
-      const ended = controller.endChat("nonexistent-id")
+      const ended = await controller.endChat("nonexistent-id")
       expect(ended).toBe(false)
     })
   })

@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Step Runner — single-step execution: dispatch → worker → eval → accumulate
-// ---------------------------------------------------------------------------
 
 import type { Step } from "./types";
 import type { EvalResult } from "./executor-types.js";
@@ -13,9 +11,7 @@ import { errorMessage } from "../../infra/error-message";
 
 const log = Log.create({ service: "step-executor" });
 
-// ---------------------------------------------------------------------------
 // Pipeline stages — file-local, each receives and returns the context
-// ---------------------------------------------------------------------------
 
 /** Stage 1: Build prompt via dispatcher or step metadata. */
 async function dispatchStep(
@@ -241,9 +237,7 @@ async function evaluateAndAccumulate(
   return { ctx, failOutcome: null };
 }
 
-// ---------------------------------------------------------------------------
 // executeStep — run a single step through the full pipeline
-// ---------------------------------------------------------------------------
 
 export async function executeStep(
   step: Step,

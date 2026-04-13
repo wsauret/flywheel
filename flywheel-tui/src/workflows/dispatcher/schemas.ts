@@ -7,9 +7,7 @@ import {
 import { EvaluationCriteriaSchema, WorkerConfigSchema } from "../../infra/workflow-types";
 import { StepContextSchema } from "../queue/step-context";
 
-// ---------------------------------------------------------------------------
 // PlanInputSchema — step-based plan representation for the dispatcher
-// ---------------------------------------------------------------------------
 
 const PlanStepInputSchema = z.object({
   /** Step title. */
@@ -29,9 +27,7 @@ const PlanInputSchema = z.object({
   steps: z.array(PlanStepInputSchema),
 }).strip();
 
-// ---------------------------------------------------------------------------
 // WorkflowInfoSchema — current workflow step context for the dispatcher
-// ---------------------------------------------------------------------------
 export const WorkflowInfoSchema = z.object({
   name: z.string(),
   step_number: z.number(),
@@ -41,9 +37,7 @@ export const WorkflowInfoSchema = z.object({
 
 export type WorkflowInfo = z.infer<typeof WorkflowInfoSchema>;
 
-// ---------------------------------------------------------------------------
 // DispatcherConfigSchema — runtime config subset for the dispatcher
-// ---------------------------------------------------------------------------
 export const DispatcherConfigSchema = z.object({
   max_eval_cycles: z.number(),
   worktree_path: z.string(),
@@ -84,9 +78,7 @@ export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 
 import { MutationRequestSchema } from "../../infra/workflow-types";
 
-// ---------------------------------------------------------------------------
 // DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess
-// ---------------------------------------------------------------------------
 
 export const DispatcherDecisionHandoffSchema = z.object({
   schema_version: z.literal(1),

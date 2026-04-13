@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Step Dispatcher — Real dispatcher integration for per-step execution
-// ---------------------------------------------------------------------------
 //
 // Bridges the queue step executor with the existing DispatcherTransport.
 // For each step, assembles a full DispatcherInput with:
@@ -22,7 +20,6 @@
 //   - mutationRequests: queue mutations requested by dispatcher
 //
 // On transport failure: throws StepDispatcherError (caller marks step failed).
-// ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types.js";
 import type { DispatcherTransport } from "../dispatcher/transport.js";
@@ -51,9 +48,7 @@ import {
 
 const log = Log.create({ service: "step-dispatcher" });
 
-// ---------------------------------------------------------------------------
 // Types — Dispatcher context passed per-step
-// ---------------------------------------------------------------------------
 
 /** Context provided by the executor for each step dispatch. */
 export interface StepDispatchContext {
@@ -67,9 +62,7 @@ export interface StepDispatchContext {
   mutationBudget?: import("./guardrails").MutationBudget | null;
 }
 
-// ---------------------------------------------------------------------------
 // Types — Mutation requests
-// ---------------------------------------------------------------------------
 
 /** A mutation requested by the dispatcher. */
 export interface MutationRequest {
@@ -83,9 +76,7 @@ export interface MutationRequest {
   reason: string;
 }
 
-// ---------------------------------------------------------------------------
 // Types — Dispatcher decision (normalized from raw DispatcherDecision)
-// ---------------------------------------------------------------------------
 
 /** Normalized decision from the step dispatcher. */
 export interface StepDispatcherDecision {
@@ -103,9 +94,7 @@ export interface StepDispatcherDecision {
   mutationRequests: MutationRequest[];
 }
 
-// ---------------------------------------------------------------------------
 // Types — Options for createStepDispatcher
-// ---------------------------------------------------------------------------
 
 export interface StepDispatcherOptions {
   /** Dispatcher transport (subprocess or SDK). */
@@ -130,9 +119,7 @@ export interface StepDispatcherOptions {
   sessionObjective?: string;
 }
 
-// ---------------------------------------------------------------------------
 // StepDispatcher interface
-// ---------------------------------------------------------------------------
 
 export interface StepDispatcher {
   /** Dispatch a step: assemble input, invoke transport, parse decision. */
@@ -143,9 +130,7 @@ export interface StepDispatcher {
   ): Promise<StepDispatcherDecision>;
 }
 
-// ---------------------------------------------------------------------------
 // Error class
-// ---------------------------------------------------------------------------
 
 export class StepDispatcherError extends Error {
   constructor(
@@ -158,9 +143,7 @@ export class StepDispatcherError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
 // createStepDispatcher — factory function
-// ---------------------------------------------------------------------------
 
 export function createStepDispatcher(options: StepDispatcherOptions): StepDispatcher {
   const {

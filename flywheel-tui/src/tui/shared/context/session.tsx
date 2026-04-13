@@ -16,9 +16,7 @@ import type { SessionManager, SessionSummary, SessionListResult } from "../../..
 
 const log = Log.create({ service: "session-context" })
 
-// ---------------------------------------------------------------------------
 // Context value type
-// ---------------------------------------------------------------------------
 
 export interface SessionContextValue {
   /** The underlying SessionManager instance. */
@@ -31,9 +29,7 @@ export interface SessionContextValue {
   sessions: () => SessionSummary[]
 }
 
-// ---------------------------------------------------------------------------
 // Provider
-// ---------------------------------------------------------------------------
 
 export const { use: useSession, provider: SessionProvider } = createSimpleContext<
   SessionContextValue,

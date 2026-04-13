@@ -1,12 +1,9 @@
-// ---------------------------------------------------------------------------
 // Step Executor — Queue-Based Execution Engine
-// ---------------------------------------------------------------------------
 //
 // Thin orchestrator that processes queue steps sequentially. Delegates to:
 //   - executor-types.ts  — all DI interfaces and result types
 //   - step-runner.ts     — single-step execution pipeline
 //   - revision-loop.ts   — evaluator + worker revision cycles
-// ---------------------------------------------------------------------------
 
 import type { Step } from "./types";
 import type {
@@ -28,17 +25,13 @@ import { errorMessage } from "../../infra/error-message";
 
 const log = Log.create({ service: "step-executor" });
 
-// ---------------------------------------------------------------------------
 // Provenance helper
-// ---------------------------------------------------------------------------
 
 function makeProvenance(reason: string): Provenance {
   return { actor: "executor", reason };
 }
 
-// ---------------------------------------------------------------------------
 // createStepExecutor — factory function
-// ---------------------------------------------------------------------------
 
 export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   const {
@@ -94,9 +87,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     return true;
   }
 
-  // -----------------------------------------------------------------------
   // run() — main execution loop
-  // -----------------------------------------------------------------------
 
   async function run(): Promise<StepExecutorResult> {
     let stepsCompleted = queue.steps.filter((s) => s.status === "completed").length;
@@ -191,9 +182,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     return { completed: true, stepsCompleted, stepsTotal: queue.steps.length };
   }
 
-  // -----------------------------------------------------------------------
   // Shutdown / Abort
-  // -----------------------------------------------------------------------
 
   function requestShutdown(): void {
     shutdownRequested = true;

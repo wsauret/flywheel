@@ -26,9 +26,7 @@ import type {
   ChatStoreHandle,
 } from "./session-store-types"
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 /**
  * Creates a session store backed by SolidJS createStore.

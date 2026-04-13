@@ -1,9 +1,7 @@
 import type { ZodSchema, ZodError, ZodIssue } from "zod";
 import { errorMessage } from "../../../infra/error-message";
 
-// ---------------------------------------------------------------------------
 // Error classes
-// ---------------------------------------------------------------------------
 
 export class HandoffMissingError extends Error {
   readonly name = "HandoffMissingError";
@@ -32,18 +30,14 @@ export class HandoffReadTimeoutError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Options
-// ---------------------------------------------------------------------------
 
 export interface ReadHandoffOptions {
   /** Timeout in milliseconds (default: 5000) */
   timeoutMs?: number;
 }
 
-// ---------------------------------------------------------------------------
 // readHandoff — generic reader for any handoff schema
-// ---------------------------------------------------------------------------
 
 export async function readHandoff<T>(
   path: string,
@@ -60,9 +54,7 @@ export async function readHandoff<T>(
   return result;
 }
 
-// ---------------------------------------------------------------------------
 // Internal helpers
-// ---------------------------------------------------------------------------
 
 async function doRead<T>(path: string, schema: ZodSchema<T>): Promise<T> {
   const file = Bun.file(path);

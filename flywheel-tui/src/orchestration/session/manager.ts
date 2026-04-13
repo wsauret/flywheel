@@ -28,9 +28,7 @@ import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "session.manager" });
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 /** Plain data summary of a session (no live store/adapter). */
 export interface SessionSummary {
@@ -103,9 +101,7 @@ export interface SessionManager {
 
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 /**
  * Create a new SessionManager instance.
@@ -116,9 +112,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const { baseDir } = deps;
   const config = deps.config ?? CONFIG_DEFAULTS;
 
-  // -------------------------------------------------------------------------
   // Helpers
-  // -------------------------------------------------------------------------
 
   /**
    * Read a session from disk, throwing if it doesn't exist.
@@ -131,9 +125,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     return session;
   }
 
-  // -------------------------------------------------------------------------
   // SessionManager methods
-  // -------------------------------------------------------------------------
 
   function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string {
     const now = new Date().toISOString();

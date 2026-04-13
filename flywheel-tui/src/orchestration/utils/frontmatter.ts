@@ -7,9 +7,7 @@
 
 import * as yaml from "js-yaml";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface ParsedDoc {
   frontmatter: Record<string, unknown>;
@@ -21,9 +19,7 @@ export interface ParseFrontmatterOptions {
   schema?: yaml.Schema;
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Parse YAML frontmatter delimited by `---` at the start of a string.

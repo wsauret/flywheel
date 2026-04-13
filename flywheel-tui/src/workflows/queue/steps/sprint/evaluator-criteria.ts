@@ -1,4 +1,3 @@
-// ---------------------------------------------------------------------------
 // Sprint Evaluator Criteria — self-review-aligned evaluation for sprint mode.
 //
 // Evaluates work against the same 7-point checklist used by the self-review
@@ -7,14 +6,11 @@
 // of broken functionality — not for style, minor omissions, or gold-plating.
 //
 // Sprint mode uses Opus for the evaluator to provide thorough assessment.
-// ---------------------------------------------------------------------------
 
 import type { SprintIterationRecord } from "./types.js";
 
-// ---------------------------------------------------------------------------
 // Static criteria prefix — self-review aligned assessment and FAIL/PASS rules.
 // Computed once at module load.
-// ---------------------------------------------------------------------------
 
 const STATIC_CRITERIA_PREFIX = [
   "## Sprint Mode: Evaluation Criteria",
@@ -63,9 +59,7 @@ const STATIC_CRITERIA_PREFIX = [
   "",
 ].join("\n");
 
-// ---------------------------------------------------------------------------
 // buildSprintEvaluationCriteria
-// ---------------------------------------------------------------------------
 
 /**
  * Build self-review-aligned evaluation criteria for a sprint iteration.

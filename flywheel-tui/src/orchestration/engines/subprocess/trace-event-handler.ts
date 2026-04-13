@@ -18,9 +18,7 @@ import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-ev
 import type { EmitFn } from "../../../infra/event-bus";
 import { truncateField } from "../../../infra/trace-types";
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 /** Tool names that indicate a subagent spawn rather than a simple tool call. */
 const SUBAGENT_TOOL_NAMES = new Set(["Task", "dispatch_agent"]);
@@ -28,9 +26,7 @@ const SUBAGENT_TOOL_NAMES = new Set(["Task", "dispatch_agent"]);
 /** Max bytes for truncated fields in trace events. */
 const MAX_FIELD_BYTES = 4096;
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface TraceEventHandlerDeps {
   emit: EmitFn;
@@ -42,9 +38,7 @@ export interface TraceEventHandler {
   handleEvent(event: NDJSONEvent): void;
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEventHandler {
   const { emit, workflowId } = deps;

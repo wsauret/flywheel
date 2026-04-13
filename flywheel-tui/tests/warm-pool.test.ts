@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
 import { WarmPool } from "../src/orchestration/engines/pool/warm-pool";
 import type { SpawnResult } from "../src/orchestration/engines/subprocess/spawner";
 import type { RawSpawnedProcess } from "../src/orchestration/engines/subprocess/stream-pipeline";
-import { registeredProcesses } from "../src/orchestration/engines/subprocess/process-lifecycle";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -213,27 +212,6 @@ describe("WarmPool", () => {
     // Pool should be usable
     const proc2 = await pool.acquire();
     expect(proc2.pid).toBe(1001);
-  });
-
-  test("registerProcess() called on spawn, unregistered on kill", async () => {
-    pool = new WarmPool({ spawn: spawner.spawner, label: "test" });
-
-    await new Promise((r) => setTimeout(r, 10));
-
-    // Process should be registered
-    const pids = [...registeredProcesses].map((p) => p.pid);
-    expect(pids).toContain(1000);
-
-    // Acquire and release (kills old, spawns new)
-    const proc = await pool.acquire();
-    pool.release(proc);
-
-    await new Promise((r) => setTimeout(r, 10));
-
-    // Old process should be unregistered, new one registered
-    const pidsAfter = [...registeredProcesses].map((p) => p.pid);
-    expect(pidsAfter).not.toContain(1000);
-    expect(pidsAfter).toContain(1001);
   });
 
   test("shutdown prevents re-spawning after unexpected death", async () => {

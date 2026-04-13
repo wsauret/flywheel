@@ -13,9 +13,7 @@ import type { ChatRunner } from "./chat-runner"
 import type { SessionKind } from "./session/types"
 import type { Queue } from "../workflows/queue/types"
 
-// ---------------------------------------------------------------------------
 // Entry types — discriminated union on `kind`
-// ---------------------------------------------------------------------------
 
 export interface SessionEntryBase {
   readonly kind: SessionKind
@@ -47,9 +45,7 @@ export interface ChatSessionEntry extends SessionEntryBase {
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
 
-// ---------------------------------------------------------------------------
 // Store handles — passed to runners for direct store writes
-// ---------------------------------------------------------------------------
 
 /** Handle passed to chat runner factory — write data directly to the reactive store. */
 export interface ChatStoreHandle {
@@ -65,9 +61,7 @@ export interface ChatStoreHandle {
   onEnded: () => void
 }
 
-// ---------------------------------------------------------------------------
 // SessionStore — public interface
-// ---------------------------------------------------------------------------
 
 export interface SessionStore {
   start(opts: {

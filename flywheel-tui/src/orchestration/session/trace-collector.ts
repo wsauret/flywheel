@@ -29,9 +29,7 @@ import { truncateField } from "../../infra/trace-types";
 import type { TraceWriter, TraceIndexEntry } from "./trace-writer";
 import { subscribeTraceEvents } from "./trace-subscriptions.js";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface TraceCollectorDeps {
   writer: TraceWriter;
@@ -56,9 +54,7 @@ export interface TraceCollector {
   dispose(): void;
 }
 
-// ---------------------------------------------------------------------------
 // Internal span record (mutable, pre-completion)
-// ---------------------------------------------------------------------------
 
 interface OpenSpan {
   spanId: string;
@@ -69,15 +65,11 @@ interface OpenSpan {
   input: unknown;
 }
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 const MAX_FIELD_BYTES = 4096;
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   const { writer, sessionId, workflowName } = deps;
@@ -100,9 +92,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   const stepSpanIds = new Map<string, string>(); // stepId → spanId
   const toolSpanIds = new Map<string, string>(); // toolUseId → spanId
 
-  // -------------------------------------------------------------------------
   // Helpers
-  // -------------------------------------------------------------------------
 
   function truncateInput(value: unknown): unknown {
     const serialized = truncateField(value, MAX_FIELD_BYTES);
@@ -157,9 +147,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     } as Span;
   }
 
-  // -------------------------------------------------------------------------
   // Public API
-  // -------------------------------------------------------------------------
 
   function getTraceId(): string {
     return traceId;
@@ -223,9 +211,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     }
   }
 
-  // -------------------------------------------------------------------------
   // EventBus subscriptions
-  // -------------------------------------------------------------------------
 
   function subscribeToEvents(bus: EventBus): Unsubscribe[] {
     return subscribeTraceEvents(bus, {
@@ -240,9 +226,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     }, workflowName);
   }
 
-  // -------------------------------------------------------------------------
   // Lifecycle
-  // -------------------------------------------------------------------------
 
   function finalize(status: "ok" | "error" = "ok"): void {
     const endTimeMs = Date.now();

@@ -21,9 +21,7 @@ import type { TranscriptWriter } from "./transcript-writer"
 import type { TraceCollector } from "./trace-collector"
 import type { OutputFlusher } from "./output-persistence"
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface SessionResources {
   budgetTracker: BudgetTracker
@@ -33,9 +31,7 @@ export interface SessionResources {
   outputFlusher: OutputFlusher
 }
 
-// ---------------------------------------------------------------------------
 // Disposal
-// ---------------------------------------------------------------------------
 
 /** Track which resource instances have already been disposed to make double-dispose a no-op. */
 const disposedSet = new WeakSet<SessionResources>()

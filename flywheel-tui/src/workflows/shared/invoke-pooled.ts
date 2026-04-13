@@ -18,9 +18,7 @@ import { ensureSessionDir } from "../../infra/paths.js";
 import type { SubprocessRole } from "./subprocess-logger.js";
 import { SubprocessLogger, createLoggedCallbacks } from "./subprocess-logger.js";
 
-// ---------------------------------------------------------------------------
 // Structural types — callers inject concrete implementations.
-// ---------------------------------------------------------------------------
 
 /** Minimal stdin handle contract. */
 interface StdinHandle {
@@ -42,9 +40,7 @@ export interface PoolHandle {
   release(proc: PooledSpawnResult): void;
 }
 
-// ---------------------------------------------------------------------------
 // Callbacks — role-specific behavior injected by callers
-// ---------------------------------------------------------------------------
 
 export interface InvokePooledCallbacks<THandoff, TResult> {
   /** Role label for logging (e.g. "dispatcher", "evaluator"). */
@@ -61,9 +57,7 @@ export interface InvokePooledCallbacks<THandoff, TResult> {
   mapResult: (handoff: THandoff) => TResult;
 }
 
-// ---------------------------------------------------------------------------
 // Options
-// ---------------------------------------------------------------------------
 
 export interface InvokePooledOptions {
   /** Flywheel session ID for session-scoped handoff paths. */
@@ -97,15 +91,11 @@ export interface BasePooledTransportOptions extends InvokePooledOptions {
   pool: PoolHandle;
 }
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 const MAX_RETRIES = 1;
 
-// ---------------------------------------------------------------------------
 // invokePooled
-// ---------------------------------------------------------------------------
 
 /**
  * Acquire a warm process from the pool, send a prompt via stdin, await exit,

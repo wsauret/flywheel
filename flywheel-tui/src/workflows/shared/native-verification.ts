@@ -1,14 +1,9 @@
-// ---------------------------------------------------------------------------
 // Phase 3: Trust-But-Verify — Native Verification
-// ---------------------------------------------------------------------------
 //
 // Re-runs commands the worker reported running, with deny-list filtering,
 // concurrent execution, discrepancy detection, and git diff --stat support.
-// ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface DeclaredCommand {
   command: string;
@@ -36,9 +31,7 @@ export interface NativeVerificationResult {
   discrepancies: NativeCheckResult[];
 }
 
-// ---------------------------------------------------------------------------
 // Deny-list
-// ---------------------------------------------------------------------------
 
 /** Single-word commands that are always denied. */
 const DENIED_FIRST_TOKEN = new Set([
@@ -99,24 +92,18 @@ export function isDeniedCommand(command: string): boolean {
   return false;
 }
 
-// ---------------------------------------------------------------------------
 // Command extraction — DRY adapter over parseRawHandoff
-// ---------------------------------------------------------------------------
 
 // extractDeclaredCommands lives in workflows/queue/shared/command-extraction.ts
 // to avoid a layer violation (orchestration importing from workflows).
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 export const DEFAULT_TIMEOUT_MS = 60_000;
 export const DEFAULT_DEADLINE_MS = 120_000;
 const MAX_OUTPUT_BYTES = 1_000_000; // 1MB
 
-// ---------------------------------------------------------------------------
 // Shared subprocess helper
-// ---------------------------------------------------------------------------
 
 function truncate(text: string, maxBytes: number): string {
   if (Buffer.byteLength(text) <= maxBytes) return text;
@@ -173,9 +160,7 @@ async function spawnWithTimeout(
   return { stdout, stderr, exitCode, durationMs };
 }
 
-// ---------------------------------------------------------------------------
 // Single command runner
-// ---------------------------------------------------------------------------
 
 async function runSingleCommand(
   command: string,
@@ -256,9 +241,7 @@ async function runSingleCommand(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Main entry point
-// ---------------------------------------------------------------------------
 
 export async function runNativeVerification(opts: {
   projectCwd: string;
@@ -329,9 +312,7 @@ export async function runNativeVerification(opts: {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Git diff check
-// ---------------------------------------------------------------------------
 
 async function runGitDiffCheck(
   cwd: string,

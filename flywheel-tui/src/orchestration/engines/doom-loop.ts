@@ -23,8 +23,6 @@ function extractToolSignature(name: string, input: Record<string, unknown>): str
   return `${name}(${parts.join(",")})`;
 }
 
-
-
 /**
  * Detects repetitive patterns in tool call sequences.
  *
@@ -130,9 +128,7 @@ class DoomLoopDetector implements StreamObserver {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createDoomLoopObserver(
   opts?: { threshold?: number },

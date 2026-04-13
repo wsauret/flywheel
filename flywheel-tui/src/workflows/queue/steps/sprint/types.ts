@@ -1,4 +1,3 @@
-// ---------------------------------------------------------------------------
 // Sprint Types — shared type definitions for sprint mode.
 //
 // Ported from src-legacy/queue/steps/sprint-work/sprint-types.ts
@@ -6,18 +5,13 @@
 //   - SprintLoopState uses a discriminated union (not two booleans)
 //   - SprintConfig derived from FlywheelConfig['sprint'] via z.infer
 //   - SPRINT_HINT is a typed const literal
-// ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
 // SPRINT_HINT — typed constant for dispatcher hint, scaffolding key,
 // and template registration. Never use a raw "sprint" string.
-// ---------------------------------------------------------------------------
 
 export const SPRINT_HINT = "sprint" as const;
 
-// ---------------------------------------------------------------------------
 // SprintIterationRecord — one iteration of the sprint loop
-// ---------------------------------------------------------------------------
 
 export interface SprintIterationRecord {
   /** 1-based iteration number. */
@@ -34,9 +28,7 @@ export interface SprintIterationRecord {
   _normalizedFeedback?: string;
 }
 
-// ---------------------------------------------------------------------------
 // SprintLoopState — sprint lifecycle tracking
-// ---------------------------------------------------------------------------
 
 export interface SprintLoopState {
   status: "running" | "completed" | "exhausted";

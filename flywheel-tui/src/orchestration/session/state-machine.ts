@@ -13,9 +13,7 @@
  */
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
 // Schema & type
-// ---------------------------------------------------------------------------
 
 export const SessionStateSchema = z.enum([
   "active",
@@ -25,9 +23,7 @@ export const SessionStateSchema = z.enum([
 
 export type SessionState = z.infer<typeof SessionStateSchema>;
 
-// ---------------------------------------------------------------------------
 // Transition table
-// ---------------------------------------------------------------------------
 
 /**
  * Exhaustive record of valid outbound transitions for each state.
@@ -41,9 +37,7 @@ export const VALID_TRANSITIONS: Readonly<
   completed: [],
 });
 
-// ---------------------------------------------------------------------------
 // Transition guard
-// ---------------------------------------------------------------------------
 
 /**
  * Pure function — returns `true` if transitioning from `from` to `to` is
@@ -57,9 +51,7 @@ export function isValidTransition(
   return targets.includes(to);
 }
 
-// ---------------------------------------------------------------------------
 // State predicates
-// ---------------------------------------------------------------------------
 
 /**
  * Returns `true` if a session in the given state can be resumed.

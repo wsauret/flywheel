@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Test Step — run a single step type in isolation with fixture data
-// ---------------------------------------------------------------------------
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -13,9 +11,7 @@ import { Log } from "../infra/log.js";
 
 const log = Log.create({ service: "test-step" });
 
-// ---------------------------------------------------------------------------
 // Test step definitions
-// ---------------------------------------------------------------------------
 
 export interface TestStepDef {
   /** Display name for the picker */
@@ -52,9 +48,7 @@ export const TEST_STEPS: TestStepDef[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
 // Fixture setup — copy plan/handoff files to .flywheel/
-// ---------------------------------------------------------------------------
 
 export interface FixtureSetupResult {
   planPath: string | null;
@@ -102,9 +96,7 @@ export function setupTestFixture(
   return { planPath, handoffData };
 }
 
-// ---------------------------------------------------------------------------
 // Queue construction — single step with optional seeded predecessor
-// ---------------------------------------------------------------------------
 
 export function buildTestQueue(
   stepDef: TestStepDef,
@@ -146,9 +138,7 @@ export function buildTestQueue(
   return queue;
 }
 
-// ---------------------------------------------------------------------------
 // Test workdir — isolate test step execution from the project directory
-// ---------------------------------------------------------------------------
 
 export interface TestWorkdir {
   /** Absolute path to the temp working directory. */

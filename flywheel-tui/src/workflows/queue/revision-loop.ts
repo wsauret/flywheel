@@ -1,12 +1,9 @@
-// ---------------------------------------------------------------------------
 // Revision Loop — Evaluator + Worker Retry Logic
-// ---------------------------------------------------------------------------
 //
 // Extracts the evaluate→revise→re-evaluate loop from the step executor.
 // Given a worker output and evaluation criteria, runs the evaluator and
 // (if configured) retries the worker up to maxRevisions times with
 // evaluator feedback appended to the prompt.
-// ---------------------------------------------------------------------------
 
 import type { Step } from "./types";
 import type {
@@ -22,9 +19,7 @@ import { Log } from "../../infra/log";
 
 const log = Log.create({ service: "step-executor" });
 
-// ---------------------------------------------------------------------------
 // Revision prompt builder
-// ---------------------------------------------------------------------------
 
 function buildRevisionPrompt(
   originalPrompt: string,
@@ -55,9 +50,7 @@ function buildRevisionPrompt(
   return sections.join("\n").trimEnd();
 }
 
-// ---------------------------------------------------------------------------
 // Revision loop dependencies
-// ---------------------------------------------------------------------------
 
 export interface RevisionLoopDeps {
   evaluator: EvaluatorFn;
@@ -70,9 +63,7 @@ export interface RevisionLoopDeps {
   onSubprocessDispatched?: (() => void) | null;
 }
 
-// ---------------------------------------------------------------------------
 // Revision loop result
-// ---------------------------------------------------------------------------
 
 export interface RevisionLoopResult {
   /** Final worker output after all revisions */
@@ -87,9 +78,7 @@ export interface RevisionLoopResult {
   failReason: string | null;
 }
 
-// ---------------------------------------------------------------------------
 // executeWithRevisions
-// ---------------------------------------------------------------------------
 
 /**
  * Run the evaluator on the worker output, then retry with feedback up to

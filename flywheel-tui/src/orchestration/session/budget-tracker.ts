@@ -35,9 +35,7 @@ import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
 import { ResultCostSchema, computeContextPercent } from "./budget-tracker-types.js";
 import type { BudgetTrackerDeps, BudgetTracker, ContextUtilization } from "./budget-tracker-types.js";
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   const { sessionId, baseDir, debounceMs = DEFAULT_DEBOUNCE_MS, emitter, workflowId, budgetLimits } = deps;
@@ -67,9 +65,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   let ctxPromptTokens = persisted?.budgetUsage?.context_prompt_tokens ?? 0;
   let ctxWindow = persisted?.budgetUsage?.context_window ?? 0;
 
-  // -------------------------------------------------------------------------
   // Persistence
-  // -------------------------------------------------------------------------
 
   function writeBudgetUsage(): void {
     if (!pendingWrite) return;
@@ -103,9 +99,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     timerId = setTimeout(writeBudgetUsage, debounceMs);
   }
 
-  // -------------------------------------------------------------------------
   // Event handling
-  // -------------------------------------------------------------------------
 
   function handleEvent(event: NDJSONEvent): void {
     // Handle result events (Claude Code stream-json format).
@@ -149,9 +143,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     }
   }
 
-  // -------------------------------------------------------------------------
   // Invocation tracking
-  // -------------------------------------------------------------------------
 
   function incrementInvocations(): void {
     invocationsUsed += 1;
@@ -162,9 +154,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     return invocationsUsed;
   }
 
-  // -------------------------------------------------------------------------
   // Accessors
-  // -------------------------------------------------------------------------
 
   function getTotalCost(): number {
     return totalCost;
@@ -174,9 +164,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     return tokensUsed;
   }
 
-  // -------------------------------------------------------------------------
   // Context utilization
-  // -------------------------------------------------------------------------
 
   function updateContextUtilization(promptTokens: number, contextWindow: number): void {
     if (promptTokens > 0) ctxPromptTokens = promptTokens;
@@ -187,9 +175,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     return { promptTokens: ctxPromptTokens, contextWindow: ctxWindow, percent: computeContextPercent(ctxPromptTokens, ctxWindow) };
   }
 
-  // -------------------------------------------------------------------------
   // Budget exhaustion
-  // -------------------------------------------------------------------------
 
   function isExhausted(budgetLimits: BudgetLimits): boolean {
     let exhausted = false;
@@ -224,17 +210,13 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     return exhausted;
   }
 
-  // -------------------------------------------------------------------------
   // Subprocess process boundary
-  // -------------------------------------------------------------------------
 
   function onNewSubprocess(): void {
     lastSeenCost = 0;
   }
 
-  // -------------------------------------------------------------------------
   // Lifecycle
-  // -------------------------------------------------------------------------
 
   function flush(): void {
     if (timerId !== null) {

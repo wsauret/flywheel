@@ -1,11 +1,8 @@
-// ---------------------------------------------------------------------------
 // Shared handoff data parser
-// ---------------------------------------------------------------------------
 //
 // Extracts common fields from a raw `Record<string, unknown>` handoff.
 // Used by both the step-dispatcher (LastWorkerResult) and the evaluator
 // (EvaluatorInput handoff) to avoid duplicating extraction logic.
-// ---------------------------------------------------------------------------
 
 /** Parsed handoff — the shared superset of fields both consumers need. */
 export interface ParsedHandoff {

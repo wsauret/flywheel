@@ -11,15 +11,11 @@
  * - Input/output fields are 4KB byte-capped via truncateField()
  */
 
-// ---------------------------------------------------------------------------
 // SpanKind — string union
-// ---------------------------------------------------------------------------
 
 export type SpanKind = "workflow" | "step" | "worker" | "subagent" | "tool_call";
 
-// ---------------------------------------------------------------------------
 // Per-kind input/output types
-// ---------------------------------------------------------------------------
 
 interface WorkflowSpanInput {
   stepIds: string[];
@@ -74,9 +70,7 @@ interface ToolCallSpanOutput {
   isError: boolean;
 }
 
-// ---------------------------------------------------------------------------
 // SpanBase — shared fields
-// ---------------------------------------------------------------------------
 
 interface SpanBase {
   spanId: string;
@@ -90,9 +84,7 @@ interface SpanBase {
   error: { message: string; code?: string } | null;
 }
 
-// ---------------------------------------------------------------------------
 // Discriminated union
-// ---------------------------------------------------------------------------
 
 interface WorkflowSpan extends SpanBase {
   kind: "workflow";
@@ -126,9 +118,7 @@ interface ToolCallSpan extends SpanBase {
 
 export type Span = WorkflowSpan | StepSpan | WorkerSpan | SubagentSpan | ToolCallSpan;
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Serialize a value to JSON and truncate to `maxBytes` bytes.

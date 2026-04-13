@@ -22,9 +22,7 @@ import type { EventBus, EmitFn, Unsubscribe } from "../../infra/event-bus"
 import type { BudgetLimits } from "../../workflows/schemas"
 import { extractContextUpdate, contextWindowForModel } from "../engines/providers/claude-context"
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface SessionInfraDeps {
   sessionId: string
@@ -49,9 +47,7 @@ export interface SessionInfra {
   traceCollector: TraceCollector | null
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
   const { sessionId, projectCwd, config, description } = deps
@@ -93,9 +89,7 @@ export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
   return { budgetTracker, traceWriter, transcriptWriter, traceCollector }
 }
 
-// ---------------------------------------------------------------------------
 // Shared EventBus subscriber wiring
-// ---------------------------------------------------------------------------
 
 /** Callback to write budget metrics directly to the session store. */
 export type MetricsWriter = (patch: { tokens: number; cost: number; contextPercent: number }) => void

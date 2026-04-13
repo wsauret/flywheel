@@ -19,7 +19,7 @@ JSON object with:
 - \`workflow_id\`: Execution ID for traceability
 - \`workflow\`: Step context (\`workflow.name\`, \`workflow.step_number\`, \`workflow.total_steps\`, \`workflow.step_description\`)
 - \`last_worker_result\`: Previous step results (step, status, output_summary, artifacts_produced, tests_passed, decisions, warnings)
-- \`config\`: Runtime config (\`config.max_eval_cycles\`, \`config.worktree_path\`, \`config.project_cwd\`, \`config.subprocess_model\`, \`config.dispatcher_model\`)
+- \`config\`: Runtime config (\`config.max_eval_cycles\`, \`config.project_cwd\`, \`config.subprocess_model\`, \`config.dispatcher_model\`)
 - \`session_budget\`: Remaining budget (\`session_budget.invocations_remaining\`, token_budget_remaining, wall_clock_deadline)
 - \`available_context\`: Metadata for conventions, standards, and learnings (name, path, summary each). May include \`chatHistory\` — a recent conversation between the user and assistant that preceded this workflow. Use it to understand intent, constraints, and decisions already made.
 - \`step_context\`: Accumulated decisions, issues, and artifacts from previous steps (cumulative_decisions, cumulative_issues, cumulative_artifacts, cumulative_warnings, step_count)

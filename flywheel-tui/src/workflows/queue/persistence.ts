@@ -32,15 +32,11 @@ import { resolveSessionFile } from "../../infra/paths";
 import type { Queue } from "./types";
 import type { AccumulatorState } from "./context-accumulator";
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 const DEFAULT_FLUSH_INTERVAL_MS = 500;
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface QueuePersistenceDeps {
   /** Session ID — used to derive the file path. */
@@ -80,9 +76,7 @@ export interface QueuePersistence {
   loadAccumulatorState(): Promise<AccumulatorState | null>;
 }
 
-// ---------------------------------------------------------------------------
 // Crash recovery — mark running steps as failed on load
-// ---------------------------------------------------------------------------
 
 function applyCrashRecovery(queue: Queue): void {
   const runningStepIds: string[] = [];
@@ -105,9 +99,7 @@ function applyCrashRecovery(queue: Queue): void {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersistence {
   const {

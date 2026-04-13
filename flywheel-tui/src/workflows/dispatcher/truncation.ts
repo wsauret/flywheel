@@ -8,9 +8,7 @@
 
 import type { DispatcherInput } from "./schemas.js";
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 /** Maximum serialized size in bytes before truncation kicks in. */
 const BUDGET_TOTAL = 102_400; // 100KB
@@ -18,9 +16,7 @@ const BUDGET_TOTAL = 102_400; // 100KB
 /** Number of entries to keep per available_context category after truncation. */
 const MAX_CONTEXT_ENTRIES = 10;
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Apply budget-aware safety-valve truncation to a DispatcherInput.
@@ -42,9 +38,7 @@ export function applyBudgetTruncation(input: DispatcherInput): boolean {
   return true;
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function byteLength(str: string): number {
   return Buffer.byteLength(str, "utf8");

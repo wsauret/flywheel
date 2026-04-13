@@ -51,8 +51,6 @@ export class StructuredOutputBuilder {
   /** Context tool grouping — groups consecutive context tools into synthetic AgentBlocks. */
   private readonly contextTracker: ContextGroupTracker;
 
-  onAgentActivity?: (agentId: string) => void;
-  onAgentLifecycle?: (type: "start" | "complete" | "error", agentId: string) => void;
   onModelActivityChange?: (activity: ModelActivity) => void;
   private thinkingStartedAt: number | null = null;
 
@@ -223,10 +221,7 @@ export class StructuredOutputBuilder {
 
   private appendToolToAgent(agentId: string, tool: ToolBlock): boolean {
     const ok = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
-    if (ok) {
-      this.markDirty();
-      this.onAgentActivity?.(agentId);
-    }
+    if (ok) this.markDirty();
     return ok;
   }
 
@@ -246,7 +241,6 @@ export class StructuredOutputBuilder {
     this.agentIndexById.set(id, idx);
     this.enforceBlocksCap();
     this.markDirty();
-    this.onAgentLifecycle?.("start", id);
   }
 
   completeAgent(id: string, duration: number, description?: string): void {
@@ -264,7 +258,6 @@ export class StructuredOutputBuilder {
       ...(description !== undefined ? { description } : {}),
     };
     this.markDirty();
-    this.onAgentLifecycle?.("complete", id);
   }
 
   errorAgent(id: string, message: string): void {
@@ -273,9 +266,7 @@ export class StructuredOutputBuilder {
 
     const agent = this.blocks[idx] as AgentBlock;
     this.blocks[idx] = { ...agent, status: "error", errorMessage: message };
-
     this.markDirty();
-    this.onAgentLifecycle?.("error", id);
   }
 
   /** Update agent's latestChild display without adding a child block. */
@@ -288,7 +279,6 @@ export class StructuredOutputBuilder {
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
     this.markDirty();
-    this.onAgentActivity?.(id);
   }
 
   /** Auto-complete active subagent blocks (top-level output means all subagents are done). */

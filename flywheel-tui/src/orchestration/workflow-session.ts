@@ -12,9 +12,7 @@ import { EventBus } from "../infra/event-bus";
 import type { EngineMetadata } from "./engines/core/types";
 import type { WorkflowSessionEntry } from "./session-store-types";
 
-// ---------------------------------------------------------------------------
 // Narrow interfaces — what orchestration needs from TUI primitives
-// ---------------------------------------------------------------------------
 
 /** Minimal adapter interface used by the orchestration layer. */
 export interface WorkflowAdapter {
@@ -24,26 +22,20 @@ export interface WorkflowAdapter {
   disconnect(): void;
 }
 
-// ---------------------------------------------------------------------------
 // Session type
-// ---------------------------------------------------------------------------
 
 export interface WorkflowSession {
   adapter: WorkflowAdapter;
   eventBus: EventBus;
 }
 
-// ---------------------------------------------------------------------------
 // Factory type
-// ---------------------------------------------------------------------------
 
 export interface WorkflowSessionFactories {
   createAdapter: (opts: { updateEntry: (patch: Partial<WorkflowSessionEntry>) => void; engineMetadata?: EngineMetadata }) => WorkflowAdapter;
 }
 
-// ---------------------------------------------------------------------------
 // Create / Destroy
-// ---------------------------------------------------------------------------
 
 export interface CreateWorkflowSessionOpts {
   description: string;

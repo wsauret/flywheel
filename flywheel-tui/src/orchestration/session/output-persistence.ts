@@ -32,16 +32,12 @@ import {
 } from "../../workflows/shared/debounced-writer";
 import { resolveSessionFile, ensureSessionDir } from "../../infra/paths";
 
-// ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
 
 const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const DEFAULT_FLUSH_INTERVAL_MS = 5000; // 5 seconds
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface OutputPersistenceDeps {
   sessionId: string;
@@ -73,9 +69,7 @@ export interface OutputPersistence {
   createFlusher(getBlocks: () => readonly AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPersistence {
   const { sessionId, baseDir = ".", maxSizeBytes = DEFAULT_MAX_SIZE_BYTES } = deps;

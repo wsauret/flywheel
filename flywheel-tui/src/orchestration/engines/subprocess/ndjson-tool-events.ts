@@ -7,9 +7,7 @@
 
 import type { NDJSONEvent } from "../../../infra/subprocess-types";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface ToolUseRecord {
   toolUseId: string;
@@ -23,9 +21,7 @@ export interface ToolResultRecord {
   toolOutput: unknown;
 }
 
-// ---------------------------------------------------------------------------
 // Extractors
-// ---------------------------------------------------------------------------
 
 /**
  * Extract tool_use records from an assistant NDJSON event.

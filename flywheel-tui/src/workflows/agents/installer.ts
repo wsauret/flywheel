@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Agent Installer — syncs persona + skill files to Claude Code discovery paths
-// ---------------------------------------------------------------------------
 //
 // Claude Code discovers agents and skills from:
 //
@@ -13,7 +11,6 @@
 // agents can load the skills they reference.
 //
 // Idempotent: overwrites files that changed, skips identical ones.
-// ---------------------------------------------------------------------------
 
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
@@ -23,9 +20,7 @@ import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "agent-installer" });
 
-// ---------------------------------------------------------------------------
 // Source directories — bundled personas and skills in the repo
-// ---------------------------------------------------------------------------
 
 function getAgentSourceDir(): string {
   const thisDir = new URL(".", import.meta.url).pathname;
@@ -37,9 +32,7 @@ function getSkillSourceDir(): string {
   return join(thisDir, "skills");
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 export interface InstallResult {
   installed: number;
@@ -47,9 +40,7 @@ export interface InstallResult {
   errors: string[];
 }
 
-// ---------------------------------------------------------------------------
 // Shared helpers
-// ---------------------------------------------------------------------------
 
 /** Write a file if its content differs from what's already on disk. */
 async function writeIfChanged(
@@ -66,9 +57,7 @@ async function writeIfChanged(
   return "installed";
 }
 
-// ---------------------------------------------------------------------------
 // Agent installation
-// ---------------------------------------------------------------------------
 
 async function installAgentFiles(result: InstallResult): Promise<void> {
   const sourceDir = getAgentSourceDir();
@@ -106,9 +95,7 @@ async function installAgentFiles(result: InstallResult): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Skill installation
-// ---------------------------------------------------------------------------
 
 async function installSkillFiles(result: InstallResult): Promise<void> {
   const sourceDir = getSkillSourceDir();
@@ -175,9 +162,7 @@ async function installSkillFiles(result: InstallResult): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Install agent persona and skill files to Claude Code discovery paths.

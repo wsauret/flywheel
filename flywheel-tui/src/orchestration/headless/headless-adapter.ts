@@ -9,7 +9,7 @@
  * Exhaustiveness is enforced at compile time via `satisfies`.
  */
 
-import * as fs from "node:fs"
+import { mkdirSync, existsSync } from "node:fs"
 import * as path from "node:path"
 import { BaseEventConsumer } from "../../infra/base-event-consumer"
 import type { FlywheelEvent } from "../../infra/events"
@@ -29,9 +29,7 @@ export interface HeadlessAdapterOptions {
   timestamps?: boolean
 }
 
-// ---------------------------------------------------------------------------
 // Data-driven event handler mapping
-// ---------------------------------------------------------------------------
 
 type LogLevel = "minimal" | "normal" | "verbose"
 
@@ -102,9 +100,7 @@ const EVENT_HANDLERS = {
   "trace:subagent-completed": { minLevel: "verbose", format: (e) => `  Trace: subagent completed — ${e.toolUseId}${e.isError ? " [ERROR]" : ""}` },
 } satisfies Record<FlywheelEvent["type"], EventSpec>
 
-// ---------------------------------------------------------------------------
 // Adapter class
-// ---------------------------------------------------------------------------
 
 /**
  * HeadlessAdapter - Logs workflow events without visual UI
@@ -116,29 +112,27 @@ const EVENT_HANDLERS = {
  */
 export class HeadlessAdapter extends BaseEventConsumer {
   private logFile: string | null = null
-  private logStream: fs.WriteStream | null = null
+  private logWriter: import("bun").FileSink | null = null
   private logLevel: LogLevel
   private customLogger: ((message: string) => void) | null = null
   private showTimestamps: boolean
-  private closingPromise: Promise<void> | null = null
 
   constructor(options: HeadlessAdapterOptions = {}) {
     super()
-    this.logFile = options.logFile || null
-    this.logLevel = options.logLevel || "normal"
-    this.customLogger = options.logger || null
+    this.logFile = options.logFile ?? null
+    this.logLevel = options.logLevel ?? "normal"
+    this.customLogger = options.logger ?? null
     this.showTimestamps = options.timestamps ?? true
   }
 
   start(): void {
     super.start()
-    this.closingPromise = null
     if (this.logFile) {
       const dir = path.dirname(this.logFile)
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true })
       }
-      this.logStream = fs.createWriteStream(this.logFile, { flags: "a" })
+      this.logWriter = Bun.file(this.logFile).writer()
     }
     this.log("Workflow adapter started (headless)")
   }
@@ -154,24 +148,13 @@ export class HeadlessAdapter extends BaseEventConsumer {
     super.disconnect()
   }
 
-  /**
-   * Close the log stream if open. Returns a promise that resolves
-   * when the stream has fully flushed (useful for tests).
-   * Safe to call multiple times — subsequent calls return the same promise.
-   */
-  closeLogStream(): Promise<void> {
-    if (this.closingPromise) {
-      return this.closingPromise
+  /** Flush and close the log writer. Safe to call multiple times. */
+  closeLogStream(): void {
+    if (this.logWriter) {
+      this.logWriter.flush()
+      this.logWriter.end()
+      this.logWriter = null
     }
-    if (this.logStream) {
-      const stream = this.logStream
-      this.logStream = null
-      this.closingPromise = new Promise((resolve) => {
-        stream.end(() => resolve())
-      })
-      return this.closingPromise
-    }
-    return Promise.resolve()
   }
 
   protected handleEvent(event: FlywheelEvent): void {
@@ -193,8 +176,8 @@ export class HeadlessAdapter extends BaseEventConsumer {
 
     if (this.customLogger) {
       this.customLogger(fullMessage)
-    } else if (this.logStream) {
-      this.logStream.write(fullMessage + "\n")
+    } else if (this.logWriter) {
+      this.logWriter.write(fullMessage + "\n")
     } else {
       Log.create({ service: "headless-adapter" }).info(fullMessage)
     }

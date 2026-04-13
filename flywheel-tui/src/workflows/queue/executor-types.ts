@@ -1,18 +1,13 @@
-// ---------------------------------------------------------------------------
 // Step Executor — Type Definitions
-// ---------------------------------------------------------------------------
 //
 // All DI interfaces, option types, and result types used by the step
 // executor and its sub-modules (step-runner, revision-loop).
-// ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types";
 import type { OnStepCompletedHook } from "./shared/hooks";
 import type { EmitFn } from "../../infra/event-bus";
 
-// ---------------------------------------------------------------------------
 // Types — Dependency Injection interfaces
-// ---------------------------------------------------------------------------
 
 /** Result from worker execution */
 export interface WorkerOutput {
@@ -80,9 +75,7 @@ export interface StepContextAccumulator {
   serialize?(): unknown;
 }
 
-// ---------------------------------------------------------------------------
 // StepExecutorOptions — all dependencies injected (core + hooks)
-// ---------------------------------------------------------------------------
 
 /** Required core options for step execution. */
 export interface StepExecutorCoreOptions {
@@ -176,9 +169,7 @@ export interface StepExecutorHooks {
 /** Full options = core + hooks. */
 export type StepExecutorOptions = StepExecutorCoreOptions & StepExecutorHooks;
 
-// ---------------------------------------------------------------------------
 // PostTurnVerificationHook — named type alias for the hook function
-// ---------------------------------------------------------------------------
 
 export type PostTurnVerificationHook = (ctx: {
   step: Step;
@@ -186,9 +177,7 @@ export type PostTurnVerificationHook = (ctx: {
   handoffData: Record<string, unknown> | null;
 }) => Promise<PostTurnVerificationResult | null>;
 
-// ---------------------------------------------------------------------------
 // PostTurnVerificationResult — returned by the post-turn verification hook
-// ---------------------------------------------------------------------------
 
 /** Minimal check result — avoids importing NativeCheckResult from orchestration layer. */
 export interface VerificationCheckResult {
@@ -208,9 +197,7 @@ export interface PostTurnVerificationResult {
   checks: VerificationCheckResult[];
 }
 
-// ---------------------------------------------------------------------------
 // StepExecutorResult — what run() returns
-// ---------------------------------------------------------------------------
 
 export interface StepExecutorResult {
   /** Whether all steps completed successfully */
@@ -223,9 +210,7 @@ export interface StepExecutorResult {
   reason?: string;
 }
 
-// ---------------------------------------------------------------------------
 // StepExecutor interface — returned by factory
-// ---------------------------------------------------------------------------
 
 export interface StepExecutor {
   /** Run the queue to completion (or until stopped) */

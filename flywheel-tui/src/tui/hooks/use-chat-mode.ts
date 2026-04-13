@@ -26,10 +26,10 @@ export interface ChatModeHook {
   /** Resume a previous chat session, loading its persisted output blocks. */
   resumeChat(sessionId: string): Promise<void>
   /** Put the current chat in the background without ending it. */
-  backgroundChat(): void
+  backgroundChat(): Promise<void>
   interruptChat(): void
   /** Close the foreground chat — removes from store and marks paused. */
-  endChat(): void
+  endChat(): Promise<void>
   sendMessage(text: string): void
 }
 
@@ -86,17 +86,17 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     })
   }
 
-  function backgroundChat(): void {
-    controller.backgroundChat(signals.foregroundId())
+  async function backgroundChat(): Promise<void> {
+    await controller.backgroundChat(signals.foregroundId())
     batch(() => {
       setChatActive(false)
       signals.setForegroundId(undefined)
     })
   }
 
-  function endChat(): void {
+  async function endChat(): Promise<void> {
     const fgId = signals.foregroundId()
-    const ended = controller.endChat(fgId)
+    const ended = await controller.endChat(fgId)
     if (ended) {
       batch(() => {
         setChatActive(false)

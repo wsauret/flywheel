@@ -79,9 +79,7 @@ export class EventBus {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Generic typed emitter
-// ---------------------------------------------------------------------------
 
 /**
  * Type-safe event emitter. Payload shape is inferred from the event type string

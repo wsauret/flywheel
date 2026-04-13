@@ -25,9 +25,7 @@ import {
   type AnyBlock,
 } from "../../infra/output-blocks";
 
-// ---------------------------------------------------------------------------
 // Persistence variants — derived from canonical schemas
-// ---------------------------------------------------------------------------
 
 /** ToolBlock on disk: core fields only, runtime rendering state stripped. */
 const ToolSnapshotSchema = ToolBlockSchema.pick({
@@ -53,9 +51,7 @@ const ContextGroupSnapshotSchema = ContextGroupBlockSchema
   .omit({ tools: true })
   .extend({ tools: z.array(ToolSnapshotSchema) });
 
-// ---------------------------------------------------------------------------
 // Discriminated union
-// ---------------------------------------------------------------------------
 
 export const OutputSnapshotSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
@@ -70,9 +66,7 @@ export const OutputSnapshotSchema = z.discriminatedUnion("kind", [
 
 export type OutputSnapshot = z.infer<typeof OutputSnapshotSchema>;
 
-// ---------------------------------------------------------------------------
 // Converters
-// ---------------------------------------------------------------------------
 
 /**
  * Convert runtime blocks to serializable snapshots.

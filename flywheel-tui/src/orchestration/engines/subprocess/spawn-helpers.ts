@@ -16,9 +16,7 @@ import { createSubprocessTimeout } from "./timeout.js";
 import { resolveSessionHandoffsDir } from "../../../infra/paths.js";
 import { errorMessage } from "../../../infra/error-message.js";
 
-// ---------------------------------------------------------------------------
 // Argument validation
-// ---------------------------------------------------------------------------
 
 /**
  * Shell metacharacter regex — reject args that could cause shell injection.
@@ -42,9 +40,7 @@ export function validateSpawnArgs(command: string, _args: readonly string[]): vo
   }
 }
 
-// ---------------------------------------------------------------------------
 // Signal detection
-// ---------------------------------------------------------------------------
 
 /**
  * Check if an exit code indicates the process was killed by a signal.
@@ -62,9 +58,7 @@ export function isSignalExit(exitCode: number): boolean {
       || exitCode === 137;  // SIGKILL
 }
 
-// ---------------------------------------------------------------------------
 // Command resolution
-// ---------------------------------------------------------------------------
 
 /**
  * Resolve a command name to its full executable path using Bun.which().
@@ -93,9 +87,7 @@ export function resolveCommandExecutable(command: string): string {
   return command;
 }
 
-// ---------------------------------------------------------------------------
 // Stream reader types and helpers
-// ---------------------------------------------------------------------------
 
 /** Minimal reader interface that avoids Bun's non-standard ReadableStreamDefaultReader extensions. */
 export type MinimalReader = {
@@ -132,9 +124,7 @@ export function createStreamReaderSet(signal: AbortSignal): StreamReaderSet {
   return set;
 }
 
-// ---------------------------------------------------------------------------
 // Result builders
-// ---------------------------------------------------------------------------
 
 export interface ResultContext {
   ndjsonParser: NDJSONParser;
@@ -199,9 +189,7 @@ export function buildErrorResult(ctx: ResultContext, error: unknown): Subprocess
   };
 }
 
-// ---------------------------------------------------------------------------
 // Stream reading
-// ---------------------------------------------------------------------------
 
 /**
  * Read a stream to completion, collecting raw chunks and invoking callbacks.
@@ -231,9 +219,7 @@ export async function readStream(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Stdout processing
-// ---------------------------------------------------------------------------
 
 /** Stdout processing state for the readStdout pipeline. */
 export interface StdoutProcessorState {
@@ -270,9 +256,7 @@ export function createStdoutProcessor(
   };
 }
 
-// ---------------------------------------------------------------------------
 // Handoff path resolution
-// ---------------------------------------------------------------------------
 
 export function resolveHandoffPath(options: SpawnOptions | undefined): string {
   if (options?.sessionId && options?.handoffFileName) {
@@ -290,9 +274,7 @@ export function resolveHandoffPath(options: SpawnOptions | undefined): string {
   return "";
 }
 
-// ---------------------------------------------------------------------------
 // Stdin handle (pipe mode)
-// ---------------------------------------------------------------------------
 
 export function createStdinHandle(
   stdinSink: import("bun").FileSink,

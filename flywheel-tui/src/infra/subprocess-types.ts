@@ -7,9 +7,7 @@
 
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
 // SubprocessFailureReason — discriminated union of failure kinds
-// ---------------------------------------------------------------------------
 
 export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("timeout"), timeoutMs: z.number(), message: z.string() }),
@@ -25,9 +23,7 @@ export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
 
 export type SubprocessFailureReason = z.infer<typeof SubprocessFailureReasonSchema>;
 
-// ---------------------------------------------------------------------------
 // SubprocessResult — output of a subprocess execution
-// ---------------------------------------------------------------------------
 
 export const SubprocessResultSchema = z.object({
   output: z.string(),
@@ -43,9 +39,7 @@ export const SubprocessResultSchema = z.object({
 
 export type SubprocessResult = z.infer<typeof SubprocessResultSchema>;
 
-// ---------------------------------------------------------------------------
 // NDJSONEvent — a parsed NDJSON event from subprocess output
-// ---------------------------------------------------------------------------
 
 /** Known NDJSON event types from worker output. */
 export type NDJSONEventType =

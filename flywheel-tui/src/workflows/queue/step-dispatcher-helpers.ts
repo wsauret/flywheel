@@ -1,11 +1,8 @@
-// ---------------------------------------------------------------------------
 // Step Dispatcher Helpers — pure data transformation functions
-// ---------------------------------------------------------------------------
 //
 // Extracted from step-dispatcher.ts for SRP. These functions assemble,
 // convert, and normalize data structures for the step dispatcher without
 // depending on the dispatcher's closure state.
-// ---------------------------------------------------------------------------
 
 import type { Step, Queue } from "./types.js";
 import type { StepType } from "../../infra/step-types.js";
@@ -26,9 +23,7 @@ function toStepType(raw: string): StepType {
   return VALID_STEP_TYPES.has(raw) ? (raw as StepType) : "work";
 }
 
-// ---------------------------------------------------------------------------
 // buildCompactQueueState
-// ---------------------------------------------------------------------------
 
 /**
  * Build compact queue state for the dispatcher.
@@ -51,9 +46,7 @@ export function buildCompactQueueState(
   };
 }
 
-// ---------------------------------------------------------------------------
 // handoffToLastWorkerResult
-// ---------------------------------------------------------------------------
 
 /**
  * Convert a previous handoff to LastWorkerResult format.
@@ -74,9 +67,7 @@ export function handoffToLastWorkerResult(
   };
 }
 
-// ---------------------------------------------------------------------------
 // accumulatedToStepContext
-// ---------------------------------------------------------------------------
 
 /**
  * Convert accumulated context to StepContext for the dispatcher input.
@@ -120,9 +111,7 @@ export function accumulatedToStepContext(
   return ctx;
 }
 
-// ---------------------------------------------------------------------------
 // buildPlanFromQueue
-// ---------------------------------------------------------------------------
 
 interface PlanStepCompact {
   title: string;
@@ -160,9 +149,7 @@ export function buildPlanFromQueue(
   return { steps };
 }
 
-// ---------------------------------------------------------------------------
 // buildStepDescription
-// ---------------------------------------------------------------------------
 
 /**
  * Build step description — rich context string for the dispatcher.
@@ -215,9 +202,7 @@ export function buildStepDescription(step: Step, context: StepDispatchContext): 
   return parts.join("\n");
 }
 
-// ---------------------------------------------------------------------------
 // injectAssessmentIntoContext
-// ---------------------------------------------------------------------------
 
 /**
  * Inject evaluator assessment into step context as warnings.
@@ -248,9 +233,7 @@ export function injectAssessmentIntoContext(
   }
 }
 
-// ---------------------------------------------------------------------------
 // normalizeDecision
-// ---------------------------------------------------------------------------
 
 /**
  * Normalize DispatcherDecision to StepDispatcherDecision.

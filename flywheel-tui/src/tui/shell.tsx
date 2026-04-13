@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, createMemo, createEffect, For, Show, onCleanup } from "solid-js"
+import { createSignal, createMemo, For, Show, onCleanup } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { createTextAttributes } from "@opentui/core"
 import type { TextareaRenderable, TextareaAction } from "@opentui/core"
@@ -108,12 +108,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   })
 
   const runningCount = sessionStore.runningCount
-
-  // ── Timer — reactive: runs only when the agent is actively working ──
-  createEffect(() => {
-    if (signals.agentState() === "active") metrics.startTimer()
-    else metrics.pauseTimer()
-  })
 
   // ── Keyboard ──
   const handleKey = createKeyboardHandler({

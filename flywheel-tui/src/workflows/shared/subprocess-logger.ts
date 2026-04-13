@@ -18,9 +18,7 @@ import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "subprocess-logger" });
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export type SubprocessRole = "worker" | "dispatcher" | "evaluator";
 
@@ -35,9 +33,7 @@ export interface SubprocessLoggerOptions {
   sessionId?: string;
 }
 
-// ---------------------------------------------------------------------------
 // SubprocessLogger
-// ---------------------------------------------------------------------------
 
 export class SubprocessLogger {
   private readonly fd: number;
@@ -125,9 +121,7 @@ export class SubprocessLogger {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Helper: createLoggedCallbacks
-// ---------------------------------------------------------------------------
 
 /**
  * Wrap onStdout/onStderr callbacks to log AND forward to upstream callbacks.

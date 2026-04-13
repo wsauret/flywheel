@@ -1,6 +1,4 @@
-// ---------------------------------------------------------------------------
 // Context Accumulator — Windowed Detail Strategy (ADR-004 Decision 8)
-// ---------------------------------------------------------------------------
 //
 // Accumulates handoff data from completed steps. Uses a windowed detail
 // strategy: the last N handoffs are kept in full detail; older handoffs
@@ -14,13 +12,10 @@
 // Terminology:
 //   HandoffEntry — full-detail record of a step's handoff
 //   HandoffSummary — compressed record of an older step's handoff
-// ---------------------------------------------------------------------------
 
 import type { StepType } from "../../infra/step-types";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 /** Full-detail handoff entry for recent steps. */
 export interface HandoffEntry {
@@ -71,9 +66,7 @@ export interface AccumulatedContext {
   [key: string]: unknown;
 }
 
-// ---------------------------------------------------------------------------
 // Extraction helpers — pull key fields from raw handoff data
-// ---------------------------------------------------------------------------
 
 function extractStringArray(
   data: Record<string, unknown>,
@@ -111,9 +104,7 @@ function summarizeEntry(entry: HandoffEntry): HandoffSummary {
   };
 }
 
-// ---------------------------------------------------------------------------
 // ContextAccumulator — the accumulator interface (replaces stub)
-// ---------------------------------------------------------------------------
 
 /**
  * ContextAccumulator extends the executor's StepContextAccumulator interface
@@ -139,9 +130,7 @@ export interface ContextAccumulator {
   size(): number;
 }
 
-// ---------------------------------------------------------------------------
 // Options
-// ---------------------------------------------------------------------------
 
 export interface ContextAccumulatorOptions {
   /** Number of recent handoffs to keep in full detail. Default: 3. */
@@ -150,9 +139,7 @@ export interface ContextAccumulatorOptions {
   initialState?: AccumulatorState;
 }
 
-// ---------------------------------------------------------------------------
 // createContextAccumulator — factory function
-// ---------------------------------------------------------------------------
 
 export function createContextAccumulator(
   opts?: ContextAccumulatorOptions,

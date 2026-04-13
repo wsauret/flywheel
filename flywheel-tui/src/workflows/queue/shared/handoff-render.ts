@@ -7,9 +7,7 @@ export interface HandoffFieldSpec {
   required?: boolean;
 }
 
-// ---------------------------------------------------------------------------
 // Shared preamble + rules used by all handoff instruction renderers
-// ---------------------------------------------------------------------------
 
 function renderHandoffPreamble(role: string, handoffPath: string): string {
   return `## ${role} Handoff Instructions

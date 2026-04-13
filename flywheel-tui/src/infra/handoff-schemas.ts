@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
 // Content quality helpers
-// ---------------------------------------------------------------------------
 
 function countSentences(text: string): number {
   const normalized = text.replace(/\s+/g, " ").trim().replace(/[.!?]+\s*$/, "");
@@ -10,11 +8,9 @@ function countSentences(text: string): number {
   return normalized.split(/[.!?]+\s+/).filter(Boolean).length;
 }
 
-// ---------------------------------------------------------------------------
 // Sub-schemas (all .strict() — LLM typos should cause retries)
 // Exported for direct test validation (tests/schemas/handoff.test.ts).
 // Inferred types (Artifacts, Verification, etc.) are file-private — no external consumers.
-// ---------------------------------------------------------------------------
 
 const CommandRunEntrySchema = z.union([
   z.string(),
@@ -75,9 +71,7 @@ export const CompoundDocSchema = z.object({
 
 type CompoundDoc = z.infer<typeof CompoundDocSchema>;
 
-// ---------------------------------------------------------------------------
 // Skill feedback sub-schemas
-// ---------------------------------------------------------------------------
 
 export const SkillDeviationSchema = z.object({
   step: z.string().describe("Which skill step you deviated from"),
@@ -98,9 +92,7 @@ export const SkillFeedbackSchema = z.object({
     .describe("Suggestions for improving the skill (optional)"),
 }).strict();
 
-// ---------------------------------------------------------------------------
 // SubprocessHandoffSchema
-// ---------------------------------------------------------------------------
 
 const SUMMARY_MIN_LENGTH = 20;
 const SUMMARY_MAX_LENGTH = 5000;

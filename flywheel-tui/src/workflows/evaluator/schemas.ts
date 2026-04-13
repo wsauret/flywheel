@@ -2,9 +2,7 @@ import { z } from "zod";
 import { SubprocessHandoffBaseSchema } from "../../infra/handoff-schemas";
 import { StepContextSchema } from "../queue/step-context";
 
-// ---------------------------------------------------------------------------
 // Evaluator issue sub-schemas
-// ---------------------------------------------------------------------------
 
 export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"]);
 
@@ -25,9 +23,7 @@ export const EvaluatorIssueSchema = z.object({
   category: EvaluatorIssueCategoryEnum,
 }).strict();
 
-// ---------------------------------------------------------------------------
 // EvaluatorVerdictSchema (handoff written by evaluator subprocess)
-// ---------------------------------------------------------------------------
 
 export const EvaluatorVerdictSchema = z.object({
   passed: z.boolean(),
@@ -43,9 +39,7 @@ export const EvaluatorVerdictSchema = z.object({
 
 export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
 
-// ---------------------------------------------------------------------------
 // EvaluatorHandoffDataSchema (projection of worker handoff for evaluator)
-// ---------------------------------------------------------------------------
 
 export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
   summary: true,
@@ -56,9 +50,7 @@ export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
   decisions: true,
 });
 
-// ---------------------------------------------------------------------------
 // EvaluatorInputSchema
-// ---------------------------------------------------------------------------
 
 export const EvaluatorInputSchema = z.object({
   worker_output: z.string(),

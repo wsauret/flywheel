@@ -29,9 +29,7 @@ import {
   wireCompletionDetection,
 } from "./pipe-helpers.js";
 
-// ---------------------------------------------------------------------------
 // RawSpawnedProcess — output of process creation, input to pipeline wiring
-// ---------------------------------------------------------------------------
 
 export interface RawSpawnedProcess {
   proc: { pid: number; exited: Promise<number>; kill(signal?: number): void };
@@ -43,9 +41,7 @@ export interface RawSpawnedProcess {
   unregister: () => void;
 }
 
-// ---------------------------------------------------------------------------
 // StreamPipelineOptions
-// ---------------------------------------------------------------------------
 
 export interface StreamPipelineOptions {
   /** Timeout in milliseconds for the subprocess. */
@@ -54,9 +50,7 @@ export interface StreamPipelineOptions {
   spawnOptions?: SpawnOptions;
 }
 
-// ---------------------------------------------------------------------------
 // wireStreamPipeline
-// ---------------------------------------------------------------------------
 
 /**
  * Consume the raw streams of a spawned process and wire up the full

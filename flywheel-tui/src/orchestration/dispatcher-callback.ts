@@ -18,9 +18,7 @@ import type { AvailableContext } from "../workflows/schemas"
 
 const log = Log.create({ service: "dispatcher-callback" })
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface DispatcherCallbackDeps {
   maxRevisions: number | undefined
@@ -55,9 +53,7 @@ export type DispatcherFn = (
   context: { previousHandoff?: Record<string, unknown>; previousAssessment?: EvalResult | null },
 ) => Promise<DispatcherResult>
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {

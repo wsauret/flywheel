@@ -23,9 +23,7 @@ import type { EmitFn } from "../infra/event-bus"
 import type { SessionEntryBase } from "./session-store-types"
 import type { AnyBlock } from "../infra/output-blocks"
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface OutputSessionOptions {
   /** Store mutator — OutputSession writes outputBlocks and modelActivity here. */
@@ -79,9 +77,7 @@ export interface OutputSession {
   dispose(): void
 }
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 export function createOutputSession(options: OutputSessionOptions): OutputSession {
   const { updateEntry, emit, onFlush, workflowId = "output-session" } = options

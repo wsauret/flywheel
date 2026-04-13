@@ -87,13 +87,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     workflowId: chatId,
   })
 
-  // Output persistence — OutputSession writes blocks to the store, but we still
-  // need to persist them to disk. The flusher reads blocks from the OutputSession.
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  // We'll set up the flusher's getBlocks after creating the chat session (need the OutputSession).
-  // For now, track a reference we can update.
-  let getBlocksFn: () => readonly AnyBlock[] = () => []
-  const outputFlusher = outputPersistence.createFlusher(() => getBlocksFn())
+  // Flusher is created after chatSession (needs OutputSession for getBlocks).
+  // The onFlush closure captures this reference; safe because onFlush never fires during construction.
+  let outputFlusher: ReturnType<typeof outputPersistence.createFlusher>
 
   let disposed = false
   let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
@@ -163,19 +160,19 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
           try { updateSession(sessionId, { claudeSessionId: csId }, projectCwd) } catch { /* best-effort */ }
         }
       }
-      outputFlusher.schedule()
+      outputFlusher!.schedule()
     },
   }
 
   const chatSession = await createChatSession(chatCallbacks, chatSessionDeps, initialMessage)
 
-  // Wire the flusher's getBlocks to the OutputSession's blocks (+ priorBlocks prefix)
-  getBlocksFn = () => {
+  // Wire flusher now that OutputSession exists
+  outputFlusher = outputPersistence.createFlusher(() => {
     const sessionBlocks = chatSession.outputSession.getBlocks()
     return priorBlocks && priorBlocks.length > 0
       ? [...priorBlocks, ...sessionBlocks]
       : sessionBlocks
-  }
+  })
 
   // ── SessionRunner implementation ──
 

@@ -10,9 +10,7 @@
 
 import { z } from "zod"
 
-// ---------------------------------------------------------------------------
 // Block schemas
-// ---------------------------------------------------------------------------
 
 export const TextBlockSchema = z.object({
   kind: z.literal("text"),
@@ -94,9 +92,7 @@ export const TodoListBlockSchema = z.object({
   timestamp: z.number(),
 })
 
-// ---------------------------------------------------------------------------
 // Derived types
-// ---------------------------------------------------------------------------
 
 export type TextBlock = z.infer<typeof TextBlockSchema>
 export type ToolBlock = z.infer<typeof ToolBlockSchema>
@@ -108,9 +104,7 @@ export type UserMessageBlock = z.infer<typeof UserMessageBlockSchema>
 export type TodoItem = z.infer<typeof TodoItemSchema>
 export type TodoListBlock = z.infer<typeof TodoListBlockSchema>
 
-// ---------------------------------------------------------------------------
 // Discriminated union (all block kinds)
-// ---------------------------------------------------------------------------
 
 export const AnyBlockSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,

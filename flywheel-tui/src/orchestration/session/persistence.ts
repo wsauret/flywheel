@@ -17,9 +17,7 @@ import {
 } from "../../infra/paths";
 import { errorMessage } from "../../infra/error-message";
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function sessionsBaseDir(baseDir: string): string {
   return path.join(baseDir, SESSIONS_DIR);
@@ -29,9 +27,7 @@ function sessionFilePath(id: string, baseDir: string): string {
   return resolveSessionFile(id, "session", baseDir);
 }
 
-// ---------------------------------------------------------------------------
 // Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Create a new session. Writes session data to `.flywheel/sessions/<id>/session.json`.
@@ -171,9 +167,7 @@ export function listSessions(baseDir: string): SessionListResult {
   return { sessions, errors };
 }
 
-// ---------------------------------------------------------------------------
 // Delete with companion file cleanup
-// ---------------------------------------------------------------------------
 
 /** Result of a deleteSessionWithCompanions call. */
 export interface DeleteResult {

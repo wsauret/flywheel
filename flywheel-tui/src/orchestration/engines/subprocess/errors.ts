@@ -11,9 +11,7 @@
 import type { SubprocessFailureReason } from "../../../infra/subprocess-types";
 import { detectRateLimit } from "./rate-limit";
 
-// ---------------------------------------------------------------------------
 // Transient error detection
-// ---------------------------------------------------------------------------
 
 /**
  * All known transient error patterns.
@@ -142,9 +140,7 @@ export function categorizeFailure(opts: {
   return undefined;
 }
 
-// ---------------------------------------------------------------------------
 // Helper detectors
-// ---------------------------------------------------------------------------
 
 function isApiError(text: string): boolean {
   return /api.?error|internal.?server|5\d{2}/i.test(text);

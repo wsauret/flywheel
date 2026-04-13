@@ -1,11 +1,8 @@
-// ---------------------------------------------------------------------------
 // Post-Turn Verification — Factory for the native check hook
-// ---------------------------------------------------------------------------
 //
 // Runs native shell checks (build, test, lint, has-changes) after the worker
 // declares done. If checks fail, injects fix feedback and retries. Self-review
 // is handled separately by subprocess-callback at the turn boundary.
-// ---------------------------------------------------------------------------
 
 import type { Step } from "./types.js";
 import type { WorkerOutput, PostTurnVerificationResult } from "./executor-types.js";
@@ -17,9 +14,7 @@ import {
 } from "../shared/native-verification.js";
 import { extractDeclaredCommands } from "./shared/command-extraction.js";
 
-// ---------------------------------------------------------------------------
 // Config
-// ---------------------------------------------------------------------------
 
 export interface PostTurnVerificationConfig {
   /** Which native checks to run. */
@@ -30,9 +25,7 @@ export interface PostTurnVerificationConfig {
   projectCwd: string;
 }
 
-// ---------------------------------------------------------------------------
 // Step type sets
-// ---------------------------------------------------------------------------
 
 /** Step types that get native checks. */
 const CODE_STEP_TYPES = new Set(["work", "debug"]);
@@ -40,9 +33,7 @@ const CODE_STEP_TYPES = new Set(["work", "debug"]);
 /** Step types that get native git checks only. */
 const SHIP_STEP_TYPES = new Set(["ship"]);
 
-// ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
 
 /**
  * Create the post-turn verification hook for a given config.

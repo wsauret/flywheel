@@ -1,9 +1,7 @@
 import type { DispatcherDecision, EvaluatorResult } from "./workflow-types";
 import type { NDJSONEvent } from "./subprocess-types";
 
-// ---------------------------------------------------------------------------
 // FlywheelEvent discriminated union (namespace:verb naming)
-// ---------------------------------------------------------------------------
 
 export type FlywheelEvent =
   | DispatcherInvoked
@@ -263,9 +261,7 @@ interface TraceSubagentCompleted {
   timestamp: number;
 }
 
-// ---------------------------------------------------------------------------
 // Exhaustiveness check helper
-// ---------------------------------------------------------------------------
 
 /**
  * Use in switch default case to ensure all FlywheelEvent types are handled.

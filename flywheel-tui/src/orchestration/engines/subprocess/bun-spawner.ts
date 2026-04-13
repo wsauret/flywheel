@@ -28,9 +28,7 @@ import { clampTimeoutMinutes, minutesToMs, DEFAULT_TIMEOUT_MINUTES } from "./tim
 import { validateSpawnArgs, resolveCommandExecutable } from "./spawn-helpers.js";
 import { wireStreamPipeline, type RawSpawnedProcess } from "./stream-pipeline.js";
 
-// ---------------------------------------------------------------------------
 // BunSpawnerOptions
-// ---------------------------------------------------------------------------
 
 export interface BunSpawnerOptions {
   /** Environment filter configuration. */
@@ -39,9 +37,7 @@ export interface BunSpawnerOptions {
   timeoutMinutes?: number;
 }
 
-// ---------------------------------------------------------------------------
 // BunProcessSpawner
-// ---------------------------------------------------------------------------
 
 /**
  * BunProcessSpawner — production implementation using Bun.spawn().
