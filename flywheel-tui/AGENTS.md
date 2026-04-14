@@ -165,9 +165,38 @@ New test subdirs must be added to the glob in `package.json`.
 
 ## 11. TUI Verification
 
-After changes under `src/tui/`, verify in live TUI. See [docs/tmux-uat-guide.md](docs/tmux-uat-guide.md).
+After any change, verify in the live TUI. Unit tests verify code correctness; UAT verifies the system still works end-to-end. Changes in any layer (infra, workflows, orchestration) can break the user experience even when unit tests pass. See [docs/tmux-uat-guide.md](docs/tmux-uat-guide.md).
 
 E2E regression: `tests/e2e/run-all.sh`. Every new TUI feature must add or extend an E2E module.
+
+**Targeted E2E modules** — run the relevant subset instead of the full suite:
+
+```bash
+# Run specific modules (each takes 2-5 min):
+tests/e2e/run-all.sh chat workflow subprocess-reliability
+
+# Full suite (9 modules, ~30 min):
+tests/e2e/run-all.sh
+```
+
+| Changed area | Modules to run |
+|---|---|
+| `src/tui/` (UI, keyboard, modal) | `chat`, `session-modal`, `multi-session` |
+| `src/orchestration/` (sessions, engines) | `workflow`, `session-recovery`, `chat-workflow-interaction` |
+| `src/workflows/queue/` (queue, executor) | `workflow`, `subprocess-reliability` |
+| Subprocess observers / self-review | `subprocess-reliability` |
+| Session persistence / recovery | `session-recovery` |
+| `src/cli/` (entry point, headless) | `headless` |
+| Unsure / broad changes | `tui-regression` (covers most scenarios) |
+
+Standalone long-running tests (not in `run-all.sh`):
+
+| Test | When to run | Duration |
+|------|-------------|----------|
+| `tests/e2e/sprint-pipeline.sh` | Sprint step changes | 30-60 min |
+| `tests/e2e/tui-pipeline.sh` | Plan/work/review pipeline changes | 30 min |
+| `bun run tests/e2e/trace-smoke.ts` | Trace/event-bus infra changes | <10s |
+| `bun run tests/e2e/trace-real-api.ts` | Trace collection with real API | ~1 min |
 
 ---
 
