@@ -66,22 +66,16 @@ export function resolveTransports(input: ResolveTransportsInput): { dispatcherTr
   return { dispatcherTransport, evaluatorTransport }
 }
 
-interface ExecutorInfra {
+interface BuildExecutorDepsInput {
   deps: WorkflowDeps;
   emit: EmitFn;
   eventBus: EventBus;
   workflowId: string;
   sessionId: string;
-}
-
-interface ExecutorTransports {
   dispatcherTransport?: PooledSubprocessTransport;
   evaluatorTransport?: PooledSubprocessEvaluatorTransport;
   subprocessPool?: WarmPool<RawSpawnedProcess> | null;
   observerChain?: { onTurnComplete(): string[]; reset(): void };
-}
-
-interface ExecutorContext {
   queue: Queue;
   projectCwd: string;
   /** Override the subprocess cwd. Defaults to projectCwd.
@@ -90,49 +84,42 @@ interface ExecutorContext {
   subprocessCwd?: string;
   contextIndexer: ContextIndexer;
   sessionObjective?: string;
-}
-
-interface ExecutorExtensions {
   injectionQueue: InjectionQueue;
   chatContext?: string;
   externalHooks?: OnStepCompletedHook[];
 }
 
-export function buildExecutorDeps(
-  infra: ExecutorInfra,
-  transports: ExecutorTransports,
-  context: ExecutorContext,
-  extensions: ExecutorExtensions,
-) {
-  const tiers = resolveTierConfigs(infra.deps.config)
+export function buildExecutorDeps(input: BuildExecutorDepsInput) {
+  const { deps, emit, workflowId, sessionId } = input;
+  const tiers = resolveTierConfigs(deps.config)
 
   const contextAccumulator = createContextAccumulator({
-    windowSize: infra.deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
+    windowSize: deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
   })
 
-  const evaluator = transports.evaluatorTransport
-    ? createAgentEvaluatorFn({ transport: transports.evaluatorTransport })
+  const evaluator = input.evaluatorTransport
+    ? createAgentEvaluatorFn({ transport: input.evaluatorTransport })
     : null
 
-  const compositeHook = createCompositeHook([...(extensions.externalHooks ?? [])])
+  const compositeHook = createCompositeHook([...(input.externalHooks ?? [])])
 
   const dispatcherFn = createDispatcherCallback({
-    maxRevisions: infra.deps.config.max_revisions, emit: infra.emit, workflowId: infra.workflowId,
-    dispatcherTransport: transports.dispatcherTransport,
-    contextIndexer: context.contextIndexer,
-    contextAccumulator, projectCwd: context.projectCwd,
-    sessionObjective: context.sessionObjective, queue: context.queue,
+    maxRevisions: deps.config.max_revisions, emit, workflowId,
+    dispatcherTransport: input.dispatcherTransport,
+    contextIndexer: input.contextIndexer,
+    contextAccumulator, projectCwd: input.projectCwd,
+    sessionObjective: input.sessionObjective, queue: input.queue,
     dispatcherModel: tiers.dispatcher.model, subprocessModel: tiers.subprocess.model,
-    chatContext: extensions.chatContext,
+    chatContext: input.chatContext,
   })
 
   const subprocessFn = createSubprocessCallback({
-    deps: infra.deps, emit: infra.emit, workflowId: infra.workflowId,
-    sessionId: infra.sessionId, projectCwd: context.projectCwd,
-    subprocessCwd: context.subprocessCwd,
-    injectionQueue: extensions.injectionQueue,
-    observerChain: transports.observerChain,
-    subprocessPool: transports.subprocessPool,
+    deps, emit, workflowId,
+    sessionId, projectCwd: input.projectCwd,
+    subprocessCwd: input.subprocessCwd,
+    injectionQueue: input.injectionQueue,
+    observerChain: input.observerChain,
+    subprocessPool: input.subprocessPool,
   })
 
   const handoffReader = async (handoffPath: string) => {

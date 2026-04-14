@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SessionStateSchema } from "./state-machine.js";
+import { SessionStateSchema } from "./types.js";
 import { BudgetLimitsSchema, BudgetUsageSchema } from "../../workflows/schemas.js";
 
 const baseFields = {

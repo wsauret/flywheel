@@ -124,12 +124,12 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     projectCwd,
   })
 
-  const execDeps = buildExecutorDeps(
-    { deps, emit, eventBus, workflowId, sessionId },
-    { dispatcherTransport, evaluatorTransport, subprocessPool, observerChain },
-    { queue, projectCwd, subprocessCwd, contextIndexer, sessionObjective: description },
-    { injectionQueue, externalHooks, chatContext },
-  )
+  const execDeps = buildExecutorDeps({
+    deps, emit, eventBus, workflowId, sessionId,
+    dispatcherTransport, evaluatorTransport, subprocessPool, observerChain,
+    queue, projectCwd, subprocessCwd, contextIndexer, sessionObjective: description,
+    injectionQueue, externalHooks, chatContext,
+  })
 
   const guardrails = createGuardrails({
     maxQueueLength: deps.config.queue?.max_steps ?? 50,

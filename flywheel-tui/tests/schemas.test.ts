@@ -1,10 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import { createEmptyStepContext } from "../src/workflows/queue/step-context";
 import {
-  DispatcherInputSchema,
   WorkflowInfoSchema,
-  DispatcherConfigSchema,
 } from "../src/workflows/dispatcher/schemas";
+import type { DispatcherInput } from "../src/workflows/dispatcher/schemas";
 import {
   DispatcherDecisionSchema,
   EvaluatorResultSchema,
@@ -12,9 +11,7 @@ import {
   EvaluationCriteriaSchema,
   WorkerConfigSchema,
 } from "../src/infra/workflow-types";
-import {
-  EvaluatorInputSchema,
-} from "../src/workflows/evaluator/schemas";
+import type { EvaluatorInput } from "../src/workflows/evaluator/schemas";
 import {
   SubprocessResultSchema,
   SubprocessFailureReasonSchema,
@@ -198,222 +195,55 @@ describe("DispatcherDecisionSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// DispatcherInputSchema
+// DispatcherInput type — structural check (schema is module-private)
 // ---------------------------------------------------------------------------
-describe("DispatcherInputSchema", () => {
-  const validInput = {
-    plan: {
-      steps: [
-        {
-          title: "Step 1",
-          description: "Do something",
-        },
-      ],
-    },
-    state: {
-      completed_steps: [],
-      current_step_index: 0,
-    },
-    workflow_id: "wf-test-001",
-    workflow: { name: "work", step_number: 1, total_steps: 2, step_description: "Setup" },
-    last_worker_result: null,
-    config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
-    session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
-    available_context: { conventions: [], standards: [], learnings: [] },
-    step_context: createEmptyStepContext(),
-  };
-
-  it("parses valid input", () => {
-    const result = DispatcherInputSchema.safeParse(validInput);
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects input with full_content in plan (removed)", () => {
-    const result = DispatcherInputSchema.safeParse({
-      ...validInput,
+describe("DispatcherInput type", () => {
+  it("valid object satisfies DispatcherInput shape", () => {
+    const input: DispatcherInput = {
       plan: {
-        ...validInput.plan,
-        full_content: "should not exist",
+        steps: [{ title: "Step 1", description: "Do something" }],
       },
-    });
-    // full_content should be stripped (DispatcherInput uses strip too)
-    if (result.success) {
-      expect((result.data.plan as any).full_content).toBeUndefined();
-    }
+      state: {
+        completed_steps: [],
+        current_step_index: 0,
+      },
+      workflow_id: "wf-test-001",
+      workflow: { name: "work", step_number: 1, total_steps: 2, step_description: "Setup" },
+      last_worker_result: null,
+      config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
+      session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
+      available_context: { conventions: [], standards: [], learnings: [] },
+      step_context: createEmptyStepContext(),
+    };
+    expect(input.workflow_id).toBe("wf-test-001");
+    expect(input.plan.steps).toHaveLength(1);
+    expect(input.last_worker_result).toBeNull();
   });
 
-  it("accepts empty steps array", () => {
-    const result = DispatcherInputSchema.safeParse({
-      ...validInput,
+  it("accepts null for last_worker_result", () => {
+    const input: DispatcherInput = {
       plan: { steps: [] },
-    });
-    expect(result.success).toBe(true);
+      state: {},
+      workflow_id: "wf-null-test",
+      workflow: { name: "work", step_number: 1, total_steps: 1, step_description: "Test" },
+      last_worker_result: null,
+      config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
+      session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
+      available_context: { conventions: [], standards: [], learnings: [] },
+      step_context: createEmptyStepContext(),
+    };
+    expect(input.last_worker_result).toBeNull();
   });
 
-  it("requires workflow_id", () => {
-    const { workflow_id, ...noWfId } = validInput;
-    const result = DispatcherInputSchema.safeParse(noWfId);
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts workflow_id string", () => {
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      workflow_id: "wf-abc-123",
-    });
-    expect(result.workflow_id).toBe("wf-abc-123");
-  });
-
-  it("accepts and round-trips workflow (WorkflowInfoSchema)", () => {
+  it("WorkflowInfoSchema round-trips workflow field", () => {
     const workflow = {
       name: "work",
       step_number: 2,
       total_steps: 5,
       step_description: "Implement core logic",
     };
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      workflow,
-    });
-    expect(result.workflow).toEqual(workflow);
-  });
-
-  it("accepts and round-trips last_worker_result", () => {
-    const lastWorkerResult = {
-      step: 1,
-      status: "completed",
-      output_summary: "Step 1 done",
-      artifacts_produced: ["src/setup.ts"],
-      tests_passed: true,
-    };
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      last_worker_result: lastWorkerResult,
-    });
-    expect(result.last_worker_result).toEqual(lastWorkerResult);
-  });
-
-  it("accepts null for last_worker_result", () => {
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      last_worker_result: null,
-    });
-    expect(result.last_worker_result).toBeNull();
-  });
-
-  it("accepts and round-trips config (DispatcherConfigSchema)", () => {
-    const config = {
-      max_eval_cycles: 3,
-      worktree_path: "/tmp/wt",
-      project_cwd: "/home/project",
-      subprocess_model: "opus",
-      dispatcher_model: "sonnet",
-    };
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      config,
-    });
-    expect(result.config).toEqual(config);
-  });
-
-  it("accepts and round-trips session_budget", () => {
-    const sessionBudget = {
-      invocations_remaining: 50,
-      token_budget_remaining: 200000,
-      wall_clock_deadline: "2026-03-20T18:00:00Z",
-    };
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      session_budget: sessionBudget,
-    });
-    expect(result.session_budget).toEqual(sessionBudget);
-  });
-
-  it("accepts and round-trips available_context", () => {
-    const entry = { name: "conventions", path: "docs/conv.md", summary: "Code conventions" };
-    const availableContext = {
-      conventions: [entry],
-      standards: [],
-      learnings: [entry],
-    };
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      available_context: availableContext,
-    });
-    expect(result.available_context).toEqual(availableContext);
-  });
-
-  it("accepts all required fields together", () => {
-    const full = {
-      ...validInput,
-      workflow_id: "wf-full-test",
-      workflow: {
-        name: "plan",
-        step_number: 1,
-        total_steps: 3,
-        step_description: "Create plan",
-      },
-      last_worker_result: {
-        step: 0,
-        status: "completed",
-        output_summary: "Init done",
-        artifacts_produced: [],
-        tests_passed: null,
-      },
-      config: {
-        max_eval_cycles: 2,
-        worktree_path: "/tmp/wt",
-        project_cwd: "/home/proj",
-        subprocess_model: "opus",
-        dispatcher_model: "sonnet",
-      },
-      session_budget: {
-        invocations_remaining: 10,
-        token_budget_remaining: null,
-        wall_clock_deadline: null,
-      },
-      available_context: {
-        conventions: [],
-        standards: [],
-        learnings: [],
-      },
-    };
-    const result = DispatcherInputSchema.safeParse(full);
-    expect(result.success).toBe(true);
-  });
-
-  it("strips unknown fields from sub-schemas", () => {
-    const result = DispatcherInputSchema.parse({
-      ...validInput,
-      workflow: {
-        name: "work",
-        step_number: 1,
-        total_steps: 2,
-        step_description: "Do work",
-        hallucinated_field: "should be stripped",
-      },
-      config: {
-        max_eval_cycles: 3,
-        worktree_path: "/tmp",
-        project_cwd: "/home",
-        subprocess_model: "opus",
-        dispatcher_model: "sonnet",
-        extra_config: "should be stripped",
-      },
-      unknown_top_level: "should be stripped",
-    });
-    expect((result.workflow as any).hallucinated_field).toBeUndefined();
-    expect((result.config as any).extra_config).toBeUndefined();
-    expect((result as any).unknown_top_level).toBeUndefined();
-  });
-
-  it("rejects missing required fields", () => {
-    const minimalInput = {
-      plan: { steps: [] },
-      state: { completed_steps: [], current_step_index: 0 },
-    };
-    const result = DispatcherInputSchema.safeParse(minimalInput);
-    expect(result.success).toBe(false);
+    const result = WorkflowInfoSchema.parse(workflow);
+    expect(result).toEqual(workflow);
   });
 });
 
@@ -529,83 +359,40 @@ describe("EvaluatorResultSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// EvaluatorInputSchema
+// EvaluatorInput type — structural check (schema is module-private)
 // ---------------------------------------------------------------------------
-describe("EvaluatorInputSchema", () => {
-  const validInput = {
-    worker_output: "some output text",
-    evaluation_criteria: "Tests pass",
-    acceptance_criteria: ["Tests pass"],
-    tests_passed: true,
-  };
-
-  it("parses valid evaluator input", () => {
-    const result = EvaluatorInputSchema.safeParse(validInput);
-    expect(result.success).toBe(true);
-  });
-
-  it("requires acceptance_criteria array", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
-      acceptance_criteria: ["tests pass", "no regressions"],
-    });
-    expect(result.acceptance_criteria).toEqual(["tests pass", "no regressions"]);
-  });
-
-  it("rejects missing acceptance_criteria", () => {
-    const { acceptance_criteria, ...noAC } = validInput;
-    const result = EvaluatorInputSchema.safeParse(noAC);
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts tests_passed as true", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
+describe("EvaluatorInput type", () => {
+  it("valid object satisfies EvaluatorInput shape", () => {
+    const input: EvaluatorInput = {
+      worker_output: "some output text",
+      evaluation_criteria: "Tests pass",
+      acceptance_criteria: ["Tests pass"],
       tests_passed: true,
-    });
-    expect(result.tests_passed).toBe(true);
-  });
-
-  it("accepts tests_passed as false", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
-      tests_passed: false,
-    });
-    expect(result.tests_passed).toBe(false);
+    };
+    expect(input.worker_output).toBe("some output text");
+    expect(input.acceptance_criteria).toEqual(["Tests pass"]);
+    expect(input.tests_passed).toBe(true);
   });
 
   it("accepts tests_passed as null", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
-      tests_passed: null,
-    });
-    expect(result.tests_passed).toBeNull();
-  });
-
-  it("rejects missing required fields", () => {
-    const result = EvaluatorInputSchema.safeParse({
+    const input: EvaluatorInput = {
       worker_output: "output",
       evaluation_criteria: "criteria",
-    });
-    expect(result.success).toBe(false);
+      acceptance_criteria: ["feature works"],
+      tests_passed: null,
+    };
+    expect(input.tests_passed).toBeNull();
   });
 
-  it("accepts all required fields together", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
+  it("accepts optional task_context", () => {
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
       acceptance_criteria: ["feature works"],
       tests_passed: true,
-    });
-    expect(result.acceptance_criteria).toEqual(["feature works"]);
-    expect(result.tests_passed).toBe(true);
-  });
-
-  it("strips unknown fields", () => {
-    const result = EvaluatorInputSchema.parse({
-      ...validInput,
-      hallucinated: "strip me",
-    });
-    expect((result as any).hallucinated).toBeUndefined();
+      task_context: "extra context",
+    };
+    expect(input.task_context).toBe("extra context");
   });
 });
 

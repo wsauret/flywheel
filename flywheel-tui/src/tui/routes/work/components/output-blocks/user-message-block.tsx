@@ -6,7 +6,7 @@ import { useTheme } from "@tui/shared/context/theme"
 import { EmptyBorder } from "@tui/shared/ui/border"
 import type { UserMessageBlock as UserMessageBlockType } from "@infra/output-blocks"
 
-export interface UserMessageBlockProps {
+interface UserMessageBlockProps {
   block: UserMessageBlockType
 }
 

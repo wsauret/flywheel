@@ -14,7 +14,7 @@ function todoStyle(status: TodoItem["status"], theme: Theme) {
   return { symbol: "\u25CB", symbolFg: theme.textMuted, textFg: theme.text, attrs: undefined }
 }
 
-export interface TodoListBlockProps {
+interface TodoListBlockProps {
   block: TodoListBlockType
 }
 

@@ -3,6 +3,7 @@ import type { OnStepCompletedHook } from "./shared/hooks.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import type { NativeCheckResult } from "../shared/native-verification.js";
 import type { EvaluationCriteria } from "../../infra/workflow-types.js";
+import type { AccumulatedContext } from "./context-accumulator.js";
 
 /** Result from worker execution */
 export interface WorkerOutput {
@@ -71,7 +72,7 @@ type PersistFn = (queue: Queue) => Promise<void>;
 /** Step context accumulator: accumulates handoff data across steps */
 export interface StepContextAccumulator {
   accumulate(data: unknown): void;
-  getContext(): Record<string, unknown>;
+  getContext(): AccumulatedContext;
   /** Optional: serialize state for persistence. */
   serialize?(): unknown;
 }

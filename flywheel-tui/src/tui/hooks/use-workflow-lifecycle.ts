@@ -6,7 +6,7 @@ import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 import { wireLifecycleCallbacks } from "./lifecycle-callbacks.js"
 
-export interface WorkflowLifecycleDeps {
+interface WorkflowLifecycleDeps {
   signals: ShellSignals
   services: ShellServices
 }

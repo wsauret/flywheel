@@ -195,7 +195,6 @@ describe("TUI adapter: evaluator:revision-requested handling", () => {
 
     const bus = new EventBus();
     adapter.connect(bus);
-    adapter.start();
 
     bus.emit({
       type: "evaluator:revision-requested",
@@ -209,7 +208,6 @@ describe("TUI adapter: evaluator:revision-requested handling", () => {
 
     expect(logs.some((l) => l.includes("revision") || l.includes("Revision"))).toBe(true);
 
-    adapter.stop();
     adapter.disconnect();
   });
 
@@ -223,7 +221,6 @@ describe("TUI adapter: evaluator:revision-requested handling", () => {
 
     const bus = new EventBus();
     adapter.connect(bus);
-    adapter.start();
 
     bus.emit({
       type: "evaluator:revision-requested",
@@ -237,7 +234,6 @@ describe("TUI adapter: evaluator:revision-requested handling", () => {
 
     expect(logs.some((l) => l.includes("revision") || l.includes("Revision"))).toBe(true);
 
-    adapter.stop();
     adapter.disconnect();
   });
 });

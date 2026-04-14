@@ -2,7 +2,7 @@ import { createOutputPersistence } from "./session/output-persistence.js"
 import { createQueuePersistence } from "../workflows/queue/persistence.js"
 import { readSession } from "./session/persistence.js"
 import { fromSnapshot } from "./session/output-schemas.js"
-import { isResumable } from "./session/state-machine.js"
+import { isResumable } from "./session/types.js"
 import type { Session } from "./session/schemas.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
@@ -11,7 +11,6 @@ import type { AnyBlock } from "../infra/output-blocks.js"
 export interface SessionActionDeps {
   manager: SessionManager
   activeSessionId: () => string | undefined
-  projectCwd?: string
 }
 
 interface ResumeData {
@@ -28,9 +27,9 @@ export async function loadSessionOutput(sessionId: string, projectCwd?: string):
 
 export async function loadResumeData(
   sessionId: string,
-  deps: SessionActionDeps,
+  baseDir = process.cwd(),
 ): Promise<ResumeData | null> {
-  const projectCwd = deps.projectCwd ?? process.cwd()
+  const projectCwd = baseDir
 
   // 1. Read session from disk
   const session = readSession(sessionId, projectCwd)

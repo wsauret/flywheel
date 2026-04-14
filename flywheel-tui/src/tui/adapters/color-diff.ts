@@ -4,7 +4,7 @@ import { diffArrays } from "diff"
 import type { RGBA } from "@opentui/core"
 import type { Hunk } from "./diff-parser.js"
 
-export interface DiffThemeColors {
+interface DiffThemeColors {
   text: RGBA
   textMuted: RGBA
   addedBg: RGBA
@@ -16,13 +16,13 @@ export interface DiffThemeColors {
   lineNumber: RGBA
 }
 
-export type DiffSegment = {
+type DiffSegment = {
   text: string
   fg?: RGBA
   bg?: RGBA
 }
 
-export type DiffLine = {
+type DiffLine = {
   segments: DiffSegment[]
   lineBg?: RGBA
 }

@@ -31,6 +31,7 @@ function extractJSON(line: string): Record<string, unknown> | null {
 const KNOWN_TYPES = new Set([
   "assistant", "system", "user", "tool_result", "result",
   "tool_use", "content_block_delta", "text", "step_finish", "error",
+  "flywheel:subprocess_boundary",
 ] as const);
 
 function classifyEvent(data: Record<string, unknown>): NDJSONEvent["type"] {

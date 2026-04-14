@@ -9,7 +9,7 @@ import {
 import type { Session } from "./schemas.js";
 import { toBudgetLimits } from "../../workflows/schemas.js";
 import { computeContextPercent } from "./budget-tracker-types.js";
-import { isValidTransition, type SessionState } from "./state-machine.js";
+import { isValidTransition, type SessionState } from "./types.js";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema.js";
 import { Log } from "../../infra/log.js";
 
@@ -33,7 +33,7 @@ export interface SessionSummary {
   claudeSessionId?: string;
 }
 
-export interface SessionListResult {
+export interface ManagerListResult {
   sessions: SessionSummary[];
   errors: PersistenceListResult["errors"];
 }
@@ -47,7 +47,7 @@ import type { SessionKind } from "./types.js";
 
 export interface SessionManager {
   create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string;
-  list(): SessionListResult;
+  list(): ManagerListResult;
   updateState(id: string, newState: SessionState): void;
   updateLabel(id: string, label: string): void;
   delete(id: string): void;
@@ -92,7 +92,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     return id;
   }
 
-  function list(): SessionListResult {
+  function list(): ManagerListResult {
     const raw = listSessions(baseDir);
 
     const sessions: SessionSummary[] = raw.sessions.map((entry) => {

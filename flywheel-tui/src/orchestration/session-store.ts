@@ -104,7 +104,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     startedAt?: number
     contextPercent?: number
     createRunner: (handle: ChatStoreHandle) => Promise<ChatRunner>
-    onComplete?: () => void
     onRunnerDone?: (sessionId: string) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): Promise<string> {
@@ -116,12 +115,10 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
       onError: async (message) => {
         opts.onRunnerError?.(sessionId, new Error(message))
         await finish(sessionId)
-        opts.onComplete?.()
       },
       onEnded: async () => {
         opts.onRunnerDone?.(sessionId)
         await finish(sessionId)
-        opts.onComplete?.()
       },
     }
 

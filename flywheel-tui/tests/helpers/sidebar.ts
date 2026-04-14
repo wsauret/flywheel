@@ -9,7 +9,7 @@ import {
   groupToFlatList,
 } from "../../src/tui/session/sidebar-logic";
 import type { SessionSummary } from "../../src/orchestration/session/manager";
-import type { SessionState } from "../../src/orchestration/session/state-machine";
+import type { SessionState } from "../../src/orchestration/session/types";
 
 // Re-export the canonical groupToFlatList from sidebar-logic
 export { groupToFlatList } from "../../src/tui/session/sidebar-logic";

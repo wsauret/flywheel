@@ -24,7 +24,7 @@ import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
 
 const COLLAPSED_LINES = 3
 
-export interface ThinkingBlockProps {
+interface ThinkingBlockProps {
   block: ThinkingBlockType
 }
 

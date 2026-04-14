@@ -55,13 +55,13 @@ describe("ContextIndexer", () => {
       conventionFiles: ["CUSTOM.md"],
     });
     expect(indexer).toBeDefined();
-    indexer.dispose();
+
   });
 
   it("constructor works with no options", () => {
     const indexer = new ContextIndexer(projectCwd);
     expect(indexer).toBeDefined();
-    indexer.dispose();
+
   });
 
   // -------------------------------------------------------------------------
@@ -79,7 +79,7 @@ describe("ContextIndexer", () => {
       expect(Array.isArray(ctx.conventions)).toBe(true);
       expect(Array.isArray(ctx.standards)).toBe(true);
       expect(Array.isArray(ctx.learnings)).toBe(true);
-      indexer.dispose();
+  
     });
 
     it("validates against AvailableContextSchema", async () => {
@@ -88,7 +88,7 @@ describe("ContextIndexer", () => {
       const ctx = indexer.getRelevantContext(defaultQuery);
       const result = AvailableContextSchema.safeParse(ctx);
       expect(result.success).toBe(true);
-      indexer.dispose();
+  
     });
 
     it("returns empty arrays when startIndexing() has not completed", () => {
@@ -97,7 +97,7 @@ describe("ContextIndexer", () => {
       expect(ctx.conventions).toEqual([]);
       expect(ctx.standards).toEqual([]);
       expect(ctx.learnings).toEqual([]);
-      indexer.dispose();
+  
     });
 
     it("ContextQuery.stepType accepts StepType values", async () => {
@@ -109,7 +109,7 @@ describe("ContextIndexer", () => {
         const ctx = indexer.getRelevantContext(query);
         expect(ctx).toHaveProperty("conventions");
       }
-      indexer.dispose();
+  
     });
   });
 
@@ -129,7 +129,7 @@ describe("ContextIndexer", () => {
       expect(agents!.summary).toBe(
         "Project architecture, commands, TUI states, and developer conventions",
       );
-      indexer.dispose();
+  
     });
 
     it("entry has name, path, and summary", async () => {
@@ -142,7 +142,7 @@ describe("ContextIndexer", () => {
       expect(contrib!.name).toBe("CONTRIBUTING.md");
       expect(contrib!.path).toBe("CONTRIBUTING.md");
       expect(typeof contrib!.summary).toBe("string");
-      indexer.dispose();
+  
     });
 
     it("supports configurable file list via options.conventionFiles", async () => {
@@ -152,7 +152,7 @@ describe("ContextIndexer", () => {
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.conventions.length).toBe(1);
       expect(ctx.conventions[0].name).toBe("CUSTOM.md");
-      indexer.dispose();
+  
     });
 
     it("skips missing convention files gracefully", async () => {
@@ -162,7 +162,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.conventions).toEqual([]);
-      indexer.dispose();
+  
     });
 
     it("scans .claude/ and .opencode/ config directories", async () => {
@@ -178,7 +178,7 @@ describe("ContextIndexer", () => {
       const settings = ctx.conventions.find((c) => c.name === "settings.md");
       expect(settings).toBeDefined();
       expect(settings!.path).toBe(".claude/settings.md");
-      indexer.dispose();
+  
     });
   });
 
@@ -197,7 +197,7 @@ describe("ContextIndexer", () => {
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards.length).toBe(1);
       expect(ctx.standards[0].name).toBe("Coding Standards");
-      indexer.dispose();
+  
     });
 
     it("skips files without frontmatter (including README.md)", async () => {
@@ -208,7 +208,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards.length).toBe(0);
-      indexer.dispose();
+  
     });
 
     it("frontmatter title maps to ContextEntry.name", async () => {
@@ -217,7 +217,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards[0].name).toBe("Testing Standards");
-      indexer.dispose();
+  
     });
 
     it("path is relative to projectCwd", async () => {
@@ -226,7 +226,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards[0].path).toBe("docs/standards/api.md");
-      indexer.dispose();
+  
     });
 
     it("summary from frontmatter summary field", async () => {
@@ -238,7 +238,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards[0].summary).toBe("Guidelines for code quality");
-      indexer.dispose();
+  
     });
 
     it("summary fallback: first non-heading content line (capped 100 chars)", async () => {
@@ -252,7 +252,7 @@ describe("ContextIndexer", () => {
       expect(ctx.standards[0].summary).toBe(
         "This is the first real content line for standards.",
       );
-      indexer.dispose();
+  
     });
 
     it("summary is capped at 100 chars", async () => {
@@ -262,7 +262,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards[0].summary.length).toBeLessThanOrEqual(100);
-      indexer.dispose();
+  
     });
 
     it("fallback name is filename without extension when title missing", async () => {
@@ -278,7 +278,7 @@ describe("ContextIndexer", () => {
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.standards[0].name).toBe("notitle");
-      indexer.dispose();
+  
     });
   });
 
@@ -294,7 +294,7 @@ describe("ContextIndexer", () => {
       expect(ctx.conventions).toEqual([]);
       expect(ctx.standards).toEqual([]);
       expect(ctx.learnings).toEqual([]);
-      indexer.dispose();
+  
     });
   });
 
@@ -318,28 +318,8 @@ describe("ContextIndexer", () => {
       // Validate against schema (which enforces max 20)
       const result = AvailableContextSchema.safeParse(ctx);
       expect(result.success).toBe(true);
-      indexer.dispose();
+  
     });
   });
 
-  // -------------------------------------------------------------------------
-  // Dispose
-  // -------------------------------------------------------------------------
-
-  describe("dispose", () => {
-    it("clears ready state", async () => {
-      const indexer = new ContextIndexer(projectCwd);
-      await indexer.startIndexing();
-      const ctx1 = indexer.getRelevantContext(defaultQuery);
-      expect(ctx1).toHaveProperty("conventions");
-
-      indexer.dispose();
-
-      // After dispose, should return empty
-      const ctx2 = indexer.getRelevantContext(defaultQuery);
-      expect(ctx2.conventions).toEqual([]);
-      expect(ctx2.standards).toEqual([]);
-      expect(ctx2.learnings).toEqual([]);
-    });
-  });
 });

@@ -14,7 +14,7 @@ import type { WorkflowLifecycleHook } from "./use-workflow-lifecycle.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionModalHook } from "./use-session-modal.js"
 
-export interface KeyboardHandlerDeps {
+interface KeyboardHandlerDeps {
   signals: ShellSignals
   sessionStore: SessionStore
   sessions: Accessor<SessionSummary[]>

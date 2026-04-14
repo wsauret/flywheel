@@ -11,7 +11,7 @@ Message: `
 
 const TITLE_TIMEOUT_MS = 10_000
 
-export interface TitleGeneratorDeps {
+interface TitleGeneratorDeps {
   engine: Engine
   spawner: ProcessSpawner
   projectCwd: string

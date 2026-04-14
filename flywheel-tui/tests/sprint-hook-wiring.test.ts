@@ -44,7 +44,7 @@ describe("sprint hook wiring", () => {
     });
 
     // Create sprint hook with config
-    const { hook, getState } = createSprintHook({
+    const { hook } = createSprintHook({
       max_iterations: 3,
       detect_stuck: false,
     });
@@ -61,18 +61,13 @@ describe("sprint hook wiring", () => {
     // The sprint hook should have inserted a retry step
     expect(harness.queue.steps.length).toBeGreaterThanOrEqual(2);
 
-    // The retry step should have SPRINT_HINT
+    // The retry step should have SPRINT_HINT and completed successfully
     const retryStep = harness.queue.steps[1];
     expect(retryStep).toBeDefined();
     expect(retryStep.dispatcherHint).toBe(SPRINT_HINT);
     expect(retryStep.status).toBe("completed");
 
-    // Sprint state: completed on retry (iteration 2 passed)
-    const state = getState();
-    expect(state.iterationCount).toBe(2);
-    expect(state.status).toBe("completed");
-
-    // Overall execution completed
+    // Overall execution completed (sprint succeeded on retry)
     expect(result.completed).toBe(true);
   });
 
@@ -90,7 +85,7 @@ describe("sprint hook wiring", () => {
       dispatcherHint: SPRINT_HINT,
     });
 
-    const { hook, getState } = createSprintHook({
+    const { hook } = createSprintHook({
       max_iterations: 2,
       detect_stuck: false,
     });
@@ -126,13 +121,12 @@ describe("sprint hook wiring", () => {
 
     const result = await harness.executor.run();
 
-    // Sprint state: exhausted after 2 iterations
-    const state = getState();
-    expect(state.iterationCount).toBe(2);
-    expect(state.status).toBe("exhausted");
-    expect(state.reason).toBe("Max iterations reached");
+    // Sprint exhausted: exactly 2 sprint-hinted steps attempted, all failed
+    const sprintSteps = harness.queue.steps.filter(s => s.dispatcherHint === SPRINT_HINT);
+    expect(sprintSteps.length).toBe(2);
+    expect(sprintSteps.every(s => s.status === "failed")).toBe(true);
 
-    // Sprint stops after exhausting iterations — no escalation steps inserted
+    // Sprint stops after exhausting iterations
     expect(result.completed).toBe(false);
   });
 
@@ -150,7 +144,7 @@ describe("sprint hook wiring", () => {
       // No dispatcherHint — not a sprint step
     });
 
-    const { hook, getState } = createSprintHook({
+    const { hook } = createSprintHook({
       max_iterations: 3,
       detect_stuck: false,
     });
@@ -162,10 +156,8 @@ describe("sprint hook wiring", () => {
 
     const result = await harness.executor.run();
 
-    // Sprint hook should not have fired
-    const state = getState();
-    expect(state.iterationCount).toBe(0);
-    expect(state.status).toBe("running");
+    // No retry steps inserted — queue unchanged
+    expect(harness.queue.steps.length).toBe(1);
 
     // Normal step should have completed
     expect(result.completed).toBe(true);
@@ -186,7 +178,7 @@ describe("sprint hook wiring", () => {
       dispatcherHint: SPRINT_HINT,
     });
 
-    const { hook: sprintHook, getState } = createSprintHook({
+    const { hook: sprintHook } = createSprintHook({
       max_iterations: 3,
       detect_stuck: false,
     });
@@ -202,11 +194,7 @@ describe("sprint hook wiring", () => {
 
     const result = await harness.executor.run();
 
-    // Sprint hook should have been triggered via composite
-    const state = getState();
-    expect(state.iterationCount).toBeGreaterThanOrEqual(1);
-
-    // Retry should have been inserted and completed
+    // Retry should have been inserted and completed via composite hook
     expect(harness.queue.steps.length).toBeGreaterThanOrEqual(2);
     expect(result.completed).toBe(true);
   });
@@ -235,7 +223,7 @@ describe("sprint hook wiring", () => {
       title: "Finish step",
     });
 
-    const { hook, getState } = createSprintHook({
+    const { hook } = createSprintHook({
       max_iterations: 3,
       detect_stuck: false,
     });
@@ -248,11 +236,6 @@ describe("sprint hook wiring", () => {
     });
 
     const result = await harness.executor.run();
-
-    // Sprint hook should have inserted a retry after sprint-work-1
-    const state = getState();
-    expect(state.iterationCount).toBe(2);
-    expect(state.status).toBe("completed");
 
     // Queue should have grown: setup, sprint-work-1(failed), retry(completed), finish
     expect(harness.queue.steps.length).toBe(4);

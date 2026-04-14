@@ -4,8 +4,6 @@ import type { WorkflowSessionEntry } from "./session-store-types.js";
 
 interface WorkflowAdapter {
   connect(bus: EventBus): void;
-  start(): void;
-  stop(): void;
   disconnect(): void;
 }
 
@@ -34,12 +32,10 @@ export function createWorkflowSession(opts: CreateWorkflowSessionOpts): Workflow
   const eventBus = opts.eventBus ?? new EventBus();
 
   adapter.connect(eventBus);
-  adapter.start();
 
   return { adapter, eventBus };
 }
 
 export function destroyWorkflowSession(session: WorkflowSession): void {
-  session.adapter.stop();
   session.adapter.disconnect();
 }

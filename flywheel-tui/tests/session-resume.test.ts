@@ -23,12 +23,12 @@ import { readSession } from "../src/orchestration/session/persistence";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 import { createQueuePersistence } from "../src/workflows/queue/persistence";
 import { createBudgetTracker } from "../src/orchestration/session/budget-tracker";
-import { loadResumeData, type SessionActionDeps } from "../src/orchestration/session-actions";
+import { loadResumeData } from "../src/orchestration/session-actions";
 import {
   fromSnapshot,
   type OutputSnapshot,
 } from "../src/orchestration/session/output-schemas";
-import { isResumable } from "../src/orchestration/session/state-machine";
+import { isResumable } from "../src/orchestration/session/types";
 import type { Queue } from "../src/workflows/queue/types";
 
 // ---------------------------------------------------------------------------
@@ -50,13 +50,6 @@ function makeDeps(baseDir: string): SessionManagerDeps {
   return { baseDir };
 }
 
-function makeActionDeps(manager: SessionManager, baseDir: string): SessionActionDeps {
-  return {
-    manager,
-    activeSessionId: () => undefined,
-    projectCwd: baseDir,
-  };
-}
 
 /** Minimal queue for testing — one completed step and one pending step. */
 function makeTestQueue(): Queue {
@@ -223,8 +216,7 @@ describe("session resume via loadResumeData", () => {
     expect(isResumable(session!.state!)).toBe(true);
 
     // 5. Resume via loadResumeData
-    const actionDeps = makeActionDeps(manager, baseDir);
-    const result = await loadResumeData(sessionId, actionDeps);
+    const result = await loadResumeData(sessionId, baseDir);
 
     // 6. Assert output blocks restored
     expect(result).not.toBeNull();
@@ -263,8 +255,7 @@ describe("session resume via loadResumeData", () => {
 
     manager.updateState(sessionId, "paused");
 
-    const actionDeps = makeActionDeps(manager, baseDir);
-    const result = await loadResumeData(sessionId, actionDeps);
+    const result = await loadResumeData(sessionId, baseDir);
     // Should return null because queue is required for resume
     expect(result).toBeNull();
   });

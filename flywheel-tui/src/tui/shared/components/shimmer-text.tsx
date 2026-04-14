@@ -5,7 +5,7 @@ import { useTimeline } from "@opentui/solid"
 import { createSignal, type Accessor } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 
-export interface ShimmerTextProps {
+interface ShimmerTextProps {
   text: string
   color?: RGBA
 }

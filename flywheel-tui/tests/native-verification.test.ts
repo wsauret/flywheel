@@ -13,7 +13,7 @@ import {
   runNativeVerification,
   type DeclaredCommand,
 } from "../src/workflows/shared/native-verification.js";
-import { extractDeclaredCommands } from "../src/workflows/queue/shared/command-extraction.js";
+import { extractDeclaredCommands } from "../src/workflows/queue/post-turn-verification.js";
 
 // ---------------------------------------------------------------------------
 // extractDeclaredCommands

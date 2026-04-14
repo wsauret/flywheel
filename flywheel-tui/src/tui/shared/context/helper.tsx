@@ -1,7 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { createContext, Show, useContext, type ParentProps } from "solid-js"
-
-type WithOptionalReady = { ready?: boolean }
+import { createContext, useContext, type ParentProps } from "solid-js"
 
 export function createSimpleContext<T, Props extends Record<string, unknown>>(input: {
   name: string
@@ -12,12 +10,7 @@ export function createSimpleContext<T, Props extends Record<string, unknown>>(in
   return {
     provider: (props: ParentProps<Props>) => {
       const init = input.init(props)
-      const initWithReady = init as T & WithOptionalReady
-      return (
-        <Show when={initWithReady.ready === undefined || initWithReady.ready === true}>
-          <ctx.Provider value={init}>{props.children}</ctx.Provider>
-        </Show>
-      )
+      return <ctx.Provider value={init}>{props.children}</ctx.Provider>
     },
     use() {
       const value = useContext(ctx)

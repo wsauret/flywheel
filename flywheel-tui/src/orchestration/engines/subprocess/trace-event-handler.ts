@@ -7,7 +7,7 @@ const SUBAGENT_TOOL_NAMES = new Set(["Task", "dispatch_agent"]);
 
 const MAX_FIELD_BYTES = 4096;
 
-export interface TraceEventHandlerDeps {
+interface TraceEventHandlerDeps {
   emit: EmitFn;
   workflowId: string;
 }

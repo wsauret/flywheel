@@ -29,7 +29,7 @@ function extractChatContext(blocks: readonly AnyBlock[]): string | undefined {
   return result
 }
 
-export interface CommandDispatchDeps {
+interface CommandDispatchDeps {
   signals: ShellSignals
   services: ShellServices
   inChat: Accessor<boolean>
@@ -45,7 +45,7 @@ export interface CommandDispatchDeps {
   openSessionsModal: () => void
 }
 
-export interface CommandDispatchHook {
+interface CommandDispatchHook {
   handlePromptSubmit(text: string): void
 }
 

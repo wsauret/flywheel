@@ -2,7 +2,7 @@ import { createSignal, createMemo, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
-import type { SessionState } from "../../orchestration/session/state-machine.js"
+import type { SessionState } from "../../orchestration/session/types.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
@@ -45,7 +45,7 @@ interface ViewingState {
   viewedSessionId: string
 }
 
-export interface SessionModalDeps {
+interface SessionModalDeps {
   signals: ShellSignals
   services: ShellServices
   sessions: Accessor<SessionSummary[]>

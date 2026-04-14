@@ -101,6 +101,18 @@ export async function executeWithRevisions(
     onSubprocessDispatched,
   } = deps;
 
+  const emitEvalCompleted = (result: EvalResult) => {
+    emit("evaluator:completed", { workflowId, result: {
+      passed: result.passed,
+      reasoning: result.reason ?? "",
+      suggestions: result.suggestions,
+      confidence: 0,
+      feedback: result.feedback ?? "",
+      files_to_review: [],
+      issues: [],
+    } });
+  };
+
   let prompt = currentPrompt;
   let output = workerOutput;
   let handoff = handoffData;
@@ -124,15 +136,7 @@ export async function executeWithRevisions(
     };
   }
 
-  emit("evaluator:completed", { workflowId, result: {
-    passed: evalResult.passed,
-    reasoning: evalResult.reason ?? "",
-    suggestions: evalResult.suggestions,
-    confidence: 0,
-    feedback: evalResult.feedback ?? "",
-    files_to_review: [],
-    issues: [],
-  } });
+  emitEvalCompleted(evalResult);
 
   let revisionAttempt = 0;
   while (!evalResult.passed && !evalResult.skipped && revisionAttempt < maxRevisions) {
@@ -176,15 +180,7 @@ export async function executeWithRevisions(
       };
     }
 
-    emit("evaluator:completed", { workflowId, result: {
-      passed: evalResult.passed,
-      reasoning: evalResult.reason ?? "",
-      suggestions: evalResult.suggestions,
-      confidence: 0,
-      feedback: evalResult.feedback ?? "",
-      files_to_review: [],
-      issues: [],
-    } });
+    emitEvalCompleted(evalResult);
   }
 
   if (!evalResult.passed && !evalResult.skipped && !evalResult.transportError) {

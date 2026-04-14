@@ -5,7 +5,7 @@ import {
   VALID_TRANSITIONS,
   isValidTransition,
   isResumable,
-} from "../src/orchestration/session/state-machine";
+} from "../src/orchestration/session/types";
 
 // ---------------------------------------------------------------------------
 // SessionStateSchema (z.enum — boundary type)

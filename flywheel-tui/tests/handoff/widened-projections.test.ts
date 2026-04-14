@@ -12,7 +12,7 @@ import {
   SubprocessHandoffSchema,
 } from "../../src/infra/handoff-schemas";
 import type { SubprocessHandoff } from "../../src/infra/handoff-schemas";
-import { EvaluatorHandoffDataSchema } from "../../src/workflows/evaluator/schemas";
+import type { EvaluatorInput } from "../../src/workflows/evaluator/schemas";
 import { LastWorkerResultSchema } from "../../src/workflows/schemas";
 
 // ---------------------------------------------------------------------------
@@ -48,31 +48,39 @@ function fullHandoff(overrides?: Partial<SubprocessHandoff>): SubprocessHandoff 
 // VAL-HANDOFF-001: Evaluator receives worker warnings
 // ---------------------------------------------------------------------------
 
-describe("VAL-HANDOFF-001: EvaluatorHandoffData includes warnings", () => {
-  it("EvaluatorHandoffDataSchema includes warnings field from SubprocessHandoff", () => {
+describe("VAL-HANDOFF-001: EvaluatorInput handoff includes warnings", () => {
+  it("EvaluatorInput handoff field accepts warnings from SubprocessHandoff", () => {
     const handoff = fullHandoff();
-    const projected = EvaluatorHandoffDataSchema.parse({
-      summary: handoff.summary,
-      verification: handoff.verification,
-      artifacts: handoff.artifacts,
-      files_to_review: handoff.files_to_review,
-      warnings: handoff.warnings,
-    });
-
-    expect(projected.warnings).toEqual([
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
+      acceptance_criteria: [],
+      tests_passed: null,
+      handoff: {
+        summary: handoff.summary,
+        verification: handoff.verification,
+        artifacts: handoff.artifacts,
+        files_to_review: handoff.files_to_review,
+        warnings: handoff.warnings,
+      },
+    };
+    expect(input.handoff!.warnings).toEqual([
       "JWT secret should be rotated in production",
       "Rate limit config needs tuning for high-traffic scenarios",
     ]);
   });
 
-  it("warnings is optional in EvaluatorHandoffData", () => {
-    const result = EvaluatorHandoffDataSchema.safeParse({
-      summary: "A".repeat(100),
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.warnings).toBeUndefined();
-    }
+  it("warnings is optional in EvaluatorInput handoff", () => {
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
+      acceptance_criteria: [],
+      tests_passed: null,
+      handoff: {
+        summary: "A".repeat(100),
+      },
+    };
+    expect(input.handoff!.warnings).toBeUndefined();
   });
 });
 
@@ -80,31 +88,39 @@ describe("VAL-HANDOFF-001: EvaluatorHandoffData includes warnings", () => {
 // VAL-HANDOFF-002: Evaluator receives worker decisions
 // ---------------------------------------------------------------------------
 
-describe("VAL-HANDOFF-002: EvaluatorHandoffData includes decisions", () => {
-  it("EvaluatorHandoffDataSchema includes decisions field from SubprocessHandoff", () => {
+describe("VAL-HANDOFF-002: EvaluatorInput handoff includes decisions", () => {
+  it("EvaluatorInput handoff field accepts decisions from SubprocessHandoff", () => {
     const handoff = fullHandoff();
-    const projected = EvaluatorHandoffDataSchema.parse({
-      summary: handoff.summary,
-      verification: handoff.verification,
-      artifacts: handoff.artifacts,
-      files_to_review: handoff.files_to_review,
-      decisions: handoff.decisions,
-    });
-
-    expect(projected.decisions).toEqual([
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
+      acceptance_criteria: [],
+      tests_passed: null,
+      handoff: {
+        summary: handoff.summary,
+        verification: handoff.verification,
+        artifacts: handoff.artifacts,
+        files_to_review: handoff.files_to_review,
+        decisions: handoff.decisions,
+      },
+    };
+    expect(input.handoff!.decisions).toEqual([
       "Used RS256 for JWT signing instead of HS256 for better security",
       "Added rate limiting middleware at the router level",
     ]);
   });
 
-  it("decisions is optional in EvaluatorHandoffData", () => {
-    const result = EvaluatorHandoffDataSchema.safeParse({
-      summary: "A".repeat(100),
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.decisions).toBeUndefined();
-    }
+  it("decisions is optional in EvaluatorInput handoff", () => {
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
+      acceptance_criteria: [],
+      tests_passed: null,
+      handoff: {
+        summary: "A".repeat(100),
+      },
+    };
+    expect(input.handoff!.decisions).toBeUndefined();
   });
 });
 
@@ -197,18 +213,21 @@ describe("VAL-HANDOFF-006: LastWorkerResult includes files_to_review", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-HANDOFF-007: Backward compatibility", () => {
-  it("EvaluatorHandoffData parses without warnings/decisions (old format)", () => {
-    const result = EvaluatorHandoffDataSchema.safeParse({
-      summary: "A".repeat(100),
-      verification: { tests_passed: true, test_output_summary: "All pass" },
-      artifacts: { files_created: [], files_modified: [], commands_run: [] },
-      files_to_review: [],
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.warnings).toBeUndefined();
-      expect(result.data.decisions).toBeUndefined();
-    }
+  it("EvaluatorInput handoff works without warnings/decisions (old format)", () => {
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
+      acceptance_criteria: [],
+      tests_passed: null,
+      handoff: {
+        summary: "A".repeat(100),
+        verification: { tests_passed: true, test_output_summary: "All pass" },
+        artifacts: { files_created: [], files_modified: [], commands_run: [] },
+        files_to_review: [],
+      },
+    };
+    expect(input.handoff!.warnings).toBeUndefined();
+    expect(input.handoff!.decisions).toBeUndefined();
   });
 
   it("LastWorkerResult parses without new optional fields (old format)", () => {
@@ -251,19 +270,14 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-HANDOFF-008: Graceful fallback on invalid handoffs", () => {
-  it("EvaluatorHandoffData is undefined when handoff is missing (no crash)", () => {
-    const cachedHandoff: SubprocessHandoff | undefined = undefined;
-    const evaluatorHandoff = cachedHandoff
-      ? EvaluatorHandoffDataSchema.parse({
-          summary: cachedHandoff.summary,
-          verification: cachedHandoff.verification,
-          artifacts: cachedHandoff.artifacts,
-          files_to_review: cachedHandoff.files_to_review,
-          warnings: cachedHandoff.warnings,
-          decisions: cachedHandoff.decisions,
-        })
-      : undefined;
+  it("EvaluatorInput handoff is undefined when handoff is missing (no crash)", () => {
+    const input: EvaluatorInput = {
+      worker_output: "output",
+      evaluation_criteria: "criteria",
+      acceptance_criteria: [],
+      tests_passed: null,
+    };
 
-    expect(evaluatorHandoff).toBeUndefined();
+    expect(input.handoff).toBeUndefined();
   });
 });

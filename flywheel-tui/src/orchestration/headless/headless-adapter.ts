@@ -84,9 +84,6 @@ export class HeadlessAdapter {
     if (this.eventBus) this.disconnect()
     this.eventBus = eventBus
     this.unsubscribe = eventBus.subscribe((event) => this.handleEvent(event))
-  }
-
-  start(): void {
     if (this.logFile) {
       const dir = path.dirname(this.logFile)
       if (!existsSync(dir)) {
@@ -97,12 +94,8 @@ export class HeadlessAdapter {
     this.log("Workflow adapter started (headless)")
   }
 
-  stop(): void {
-    this.log("Workflow adapter stopped")
-    this.closeLogStream()
-  }
-
   disconnect(): void {
+    this.log("Workflow adapter stopped")
     this.closeLogStream()
     if (this.unsubscribe) { this.unsubscribe(); this.unsubscribe = null }
     this.eventBus = null

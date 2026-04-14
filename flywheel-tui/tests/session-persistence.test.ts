@@ -15,7 +15,7 @@ import {
   listSessions,
 } from "../src/orchestration/session/persistence";
 import { SessionSchema, type Session } from "../src/orchestration/session/schemas";
-import type { SessionState } from "../src/orchestration/session/state-machine";
+import type { SessionState } from "../src/orchestration/session/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

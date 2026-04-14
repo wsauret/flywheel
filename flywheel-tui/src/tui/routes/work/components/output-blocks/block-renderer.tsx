@@ -16,7 +16,7 @@ import { ThinkingBlock } from "./thinking-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
 import { TodoListBlock } from "./todo-list-block.js"
 
-export interface BlockRendererProps {
+interface BlockRendererProps {
   block: AnyBlock
   expandedIds?: Set<string>
   onToggleExpand?: (id: string) => void

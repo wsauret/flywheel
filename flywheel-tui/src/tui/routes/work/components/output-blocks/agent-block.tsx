@@ -12,7 +12,7 @@ import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@
 
 const MAX_VISIBLE_TOOLS = 6
 
-export interface AgentBlockProps {
+interface AgentBlockProps {
   block: AgentBlockType
   expanded?: boolean
   onToggleExpand?: (id: string) => void
@@ -69,6 +69,21 @@ export function AgentBlock(props: AgentBlockProps) {
 
   const toggleShowAll = () => setShowAll((v) => !v)
 
+  function ToolList() {
+    return (
+      <>
+        <For each={visibleChildren()}>
+          {(child) => <ToolRow tool={child} />}
+        </For>
+        <Show when={hiddenCount() > 0}>
+          <box paddingLeft={1}>
+            <text fg={theme.textMuted}>{showAll() ? "▾ show less" : `▸ ${hiddenCount()} more`}</text>
+          </box>
+        </Show>
+      </>
+    )
+  }
+
   return (
     <box flexDirection="column" marginTop={1}>
       <Show when={props.block.status === "active"}>
@@ -91,14 +106,7 @@ export function AgentBlock(props: AgentBlockProps) {
           paddingBottom={0}
           onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}
         >
-          <For each={visibleChildren()}>
-            {(child) => <ToolRow tool={child} />}
-          </For>
-          <Show when={hiddenCount() > 0}>
-            <box paddingLeft={1}>
-              <text fg={theme.textMuted}>{showAll() ? "▾ show less" : `▸ ${hiddenCount()} more`}</text>
-            </box>
-          </Show>
+          <ToolList />
         </CollapsibleBox>
       </Show>
 
@@ -117,14 +125,7 @@ export function AgentBlock(props: AgentBlockProps) {
           paddingBottom={0}
           onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}
         >
-          <For each={visibleChildren()}>
-            {(child) => <ToolRow tool={child} />}
-          </For>
-          <Show when={hiddenCount() > 0}>
-            <box paddingLeft={1}>
-              <text fg={theme.textMuted}>{showAll() ? "▾ show less" : `▸ ${hiddenCount()} more`}</text>
-            </box>
-          </Show>
+          <ToolList />
         </CollapsibleBox>
       </Show>
 

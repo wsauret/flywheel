@@ -16,7 +16,6 @@ import {
   transitionStep,
   advanceCursor,
   isFinished,
-  type Provenance,
 } from "./queue.js";
 import { executeStep } from "./step-runner.js";
 import { Log } from "../../infra/log.js";
@@ -24,10 +23,6 @@ import { errorMessage } from "../../infra/error-message.js";
 
 
 const log = Log.create({ service: "step-executor" });
-
-function makeProvenance(reason: string): Provenance {
-  return { actor: "executor", reason };
-}
 
 export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
   const { queue, workflowId, emit, persist } = options;
@@ -52,7 +47,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
     newStatus: "running" | "completed" | "failed" | "skipped" | "pending",
     reason: string,
   ): Promise<boolean> {
-    const result = transitionStep(queue, stepId, newStatus, makeProvenance(reason));
+    const result = transitionStep(queue, stepId, newStatus, { actor: "executor", reason });
     if (!result.success) {
       log.warn("step transition failed", {
         stepId,

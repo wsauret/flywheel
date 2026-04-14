@@ -8,11 +8,11 @@ import type { WorkflowResult } from "./workflow-runner.js"
 import type { SessionStore } from "./session-store-types.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
 import type { SessionActionDeps } from "./session-actions.js"
-import type { SessionState } from "./session/state-machine.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type {
   RunnerDoneResult as BaseRunnerDoneResult,
   RunnerErrorResult,
+  SessionState,
 } from "./session/types.js"
 
 interface WorkflowControllerDeps {
@@ -41,7 +41,7 @@ interface ResumeWorkflowResult {
   terminalTitle: string
 }
 
-export interface RunnerDoneResult extends BaseRunnerDoneResult {
+interface RunnerDoneResult extends BaseRunnerDoneResult {
   state: SessionState
 }
 
@@ -172,8 +172,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   async function resumeWorkflow(
     sessionId: string,
   ): Promise<ResumeWorkflowResult | null> {
-    const actionDeps = getActionDeps()
-    const data = await loadResumeData(sessionId, actionDeps)
+    const data = await loadResumeData(sessionId)
     if (!data) return null
 
     const description = data.session.name || data.session.label || ""

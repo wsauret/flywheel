@@ -95,7 +95,7 @@ interface StepDispatcher {
   ): Promise<StepDispatcherDecision>;
 }
 
-export class StepDispatcherError extends Error {
+class StepDispatcherError extends Error {
   constructor(
     message: string,
     public readonly stepId: string,

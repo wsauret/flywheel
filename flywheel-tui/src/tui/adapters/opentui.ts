@@ -9,7 +9,7 @@ import { Log } from "../../infra/log.js";
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
 
-export interface OpenTUIAdapterOptions {
+interface OpenTUIAdapterOptions {
   updateEntry: (patch: Partial<WorkflowSessionEntry>) => void;
   /** Engine metadata — used to configure engine-specific adapter behaviour (e.g. synthetic thinking timer). */
   engineMetadata?: import("../../orchestration/engines/core/types").EngineMetadata;
@@ -79,9 +79,6 @@ export class OpenTUIAdapter {
     this.eventBus = eventBus;
     this.unsubscribe = eventBus.subscribe((event) => this.handleEvent(event));
   }
-
-  start(): void { /* no-op — OpenTUI lifecycle is managed by the shell */ }
-  stop(): void {}
 
   disconnect(): void {
     this.disconnected = true;

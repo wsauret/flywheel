@@ -15,7 +15,7 @@ import { createTextAttributes } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSession } from "@tui/shared/context/session"
 import { ModalBase } from "@tui/shared/components/modal/modal-base"
-import { isResumable } from "../orchestration/session/state-machine.js"
+import { isResumable } from "../orchestration/session/types.js"
 import { truncate } from "./utils/text.js"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
 import { buildSessionList, type GroupKey } from "./hooks/use-session-modal.js"
@@ -23,7 +23,7 @@ import type { SessionSummary } from "../orchestration/session/manager.js"
 
 // Props
 
-export interface SessionModalProps {
+interface SessionModalProps {
   activeSessionId?: string
   cursor: number
   confirmDeleteId?: string

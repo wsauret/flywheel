@@ -34,9 +34,7 @@ export const WorkflowInfoSchema = z.object({
   step_description: z.string(),
 }).strip();
 
-export type WorkflowInfo = z.infer<typeof WorkflowInfoSchema>;
-
-export const DispatcherConfigSchema = z.object({
+const DispatcherConfigSchema = z.object({
   max_eval_cycles: z.number(),
   worktree_path: z.string(),
   project_cwd: z.string(),
@@ -44,9 +42,7 @@ export const DispatcherConfigSchema = z.object({
   dispatcher_model: z.string(),
 }).strip();
 
-export type DispatcherConfig = z.infer<typeof DispatcherConfigSchema>;
-
-export const DispatcherInputSchema = z.object({
+const DispatcherInputSchema = z.object({
   plan: PlanInputSchema,
   state: z.object({
     completed_steps: z.array(z.number()).optional(),

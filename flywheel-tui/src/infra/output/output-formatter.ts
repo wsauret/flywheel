@@ -150,20 +150,25 @@ function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: s
     const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
     const fileContent = fs.readFileSync(resolved, "utf-8");
 
+    // The file may or may not be modified when we read it (race between
+    // tool_use event and actual execution). Check the longer string first:
+    // it's more specific and won't false-match as a substring of the other.
+    // Adds (newStr longer): newStr won't spuriously match the unmodified file.
+    // Removes (oldStr longer): oldStr won't spuriously match the modified file.
+    const fileHasOld = oldStr.length >= newStr.length
+      ? fileContent.includes(oldStr)
+      : !fileContent.includes(newStr) && fileContent.includes(oldStr);
+    const fileHasNew = !fileHasOld && fileContent.includes(newStr);
+
     let oldContent: string;
     let newContent: string;
-    if (fileContent.includes(newStr)) {
-      // File already modified — reverse to reconstruct old.
-      // Checked first: oldStr is often a substring of newStr (e.g. adding a
-      // comment above a line), so includes(oldStr) would match even after
-      // the edit has been applied, producing a double-insertion in the diff.
-      newContent = fileContent;
-      oldContent = fileContent.replace(newStr, oldStr);
-    } else if (fileContent.includes(oldStr)) {
+    if (fileHasOld) {
       oldContent = fileContent;
       newContent = fileContent.replace(oldStr, newStr);
+    } else if (fileHasNew) {
+      newContent = fileContent;
+      oldContent = fileContent.replace(newStr, oldStr);
     } else {
-      // Neither found — fall back to minimal diff
       return createMinimalDiff(filePath, oldStr, newStr);
     }
 

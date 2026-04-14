@@ -1,8 +1,8 @@
-export type RateLimitDetectionResult =
+type RateLimitDetectionResult =
   | { isRateLimit: false }
   | { isRateLimit: true; message: string; retryAfter?: number };
 
-export interface RateLimitDetectionInput {
+interface RateLimitDetectionInput {
   stderr: string;
   exitCode?: number;
 }

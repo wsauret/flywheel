@@ -44,12 +44,6 @@ export namespace Log {
     info(message?: unknown, extra?: Record<string, unknown>): void
     warn(message?: unknown, extra?: Record<string, unknown>): void
     error(message?: unknown, extra?: Record<string, unknown>): void
-    tag(key: string, value: string): Logger
-    clone(): Logger
-    time(message: string, extra?: Record<string, unknown>): {
-      stop(): void
-      [Symbol.dispose](): void
-    }
   }
 
   const loggers = new Map<string, Logger>()
@@ -129,7 +123,6 @@ export namespace Log {
   let last = Date.now()
 
   // Cached by `service` tag only — all callers pass a single { service } tag.
-  // If a caller ever needs extra tags, use .tag() on the returned logger.
   export function create(tags?: Record<string, unknown>): Logger {
     tags = tags || {}
 
@@ -169,24 +162,6 @@ export namespace Log {
       },
       error(message?: unknown, extra?: Record<string, unknown>) {
         if (shouldLog("ERROR")) write("ERROR " + build(message, extra))
-      },
-      tag(key: string, value: string) {
-        if (tags) tags[key] = value
-        return result
-      },
-      clone() {
-        return Log.create({ ...tags })
-      },
-      time(message: string, extra?: Record<string, unknown>) {
-        const now = Date.now()
-        result.info(message, { status: "started", ...extra })
-        function stop() {
-          result.info(message, { status: "completed", duration: Date.now() - now, ...extra })
-        }
-        return {
-          stop,
-          [Symbol.dispose]() { stop() },
-        }
       },
     }
 

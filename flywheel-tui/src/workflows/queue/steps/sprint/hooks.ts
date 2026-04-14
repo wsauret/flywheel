@@ -1,5 +1,5 @@
 import type { Step, Queue } from "../../types.js";
-import { insertAfter, type Provenance } from "../../queue.js";
+import { insertAfter } from "../../queue.js";
 import { makeStep } from "../../templates.js";
 import type {
   OnStepCompletedHook,
@@ -11,10 +11,6 @@ import type {
   SprintLoopState,
 } from "./types.js";
 import { SPRINT_HINT } from "./types.js";
-
-function makeProvenance(reason: string): Provenance {
-  return { actor: "sprint-hook", reason };
-}
 
 // Sprint loop primitives — exported for direct unit testing of edge cases.
 
@@ -114,25 +110,13 @@ export function buildRetryStep(
 
 export function createSprintHook(config: SprintConfig): {
   hook: OnStepCompletedHook;
-  getState: () => Readonly<SprintLoopState>;
 } {
-  // Internal closure state
   let state: SprintLoopState = {
     status: "running",
     iterationCount: 0,
     history: [],
   };
   const feedbackCache = new Map<number, string>();
-
-  // getState — snapshot of current sprint state
-
-  function getState(): Readonly<SprintLoopState> {
-    const base = { iterationCount: state.iterationCount, history: [...state.history] };
-    if (state.status === "exhausted") return { ...base, status: "exhausted", reason: state.reason };
-    return { ...base, status: state.status };
-  }
-
-  // onStepCompleted — the hook
 
   const hook: OnStepCompletedHook = async (
     step: Step,
@@ -184,13 +168,11 @@ export function createSprintHook(config: SprintConfig): {
       queue,
       step.id,
       [retryStep],
-      makeProvenance(
-        `Sprint retry: inserting work step for iteration ${state.iterationCount + 1}`,
-      ),
+      { actor: "sprint-hook", reason: `Sprint retry: inserting work step for iteration ${state.iterationCount + 1}` },
     );
 
     return { continueExecution: true };
   };
 
-  return { hook, getState };
+  return { hook };
 }

@@ -4,7 +4,7 @@ import { createChatController } from "../../orchestration/chat-controller.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 import { wireLifecycleCallbacks } from "./lifecycle-callbacks.js"
 
-export interface ChatModeDeps {
+interface ChatModeDeps {
   signals: ShellSignals
   services: ShellServices
   /** Project working directory — injected to avoid hardcoding process.cwd(). */

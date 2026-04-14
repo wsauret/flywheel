@@ -62,8 +62,6 @@ export interface AccumulatedContext {
   recentHandoffs: HandoffEntry[];
   /** Total number of accumulated entries. */
   totalSteps: number;
-  /** Index signature for StepContextAccumulator compatibility. */
-  [key: string]: unknown;
 }
 
 function extractStringArray(
@@ -109,11 +107,6 @@ function summarizeEntry(entry: HandoffEntry): HandoffSummary {
  * `accumulate(data)` accepts `unknown` (matching StepContextAccumulator)
  * but only processes objects with the expected shape (stepId, stepType,
  * stepTitle, handoff). Anything else is silently ignored.
- *
- * `getContext()` returns a `Record<string, unknown>` containing:
- *   - summaries: older handoffs compressed to key fields
- *   - recentHandoffs: last N handoffs in full detail
- *   - totalSteps: count of accumulated entries
  */
 export interface ContextAccumulator {
   /** Add a completed step's handoff data. */

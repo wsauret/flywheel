@@ -30,7 +30,7 @@ describe("HeadlessAdapter (production)", () => {
   // ── Lifecycle ──
 
   describe("lifecycle", () => {
-    it("connects to EventBus, starts, handles events, stops, disconnects", () => {
+    it("connects to EventBus, handles events, and disconnects", () => {
       adapter = new HeadlessAdapter({
         logLevel: "normal",
         timestamps: false,
@@ -38,7 +38,6 @@ describe("HeadlessAdapter (production)", () => {
       })
 
       adapter.connect(bus)
-      adapter.start()
 
       // Emit an event — should be logged
       bus.emit({
@@ -49,7 +48,6 @@ describe("HeadlessAdapter (production)", () => {
       })
       expect(logs.some((l) => l.includes("Queue initialized"))).toBe(true)
 
-      adapter.stop()
       adapter.disconnect()
     })
   })
@@ -76,7 +74,6 @@ describe("HeadlessAdapter (production)", () => {
       })
 
       adapter.connect(bus)
-      adapter.start()
 
       bus.emit({
         type: "queue:initialized",
@@ -85,9 +82,7 @@ describe("HeadlessAdapter (production)", () => {
         timestamp: ts,
       })
 
-      adapter.stop()
-      // Wait for the stream to fully flush before reading
-      await adapter.closeLogStream()
+      // disconnect() flushes and closes the log stream
       adapter.disconnect()
 
       const content = fs.readFileSync(logFile, "utf-8")
@@ -107,7 +102,6 @@ describe("HeadlessAdapter (production)", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
 
       bus.emit({
         type: "queue:completed",
@@ -130,7 +124,6 @@ describe("HeadlessAdapter (production)", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
 
       // This should NOT be logged at minimal level
       bus.emit({
@@ -163,7 +156,6 @@ describe("HeadlessAdapter (production)", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
 
       bus.emit({
         type: "subprocess:spawned",
@@ -193,7 +185,6 @@ describe("HeadlessAdapter (production)", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
 
       bus.emit({
         type: "dispatcher:invoked",
@@ -253,7 +244,6 @@ describe("HeadlessAdapter (production)", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
 
       bus.emit({
         type: "trace:tool-started",
@@ -281,7 +271,7 @@ describe("HeadlessAdapter (production)", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true })
     })
 
-    it("disconnect() closes logStream even if stop() was not called", async () => {
+    it("disconnect() closes logStream and flushes", () => {
       const logFile = path.join(tmpDir, "leak.log")
       adapter = new HeadlessAdapter({
         logFile,
@@ -290,7 +280,6 @@ describe("HeadlessAdapter (production)", () => {
       })
 
       adapter.connect(bus)
-      adapter.start()
 
       bus.emit({
         type: "queue:initialized",
@@ -299,8 +288,7 @@ describe("HeadlessAdapter (production)", () => {
         timestamp: ts,
       })
 
-      // Wait for stream to flush, then disconnect (skipping stop())
-      await adapter.closeLogStream()
+      // disconnect() flushes the log stream internally
       adapter.disconnect()
 
       // The log file should have been flushed

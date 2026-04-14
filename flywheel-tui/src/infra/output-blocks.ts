@@ -65,7 +65,7 @@ export const UserMessageBlockSchema = z.object({
   injected: z.boolean().optional(),
 })
 
-export const TodoItemSchema = z.object({
+const TodoItemSchema = z.object({
   content: z.string(),
   status: z.enum(["pending", "in_progress", "completed"]),
 })

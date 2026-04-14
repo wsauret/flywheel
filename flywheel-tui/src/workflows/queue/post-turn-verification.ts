@@ -11,8 +11,9 @@ import {
   DEFAULT_TIMEOUT_MS,
   DEFAULT_DEADLINE_MS,
   type NativeCheckResult,
+  type DeclaredCommand,
 } from "../shared/native-verification.js";
-import { extractDeclaredCommands } from "./shared/command-extraction.js";
+import { parseRawHandoff } from "./shared/handoff-parse.js";
 
 // Config
 
@@ -26,6 +27,29 @@ interface PostTurnVerificationConfig {
 }
 
 const CODE_STEP_TYPES = new Set(["work"]);
+
+export function extractDeclaredCommands(
+  handoffData: Record<string, unknown> | null,
+): DeclaredCommand[] {
+  if (!handoffData) return [];
+  const parsed = parseRawHandoff(handoffData);
+  const result: DeclaredCommand[] = [];
+  for (const entry of parsed.commandsRun) {
+    if (typeof entry === "string") {
+      result.push({ command: entry });
+    } else if (entry && typeof entry === "object") {
+      const obj = entry as Record<string, unknown>;
+      if (typeof obj.command === "string") {
+        result.push({
+          command: obj.command,
+          reportedExitCode: typeof obj.exitCode === "number" ? obj.exitCode : undefined,
+          observation: typeof obj.observation === "string" ? obj.observation : undefined,
+        });
+      }
+    }
+  }
+  return result;
+}
 
 /**
  * Create the post-turn verification hook for a given config.

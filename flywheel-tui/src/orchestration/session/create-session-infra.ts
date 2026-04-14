@@ -9,7 +9,7 @@ import type { EventBus, EmitFn, Unsubscribe } from "../../infra/event-bus.js"
 import type { BudgetLimits } from "../../workflows/schemas.js"
 import { extractContextUpdate, contextWindowForModel } from "../engines/providers/claude-context.js"
 
-export interface SessionInfraDeps {
+interface SessionInfraDeps {
   sessionId: string
   projectCwd: string
   config: FlywheelConfig

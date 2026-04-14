@@ -286,9 +286,9 @@ describe("buildRetryStep", () => {
 // ---------------------------------------------------------------------------
 
 describe("exhaustion via hook", () => {
-  test("max iterations reached stops execution with exhausted status", async () => {
+  test("max iterations reached stops execution", async () => {
     const config = makeSprintConfig({ max_iterations: 1 });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
@@ -296,8 +296,6 @@ describe("exhaustion via hook", () => {
     const result = await hook(step, "failed", queue, { summary: "fail" });
 
     expect(result.continueExecution).toBe(false);
-    expect(getState().status).toBe("exhausted");
-    expect(getState().reason).toBe("Max iterations reached");
     // No additional steps inserted — just stops
     expect(queue.steps).toHaveLength(1);
   });
@@ -320,18 +318,17 @@ describe("createSprintHook — no-op guard", () => {
     expect(result.continueExecution).toBe(false);
   });
 
-  test("state unchanged after no-op", async () => {
+  test("queue unchanged after no-op", async () => {
     const config = makeSprintConfig();
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeNonSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "completed";
 
-    await hook(step, "completed", queue, null);
-    const state = getState();
-    expect(state.iterationCount).toBe(0);
-    expect(state.history).toHaveLength(0);
-    expect(state.status).toBe("running");
+    const result = await hook(step, "completed", queue, null);
+    expect(result.continueExecution).toBe(false);
+    // No steps inserted
+    expect(queue.steps).toHaveLength(1);
   });
 });
 
@@ -340,9 +337,9 @@ describe("createSprintHook — no-op guard", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — completed step", () => {
-  test("records iteration and returns stop", async () => {
+  test("returns stop on completed sprint step", async () => {
     const config = makeSprintConfig();
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "completed";
@@ -352,17 +349,13 @@ describe("createSprintHook — completed step", () => {
     });
 
     expect(result.continueExecution).toBe(false);
-    const state = getState();
-    expect(state.status).toBe("completed");
-    expect(state.iterationCount).toBe(1);
-    expect(state.history).toHaveLength(1);
-    expect(state.history[0].workerSummary).toBe("All tests pass");
-    expect(state.history[0].nativeCheckPassed).toBe(true);
+    // No retry steps inserted on success
+    expect(queue.steps).toHaveLength(1);
   });
 
   test("ignores subsequent calls after completion", async () => {
     const config = makeSprintConfig();
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step1 = makeSprintStep();
     const step2 = makeSprintStep();
     const queue = createQueue([step1, step2]);
@@ -371,8 +364,10 @@ describe("createSprintHook — completed step", () => {
     await hook(step1, "completed", queue, { summary: "done" });
     const result = await hook(step2, "failed", queue, { summary: "fail" });
 
+    // After completion, subsequent calls are no-ops
     expect(result.continueExecution).toBe(false);
-    expect(getState().iterationCount).toBe(1);
+    // No retry steps inserted
+    expect(queue.steps).toHaveLength(2);
   });
 });
 
@@ -383,7 +378,7 @@ describe("createSprintHook — completed step", () => {
 describe("createSprintHook — failed, under max", () => {
   test("inserts new work step and returns continue", async () => {
     const config = makeSprintConfig({ max_iterations: 5 });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
@@ -394,11 +389,6 @@ describe("createSprintHook — failed, under max", () => {
     });
 
     expect(result.continueExecution).toBe(true);
-    const state = getState();
-    expect(state.status).toBe("running");
-    expect(state.iterationCount).toBe(1);
-    expect(state.history).toHaveLength(1);
-    expect(state.history[0].evalFeedback).toBe("3 tests failing");
 
     // Verify retry step was inserted
     expect(queue.steps).toHaveLength(2);
@@ -428,9 +418,9 @@ describe("createSprintHook — failed, under max", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — failed, at max iterations", () => {
-  test("stops with exhausted status at max iterations", async () => {
+  test("stops at max iterations without inserting steps", async () => {
     const config = makeSprintConfig({ max_iterations: 1 });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
@@ -441,30 +431,25 @@ describe("createSprintHook — failed, at max iterations", () => {
     });
 
     expect(result.continueExecution).toBe(false);
-    const state = getState();
-    expect(state.status).toBe("exhausted");
-    expect(state.reason).toBe("Max iterations reached");
-
     // No extra steps inserted — just stops
     expect(queue.steps).toHaveLength(1);
   });
 
   test("reaches max after multiple iterations", async () => {
     const config = makeSprintConfig({ max_iterations: 3 });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
 
     // Build queue with 3 sprint steps
     const steps = [makeSprintStep(), makeSprintStep(), makeSprintStep()];
     const queue = createQueue(steps);
 
-    // Fail iterations 1 and 2 — should insert retries
+    // Fail iteration 1 — should insert retry
     queue.steps[0].status = "failed";
     const r1 = await hook(steps[0], "failed", queue, {
       summary: "fail 1",
       eval_feedback: "error A",
     });
     expect(r1.continueExecution).toBe(true);
-    expect(getState().iterationCount).toBe(1);
 
     // Find the inserted retry step
     const retry1 = queue.steps.find(
@@ -473,12 +458,12 @@ describe("createSprintHook — failed, at max iterations", () => {
     expect(retry1).toBeDefined();
     retry1.status = "failed";
 
+    // Fail iteration 2 — should insert another retry
     const r2 = await hook(retry1, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "error B",
     });
     expect(r2.continueExecution).toBe(true);
-    expect(getState().iterationCount).toBe(2);
 
     // Find the next retry step
     const retry2 = queue.steps.find(
@@ -487,14 +472,12 @@ describe("createSprintHook — failed, at max iterations", () => {
     expect(retry2).toBeDefined();
     retry2.status = "failed";
 
-    // Iteration 3 = max_iterations → exhausted
+    // Iteration 3 = max_iterations — should stop
     const r3 = await hook(retry2, "failed", queue, {
       summary: "fail 3",
       eval_feedback: "error C",
     });
     expect(r3.continueExecution).toBe(false);
-    expect(getState().status).toBe("exhausted");
-    expect(getState().iterationCount).toBe(3);
   });
 });
 
@@ -503,23 +486,23 @@ describe("createSprintHook — failed, at max iterations", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — stuck detection", () => {
-  test("two identical feedbacks trigger early exhaustion", async () => {
+  test("two identical feedbacks trigger early stop", async () => {
     const config = makeSprintConfig({
       max_iterations: 5,
       detect_stuck: true,
     });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
 
     const step1 = makeSprintStep();
     const queue = makeQueueWithStep(step1);
     queue.steps[0].status = "failed";
 
-    // First failure
-    await hook(step1, "failed", queue, {
+    // First failure — should continue
+    const r1 = await hook(step1, "failed", queue, {
       summary: "fail 1",
       eval_feedback: "TypeError in handler",
     });
-    expect(getState().status).toBe("running");
+    expect(r1.continueExecution).toBe(true);
 
     // Find retry step
     const retry = queue.steps.find(
@@ -528,15 +511,13 @@ describe("createSprintHook — stuck detection", () => {
     expect(retry).toBeDefined();
     retry.status = "failed";
 
-    // Second failure with same feedback → stuck → exhausted
+    // Second failure with same feedback — stuck, should stop
     const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "TypeError in handler",
     });
 
     expect(result.continueExecution).toBe(false);
-    expect(getState().status).toBe("exhausted");
-    expect(getState().reason).toContain("Stuck");
   });
 
   test("stuck detection respects normalization", async () => {
@@ -544,7 +525,7 @@ describe("createSprintHook — stuck detection", () => {
       max_iterations: 5,
       detect_stuck: true,
     });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
 
     const step1 = makeSprintStep();
     const queue = makeQueueWithStep(step1);
@@ -561,13 +542,12 @@ describe("createSprintHook — stuck detection", () => {
     )!;
     retry.status = "failed";
 
-    // Same error but different timestamps/lines → stuck → exhausted
+    // Same error but different timestamps/lines — stuck, should stop
     const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "Error at 2026-02-15T12:30:00 in foo.ts:20:3 (500ms)",
     });
 
-    expect(getState().status).toBe("exhausted");
     expect(result.continueExecution).toBe(false);
   });
 
@@ -576,7 +556,7 @@ describe("createSprintHook — stuck detection", () => {
       max_iterations: 5,
       detect_stuck: false,
     });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
 
     const step1 = makeSprintStep();
     const queue = makeQueueWithStep(step1);
@@ -592,13 +572,13 @@ describe("createSprintHook — stuck detection", () => {
     )!;
     retry.status = "failed";
 
-    await hook(retry, "failed", queue, {
+    // With detect_stuck=false, identical feedback should still continue
+    const result = await hook(retry, "failed", queue, {
       summary: "fail 2",
       eval_feedback: "same error",
     });
 
-    // Should still be running — stuck detection disabled
-    expect(getState().status).toBe("running");
+    expect(result.continueExecution).toBe(true);
   });
 });
 
@@ -607,9 +587,9 @@ describe("createSprintHook — stuck detection", () => {
 // ---------------------------------------------------------------------------
 
 describe("createSprintHook — null handoffData", () => {
-  test("still retries and records null eval feedback", async () => {
+  test("still retries with null handoffData", async () => {
     const config = makeSprintConfig({ max_iterations: 5 });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
@@ -617,11 +597,6 @@ describe("createSprintHook — null handoffData", () => {
     const result = await hook(step, "failed", queue, null);
 
     expect(result.continueExecution).toBe(true);
-    const state = getState();
-    expect(state.iterationCount).toBe(1);
-    expect(state.history[0].evalFeedback).toBeUndefined();
-    expect(state.history[0].workerSummary).toBe("Iteration 1");
-
     // Still inserts retry step
     expect(queue.steps).toHaveLength(2);
     expect(queue.steps[1].dispatcherHint).toBe(SPRINT_HINT);
@@ -652,7 +627,7 @@ describe("createSprintHook — insertAfter timing", () => {
 
   test("exhaustion stops without inserting additional steps", async () => {
     const config = makeSprintConfig({ max_iterations: 1 });
-    const { hook, getState } = createSprintHook(config);
+    const { hook } = createSprintHook(config);
     const step = makeSprintStep();
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
@@ -660,7 +635,6 @@ describe("createSprintHook — insertAfter timing", () => {
     const result = await hook(step, "failed", queue, { summary: "fail" });
 
     expect(result.continueExecution).toBe(false);
-    expect(getState().status).toBe("exhausted");
     // No additional steps inserted
     expect(queue.steps).toHaveLength(1);
   });
@@ -718,33 +692,3 @@ describe("createSprintHook — retry step properties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createSprintHook — getState snapshot
-// ---------------------------------------------------------------------------
-
-describe("createSprintHook — getState", () => {
-  test("returns snapshot (not reference) of history", async () => {
-    const config = makeSprintConfig();
-    const { hook, getState } = createSprintHook(config);
-    const step = makeSprintStep();
-    const queue = makeQueueWithStep(step);
-    queue.steps[0].status = "completed";
-
-    await hook(step, "completed", queue, { summary: "done" });
-
-    const state1 = getState();
-    const state2 = getState();
-    expect(state1.history).not.toBe(state2.history);
-    expect(state1.history).toEqual(state2.history);
-  });
-
-  test("initial state is running with zero iterations", () => {
-    const config = makeSprintConfig();
-    const { getState } = createSprintHook(config);
-    const state = getState();
-    expect(state.status).toBe("running");
-    expect(state.iterationCount).toBe(0);
-    expect(state.history).toHaveLength(0);
-    expect(state.reason).toBeUndefined();
-  });
-});

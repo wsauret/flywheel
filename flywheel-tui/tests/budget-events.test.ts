@@ -103,7 +103,6 @@ describe("HeadlessAdapter — budget events", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
     })
 
     it("logs budget:exhausted", () => {
@@ -125,7 +124,6 @@ describe("HeadlessAdapter — budget events", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
     })
 
     it("still logs budget:exhausted in minimal mode (always visible)", () => {
@@ -147,7 +145,6 @@ describe("HeadlessAdapter — budget events", () => {
         logger: (msg) => logs.push(msg),
       })
       adapter.connect(bus)
-      adapter.start()
     })
 
     it("handles question:asked without throwing", () => {

@@ -1,7 +1,7 @@
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
 import type { SpanKind } from "../../infra/trace-types.js";
 
-export interface TraceSpanOps {
+interface TraceSpanOps {
   startSpan(kind: SpanKind, name: string, input?: unknown): string;
   endSpan(spanId: string, output?: unknown, status?: "ok" | "error", error?: { message: string; code?: string }): void;
   findOpenSpanByKind(kind: SpanKind): string | null;

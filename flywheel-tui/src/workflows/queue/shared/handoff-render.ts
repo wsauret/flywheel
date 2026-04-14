@@ -18,10 +18,8 @@ Write a JSON file to:
 \`${handoffPath}\``;
 }
 
-const SHARED_JSON_RULES = [
-  "Write valid JSON — no trailing commas, no comments, no markdown wrapping.",
-  "Write the file using your file-writing tool, not stdout.",
-];
+const JSON_VALIDITY_RULE = "Write valid JSON — no trailing commas, no comments, no markdown wrapping.";
+const JSON_WRITE_TOOL_RULE = "Write the file using your file-writing tool, not stdout.";
 
 export function renderHandoffInstruction(
   fields: HandoffFieldSpec[],
@@ -111,8 +109,8 @@ export function renderEvaluatorHandoffInstruction(handoffPath: string): string {
 1. ALL fields are required — do not omit any field.
 2. Use empty arrays \`[]\` and empty strings \`""\` for fields with no data — do not use \`null\`.
 3. Do NOT include fields not listed above — unknown fields cause a validation error.
-4. ${SHARED_JSON_RULES[0]}
-5. ${SHARED_JSON_RULES[1]}`;
+4. ${JSON_VALIDITY_RULE}
+5. ${JSON_WRITE_TOOL_RULE}`;
 }
 
 export function renderDispatcherHandoffInstruction(handoffPath: string): string {
@@ -150,6 +148,6 @@ export function renderDispatcherHandoffInstruction(handoffPath: string): string 
 
 1. ALL required fields must be present.
 2. Do NOT include fields not listed above — unknown fields cause a validation error.
-3. ${SHARED_JSON_RULES[0]}
-4. ${SHARED_JSON_RULES[1]}`;
+3. ${JSON_VALIDITY_RULE}
+4. ${JSON_WRITE_TOOL_RULE}`;
 }

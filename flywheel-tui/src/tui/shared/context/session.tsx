@@ -4,18 +4,18 @@ import { createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper.js"
 import { Log } from "../../../infra/log.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { SessionManager, SessionSummary, SessionListResult } from "../../../orchestration/session/manager.js"
+import type { SessionManager, SessionSummary, ManagerListResult } from "../../../orchestration/session/manager.js"
 
 const log = Log.create({ service: "session-context" })
 
 // Context value type
 
-export interface SessionContextValue {
+interface SessionContextValue {
   /** The underlying SessionManager instance. */
   manager: SessionManager
 
   /** Refresh the session list from disk. Returns the current list. */
-  refreshList: () => SessionListResult
+  refreshList: () => ManagerListResult
 
   /** Reactive signal: the cached session list. */
   sessions: () => SessionSummary[]
@@ -35,7 +35,7 @@ export const { use: useSession, provider: SessionProvider } = createSimpleContex
     const initialResult = props.manager.list()
     setSessions(initialResult.sessions)
 
-    const refreshList = (): SessionListResult => {
+    const refreshList = (): ManagerListResult => {
       const result = props.manager.list()
       setSessions(result.sessions)
       return result

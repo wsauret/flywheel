@@ -11,7 +11,7 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { RGBA } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 
-export interface ModalBaseProps {
+interface ModalBaseProps {
   children: JSX.Element
   width?: number
   maxWidth?: number

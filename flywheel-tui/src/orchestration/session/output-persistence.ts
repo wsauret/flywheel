@@ -14,7 +14,7 @@ import { resolveSessionFile, ensureSessionDir } from "../../infra/paths.js";
 const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 
-export interface OutputPersistenceDeps {
+interface OutputPersistenceDeps {
   sessionId: string;
   baseDir?: string;
   maxSizeBytes?: number;
@@ -31,7 +31,6 @@ export interface OutputFlusher {
 }
 
 export interface OutputPersistence {
-  save(blocks: AnyBlock[]): void;
   load(): Promise<OutputSnapshot[]>;
   createFlusher(getBlocks: () => readonly AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
 }

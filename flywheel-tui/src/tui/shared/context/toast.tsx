@@ -4,12 +4,12 @@ import { createSimpleContext } from "./helper.js"
 
 export type ToastVariant = "success" | "error" | "info" | "warning"
 
-export type ToastMessage = {
+type ToastMessage = {
   message: string
   variant: ToastVariant
 }
 
-export type ToastOptions = ToastMessage & {
+type ToastOptions = ToastMessage & {
   duration?: number
 }
 

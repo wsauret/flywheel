@@ -54,10 +54,6 @@ export class ContextIndexer {
     };
   }
 
-  dispose(): void {
-    this.ready = false;
-  }
-
   private async scanConventions(): Promise<ContextEntry[]> {
     const entries: ContextEntry[] = [];
 

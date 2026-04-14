@@ -9,7 +9,7 @@ export const EvaluatorVerdictSchema = EvaluatorResultSchema
 
 export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
 
-export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
+const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
   summary: true,
   verification: true,
   artifacts: true,
@@ -18,7 +18,7 @@ export const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
   decisions: true,
 });
 
-export const EvaluatorInputSchema = z.object({
+const EvaluatorInputSchema = z.object({
   worker_output: z.string(),
   evaluation_criteria: z.string(),
   acceptance_criteria: z.array(z.string()),

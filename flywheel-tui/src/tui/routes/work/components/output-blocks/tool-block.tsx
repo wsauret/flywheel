@@ -33,7 +33,7 @@ export function displayToolName(name: string): string {
 
 const BOLD = createTextAttributes({ bold: true })
 
-export interface ToolBlockProps {
+interface ToolBlockProps {
   block: ToolBlockType
 }
 

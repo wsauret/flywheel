@@ -10,7 +10,7 @@ function linkifyChunks(chunks: Parameters<typeof detectLinks>[0], context: Param
   return linkifyFilePaths(linked)
 }
 
-export interface TextBlockProps {
+interface TextBlockProps {
   block: TextBlockType
 }
 

@@ -4,7 +4,7 @@ import { Show } from "solid-js"
 import type { JSX } from "solid-js"
 import type { RGBA } from "@opentui/core"
 
-export interface CollapsibleBoxProps {
+interface CollapsibleBoxProps {
   expanded: boolean
   children: JSX.Element
   border?: boolean | ("top" | "bottom" | "left" | "right")[]

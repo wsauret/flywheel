@@ -21,7 +21,7 @@ import {
   type SessionManagerDeps,
 } from "../src/orchestration/session/manager";
 import { readSession } from "../src/orchestration/session/persistence";
-import { isValidTransition, VALID_TRANSITIONS, type SessionState } from "../src/orchestration/session/state-machine";
+import { isValidTransition, VALID_TRANSITIONS, type SessionState } from "../src/orchestration/session/types";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 import { fromSnapshot, type OutputSnapshot } from "../src/orchestration/session/output-schemas";
 

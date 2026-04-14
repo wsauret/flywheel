@@ -15,7 +15,7 @@ import {
   listSessions,
 } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
-import type { SessionState } from "../src/orchestration/session/state-machine";
+import type { SessionState } from "../src/orchestration/session/types";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../src/orchestration/config/schema";
 
 // ---------------------------------------------------------------------------

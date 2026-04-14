@@ -11,7 +11,7 @@ import type { AnyBlock, AgentBlock } from "@infra/output-blocks"
 
 type WorkflowStatus = "idle" | "running" | "completed" | "interrupted"
 
-export interface OutputWindowProps {
+interface OutputWindowProps {
   outputBlocks: readonly AnyBlock[]
   workflowStatus: WorkflowStatus
 }
