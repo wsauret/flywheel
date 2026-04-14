@@ -1,21 +1,9 @@
-/**
- * AbortController-based timeout for subprocess execution.
- *
- * Default: 60 minutes. Configurable via config (bounds: 1-120 minutes).
- * No idle timeout — agents can "think" for >5 min with no output.
- *
- * On abort: triggers process-group-kill flow via process-lifecycle.ts.
- */
+// No idle timeout — agents can "think" for >5 min with no output.
 
 import { killProcessGroup, type ChildHandle } from "./process-lifecycle.js";
 
-/** Default timeout in minutes. */
 export const DEFAULT_TIMEOUT_MINUTES = 60;
-
-/** Minimum allowed timeout in minutes. */
 const MIN_TIMEOUT_MINUTES = 1;
-
-/** Maximum allowed timeout in minutes. */
 const MAX_TIMEOUT_MINUTES = 120;
 
 export function clampTimeoutMinutes(minutes: number): number {
@@ -39,12 +27,6 @@ interface SubprocessTimeout {
   attachProcess(child: ChildHandle): void;
 }
 
-/**
- * Create a subprocess timeout that will abort after the specified duration.
- *
- * @param timeoutMs - Timeout in milliseconds. Use `minutesToMs(clampTimeoutMinutes(n))`
- *                    to convert from user-configured minutes.
- */
 export function createSubprocessTimeout(timeoutMs: number): SubprocessTimeout {
   const controller = new AbortController();
   let timedOut = false;

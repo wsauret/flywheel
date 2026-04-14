@@ -1,17 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * TodoListBlock Component
- *
- * Renders a visual todo list from TodoWrite tool calls. Each item shows
- * a status indicator and content text:
- *
- *   ○ Pending task              (muted)
- *   ◉ In-progress task          (warning/orange, bold)
- *   ✓ Completed task            (primary check, muted text)
- *
- * The block updates in-place as subsequent TodoWrite calls arrive,
- * giving users a live view of the agent's task progress.
- */
 
 import { For, Show, createMemo } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
@@ -22,7 +9,6 @@ import type { TodoListBlock as TodoListBlockType, TodoItem } from "@infra/output
 const BOLD = createTextAttributes({ bold: true })
 const MAX_VISIBLE = 4
 
-/** Status symbol and color for each todo state. */
 function todoStyle(status: TodoItem["status"], theme: Theme) {
   if (status === "in_progress") return { symbol: "\u25C9", symbolFg: theme.warning, textFg: theme.warning, attrs: BOLD }
   return { symbol: "\u25CB", symbolFg: theme.textMuted, textFg: theme.text, attrs: undefined }

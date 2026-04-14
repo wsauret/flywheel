@@ -1,11 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * CollapsibleBox
- *
- * Conditionally renders a bordered container for expand/collapse toggling.
- * When collapsed, the box is completely removed from the tree.
- * When expanded, a bordered box wraps the children.
- */
 
 import { Show } from "solid-js"
 import type { JSX } from "solid-js"
@@ -14,7 +7,6 @@ import type { RGBA } from "@opentui/core"
 export interface CollapsibleBoxProps {
   expanded: boolean
   children: JSX.Element
-  /** Box props passed through to the container. */
   border?: boolean | ("top" | "bottom" | "left" | "right")[]
   borderColor?: RGBA
   paddingLeft?: number

@@ -14,12 +14,11 @@ import type {
   HandoffReaderFn,
 } from "./executor-types.js";
 import type { EmitFn } from "../../infra/event-bus.js";
+import type { EvaluationCriteria } from "../../infra/workflow-types.js";
 import { raceAbort } from "./abort-utils.js";
 import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "step-executor" });
-
-// Revision prompt builder
 
 function buildRevisionPrompt(
   originalPrompt: string,
@@ -50,8 +49,6 @@ function buildRevisionPrompt(
   return sections.join("\n").trimEnd();
 }
 
-// Revision loop dependencies
-
 interface RevisionLoopDeps {
   evaluator: EvaluatorFn;
   worker: WorkerFn;
@@ -62,8 +59,6 @@ interface RevisionLoopDeps {
   abortSignal: AbortSignal;
   onSubprocessDispatched?: (() => void) | null;
 }
-
-// Revision loop result
 
 interface RevisionLoopResult {
   /** Final worker output after all revisions */
@@ -78,8 +73,6 @@ interface RevisionLoopResult {
   failReason: string | null;
 }
 
-// executeWithRevisions
-
 /**
  * Run the evaluator on the worker output, then retry with feedback up to
  * maxRevisions times if evaluation fails. Returns the final result with
@@ -93,7 +86,7 @@ export async function executeWithRevisions(
   currentPrompt: string,
   workerOutput: WorkerOutput,
   handoffData: Record<string, unknown> | null,
-  evaluationCriteria: unknown | null,
+  evaluationCriteria: EvaluationCriteria | null,
   stepIndex: number,
   deps: RevisionLoopDeps,
 ): Promise<RevisionLoopResult> {

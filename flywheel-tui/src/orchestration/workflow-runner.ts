@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto"
 import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
 import { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { SpawnResult } from "./engines/subprocess/spawner.js"
-import type { Queue } from "../workflows/queue/types.js"
+import type { Queue, StepStatus, Step } from "../workflows/queue/types.js"
 import { toBudgetLimits } from "../workflows/schemas.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { WorkflowSessionEntry } from "./session-store-types.js"
@@ -22,7 +22,7 @@ import "../workflows/queue/steps/register-all"
 
 
 export type StepState = {
-  id: string; type: string; title: string; status: string
+  id: string; type: Step["type"]; title: string; status: StepStatus
   durationMs?: number; startedAt?: number; completedAt?: number
 }
 
@@ -239,7 +239,7 @@ export function createWorkflowRunner(opts: {
   return { run, pause, abort, injectMessage, cancelShutdown, sessionId, dispose }
 }
 
-function toStepState(s: { id: string; type: string; title: string; status: string }) {
+function toStepState(s: Step): StepState {
   return { id: s.id, type: s.type, title: s.title, status: s.status }
 }
 

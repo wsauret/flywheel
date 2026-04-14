@@ -1,8 +1,33 @@
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "../../orchestration/command-registry.js"
-import { extractChatContext } from "../../orchestration/dispatcher-callback.js"
+import type { AnyBlock } from "../../infra/output-blocks.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+
+const CHAT_CONTEXT_MAX_CHARS = 2000
+
+function extractChatContext(blocks: readonly AnyBlock[]): string | undefined {
+  const lines: string[] = []
+  let chars = 0
+  for (let i = blocks.length - 1; i >= 0 && chars < CHAT_CONTEXT_MAX_CHARS; i--) {
+    const block = blocks[i]!
+    if (block.kind === "userMessage" && !block.injected) {
+      lines.unshift(`User: ${block.content}`)
+      chars += block.content.length + 6
+    } else if (block.kind === "text") {
+      lines.unshift(`Assistant: ${block.content}`)
+      chars += block.content.length + 11
+    }
+  }
+  if (lines.length === 0) return undefined
+  let result = lines.join("\n")
+  if (result.length > CHAT_CONTEXT_MAX_CHARS) {
+    result = result.slice(result.length - CHAT_CONTEXT_MAX_CHARS)
+    const firstNewline = result.indexOf("\n")
+    if (firstNewline > 0) result = result.slice(firstNewline + 1)
+  }
+  return result
+}
 
 export interface CommandDispatchDeps {
   signals: ShellSignals
@@ -84,7 +109,6 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
-  // Bare /work, /sprint, or /plan — enter pending mode, wait for description
   commandRegistry.register({
     pattern: /^\/(work|sprint|plan)$/i,
     execute(match) {
@@ -97,14 +121,10 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
     const trimmed = text.trim()
     if (!trimmed) return
 
-    // Pending work mode: next submission is the task description
     const pending = deps.signals.pendingWorkCommand()
     if (pending) {
-      // Slash commands cancel pending mode and dispatch normally
-      if (trimmed.startsWith("/")) {
-        deps.signals.setPendingWorkCommand(undefined)
-      } else {
-        deps.signals.setPendingWorkCommand(undefined)
+      deps.signals.setPendingWorkCommand(undefined)
+      if (!trimmed.startsWith("/")) {
         const ctx = getChatContext()
         if (deps.inChat()) deps.backgroundChat()
         deps.startWorkflow(pending, trimmed, ctx)
@@ -112,7 +132,6 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
       }
     }
 
-    // Chat session: slash commands go through the registry, free text goes to chat
     if (deps.inChat()) {
       if (trimmed.startsWith("/")) {
         void commandRegistry.dispatch(trimmed).then((handled) => {
@@ -126,7 +145,6 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
       return
     }
 
-    // Workflow session: non-command text steers the worker or resumes from pause
     const state = deps.signals.sessionState()
     if (state === "active" || state === "paused") {
       if (deps.signals.foregroundId() && !trimmed.startsWith("/")) {

@@ -1,14 +1,5 @@
-/**
- * Context Group Tracker
- *
- * Tracks context tool grouping state: consecutive Read/Glob/Grep/etc. tools
- * are rendered as a synthetic "Tools" AgentBlock. This module manages the
- * context run lifecycle (start, accumulate, break) without knowing about
- * block storage — it delegates actual block mutations to the builder via callbacks.
- *
- * Extracted from StructuredOutputBuilder to isolate grouping logic from
- * block accumulation.
- */
+// Decoupled from StructuredOutputBuilder via callbacks so grouping
+// logic can be tested and reasoned about without block storage concerns.
 
 import type { ToolBlock } from "../output-blocks.js"
 
@@ -20,11 +11,9 @@ export function isContextTool(name: string): boolean {
 }
 
 interface ContextGroupCallbacks {
-  /** Start a new synthetic agent block for context tools. Returns the generated agent ID. */
   startContextAgent: (id: string, timestamp: number) => void
-  /** Append a tool as a child of the current context agent. */
   appendToolToContextAgent: (agentId: string, tool: ToolBlock) => void
-  /** Complete the context agent with duration. Tool count is derived from children.length. */
+  // Tool count is derived from children.length
   completeContextAgent: (agentId: string, duration: number) => void
 }
 
@@ -42,15 +31,10 @@ export class ContextGroupTracker {
     this.callbacks = callbacks
   }
 
-  /** The current context agent ID, or null if no run is active. */
   get currentAgentId(): string | null {
     return this.contextAgentId
   }
 
-  /**
-   * Push a context tool into the current run, starting a new run if needed.
-   * Returns the context agent ID.
-   */
   pushContextTool(tool: ToolBlock, timestamp: number): string {
     if (this.contextAgentId === null) {
       this.contextRunCounter++
@@ -64,10 +48,7 @@ export class ContextGroupTracker {
     return this.contextAgentId
   }
 
-  /**
-   * Break the current context run. Called when a non-context item is pushed.
-   * Completes the synthetic "Tools" agent block with duration and tool count.
-   */
+  /** Completes the synthetic "Tools" agent block with duration and tool count. */
   breakContextRun(timestamp: number): void {
     if (this.contextAgentId === null) return
 
@@ -90,7 +71,6 @@ export class ContextGroupTracker {
     this.contextRunStartTime = 0
   }
 
-  /** Check if the given agent ID was evicted and clear tracking if so. */
   handleEviction(agentExists: boolean): void {
     if (this.contextAgentId !== null && !agentExists) {
       this.contextAgentId = null

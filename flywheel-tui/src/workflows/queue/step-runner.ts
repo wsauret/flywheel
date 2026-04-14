@@ -12,8 +12,6 @@ import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "step-executor" });
 
-// Pipeline stages — file-local, each receives and returns the context
-
 /** Stage 1: Build prompt via dispatcher or step metadata. */
 async function dispatchStep(
   step: Step,
@@ -29,27 +27,14 @@ async function dispatchStep(
         prompt += `\n\n## Previous iteration output\n${summary}`;
       }
     }
-    ctx.dispatcherResult = { prompt, evaluationCriteria: step.evaluationCriteria ?? null };
+    ctx.dispatcherResult = { prompt, evaluationCriteria: null };
     log.info("dispatcher skipped (step.skipDispatcher)", { stepId: step.id });
   } else {
     // Full dispatcher invocation
-    const compactQueueState = deps.queue.steps.map((s) => ({
-      id: s.id,
-      type: s.type,
-      title: s.title,
-      status: s.status,
-    }));
-    const dispatcherContext: Record<string, unknown> = {
-      ...deps.accumulator.getContext(),
-      queueState: compactQueueState,
-      ...(deps.sessionObjective !== undefined ? { session_objective: deps.sessionObjective } : {}),
-      ...(ctx.previousHandoff ? { previousHandoff: ctx.previousHandoff } : {}),
-      ...(ctx.previousAssessment ? { previousAssessment: ctx.previousAssessment } : {}),
-      ...(deps.guardrails ? {
-        mutation_budget: deps.guardrails.getMutationBudget(step.id, deps.queue.steps.length),
-      } : {}),
-    };
-    ctx.dispatcherResult = await deps.dispatcher(step, dispatcherContext);
+    ctx.dispatcherResult = await deps.dispatcher(step, {
+      previousHandoff: ctx.previousHandoff,
+      previousAssessment: ctx.previousAssessment,
+    });
   }
 
   return ctx;
@@ -147,8 +132,7 @@ async function evaluateAndAccumulate(
   const evaluationCriteria = ctx.dispatcherResult!.evaluationCriteria;
   let lastEvalResult: EvalResult | null = null;
 
-  // Evaluator decision: skip only when configured to skip AND post-turn passed.
-  // Post-turn failure forces evaluation regardless of config — safety net.
+  // Post-turn failure overrides skipEvaluation — the evaluator acts as a safety net.
   const shouldEvaluate = evaluator && (!deps.skipEvaluation || !ctx.postTurnPassed);
   if (shouldEvaluate) {
     const stepIndex = queue.steps.findIndex((s) => s.id === step.id);
@@ -190,7 +174,6 @@ async function evaluateAndAccumulate(
     }
   }
 
-  // Accumulate context and chain handoff
   ctx.previousAssessment = lastEvalResult;
 
   if (ctx.handoffData) {
@@ -205,7 +188,6 @@ async function evaluateAndAccumulate(
     ctx.previousHandoff = null;
   }
 
-  // Transition step to completed
   await safeTransition(step.id, "completed", "step execution completed successfully");
   emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
 
@@ -220,7 +202,6 @@ async function evaluateAndAccumulate(
     }
   }
 
-  // Call onStepCompleted hook
   if (onStepCompleted) {
     await onStepCompleted(step, "completed", queue, ctx.handoffData);
   }
@@ -236,7 +217,6 @@ export async function executeStep(
 ): Promise<StepRunnerResult> {
   const { workflowId, emit, safeTransition, onStepCompleted, queue } = deps;
 
-  // Initialize pipeline context with mutable state from executor
   let ctx: StepPipelineContext = {
     previousHandoff: deps.previousHandoff,
     previousAssessment: deps.previousAssessment,
@@ -254,7 +234,6 @@ export async function executeStep(
   }
 
   try {
-    // Pipeline: each stage receives and returns the context
     ctx = await dispatchStep(step, deps, ctx);
     ctx = await applyMutations(step, deps, ctx);
     ctx = await spawnWorker(step, deps, ctx);

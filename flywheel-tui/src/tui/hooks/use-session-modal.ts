@@ -1,17 +1,43 @@
-/**
- * Session modal state and keyboard handling, extracted from shell.tsx.
- *
- * Manages the sessions modal overlay: open/close, cursor navigation,
- * and actions (view, resume, delete).
- */
-
 import { createSignal, createMemo, batch } from "solid-js"
 import type { Accessor } from "solid-js"
-import { buildSessionList } from "../session-modal.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
+import type { SessionState } from "../../orchestration/session/state-machine.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+
+export type GroupKey = "active" | "paused" | "completed"
+
+const GROUP_ORDER: GroupKey[] = ["active", "paused", "completed"]
+
+const STATE_TO_GROUP: Record<SessionState, GroupKey> = {
+  active: "active",
+  paused: "paused",
+  completed: "completed",
+}
+
+export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: GroupKey }[] {
+  const items: { session: SessionSummary; group: GroupKey }[] = []
+  const groups: Record<GroupKey, SessionSummary[]> = {
+    active: [], paused: [], completed: [],
+  }
+
+  for (const s of sessions) {
+    const group = STATE_TO_GROUP[s.state]
+    if (group) groups[group].push(s)
+  }
+
+  for (const key of GROUP_ORDER) {
+    groups[key].sort(
+      (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime(),
+    )
+    for (const s of groups[key]) {
+      items.push({ session: s, group: key })
+    }
+  }
+
+  return items
+}
 
 /** State captured when viewing a historical session — carries both the restore point and the viewed ID. */
 interface ViewingState {
@@ -94,7 +120,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       viewedSessionId: sessionId,
     }))
 
-    // switchForeground loads from disk if not already in the store
     await deps.switchForeground(sessionId)
   }
 

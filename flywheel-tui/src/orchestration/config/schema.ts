@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
 
-// Helpers
-
 const SHELL_METACHAR_RE = /[;|&`$(){}<>]/;
 
 function noShellMetachars(fieldName: string) {
@@ -12,12 +10,6 @@ function noShellMetachars(fieldName: string) {
   );
 }
 
-// Sub-schemas
-
-/**
- * Boundaries sub-schema — constraints subprocesses must never violate.
- * Extracted so the type can be shared with prompt builders (e.g. step-prompt.ts).
- */
 const BoundariesSchema = z.object({
   /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
   port_ranges: z.array(z.string()).optional(),
@@ -36,12 +28,6 @@ const CommandsSchema = z.object({
   lint: z.string().optional(),
 });
 
-// Main config schema
-
-/**
- * Full config schema for the TOML loader.
- * Extends the base ConfigSchema with additional fields.
- */
 export const FlywheelConfigSchema = z.object({
   /** Engine ID: "claude", "opencode", etc. */
   engine: z.string().default("claude"),
@@ -141,46 +127,25 @@ export const FlywheelConfigSchema = z.object({
 
 export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
 
-/** Single source of truth for defaults — derived from Zod schema `.default()` values. */
 export const CONFIG_DEFAULTS: FlywheelConfig = FlywheelConfigSchema.parse({});
 
-// Model / effort resolution
-
-/**
- * Maximum effort level a model supports.
- * Opus supports "max"; all other models cap at "high".
- */
 function resolveMaxEffort(model: string | undefined): "max" | "high" {
   if (model && model.toLowerCase().includes("opus")) return "max";
   return "high";
 }
 
-/**
- * Resolved per-tier config blob. Passed as a single object through the
- * transport/command pipeline so new fields don't require plumbing changes.
- */
 interface ResolvedTierConfig {
   model?: string;
   effort?: string;
 }
 
-/** Default effort per tier when not explicitly configured. */
 const DEFAULT_EFFORTS = {
   dispatcher: "low",
   subprocess: undefined,  // workers inherit engine default — no effort flag unless set
   evaluator: "low",
 } as const;
 
-/**
- * Resolve per-tier config for dispatcher, subprocess, and evaluator.
- *
- * Precedence chain (first defined wins):
- *   sprint.tier > tier-specific > per-tier default (or sprint model-aware max)
- *
- * When `mode` is "sprint", the [sprint.worker], [sprint.evaluator], and
- * [sprint.dispatcher] TOML sections are consulted first. Sprint defaults to
- * model-aware max effort (opus→"max", else→"high") when nothing is set.
- */
+// Precedence: sprint.tier > tier-specific > per-tier default (or sprint model-aware max).
 export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
   dispatcher: ResolvedTierConfig;
   subprocess: ResolvedTierConfig;

@@ -1,8 +1,3 @@
-// Phase 3: Trust-But-Verify — Native Verification
-//
-// Re-runs commands the worker reported running, with deny-list filtering,
-// concurrent execution, discrepancy detection, and git diff --stat support.
-
 import { errorMessage } from "../../infra/error-message.js";
 
 // Types
@@ -86,22 +81,12 @@ export function isDeniedCommand(command: string): boolean {
   return false;
 }
 
-// Command extraction — DRY adapter over parseRawHandoff
-
-// extractDeclaredCommands lives in workflows/queue/shared/command-extraction.ts
-// to avoid a layer violation (orchestration importing from workflows).
-
-// Constants
-
 export const DEFAULT_TIMEOUT_MS = 60_000;
 export const DEFAULT_DEADLINE_MS = 120_000;
 const MAX_OUTPUT_BYTES = 1_000_000; // 1MB
 
-// Shared subprocess helper
-
 function truncate(text: string, maxBytes: number): string {
   if (Buffer.byteLength(text) <= maxBytes) return text;
-  // Truncate to maxBytes and append indicator
   const buf = Buffer.from(text);
   return buf.subarray(0, maxBytes).toString("utf-8") + "\n[truncated]";
 }
@@ -154,8 +139,6 @@ async function spawnWithTimeout(
   return { stdout, stderr, exitCode, durationMs };
 }
 
-// Single command runner
-
 async function runSingleCommand(
   command: string,
   cwd: string,
@@ -163,7 +146,6 @@ async function runSingleCommand(
   abortSignal: AbortSignal,
   reportedExitCode?: number,
 ): Promise<NativeCheckResult> {
-  // Deny-list check
   if (isDeniedCommand(command)) {
     return {
       kind: "skipped",
@@ -181,7 +163,6 @@ async function runSingleCommand(
 
     const passed = exitCode === 0;
 
-    // Discrepancy detection
     if (reportedExitCode !== undefined && reportedExitCode !== exitCode) {
       return {
         kind: "discrepancy",
@@ -293,8 +274,6 @@ export async function runNativeVerification(opts: {
     clearTimeout(deadlineTimer);
   }
 }
-
-// Git diff check
 
 async function runGitDiffCheck(
   cwd: string,

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const SessionStateSchema = z.enum(["active", "paused", "completed"]);
 export type SessionState = z.infer<typeof SessionStateSchema>;
 
+// Exported for unit tests — tests verify the transition table directly.
 export const VALID_TRANSITIONS: Readonly<Record<SessionState, readonly SessionState[]>> = Object.freeze({
   active: ["paused", "completed"],
   paused: ["active"],

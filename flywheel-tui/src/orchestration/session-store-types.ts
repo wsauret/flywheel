@@ -1,11 +1,3 @@
-/**
- * Session Store — type definitions.
- *
- * Discriminated union on `kind` ("workflow" | "chat") so consumers
- * can type-narrow to access session-specific fields (e.g. `steps` on
- * workflow entries, but not on chat entries).
- */
-
 import type { WorkflowRunner, WorkflowResult, StepState } from "./workflow-runner.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { ModelActivity } from "../infra/events.js"
@@ -13,8 +5,6 @@ import type { ChatRunner } from "./chat-runner.js"
 import type { SessionKind } from "./session/types.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
-
-// Entry types — discriminated union on `kind`
 
 export interface SessionEntryBase {
   readonly kind: SessionKind
@@ -46,11 +36,7 @@ export interface ChatSessionEntry extends SessionEntryBase {
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
 
-// Store handles — passed to runners for direct store writes
-
-/** Handle passed to chat runner factory — write data directly to the reactive store. */
 export interface ChatStoreHandle {
-  /** Write data fields directly to the session entry in the reactive store. */
   updateEntry: (patch: Partial<ChatSessionEntry>) => void
   /** Signal a fatal error — removes entry and fires onRunnerError.
    *  Returns void (fire-and-forget). Implementations are async but callers
@@ -61,8 +47,6 @@ export interface ChatStoreHandle {
    *  intentionally drop the promise — cleanup is best-effort. */
   onEnded: () => void
 }
-
-// SessionStore — public interface
 
 export interface SessionStore {
   start(opts: {

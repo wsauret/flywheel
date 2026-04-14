@@ -45,8 +45,6 @@ interface CreateExecutorInput {
   infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
   /** Injection queue for turn-boundary message delivery */
   injectionQueue: InjectionQueue
-  /** Optional context indexer override */
-  contextIndexer?: ContextIndexer
   /** Recent chat conversation preceding this workflow. */
   chatContext?: string
   /** Callback to write budget metrics to the session store. */
@@ -70,7 +68,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   const {
     deps, emit, eventBus, workflowId, sessionId, queue, description,
     projectCwd, subprocessCwd, infra,
-    injectionQueue, contextIndexer: contextIndexerOverride, chatContext,
+    injectionQueue, chatContext,
   } = input
   const { budgetTracker } = infra
 
@@ -101,7 +99,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage,
   })
 
-  const contextIndexer = contextIndexerOverride ?? new ContextIndexer(projectCwd)
+  const contextIndexer = new ContextIndexer(projectCwd)
   await contextIndexer.startIndexing()
 
   const observerChain = createObserverChain([

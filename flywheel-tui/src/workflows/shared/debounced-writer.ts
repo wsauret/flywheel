@@ -97,7 +97,6 @@ export function createDebouncedWriter<T>(
     pendingData = data;
     hasPending = true;
 
-    // Reset debounce timer
     if (timerId !== null) {
       clearTimeout(timerId);
     }

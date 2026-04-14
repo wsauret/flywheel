@@ -1,11 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * Output Window Component
- *
- * Displays streaming workflow output with auto-scroll.
- * Step progress is shown in the shell header — this component
- * focuses purely on output block rendering.
- */
 
 import { Show, Index, createSignal } from "solid-js"
 import type { ScrollBoxRenderable } from "@opentui/core"
@@ -16,12 +9,11 @@ import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer.js"
 import type { AnyBlock, AgentBlock } from "@infra/output-blocks"
 
-type WorkflowStatus = "idle" | "running" | "completed" | "failed" | "interrupted" | "stopping"
+type WorkflowStatus = "idle" | "running" | "completed" | "interrupted"
 
 export interface OutputWindowProps {
   outputBlocks: readonly AnyBlock[]
   workflowStatus: WorkflowStatus
-  isPromptFocused: boolean
 }
 
 export function OutputWindow(props: OutputWindowProps) {
@@ -61,7 +53,6 @@ export function OutputWindow(props: OutputWindowProps) {
 
   return (
     <box flexDirection="column" flexGrow={1}>
-      {/* Content */}
       <box paddingLeft={1} paddingRight={0} flexDirection="column" flexGrow={1}>
         <Show when={!hasContent() && isRunning()}>
           <box flexDirection="row">
@@ -75,11 +66,7 @@ export function OutputWindow(props: OutputWindowProps) {
           <text fg={themeCtx.theme.textMuted}>
             {props.workflowStatus === "completed"
               ? "Workflow completed with no output"
-              : props.workflowStatus === "interrupted"
-                ? "Workflow was stopped before producing output"
-                : props.workflowStatus === "failed"
-                  ? "Workflow failed before producing output"
-                  : ""}
+              : "Workflow was stopped before producing output"}
           </text>
         </Show>
 
@@ -101,7 +88,7 @@ export function OutputWindow(props: OutputWindowProps) {
               },
             }}
             viewportCulling={true}
-            focused={!props.isPromptFocused}
+            focused={false}
           >
             <Index each={props.outputBlocks}>
               {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}

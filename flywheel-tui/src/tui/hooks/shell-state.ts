@@ -4,12 +4,6 @@
  * Split into two interfaces:
  * - ShellSignals: pure reactive state (signals, memos)
  * - ShellServices: injected dependencies (non-reactive objects)
- *
- * Display state (outputBlocks, steps, agentState, sessionTitle) is derived
- * from the session store's SolidJS store via createMemo. The session store
- * is the single source of truth for all session display data — active,
- * ended, and historical sessions loaded from disk. Changing foregroundId
- * automatically updates all derived values — no manual sync needed.
  */
 
 import { createSignal, createMemo } from "solid-js"
@@ -46,7 +40,6 @@ export interface ShellSignals {
   setPendingWorkCommand: Setter<string | undefined>
 }
 
-/** Injected dependencies — non-reactive objects (metrics accessors are reactive but the object isn't). */
 export interface ShellServices {
   sessionStore: SessionStore
   manager: SessionManager
@@ -65,14 +58,10 @@ export function createShellState(deps: {
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
   showThinking?: boolean
 }): { signals: ShellSignals; services: ShellServices } {
-  // ── Writable signals (user-set, not derived) ──
   const [errorMessage, setErrorMessage] = createSignal("")
   const [foregroundId, setForegroundId] = createSignal<string | undefined>()
 
-  // ── Pending work mode (bare /work with no description) ──
   const [pendingWorkCommand, setPendingWorkCommand] = createSignal<string | undefined>()
-
-  // ── Derived memos — zero-copy, return store proxies directly ──
 
   const storeEntry = createMemo((): SessionEntry | undefined => {
     const fgId = foregroundId()

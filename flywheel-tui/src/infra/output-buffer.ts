@@ -13,13 +13,6 @@ interface BufferState {
   truncated: boolean;
 }
 
-/**
- * Append text to a buffer, preserving the tail (most recent content)
- * when the character limit is exceeded.
- *
- * When truncation occurs, the truncation marker is prepended to the
- * remaining content.
- */
 function appendWithCharLimit(
   existing: string,
   newContent: string,
@@ -43,7 +36,6 @@ function appendWithCharLimit(
   const keep = charLimit - TRUNCATION_MARKER.length;
   const combinedTailStart = combined.length - keep;
 
-  // Handle the case where tail spans current and newContent
   let tail: string;
   if (combinedTailStart >= existing.length) {
     tail = newContent.slice(combinedTailStart - existing.length);

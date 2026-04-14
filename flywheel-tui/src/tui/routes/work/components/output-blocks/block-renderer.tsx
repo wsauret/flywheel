@@ -11,7 +11,6 @@ import type { AnyBlock } from "@infra/output-blocks"
 import { TextBlock } from "./text-block.js"
 import { ToolBlock } from "./tool-block.js"
 import { AgentBlock } from "./agent-block.js"
-import { ContextGroupBlock } from "./context-group-block.js"
 import { SystemBlock } from "./system-block.js"
 import { ThinkingBlock } from "./thinking-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
@@ -40,9 +39,6 @@ export function BlockRenderer(props: BlockRendererProps) {
             onToggleExpand={props.onToggleExpand}
           />
         )}
-      </Match>
-      <Match when={props.block.kind === "contextGroup" ? props.block : undefined}>
-        {(block) => <ContextGroupBlock block={block()} />}
       </Match>
       <Match when={props.block.kind === "system" ? props.block : undefined}>
         {(block) => <SystemBlock block={block()} />}

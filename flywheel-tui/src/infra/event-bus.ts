@@ -7,16 +7,7 @@ type TypedListener<T extends FlywheelEvent["type"]> = (
 ) => void;
 export type Unsubscribe = () => void;
 
-/**
- * Synchronous event bus (v1).
- *
- * Two subscriber types:
- * - catch-all: receives every event
- * - type-specific: receives only events of a given type
- *
- * Adapters must be O(1). Async emit may be needed for TUI adapter in Plan 2;
- * design interface to be swappable.
- */
+/** Synchronous event bus. */
 const log = Log.create({ service: "event-bus" });
 
 export class EventBus {
@@ -51,7 +42,6 @@ export class EventBus {
    * to prevent one bad listener from breaking others.
    */
   emit(event: FlywheelEvent): void {
-    // Catch-all listeners
     for (const listener of this.catchAll) {
       try {
         listener(event);
@@ -59,7 +49,6 @@ export class EventBus {
         log.warn("catch-all listener error", { eventType: event.type, error: err instanceof Error ? err : new Error(String(err)) });
       }
     }
-    // Type-specific listeners
     const typedSet = this.typed.get(event.type);
     if (typedSet) {
       for (const listener of typedSet) {
@@ -73,21 +62,11 @@ export class EventBus {
   }
 }
 
-// Generic typed emitter
-
-/**
- * Type-safe event emitter. Payload shape is inferred from the event type string
- * via the FlywheelEvent discriminated union.
- *
- * If TypeScript says the payload type is `never`, the type string doesn't match
- * any FlywheelEvent — check for typos.
- */
 export type EmitFn = <T extends FlywheelEvent["type"]>(
   type: T,
   payload: Omit<Extract<FlywheelEvent, { type: T }>, "type" | "timestamp">,
 ) => void
 
-/** A no-op emit function for callers that don't need EventBus integration. */
 export function createNoopEmit(): EmitFn {
   return (() => {}) as EmitFn
 }

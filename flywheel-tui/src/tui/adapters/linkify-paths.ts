@@ -1,24 +1,8 @@
-/**
- * File Path Linkifier
- *
- * Post-processes TextChunks from the markdown renderer to add OSC 8
- * hyperlinks for text that looks like a file path. This makes paths
- * Cmd+clickable in terminals that support hyperlinks.
- *
- * Detects patterns like:
- * - src/foo.ts, ./src/foo.ts, ../lib/bar.py
- * - paths with known extensions (.ts, .tsx, .js, .py, .md, etc.)
- *
- * Does NOT modify visual appearance — only adds invisible link metadata.
- */
+/** Adds OSC 8 file:// hyperlinks to TextChunks that look like file paths. */
 
 import * as path from "node:path"
 import type { TextChunk } from "@opentui/core"
 
-/**
- * Known file extensions that indicate a chunk is a file path.
- * Kept intentionally broad — false positives are harmless (just adds a non-functional link).
- */
 const FILE_EXTENSIONS = new Set([
   "ts", "tsx", "js", "jsx", "mjs", "cjs",
   "py", "pyi",
@@ -34,10 +18,6 @@ const FILE_EXTENSIONS = new Set([
   "lock", "log", "ndjson", "jsonl",
 ])
 
-/**
- * Match a string that looks like a relative or absolute file path with a known extension.
- * Must contain at least one `/` or start with `./` or `../`.
- */
 function isFilePath(text: string): boolean {
   const trimmed = text.trim()
   if (trimmed.length === 0) return false
@@ -53,18 +33,11 @@ function isFilePath(text: string): boolean {
   return FILE_EXTENSIONS.has(ext)
 }
 
-/**
- * Convert a potentially relative file path to a file:// URI.
- */
 export function toFileUri(filePath: string): string {
   const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
   return `file://${resolved}`
 }
 
-/**
- * Post-process TextChunks to add file:// links on chunks that look like file paths.
- * Chunks that already have a link are left untouched.
- */
 export function linkifyFilePaths(chunks: TextChunk[]): TextChunk[] {
   return chunks.map((chunk) => {
     if (chunk.link) return chunk

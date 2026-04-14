@@ -1,10 +1,3 @@
-/**
- * Shared YAML frontmatter parser.
- *
- * Uses index-based splitting on the second `---` delimiter so that
- * performance is O(frontmatter size), not O(file size).
- */
-
 import * as yaml from "js-yaml";
 
 interface ParsedDoc {
@@ -17,17 +10,6 @@ interface ParseFrontmatterOptions {
   schema?: yaml.Schema;
 }
 
-/**
- * Parse YAML frontmatter delimited by `---` at the start of a string.
- *
- * Returns `{ frontmatter, body }` on success, or `null` if:
- * - No frontmatter delimiters found
- * - YAML is malformed
- * - YAML parses to a non-object value
- *
- * @param content  - The full file content
- * @param options  - Optional YAML parsing options (e.g. schema)
- */
 export function parseFrontmatter(
   content: string,
   options?: ParseFrontmatterOptions,

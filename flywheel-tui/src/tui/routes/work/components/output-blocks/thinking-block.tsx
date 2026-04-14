@@ -80,7 +80,6 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
         {isLong() && <text fg={theme.textMuted}>{expanded() ? "▾" : `▸ …${lineCount()} lines`}</text>}
       </box>
 
-      {/* Expanded: full content */}
       <CollapsibleBox expanded={expanded()}>
         <code
           filetype="markdown"
@@ -93,7 +92,6 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
         />
       </CollapsibleBox>
 
-      {/* Collapsed: last N lines */}
       <CollapsibleBox expanded={!expanded()}>
         <code
           filetype="markdown"

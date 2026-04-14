@@ -1,10 +1,3 @@
-/**
- * Session Actions
- *
- * Handles session lifecycle operations triggered from the modal:
- * view, resume, delete. Pure functions with injected dependencies.
- */
-
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { createQueuePersistence } from "../workflows/queue/persistence.js"
 import { readSession } from "./session/persistence.js"
@@ -27,14 +20,12 @@ interface ResumeData {
   queue: Queue
 }
 
-/** Load a session's persisted output blocks for viewing. */
 export async function loadSessionOutput(sessionId: string, projectCwd?: string): Promise<AnyBlock[]> {
   const cwd = projectCwd ?? process.cwd()
   const persistence = createOutputPersistence({ sessionId, baseDir: cwd })
   return (await persistence.load()) as AnyBlock[]
 }
 
-/** Load session + output + queue for resume. Returns null if data is missing. */
 export async function loadResumeData(
   sessionId: string,
   deps: SessionActionDeps,
@@ -63,7 +54,6 @@ export async function loadResumeData(
   return { session, outputBlocks, queue }
 }
 
-/** Find the most recent resumable session. */
 export function findResumableSession(deps: SessionActionDeps): SessionSummary | null {
   const { sessions } = deps.manager.list()
   const resumable = sessions

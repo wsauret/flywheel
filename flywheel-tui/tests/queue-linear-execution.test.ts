@@ -72,25 +72,15 @@ describe("queue linear execution", () => {
     const calls = harness.dispatcherOpts.calls!;
     expect(calls).toHaveLength(5);
 
-    // By step 5 (index 4), the accumulator should have context from steps 1-4
-    const lastContext = calls[4].context as {
-      totalSteps: number;
-      recentHandoffs: Array<{ stepId: string; handoff: Record<string, unknown> }>;
-      summaries: Array<{ stepId: string }>;
-    };
-    expect(lastContext.totalSteps).toBeGreaterThanOrEqual(4);
+    // First call (step 1): no previous handoff or assessment
+    expect(calls[0].context.previousHandoff).toBeNull();
+    expect(calls[0].context.previousAssessment).toBeNull();
 
-    // recentHandoffs should contain data from recent steps (window size is 3)
-    expect(lastContext.recentHandoffs.length).toBeGreaterThan(0);
-
-    // Verify recent handoffs contain actual handoff data from prior steps
-    const recentIds = lastContext.recentHandoffs.map((h) => h.stepId);
-    // The most recent handoff should be from step-4 (the last completed before step 5 runs)
-    expect(recentIds).toContain("step-4");
-
-    // First call (step 1) should have no accumulated context
-    const firstContext = calls[0].context as { totalSteps: number };
-    expect(firstContext.totalSteps).toBe(0);
+    // By step 5 (index 4), previousHandoff should contain step 4's handoff
+    expect(calls[4].context.previousHandoff).toEqual({
+      result: "delta",
+      decisions: ["add-tests"],
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -204,16 +194,13 @@ describe("queue linear execution", () => {
     const calls = harness.dispatcherOpts.calls!;
     expect(calls).toHaveLength(5);
 
-    // First dispatcher call should have no previousHandoff
-    expect(calls[0].context).not.toHaveProperty("previousHandoff");
+    // First dispatcher call: previousHandoff is null
+    expect(calls[0].context.previousHandoff).toBeNull();
 
     // Each subsequent dispatcher call should receive the previous step's handoff data
     for (let i = 1; i < 5; i++) {
-      const ctx = calls[i].context as { previousHandoff: Record<string, unknown> };
-      expect(ctx.previousHandoff).toBeDefined();
-
       const prevStepId = `step-${i}`; // step-1 for calls[1], step-2 for calls[2], etc.
-      expect(ctx.previousHandoff).toEqual(handoffs[prevStepId]);
+      expect(calls[i].context.previousHandoff).toEqual(handoffs[prevStepId]);
     }
   });
 });

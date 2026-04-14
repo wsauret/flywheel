@@ -1,12 +1,3 @@
-/**
- * Factory for creating the three warm pools used during workflow execution:
- * dispatcher, evaluator, and worker.
- *
- * Single-use factory justified by SRP: tier resolution, env filtering, and
- * three distinct spawn pipelines form a cohesive concern. Inlining would
- * force workflow-runner to manage pool construction alongside execution.
- */
-
 import { WarmPool } from "./warm-pool.js"
 import { resolveTierConfigs } from "../../config/schema.js"
 import { getEngine } from "../core/registry.js"
@@ -23,12 +14,6 @@ interface WarmPools {
   subprocess: WarmPool<RawSpawnedProcess> | null
 }
 
-/**
- * Create warm pools for dispatcher, evaluator, and subprocess.
- *
- * When `mode` is "sprint", tier configs are resolved with sprint overrides
- * from [sprint.worker], [sprint.evaluator], [sprint.dispatcher] in the TOML.
- */
 export function createWarmPools(
   deps: { config: FlywheelConfig; spawner: ProcessSpawner },
   cwd: string,

@@ -30,8 +30,6 @@ type MutationResult =
   | { success: true; queue: Queue }
   | { success: false; error: string };
 
-// Queue options
-
 export interface QueueOptions {
   /** Maximum number of steps allowed. Inserts exceeding this are rejected. */
   maxSteps?: number;
@@ -69,14 +67,12 @@ export function createQueue(
   return queue;
 }
 
-// Internal helpers
-
 function logMutation(
   queue: Queue,
   action: string,
   stepIds: string[],
   provenance: Provenance,
-): void {
+) {
   const entry = {
     timestamp: Date.now(),
     action,
@@ -87,15 +83,13 @@ function logMutation(
   queue.mutationLog.push(entry);
 }
 
-function findStep(queue: Queue, stepId: string): Step | undefined {
+function findStep(queue: Queue, stepId: string) {
   return queue.steps.find((s) => s.id === stepId);
 }
 
-function findStepIndex(queue: Queue, stepId: string): number {
+function findStepIndex(queue: Queue, stepId: string) {
   return queue.steps.findIndex((s) => s.id === stepId);
 }
-
-// transitionStep — enforce valid lifecycle transitions
 
 /**
  * Transition a step to a new status. Enforces valid transitions:
@@ -128,8 +122,6 @@ export function transitionStep(
   return { success: true, queue };
 }
 
-// advanceCursor — move cursor to next pending step
-
 /**
  * Advances the queue cursor to the next pending step, skipping
  * completed/failed/skipped steps. If no pending steps remain,
@@ -148,8 +140,6 @@ export function advanceCursor(queue: Queue): void {
   queue.cursor = queue.steps.length;
 }
 
-// isFinished — check if queue has no pending/running steps
-
 /**
  * Returns true when no steps have status "pending" or "running".
  */
@@ -158,8 +148,6 @@ export function isFinished(queue: Queue): boolean {
     (s) => s.status === "pending" || s.status === "running",
   );
 }
-
-// insertAfter — insert step(s) after a specific step ID
 
 /**
  * Inserts one or more steps after the step with the given ID.
@@ -187,7 +175,6 @@ export function insertAfter(
     };
   }
 
-  // Insert after the target index
   const insertionIndex = idx + 1;
   queue.steps.splice(insertionIndex, 0, ...newSteps);
 
@@ -205,8 +192,6 @@ export function insertAfter(
   );
   return { success: true, queue };
 }
-
-// removeStep — remove a pending step by ID
 
 /**
  * Removes a step from the queue. Only pending and skipped steps can be removed.
@@ -240,8 +225,6 @@ export function removeStep(
   logMutation(queue, "remove", [stepId], provenance);
   return { success: true, queue };
 }
-
-// skipStep — mark a pending step as skipped
 
 /**
  * Marks a pending step as skipped. Completed and running steps cannot

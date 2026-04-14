@@ -1,15 +1,3 @@
-/**
- * Session Store — reactive session data backed by SolidJS createStore.
- *
- * Single source of truth for all session display data: active runners,
- * ended sessions, and historical sessions loaded from disk. The shell
- * picks one as "foreground" for display.
- *
- * Backed by SolidJS createStore — get() returns reactive proxies that
- * auto-track inside createEffect/createMemo. Outside reactive context,
- * reads work as plain property access (no tracking, just a snapshot).
- */
-
 import { createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { createWorkflowRunner, type WorkflowResult } from "./workflow-runner.js"
@@ -27,10 +15,6 @@ import type {
   ChatStoreHandle,
 } from "./session-store-types.js"
 
-/**
- * Creates a session store backed by SolidJS createStore.
- * Callers MUST call disposeAll() on cleanup to dispose the internal reactive root.
- */
 export function createSessionStore(factories: WorkflowSessionFactories): SessionStore {
   // Create a SolidJS reactive root that owns all effects/memos in this store.
   // disposeRoot() tears down the reactive graph on shutdown.
@@ -219,7 +203,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     // Status transitions happen when run() resolves (workflow) or via callbacks (chat)
   }
 
-  /** Dispose the runner but keep the entry for display. */
   async function finish(sessionId: string): Promise<void> {
     const entry = entries[sessionId]
     if (!entry || entry.ended) return

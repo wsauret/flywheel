@@ -1,15 +1,3 @@
-/**
- * Rate-limit detection for worker output.
- *
- * Detects rate-limiting conditions from agent stderr and exit codes.
- * Comprehensive, agent-aware detection with retry-after extraction.
- *
- * IMPORTANT: Only checks stderr to avoid false positives from code
- * in stdout containing "rate limit", "429", etc.
- */
-
-// Types
-
 export type RateLimitDetectionResult =
   | { isRateLimit: false }
   | { isRateLimit: true; message: string; retryAfter?: number };
@@ -19,22 +7,11 @@ export interface RateLimitDetectionInput {
   exitCode?: number;
 }
 
-// Pattern definitions
-
-/**
- * Pattern definition for matching rate limit indicators.
- */
 interface RateLimitPattern {
-  /** Regular expression to match against output */
   pattern: RegExp;
-
-  /** Optional pattern to extract retry-after duration */
   retryAfterPattern?: RegExp;
 }
 
-/**
- * Common rate limit patterns that apply to most agents.
- */
 const COMMON_PATTERNS: RateLimitPattern[] = [
   // HTTP 429 status code - must appear in error/HTTP context, not just any "429"
   // Matches: "429 Too Many", "HTTP 429", "status 429", "error 429", "code 429"
@@ -66,16 +43,9 @@ const COMMON_PATTERNS: RateLimitPattern[] = [
   },
 ];
 
-/**
- * Exit codes that may indicate rate limiting when combined with pattern matches.
- * Non-zero exit codes make pattern matches more likely to be actual rate limits.
- */
 const RATE_LIMIT_EXIT_CODES = new Set([1, 2, 429]);
 
-// Detection
-
-// IMPORTANT: Only checks stderr to avoid false positives from code in stdout
-// containing "rate limit", "429", etc.
+// Only checks stderr to avoid false positives from code in stdout.
 
 export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetectionResult {
   const { stderr, exitCode } = input;
@@ -106,8 +76,6 @@ export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetect
 
   return { isRateLimit: false };
 }
-
-// Internal helpers
 
 function extractMessage(output: string, pattern: RegExp): string {
   const match = output.match(pattern);

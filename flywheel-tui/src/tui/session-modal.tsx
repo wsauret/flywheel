@@ -18,8 +18,8 @@ import { ModalBase } from "@tui/shared/components/modal/modal-base"
 import { isResumable } from "../orchestration/session/state-machine.js"
 import { truncate } from "./utils/text.js"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
+import { buildSessionList, type GroupKey } from "./hooks/use-session-modal.js"
 import type { SessionSummary } from "../orchestration/session/manager.js"
-import type { SessionState } from "../orchestration/session/state-machine.js"
 
 // Props
 
@@ -33,12 +33,6 @@ export interface SessionModalProps {
   onSelect: (flatIndex: number) => void
 }
 
-// Helpers (exported for shell keyboard handler)
-
-type GroupKey = "active" | "paused" | "completed"
-
-const GROUP_ORDER: GroupKey[] = ["active", "paused", "completed"]
-
 const GROUP_LABELS: Record<GroupKey, string> = {
   active: "Active",
   paused: "Paused",
@@ -49,36 +43,6 @@ const GROUP_ICONS: Record<GroupKey, string> = {
   active: "\u25CF",
   paused: "\u2759",
   completed: "\u2713",
-}
-
-const STATE_TO_GROUP: Record<SessionState, GroupKey> = {
-  active: "active",
-  paused: "paused",
-  completed: "completed",
-}
-
-/** Build flat session list from reactive sessions signal. Exported for shell use. */
-export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: GroupKey }[] {
-  const items: { session: SessionSummary; group: GroupKey }[] = []
-  const groups: Record<GroupKey, SessionSummary[]> = {
-    active: [], paused: [], completed: [],
-  }
-
-  for (const s of sessions) {
-    const group = STATE_TO_GROUP[s.state]
-    if (group) groups[group].push(s)
-  }
-
-  for (const key of GROUP_ORDER) {
-    groups[key].sort(
-      (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime(),
-    )
-    for (const s of groups[key]) {
-      items.push({ session: s, group: key })
-    }
-  }
-
-  return items
 }
 
 // Component

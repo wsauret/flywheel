@@ -66,8 +66,6 @@ export interface AccumulatedContext {
   [key: string]: unknown;
 }
 
-// Extraction helpers — pull key fields from raw handoff data
-
 function extractStringArray(
   data: Record<string, unknown>,
   ...keys: string[]
@@ -104,8 +102,6 @@ function summarizeEntry(entry: HandoffEntry): HandoffSummary {
   };
 }
 
-// ContextAccumulator — the accumulator interface (replaces stub)
-
 /**
  * ContextAccumulator extends the executor's StepContextAccumulator interface
  * with serialization and size methods for persistence support.
@@ -130,16 +126,12 @@ export interface ContextAccumulator {
   size(): number;
 }
 
-// Options
-
 interface ContextAccumulatorOptions {
   /** Number of recent handoffs to keep in full detail. Default: 3. */
   windowSize?: number;
   /** Pre-existing state to restore from persistence. */
   initialState?: AccumulatorState;
 }
-
-// createContextAccumulator — factory function
 
 export function createContextAccumulator(
   opts?: ContextAccumulatorOptions,
@@ -150,7 +142,6 @@ export function createContextAccumulator(
     : [];
 
   function accumulate(data: unknown): void {
-    // Only process objects with the expected handoff shape
     if (
       data == null ||
       typeof data !== "object" ||
@@ -159,7 +150,7 @@ export function createContextAccumulator(
       !("stepTitle" in data) ||
       !("handoff" in data)
     ) {
-      return; // silently ignore malformed data
+      return;
     }
 
     const d = data as {

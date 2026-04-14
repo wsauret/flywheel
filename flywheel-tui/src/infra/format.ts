@@ -1,10 +1,3 @@
-/**
- * Pure formatting helpers.
- * No side effects, no imports beyond stdlib.
- * Shared across orchestration/ and tui/ layers.
- */
-
-/** Terminal title prefix — shared constant used across orchestration and TUI layers. */
 export const TERMINAL_TITLE_PREFIX = "flywheel \u00b7 "
 
 export function formatTokens(n: number): string {

@@ -1,10 +1,3 @@
-/**
- * Workflow payload types — canonical home for infra-layer consumption.
- *
- * Zod schemas are the single source of truth (ADR-006). Types are derived
- * via z.infer. Schema values are exported for type derivation and test validation.
- */
-
 import { z } from "zod"
 
 export const EvaluationCriteriaSchema = z.object({
@@ -61,9 +54,9 @@ export const DispatcherDecisionSchema = z.object({
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>
 
-export const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"])
+const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"])
 
-export const EvaluatorIssueCategoryEnum = z.enum([
+const EvaluatorIssueCategoryEnum = z.enum([
   "test_failure",
   "type_error",
   "security",

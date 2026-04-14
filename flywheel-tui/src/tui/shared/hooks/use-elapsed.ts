@@ -1,9 +1,3 @@
-/**
- * Live-ticking elapsed timer.
- * Returns a reactive accessor that updates every second with the elapsed
- * time since `startMs` (epoch milliseconds).
- */
-
 import { createSignal, onCleanup } from "solid-js"
 import type { Accessor } from "solid-js"
 

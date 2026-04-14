@@ -1,11 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * SystemBlock Component
- *
- * Renders a system message (e.g., "Step started", "Workflow complete").
- * Step boundary blocks render as a subtle separator — step progress
- * is already shown in the shell header.
- */
 
 import { useTheme } from "@tui/shared/context/theme"
 import type { SystemBlock as SystemBlockType } from "@infra/output-blocks"
@@ -16,6 +9,7 @@ export interface SystemBlockProps {
 
 export function SystemBlock(props: SystemBlockProps) {
   const themeCtx = useTheme()
+  // Step boundaries render as a rule rather than text — progress is in the shell header.
   const isStepBoundary = props.block.message.startsWith("[step-boundary]")
 
   if (isStepBoundary) {

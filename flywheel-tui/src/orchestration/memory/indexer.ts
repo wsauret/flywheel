@@ -1,14 +1,3 @@
-/**
- * ContextIndexer — discovers and indexes project context metadata.
- *
- * Scans conventions (AGENTS.md, CONTRIBUTING.md, etc.) and standards
- * (docs/standards/*.md with frontmatter) to produce `AvailableContext`
- * metadata for prompt assembly.
- *
- * Lifecycle: `startIndexing()` builds index, `getRelevantContext()` queries,
- * `dispose()` resets the ready state.
- */
-
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";

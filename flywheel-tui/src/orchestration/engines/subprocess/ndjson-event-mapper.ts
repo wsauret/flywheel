@@ -1,10 +1,3 @@
-/**
- * NDJSON-to-EngineEvent mapper.
- *
- * Converts NDJSONEvent (subprocess-specific) to EngineEvent (engine-agnostic)
- * for consumption by stream observers.
- */
-
 import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
 import type { EngineEvent } from "../stream-observers.js";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";

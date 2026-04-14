@@ -1,13 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * UserMessageBlock Component
- *
- * Renders user messages:
- * Left border in secondary color + panel background + padded text.
- *
- * Injected messages (observer, self-review, user steering) render collapsed
- * by default with a one-line summary; click to expand.
- */
 
 import { createSignal, Show } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
@@ -19,7 +10,6 @@ export interface UserMessageBlockProps {
   block: UserMessageBlockType
 }
 
-/** Extract a short preview from message content (first non-empty line, truncated). */
 function previewLine(content: string, maxLen = 80): string {
   for (const line of content.split("\n")) {
     const trimmed = line.trim()

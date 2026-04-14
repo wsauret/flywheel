@@ -1,10 +1,3 @@
-/**
- * Claude Code engine.
- *
- * Command pattern from CodeMachine. Prompt is passed via stdin.
- * Model can be a short name (opus, sonnet, haiku) or a full claude model ID.
- */
-
 import type { Engine, EngineCommand, EngineCommandOptions, EngineMetadata } from "../core/types.js";
 
 export const metadata: EngineMetadata = {
@@ -20,10 +13,6 @@ export const metadata: EngineMetadata = {
   syntheticThinkingMs: 500,
 };
 
-/**
- * Map ToolScoping booleans to Claude CLI tool names.
- * Only tools with `true` are included in the --tools list.
- */
 const TOOL_NAME_MAP: Record<string, string> = {
   read: "Read",
   bash: "Bash",
@@ -32,21 +21,6 @@ const TOOL_NAME_MAP: Record<string, string> = {
   task: "Task",
 };
 
-/**
- * Unified command builder for all roles (worker, dispatcher, evaluator).
- *
- * All roles use --input-format stream-json with stdin pipes (stdinPrompt: true).
- * Does NOT include --no-session-persistence (incompatible with stream-json).
- * Does NOT include -p (prompt delivered via stdin NDJSON).
- *
- * Supports:
- * - --system-prompt when provided (for dispatcher/evaluator)
- * - --tools as explicit string when provided (for dispatcher/evaluator)
- * - --tools derived from ToolScoping when toolScoping provided (for workers)
- * - --resume when resumeSessionId provided (for workers)
- * - --effort when provided
- * - --model when provided
- */
 export function buildCommand(options: EngineCommandOptions): EngineCommand {
   const args: string[] = [
     "--output-format", "stream-json",
@@ -98,15 +72,8 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   };
 }
 
-// Model resolution
-
-/**
- * Short-alias → 1M model ID mapping.
- *
- * Bare aliases ("opus", "sonnet") resolve to 1M-context variants by default.
- * Append `[200k]` to force the smaller context window (e.g. "opus[200k]").
- * Full model IDs (e.g. "claude-opus-4-6[1m]") pass through unchanged.
- */
+// Bare aliases ("opus", "sonnet") resolve to 1M-context variants by default.
+// Append `[200k]` to force the smaller context window. Full model IDs pass through unchanged.
 const ALIAS_TO_1M: Record<string, string> = {
   opus:   "claude-opus-4-6[1m]",
   sonnet: "claude-sonnet-4-6[1m]",
@@ -117,16 +84,6 @@ const ALIAS_200K: Record<string, string> = {
   "sonnet[200k]": "sonnet",
 };
 
-/**
- * Resolve a user-facing model string into the value passed to `--model`.
- *
- * - "opus"           → "claude-opus-4-6[1m]"   (1M default)
- * - "sonnet"         → "claude-sonnet-4-6[1m]" (1M default)
- * - "opus[200k]"     → "opus"                  (200k explicit)
- * - "sonnet[200k]"   → "sonnet"                (200k explicit)
- * - "haiku"          → "haiku"                  (no 1M variant)
- * - full IDs         → pass through
- */
 export function resolveModel(raw: string): string {
   const key = raw.toLowerCase().trim();
   if (ALIAS_200K[key]) return ALIAS_200K[key];
@@ -134,4 +91,6 @@ export function resolveModel(raw: string): string {
   return raw;
 }
 
+// metadata and buildCommand are exported individually for direct unit testing
+// and composed into claudeEngine for production use via the registry.
 export const claudeEngine: Engine = { metadata, buildCommand };

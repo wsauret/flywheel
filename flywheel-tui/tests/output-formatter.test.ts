@@ -1,17 +1,16 @@
 import { describe, it, expect } from "bun:test";
-import {
-  formatDisplayPath,
-  getToolDetail,
-} from "../src/infra/output/output-formatter";
+import { getToolDetail } from "../src/infra/output/output-formatter";
 import * as path from "node:path";
 
 describe("output-formatter", () => {
-  // ── getToolDetail ──
-
   describe("getToolDetail", () => {
     it("Read shows file_path with ./ prefix", () => {
       const filePath = path.join(process.cwd(), "src/index.ts");
       expect(getToolDetail("Read", { file_path: filePath })).toBe("./src/index.ts");
+    });
+
+    it("Read converts relative paths to ./ prefix", () => {
+      expect(getToolDetail("Read", { file_path: "src/index.ts" })).toBe("./src/index.ts");
     });
 
     it("Write shows file_path with ./ prefix", () => {
@@ -71,16 +70,4 @@ describe("output-formatter", () => {
       expect(getToolDetail("CustomTool", { count: 5 })).toBeNull();
     });
   });
-
-  describe("formatDisplayPath", () => {
-    it("returns relative paths with ./ prefix", () => {
-      expect(formatDisplayPath("src/index.ts")).toBe("./src/index.ts");
-    });
-
-    it("converts absolute project paths to relative paths with ./ prefix", () => {
-      const filePath = path.join(process.cwd(), "src/index.ts");
-      expect(formatDisplayPath(filePath)).toBe("./src/index.ts");
-    });
-  });
-
 });

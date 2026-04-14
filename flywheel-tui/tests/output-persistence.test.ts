@@ -50,14 +50,6 @@ function systemBlock(message = "started") {
   return { kind: "system" as const, message, timestamp: Date.now() };
 }
 
-function contextGroupBlock() {
-  return {
-    kind: "contextGroup" as const,
-    tools: [toolBlock("glob", "**/*.ts")],
-    timestamp: Date.now(),
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Cleanup
 // ---------------------------------------------------------------------------
@@ -209,34 +201,6 @@ describe("createOutputPersistence — load error handling", () => {
     expect(loaded).toHaveLength(2);
     expect(loaded[0].kind).toBe("text");
     expect(loaded[1].kind).toBe("system");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// delete
-// ---------------------------------------------------------------------------
-
-describe("createOutputPersistence — delete", () => {
-  it("removes the output file", async () => {
-    const baseDir = makeTmpDir();
-    const sessionId = crypto.randomUUID();
-    const persistence = createOutputPersistence({ sessionId, baseDir });
-
-    persistence.save([textBlock()]);
-    const deleted = await persistence.delete();
-    expect(deleted).toBe(true);
-
-    const loaded = await persistence.load();
-    expect(loaded).toEqual([]);
-  });
-
-  it("returns false when file does not exist", async () => {
-    const baseDir = makeTmpDir();
-    const sessionId = crypto.randomUUID();
-    const persistence = createOutputPersistence({ sessionId, baseDir });
-
-    const deleted = await persistence.delete();
-    expect(deleted).toBe(false);
   });
 });
 

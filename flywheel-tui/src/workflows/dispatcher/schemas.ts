@@ -27,7 +27,6 @@ const PlanInputSchema = z.object({
   steps: z.array(PlanStepInputSchema),
 }).strip();
 
-// WorkflowInfoSchema — current workflow step context for the dispatcher
 export const WorkflowInfoSchema = z.object({
   name: z.string(),
   step_number: z.number(),
@@ -37,7 +36,6 @@ export const WorkflowInfoSchema = z.object({
 
 export type WorkflowInfo = z.infer<typeof WorkflowInfoSchema>;
 
-// DispatcherConfigSchema — runtime config subset for the dispatcher
 export const DispatcherConfigSchema = z.object({
   max_eval_cycles: z.number(),
   worktree_path: z.string(),

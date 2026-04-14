@@ -1,32 +1,11 @@
-/**
- * Trace Event Handler — converts NDJSONEvents into trace FlywheelEvents.
- *
- * Receives NDJSONEvent objects from the NDJSON parser pipeline (same
- * interface as BudgetTracker.handleEvent) and emits trace-specific
- * FlywheelEvents via the EmitFn.
- *
- * Detection heuristics:
- * - tool_use blocks with name "Task" or "dispatch_agent" → subagent events
- * - All other tool_use blocks → tool events
- * - tool_result events are matched to their originating tool_use via toolUseId
- *
- * Single-threaded assumption: same as BudgetTracker.
- */
-
 import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";
 import type { EmitFn } from "../../../infra/event-bus.js";
 import { truncateField } from "../../../infra/trace-types.js";
 
-// Constants
-
-/** Tool names that indicate a subagent spawn rather than a simple tool call. */
 const SUBAGENT_TOOL_NAMES = new Set(["Task", "dispatch_agent"]);
 
-/** Max bytes for truncated fields in trace events. */
 const MAX_FIELD_BYTES = 4096;
-
-// Types
 
 export interface TraceEventHandlerDeps {
   emit: EmitFn;
@@ -34,11 +13,8 @@ export interface TraceEventHandlerDeps {
 }
 
 export interface TraceEventHandler {
-  /** Handle a single NDJSONEvent — same signature as BudgetTracker.handleEvent. */
   handleEvent(event: NDJSONEvent): void;
 }
-
-// Factory
 
 export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEventHandler {
   const { emit, workflowId } = deps;

@@ -1,8 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * Animated Spinner Component
- * Braille dot pattern spinner.
- */
 
 import { createSignal, onMount, onCleanup } from "solid-js"
 import type { RGBA } from "@opentui/core"

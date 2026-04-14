@@ -11,13 +11,9 @@ import { parseRawHandoff } from "../queue/shared/handoff-parse.js";
 
 const log = Log.create({ service: "evaluator-agent-factory" });
 
-// Options
-
 interface CreateAgentEvaluatorFnOptions {
   transport: EvaluatorTransport;
 }
-
-// Helpers
 
 function resultToEvalResult(result: EvaluatorResult): EvalResult {
   return {
@@ -30,8 +26,6 @@ function resultToEvalResult(result: EvaluatorResult): EvalResult {
     cyclesUsed: 1,
   };
 }
-
-// Factory
 
 /**
  * Creates an EvaluatorFn backed by the agent-based subprocess evaluator.
@@ -46,7 +40,7 @@ export function createAgentEvaluatorFn(
   return async (
     step: Step,
     workerOutput: string,
-    evaluationCriteria?: unknown | null,
+    evaluationCriteria?: EvaluationCriteria | null,
     handoffData?: Record<string, unknown> | null,
     taskContent?: string,
   ): Promise<EvalResult> => {
@@ -57,22 +51,16 @@ export function createAgentEvaluatorFn(
       hasEvaluationCriteria: evaluationCriteria != null,
     });
 
-    // Build structured evaluation criteria
-    const criteria: EvaluationCriteria = evaluationCriteria &&
-      typeof evaluationCriteria === "object" &&
-      "acceptance_criteria" in (evaluationCriteria as object)
-        ? (evaluationCriteria as EvaluationCriteria)
-        : {
-            acceptance_criteria: [],
-            required_tests: false,
-            custom_checks: [],
-            required_outputs: [],
-          };
+    const criteria: EvaluationCriteria = evaluationCriteria ?? {
+      acceptance_criteria: [],
+      required_tests: false,
+      custom_checks: [],
+      required_outputs: [],
+    };
 
-    // Build evaluator input from handoff data
     const handoff = handoffData ? extractHandoffData(handoffData) : undefined;
 
-    // When handoff exists, skip raw worker output — the structured handoff
+    // Skip raw worker output when handoff exists — the structured handoff
     // (summary, artifacts, verification) is sufficient and avoids flooding
     // the evaluator with tens of thousands of tokens of raw NDJSON.
     const input: EvaluatorInput = {
@@ -114,8 +102,6 @@ export function createAgentEvaluatorFn(
     }
   };
 }
-
-// Handoff data extraction — delegates to shared parser
 
 function extractHandoffData(
   handoffData: Record<string, unknown>,

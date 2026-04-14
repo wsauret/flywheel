@@ -1,11 +1,3 @@
-/**
- * Chat Mode Hook — thin adapter over ChatController.
- *
- * The hook holds only the `chatActive` SolidJS signal (needed for JSX)
- * and delegates all business logic to the controller. Controller methods
- * return data; the hook writes that data to signals.
- */
-
 import { createSignal, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { createChatController } from "../../orchestration/chat-controller.js"
@@ -40,7 +32,6 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
 
   const callbacks = wireLifecycleCallbacks(signals, services)
 
-  // Create the controller — all business logic lives there
   const controller = createChatController({
     sessionStore: services.sessionStore,
     manager: services.manager,

@@ -1,10 +1,3 @@
-/**
- * Stream Observers — engine-agnostic observers that watch EngineEvents
- * and produce injection messages at turn boundaries.
- *
- * Wired into workflow mode only (chat mode deferred).
- */
-
 export type EngineEvent =
   | { type: "tool_use"; toolName: string; toolInput: Record<string, unknown> }
   | { type: "tool_result"; isError: boolean }

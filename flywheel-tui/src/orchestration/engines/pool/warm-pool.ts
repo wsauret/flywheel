@@ -5,6 +5,8 @@ import {
 } from "../subprocess/process-lifecycle.js";
 import { Log } from "../../../infra/log.js";
 
+// Generic justified: used with both SpawnResult (dispatcher/evaluator) and
+// RawSpawnedProcess (subprocess) in create-warm-pools.ts.
 export interface WarmPoolOptions<T = SpawnResult> {
   spawn: () => Promise<T>;
   label: string;

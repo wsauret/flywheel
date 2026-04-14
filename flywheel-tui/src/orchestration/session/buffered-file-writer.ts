@@ -1,17 +1,6 @@
-/**
- * Buffered File Writer
- *
- * Generic fd-append writer with in-memory buffering and debounced flush.
- * Shared by TraceWriter (Span[]) and TranscriptWriter (string[]).
- *
- * Single-threaded assumption: Bun's event loop serializes buffer drains
- * and lifecycle updates — no locking needed.
- */
-
 import * as fs from "node:fs";
 import { createDebouncedWriter } from "../../workflows/shared/debounced-writer.js";
 
-/** Default debounce interval for session writers (trace, transcript, budget). */
 export const DEFAULT_DEBOUNCE_MS = 100;
 
 interface BufferedFileWriterOpts<T> {

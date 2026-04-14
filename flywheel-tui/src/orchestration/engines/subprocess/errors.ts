@@ -1,22 +1,6 @@
-/**
- * Subprocess error categorization.
- *
- * Provides `categorizeFailure()` to map exit codes, stderr, and signals into
- * `SubprocessFailureReason` variants, and `isTransientError()` to detect
- * transient network/connection errors from error messages.
- *
- * `ExecutionStatus.interrupted` = cancellation, NOT a SubprocessFailureReason kind.
- */
-
 import type { SubprocessFailureReason } from "../../../infra/subprocess-types.js";
 import { detectRateLimit } from "./rate-limit.js";
 
-// Transient error detection
-
-/**
- * All known transient error patterns.
- * These indicate network/connection issues that may resolve on retry.
- */
 const TRANSIENT_PATTERNS: readonly string[] = [
   "ECONNREFUSED",
   "ECONNRESET",
@@ -36,10 +20,6 @@ const TRANSIENT_PATTERNS: readonly string[] = [
   "temporary",
 ];
 
-/**
- * Pre-compiled regex for transient error detection.
- * Case-insensitive to catch variations in error formatting.
- */
 const TRANSIENT_REGEX = new RegExp(
   TRANSIENT_PATTERNS.map((p) => escapeRegex(p)).join("|"),
   "i",
@@ -49,17 +29,10 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Detect whether an error message indicates a transient network/connection error.
- */
 function isTransientError(message: string): boolean {
   return TRANSIENT_REGEX.test(message);
 }
 
-/**
- * Categorize an error into a `SubprocessFailureReason` based on exit code,
- * output content, and other signals.
- */
 export function categorizeFailure(opts: {
   exitCode: number;
   stdout: string;
@@ -139,8 +112,6 @@ export function categorizeFailure(opts: {
   // silently halting the workflow even though the worker exited successfully.
   return undefined;
 }
-
-// Helper detectors
 
 function isApiError(text: string): boolean {
   return /api.?error|internal.?server|5\d{2}/i.test(text);

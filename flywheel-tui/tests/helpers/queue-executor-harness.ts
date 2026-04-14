@@ -24,6 +24,7 @@ import type {
   StepExecutor,
   WorkerOutput,
   EvalResult,
+  DispatcherContext,
   DispatcherFn,
   WorkerFn,
   EvaluatorFn,
@@ -76,7 +77,7 @@ export interface MockDispatcherOptions {
   /** Step IDs where the dispatcher should throw an error. */
   failOnStepIds?: Set<string>;
   /** Track all calls for assertions. */
-  calls?: Array<{ step: Step; context: Record<string, unknown> }>;
+  calls?: Array<{ step: Step; context: DispatcherContext }>;
 }
 
 export function createMockDispatcher(opts: MockDispatcherOptions = {}): DispatcherFn {
@@ -155,7 +156,7 @@ export interface MockEvaluatorOptions {
   /** Step IDs where evaluator returns a transport error. */
   transportErrorOnStepIds?: Set<string>;
   /** Track all calls for assertions. */
-  calls?: Array<{ step: Step; output: string; evaluationCriteria: unknown; handoffData: Record<string, unknown> | null }>;
+  calls?: Array<{ step: Step; output: string; evaluationCriteria: import("../../src/infra/workflow-types").EvaluationCriteria | null | undefined; handoffData: Record<string, unknown> | null }>;
 }
 
 export function createMockEvaluator(opts: MockEvaluatorOptions = {}): EvaluatorFn {

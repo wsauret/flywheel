@@ -155,7 +155,7 @@ export interface MockEvaluatorOptions {
   /** Step IDs where evaluator returns a transport error. */
   transportErrorOnStepIds?: Set<string>;
   /** Track all calls for assertions. */
-  calls?: Array<{ step: Step; output: string; evaluationCriteria: unknown; handoffData: Record<string, unknown> | null }>;
+  calls?: Array<{ step: Step; output: string; evaluationCriteria: import("../../src/infra/workflow-types").EvaluationCriteria | null | undefined; handoffData: Record<string, unknown> | null }>;
 }
 
 export function createMockEvaluator(opts: MockEvaluatorOptions = {}): EvaluatorFn {

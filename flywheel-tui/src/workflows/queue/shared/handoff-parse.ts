@@ -43,7 +43,6 @@ export function parseRawHandoff(raw: Record<string, unknown>): ParsedHandoff {
     commandsRun = Array.isArray(a.commands_run) ? a.commands_run : [];
   }
 
-  // Verification
   const verification = raw.verification as Record<string, unknown> | undefined;
   const testsPassed = verification?.tests_passed != null
     ? Boolean(verification.tests_passed)
@@ -52,7 +51,6 @@ export function parseRawHandoff(raw: Record<string, unknown>): ParsedHandoff {
     ? verification.test_output_summary
     : undefined;
 
-  // Array fields
   const decisions = Array.isArray(raw.decisions) ? raw.decisions.filter(isString) : [];
   const warnings = Array.isArray(raw.warnings) ? raw.warnings.filter(isString) : [];
   const filesToReview = Array.isArray(raw.files_to_review) ? raw.files_to_review.filter(isString) : [];

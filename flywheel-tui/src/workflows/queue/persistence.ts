@@ -24,10 +24,7 @@
 
 import * as fs from "node:fs";
 import { writeFileAtomic } from "../shared/atomic-write.js";
-import {
-  createDebouncedWriter,
-  type DebouncedWriter,
-} from "../shared/debounced-writer.js";
+import { createDebouncedWriter } from "../shared/debounced-writer.js";
 import { resolveSessionFile } from "../../infra/paths.js";
 import type { Queue } from "./types.js";
 import type { AccumulatorState } from "./context-accumulator.js";
@@ -76,7 +73,7 @@ interface QueuePersistence {
   loadAccumulatorState(): Promise<AccumulatorState | null>;
 }
 
-// Crash recovery — mark running steps as failed on load
+// Crash recovery — revert running steps to pending so they retry on resume
 
 function applyCrashRecovery(queue: Queue): void {
   const runningStepIds: string[] = [];
@@ -99,8 +96,6 @@ function applyCrashRecovery(queue: Queue): void {
   }
 }
 
-// Factory
-
 export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersistence {
   const {
     sessionId,
@@ -108,15 +103,15 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
     persistQueue = true,
   } = deps;
 
-  function queueFilePath(): string {
+  function queueFilePath() {
     return resolveSessionFile(sessionId, "queue", baseDir);
   }
 
-  function accumulatorFilePath(): string {
+  function accumulatorFilePath() {
     return resolveSessionFile(sessionId, "context", baseDir);
   }
 
-  function save(queue: Queue): void {
+  function save(queue: Queue) {
     if (!persistQueue) return;
 
     const json = JSON.stringify(queue);
@@ -136,12 +131,10 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
       const raw = await file.text();
       const parsed = JSON.parse(raw);
 
-      // Basic shape check — must have steps array
       if (!parsed || !Array.isArray(parsed.steps)) return null;
 
       const queue = parsed as Queue;
 
-      // Crash recovery: mark any running steps as failed
       applyCrashRecovery(queue);
 
       return queue;
@@ -151,7 +144,7 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
     }
   }
 
-  async function del(): Promise<boolean> {
+  async function del() {
     const filePath = queueFilePath();
     try {
       if (!fs.existsSync(filePath)) return false;
@@ -164,7 +157,7 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
 
   function createFlusher(opts?: QueueFlusherOpts): QueueFlusher {
     if (!persistQueue) {
-      // No-op flusher when persistence is disabled
+      // Reachable via config queue.persist_queue=false or FLYWHEEL_QUEUE_PERSIST_QUEUE=false.
       return {
         schedule(): void {},
         flush(): Promise<void> {
@@ -174,29 +167,13 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
       };
     }
 
-    const intervalMs = opts?.intervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
-
-    const writer = createDebouncedWriter<Queue>(
-      async (queue: Queue) => {
-        save(queue);
-      },
-      { intervalMs },
+    return createDebouncedWriter<Queue>(
+      async (queue) => { save(queue); },
+      { intervalMs: opts?.intervalMs ?? DEFAULT_FLUSH_INTERVAL_MS },
     );
-
-    return {
-      schedule(queue: Queue): void {
-        writer.schedule(queue);
-      },
-      flush(): Promise<void> {
-        return writer.flush();
-      },
-      dispose(): void {
-        writer.dispose();
-      },
-    };
   }
 
-  function saveAccumulatorState(state: AccumulatorState): void {
+  function saveAccumulatorState(state: AccumulatorState) {
     if (!persistQueue) return;
     const json = JSON.stringify(state);
     writeFileAtomic(accumulatorFilePath(), json);
@@ -214,7 +191,6 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
       const raw = await file.text();
       const parsed = JSON.parse(raw);
 
-      // Basic shape validation: must have entries array
       if (!parsed || !Array.isArray(parsed.entries)) return null;
 
       return parsed as AccumulatorState;

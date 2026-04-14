@@ -5,12 +5,14 @@
 // depending on the dispatcher's closure state.
 
 import type { Step, Queue } from "./types.js";
-import type { LastWorkerResult } from "../schemas.js";
+import type { LastWorkerResult, SessionBudgetStatus, AvailableContext } from "../schemas.js";
+import type { DispatcherInput } from "../dispatcher/schemas.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
 import type { DispatcherDecision } from "../../infra/workflow-types.js";
 import type { StepContext } from "./step-context.js";
 import type { EvalResult } from "./executor-types.js";
 import type { MutationRequest, StepDispatchContext, StepDispatcherDecision } from "./step-dispatcher.js";
+import type { MutationBudget } from "./guardrails.js";
 import { createEmptyStepContext } from "./step-context.js";
 import { parseRawHandoff } from "./shared/handoff-parse.js";
 import { randomUUID } from "crypto";
@@ -22,14 +24,12 @@ function toStepType(raw: string): Step["type"] {
   return VALID_STEP_TYPES.has(raw) ? (raw as Step["type"]) : "work";
 }
 
-// buildCompactQueueState
-
 /**
  * Build compact queue state for the dispatcher.
  * Shows all steps with their statuses to give the dispatcher
  * awareness of queue progress without sending full step data.
  */
-export function buildCompactQueueState(
+function buildCompactQueueState(
   queue: Queue,
   currentStepIndex: number,
 ): { completed_steps: number[]; current_step_index: number } {
@@ -45,12 +45,10 @@ export function buildCompactQueueState(
   };
 }
 
-// handoffToLastWorkerResult
-
 /**
  * Convert a previous handoff to LastWorkerResult format.
  */
-export function handoffToLastWorkerResult(
+function handoffToLastWorkerResult(
   handoff: Record<string, unknown>,
   stepIndex: number,
 ): LastWorkerResult {
@@ -66,12 +64,10 @@ export function handoffToLastWorkerResult(
   };
 }
 
-// accumulatedToStepContext
-
 /**
  * Convert accumulated context to StepContext for the dispatcher input.
  */
-export function accumulatedToStepContext(
+function accumulatedToStepContext(
   accumulated: AccumulatedContext,
 ): StepContext {
   if (accumulated.totalSteps === 0) {
@@ -81,7 +77,6 @@ export function accumulatedToStepContext(
   const ctx = createEmptyStepContext();
   ctx.step_count = accumulated.totalSteps;
 
-  // Convert summaries to StepContext format
   for (let i = 0; i < accumulated.summaries.length; i++) {
     const summary = accumulated.summaries[i];
     if (summary.decisions.length > 0) {
@@ -110,8 +105,6 @@ export function accumulatedToStepContext(
   return ctx;
 }
 
-// buildPlanFromQueue
-
 interface PlanStepCompact {
   title: string;
   description: string;
@@ -124,7 +117,7 @@ interface PlanStepCompact {
  * Build the plan steps array from queue steps (compact representation).
  * Uses the new step-based schema for the dispatcher.
  */
-export function buildPlanFromQueue(
+function buildPlanFromQueue(
   queue: Queue,
 ): { steps: PlanStepCompact[] } {
   const steps: PlanStepCompact[] = queue.steps.map((s) => ({
@@ -138,12 +131,10 @@ export function buildPlanFromQueue(
   return { steps };
 }
 
-// buildStepDescription
-
 /**
  * Build step description — rich context string for the dispatcher.
  */
-export function buildStepDescription(step: Step, context: StepDispatchContext): string {
+function buildStepDescription(step: Step, context: StepDispatchContext): string {
   const parts: string[] = [];
 
   // Step description or title
@@ -191,12 +182,10 @@ export function buildStepDescription(step: Step, context: StepDispatchContext): 
   return parts.join("\n");
 }
 
-// injectAssessmentIntoContext
-
 /**
  * Inject evaluator assessment into step context as warnings.
  */
-export function injectAssessmentIntoContext(
+function injectAssessmentIntoContext(
   ctx: StepContext,
   assessment: EvalResult,
 ): void {
@@ -222,8 +211,6 @@ export function injectAssessmentIntoContext(
   }
 }
 
-// normalizeDecision
-
 /**
  * Normalize DispatcherDecision to StepDispatcherDecision.
  */
@@ -231,20 +218,24 @@ export function normalizeDecision(
   raw: DispatcherDecision,
   step: Step,
 ): StepDispatcherDecision {
-  // Parse mutation requests from structured field
-  const mutationRequests = (raw.mutation_requests ?? []).map(req => ({
-    type: req.type as "insert_after" | "skip" | "remove",
-    targetStepId: req.target_step_id,
-    steps: req.steps?.map(s => ({
-      id: randomUUID(),
-      type: toStepType(s.type),
-      title: s.title,
-      status: "pending" as const,
-      description: s.description,
-      acceptanceCriteria: s.acceptance_criteria,
-    })),
-    reason: req.reason,
-  }));
+  const mutationRequests: MutationRequest[] = [];
+  for (const req of raw.mutation_requests ?? []) {
+    if (!req.target_step_id) continue;
+    if (req.type === "insert_after") {
+      const steps = req.steps?.map(s => ({
+        id: randomUUID(),
+        type: toStepType(s.type),
+        title: s.title,
+        status: "pending" as const,
+        description: s.description,
+        acceptanceCriteria: s.acceptance_criteria,
+      }));
+      if (!steps || steps.length === 0) continue;
+      mutationRequests.push({ type: "insert_after", targetStepId: req.target_step_id, steps, reason: req.reason });
+    } else {
+      mutationRequests.push({ type: req.type, targetStepId: req.target_step_id, reason: req.reason });
+    }
+  }
 
   // Merge tool scoping: step provides defaults, dispatcher can override
   let workerConfig = raw.worker_config ?? null;
@@ -264,4 +255,75 @@ export function normalizeDecision(
     contextFiles: raw.context_files,
     mutationRequests,
   };
+}
+
+function toMutationBudgetWire(budget: MutationBudget) {
+  return {
+    max_queue_length: budget.maxQueueLength,
+    current_queue_length: budget.currentQueueLength,
+    remaining_queue_capacity: budget.remainingQueueCapacity,
+    mutations_used_this_step: budget.mutationsUsedThisStep,
+    mutations_remaining_this_step: budget.mutationsRemainingThisStep,
+    total_session_inserts: budget.totalSessionInserts,
+    session_inserts_remaining: budget.sessionInsertsRemaining,
+    session_objective: budget.sessionObjective,
+  };
+}
+
+interface DispatcherInputContext {
+  configContext: {
+    maxEvalCycles: number;
+    worktreePath: string;
+    projectCwd: string;
+    subprocessModel: string;
+    dispatcherModel: string;
+  };
+  workflowId: string;
+  sessionBudget: SessionBudgetStatus;
+  availableContext: AvailableContext;
+}
+
+/** Assemble the full DispatcherInput from step, queue, and session context. */
+export function buildDispatcherInput(
+  step: Step,
+  queue: Queue,
+  context: StepDispatchContext,
+  currentIndex: number,
+  options: DispatcherInputContext,
+): DispatcherInput {
+  const stepDescription = buildStepDescription(step, context);
+
+  const input: DispatcherInput = {
+    plan: buildPlanFromQueue(queue),
+    state: buildCompactQueueState(queue, currentIndex),
+    workflow_id: options.workflowId,
+    workflow: {
+      name: step.type,
+      step_number: currentIndex + 1,
+      total_steps: queue.steps.length,
+      step_description: stepDescription,
+    },
+    last_worker_result: context.previousHandoff
+      ? handoffToLastWorkerResult(context.previousHandoff, currentIndex - 1)
+      : null,
+    config: {
+      max_eval_cycles: options.configContext.maxEvalCycles,
+      worktree_path: options.configContext.worktreePath,
+      project_cwd: options.configContext.projectCwd,
+      subprocess_model: options.configContext.subprocessModel,
+      dispatcher_model: options.configContext.dispatcherModel,
+    },
+    session_budget: options.sessionBudget,
+    available_context: options.availableContext,
+    step_context: accumulatedToStepContext(context.accumulatedContext),
+    mutation_budget: context.mutationBudget
+      ? toMutationBudgetWire(context.mutationBudget)
+      : undefined,
+  };
+
+  if (context.previousAssessment) {
+    injectAssessmentIntoContext(input.step_context, context.previousAssessment);
+  }
+
+  return input;
 }

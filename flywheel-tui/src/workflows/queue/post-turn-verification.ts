@@ -25,12 +25,7 @@ interface PostTurnVerificationConfig {
   projectCwd: string;
 }
 
-// Step type sets
-
-/** Step types that get native checks. */
 const CODE_STEP_TYPES = new Set(["work"]);
-
-// Factory
 
 /**
  * Create the post-turn verification hook for a given config.

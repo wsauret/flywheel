@@ -31,10 +31,8 @@ export interface KeyboardHandlerDeps {
 export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
   const { signals, sessionStore, workflow, chat, sessionModal, inChat, runningCount } = deps
 
-  /** Tracks the last ESC timestamp for double-ESC escalation in chat mode. */
   let lastChatEscAt = 0
 
-  /** Cycle foreground through active + paused sessions (from the canonical session list). */
   function cycleSession(direction: 1 | -1): void {
     const cycleable = deps.sessions().filter(s => s.state === "active" || s.state === "paused")
     if (cycleable.length < 2) return
@@ -67,7 +65,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     if (inChat()) {
       const now = Date.now()
       if (now - lastChatEscAt < 2_000) {
-        // Double-ESC: force-end the session — the nuclear option
         lastChatEscAt = 0
         chat.endChat()
         deps.showToast({ message: "Chat force-ended", variant: "warning" })
@@ -81,7 +78,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     // Paused with runner still alive (winding down): abort it
     if (state === "active") { workflow.abortForeground(); return }
 
-    // Completed or paused (no runner): dismiss and return to welcome
     if (state === "completed" || state === "paused") {
       if (sessionModal.isViewingSession()) {
         sessionModal.dismissViewedSession()
@@ -93,7 +89,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
       return
     }
 
-    // Error state (errorMessage set, no foreground session): dismiss
     if (signals.errorMessage()) {
       signals.setErrorMessage("")
     }

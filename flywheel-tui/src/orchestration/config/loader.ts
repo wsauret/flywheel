@@ -6,7 +6,6 @@ import { applyEnvOverrides } from "./env.js";
 
 type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
 
-// Exported for instanceof checks in tests — verifies error classification in config loading.
 export class ConfigLoadError extends Error {
   readonly code: ConfigErrorCode;
 
@@ -22,13 +21,6 @@ interface LoadResult {
   warnings: string[];
 }
 
-/**
- * Load configuration with precedence: env > config file > defaults.
- *
- * @param configPath Path to TOML config file (optional)
- * @param env Environment variables (defaults to process.env)
- * @returns Validated config + any warnings
- */
 export function loadConfig(
   configPath?: string,
   env: Record<string, string | undefined> = process.env as Record<string, string | undefined>,
@@ -70,7 +62,6 @@ export function loadConfig(
 
   const config = result.data;
 
-  // Emit warnings
   if (config.max_eval_cycles === 1) {
     warnings.push(
       "WARNING: max_eval_cycles is 1. The evaluator will not retry on failure. " +
@@ -108,9 +99,6 @@ function loadTomlFile(filePath: string): Record<string, unknown> {
   }
 }
 
-/**
- * Deep merge two objects. Source values override target values.
- */
 function deepMerge(
   target: Record<string, unknown>,
   source: Record<string, unknown>,

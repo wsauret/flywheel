@@ -1,8 +1,4 @@
 /**
- * Shared text utilities for TUI rendering.
- */
-
-/**
  * Truncate text to `maxLen` characters, appending an ellipsis (\u2026) when
  * the text exceeds the limit.
  *

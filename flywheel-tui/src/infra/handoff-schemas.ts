@@ -39,8 +39,6 @@ const P3FindingSchema = z.object({
   suggestion: z.string(),
 }).strict();
 
-// Skill feedback sub-schemas
-
 const SkillDeviationSchema = z.object({
   step: z.string().describe("Which skill step you deviated from"),
   whatIDidInstead: z.string().describe("What you actually did"),

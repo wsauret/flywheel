@@ -45,14 +45,6 @@ function agentBlock(
   };
 }
 
-function contextGroupBlock(tools?: ReturnType<typeof toolBlock>[]) {
-  return {
-    kind: "contextGroup" as const,
-    tools: tools ?? [toolBlock("glob", "**/*.ts"), toolBlock("grep", "import")],
-    timestamp: Date.now(),
-  };
-}
-
 function systemBlock(message = "subprocess:spawned") {
   return { kind: "system" as const, message, timestamp: Date.now() };
 }
@@ -102,12 +94,6 @@ describe("OutputSnapshotSchema — validation", () => {
 
   it("validates an AgentBlock snapshot with completed status", () => {
     const block = agentBlock({ status: "completed" });
-    const result = OutputSnapshotSchema.safeParse(block);
-    expect(result.success).toBe(true);
-  });
-
-  it("validates a ContextGroupBlock snapshot", () => {
-    const block = contextGroupBlock();
     const result = OutputSnapshotSchema.safeParse(block);
     expect(result.success).toBe(true);
   });
@@ -269,15 +255,6 @@ describe("toSnapshot — serialization", () => {
     expect(snapshots).toEqual([]);
   });
 
-  it("preserves ContextGroupBlock tools", () => {
-    const tools = [toolBlock("glob", "**/*.ts")];
-    const blocks = [contextGroupBlock(tools)];
-    const snapshots = toSnapshot(blocks);
-
-    const groupSnap = snapshots[0] as any;
-    expect(groupSnap.tools).toHaveLength(1);
-    expect(groupSnap.tools[0].name).toBe("glob");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -354,7 +331,6 @@ describe("round-trip serialization", () => {
         children: [toolBlock("glob", "*.ts")],
         duration: 1234,
       }),
-      contextGroupBlock([toolBlock("grep", "pattern")]),
       systemBlock("workflow:started"),
       thinkingBlock("let me think"),
       userMessageBlock("user said this", { pending: false, injected: false }),
@@ -367,15 +343,14 @@ describe("round-trip serialization", () => {
     const json = JSON.stringify(toSnapshot(original));
     const restored = fromSnapshot(JSON.parse(json));
 
-    expect(restored).toHaveLength(8);
+    expect(restored).toHaveLength(7);
     expect(restored[0].kind).toBe("text");
     expect(restored[1].kind).toBe("tool");
     expect(restored[2].kind).toBe("agent");
-    expect(restored[3].kind).toBe("contextGroup");
-    expect(restored[4].kind).toBe("system");
-    expect(restored[5].kind).toBe("thinking");
-    expect(restored[6].kind).toBe("userMessage");
-    expect(restored[7].kind).toBe("todoList");
+    expect(restored[3].kind).toBe("system");
+    expect(restored[4].kind).toBe("thinking");
+    expect(restored[5].kind).toBe("userMessage");
+    expect(restored[6].kind).toBe("todoList");
   });
 
   it("active AgentBlock becomes paused after round-trip", () => {

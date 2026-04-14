@@ -1,13 +1,3 @@
-/**
- * Session Title Generation — generates concise session titles via a lightweight LLM call.
- *
- * Used by both chat and workflow sessions. Calls `onTitle` twice:
- * 1. Immediately with a quick first-5-words title (so the UI isn't blank)
- * 2. Async with a haiku-generated <= 5 word summary (replaces the quick title)
- *
- * If the LLM call fails or times out, the quick title stands.
- */
-
 import type { Engine } from "./engines/core/types.js"
 import type { ProcessSpawner } from "./engines/subprocess/spawner.js"
 import { Log } from "../infra/log.js"
@@ -27,13 +17,6 @@ export interface TitleGeneratorDeps {
   projectCwd: string
 }
 
-/**
- * Generate a session title from a user message or description.
- *
- * Calls `onTitle` immediately with a quick fallback (first 5 words),
- * then fires a haiku subprocess in parallel and calls `onTitle` again
- * with the LLM-generated title when ready.
- */
 export function generateSessionTitle(
   message: string,
   onTitle: (title: string) => void,

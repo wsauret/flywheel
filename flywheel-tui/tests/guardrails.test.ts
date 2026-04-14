@@ -23,11 +23,10 @@ import {
   transitionStep,
   type Provenance,
 } from "../src/workflows/queue/queue";
-import type { Step, Queue, MutationLogEntry } from "../src/workflows/queue/types";
+import type { Step, Queue } from "../src/workflows/queue/types";
 import {
   createGuardrails,
   type GuardrailOptions,
-  type MutationBudget,
 } from "../src/workflows/queue/guardrails";
 
 // ---------------------------------------------------------------------------
@@ -63,50 +62,63 @@ function defaultGuardrailOptions(overrides?: Partial<GuardrailOptions>): Guardra
   };
 }
 
+function insertMutation(targetStepId: string, count = 1) {
+  return {
+    type: "insert_after" as const,
+    targetStepId,
+    steps: Array.from({ length: count }, () => makeStep()),
+    reason: "test insert",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Guardrail 1: Max queue length (VAL-GUARD-001, VAL-MUT-004)
 // ---------------------------------------------------------------------------
 
 describe("Guardrail 1: Max queue length", () => {
-  test("rejects insertAfter that would exceed max queue length", () => {
-    const opts = defaultGuardrailOptions({ maxQueueLength: 5 });
-    const guardrails = createGuardrails(opts);
+  test("rejects insert that would exceed max queue length", () => {
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxQueueLength: 5 }));
     const steps = Array.from({ length: 5 }, () => makeStep());
     const queue = makeQueue(steps, { maxSteps: 5 });
 
-    const result = guardrails.checkInsert(queue, 1);
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("max");
+    const results = guardrails.applyMutations(
+      queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
+    );
+    expect(results[0].applied).toBe(false);
+    expect(results[0].reason).toContain("max");
   });
 
-  test("allows insertAfter when under max queue length", () => {
-    const opts = defaultGuardrailOptions({ maxQueueLength: 10 });
-    const guardrails = createGuardrails(opts);
+  test("allows insert when under max queue length", () => {
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxQueueLength: 10 }));
     const steps = Array.from({ length: 5 }, () => makeStep());
     const queue = makeQueue(steps);
 
-    const result = guardrails.checkInsert(queue, 1);
-    expect(result.allowed).toBe(true);
+    const results = guardrails.applyMutations(
+      queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
+    );
+    expect(results[0].applied).toBe(true);
   });
 
   test("uses configurable maxQueueLength", () => {
-    const opts = defaultGuardrailOptions({ maxQueueLength: 3 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxQueueLength: 3 }));
     const steps = Array.from({ length: 3 }, () => makeStep());
     const queue = makeQueue(steps);
 
-    const result = guardrails.checkInsert(queue, 1);
-    expect(result.allowed).toBe(false);
+    const results = guardrails.applyMutations(
+      queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
+    );
+    expect(results[0].applied).toBe(false);
   });
 
   test("allows insert exactly at max queue length", () => {
-    const opts = defaultGuardrailOptions({ maxQueueLength: 6 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxQueueLength: 6 }));
     const steps = Array.from({ length: 5 }, () => makeStep());
     const queue = makeQueue(steps);
 
-    const result = guardrails.checkInsert(queue, 1);
-    expect(result.allowed).toBe(true);
+    const results = guardrails.applyMutations(
+      queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
+    );
+    expect(results[0].applied).toBe(true);
   });
 
   test("default max queue length is 50", () => {
@@ -114,8 +126,10 @@ describe("Guardrail 1: Max queue length", () => {
     const steps = Array.from({ length: 50 }, () => makeStep());
     const queue = makeQueue(steps);
 
-    const result = guardrails.checkInsert(queue, 1);
-    expect(result.allowed).toBe(false);
+    const results = guardrails.applyMutations(
+      queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
+    );
+    expect(results[0].applied).toBe(false);
   });
 });
 
@@ -125,56 +139,81 @@ describe("Guardrail 1: Max queue length", () => {
 
 describe("Guardrail 2: Max mutations per step completion", () => {
   test("allows mutations within the per-step limit", () => {
-    const opts = defaultGuardrailOptions({ maxMutationsPerStepCompletion: 3 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxMutationsPerStepCompletion: 3 }));
+    const steps = Array.from({ length: 5 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    const result = guardrails.checkMutationBudget("step-1");
-    expect(result.allowed).toBe(true);
+    const mutations = [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id),
+    ];
+    const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
+    expect(results.every((r) => r.applied)).toBe(true);
   });
 
   test("rejects 4th mutation when limit is 3", () => {
-    const opts = defaultGuardrailOptions({ maxMutationsPerStepCompletion: 3 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxMutationsPerStepCompletion: 3 }));
+    const steps = Array.from({ length: 10 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    const result = guardrails.checkMutationBudget("step-1");
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("3");
+    const mutations = [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id),
+      insertMutation(steps[2].id),
+      insertMutation(steps[3].id),
+    ];
+    const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
+    expect(results[0].applied).toBe(true);
+    expect(results[1].applied).toBe(true);
+    expect(results[2].applied).toBe(true);
+    expect(results[3].applied).toBe(false);
+    expect(results[3].reason).toContain("3");
   });
 
   test("tracks mutations independently per step", () => {
-    const opts = defaultGuardrailOptions({ maxMutationsPerStepCompletion: 2 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxMutationsPerStepCompletion: 2 }));
+    const steps = Array.from({ length: 10 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-2");
+    // Exhaust step-1's budget
+    guardrails.applyMutations(queue, "step-1", [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id),
+    ], TEST_PROVENANCE);
 
-    expect(guardrails.checkMutationBudget("step-1").allowed).toBe(false);
-    expect(guardrails.checkMutationBudget("step-2").allowed).toBe(true);
+    // step-1 should be exhausted
+    const r1 = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[2].id)], TEST_PROVENANCE);
+    expect(r1[0].applied).toBe(false);
+
+    // step-2 should still have budget
+    const r2 = guardrails.applyMutations(queue, "step-2", [insertMutation(steps[3].id)], TEST_PROVENANCE);
+    expect(r2[0].applied).toBe(true);
   });
 
   test("uses configurable limit", () => {
-    const opts = defaultGuardrailOptions({ maxMutationsPerStepCompletion: 1 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxMutationsPerStepCompletion: 1 }));
+    const steps = Array.from({ length: 5 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
-    const result = guardrails.checkMutationBudget("step-1");
-    expect(result.allowed).toBe(false);
+    guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE);
+    const r = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[1].id)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(false);
   });
 
   test("default limit is 3", () => {
     const guardrails = createGuardrails(defaultGuardrailOptions());
+    const steps = Array.from({ length: 10 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    const result = guardrails.checkMutationBudget("step-1");
-    expect(result.allowed).toBe(false);
+    const mutations = [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id),
+      insertMutation(steps[2].id),
+    ];
+    guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
+
+    const r = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[3].id)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(false);
   });
 });
 
@@ -184,66 +223,85 @@ describe("Guardrail 2: Max mutations per step completion", () => {
 
 describe("Guardrail 3: Max inserted steps per session", () => {
   test("tracks total inserts across all step completions", () => {
-    const opts = defaultGuardrailOptions({ maxInsertedStepsPerSession: 5 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({
+      maxInsertedStepsPerSession: 3,
+      maxMutationsPerStepCompletion: 10,
+    }));
+    const steps = Array.from({ length: 10 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    // Record 5 inserts
-    for (let i = 0; i < 5; i++) {
-      guardrails.recordSessionInsert();
-    }
+    // Insert 3 steps across two step completions
+    guardrails.applyMutations(queue, "step-1", [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id),
+    ], TEST_PROVENANCE);
+    guardrails.applyMutations(queue, "step-2", [insertMutation(steps[2].id)], TEST_PROVENANCE);
 
-    const result = guardrails.checkSessionInsertBudget(1);
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("session");
+    // Session limit reached — next insert should fail
+    const r = guardrails.applyMutations(queue, "step-3", [insertMutation(steps[3].id)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(false);
+    expect(r[0].reason).toContain("session");
   });
 
   test("allows inserts under the session limit", () => {
-    const opts = defaultGuardrailOptions({ maxInsertedStepsPerSession: 20 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({
+      maxInsertedStepsPerSession: 20,
+      maxMutationsPerStepCompletion: 10,
+    }));
+    const steps = Array.from({ length: 20 }, () => makeStep());
+    const queue = makeQueue(steps);
 
+    // 10 inserts — well under limit of 20
     for (let i = 0; i < 10; i++) {
-      guardrails.recordSessionInsert();
+      guardrails.applyMutations(queue, `step-${i}`, [insertMutation(steps[0].id)], TEST_PROVENANCE);
     }
 
-    const result = guardrails.checkSessionInsertBudget(1);
-    expect(result.allowed).toBe(true);
+    const r = guardrails.applyMutations(queue, "step-11", [insertMutation(steps[0].id)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(true);
   });
 
-  test("considers the count of steps being inserted", () => {
-    const opts = defaultGuardrailOptions({ maxInsertedStepsPerSession: 5 });
-    const guardrails = createGuardrails(opts);
+  test("considers the count of steps being inserted in a single mutation", () => {
+    const guardrails = createGuardrails(defaultGuardrailOptions({
+      maxInsertedStepsPerSession: 5,
+      maxMutationsPerStepCompletion: 10,
+    }));
+    const steps = Array.from({ length: 5 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
+    // Insert 3 via one mutation
+    guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id, 3)], TEST_PROVENANCE);
 
-    // Trying to insert 3 more would exceed limit of 5 (already 3, adding 3 = 6)
-    const result = guardrails.checkSessionInsertBudget(3);
-    expect(result.allowed).toBe(false);
+    // Trying to insert 3 more would exceed limit of 5
+    const r = guardrails.applyMutations(queue, "step-2", [insertMutation(steps[0].id, 3)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(false);
   });
 
   test("allows inserting exactly up to the limit", () => {
-    const opts = defaultGuardrailOptions({ maxInsertedStepsPerSession: 5 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({
+      maxInsertedStepsPerSession: 5,
+      maxMutationsPerStepCompletion: 10,
+    }));
+    const steps = Array.from({ length: 5 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
-
-    // Insert 2 more: 3 + 2 = 5 (exactly at limit)
-    const result = guardrails.checkSessionInsertBudget(2);
-    expect(result.allowed).toBe(true);
+    // Insert 3, then 2 more = exactly 5
+    guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id, 3)], TEST_PROVENANCE);
+    const r = guardrails.applyMutations(queue, "step-2", [insertMutation(steps[0].id, 2)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(true);
   });
 
   test("default limit is 20", () => {
     const guardrails = createGuardrails(defaultGuardrailOptions());
+    const steps = Array.from({ length: 25 }, () => makeStep());
+    const queue = makeQueue(steps);
 
+    // Insert 20 steps
     for (let i = 0; i < 20; i++) {
-      guardrails.recordSessionInsert();
+      guardrails.applyMutations(queue, `step-${i}`, [insertMutation(steps[0].id)], TEST_PROVENANCE);
     }
 
-    const result = guardrails.checkSessionInsertBudget(1);
-    expect(result.allowed).toBe(false);
+    const r = guardrails.applyMutations(queue, "step-21", [insertMutation(steps[0].id)], TEST_PROVENANCE);
+    expect(r[0].applied).toBe(false);
   });
 });
 
@@ -321,8 +379,6 @@ describe("Guardrail 4: Provenance logging on all mutations", () => {
     const step = makeStep();
     const queue = makeQueue([step, makeStep()]);
 
-    // Every mutation API requires a Provenance object — verify at the type level
-    // by checking the mutation log after each operation
     const newStep = makeStep();
     insertAfter(queue, step.id, [newStep], { actor: "a", reason: "r" });
     const lastEntry = queue.mutationLog[queue.mutationLog.length - 1];
@@ -339,12 +395,11 @@ describe("Guardrail 4: Provenance logging on all mutations", () => {
 
 describe("Guardrail 5: Budget visibility in dispatcher calls", () => {
   test("getMutationBudget returns remaining budget info", () => {
-    const opts = defaultGuardrailOptions({
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       maxQueueLength: 50,
       maxMutationsPerStepCompletion: 3,
       maxInsertedStepsPerSession: 20,
-    });
-    const guardrails = createGuardrails(opts);
+    }));
 
     const budget = guardrails.getMutationBudget("step-1", 10);
     expect(budget).toBeDefined();
@@ -357,20 +412,21 @@ describe("Guardrail 5: Budget visibility in dispatcher calls", () => {
     expect(budget.sessionInsertsRemaining).toBe(20);
   });
 
-  test("budget reflects mutations already recorded", () => {
-    const opts = defaultGuardrailOptions({
+  test("budget reflects mutations already applied", () => {
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       maxMutationsPerStepCompletion: 3,
       maxInsertedStepsPerSession: 20,
-    });
-    const guardrails = createGuardrails(opts);
+    }));
+    const steps = Array.from({ length: 10 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
+    // Apply 2 mutations for step-1, inserting 3 total steps
+    guardrails.applyMutations(queue, "step-1", [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id, 2),
+    ], TEST_PROVENANCE);
 
-    const budget = guardrails.getMutationBudget("step-1", 15);
+    const budget = guardrails.getMutationBudget("step-1", queue.steps.length);
     expect(budget.mutationsUsedThisStep).toBe(2);
     expect(budget.mutationsRemainingThisStep).toBe(1);
     expect(budget.totalSessionInserts).toBe(3);
@@ -379,8 +435,10 @@ describe("Guardrail 5: Budget visibility in dispatcher calls", () => {
 
   test("budget for unknown step shows zero mutations used", () => {
     const guardrails = createGuardrails(defaultGuardrailOptions());
+    const steps = Array.from({ length: 5 }, () => makeStep());
+    const queue = makeQueue(steps);
 
-    guardrails.recordMutation("step-1");
+    guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE);
     const budget = guardrails.getMutationBudget("step-2", 10);
     expect(budget.mutationsUsedThisStep).toBe(0);
     expect(budget.mutationsRemainingThisStep).toBe(3);
@@ -392,27 +450,24 @@ describe("Guardrail 5: Budget visibility in dispatcher calls", () => {
 // ---------------------------------------------------------------------------
 
 describe("Guardrail 6: Objective anchoring in mutation prompts", () => {
-  test("getSessionObjective returns the configured session objective", () => {
-    const opts = defaultGuardrailOptions({
+  test("session objective is exposed via getMutationBudget", () => {
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       sessionObjective: "Build a REST API with authentication",
-    });
-    const guardrails = createGuardrails(opts);
+    }));
 
-    expect(guardrails.getSessionObjective()).toBe("Build a REST API with authentication");
+    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("Build a REST API with authentication");
   });
 
-  test("returns empty string when no objective is set", () => {
-    const opts = defaultGuardrailOptions({ sessionObjective: undefined });
-    const guardrails = createGuardrails(opts);
+  test("session objective defaults to empty string", () => {
+    const guardrails = createGuardrails(defaultGuardrailOptions({ sessionObjective: undefined }));
 
-    expect(guardrails.getSessionObjective()).toBe("");
+    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("");
   });
 
   test("objective is included in mutation budget context", () => {
-    const opts = defaultGuardrailOptions({
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       sessionObjective: "Add dark mode toggle",
-    });
-    const guardrails = createGuardrails(opts);
+    }));
 
     const budget = guardrails.getMutationBudget("step-1", 5);
     expect(budget.sessionObjective).toBe("Add dark mode toggle");
@@ -425,12 +480,11 @@ describe("Guardrail 6: Objective anchoring in mutation prompts", () => {
 
 describe("Dispatcher-driven mutations through guardrails", () => {
   test("applyMutations enforces all guardrails and returns results", () => {
-    const opts = defaultGuardrailOptions({
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       maxQueueLength: 10,
       maxMutationsPerStepCompletion: 3,
       maxInsertedStepsPerSession: 20,
-    });
-    const guardrails = createGuardrails(opts);
+    }));
     const steps = Array.from({ length: 5 }, () => makeStep());
     const queue = makeQueue(steps);
 
@@ -455,8 +509,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
   });
 
   test("rejects mutations exceeding per-step mutation limit", () => {
-    const opts = defaultGuardrailOptions({ maxMutationsPerStepCompletion: 2 });
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions({ maxMutationsPerStepCompletion: 2 }));
     const steps = Array.from({ length: 5 }, () => makeStep());
     const queue = makeQueue(steps);
 
@@ -468,7 +521,6 @@ describe("Dispatcher-driven mutations through guardrails", () => {
 
     const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
 
-    // First 2 should succeed, 3rd should be rejected
     expect(results[0].applied).toBe(true);
     expect(results[1].applied).toBe(true);
     expect(results[2].applied).toBe(false);
@@ -476,49 +528,41 @@ describe("Dispatcher-driven mutations through guardrails", () => {
   });
 
   test("rejects mutations exceeding session insert limit", () => {
-    const opts = defaultGuardrailOptions({
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       maxInsertedStepsPerSession: 2,
       maxMutationsPerStepCompletion: 10,
-    });
-    const guardrails = createGuardrails(opts);
-    const steps = Array.from({ length: 5 }, () => makeStep());
+    }));
+    const steps = Array.from({ length: 10 }, () => makeStep());
     const queue = makeQueue(steps);
 
     // Use up 2 session inserts
-    guardrails.recordSessionInsert();
-    guardrails.recordSessionInsert();
+    guardrails.applyMutations(queue, "step-0", [
+      insertMutation(steps[0].id),
+      insertMutation(steps[1].id),
+    ], TEST_PROVENANCE);
 
-    const mutations = [
-      { type: "insert_after" as const, targetStepId: steps[0].id, steps: [makeStep()], reason: "fix" },
-    ];
-
-    const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
+    // Next insert should fail
+    const results = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[2].id)], TEST_PROVENANCE);
     expect(results[0].applied).toBe(false);
     expect(results[0].reason).toContain("session");
   });
 
   test("rejects mutations exceeding queue length limit", () => {
-    const opts = defaultGuardrailOptions({
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       maxQueueLength: 5,
       maxMutationsPerStepCompletion: 10,
       maxInsertedStepsPerSession: 100,
-    });
-    const guardrails = createGuardrails(opts);
+    }));
     const steps = Array.from({ length: 5 }, () => makeStep());
     const queue = makeQueue(steps, { maxSteps: 5 });
 
-    const mutations = [
-      { type: "insert_after" as const, targetStepId: steps[0].id, steps: [makeStep()], reason: "fix" },
-    ];
-
-    const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
+    const results = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE);
     expect(results[0].applied).toBe(false);
     expect(results[0].reason).toContain("max");
   });
 
   test("applies skip mutations through guardrails", () => {
-    const opts = defaultGuardrailOptions();
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions());
     const steps = [makeStep(), makeStep({ title: "redundant" })];
     const queue = makeQueue(steps);
 
@@ -532,8 +576,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
   });
 
   test("applies remove mutations through guardrails", () => {
-    const opts = defaultGuardrailOptions();
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions());
     const steps = [makeStep(), makeStep({ title: "to remove" })];
     const queue = makeQueue(steps);
 
@@ -547,20 +590,17 @@ describe("Dispatcher-driven mutations through guardrails", () => {
   });
 
   test("records provenance for each applied mutation", () => {
-    const opts = defaultGuardrailOptions();
-    const guardrails = createGuardrails(opts);
+    const guardrails = createGuardrails(defaultGuardrailOptions());
     const steps = [makeStep(), makeStep()];
     const queue = makeQueue(steps);
 
     const newStep = makeStep();
-    const mutations = [
-      { type: "insert_after" as const, targetStepId: steps[0].id, steps: [newStep], reason: "test insert" },
-    ];
-
-    guardrails.applyMutations(queue, "step-1", mutations, {
-      actor: "dispatcher",
-      reason: "dispatcher mutation",
-    });
+    guardrails.applyMutations(
+      queue,
+      "step-1",
+      [{ type: "insert_after", targetStepId: steps[0].id, steps: [newStep], reason: "test insert" }],
+      { actor: "dispatcher", reason: "dispatcher mutation" },
+    );
 
     const entry = queue.mutationLog.find(
       (e) => e.action === "insert" && e.actor === "dispatcher",
@@ -572,11 +612,10 @@ describe("Dispatcher-driven mutations through guardrails", () => {
   });
 
   test("session inserts are tracked across multiple applyMutations calls", () => {
-    const opts = defaultGuardrailOptions({
+    const guardrails = createGuardrails(defaultGuardrailOptions({
       maxInsertedStepsPerSession: 5,
       maxMutationsPerStepCompletion: 10,
-    });
-    const guardrails = createGuardrails(opts);
+    }));
     const steps = Array.from({ length: 3 }, () => makeStep());
     const queue = makeQueue(steps);
 

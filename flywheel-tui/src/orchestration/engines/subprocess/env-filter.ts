@@ -1,16 +1,7 @@
-/**
- * Environment variable filtering for worker processes.
- *
- * Uses micromatch glob patterns to exclude sensitive variables (API keys, secrets)
- * while allowing configurable passthrough overrides.
- *
- * Exclusion patterns are pre-compiled to RegExp[] at startup to avoid
- * repeated pattern parsing per-key per-call.
- */
+// Exclusion patterns are pre-compiled to RegExp[] at startup to avoid repeated parsing per-call.
 
 import micromatch from "micromatch";
 
-/** Default glob patterns for exclusion. */
 const DEFAULT_EXCLUDE_PATTERNS: readonly string[] = [
   "*_API_KEY",
   "*_SECRET_KEY",
@@ -42,10 +33,8 @@ export interface EnvFilter {
 export function createEnvFilter(options: EnvFilterOptions = {}): EnvFilter {
   const { envExclude = [], envPassthrough = [] } = options;
 
-  // Merge default + additional exclusion patterns
   const allPatterns: string[] = [...DEFAULT_EXCLUDE_PATTERNS, ...envExclude];
 
-  // Pre-compile: create a combined matcher for all patterns
   // micromatch.matcher only accepts a single pattern, so we create one per pattern
   const matchers = allPatterns.map((p) => micromatch.matcher(p, { nocase: true }));
 

@@ -9,8 +9,7 @@
 
 import type { SprintIterationRecord } from "./types.js";
 
-// Static criteria prefix — self-review aligned assessment and FAIL/PASS rules.
-// Computed once at module load.
+// Computed once at module load for prompt caching.
 
 const STATIC_CRITERIA_PREFIX = [
   "## Sprint Mode: Evaluation Criteria",
@@ -58,8 +57,6 @@ const STATIC_CRITERIA_PREFIX = [
   "- When in doubt, PASS with suggestions. Retries are expensive.",
   "",
 ].join("\n");
-
-// buildSprintEvaluationCriteria
 
 /**
  * Build self-review-aligned evaluation criteria for a sprint iteration.

@@ -1,37 +1,40 @@
-/**
- * BunProcessSpawner — implements ProcessSpawner using Bun.spawn().
- *
- * Process creation is separated from stream pipeline wiring:
- * - `spawnRaw()` creates the process and returns raw handles (streams unconsumed)
- * - `wireStreamPipeline()` (in stream-pipeline.ts) consumes streams and wires callbacks
- * - `spawn()` composes both for backward-compatible behavior
- *
- * This separation enables subprocess pooling — processes can be pre-spawned before
- * step-specific callbacks are known.
- *
- * Stdin modes:
- * - Pre-encoded delivery (Uint8Array): default when `stdin` is provided without `stdinPipe`
- * - Streaming pipe: when `stdinPipe: true` — returns StdinHandle for mid-execution writes
- * - Ignore: when no `stdin` is provided
- *
- * Features:
- * - Shell metacharacter validation on all spawn args
- * - Bun.which() command resolution with graceful fallbacks
- * - Global process registry with clean entry removal on exit
- * - Integrates: env-filter, process-lifecycle
- */
-
 import type { FileSink } from "bun";
 import type { ProcessSpawner, SpawnOptions, SpawnResult } from "./spawner.js";
 import { createEnvFilter, type EnvFilterOptions } from "./env-filter.js";
 import type { ChildHandle } from "./process-lifecycle.js";
 import { clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES, createSubprocessTimeout } from "./timeout.js";
-import { validateSpawnArgs, resolveCommandExecutable } from "./spawn-validation.js";
 import { buildErrorResult, resolveHandoffPath } from "./spawn-helpers.js";
 import { wireStreamPipeline, type RawSpawnedProcess } from "./stream-pipeline.js";
 import { OutputBuffer } from "../../../infra/output-buffer.js";
 import { CompletionDetector } from "./completion.js";
 import { NDJSONParser } from "../../../infra/ndjson-parser.js";
+
+const SHELL_METACHAR_REGEX = /[;&|`$(){}!<>]/;
+
+function validateSpawnArgs(command: string) {
+  if (SHELL_METACHAR_REGEX.test(command)) {
+    throw new Error(`Shell metacharacter detected in command: ${command}`);
+  }
+}
+
+function resolveCommandExecutable(command: string) {
+  if (command.includes("/") || command.includes("\\")) {
+    return command;
+  }
+
+  try {
+    const resolved = Bun.which(command);
+    if (resolved) return resolved;
+  } catch {
+    // Bun.which() can throw — fall through to fallbacks
+  }
+
+  if (command === "bun" && typeof process.execPath === "string" && process.execPath.length > 0) {
+    return process.execPath;
+  }
+
+  return command;
+}
 
 interface BunSpawnerOptions {
   /** Environment filter configuration. */
@@ -40,9 +43,6 @@ interface BunSpawnerOptions {
   timeoutMinutes?: number;
 }
 
-/**
- * BunProcessSpawner — production implementation using Bun.spawn().
- */
 export class BunProcessSpawner implements ProcessSpawner {
   private readonly envFilter;
   private readonly timeoutMs: number;
@@ -53,15 +53,8 @@ export class BunProcessSpawner implements ProcessSpawner {
     this.timeoutMs = minutes * 60_000;
   }
 
-  /**
-   * Create a raw process without consuming its streams.
-   *
-   * Returns handles suitable for later pipeline wiring or subprocess pooling.
-   * The stdout and stderr ReadableStreams are NOT consumed — the caller
-   * (or `wireStreamPipeline`) is responsible for reading them.
-   */
   spawnRaw(command: string, args: string[], options?: SpawnOptions): RawSpawnedProcess {
-    validateSpawnArgs(command, args);
+    validateSpawnArgs(command);
     const executable = resolveCommandExecutable(command);
 
     // Filter environment variables
@@ -90,13 +83,6 @@ export class BunProcessSpawner implements ProcessSpawner {
     };
   }
 
-  /**
-   * Spawn a process and wire the full stream pipeline.
-   *
-   * Equivalent to the pre-refactor `spawn()` — creates the process,
-   * then immediately wires NDJSON parsing, completion detection, output
-   * buffering, and all caller callbacks.
-   */
   async spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult> {
     const timeoutMs = options?.timeoutMs ?? this.timeoutMs;
 

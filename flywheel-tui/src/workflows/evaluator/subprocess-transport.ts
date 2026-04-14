@@ -13,8 +13,6 @@ import { renderEvaluatorHandoffInstruction } from "../queue/shared/handoff-rende
 import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "./schemas.js";
 import { buildInvocationHandoffPath } from "../../infra/paths.js";
 
-// Constants
-
 /** Evaluator system prompt — used as --system-prompt for Claude (separate for caching). */
 const EVALUATOR_SYSTEM_PROMPT =
   "You are a verification agent. Read the worker's output, check each acceptance criterion, " +
@@ -22,9 +20,6 @@ const EVALUATOR_SYSTEM_PROMPT =
   "(e.g., run the test command the worker reported, read a file the worker claims to have created). " +
   "Write the verdict file once you have enough evidence to decide.";
 
-// Shared prompt builder
-
-/** Build the evaluator user-message from structured input. Shared by both transport variants. */
 function buildEvaluatorPrompt(input: EvaluatorInput): string {
   const sections: string[] = [];
 
@@ -94,8 +89,6 @@ function buildEvaluatorPrompt(input: EvaluatorInput): string {
 
   return sections.join("\n");
 }
-
-// PooledSubprocessEvaluatorTransport — uses warm pool instead of fresh spawns
 
 import {
   type PoolHandle,

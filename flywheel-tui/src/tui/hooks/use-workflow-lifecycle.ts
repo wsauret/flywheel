@@ -1,10 +1,3 @@
-/**
- * Workflow Lifecycle Hook — thin adapter over WorkflowController.
- *
- * The hook holds only display-reset logic and writes signals from
- * controller return values. All business logic lives in the controller.
- */
-
 import { batch } from "solid-js"
 import {
   createWorkflowController,
@@ -37,7 +30,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
 
   const callbacks = wireLifecycleCallbacks(signals, services)
 
-  // Create the controller — all business logic lives there
   const controller = createWorkflowController({
     sessionStore: services.sessionStore,
     manager: services.manager,
@@ -47,7 +39,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     onRunnerError: callbacks.onRunnerError,
   })
 
-  /** Reset writable UI signals to a clean "starting" state. */
   function resetUIState(terminalTitle: string): void {
     batch(() => {
       signals.setErrorMessage("")

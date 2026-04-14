@@ -5,7 +5,6 @@ import { readHandoff } from "../workflows/queue/shared/handoff-reader.js"
 import { SubprocessHandoffSchema } from "../infra/handoff-schemas.js"
 import { createContextAccumulator } from "../workflows/queue/context-accumulator.js"
 import { createCompositeHook, type OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
-import "../workflows/queue/steps/register-all"
 import { resolveTierConfigs } from "./config/schema.js"
 import type { EmitFn } from "../infra/event-bus.js"
 import { Log } from "../infra/log.js"
@@ -95,7 +94,6 @@ interface ExecutorContext {
 
 interface ExecutorExtensions {
   injectionQueue: InjectionQueue;
-  seedHandoff?: Record<string, unknown> | null;
   chatContext?: string;
   externalHooks?: OnStepCompletedHook[];
 }
@@ -111,9 +109,6 @@ export function buildExecutorDeps(
   const contextAccumulator = createContextAccumulator({
     windowSize: infra.deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
   })
-  if (extensions.seedHandoff) {
-    contextAccumulator.accumulate(extensions.seedHandoff)
-  }
 
   const evaluator = transports.evaluatorTransport
     ? createAgentEvaluatorFn({ transport: transports.evaluatorTransport })

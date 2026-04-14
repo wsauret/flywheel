@@ -1,23 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * ToolBlock Component
- *
- * Renders a standalone tool invocation. Two modes:
- *
- * 1. Compact single-line (default):
- *    ✎ Edit  src/app.ts
- *
- * 2. Expanded with inline diff (when block.diff is present):
- *    ✎ Edit  src/app.ts
- *      1 -old code
- *      1 +new code
- *
- * Diff rendering uses Claude Code's color-diff algorithm: word-level
- * highlighting within changed lines, colored backgrounds, line numbers.
- *
- * Diffs default to expanded and can be collapsed by clicking the header.
- * Uses CollapsibleBox to keep the container stable in the layout tree.
- */
 
 import { createSignal, createMemo, Show, For } from "solid-js"
 import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
@@ -60,7 +41,6 @@ export function ToolBlock(props: ToolBlockProps) {
   const { theme } = useTheme()
   const name = () => displayToolName(props.block.name)
 
-  // Diff/content rendering state — defaults open, user can collapse
   const hasDiff = () => !!props.block.diff
   const hasContent = () => !!props.block.content
   const hasExpandable = () => hasDiff() || hasContent()
@@ -68,7 +48,6 @@ export function ToolBlock(props: ToolBlockProps) {
   // Handoff docs are workflow-internal; collapse by default so users aren't flooded with content
   const [expanded, setExpanded] = createSignal(!isHandoffPath(props.block.filePath))
 
-  // Map TUI theme → diff theme colors (RGBA passthrough, no conversion)
   const diffColors = createMemo(() => ({
     text: theme.text,
     textMuted: theme.textMuted,
@@ -81,7 +60,6 @@ export function ToolBlock(props: ToolBlockProps) {
     lineNumber: theme.diffLineNumber,
   }))
 
-  // Render diff hunks → DiffLines → StyledText (RGBA passed directly to fg/bg builders)
   const diffStyledLines = createMemo(() => {
     if (!props.block.diff) return []
     const hunks = parseUnifiedDiff(props.block.diff)
@@ -97,13 +75,11 @@ export function ToolBlock(props: ToolBlockProps) {
     })
   })
 
-  // Split Write content into lines for plain-text rendering
   const contentLines = createMemo(() => {
     if (!props.block.content) return []
     return props.block.content.split("\n")
   })
 
-  // Header line (shared between compact and expanded modes)
   const header = () => (
     <box flexDirection="row" gap={1} overflow="hidden" onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
       <text fg={theme.text} flexShrink={0} attributes={BOLD}>{name()}</text>

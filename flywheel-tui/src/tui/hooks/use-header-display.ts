@@ -1,8 +1,3 @@
-/**
- * Header Display — derived memos for header bar, step pipeline,
- * and workflow status display.
- */
-
 import { createMemo } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { RGBA } from "@opentui/core"

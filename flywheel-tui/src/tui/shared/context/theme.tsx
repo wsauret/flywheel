@@ -1,5 +1,5 @@
 /** @jsxImportSource solid-js */
-import { createMemo, createSignal, onCleanup } from "solid-js"
+import { onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper.js"
 import { resolveTheme, type ThemeJson } from "./theme/resolve.js"
 import { generateSyntax, generateSubtleSyntax } from "./syntax-rules.js"
@@ -29,38 +29,15 @@ const THEMES: Record<string, ThemeJson> = {
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { mode: "dark" | "light"; themeName?: string }) => {
-    const [mode] = createSignal(props.mode)
-    const [themeName] = createSignal(props.themeName ?? "flywheel")
+    const mode = props.mode
+    const themeName = props.themeName ?? "flywheel"
 
-    const themeJson = createMemo(() => THEMES[themeName()] ?? asTheme(defaultTheme))
-    const theme = createMemo(() => resolveTheme(themeJson(), mode()))
-    const syntax = createMemo(() => {
-      const s = generateSyntax(theme())
-      onCleanup(() => s.destroy())
-      return s
-    })
-    const subtleSyntax = createMemo(() => {
-      const s = generateSubtleSyntax(theme())
-      onCleanup(() => s.destroy())
-      return s
-    })
+    const themeJson = THEMES[themeName] ?? asTheme(defaultTheme)
+    const theme = resolveTheme(themeJson, mode)
+    const syntax = generateSyntax(theme)
+    const subtleSyntax = generateSubtleSyntax(theme)
+    onCleanup(() => { syntax.destroy(); subtleSyntax.destroy() })
 
-    return {
-      get theme() {
-        return theme()
-      },
-      get mode() {
-        return mode()
-      },
-      get syntax() {
-        return syntax()
-      },
-      get subtleSyntax() {
-        return subtleSyntax()
-      },
-      get themeName() {
-        return themeName()
-      },
-    }
+    return { theme, mode, syntax, subtleSyntax, themeName }
   },
 })

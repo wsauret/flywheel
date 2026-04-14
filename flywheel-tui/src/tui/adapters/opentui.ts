@@ -1,12 +1,3 @@
-/**
- * OpenTUI Adapter — translates FlywheelEvent → session store entry updates.
- *
- * Pipeline: subprocess stdout → NDJSONParser → StructuredEventParser
- *   → StructuredOutputBuilder → updateEntry({ outputBlocks })
- *
- * Dispatcher/evaluator NDJSON handling is delegated to NdjsonPipeline.
- */
-
 import { assertNever, type FlywheelEvent } from "../../infra/events.js";
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
 import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store-types.js";
@@ -90,7 +81,7 @@ export class OpenTUIAdapter {
   }
 
   start(): void { /* no-op — OpenTUI lifecycle is managed by the shell */ }
-  stop(): void { /* no-op */ }
+  stop(): void {}
 
   disconnect(): void {
     this.disconnected = true;
@@ -225,15 +216,12 @@ export class OpenTUIAdapter {
 
       case "queue:step-completed":
         log.info("Queue step completed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, stepTitle: event.stepTitle });
-        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
       case "queue:step-failed":
         log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
-        // Step state is handled by the runner's typed EventBus subscriptions
         break;
 
-      // Subprocess NDJSON events — handled by EventBus subscribers, no TUI rendering needed
       case "subprocess:ndjson":
         break;
 

@@ -104,10 +104,6 @@ describe("queue executor edge cases", () => {
     // HITL dismissal does NOT fail the step — it proceeds autonomously
     expect(result.completed).toBe(true);
     expect(harness.queue.steps[0].status).toBe("completed");
-
-    // hitlResponse should NOT be in dispatcher context (HITL was dismissed)
-    const dispatcherCall = harness.dispatcherOpts.calls![0];
-    expect(dispatcherCall.context.hitlResponse).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
@@ -154,10 +150,10 @@ describe("queue executor edge cases", () => {
       expect(step.status).toBe("completed");
     }
 
-    // Step 3's dispatcher context should NOT have previousHandoff from step 2
+    // Step 3's dispatcher context should have null previousHandoff
     // (because step 2's handoff read failed, previousHandoff is set to null)
     const step3DispatcherCall = harness.dispatcherOpts.calls![2];
-    expect(step3DispatcherCall.context.previousHandoff).toBeUndefined();
+    expect(step3DispatcherCall.context.previousHandoff).toBeNull();
   });
 
   // -------------------------------------------------------------------------
@@ -347,10 +343,6 @@ describe("queue executor edge cases", () => {
     // Step should complete autonomously (HITL skipped because no question service)
     expect(result.completed).toBe(true);
     expect(harness.queue.steps[0].status).toBe("completed");
-
-    // hitlResponse should NOT be in dispatcher context
-    const dispatcherCall = harness.dispatcherOpts.calls![0];
-    expect(dispatcherCall.context.hitlResponse).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------

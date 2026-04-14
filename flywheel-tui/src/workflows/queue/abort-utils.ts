@@ -1,5 +1,3 @@
-// Abort Utility — races a promise against an AbortSignal
-
 /**
  * Race a promise against an AbortSignal. If the signal fires first, the
  * returned promise rejects with a DOMException ("AbortError").

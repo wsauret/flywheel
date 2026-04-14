@@ -4,6 +4,7 @@ import type {
   StepExecutorOptions,
 } from "./executor-types.js";
 import type { MutationRequest } from "./step-dispatcher.js";
+import type { EvaluationCriteria } from "../../infra/workflow-types.js";
 
 export interface StepRunnerDeps extends Omit<StepExecutorOptions, "persist" | "sessionId"> {
   abortSignal: AbortSignal;
@@ -32,7 +33,7 @@ export interface StepPipelineContext {
   handoffData: Record<string, unknown> | null;
   dispatcherResult: {
     prompt: string;
-    evaluationCriteria: unknown | null;
+    evaluationCriteria: EvaluationCriteria | null;
     mutationRequests?: MutationRequest[];
   } | null;
   postTurnPassed: boolean;

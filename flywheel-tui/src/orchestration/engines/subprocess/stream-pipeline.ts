@@ -1,11 +1,3 @@
-/**
- * Stream pipeline wiring — consumes raw process streams and sets up the
- * full NDJSON/completion/buffer pipeline.
- *
- * Decoupled from process creation so that a process can be pre-spawned
- * (e.g., in a subprocess pool) before step-specific callbacks are known.
- */
-
 import type { FileSink } from "bun";
 import type { SpawnOptions, SpawnResult } from "./spawner.js";
 import type { SubprocessResult } from "../../../infra/subprocess-types.js";
@@ -44,13 +36,6 @@ interface StreamPipelineOptions {
   spawnOptions?: SpawnOptions;
 }
 
-/**
- * Consume the raw streams of a spawned process and wire up the full
- * NDJSON parsing / completion detection / output buffer pipeline.
- *
- * Returns the same `SpawnResult` shape that `BunProcessSpawner.spawn()`
- * has always returned, so callers see no behaviour change.
- */
 export function wireStreamPipeline(
   raw: RawSpawnedProcess,
   pipelineOpts: StreamPipelineOptions,

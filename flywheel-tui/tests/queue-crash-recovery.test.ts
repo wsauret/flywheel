@@ -147,10 +147,10 @@ describe("queue crash recovery and resume", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. Resume preserves accumulated context
+  // 3. Resume with seeded accumulator — dispatcher context starts fresh
   // -------------------------------------------------------------------------
 
-  test("resume preserves accumulated context — step 3 dispatcher receives seeded data", async () => {
+  test("resume with seeded accumulator — dispatcher starts with null context", async () => {
     resetStepCounter();
     const steps = makeSteps(5);
 
@@ -194,27 +194,10 @@ describe("queue crash recovery and resume", () => {
     const calls = harness.dispatcherOpts.calls!;
     expect(calls).toHaveLength(3);
 
-    // Step 3's dispatcher context should include accumulated data from steps 1-2
-    const step3Context = calls[0].context as {
-      totalSteps: number;
-      recentHandoffs: Array<{ stepId: string; handoff: Record<string, unknown> }>;
-    };
-
-    // totalSteps should be at least 2 (the seeded entries)
-    expect(step3Context.totalSteps).toBeGreaterThanOrEqual(2);
-
-    // recentHandoffs should contain data from steps 1-2
-    expect(step3Context.recentHandoffs.length).toBeGreaterThanOrEqual(2);
-    const recentIds = step3Context.recentHandoffs.map((h) => h.stepId);
-    expect(recentIds).toContain("step-1");
-    expect(recentIds).toContain("step-2");
-
-    // Verify the actual handoff data from the seeded steps
-    const step1Handoff = step3Context.recentHandoffs.find((h) => h.stepId === "step-1");
-    expect(step1Handoff?.handoff).toEqual({ result: "step-1-output" });
-
-    const step2Handoff = step3Context.recentHandoffs.find((h) => h.stepId === "step-2");
-    expect(step2Handoff?.handoff).toEqual({ result: "step-2-output" });
+    // Step 3 is the first step dispatched in this run, so previousHandoff
+    // and previousAssessment are both null (the executor starts fresh)
+    expect(calls[0].context.previousHandoff).toBeNull();
+    expect(calls[0].context.previousAssessment).toBeNull();
   });
 
   // -------------------------------------------------------------------------

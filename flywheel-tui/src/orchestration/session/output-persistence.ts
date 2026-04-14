@@ -1,4 +1,3 @@
-import * as fs from "node:fs";
 import { writeFileAtomic } from "../../workflows/shared/atomic-write.js";
 import type { AnyBlock } from "../../infra/output-blocks.js";
 import {
@@ -34,7 +33,6 @@ export interface OutputFlusher {
 export interface OutputPersistence {
   save(blocks: AnyBlock[]): void;
   load(): Promise<OutputSnapshot[]>;
-  delete(): Promise<boolean>;
   createFlusher(getBlocks: () => readonly AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
 }
 
@@ -78,17 +76,6 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
     } catch { return []; }
   }
 
-  async function del(): Promise<boolean> {
-    const filePath = outputFilePath();
-    try {
-      if (!fs.existsSync(filePath)) return false;
-      fs.unlinkSync(filePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   function createFlusher(
     getBlocks: () => readonly AnyBlock[],
     opts?: OutputFlusherOpts,
@@ -119,7 +106,6 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
   return {
     save,
     load,
-    delete: del,
     createFlusher,
   };
 }

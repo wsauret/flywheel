@@ -1,11 +1,3 @@
-/**
- * NDJSON Pipeline — dispatcher/evaluator agent block management
- *
- * Owns the dispatcher and evaluator NDJSON parsers, block lifecycle tracking,
- * and Claude NDJSON event activity extraction. The OpenTUIAdapter delegates
- * dispatcher and evaluator event handling here.
- */
-
 import { NDJSONParser } from "../../infra/ndjson-parser.js";
 import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 import type { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
@@ -16,13 +8,6 @@ interface ActivityInfo {
   detail: string;
 }
 
-/**
- * Manages dispatcher and evaluator NDJSON parsing pipelines.
- *
- * Tracks agent block IDs and timing, routes parsed events into the
- * StructuredOutputBuilder as tool children or status updates, and
- * exposes lifecycle methods for the adapter to call from its event switch.
- */
 class AgentTracker {
   private blockId: string | null = null;
   private startedAt = 0;
@@ -95,20 +80,16 @@ export class NdjsonPipeline {
   failEvaluator(reason: string): void { this.evaluator.fail(`Failed: ${reason}. Skipping.`); }
 }
 
-// ── Activity extraction ──
-
 function extractActivityInfo(event: NDJSONEvent): ActivityInfo | null {
   if (event.type === "assistant") {
     const content = event.data.message?.content;
     if (!Array.isArray(content)) return null;
 
-    // Prefer tool_use blocks
     for (const block of content) {
       if (block.type === "tool_use") {
         return { name: block.name, detail: getToolDetail(block.name, block.input ?? {}) ?? "" };
       }
     }
-    // Fall back to thinking/text blocks
     for (const block of content) {
       if (block.type === "thinking" && typeof block.thinking === "string") {
         const line = extractLastMeaningfulLine(block.thinking);

@@ -81,7 +81,9 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     builder.notifyThinkingStarted(timestamp)
   }
 
-  // Forwarding lambdas narrow the builder's ~15 methods to the OutputSession interface
+  // These lambdas narrow the builder's ~15 methods to the OutputSession contract.
+  // The forwarding is intentional: consumers depend on OutputSession, not StructuredOutputBuilder.
+  // Exposing the builder directly would leak internal methods that callers shouldn't use.
   return {
     writeStdout,
     writeStderr,

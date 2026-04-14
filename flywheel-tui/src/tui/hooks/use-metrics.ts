@@ -25,7 +25,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   let elapsedAccum = 0
   let elapsedRunStart = 0
 
-  // Elapsed timer — runs while agent is active, pauses on idle.
   createEffect(() => {
     if (liveActivity() !== "idle") startTimer()
     else pauseTimer()

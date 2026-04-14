@@ -94,6 +94,7 @@ function decorationColor(marker: Marker, theme: Theme): Color {
 
 type Range = { start: number; end: number }
 
+// >40% of combined line length changed — skip word-diff, the lines differ too much for it to help.
 const CHANGE_THRESHOLD = 0.4
 
 function tokenize(text: string): string[] {
@@ -298,7 +299,6 @@ export function renderHunk(hunk: Hunk, colors: DiffThemeColors): DiffLine[] {
   let oldLine = hunk.oldStart
   let newLine = hunk.newStart
 
-  // First pass: assign markers + line numbers
   type Entry = { lineNumber: number; marker: Marker; code: string }
   const entries: Entry[] = hunk.lines.map((rawLine) => {
     const marker = parseMarker(rawLine.slice(0, 1))
@@ -320,7 +320,6 @@ export function renderHunk(hunk: Hunk, colors: DiffThemeColors): DiffLine[] {
     return { lineNumber, marker, code }
   })
 
-  // Word-diff ranges
   const ranges: Range[][] = entries.map(() => [])
   const markers = entries.map((e) => e.marker)
   for (const [delIdx, addIdx] of findAdjacentPairs(markers)) {
@@ -332,7 +331,6 @@ export function renderHunk(hunk: Hunk, colors: DiffThemeColors): DiffLine[] {
     ranges[addIdx] = addR
   }
 
-  // Second pass: transform pipeline → DiffLine arrays
   const out: DiffLine[] = []
   for (let i = 0; i < entries.length; i++) {
     const { lineNumber, marker, code } = entries[i]!

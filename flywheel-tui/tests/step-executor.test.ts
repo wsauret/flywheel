@@ -18,6 +18,7 @@ import type {
   StepExecutorOptions,
   StepExecutorResult,
   DispatcherFn,
+  DispatcherContext,
   EvaluatorFn,
   WorkerFn,
   HandoffReaderFn,
@@ -711,7 +712,7 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
       warnings: ["no rate limiting yet"],
     });
 
-    const dispatcherContexts: Array<Record<string, unknown>> = [];
+    const dispatcherContexts: DispatcherContext[] = [];
     const dispatcher: DispatcherFn = async (step, context) => {
       dispatcherContexts.push({ ...context });
       return { prompt: `work on ${step.title}`, evaluationCriteria: null };
@@ -726,10 +727,10 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
     await executor.run();
 
     // First step should have no prior handoff
-    expect(dispatcherContexts[0].previousHandoff).toBeUndefined();
+    expect(dispatcherContexts[0]!.previousHandoff).toBeNull();
     // Second step should receive handoff from first step
-    expect(dispatcherContexts[1].previousHandoff).toBeDefined();
-    expect((dispatcherContexts[1].previousHandoff as any).summary).toBe(
+    expect(dispatcherContexts[1]!.previousHandoff).not.toBeNull();
+    expect(dispatcherContexts[1]!.previousHandoff!.summary).toBe(
       "I created the API endpoint",
     );
   });
@@ -753,7 +754,7 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
   test("missing handoff passes null to next dispatcher", async () => {
     const missingReader = createMissingHandoffReader();
 
-    const dispatcherContexts: Array<Record<string, unknown>> = [];
+    const dispatcherContexts: DispatcherContext[] = [];
     const dispatcher: DispatcherFn = async (_step, context) => {
       dispatcherContexts.push({ ...context });
       return { prompt: "go", evaluationCriteria: null };
@@ -764,8 +765,8 @@ describe("VAL-QUEUE-034: Handoff data chaining between steps", () => {
     const executor = createStepExecutor(opts);
     await executor.run();
 
-    // Second step should have undefined/null previousHandoff
-    expect(dispatcherContexts[1].previousHandoff).toBeUndefined();
+    // Second step should have null previousHandoff (handoff read failed)
+    expect(dispatcherContexts[1]!.previousHandoff).toBeNull();
   });
 });
 

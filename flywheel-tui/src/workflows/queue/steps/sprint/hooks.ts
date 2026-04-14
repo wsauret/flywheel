@@ -16,14 +16,13 @@ function makeProvenance(reason: string): Provenance {
   return { actor: "sprint-hook", reason };
 }
 
-// Sprint internals — normalizeFeedback, isStuck, recordIteration, buildRetryStep.
-// Exported for unit tests: stuck detection is safety-critical and warrants direct testing.
+// Sprint loop primitives — exported for direct unit testing of edge cases.
 
 const TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*/g;
 const LINE_NUMBER_RE = /:\d+:\d+/g;
 const DURATION_RE = /\d+(\.\d+)?\s*(milliseconds|seconds|sec|ms|s)\b/gi;
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
-
+// Strips volatile tokens so consecutive failures can be compared for stuck-detection.
 export function normalizeFeedback(raw: string): string {
   return raw
     .replace(TIMESTAMP_RE, "")
@@ -141,17 +140,14 @@ export function createSprintHook(config: SprintConfig): {
     queue: Queue,
     handoffData: Record<string, unknown> | null,
   ): Promise<OnStepCompletedResult> => {
-    // Guard: only process sprint-hinted steps
     if (step.dispatcherHint !== SPRINT_HINT) {
       return { continueExecution: false };
     }
 
-    // Guard: if already completed or exhausted, no-op
     if (state.status !== "running") {
       return { continueExecution: false };
     }
 
-    // Record iteration
     state.iterationCount++;
     const record = recordIteration(handoffData, status, state.iterationCount);
     state.history.push(record);

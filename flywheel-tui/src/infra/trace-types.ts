@@ -11,11 +11,7 @@
  * - Input/output fields are 4KB byte-capped via truncateField()
  */
 
-// SpanKind — string union
-
 export type SpanKind = "workflow" | "step" | "worker" | "subagent" | "tool_call";
-
-// Per-kind input/output types
 
 interface WorkflowSpanInput {
   stepIds: string[];
@@ -70,8 +66,6 @@ interface ToolCallSpanOutput {
   isError: boolean;
 }
 
-// SpanBase — shared fields
-
 interface SpanBase {
   spanId: string;
   traceId: string;
@@ -83,8 +77,6 @@ interface SpanBase {
   status: "ok" | "error";
   error: { message: string; code?: string } | null;
 }
-
-// Discriminated union
 
 interface WorkflowSpan extends SpanBase {
   kind: "workflow";

@@ -313,18 +313,13 @@ describe("VAL-CTX-005: Dispatcher context shape", () => {
     expect(ctx).toHaveProperty("totalSteps");
   });
 
-  test("context is spreadable into Record<string, unknown>", () => {
+  test("context has expected shape for dispatcher consumption", () => {
     const acc = createContextAccumulator();
     accumulateN(acc, 2);
     const ctx = acc.getContext();
-    const dispatcherContext: Record<string, unknown> = {
-      ...ctx,
-      previousHandoff: { summary: "last step" },
-    };
-    expect(dispatcherContext.summaries).toBeDefined();
-    expect(dispatcherContext.recentHandoffs).toBeDefined();
-    expect(dispatcherContext.totalSteps).toBe(2);
-    expect(dispatcherContext.previousHandoff).toBeDefined();
+    expect(ctx.summaries).toBeDefined();
+    expect(ctx.recentHandoffs).toBeDefined();
+    expect(ctx.totalSteps).toBe(2);
   });
 
   test("step N context reflects contributions from steps 1..N-1", () => {

@@ -61,7 +61,6 @@ export namespace Log {
     dir: string
     /** If true, log to stderr instead of file (for debugging). */
     print?: boolean
-    /** Override the default log level. */
     level?: Level
   }
 

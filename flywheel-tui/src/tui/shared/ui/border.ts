@@ -1,7 +1,3 @@
-/**
- * Border definitions for UI components.
- */
-
 export const EmptyBorder = {
   topLeft: "",
   bottomLeft: "",

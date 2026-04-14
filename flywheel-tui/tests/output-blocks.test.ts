@@ -6,7 +6,6 @@ import type {
   TextBlock,
   ToolBlock,
   AgentBlock,
-  ContextGroupBlock,
   SystemBlock,
   UserMessageBlock,
 } from "../src/tui/types";
@@ -97,8 +96,6 @@ function selectBlockComponent(block: AnyBlock): string {
       return "ToolBlock";
     case "agent":
       return "AgentBlock";
-    case "contextGroup":
-      return "ContextGroupBlock";
     case "system":
       return "SystemBlock";
     default:
@@ -128,15 +125,6 @@ describe("selectBlockComponent", () => {
       timestamp: 1,
     };
     expect(selectBlockComponent(block)).toBe("AgentBlock");
-  });
-
-  it("selects ContextGroupBlock for contextGroup kind", () => {
-    const block: ContextGroupBlock = {
-      kind: "contextGroup",
-      tools: [],
-      timestamp: 1,
-    };
-    expect(selectBlockComponent(block)).toBe("ContextGroupBlock");
   });
 
   it("selects SystemBlock for system kind", () => {
@@ -299,41 +287,6 @@ describe("toolBlockDisplayText", () => {
   });
 });
 
-// ── ContextGroupBlock display text logic ──
-
-describe("contextGroupDisplayText", () => {
-  function contextGroupDisplayText(group: ContextGroupBlock): string {
-    return `◆ Gathered context (${group.tools.length} files)`;
-  }
-
-  it("shows file count", () => {
-    const group: ContextGroupBlock = {
-      kind: "contextGroup",
-      tools: [
-        { kind: "tool", name: "Read", detail: "a.ts", timestamp: 1 },
-        { kind: "tool", name: "Read", detail: "b.ts", timestamp: 2 },
-        { kind: "tool", name: "Glob", detail: "**/*.ts", timestamp: 3 },
-      ],
-      timestamp: 1,
-    };
-    expect(contextGroupDisplayText(group)).toBe("◆ Gathered context (3 files)");
-  });
-
-  it("handles single file", () => {
-    const group: ContextGroupBlock = {
-      kind: "contextGroup",
-      tools: [{ kind: "tool", name: "Read", detail: "a.ts", timestamp: 1 }],
-      timestamp: 1,
-    };
-    expect(contextGroupDisplayText(group)).toBe("◆ Gathered context (1 files)");
-  });
-
-  it("handles empty tools", () => {
-    const group: ContextGroupBlock = { kind: "contextGroup", tools: [], timestamp: 1 };
-    expect(contextGroupDisplayText(group)).toBe("◆ Gathered context (0 files)");
-  });
-});
-
 // ── hasContent / blockCountText logic ──
 
 describe("OutputWindow block-aware logic", () => {
@@ -416,11 +369,6 @@ describe("Block color contracts", () => {
     return theme.error;
   }
 
-  function contextGroupBlockColor(theme: Theme): Theme[keyof Theme] {
-    // ContextGroupBlock: fg={themeCtx.theme.textMuted}
-    return theme.textMuted;
-  }
-
   // Use a mock theme to verify the contracts at runtime
   const mockTheme: Pick<
     Theme,
@@ -454,10 +402,6 @@ describe("Block color contracts", () => {
 
   it("AgentBlock error label uses theme.error (red)", () => {
     expect(agentBlockErrorLabelColor(mockTheme as Theme)).toBe(mockTheme.error);
-  });
-
-  it("ContextGroupBlock uses theme.textMuted (gray — subdued)", () => {
-    expect(contextGroupBlockColor(mockTheme as Theme)).toBe(mockTheme.textMuted);
   });
 
   // Verify the distinct visual hierarchy:

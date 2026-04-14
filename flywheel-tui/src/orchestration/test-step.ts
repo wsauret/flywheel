@@ -1,5 +1,3 @@
-// Test Step — run a single step type in isolation with fixture data
-
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { tmpdir } from "node:os";
@@ -11,28 +9,16 @@ import { Log } from "../infra/log.js";
 
 const log = Log.create({ service: "test-step" });
 
-// Test step definitions
-
-export interface TestStepDef {
-  /** Display name for the picker */
+interface TestStepDef {
   label: string;
-  /** Short identifier (matches fixture directory name) */
   id: string;
-  /** Queue step type */
   type: Step["type"];
-  /** Step title (matches what the template would produce) */
   title: string;
-  /** Dispatcher hint for plan sub-roles */
   dispatcherHint?: string;
-  /** Evaluation criteria */
   evaluationCriteria?: string;
-  /** Tool scoping overrides */
   toolScoping?: Step["toolScoping"];
-  /** Fixture directory relative to tests/fixtures/steps/ */
   fixtureDir: string;
-  /** Whether this step needs a plan file seeded */
   needsPlan: boolean;
-  /** Whether this step needs a handoff from a predecessor */
   needsHandoff: boolean;
 }
 
@@ -48,9 +34,7 @@ export const TEST_STEPS: TestStepDef[] = [
   },
 ];
 
-// Fixture setup — copy plan/handoff files to .flywheel/
-
-export interface FixtureSetupResult {
+interface FixtureSetupResult {
   planPath: string | null;
   handoffData: Record<string, unknown> | null;
 }
@@ -96,8 +80,6 @@ export function setupTestFixture(
   return { planPath, handoffData };
 }
 
-// Queue construction — single step with optional seeded predecessor
-
 export function buildTestQueue(
   stepDef: TestStepDef,
   fixture: FixtureSetupResult,
@@ -138,22 +120,11 @@ export function buildTestQueue(
   return queue;
 }
 
-// Test workdir — isolate test step execution from the project directory
-
-export interface TestWorkdir {
-  /** Absolute path to the temp working directory. */
+interface TestWorkdir {
   path: string;
-  /** Remove the temp directory and all its contents. */
   cleanup: () => void;
 }
 
-/**
- * Create a temp working directory for test step execution.
- *
- * Copies `flywheel.toml` from the project root so the worker has config,
- * but any files created by the worker land in the temp dir instead of
- * polluting the real project.
- */
 export function createTestWorkdir(projectCwd: string): TestWorkdir {
   const dir = fs.mkdtempSync(path.join(tmpdir(), "flywheel-test-"));
   const configSrc = path.join(projectCwd, "flywheel.toml");

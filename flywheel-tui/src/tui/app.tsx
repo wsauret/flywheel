@@ -1,13 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * TUI Application Entry Point
- *
- * 1. startTUI() returns new Promise<void> that blocks until exit
- * 2. render() fires the Solid tree with an ExitProvider
- * 3. ExitProvider uses useRenderer() to get the renderer from INSIDE the tree
- * 4. When exit is triggered, it calls renderer.destroy() then resolve()
- * 5. The promise resolves, caller continues, process.exit() runs
- */
 
 import { render } from "@opentui/solid"
 import { useRenderer } from "@opentui/solid"
@@ -54,7 +45,6 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
       resolve()
     }
 
-    // Build concrete TUI factories (DIP boundary — no global singleton)
     const { OpenTUIAdapter } = await import("./adapters/opentui")
     const factories: WorkflowSessionFactories = {
       createAdapter: (opts) => new OpenTUIAdapter(opts),
@@ -106,13 +96,9 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
   })
 }
 
-/**
- * ExitProvider — uses useRenderer() to access the renderer from inside the Solid tree.
- */
 function ExitProvider(props: ParentProps<{ onExit: () => void }>) {
   const renderer = useRenderer()
 
-  // Register the global exit function
   setExitHandler(() => {
     renderer.destroy()
     props.onExit()

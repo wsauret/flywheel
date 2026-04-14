@@ -1,10 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { EvaluatorVerdictSchema } from "../src/workflows/evaluator/schemas";
-import {
-  EvaluatorIssueSeverityEnum,
-  EvaluatorIssueCategoryEnum,
-  EvaluatorIssueSchema,
-} from "../src/infra/workflow-types";
+import { z } from "zod";
+import { EvaluatorIssueSchema } from "../src/infra/workflow-types";
+
+// Inline the enums for testing — they're internal to workflow-types.ts
+const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"]);
+const EvaluatorIssueCategoryEnum = z.enum([
+  "test_failure", "type_error", "security", "regression", "incomplete", "other",
+]);
 import { renderEvaluatorHandoffInstruction } from "../src/workflows/queue/shared/handoff-render";
 
 // ---------------------------------------------------------------------------

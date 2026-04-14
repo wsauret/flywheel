@@ -1,10 +1,3 @@
-/**
- * Chat welcome blocks — first-run presentation for new chat sessions.
- *
- * Extracted from chat-runner.ts for SRP: the runner owns subprocess lifecycle,
- * this module owns the welcome UX (font detection, tip display).
- */
-
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -55,7 +48,6 @@ function getFontTipBlock(projectCwd: string, timestamp: number): AnyBlock | null
   }
 }
 
-/** Build the initial welcome blocks for a fresh chat session. */
 export function buildChatWelcomeBlocks(projectCwd: string): AnyBlock[] {
   const now = Date.now()
   const welcomeBlock: AnyBlock = {

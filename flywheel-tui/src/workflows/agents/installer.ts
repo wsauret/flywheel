@@ -34,7 +34,7 @@ function getSkillSourceDir(): string {
 
 // Public API
 
-export interface InstallResult {
+interface InstallResult {
   installed: number;
   skipped: number;
   errors: string[];

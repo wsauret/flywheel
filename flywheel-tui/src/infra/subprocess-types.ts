@@ -1,14 +1,4 @@
-/**
- * Subprocess payload types and schemas — canonical, single source of truth.
- *
- * Zod schemas define the shapes; static types are derived via z.infer.
- * Schema values are exported for type derivation and test validation.
- * All layers import from here.
- */
-
 import { z } from "zod";
-
-// SubprocessFailureReason — discriminated union of failure kinds
 
 export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("timeout"), timeoutMs: z.number(), message: z.string() }),
@@ -24,8 +14,6 @@ export const SubprocessFailureReasonSchema = z.discriminatedUnion("kind", [
 
 export type SubprocessFailureReason = z.infer<typeof SubprocessFailureReasonSchema>;
 
-// SubprocessResult — output of a subprocess execution
-
 export const SubprocessResultSchema = z.object({
   output: z.string(),
   exitCode: z.number(),
@@ -37,8 +25,6 @@ export const SubprocessResultSchema = z.object({
 });
 
 export type SubprocessResult = z.infer<typeof SubprocessResultSchema>;
-
-// ── Content blocks within Claude assistant messages ──
 
 interface ThinkingContentBlock {
   type: "thinking";
@@ -59,7 +45,6 @@ interface ToolUseContentBlock {
 
 export type ContentBlock = ThinkingContentBlock | TextContentBlock | ToolUseContentBlock;
 
-// ── Typed data shapes per NDJSON event type ──
 // Claude Code's NDJSON stream is an external format. These interfaces encode
 // the expected shape; consumers guard against missing fields defensively.
 
@@ -106,8 +91,6 @@ interface DirectToolUseData {
   name: string;
   input?: Record<string, unknown>;
 }
-
-// ── NDJSONEvent — discriminated union on `type` with typed `data` per variant ──
 
 export type NDJSONEvent =
   | { type: "assistant"; data: AssistantEventData; raw: string }

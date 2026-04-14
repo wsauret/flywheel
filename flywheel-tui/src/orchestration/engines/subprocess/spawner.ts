@@ -1,39 +1,19 @@
 import type { SubprocessResult, NDJSONEvent } from "../../../infra/subprocess-types.js";
 import type { RawSpawnedProcess } from "./stream-pipeline.js";
 
-/**
- * Handle to a running process's stdin pipe.
- * Allows writing additional content after the initial prompt delivery.
- */
 export interface StdinHandle {
-  /** Write additional content to the running process's stdin. Returns false if pipe is closed. */
   write(message: string): boolean;
-  /** Close the stdin pipe (signals EOF). Idempotent. */
   close(): void;
-  /** Interrupt the current turn without destroying the session. SDK-only. */
   interrupt?(): void;
-  /** Whether the pipe is still open */
   readonly isOpen: boolean;
 }
 
-/**
- * Result of `ProcessSpawner.spawn()`.
- *
- * - `result` is a Promise that resolves when the process completes.
- * - `stdinHandle` is present when `stdinPipe` was requested, giving
- *   early access to write to the process before it finishes.
- */
 export interface SpawnResult {
   result: Promise<SubprocessResult>;
   stdinHandle?: StdinHandle;
-  /** PID of the spawned process (when available). */
   pid?: number;
 }
 
-/**
- * DI seam for subprocess spawning.
- * Allows tests to substitute a mock spawner.
- */
 export interface ProcessSpawner {
   spawn(command: string, args: string[], options?: SpawnOptions): Promise<SpawnResult>;
   /** Spawn a raw process without consuming streams (for subprocess pooling).

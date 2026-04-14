@@ -22,6 +22,10 @@ const AGENT_CHILDREN_CAP = 50;
 
 import type { ModelActivity } from "../events.js";
 
+function buildToolBlock(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): ToolBlock {
+  return { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
+}
+
 export class StructuredOutputBuilder {
   private blocks: AnyBlock[] = [];
   private dirty = false;
@@ -92,6 +96,7 @@ export class StructuredOutputBuilder {
     this.dirty = true;
   }
 
+  // Moves injected messages from pending to resolved once the subprocess acknowledges them.
   resolvePendingMessages(): boolean {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
@@ -145,7 +150,7 @@ export class StructuredOutputBuilder {
 
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): void {
     this._modelActivity = "tool_executing";
-    const tool = { kind: "tool" as const, name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
+    const tool = buildToolBlock(name, detail, timestamp, diff, filetype, content, filePath);
 
     // Tools with diff/content data render standalone (not grouped) so the content is visible.
     if (isContextTool(name) && !diff && !content) {
@@ -187,7 +192,7 @@ export class StructuredOutputBuilder {
   }
 
   pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): boolean {
-    const tool = { kind: "tool" as const, name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
+    const tool = buildToolBlock(name, detail, timestamp, diff, filetype, content, filePath);
     return this.appendToolToAgent(agentId, tool);
   }
 
@@ -284,6 +289,7 @@ export class StructuredOutputBuilder {
     this.contextTracker.reset();
   }
 
+  // Preserves blocks for display continuity across subprocess restarts; only rebuilds index maps.
   resetTracking(): void {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;

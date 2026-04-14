@@ -59,8 +59,6 @@ interface InvokePooledCallbacks<THandoff, TResult> {
   mapResult: (handoff: THandoff) => TResult;
 }
 
-// Options
-
 interface InvokePooledOptions {
   /** Flywheel session ID for session-scoped handoff paths. */
   sessionId: string;
@@ -93,11 +91,7 @@ export interface BasePooledTransportOptions extends InvokePooledOptions {
   pool: PoolHandle;
 }
 
-// Constants
-
 const MAX_RETRIES = 1;
-
-// invokePooled
 
 /**
  * Acquire a warm process from the pool, send a prompt via stdin, await exit,

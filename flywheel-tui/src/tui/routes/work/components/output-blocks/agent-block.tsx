@@ -1,28 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * AgentBlock Component
- *
- * Renders a subagent/tool-group block:
- *
- * Running:
- *   ┌─ Worker (3) ──────────────────────┐
- *   │  → Read  package.json             │
- *   │  ← Write  fib.ts                  │
- *   │  $ Bash  bun test                 │
- *   │  ↳ Running...                     │
- *   └──────────────────────────────────-┘
- *
- * Completed (collapsed):
- *   ▸ Worker · 3 tools · 14.3s
- *
- * Completed (expanded):
- *   ▾ Worker · 3 tools · 14.3s
- *   ┌──────────────────────────────────-┐
- *   │  → Read  package.json             │
- *   │  ← Write  fib.ts                  │
- *   │  $ Bash  bun test                 │
- *   └──────────────────────────────────-┘
- */
 
 import { createSignal, Show, For } from "solid-js"
 import { createTextAttributes } from "@opentui/core"
@@ -95,7 +71,6 @@ export function AgentBlock(props: AgentBlockProps) {
 
   return (
     <box flexDirection="column" marginTop={1}>
-      {/* ── Active: header above bordered tool list ── */}
       <Show when={props.block.status === "active"}>
         <box flexDirection="row" gap={1} onMouseDown={() => setActiveCollapsed((v) => !v)}>
           <Spinner color={theme.secondary} />
@@ -127,7 +102,6 @@ export function AgentBlock(props: AgentBlockProps) {
         </CollapsibleBox>
       </Show>
 
-      {/* ── Completed/Paused: collapsible header + bordered tool list ── */}
       <Show when={canToggle()}>
         <box flexDirection="row" gap={1} onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
           <text fg={theme.primary}>✓</text>
@@ -154,7 +128,6 @@ export function AgentBlock(props: AgentBlockProps) {
         </CollapsibleBox>
       </Show>
 
-      {/* ── Error ── */}
       <Show when={props.block.status === "error"}>
         <box flexDirection="row" gap={1}>
           <text fg={theme.error}>✗</text>

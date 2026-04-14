@@ -1,14 +1,8 @@
-/**
- * Stream reader management — paired reader lifecycle with abort-safe cancellation.
- */
-
-/** Minimal reader interface that avoids Bun's non-standard ReadableStreamDefaultReader extensions. */
 type MinimalReader = {
   read(): Promise<{ done: boolean; value?: Uint8Array }>;
   cancel(): Promise<void>;
 };
 
-/** Manages paired stdout/stderr readers with abort-safe cancellation. */
 export interface StreamReaderSet {
   stdout: MinimalReader | null;
   stderr: MinimalReader | null;
@@ -37,9 +31,6 @@ export function createStreamReaderSet(signal: AbortSignal): StreamReaderSet {
   return set;
 }
 
-/**
- * Read a stream to completion, collecting raw chunks and invoking callbacks.
- */
 export async function readStream(
   reader: MinimalReader,
   chunks: string[],

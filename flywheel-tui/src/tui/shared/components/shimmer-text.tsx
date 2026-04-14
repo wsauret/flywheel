@@ -1,10 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * Shimmer Text Component
- * Ported from: src/ui/components/ShimmerText.tsx
- *
- * Animated shimmer text with wave effect using OpenTUI's useTimeline
- */
 
 import { RGBA } from "@opentui/core"
 import { useTimeline } from "@opentui/solid"
@@ -24,7 +18,6 @@ const MAX_CHARS = 32
 export function ShimmerText(props: ShimmerTextProps) {
   const themeCtx = useTheme()
 
-  // Use provided color or default to theme info color (matches status messages)
   const color = () => props.color ?? themeCtx.theme.info
 
   // Pre-allocate shimmer signals for the max length we'll see.

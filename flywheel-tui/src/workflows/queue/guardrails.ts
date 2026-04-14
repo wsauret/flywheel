@@ -99,7 +99,6 @@ export interface Guardrails {
 const DEFAULT_MAX_QUEUE_LENGTH = 50;
 const DEFAULT_MAX_MUTATIONS_PER_STEP = 3;
 const DEFAULT_MAX_INSERTED_STEPS_PER_SESSION = 20;
-// createGuardrails — factory function
 
 export function createGuardrails(options: GuardrailOptions = {}) {
   const maxQueueLength = options.maxQueueLength ?? DEFAULT_MAX_QUEUE_LENGTH;
@@ -107,16 +106,13 @@ export function createGuardrails(options: GuardrailOptions = {}) {
   const maxInsertedPerSession = options.maxInsertedStepsPerSession ?? DEFAULT_MAX_INSERTED_STEPS_PER_SESSION;
   const sessionObjective = options.sessionObjective ?? "";
 
-  // --- Internal state ---
-
-  /** Per-step mutation counts. */
   const stepMutationCounts = new Map<string, number>();
   /** Total session inserts (excluding initial template steps). */
   let sessionInsertCount = 0;
 
   // Guardrail 1: Max queue length
 
-  function checkInsert(queue: Queue, count: number): GuardrailCheckResult {
+  function checkInsert(queue: Queue, count: number) {
     if (queue.steps.length + count > maxQueueLength) {
       return {
         allowed: false,
@@ -128,7 +124,7 @@ export function createGuardrails(options: GuardrailOptions = {}) {
 
   // Guardrail 2: Max mutations per step completion
 
-  function checkMutationBudget(stepId: string): GuardrailCheckResult {
+  function checkMutationBudget(stepId: string) {
     const used = stepMutationCounts.get(stepId) ?? 0;
     if (used >= maxMutationsPerStep) {
       return {
@@ -139,14 +135,14 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     return { allowed: true };
   }
 
-  function recordMutation(stepId: string): void {
+  function recordMutation(stepId: string) {
     const current = stepMutationCounts.get(stepId) ?? 0;
     stepMutationCounts.set(stepId, current + 1);
   }
 
   // Guardrail 3: Max inserted steps per session
 
-  function checkSessionInsertBudget(count: number): GuardrailCheckResult {
+  function checkSessionInsertBudget(count: number) {
     if (sessionInsertCount + count > maxInsertedPerSession) {
       return {
         allowed: false,
@@ -154,10 +150,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
       };
     }
     return { allowed: true };
-  }
-
-  function recordSessionInsert(): void {
-    sessionInsertCount++;
   }
 
   // Guardrail 4 & 5: Budget visibility and objective anchoring
@@ -175,12 +167,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
       sessionObjective,
     };
   }
-
-  function getSessionObjective(): string {
-    return sessionObjective;
-  }
-
-  // applyMutations — apply dispatcher mutations through all guardrails
 
   function applyMutations(
     queue: Queue,
@@ -219,9 +205,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
   ): MutationApplicationResult {
     switch (mutation.type) {
       case "insert_after": {
-        if (!mutation.targetStepId || !mutation.steps || mutation.steps.length === 0) {
-          return { applied: false, reason: "insert_after requires targetStepId and steps" };
-        }
         const insertCheck = checkInsert(queue, mutation.steps.length);
         if (!insertCheck.allowed) return { applied: false, reason: insertCheck.reason };
         const sessionCheck = checkSessionInsertBudget(mutation.steps.length);
@@ -236,9 +219,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
 
       case "skip":
       case "remove": {
-        if (!mutation.targetStepId) {
-          return { applied: false, reason: `${mutation.type} requires targetStepId` };
-        }
         const fn = mutation.type === "skip" ? skipStep : removeStep;
         const result = fn(queue, mutation.targetStepId, provenance);
         if (!result.success) return { applied: false, reason: result.error };
@@ -253,12 +233,5 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     }
   }
 
-  return {
-    getMutationBudget,
-    applyMutations,
-    // Exposed for targeted unit testing via GuardrailsTestable cast in tests.
-    // Not on the public Guardrails interface — production code sees only the two methods above.
-    checkInsert, checkMutationBudget, checkSessionInsertBudget,
-    recordMutation, recordSessionInsert, getSessionObjective,
-  };
+  return { getMutationBudget, applyMutations };
 }

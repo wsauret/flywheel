@@ -35,10 +35,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
 
-  // ── Session store ──
   const sessionStore = createSessionStore(props.factories)
 
-  // ── Shell state: shared signals + services ──
   const { signals, services } = createShellState({
     sessionStore,
     manager,
@@ -51,13 +49,10 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
   const metrics = services.metrics
 
-  // ── Prompt-specific signal (local, not shared) ──
   const [promptHeight, setPromptHeight] = createSignal(1)
 
-  // ── Prompt ref ──
   let promptRef: TextareaRenderable | null = null
 
-  // ── Foreground switching ──
   const switchForeground = createForegroundSwitcher({
     signals,
     services,
@@ -66,7 +61,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
   })
 
-  // ── Hooks ──
   const workflow = useWorkflowLifecycle({ signals, services })
 
   const chat = useChatMode({ signals, services, projectCwd: props.projectCwd })
@@ -86,7 +80,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     return signals.storeEntry()?.kind === "chat"
   })
 
-  // Auto-start chat on boot
   chat.startChat()
 
   const commands = useCommandDispatch({
@@ -111,7 +104,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
   const runningCount = sessionStore.runningCount
 
-  // ── Keyboard ──
   const handleKey = createKeyboardHandler({
     signals,
     sessionStore,
@@ -127,7 +119,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   })
   useKeyboard(handleKey)
 
-  // ── Cleanup ──
   // Async disposal is registered as a pre-exit hook so exitTUI() can await it
   // before destroying the renderer. This prevents data loss (traces, transcripts).
   registerPreExitCleanup(() => sessionStore.disposeAll())
@@ -136,7 +127,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     renderer.setTerminalTitle("")
   })
 
-  // ── Derived state ──
   // Ticking clock for live elapsed displays (step indicators, etc.)
   const [now, setNow] = createSignal(Date.now())
   const nowTimer = setInterval(() => setNow(Date.now()), 1000)
@@ -144,7 +134,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
 
-  // ── Header display — extracted memos for status, metrics, step pipeline ──
   const { displayStatus, headerRight, headerRightColor, stepDisplay } = createHeaderDisplay({
     signals,
     metrics,
@@ -176,7 +165,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     return `${activityLabel()!} (${formatElapsed(metrics.elapsed())})`
   })
 
-  // ── JSX ──
   return (
     <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background} onMouseUp={() => {
         const text = renderer.getSelection()?.getSelectedText()
@@ -187,7 +175,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         renderer.clearSelection()
       }}>
 
-      {/* Header */}
       <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
         <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepDisplay().visible.length > 0 ? 0 : 1} paddingLeft={2} paddingRight={1}>
           <box flexDirection="row" flexShrink={1} overflow="hidden">
@@ -226,7 +213,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         </Show>
       </box>
 
-      {/* Content */}
       <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={1} paddingBottom={1} gap={1}>
 
 
@@ -257,12 +243,10 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
           <OutputWindow
             outputBlocks={signals.outputBlocks()}
             workflowStatus={displayStatus()}
-            isPromptFocused={true}
           />
         </Show>
       </box>
 
-      {/* Prompt */}
       <box flexShrink={0}>
         <Show when={showPrompt()}>
           <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1}
@@ -299,16 +283,13 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         </Show>
       </box>
 
-      {/* Footer */}
       <box flexDirection="row" justifyContent="space-between" paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} flexShrink={0}>
-        {/* Left: activity status (shimmer) when agent is active */}
         <box flexDirection="row" gap={1} flexShrink={1} overflow="hidden">
           <Show when={promptStatusLabel() && showPrompt()}>
             <Spinner color={theme.primary} />
             <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
           </Show>
         </box>
-        {/* Right: contextual keybinds */}
         <text fg={theme.textMuted} flexShrink={0}>
           {signals.agentState() === "active"
             ? "Esc interrupt"
@@ -322,10 +303,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         </text>
       </box>
 
-      {/* Toast overlay */}
       <ToastDisplay headerHeight={stepDisplay().visible.length > 0 ? 4 : 3} />
 
-      {/* Session modal overlay */}
       <Show when={sessionModal.sessionsModalOpen()}>
         <SessionModal
           activeSessionId={signals.foregroundId()}

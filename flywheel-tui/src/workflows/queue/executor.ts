@@ -86,7 +86,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         continue;
       }
 
-      // Check shutdown request before starting next step
       if (shutdownRequested) {
         const reason = "Shutdown requested";
         queue.status = "paused";
@@ -109,7 +108,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         persistQueue,
       });
 
-      // Sync mutable state back from step runner
       previousHandoff = result.previousHandoff;
       previousAssessment = result.previousAssessment;
 
@@ -135,7 +133,6 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
       }
     }
 
-    // All steps completed
     queue.status = "completed";
     await persistQueue();
     emit("queue:completed", { workflowId, stepsCompleted });

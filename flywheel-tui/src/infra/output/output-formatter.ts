@@ -1,26 +1,8 @@
-/**
- * Output Formatter — shared NDJSON display text extraction
- *
- * Parses stream-json NDJSON lines from Claude/OpenCode worker processes
- * and extracts human-readable display text. Used by both the ConsoleAdapter
- * (stdout printing) and the OpenTUIAdapter (store output lines).
- *
- * Handles claude stream-json format:
- * - {"type":"assistant","message":{"content":[{"type":"text","text":"..."}],...}}
- * - {"type":"result","result":"..."}
- *
- * Returns null for non-displayable lines (system init, tool_result, etc).
- * Falls back to raw text for non-JSON input.
- */
-
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createPatch } from "diff";
 
-/**
- * Per-tool detail handlers.
- * Adding a new tool just means adding an entry to this map.
- */
+/** Adding a new tool just means adding an entry to this map. */
 type ToolDetailHandler = (input: Record<string, unknown>, cwd: string) => string | null;
 
 function shellDetail(input: Record<string, unknown>, cwd: string): string | null {
@@ -30,7 +12,7 @@ function shellDetail(input: Record<string, unknown>, cwd: string): string | null
   return truncateLine(shortened, 100);
 }
 
-function agentDetail(input: Record<string, unknown>): string | null {
+function agentDetail(input: Record<string, unknown>, _cwd: string): string | null {
   const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
   const agentType = input.subagent_type as string | undefined;
   return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
@@ -118,7 +100,7 @@ export function getToolDetail(
   return null;
 }
 
-export function formatDisplayPath(filePath: string | undefined | null, cwd?: string): string | null {
+function formatDisplayPath(filePath: string | undefined | null, cwd?: string): string | null {
   if (!filePath) return null;
 
   const cwdPath = cwd ?? process.cwd();
@@ -136,7 +118,6 @@ export function formatDisplayPath(filePath: string | undefined | null, cwd?: str
     return `[handoff] ${sessionHandoffMatch[1]}`;
   }
 
-  // Always use ./ prefix for files that aren't parent-relative
   if (!relative.startsWith("./") && !relative.startsWith("../")) {
     return `./${relative}`;
   }
@@ -148,13 +129,10 @@ function truncateLine(
   max: number,
 ): string | null {
   if (!s) return null;
-  // Collapse to single line
   const oneLine = s.replace(/\n/g, " ").trim();
   if (oneLine.length <= max) return oneLine;
   return oneLine.slice(0, max - 1) + "…";
 }
-
-// ── Diff generation ──
 
 const CONTEXT_LINES = 3;
 
@@ -182,7 +160,6 @@ function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: s
       newContent = fileContent;
       oldContent = fileContent.replace(newStr, oldStr);
     } else if (fileContent.includes(oldStr)) {
-      // File not yet modified — apply replacement
       oldContent = fileContent;
       newContent = fileContent.replace(oldStr, newStr);
     } else {
@@ -196,7 +173,6 @@ function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: s
   }
 }
 
-/** Minimal diff without context (fallback when file can't be read). */
 function createMinimalDiff(filePath: string, oldContent: string, newContent: string): string {
   const oldLines = oldContent.split("\n");
   const newLines = newContent.split("\n");

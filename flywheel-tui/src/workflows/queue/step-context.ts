@@ -9,8 +9,6 @@
 
 import { z } from "zod";
 
-// Schemas
-
 const StepDecisionsSchema = z.object({
   step_index: z.number(),
   step_title: z.string(),
@@ -45,11 +43,6 @@ export const StepContextSchema = z.object({
 
 export type StepContext = z.infer<typeof StepContextSchema>;
 
-// Factory
-
-/**
- * Create a fresh empty StepContext.
- */
 export function createEmptyStepContext(): StepContext {
   return {
     cumulative_decisions: [],

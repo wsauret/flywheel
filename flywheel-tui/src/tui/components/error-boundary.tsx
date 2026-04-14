@@ -1,9 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * Error Boundary Component
- *
- * Fallback UI when an error occurs in the app.
- */
 
 import { createSignal } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"

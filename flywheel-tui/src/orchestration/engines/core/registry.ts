@@ -1,9 +1,3 @@
-/**
- * Engine lookup.
- *
- * Single engine (Claude). Validates the engine ID from config and returns it.
- */
-
 import type { Engine } from "./types.js";
 import { claudeEngine } from "../providers/claude.js";
 

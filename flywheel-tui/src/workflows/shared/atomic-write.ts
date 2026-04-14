@@ -1,8 +1,5 @@
 /**
  * Atomic file write utility.
- *
- * Extracted from `src/state/writer.ts` so the same write-fsync-rename kernel
- * can be reused by both the state writer and session persistence layer.
  */
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
@@ -28,7 +25,6 @@ function makeTmpPath(filePath: string): string {
 export function writeFileAtomic(filePath: string, content: string): void {
   const tmpPath = makeTmpPath(filePath);
 
-  // Ensure parent directory exists
   const dir = path.dirname(tmpPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

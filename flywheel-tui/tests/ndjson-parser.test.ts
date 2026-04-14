@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import {
-  NDJSONParser,
-  MAX_LINE_LENGTH,
-} from "../src/infra/ndjson-parser";
+import { NDJSONParser } from "../src/infra/ndjson-parser";
+
+const MAX_LINE_LENGTH = 1_000_000;
 import type { NDJSONEvent } from "../src/infra/subprocess-types";
 import { OutputBuffer } from "../src/infra/output-buffer";
 

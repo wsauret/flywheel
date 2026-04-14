@@ -1,7 +1,7 @@
 import { OutputBuffer } from "./output-buffer.js";
 import type { NDJSONEvent } from "./subprocess-types.js";
 
-export const MAX_LINE_LENGTH = 1_000_000;
+const MAX_LINE_LENGTH = 1_000_000;
 
 type NDJSONEventHandler = (event: NDJSONEvent) => void;
 type RawTextHandler = (text: string) => void;

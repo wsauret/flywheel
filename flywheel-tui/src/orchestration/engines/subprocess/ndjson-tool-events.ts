@@ -1,13 +1,4 @@
-/**
- * NDJSON Tool Event Parser
- *
- * Extracts tool_use and tool_result records from Claude's NDJSON stream.
- * Shared by trace-event-handler (EmitFn) for both workflow and chat modes.
- */
-
 import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
-
-// Types
 
 export interface ToolUseRecord {
   toolUseId: string;
@@ -20,8 +11,6 @@ export interface ToolResultRecord {
   isError: boolean;
   toolOutput: unknown;
 }
-
-// Extractors
 
 export function extractToolUseRecords(event: NDJSONEvent): ToolUseRecord[] {
   if (event.type !== "assistant") return [];

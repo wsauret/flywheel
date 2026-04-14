@@ -1,23 +1,3 @@
-/**
- * Transcript Writer
- *
- * Persists raw NDJSON events from subprocess streams to .ndjson transcript
- * files. Each event's `raw` string is appended as-is, preserving the exact
- * wire format for replay and analysis.
- *
- * Design follows the TraceWriter pattern: fd-append writes with DebouncedWriter
- * for timer scheduling, external buffer management, and batched writeSync calls.
- *
- * Single-threaded assumption: Bun's event loop serializes buffer drains
- * and lifecycle updates — no locking needed.
- *
- * Usage:
- *   const writer = createTranscriptWriter({ sessionId, baseDir });
- *   writer.handleEvent(event);    // buffer a raw NDJSON event
- *   writer.dispose();             // flush + close fd + cancel timers
- *   writer.getEventCount();       // number of events written
- */
-
 import { ensureTracesDir, resolveTranscriptFile } from "../../infra/paths.js";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
 import type { NDJSONEvent } from "../../infra/subprocess-types.js";

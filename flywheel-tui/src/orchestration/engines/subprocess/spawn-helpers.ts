@@ -1,8 +1,3 @@
-/**
- * Subprocess pipeline helpers: result building, stdout processing,
- * handoff resolution, and stdin handle creation.
- */
-
 import * as path from "node:path";
 import type { FileSink } from "bun";
 import type { SpawnOptions, StdinHandle } from "./spawner.js";
@@ -18,8 +13,6 @@ import { errorMessage } from "../../../infra/error-message.js";
 function isSignalExit(exitCode: number): boolean {
   return exitCode === 130 || exitCode === 143 || exitCode === 137;
 }
-
-// Result builders
 
 interface ResultContext {
   ndjsonParser: NDJSONParser;
@@ -80,9 +73,6 @@ export function buildErrorResult(ctx: ResultContext, error: unknown): Subprocess
   };
 }
 
-// Stdout processing
-
-/** Stdout processing state for the readStdout pipeline. */
 export interface StdoutProcessorState {
   sessionIdReported: boolean;
   onCompletionDetected: (() => void) | null;
@@ -117,8 +107,6 @@ export function createStdoutProcessor(
   };
 }
 
-// Handoff path resolution
-
 export function resolveHandoffPath(options: SpawnOptions | undefined): string {
   if (options?.sessionId && options?.handoffFileName) {
     return path.resolve(
@@ -134,8 +122,6 @@ export function resolveHandoffPath(options: SpawnOptions | undefined): string {
   }
   return "";
 }
-
-// Stdin handle (pipe mode)
 
 export function createStdinHandle(
   stdinSink: FileSink,

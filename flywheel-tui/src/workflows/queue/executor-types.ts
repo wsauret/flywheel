@@ -2,6 +2,7 @@ import type { Step, Queue } from "./types.js";
 import type { OnStepCompletedHook } from "./shared/hooks.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import type { NativeCheckResult } from "../shared/native-verification.js";
+import type { EvaluationCriteria } from "../../infra/workflow-types.js";
 
 /** Result from worker execution */
 export interface WorkerOutput {
@@ -22,13 +23,19 @@ export interface EvalResult {
   cyclesUsed: number;
 }
 
+/** Per-step context passed to the dispatcher callback. */
+export interface DispatcherContext {
+  previousHandoff: Record<string, unknown> | null;
+  previousAssessment: EvalResult | null;
+}
+
 /** Dispatcher: assembles prompt for a step */
 export type DispatcherFn = (
   step: Step,
-  context: Record<string, unknown>,
+  context: DispatcherContext,
 ) => Promise<{
   prompt: string;
-  evaluationCriteria: unknown | null;
+  evaluationCriteria: EvaluationCriteria | null;
   mutationRequests?: import("./step-dispatcher").MutationRequest[];
 }>;
 
@@ -40,7 +47,7 @@ export type DispatcherFn = (
 export type EvaluatorFn = (
   step: Step,
   workerOutput: string,
-  evaluationCriteria?: unknown | null,
+  evaluationCriteria?: EvaluationCriteria | null,
   handoffData?: Record<string, unknown> | null,
   /** The full dispatcher-crafted task prompt, for richer evaluator context. */
   taskContent?: string,

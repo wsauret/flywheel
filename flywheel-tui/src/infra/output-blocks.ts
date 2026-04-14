@@ -1,16 +1,6 @@
-/**
- * Output Block Schemas & Types
- *
- * Single source of truth for structured output blocks. Zod schemas define
- * the shapes; TypeScript types are derived via z.infer<>. Used by both the
- * orchestration layer (persistence, session store) and the TUI layer
- * (rendering). Lives in infra/ so both layers can import without
- * crossing module boundaries.
- */
+/** Lives in infra/ so both layers can import without crossing module boundaries. */
 
 import { z } from "zod"
-
-// Block schemas
 
 export const TextBlockSchema = z.object({
   kind: z.literal("text"),
@@ -53,12 +43,6 @@ export const AgentBlockSchema = z.object({
   timestamp: z.number(),
 })
 
-export const ContextGroupBlockSchema = z.object({
-  kind: z.literal("contextGroup"),
-  tools: z.array(ToolBlockSchema),
-  timestamp: z.number(),
-})
-
 export const SystemBlockSchema = z.object({
   kind: z.literal("system"),
   message: z.string(),
@@ -92,25 +76,19 @@ export const TodoListBlockSchema = z.object({
   timestamp: z.number(),
 })
 
-// Derived types
-
 export type TextBlock = z.infer<typeof TextBlockSchema>
 export type ToolBlock = z.infer<typeof ToolBlockSchema>
 export type AgentBlock = z.infer<typeof AgentBlockSchema>
-export type ContextGroupBlock = z.infer<typeof ContextGroupBlockSchema>
 export type SystemBlock = z.infer<typeof SystemBlockSchema>
 export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>
 export type UserMessageBlock = z.infer<typeof UserMessageBlockSchema>
 export type TodoItem = z.infer<typeof TodoItemSchema>
 export type TodoListBlock = z.infer<typeof TodoListBlockSchema>
 
-// Discriminated union (all block kinds)
-
-export const AnyBlockSchema = z.discriminatedUnion("kind", [
+const AnyBlockSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
   ToolBlockSchema,
   AgentBlockSchema,
-  ContextGroupBlockSchema,
   SystemBlockSchema,
   ThinkingBlockSchema,
   UserMessageBlockSchema,

@@ -1,10 +1,3 @@
-/**
- * Shared lifecycle callback wiring for workflow and chat controllers.
- *
- * Both controllers fire onRunnerDone/onRunnerError with the same shape.
- * This helper writes the result data to the shared shell signals.
- */
-
 import { batch } from "solid-js"
 import type { RunnerDoneResult, RunnerErrorResult } from "../../orchestration/session/types.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"

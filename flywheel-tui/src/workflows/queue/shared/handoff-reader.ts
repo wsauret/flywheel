@@ -20,7 +20,6 @@ export class HandoffInvalidError extends Error {
   }
 }
 
-// Exported for instanceof checks in tests.
 export class HandoffReadTimeoutError extends Error {
   readonly name = "HandoffReadTimeoutError";
   constructor(
@@ -38,8 +37,6 @@ interface ReadHandoffOptions {
   timeoutMs?: number;
 }
 
-// readHandoff — generic reader for any handoff schema
-
 export async function readHandoff<T>(
   path: string,
   schema: ZodSchema<T>,
@@ -55,18 +52,14 @@ export async function readHandoff<T>(
   return result;
 }
 
-// Internal helpers
-
 async function doRead<T>(path: string, schema: ZodSchema<T>): Promise<T> {
   const file = Bun.file(path);
 
-  // Check existence
   const exists = await file.exists();
   if (!exists) {
     throw new HandoffMissingError(path);
   }
 
-  // Read and parse JSON
   let raw: unknown;
   try {
     const text = await file.text();
@@ -82,7 +75,6 @@ async function doRead<T>(path: string, schema: ZodSchema<T>): Promise<T> {
     );
   }
 
-  // Validate against schema
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     throw new HandoffInvalidError(path, formatZodError(parsed.error));

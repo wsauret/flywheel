@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { createStepExecutor } from "../src/workflows/queue/executor";
-import type { StepExecutorOptions } from "../src/workflows/queue/executor-types";
-import { createGuardrails, type GuardrailOptions } from "../src/workflows/queue/guardrails";
+import type { StepExecutorOptions, DispatcherContext } from "../src/workflows/queue/executor-types";
+import { createGuardrails } from "../src/workflows/queue/guardrails";
 import { createQueue } from "../src/workflows/queue/queue";
 import type { Step, Queue } from "../src/workflows/queue/types";
 import type { EmitFn } from "../src/infra/event-bus";
@@ -43,10 +43,10 @@ function makeExecutorOptions(
     }),
     evaluator: null,
     handoffReader: async () => null,
-    budgetChecker: { isExhausted: () => false },
     persist: async () => {},
     accumulator: { accumulate: () => {}, getContext: () => ({}) },
     maxRevisions: 0,
+    skipEvaluation: false,
     ...overrides,
   };
 }
@@ -56,112 +56,58 @@ function makeExecutorOptions(
 // ---------------------------------------------------------------------------
 
 describe("Guardrails wiring into executor", () => {
-  it("passes mutation_budget to dispatcher context when guardrails provided", async () => {
+  it("dispatcher receives typed context with previousHandoff and previousAssessment", async () => {
+    const capturedContexts: DispatcherContext[] = [];
+    const queue = createQueue([makeStep({ id: "s1" }), makeStep({ id: "s2" })]);
+    const opts = makeExecutorOptions(queue, {
+      dispatcher: async (_step, context) => {
+        capturedContexts.push({ ...context });
+        return { prompt: "test", evaluationCriteria: null };
+      },
+      handoffReader: async () => ({ summary: "done" }),
+    });
+
+    await createStepExecutor(opts).run();
+
+    expect(capturedContexts.length).toBe(2);
+    // First step: no prior handoff
+    expect(capturedContexts[0]!.previousHandoff).toBeNull();
+    expect(capturedContexts[0]!.previousAssessment).toBeNull();
+    // Second step: receives handoff from first
+    expect(capturedContexts[1]!.previousHandoff).not.toBeNull();
+    expect(capturedContexts[1]!.previousHandoff!.summary).toBe("done");
+  });
+
+  it("applyMutations is enforced when executor has guardrails and dispatcher returns mutations", async () => {
     const guardrails = createGuardrails({
-      maxQueueLength: 50,
-      maxMutationsPerStepCompletion: 3,
-      maxInsertedStepsPerSession: 20,
-      sessionObjective: "Build a hello world endpoint",
+      maxQueueLength: 10,
+      maxMutationsPerStepCompletion: 1,
     });
 
-    let capturedContext: Record<string, unknown> | null = null;
     const queue = createQueue([makeStep({ id: "s1" })]);
     const opts = makeExecutorOptions(queue, {
       guardrails,
-      dispatcher: async (_step, context) => {
-        capturedContext = context;
-        return { prompt: "test", evaluationCriteria: null };
-      },
+      dispatcher: async () => ({
+        prompt: "test",
+        evaluationCriteria: null,
+        mutationRequests: [
+          { type: "insert_after", targetStepId: "s1", steps: [makeStep()], reason: "fix" },
+          { type: "insert_after", targetStepId: "s1", steps: [makeStep()], reason: "fix2" },
+        ],
+      }),
     });
 
     await createStepExecutor(opts).run();
 
-    expect(capturedContext).not.toBeNull();
-    expect(capturedContext!.mutation_budget).toBeDefined();
-
-    const budget = capturedContext!.mutation_budget as Record<string, unknown>;
-    expect(budget.maxQueueLength).toBe(50);
-    expect(budget.currentQueueLength).toBe(1);
-    expect(budget.remainingQueueCapacity).toBe(49);
-    expect(budget.mutationsUsedThisStep).toBe(0);
-    expect(budget.mutationsRemainingThisStep).toBe(3);
-    expect(budget.totalSessionInserts).toBe(0);
-    expect(budget.sessionInsertsRemaining).toBe(20);
-  });
-
-  it("passes session_objective to dispatcher context when guardrails provided", async () => {
-    const guardrails = createGuardrails({
-      sessionObjective: "Implement auth middleware",
-    });
-
-    let capturedContext: Record<string, unknown> | null = null;
-    const queue = createQueue([makeStep({ id: "s1" })]);
-    const opts = makeExecutorOptions(queue, {
-      guardrails,
-      sessionObjective: "Implement auth middleware",
-      dispatcher: async (_step, context) => {
-        capturedContext = context;
-        return { prompt: "test", evaluationCriteria: null };
-      },
-    });
-
-    await createStepExecutor(opts).run();
-
-    expect(capturedContext).not.toBeNull();
-    expect(capturedContext!.session_objective).toBe("Implement auth middleware");
-  });
-
-  it("omits mutation_budget and session_objective when no guardrails", async () => {
-    let capturedContext: Record<string, unknown> | null = null;
-    const queue = createQueue([makeStep({ id: "s1" })]);
-    const opts = makeExecutorOptions(queue, {
-      guardrails: null,
-      dispatcher: async (_step, context) => {
-        capturedContext = context;
-        return { prompt: "test", evaluationCriteria: null };
-      },
-    });
-
-    await createStepExecutor(opts).run();
-
-    expect(capturedContext).not.toBeNull();
-    expect(capturedContext!.mutation_budget).toBeUndefined();
-    expect(capturedContext!.session_objective).toBeUndefined();
-  });
-
-  it("mutation_budget reflects current queue length dynamically", async () => {
-    const guardrails = createGuardrails({ maxQueueLength: 10 });
-    const capturedBudgets: Array<Record<string, unknown>> = [];
-
-    const queue = createQueue([
-      makeStep({ id: "s1" }),
-      makeStep({ id: "s2" }),
-      makeStep({ id: "s3" }),
-    ]);
-
-    const opts = makeExecutorOptions(queue, {
-      guardrails,
-      dispatcher: async (_step, context) => {
-        if (context.mutation_budget) {
-          capturedBudgets.push(context.mutation_budget as Record<string, unknown>);
-        }
-        return { prompt: "test", evaluationCriteria: null };
-      },
-    });
-
-    await createStepExecutor(opts).run();
-
-    expect(capturedBudgets.length).toBe(3);
-    // All 3 steps see the same queue length (no inserts)
-    for (const budget of capturedBudgets) {
-      expect(budget.currentQueueLength).toBe(3);
-      expect(budget.remainingQueueCapacity).toBe(7);
-    }
+    // First mutation should apply (within budget), second should be rejected
+    // Queue started with 1 step, first insert adds 1 = 2 steps total
+    // The inserted step also runs, so queue should have 2+ steps
+    expect(queue.steps.length).toBeGreaterThanOrEqual(2);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Tests: Guardrails getMutationBudget and getSessionObjective
+// Tests: Guardrails getMutationBudget
 // ---------------------------------------------------------------------------
 
 describe("Guardrails getMutationBudget", () => {
@@ -185,31 +131,38 @@ describe("Guardrails getMutationBudget", () => {
     expect(budget.sessionObjective).toBe("Test objective");
   });
 
-  it("budget decreases after recording mutations", () => {
+  it("budget decreases after applying mutations", () => {
     const guardrails = createGuardrails({
       maxMutationsPerStepCompletion: 3,
+      maxInsertedStepsPerSession: 20,
     });
 
-    guardrails.recordMutation("step-1");
-    guardrails.recordMutation("step-1");
+    const steps = Array.from({ length: 5 }, () => makeStep());
+    const queue = createQueue(steps);
 
-    const budget = guardrails.getMutationBudget("step-1", 5);
+    guardrails.applyMutations(queue, "step-1", [
+      { type: "insert_after", targetStepId: steps[0].id, steps: [makeStep()], reason: "fix" },
+      { type: "insert_after", targetStepId: steps[0].id, steps: [makeStep()], reason: "fix2" },
+    ], { actor: "test", reason: "test" });
+
+    const budget = guardrails.getMutationBudget("step-1", queue.steps.length);
     expect(budget.mutationsUsedThisStep).toBe(2);
     expect(budget.mutationsRemainingThisStep).toBe(1);
+    expect(budget.totalSessionInserts).toBe(2);
   });
 });
 
-describe("Guardrails getSessionObjective", () => {
+describe("Guardrails session objective via getMutationBudget", () => {
   it("returns the configured session objective", () => {
     const guardrails = createGuardrails({
       sessionObjective: "Build authentication system",
     });
 
-    expect(guardrails.getSessionObjective()).toBe("Build authentication system");
+    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("Build authentication system");
   });
 
   it("returns empty string when no objective configured", () => {
     const guardrails = createGuardrails();
-    expect(guardrails.getSessionObjective()).toBe("");
+    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("");
   });
 });

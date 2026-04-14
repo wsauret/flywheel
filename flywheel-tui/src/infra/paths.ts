@@ -1,9 +1,4 @@
 /**
- * Centralized path constants for the flywheel-tui codebase.
- *
- * Single source of truth for ALL paths.
- *
- * Session files live in `.flywheel/sessions/<session-id>/` with simple names:
  *   session.json, plan.json, research.md, review.md, output.json,
  *   transcript.jsonl, queue.json, context.json
  *
@@ -13,8 +8,6 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-
-// Internal .flywheel/ state directories
 
 const FLYWHEEL_DIR = ".flywheel";
 export const SESSIONS_DIR = `${FLYWHEEL_DIR}/sessions`;
@@ -32,11 +25,7 @@ export const DEFAULT_CONVENTION_FILES = ["AGENTS.md", "CONTRIBUTING.md", "DEVELO
 
 export const CONFIG_DIRS = [".claude/", ".opencode/"];
 
-// Config file search order
-
 export const CONFIG_FILES = ["flywheel.toml", ".flywheel.toml"];
-
-// Session directory helpers
 
 export function sessionDir(sessionId: string): string {
   return `${SESSIONS_DIR}/${sessionId}`;
@@ -54,18 +43,12 @@ export function resolveSessionHandoffsDir(sessionId: string, baseDir: string): s
   return path.resolve(baseDir, sessionHandoffsDir(sessionId));
 }
 
-/**
- * Ensure the session directory and its handoffs/ subdirectory exist.
- * Idempotent — safe to call multiple times.
- */
+/** Idempotent — safe to call multiple times. */
 export function ensureSessionDir(sessionId: string, baseDir: string): void {
   const handoffsPath = resolveSessionHandoffsDir(sessionId, baseDir);
   fs.mkdirSync(handoffsPath, { recursive: true });
 }
 
-// Session file path helpers
-
-/** Well-known file names within a session directory. */
 const SESSION_FILES = {
   session: "session.json",
   plan: "plan.json",
@@ -84,8 +67,6 @@ export function resolveSessionFile(
 ): string {
   return path.resolve(baseDir, sessionDir(sessionId), SESSION_FILES[file]);
 }
-
-// Handoff path helpers
 
 /**
  * Build a handoff file path for a subprocess step.
@@ -115,9 +96,6 @@ export function buildInvocationHandoffPath(
 
 // Trace file path helpers
 
-/**
- * Ensure the global traces directory exists. Idempotent.
- */
 export function ensureTracesDir(baseDir: string): void {
   fs.mkdirSync(path.resolve(baseDir, TRACES_DIR), { recursive: true });
 }

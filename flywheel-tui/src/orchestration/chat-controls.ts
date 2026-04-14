@@ -1,10 +1,3 @@
-/**
- * Chat Controls — send, interrupt, and end operations for a chat session.
- *
- * Extracted from chat-session.ts. Operates on ChatSessionState
- * via its named transition methods.
- */
-
 import type { OutputSession } from "./output-session.js"
 import type { WorkerLifecycle, ChatSessionState, ChatCallbacks } from "./chat-session.js"
 import type { Unsubscribe } from "../infra/event-bus.js"
@@ -97,7 +90,6 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     // No explicit flush needed — OutputSession's 16ms interval handles it
 
     if (state.stdinHandle?.isOpen) {
-      // Normal path: worker is alive, write directly to the pipe
       const ok = state.stdinHandle.write(formatStdinMessage(text))
       log.info("chat message sent", { length: text.length, written: ok })
       return

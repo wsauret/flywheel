@@ -1,13 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * Session Context Provider
- *
- * Provides SessionManager instance and active session tracking to child
- * components. Uses the createSimpleContext pattern from helper.tsx.
- *
- * The SessionProvider wraps FlywheelShell and sits inside DialogProvider
- * in the app.tsx provider stack.
- */
 
 import { createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper.js"

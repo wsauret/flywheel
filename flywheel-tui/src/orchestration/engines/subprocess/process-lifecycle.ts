@@ -1,25 +1,8 @@
-/**
- * Process lifecycle management: process-group kill.
- *
- * - Unix: `process.kill(-pid, signal)` sends signal to entire process group
- * - Windows: falls back to `child.kill(signal)` (no process groups)
- */
-
-/**
- * Minimal interface for a child process handle.
- * Compatible with Bun's Subprocess and Node's ChildProcess.
- */
 export interface ChildHandle {
   readonly pid: number;
   kill(signal?: number): void;
 }
 
-/**
- * Send a signal to a process group (Unix) or the process directly (Windows).
- *
- * On Unix, sending to -pid kills the entire process group.
- * On ESRCH (no such process), silently falls back to child.kill().
- */
 export function killProcessGroup(child: ChildHandle, signal: NodeJS.Signals): void {
   const signalNum = signalToNumber(signal);
 

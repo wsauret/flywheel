@@ -6,11 +6,7 @@ import type { Step, Queue } from "./types.js";
 import { SPRINT_HINT } from "./steps/sprint/types.js";
 import { buildSprintEvaluationCriteria } from "./steps/sprint/evaluator-criteria.js";
 
-// WorkflowName — supported workflow template names
-
 export type WorkflowName = "work" | "sprint" | "plan";
-
-// Step factory helper
 
 export function makeStep(type: Step["type"], title: string, extra?: Partial<Step>): Step {
   return {
@@ -22,9 +18,6 @@ export function makeStep(type: Step["type"], title: string, extra?: Partial<Step
   };
 }
 
-// Public API
-
-/** Build a Queue from a workflow template name. */
 export function buildQueueFromTemplate(
   name: WorkflowName,
   maxSteps?: number,

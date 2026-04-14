@@ -11,23 +11,10 @@
 //   - Budget remaining
 //   - Session objective
 //
-// Returns a StepDispatcherDecision with:
-//   - taskContent: crafted worker prompt
-//   - evaluationCriteria: for evaluator (derived from acceptanceCriteria for work steps)
-//   - workerConfig: model, timeout, tool scoping
-//   - contextToInline: L2 file paths
-//   - contextFiles: L3 file paths
-//   - mutationRequests: queue mutations requested by dispatcher
-//
 // On transport failure: throws StepDispatcherError (caller marks step failed).
 
 import type { Step, Queue } from "./types.js";
 import type { DispatcherTransport } from "../dispatcher/transport.js";
-import type {
-  DispatcherInput,
-  DispatcherConfig,
-  WorkflowInfo,
-} from "../dispatcher/schemas.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import type { SessionBudgetStatus, AvailableContext } from "../schemas.js";
 import type { EvaluationCriteria, WorkerConfig } from "../../infra/workflow-types.js";
@@ -37,20 +24,12 @@ import { applyBudgetTruncation } from "../dispatcher/truncation.js";
 import { Log } from "../../infra/log.js";
 import { errorMessage } from "../../infra/error-message.js";
 import {
-  buildCompactQueueState,
-  handoffToLastWorkerResult,
-  accumulatedToStepContext,
-  buildPlanFromQueue,
-  buildStepDescription,
-  injectAssessmentIntoContext,
+  buildDispatcherInput,
   normalizeDecision,
 } from "./step-dispatcher-helpers.js";
 
 const log = Log.create({ service: "step-dispatcher" });
 
-// Types — Dispatcher context passed per-step
-
-/** Context provided by the executor for each step dispatch. */
 export interface StepDispatchContext {
   /** Windowed accumulated context from prior steps. */
   accumulatedContext: AccumulatedContext;
@@ -62,23 +41,13 @@ export interface StepDispatchContext {
   mutationBudget?: import("./guardrails").MutationBudget | null;
 }
 
-// Types — Mutation requests
+// Types — Mutation requests (discriminated union on `type`)
 
-/** A mutation requested by the dispatcher. */
-export interface MutationRequest {
-  /** Mutation type. */
-  type: "insert_after" | "skip" | "remove";
-  /** Step ID to operate on (for skip/remove) or insert after. */
-  targetStepId?: string;
-  /** For insert_after: the step(s) to insert. */
-  steps?: import("./types").Step[];
-  /** Why the mutation is requested. */
-  reason: string;
-}
+export type MutationRequest =
+  | { type: "insert_after"; targetStepId: string; steps: import("./types").Step[]; reason: string }
+  | { type: "skip"; targetStepId: string; reason: string }
+  | { type: "remove"; targetStepId: string; reason: string };
 
-// Types — Dispatcher decision (normalized from raw DispatcherDecision)
-
-/** Normalized decision from the step dispatcher. */
 export interface StepDispatcherDecision {
   /** Crafted worker prompt. */
   taskContent: string;
@@ -93,8 +62,6 @@ export interface StepDispatcherDecision {
   /** Queue mutation requests from dispatcher. */
   mutationRequests: MutationRequest[];
 }
-
-// Types — Options for createStepDispatcher
 
 interface StepDispatcherOptions {
   /** Dispatcher transport (subprocess or SDK). */
@@ -119,8 +86,6 @@ interface StepDispatcherOptions {
   sessionObjective?: string;
 }
 
-// StepDispatcher interface
-
 interface StepDispatcher {
   /** Dispatch a step: assemble input, invoke transport, parse decision. */
   dispatch(
@@ -130,9 +95,6 @@ interface StepDispatcher {
   ): Promise<StepDispatcherDecision>;
 }
 
-// Error class
-
-// Exported for instanceof checks in tests.
 export class StepDispatcherError extends Error {
   constructor(
     message: string,
@@ -144,8 +106,6 @@ export class StepDispatcherError extends Error {
   }
 }
 
-// createStepDispatcher — factory function
-
 export function createStepDispatcher(options: StepDispatcherOptions): StepDispatcher {
   const {
     transport,
@@ -154,7 +114,6 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
     configContext,
     sessionBudget,
     availableContext,
-    sessionObjective,
   } = options;
 
   async function dispatch(
@@ -165,83 +124,18 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
     const stepIndex = queue.steps.findIndex((s) => s.id === step.id);
     const currentIndex = stepIndex >= 0 ? stepIndex : queue.cursor;
 
-    // Emit dispatcher:invoked
     emit("dispatcher:invoked", { workflowId, stepIndex: currentIndex });
 
     try {
-      // --- Assemble DispatcherInput ---
+      const input = buildDispatcherInput(step, queue, context, currentIndex, {
+        configContext,
+        workflowId,
+        sessionBudget,
+        availableContext,
+      });
 
-      // Build step description incorporating all metadata
-      const stepDescription = buildStepDescription(step, context);
-
-      // Build workflow info
-      const workflowInfo = {
-        name: step.type,
-        step_number: currentIndex + 1,
-        total_steps: queue.steps.length,
-        step_description: stepDescription,
-      };
-
-      // Build dispatcher config
-      const dispatcherConfig = {
-        max_eval_cycles: configContext.maxEvalCycles,
-        worktree_path: configContext.worktreePath,
-        project_cwd: configContext.projectCwd,
-        subprocess_model: configContext.subprocessModel,
-        dispatcher_model: configContext.dispatcherModel,
-      };
-
-      // Build compact queue state
-      const queueState = buildCompactQueueState(queue, currentIndex);
-
-      // Build plan representation from queue
-      const plan = buildPlanFromQueue(queue);
-
-      // Convert previous handoff to LastWorkerResult
-      const lastWorkerResult = context.previousHandoff
-        ? handoffToLastWorkerResult(context.previousHandoff, currentIndex - 1)
-        : null;
-
-      // Convert accumulated context to StepContext
-      const stepContext = accumulatedToStepContext(context.accumulatedContext);
-
-      // Inject previous assessment into step context warnings
-      if (context.previousAssessment) {
-        injectAssessmentIntoContext(stepContext, context.previousAssessment);
-      }
-
-      // Build mutation budget for dispatcher visibility (VAL-GUARD-006)
-      const mutationBudgetInput = context.mutationBudget
-        ? {
-            max_queue_length: context.mutationBudget.maxQueueLength,
-            current_queue_length: context.mutationBudget.currentQueueLength,
-            remaining_queue_capacity: context.mutationBudget.remainingQueueCapacity,
-            mutations_used_this_step: context.mutationBudget.mutationsUsedThisStep,
-            mutations_remaining_this_step: context.mutationBudget.mutationsRemainingThisStep,
-            total_session_inserts: context.mutationBudget.totalSessionInserts,
-            session_inserts_remaining: context.mutationBudget.sessionInsertsRemaining,
-            session_objective: context.mutationBudget.sessionObjective,
-          }
-        : undefined;
-
-      // Build the DispatcherInput
-      const input = {
-        plan,
-        state: queueState,
-        workflow_id: workflowId,
-        workflow: workflowInfo,
-        last_worker_result: lastWorkerResult,
-        config: dispatcherConfig,
-        session_budget: sessionBudget,
-        available_context: availableContext,
-        step_context: stepContext,
-        mutation_budget: mutationBudgetInput,
-      };
-
-      // Safety valve — shared 100KB budget truncation on available_context
       applyBudgetTruncation(input);
 
-      // --- Invoke transport ---
       log.info("dispatching step", {
         stepId: step.id,
         stepType: step.type,
@@ -258,10 +152,8 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         hasWorkerConfig: !!decision.worker_config,
       });
 
-      // Emit dispatcher:completed
       emit("dispatcher:completed", { workflowId, decision });
 
-      // --- Parse and normalize decision ---
       return normalizeDecision(decision, step);
     } catch (error) {
       const reason = errorMessage(error);
@@ -272,7 +164,6 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         reason,
       });
 
-      // Emit dispatcher:failed
       emit("dispatcher:failed", { workflowId, reason });
 
       throw new StepDispatcherError(reason, step.id, error instanceof Error ? error : undefined);
