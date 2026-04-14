@@ -62,8 +62,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
   function startTestStep(stepId?: string): void {
     const result = controller.startTestStep(stepId)
 
-    if (result === null) return
-
     if ("info" in result) {
       services.showToast({ message: result.info, variant: "info" })
       return

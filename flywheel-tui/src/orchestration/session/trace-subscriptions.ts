@@ -18,9 +18,7 @@ interface TraceSpanOps {
 }
 
 export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowName: string): Unsubscribe[] {
-  const unsubs: Unsubscribe[] = [];
-
-  unsubs.push(
+  return [
     bus.subscribeToType("queue:initialized", (event) => {
       const id = ops.startSpan("workflow", workflowName, {
         stepIds: event.stepIds,
@@ -28,9 +26,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
       });
       ops.setWorkflowSpanId(id);
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("queue:completed", (event) => {
       if (ops.workflowSpanId) {
         ops.endSpan(ops.workflowSpanId, {
@@ -39,9 +35,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         }, "ok");
       }
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("queue:failed", (event) => {
       if (ops.workflowSpanId) {
         ops.endSpan(ops.workflowSpanId, {
@@ -50,21 +44,16 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         }, "error", { message: event.reason });
       }
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("queue:step-started", (event) => {
       ops.resetStackForStep(ops.workflowSpanId);
-
       const stepSpanId = ops.startSpan("step", event.stepTitle, {
         stepType: event.stepType,
         stepTitle: event.stepTitle,
       });
       ops.setStepSpanId(event.stepId, stepSpanId);
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("queue:step-completed", (event) => {
       const workerSpanId = ops.findOpenSpanByKind("worker");
       if (workerSpanId) {
@@ -76,9 +65,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         ops.deleteStepSpanId(event.stepId);
       }
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("queue:step-failed", (event) => {
       const workerSpanId = ops.findOpenSpanByKind("worker");
       if (workerSpanId) {
@@ -90,17 +77,13 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         ops.deleteStepSpanId(event.stepId);
       }
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("subprocess:spawned", (event) => {
       ops.startSpan("worker", `worker-${event.stepIndex}`, {
         stepIndex: event.stepIndex,
       });
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("trace:tool-started", (event) => {
       const spanId = ops.startSpan("tool_call", event.toolName, {
         toolName: event.toolName,
@@ -108,9 +91,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
       });
       ops.setToolSpanId(event.toolUseId, spanId);
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("trace:tool-completed", (event) => {
       const spanId = ops.getToolSpanId(event.toolUseId);
       if (spanId) {
@@ -121,9 +102,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         ops.deleteToolSpanId(event.toolUseId);
       }
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("trace:subagent-started", (event) => {
       const spanId = ops.startSpan("subagent", event.agentType, {
         agentType: event.agentType,
@@ -133,9 +112,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
       });
       ops.setToolSpanId(event.toolUseId, spanId);
     }),
-  );
 
-  unsubs.push(
     bus.subscribeToType("trace:subagent-completed", (event) => {
       const spanId = ops.getToolSpanId(event.toolUseId);
       if (spanId) {
@@ -147,7 +124,5 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         ops.deleteToolSpanId(event.toolUseId);
       }
     }),
-  );
-
-  return unsubs;
+  ];
 }

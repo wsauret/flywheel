@@ -6,6 +6,8 @@ import { applyEnvOverrides } from "./env.js";
 
 type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
 
+// Exported for tests — instanceof checks on the structured `code` field are
+// more precise than string-matching error messages.
 export class ConfigLoadError extends Error {
   readonly code: ConfigErrorCode;
 

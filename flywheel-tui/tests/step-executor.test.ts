@@ -293,7 +293,7 @@ describe("VAL-QUEUE-025: Dispatcher invoked per step for prompt assembly", () =>
       return { prompt: "go", evaluationCriteria: null };
     };
 
-    const step = makeStep({ type: "plan", title: "Create plan" });
+    const step = makeStep({ type: "work", title: "Create plan" });
     const queue = createQueue([step]);
 
     const opts = createDefaultOptions({ queue, dispatcher });
@@ -301,7 +301,7 @@ describe("VAL-QUEUE-025: Dispatcher invoked per step for prompt assembly", () =>
     await executor.run();
 
     expect(receivedStep).not.toBeNull();
-    expect(receivedStep!.type).toBe("plan");
+    expect(receivedStep!.type).toBe("work");
     expect(receivedStep!.title).toBe("Create plan");
   });
 
@@ -1164,7 +1164,7 @@ describe("VAL-EXEC-004: Revision loop on evaluator revise verdict", () => {
 describe("VAL-EXEC-008: Queue events emitted for step lifecycle", () => {
   test("queue:step-started emitted with stepId, step metadata", async () => {
     const emit = createMockEmit();
-    const s1 = makeStep({ type: "plan", title: "Research codebase" });
+    const s1 = makeStep({ type: "work", title: "Research codebase" });
     const queue = createQueue([s1]);
 
     const opts = createDefaultOptions({ queue, emit });
@@ -1174,7 +1174,7 @@ describe("VAL-EXEC-008: Queue events emitted for step lifecycle", () => {
     const startEvents = emit.calls.filter((e) => e.type === "queue:step-started");
     expect(startEvents.length).toBe(1);
     expect((startEvents[0].payload as any).stepId).toBe(s1.id);
-    expect((startEvents[0].payload as any).stepType).toBe("plan");
+    expect((startEvents[0].payload as any).stepType).toBe("work");
     expect((startEvents[0].payload as any).stepTitle).toBe("Research codebase");
   });
 

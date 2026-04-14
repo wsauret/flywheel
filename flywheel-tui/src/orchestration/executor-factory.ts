@@ -15,7 +15,7 @@ import type { OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
 import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers.js"
 import { createDoomLoopObserver } from "./engines/doom-loop.js"
 import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper.js"
-import type { EmitFn, EventBus, Unsubscribe } from "../infra/event-bus.js"
+import { createEmit, type EventBus, type Unsubscribe } from "../infra/event-bus.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { SpawnResult } from "./engines/subprocess/spawner.js"
@@ -25,9 +25,7 @@ import { wireSessionSubscribers, type MetricsWriter, type SessionInfra } from ".
 interface CreateExecutorInput {
   /** Prepared workflow deps (config, engine, etc.) */
   deps: WorkflowDeps
-  /** Typed event emitter */
-  emit: EmitFn
-  /** EventBus for subscriber wiring */
+  /** EventBus — emit is derived internally via createEmit */
   eventBus: EventBus
   /** Unique workflow identifier */
   workflowId: string
@@ -66,10 +64,11 @@ interface CreateExecutorResult {
 
 export async function createExecutor(input: CreateExecutorInput): Promise<CreateExecutorResult> {
   const {
-    deps, emit, eventBus, workflowId, sessionId, queue, description,
+    deps, eventBus, workflowId, sessionId, queue, description,
     projectCwd, subprocessCwd, infra,
     injectionQueue, chatContext,
   } = input
+  const emit = createEmit(eventBus)
   const { budgetTracker } = infra
 
   const eventUnsubs: Unsubscribe[] = []

@@ -144,8 +144,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   function findOpenSpanByKind(kind: SpanKind): string | null {
     for (let i = spanStack.length - 1; i >= 0; i--) {
       const spanId = spanStack[i]!;
-      const open = openSpans.get(spanId);
-      if (open && open.kind === kind) return spanId;
+      if (openSpans.get(spanId)?.kind === kind) return spanId;
     }
     return null;
   }

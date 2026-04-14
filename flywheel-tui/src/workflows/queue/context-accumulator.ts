@@ -15,8 +15,6 @@
 
 import type { Step } from "./types.js";
 
-// Types
-
 /** Full-detail handoff entry for recent steps. */
 interface HandoffEntry {
   /** ID of the step that produced this handoff. */

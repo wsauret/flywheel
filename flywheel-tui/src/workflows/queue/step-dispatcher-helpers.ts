@@ -18,7 +18,7 @@ import { parseRawHandoff } from "./shared/handoff-parse.js";
 import { randomUUID } from "crypto";
 
 /** Known step types — used to validate dispatcher-provided types at the boundary. */
-const VALID_STEP_TYPES = new Set<string>(["work", "plan"]);
+const VALID_STEP_TYPES = new Set<string>(["work"]);
 
 function toStepType(raw: string): Step["type"] {
   return VALID_STEP_TYPES.has(raw) ? (raw as Step["type"]) : "work";
@@ -78,28 +78,11 @@ function accumulatedToStepContext(
   ctx.step_count = accumulated.totalSteps;
 
   for (let i = 0; i < accumulated.summaries.length; i++) {
-    const summary = accumulated.summaries[i];
-    if (summary.decisions.length > 0) {
-      ctx.cumulative_decisions.push({
-        step_index: i,
-        step_title: summary.stepTitle,
-        decisions: summary.decisions,
-      });
-    }
-    if (summary.issues.length > 0) {
-      ctx.cumulative_issues.push({
-        step_index: i,
-        step_title: summary.stepTitle,
-        issues: summary.issues,
-      });
-    }
-    if (summary.artifacts.length > 0) {
-      ctx.cumulative_artifacts.push({
-        step_index: i,
-        step_title: summary.stepTitle,
-        artifacts: summary.artifacts,
-      });
-    }
+    const s = accumulated.summaries[i];
+    const base = { step_index: i, step_title: s.stepTitle };
+    if (s.decisions.length) ctx.cumulative_decisions.push({ ...base, decisions: s.decisions });
+    if (s.issues.length) ctx.cumulative_issues.push({ ...base, issues: s.issues });
+    if (s.artifacts.length) ctx.cumulative_artifacts.push({ ...base, artifacts: s.artifacts });
   }
 
   return ctx;
@@ -134,50 +117,27 @@ function buildPlanFromQueue(
 /**
  * Build step description — rich context string for the dispatcher.
  */
-function buildStepDescription(step: Step, context: StepDispatchContext): string {
-  const parts: string[] = [];
+function buildStepDescription(step: Step): string {
+  const parts: string[] = [step.description ?? step.title];
 
-  // Step description or title
-  if (step.description) {
-    parts.push(step.description);
-  } else {
-    parts.push(step.title);
+  if (step.dispatcherHint) parts.push(`[Hint: ${step.dispatcherHint}]`);
+
+  if (step.acceptanceCriteria?.length) {
+    parts.push("Acceptance criteria:", ...step.acceptanceCriteria.map(ac => `- ${ac}`));
   }
 
-  // Dispatcher hint
-  if (step.dispatcherHint) {
-    parts.push(`[Hint: ${step.dispatcherHint}]`);
-  }
+  if (step.evaluationCriteria) parts.push(`Evaluation: ${step.evaluationCriteria}`);
 
-  // Acceptance criteria for work steps
-  if (step.acceptanceCriteria && step.acceptanceCriteria.length > 0) {
-    parts.push("Acceptance criteria:");
-    for (const ac of step.acceptanceCriteria) {
-      parts.push(`- ${ac}`);
-    }
-  }
-
-  // Template evaluation criteria for non-work steps
-  if (step.evaluationCriteria) {
-    parts.push(`Evaluation: ${step.evaluationCriteria}`);
-  }
-
-  // Tool scoping info
   if (step.toolScoping) {
-    const scoping = step.toolScoping;
-    const restrictions: string[] = [];
-    if (!scoping.write) restrictions.push("no file writes");
-    if (!scoping.edit) restrictions.push("no file edits");
-    if (!scoping.bash) restrictions.push("no shell commands");
-    if (restrictions.length > 0) {
-      parts.push(`Tool restrictions: ${restrictions.join(", ")}`);
-    }
+    const r = [
+      !step.toolScoping.write && "no file writes",
+      !step.toolScoping.edit && "no file edits",
+      !step.toolScoping.bash && "no shell commands",
+    ].filter(Boolean);
+    if (r.length) parts.push(`Tool restrictions: ${r.join(", ")}`);
   }
 
-  // File references
-  if (step.fileReferences && step.fileReferences.length > 0) {
-    parts.push(`Relevant files: ${step.fileReferences.join(", ")}`);
-  }
+  if (step.fileReferences?.length) parts.push(`Relevant files: ${step.fileReferences.join(", ")}`);
 
   return parts.join("\n");
 }
@@ -185,28 +145,18 @@ function buildStepDescription(step: Step, context: StepDispatchContext): string 
 /**
  * Inject evaluator assessment into step context as warnings.
  */
-function injectAssessmentIntoContext(
-  ctx: StepContext,
-  assessment: EvalResult,
-): void {
-  const assessmentWarnings: string[] = [];
+function injectAssessmentIntoContext(ctx: StepContext, assessment: EvalResult): void {
+  const warnings = [
+    assessment.reason && `Previous evaluator assessment: ${assessment.reason}`,
+    assessment.feedback && `Evaluator feedback: ${assessment.feedback}`,
+    assessment.suggestions?.length && `Evaluator suggestions: ${assessment.suggestions.join("; ")}`,
+  ].filter(Boolean) as string[];
 
-  if (assessment.reason) {
-    assessmentWarnings.push(`Previous evaluator assessment: ${assessment.reason}`);
-  }
-  if (assessment.feedback) {
-    assessmentWarnings.push(`Evaluator feedback: ${assessment.feedback}`);
-  }
-  if (assessment.suggestions && assessment.suggestions.length > 0) {
-    assessmentWarnings.push(
-      `Evaluator suggestions: ${assessment.suggestions.join("; ")}`,
-    );
-  }
-  if (assessmentWarnings.length > 0) {
+  if (warnings.length) {
     ctx.cumulative_warnings.push({
       step_index: ctx.step_count,
       step_title: "Previous evaluator assessment",
-      warnings: assessmentWarnings,
+      warnings,
     });
   }
 }
@@ -237,14 +187,9 @@ export function normalizeDecision(
     }
   }
 
-  // Merge tool scoping: step provides defaults, dispatcher can override
   let workerConfig = raw.worker_config ?? null;
-  if (step.toolScoping && workerConfig && !workerConfig.tool_scoping) {
-    // Step has tool scoping but dispatcher didn't override — apply step's
+  if (step.toolScoping && !workerConfig?.tool_scoping) {
     workerConfig = { ...workerConfig, tool_scoping: step.toolScoping };
-  } else if (step.toolScoping && !workerConfig) {
-    // No worker config from dispatcher — create one with step's tool scoping
-    workerConfig = { tool_scoping: step.toolScoping };
   }
 
   return {
@@ -291,7 +236,7 @@ export function buildDispatcherInput(
   currentIndex: number,
   options: DispatcherInputContext,
 ): DispatcherInput {
-  const stepDescription = buildStepDescription(step, context);
+  const stepDescription = buildStepDescription(step);
 
   const input: DispatcherInput = {
     plan: buildPlanFromQueue(queue),

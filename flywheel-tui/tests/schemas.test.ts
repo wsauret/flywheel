@@ -212,7 +212,7 @@ describe("DispatcherInput type", () => {
       last_worker_result: null,
       config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
       session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
-      available_context: { conventions: [], standards: [], learnings: [] },
+      available_context: { conventions: [], standards: [] },
       step_context: createEmptyStepContext(),
     };
     expect(input.workflow_id).toBe("wf-test-001");
@@ -229,7 +229,7 @@ describe("DispatcherInput type", () => {
       last_worker_result: null,
       config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
       session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
-      available_context: { conventions: [], standards: [], learnings: [] },
+      available_context: { conventions: [], standards: [] },
       step_context: createEmptyStepContext(),
     };
     expect(input.last_worker_result).toBeNull();
@@ -761,7 +761,6 @@ describe("AvailableContextSchema", () => {
   const valid = {
     conventions: [entry],
     standards: [entry],
-    learnings: [entry],
   };
 
   it("round-trips valid data", () => {
@@ -773,7 +772,6 @@ describe("AvailableContextSchema", () => {
     const result = AvailableContextSchema.parse({
       conventions: [],
       standards: [],
-      learnings: [],
     });
     expect(result.conventions).toEqual([]);
   });
@@ -787,7 +785,6 @@ describe("AvailableContextSchema", () => {
     const result = AvailableContextSchema.safeParse({
       conventions: twentyOne,
       standards: [],
-      learnings: [],
     });
     expect(result.success).toBe(false);
   });
@@ -801,7 +798,6 @@ describe("AvailableContextSchema", () => {
     const result = AvailableContextSchema.safeParse({
       conventions: twenty,
       standards: [],
-      learnings: [],
     });
     expect(result.success).toBe(true);
   });

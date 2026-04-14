@@ -63,7 +63,7 @@ export function createShellState(deps: {
 
   const [pendingWorkCommand, setPendingWorkCommand] = createSignal<string | undefined>()
 
-  const storeEntry = createMemo((): SessionEntry | undefined => {
+  const storeEntry = createMemo(() => {
     const fgId = foregroundId()
     return fgId ? deps.sessionStore.get(fgId) : undefined
   })
@@ -72,22 +72,22 @@ export function createShellState(deps: {
   const metrics = useMetrics(storeEntry)
 
   const showThinking = deps.showThinking ?? true
-  const outputBlocks = createMemo((): readonly AnyBlock[] => {
+  const outputBlocks = createMemo(() => {
     const blocks = storeEntry()?.outputBlocks ?? []
     return showThinking ? blocks : blocks.filter((b) => b.kind !== "thinking")
   })
 
-  const steps = createMemo((): readonly StepState[] => {
+  const steps = createMemo(() => {
     const e = storeEntry()
     return e?.kind === "workflow" ? e.steps : []
   })
 
-  const agentState = createMemo((): AgentState => {
+  const agentState = createMemo(() => {
     const e = storeEntry()
-    return e && e.modelActivity !== "idle" ? "active" : "idle"
+    return e && e.modelActivity !== "idle" ? "active" as const : "idle" as const
   })
 
-  const sessionTitle = createMemo((): string =>
+  const sessionTitle = createMemo(() =>
     storeEntry()?.description ?? ""
   )
 

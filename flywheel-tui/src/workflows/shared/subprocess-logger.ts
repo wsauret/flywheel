@@ -3,21 +3,18 @@
  *
  * Logs all subprocess output (worker, dispatcher, evaluator) to
  * `.flywheel/subprocess-logs/<YYYY-MM-DD>/<role>-<invocationId>.jsonl`
+ * or under the session directory when sessionId is provided.
  *
  * Each line is a JSON object:
  *   {"ts":1711234567890,"stream":"stdout","data":"raw chunk text..."}
  *
- * Includes a static cleanup() method to prune date directories older than maxDays.
+ * Single consumer (invoke-pooled), but owns its own fd lifecycle (open/write/close)
+ * — a distinct responsibility from subprocess invocation orchestration.
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { SUBPROCESS_LOG_DIR, sessionDir } from "../../infra/paths.js";
-import { Log } from "../../infra/log.js";
-import { errorMessage } from "../../infra/error-message.js";
-
-const log = Log.create({ service: "subprocess-logger" });
-
 export type SubprocessRole = "worker" | "dispatcher" | "evaluator";
 
 interface SubprocessLoggerOptions {
@@ -71,50 +68,6 @@ export class SubprocessLogger {
     }
   }
 
-  /**
-   * Remove date directories older than maxDays.
-   *
-   * Scans `.flywheel/subprocess-logs/` for directories matching `YYYY-MM-DD`
-   * and removes those older than the threshold. Best-effort: errors are logged
-   * but do not propagate.
-   */
-  static cleanup(baseDir: string, maxDays = 7): void {
-    const logsRoot = path.resolve(baseDir, SUBPROCESS_LOG_DIR);
-    if (!fs.existsSync(logsRoot)) return;
-
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - maxDays);
-    cutoff.setHours(0, 0, 0, 0);
-
-    try {
-      const entries = fs.readdirSync(logsRoot, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        // Only process directories matching YYYY-MM-DD
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.name)) continue;
-
-        const dirDate = new Date(entry.name + "T00:00:00");
-        if (isNaN(dirDate.getTime())) continue;
-
-        if (dirDate < cutoff) {
-          const dirPath = path.join(logsRoot, entry.name);
-          try {
-            fs.rmSync(dirPath, { recursive: true, force: true });
-            log.info("pruned old subprocess log directory", { dir: entry.name });
-          } catch (err) {
-            log.warn("failed to prune subprocess log directory", {
-              dir: entry.name,
-              error: errorMessage(err),
-            });
-          }
-        }
-      }
-    } catch (err) {
-      log.warn("subprocess log cleanup failed", {
-        error: errorMessage(err),
-      });
-    }
-  }
 }
 
 /**

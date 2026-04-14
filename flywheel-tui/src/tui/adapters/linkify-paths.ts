@@ -25,7 +25,6 @@ function isFilePath(text: string): boolean {
   // Must look path-like: contain a slash or start with ./ or ../
   if (!trimmed.includes("/") && !trimmed.startsWith("./") && !trimmed.startsWith("../")) return false
 
-  // Extract extension
   const lastDot = trimmed.lastIndexOf(".")
   if (lastDot === -1 || lastDot === trimmed.length - 1) return false
   const ext = trimmed.slice(lastDot + 1).toLowerCase()

@@ -111,7 +111,6 @@ const DEFAULT_OPTIONS: Omit<StepDispatcherOptions, "transport"> = {
   availableContext: {
     conventions: [],
     standards: [],
-    learnings: [],
   },
   sessionObjective: "Build a REST API",
 };
@@ -218,7 +217,6 @@ describe("VAL-DISP-001: Dispatcher receives full per-step context", () => {
     const availableContext = {
       conventions: [{ name: "AGENTS.md", path: "/project/AGENTS.md", summary: "Agent instructions" }],
       standards: [{ name: "testing.md", path: "/project/docs/standards/testing.md", summary: "Testing patterns" }],
-      learnings: [],
     };
     const dispatcher = createStepDispatcher({ ...DEFAULT_OPTIONS, transport, availableContext });
 
@@ -534,7 +532,7 @@ describe("VAL-DISP-005: Dispatcher derives evaluation criteria from acceptance c
     const dispatcher = createStepDispatcher({ ...DEFAULT_OPTIONS, transport });
 
     const step = makeStep({
-      type: "plan",
+      type: "work",
       title: "Research codebase",
       evaluationCriteria: "Produces a .context.md with file references",
     });

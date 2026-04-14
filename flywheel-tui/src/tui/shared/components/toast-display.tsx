@@ -1,4 +1,5 @@
 /** @jsxImportSource @opentui/solid */
+// Single consumer (shell.tsx), but kept separate to avoid pushing shell.tsx past 400 lines.
 
 import { Show } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"

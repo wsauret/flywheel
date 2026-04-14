@@ -40,6 +40,10 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
   let disposed = false
   let flushIntervalId: ReturnType<typeof setInterval> | null = null
 
+  // Why manual change detection: StructuredOutputBuilder uses plain class
+  // fields, not reactive signals. The 16ms polling interval bridges the
+  // non-reactive builder to the reactive store. Making the builder reactive
+  // would eliminate this, but is a larger refactor across the output pipeline.
   let prevBlocks = builder.getBlocks()
   let prevActivity = builder.modelActivity
 

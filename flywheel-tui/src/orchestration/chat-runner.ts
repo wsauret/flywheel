@@ -65,6 +65,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   let disposed = false
   let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
+  // Why not derived from the manager: updateState reads from disk to
+  // deduplicate, so this local guard avoids redundant I/O on every
+  // onWaiting callback. Also prevents races if the session is deleted
+  // while a waiting transition is in flight.
   let lastWaiting: boolean | null = null
   let persistedClaudeSessionId: string | null = deps.claudeSessionId ?? null
 
@@ -109,9 +113,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     engine,
     model,
     spawner: deps.spawner ?? workflowDeps.spawner,
-    traceCollector: infra.traceCollector,
-    budgetTracker: infra.budgetTracker,
-    transcriptWriter: infra.transcriptWriter,
+    infra,
     eventBus,
     chatId,
     metricsWriter: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),

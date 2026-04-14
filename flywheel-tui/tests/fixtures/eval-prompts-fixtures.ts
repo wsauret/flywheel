@@ -106,7 +106,6 @@ export function buildSimpleScenario(): TestScenario {
     available_context: {
       conventions: [],
       standards: [],
-      learnings: [],
     },
     step_context: createEmptyStepContext(),
   };
@@ -195,9 +194,6 @@ export function buildComplexScenario(): TestScenario {
       standards: [
         { name: "Testing Standards", path: "docs/standards/testing.md", summary: "Testing patterns and conventions" },
         { name: "API Standards", path: "docs/standards/api.md", summary: "REST API design guidelines" },
-      ],
-      learnings: [
-        { name: "Zod validation patterns", path: "docs/solutions/zod-patterns.md", summary: "Effective Zod schema patterns discovered" },
       ],
     },
     step_context: createEmptyStepContext(),
@@ -309,7 +305,6 @@ export function buildEdgeScenario(): TestScenario {
     available_context: {
       conventions: [],
       standards: [],
-      learnings: [],
     },
     step_context: createEmptyStepContext(),
   };

@@ -57,11 +57,9 @@ export class BunProcessSpawner implements ProcessSpawner {
     validateSpawnArgs(command);
     const executable = resolveCommandExecutable(command);
 
-    // Filter environment variables
     const baseEnv = options?.env ?? (process.env as Record<string, string>);
     const filteredEnv = this.envFilter.filter(baseEnv);
 
-    // Determine stdin mode
     const usePipe = options?.stdinPipe === true;
     const stdinEncoded = !usePipe && options?.stdin !== undefined
       ? new TextEncoder().encode(options.stdin)

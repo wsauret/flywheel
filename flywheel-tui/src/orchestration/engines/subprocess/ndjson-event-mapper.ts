@@ -1,3 +1,5 @@
+// Single consumer (executor-factory), but kept separate for independent testability —
+// the mapping logic is a distinct concern from executor wiring.
 import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
 import type { EngineEvent } from "../stream-observers.js";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";

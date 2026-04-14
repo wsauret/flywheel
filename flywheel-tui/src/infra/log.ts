@@ -20,6 +20,8 @@
  */
 
 import path from "path"
+// node:fs used intentionally — Bun has no equivalent for createWriteStream (append streaming)
+// or synchronous directory operations (mkdirSync, readdirSync). See ADR-006 "Bun as Runtime."
 import { mkdirSync, readdirSync, unlinkSync, statSync, createWriteStream } from "node:fs"
 import { LOG_DIR } from "./paths.js"
 

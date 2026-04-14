@@ -10,7 +10,6 @@
  *
  * This patch adds the missing setWrapWidth call to onResize.
  *
- * Upstream fix: https://github.com/anomalyco/opentui/issues/XXX
  * Remove this patch once the upstream fix is released.
  */
 
@@ -29,6 +28,5 @@ const originalOnResize = (TextBufferRenderable.prototype as any).onResize
     this.textBufferView.setWrapWidth(width)
   }
 
-  // Call original onResize
   originalOnResize.call(this, width, height)
 }

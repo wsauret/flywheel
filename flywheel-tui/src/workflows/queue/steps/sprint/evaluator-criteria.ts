@@ -1,7 +1,7 @@
 // Sprint Evaluator Criteria — self-review-aligned evaluation for sprint mode.
 //
 // Evaluates work against the same 7-point checklist used by the self-review
-// injection (shared/self-review-checklist.ts). The evaluator
+// injection (orchestration/subprocess-callback.ts). The evaluator
 // should PASS work that meets these criteria and only FAIL for hard evidence
 // of broken functionality — not for style, minor omissions, or gold-plating.
 //

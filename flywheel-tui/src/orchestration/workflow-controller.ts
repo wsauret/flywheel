@@ -47,7 +47,7 @@ interface RunnerDoneResult extends BaseRunnerDoneResult {
 
 export interface WorkflowController {
   startWorkflow(command: string, description: string, chatContext?: string): StartWorkflowResult | { error: string }
-  startTestStep(stepId?: string): StartTestStepResult | { error: string } | { info: string } | null
+  startTestStep(stepId?: string): StartTestStepResult | { error: string } | { info: string }
   resumeWorkflow(sessionId: string): Promise<ResumeWorkflowResult | null>
   pause(foregroundId: string | undefined): boolean
   abort(foregroundId: string | undefined): void
@@ -101,7 +101,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     let wfDeps
     try {
       wfDeps = prepareWorkflowDeps()
-      const workflowName: WorkflowName = command === "sprint" ? "sprint" : command === "plan" ? "plan" : "work"
+      const workflowName: WorkflowName = command === "sprint" ? "sprint" : "work"
       queue = buildQueueFromTemplate(workflowName, wfDeps.config.queue?.max_steps)
     } catch (err) {
       return { error: `Config error: ${extractErrorMessage(err)}` }
@@ -125,7 +125,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
 
   function startTestStep(
     stepId?: string,
-  ): StartTestStepResult | { error: string } | { info: string } | null {
+  ): StartTestStepResult | { error: string } | { info: string } {
     if (!stepId) {
       const ids = TEST_STEPS.map((s) => s.id).join(", ")
       return { info: `Available test steps: ${ids}. Usage: /test <step-id>` }

@@ -25,7 +25,7 @@ export interface Step {
   /** Unique identifier (UUID). */
   readonly id: string;
   /** What kind of step this is. */
-  readonly type: "work" | "plan";
+  readonly type: "work";
   /** Human-readable title for display. */
   readonly title: string;
   /** Current lifecycle status. */

@@ -5,7 +5,7 @@ import { computeContextPercent } from "./session/budget-tracker-types.js"
 import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
-import type { ChatStoreHandle, SessionStore } from "./session-store-types.js"
+import type { ChatStoreHandle, SessionStore, ChatSessionEntry } from "./session-store-types.js"
 import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
@@ -137,7 +137,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       }
 
       return { sessionId, terminalTitle }
-    } catch (_err) {
+    } catch {
+      // Caller handles null return — no additional recovery needed
       startup = { phase: "idle" }
       return null
     }
@@ -157,24 +158,17 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   }
 
   async function resumeChat(sessionId: string): Promise<ResumeChatResult | null> {
-    const persistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-    const priorBlocks: AnyBlock[] = await persistence.load()
-    const persisted = readSession(sessionId, projectCwd)
-    const claudeSessionId = persisted?.kind === "chat" ? persisted.claudeSessionId : undefined
-    const description = persisted?.label || persisted?.name || undefined
-    const initialCost = persisted?.totalCost || persisted?.budgetUsage?.cost_usd || undefined
-    const initialTokens = persisted?.budgetUsage?.tokens_used || undefined
-    const startedAt = persisted?.createdAt ? new Date(persisted.createdAt).getTime() : undefined
-    const bu = persisted?.budgetUsage
-    const contextPercent = computeContextPercent(bu?.context_prompt_tokens ?? 0, bu?.context_window ?? 0) || undefined
+    const priorBlocks: AnyBlock[] = await createOutputPersistence({ sessionId, baseDir: projectCwd }).load()
+    const p = readSession(sessionId, projectCwd)
+    const bu = p?.budgetUsage
     const result = await launchChat(sessionId, {
       priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined,
-      claudeSessionId,
-      description,
-      initialCost,
-      initialTokens,
-      startedAt,
-      contextPercent,
+      claudeSessionId: p?.kind === "chat" ? p.claudeSessionId : undefined,
+      description: p?.label || p?.name || undefined,
+      initialCost: p?.totalCost || bu?.cost_usd || undefined,
+      initialTokens: bu?.tokens_used || undefined,
+      startedAt: p?.createdAt ? new Date(p.createdAt).getTime() : undefined,
+      contextPercent: computeContextPercent(bu?.context_prompt_tokens ?? 0, bu?.context_window ?? 0) || undefined,
     })
     if (!result) return null
     return { sessionId: result.sessionId, priorBlocks, terminalTitle: result.terminalTitle }
@@ -207,6 +201,26 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     sessionStore.abort(foregroundId)
   }
 
+  function autoResumeChat(sessionId: string, entry: ChatSessionEntry, text: string): void {
+    emptyChats.delete(sessionId)
+    const priorBlocks = entry.outputBlocks.length > 0
+      ? [...entry.outputBlocks] as AnyBlock[]
+      : undefined
+    startup = { phase: "starting", id: sessionId, pending: [text] }
+    launchChat(sessionId, {
+      priorBlocks,
+      claudeSessionId: entry.claudeSessionId,
+      description: entry.description,
+      initialCost: entry.cost || undefined,
+      initialTokens: entry.tokens || undefined,
+      startedAt: entry.startedAt || undefined,
+      contextPercent: entry.contextPercent || undefined,
+    }).catch((err) => {
+      log.error("chat auto-resume failed — message dropped", { error: extractErrorMessage(err) })
+      startup = { phase: "idle" }
+    })
+  }
+
   function sendMessage(foregroundId: string | undefined, text: string): boolean {
     if (startup.phase === "starting") {
       startup.pending.push(text)
@@ -220,37 +234,18 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       return true
     }
 
-    // Auto-resume: user sends a message into a viewed historical chat that has
-    // no runner. Buffer the text in startup.pending so it appears immediately.
     const entry = sessionStore.get(foregroundId)
     if (entry?.kind === "chat" && entry.ended) {
-      emptyChats.delete(foregroundId)
-      const priorBlocks = entry.outputBlocks.length > 0
-        ? [...entry.outputBlocks] as AnyBlock[]
-        : undefined
-      startup = { phase: "starting", id: foregroundId, pending: [text] }
-      launchChat(foregroundId, {
-        priorBlocks,
-        claudeSessionId: entry.claudeSessionId,
-        description: entry.description,
-        initialCost: entry.cost || undefined,
-        initialTokens: entry.tokens || undefined,
-        startedAt: entry.startedAt || undefined,
-        contextPercent: entry.contextPercent || undefined,
-      }).catch((err) => {
-        log.error("chat auto-resume failed — message dropped", { error: extractErrorMessage(err) })
-        startup = { phase: "idle" }
-      })
+      autoResumeChat(foregroundId, entry, text)
       return true
     }
 
-    const diagEntry = sessionStore.get(foregroundId)
     log.error("chat message dropped — no delivery path", {
       foregroundId,
-      hasEntry: !!diagEntry,
-      entryKind: diagEntry?.kind,
-      entryEnded: diagEntry?.ended,
-      hasRunner: !!diagEntry?.runner,
+      hasEntry: !!entry,
+      entryKind: entry?.kind,
+      entryEnded: entry?.ended,
+      hasRunner: !!entry?.runner,
       startupPhase: startup.phase,
     })
     return false

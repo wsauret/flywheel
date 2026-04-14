@@ -46,4 +46,7 @@ export function assertNever(event: never): never {
   throw new Error(`Unhandled event type: ${(event as FlywheelEvent).type}`);
 }
 
+// Not an event type — a domain state enum. Co-located here because both
+// infra/output (StructuredOutputBuilder) and orchestration (session-store-types)
+// import it, and placing it in either layer would create a wrong-direction import.
 export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing";

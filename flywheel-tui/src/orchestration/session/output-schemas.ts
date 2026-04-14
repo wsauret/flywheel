@@ -24,6 +24,8 @@ const AgentSnapshotSchema = AgentBlockSchema
     children: z.array(ToolSnapshotSchema),
   });
 
+// Exported for tests — direct schema validation catches shape regressions
+// that toSnapshot/fromSnapshot would silently swallow (they skip invalid items).
 export const OutputSnapshotSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
   ToolSnapshotSchema,

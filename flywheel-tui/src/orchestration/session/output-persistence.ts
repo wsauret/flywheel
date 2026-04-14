@@ -31,6 +31,7 @@ export interface OutputFlusher {
 }
 
 export interface OutputPersistence {
+  save(blocks: readonly AnyBlock[]): void;
   load(): Promise<OutputSnapshot[]>;
   createFlusher(getBlocks: () => readonly AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;
 }
@@ -102,9 +103,5 @@ export function createOutputPersistence(deps: OutputPersistenceDeps): OutputPers
     };
   }
 
-  return {
-    save,
-    load,
-    createFlusher,
-  };
+  return { save, load, createFlusher };
 }

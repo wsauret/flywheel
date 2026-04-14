@@ -13,8 +13,6 @@
  *   writer.dispose();           // cancel + cleanup
  */
 
-// Types
-
 interface DebouncedWriterOpts {
   /** Debounce interval in ms. Default: 5000. */
   intervalMs?: number;
@@ -28,8 +26,6 @@ export interface DebouncedWriter<T> {
   /** Cancel pending timer. Does NOT flush. */
   dispose(): void;
 }
-
-// Factory
 
 const DEFAULT_INTERVAL_MS = 5000;
 
@@ -58,7 +54,6 @@ export function createDebouncedWriter<T>(
       writing = false;
     }
 
-    // Process queued write if any
     if (hasQueued) {
       const nextData = queuedData as T;
       hasQueued = false;
@@ -66,7 +61,6 @@ export function createDebouncedWriter<T>(
       await doWrite(nextData);
     }
 
-    // Resolve any flush() waiters
     const resolvers = flushResolvers;
     flushResolvers = [];
     for (const resolve of resolvers) {

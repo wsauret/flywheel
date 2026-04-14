@@ -65,14 +65,8 @@ export function wireSessionSubscribers(
   infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">,
   metricsWriter?: MetricsWriter,
 ): Unsubscribe[] {
-  const unsubs: Unsubscribe[] = []
-
-  unsubs.push(
-    bus.subscribeToType("subprocess:spawned", () => {
-      infra.budgetTracker.onNewSubprocess()
-    }),
-  )
-  unsubs.push(
+  const unsubs: Unsubscribe[] = [
+    bus.subscribeToType("subprocess:spawned", () => infra.budgetTracker.onNewSubprocess()),
     bus.subscribeToType("subprocess:ndjson", (e) => {
       infra.budgetTracker.handleEvent(e.ndjsonEvent)
       const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
@@ -80,36 +74,26 @@ export function wireSessionSubscribers(
         infra.budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
       }
     }),
-  )
+  ]
 
   if (metricsWriter) {
-    unsubs.push(
-      bus.subscribeToType("budget:metrics-changed", (e) => {
-        metricsWriter({
-          tokens: e.tokens,
-          cost: e.cost,
-          contextPercent: infra.budgetTracker.getContextUtilization().percent,
-        })
-      }),
-    )
+    unsubs.push(bus.subscribeToType("budget:metrics-changed", (e) => {
+      metricsWriter({
+        tokens: e.tokens,
+        cost: e.cost,
+        contextPercent: infra.budgetTracker.getContextUtilization().percent,
+      })
+    }))
   }
 
   if (infra.transcriptWriter) {
     const tw = infra.transcriptWriter
-    unsubs.push(
-      bus.subscribeToType("subprocess:ndjson", (e) => {
-        tw.handleEvent(e.ndjsonEvent)
-      }),
-    )
+    unsubs.push(bus.subscribeToType("subprocess:ndjson", (e) => tw.handleEvent(e.ndjsonEvent)))
   }
 
   if (infra.traceCollector) {
     const traceHandler = createTraceEventHandler({ emit, workflowId })
-    unsubs.push(
-      bus.subscribeToType("subprocess:ndjson", (e) => {
-        traceHandler.handleEvent(e.ndjsonEvent)
-      }),
-    )
+    unsubs.push(bus.subscribeToType("subprocess:ndjson", (e) => traceHandler.handleEvent(e.ndjsonEvent)))
     unsubs.push(...infra.traceCollector.subscribeToEvents(bus))
   }
 

@@ -20,33 +20,14 @@ import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "step-executor" });
 
-function buildRevisionPrompt(
-  originalPrompt: string,
-  evalResult: EvalResult,
-): string {
-  const sections: string[] = [originalPrompt, "", "## Revision Required", ""];
-
-  if (evalResult.reason) {
-    sections.push("### Evaluator Reasoning");
-    sections.push(evalResult.reason);
-    sections.push("");
+function buildRevisionPrompt(originalPrompt: string, evalResult: EvalResult): string {
+  const parts = [originalPrompt, "\n## Revision Required"]
+  if (evalResult.reason) parts.push(`\n### Evaluator Reasoning\n${evalResult.reason}`)
+  if (evalResult.feedback) parts.push(`\n### Feedback\n${evalResult.feedback}`)
+  if (evalResult.suggestions.length) {
+    parts.push(`\n### Suggestions\n${evalResult.suggestions.map(s => `- ${s}`).join("\n")}`)
   }
-
-  if (evalResult.feedback) {
-    sections.push("### Feedback");
-    sections.push(evalResult.feedback);
-    sections.push("");
-  }
-
-  if (evalResult.suggestions.length > 0) {
-    sections.push("### Suggestions");
-    for (const suggestion of evalResult.suggestions) {
-      sections.push(`- ${suggestion}`);
-    }
-    sections.push("");
-  }
-
-  return sections.join("\n").trimEnd();
+  return parts.join("\n")
 }
 
 interface RevisionLoopDeps {

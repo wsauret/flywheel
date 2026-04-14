@@ -11,17 +11,15 @@
  */
 
 import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "solid-js"
-import { createTextAttributes } from "@opentui/core"
+import { createTextAttributes, RGBA } from "@opentui/core"
+import { useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSession } from "@tui/shared/context/session"
-import { ModalBase } from "@tui/shared/components/modal/modal-base"
 import { isResumable } from "../orchestration/session/types.js"
 import { truncate } from "./utils/text.js"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
 import { buildSessionList, type GroupKey } from "./hooks/use-session-modal.js"
 import type { SessionSummary } from "../orchestration/session/manager.js"
-
-// Props
 
 interface SessionModalProps {
   activeSessionId?: string
@@ -44,8 +42,6 @@ const GROUP_ICONS: Record<GroupKey, string> = {
   paused: "\u2759",
   completed: "\u2713",
 }
-
-// Component
 
 export function SessionModal(props: SessionModalProps) {
   const { theme } = useTheme()
@@ -99,8 +95,38 @@ export function SessionModal(props: SessionModalProps) {
     return `\u2191\u2193 Navigate  ${actions.join("  ")}  [Esc] Close`
   })
 
+  const dimensions = useTerminalDimensions()
+  const termWidth = () => dimensions()?.width ?? 80
+  const termHeight = () => {
+    const h = dimensions()?.height ?? 24
+    return isFinite(h) && h > 0 ? h : 24
+  }
+  const modalWidth = () => Math.min(72, termWidth() - 4)
+
   return (
-    <ModalBase maxWidth={72}>
+    <box
+      position="absolute"
+      left={0}
+      top={0}
+      width={termWidth()}
+      height={termHeight()}
+      backgroundColor={RGBA.fromInts(0, 0, 0, 144)}
+      alignItems="center"
+      justifyContent="center"
+      zIndex={2000}
+    >
+      <box
+        flexDirection="column"
+        backgroundColor={theme.background}
+        borderColor={theme.primary}
+        border={["top", "bottom", "left", "right"]}
+        borderStyle="rounded"
+        paddingLeft={2}
+        paddingRight={2}
+        paddingTop={1}
+        paddingBottom={1}
+        width={modalWidth()}
+      >
       <box flexDirection="row" justifyContent="space-between">
         <text fg={theme.primary} attributes={1}>Sessions</text>
         <box onMouseDown={props.onClose}>
@@ -190,6 +216,7 @@ export function SessionModal(props: SessionModalProps) {
       <box paddingTop={1} flexDirection="row" justifyContent="center">
         <text fg={theme.textMuted}>{footerText()}</text>
       </box>
-    </ModalBase>
+      </box>
+    </box>
   )
 }

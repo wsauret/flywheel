@@ -88,7 +88,7 @@ describe("VAL-QUEUE-019: save writes to correct file path", () => {
     const sessionId = "test-session-json";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan it", status: "completed" });
+    const step1 = makeStep({ id: "s1", type: "work", title: "Plan it", status: "completed" });
     const step2 = makeStep({ id: "s2", type: "work", title: "Work it", status: "pending" });
     const queue = makeQueue({
       steps: [step1, step2],
@@ -388,7 +388,7 @@ describe("VAL-QUEUE-023: crash recovery reverts running steps to pending", () =>
     const sessionId = "test-crash-recovery";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan", status: "completed" });
+    const step1 = makeStep({ id: "s1", type: "work", title: "Plan", status: "completed" });
     const step2 = makeStep({ id: "s2", type: "work", title: "Work", status: "running" });
     const step3 = makeStep({ id: "s3", type: "review", title: "Review", status: "pending" });
 
@@ -627,7 +627,7 @@ describe("VAL-EXEC-014: Crash recovery reverts running steps to pending with cra
     const sessionId = "test-crash-reason";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan", status: "completed" });
+    const step1 = makeStep({ id: "s1", type: "work", title: "Plan", status: "completed" });
     const step2 = makeStep({ id: "s2", type: "work", title: "Work", status: "running" });
     const step3 = makeStep({ id: "s3", type: "review", title: "Review", status: "pending" });
 
@@ -686,8 +686,8 @@ describe("VAL-CROSS-007: Queue state survives session resume", () => {
     const sessionId = "test-resume-completed";
     const persistence = createQueuePersistence({ sessionId, baseDir: tmpDir });
 
-    const step1 = makeStep({ id: "s1", type: "plan", title: "Plan research", status: "completed" });
-    const step2 = makeStep({ id: "s2", type: "plan", title: "Plan draft", status: "completed" });
+    const step1 = makeStep({ id: "s1", type: "work", title: "Plan research", status: "completed" });
+    const step2 = makeStep({ id: "s2", type: "work", title: "Plan draft", status: "completed" });
     const step3 = makeStep({ id: "s3", type: "work", title: "Implement feature", status: "pending" });
 
     const queue = makeQueue({ steps: [step1, step2, step3], cursor: 2, status: "paused" });

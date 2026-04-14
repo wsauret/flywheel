@@ -18,7 +18,7 @@ const baseFields = {
 const WorkflowSessionSchema = z.object({
   ...baseFields,
   kind: z.literal("workflow"),
-  command: z.enum(["work"]),
+  command: z.literal("work"),
   planPath: z.string(),
 }).strict();
 

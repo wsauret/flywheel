@@ -25,7 +25,7 @@ describe("eval-prompts: fixture assembly", () => {
     expect(scenario.dispatcherInput.state.current_step_index).toBe(0);
     expect(scenario.dispatcherInput.available_context.conventions).toEqual([]);
     expect(scenario.dispatcherInput.available_context.standards).toEqual([]);
-    expect(scenario.dispatcherInput.available_context.learnings).toEqual([]);
+    expect(scenario.dispatcherInput.available_context.chatHistory).toBeUndefined();
     expect(scenario.dispatcherInput.last_worker_result).toBeNull();
     // No budget constraints
     expect(scenario.dispatcherInput.session_budget.invocations_remaining).toBeNull();
@@ -44,7 +44,7 @@ describe("eval-prompts: fixture assembly", () => {
     // Has context entries
     expect(scenario.dispatcherInput.available_context.conventions.length).toBeGreaterThan(0);
     expect(scenario.dispatcherInput.available_context.standards.length).toBeGreaterThan(0);
-    expect(scenario.dispatcherInput.available_context.learnings.length).toBeGreaterThan(0);
+    expect(scenario.dispatcherInput.available_context.standards.length).toBeGreaterThan(0);
     // Has last_worker_result
     expect(scenario.dispatcherInput.last_worker_result).not.toBeNull();
     // Has budget constraints

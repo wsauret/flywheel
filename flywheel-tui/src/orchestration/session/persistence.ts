@@ -124,34 +124,12 @@ export function listSessions(baseDir: string): SessionListResult {
   return { sessions, errors };
 }
 
-interface DeleteResult {
-  deleted: string[];
-  errors: string[];
-}
-
 export function deleteSessionWithCompanions(
   id: string,
   baseDir: string,
-  activeSessionId?: string | null,
-): DeleteResult {
-  const result: DeleteResult = { deleted: [], errors: [] };
-
-  if (activeSessionId && id === activeSessionId) {
-    result.errors.push("Cannot delete the currently active session");
-    return result;
-  }
-
+): void {
   const dirPath = resolveSessionDir(id, baseDir);
-
-  try {
-    if (fs.existsSync(dirPath)) {
-      fs.rmSync(dirPath, { recursive: true, force: true });
-      result.deleted.push(dirPath);
-    }
-  } catch (err: unknown) {
-    const message = errorMessage(err);
-    result.errors.push(`${dirPath}: ${message}`);
+  if (fs.existsSync(dirPath)) {
+    fs.rmSync(dirPath, { recursive: true, force: true });
   }
-
-  return result;
 }

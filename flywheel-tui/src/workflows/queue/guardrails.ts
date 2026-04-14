@@ -31,9 +31,9 @@ import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "guardrails" });
 
-// Types
-
-/** Configuration for guardrails. All limits are configurable. */
+/** Configuration for guardrails. All limits are configurable.
+ *  Exported as the parameter type of createGuardrails — makes the DI
+ *  interface explicit for test harnesses that construct custom configs. */
 export interface GuardrailOptions {
   /** Maximum number of steps allowed in the queue. Default: 50. */
   maxQueueLength?: number;
@@ -77,8 +77,6 @@ interface MutationApplicationResult {
   readonly reason?: string;
 }
 
-// Guardrails interface
-
 export interface Guardrails {
   /** Get the remaining mutation budget for a step. */
   getMutationBudget(stepId: string, currentQueueLength: number): MutationBudget;
@@ -94,8 +92,6 @@ export interface Guardrails {
   ): MutationApplicationResult[];
 }
 
-// Defaults
-
 const DEFAULT_MAX_QUEUE_LENGTH = 50;
 const DEFAULT_MAX_MUTATIONS_PER_STEP = 3;
 const DEFAULT_MAX_INSERTED_STEPS_PER_SESSION = 20;
@@ -110,8 +106,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
   /** Total session inserts (excluding initial template steps). */
   let sessionInsertCount = 0;
 
-  // Guardrail 1: Max queue length
-
   function checkInsert(queue: Queue, count: number) {
     if (queue.steps.length + count > maxQueueLength) {
       return {
@@ -121,8 +115,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     }
     return { allowed: true };
   }
-
-  // Guardrail 2: Max mutations per step completion
 
   function checkMutationBudget(stepId: string) {
     const used = stepMutationCounts.get(stepId) ?? 0;
@@ -140,8 +132,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     stepMutationCounts.set(stepId, current + 1);
   }
 
-  // Guardrail 3: Max inserted steps per session
-
   function checkSessionInsertBudget(count: number) {
     if (sessionInsertCount + count > maxInsertedPerSession) {
       return {
@@ -151,8 +141,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     }
     return { allowed: true };
   }
-
-  // Guardrail 4 & 5: Budget visibility and objective anchoring
 
   function getMutationBudget(stepId: string, currentQueueLength: number): MutationBudget {
     const mutationsUsed = stepMutationCounts.get(stepId) ?? 0;
@@ -226,10 +214,8 @@ export function createGuardrails(options: GuardrailOptions = {}) {
         return { applied: true };
       }
 
-      default: {
-        const _exhaustive: never = mutation.type;
-        return { applied: false, reason: `Unknown mutation type: ${_exhaustive}` };
-      }
+      default:
+        return { applied: false, reason: `Unknown mutation type: ${(mutation as { type: string }).type}` };
     }
   }
 

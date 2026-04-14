@@ -15,11 +15,6 @@ function writeOsc52(text: string): void {
 }
 
 export namespace Clipboard {
-  export interface Content {
-    data: string
-    mime: string
-  }
-
   let copyMethod: ((text: string) => Promise<void>) | undefined
   const getCopyMethod = () => {
     if (copyMethod) return copyMethod

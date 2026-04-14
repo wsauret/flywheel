@@ -2,15 +2,15 @@ import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
 import { getEngine } from "./engines/core/registry.js"
 import { createOutputSession, type OutputSession } from "./output-session.js"
 import type { BudgetTracker } from "./session/budget-tracker-types.js"
-import { wireSessionSubscribers } from "./session/create-session-infra.js"
-import type { TraceCollector } from "./session/trace-collector.js"
-import type { TranscriptWriter } from "./session/transcript-writer.js"
+import { wireSessionSubscribers, type SessionInfra } from "./session/create-session-infra.js"
 import { createChatControls } from "./chat-controls.js"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
 import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner.js"
 import type { SessionEntryBase } from "./session-store-types.js"
 import type { NDJSONEvent } from "../infra/subprocess-types.js"
 import type { MetricsWriter } from "./session/create-session-infra.js"
+
+type ChatInfra = Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -32,6 +32,16 @@ export interface ChatSession {
 
 type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 
+// Why a class with private fields: the getters enforce read-only access from
+// external code (chat-controls, worker lifecycle) while the named mutation
+// methods (beginTurn, markEnded) provide semantic state transitions without
+// exposing raw field assignments. Not a ref-bag — it's a state machine.
+//
+// Why _ended and _claudeSessionId overlap with the store: these are
+// subprocess-level guards used synchronously in chat-controls (send, interrupt,
+// end) without awaiting a store read. The store's versions are the persistent
+// source of truth; these are in-process guards that prevent operations on a
+// subprocess that's already shutting down or needs to reconnect.
 export class ChatSessionState {
   private _stdinHandle: StdinHandle | null = null
   private _workerPid: number | undefined
@@ -70,9 +80,7 @@ export interface ChatSessionDeps {
   engine: ReturnType<typeof getEngine>
   model: string
   spawner: ProcessSpawner
-  traceCollector: TraceCollector | null
-  budgetTracker: BudgetTracker
-  transcriptWriter: TranscriptWriter | null
+  infra: ChatInfra
   eventBus: EventBus
   chatId: string
   updateEntry: (patch: Partial<SessionEntryBase>) => void
@@ -150,7 +158,8 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
       onFlush?.()
     },
   })
-
+  // Why not `return createOutputSession(...)`: the onFlush callback references
+  // `session` to push a context warning — the variable must be in scope.
   return session
 }
 
@@ -231,18 +240,18 @@ export async function createChatSession(
   initialMessage?: string,
 ): Promise<ChatSession> {
   const {
-    projectCwd, engine, model, spawner, traceCollector,
-    budgetTracker, transcriptWriter, eventBus, chatId, updateEntry: rawUpdateEntry,
+    projectCwd, engine, model, spawner, infra,
+    eventBus, chatId, updateEntry: rawUpdateEntry,
   } = deps
   const emit = createEmit(eventBus)
 
   const state = new ChatSessionState(deps.claudeSessionId)
 
   const eventUnsubs: Unsubscribe[] = []
-  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, { budgetTracker, transcriptWriter, traceCollector }, deps.metricsWriter))
+  eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, infra, deps.metricsWriter))
 
   const session = setupOutputSession({
-    budgetTracker, emit, chatId, state,
+    budgetTracker: infra.budgetTracker, emit, chatId, state,
     updateEntry: rawUpdateEntry,
     onFlush: deps.onFlush,
   })
@@ -269,10 +278,10 @@ export async function createChatSession(
     lifecycle, session, callbacks, eventUnsubs, state,
   })
 
-  const hasInitialMessage = initialMessage != null && initialMessage.trim().length > 0
-  if (hasInitialMessage) callbacks.onWaiting(true)
+  const msg = initialMessage?.trim() || undefined
+  if (msg) callbacks.onWaiting(true)
 
-  await lifecycle.spawnWorker(state.claudeSessionId ?? undefined, hasInitialMessage ? initialMessage : undefined)
+  await lifecycle.spawnWorker(state.claudeSessionId ?? undefined, msg)
 
-  return { send: controls.send, interrupt: controls.interrupt, end: controls.end, budgetTracker, outputSession: session }
+  return { send: controls.send, interrupt: controls.interrupt, end: controls.end, budgetTracker: infra.budgetTracker, outputSession: session }
 }

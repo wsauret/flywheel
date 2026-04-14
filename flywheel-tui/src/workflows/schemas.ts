@@ -75,7 +75,6 @@ export type ContextEntry = z.infer<typeof ContextEntrySchema>;
 export const AvailableContextSchema = z.object({
   conventions: z.array(ContextEntrySchema).max(20),
   standards: z.array(ContextEntrySchema).max(20),
-  learnings: z.array(ContextEntrySchema).max(20),
   /** Recent chat conversation that preceded this workflow launch. */
   chatHistory: z.string().optional(),
 }).strip();

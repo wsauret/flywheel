@@ -16,8 +16,6 @@ import type {
 } from "./session-store-types.js"
 
 export function createSessionStore(factories: WorkflowSessionFactories): SessionStore {
-  // Create a SolidJS reactive root that owns all effects/memos in this store.
-  // disposeRoot() tears down the reactive graph on shutdown.
   // Definite assignment (!) is safe: createRoot's callback runs synchronously.
   let disposeRoot!: () => void
   let entries!: Record<string, SessionEntry>
@@ -29,7 +27,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     setEntries = setter
   })
 
-  function updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>): void {
+  function updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>) {
     if (!entries[sessionId]) return
     setEntries(sessionId, patch)
   }
@@ -48,18 +46,18 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   }): string {
     const { sessionId, queue, description, priorBlocks } = opts
 
-    const overrides = (opts.subprocessCwd || opts.workflowDeps || opts.chatContext)
-      ? { subprocessCwd: opts.subprocessCwd, workflowDeps: opts.workflowDeps, chatContext: opts.chatContext }
-      : undefined
-
     const runner = createWorkflowRunner({
       sessionId,
       queue,
       description,
-      updateEntry: (id, patch) => updateEntry(id, patch),
+      updateEntry,
       factories,
       priorBlocks,
-      overrides,
+      overrides: {
+        subprocessCwd: opts.subprocessCwd,
+        workflowDeps: opts.workflowDeps,
+        chatContext: opts.chatContext,
+      },
     })
 
     const entry: WorkflowSessionEntry = {
@@ -78,7 +76,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
 
     setEntries(sessionId, entry)
 
-    // Run in background — do NOT await
+    // Fire-and-forget: lifecycle callbacks handle completion
     runner.run().then(
       async (result) => {
         opts.onRunnerDone?.(sessionId, result)

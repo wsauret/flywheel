@@ -68,13 +68,9 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     session.dispose()
     // Resource disposal (budget flush, trace finalize, transcript close) is
     // handled by chat-runner's disposeSessionResources() — not duplicated here.
-    if (state.stdinHandle?.isOpen) {
-      state.stdinHandle.close()
-      state.detachWorker()
-    } else {
-      state.detachWorker()
-      callbacks.onEnded()
-    }
+    if (state.stdinHandle?.isOpen) state.stdinHandle.close()
+    else callbacks.onEnded()
+    state.detachWorker()
   }
 
   function send(text: string) {

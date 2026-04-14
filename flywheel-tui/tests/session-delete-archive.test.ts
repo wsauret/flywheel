@@ -3,10 +3,9 @@
  *
  * Exercises:
  * 1. Delete session -> session files removed from disk, session disappears from list
- * 2. Cannot delete a session matching the activeSessionId guard (persistence level)
- * 3. Manager.delete() removes files, clears cache, cleans up worktree
- * 4. Direct delete: manager.delete() + refreshList()
- * 5. Multiple sessions — delete one, others stay
+ * 2. Manager.delete() removes files, clears cache, cleans up worktree
+ * 3. Direct delete: manager.delete() + refreshList()
+ * 4. Multiple sessions — delete one, others stay
  */
 
 import { describe, it, expect, afterEach } from "bun:test";
@@ -101,24 +100,7 @@ describe("session deletion", () => {
     expect(listAfter.sessions.find((s) => s.id === sessionId)).toBeUndefined();
   });
 
-  it("cannot delete session matching activeSessionId guard (persistence level)", () => {
-    const baseDir = makeTmpDir();
-    const manager = createSessionManager(makeDeps(baseDir));
-
-    const sessionId = manager.create("plan", "Active Session", "work");
-
-    // Pass the same sessionId as the activeSessionId — deletion should be refused at persistence level
-    const result = deleteSessionWithCompanions(sessionId, baseDir, sessionId);
-
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain("Cannot delete the currently active session");
-    expect(result.deleted).toHaveLength(0);
-
-    // Session should still exist
-    expect(readSession(sessionId, baseDir)).not.toBeNull();
-  });
-
-  it("allows deletion when activeSessionId is a different session", () => {
+  it("allows deletion of any session (active-session guard lives in TUI)", () => {
     const baseDir = makeTmpDir();
     const manager = createSessionManager(makeDeps(baseDir));
 

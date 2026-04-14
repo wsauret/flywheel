@@ -34,7 +34,7 @@ function baseDispatcherInput(overrides?: Partial<DispatcherInput>): DispatcherIn
     last_worker_result: null,
     config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
     session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
-    available_context: { conventions: [], standards: [], learnings: [] },
+    available_context: { conventions: [], standards: [] },
     ...overrides,
   };
 }

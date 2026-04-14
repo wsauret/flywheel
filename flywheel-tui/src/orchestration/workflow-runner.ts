@@ -72,9 +72,15 @@ export function createWorkflowRunner(opts: {
   const projectCwd = opts.overrides?.projectCwd ?? process.cwd()
   const subprocessCwd = opts.overrides?.subprocessCwd
 
+  // Why fallback: the controller always injects workflowDeps, but the runner
+  // self-resolves as a safety net (fresh config read from disk per session).
   const deps = opts.overrides?.workflowDeps ?? prepareWorkflowDeps()
 
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
+  // Why a local copy instead of reading from the store: the flusher's
+  // getBlocks callback fires on a schedule, and coupling it to the reactive
+  // store proxy would require a reactive scope. The local variable is always
+  // written in the same code path that writes the store, so they stay in sync.
   let currentBlocks: readonly AnyBlock[] = []
   const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
@@ -149,7 +155,7 @@ export function createWorkflowRunner(opts: {
 
   async function run(): Promise<WorkflowResult> {
     const created = await createExecutor({
-      deps, emit, eventBus, workflowId, sessionId, queue, description,
+      deps, eventBus, workflowId, sessionId, queue, description,
       projectCwd, subprocessCwd, infra, injectionQueue,
       chatContext: opts.overrides?.chatContext,
       metricsWriter: (patch) => updateEntry(sessionId, patch),
@@ -177,12 +183,9 @@ export function createWorkflowRunner(opts: {
 
     budgetTracker.flush()
     return {
-      completed: result.completed,
-      stepsCompleted: result.stepsCompleted,
-      stepsTotal: result.stepsTotal,
+      ...result,
       cost: budgetTracker.getTotalCost(),
       tokens: budgetTracker.getTokensUsed(),
-      reason: result.reason,
     }
   }
 
@@ -217,9 +220,6 @@ export function createWorkflowRunner(opts: {
       evaluatorPool?.shutdown(),
       subprocessPool?.shutdown(),
     ])
-    dispatcherPool = null
-    evaluatorPool = null
-    subprocessPool = null
 
     // Pass null traceCollector if already finalized in run() to skip double-finalize.
     // For the abort path, pass the collector so open spans close with "error" status.

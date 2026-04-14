@@ -38,7 +38,7 @@ function makeQueue(steps: Step[], opts?: { maxSteps?: number }): Queue {
 describe("createQueue", () => {
   test("creates queue with all steps pending and cursor at 0", () => {
     const steps = [
-      makeStep({ type: "plan", title: "Plan" }),
+      makeStep({ type: "work", title: "Plan" }),
       makeStep({ type: "work", title: "Work" }),
       makeStep({ type: "review", title: "Review" }),
     ];

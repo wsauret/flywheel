@@ -1,8 +1,8 @@
 import type { ZodSchema, ZodError, ZodIssue } from "zod";
 import { errorMessage } from "../../../infra/error-message.js";
 
-// Error classes
-
+// Exported for tests — callers need instanceof to distinguish missing,
+// invalid, and timeout failure modes.
 export class HandoffMissingError extends Error {
   readonly name = "HandoffMissingError";
   constructor(readonly path: string) {
@@ -29,8 +29,6 @@ export class HandoffReadTimeoutError extends Error {
     super(`Handoff file read timed out after ${timeoutMs}ms: ${path}`);
   }
 }
-
-// Options
 
 interface ReadHandoffOptions {
   /** Timeout in milliseconds (default: 5000) */

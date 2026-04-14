@@ -19,6 +19,9 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)
   const liveActivity = createMemo((): "idle" | "thinking" | "generating" | "tool_executing" => entry()?.modelActivity ?? "idle")
 
+  // Why effect + setInterval, not a memo: elapsed time is wall-clock-driven,
+  // not derivable from reactive state. The effect starts/stops the timer based
+  // on liveActivity; the mutable accumulators track time across pause/resume cycles.
   const [elapsed, setElapsed] = createSignal(0)
 
   let elapsedTimer: ReturnType<typeof setInterval> | null = null

@@ -69,16 +69,14 @@ describe("ContextIndexer", () => {
   // -------------------------------------------------------------------------
 
   describe("getRelevantContext", () => {
-    it("returns AvailableContext shape (conventions, standards, learnings arrays)", async () => {
+    it("returns AvailableContext shape (conventions, standards arrays)", async () => {
       const indexer = new ContextIndexer(projectCwd);
       await indexer.startIndexing();
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx).toHaveProperty("conventions");
       expect(ctx).toHaveProperty("standards");
-      expect(ctx).toHaveProperty("learnings");
       expect(Array.isArray(ctx.conventions)).toBe(true);
       expect(Array.isArray(ctx.standards)).toBe(true);
-      expect(Array.isArray(ctx.learnings)).toBe(true);
   
     });
 
@@ -96,8 +94,7 @@ describe("ContextIndexer", () => {
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.conventions).toEqual([]);
       expect(ctx.standards).toEqual([]);
-      expect(ctx.learnings).toEqual([]);
-  
+
     });
 
     it("ContextQuery.stepType accepts StepType values", async () => {
@@ -293,8 +290,7 @@ describe("ContextIndexer", () => {
       const ctx = indexer.getRelevantContext(defaultQuery);
       expect(ctx.conventions).toEqual([]);
       expect(ctx.standards).toEqual([]);
-      expect(ctx.learnings).toEqual([]);
-  
+
     });
   });
 

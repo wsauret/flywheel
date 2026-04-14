@@ -44,13 +44,12 @@ export class ContextIndexer {
 
   getRelevantContext(): AvailableContext {
     if (!this.ready) {
-      return { conventions: [], standards: [], learnings: [] };
+      return { conventions: [], standards: [] };
     }
 
     return {
       conventions: this.conventions.slice(0, MAX_ENTRIES_PER_CATEGORY),
       standards: this.standards.slice(0, MAX_ENTRIES_PER_CATEGORY),
-      learnings: [],
     };
   }
 
@@ -117,7 +116,7 @@ export class ContextIndexer {
 
         const summary = typeof frontmatter.summary === "string" && frontmatter.summary
           ? frontmatter.summary.slice(0, 100)
-          : firstContentLine(body).slice(0, 100);
+          : extractFirstContentLine(body).slice(0, 100);
 
         entries.push({
           name,
@@ -135,14 +134,14 @@ export class ContextIndexer {
   private async firstContentLine(absPath: string): Promise<string> {
     try {
       const raw = await readFile(absPath, "utf-8");
-      return firstContentLine(raw).slice(0, 100);
+      return extractFirstContentLine(raw).slice(0, 100);
     } catch {
       return "";
     }
   }
 }
 
-function firstContentLine(body: string): string {
+function extractFirstContentLine(body: string): string {
   for (const line of body.split("\n")) {
     const trimmed = line.trim();
     if (trimmed && !trimmed.startsWith("#")) return trimmed;

@@ -1,7 +1,5 @@
 import { errorMessage } from "../../infra/error-message.js";
 
-// Types
-
 export interface DeclaredCommand {
   command: string;
   reportedExitCode?: number;
@@ -18,8 +16,6 @@ interface NativeVerificationResult {
   checks: NativeCheckResult[];
   discrepancies: NativeCheckResult[];
 }
-
-// Deny-list
 
 /** Single-word commands that are always denied. */
 const DENIED_FIRST_TOKEN = new Set([
@@ -125,7 +121,6 @@ async function spawnWithTimeout(
     abortSignal.addEventListener("abort", onAbort, { once: true });
   }
 
-  // Read output
   const [stdout, stderr] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
@@ -213,8 +208,6 @@ async function runSingleCommand(
     };
   }
 }
-
-// Main entry point
 
 export async function runNativeVerification(opts: {
   projectCwd: string;

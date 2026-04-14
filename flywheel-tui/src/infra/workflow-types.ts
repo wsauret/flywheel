@@ -71,6 +71,8 @@ export const EvaluatorIssueSchema = z.object({
   category: EvaluatorIssueCategoryEnum,
 }).strict()
 
+export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>
+
 export const EvaluatorResultSchema = z.object({
   passed: z.boolean(),
   reasoning: z.string(),

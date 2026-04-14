@@ -31,16 +31,13 @@ export async function loadResumeData(
 ): Promise<ResumeData | null> {
   const projectCwd = baseDir
 
-  // 1. Read session from disk
   const session = readSession(sessionId, projectCwd)
   if (!session) return null
 
-  // 2. Load and validate output snapshots
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
   const rawSnapshots = await outputPersistence.load()
   const outputBlocks = fromSnapshot(rawSnapshots) as AnyBlock[]
 
-  // 3. Load queue state (required for resume)
   let queue: Queue | null = null
   try {
     const queuePersistence = createQueuePersistence({ sessionId, baseDir: projectCwd })

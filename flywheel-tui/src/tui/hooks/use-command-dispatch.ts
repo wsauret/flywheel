@@ -100,17 +100,17 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|sprint|plan)\s+"([^"]+)"$/i,
+    pattern: /^\/(work|sprint)\s+"([^"]+)"$/i,
     execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|sprint|plan)\s+(.+)$/i,
+    pattern: /^\/(work|sprint)\s+(.+)$/i,
     execute(match) { deps.startWorkflow(match[1], match[2], getChatContext()); return true },
   })
 
   commandRegistry.register({
-    pattern: /^\/(work|sprint|plan)$/i,
+    pattern: /^\/(work|sprint)$/i,
     execute(match) {
       deps.signals.setPendingWorkCommand(match[1])
       return true

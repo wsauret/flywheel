@@ -15,8 +15,6 @@ import {
 } from "../shared/native-verification.js";
 import { parseRawHandoff } from "./shared/handoff-parse.js";
 
-// Config
-
 interface PostTurnVerificationConfig {
   /** Run git diff --stat to verify the worker made changes. */
   checkGitDiff: boolean;
@@ -28,6 +26,8 @@ interface PostTurnVerificationConfig {
 
 const CODE_STEP_TYPES = new Set(["work"]);
 
+// Exported for unit tests — parsing handoff data has edge cases that warrant
+// direct testing without spinning up native verification subprocesses.
 export function extractDeclaredCommands(
   handoffData: Record<string, unknown> | null,
 ): DeclaredCommand[] {

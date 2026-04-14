@@ -1,0 +1,293 @@
+// Build a distributable tarball: compiled binary + assets + agent files.
+//
+// Usage:
+//   bun run scripts/build-binary.ts                     # current platform
+//   bun run scripts/build-binary.ts --target=bun-linux-x64  # cross-compile
+//
+// Output: dist/flywheel-<platform>-<arch>.tar.gz
+
+import { $ } from "bun";
+import { mkdir, readdir, copyFile, readFile, stat } from "fs/promises";
+import { join, basename } from "path";
+import solidPlugin from "@opentui/solid/bun-plugin";
+
+const ROOT = join(import.meta.dir, "..");
+const DIST = join(ROOT, "dist");
+const AGENTS_SRC = join(ROOT, "src", "workflows", "agents");
+
+// Parse --target flag (e.g., --target=bun-linux-x64)
+const targetArg = process.argv.find((a) => a.startsWith("--target="));
+const target = targetArg?.split("=")[1];
+
+// Derive platform/arch for the tarball name
+function getPlatformArch(): string {
+  if (target) {
+    // e.g. "bun-linux-x64" → "linux-x64"
+    return target.replace(/^bun-/, "");
+  }
+  const platform = process.platform === "darwin" ? "darwin" : process.platform;
+  const arch = process.arch === "arm64" ? "arm64" : "x64";
+  return `${platform}-${arch}`;
+}
+
+const platformArch = getPlatformArch();
+const stagingDir = join(DIST, `flywheel-${platformArch}`);
+const agentsStagingDir = join(stagingDir, "agents");
+const skillsStagingDir = join(stagingDir, "skills");
+
+// Step 0: Populate manifest.ts with real content (restored after bundling)
+const manifestPath = join(AGENTS_SRC, "manifest.ts");
+const manifestOriginal = await readFile(manifestPath, "utf-8");
+console.log("Populating agent manifest...");
+await writeManifest(manifestPath);
+
+// Step 1: Bundle with Solid plugin
+console.log("Bundling...");
+const bundleResult = await Bun.build({
+  entrypoints: [join(ROOT, "src", "cli", "index.ts")],
+  outdir: DIST,
+  target: "bun",
+  plugins: [solidPlugin],
+  conditions: ["browser"],
+});
+
+// Restore manifest.ts to its checked-in default
+await Bun.write(manifestPath, manifestOriginal);
+
+if (!bundleResult.success) {
+  for (const log of bundleResult.logs) console.error(log);
+  process.exit(1);
+}
+console.log(`  ${bundleResult.outputs.length} file(s) bundled`);
+
+// Step 2: Compile bundle into standalone binary
+console.log("Compiling standalone binary...");
+const compileArgs = [
+  "bun",
+  "build",
+  "--compile",
+  join(DIST, "index.js"),
+  "--outfile",
+  join(stagingDir, "flywheel"),
+];
+if (target) compileArgs.push(`--target=${target}`);
+
+const compileProc = Bun.spawn(compileArgs, { stdout: "inherit", stderr: "inherit" });
+const compileExit = await compileProc.exited;
+if (compileExit !== 0) {
+  console.error("Compile failed");
+  process.exit(1);
+}
+
+// Step 3: Copy assets (wasm, scm) into staging
+console.log("Copying assets...");
+const distEntries = await readdir(DIST);
+const assetExts = [".wasm", ".scm"];
+for (const entry of distEntries) {
+  if (assetExts.some((ext) => entry.endsWith(ext))) {
+    await copyFile(join(DIST, entry), join(stagingDir, entry));
+  }
+}
+
+// Step 4: Copy agent persona files
+console.log("Copying agent files...");
+await mkdir(agentsStagingDir, { recursive: true });
+const personaDir = join(AGENTS_SRC, "personas", "fly");
+const personaFiles = (await readdir(personaDir)).filter((f) => f.endsWith(".md"));
+for (const file of personaFiles) {
+  await copyFile(join(personaDir, file), join(agentsStagingDir, file));
+}
+
+// Step 5: Copy skill files
+const skillsSourceDir = join(AGENTS_SRC, "skills");
+const skillEntries = await readdir(skillsSourceDir, { withFileTypes: true });
+for (const entry of skillEntries) {
+  if (!entry.isDirectory()) continue;
+  const skillName = entry.name;
+  const skillSrc = join(skillsSourceDir, skillName);
+  const skillDest = join(skillsStagingDir, skillName);
+  await mkdir(skillDest, { recursive: true });
+
+  // SKILL.md
+  const skillMd = join(skillSrc, "SKILL.md");
+  try {
+    await stat(skillMd);
+    await copyFile(skillMd, join(skillDest, "SKILL.md"));
+  } catch {
+    // No SKILL.md — skip
+  }
+
+  // references/
+  const refsDir = join(skillSrc, "references");
+  try {
+    const refs = (await readdir(refsDir)).filter((f) => f.endsWith(".md"));
+    if (refs.length > 0) {
+      const refsDest = join(skillDest, "references");
+      await mkdir(refsDest, { recursive: true });
+      for (const ref of refs) {
+        await copyFile(join(refsDir, ref), join(refsDest, ref));
+      }
+    }
+  } catch {
+    // No references — fine
+  }
+}
+
+// Step 6: Generate install script
+console.log("Generating install script...");
+const installScript = `#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="\${FLYWHEEL_INSTALL_DIR:-\$HOME/.local/bin}"
+CLAUDE_DIR="\$HOME/.claude"
+
+echo ""
+echo "  flywheel installer"
+echo ""
+
+# --- Check for Claude Code ---
+if ! command -v claude &>/dev/null; then
+  echo "  Claude Code is required but not installed."
+  echo ""
+  if command -v npm &>/dev/null; then
+    read -rp "  Install it now? [Y/n] " yn
+    yn="\${yn:-Y}"
+    if [[ "\$yn" =~ ^[Yy] ]]; then
+      echo "  Installing Claude Code..."
+      npm install -g @anthropic-ai/claude-code
+      echo ""
+      echo "  Run 'claude' to authenticate, then re-run this installer."
+      exit 0
+    else
+      echo "  Install Claude Code manually: npm install -g @anthropic-ai/claude-code"
+      exit 1
+    fi
+  else
+    echo "  Install Node.js first, then: npm install -g @anthropic-ai/claude-code"
+    exit 1
+  fi
+fi
+
+# --- Check Claude Code is authenticated ---
+if ! claude --version &>/dev/null; then
+  echo "  Claude Code is installed but may not be authenticated."
+  echo "  Run 'claude' to authenticate, then re-run this installer."
+  exit 1
+fi
+
+# --- Install binary + assets ---
+mkdir -p "\$INSTALL_DIR"
+cp "\$SCRIPT_DIR/flywheel" "\$INSTALL_DIR/flywheel"
+chmod +x "\$INSTALL_DIR/flywheel"
+
+for f in "\$SCRIPT_DIR"/*.wasm "\$SCRIPT_DIR"/*.scm; do
+  [ -f "\$f" ] && cp "\$f" "\$INSTALL_DIR/"
+done
+
+# --- Install agents + skills ---
+if [ -d "\$SCRIPT_DIR/agents" ]; then
+  mkdir -p "\$CLAUDE_DIR/agents/fly"
+  cp "\$SCRIPT_DIR/agents/"*.md "\$CLAUDE_DIR/agents/fly/"
+fi
+
+if [ -d "\$SCRIPT_DIR/skills" ]; then
+  for skill_dir in "\$SCRIPT_DIR/skills"/*/; do
+    skill_name="\$(basename "\$skill_dir")"
+    dest="\$CLAUDE_DIR/skills/\$skill_name"
+    mkdir -p "\$dest"
+    [ -f "\$skill_dir/SKILL.md" ] && cp "\$skill_dir/SKILL.md" "\$dest/"
+    if [ -d "\$skill_dir/references" ]; then
+      mkdir -p "\$dest/references"
+      cp "\$skill_dir/references/"*.md "\$dest/references/" 2>/dev/null || true
+    fi
+  done
+fi
+
+# --- Add to PATH if needed ---
+if ! echo "\$PATH" | tr ':' '\\n' | grep -qx "\$INSTALL_DIR"; then
+  SHELL_NAME="\$(basename "\$SHELL")"
+  case "\$SHELL_NAME" in
+    zsh)  PROFILE="\$HOME/.zshrc" ;;
+    bash) PROFILE="\$HOME/.bashrc" ;;
+    *)    PROFILE="\$HOME/.profile" ;;
+  esac
+
+  echo "" >> "\$PROFILE"
+  echo "export PATH=\\"\$INSTALL_DIR:\\\$PATH\\"" >> "\$PROFILE"
+  echo "  Added \$INSTALL_DIR to PATH in \$PROFILE"
+  export PATH="\$INSTALL_DIR:\$PATH"
+fi
+
+echo "  Installed. Open a new terminal and run: flywheel"
+echo ""
+`;
+await Bun.write(join(stagingDir, "install.sh"), installScript);
+await $`chmod +x ${join(stagingDir, "install.sh")}`;
+
+// Step 7: Create tarball
+console.log("Creating tarball...");
+const tarball = `flywheel-${platformArch}.tar.gz`;
+await $`tar -czf ${join(DIST, tarball)} -C ${DIST} ${basename(stagingDir)}`;
+
+// Summary
+const tarballStat = await stat(join(DIST, tarball));
+const sizeMB = (tarballStat.size / 1024 / 1024).toFixed(1);
+console.log(`\nBuild complete: dist/${tarball} (${sizeMB} MB)`);
+console.log(`  Binary:  flywheel (standalone, no runtime needed)`);
+console.log(`  Assets:  ${assetExts.map((e) => `*${e}`).join(", ")}`);
+console.log(`  Agents:  ${personaFiles.length} persona(s)`);
+console.log(`  Install: tar xzf ${tarball} && cd ${basename(stagingDir)} && ./install.sh`);
+
+// --- Manifest generation ---
+
+async function writeManifest(destPath: string): Promise<void> {
+  const agents: Record<string, string> = {};
+  const skills: Record<string, { skill: string; references: Record<string, string> }> = {};
+
+  // Read agent persona files
+  const personaDir = join(AGENTS_SRC, "personas", "fly");
+  const mdFiles = (await readdir(personaDir)).filter((f) => f.endsWith(".md"));
+  for (const file of mdFiles) {
+    agents[file] = await readFile(join(personaDir, file), "utf-8");
+  }
+
+  // Read skill files
+  const skillsDir = join(AGENTS_SRC, "skills");
+  const entries = await readdir(skillsDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const skillSrc = join(skillsDir, entry.name);
+    let skillContent = "";
+    try {
+      skillContent = await readFile(join(skillSrc, "SKILL.md"), "utf-8");
+    } catch {
+      continue;
+    }
+
+    const refs: Record<string, string> = {};
+    try {
+      const refFiles = (await readdir(join(skillSrc, "references"))).filter((f) =>
+        f.endsWith(".md"),
+      );
+      for (const ref of refFiles) {
+        refs[ref] = await readFile(join(skillSrc, "references", ref), "utf-8");
+      }
+    } catch {
+      // No references — fine
+    }
+
+    skills[entry.name] = { skill: skillContent, references: refs };
+  }
+
+  const code = [
+    "// Populated by scripts/build-binary.ts — restored to empty defaults after bundling",
+    "",
+    `export const agents: Record<string, string> = ${JSON.stringify(agents, null, 2)};`,
+    "",
+    `export const skills: Record<string, { skill: string; references: Record<string, string> }> = ${JSON.stringify(skills, null, 2)};`,
+    "",
+  ].join("\n");
+
+  await Bun.write(destPath, code);
+}

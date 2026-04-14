@@ -215,9 +215,9 @@ describe("Post-Turn Verification Hook", () => {
     expect(result.outcome).toBe("completed");
   });
 
-  test("non-code step (plan): post-turn verification hook returns null -> skipped", async () => {
+  test("non-code step (work): post-turn verification hook returns null -> skipped", async () => {
     const hookFn = mock(async () => null);
-    const step = makeStep({ type: "plan", title: "Plan features" });
+    const step = makeStep({ type: "work", title: "Plan features" });
     const queue = createQueue([step]);
 
     const deps = createDefaultDeps({

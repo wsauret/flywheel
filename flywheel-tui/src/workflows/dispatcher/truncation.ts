@@ -25,7 +25,7 @@ export function applyBudgetTruncation(input: DispatcherInput): boolean {
   input.available_context = {
     conventions: input.available_context.conventions.slice(0, MAX_CONTEXT_ENTRIES),
     standards: input.available_context.standards.slice(0, MAX_CONTEXT_ENTRIES),
-    learnings: input.available_context.learnings.slice(0, MAX_CONTEXT_ENTRIES),
+    chatHistory: input.available_context.chatHistory,
   };
 
   return true;

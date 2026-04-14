@@ -54,9 +54,7 @@ export function detectRateLimit(input: RateLimitDetectionInput): RateLimitDetect
     return { isRateLimit: false };
   }
 
-  const patterns = COMMON_PATTERNS;
-
-  for (const { pattern, retryAfterPattern } of patterns) {
+  for (const { pattern, retryAfterPattern } of COMMON_PATTERNS) {
     if (pattern.test(stderr)) {
       return {
         isRateLimit: true,

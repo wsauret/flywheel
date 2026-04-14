@@ -70,20 +70,6 @@ describe("Tiered Evaluation", () => {
     expect(result!.passed).toBe(true);
   });
 
-  test("plan step: hook returns null (no verification)", async () => {
-    const config = makeConfig();
-    const hook = createPostTurnVerificationHook(config);
-
-    const step = makeStep({ type: "plan" });
-    const result = await hook({
-      step,
-      workerOutput: makeWorkerOutput(),
-      handoffData: null,
-    });
-
-    expect(result).toBeNull();
-  });
-
   test("non-work step types return null (no verification)", async () => {
     const config = makeConfig();
     const hook = createPostTurnVerificationHook(config);

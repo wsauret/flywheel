@@ -1,27 +1,3 @@
-/**
- * Queue Persistence
- *
- * Persists queue state to `.flywheel/sessions/<id>.queue.json`.
- * Factory pattern matching `createOutputPersistence` in output-persistence.ts.
- *
- * Features:
- * - Atomic writes via writeFileAtomic (write→fsync→rename)
- * - Async reads via Bun.file().text()
- * - Zod validation on load (graceful degradation — returns null on failure)
- * - Crash recovery: running steps automatically marked failed on load
- * - Debounced flusher via createDebouncedWriter
- * - persist_queue=false makes save/load no-ops
- *
- * Usage:
- *   const persistence = createQueuePersistence({ sessionId, baseDir });
- *   persistence.save(queue);
- *   const loaded = await persistence.load();
- *   const flusher = persistence.createFlusher({ intervalMs: 500 });
- *   flusher.schedule(queue);
- *   await flusher.flush();
- *   flusher.dispose();
- */
-
 import * as fs from "node:fs";
 import { writeFileAtomic } from "../shared/atomic-write.js";
 import { createDebouncedWriter } from "../shared/debounced-writer.js";
@@ -29,11 +5,7 @@ import { resolveSessionFile } from "../../infra/paths.js";
 import type { Queue } from "./types.js";
 import type { AccumulatorState } from "./context-accumulator.js";
 
-// Constants
-
 const DEFAULT_FLUSH_INTERVAL_MS = 500;
-
-// Types
 
 interface QueuePersistenceDeps {
   /** Session ID — used to derive the file path. */
@@ -118,30 +90,25 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
     writeFileAtomic(queueFilePath(), json);
   }
 
-  async function load(): Promise<Queue | null> {
+  async function readJsonFile<T>(filePath: string, validate: (v: unknown) => v is T): Promise<T | null> {
     if (!persistQueue) return null;
-
-    const filePath = queueFilePath();
-
     try {
       const file = Bun.file(filePath);
-      const exists = await file.exists();
-      if (!exists) return null;
-
-      const raw = await file.text();
-      const parsed = JSON.parse(raw);
-
-      if (!parsed || !Array.isArray(parsed.steps)) return null;
-
-      const queue = parsed as Queue;
-
-      applyCrashRecovery(queue);
-
-      return queue;
+      if (!await file.exists()) return null;
+      const parsed = JSON.parse(await file.text());
+      return validate(parsed) ? parsed : null;
     } catch {
-      // Corrupt file, parse error, etc. — graceful degradation
       return null;
     }
+  }
+
+  async function load(): Promise<Queue | null> {
+    const queue = await readJsonFile<Queue>(
+      queueFilePath(),
+      (v): v is Queue => v != null && Array.isArray((v as Queue).steps),
+    );
+    if (queue) applyCrashRecovery(queue);
+    return queue;
   }
 
   async function del() {
@@ -180,23 +147,10 @@ export function createQueuePersistence(deps: QueuePersistenceDeps): QueuePersist
   }
 
   async function loadAccumulatorState(): Promise<AccumulatorState | null> {
-    if (!persistQueue) return null;
-
-    const filePath = accumulatorFilePath();
-    try {
-      const file = Bun.file(filePath);
-      const exists = await file.exists();
-      if (!exists) return null;
-
-      const raw = await file.text();
-      const parsed = JSON.parse(raw);
-
-      if (!parsed || !Array.isArray(parsed.entries)) return null;
-
-      return parsed as AccumulatorState;
-    } catch {
-      return null;
-    }
+    return readJsonFile<AccumulatorState>(
+      accumulatorFilePath(),
+      (v): v is AccumulatorState => v != null && Array.isArray((v as AccumulatorState).entries),
+    );
   }
 
   return {

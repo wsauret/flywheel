@@ -30,7 +30,6 @@ async function dispatchStep(
     ctx.dispatcherResult = { prompt, evaluationCriteria: null };
     log.info("dispatcher skipped (step.skipDispatcher)", { stepId: step.id });
   } else {
-    // Full dispatcher invocation
     ctx.dispatcherResult = await deps.dispatcher(step, {
       previousHandoff: ctx.previousHandoff,
       previousAssessment: ctx.previousAssessment,
@@ -208,8 +207,6 @@ async function evaluateAndAccumulate(
 
   return { ctx, failOutcome: null };
 }
-
-// executeStep — run a single step through the full pipeline
 
 export async function executeStep(
   step: Step,
