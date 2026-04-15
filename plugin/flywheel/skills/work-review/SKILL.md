@@ -70,6 +70,7 @@ Task reviewer-code-quality(PR content)    # Code quality (Python/TypeScript)
 Task reviewer-patterns(PR content)
 Task reviewer-performance(PR content)
 Task reviewer-data-integrity(PR content)
+Task reviewer-elegance(PR content)
 ```
 
 ### Conditional Agents

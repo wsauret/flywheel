@@ -1,199 +1,71 @@
 ---
 name: flywheel-conventions
-description: Shared conventions for Flywheel subagents. Provides token limits, output format, severity definitions, and research patterns.
+description: Shared conventions for Flywheel subagents. Tool discipline, output format, research patterns.
 user-invocable: false
 ---
 
-## Output Token Limits
+## Tool Discipline
 
-- Locator agents: Max 500 words
-- Analyzer agents: Max 750 words
-- Research agents: Max 500 words
-- Reviewer agents: Max 1,000 words
+**Never use Bash for operations that have a dedicated tool.**
 
-## Required Output Format
+- **Content search**: Use **Grep**, not `grep`/`rg` via Bash
+- **File search**: Use **Glob**, not `find`/`ls` via Bash
+- **File reading**: Use **Read**, not `cat`/`head`/`tail` via Bash
 
-Return findings using compaction format:
-- Paths only (never full file contents)
-- Structured sections (End Goal, Approach, Key Findings, Files Identified)
-- Flag ambiguities with "OPEN QUESTION:"
-
-## Severity Definitions
-
-- **P1 (Critical)**: Blocks deployment, security vulnerability, data loss risk
-- **P2 (Important)**: Should fix before merge, affects functionality
-- **P3 (Nice to have)**: Improvement suggestions, style nits
+Bash is only for: git commands, `bun` commands, and system operations with no dedicated tool.
 
 ---
 
-## Documentarian Mode (Research Agents)
+## Output Rules
 
-All research agents (locators AND analyzers) operate in Documentarian Mode:
+**Limits**: Locators 500 words. Analyzers 1500. Reviewers 1500.
 
-- Document what IS, not what SHOULD BE
-- No suggestions, critiques, or recommendations
-- No root cause analysis unless explicitly asked
-- Pure technical mapping of the existing system
+**Format**: Structured sections (End Goal, Key Findings, Files Identified). Paths only, never file contents. Flag ambiguities with "OPEN QUESTION:".
 
-This keeps research output clean and compact, free of opinion pollution.
+**Severity**: P1 = blocks deploy / security / data loss. P2 = fix before merge. P3 = suggestion.
 
----
-
-## File:Line Reference Discipline
-
-All research output MUST include specific file:line references:
-
-**Good**: `src/services/auth.ts:42-67` - Authentication middleware
-**Bad**: "in the auth module" or "somewhere in handlers/"
-
-Precise references enable navigation and reduce follow-up research.
+**References**: Always `path/to/file.ts:42-67`, never "in the auth module."
 
 ---
 
-## Read Files Fully
+## Research Agent Behavior
 
-When analyzer agents read files:
+**Documentarian mode** (locators + analyzers): Document what IS, not what SHOULD BE. No suggestions, critiques, or recommendations.
 
-- Use Read WITHOUT limit/offset parameters
-- Read entire files, not partial excerpts
-- Never guess about content you haven't read
-
-Partial reads cause hallucination. Read fully once, not partially multiple times.
+**Read files fully**: Use Read WITHOUT limit/offset. Partial reads cause hallucination.
 
 ---
 
-## Locator vs Analyzer Pattern
+## Dispatch Patterns (for orchestrators)
 
-When spawning research agents:
+### Locator → Analyzer (two-pass research)
 
-1. **First pass: Locators** (parallel, cheap)
-   - Use locator-codebase, locator-patterns, locator-docs
-   - No Read tool - paths only
-   - Model: haiku (fast, cheap)
-   - Run in parallel
+1. **Locators first** — run in parallel
+   - `locator-codebase`, `locator-patterns`, `locator-docs` (haiku)
+   - `locator-web` (sonnet — query crafting needs stronger reasoning)
+   - No Read tool — return paths/URLs only
+   - Pass search context inline (locators can't read files)
 
-2. **Second pass: Analyzers** (targeted, expensive)
-   - Only on top 15 findings from locators
-   - Use analyzer-codebase, analyzer-patterns, analyzer-docs
-   - Model: sonnet (thorough)
-   - Documentarian mode
+2. **Analyzers second** — targeted, use sonnet
+   - `analyzer-codebase`, `analyzer-patterns`, `analyzer-docs`
+   - Feed only the top 15 findings from locators
+   - Pass file paths, not content (analyzers have Read)
+   - Documentarian mode — no suggestions
 
-This two-pass approach reduces context usage by 40-60%.
+### Model inheritance
 
----
+Implementation subagents (`general-purpose`, `Explore`, `Plan`) inherit the parent model — never set `model`. Only research agents (locators, analyzers) use explicit models.
 
-## Model Inheritance for Subagents
+### Input context
 
-**Implementation and execution subagents** (`general-purpose`, `Explore`, `Plan`, `Bash`) must **NOT** specify a `model` parameter when dispatched. Omitting the parameter causes them to inherit the parent session's model automatically.
-
-This ensures that if the user selected Opus, all phases run on Opus — not a random mix of models.
-
-**Only research agents** (locators, analyzers) specify explicit models, because their model choices are deliberate cost/speed tradeoffs independent of the user's session:
-- Locators → haiku (fast, cheap, paths-only)
-- Analyzers → sonnet (thorough, documentarian)
-
-**Rule:** If you're dispatching a subagent to *do work* (implement, explore, plan), never set `model`. If you're dispatching a subagent to *research* (locate, analyze), use the model from the Research Agent Matrix below.
+Pass file paths (not content) to Read-capable agents. Content inline to locators. Phase-only plan excerpts, not full plans. Under 100 lines where possible.
 
 ---
 
-## Research Agent Matrix
+## Error Protocol
 
-| Agent | Model | Tools | Purpose |
-|-------|-------|-------|---------|
-| locator-codebase | haiku | Grep, Glob, LS | Find WHERE files live |
-| locator-patterns | haiku | Grep, Glob, LS | Find WHERE patterns exist |
-| locator-docs | haiku | Grep, Glob, LS | Find WHERE docs live |
-| locator-web | haiku | WebSearch | Find URLs (no fetch) |
-| analyzer-codebase | sonnet | Read, Grep, Glob | Understand HOW code works |
-| analyzer-patterns | sonnet | Read, Grep, Glob | Extract code examples |
-| analyzer-docs | sonnet | Read, Grep, Glob | Extract doc insights |
-| analyzer-web | sonnet | WebFetch, Read | Deep web content analysis |
-| analyzer-git-history | sonnet | Bash, Read, Grep, Glob | Trace code evolution via git |
-
----
-
-## Scope Discipline
-
-Build only what's asked. These principles are defined in specific skills - this section consolidates references:
-
-- **YAGNI ruthlessly**: `brainstorm/SKILL.md` (defer until needed)
-- **No extras**: `work-implementation/SKILL.md` (don't add features beyond request)
-
-When in doubt, do less. Premature abstraction costs more than duplication.
-
----
-
-## Pre-Implementation Readiness
-
-Before starting implementation, confirm readiness. See Pre-Flight Check in `work-implementation/references/verification-gates.md`.
-
-Quick self-check: Problem understood? Approach fits patterns? No obvious duplicates?
-
----
-
-## Input Context Discipline
-
-When dispatching to subagents, minimize input tokens:
-
-- **Agents WITH Read tool** (analyzers, reviewers): Pass file paths, not content. The agent can Read files itself.
-- **Agents WITHOUT Read tool** (locators): Pass content inline — they cannot read files.
-- **Plan excerpts in dispatch**: Paste only the current phase, not the entire plan.
-- **Keep dispatched context under 100 lines** where possible.
-
-**Exception:** `work-implementation` explicitly passes plan content (not paths) to subagents — this is correct because subagents start with fresh context and need the plan text.
-
----
-
-## Token Efficiency: Input + Output
-
-Flywheel controls token usage from both sides:
-
-**Output controls** (existing):
-- Word limits per agent tier: Locators 500, Analyzers 750, Reviewers 1000
-
-**Input controls** (new):
-- Skill core SKILL.md files kept under 200 lines; detail in `references/`
-- Pass paths (not content) for Read-capable agents
-- Phase-only excerpts in dispatch, not full plans
-- Lazy-load references via "Read `references/X.md` before proceeding" directives
-
-**Target**: 40-60% context utilization with both input and output contributing to efficiency.
-
----
-
-## 3-Strike Error Protocol
-
-When a subagent or operation fails:
-
-**Attempt 1: Diagnose & Fix**
-- Read error message carefully
-- Identify root cause
-- Apply targeted fix
-
-**Attempt 2: Alternative Approach**
-- If same error recurs, try different method/tool/approach
-- NEVER repeat the exact same failing action
-
-**Attempt 3: Broader Rethink**
-- Question assumptions
-- Search for solutions
-- Consider whether the plan needs updating
-
-**After 3 Failures: Escalate**
-- Log all attempts in state file Error Log
-- Explain what was tried to user
-- Ask for guidance
-
-### Error Log Table Format
-
-Track errors in state file:
-
-| Error | Attempt | Approach | Outcome |
-|-------|---------|----------|---------|
-| [error message] | 1 | [what you tried] | [result] |
-
----
-
-## References
-
-- `references/tdd-cycle.md` - RED/GREEN/REFACTOR steps and skip conditions
+3 strikes then escalate:
+1. **Diagnose** — read error, identify root cause, targeted fix
+2. **Alternative** — different method/tool/approach. Never repeat same failing action.
+3. **Rethink** — question assumptions, search for solutions
+4. **Escalate** — log attempts, explain to user, ask for guidance

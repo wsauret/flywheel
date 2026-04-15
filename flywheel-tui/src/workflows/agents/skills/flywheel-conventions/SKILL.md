@@ -69,9 +69,3 @@ Pass file paths (not content) to Read-capable agents. Content inline to locators
 2. **Alternative** — different method/tool/approach. Never repeat same failing action.
 3. **Rethink** — question assumptions, search for solutions
 4. **Escalate** — log attempts, explain to user, ask for guidance
-
----
-
-## References
-
-- `references/tdd-cycle.md` — RED/GREEN/REFACTOR cycle and skip conditions

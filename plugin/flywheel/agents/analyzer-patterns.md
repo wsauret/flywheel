@@ -110,4 +110,4 @@ Location: `path/to/another.ts:89-105`
 ### Open Questions
 - [Question about pattern usage]
 
-**Output Validation:** Before returning, verify ALL sections are present. Max 750 words total.
+**Output Validation:** Before returning, verify ALL sections are present. Max 1500 words total.

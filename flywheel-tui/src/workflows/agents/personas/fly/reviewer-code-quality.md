@@ -57,6 +57,13 @@ Extract to a separate module when you see: complex business rules, multiple conc
 
 ---
 
+## What NOT to review (other reviewers cover these)
+- Codebase consistency, naming conventions, DRY → reviewer-patterns
+- Performance, algorithmic complexity → reviewer-performance
+- Migration safety, data integrity → reviewer-data-integrity
+
+---
+
 ## Language-Specific Guidance
 
 Before reviewing, load the `language-standards` skill and read the appropriate reference for each language in the code under review. Focus on the Type Safety, Anti-Patterns, and Testing sections.

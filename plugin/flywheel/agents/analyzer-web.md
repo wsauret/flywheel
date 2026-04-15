@@ -117,4 +117,4 @@ Source: [URL]
 ### Open Questions
 - [Question about web content meaning]
 
-**Output Validation:** Before returning, verify ALL sections are present. Max 750 words total.
+**Output Validation:** Before returning, verify ALL sections are present. Max 1500 words total.

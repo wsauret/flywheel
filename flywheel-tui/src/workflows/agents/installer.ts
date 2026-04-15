@@ -13,7 +13,7 @@
 // Idempotent: overwrites files that changed, skips identical ones.
 
 // fs/promises used intentionally — Bun has no readdir equivalent.
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
 import { Log } from "../../infra/log.js";
@@ -118,6 +118,13 @@ async function installAgentFiles(
     return;
   }
 
+  // We own the entire fly/ directory — wipe and re-copy for a clean slate
+  try {
+    await rm(targetDir, { recursive: true, force: true });
+  } catch {
+    // Directory may not exist yet
+  }
+
   try {
     await mkdir(targetDir, { recursive: true });
   } catch (err) {
@@ -127,9 +134,8 @@ async function installAgentFiles(
 
   for (const file of files) {
     try {
-      const outcome = await writeIfChanged(join(targetDir, file), agents[file]!);
-      if (outcome === "installed") result.installed++;
-      else result.skipped++;
+      await writeFile(join(targetDir, file), agents[file]!, "utf-8");
+      result.installed++;
     } catch (err) {
       result.errors.push(`failed to install agent ${file}: ${errorMessage(err)}`);
     }
@@ -160,10 +166,17 @@ async function installSkillFiles(
       result.errors.push(`failed to install skill ${skillName}/SKILL.md: ${errorMessage(err)}`);
     }
 
+    // Clean up stale references dir, then re-create if source has references
+    const refsDest = join(skillDest, "references");
+    try {
+      await rm(refsDest, { recursive: true, force: true });
+    } catch {
+      // May not exist
+    }
+
     const refEntries = Object.entries(references);
     if (refEntries.length === 0) continue;
 
-    const refsDest = join(skillDest, "references");
     try {
       await mkdir(refsDest, { recursive: true });
     } catch (err) {
@@ -173,9 +186,8 @@ async function installSkillFiles(
 
     for (const [file, content] of refEntries) {
       try {
-        const outcome = await writeIfChanged(join(refsDest, file), content);
-        if (outcome === "installed") result.installed++;
-        else result.skipped++;
+        await writeFile(join(refsDest, file), content, "utf-8");
+        result.installed++;
       } catch (err) {
         result.errors.push(
           `failed to install skill ${skillName}/references/${file}: ${errorMessage(err)}`,

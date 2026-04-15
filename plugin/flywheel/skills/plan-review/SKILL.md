@@ -39,7 +39,7 @@ find ~/.claude/agents -name "*.md" 2>/dev/null
 find ~/.claude/plugins/cache -path "*/agents/*.md" 2>/dev/null
 ```
 
-**Plan reviewers:** reviewer-architecture, reviewer-code-quality, reviewer-patterns, reviewer-performance, reviewer-data-integrity
+**Plan reviewers:** reviewer-architecture, reviewer-code-quality, reviewer-patterns, reviewer-performance, reviewer-data-integrity, reviewer-elegance
 
 **Note:** These reviewers may catch external claim issues (version mismatches, anti-patterns, security concerns) as part of their normal review. There is no separate enrichment/validation step — plan-creation handles initial validation, and reviewers provide a second check from their respective perspectives.
 

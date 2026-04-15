@@ -92,7 +92,7 @@ Agents are organized into categories for easier discovery.
 | `reviewer-data-integrity` | Database migrations and data integrity |
 | `reviewer-patterns` | Analyze code for patterns and anti-patterns |
 | `reviewer-performance` | Performance analysis and optimization |
-| `reviewer-plan-philosophy` | TDD ordering, SOLID compliance, DRY compliance in plans |
+| `reviewer-elegance` | Design elegance review for plans and code |
 
 ### Research Locators (4) - Cheap, Parallel
 

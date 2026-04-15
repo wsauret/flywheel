@@ -154,7 +154,7 @@ Each cycle builds on the last: plans inform future plans, reviews catch more iss
 
 | Type | Count | Examples |
 |------|-------|---------|
-| Reviewers | 6 | architecture, code-quality, performance, patterns, data-integrity, plan-philosophy |
+| Reviewers | 6 | architecture, code-quality, performance, patterns, data-integrity, elegance |
 | Research Locators | 4 | codebase, patterns, docs, web |
 | Research Analyzers | 5 | codebase, patterns, docs, web, git-history |
 | Commands | 8 | brainstorm, research, plan, work, review, compound, debug, ship |

@@ -3,18 +3,22 @@
 ## Type Hints (Required)
 
 - ALWAYS use type hints for function parameters and return values
-- Use modern Python 3.10+ syntax: `list[str]` not `List[str]`, `str | None` not `Optional[str]`
-- Use `TypeAlias` or `type` statements for complex types
+- No `Any` — use a descriptive or disjunctive type instead
+- Use modern syntax: `list[str]` not `List[str]`, `str | None` not `Optional[str]`
+- Use `type` statements (3.12+) for aliases. Fall back to `TypeAlias` for 3.10/3.11.
+- Use `Callable` from `collections.abc`, not from `typing` (deprecated)
 - Prefer `typing.Protocol` over abstract base classes for structural typing
+- Use `TypeGuard` for type narrowing in helper functions
 - Use `@overload` for functions with different return types based on input
 
 ## Pythonic Patterns
 
 - Use context managers (`with` statements) for resource management
-- Prefer list/dict comprehensions over explicit loops (when readable)
-- Use dataclasses or Pydantic models for structured data
-- Use properties with `@property` decorator, not getter/setter methods
-- Prefer `pathlib` over `os.path`, f-strings over `.format()`
+- Prefer comprehensions over explicit loops (when readable — no nested loops with conditions)
+- Use `match`/`case` for structural pattern matching (3.10+)
+- Use dataclasses or Pydantic models for structured data. `frozen=True` for immutable value objects.
+- Prefer `pathlib` over `os.path`
+- Use f-strings for string formatting — except in logging calls, where `%s` formatting is required (lazy evaluation)
 - Use `enum.Enum` for fixed sets of values, not magic strings
 - Use `functools.cache`/`lru_cache` for expensive pure functions
 - Prefer `collections.defaultdict` and `Counter` over manual dict accumulation
@@ -31,6 +35,7 @@
 
 - Follow PEP 8 ordering: stdlib, third-party, local
 - Use absolute imports
+- No scoped imports unless there is a measurable performance benefit — keep imports at the top of the file
 - Avoid wildcard imports (`from module import *`)
 - Group imports with blank lines between sections
 
@@ -57,6 +62,7 @@
 - Mutable default arguments (`def f(items=[])`)
 - Using `type()` instead of `isinstance()` for type checks
 - String concatenation in loops (use `str.join`)
+- Comprehensions with nested loops and conditions — extract to a function
 - Nested functions deeper than 2 levels
 - Functions longer than ~50 lines without extraction
 - `# type: ignore` without explanation
