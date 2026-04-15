@@ -21,7 +21,7 @@ Write a JSON file to:
 const JSON_VALIDITY_RULE = "Write valid JSON — no trailing commas, no comments, no markdown wrapping.";
 const JSON_WRITE_TOOL_RULE = "Write the file using your file-writing tool, not stdout.";
 
-export function renderHandoffInstruction(
+function renderHandoffInstruction(
   fields: HandoffFieldSpec[],
   handoffPath: string,
 ): string {
@@ -86,10 +86,7 @@ export function renderEvaluatorHandoffInstruction(handoffPath: string): string {
   "passed": true,
   "reasoning": "All acceptance criteria met, tests pass, code is clean.",
   "suggestions": [],
-  "confidence": 0.92,
-  "feedback": "",
-  "files_to_review": [],
-  "issues": []
+  "feedback": ""
 }
 \`\`\`
 
@@ -98,56 +95,28 @@ export function renderEvaluatorHandoffInstruction(handoffPath: string): string {
 - **passed** (REQUIRED): Whether the step output meets acceptance criteria. Boolean.
 - **reasoning** (REQUIRED): Explanation of the evaluation decision. String.
 - **suggestions** (REQUIRED): List of improvement suggestions. Empty array \`[]\` if none.
-- **confidence** (REQUIRED): Confidence in the verdict, 0.0 to 1.0. Number.
-- **feedback** (REQUIRED): Actionable feedback for the worker if retrying. String (empty string if passed).
-- **files_to_review** (REQUIRED): Files that should be reviewed. Empty array \`[]\` if none.
-- **issues** (REQUIRED): Structured issues found. Empty array \`[]\` if none. Each issue:
-  \`{"description": "...", "severity": "blocking"|"non_blocking", "category": "test_failure"|"type_error"|"security"|"regression"|"incomplete"|"other"}\`
+- **feedback** (REQUIRED): Actionable feedback for the worker if retrying. String (empty if passed).
 
 ### Rules
 
 1. ALL fields are required — do not omit any field.
 2. Use empty arrays \`[]\` and empty strings \`""\` for fields with no data — do not use \`null\`.
-3. Do NOT include fields not listed above — unknown fields cause a validation error.
-4. ${JSON_VALIDITY_RULE}
-5. ${JSON_WRITE_TOOL_RULE}`;
+3. ${JSON_VALIDITY_RULE}
+4. ${JSON_WRITE_TOOL_RULE}`;
 }
 
+/** Shared work/sprint step postamble — handoff instructions with output requirements header. */
+export function renderWorkPostamble(fields: HandoffFieldSpec[], handoffPath: string): string {
+  return `---
+## Output Requirements
+
+${renderHandoffInstruction(fields, handoffPath)}`
+}
+
+// Minimal — the dispatcher system prompt already covers the full output schema,
+// field reference, and example. This just tells the model where to write the file.
 export function renderDispatcherHandoffInstruction(handoffPath: string): string {
   return `${renderHandoffPreamble("Dispatcher", handoffPath)}
 
-### Required format
-
-\`\`\`json
-{
-  "schema_version": 1,
-  "step_index": 0,
-  "task_content": "Implement feature X according to the plan.",
-  "context_files": ["src/foo.ts", "tests/foo.test.ts"],
-  "evaluation_criteria": {
-    "acceptance_criteria": ["Tests pass", "No lint errors"],
-    "required_tests": true,
-    "custom_checks": [],
-    "required_outputs": []
-  }
-}
-\`\`\`
-
-### Field reference
-
-- **schema_version** (REQUIRED): Must be \`1\`. Literal number.
-- **step_index** (REQUIRED): Zero-based index of the step being dispatched.
-- **task_content** (REQUIRED): The task prompt to send to the worker.
-- **context_files** (REQUIRED): File paths the worker should reference. Array of strings.
-- **context_to_inline** (optional): Paths from available_context to inject into the worker prompt. Order by importance; 8 KB cap.
-- **evaluation_criteria** (optional): Structured criteria for evaluating the worker's output. Object with: \`acceptance_criteria\` (string[]), \`required_tests\` (boolean), \`custom_checks\` (string[]), \`required_outputs\` (string[]).
-- **reasoning** (optional): Why this dispatch decision was made.
-- **worker_config** (optional): Tool restrictions. Object with: \`tool_scoping\` (\`{ read, bash, write, edit }\`).
-
-### Rules
-
-1. ALL required fields must be present.
-2. Do NOT include fields not listed above — unknown fields cause a validation error.
-3. ${JSON_VALIDITY_RULE}
-4. ${JSON_WRITE_TOOL_RULE}`;
+Write your JSON decision using the schema from your system prompt. ${JSON_WRITE_TOOL_RULE}`;
 }

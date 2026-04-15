@@ -6,25 +6,16 @@ import type { SessionState } from "../../orchestration/session/types.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
-export type GroupKey = "active" | "paused" | "completed"
+const GROUP_ORDER: SessionState[] = ["active", "paused", "completed"]
 
-const GROUP_ORDER: GroupKey[] = ["active", "paused", "completed"]
-
-const STATE_TO_GROUP: Record<SessionState, GroupKey> = {
-  active: "active",
-  paused: "paused",
-  completed: "completed",
-}
-
-export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: GroupKey }[] {
-  const items: { session: SessionSummary; group: GroupKey }[] = []
-  const groups: Record<GroupKey, SessionSummary[]> = {
+export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: SessionState }[] {
+  const items: { session: SessionSummary; group: SessionState }[] = []
+  const groups: Record<SessionState, SessionSummary[]> = {
     active: [], paused: [], completed: [],
   }
 
   for (const s of sessions) {
-    const group = STATE_TO_GROUP[s.state]
-    if (group) groups[group].push(s)
+    groups[s.state].push(s)
   }
 
   for (const key of GROUP_ORDER) {
@@ -51,6 +42,7 @@ interface SessionModalDeps {
   sessions: Accessor<SessionSummary[]>
   handleResume: (sessionId: string) => Promise<void>
   switchForeground: (sessionId: string) => void
+  deleteActiveChat: (sessionId: string) => Promise<void>
   actionDeps: SessionActionDeps
 }
 
@@ -129,8 +121,10 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     deps.handleResume(sessionId)
   }
 
-  function handleSessionDelete(sessionId: string): void {
+  async function handleSessionDelete(sessionId: string): Promise<void> {
     try {
+      // Stop the runner and remove from the reactive store (if live)
+      await services.sessionStore.remove(sessionId)
       deps.actionDeps.manager.delete(sessionId)
       services.refreshList()
       setModalRefreshTrigger((n) => n + 1)
@@ -190,10 +184,19 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       if (selected.state === "paused") { evt.preventDefault?.(); handleSessionResume(selected.id) }
       return
     }
-    if (evt.name === "d" && selected.id !== signals.foregroundId()) {
+    if (evt.name === "d") {
       evt.preventDefault?.()
-      if (modalConfirmDelete() === selected.id) { setModalConfirmDelete(undefined); handleSessionDelete(selected.id) }
-      else { setModalConfirmDelete(selected.id) }
+      if (modalConfirmDelete() === selected.id) {
+        setModalConfirmDelete(undefined)
+        if (selected.id === signals.foregroundId()) {
+          setSessionsModalOpen(false)
+          deps.deleteActiveChat(selected.id)
+        } else {
+          handleSessionDelete(selected.id)
+        }
+      } else {
+        setModalConfirmDelete(selected.id)
+      }
     }
   }
 

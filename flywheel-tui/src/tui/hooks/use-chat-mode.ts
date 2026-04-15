@@ -2,13 +2,17 @@ import { createSignal, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { createChatController } from "../../orchestration/chat-controller.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
-import { wireLifecycleCallbacks } from "./lifecycle-callbacks.js"
+import type { RunnerDoneResult, RunnerErrorResult } from "../../orchestration/session/types.js"
 
 interface ChatModeDeps {
   signals: ShellSignals
   services: ShellServices
   /** Project working directory — injected to avoid hardcoding process.cwd(). */
   projectCwd: string
+  lifecycleCallbacks: {
+    onRunnerDone: (id: string, result: RunnerDoneResult) => void
+    onRunnerError: (id: string, result: RunnerErrorResult) => void
+  }
 }
 
 export interface ChatModeHook {
@@ -30,15 +34,13 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   // Only true during the async startup window of a new chat
   const [chatActive, setChatActive] = createSignal(false)
 
-  const callbacks = wireLifecycleCallbacks(signals, services)
-
   const controller = createChatController({
     sessionStore: services.sessionStore,
     manager: services.manager,
     refreshList: services.refreshList,
     projectCwd: deps.projectCwd,
-    onRunnerDone: callbacks.onRunnerDone,
-    onRunnerError: callbacks.onRunnerError,
+    onRunnerDone: deps.lifecycleCallbacks.onRunnerDone,
+    onRunnerError: deps.lifecycleCallbacks.onRunnerError,
   })
 
   async function startChat(initialMessage?: string): Promise<void> {
@@ -51,7 +53,6 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
       setChatActive(false)
       if (result) {
         signals.setForegroundId(result.sessionId)
-        services.setTerminalTitle(result.terminalTitle)
       } else {
         signals.setErrorMessage("Chat failed to start")
       }

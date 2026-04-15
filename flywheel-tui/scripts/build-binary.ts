@@ -79,6 +79,28 @@ if (compileExit !== 0) {
   process.exit(1);
 }
 
+// Bun leaves a malformed LC_CODE_SIGNATURE — strip it, then ad-hoc sign
+if (process.platform === "darwin" && !target) {
+  console.log("Signing binary (ad-hoc)...");
+  const binaryPath = join(stagingDir, "flywheel");
+  const strip = Bun.spawn(["codesign", "--remove-signature", binaryPath], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  if ((await strip.exited) !== 0) {
+    console.error("Failed to strip signature");
+    process.exit(1);
+  }
+  const sign = Bun.spawn(["codesign", "--sign", "-", "--force", binaryPath], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  if ((await sign.exited) !== 0) {
+    console.error("Ad-hoc signing failed");
+    process.exit(1);
+  }
+}
+
 // Step 3: Copy assets (wasm, scm) into staging
 console.log("Copying assets...");
 const distEntries = await readdir(DIST);
@@ -178,8 +200,15 @@ fi
 
 # --- Install binary + assets ---
 mkdir -p "\$INSTALL_DIR"
+rm -f "\$INSTALL_DIR/flywheel"
 cp "\$SCRIPT_DIR/flywheel" "\$INSTALL_DIR/flywheel"
 chmod +x "\$INSTALL_DIR/flywheel"
+
+# Re-sign at install location (macOS caches Gatekeeper assessments per-path)
+if [[ "\$(uname)" == "Darwin" ]]; then
+  codesign --remove-signature "\$INSTALL_DIR/flywheel" 2>/dev/null
+  codesign --sign - --force "\$INSTALL_DIR/flywheel" 2>/dev/null
+fi
 
 for f in "\$SCRIPT_DIR"/*.wasm "\$SCRIPT_DIR"/*.scm; do
   [ -f "\$f" ] && cp "\$f" "\$INSTALL_DIR/"

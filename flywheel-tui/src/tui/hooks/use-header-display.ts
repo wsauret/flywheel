@@ -15,7 +15,7 @@ interface HeaderDisplayDeps {
   theme: { error: RGBA; warning: RGBA; success: RGBA; textMuted: RGBA }
 }
 
-export interface HeaderDisplay {
+interface HeaderDisplay {
   displayStatus: Accessor<"running" | "idle" | "interrupted" | "completed">
   headerRight: Accessor<string>
   headerRightColor: Accessor<RGBA>

@@ -24,7 +24,8 @@ interface PostTurnVerificationConfig {
   projectCwd: string;
 }
 
-const CODE_STEP_TYPES = new Set(["work"]);
+// Only "work" steps produce code artifacts that need native verification.
+const CODE_STEP_TYPE = "work";
 
 // Exported for unit tests — parsing handoff data has edge cases that warrant
 // direct testing without spinning up native verification subprocesses.
@@ -71,7 +72,7 @@ export function createPostTurnVerificationHook(
   return async (ctx) => {
     const { step, handoffData } = ctx;
 
-    if (!CODE_STEP_TYPES.has(step.type)) {
+    if (step.type !== CODE_STEP_TYPE) {
       return null;
     }
 

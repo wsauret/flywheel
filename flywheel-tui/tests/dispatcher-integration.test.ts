@@ -929,7 +929,7 @@ describe("Step dispatcher edge cases", () => {
     expect(input.state.current_step_index).toBe(2);
   });
 
-  test("StepDispatcherError contains step ID and cause", async () => {
+  test("dispatcher error contains step ID and cause", async () => {
     const transport = createFailingTransport("Network timeout");
     const dispatcher = createStepDispatcher({ ...DEFAULT_OPTIONS, transport });
 
@@ -944,11 +944,8 @@ describe("Step dispatcher edge cases", () => {
       });
       expect(false).toBe(true);
     } catch (err) {
-      const e = err as import("../src/workflows/queue/step-dispatcher").StepDispatcherError;
-      expect(e.name).toBe("StepDispatcherError");
-      expect(e.stepId).toBe("step-123");
-      expect(e.message).toContain("dispatcher");
-      expect(e.message).toContain("step-123");
+      const e = err as Error;
+      expect(e.message).toContain("dispatcher failed for step step-123");
       expect(e.cause).toBeDefined();
     }
   });

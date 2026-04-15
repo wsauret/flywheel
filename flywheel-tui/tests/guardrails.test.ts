@@ -84,7 +84,7 @@ describe("Guardrail 1: Max queue length", () => {
     const results = guardrails.applyMutations(
       queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
     );
-    expect(results[0].applied).toBe(false);
+    expect(results[0].allowed).toBe(false);
     expect(results[0].reason).toContain("max");
   });
 
@@ -96,7 +96,7 @@ describe("Guardrail 1: Max queue length", () => {
     const results = guardrails.applyMutations(
       queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
     );
-    expect(results[0].applied).toBe(true);
+    expect(results[0].allowed).toBe(true);
   });
 
   test("uses configurable maxQueueLength", () => {
@@ -107,7 +107,7 @@ describe("Guardrail 1: Max queue length", () => {
     const results = guardrails.applyMutations(
       queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
     );
-    expect(results[0].applied).toBe(false);
+    expect(results[0].allowed).toBe(false);
   });
 
   test("allows insert exactly at max queue length", () => {
@@ -118,7 +118,7 @@ describe("Guardrail 1: Max queue length", () => {
     const results = guardrails.applyMutations(
       queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
     );
-    expect(results[0].applied).toBe(true);
+    expect(results[0].allowed).toBe(true);
   });
 
   test("default max queue length is 50", () => {
@@ -129,7 +129,7 @@ describe("Guardrail 1: Max queue length", () => {
     const results = guardrails.applyMutations(
       queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE,
     );
-    expect(results[0].applied).toBe(false);
+    expect(results[0].allowed).toBe(false);
   });
 });
 
@@ -148,7 +148,7 @@ describe("Guardrail 2: Max mutations per step completion", () => {
       insertMutation(steps[1].id),
     ];
     const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
-    expect(results.every((r) => r.applied)).toBe(true);
+    expect(results.every((r) => r.allowed)).toBe(true);
   });
 
   test("rejects 4th mutation when limit is 3", () => {
@@ -163,10 +163,10 @@ describe("Guardrail 2: Max mutations per step completion", () => {
       insertMutation(steps[3].id),
     ];
     const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
-    expect(results[0].applied).toBe(true);
-    expect(results[1].applied).toBe(true);
-    expect(results[2].applied).toBe(true);
-    expect(results[3].applied).toBe(false);
+    expect(results[0].allowed).toBe(true);
+    expect(results[1].allowed).toBe(true);
+    expect(results[2].allowed).toBe(true);
+    expect(results[3].allowed).toBe(false);
     expect(results[3].reason).toContain("3");
   });
 
@@ -183,11 +183,11 @@ describe("Guardrail 2: Max mutations per step completion", () => {
 
     // step-1 should be exhausted
     const r1 = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[2].id)], TEST_PROVENANCE);
-    expect(r1[0].applied).toBe(false);
+    expect(r1[0].allowed).toBe(false);
 
     // step-2 should still have budget
     const r2 = guardrails.applyMutations(queue, "step-2", [insertMutation(steps[3].id)], TEST_PROVENANCE);
-    expect(r2[0].applied).toBe(true);
+    expect(r2[0].allowed).toBe(true);
   });
 
   test("uses configurable limit", () => {
@@ -197,7 +197,7 @@ describe("Guardrail 2: Max mutations per step completion", () => {
 
     guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE);
     const r = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[1].id)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(false);
+    expect(r[0].allowed).toBe(false);
   });
 
   test("default limit is 3", () => {
@@ -213,7 +213,7 @@ describe("Guardrail 2: Max mutations per step completion", () => {
     guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
 
     const r = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[3].id)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(false);
+    expect(r[0].allowed).toBe(false);
   });
 });
 
@@ -239,7 +239,7 @@ describe("Guardrail 3: Max inserted steps per session", () => {
 
     // Session limit reached — next insert should fail
     const r = guardrails.applyMutations(queue, "step-3", [insertMutation(steps[3].id)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(false);
+    expect(r[0].allowed).toBe(false);
     expect(r[0].reason).toContain("session");
   });
 
@@ -257,7 +257,7 @@ describe("Guardrail 3: Max inserted steps per session", () => {
     }
 
     const r = guardrails.applyMutations(queue, "step-11", [insertMutation(steps[0].id)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(true);
+    expect(r[0].allowed).toBe(true);
   });
 
   test("considers the count of steps being inserted in a single mutation", () => {
@@ -273,7 +273,7 @@ describe("Guardrail 3: Max inserted steps per session", () => {
 
     // Trying to insert 3 more would exceed limit of 5
     const r = guardrails.applyMutations(queue, "step-2", [insertMutation(steps[0].id, 3)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(false);
+    expect(r[0].allowed).toBe(false);
   });
 
   test("allows inserting exactly up to the limit", () => {
@@ -287,7 +287,7 @@ describe("Guardrail 3: Max inserted steps per session", () => {
     // Insert 3, then 2 more = exactly 5
     guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id, 3)], TEST_PROVENANCE);
     const r = guardrails.applyMutations(queue, "step-2", [insertMutation(steps[0].id, 2)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(true);
+    expect(r[0].allowed).toBe(true);
   });
 
   test("default limit is 20", () => {
@@ -301,7 +301,7 @@ describe("Guardrail 3: Max inserted steps per session", () => {
     }
 
     const r = guardrails.applyMutations(queue, "step-21", [insertMutation(steps[0].id)], TEST_PROVENANCE);
-    expect(r[0].applied).toBe(false);
+    expect(r[0].allowed).toBe(false);
   });
 });
 
@@ -504,7 +504,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
     );
 
     expect(results).toHaveLength(1);
-    expect(results[0].applied).toBe(true);
+    expect(results[0].allowed).toBe(true);
     expect(queue.steps.length).toBe(6);
   });
 
@@ -521,9 +521,9 @@ describe("Dispatcher-driven mutations through guardrails", () => {
 
     const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
 
-    expect(results[0].applied).toBe(true);
-    expect(results[1].applied).toBe(true);
-    expect(results[2].applied).toBe(false);
+    expect(results[0].allowed).toBe(true);
+    expect(results[1].allowed).toBe(true);
+    expect(results[2].allowed).toBe(false);
     expect(results[2].reason).toContain("mutation");
   });
 
@@ -543,7 +543,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
 
     // Next insert should fail
     const results = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[2].id)], TEST_PROVENANCE);
-    expect(results[0].applied).toBe(false);
+    expect(results[0].allowed).toBe(false);
     expect(results[0].reason).toContain("session");
   });
 
@@ -557,7 +557,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
     const queue = makeQueue(steps, { maxSteps: 5 });
 
     const results = guardrails.applyMutations(queue, "step-1", [insertMutation(steps[0].id)], TEST_PROVENANCE);
-    expect(results[0].applied).toBe(false);
+    expect(results[0].allowed).toBe(false);
     expect(results[0].reason).toContain("max");
   });
 
@@ -571,7 +571,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
     ];
 
     const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
-    expect(results[0].applied).toBe(true);
+    expect(results[0].allowed).toBe(true);
     expect(queue.steps[1].status).toBe("skipped");
   });
 
@@ -585,7 +585,7 @@ describe("Dispatcher-driven mutations through guardrails", () => {
     ];
 
     const results = guardrails.applyMutations(queue, "step-1", mutations, TEST_PROVENANCE);
-    expect(results[0].applied).toBe(true);
+    expect(results[0].allowed).toBe(true);
     expect(queue.steps.length).toBe(1);
   });
 
@@ -636,8 +636,8 @@ describe("Dispatcher-driven mutations through guardrails", () => {
     const results = guardrails.applyMutations(queue, "step-2", mut2, TEST_PROVENANCE);
 
     // First 2 should succeed (reaching limit of 5), 3rd should fail
-    expect(results[0].applied).toBe(true);
-    expect(results[1].applied).toBe(true);
-    expect(results[2].applied).toBe(false);
+    expect(results[0].allowed).toBe(true);
+    expect(results[1].allowed).toBe(true);
+    expect(results[2].allowed).toBe(false);
   });
 });

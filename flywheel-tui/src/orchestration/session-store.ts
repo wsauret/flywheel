@@ -1,7 +1,7 @@
 import { createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { createWorkflowRunner, type WorkflowResult } from "./workflow-runner.js"
-import type { WorkflowSessionFactories } from "./workflow-session.js"
+import type { WorkflowSessionFactories } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { SessionKind } from "./session/types.js"
@@ -16,6 +16,8 @@ import type {
 } from "./session-store-types.js"
 
 export function createSessionStore(factories: WorkflowSessionFactories): SessionStore {
+  // Single reactive root for all sessions — createStore requires an owner context.
+  // Not per-session: all entries share one store, additions/removals tracked together.
   // Definite assignment (!) is safe: createRoot's callback runs synchronously.
   let disposeRoot!: () => void
   let entries!: Record<string, SessionEntry>
@@ -40,7 +42,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     subprocessCwd?: string
     workflowDeps?: WorkflowDeps
     chatContext?: string
-    onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): string {
@@ -81,12 +82,10 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
       async (result) => {
         opts.onRunnerDone?.(sessionId, result)
         await finish(sessionId)
-        opts.onComplete?.()
       },
       async (err) => {
         opts.onRunnerError?.(sessionId, err)
         await finish(sessionId)
-        opts.onComplete?.()
       },
     )
 

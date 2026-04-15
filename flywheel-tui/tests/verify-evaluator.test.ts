@@ -159,28 +159,11 @@ describe("verify-evaluator: schema validation", () => {
   it("result missing required fields fails validation", () => {
     const result = {
       passed: true,
-      // missing reasoning, confidence, feedback, files_to_review
+      // missing reasoning and feedback
     };
 
     const parsed = EvaluatorResultSchema.safeParse(result);
     expect(parsed.success).toBe(false);
-  });
-
-  it("confidence must be between 0 and 1", () => {
-    const validResult = {
-      passed: true,
-      reasoning: "test",
-      confidence: 0.5,
-      feedback: "test",
-      files_to_review: [],
-    };
-    expect(EvaluatorResultSchema.safeParse(validResult).success).toBe(true);
-
-    const invalidResult = {
-      ...validResult,
-      confidence: 1.5,
-    };
-    expect(EvaluatorResultSchema.safeParse(invalidResult).success).toBe(false);
   });
 });
 

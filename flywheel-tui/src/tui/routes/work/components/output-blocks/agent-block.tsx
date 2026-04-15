@@ -8,9 +8,10 @@ import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { formatDuration, formatElapsed } from "@infra/format.js"
 import { displayToolName } from "./tool-block.js"
+import { DISPATCHER_INITIAL_DESCRIPTION, EVALUATOR_INITIAL_DESCRIPTION } from "../../../../adapters/ndjson-pipeline.js"
 import type { AgentBlock as AgentBlockType, ToolBlock as ToolBlockType } from "@infra/output-blocks"
 
-const MAX_VISIBLE_TOOLS = 6
+const MAX_VISIBLE_TOOLS = 4
 
 interface AgentBlockProps {
   block: AgentBlockType
@@ -31,24 +32,33 @@ function ToolRow(props: { tool: ToolBlockType }) {
 export function AgentBlock(props: AgentBlockProps) {
   const { theme } = useTheme()
   const [showAll, setShowAll] = createSignal(false)
-  const [activeCollapsed, setActiveCollapsed] = createSignal(false)
   const activeElapsed = useElapsed(() => props.block.status === "active" ? props.block.timestamp : undefined)
 
   const toolCount = () => props.block.children.length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
-  const descriptionText = () => {
+  const goalText = () => {
     const d = props.block.description
-    // Suppress description for context tool groups — it's just the last tool's
-    // "name: detail" which duplicates what's already in the children list.
     if (props.block.agentLabel === "Tools") return ""
-    // Only show description in completed/paused state if it differs from the initial active-state label
-    const isInitial = d === "Analyzing step and crafting worker prompt" || d === "Checking output quality"
-    return (!isInitial && d) ? d : ""
+    const isInitial = d === DISPATCHER_INITIAL_DESCRIPTION || d === EVALUATOR_INITIAL_DESCRIPTION
+    if (isInitial || !d) return ""
+    // Suppress when description is just the tool name (fallback in parser)
+    if (d === props.block.agentLabel) return ""
+    return d
   }
-  const summary = () => {
+  const activeSummary = () => {
     const parts: string[] = []
-    const desc = descriptionText()
-    if (desc) parts.push(desc)
+    const goal = goalText()
+    if (goal) parts.push(goal)
+    if (toolCount() > 0) parts.push(`${toolCount()} tools`)
+    const elapsed = activeElapsed()
+    if (elapsed >= 1000) parts.push(formatElapsed(elapsed))
+    return parts.join(" · ")
+  }
+
+  const completedSummary = () => {
+    const parts: string[] = []
+    const goal = goalText()
+    if (goal) parts.push(goal)
     parts.push(`${toolCount()} tools`)
     if (props.block.duration != null) parts.push(formatDuration(props.block.duration))
     return parts.join(" · ")
@@ -87,19 +97,18 @@ export function AgentBlock(props: AgentBlockProps) {
   return (
     <box flexDirection="column" marginTop={1}>
       <Show when={props.block.status === "active"}>
-        <box flexDirection="row" gap={1} onMouseDown={() => setActiveCollapsed((v) => !v)}>
+        <box flexDirection="row" gap={1} onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}>
           <Spinner color={theme.secondary} />
           <text fg={theme.secondary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
-          <Show when={toolCount() > 0}>
-            <text fg={theme.textSubtle}>({toolCount()})</text>
+          <Show when={activeSummary()}>
+            <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">· {activeSummary()}</text>
           </Show>
-          <Show when={activeElapsed() >= 1000}>
-            <text fg={theme.textSubtle}>{formatElapsed(activeElapsed())}</text>
+          <Show when={hiddenCount() > 0}>
+            <text fg={theme.textMuted} flexShrink={0}>{showAll() ? "▾" : "▸"}</text>
           </Show>
-          <text fg={theme.textMuted}>{activeCollapsed() ? "▸" : "▾"}</text>
         </box>
         <CollapsibleBox
-          expanded={!activeCollapsed() && visibleChildren().length > 0}
+          expanded={visibleChildren().length > 0}
           border={true}
           borderColor={theme.borderSubtle}
           paddingTop={0}
@@ -115,7 +124,7 @@ export function AgentBlock(props: AgentBlockProps) {
           <text fg={theme.primary}>✓</text>
           <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{props.block.agentLabel}</text>
           <text fg={theme.textMuted}>{props.expanded ? "▾" : "▸"}</text>
-          <text fg={theme.textSubtle}>· {summary()}</text>
+          <text fg={theme.textSubtle}>· {completedSummary()}</text>
         </box>
         <CollapsibleBox
           expanded={props.expanded ?? false}

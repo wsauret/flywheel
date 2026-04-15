@@ -1,7 +1,7 @@
 import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
 import { resolveModel } from "./claude.js";
 
-export interface ContextUpdate {
+interface ContextUpdate {
   promptTokens: number;
   contextWindow: number;
 }

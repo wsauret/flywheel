@@ -86,11 +86,6 @@ export async function executeWithRevisions(
     emit("evaluator:completed", { workflowId, result: {
       passed: result.passed,
       reasoning: result.reason ?? "",
-      suggestions: result.suggestions,
-      confidence: 0,
-      feedback: result.feedback ?? "",
-      files_to_review: [],
-      issues: [],
     } });
   };
 

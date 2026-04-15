@@ -1,3 +1,8 @@
+// Why in tui/adapters/ (not infra/output/): despite having no JSX, this is a TUI
+// adapter — it bridges infra streaming primitives (NDJSONParser, StructuredOutputBuilder)
+// into agent-block lifecycle management specific to TUI display. All consumers are in
+// tui/ (opentui.ts, agent-block.tsx). Infra owns the generic output builder; this
+// adapter owns the dispatcher/evaluator display policy on top of it.
 import { NDJSONParser } from "../../infra/ndjson-parser.js";
 import type { NDJSONEvent } from "../../infra/subprocess-types.js";
 import type { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
@@ -59,6 +64,10 @@ class AgentTracker {
   }
 }
 
+/** Initial placeholder descriptions — suppressed by agent-block when unchanged. */
+export const DISPATCHER_INITIAL_DESCRIPTION = "Analyzing step and crafting worker prompt";
+export const EVALUATOR_INITIAL_DESCRIPTION = "Checking output quality";
+
 export class NdjsonPipeline {
   private readonly dispatcher: AgentTracker;
   private readonly evaluator: AgentTracker;
@@ -71,11 +80,11 @@ export class NdjsonPipeline {
     this.evaluator = new AgentTracker(builder, "evaluator");
   }
 
-  startDispatcher(): string { return this.dispatcher.start("Dispatcher", "Analyzing step and crafting worker prompt"); }
+  startDispatcher(): string { return this.dispatcher.start("Dispatcher", DISPATCHER_INITIAL_DESCRIPTION); }
   completeDispatcher(description?: string): void { this.dispatcher.complete(description); }
   failDispatcher(reason: string): void { this.dispatcher.fail(`Unavailable: ${reason}. Using static prompt.`); }
 
-  startEvaluator(): string { return this.evaluator.start("Evaluator", "Checking output quality"); }
+  startEvaluator(): string { return this.evaluator.start("Evaluator", EVALUATOR_INITIAL_DESCRIPTION); }
   completeEvaluator(description?: string): void { this.evaluator.complete(description); }
   failEvaluator(reason: string): void { this.evaluator.fail(`Failed: ${reason}. Skipping.`); }
 }

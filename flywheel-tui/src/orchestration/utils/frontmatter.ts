@@ -5,15 +5,7 @@ interface ParsedDoc {
   body: string;
 }
 
-interface ParseFrontmatterOptions {
-  /** YAML schema to use (e.g. yaml.JSON_SCHEMA). Defaults to yaml.DEFAULT_SCHEMA. */
-  schema?: yaml.Schema;
-}
-
-export function parseFrontmatter(
-  content: string,
-  options?: ParseFrontmatterOptions,
-): ParsedDoc | null {
+export function parseFrontmatter(content: string): ParsedDoc | null {
   if (!content.startsWith("---")) return null;
 
   const firstNewline = content.indexOf("\n", 3);
@@ -33,12 +25,7 @@ export function parseFrontmatter(
   const body = content.slice(bodyStart);
 
   try {
-    const loadOptions: yaml.LoadOptions = {};
-    if (options?.schema) {
-      loadOptions.schema = options.schema;
-    }
-
-    const parsed = yaml.load(yamlStr, loadOptions);
+    const parsed = yaml.load(yamlStr);
 
     if (parsed === null || parsed === undefined || typeof parsed !== "object") {
       return null;

@@ -4,6 +4,7 @@ import { render } from "@opentui/solid"
 import { useRenderer } from "@opentui/solid"
 import { ErrorBoundary } from "solid-js"
 import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
 import type { ParentProps } from "solid-js"
 import { Clipboard } from "./utils/clipboard.js"
 import { ToastProvider } from "@tui/shared/context/toast"
@@ -12,7 +13,7 @@ import { SessionProvider } from "@tui/shared/context/session"
 import { createSessionManager } from "../orchestration/session/manager.js"
 import { ErrorComponent } from "./components/error-boundary.js"
 import { loadConfig } from "../orchestration/config/loader.js"
-import type { WorkflowSessionFactories } from "../orchestration/workflow-session.js"
+import type { WorkflowSessionFactories } from "../orchestration/session-store-types.js"
 import { CONFIG_FILES } from "../infra/paths.js"
 import * as fs from "node:fs"
 import { setExitHandler } from "./exit.js"
@@ -87,7 +88,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
             Clipboard.copy(text).catch((error) => {
-              Log.create({ service: "app" }).error("clipboard copy failed", { error: error instanceof Error ? error : String(error) })
+              Log.create({ service: "app" }).error("clipboard copy failed", { error: errorMessage(error) })
             })
           },
         },

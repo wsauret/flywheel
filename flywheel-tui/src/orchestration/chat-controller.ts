@@ -2,7 +2,6 @@ import { createChatRunner } from "./chat-runner.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { readSession, updateSession } from "./session/persistence.js"
 import { computeContextPercent } from "./session/budget-tracker-types.js"
-import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
 import type { ChatStoreHandle, SessionStore, ChatSessionEntry } from "./session-store-types.js"
@@ -21,13 +20,11 @@ export interface ChatControllerDeps {
 
 interface StartChatResult {
   sessionId: string
-  terminalTitle: string
 }
 
 interface ResumeChatResult {
   sessionId: string
   priorBlocks: AnyBlock[]
-  terminalTitle: string
 }
 
 export interface ChatController {
@@ -42,7 +39,6 @@ export interface ChatController {
 type StartupState =
   | { phase: "idle" }
   | { phase: "starting"; id: string; pending: string[] }
-  | { phase: "ready" }
 
 const log = Log.create({ service: "chat-controller" })
 
@@ -50,8 +46,13 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   const { sessionStore, manager, refreshList, projectCwd } = deps
 
   let startup: StartupState = { phase: "idle" }
+  // Why here (not in the TUI): the controller is the only entity that knows
+  // whether this is the first chat — the session manager lists historical
+  // sessions, but new-process-first-chat is controller-local knowledge.
   let isFirstChat = true
 
+  // Tracks sessions started with no initial message so they can be silently
+  // deleted rather than persisted as "paused" stubs. Not a state — a policy.
   const emptyChats = new Set<string>()
 
   function finalizeChat(id: string): void {
@@ -79,13 +80,9 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       startedAt?: number
       contextPercent?: number
     },
-  ): Promise<{ sessionId: string; terminalTitle: string } | null> {
+  ): Promise<{ sessionId: string } | null> {
     const priorPending = (startup.phase === "starting" && startup.id === sessionId) ? startup.pending : []
     startup = { phase: "starting", id: sessionId, pending: priorPending }
-
-    const terminalTitle = opts?.priorBlocks
-      ? `${TERMINAL_TITLE_PREFIX}chat (resumed)`
-      : `${TERMINAL_TITLE_PREFIX}chat`
 
     try {
       await sessionStore.startChat({
@@ -98,22 +95,17 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
         contextPercent: opts?.contextPercent,
         onRunnerDone: (id) => {
           finalizeChat(id)
-          deps.onRunnerDone?.(id, {
-            terminalTitle: `${TERMINAL_TITLE_PREFIX}chat`,
-          } satisfies RunnerDoneResult)
+          deps.onRunnerDone?.(id, {})
         },
         onRunnerError: (id, err) => {
           finalizeChat(id)
-          deps.onRunnerError?.(id, {
-            errorMessage: extractErrorMessage(err),
-            terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
-          } satisfies RunnerErrorResult)
+          deps.onRunnerError?.(id, { errorMessage: extractErrorMessage(err) })
         },
         createRunner: (storeHandle: ChatStoreHandle) =>
           createChatRunner({
             sessionId,
             projectCwd,
-            updateState: (id, state) => manager.updateState(id, state),
+            updateState: (id, state) => { manager.updateState(id, state); refreshList() },
             updateEntry: storeHandle.updateEntry,
             onSessionName: (name) => {
               manager.updateLabel(sessionId, name)
@@ -129,14 +121,14 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       })
 
       const pendingMessages = startup.phase === "starting" ? startup.pending : []
-      startup = { phase: "ready" }
+      startup = { phase: "idle" }
       isFirstChat = false
 
       for (const msg of pendingMessages) {
         sessionStore.injectMessage(sessionId, msg)
       }
 
-      return { sessionId, terminalTitle }
+      return { sessionId }
     } catch {
       // Caller handles null return — no additional recovery needed
       startup = { phase: "idle" }
@@ -154,7 +146,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       return null
     }
     if (!initialMessage?.trim()) emptyChats.add(sessionId)
-    return { sessionId: result.sessionId, terminalTitle: result.terminalTitle }
+    return { sessionId: result.sessionId }
   }
 
   async function resumeChat(sessionId: string): Promise<ResumeChatResult | null> {
@@ -171,7 +163,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       contextPercent: computeContextPercent(bu?.context_prompt_tokens ?? 0, bu?.context_window ?? 0) || undefined,
     })
     if (!result) return null
-    return { sessionId: result.sessionId, priorBlocks, terminalTitle: result.terminalTitle }
+    return { sessionId: result.sessionId, priorBlocks }
   }
 
   async function backgroundChat(foregroundId?: string): Promise<void> {

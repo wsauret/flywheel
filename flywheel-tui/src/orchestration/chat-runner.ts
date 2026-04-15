@@ -70,6 +70,9 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   // onWaiting callback. Also prevents races if the session is deleted
   // while a waiting transition is in flight.
   let lastWaiting: boolean | null = null
+  // Why a local guard: onFlush fires every 16ms (OutputSession poll interval).
+  // Without this, updateSession would write the same claudeSessionId to disk
+  // ~60 times per second. The guard skips the disk write when the value hasn't changed.
   let persistedClaudeSessionId: string | null = deps.claudeSessionId ?? null
 
   if (priorBlocks && priorBlocks.length > 0) {
@@ -94,10 +97,11 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   const chatCallbacks: ChatCallbacks = {
     onWaiting: (waiting) => {
+      // Only transition to "active" when the subprocess is waiting for input
+      // (e.g. on auto-resume from "paused"). Chat sessions stay "active" for
+      // their entire subprocess lifetime — finalizeChat handles → "paused".
       if (waiting && lastWaiting !== true) {
         updateState(sessionId, "active")
-      } else if (!waiting && lastWaiting !== false) {
-        updateState(sessionId, "paused")
       }
       lastWaiting = waiting
     },

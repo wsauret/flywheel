@@ -96,3 +96,5 @@ const AnyBlockSchema = z.discriminatedUnion("kind", [
 ])
 
 export type AnyBlock = z.infer<typeof AnyBlockSchema>
+
+export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing"

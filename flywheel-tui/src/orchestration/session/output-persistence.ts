@@ -30,7 +30,7 @@ export interface OutputFlusher {
   dispose(): void;
 }
 
-export interface OutputPersistence {
+interface OutputPersistence {
   save(blocks: readonly AnyBlock[]): void;
   load(): Promise<OutputSnapshot[]>;
   createFlusher(getBlocks: () => readonly AnyBlock[], opts?: OutputFlusherOpts): OutputFlusher;

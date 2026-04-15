@@ -4,7 +4,7 @@ import type { StepExecutor } from "../workflows/queue/executor-types.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { createSessionInfra } from "./session/create-session-infra.js"
 import { disposeSessionResources } from "./session/resources.js"
-import { createWorkflowSession, destroyWorkflowSession, type WorkflowSessionFactories } from "./workflow-session.js"
+import type { WorkflowSessionFactories } from "./session-store-types.js"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
 import type { WarmPool } from "./engines/pool/warm-pool.js"
 import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
@@ -100,13 +100,9 @@ export function createWorkflowRunner(opts: {
     updateEntry(sessionId, patch)
   }
 
-  const session = createWorkflowSession({
-    description,
-    engineMetadata: deps.engine.metadata,
-    factories: opts.factories,
-    updateEntry: wrappedUpdateEntry,
-  })
-  const { eventBus } = session
+  const adapter = opts.factories.createAdapter({ updateEntry: wrappedUpdateEntry, engineMetadata: deps.engine.metadata })
+  const eventBus = new EventBus()
+  adapter.connect(eventBus)
   const emit = createEmit(eventBus)
   const workflowId = randomUUID()
 
@@ -232,7 +228,7 @@ export function createWorkflowRunner(opts: {
     }
     await disposeSessionResources(resources, traceFinalized ? "ok" : "error")
 
-    destroyWorkflowSession(session)
+    adapter.disconnect()
     executor = null
   }
 

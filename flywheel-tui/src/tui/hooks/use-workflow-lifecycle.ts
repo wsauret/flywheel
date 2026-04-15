@@ -2,17 +2,22 @@ import { batch } from "solid-js"
 import {
   createWorkflowController,
 } from "../../orchestration/workflow-controller.js"
+import { TERMINAL_TITLE_BASE } from "../../infra/format.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
-import { wireLifecycleCallbacks } from "./lifecycle-callbacks.js"
+import type { RunnerDoneResult, RunnerErrorResult } from "../../orchestration/session/types.js"
 
 interface WorkflowLifecycleDeps {
   signals: ShellSignals
   services: ShellServices
+  lifecycleCallbacks: {
+    onRunnerDone: (id: string, result: RunnerDoneResult) => void
+    onRunnerError: (id: string, result: RunnerErrorResult) => void
+  }
 }
 
 export interface WorkflowLifecycleHook {
-  startWorkflow(command: string, description: string): void
+  startWorkflow(command: string, description: string, chatContext?: string): void
   startTestStep(stepId?: string): void
   pauseForeground(): void
   abortForeground(): void
@@ -28,23 +33,21 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
   const { signals, services } = deps
   const metrics = services.metrics
 
-  const callbacks = wireLifecycleCallbacks(signals, services)
-
   const controller = createWorkflowController({
     sessionStore: services.sessionStore,
     manager: services.manager,
     refreshList: services.refreshList,
     foregroundId: signals.foregroundId,
-    onRunnerDone: callbacks.onRunnerDone,
-    onRunnerError: callbacks.onRunnerError,
+    onRunnerDone: deps.lifecycleCallbacks.onRunnerDone,
+    onRunnerError: deps.lifecycleCallbacks.onRunnerError,
   })
 
-  function resetUIState(terminalTitle: string): void {
+  function resetUIState(terminalTitle?: string): void {
     batch(() => {
       signals.setErrorMessage("")
       metrics.resetMetrics()
     })
-    services.setTerminalTitle(terminalTitle)
+    services.setTerminalTitle(terminalTitle ?? TERMINAL_TITLE_BASE)
   }
 
   function startWorkflow(command: string, description: string, chatContext?: string): void {
@@ -106,7 +109,7 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
       return
     }
 
-    resetUIState(result.terminalTitle)
+    resetUIState()
     signals.setForegroundId(result.sessionId)
   }
 

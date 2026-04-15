@@ -9,10 +9,6 @@ function isSubagentToolName(name: string): boolean {
   return SUBAGENT_TOOL_NAMES.has(name.toLowerCase());
 }
 
-interface StructuredEventParserOptions {
-  builder: StructuredOutputBuilder;
-}
-
 interface TrackedSubagent {
   agentId: string;
   spawnedAt: number;
@@ -23,23 +19,18 @@ export class StructuredEventParser {
 
   private toolUseIdToAgent = new Map<string, TrackedSubagent>();
 
-  constructor(options: StructuredEventParserOptions) {
-    this.builder = options.builder;
+  constructor(builder: StructuredOutputBuilder) {
+    this.builder = builder;
   }
 
   reset(): void {
     this.toolUseIdToAgent.clear();
   }
 
-  dispatch(event: NDJSONEvent): void {
-    this.dispatchClaudeEvent(event, Date.now());
-  }
-
-  private dispatchClaudeEvent(event: NDJSONEvent, now: number) {
+  dispatch(event: NDJSONEvent, now = Date.now()): void {
+    // Result events carry cost/budget data — consumed by budget tracking, not display.
     if (event.type === "assistant") {
       this.handleClaudeAssistant(event.data, now);
-    } else if (event.type === "result") {
-      // Result events carry cost/budget data — consumed by budget tracking, not display.
     } else if (event.type === "tool_result") {
       const toolUseId = event.data.tool_use_id;
       if (toolUseId) {
@@ -103,6 +94,9 @@ export class StructuredEventParser {
     } else if (name === "Skill" && !parentAgentId) {
       const skillName = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
       this.builder.pushSystemMessage(`Loaded skill: ${skillName}`, now);
+    } else if (name === "ToolSearch" && !parentAgentId) {
+      // Swallow — internal plumbing to load deferred tool schemas, not user-visible.
+      return;
     } else if (name === "TodoWrite" && !parentAgentId) {
       const todos = input?.todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
       if (Array.isArray(todos)) {

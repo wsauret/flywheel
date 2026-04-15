@@ -8,36 +8,27 @@
 // Sprint mode uses Opus for the evaluator to provide thorough assessment.
 
 import type { SprintIterationRecord } from "./types.js";
+import { formatChecklistNumbered } from "../../shared/quality-checklist.js";
 
 // Computed once at module load for prompt caching.
 
 const STATIC_CRITERIA_PREFIX = [
   "## Sprint Mode: Evaluation Criteria",
   "",
-  "Evaluate the worker's output against these 7 checks — the same checklist",
+  "Evaluate the worker's output against these checks — the same checklist",
   "the worker used for self-review before submitting. Your job is to verify",
   "the worker did what was asked, not to find reasons to fail passing work.",
   "",
-
-  // ── Self-review aligned checklist ───────────────────────────────
   "### Assessment Checklist",
   "",
-  "1. **Diff review** — scan for obvious mistakes, unused imports, missing implementations, debug/temp code",
-  "2. **Task alignment** — all requested changes present? Any files mentioned in the task not touched?",
-  "3. **Completeness** — any TODOs, placeholders, half-finished pieces? If acceptance criteria exist, verify each is met.",
-  "4. **Test coverage** — did the worker add/update tests for new behavior? Do tests pass?",
-  "5. **Regression check** — could the changes break existing functionality?",
-  "6. **Edge cases** — obvious error handling gaps? Inputs that would break?",
-  "7. **Elegance** — is this the simplest, most symmetric design? No unnecessary abstractions, no callback chains, no duplicated state? Would a reader say \"of course\" rather than \"why\"?",
+  formatChecklistNumbered(),
   "",
 
   // ── Verdict output fields ───────────────────────────────────────
   "### Required Feedback Fields",
   "",
   "Your verdict MUST include:",
-  "- `implementation_feedback`: Specific feedback on checklist items 1-3, 5-7.",
-  "- `script_feedback`: Specific feedback on checklist item 4 (tests).",
-  "- `feedback`: Combined summary for the worker if a retry is needed.",
+  "- `feedback`: Specific summary for the worker if a retry is needed.",
   "",
 
   // ── When to FAIL / PASS ─────────────────────────────────────────
@@ -65,9 +56,9 @@ const STATIC_CRITERIA_PREFIX = [
  * transport, which wraps it in the full evaluator prompt. This function
  * only produces the sprint-specific criteria section.
  *
- * The static prefix (adversarial stance, dual-channel assessment, verdict
- * fields, FAIL/PASS guidelines) is precomputed at module load. Only the
- * dynamic history section is appended at runtime.
+ * The static prefix (pass-biased checklist, verdict fields, FAIL/PASS
+ * guidelines) is precomputed at module load. Only the dynamic history
+ * section is appended at runtime.
  *
  * @param history - Typed iteration records from prior sprint rounds.
  *   When provided (and non-empty), enables test-weakening detection

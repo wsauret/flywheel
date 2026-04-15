@@ -255,9 +255,7 @@ describe("EvaluatorResultSchema", () => {
     passed: true,
     reasoning: "Tests pass and output looks correct",
     suggestions: [],
-    confidence: 0.9,
     feedback: "Looks good",
-    files_to_review: [],
   };
 
   it("parses a valid result", () => {
@@ -276,41 +274,7 @@ describe("EvaluatorResultSchema", () => {
   it("rejects missing passed field", () => {
     const result = EvaluatorResultSchema.safeParse({
       reasoning: "no pass field",
-      confidence: 0.5,
       feedback: "test",
-      files_to_review: [],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("requires confidence (0-1 range)", () => {
-    const result = EvaluatorResultSchema.parse({
-      ...validResult,
-      confidence: 0.85,
-    });
-    expect(result.confidence).toBe(0.85);
-  });
-
-  it("accepts confidence at boundaries (0 and 1)", () => {
-    const atZero = EvaluatorResultSchema.parse({ ...validResult, confidence: 0 });
-    expect(atZero.confidence).toBe(0);
-
-    const atOne = EvaluatorResultSchema.parse({ ...validResult, confidence: 1 });
-    expect(atOne.confidence).toBe(1);
-  });
-
-  it("rejects confidence below 0", () => {
-    const result = EvaluatorResultSchema.safeParse({
-      ...validResult,
-      confidence: -0.1,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects confidence above 1", () => {
-    const result = EvaluatorResultSchema.safeParse({
-      ...validResult,
-      confidence: 1.1,
     });
     expect(result.success).toBe(false);
   });
@@ -329,32 +293,12 @@ describe("EvaluatorResultSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("requires files_to_review array", () => {
-    const result = EvaluatorResultSchema.parse({
-      ...validResult,
-      files_to_review: ["src/index.ts", "tests/index.test.ts"],
-    });
-    expect(result.files_to_review).toEqual(["src/index.ts", "tests/index.test.ts"]);
-  });
-
   it("rejects missing required fields", () => {
     const result = EvaluatorResultSchema.safeParse({
       passed: true,
       reasoning: "ok",
     });
     expect(result.success).toBe(false);
-  });
-
-  it("accepts all fields together", () => {
-    const result = EvaluatorResultSchema.parse({
-      ...validResult,
-      confidence: 0.95,
-      feedback: "Looks great overall",
-      files_to_review: ["src/main.ts"],
-    });
-    expect(result.confidence).toBe(0.95);
-    expect(result.feedback).toBe("Looks great overall");
-    expect(result.files_to_review).toEqual(["src/main.ts"]);
   });
 });
 
@@ -1038,9 +982,7 @@ describe("Integration — full data contract flow", () => {
     passed: true,
     reasoning: "All acceptance criteria met. Tests pass, no lint warnings.",
     suggestions: ["Consider extracting utility functions to src/utils.ts"],
-    confidence: 0.92,
     feedback: "Solid implementation with good error handling coverage.",
-    files_to_review: ["src/feature.ts", "tests/feature.test.ts"],
   };
 
   it("rejects DispatcherDecision with string evaluation_criteria", () => {
@@ -1067,15 +1009,13 @@ describe("Integration — full data contract flow", () => {
 
   // --- 8.1e: EvaluatorResult with new fields ---
 
-  it("parses EvaluatorResult with all new fields", () => {
+  it("parses EvaluatorResult with all fields", () => {
     const result = EvaluatorResultSchema.parse(fullEvaluatorResult);
 
     expect(result.passed).toBe(true);
     expect(result.reasoning).toBe("All acceptance criteria met. Tests pass, no lint warnings.");
     expect(result.suggestions).toEqual(["Consider extracting utility functions to src/utils.ts"]);
-    expect(result.confidence).toBe(0.92);
     expect(result.feedback).toBe("Solid implementation with good error handling coverage.");
-    expect(result.files_to_review).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
   });
 
   // --- 8.1f: Session with budget fields parses correctly ---
@@ -1122,9 +1062,8 @@ describe("Integration — full data contract flow", () => {
     const decision = DispatcherDecisionSchema.parse(fullDecision);
     emit("dispatcher:completed", { workflowId: "wf-event-test", decision });
 
-    // Emit evaluator:completed with a result containing new fields
-    const evalResult = EvaluatorResultSchema.parse(fullEvaluatorResult);
-    emit("evaluator:completed", { workflowId: "wf-event-test", result: evalResult });
+    // Emit evaluator:completed with the minimal event payload
+    emit("evaluator:completed", { workflowId: "wf-event-test", result: { passed: true, reasoning: "All criteria met." } });
 
     // Verify dispatcher event payload
     const dispEvent = events.find((e) => e.type === "dispatcher:completed") as
@@ -1136,13 +1075,11 @@ describe("Integration — full data contract flow", () => {
     expect(dispEvent.decision.worker_config).toBeDefined();
     expect(typeof dispEvent.decision.evaluation_criteria).toBe("object");
 
-    // Verify evaluator event payload
-    const evalEvent = events.find((e) => e.type === "evaluator:completed") as
-      import("../src/infra/events").EvaluatorCompleted;
+    // Verify evaluator event payload — carries only passed + reasoning
+    const evalEvent = events.find((e) => e.type === "evaluator:completed");
     expect(evalEvent).toBeDefined();
-    expect(evalEvent.result.confidence).toBe(0.92);
-    expect(evalEvent.result.feedback).toBe("Solid implementation with good error handling coverage.");
-    expect(evalEvent.result.files_to_review).toEqual(["src/feature.ts", "tests/feature.test.ts"]);
+    expect((evalEvent as any).result.passed).toBe(true);
+    expect((evalEvent as any).result.reasoning).toBe("All criteria met.");
   });
 
 });

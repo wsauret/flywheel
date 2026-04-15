@@ -169,7 +169,7 @@ interface StepExecutorHooks {
 /** Full options = core + hooks. */
 export type StepExecutorOptions = StepExecutorCoreOptions & StepExecutorHooks;
 
-export type PostTurnVerificationHook = (ctx: {
+type PostTurnVerificationHook = (ctx: {
   step: Step;
   workerOutput: WorkerOutput;
   handoffData: Record<string, unknown> | null;

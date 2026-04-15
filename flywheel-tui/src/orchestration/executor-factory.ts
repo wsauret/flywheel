@@ -1,4 +1,11 @@
-import { resolveTransports, buildExecutorDeps } from "./queue-orchestrator.js"
+import { PooledSubprocessTransport } from "../workflows/dispatcher/subprocess-transport.js"
+import { PooledSubprocessEvaluatorTransport } from "../workflows/evaluator/subprocess-transport.js"
+import { createAgentEvaluatorFn } from "../workflows/evaluator/create-agent-evaluator.js"
+import { readHandoff } from "../workflows/queue/shared/handoff-reader.js"
+import { SubprocessHandoffSchema } from "../infra/handoff-schemas.js"
+import { createContextAccumulator } from "../workflows/queue/context-accumulator.js"
+import { createCompositeHook, type OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
+import { resolveTierConfigs } from "./config/schema.js"
 import { createStepExecutor } from "../workflows/queue/executor.js"
 import type { StepExecutor } from "../workflows/queue/executor-types.js"
 import { createQueuePersistence } from "../workflows/queue/persistence.js"
@@ -11,16 +18,22 @@ import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
 import { createPostTurnVerificationHook } from "../workflows/queue/post-turn-verification.js"
 import { createSprintHook } from "../workflows/queue/steps/sprint/hooks.js"
 import { SPRINT_HINT } from "../workflows/queue/steps/sprint/types.js"
-import type { OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
+import { SPRINT_EVALUATOR_ADDENDUM } from "../workflows/queue/steps/sprint/prompts.js"
+import { createSubprocessCallback } from "./subprocess-callback.js"
+import { createDispatcherCallback } from "./dispatcher-callback.js"
 import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers.js"
 import { createDoomLoopObserver } from "./engines/doom-loop.js"
 import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper.js"
 import { createEmit, type EventBus, type Unsubscribe } from "../infra/event-bus.js"
+import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
 import type { SpawnResult } from "./engines/subprocess/spawner.js"
 import type { Queue } from "../workflows/queue/types.js"
 import { wireSessionSubscribers, type MetricsWriter, type SessionInfra } from "./session/create-session-infra.js"
+
+const log = Log.create({ service: "executor-factory" })
 
 interface CreateExecutorInput {
   /** Prepared workflow deps (config, engine, etc.) */
@@ -85,18 +98,32 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   const evaluatorPool = pools.evaluator
   const subprocessPool = pools.subprocess
 
-  const evaluatorAddendum = isSprint
-    ? "You are evaluating sprint mode work. Evaluate against the 7-point self-review checklist " +
-      "(diff review, task alignment, completeness, test coverage, regression, edge cases, elegance). " +
-      "PASS work that meets the task requirements. " +
-      "Only FAIL for hard evidence: tests failing, critical deliverables missing, or fundamentally broken output."
-    : undefined
+  const evaluatorAddendum = isSprint ? SPRINT_EVALUATOR_ADDENDUM : undefined
 
-  const { dispatcherTransport, evaluatorTransport } = resolveTransports({
-    deps, emit, workflowId, sessionId, baseDir: projectCwd,
-    evaluatorSystemPromptAddendum: evaluatorAddendum,
-    dispatcherPool, evaluatorPool: evaluatorPool ?? undefined, formatStdinMessage,
+  const engineName = deps.config.engine
+  const dispatcherTransport = new PooledSubprocessTransport({
+    pool: dispatcherPool,
+    formatStdinMessage,
+    sessionId,
+    baseDir: projectCwd,
+    onStdout: (chunk) => emit("dispatcher:output", { workflowId, stream: "stdout" as const, data: chunk, engineName }),
+    onStderr: (chunk) => emit("dispatcher:output", { workflowId, stream: "stderr" as const, data: chunk, engineName }),
   })
+  log.info("queue dispatcher transport resolved", { label: "pooled", engine: engineName })
+
+  let evaluatorTransport: PooledSubprocessEvaluatorTransport | undefined
+  if (evaluatorPool) {
+    evaluatorTransport = new PooledSubprocessEvaluatorTransport({
+      pool: evaluatorPool,
+      formatStdinMessage,
+      sessionId,
+      baseDir: projectCwd,
+      systemPromptAddendum: evaluatorAddendum,
+      onStdout: (chunk) => emit("evaluator:output", { workflowId, stream: "stdout" as const, data: chunk, engineName }),
+      onStderr: (chunk) => emit("evaluator:output", { workflowId, stream: "stderr" as const, data: chunk, engineName }),
+    })
+    log.info("queue evaluator transport created", { label: "pooled", engine: engineName })
+  }
 
   const contextIndexer = new ContextIndexer(projectCwd)
   await contextIndexer.startIndexing()
@@ -123,12 +150,44 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     projectCwd,
   })
 
-  const execDeps = buildExecutorDeps({
-    deps, emit, eventBus, workflowId, sessionId,
-    dispatcherTransport, evaluatorTransport, subprocessPool, observerChain,
-    queue, projectCwd, subprocessCwd, contextIndexer, sessionObjective: description,
-    injectionQueue, externalHooks, chatContext,
+  const tiers = resolveTierConfigs(deps.config)
+  const contextAccumulator = createContextAccumulator({
+    windowSize: deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
   })
+  const evaluator = evaluatorTransport
+    ? createAgentEvaluatorFn({ transport: evaluatorTransport })
+    : null
+  const compositeHook = createCompositeHook([...externalHooks])
+  const dispatcherFn = createDispatcherCallback({
+    maxRevisions: deps.config.max_revisions, emit, workflowId,
+    dispatcherTransport,
+    contextIndexer,
+    contextAccumulator, projectCwd,
+    sessionObjective: description, queue,
+    dispatcherModel: tiers.dispatcher.model, subprocessModel: tiers.subprocess.model,
+    chatContext,
+  })
+  const subprocessFn = createSubprocessCallback({
+    deps, emit, workflowId,
+    sessionId, projectCwd,
+    subprocessCwd,
+    injectionQueue,
+    observerChain,
+    subprocessPool,
+  })
+  const handoffReader = async (handoffPath: string) => {
+    if (!handoffPath) return null
+    try {
+      const handoff = await readHandoff(handoffPath, SubprocessHandoffSchema)
+      return handoff as unknown as Record<string, unknown>
+    } catch (err) {
+      log.warn("handoff read failed, continuing without handoff", {
+        path: handoffPath,
+        error: errorMessage(err),
+      })
+      return null
+    }
+  }
 
   const guardrails = createGuardrails({
     maxQueueLength: deps.config.queue?.max_steps ?? 50,
@@ -143,15 +202,15 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     workflowId,
     sessionId,
     emit,
-    dispatcher: execDeps.dispatcherFn,
-    worker: execDeps.subprocessFn,
-    evaluator: execDeps.evaluator,
+    dispatcher: dispatcherFn,
+    worker: subprocessFn,
+    evaluator,
     skipEvaluation: deps.config.skip_evaluation ?? false,
-    handoffReader: execDeps.handoffReader,
+    handoffReader,
     persist: async (q) => { try { await persistence.save(q) } catch { /* best-effort */ } },
-    accumulator: execDeps.contextAccumulator,
+    accumulator: contextAccumulator,
     maxRevisions: deps.config.max_revisions ?? 1,
-    onStepCompleted: execDeps.compositeHook,
+    onStepCompleted: compositeHook,
     guardrails,
     sessionObjective: description,
     onSubprocessDispatched: () => budgetTracker.incrementInvocations(),

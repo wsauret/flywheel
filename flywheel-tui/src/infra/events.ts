@@ -1,4 +1,4 @@
-import type { DispatcherDecision, EvaluatorResult } from "./workflow-types.js";
+import type { DispatcherDecision } from "./workflow-types.js";
 import type { NDJSONEvent } from "./subprocess-types.js";
 
 /** Base shape shared by all flywheel events. */
@@ -19,7 +19,7 @@ export type FlywheelEvent =
   | Ev<"dispatcher:failed", { reason: string }>
   | Ev<"dispatcher:output", { stream: "stdout" | "stderr"; data: string; engineName: string }>
   | Ev<"evaluator:invoked", { stepIndex: number }>
-  | Ev<"evaluator:completed", { result: EvaluatorResult }>
+  | Ev<"evaluator:completed", { result: { passed: boolean; reasoning: string } }>
   | Ev<"evaluator:failed", { reason: string }>
   | Ev<"evaluator:revision-requested", { stepIndex: number; revisionAttempt: number; maxRevisions: number; reason: string }>
   | Ev<"evaluator:output", { stream: "stdout" | "stderr"; data: string; engineName: string }>
@@ -40,13 +40,3 @@ export type FlywheelEvent =
   | Ev<"trace:subagent-started", { toolUseId: string; agentType: string; description: string; prompt: string }>
   | Ev<"trace:subagent-completed", { toolUseId: string; result: string; isError: boolean }>;
 
-// Placed here (not in a generic utils file) because its error message references FlywheelEvent
-// and its only consumer (tui/adapters/opentui.ts) already imports from this module.
-export function assertNever(event: never): never {
-  throw new Error(`Unhandled event type: ${(event as FlywheelEvent).type}`);
-}
-
-// Not an event type — a domain state enum. Co-located here because both
-// infra/output (StructuredOutputBuilder) and orchestration (session-store-types)
-// import it, and placing it in either layer would create a wrong-direction import.
-export type ModelActivity = "idle" | "thinking" | "generating" | "tool_executing";

@@ -1,7 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
 import { Show, Index, createSignal } from "solid-js"
-import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useKeyboard } from "@opentui/solid"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
@@ -18,7 +17,6 @@ interface OutputWindowProps {
 
 export function OutputWindow(props: OutputWindowProps) {
   const themeCtx = useTheme()
-  const [scrollRef, setScrollRef] = createSignal<ScrollBoxRenderable | undefined>()
   const [expandedIds, setExpandedIds] = createSignal<Set<string>>(new Set())
 
   const toggleBlock = (id: string) => {
@@ -72,7 +70,6 @@ export function OutputWindow(props: OutputWindowProps) {
 
         <Show when={hasContent()}>
           <scrollbox
-            ref={(r: ScrollBoxRenderable) => setScrollRef(r)}
             flexGrow={1}
             width="100%"
             stickyScroll={true}

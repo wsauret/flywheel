@@ -18,7 +18,7 @@ import { createShellState, type ShellSignals } from "../src/tui/hooks/shell-stat
 import { createSessionStore } from "../src/orchestration/session-store"
 import type { ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
-import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
+import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
 /** Minimal mock factories for sessionStore tests. */

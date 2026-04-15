@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EffortSchema, TierConfigSchema } from "../../infra/workflow-types.js";
 import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
 
 const SHELL_METACHAR_RE = /[;|&`$(){}<>]/;
@@ -36,24 +37,15 @@ export const FlywheelConfigSchema = z.object({
   /** Show thinking/reasoning blocks in the output window. Default: true. */
   show_thinking: z.boolean().default(true),
   /** Per-tier config for the dispatcher */
-  dispatcher: z.object({
-    model: z.string().optional(),
-    effort: z.enum(["low", "medium", "high", "max"]).optional(),
-  }).default({}),
+  dispatcher: TierConfigSchema,
   /** Per-tier config for the subprocess */
-  subprocess: z.object({
-    model: z.string().optional(),
-    effort: z.enum(["low", "medium", "high", "max"]).optional(),
-  }).default({}),
+  subprocess: TierConfigSchema,
   /** Per-tier config for the evaluator */
-  evaluator: z.object({
-    model: z.string().optional(),
-    effort: z.enum(["low", "medium", "high", "max"]).optional(),
-  }).default({}),
+  evaluator: TierConfigSchema,
   /** Convenience: sets dispatcher.model, subprocess.model, and evaluator.model if not individually overridden */
   model: z.string().optional(),
   /** Convenience: sets dispatcher.effort, subprocess.effort, and evaluator.effort if not individually overridden */
-  effort: z.enum(["low", "medium", "high", "max"]).optional(),
+  effort: EffortSchema.optional(),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
   skip_evaluation: z.boolean().default(false),

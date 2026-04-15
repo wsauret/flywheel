@@ -9,7 +9,7 @@ import type { SprintIterationRecord } from "../src/workflows/queue/steps/sprint/
 //   1. Contains self-review aligned checklist (6 items)
 //   2. Contains "when in doubt, PASS" guidance (not adversarial)
 //   3. Accepts typed SprintIterationRecord[] for test weakening detection
-//   4. Requests implementation_feedback and script_feedback in verdict
+//   4. Requests feedback field in verdict
 // ---------------------------------------------------------------------------
 
 describe("buildSprintEvaluationCriteria", () => {
@@ -24,12 +24,12 @@ describe("buildSprintEvaluationCriteria", () => {
     });
 
     it("contains self-review checklist items", () => {
-      expect(criteria).toContain("Diff review");
       expect(criteria).toContain("Task alignment");
-      expect(criteria).toContain("Completeness");
-      expect(criteria).toContain("Test coverage");
-      expect(criteria).toContain("Regression check");
-      expect(criteria).toContain("Edge cases");
+      expect(criteria).toContain("Elegance");
+      expect(criteria).toContain("Diff review");
+      expect(criteria).toContain("Tests");
+      expect(criteria).toContain("Build");
+      expect(criteria).toContain("Regression");
     });
 
     it("contains pass-biased guidance, not adversarial", () => {
@@ -38,9 +38,8 @@ describe("buildSprintEvaluationCriteria", () => {
       expect(criteria).not.toContain("adversarial");
     });
 
-    it("requests implementation_feedback and script_feedback in verdict", () => {
-      expect(criteria).toContain("implementation_feedback");
-      expect(criteria).toContain("script_feedback");
+    it("requests feedback field in verdict", () => {
+      expect(criteria).toContain("feedback");
     });
 
     it("specifies FAIL only for hard evidence", () => {
@@ -96,7 +95,7 @@ describe("buildSprintEvaluationCriteria", () => {
 
     it("still contains the self-review checklist", () => {
       expect(criteria).toContain("Diff review");
-      expect(criteria).toContain("Test coverage");
+      expect(criteria).toContain("Elegance");
       expect(criteria).toContain("When in doubt, PASS");
     });
   });
@@ -112,7 +111,7 @@ describe("buildSprintEvaluationCriteria", () => {
 
     it("still has self-review checklist", () => {
       expect(criteria).toContain("Diff review");
-      expect(criteria).toContain("Test coverage");
+      expect(criteria).toContain("Elegance");
       expect(criteria).toContain("When in doubt, PASS");
     });
   });

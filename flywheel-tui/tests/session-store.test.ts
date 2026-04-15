@@ -13,7 +13,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { createSessionStore } from "../src/orchestration/session-store"
 import type { SessionEntry, ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
-import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
+import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
 
 /** Minimal mock factories for sessionStore tests (workflow features not tested here). */
 const mockFactories: WorkflowSessionFactories = {

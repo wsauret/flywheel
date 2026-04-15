@@ -1,4 +1,12 @@
+/** Shared domain schemas consumed by both workflows/ and orchestration/. Lives in infra/ because the one-way dependency rule prevents orchestration/ from importing workflows/. */
 import { z } from "zod"
+
+export const EffortSchema = z.enum(["low", "medium", "high", "max"])
+
+export const TierConfigSchema = z.object({
+  model: z.string().optional(),
+  effort: EffortSchema.optional(),
+}).default({})
 
 export const EvaluationCriteriaSchema = z.object({
   acceptance_criteria: z.array(z.string()),
@@ -54,35 +62,11 @@ export const DispatcherDecisionSchema = z.object({
 
 export type DispatcherDecision = z.infer<typeof DispatcherDecisionSchema>
 
-const EvaluatorIssueSeverityEnum = z.enum(["blocking", "non_blocking"])
-
-const EvaluatorIssueCategoryEnum = z.enum([
-  "test_failure",
-  "type_error",
-  "security",
-  "regression",
-  "incomplete",
-  "other",
-])
-
-export const EvaluatorIssueSchema = z.object({
-  description: z.string().min(1, { message: "Issue description must not be empty." }),
-  severity: EvaluatorIssueSeverityEnum,
-  category: EvaluatorIssueCategoryEnum,
-}).strict()
-
-export type EvaluatorIssue = z.infer<typeof EvaluatorIssueSchema>
-
 export const EvaluatorResultSchema = z.object({
   passed: z.boolean(),
   reasoning: z.string(),
   suggestions: z.array(z.string()).optional(),
-  confidence: z.number().min(0).max(1),
   feedback: z.string(),
-  files_to_review: z.array(z.string()),
-  issues: z.array(EvaluatorIssueSchema).default([]),
-  implementation_feedback: z.string().optional(),
-  script_feedback: z.string().optional(),
 }).strip()
 
 export type EvaluatorResult = z.infer<typeof EvaluatorResultSchema>

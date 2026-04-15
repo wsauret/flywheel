@@ -113,9 +113,7 @@ describe("EvaluatorVerdictSchema passthrough", () => {
     passed: true,
     reasoning: "All tests pass and implementation looks correct.",
     suggestions: [],
-    confidence: 0.95,
     feedback: "Good implementation overall",
-    files_to_review: ["src/feature.ts"],
   };
 
   it("accepts evaluator verdict with extra unknown fields", () => {

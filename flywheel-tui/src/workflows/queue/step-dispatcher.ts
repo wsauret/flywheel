@@ -95,17 +95,6 @@ interface StepDispatcher {
   ): Promise<StepDispatcherDecision>;
 }
 
-class StepDispatcherError extends Error {
-  constructor(
-    message: string,
-    public readonly stepId: string,
-    public readonly cause?: Error,
-  ) {
-    super(`dispatcher failed for step ${stepId}: ${message}`);
-    this.name = "StepDispatcherError";
-  }
-}
-
 export function createStepDispatcher(options: StepDispatcherOptions): StepDispatcher {
   const {
     transport,
@@ -166,7 +155,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
 
       emit("dispatcher:failed", { workflowId, reason });
 
-      throw new StepDispatcherError(reason, step.id, error instanceof Error ? error : undefined);
+      throw new Error(`dispatcher failed for step ${step.id}: ${reason}`, { cause: error instanceof Error ? error : undefined });
     }
   }
 

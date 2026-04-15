@@ -50,6 +50,9 @@ export namespace Log {
 
   const loggers = new Map<string, Logger>()
 
+  // Why a singleton: pre-init logging (before Log.init() is called with the
+  // project directory) falls back to stderr. CLI entry point and launcher use
+  // this before config is loaded. After init(), all loggers share the file writer.
   export const Default = create({ service: "default" })
 
   export interface Options {
@@ -122,6 +125,8 @@ export namespace Log {
     return result
   }
 
+  // Global delta: measures time since the last log line from ANY service,
+  // showing overall system activity cadence rather than per-service gaps.
   let last = Date.now()
 
   // Cached by `service` tag only — all callers pass a single { service } tag.

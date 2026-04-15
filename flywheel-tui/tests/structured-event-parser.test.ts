@@ -36,7 +36,7 @@ describe("StructuredEventParser", () => {
 
   beforeEach(() => {
     builder = new StructuredOutputBuilder();
-    parser = new StructuredEventParser({ builder });
+    parser = new StructuredEventParser(builder);
   });
 
   // ── Subagent spawn ──

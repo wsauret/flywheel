@@ -17,6 +17,7 @@
  */
 
 import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
 
 const log = Log.create({ service: "launcher" })
 
@@ -47,7 +48,7 @@ export async function startTUI(options: import("./app").TUIOptions = {}) {
     log.debug("app.startTUI returned")
     return result;
   } catch (err) {
-    log.error("startTUI failed", { error: err instanceof Error ? err : String(err) })
+    log.error("startTUI failed", { error: errorMessage(err) })
     throw err;
   }
 }

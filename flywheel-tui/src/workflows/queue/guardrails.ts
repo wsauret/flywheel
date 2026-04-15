@@ -45,8 +45,8 @@ export interface GuardrailOptions {
   sessionObjective?: string;
 }
 
-/** Result of a guardrail check. */
-interface GuardrailCheckResult {
+/** Guardrail gate result — either permitted or rejected with a reason. */
+interface GateResult {
   readonly allowed: boolean;
   readonly reason?: string;
 }
@@ -71,11 +71,8 @@ export interface MutationBudget {
   readonly sessionObjective: string;
 }
 
-/** Result of applying a single mutation through guardrails. */
-interface MutationApplicationResult {
-  readonly applied: boolean;
-  readonly reason?: string;
-}
+/** Result of applying a single mutation through guardrails — same gate shape. */
+type MutationApplicationResult = GateResult;
 
 export interface Guardrails {
   /** Get the remaining mutation budget for a step. */
@@ -167,7 +164,7 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     for (const mutation of mutations) {
       const budgetCheck = checkMutationBudget(stepId);
       if (!budgetCheck.allowed) {
-        results.push({ applied: false, reason: budgetCheck.reason });
+        results.push({ allowed: false, reason: budgetCheck.reason });
         log.warn("mutation rejected: per-step budget exceeded", { stepId, type: mutation.type, reason: budgetCheck.reason });
         continue;
       }
@@ -175,7 +172,7 @@ export function createGuardrails(options: GuardrailOptions = {}) {
       const mutationResult = applySingleMutation(queue, stepId, mutation, provenance);
       results.push(mutationResult);
 
-      if (mutationResult.applied) {
+      if (mutationResult.allowed) {
         log.info("mutation applied", { stepId, type: mutation.type, reason: mutation.reason });
       } else {
         log.warn("mutation rejected", { stepId, type: mutation.type, reason: mutationResult.reason });
@@ -194,28 +191,28 @@ export function createGuardrails(options: GuardrailOptions = {}) {
     switch (mutation.type) {
       case "insert_after": {
         const insertCheck = checkInsert(queue, mutation.steps.length);
-        if (!insertCheck.allowed) return { applied: false, reason: insertCheck.reason };
+        if (!insertCheck.allowed) return { allowed: false, reason: insertCheck.reason };
         const sessionCheck = checkSessionInsertBudget(mutation.steps.length);
-        if (!sessionCheck.allowed) return { applied: false, reason: sessionCheck.reason };
+        if (!sessionCheck.allowed) return { allowed: false, reason: sessionCheck.reason };
 
         const result = insertAfter(queue, mutation.targetStepId, mutation.steps, provenance);
-        if (!result.success) return { applied: false, reason: result.error };
+        if (!result.success) return { allowed: false, reason: result.error };
         sessionInsertCount += mutation.steps.length;
         recordMutation(stepId);
-        return { applied: true };
+        return { allowed: true };
       }
 
       case "skip":
       case "remove": {
         const fn = mutation.type === "skip" ? skipStep : removeStep;
         const result = fn(queue, mutation.targetStepId, provenance);
-        if (!result.success) return { applied: false, reason: result.error };
+        if (!result.success) return { allowed: false, reason: result.error };
         recordMutation(stepId);
-        return { applied: true };
+        return { allowed: true };
       }
 
       default:
-        return { applied: false, reason: `Unknown mutation type: ${(mutation as { type: string }).type}` };
+        return { allowed: false, reason: `Unknown mutation type: ${(mutation as { type: string }).type}` };
     }
   }
 

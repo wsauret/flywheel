@@ -383,46 +383,12 @@ describe("EvaluatorVerdictSchema", () => {
     passed: true,
     reasoning: "All acceptance criteria met",
     suggestions: ["Consider adding edge case tests"],
-    confidence: 0.92,
     feedback: "Good implementation overall",
-    files_to_review: ["src/feature.ts"],
   };
 
   it("parses valid verdict", () => {
     const result = EvaluatorVerdictSchema.safeParse(validVerdict);
     expect(result.success).toBe(true);
-  });
-
-  it("accepts confidence at 0", () => {
-    const result = EvaluatorVerdictSchema.parse({
-      ...validVerdict,
-      confidence: 0,
-    });
-    expect(result.confidence).toBe(0);
-  });
-
-  it("accepts confidence at 1", () => {
-    const result = EvaluatorVerdictSchema.parse({
-      ...validVerdict,
-      confidence: 1,
-    });
-    expect(result.confidence).toBe(1);
-  });
-
-  it("rejects confidence below 0", () => {
-    const result = EvaluatorVerdictSchema.safeParse({
-      ...validVerdict,
-      confidence: -0.01,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects confidence above 1", () => {
-    const result = EvaluatorVerdictSchema.safeParse({
-      ...validVerdict,
-      confidence: 1.01,
-    });
-    expect(result.success).toBe(false);
   });
 
   it("tolerates unknown fields (.passthrough())", () => {

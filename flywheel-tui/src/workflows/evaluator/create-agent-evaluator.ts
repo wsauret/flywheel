@@ -78,7 +78,6 @@ export function createAgentEvaluatorFn(
       log.info("agent evaluation complete", {
         stepId: step.id,
         passed: result.passed,
-        confidence: result.confidence,
       });
 
       return resultToEvalResult(result);

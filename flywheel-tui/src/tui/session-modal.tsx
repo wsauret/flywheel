@@ -18,7 +18,8 @@ import { useSession } from "@tui/shared/context/session"
 import { isResumable } from "../orchestration/session/types.js"
 import { truncate } from "./utils/text.js"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
-import { buildSessionList, type GroupKey } from "./hooks/use-session-modal.js"
+import { buildSessionList } from "./hooks/use-session-modal.js"
+import type { SessionState } from "../orchestration/session/types.js"
 import type { SessionSummary } from "../orchestration/session/manager.js"
 
 interface SessionModalProps {
@@ -31,13 +32,13 @@ interface SessionModalProps {
   onSelect: (flatIndex: number) => void
 }
 
-const GROUP_LABELS: Record<GroupKey, string> = {
+const GROUP_LABELS: Record<SessionState, string> = {
   active: "Active",
   paused: "Paused",
   completed: "Completed",
 }
 
-const GROUP_ICONS: Record<GroupKey, string> = {
+const GROUP_ICONS: Record<SessionState, string> = {
   active: "\u25CF",
   paused: "\u2759",
   completed: "\u2713",
@@ -61,8 +62,8 @@ export function SessionModal(props: SessionModalProps) {
 
   const groupedSections = createMemo(() => {
     const items = flatList()
-    const sections: { group: GroupKey; label: string; icon: string; items: { session: SessionSummary; flatIndex: number }[] }[] = []
-    let currentGroup: GroupKey | null = null
+    const sections: { group: SessionState; label: string; icon: string; items: { session: SessionSummary; flatIndex: number }[] }[] = []
+    let currentGroup: SessionState | null = null
     let currentSection: (typeof sections)[0] | null = null
 
     for (let i = 0; i < items.length; i++) {
@@ -137,7 +138,12 @@ export function SessionModal(props: SessionModalProps) {
       <box paddingTop={1} paddingBottom={0} flexDirection="column">
         <Show when={flatList().length === 0}>
           <box paddingTop={1} paddingBottom={1}>
-            <text fg={theme.textMuted}>No sessions yet. Try /sprint "desc" or /work "desc"</text>
+            <box flexDirection="row">
+              <text fg={theme.textMuted}>{"No sessions yet. Try "}</text>
+              <text fg={theme.secondary}>/sprint</text>
+              <text fg={theme.textMuted}>{" or "}</text>
+              <text fg={theme.secondary}>/work</text>
+            </box>
           </box>
         </Show>
 

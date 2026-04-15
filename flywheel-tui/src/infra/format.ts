@@ -1,4 +1,5 @@
-export const TERMINAL_TITLE_PREFIX = "flywheel \u00b7 "
+export const TERMINAL_TITLE_BASE = "\u2699 flywheel"
+export const TERMINAL_TITLE_PREFIX = `${TERMINAL_TITLE_BASE} \u00b7 `
 
 export function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`

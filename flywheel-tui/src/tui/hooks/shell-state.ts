@@ -15,7 +15,7 @@ import type { SessionStore, SessionEntry } from "../../orchestration/session-sto
 import type { SessionManager, SessionSummary } from "../../orchestration/session/manager.js"
 import { useMetrics, type MetricsHook } from "./use-metrics.js"
 
-export type AgentState = "idle" | "active"
+type AgentState = "idle" | "active"
 
 /** Pure reactive state — signals and derived memos. */
 export interface ShellSignals {

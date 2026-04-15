@@ -19,7 +19,7 @@ export interface EnvFilterOptions {
  * Pre-compiled environment filter.
  * Create once at startup via `createEnvFilter()`, reuse for every spawn.
  */
-export interface EnvFilter {
+interface EnvFilter {
   /** Filter an environment record, returning only allowed entries. */
   filter(env: Record<string, string | undefined>): Record<string, string>;
 }

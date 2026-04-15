@@ -1,3 +1,4 @@
+/** Subprocess handoff validation. Lives in infra/ because both workflows/ and orchestration/ consume it. */
 import { z } from "zod";
 
 function countSentences(text: string): number {

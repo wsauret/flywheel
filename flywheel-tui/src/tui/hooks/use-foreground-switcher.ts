@@ -9,7 +9,7 @@ import type { Accessor } from "solid-js"
 import { loadSessionOutput } from "../../orchestration/session-actions.js"
 import type { SessionKind } from "../../orchestration/session/types.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
-import { TERMINAL_TITLE_PREFIX } from "../../infra/format.js"
+import { TERMINAL_TITLE_BASE, TERMINAL_TITLE_PREFIX } from "../../infra/format.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 
 interface ForegroundSwitcherDeps {
@@ -52,6 +52,6 @@ export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (session
       metrics.resetElapsedTo(Date.now() - entry.startedAt)
       signals.setErrorMessage("")
     })
-    setTerminalTitle(`${TERMINAL_TITLE_PREFIX}${entry.description}`)
+    setTerminalTitle(entry.kind === "chat" ? TERMINAL_TITLE_BASE : `${TERMINAL_TITLE_PREFIX}${entry.description}`)
   }
 }

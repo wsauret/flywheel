@@ -13,6 +13,7 @@ import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { WorkflowLifecycleHook } from "./use-workflow-lifecycle.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionModalHook } from "./use-session-modal.js"
+import { TERMINAL_TITLE_BASE } from "../../infra/format.js"
 
 interface KeyboardHandlerDeps {
   signals: ShellSignals
@@ -85,7 +86,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
       }
       signals.setErrorMessage("")
       signals.setForegroundId(undefined)
-      deps.setTerminalTitle("flywheel")
+      deps.setTerminalTitle(TERMINAL_TITLE_BASE)
       return
     }
 

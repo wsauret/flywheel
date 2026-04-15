@@ -22,7 +22,7 @@ import { createSessionStore } from "../src/orchestration/session-store"
 import type { ChatStoreHandle, SessionEntry } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 import type { ChatSession } from "../src/orchestration/chat-session"
-import type { WorkflowSessionFactories } from "../src/orchestration/workflow-session"
+import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
 import { useMetrics } from "../src/tui/hooks/use-metrics"
 
 const mockFactories: WorkflowSessionFactories = {

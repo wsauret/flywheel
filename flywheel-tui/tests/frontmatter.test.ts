@@ -101,25 +101,7 @@ describe("parseFrontmatter", () => {
     expect((result!.frontmatter.nested as any).list).toEqual(["one", "two"]);
   });
 
-  it("accepts optional yaml schema option (JSON_SCHEMA)", async () => {
-    // With JSON_SCHEMA, "yes" stays as string "yes" instead of boolean true
-    const yaml = await import("js-yaml");
-    const content = [
-      "---",
-      "status: yes",
-      "plan: true.md",
-      "---",
-      "Body",
-    ].join("\n");
-
-    const result = parseFrontmatter(content, { schema: yaml.JSON_SCHEMA });
-    expect(result).not.toBeNull();
-    expect(result!.frontmatter.status).toBe("yes");
-    expect(typeof result!.frontmatter.status).toBe("string");
-    expect(result!.frontmatter.plan).toBe("true.md");
-  });
-
-  it("uses default schema when no options provided (coerces dates)", () => {
+  it("default schema coerces YAML types (dates, booleans)", () => {
     const content = [
       "---",
       "date_val: 2026-03-14",
@@ -131,22 +113,6 @@ describe("parseFrontmatter", () => {
     expect(result).not.toBeNull();
     // Default schema coerces date-like strings to Date objects
     expect(result!.frontmatter.date_val).toBeInstanceOf(Date);
-  });
-
-  it("JSON_SCHEMA prevents date coercion", async () => {
-    const yaml = await import("js-yaml");
-    const content = [
-      "---",
-      "date_val: 2026-03-14",
-      "---",
-      "Body",
-    ].join("\n");
-
-    const result = parseFrontmatter(content, { schema: yaml.JSON_SCHEMA });
-    expect(result).not.toBeNull();
-    // JSON_SCHEMA keeps date-like strings as strings
-    expect(result!.frontmatter.date_val).toBe("2026-03-14");
-    expect(typeof result!.frontmatter.date_val).toBe("string");
   });
 
   it("uses index-based split (not regex) — handles large body efficiently", () => {

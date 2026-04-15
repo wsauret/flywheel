@@ -38,7 +38,6 @@ interface StartTestStepResult {
 interface ResumeWorkflowResult {
   sessionId: string
   priorBlocks: AnyBlock[]
-  terminalTitle: string
 }
 
 interface RunnerDoneResult extends BaseRunnerDoneResult {
@@ -57,39 +56,20 @@ export interface WorkflowController {
   steerWorkflow(foregroundId: string | undefined, text: string): boolean
 }
 
-function formatWorkflowDoneResult(
-  result: WorkflowResult,
-): RunnerDoneResult {
-  if (result.completed) {
-    return {
-      terminalTitle: `${TERMINAL_TITLE_PREFIX}done`,
-      state: "completed",
-    }
-  }
-  return {
-    terminalTitle: `${TERMINAL_TITLE_PREFIX}paused`,
-    state: "paused",
-  }
-}
-
 export function createWorkflowController(deps: WorkflowControllerDeps): WorkflowController {
   const { sessionStore, manager, refreshList } = deps
 
   function handleRunnerDone(id: string, result: WorkflowResult): void {
-    const doneResult = formatWorkflowDoneResult(result)
-    manager.updateState(id, doneResult.state)
+    const state: SessionState = result.completed ? "completed" : "paused"
+    manager.updateState(id, state)
     refreshList()
-    deps.onRunnerDone?.(id, doneResult)
+    deps.onRunnerDone?.(id, { state })
   }
 
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
-    const errorResult = {
-      errorMessage: extractErrorMessage(err),
-      terminalTitle: `${TERMINAL_TITLE_PREFIX}error`,
-    }
     refreshList()
-    deps.onRunnerError?.(id, errorResult)
+    deps.onRunnerError?.(id, { errorMessage: extractErrorMessage(err) })
   }
 
   function startWorkflow(
@@ -108,7 +88,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     }
 
     const sessionId = manager.create(description, description, "workflow", "active")
-    const terminalTitle = `${TERMINAL_TITLE_PREFIX}${description || command}`
+    const terminalTitle = `${TERMINAL_TITLE_PREFIX}${command}`
 
     sessionStore.start({
       sessionId,
@@ -153,7 +133,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     const testWorkdir = workdir
     const label = `[test] ${stepDef.label}`
     const sessionId = manager.create(label, label, "workflow", "active")
-    const terminalTitle = `${TERMINAL_TITLE_PREFIX}${label}`
+    const terminalTitle = `${TERMINAL_TITLE_PREFIX}test`
 
     sessionStore.start({
       sessionId,
@@ -161,9 +141,8 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       description: label,
       subprocessCwd: testWorkdir.path,
       workflowDeps: wfDeps,
-      onComplete: () => testWorkdir.cleanup(),
-      onRunnerDone: handleRunnerDone,
-      onRunnerError: handleRunnerError,
+      onRunnerDone: (id, result) => { handleRunnerDone(id, result); testWorkdir.cleanup() },
+      onRunnerError: (id, err) => { handleRunnerError(id, err); testWorkdir.cleanup() },
     })
 
     return { sessionId, workdir: testWorkdir.path, terminalTitle }
@@ -176,7 +155,6 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     if (!data) return null
 
     const description = data.session.name || data.session.label || ""
-    const terminalTitle = `${TERMINAL_TITLE_PREFIX}${description || "resume"}`
 
     manager.updateState(sessionId, "active")
 
@@ -192,7 +170,6 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     return {
       sessionId,
       priorBlocks: data.outputBlocks,
-      terminalTitle,
     }
   }
 

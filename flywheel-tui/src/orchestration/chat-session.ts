@@ -30,6 +30,12 @@ export interface ChatSession {
   readonly outputSession: OutputSession
 }
 
+// Three-state turn machine:
+// - idle: no turn in flight, safe to end/reconnect
+// - awaiting-response: message sent, waiting for first assistant chunk
+// - agent-active: assistant is streaming, tools are running
+// Consumers: activityGatedUpdateEntry (suppress ghost-thinking), handleWorkerExit
+// (detect mid-turn crash), chat-controls send() (mark injections as pending).
 type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 
 // Why a class with private fields: the getters enforce read-only access from

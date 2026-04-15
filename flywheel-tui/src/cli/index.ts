@@ -58,7 +58,7 @@ async function runTUI(): Promise<void> {
 
 if (import.meta.main) {
   main().catch((err) => {
-    Log.Default.error("fatal", { error: err instanceof Error ? err : String(err) })
+    Log.Default.error("fatal", { error: errorMessage(err) })
     process.exit(1);
   });
 }

@@ -16,6 +16,7 @@
     "test:all": "bun test",
     "build": "bun run scripts/build.ts",
     "build:binary": "bun run scripts/build-binary.ts",
+    "install:local": "./scripts/install-local.sh",
     "typecheck": "tsc --noEmit",
     "check:boundaries": "bun run scripts/check-boundaries.ts"
   },

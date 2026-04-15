@@ -2,8 +2,9 @@ import { z } from "zod";
 import { SubprocessHandoffBaseSchema } from "../../infra/handoff-schemas.js";
 import { EvaluatorResultSchema } from "../../infra/workflow-types.js";
 
+// Extends base schema: makes suggestions required (LLMs should always produce it)
+// and allows passthrough for forward-compatible handoff fields.
 export const EvaluatorVerdictSchema = EvaluatorResultSchema
-  .omit({ implementation_feedback: true, script_feedback: true })
   .extend({ suggestions: z.array(z.string()) })
   .passthrough();
 

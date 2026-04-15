@@ -52,13 +52,7 @@ export function buildChatWelcomeBlocks(projectCwd: string): AnyBlock[] {
   const now = Date.now()
   const welcomeBlock: AnyBlock = {
     kind: "system",
-    message: [
-      "Hey. Start typing to chat, or try a command:",
-      "",
-      "  `/work` · `/sprint`",
-      "",
-      "`Ctrl+B` sessions · `Ctrl+N` new chat",
-    ].join("\n"),
+    message: "Hey. Start typing to chat, or try a command:\n`/work` · `/sprint` · `Ctrl+B` sessions · `Ctrl+N` new chat",
     timestamp: now,
   }
 

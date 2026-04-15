@@ -20,7 +20,7 @@ import {
 const BLOCKS_CAP = 20_000;
 const AGENT_CHILDREN_CAP = 50;
 
-import type { ModelActivity } from "../events.js";
+import type { ModelActivity } from "../output-blocks.js";
 
 function buildToolBlock(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): ToolBlock {
   return { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
@@ -225,7 +225,6 @@ export class StructuredOutputBuilder {
     if (idx === undefined) return;
 
     const agent = this.blocks[idx] as AgentBlock;
-    if (agent.status === "completed") return;
     if (agent.status !== "active") return;
 
     this.blocks[idx] = {

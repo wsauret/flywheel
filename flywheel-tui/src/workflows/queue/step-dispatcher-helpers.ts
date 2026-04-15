@@ -17,13 +17,6 @@ import { createEmptyStepContext } from "./step-context.js";
 import { parseRawHandoff } from "./shared/handoff-parse.js";
 import { randomUUID } from "crypto";
 
-/** Known step types — used to validate dispatcher-provided types at the boundary. */
-const VALID_STEP_TYPES = new Set<string>(["work"]);
-
-function toStepType(raw: string): Step["type"] {
-  return VALID_STEP_TYPES.has(raw) ? (raw as Step["type"]) : "work";
-}
-
 /**
  * Build compact queue state for the dispatcher.
  * Shows all steps with their statuses to give the dispatcher
@@ -88,22 +81,12 @@ function accumulatedToStepContext(
   return ctx;
 }
 
-interface PlanStepCompact {
-  title: string;
-  description: string;
-  acceptanceCriteria?: string[];
-  fileReferences?: string[];
-  feature?: string;
-}
-
 /**
  * Build the plan steps array from queue steps (compact representation).
  * Uses the new step-based schema for the dispatcher.
  */
-function buildPlanFromQueue(
-  queue: Queue,
-): { steps: PlanStepCompact[] } {
-  const steps: PlanStepCompact[] = queue.steps.map((s) => ({
+function buildPlanFromQueue(queue: Queue) {
+  const steps = queue.steps.map((s) => ({
     title: s.title,
     description: s.description ?? s.title,
     acceptanceCriteria: s.acceptanceCriteria,
@@ -174,7 +157,7 @@ export function normalizeDecision(
     if (req.type === "insert_after") {
       const steps = req.steps?.map(s => ({
         id: randomUUID(),
-        type: toStepType(s.type),
+        type: "work" as const,
         title: s.title,
         status: "pending" as const,
         description: s.description,
@@ -215,26 +198,24 @@ function toMutationBudgetWire(budget: MutationBudget) {
   };
 }
 
-interface DispatcherInputContext {
-  configContext: {
-    maxEvalCycles: number;
-    worktreePath: string;
-    projectCwd: string;
-    subprocessModel: string;
-    dispatcherModel: string;
-  };
-  workflowId: string;
-  sessionBudget: SessionBudgetStatus;
-  availableContext: AvailableContext;
-}
-
 /** Assemble the full DispatcherInput from step, queue, and session context. */
 export function buildDispatcherInput(
   step: Step,
   queue: Queue,
   context: StepDispatchContext,
   currentIndex: number,
-  options: DispatcherInputContext,
+  options: {
+    configContext: {
+      maxEvalCycles: number;
+      worktreePath: string;
+      projectCwd: string;
+      subprocessModel: string;
+      dispatcherModel: string;
+    };
+    workflowId: string;
+    sessionBudget: SessionBudgetStatus;
+    availableContext: AvailableContext;
+  },
 ): DispatcherInput {
   const stepDescription = buildStepDescription(step);
 

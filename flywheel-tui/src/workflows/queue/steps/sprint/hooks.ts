@@ -11,6 +11,7 @@ import type {
   SprintLoopState,
 } from "./types.js";
 import { SPRINT_HINT } from "./types.js";
+import { buildSprintEvaluationCriteria } from "./evaluator-criteria.js";
 
 // Sprint loop primitives — exported for direct unit testing of edge cases.
 
@@ -103,7 +104,7 @@ export function buildRetryStep(
     description,
     dispatcherHint: SPRINT_HINT,
     skipDispatcher: true,
-    evaluationCriteria: originalStep.evaluationCriteria,
+    evaluationCriteria: buildSprintEvaluationCriteria(history),
     toolScoping: originalStep.toolScoping,
   });
 }

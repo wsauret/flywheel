@@ -2,13 +2,10 @@ import { z } from "zod";
 
 export type SessionKind = "workflow" | "chat"
 
-export interface RunnerDoneResult {
-  terminalTitle: string
-}
+export interface RunnerDoneResult {}
 
 export interface RunnerErrorResult {
   errorMessage: string
-  terminalTitle: string
 }
 
 export const SessionStateSchema = z.enum(["active", "paused", "completed"]);

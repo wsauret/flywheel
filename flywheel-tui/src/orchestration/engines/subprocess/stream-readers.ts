@@ -3,7 +3,7 @@ type MinimalReader = {
   cancel(): Promise<void>;
 };
 
-export interface StreamReaderSet {
+interface StreamReaderSet {
   stdout: MinimalReader | null;
   stderr: MinimalReader | null;
   cancelAll(): void;

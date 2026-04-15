@@ -254,10 +254,12 @@ describe("buildRetryStep", () => {
     expect(step.dispatcherHint).toBe(SPRINT_HINT);
   });
 
-  test("carries forward evaluationCriteria", () => {
+  test("builds sprint criteria (no history when empty)", () => {
     const original = makeSprintStep({ evaluationCriteria: "All tests pass" });
     const step = buildRetryStep(original, [], 2, 5);
-    expect(step.evaluationCriteria).toBe("All tests pass");
+    // With empty history, gets the static sprint criteria prefix
+    expect(step.evaluationCriteria).toContain("Sprint Mode: Evaluation Criteria");
+    expect(step.evaluationCriteria).not.toContain("Prior Iteration History");
   });
 
   test("includes iteration count in title", () => {
@@ -395,7 +397,10 @@ describe("createSprintHook — failed, under max", () => {
     const retryStep = queue.steps[1];
     expect(retryStep.type).toBe("work");
     expect(retryStep.dispatcherHint).toBe(SPRINT_HINT);
-    expect(retryStep.evaluationCriteria).toBe("All tests pass, no regressions");
+    // Retry step gets rebuilt criteria with history for test-weakening detection
+    expect(retryStep.evaluationCriteria).toContain("Sprint Mode: Evaluation Criteria");
+    expect(retryStep.evaluationCriteria).toContain("Test Weakening Detection");
+    expect(retryStep.evaluationCriteria).toContain("3 tests failing");
     expect(retryStep.status).toBe("pending");
   });
 
@@ -658,18 +663,20 @@ describe("createSprintHook — retry step properties", () => {
     expect(retry.dispatcherHint).toBe(SPRINT_HINT);
   });
 
-  test("retry step preserves evaluationCriteria from original", async () => {
+  test("retry step rebuilds criteria with iteration history", async () => {
     const config = makeSprintConfig();
-    const criteria = "All unit tests pass and no type errors";
     const { hook } = createSprintHook(config);
-    const step = makeSprintStep({ evaluationCriteria: criteria });
+    const step = makeSprintStep({ evaluationCriteria: "All unit tests pass and no type errors" });
     const queue = makeQueueWithStep(step);
     queue.steps[0].status = "failed";
 
     await hook(step, "failed", queue, { summary: "fail" });
 
     const retry = queue.steps[1];
-    expect(retry.evaluationCriteria).toBe(criteria);
+    // Criteria are rebuilt with history, not copied from the original step
+    expect(retry.evaluationCriteria).toContain("Sprint Mode: Evaluation Criteria");
+    expect(retry.evaluationCriteria).toContain("Prior Iteration History");
+    expect(retry.evaluationCriteria).toContain("Iteration 1");
   });
 
   test("retry step has brief description (not full history)", async () => {

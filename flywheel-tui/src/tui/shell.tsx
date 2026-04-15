@@ -16,8 +16,8 @@ import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { SessionModal } from "./session-modal.js"
 import { ToastDisplay } from "@tui/shared/components/toast-display"
 import { createSessionStore } from "../orchestration/session-store.js"
-import type { WorkflowSessionFactories } from "../orchestration/workflow-session.js"
-import { formatElapsed } from "../infra/format.js"
+import type { WorkflowSessionFactories } from "../orchestration/session-store-types.js"
+import { formatElapsed, TERMINAL_TITLE_BASE } from "../infra/format.js"
 import { errorMessage } from "../infra/error-message.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
 import { useChatMode } from "./hooks/use-chat-mode.js"
@@ -27,6 +27,7 @@ import { createShellState } from "./hooks/shell-state.js"
 import { createKeyboardHandler } from "./hooks/use-keyboard-handler.js"
 import { createForegroundSwitcher } from "./hooks/use-foreground-switcher.js"
 import { createHeaderDisplay } from "./hooks/use-header-display.js"
+import type { RunnerErrorResult } from "../orchestration/session/types.js"
 
 export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
   const { theme } = useTheme()
@@ -47,6 +48,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     showThinking: props.showThinking ?? true,
   })
 
+  renderer.setTerminalTitle(TERMINAL_TITLE_BASE)
+
   const metrics = services.metrics
 
   const [promptHeight, setPromptHeight] = createSignal(1)
@@ -61,9 +64,19 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
   })
 
-  const workflow = useWorkflowLifecycle({ signals, services })
+  const lifecycleCallbacks = {
+    onRunnerDone: () => {
+      services.setTerminalTitle(TERMINAL_TITLE_BASE)
+    },
+    onRunnerError: (_id: string, result: RunnerErrorResult) => {
+      signals.setErrorMessage(result.errorMessage)
+      services.setTerminalTitle(TERMINAL_TITLE_BASE)
+    },
+  }
 
-  const chat = useChatMode({ signals, services, projectCwd: props.projectCwd })
+  const workflow = useWorkflowLifecycle({ signals, services, lifecycleCallbacks })
+
+  const chat = useChatMode({ signals, services, projectCwd: props.projectCwd, lifecycleCallbacks })
 
   const sessionModal = useSessionModal({
     signals,
@@ -71,6 +84,17 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     sessions,
     handleResume: workflow.handleResume,
     switchForeground,
+    deleteActiveChat: async (sessionId) => {
+      await chat.endChat()
+      try { services.manager.delete(sessionId) } catch { /* already cleaned up by endChat */ }
+      services.refreshList()
+      const nextId = services.sessionStore.allIds().find((id) => services.sessionStore.isRunning(id))
+      if (nextId) {
+        await switchForeground(nextId)
+      } else {
+        await chat.startChat()
+      }
+    },
     actionDeps: workflow.actionDeps,
   })
 
@@ -127,7 +151,9 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     renderer.setTerminalTitle("")
   })
 
-  // Ticking clock for live elapsed displays (step indicators, etc.)
+  // Ticking clock for live elapsed displays (step indicators, prompt status).
+  // Separate from useMetrics' timer: this drives wall-clock display in JSX,
+  // while useMetrics accumulates active-only time across pause/resume cycles.
   const [now, setNow] = createSignal(Date.now())
   const nowTimer = setInterval(() => setNow(Date.now()), 1000)
   onCleanup(() => clearInterval(nowTimer))
@@ -178,7 +204,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
         <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepDisplay().visible.length > 0 ? 0 : 1} paddingLeft={2} paddingRight={1}>
           <box flexDirection="row" flexShrink={1} overflow="hidden">
-            <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>flywheel</text>
+            <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{"\u2699 flywheel"}</text>
             <Show when={signals.sessionTitle()}>
               <text fg={theme.textMuted}>{" \u00b7 "}</text>
               <text fg={theme.text}>{signals.sessionTitle()}</text>
@@ -290,17 +316,26 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
           </Show>
         </box>
-        <text fg={theme.textMuted} flexShrink={0}>
-          {signals.agentState() === "active"
-            ? "Esc interrupt"
-            : signals.sessionState() === "paused"
-              ? "Esc exit \u00b7 Ctrl+R resume"
-              : "Ctrl+N new"}
-          {sessions().filter(s => s.state === "active" || s.state === "paused").length >= 2 ? " \u00b7 Tab" : ""}
-          {sessions().length > 0
-            ? ` \u00b7 Ctrl+B ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
-            : " \u00b7 Ctrl+B sessions"}
-        </text>
+        <box flexDirection="row" flexShrink={0}>
+          <Show when={signals.agentState() === "active"}>
+            <text fg={theme.textMuted}>{"Esc interrupt \u00b7 "}</text>
+          </Show>
+          <Show when={signals.sessionState() === "paused"}>
+            <text fg={theme.textMuted}>{"Esc exit \u00b7 Ctrl+R resume \u00b7 "}</text>
+          </Show>
+          <text fg={theme.textMuted} onMouseDown={() => { chat.backgroundChat(); chat.startChat() }}>
+            {"Ctrl+N new"}
+          </text>
+          <text fg={theme.textMuted}>
+            {sessions().filter(s => s.state === "active" || s.state === "paused").length >= 2 ? " \u00b7 Tab" : ""}
+            {" \u00b7 "}
+          </text>
+          <text fg={theme.textMuted} onMouseDown={() => sessionModal.openSessionsModal()}>
+            {sessions().length > 0
+              ? `Ctrl+B ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
+              : "Ctrl+B sessions"}
+          </text>
+        </box>
       </box>
 
       <ToastDisplay headerHeight={stepDisplay().visible.length > 0 ? 4 : 3} />

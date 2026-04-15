@@ -34,7 +34,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
   const { updateEntry, emit, onFlush, workflowId = "output-session" } = options
 
   const builder = options.builder ?? new StructuredOutputBuilder()
-  const eventParser = new StructuredEventParser({ builder })
+  const eventParser = new StructuredEventParser(builder)
   const parser = new NDJSONParser()
 
   let disposed = false

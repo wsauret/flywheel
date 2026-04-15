@@ -1,10 +1,21 @@
 import type { WorkflowRunner, WorkflowResult, StepState } from "./workflow-runner.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
-import type { ModelActivity } from "../infra/events.js"
+import type { ModelActivity } from "../infra/output-blocks.js"
 import type { ChatRunner } from "./chat-runner.js"
 import type { SessionKind } from "./session/types.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
+import type { EventBus } from "../infra/event-bus.js"
+import type { EngineMetadata } from "./engines/core/types.js"
+
+export interface WorkflowAdapter {
+  connect(bus: EventBus): void
+  disconnect(): void
+}
+
+export interface WorkflowSessionFactories {
+  createAdapter: (opts: { updateEntry: (patch: Partial<WorkflowSessionEntry>) => void; engineMetadata?: EngineMetadata }) => WorkflowAdapter
+}
 
 export interface SessionEntryBase {
   readonly kind: SessionKind
@@ -57,7 +68,6 @@ export interface SessionStore {
     subprocessCwd?: string
     workflowDeps?: WorkflowDeps
     chatContext?: string
-    onComplete?: () => void
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): string

@@ -12,6 +12,10 @@ import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "step-executor" });
 
+function stepEventPayload(workflowId: string, step: Step) {
+  return { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title }
+}
+
 /** Stage 1: Build prompt via dispatcher or step metadata. */
 async function dispatchStep(
   step: Step,
@@ -59,7 +63,7 @@ async function applyMutations(
     provenance,
   );
   for (const r of results) {
-    if (!r.applied) {
+    if (!r.allowed) {
       log.warn("dispatcher mutation rejected", { stepId: step.id, reason: r.reason });
     }
   }
@@ -160,7 +164,7 @@ async function evaluateAndAccumulate(
 
     if (!revisionResult.passed) {
       await safeTransition(step.id, "failed", revisionResult.failReason!);
-      emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason: revisionResult.failReason! });
+      emit("queue:step-failed", { ...stepEventPayload(workflowId, step), reason: revisionResult.failReason! });
 
       if (onStepCompleted) {
         const hookResult = await onStepCompleted(step, "failed", queue, ctx.handoffData);
@@ -188,7 +192,7 @@ async function evaluateAndAccumulate(
   }
 
   await safeTransition(step.id, "completed", "step execution completed successfully");
-  emit("queue:step-completed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
+  emit("queue:step-completed", stepEventPayload(workflowId, step));
 
   // Persist accumulator state (ADR-003 Decision 8)
   if (persistAccumulatorState && accumulator.serialize) {
@@ -223,10 +227,10 @@ export async function executeStep(
     postTurnPassed: true,
   };
 
-  emit("queue:step-started", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title });
+  emit("queue:step-started", stepEventPayload(workflowId, step));
   const transitioned = await safeTransition(step.id, "running", "starting step execution");
   if (!transitioned) {
-    emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason: "Failed to transition to running" });
+    emit("queue:step-failed", { ...stepEventPayload(workflowId, step), reason: "Failed to transition to running" });
     return { outcome: "failed", previousHandoff: ctx.previousHandoff, previousAssessment: ctx.previousAssessment };
   }
 
@@ -255,7 +259,7 @@ export async function executeStep(
     log.warn("step execution failed", { stepId: step.id, reason });
 
     await safeTransition(step.id, "failed", reason);
-    emit("queue:step-failed", { workflowId, stepId: step.id, stepType: step.type, stepTitle: step.title, reason });
+    emit("queue:step-failed", { ...stepEventPayload(workflowId, step), reason });
 
     if (onStepCompleted) {
       const hookResult = await onStepCompleted(step, "failed", queue, null);

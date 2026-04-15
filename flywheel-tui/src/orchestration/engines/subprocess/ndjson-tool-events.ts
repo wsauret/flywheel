@@ -1,12 +1,12 @@
 import type { NDJSONEvent } from "../../../infra/subprocess-types.js";
 
-export interface ToolUseRecord {
+interface ToolUseRecord {
   toolUseId: string;
   toolName: string;
   toolInput: unknown;
 }
 
-export interface ToolResultRecord {
+interface ToolResultRecord {
   toolUseId: string;
   isError: boolean;
   toolOutput: unknown;

@@ -1,4 +1,4 @@
-import { assertNever, type FlywheelEvent } from "../../infra/events.js";
+import type { FlywheelEvent } from "../../infra/events.js";
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
 import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration/session-store-types.js";
 import { createOutputSession, type OutputSession } from "../../orchestration/output-session.js";
@@ -94,7 +94,7 @@ export class OpenTUIAdapter {
   // Why switch, not a handler map (like HeadlessAdapter): the TUI handler logic
   // varies per event — ordering constraints, multi-method calls, pipeline routing.
   // A map would require `any`-typed event params (losing discriminated union narrowing)
-  // with no reduction in per-case complexity. assertNever ensures exhaustiveness.
+  // with no reduction in per-case complexity. The default throws for exhaustiveness.
   private handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "subprocess:output":
@@ -119,14 +119,9 @@ export class OpenTUIAdapter {
         this.outputSession.notifySpawned(event.timestamp);
         break;
 
-      case "dispatcher:completed": {
-        const warnings = event.decision.warnings;
-        const warningText = warnings && warnings.length > 0
-          ? ` (${warnings.length} warning${warnings.length > 1 ? "s" : ""})`
-          : "";
-        this.ndjsonPipeline.completeDispatcher(`Prompt ready${warningText}`);
+      case "dispatcher:completed":
+        this.ndjsonPipeline.completeDispatcher("Prompt ready");
         break;
-      }
 
       case "dispatcher:failed":
         this.ndjsonPipeline.failDispatcher(event.reason);
@@ -233,8 +228,10 @@ export class OpenTUIAdapter {
       case "trace:subagent-completed":
         break;
 
-      default:
-        assertNever(event);
+      default: {
+        const _: never = event;
+        throw new Error(`Unhandled event type: ${(_ as FlywheelEvent).type}`);
+      }
     }
   }
 

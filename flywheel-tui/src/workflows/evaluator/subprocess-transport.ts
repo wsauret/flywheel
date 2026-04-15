@@ -62,7 +62,7 @@ function buildEvaluatorPrompt(input: EvaluatorInput): string {
     sections.push(`## Acceptance\n${input.acceptance_criteria.map(c => `- ${c}`).join("\n")}`, "");
   }
 
-  // Verdict instructions
+  // Verdict behavioral guidance — format details are in the handoff instruction that follows.
   sections.push(
     `## Verdict`,
     "",
@@ -73,18 +73,6 @@ function buildEvaluatorPrompt(input: EvaluatorInput): string {
     "",
     "Fail ONLY for hard evidence: tests actually failing, secrets in code, critical deliverables missing, or fundamentally wrong output.",
     "When in doubt, pass with suggestions. Revision loops are expensive.",
-    "",
-    "Passing verdict:",
-    "```json",
-    `{ "passed": true, "reasoning": "All acceptance criteria met.", "suggestions": [], "confidence": 0.9, "feedback": "", "files_to_review": [], "issues": [] }`,
-    "```",
-    "",
-    "Failing verdict:",
-    "```json",
-    `{ "passed": false, "reasoning": "Tests fail: 3 of 12 assertions error.", "suggestions": ["Fix the null check in auth.ts:42"], "confidence": 0.95, "feedback": "The auth middleware throws on missing token instead of returning 401.", "files_to_review": ["src/auth.ts"], "issues": [{"description": "Auth middleware crashes on missing token", "severity": "blocking", "category": "test_failure"}] }`,
-    "```",
-    "",
-    "issues schema: `{description: string, severity: \"blocking\"|\"non_blocking\", category: \"test_failure\"|\"type_error\"|\"security\"|\"regression\"|\"incomplete\"|\"other\"}`",
   );
 
   return sections.join("\n");
@@ -128,6 +116,8 @@ export class PooledSubprocessEvaluatorTransport implements EvaluatorTransport {
         },
         systemPrompt: this.systemPrompt,
         handoffSchema: EvaluatorVerdictSchema,
+        // Identity — the verdict schema already produces the result type.
+        // mapResult exists for the dispatcher's sake (it defaults evaluation_criteria).
         mapResult: (verdict): EvaluatorResult => verdict,
       },
       this.opts,

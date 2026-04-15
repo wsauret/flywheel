@@ -1,5 +1,6 @@
 import type { FlywheelEvent } from "./events.js";
 import { Log } from "./log.js";
+import { errorMessage } from "./error-message.js";
 
 type Listener = (event: FlywheelEvent) => void;
 type TypedListener<T extends FlywheelEvent["type"]> = (
@@ -46,7 +47,7 @@ export class EventBus {
       try {
         listener(event);
       } catch (err) {
-        log.warn("catch-all listener error", { eventType: event.type, error: err instanceof Error ? err : new Error(String(err)) });
+        log.warn("catch-all listener error", { eventType: event.type, error: errorMessage(err) });
       }
     }
     const typedSet = this.typed.get(event.type);
@@ -55,7 +56,7 @@ export class EventBus {
         try {
           listener(event);
         } catch (err) {
-          log.warn("typed listener error", { eventType: event.type, error: err instanceof Error ? err : new Error(String(err)) });
+          log.warn("typed listener error", { eventType: event.type, error: errorMessage(err) });
         }
       }
     }
