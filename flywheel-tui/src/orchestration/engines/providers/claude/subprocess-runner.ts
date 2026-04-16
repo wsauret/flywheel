@@ -63,6 +63,10 @@ export class SubprocessRunner implements EngineRunner {
     this.stdinHandle.write(formatStdinMessage(text));
   }
 
+  end(): void {
+    this.stdinHandle?.close();
+  }
+
   abort(): void {
     if (this.childPid !== undefined) {
       killProcessGroup({ pid: this.childPid, kill: () => {} }, "SIGTERM");

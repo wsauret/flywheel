@@ -136,7 +136,7 @@ describe("selectBlockComponent", () => {
 // ── AgentBlock display text logic ──
 
 /**
- * Replicated from agent-block.tsx: derive display text for different agent states.
+ * Replicated from tool-group-block.tsx: derive display text for different agent states.
  */
 function agentDisplayText(agent: AgentBlock): {
   icon: string;

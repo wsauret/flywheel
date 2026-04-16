@@ -10,7 +10,7 @@ import { Switch, Match } from "solid-js"
 import type { AnyBlock } from "@infra/output-blocks"
 import { TextBlock } from "./text-block.js"
 import { ToolEntry } from "./tool-entry.js"
-import { AgentBlock } from "./agent-block.js"
+import { ToolGroupBlock } from "./tool-group-block.js"
 import { SystemBlock } from "./system-block.js"
 import { ThinkingBlock } from "./thinking-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
@@ -24,6 +24,7 @@ interface BlockRendererProps {
 
 export function BlockRenderer(props: BlockRendererProps) {
   return (
+    <box marginTop={1}>
     <Switch>
       <Match when={props.block.kind === "text" ? props.block : undefined}>
         {(block) => <TextBlock block={block()} />}
@@ -33,7 +34,7 @@ export function BlockRenderer(props: BlockRendererProps) {
       </Match>
       <Match when={props.block.kind === "agent" ? props.block : undefined}>
         {(block) => (
-          <AgentBlock
+          <ToolGroupBlock
             block={block()}
             expanded={props.expandedIds?.has(block().id) ?? false}
             onToggleExpand={props.onToggleExpand}
@@ -53,5 +54,6 @@ export function BlockRenderer(props: BlockRendererProps) {
         {(block) => <TodoListBlock block={block()} />}
       </Match>
     </Switch>
+    </box>
   )
 }

@@ -42,6 +42,9 @@ export interface Step {
   skipDispatcher?: boolean;
   /** Tool permission scoping for the worker. */
   toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task: boolean };
+  /** Filter for the self-review checklist. Undefined => full checklist; empty => skip self-review.
+   *  Set by the dispatcher and preserved across sprint revisions. */
+  selfReviewItems?: readonly string[];
   /**
    * Evaluator rubric — how to assess this step's output.
    * Set by templates for non-work steps; for work steps the dispatcher

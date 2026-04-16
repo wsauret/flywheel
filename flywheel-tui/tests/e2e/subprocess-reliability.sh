@@ -33,9 +33,11 @@ assert_contains "SR-01d-final.log" "✓" "SR-01d-step-completed" || true
 
 # Self-review evidence: check mid-execution captures (not final scrollback,
 # which may be empty after the TUI clears output blocks on completion).
-# Concatenate all SR-01 captures for a single broad search.
+# Concatenate all SR-01 captures for a single search. Match literal markers
+# from the self-review injection text and canonical checklist labels, not
+# generic words like "file" that could appear in any TUI content.
 cat "$LOG_DIR"/SR-01*.log > "$LOG_DIR/SR-01-all.log" 2>/dev/null || true
-assert_contains_ci "SR-01-all.log" "review\|verification\|check\|creat\|file\|passed" "SR-01e-self-review-evidence" || true
+assert_contains "SR-01-all.log" "Review your changes\|Task alignment\|Handoff finality" "SR-01e-self-review-injected" || true
 
 # No-action observer may have fired (depends on timing)
 # This is informational — not a hard assertion
@@ -89,8 +91,10 @@ sleep 120
 capture "SR-03d-completed.log"
 tmux capture-pane -t "$SESSION" -p -S -500 > "$LOG_DIR/SR-03e-scrollback.log" 2>/dev/null || true
 
-# SR-03: self-review evidence (injection + worker response)
-assert_contains_ci "SR-03e-scrollback.log" "review\|verification\|tests_passed\|Evaluator.*passed" "SR-03e-self-review-evidence" || true
+# SR-03: self-review evidence — match injection markers or evaluator verdict,
+# not generic words. `tests_passed` is a handoff field; `Evaluator.*passed` is
+# the post-worker assessment.
+assert_contains "SR-03e-scrollback.log" "Review your changes\|Task alignment\|Handoff finality\|tests_passed\|Evaluator.*passed" "SR-03e-self-review-injected" || true
 
 if [ -f "$UAT_DIR/e2e-sr03.txt" ]; then
   echo "PASS  SR-03f-file-after-resume — file exists after pause/resume" >> "$SUMMARY"

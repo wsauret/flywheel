@@ -63,7 +63,6 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
 
   return (
     <box
-      marginTop={1}
       paddingLeft={2}
       border={["left"]}
       borderColor={theme.borderSubtle}

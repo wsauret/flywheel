@@ -53,6 +53,12 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     timerId = setTimeout(writeBudgetUsage, debounceMs);
   }
 
+  function emitMetrics() {
+    if (emitter && workflowId) {
+      emitter("budget:metrics-changed", { workflowId, tokens: tokensUsed, cost: totalCost });
+    }
+  }
+
   function handleEvent(event: NDJSONEvent) {
     if (event.type !== "result") return;
 
@@ -70,10 +76,8 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     }
 
     scheduleWrite();
-    if (emitter && workflowId) {
-      emitter("budget:metrics-changed", { workflowId, tokens: tokensUsed, cost: totalCost });
-      if (budgetLimits) isExhausted(budgetLimits);
-    }
+    emitMetrics();
+    if (budgetLimits && emitter && workflowId) isExhausted(budgetLimits);
   }
 
   function incrementInvocations() {
@@ -86,8 +90,10 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   function getTokensUsed() { return tokensUsed; }
 
   function updateContextUtilization(promptTokens: number, contextWindow: number) {
-    if (promptTokens > 0) ctxPromptTokens = promptTokens;
-    if (contextWindow > 0) ctxWindow = contextWindow;
+    let changed = false;
+    if (promptTokens > 0 && promptTokens !== ctxPromptTokens) { ctxPromptTokens = promptTokens; changed = true; }
+    if (contextWindow > 0 && contextWindow !== ctxWindow) { ctxWindow = contextWindow; changed = true; }
+    if (changed) emitMetrics();
   }
 
   function getContextUtilization(): ContextUtilization {

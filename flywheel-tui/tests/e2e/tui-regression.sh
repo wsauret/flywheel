@@ -133,9 +133,10 @@ sleep "$WAIT_MEDIUM"
 send_keys C-b
 sleep 1
 capture "T-06a-modal-with-paused.log"
-# Chats never complete — they pause (Claude engine) or stay active (harness engine).
-# Check for either Paused group header or multiple sessions in Active.
-assert_contains "T-06a-modal-with-paused.log" "Paused\|bg\|Active" "T-06a-has-background-sessions" || true
+# After Ctrl+N, the previous chat is preserved — Paused (Claude engine's
+# explicit pause state) or under Active (harness keeps the runner alive).
+# Match a group header with a count so this fails if the modal is empty.
+assert_contains "T-06a-modal-with-paused.log" "Paused (\|Active (" "T-06a-prior-chat-visible-in-modal" || true
 
 # Navigate to a paused session — use Up from top to wrap to bottom
 send_keys Up  # wraps to last item (paused area)
@@ -512,9 +513,11 @@ wait_and_capture 1 "T-BUG1b-modal.log"
 send_keys Escape
 sleep 1
 
-# Stale chat sessions should be in Paused group (Claude) or shown as sessions (harness).
-# After restart, previous sessions are recovered — verify modal shows them.
-assert_contains "T-BUG1b-modal.log" "Paused\|Sessions" "T-BUG1b-has-recovered-sessions" || true
+# After restart, previous sessions should be listed in the modal. Match a
+# group header with a count (e.g. "Active (3)" or "Paused (5)") — those
+# only appear when sessions exist in that group. A bare "Sessions" title
+# would pass even on an empty modal, so avoid that.
+assert_contains "T-BUG1b-modal.log" "Active (\|Paused (" "T-BUG1b-has-recovered-sessions" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # T-14: Exit Flow

@@ -1,0 +1,92 @@
+import { describe, it, expect } from "bun:test"
+import { RGBA } from "@opentui/core"
+import { highlightCode, createHighlighter } from "@tui/adapters/syntax-highlight.js"
+
+const mockTheme = {
+  text: RGBA.fromHex("#cccccc"),
+  syntaxKeyword: RGBA.fromHex("#c678dd"),
+  syntaxType: RGBA.fromHex("#e5c07b"),
+  syntaxNumber: RGBA.fromHex("#d19a66"),
+  syntaxString: RGBA.fromHex("#98c379"),
+  syntaxComment: RGBA.fromHex("#5c6370"),
+  syntaxFunction: RGBA.fromHex("#61afef"),
+  syntaxVariable: RGBA.fromHex("#e06c75"),
+  syntaxOperator: RGBA.fromHex("#56b6c2"),
+  syntaxPunctuation: RGBA.fromHex("#abb2bf"),
+} as any
+
+describe("highlightCode", () => {
+  it("returns one line per source line", () => {
+    const result = highlightCode("const x = 1\nconst y = 2", "typescript", mockTheme)
+    expect(result).toHaveLength(2)
+  })
+
+  it("produces colored segments for known languages", () => {
+    const [[first]] = highlightCode("const x = 1", "typescript", mockTheme)
+    expect(first!.color).toBeDefined()
+    expect(first!.text).toBe("const")
+  })
+
+  it("falls back to plain text for unknown languages", () => {
+    const result = highlightCode("hello world", "obscurelang", mockTheme)
+    expect(result).toHaveLength(1)
+    expect(result[0]![0]!.color).toBeUndefined()
+  })
+
+  it("falls back to plain text when filetype is undefined", () => {
+    const result = highlightCode("line1\nline2\nline3", undefined, mockTheme)
+    expect(result).toHaveLength(3)
+  })
+
+  it("handles empty content", () => {
+    expect(highlightCode("", "typescript", mockTheme)).toHaveLength(1)
+  })
+
+  it("resolves tsx/jsx/zsh aliases", () => {
+    expect(highlightCode("const x = 1", "tsx", mockTheme)[0]![0]!.color).toBeDefined()
+    expect(highlightCode("const x = 1", "jsx", mockTheme)[0]![0]!.color).toBeDefined()
+    expect(highlightCode("echo hi", "zsh", mockTheme)[0]![0]!.color).toBeDefined()
+  })
+
+  it("colors multi-line tokens across line breaks", () => {
+    const lines = highlightCode("/* comment\n   continues */\nconst x = 1", "typescript", mockTheme)
+    expect(lines).toHaveLength(3)
+    expect(lines[1]![0]!.color).toBeDefined()
+  })
+
+  it("decodes HTML entities", () => {
+    const lines = highlightCode('const x = "<div>"', "typescript", mockTheme)
+    const allText = lines[0]!.map((s) => s.text).join("")
+    expect(allText).toContain("<div>")
+  })
+})
+
+describe("createHighlighter", () => {
+  it("returns same reference for identical content", () => {
+    const hl = createHighlighter(mockTheme)
+    const a = hl("const x = 1", "typescript")
+    const b = hl("const x = 1", "typescript")
+    expect(a).toBe(b)
+  })
+
+  it("returns new result when content changes", () => {
+    const hl = createHighlighter(mockTheme)
+    const a = hl("const x", "typescript")
+    const b = hl("const x = 1", "typescript")
+    expect(a).not.toBe(b)
+  })
+
+  it("tracks streaming growth", () => {
+    const hl = createHighlighter(mockTheme)
+    expect(hl("const", "typescript")).toHaveLength(1)
+    expect(hl("const x = 1\nconst", "typescript")).toHaveLength(2)
+    expect(hl("const x = 1\nconst y = 2\nconst z = 3", "typescript")).toHaveLength(3)
+  })
+
+  it("invalidates cache when filetype changes", () => {
+    const hl = createHighlighter(mockTheme)
+    const a = hl("print('hi')", "python")
+    const b = hl("print('hi')", "typescript")
+    expect(a).not.toBe(b)
+  })
+})

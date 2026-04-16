@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredEventParser } from "../src/infra/output/structured-event-parser";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
 import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
@@ -6,12 +6,12 @@ import type { AgentBlock, ToolEntry } from "../src/infra/output-blocks";
 
 // ── Helpers ──
 
-function makeAssistantEvent(content: Record<string, unknown>[]): NDJSONEvent {
+function makeAssistantEvent(content: Record<string, unknown>[], parentToolUseId?: string): NDJSONEvent {
   return {
     type: "assistant",
     data: {
       type: "assistant",
-      message: { content },
+      message: { content, ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}) },
     },
     raw: "",
   };
@@ -25,6 +25,28 @@ function makeToolResultEvent(toolUseId: string, opts?: { is_error?: boolean; con
       tool_use_id: toolUseId,
       is_error: opts?.is_error ?? false,
       content: opts?.content ?? "done",
+    },
+    raw: "",
+  };
+}
+
+function makeUserToolResultEvent(toolResults: Array<{
+  tool_use_id: string;
+  is_error?: boolean;
+  content?: string;
+}>): NDJSONEvent {
+  return {
+    type: "user",
+    data: {
+      type: "user",
+      message: {
+        content: toolResults.map(r => ({
+          type: "tool_result" as const,
+          tool_use_id: r.tool_use_id,
+          is_error: r.is_error ?? false,
+          content: r.content ?? "done",
+        })),
+      },
     },
     raw: "",
   };
@@ -138,50 +160,66 @@ describe("StructuredEventParser", () => {
     });
   });
 
-  // ── Regular tool routing ──
+  // ── Regular tool rendering (pending → resolved) ──
 
-  describe("regular tool use", () => {
-    it("creates a ToolEntry for non-subagent tools", () => {
-      // Use task_complete which is a non-context tool, so it renders as a standalone ToolEntry
+  describe("regular tool rendering", () => {
+    it("renders a pending Tools group row immediately on tool_use", () => {
       const event = makeAssistantEvent([
-        { type: "tool_use", id: "tool_r", name: "task_complete", input: { result: "done" } },
+        { type: "tool_use", id: "tool_r", name: "Bash", input: { command: "ls" } },
       ]);
 
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("tool");
+      expect(blocks[0].kind).toBe("agent");
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Tools");
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].name).toBe("Bash");
+      // Pending: no completed or errorMessage
+      expect(agent.children[0].completed).toBeUndefined();
+      expect(agent.children[0].errorMessage).toBeUndefined();
     });
 
-    it("routes child tools to parent agent via parent_tool_use_id", () => {
-      // Spawn agent
+    it("updates the Tools group row to completed on tool_result", () => {
+      const spawnEvent = makeAssistantEvent([
+        { type: "tool_use", id: "tool_r", name: "Bash", input: { command: "ls" } },
+      ]);
+      parser.dispatch(spawnEvent, 1000);
+      parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "tool_r" }]), 2000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Tools");
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].completed).toBe(true);
+    });
+
+    it("routes child tools to parent agent via parent_tool_use_id as pending rows", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "agent work" } },
       ]);
       parser.dispatch(spawnEvent, 1000);
 
-      // Child tool with parent_tool_use_id
-      const childEvent: NDJSONEvent = {
-        type: "assistant",
-        data: {
-          type: "assistant",
-          message: {
-            parent_tool_use_id: "agent_tool",
-            content: [
-              { type: "tool_use", id: "child_tool", name: "Bash", input: { command: "ls" } },
-            ],
-          },
-        },
-      };
+      const childEvent = makeAssistantEvent(
+        [{ type: "tool_use", id: "child_tool", name: "Bash", input: { command: "ls" } }],
+        "agent_tool",
+      );
       parser.dispatch(childEvent, 1000);
 
-      const blocks = builder.getBlocks();
-      // Should have 1 agent block with the child tool nested inside
-      expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.kind).toBe("agent");
-      expect(agent.children.length).toBe(1);
+      // Child appears immediately as pending in the subagent's children.
+      let blocks = builder.getBlocks();
+      let agent = blocks[0] as AgentBlock;
+      expect(agent.children).toHaveLength(1);
       expect(agent.children[0].name).toBe("Bash");
+      expect(agent.children[0].completed).toBeUndefined();
+
+      parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "child_tool" }]), 2000);
+
+      blocks = builder.getBlocks();
+      agent = blocks[0] as AgentBlock;
+      expect(agent.children[0].completed).toBe(true);
     });
   });
 
@@ -206,25 +244,30 @@ describe("StructuredEventParser", () => {
       expect(agent.status).toBe("completed");
     });
 
-    it("top-level tool does NOT get captured into active agent", () => {
+    it("top-level staged tool does NOT get captured into active agent", () => {
       // Spawn agent
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring" } },
       ]);
       parser.dispatch(spawnEvent, 1000);
 
-      // Top-level tool arrives — should be its own block, not a child of the agent
+      // Top-level tool arrives — stages. Agent auto-closes because this message
+      // is not inside the subagent and does not spawn a new subagent.
       const toolEvent = makeAssistantEvent([
-        { type: "tool_use", id: "tool_2", name: "task_complete", input: { result: "done" } },
+        { type: "tool_use", id: "tool_2", name: "Bash", input: { command: "ls" } },
       ]);
       parser.dispatch(toolEvent, 1000);
+
+      // Resolve the tool
+      parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "tool_2" }]), 2000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
       expect(blocks[0].kind).toBe("agent");
       expect((blocks[0] as AgentBlock).status).toBe("completed"); // auto-closed
       expect((blocks[0] as AgentBlock).children).toHaveLength(0); // no captured tools
-      expect(blocks[1].kind).toBe("tool");
+      expect(blocks[1].kind).toBe("agent");
+      expect((blocks[1] as AgentBlock).agentLabel).toBe("Tools");
     });
 
     it("tool_result still works as the authoritative close signal", () => {
@@ -352,6 +395,25 @@ describe("StructuredEventParser", () => {
       const agent = blocks[0] as AgentBlock;
       expect(agent.status).toBe("active");
     });
+
+    it("clears row location tracking so subsequent tool_results no-op", () => {
+      const event = makeAssistantEvent([
+        { type: "tool_use", id: "tool_row", name: "Bash", input: { command: "ls" } },
+      ]);
+      parser.dispatch(event, 1000);
+
+      // Row exists immediately as pending.
+      let agent = builder.getBlocks()[0] as AgentBlock;
+      expect(agent.children[0].completed).toBeUndefined();
+
+      parser.reset();
+      parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "tool_row" }]), 2000);
+
+      // Without its location in the map, the tool_result can't update the row;
+      // it remains pending.
+      agent = builder.getBlocks()[0] as AgentBlock;
+      expect(agent.children[0].completed).toBeUndefined();
+    });
   });
 
   // ── Fallback engine ──
@@ -369,40 +431,22 @@ describe("StructuredEventParser", () => {
     });
   });
 
-  // ── User event tool_result extraction ──
+  // ── Standalone Edit/Write with in-place status update ──
 
-  describe("user event tool_result extraction", () => {
-    function makeUserToolResultEvent(toolResults: Array<{
-      tool_use_id: string;
-      is_error?: boolean;
-      content?: string;
-    }>): NDJSONEvent {
-      return {
-        type: "user",
-        data: {
-          type: "user",
-          message: {
-            content: toolResults.map(r => ({
-              type: "tool_result" as const,
-              tool_use_id: r.tool_use_id,
-              is_error: r.is_error ?? false,
-              content: r.content ?? "done",
-            })),
-          },
-        },
-        raw: "",
-      };
-    }
-
-    // Spawns a top-level tool block. Uses Edit with old_string/new_string so the tool
-    // gets a diff and renders standalone (not grouped into a context agent), ensuring
-    // toolUseIdToBlock is populated.
+  describe("standalone Edit/Write", () => {
     function spawnStandaloneToolEntry(toolUseId: string, name = "Edit"): void {
       const event = makeAssistantEvent([
         { type: "tool_use", id: toolUseId, name, input: { file_path: "test.ts", old_string: "a", new_string: "b" } },
       ]);
       parser.dispatch(event, 1000);
     }
+
+    it("pushes standalone ToolEntry immediately for Edit", () => {
+      spawnStandaloneToolEntry("tool_now", "Edit");
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("tool");
+    });
 
     it("sets errorMessage on tool block for error tool_result", () => {
       spawnStandaloneToolEntry("tool_1", "Edit");
@@ -450,58 +494,58 @@ describe("StructuredEventParser", () => {
       expect(tool.errorMessage).toBeUndefined();
     });
 
-    it("handles multiple tool_results (mix of error and non-error)", () => {
+    it("handles multiple tool_results (mix of error and non-error) across standalone + staged", () => {
       spawnStandaloneToolEntry("tool_a", "Edit");
-      // task_complete is a non-context tool, also renders standalone
+      // Bash is a regular (staged) tool.
       const event2 = makeAssistantEvent([
-        { type: "tool_use", id: "tool_b", name: "task_complete", input: { result: "done" } },
+        { type: "tool_use", id: "tool_b", name: "Bash", input: { command: "echo done" } },
       ]);
       parser.dispatch(event2, 1000);
 
       const userEvent = makeUserToolResultEvent([
         { tool_use_id: "tool_a", is_error: true, content: "<tool_use_error>File not found</tool_use_error>" },
-        { tool_use_id: "tool_b", is_error: false, content: "written" },
+        { tool_use_id: "tool_b", is_error: false, content: "done" },
       ]);
       parser.dispatch(userEvent, 2000);
 
       const blocks = builder.getBlocks();
-      const toolA = blocks[0] as ToolEntry;
-      const toolB = blocks[1] as ToolEntry;
-      expect(toolA.errorMessage).toBeDefined();
-      expect(toolA.errorMessage).toContain("Edit failed");
-      expect(toolB.completed).toBe(true);
-      expect(toolB.errorMessage).toBeUndefined();
+      expect(blocks).toHaveLength(2);
+      // Edit (standalone) carries its error message in place
+      const editTool = blocks[0] as ToolEntry;
+      expect(editTool.errorMessage).toBeDefined();
+      expect(editTool.errorMessage).toContain("Edit failed");
+      // Bash resolved into the Tools group
+      expect(blocks[1].kind).toBe("agent");
+      const toolsAgent = blocks[1] as AgentBlock;
+      expect(toolsAgent.agentLabel).toBe("Tools");
+      expect(toolsAgent.children).toHaveLength(1);
+      expect(toolsAgent.children[0].name).toBe("Bash");
+      expect(toolsAgent.children[0].completed).toBe(true);
     });
 
     it("ignores tool_result for unknown tool_use_id without crashing", () => {
       const userEvent = makeUserToolResultEvent([
         { tool_use_id: "nonexistent_id", is_error: true, content: "boom" },
       ]);
-      // Should not throw
       parser.dispatch(userEvent, 2000);
       expect(builder.getBlocks()).toHaveLength(0);
     });
+  });
 
+  // ── Subagent-child tool resolution ──
+
+  describe("subagent-child tool resolution", () => {
     it("sets errorMessage on agent child tool for error tool_result", () => {
-      // Spawn agent, then a child tool inside it
+      // Spawn agent
       const agentEvent = makeAssistantEvent([
         { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "work" } },
       ]);
       parser.dispatch(agentEvent, 1000);
 
-      const childEvent: NDJSONEvent = {
-        type: "assistant",
-        data: {
-          type: "assistant",
-          message: {
-            parent_tool_use_id: "agent_tool",
-            content: [
-              { type: "tool_use", id: "child_1", name: "Edit", input: { file_path: "test.ts", old_string: "a", new_string: "b" } },
-            ],
-          },
-        },
-        raw: "",
-      };
+      const childEvent = makeAssistantEvent(
+        [{ type: "tool_use", id: "child_1", name: "Edit", input: { file_path: "test.ts", old_string: "a", new_string: "b" } }],
+        "agent_tool",
+      );
       parser.dispatch(childEvent, 1500);
 
       const userEvent = makeUserToolResultEvent([
@@ -516,25 +560,16 @@ describe("StructuredEventParser", () => {
     });
 
     it("sets completed on agent child tool for non-error tool_result", () => {
-      // Spawn agent, then a child tool inside it
+      // Spawn agent
       const agentEvent = makeAssistantEvent([
         { type: "tool_use", id: "agent_tool_2", name: "Task", input: { description: "work" } },
       ]);
       parser.dispatch(agentEvent, 1000);
 
-      const childEvent: NDJSONEvent = {
-        type: "assistant",
-        data: {
-          type: "assistant",
-          message: {
-            parent_tool_use_id: "agent_tool_2",
-            content: [
-              { type: "tool_use", id: "child_2", name: "Bash", input: { command: "echo hi" } },
-            ],
-          },
-        },
-        raw: "",
-      };
+      const childEvent = makeAssistantEvent(
+        [{ type: "tool_use", id: "child_2", name: "Bash", input: { command: "echo hi" } }],
+        "agent_tool_2",
+      );
       parser.dispatch(childEvent, 1500);
 
       const userEvent = makeUserToolResultEvent([

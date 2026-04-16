@@ -68,8 +68,12 @@ finish_harness() {
 capture() {
   local file="$LOG_DIR/$1"
   sleep "${2:-1}"
-  tmux capture-pane -t "$SESSION" -p > "$file" 2>/dev/null || true
-  echo "  captured → $1"
+  if tmux capture-pane -t "$SESSION" -p > "$file" 2>/dev/null; then
+    echo "  captured → $1"
+  else
+    echo "  FAILED capture → $1 (tmux session '$SESSION' is gone)"
+    return 1
+  fi
 }
 
 send_keys() {
@@ -155,7 +159,28 @@ wait_for_chat() {
 # ─── App Lifecycle ────────────────────────────────────────────────────────────
 
 cleanup() {
-  tmux kill-session -t "$SESSION" 2>/dev/null || true
+  local exit_code=$?
+  # Kill the pane's entire process group BEFORE tmux kill-session. Otherwise
+  # bun — a child of the pane's shell — gets reparented to init and lives on.
+  # tmux gives us the shell's pid; ps gives us its pgid; one kill takes the
+  # whole foreground tree (shell + bun + any claude subprocesses).
+  if tmux has-session -t "$SESSION" 2>/dev/null; then
+    local pane_pid pgid
+    pane_pid=$(tmux list-panes -t "$SESSION" -F '#{pane_pid}' 2>/dev/null | head -1)
+    if [ -n "$pane_pid" ]; then
+      pgid=$(ps -o pgid= -p "$pane_pid" 2>/dev/null | tr -d ' ')
+      [ -n "$pgid" ] && [ "$pgid" != "0" ] && kill -TERM -"$pgid" 2>/dev/null || true
+    fi
+    tmux kill-session -t "$SESSION" 2>/dev/null || true
+  fi
+  # Remove the temp dir on success; preserve it on failure for forensics.
+  if [ -n "${UAT_DIR:-}" ] && [ -d "$UAT_DIR" ]; then
+    if [ "$exit_code" -eq 0 ]; then
+      rm -rf "$UAT_DIR" 2>/dev/null || true
+    else
+      echo "  UAT_DIR preserved for forensics: $UAT_DIR (exit=$exit_code)"
+    fi
+  fi
 }
 trap cleanup EXIT
 

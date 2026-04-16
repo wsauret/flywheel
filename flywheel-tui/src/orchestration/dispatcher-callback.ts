@@ -63,6 +63,9 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
         previousAssessment: context.previousAssessment,
       }
       const decision = await stepDispatcher.dispatch(step, queue, dispatchContext)
+      if (decision.workerConfig?.self_review_items !== undefined) {
+        step.selfReviewItems = decision.workerConfig.self_review_items
+      }
       return {
         prompt: decision.taskContent,
         evaluationCriteria: decision.evaluationCriteria,

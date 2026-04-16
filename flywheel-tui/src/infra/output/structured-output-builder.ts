@@ -8,7 +8,7 @@ import type {
   TodoListBlock,
   UserMessageBlock,
 } from "../output-blocks.js";
-import { ContextGroupTracker, isContextTool } from "./context-group-tracker.js";
+import { ContextGroupTracker } from "./context-group-tracker.js";
 import {
   contentInsertionIndex,
   insertBlockBeforePinned,
@@ -44,6 +44,16 @@ function buildToolEntry(opts: BuildToolEntryOptions): ToolEntry {
     ...(opts.content && { content: opts.content }),
     ...(opts.filetype && { filetype: opts.filetype }),
   };
+}
+
+/**
+ * Mark any children still in-flight (no completed/errorMessage) as completed.
+ * Called when an agent closes: a pending child in a completed block is a lost
+ * tool_result, and leaving a frozen spinner behind is worse than assuming the
+ * tool succeeded.
+ */
+function resolveUnresolvedChildren(children: ToolEntry[]): ToolEntry[] {
+  return children.map((c) => (c.completed === true || c.errorMessage ? c : { ...c, completed: true }));
 }
 
 export class StructuredOutputBuilder {
@@ -129,7 +139,8 @@ export class StructuredOutputBuilder {
   }
 
   // Moves injected messages from pending to resolved once the engine acknowledges them.
-  resolvePendingMessages(): boolean {
+  // Returns the text content of resolved messages (empty array if none were pending).
+  resolvePendingMessages(): string[] {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
       const b = this.blocks[i];
@@ -137,12 +148,14 @@ export class StructuredOutputBuilder {
         pendingIndices.push(i);
       }
     }
-    if (pendingIndices.length === 0) return false;
+    if (pendingIndices.length === 0) return [];
 
     const resolved: AnyBlock[] = [];
+    const texts: string[] = [];
     for (let i = pendingIndices.length - 1; i >= 0; i--) {
       const [msg] = this.blocks.splice(pendingIndices[i]!, 1) as [UserMessageBlock];
       resolved.unshift({ ...msg, pending: false });
+      texts.unshift(msg.content);
     }
     const todoIdx = this.blocks.findIndex(b => b.kind === "todoList");
     if (todoIdx >= 0) {
@@ -154,7 +167,7 @@ export class StructuredOutputBuilder {
     rebuildAgentIndex(this.blocks, this.agentIndexById);
     this.todoBlockIndex = findTodoIndex(this.blocks);
     this.markDirty();
-    return true;
+    return texts;
   }
 
   pushText(text: string, timestamp: number): void {
@@ -180,24 +193,47 @@ export class StructuredOutputBuilder {
     this.markDirty();
   }
 
+  /**
+   * Insert a top-level standalone tool entry — used for tools that render with
+   * their own body (diffs, content) rather than as a row inside a Tools group.
+   * Breaks any active Tools group. Parser routes here only for blacklisted
+   * tools (Edit, Write) that always render standalone.
+   */
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
     this._modelActivity = "tool_executing";
     const tool = buildToolEntry({ name, detail, timestamp, diff, filetype, content, filePath });
-
-    let idx: number;
-    // Tools with diff/content data render standalone (not grouped) so the content is visible.
-    if (isContextTool(name) && !diff && !content) {
-      this.contextTracker.pushContextTool(tool, timestamp);
-      // Context-grouped tools live inside an agent's children — no top-level index.
-      idx = -1;
-    } else {
-      this.contextTracker.breakContextRun(timestamp);
-      idx = this.insertBlock(tool);
-    }
-
+    this.contextTracker.breakContextRun(timestamp);
+    const idx = this.insertBlock(tool);
     this.enforceBlocksCap();
     this.markDirty();
     return idx;
+  }
+
+  /**
+   * Append a tool row to the ad-hoc Tools group, opening a new group if none
+   * is active. The tool may be pending (no completed/errorMessage) — status is
+   * filled in later via completeAgentChildTool/errorAgentChildTool, keyed by
+   * the returned {agentId, childIndex}. Returns null only on unrecoverable
+   * append failure (shouldn't happen in practice).
+   */
+  pushToolRow(tool: ToolEntry): { agentId: string; childIndex: number } | null {
+    this._modelActivity = "tool_executing";
+    const agentId = this.contextTracker.pushContextTool(tool, tool.timestamp);
+    const agentIdx = this.agentIndexById.get(agentId);
+    if (agentIdx === undefined) return null;
+    const agent = this.blocks[agentIdx] as AgentBlock;
+    const childIndex = agent.children.length - 1;
+    this.enforceBlocksCap();
+    this.markDirty();
+    return { agentId, childIndex };
+  }
+
+  /**
+   * Append a tool row to a specific agent's children. The tool may be pending.
+   * Returns the child index, or -1 if the agent was not found.
+   */
+  pushToolRowToAgent(agentId: string, tool: ToolEntry): number {
+    return this.appendToolToAgent(agentId, tool);
   }
 
   pushTodoWrite(todos: TodoItem[], timestamp: number): void {
@@ -225,11 +261,6 @@ export class StructuredOutputBuilder {
 
     this.enforceBlocksCap();
     this.markDirty();
-  }
-
-  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
-    const tool = buildToolEntry({ name, detail, timestamp, diff, filetype, content, filePath });
-    return this.appendToolToAgent(agentId, tool);
   }
 
   private appendToolToAgent(agentId: string, tool: ToolEntry): number {
@@ -267,6 +298,7 @@ export class StructuredOutputBuilder {
       ...agent,
       status: "completed",
       duration,
+      children: resolveUnresolvedChildren(agent.children),
       ...(description !== undefined ? { description } : {}),
     };
     this.markDirty();
@@ -277,21 +309,25 @@ export class StructuredOutputBuilder {
     if (idx === undefined) return;
 
     const agent = this.blocks[idx] as AgentBlock;
-    this.blocks[idx] = { ...agent, status: "error", errorMessage: message };
+    this.blocks[idx] = {
+      ...agent,
+      status: "error",
+      errorMessage: message,
+      children: resolveUnresolvedChildren(agent.children),
+    };
     this.markDirty();
   }
 
-  errorTool(blockIndex: number, message: string): void {
-    const block = this.blocks[blockIndex];
-    if (!block || block.kind !== "tool") return;
-    this.blocks[blockIndex] = { ...block, errorMessage: message };
-    this.markDirty();
-  }
-
-  completeTool(blockIndex: number): void {
-    const block = this.blocks[blockIndex];
-    if (!block || block.kind !== "tool") return;
-    this.blocks[blockIndex] = { ...block, completed: true };
+  completeAgentChildTool(agentId: string, childIndex: number): void {
+    const idx = this.agentIndexById.get(agentId);
+    if (idx === undefined) return;
+    const agent = this.blocks[idx];
+    if (!agent || agent.kind !== "agent") return;
+    const child = agent.children[childIndex];
+    if (!child) return;
+    const updatedChildren = [...agent.children];
+    updatedChildren[childIndex] = { ...child, completed: true };
+    this.blocks[idx] = { ...agent, children: updatedChildren };
     this.markDirty();
   }
 
@@ -308,16 +344,17 @@ export class StructuredOutputBuilder {
     this.markDirty();
   }
 
-  completeAgentChildTool(agentId: string, childIndex: number): void {
-    const idx = this.agentIndexById.get(agentId);
-    if (idx === undefined) return;
-    const agent = this.blocks[idx];
-    if (!agent || agent.kind !== "agent") return;
-    const child = agent.children[childIndex];
-    if (!child) return;
-    const updatedChildren = [...agent.children];
-    updatedChildren[childIndex] = { ...child, completed: true };
-    this.blocks[idx] = { ...agent, children: updatedChildren };
+  errorTool(blockIndex: number, message: string): void {
+    const block = this.blocks[blockIndex];
+    if (!block || block.kind !== "tool") return;
+    this.blocks[blockIndex] = { ...block, errorMessage: message };
+    this.markDirty();
+  }
+
+  completeTool(blockIndex: number): void {
+    const block = this.blocks[blockIndex];
+    if (!block || block.kind !== "tool") return;
+    this.blocks[blockIndex] = { ...block, completed: true };
     this.markDirty();
   }
 

@@ -68,11 +68,11 @@ export function wireSessionSubscribers(
   const unsubs: Unsubscribe[] = [
     bus.subscribeToType("engine:started", () => infra.budgetTracker.onNewProcess()),
     bus.subscribeToType("engine:ndjson", (e) => {
-      infra.budgetTracker.handleEvent(e.ndjsonEvent)
       const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
       if (ctxUpdate) {
         infra.budgetTracker.updateContextUtilization(ctxUpdate.promptTokens, ctxUpdate.contextWindow)
       }
+      infra.budgetTracker.handleEvent(e.ndjsonEvent)
     }),
   ]
 

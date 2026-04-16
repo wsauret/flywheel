@@ -33,16 +33,21 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     state.detachRunner()
 
     state.completeTurn()
-    callbacks.onWaiting(false)
     session.resetActivity()
-    session.resolvePendingMessages()
+    const pendingTexts = session.resolvePendingMessages()
     session.pushSystemMessage("Interrupted", Date.now())
     session.flush()
 
+    const messageToResend = pendingTexts.join("\n\n") || undefined
+    if (!messageToResend) callbacks.onWaiting(false)
+
     if (state.engineSessionId) {
-      lifecycle.spawnWorker(state.engineSessionId).catch((err) => {
+      lifecycle.spawnWorker(state.engineSessionId, messageToResend).catch((err) => {
         log.warn("eager reconnect after interrupt failed", { error: errorMessage(err) })
+        callbacks.onWaiting(false)
       })
+    } else {
+      callbacks.onWaiting(false)
     }
   }
 

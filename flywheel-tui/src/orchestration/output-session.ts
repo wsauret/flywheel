@@ -19,7 +19,7 @@ export interface OutputSession {
   writeStderr(data: string, timestamp: number): void
   notifySpawned(timestamp: number): void
   notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void
-  resolvePendingMessages(): boolean
+  resolvePendingMessages(): string[]
   pushSystemMessage(message: string, timestamp: number): void
   resetTracking(): void
   flushContextRun(timestamp: number): void

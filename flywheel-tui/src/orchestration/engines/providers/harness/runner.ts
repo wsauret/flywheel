@@ -81,6 +81,12 @@ export class HarnessRunner implements EngineRunner {
     this.pendingUserInputs.push(text);
   }
 
+  end(): void {
+    // Agent-loop exits naturally when pendingUserInputs is empty AND the model
+    // produces a turn with no tool calls. No additional signal is needed —
+    // end() is the caller's pledge not to call send() again.
+  }
+
   abort(): void {
     this.abortController.abort();
   }

@@ -8,6 +8,11 @@
  * in the user segment.
  */
 
+import {
+  formatChecklistInclusionGuidance,
+  formatChecklistLabelsQuoted,
+} from "../queue/shared/quality-checklist.js";
+
 export function buildDispatcherSystemPrompt(): string {
   return `You are a prompt engineering specialist for the flywheel workflow system. You receive a workflow plan, execution state, and context, then craft an optimal task description for a worker AI to execute the current step.
 
@@ -51,7 +56,8 @@ Valid JSON only — no markdown, no code fences, no prose. Must match this schem
   "reasoning": <string>,           // (optional) Your prompt strategy rationale
   "warnings": [<string>],          // (optional) risks or concerns for this step
   "worker_config": {               // (optional) Restrict worker tools when the step doesn't need full access
-    "tool_scoping": { "read": <boolean>, "bash": <boolean>, "write": <boolean>, "edit": <boolean> }
+    "tool_scoping": { "read": <boolean>, "bash": <boolean>, "write": <boolean>, "edit": <boolean> },
+    "self_review_items": [<string>] // (optional) Subset of checklist labels — see "Self-Review Filter" below
   },
   "mutation_requests": [             // (optional) Queue mutations to adapt the workflow
     {
@@ -87,6 +93,23 @@ When writing \`task_content\`:
 - Restate acceptance criteria in the worker's terms — the worker does not see \`evaluation_criteria\`.
 - For early steps (1-2), emphasize codebase discovery and convention reading. For late steps, emphasize focus and regression avoidance.
 - Be specific about output shape when it matters (e.g., "return \`{ data, total, page, limit }\`").
+
+## Self-Review Filter (optional)
+
+Before the worker writes its handoff, it receives a self-review prompt listing quality dimensions to verify. By default (if you omit \`self_review_items\`) the worker sees the full checklist, which can be overkill for simple tasks and worth the cost for complex ones. Use \`worker_config.self_review_items\` to scope the review to what actually applies to THIS task.
+
+Valid labels (use exact casing, pick any subset):
+
+${formatChecklistLabelsQuoted()}
+
+Guidance on which labels apply:
+${formatChecklistInclusionGuidance()}
+
+Shape by task scope:
+- Trivial (create a file with specific content, single-line change, doc edit): \`["Task alignment", "Handoff finality"]\`.
+- Typical code change: include "Task alignment", "Diff review", "Build", "Handoff finality", plus testing labels as they apply.
+- Complex / architectural work: include most or all labels.
+- Emit \`[]\` only when self-review would be pure ceremony — e.g. pure documentation updates.
 
 ## Queue Mutations (optional)
 

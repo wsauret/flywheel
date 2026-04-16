@@ -17,7 +17,7 @@ interface TextBlockProps {
 export function TextBlock(props: TextBlockProps) {
   const themeCtx = useTheme()
   return (
-    <box marginTop={1}>
+    <box>
       <markdown
         ref={(el: MarkdownRenderable) => {
           // _linkifyMarkdownChunks is a private property on MarkdownRenderable — `as any` required to override it

@@ -310,20 +310,20 @@ describe("createOutputSession", () => {
 
   // ── resolvePendingMessages ──
 
-  it("resolvePendingMessages() delegates to builder, returns boolean", () => {
+  it("resolvePendingMessages() delegates to builder, returns message texts", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    // No pending messages — should return false
-    expect(session.resolvePendingMessages()).toBe(false)
+    // No pending messages — should return empty array
+    expect(session.resolvePendingMessages()).toEqual([])
 
     // Add a pending message via notifyInjected with pending=true
     session.notifyInjected("pending msg", 1000, true)
 
-    // Now resolve — should return true
-    expect(session.resolvePendingMessages()).toBe(true)
-    // Second resolve — already resolved, should return false
-    expect(session.resolvePendingMessages()).toBe(false)
+    // Now resolve — should return the message texts
+    expect(session.resolvePendingMessages()).toEqual(["pending msg"])
+    // Second resolve — already resolved, should return empty array
+    expect(session.resolvePendingMessages()).toEqual([])
   })
 
   // ── pushSystemMessage ──

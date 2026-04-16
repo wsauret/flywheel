@@ -4,6 +4,7 @@ import type { SessionEntry } from "../../orchestration/session-store-types.js"
 
 export interface MetricsHook {
   elapsed: Accessor<number>
+  episodeElapsed: Accessor<number>
   liveTokens: Accessor<number>
   liveCost: Accessor<number>
   liveContextPercent: Accessor<number>
@@ -23,6 +24,7 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   // not derivable from reactive state. The effect starts/stops the timer based
   // on liveActivity; the mutable accumulators track time across pause/resume cycles.
   const [elapsed, setElapsed] = createSignal(0)
+  const [episodeElapsed, setEpisodeElapsed] = createSignal(0)
 
   let elapsedTimer: ReturnType<typeof setInterval> | null = null
   let elapsedAccum = 0
@@ -36,7 +38,11 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   function startTimer(): void {
     if (elapsedTimer) return
     elapsedRunStart = Date.now()
-    elapsedTimer = setInterval(() => setElapsed(elapsedAccum + (Date.now() - elapsedRunStart)), 1000)
+    elapsedTimer = setInterval(() => {
+      const sinceStart = Date.now() - elapsedRunStart
+      setElapsed(elapsedAccum + sinceStart)
+      setEpisodeElapsed(sinceStart)
+    }, 1000)
   }
 
   function pauseTimer(): void {
@@ -44,6 +50,7 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     elapsedAccum += Date.now() - elapsedRunStart
     clearInterval(elapsedTimer)
     elapsedTimer = null
+    setEpisodeElapsed(0)
   }
 
   function resetMetrics(): void {
@@ -54,6 +61,7 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
     elapsedRunStart = 0
     elapsedAccum = 0
     setElapsed(0)
+    setEpisodeElapsed(0)
   }
 
   function resetElapsedTo(ms: number): void {
@@ -65,6 +73,7 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
 
   return {
     elapsed,
+    episodeElapsed,
     liveTokens,
     liveCost,
     liveContextPercent,

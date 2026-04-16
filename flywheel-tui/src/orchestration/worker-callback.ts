@@ -17,12 +17,16 @@ const log = Log.create({ service: "worker-callback" })
 /** Step types that get self-review injection at the first turn boundary. */
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
-const SELF_REVIEW_CHECKLIST = `Review your changes before completing:
+function buildSelfReviewMessage(items: readonly string[] | undefined): string | null {
+  // Empty array = dispatcher deliberately skipped self-review.
+  if (items && items.length === 0) return null
+  return `Review your changes before completing:
 
-${formatChecklistNumbered()}
+${formatChecklistNumbered(items)}
 
 If you find issues: fix them now.
 If everything looks good: confirm in your handoff.`
+}
 
 function buildStepPrompt(
   step: Step,
@@ -80,10 +84,16 @@ export function createWorkerCallback(
 
   return async (step: Step, prompt: string, signal?: AbortSignal, resumeSessionId?: string): Promise<WorkerCallbackResult> => {
     observerChain?.reset()
-    let selfReviewInjected = false
 
     const { fullPrompt, handoffPath } = buildStepPrompt(step, prompt, sessionId, projectCwd)
     ensureSessionDir(sessionId, projectCwd)
+
+    // Pre-enqueue the self-review so it drains on the first turn boundary —
+    // no mutable "already injected" flag needed.
+    if (SELF_REVIEW_STEP_TYPES.has(step.type)) {
+      const message = buildSelfReviewMessage(step.selfReviewItems)
+      if (message !== null) injectionQueue.enqueue(message)
+    }
 
     // Boundary marker for transcript segmentation per worker invocation
     {
@@ -114,11 +124,6 @@ export function createWorkerCallback(
         const observerMessages = observerChain?.onTurnComplete() ?? []
         for (const msg of observerMessages) injectionQueue.enqueue(msg)
 
-        if (!selfReviewInjected && SELF_REVIEW_STEP_TYPES.has(step.type)) {
-          injectionQueue.enqueue(SELF_REVIEW_CHECKLIST)
-          selfReviewInjected = true
-        }
-
         const delivered = injectionQueue.drain()
         if (delivered !== null) {
           log.info("turn-boundary injection sent to worker", { userSteering: delivered.userSteering })
@@ -126,6 +131,8 @@ export function createWorkerCallback(
           if (!delivered.userSteering) {
             emit("engine:injected", { workflowId, message: delivered.message, origin: "system" })
           }
+        } else {
+          runner.end()
         }
       },
     })

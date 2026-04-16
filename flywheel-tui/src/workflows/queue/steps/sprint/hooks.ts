@@ -106,6 +106,7 @@ export function buildRetryStep(
     skipDispatcher: true,
     evaluationCriteria: buildSprintEvaluationCriteria(history),
     toolScoping: originalStep.toolScoping,
+    selfReviewItems: originalStep.selfReviewItems,
   });
 }
 

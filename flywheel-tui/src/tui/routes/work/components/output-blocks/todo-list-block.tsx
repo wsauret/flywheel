@@ -45,7 +45,7 @@ export function TodoListBlock(props: TodoListBlockProps) {
 
   return (
     <Show when={incomplete().length > 0}>
-      <box flexDirection="column" marginTop={1}>
+      <box flexDirection="column">
         <box flexDirection="row" gap={1} overflow="hidden">
           <text fg={theme.accent} attributes={BOLD}>{"\u2630"} Tasks</text>
           <Show when={completedCount() > 0}>

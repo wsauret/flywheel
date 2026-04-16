@@ -55,6 +55,8 @@ export interface RunnerOptions {
 export interface EngineRunner {
   /** Send a message. First call starts execution; subsequent calls are multi-turn follow-ups. */
   send(text: string): void;
+  /** Signal end-of-input: caller will not send() again. Runner finishes current turn then resolves `done`. */
+  end(): void;
   /** Abort current turn or entire execution. */
   abort(): void;
   /** Resolves when the runner has completed all processing. */

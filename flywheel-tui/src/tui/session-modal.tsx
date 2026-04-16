@@ -165,7 +165,7 @@ export function SessionModal(props: SessionModalProps) {
           <For each={groupedSections()}>
             {(section) => (
               <box flexDirection="column">
-                <box paddingTop={section.group === "active" ? 0 : 1}>
+                <box flexDirection="row" paddingTop={section.group === "active" ? 0 : 1}>
                   <text fg={section.group === "active" ? theme.primary : section.group === "paused" ? theme.warning : theme.successMuted} attributes={BOLD}>
                     {section.icon}
                   </text>
@@ -227,7 +227,7 @@ export function SessionModal(props: SessionModalProps) {
 
       <Show when={selectedSession()}>
         <box paddingTop={1} flexDirection="row" justifyContent="center">
-          <text fg={theme.textSubtle}>{selectedSession()!.id}</text>
+          <text fg={theme.textSubtle}>Session ID: {selectedSession()!.id}</text>
         </box>
       </Show>
 

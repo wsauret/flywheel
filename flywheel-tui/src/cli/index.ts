@@ -50,6 +50,16 @@ async function runHeadless(): Promise<void> {
 
 async function runTUI(): Promise<void> {
   const { startTUI } = await import("../tui/launcher");
+  const { exitTUI } = await import("../tui/exit.js");
+
+  // Route terminal-close / kill signals through the same cleanup path as /exit,
+  // so warm-pool subprocesses, worker subprocesses, and pending flushes are
+  // disposed instead of orphaned. exitTUI() has a built-in 3s force-exit fallback.
+  const signalHandler = () => exitTUI();
+  process.on("SIGHUP", signalHandler);   // terminal/tab closed
+  process.on("SIGTERM", signalHandler);  // kill / system shutdown
+  process.on("SIGINT", signalHandler);   // Ctrl+C outside the TUI's key handler
+
   const tuiPromise = startTUI({ mode: "dark" });
 
   await tuiPromise;

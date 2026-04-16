@@ -16,7 +16,7 @@ export function SystemBlock(props: SystemBlockProps) {
   if (isStepBoundary) {
     const label = props.block.message.slice("[step-boundary]".length).trim()
     return (
-      <box marginTop={2} marginBottom={0} flexDirection="row" gap={1} overflow="hidden">
+      <box marginTop={1} marginBottom={0} flexDirection="row" gap={1} overflow="hidden">
         {label
           ? <text fg={themeCtx.theme.accent} attributes={BOLD_DIM}>{label}</text>
           : <text fg={themeCtx.theme.borderSubtle} attributes={DIM}>{"\u2500\u2500"}</text>
@@ -28,14 +28,14 @@ export function SystemBlock(props: SystemBlockProps) {
 
   if (!props.block.message.includes("`")) {
     return (
-      <box marginTop={1}>
+      <box>
         <text fg={themeCtx.theme.textMuted}>{props.block.message}</text>
       </box>
     )
   }
 
   return (
-    <box marginTop={1} flexDirection="column">
+    <box flexDirection="column">
       <For each={props.block.message.split("\n")}>
         {(line) => {
           const hasCode = line.includes("`")

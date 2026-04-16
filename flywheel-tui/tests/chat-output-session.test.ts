@@ -126,7 +126,7 @@ describe("Chat → OutputSession integration", () => {
 
       session.notifyInjected("Hello!", Date.now(), true)
       const resolved = session.resolvePendingMessages()
-      expect(resolved).toBe(true)
+      expect(resolved).toEqual(["Hello!"])
 
       const blocks = session.getBlocks()
       const userBlock = blocks.find((b: any) => b.kind === "userMessage")

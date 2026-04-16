@@ -11,6 +11,7 @@ import type { ToolEntry as ToolEntryType } from "@infra/output-blocks"
 import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 import { toFileUri } from "@tui/adapters/linkify-paths"
+import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
 
 const TOOL_DISPLAY_NAMES = new Map<string, string>([
   ["grep", "Text Search"], ["glob", "File Search"], ["websearch", "Web Search"],
@@ -76,9 +77,10 @@ export function ToolEntry(props: ToolEntryProps) {
     })
   })
 
-  const contentLines = createMemo(() => {
+  const hl = createHighlighter(theme)
+  const contentHighlighted = createMemo(() => {
     if (!props.block.content) return []
-    return props.block.content.split("\n")
+    return hl(props.block.content, props.block.filetype)
   })
 
   const statusIcon = () => {
@@ -126,13 +128,20 @@ export function ToolEntry(props: ToolEntryProps) {
               </For>
             </Show>
             <Show when={hasContent()}>
-              <For each={contentLines()}>
-                {(line) => (
-                  <box>
-                    <text fg={theme.text}>{line}</text>
-                  </box>
-                )}
-              </For>
+              {(() => {
+                const lines = contentHighlighted()
+                const maxDigits = String(lines.length).length
+                return <For each={lines}>
+                  {(segments, i) => (
+                    <box flexDirection="row">
+                      <text fg={theme.text}>{` ${String(i() + 1).padStart(maxDigits)}  `}</text>
+                      <For each={segments}>
+                        {(seg) => <text fg={seg.color ?? theme.text}>{seg.text}</text>}
+                      </For>
+                    </box>
+                  )}
+                </For>
+              })()}
             </Show>
           </CollapsibleBox>
         </box>

@@ -39,21 +39,14 @@ export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
     if (state === null) return bgCount > 0 ? `${bgCount} running` : (signals.errorMessage() ? "error" : "")
     if (signals.errorMessage()) return "error" + bgSuffix
 
-    const hasMetrics = signals.agentState() === "active" || metrics.liveTokens() > 0 || metrics.liveCost() > 0 || metrics.liveContextPercent() > 0
-    if (hasMetrics) {
-      const width = dimensions().width
-      const parts: string[] = []
-      if (state === "completed") parts.push("done")
-      parts.push(formatElapsed(metrics.elapsed()))
-      if (width >= 60) parts.push(`${metrics.liveContextPercent()}% ctx`)
-      const c = metrics.liveCost()
-      if (c > 0 && width >= 80) parts.push(formatCost(c))
-      return parts.join(" \u00b7 ") + bgSuffix
-    }
-
-    if (state === "completed") return "done" + bgSuffix
-    if (state === "active") return bgSuffix.trim() || ""
-    return bgSuffix.trim() || ""
+    const width = dimensions().width
+    const parts: string[] = []
+    if (state === "completed") parts.push("done")
+    parts.push(formatElapsed(metrics.elapsed()))
+    if (width >= 60) parts.push(`${metrics.liveContextPercent()}% ctx`)
+    const c = metrics.liveCost()
+    if (c > 0 && width >= 80) parts.push(formatCost(c))
+    return parts.join(" \u00b7 ") + bgSuffix
   })
 
   const headerRightColor = createMemo(() => {

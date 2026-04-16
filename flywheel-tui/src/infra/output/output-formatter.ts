@@ -9,13 +9,13 @@ function shellDetail(input: Record<string, unknown>, cwd: string): string | null
   const cmd = input.command as string | undefined;
   if (!cmd) return null;
   const shortened = cwd ? cmd.replaceAll(cwd + "/", "").replaceAll(cwd, ".") : cmd;
-  return truncateLine(shortened, 100);
+  return singleLine(shortened);
 }
 
 function agentDetail(input: Record<string, unknown>, _cwd: string): string | null {
   const desc = (input.description as string | undefined) ?? (input.prompt as string | undefined);
   const agentType = input.subagent_type as string | undefined;
-  return truncateLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc, 100);
+  return singleLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc);
 }
 
 const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
@@ -27,12 +27,12 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
       const start = (offset ?? 0) + 1;
       const end = limit != null ? start + limit - 1 : undefined;
       const range = end != null ? `:${start}-${end}` : `:${start}+`;
-      return truncateLine(`${path}${range}`, 80);
+      return singleLine(`${path}${range}`);
     }
-    return truncateLine(path, 80);
+    return singleLine(path);
   }],
-  ["Write", (input, cwd) => truncateLine(formatDisplayPath(input.file_path as string, cwd), 80)],
-  ["Edit", (input, cwd) => { const fp = input.file_path as string | undefined; return fp ? truncateLine(formatDisplayPath(fp, cwd), 80) : null }],
+  ["Write", (input, cwd) => singleLine(formatDisplayPath(input.file_path as string, cwd))],
+  ["Edit", (input, cwd) => { const fp = input.file_path as string | undefined; return fp ? singleLine(formatDisplayPath(fp, cwd)) : null }],
   ["Bash", shellDetail],
   ["PowerShell", shellDetail],
   ["REPL", shellDetail],
@@ -41,7 +41,7 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
     const dir = input.path as string | undefined;
     const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
     const quoted = pat ? `"${pat}"` : null;
-    return truncateLine(displayDir ? `${quoted} in ${displayDir}` : quoted, 80);
+    return singleLine(displayDir ? `${quoted} in ${displayDir}` : quoted);
   }],
   ["Grep", (input, cwd) => {
     const pat = input.pattern as string | undefined;
@@ -50,41 +50,41 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
     const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
     const quoted = pat ? `"${pat}"` : null;
     const parts = [quoted, displayDir && `in ${displayDir}`, fileFilter && `[${fileFilter}]`].filter(Boolean).join(" ");
-    return truncateLine(parts || null, 80);
+    return singleLine(parts || null);
   }],
   ["Agent", agentDetail],
   ["Task", agentDetail],
-  ["WebFetch", (input) => truncateLine(input.url as string, 100)],
-  ["WebSearch", (input) => truncateLine((input.query as string | undefined) ?? (input.search_query as string | undefined), 100)],
+  ["WebFetch", (input) => singleLine(input.url as string)],
+  ["WebSearch", (input) => singleLine((input.query as string | undefined) ?? (input.search_query as string | undefined))],
   ["LSP", (input, cwd) => {
     const method = input.method as string | undefined;
     const fp = input.file_path as string | undefined;
-    return truncateLine(method ? `${method}${fp ? ` ${formatDisplayPath(fp, cwd)}` : ""}` : (fp ? formatDisplayPath(fp, cwd) : null), 100);
+    return singleLine(method ? `${method}${fp ? ` ${formatDisplayPath(fp, cwd)}` : ""}` : (fp ? formatDisplayPath(fp, cwd) : null));
   }],
   ["NotebookEdit", (input, cwd) => {
     const fp = (input.notebook_path as string | undefined) ?? (input.file_path as string | undefined);
-    return fp ? truncateLine(formatDisplayPath(fp, cwd), 80) : null;
+    return fp ? singleLine(formatDisplayPath(fp, cwd)) : null;
   }],
   ["Skill", (input) => {
     const skill = (input.skill as string | undefined) ?? (input.name as string | undefined);
-    return skill ? truncateLine(skill, 80) : null;
+    return skill ? singleLine(skill) : null;
   }],
-  ["SendMessage", (input) => { const to = input.to as string | undefined; return to ? truncateLine(`to ${to}`, 80) : null }],
-  ["AskUserQuestion", (input) => { const q = input.question as string | undefined; return q ? truncateLine(q, 100) : null }],
-  ["ToolSearch", (input) => { const query = input.query as string | undefined; return query ? truncateLine(query, 80) : null }],
+  ["SendMessage", (input) => { const to = input.to as string | undefined; return to ? singleLine(`to ${to}`) : null }],
+  ["AskUserQuestion", (input) => { const q = input.question as string | undefined; return q ? singleLine(q) : null }],
+  ["ToolSearch", (input) => { const query = input.query as string | undefined; return query ? singleLine(query) : null }],
   ["TodoWrite", () => null],
   ["todo_list", (input) => {
     const op = input.operation as string | undefined;
     if (op === "read") return "read";
     if (op === "write") {
       const todos = input.todos as Array<{ content?: string }> | undefined;
-      return todos ? truncateLine(`write (${todos.length} items)`, 80) : "write";
+      return todos ? singleLine(`write (${todos.length} items)`) : "write";
     }
     return op ?? null;
   }],
   ["write_handoff", (input) => {
     const summary = input.summary as string | undefined;
-    return summary ? truncateLine(summary, 80) : null;
+    return summary ? singleLine(summary) : null;
   }],
   ["EnterPlanMode", () => null],
   ["ExitPlanMode", () => null],
@@ -102,12 +102,12 @@ export function getToolDetail(
 
   // Fallback for unknown tools (MCP, etc.): subject, description, first string value
   const subject = input.subject as string | undefined;
-  if (subject) return truncateLine(subject, 80);
+  if (subject) return singleLine(subject);
   const desc = input.description as string | undefined;
-  if (desc) return truncateLine(desc, 80);
+  if (desc) return singleLine(desc);
   for (const val of Object.values(input)) {
     if (typeof val === "string" && val.length > 0) {
-      return truncateLine(val, 80);
+      return singleLine(val);
     }
   }
   return null;
@@ -137,14 +137,11 @@ function formatDisplayPath(filePath: string | undefined | null, cwd?: string): s
   return relative;
 }
 
-function truncateLine(
+function singleLine(
   s: string | undefined | null,
-  max: number,
 ): string | null {
   if (!s) return null;
-  const oneLine = s.replace(/\n/g, " ").trim();
-  if (oneLine.length <= max) return oneLine;
-  return oneLine.slice(0, max - 1) + "…";
+  return s.replace(/\n/g, " ").trim();
 }
 
 const CONTEXT_LINES = 3;

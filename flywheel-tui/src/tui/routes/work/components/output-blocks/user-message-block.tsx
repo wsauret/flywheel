@@ -29,7 +29,6 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
   return (
     <Show when={injected()} fallback={
       <box
-        marginTop={1}
         border={["left"]}
         borderColor={pending() ? theme.textMuted : theme.secondary}
         customBorderChars={VerticalBarBorder}
@@ -54,7 +53,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
       </box>
     }>
       {/* Injected message — collapsed by default */}
-      <box flexDirection="column" marginTop={1}>
+      <box flexDirection="column">
         <box flexDirection="row" gap={1} onMouseDown={() => setExpanded((v) => !v)}>
           <text fg={theme.textMuted}>↳</text>
           <text fg={theme.textMuted} attributes={BOLD}>System</text>

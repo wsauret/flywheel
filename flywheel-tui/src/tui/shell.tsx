@@ -191,7 +191,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     // Track `now` to guarantee re-evaluation every second — elapsed() alone
     // doesn't reliably propagate through ShimmerText's animation timeline.
     void now()
-    return `${activityLabel()!} (${formatElapsed(metrics.elapsed())})`
+    return `${activityLabel()!} (${formatElapsed(metrics.episodeElapsed())})`
   })
 
   return (
@@ -218,7 +218,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
               <text fg={theme.textSubtle}>{signals.foregroundId()}</text>
             </Show>
             <Show when={headerRight()}>
-              <text fg={headerRightColor()}>{" "}{headerRight()}</text>
+              <text fg={headerRightColor()}>{signals.foregroundId() ? " \u00b7 " : " "}{headerRight()}</text>
             </Show>
           </box>
         </box>

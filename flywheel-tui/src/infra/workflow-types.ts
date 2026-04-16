@@ -53,6 +53,9 @@ export function toolScopingToToolNames(scoping: ToolScoping): string[] {
 
 export const WorkerConfigSchema = z.object({
   tool_scoping: ToolScopingSchema.optional(),
+  /** Subset of quality-checklist labels to inject at the worker's self-review turn.
+   *  Omitted => full checklist. Empty array => skip self-review entirely. */
+  self_review_items: z.array(z.string()).optional(),
 }).strip()
 
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>

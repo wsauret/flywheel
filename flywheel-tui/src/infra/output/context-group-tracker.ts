@@ -3,13 +3,6 @@
 
 import type { ToolEntry } from "../output-blocks.js"
 
-/** Tool names that break context grouping. */
-const NON_CONTEXT_TOOL_NAMES = new Set(["task_complete"])
-
-export function isContextTool(name: string): boolean {
-  return !NON_CONTEXT_TOOL_NAMES.has(name.toLowerCase())
-}
-
 interface ContextGroupCallbacks {
   startContextAgent: (id: string, timestamp: number) => void
   appendToolToContextAgent: (agentId: string, tool: ToolEntry) => void
